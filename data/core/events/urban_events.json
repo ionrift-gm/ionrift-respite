@@ -1,0 +1,220 @@
+{
+    "tables": [
+        {
+            "id": "table_urban_default",
+            "name": "Urban Rest Events",
+            "terrainTag": "urban",
+            "rollFormula": "1d20",
+            "noEventThreshold": 14,
+            "entries": [
+                {
+                    "range": [
+                        1,
+                        3
+                    ],
+                    "eventId": "evt_urban_thieves"
+                },
+                {
+                    "range": [
+                        4,
+                        6
+                    ],
+                    "eventId": "evt_urban_noise"
+                },
+                {
+                    "range": [
+                        7,
+                        9
+                    ],
+                    "eventId": "evt_urban_street_merchant"
+                },
+                {
+                    "range": [
+                        10,
+                        11
+                    ],
+                    "eventId": "evt_urban_patrol"
+                },
+                {
+                    "range": [
+                        12,
+                        13
+                    ],
+                    "eventId": "evt_urban_nightlife"
+                }
+            ]
+        }
+    ],
+    "events": [
+        {
+            "id": "evt_urban_thieves",
+            "name": "Light Fingers",
+            "category": "encounter",
+            "terrainTags": [
+                "urban"
+            ],
+            "weight": 3,
+            "watchTarget": "watch",
+            "description": "A shadow detaches from the alley wall. Someone is going through your packs.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "prc",
+                "dc": 14,
+                "targets": "watch",
+                "bestOfN": true,
+                "onSuccess": {
+                    "narrative": "You spotted them before they reached anything valuable. A sharp word and they vanish.",
+                    "effects": []
+                },
+                "onFailure": {
+                    "narrative": "Quick hands in the dark. Something is missing from the packs.",
+                    "effects": [
+                        {
+                            "type": "item_at_risk",
+                            "filter": "consumable",
+                            "narrative": "A thief made off with something from the packs."
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_urban_noise",
+            "name": "Street Disturbance",
+            "category": "complication",
+            "terrainTags": [
+                "urban"
+            ],
+            "weight": 3,
+            "watchTarget": "all",
+            "description": "Shouting, breaking glass, and running footsteps. The neighbourhood is not settling down tonight.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "con",
+                "dc": 10,
+                "targets": "all",
+                "bestOfN": false,
+                "onSuccess": {
+                    "narrative": "Earplugs, a pillow over the head, and sheer willpower. You sleep through it.",
+                    "effects": []
+                },
+                "onFailure": {
+                    "narrative": "Nobody sleeps well. The noise continues until an hour before dawn.",
+                    "effects": [
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.75,
+                            "description": "Disturbed sleep from street noise."
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_urban_street_merchant",
+            "name": "Late-Night Peddler",
+            "category": "discovery",
+            "terrainTags": [
+                "urban"
+            ],
+            "weight": 3,
+            "watchTarget": "watch",
+            "description": "A quiet knock at the door. A hooded figure with a cart full of odds and ends, selling at unusual hours.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "ins",
+                "dc": 12,
+                "targets": "watch",
+                "bestOfN": true,
+                "onSuccess": {
+                    "narrative": "Legitimate goods at fair prices. A useful find at an odd hour.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "urban_sundries",
+                            "quantity": "1",
+                            "itemData": {
+                                "name": "Sundry Goods",
+                                "type": "loot",
+                                "img": "icons/containers/bags/pouch-simple-worn-brown.webp",
+                                "system": {
+                                    "description": {
+                                        "value": "<p>Assorted useful supplies purchased from a late-night merchant. Candles, twine, chalk, and a few other odds and ends.</p>"
+                                    },
+                                    "rarity": "common",
+                                    "price": {
+                                        "value": 1,
+                                        "denomination": "gp"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "Something felt off about the deal. You declined. Probably wise.",
+                    "effects": []
+                }
+            },
+            "tier": "normal",
+            "sentiment": "positive",
+            "pack": "base"
+        },
+        {
+            "id": "evt_urban_patrol",
+            "name": "City Watch Patrol",
+            "category": "complication",
+            "terrainTags": [
+                "urban"
+            ],
+            "weight": 2,
+            "watchTarget": "watch",
+            "description": "Lantern light and the clink of armour. The city watch is making rounds.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "cha",
+                "dc": 12,
+                "targets": "watch",
+                "bestOfN": true,
+                "onSuccess": {
+                    "narrative": "A friendly exchange. They move on without trouble.",
+                    "effects": []
+                },
+                "onFailure": {
+                    "narrative": "Questions about your business, papers examined, packs searched. An hour wasted.",
+                    "effects": [
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.75,
+                            "description": "Interrupted rest from city watch inspection."
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_urban_nightlife",
+            "name": "City Sounds",
+            "category": "ambient",
+            "terrainTags": [
+                "urban"
+            ],
+            "weight": 3,
+            "watchTarget": "none",
+            "description": "Distant music from a tavern. The smell of baking bread from a bakery starting early. A cat yowls on a rooftop. The city never truly sleeps, but tonight, it hums rather than screams.",
+            "mechanical": null,
+            "tier": "normal",
+            "sentiment": "neutral",
+            "pack": "base"
+        }
+    ]
+}

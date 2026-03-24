@@ -1,0 +1,191 @@
+{
+    "tables": [
+        {
+            "id": "table_mountain_default",
+            "name": "Mountain Rest Events",
+            "terrainTag": "mountain",
+            "rollFormula": "1d20",
+            "noEventThreshold": 9,
+            "entries": [
+                {
+                    "range": [1, 4],
+                    "eventId": "evt_mountain_bitter_wind"
+                },
+                {
+                    "range": [5, 8],
+                    "eventId": "evt_mountain_caloric_drain"
+                }
+            ]
+        }
+    ],
+    "events": [
+        {
+            "id": "evt_mountain_bitter_wind",
+            "name": "Bitter Wind",
+            "category": "complication",
+            "terrainTags": ["mountain"],
+            "weight": 2,
+            "watchTarget": "watch",
+            "levelRange": [1, 20],
+            "noWatchBehavior": "escalate",
+            "noWatchAmplifier": 1,
+            "gmPrompt": "The wind picks up after midnight. Not a gust but a sustained, screaming gale that hammers the camp from above the ridgeline. Loose items skid across the rock. A ration pack tumbles toward the edge.",
+            "checkContext": "Can the watch secure the camp before the wind takes anything over the ledge?",
+            "gmGuidance": "Mountain-specific hazard: katabatic wind, cold air falling off the peak. The danger is physical (items blown off ledges, fire killed) not thermal. Survival to lash gear, build a lee, and weight everything down. Gust of Wind or Wall of Force trivialises. escalate without a watch because nobody is awake to grab the tumbling packs.",
+            "description": "A sustained gale hammers the camp from the ridgeline. Loose items are moving.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "sur",
+                "dc": 14,
+                "targets": "watch",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "You heard the low moan building in the rocks above and felt the temperature drop. Everything lashed, fire shielded, camp pressed into the lee. The wind howled all night and took nothing.",
+                    "effects": []
+                },
+                "onSuccess": {
+                    "narrative": "You caught the first loose pack before it cleared the ledge and lashed everything down. Fire guttered but held. Camp intact.",
+                    "effects": []
+                },
+                "onMixed": {
+                    "narrative": "Most of the gear is lashed, but a ration pack went over the edge before you could reach it. The fire died and will not relight in this wind.",
+                    "effects": [
+                        {
+                            "type": "consume_resource",
+                            "resource": "rations",
+                            "method": "percent_roll",
+                            "roll": "1d4",
+                            "multiplier": 5,
+                            "min": 1,
+                            "maxPercent": 15,
+                            "severity": "standard",
+                            "description": "Rations lost to wind."
+                        },
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.85,
+                            "description": "No fire. Cold night."
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "The gale tore through camp before anyone could react. Ration packs scattered down the slope. A waterskin bounced off the rocks and split. The fire is long dead.",
+                    "effects": [
+                        {
+                            "type": "consume_resource",
+                            "resource": "rations",
+                            "method": "percent_roll",
+                            "roll": "1d6+1",
+                            "multiplier": 5,
+                            "min": 2,
+                            "maxPercent": 25,
+                            "severity": "standard",
+                            "description": "Rations blown off the mountain."
+                        },
+                        {
+                            "type": "consume_resource",
+                            "resource": "water",
+                            "amount": 1,
+                            "noResourceFallback": {
+                                "type": "condition",
+                                "condition": "exhaustion",
+                                "level": 1,
+                                "description": "No water available."
+                            },
+                            "description": "Waterskin split from impact."
+                        },
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.75,
+                            "description": "Exposed camp, no fire, brutal wind."
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_mountain_caloric_drain",
+            "name": "Cold Burn",
+            "category": "complication",
+            "terrainTags": ["mountain"],
+            "weight": 2,
+            "watchTarget": "all",
+            "levelRange": [1, 20],
+            "noWatchBehavior": "escalate",
+            "noWatchAmplifier": 1,
+            "immunities": [
+                { "type": "damage_resistance", "value": "cold" }
+            ],
+            "dutyRelevance": {
+                "defenses": {
+                    "effect": "cancel",
+                    "narrative": "The shelter held. Body heat stayed in. No extra consumption needed."
+                }
+            },
+            "gmPrompt": "The cold is deep and patient. Not a dramatic freeze, just a relentless pull of warmth from every body that tries to sleep in it. Muscles shiver involuntarily. The body is burning fuel just to hold its temperature.",
+            "checkContext": "Can the party endure the cold without burning through extra food?",
+            "gmGuidance": "Not hypothermia, not altitude sickness. This is basal metabolic drain from sustained cold exposure overnight. CON save to resist the caloric cost. Characters with cold resistance are immune (detected automatically). A good shelter (defenses duty) cancels the event entirely. The ration loss represents the body dipping into reserves, not food going bad.",
+            "description": "The cold pulls warmth from every body that tries to sleep in it. Muscles shiver involuntarily.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "con_save",
+                "dc": 12,
+                "targets": "all",
+                "volunteerPolicy": "each",
+                "onTriumph": {
+                    "narrative": "Hardy constitution. Your body held its heat through the night without burning through extra reserves. Rested and ready.",
+                    "effects": []
+                },
+                "onSuccess": {
+                    "narrative": "Cold but manageable. Tight sleeping position, extra layers. No additional food needed.",
+                    "effects": []
+                },
+                "onMixed": {
+                    "narrative": "The shivering woke you twice. You ate an extra portion in the small hours just to stop your teeth chattering.",
+                    "effects": [
+                        {
+                            "type": "consume_resource",
+                            "resource": "rations",
+                            "amount": 1,
+                            "noResourceFallback": {
+                                "type": "condition",
+                                "condition": "exhaustion",
+                                "level": 1,
+                                "description": "No food to burn for warmth. The body paid the cost."
+                            },
+                            "description": "Extra ration consumed for warmth."
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "The cold took everything. Shivering, cramping, desperate eating in the dark. By morning you are drained and still cold.",
+                    "effects": [
+                        {
+                            "type": "consume_resource",
+                            "resource": "rations",
+                            "amount": 1,
+                            "noResourceFallback": {
+                                "type": "condition",
+                                "condition": "exhaustion",
+                                "level": 2,
+                                "description": "No food to burn. Severe caloric deficit."
+                            },
+                            "description": "Extra ration consumed for warmth."
+                        },
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.85,
+                            "description": "Poor rest from sustained cold."
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        }
+    ]
+}

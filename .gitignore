@@ -1,0 +1,43 @@
+# === Ionrift Respite ===
+
+# Terrain packs: ignore all, then whitelist shipped terrains
+data/terrains/*/
+!data/terrains/desert/
+!data/terrains/dungeon/
+!data/terrains/forest/
+!data/terrains/swamp/
+!data/terrains/tavern/
+!data/terrains/urban/
+
+# Content packs
+data/wanderers_pack/
+
+# Unreleased data
+data/professions/
+data/core/forage/
+
+# Node / dev tooling
+node_modules/
+package.json
+package-lock.json
+pack-items.mjs
+
+# Dev scripts & test suites
+scripts/tests/
+scripts/utils/
+scripts/dev-link-packs.ps1
+
+# LevelDB runtime files (created by Foundry at boot)
+packs/*/LOCK
+packs/*/*.log
+packs/*/LOG
+packs/*/LOG.old
+
+# Dev artifacts
+*.bak
+audit_*.json
+audit_*.txt
+audit_*.js
+packs/src/archive/
+
+data/welcome_pack/

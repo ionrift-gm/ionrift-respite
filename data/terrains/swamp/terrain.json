@@ -1,0 +1,19 @@
+{
+    "id": "swamp",
+    "label": "Swamp",
+    "icon": "fas fa-frog",
+    "comfort": "rough",
+    "comfortReason": "Waterlogged ground, biting insects, and poor visibility. Not a gentle place to rest.",
+    "scoutingAvailable": true,
+    "scoutGuidance": "Survival check. Poor: 2-8 | Average: 9-13 | Good: 14+. Ranger or druid has advantage. Heavy armor has disadvantage.",
+    "scoutFlavor": {
+        "nat1":    ["A raised hummock, dry and stable. Good sightlines over the water.", "A cluster of old willows with dry ground underneath.", "A fishing platform, abandoned but solid."],
+        "poor":    ["Wet ground everywhere. Nothing is truly dry.", "A muddy bank. The insects are relentless.", "Ankle-deep water. This is the best you found."],
+        "average": ["A raised root platform keeps you above the waterline.", "A fallen tree bridges two dry patches.", "A reed-sheltered hollow, reasonably dry."],
+        "good":    ["A concealed island in the marsh. Only one approach.", "A hunter's blind, elevated and hidden.", "A dry cave behind hanging moss."],
+        "nat20":   ["An ancient stone platform, hidden by mist.", "A druid's grove, warded and dry.", "A hollow cypress trunk, spacious and concealed."]
+    },
+    "mealRules": { "waterPerDay": 1, "foodPerDay": 1 },
+    "weather": ["clear", "overcast", "fog", "rain", "heavy_rain", "thunderstorm"],
+    "eventsFile": "core/events/swamp_events.json"
+}

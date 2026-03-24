@@ -1,0 +1,19 @@
+{
+    "id": "urban",
+    "label": "Urban",
+    "icon": "fas fa-city",
+    "comfort": "sheltered",
+    "comfortReason": "Buildings and infrastructure provide ready-made cover. Safety varies by neighborhood.",
+    "scoutingAvailable": true,
+    "scoutGuidance": "Investigation check. Poor: 2-7 | Average: 8-12 | Good: 13+. Rogue or bard has advantage. Druid or outsiders have disadvantage.",
+    "scoutFlavor": {
+        "nat1":    ["An abandoned warehouse. Spacious, dry, door still locks.", "A quiet alley tucked behind a row of shops. Out of sight.", "An empty shop with shuttered windows. Private."],
+        "poor":    ["A doorway. Drafty, exposed.", "Under a bridge. Company likely.", "An alley between buildings. Cramped."],
+        "average": ["An abandoned building, roof mostly intact.", "A quiet courtyard, walls on three sides.", "A cellar with a lockable door."],
+        "good":    ["A forgotten attic space, hidden entrance.", "A walled garden, single gate.", "An old watchtower, clear sightlines."],
+        "nat20":   ["A safe house with intact locks and a back exit.", "A noble's abandoned estate, fully furnished.", "A temple sanctuary, warded and respected."]
+    },
+    "mealRules": { "waterPerDay": 1, "foodPerDay": 1, "note": "Water and basic food are generally available in towns." },
+    "weather": ["clear", "overcast", "fog", "rain", "heavy_rain", "thunderstorm", "snow", "extreme_heat"],
+    "eventsFile": "core/events/urban_events.json"
+}

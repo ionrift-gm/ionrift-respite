@@ -1,0 +1,88 @@
+{
+    "_key": "!journal!RespiteGuide000001",
+    "_id": "RespiteGuide000001",
+    "name": "Getting Started with Respite",
+    "ownership": {
+        "default": 2
+    },
+    "flags": {},
+    "pages": [
+        {
+            "_id": "RespGuidePage0001",
+            "name": "How to Start a Rest",
+            "type": "text",
+            "text": {
+                "content": "<h2>Launching a Rest</h2><p>Only the GM can start a rest. Two ways to do it:</p><ul><li><strong>Chat command</strong> - type <code>/respite</code> in the chat bar.</li><li><strong>Scene control</strong> - click the campground icon in the token controls toolbar (left side of the canvas).</li></ul><p>The module intercepts long rests by default. When a player clicks \"Long Rest\" on their character sheet, Respite opens instead of the standard dialog. This can be toggled off in settings.</p>",
+                "format": 1,
+                "markdown": ""
+            },
+            "sort": 100000,
+            "ownership": {
+                "default": -1
+            },
+            "flags": {}
+        },
+        {
+            "_id": "RespGuidePage0002",
+            "name": "Rest Phases",
+            "type": "text",
+            "text": {
+                "content": "<h2>The Four Phases</h2><p>Each rest runs through four phases in order.</p><h3>1. Setup</h3><p>The GM picks the terrain, shelter type (safe, sheltered, rough, or exposed), and weather conditions. These determine the baseline encounter DC - how likely the party is to be interrupted. A visible breakdown shows how each factor (fire, scouting, defenses) shifts the odds.</p><h3>2. Activities</h3><p>Each character picks one camp activity for the night. GMs assign activities for NPCs, and players pick their own.</p><ul><li><strong>Guard</strong> - Lowers the encounter DC. Armor-dependent bonuses if wearing medium/heavy.</li><li><strong>Scout</strong> - Perception check to lower the encounter threshold. Can detect threats early.</li><li><strong>Rest Fully</strong> - No encounter benefit, but the character recovers without penalties.</li><li><strong>Fortify</strong> - Raises the camp defenses. Stacks with other fortifiers.</li><li><strong>Train</strong> - No camp benefit. Purely a narrative option.</li><li><strong>Campfire</strong> - Tends the fire. Terrain-specific difficulty. Magical shelter and taverns skip this.</li><li><strong>Study / Identify</strong> - Work with magical items, copy spells (Wizards), or run a Detect Magic scan.</li></ul><h3>3. Events</h3><p>The GM rolls against the encounter DC. Events are pulled from terrain-tagged pools with weighted selection. Some events are positive (a merchant caravan passes), some negative (a storm rolls in), some are decision trees where the GM picks how the party responds. The system tracks event history so the same disaster does not repeat until the pool cycles.</p><h3>4. Resolution</h3><p>HP, hit dice, spell slots, and exhaustion are processed according to the comfort level. Each player gets a private whisper with their personal recovery summary. The GM sees the full breakdown.</p>",
+                "format": 1,
+                "markdown": ""
+            },
+            "sort": 200000,
+            "ownership": {
+                "default": -1
+            },
+            "flags": {}
+        },
+        {
+            "_id": "RespGuidePage0003",
+            "name": "Terrain and Comfort",
+            "type": "text",
+            "text": {
+                "content": "<h2>Terrain</h2><p>Terrain sets the event pool and base encounter difficulty. Available terrains include forest, desert, swamp, coast, arctic, mountain, underdark, urban, ruins, dungeon, tavern, and more. Each terrain has its own set of events and baseline DC.</p><h2>Comfort Levels</h2><p>Comfort determines how much the party recovers. The GM sets this during setup or uses the module default.</p><ul><li><strong>Safe</strong> - Full HP, full HD, full spell slots. Exhaustion reduced by 1.</li><li><strong>Sheltered</strong> - Full HP, half HD rounded up. Full spell slots. Exhaustion reduced by 1.</li><li><strong>Rough</strong> - Half HP rounded up, half HD rounded up. Full spell slots. Exhaustion reduced by 1.</li><li><strong>Exposed</strong> - Half HP rounded up, quarter HD (minimum 1). Full spell slots. No exhaustion reduction.</li></ul>",
+                "format": 1,
+                "markdown": ""
+            },
+            "sort": 300000,
+            "ownership": {
+                "default": -1
+            },
+            "flags": {}
+        },
+        {
+            "_id": "RespGuidePage0004",
+            "name": "Meals and Rations",
+            "type": "text",
+            "text": {
+                "content": "<h2>Food and Water Tracking</h2><p>When meal tracking is enabled in settings, a rations phase appears between Activities and Events. Each character needs food and water for the rest period.</p><p>Players drag ration items from their inventory onto the food and water plates. If a character goes without food or water, they may need to make Constitution saves or gain exhaustion, following the standard 5e variant rules.</p><p>Multi-day rests (when the party has been traveling for several days since their last rest) require provisions for each day.</p><p>Meal tracking is optional and can be toggled off entirely in module settings.</p>",
+                "format": 1,
+                "markdown": ""
+            },
+            "sort": 400000,
+            "ownership": {
+                "default": -1
+            },
+            "flags": {}
+        },
+        {
+            "_id": "RespGuidePage0005",
+            "name": "Settings Reference",
+            "type": "text",
+            "text": {
+                "content": "<h2>Module Settings</h2><p>All settings are under <strong>Game Settings &gt; Module Settings &gt; Ionrift Respite</strong>.</p><ul><li><strong>Default Comfort Level</strong> - The comfort tier used when the GM does not pick one during setup.</li><li><strong>Intercept Player Rests</strong> - When enabled, clicking \"Long Rest\" on a character sheet opens the Respite flow instead of the default dialog.</li><li><strong>Armor Doff/Don Advisory</strong> - Shows a reminder when characters are resting in heavy armor (Xanathar's rules).</li><li><strong>Study Activity</strong> - Enables the Study activity tile for identifying items, copying spells, and Detect Magic scans.</li><li><strong>Track Food &amp; Water</strong> - Enables the rations phase. When off, the rest skips straight from Activities to Events.</li><li><strong>Partial Sustenance</strong> - Allows partial food/water (half rations) without full penalties.</li><li><strong>Content Packs</strong> - Enable or disable expansion event packs. Shows event counts per terrain.</li></ul>",
+                "format": 1,
+                "markdown": ""
+            },
+            "sort": 500000,
+            "ownership": {
+                "default": -1
+            },
+            "flags": {}
+        }
+    ],
+    "sort": 0,
+    "folder": null
+}

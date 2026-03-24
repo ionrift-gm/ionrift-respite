@@ -1,0 +1,90 @@
+{{!-- Short Rest: single-screen HD spending view --}}
+<div class="short-rest-container ionrift-window">
+
+    {{!-- Banner header --}}
+    <div class="sr-banner" style="background-image: url('{{banner}}');"></div>
+
+    {{!-- Status strip (matching long rest camp-status-bar) --}}
+    <div class="camp-status-bar">
+        <span class="camp-status-chip shelter-chip shelter-chip-{{shelterBadge.id}}" title="{{shelterBadge.name}}">
+            <i class="{{shelterBadge.icon}}"></i> {{shelterBadge.name}}
+        </span>
+    </div>
+
+    {{!-- Character cards --}}
+    <div class="short-rest-cards">
+        {{#each characters}}
+        <div class="short-rest-card" data-actor-id="{{id}}">
+            <div class="sr-card-header">
+                <img src="{{img}}" alt="{{name}}" class="sr-portrait">
+                <div class="sr-identity">
+                    <span class="sr-name">{{name}}</span>
+                    <div class="sr-hp-row">
+                        <span class="sr-hp {{#if isFullHp}}full{{/if}}">
+                            <i class="fas fa-heart"></i> {{currentHp}} / {{maxHp}}
+                        </span>
+                        <span class="sr-hd-count">
+                            <i class="fas fa-dice-d20"></i> {{hdRemaining}} / {{hdMax}} d{{hdDie}}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {{!-- HD pips --}}
+            <div class="sr-hd-pips">
+                {{#each hdPips}}
+                <span class="sr-pip {{#if filled}}filled{{else}}empty{{/if}}"></span>
+                {{/each}}
+            </div>
+
+            {{!-- Roll log --}}
+            {{#if rolls.length}}
+            <div class="sr-roll-log">
+                {{#each rolls}}
+                <span class="sr-roll-entry" title="d{{die}} + {{conMod}} CON">+{{total}}</span>
+                {{/each}}
+                <span class="sr-roll-total">
+                    <i class="fas fa-plus-circle"></i> {{totalHealed}} HP restored
+                </span>
+            </div>
+            {{/if}}
+
+            {{!-- Spend button --}}
+            {{#if isOwner}}
+            <div class="sr-actions">
+                {{#if isFullHp}}
+                <button type="button" class="sr-spend-btn faded" disabled title="Already at full HP.">
+                    <i class="fas fa-dice-d20"></i> Spend 1 Hit Die
+                </button>
+                {{else if noHdLeft}}
+                <button type="button" class="sr-spend-btn faded" disabled title="No Hit Dice remaining until next long rest.">
+                    <i class="fas fa-dice-d20"></i> Spend 1 Hit Die
+                </button>
+                {{else}}
+                <button type="button" class="sr-spend-btn" data-action="spendHitDie" data-actor-id="{{id}}">
+                    <i class="fas fa-dice-d20"></i> Spend 1 Hit Die
+                </button>
+                {{/if}}
+            </div>
+            {{/if}}
+        </div>
+        {{/each}}
+    </div>
+
+    {{!-- RP prompt --}}
+    <div class="sr-rp-prompt">
+        <i class="fas fa-feather-alt"></i>
+        <span>{{rpPrompt}}</span>
+    </div>
+
+    {{!-- Footer --}}
+    <div class="sr-footer">
+        {{#if isGM}}
+        <button type="button" class="btn-primary sr-complete-btn" data-action="completeShortRest">
+            <i class="fas fa-check"></i> Complete Short Rest
+        </button>
+        {{else}}
+        <span class="sr-waiting"><i class="fas fa-hourglass-half"></i> Waiting for GM to complete rest...</span>
+        {{/if}}
+    </div>
+</div>

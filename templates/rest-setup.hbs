@@ -1,0 +1,2160 @@
+{{!-- Ionrift Respite: Rest Setup Template (ApplicationV2) --}}
+{{!-- Dual-mode: GM has full control, Players see shared campsite view --}}
+
+<form class="respite-form">
+
+    {{!-- Phase Indicator --}}
+    <div class="respite-phase-header">
+        <div class="phase-indicator">
+            <div
+                class="phase-dot {{#if (eq phase 'setup')}}active{{/if}} {{#if (or (eq phase 'activity') (eq phase 'meal') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+            </div>
+            <div
+                class="phase-dot {{#if (eq phase 'activity')}}active{{/if}} {{#if (or (eq phase 'meal') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+            </div>
+            <div
+                class="phase-dot {{#if (eq phase 'meal')}}active{{/if}} {{#if (or (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+            </div>
+            <div
+                class="phase-dot {{#if (eq phase 'reflection')}}active{{/if}} {{#if (or (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+            </div>
+            <div class="phase-dot {{#if (eq phase 'events')}}active{{/if}} {{#if (eq phase 'resolve')}}complete{{/if}}">
+            </div>
+            <div class="phase-dot {{#if (eq phase 'resolve')}}active{{/if}}"></div>
+        </div>
+        <span class="phase-label">
+            {{#if (eq phase 'setup')}}Setup{{/if}}
+            {{#if (eq phase 'activity')}}Activities ({{resolvedCount}}/{{totalCharacters}}){{/if}}
+            {{#if (eq phase 'meal')}}Rations{{/if}}
+            {{#if (eq phase 'reflection')}}Campfire{{/if}}
+            {{#if (eq phase 'events')}}Events{{/if}}
+            {{#if (eq phase 'resolve')}}Resolution{{/if}}
+        </span>
+    </div>
+
+    {{#if isGM}}
+    <button type="button" class="btn-abandon-rest" data-action="abandonRest" title="Cancel this rest for all players">
+        <i class="fas fa-times"></i> Abandon Rest
+    </button>
+    {{/if}}
+
+    {{!-- Camp Status Bar: persistent across all phases post-setup --}}
+    {{#if campStatus}}
+    <div class="camp-status-bar">
+        <span class="camp-status-chip comfort-{{campStatus.comfort}}" title="{{campStatus.comfortTooltip}}">
+            <i class="fas fa-bed"></i> {{campStatus.comfort}}
+        </span>
+        {{#if campStatus.weather}}
+        {{#unless (eq campStatus.weather "clear")}}
+        <span class="camp-status-chip weather-chip" title="{{campStatus.weatherTooltip}}">
+            <i class="fas fa-cloud-sun-rain"></i> {{campStatus.weather}}
+        </span>
+        {{/unless}}
+        {{/if}}
+        {{#each campStatus.activeShelters}}
+        <span class="camp-status-chip shelter-chip shelter-chip-{{id}}" title="{{tooltip}}">
+            <i class="{{icon}}"></i> {{name}}
+        </span>
+        {{/each}}
+        {{#unless campStatus.hasTent}}
+        <span class="camp-status-chip shelter-chip absent" title="No tent: exposed to weather penalties">
+            <i class="fas fa-campground"></i> Tent
+        </span>
+        {{/unless}}
+        <span class="camp-status-chip fire-chip fire-{{campStatus.fireLevel}}" title="{{campStatus.fireTooltip}}">
+            <i class="fas fa-fire"></i> <span class="fire-level-text">{{campStatus.fireLevel}}</span>
+        </span>
+    </div>
+    {{/if}}
+
+
+    {{!-- =============== SETUP PHASE =============== --}}
+    {{#if (eq phase 'setup')}}
+    <div class="phase-banner">
+        <img src="{{terrainBanner}}" alt="Camp setup" style="object-position: {{terrainBannerPos}}">
+    </div>
+
+    {{#if isGM}}
+    <div class="respite-setup">
+
+        {{!-- ===== SECTION 1: Where Are We? ===== --}}
+        <div class="setup-section {{#if (eq setupStep 1)}}active{{else}}collapsed{{/if}}" data-section="1">
+            <div class="setup-section-header" data-action="setupBack" data-step="1">
+                <span class="section-step">1</span>
+                <span class="section-title">Environment</span>
+                {{#unless (eq setupStep 1)}}
+                <span class="section-summary"><i class="fas fa-check"></i> {{selectedTerrainLabel}} &middot; {{selectedRestType}}</span>
+                {{/unless}}
+            </div>
+            {{#if (eq setupStep 1)}}
+            <div class="setup-section-body">
+                <div class="terrain-grid">
+                    <div class="form-group">
+                        <label>Rest Type</label>
+                        <select name="restType">
+                            <option value="long">Long Rest</option>
+                            <option value="short">Short Rest</option>
+                        </select>
+                        <span class="rest-type-hint">8 hrs. HP and Hit Dice recovery varies by comfort and conditions.</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Environment</label>
+                        <select name="terrain">
+                            {{#each terrainOptions}}
+                            <option value="{{value}}" {{#if (eq value ../selectedTerrain)}}selected{{/if}}>{{label}}</option>
+                            {{/each}}
+                        </select>
+                        <span class="terrain-hint" id="terrain-hint">{{terrainPreview}}</span>
+                    </div>
+                </div>
+                {{#if trackFood}}
+                <div class="days-since-rest-block">
+                    <div class="days-since-rest-row">
+                        <span class="days-label"><i class="fas fa-calendar-day"></i> Days Since Last Rest</span>
+                        <div class="days-stepper">
+                            <button type="button" class="days-btn" data-action="adjustDaysSinceRest" data-delta="-1" {{#if (eq daysSinceLastRest 1)}}disabled{{/if}}>−</button>
+                            <span class="days-value">{{daysSinceLastRest}}</span>
+                            <button type="button" class="days-btn" data-action="adjustDaysSinceRest" data-delta="1" {{#if (gte daysSinceLastRest 9)}}disabled{{/if}}>+</button>
+                        </div>
+                    </div>
+                    <span class="days-hint"><i class="fas fa-book"></i> Characters can only benefit from one long rest per 24 hours. (PHB p.186)</span>
+                    {{#if (gte daysSinceLastRest 2)}}
+                    <span class="days-hint warning"><i class="fas fa-exclamation-triangle"></i> {{daysSinceLastRest}} days without rest. Characters are treated as having gone without food and water for that duration.</span>
+                    {{/if}}
+                </div>
+                {{/if}}
+                <div class="setup-section-actions">
+                    <button type="button" class="btn-primary" data-action="setupContinue" data-step="1">
+                        Continue <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+            {{/if}}
+        </div>
+
+        {{!-- ===== SECTION 2: Setting Up Camp ===== --}}
+        {{#if (gte setupStep 2)}}
+        <div class="setup-section {{#if (eq setupStep 2)}}active{{else}}collapsed{{/if}}" data-section="2">
+            <div class="setup-section-header" data-action="setupBack" data-step="2">
+                <span class="section-step">2</span>
+                <span class="section-title">Setting Up Camp</span>
+                {{#unless (eq setupStep 2)}}
+                <span class="section-summary"><i class="fas fa-check"></i> {{selectedWeatherLabel}} &middot; Scout: {{selectedScoutLabel}}</span>
+                {{/unless}}
+            </div>
+            {{#if (eq setupStep 2)}}
+            <div class="setup-section-body">
+                <div class="terrain-grid">
+                    <div class="form-group">
+                        <label>Weather</label>
+                        <select name="weather">
+                            {{#each weatherOptions}}
+                            <option value="{{value}}" title="{{hint}}" {{#if (eq value ../defaultWeather)}}selected{{/if}}>{{label}}</option>
+                            {{/each}}
+                        </select>
+                        {{#each weatherOptions}}
+                        {{#if (eq value ../defaultWeather)}}
+                        <span class="weather-hint">{{hint}}</span>
+                        {{/if}}
+                        {{/each}}
+                    </div>
+                    <div class="form-group">
+                        <label>Comfort</label>
+                        <select name="comfort">
+                            {{#each comfortOptions}}
+                            <option value="{{value}}" title="{{hint}}" {{#if (eq value ../defaultComfort)}}selected{{/if}}>{{label}}</option>
+                            {{/each}}
+                        </select>
+                        {{#each comfortOptions}}
+                        {{#if (eq value ../defaultComfort)}}
+                        <span class="comfort-hint">{{hint}}</span>
+                        {{/if}}
+                        {{/each}}
+                        {{#if comfortReason}}
+                        <span class="comfort-reason">{{comfortReason}}</span>
+                        {{/if}}
+                    </div>
+                </div>
+                {{#if scoutingAvailable}}
+                <div class="scouting-block">
+                    <div class="scouting-guidance">
+                        <i class="fas fa-binoculars"></i>
+                        <span>Ask the party who is scouting for a campsite and how they approach it. Set the result below based on their roll.</span>
+                    </div>
+                    {{#if scoutTiers}}
+                    <div class="scouting-tiers">
+                        <span class="tier-label">{{scoutSkill}} check:</span>
+                        <span class="tier poor">Poor {{scoutTiers.poor}}</span>
+                        <span class="tier-sep">|</span>
+                        <span class="tier avg">Avg {{scoutTiers.average}}</span>
+                        <span class="tier-sep">|</span>
+                        <span class="tier good">Good {{scoutTiers.good}}</span>
+                    </div>
+                    {{/if}}
+                    {{#if scoutAdvantage}}
+                    <span class="scouting-advantage">{{scoutAdvantage}}</span>
+                    {{/if}}
+                    <div class="form-group">
+                        <label>Scouting Result</label>
+                        <select name="scouting">
+                            <option value="none" title="No scouting roll attempted.">Not Attempted</option>
+                            <option value="nat1" title="GM only: looks viable, but hidden complication. Revealed during events. Tell the player it looks fine.">Nat 1</option>
+                            <option value="poor" title="No comfort adjustment. Default site for this terrain.">Poor</option>
+                            <option value="average" title="Comfort +1 step. Found decent cover or natural shelter.">Average</option>
+                            <option value="good" title="Comfort +1 step. Encounter DC +1. Well-concealed position.">Good</option>
+                            <option value="nat20" title="Comfort +2 steps. Perfect campsite. Hidden, defensible.">Nat 20</option>
+                        </select>
+                        <span class="scouting-hint">No scouting roll attempted.</span>
+                    </div>
+                </div>
+                {{/if}}
+                <div class="setup-preview">
+                    <div class="preview-item">
+                        <span class="preview-label">Effective Comfort</span>
+                        <span class="preview-value" id="preview-comfort">{{defaultComfort}}</span>
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label" title="Modifier to the encounter chance roll. Higher = harder to avoid encounters.">Encounter Check</span>
+                        <span class="preview-value" id="preview-encounter">+0</span>
+                    </div>
+                </div>
+                <div class="setup-section-actions">
+                    <button type="button" class="btn-secondary" data-action="setupBack" data-step="1">
+                        <i class="fas fa-chevron-left"></i> Back
+                    </button>
+                    <button type="button" class="btn-primary" data-action="setupContinue" data-step="2">
+                        Continue <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+            {{/if}}
+        </div>
+        {{/if}}
+
+        {{!-- ===== SECTION 3: Shelter (skipped for tavern) ===== --}}
+        {{#if shelterNeeded}}
+        {{#if (gte setupStep 3)}}
+        <div class="setup-section {{#if (eq setupStep 3)}}active{{else}}collapsed{{/if}}" data-section="3">
+            <div class="setup-section-header" data-action="setupBack" data-step="3">
+                <span class="section-step">3</span>
+                <span class="section-title">Shelter</span>
+            </div>
+            {{#if (eq setupStep 3)}}
+            <div class="setup-section-body">
+                <div class="shelter-config">
+                    <div class="shelter-options">
+                        {{#each shelterOptions}}
+                        <label class="shelter-radio {{#if active}}active{{/if}} {{#unless available}}faded{{/unless}}">
+                            <input type="radio" name="shelter" value="{{id}}"
+                                {{#if active}}checked{{/if}}
+                                {{#unless available}}disabled{{/unless}}
+                                data-shelter-id="{{id}}"
+                                data-action="toggleShelter">
+                            <i class="{{icon}}"></i>
+                            <span class="shelter-name">{{name}}</span>
+                            <span class="shelter-hint">{{hint}}</span>
+                        </label>
+                        {{/each}}
+                    </div>
+                    {{#if shelterEffect}}
+                    <div class="shelter-effect-summary">
+                        {{#if shelterEffect.rpPrompt}}
+                        <div class="shelter-rp-prompt">
+                            <i class="fas fa-comment-dots"></i> {{shelterEffect.rpPrompt}}
+                        </div>
+                        {{/if}}
+                        <div class="shelter-effect-chips">
+                            {{#if shelterEffect.encounterMod}}
+                            <span class="shelter-effect-chip encounter">
+                                <i class="fas fa-eye-slash"></i> Encounter DC +{{shelterEffect.encounterMod}}
+                            </span>
+                            {{/if}}
+                            {{#if shelterEffect.comfortFloor}}
+                            <span class="shelter-effect-chip comfort-floor">
+                                <i class="fas fa-arrow-up"></i> Comfort floor: {{shelterEffect.comfortFloor}}
+                            </span>
+                            {{/if}}
+                        </div>
+                    </div>
+                    {{/if}}
+                </div>
+            </div>
+            {{/if}}
+        </div>
+        {{/if}}
+        {{/if}}
+
+    </div>
+    <div class="respite-action-bar">
+        {{#if (eq setupStep 3)}}
+        {{#unless shelterChosen}}
+        <span class="shelter-choose-hint"><i class="fas fa-exclamation-circle"></i> Choose a shelter option above</span>
+        {{/unless}}
+        <button type="button" class="btn-primary" data-action="beginRest" {{#unless shelterChosen}}disabled{{/unless}}>
+            <i class="fas fa-campground"></i> Begin Rest
+        </button>
+        {{/if}}
+    </div>
+    {{else}}
+    {{!-- Player: waiting for GM to start --}}
+    <div class="respite-setup">
+        <div class="respite-waiting-message">
+            <i class="fas fa-campground"></i>
+            <p>The GM is preparing the campsite...</p>
+        </div>
+    </div>
+    {{/if}}
+    {{/if}}
+
+    {{!-- =============== ACTIVITY PHASE =============== --}}
+    {{#if (eq phase 'activity')}}
+    <div class="phase-banner">
+        <img src="{{terrainBanner}}" alt="Camp activities" style="object-position: {{terrainBannerPos}}">
+    </div>
+    {{> rosterStrip}}
+    <div class="activity-phase-layout">
+    <div class="respite-activities">
+
+        {{!-- ── Detail View: selected character ── --}}
+        {{#if selectedCharacter}}
+        <div class="character-detail" data-character-id="{{selectedCharacter.id}}">
+            <div class="detail-header">
+                <div class="detail-header-info">
+                    <span class="character-name">{{selectedCharacter.name}}</span>
+                    <span class="gear-badges">
+                        {{#each selectedCharacter.gearBadges}}
+                        <i class="{{icon}} gear-badge {{#unless present}}absent{{/unless}}" title="{{tooltip}}{{#unless present}} (missing){{/unless}}"></i>
+                        {{/each}}
+                    </span>
+                    {{#if (eq selectedCharacter.source 'player')}}
+                    <span class="respite-activity-badge default">
+                        <i class="fas fa-check-circle"></i> {{selectedCharacter.activityName}}
+                    </span>
+                    {{else if (eq selectedCharacter.source 'gm')}}
+                    <span class="respite-activity-badge watch">
+                        <i class="fas fa-crown"></i> {{selectedCharacter.activityName}} (GM)
+                    </span>
+                    {{else}}
+                    <span class="respite-activity-badge pending-badge">
+                        <i class="fas fa-clock"></i> Choose an activity
+                    </span>
+                    {{/if}}
+            </div>
+            </div>
+
+            {{!-- Armor advisory --}}
+            {{#if selectedCharacter.armorWarning}}
+            <div class="armor-advisory {{#if selectedCharacter.armorWarning.isDoffed}}doffed{{/if}}" title="{{selectedCharacter.armorWarning.hint}}">
+                <i class="fas fa-shield-alt"></i>
+                <span class="armor-advisory-text">
+                    {{#if selectedCharacter.armorWarning.isDoffed}}
+                    {{selectedCharacter.armorWarning.name}} removed for rest
+                    {{else}}
+                    {{selectedCharacter.armorWarning.name}} ({{selectedCharacter.armorWarning.type}}) - don time: {{selectedCharacter.armorWarning.donTime}}
+                    {{/if}}
+                </span>
+                <button type="button" class="btn-armor-toggle"
+                    data-actor-id="{{selectedCharacter.armorWarning.actorId}}"
+                    data-item-id="{{selectedCharacter.armorWarning.itemId}}"
+                    data-is-doffed="{{selectedCharacter.armorWarning.isDoffed}}"
+                    title="{{#if selectedCharacter.armorWarning.isDoffed}}Re-equip armor{{else}}Remove armor for rest{{/if}}">
+                    {{#if selectedCharacter.armorWarning.isDoffed}}
+                    <i class="fas fa-shield-alt"></i> Don
+                    {{else}}
+                    <i class="fas fa-bed"></i> Doff
+                    {{/if}}
+                </button>
+            </div>
+            {{/if}}
+
+            {{!-- Minor activity advisories --}}
+            {{#each selectedCharacter.minorActivities}}
+            <div class="minor-activity-advisory" title="{{description}}">
+                <i class="{{icon}}"></i>
+                <span>{{name}}: {{description}}</span>
+                {{#if (eq id "act_identify")}}
+                <button type="button" class="btn-detect-magic" data-action="detectMagicScan">
+                    <i class="fas fa-eye"></i> Scan
+                </button>
+                {{/if}}
+            </div>
+            {{/each}}
+            {{!-- Faded minor advisories (known but not prepared) --}}
+            {{#each selectedCharacter.fadedMinorActivities}}
+            <div class="minor-activity-advisory faded" title="{{fadedHint}}">
+                <i class="{{icon}}"></i>
+                <span>{{name}}: {{fadedHint}}</span>
+            </div>
+            {{/each}}
+
+            {{!-- Detect Magic scan results --}}
+            {{#if magicScanComplete}}
+            <div class="magic-scan-results">
+                {{#if magicScanResults.length}}
+                <div class="magic-scan-header"><i class="fas fa-hat-wizard"></i> Magical Auras Detected</div>
+                {{#each magicScanResults}}
+                <div class="magic-scan-actor">
+                    <span class="magic-scan-actor-name">{{actorName}}'s gear:</span>
+                    {{#each items}}
+                    <div class="magic-scan-item {{#if identified}}identified{{/if}}">
+                        <img src="{{img}}" class="magic-scan-item-img" alt="">
+                        {{#if identified}}
+                        <i class="fas fa-check-circle magic-identified-icon"></i>
+                        <span class="magic-scan-item-name">{{trueName}}</span>
+                        {{#if requiresAttunement}}<span class="magic-attune-hint">Requires attunement</span>{{/if}}
+                        {{else}}
+                        <i class="fas fa-magic magic-aura-icon"></i>
+                        <span class="magic-scan-item-name">{{displayName}}</span>
+                        {{#if school}}<span class="magic-school-tag">{{school}}</span>{{/if}}
+                        {{#if @root.isGM}}
+                        <button type="button" class="btn-identify-item" data-action="identifyScannedItem"
+                            data-actor-id="{{../actorId}}" data-item-id="{{itemId}}">
+                            <i class="fas fa-scroll"></i> Identify
+                        </button>
+                        {{/if}}
+                        {{/if}}
+                    </div>
+                    {{/each}}
+                </div>
+                {{/each}}
+                {{else}}
+                <div class="magic-scan-none"><i class="fas fa-check"></i> No unidentified magical items found.</div>
+                {{/if}}
+            </div>
+            {{/if}}
+
+            {{!-- Activity tile grid --}}
+            {{#if craftingDrawer}}
+            {{!-- Inline crafting drawer (replaces activity tiles) --}}
+            <div class="crafting-drawer-inline">
+                <div class="crafting-drawer-header">
+                    <button type="button" class="btn-detail-back" data-action="craftDrawerClose">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <i class="fas fa-hammer detail-icon"></i>
+                    <span class="detail-name">{{craftingDrawer.profession}}</span>
+                </div>
+
+                {{#if craftingDrawer.hasCrafted}}
+                {{!-- Crafting result --}}
+                <div class="crafting-result-inline {{#if craftingDrawer.craftingResult.success}}result-success{{else}}result-failure{{/if}}">
+                    <h4>
+                        {{#if craftingDrawer.craftingResult.success}}
+                        <i class="fas fa-check-circle"></i> Success
+                        {{else}}
+                        <i class="fas fa-times-circle"></i> Failed
+                        {{/if}}
+                    </h4>
+                    <div class="result-roll">
+                        Rolled <strong>{{craftingDrawer.craftingResult.roll}}</strong> vs DC <strong>{{craftingDrawer.craftingResult.dc}}</strong>
+                        <span class="risk-tag risk-{{craftingDrawer.craftingResult.riskTier}}">{{craftingDrawer.craftingResult.riskTier}}</span>
+                    </div>
+                    <div class="result-narrative">{{craftingDrawer.craftingResult.narrative}}</div>
+                    {{#if craftingDrawer.craftingResult.success}}
+                    <div class="result-output">
+                        <i class="fas fa-plus-circle"></i> Created: <strong>{{craftingDrawer.craftingResult.output.name}}</strong>
+                        {{#if craftingDrawer.craftingResult.output.quantity}}(x{{craftingDrawer.craftingResult.output.quantity}}){{/if}}
+                    </div>
+                    {{/if}}
+                    {{#if craftingDrawer.craftingResult.ingredientsConsumed}}
+                    <div class="result-consumed"><i class="fas fa-fire"></i> Ingredients consumed</div>
+                    {{else}}
+                    <div class="result-preserved"><i class="fas fa-shield-alt"></i> Ingredients preserved</div>
+                    {{/if}}
+                </div>
+                <div class="crafting-done-bar">
+                    <button type="button" class="btn-crafting-done" data-action="craftDrawerClose">
+                        <i class="fas fa-check"></i> Done
+                    </button>
+                </div>
+
+                {{else}}
+                {{!-- Step 1: Choose Recipe --}}
+                <div class="crafting-step-inline">
+                    <div class="step-label"><span class="step-num">1</span> Choose a Recipe</div>
+                    {{#if craftingDrawer.available.length}}
+                    <div class="recipe-list-inline">
+                        {{#each craftingDrawer.available}}
+                        <div class="recipe-card-inline {{#if isSelected}}selected{{/if}}" data-action="craftDrawerSelectRecipe"
+                            data-recipe-id="{{id}}">
+                            <img src="{{outputImg}}" alt="{{name}}" class="recipe-icon-inline">
+                            <div class="recipe-info-inline">
+                                <div class="recipe-name-inline">{{name}}</div>
+                                <div class="recipe-brief-inline">
+                                    {{#each ingredientList}}
+                                    <span class="ingredient-pill met">{{required}}x {{name}}</span>
+                                    {{/each}}
+                                </div>
+                            </div>
+                            <div class="recipe-select-ind">
+                                {{#if isSelected}}<i class="fas fa-check-circle"></i>{{else}}<i class="far fa-circle"></i>{{/if}}
+                            </div>
+                        </div>
+                        {{/each}}
+                    </div>
+                    {{else}}
+                    <div class="crafting-empty-inline">No recipes available with current ingredients.</div>
+                    {{/if}}
+                </div>
+
+                {{!-- Step 2: Choose Risk --}}
+                <div class="crafting-step-inline">
+                    <div class="step-label"><span class="step-num">2</span> Choose Risk Level</div>
+                    <div class="risk-selector-inline">
+                        {{#each craftingDrawer.riskTiers}}
+                        <button type="button" class="btn-risk-inline {{#if selected}}selected{{/if}}" data-action="craftDrawerSelectRisk"
+                            data-risk="{{id}}">
+                            <div class="risk-label">{{label}}</div>
+                            <div class="risk-hint">{{hint}}</div>
+                        </button>
+                        {{/each}}
+                    </div>
+                </div>
+
+                {{!-- Commitment Summary --}}
+                {{#if craftingDrawer.commitSummary}}
+                <div class="craft-commit-inline">
+                    <div class="commit-header-inline">Ready to Craft</div>
+                    <div class="commit-body-inline">
+                        <div class="commit-row"><span class="commit-label">Recipe</span><span class="commit-value">{{craftingDrawer.commitSummary.recipeName}}</span></div>
+                        <div class="commit-row"><span class="commit-label">Check</span><span class="commit-value">{{craftingDrawer.commitSummary.skill}} vs DC {{craftingDrawer.commitSummary.dc}}</span></div>
+                        <div class="commit-row"><span class="commit-label">Risk</span><span class="commit-value risk-tag risk-{{craftingDrawer.commitSummary.risk}}">{{craftingDrawer.commitSummary.riskLabel}}</span></div>
+                        <div class="commit-row"><span class="commit-label">Uses</span><span class="commit-value">{{craftingDrawer.commitSummary.ingredientCost}}</span></div>
+                        <div class="commit-row"><span class="commit-label">Produces</span><span class="commit-value output-highlight">{{craftingDrawer.commitSummary.outputName}}</span></div>
+                        <div class="commit-row commit-warning"><span class="commit-label">On Failure</span><span class="commit-value">{{craftingDrawer.commitSummary.failConsequence}}</span></div>
+                    </div>
+                    <button type="button" class="btn-hero-craft-inline" data-action="craftDrawerCraft">
+                        <i class="fas fa-hammer"></i> Craft
+                    </button>
+                </div>
+                {{else}}
+                <div class="craft-commit-inline empty">
+                    <div class="commit-placeholder"><i class="fas fa-hand-pointer"></i> Select a recipe to see your crafting plan</div>
+                </div>
+                {{/if}}
+
+                {{!-- Missing Recipes Toggle --}}
+                {{#if craftingDrawer.partial.length}}
+                <div class="missing-toggle-inline" data-action="craftDrawerToggleMissing">
+                    <i class="fas fa-caret-{{#if craftingDrawer.showMissing}}down{{else}}right{{/if}}"></i>
+                    Missing Ingredients ({{craftingDrawer.partial.length}} recipes)
+                </div>
+                {{#if craftingDrawer.showMissing}}
+                <div class="missing-recipes-inline">
+                    {{#each craftingDrawer.partial}}
+                    <div class="recipe-card-inline partial">
+                        <img src="{{outputImg}}" alt="{{name}}" class="recipe-icon-inline">
+                        <div class="recipe-info-inline">
+                            <div class="recipe-name-inline">{{name}} <span class="recipe-dc-sm">DC {{dcDisplay}}</span></div>
+                            <div class="recipe-brief-inline">
+                                {{#each ingredientList}}
+                                <span class="ingredient-pill {{#if met}}met{{else}}unmet{{/if}}">{{required}}x {{name}} {{#unless met}}(need {{required}}){{/unless}}</span>
+                                {{/each}}
+                            </div>
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+                {{/if}}
+                {{/if}}
+                {{/if}}
+            </div>
+
+            {{else if activityDetail}}
+            {{!-- Activity detail preview panel --}}
+            <div class="activity-detail-panel">
+                <div class="activity-detail-header">
+                    <button type="button" class="btn-detail-back" data-action="activityDetailBack">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <i class="{{activityDetail.icon}} detail-icon"></i>
+                    <span class="detail-name">{{activityDetail.name}}</span>
+                    <span class="tile-type {{activityDetail.typeTag}}">{{activityDetail.typeTag}}</span>
+                </div>
+                <div class="activity-detail-body">
+                    <p class="detail-description">{{activityDetail.description}}</p>
+                    {{#if activityDetail.check}}
+                    <div class="detail-check">
+                        <i class="fas fa-dice-d20"></i>
+                        <span>{{activityDetail.check}}</span>
+                    </div>
+                    {{/if}}
+                    {{#if activityDetail.outcomeHints.length}}
+                    <div class="detail-outcomes">
+                        {{#each activityDetail.outcomeHints}}
+                        <div class="outcome-hint outcome-{{type}}">
+                            <i class="fas fa-chevron-right"></i>
+                            <span>{{text}}</span>
+                        </div>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                    {{#if activityDetail.followUpData}}
+                    <div class="activity-followup-panel gm-followup" data-character-id="{{activityDetail.characterId}}">
+                        <label class="followup-label">{{activityDetail.followUpData.label}}</label>
+                        {{#if (eq activityDetail.followUpData.type "partyMember")}}
+                        <select class="followup-select gm-followup-input" data-followup-type="partyMember">
+                            {{#each activityDetail.followUpData.options}}
+                            <option value="{{value}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
+                            {{/each}}
+                        </select>
+                        {{else if (eq activityDetail.followUpData.type "radio")}}
+                        <div class="followup-radios">
+                            {{#each activityDetail.followUpData.options}}
+                            <label class="followup-radio-label">
+                                <input type="radio" name="gm-followup-{{../../activityDetail.characterId}}" value="{{value}}"
+                                    class="gm-followup-input"
+                                    {{#if isSelected}}checked{{/if}}>
+                                {{label}}
+                            </label>
+                            {{/each}}
+                        </div>
+                        {{else if (eq activityDetail.followUpData.type "select")}}
+                        {{#if activityDetail.followUpData.goldInfo}}
+                        <div class="followup-gold-hint" style="font-size:0.7rem;color:rgba(255,200,100,0.8);margin-bottom:4px;">
+                            <i class="fas fa-coins"></i> {{activityDetail.followUpData.goldInfo}}
+                        </div>
+                        {{/if}}
+                        <select class="followup-select gm-followup-input" data-followup-type="select">
+                            {{#each activityDetail.followUpData.options}}
+                            <option value="{{value}}" {{#if isSelected}}selected{{/if}} {{#if isDisabled}}disabled{{/if}}>{{label}}</option>
+                            {{/each}}
+                        </select>
+                        {{else if (eq activityDetail.followUpData.type "actorItem")}}
+                        {{#if activityDetail.followUpData.slotInfo}}
+                        <div class="attunement-slots" style="font-size:0.75rem;opacity:0.8;margin-bottom:4px;">
+                            <i class="fas fa-gem"></i> Attunement slots: {{activityDetail.followUpData.slotInfo}}
+                        </div>
+                        {{/if}}
+                        <select class="followup-select gm-followup-input" data-followup-type="actorItem">
+                            {{#each activityDetail.followUpData.options}}
+                            <option value="{{value}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
+                            {{/each}}
+                        </select>
+                        {{/if}}
+                    </div>
+                    {{/if}}
+                    {{#if activityDetail.armorHint}}
+                    <div class="armor-hint armor-hint-{{activityDetail.armorHint.type}}">
+                        <i class="fas {{#if (eq activityDetail.armorHint.type "positive")}}fa-shield-alt{{else}}fa-exclamation-triangle{{/if}}"></i>
+                        {{activityDetail.armorHint.text}}
+                    </div>
+                    {{/if}}
+                    {{#if activityDetail.combatModifiers.description}}
+                    <div class="combat-readiness-hint" style="display: block;">
+                        <i class="fas fa-shield-alt"></i> <em>If combat occurs:</em> {{activityDetail.combatModifiers.description}}
+                    </div>
+                    {{/if}}
+                </div>
+                <div class="activity-detail-footer">
+                    <button type="button" class="btn-detail-confirm" data-action="activityDetailConfirm">
+                        <i class="fas fa-check"></i> Confirm Activity
+                    </button>
+                </div>
+            </div>
+
+            {{else if selectedCharacter.isCraftingInProgress}}
+            <div class="crafting-in-progress">
+                <i class="fas fa-hammer fa-spin"></i>
+                <span>Crafting in progress...</span>
+            </div>
+            {{else if selectedCharacter.isLocked}}
+            {{!-- Locked state: show committed activity --}}
+            <div class="activity-locked-display">
+                <i class="fas fa-lock"></i>
+                <span>{{selectedCharacter.activityName}}</span>
+                {{#if selectedCharacter.earlyResult}}
+                <div class="early-result {{#if selectedCharacter.earlyResult.isSuccess}}success{{/if}}{{#if selectedCharacter.earlyResult.isFailure}}failure{{/if}}{{#if selectedCharacter.earlyResult.isPending}}pending{{/if}}">
+                    <span class="result-badge">{{selectedCharacter.earlyResult.tier}}</span>
+                    <span class="result-narrative">{{selectedCharacter.earlyResult.narrative}}</span>
+                </div>
+                {{/if}}
+                {{#if selectedCharacter.copySpellProposal}}
+                <div class="copy-spell-approval" style="background: rgba(80,60,140,0.15); border: 1px solid rgba(160,120,220,0.3); border-radius: 6px; padding: 0.5rem 0.75rem; margin-top: 0.4rem;">
+                    <div style="font-weight: 600; color: rgba(180,140,240,0.9); font-size: 0.85rem; margin-bottom: 0.3rem;">
+                        <i class="fas fa-scroll"></i> Copy Spell Transaction
+                    </div>
+                    <div style="font-size: 0.8rem; color: #ccc; margin-bottom: 0.4rem;">
+                        Level {{selectedCharacter.copySpellProposal.spellLevel}} spell — <strong>{{selectedCharacter.copySpellProposal.cost}}gp</strong> in inks and materials.
+                        Arcana check DC {{selectedCharacter.copySpellProposal.dc}}.
+                    </div>
+                    <div style="display: flex; gap: 0.4rem;">
+                        <button type="button" data-action="approveCopySpell" data-actor-id="{{selectedCharacter.copySpellProposal.actorId}}"
+                            style="background: rgba(60,120,80,0.6); color: #ccc; border: 1px solid rgba(100,180,120,0.4); border-radius: 4px; padding: 0.25rem 0.6rem; cursor: pointer; font-size: 0.8rem;">
+                            <i class="fas fa-check"></i> Approve &amp; Pay {{selectedCharacter.copySpellProposal.cost}}gp
+                        </button>
+                        <button type="button" data-action="declineCopySpell" data-actor-id="{{selectedCharacter.copySpellProposal.actorId}}"
+                            style="background: rgba(140,50,50,0.4); color: #ccc; border: 1px solid rgba(200,80,80,0.3); border-radius: 4px; padding: 0.25rem 0.6rem; cursor: pointer; font-size: 0.8rem;">
+                            <i class="fas fa-times"></i> Decline
+                        </button>
+                    </div>
+                </div>
+                {{/if}}
+                {{#if selectedCharacter.copySpellResult}}
+                <div style="background: rgba(30,35,50,0.85); border: 1px solid rgba(120,180,220,0.3); border-radius: 6px; padding: 0.4rem 0.6rem; margin-top: 0.4rem; font-size: 0.8rem;">
+                    {{#if selectedCharacter.copySpellResult.success}}
+                    <span style="color: #7eb8da;"><i class="fas fa-check-circle"></i> Spell transcribed. {{selectedCharacter.copySpellResult.cost}}gp spent.</span>
+                    {{else}}
+                    <span style="color: #e88;"><i class="fas fa-times-circle"></i> Copy failed. {{selectedCharacter.copySpellResult.cost}}gp spent.</span>
+                    {{/if}}
+                </div>
+                {{/if}}
+                {{#unless selectedCharacter.earlyResult}}{{#unless selectedCharacter.copySpellProposal}}
+                <div class="locked-hint">Activity confirmed</div>
+                {{/unless}}{{/unless}}
+            </div>
+            {{else}}
+            {{!-- Standard activity categories --}}
+            {{#each selectedCharacter.tileCategories}}
+            <div class="tile-section">
+                <span class="tile-section-label">{{label}}</span>
+                <div class="activity-grid" data-character-id="{{../selectedCharacter.id}}">
+                    {{#each tiles}}
+                    <button type="button"
+                        class="activity-tile {{#if isSelected}}selected{{/if}} {{#if isDisabled}}disabled{{/if}} {{#if isFaded}}faded{{/if}} {{#if hasAttuneable}}has-attuneable{{/if}}"
+                        data-activity-id="{{id}}"
+                        data-is-crafting="false"
+                        title="{{tooltip}}"
+                        {{#if isDisabled}}disabled{{/if}}>
+                        <i class="{{icon}}"></i>
+                        <span class="tile-name">{{name}}</span>
+                        <span class="tile-type {{typeTag}}">{{typeTag}}</span>
+                    </button>
+                    {{/each}}
+                </div>
+            </div>
+            {{/each}}
+            {{!-- DESCOPED: Professions system cut from v1. Uncomment for Phase 2.
+            <div class="tile-section profession-section">
+                <span class="tile-section-label">Professions</span>
+                {{#if selectedCharacter.hasProfessionTiles}}
+                <div class="activity-grid" data-character-id="{{selectedCharacter.id}}">
+                    {{#each selectedCharacter.professionTiles}}
+                    <button type="button"
+                        class="activity-tile {{#if isSelected}}selected{{/if}} {{#if isFaded}}faded{{/if}}"
+                        data-activity-id="{{id}}"
+                        data-is-crafting="true"
+                        data-profession="{{profession}}"
+                        title="{{tooltip}}"
+                        {{#if isDisabled}}disabled{{/if}}>
+                        <i class="{{icon}}"></i>
+                        <span class="tile-name">{{name}}</span>
+                        {{#if fadedHint}}
+                        <span class="tile-hint">{{fadedHint}}</span>
+                        {{else}}
+                        <span class="tile-type Craft">Craft</span>
+                        {{/if}}
+                    </button>
+                    {{/each}}
+                </div>
+                {{else}}
+                <span class="no-professions-hint">No professions or kits available</span>
+                {{/if}}
+            </div>
+            --}}
+            {{/if}}
+        </div>
+        {{/if}}
+
+    </div>
+    {{!-- Campfire slide-out drawer --}}
+    <div class="campfire-drawer">
+        <div class="campfire-drawer-content"></div>
+    </div>
+    </div>{{!-- /activity-phase-layout --}}
+    <div class="respite-action-bar">
+        <span class="submission-counter">
+            {{resolvedCount}} of {{totalCharacters}} resolved
+        </span>
+        {{#if isGM}}
+        <button type="button" class="btn-primary" data-action="submitActivities" {{#unless
+            allResolved}}disabled{{/unless}}>
+            <i class="fas fa-arrow-right"></i> {{#if trackFood}}Proceed to Rations{{else}}Proceed to Events{{/if}}
+        </button>
+        {{else}}
+        {{#if allResolved}}
+        <span class="phase-waiting-label"><i class="fas fa-hourglass-half"></i> Waiting for the GM to progress...</span>
+        {{/if}}
+        {{/if}}
+    </div>
+    {{/if}}
+
+    {{!-- =============== MEAL PHASE =============== --}}
+    {{#if (eq phase 'meal')}}
+    <div class="phase-banner">
+        <img src="{{terrainBanner}}" alt="Meal time" style="object-position: {{terrainBannerPos}}">
+    </div>
+    {{> rosterStrip}}
+    <div class="activity-phase-layout">
+    <div class="respite-meal-phase">
+        <div class="meal-phase-header">
+            <h3><i class="fas fa-utensils"></i> Rations</h3>
+            {{#if mealTerrainNote}}
+            <div class="meal-terrain-note"><i class="fas fa-info-circle"></i> {{mealTerrainNote}}</div>
+            {{/if}}
+        </div>
+
+        {{#if isGM}}
+        <div class="meal-days-info">
+            <span class="meal-days-label"><i class="fas fa-calendar-day"></i> {{daysSinceLastRest}} day{{#unless (eq daysSinceLastRest 1)}}s{{/unless}} since last rest</span>
+        </div>
+        {{/if}}
+
+        {{!-- Multi-day sustenance progress bar (uses first card's data since all share totalDays) --}}
+        {{#with (lookup mealCards 0)}}
+        {{#if isMultiDay}}
+        <div class="sustenance-progress-container">
+            <span class="sustenance-progress-label">Sustenance Progress</span>
+            <div class="sustenance-progress">
+                {{#each daySegments}}
+                <div class="sustenance-segment {{status}}">
+                    {{#if (eq status "completed")}}<i class="fas fa-check"></i>{{/if}}
+                    Day {{day}}
+                </div>
+                {{/each}}
+            </div>
+        </div>
+        {{/if}}
+        {{/with}}
+
+        {{#if (and (not isGM) mealSubmitted)}}
+        {{!-- Post-submission: replace meal cards with summary --}}
+        <div class="meal-submitted-summary">
+            <h4><i class="fas fa-scroll"></i> Meal Summary</h4>
+            {{#each mealCards}}
+            <div class="meal-summary-card">
+                <div class="meal-summary-header">
+                    <img src="{{actorImg}}" alt="{{actorName}}" class="meal-portrait">
+                    <span class="meal-actor-name">{{actorName}}</span>
+                    {{#if isMultiDay}}
+                    <span class="meal-summary-days">{{consumedDaysCount}}/{{totalDays}} days</span>
+                    {{/if}}
+                </div>
+                <div class="meal-summary-status">
+                    <span class="meal-summary-stat {{#if foodSufficient}}stat-ok{{else}}stat-warn{{/if}}">
+                        <i class="fas {{#if foodSufficient}}fa-check-circle{{else}}fa-drumstick-bite{{/if}}"></i>
+                        {{#if foodSufficient}}Fed{{else}}Hungry{{/if}} ({{foodFilledCount}}/{{foodRequired}})
+                    </span>
+                    <span class="meal-summary-stat {{#if waterSufficient}}stat-ok{{else}}stat-warn{{/if}}">
+                        <i class="fas {{#if waterSufficient}}fa-check-circle{{else}}fa-tint-slash{{/if}}"></i>
+                        {{#if waterSufficient}}Hydrated{{else}}Thirsty{{/if}} ({{waterFilledCount}}/{{waterRequired}})
+                    </span>
+                </div>
+                {{#each advisories}}
+                <div class="meal-advisory {{level}}">
+                    <i class="{{icon}}"></i> {{message}}
+                </div>
+                {{/each}}
+            </div>
+            {{/each}}
+            {{#if dehydrationResults.length}}
+            <div class="meal-results-panel">
+                <h4><i class="fas fa-utensils"></i> Rations Outcome</h4>
+                {{#each dehydrationResults}}
+                {{#if pending}}
+                <div class="meal-result-row result-pending">
+                    <i class="fas fa-hourglass-half"></i>
+                    <strong>{{actorName}}</strong>
+                    — awaiting CON save (DC {{dc}})...
+                </div>
+                {{else}}
+                <div class="meal-result-row {{#if passed}}result-pass{{else}}result-fail{{/if}}">
+                    <i class="fas {{#if passed}}fa-check-circle{{else}}fa-skull{{/if}}"></i>
+                    <strong>{{actorName}}</strong>
+                    {{#if reason}}
+                        — {{reason}}
+                    {{else}}
+                        {{#if passed}}
+                            passes ({{total}} vs DC {{dc}})
+                        {{else}}
+                            fails ({{total}} vs DC {{dc}}) — gains 1 exhaustion
+                        {{/if}}
+                    {{/if}}
+                </div>
+                {{/if}}
+                {{/each}}
+            </div>
+            {{/if}}
+            <div class="respite-action-bar">
+                <span class="phase-waiting-label"><i class="fas fa-hourglass-half"></i> Waiting for GM to proceed...</span>
+            </div>
+        </div>
+        {{else}}
+        <div class="meal-cards">
+        {{#each mealCards}}
+            <div class="meal-card" data-character-id="{{characterId}}">
+                <div class="meal-card-header">
+                    <img src="{{actorImg}}" alt="{{actorName}}" class="meal-portrait">
+                    <span class="meal-actor-name">{{actorName}}</span>
+                </div>
+
+                {{#if (or allDaysConsumed playerSubmitted)}}
+                {{#if playerSubmitted}}
+                <div class="meal-submitted-badge" style="font-size:0.75rem;color:rgba(180,220,255,0.7);margin-bottom:0.3rem;">
+                    <i class="fas fa-check"></i> Submitted by player
+                </div>
+                {{/if}}
+                <div class="meal-summary-status" style="margin: 0.4rem 0;">
+                    <span class="meal-summary-stat {{#if foodSufficient}}stat-ok{{else}}stat-warn{{/if}}">
+                        <i class="fas {{#if foodSufficient}}fa-check-circle{{else}}fa-drumstick-bite{{/if}}"></i>
+                        {{#if foodSufficient}}Fed{{else}}Hungry{{/if}} ({{foodFilledCount}}/{{foodRequired}})
+                    </span>
+                    <span class="meal-summary-stat {{#if waterSufficient}}stat-ok{{else}}stat-warn{{/if}}">
+                        <i class="fas {{#if waterSufficient}}fa-check-circle{{else}}fa-tint-slash{{/if}}"></i>
+                        {{#if waterSufficient}}Hydrated{{else}}Thirsty{{/if}} ({{waterFilledCount}}/{{waterRequired}})
+                    </span>
+                </div>
+                {{else}}
+                <div class="meal-drop-columns">
+                    {{!-- Food panel --}}
+                    <div class="meal-panel food-panel {{#unless hasFood}}panel-empty{{/unless}}">
+                        <span class="panel-label">Food{{#if (gt foodRequired 1)}} ({{foodFilledCount}} of {{foodRequired}}){{/if}}</span>
+                        {{#if hasFood}}
+                        <div class="food-plates-row">
+                        {{#each foodSlots}}
+                        <div class="food-plate-slot">
+                            <div class="meal-drop-zone food-drop-zone {{#if filled}}filled{{/if}}"
+                                 data-character-id="{{../characterId}}" data-slot="food" data-slot-index="{{index}}">
+                                <div class="drop-zone-silhouette">
+                                    {{#if filled}}
+                                    {{#each ../foodOptions}}
+                                    {{#if (eq ../selected value)}}
+                                    <img src="{{icon}}" alt="{{label}}" class="drop-zone-item-icon">
+                                    {{/if}}
+                                    {{/each}}
+                                    {{else}}
+                                    <i class="fas fa-drumstick-bite drop-zone-plate"></i>
+                                    {{/if}}
+                                </div>
+                            </div>
+                        </div>
+                        {{/each}}
+                        </div>
+                        <span class="panel-item-name">
+                            {{#unless foodSufficient}}
+                            <span class="panel-empty-hint">{{#if (gt foodRequired 1)}}Drag to fill {{foodRequired}} plates{{else}}Drag food here{{/if}}</span>
+                            {{/unless}}
+                        </span>
+                        <div class="meal-inventory-tray food-tray">
+                            {{#each foodOptions}}
+                            <div class="meal-inv-item" draggable="true"
+                                 data-item-id="{{value}}"
+                                 data-slot="food"
+                                 data-available="{{available}}"
+                                 data-character-id="{{../characterId}}"
+                                 title="{{label}}">
+                                <img src="{{icon}}" alt="{{label}}" class="meal-inv-icon">
+                                <span class="meal-inv-qty">{{label}}</span>
+                            </div>
+                            {{/each}}
+                        </div>
+                        {{else}}
+                        <div class="panel-no-inventory">
+                            <i class="fas fa-drumstick-bite"></i>
+                            <span>No rations in inventory</span>
+                        </div>
+                        {{/if}}
+                    </div>
+
+                    {{!-- Water panel --}}
+                    <div class="meal-panel water-panel {{#unless hasWater}}panel-empty{{/unless}}">
+                        <span class="panel-label">Water{{#if (gt waterRequired 1)}} ({{waterFilledCount}} of {{waterRequired}}){{/if}}</span>
+                        {{#if hasWater}}
+                        <div class="water-goblets-row">
+                        {{#each waterSlots}}
+                        <div class="water-goblet-slot">
+                            <div class="meal-drop-zone water-drop-zone {{#if filled}}filled{{/if}}"
+                                 data-character-id="{{../characterId}}" data-slot="water" data-slot-index="{{index}}">
+                                <div class="drop-zone-silhouette">
+                                    {{#if filled}}
+                                    {{#each ../waterOptions}}
+                                    {{#if (eq ../selected value)}}
+                                    <img src="{{icon}}" alt="{{label}}" class="drop-zone-item-icon">
+                                    {{/if}}
+                                    {{/each}}
+                                    {{else}}
+                                    <i class="fas fa-tint drop-zone-goblet"></i>
+                                    {{/if}}
+                                </div>
+                            </div>
+                        </div>
+                        {{/each}}
+                        </div>
+                        <span class="panel-item-name">
+                            {{#unless waterSufficient}}
+                            <span class="panel-empty-hint">{{#if (gt waterRequired 1)}}Drag to fill {{waterRequired}} goblets{{else}}Drag water here{{/if}}</span>
+                            {{/unless}}
+                        </span>
+                        <div class="meal-inventory-tray water-tray">
+                            {{#each waterOptions}}
+                            <div class="meal-inv-item" draggable="true"
+                                 data-item-id="{{value}}"
+                                 data-slot="water"
+                                 data-available="{{available}}"
+                                 data-character-id="{{../characterId}}"
+                                 title="{{label}}">
+                                <img src="{{icon}}" alt="{{label}}" class="meal-inv-icon">
+                                <span class="meal-inv-qty">{{label}}</span>
+                            </div>
+                            {{/each}}
+                        </div>
+                        {{else}}
+                        <div class="panel-no-inventory">
+                            <i class="fas fa-tint"></i>
+                            <span>No water in inventory</span>
+                        </div>
+                        {{/if}}
+                    </div>
+                </div>
+                {{/if}}
+
+                {{!-- Advisories (shown for submitted cards so GM sees warnings; hidden in consumed state) --}}
+                {{#unless (and allDaysConsumed (not playerSubmitted))}}
+                {{#each advisories}}
+                {{#unless (eq level 'info')}}
+                <div class="meal-advisory {{level}}">
+                    <i class="{{icon}}"></i> {{message}}
+                </div>
+                {{/unless}}
+                {{/each}}
+                {{/unless}}
+            </div>
+        {{/each}}
+        </div>
+
+        {{!-- Dehydration save results panel (visible to all) --}}
+        {{#if dehydrationResults.length}}
+        <div class="meal-results-panel">
+            <h4><i class="fas fa-utensils"></i> Rations Outcome</h4>
+            {{#each dehydrationResults}}
+            {{#if pending}}
+            <div class="meal-result-row result-pending">
+                <i class="fas fa-hourglass-half"></i>
+                <strong>{{actorName}}</strong>
+                — awaiting CON save (DC {{dc}})...
+            </div>
+            {{else}}
+            <div class="meal-result-row {{#if passed}}result-pass{{else}}result-fail{{/if}}">
+                <i class="fas {{#if passed}}fa-check-circle{{else}}fa-skull{{/if}}"></i>
+                <strong>{{actorName}}</strong>
+                {{#if reason}}
+                    — {{reason}}
+                {{else}}
+                    {{#if passed}}
+                        passes ({{total}} vs DC {{dc}})
+                    {{else}}
+                        fails ({{total}} vs DC {{dc}}) — gains 1 exhaustion
+                    {{/if}}
+                {{/if}}
+            </div>
+            {{/if}}
+            {{/each}}
+        </div>
+        {{/if}}
+
+        {{#if isGM}}
+        <div class="respite-action-bar">
+            {{#if allMealsConsumed}}
+            {{#if mealProcessed}}
+                {{#if pendingDehydrationSaves}}
+                    {{#if allDehydrationResolved}}
+                    <button type="button" class="btn-primary" data-action="proceedFromMeal">
+                        <i class="fas fa-fire"></i> Proceed to Reflection
+                    </button>
+                    {{else}}
+                    <button type="button" class="btn-primary" disabled>
+                        <i class="fas fa-hourglass-half"></i> Waiting for {{pendingDehydrationSaves}} CON save(s)...
+                    </button>
+                    {{/if}}
+                {{else}}
+                <button type="button" class="btn-primary" data-action="proceedFromMeal">
+                    <i class="fas fa-fire"></i> Proceed to Reflection
+                </button>
+                {{/if}}
+            {{else}}
+            <button type="button" class="btn-primary" data-action="proceedFromMeal">
+                <i class="fas fa-dice-d20"></i> Process Rations & Checks
+            </button>
+            {{/if}}
+            {{else}}
+            {{#with (lookup mealCards 0)}}
+            {{#if (and isMultiDay (not allDaysConsumed))}}
+            <button type="button" class="btn-primary btn-consume-day" data-action="consumeMealDay">
+                <i class="fas fa-utensils"></i> Consume Day {{currentDay}}
+            </button>
+            {{else if allDaysConsumed}}
+            <button type="button" class="btn-primary" disabled>
+                <i class="fas fa-check"></i> {{actorName}} — All days consumed
+            </button>
+            {{/if}}
+            {{/with}}
+            {{/if}}
+        </div>
+        {{else}}
+        <div class="respite-action-bar">
+                {{#with (lookup mealCards 0)}}
+                {{#if (and isMultiDay (not allDaysConsumed))}}
+                <button type="button" class="btn-primary btn-consume-day" data-action="consumeMealDay">
+                    <i class="fas fa-utensils"></i> Consume Day {{currentDay}}
+                </button>
+                {{else}}
+                <button type="button" class="btn-primary" data-action="submitMealChoices">
+                    <i class="fas fa-utensils"></i> Submit Meals
+                </button>
+                {{/if}}
+                {{/with}}
+        </div>
+        {{/if}}
+        {{/if}}
+
+    </div>
+    {{!-- Campfire drawer --}}
+    <div class="campfire-drawer">
+        <div class="campfire-drawer-content"></div>
+    </div>
+    </div>{{!-- /activity-phase-layout --}}
+    {{/if}}
+
+    {{!-- =============== REFLECTION PHASE =============== --}}
+    {{#if (eq phase 'reflection')}}
+    <div class="phase-banner">
+        <img src="{{terrainBanner}}" alt="Campfire" style="object-position: {{terrainBannerPos}}">
+    </div>
+    {{> rosterStrip}}
+    <div class="respite-reflection">
+
+
+
+        <div class="reflection-grid">
+            <div class="reflection-tile">
+                <div class="reflection-tile-icon"><i class="fas fa-book-open"></i></div>
+                <div class="reflection-tile-label">Reflect on the Day</div>
+                <div class="reflection-tile-hint">What stood out? What surprised you?</div>
+            </div>
+            <div class="reflection-tile">
+                <div class="reflection-tile-icon"><i class="fas fa-scroll"></i></div>
+                <div class="reflection-tile-label">Examine Quests</div>
+                <div class="reflection-tile-hint">Review goals, update plans.</div>
+            </div>
+            <div class="reflection-tile">
+                <div class="reflection-tile-icon"><i class="fas fa-hat-wizard"></i></div>
+                <div class="reflection-tile-label">Study Lore</div>
+                <div class="reflection-tile-hint">Books, clues, maps, mysteries.</div>
+            </div>
+            <div class="reflection-tile">
+                <div class="reflection-tile-icon"><i class="fas fa-compass"></i></div>
+                <div class="reflection-tile-label">Plan for Tomorrow</div>
+                <div class="reflection-tile-hint">Strategy, route, marching order.</div>
+            </div>
+            <div class="reflection-tile">
+                <div class="reflection-tile-icon"><i class="fas fa-comments"></i></div>
+                <div class="reflection-tile-label">Share a Story</div>
+                <div class="reflection-tile-hint">Memories, backstory, tall tales.</div>
+            </div>
+            <div class="reflection-tile">
+                <div class="reflection-tile-icon"><i class="fas fa-shield-alt"></i></div>
+                <div class="reflection-tile-label">Mend &amp; Prepare</div>
+                <div class="reflection-tile-hint">Check gear, sharpen blades, patch armor.</div>
+            </div>
+        </div>
+    </div>
+    {{#if isGM}}
+    <div class="respite-action-bar">
+        <button type="button" class="btn-primary" data-action="proceedToEvents">
+            <i class="fas fa-moon"></i> Proceed to Events
+        </button>
+    </div>
+    {{else}}
+    <div class="respite-action-bar">
+        <span class="phase-waiting-label"><i class="fas fa-fire"></i> Enjoy the campfire...</span>
+    </div>
+    {{/if}}
+    {{/if}}
+
+    {{!-- =============== EVENTS PHASE =============== --}}
+    {{#if (eq phase 'events')}}
+    <div class="phase-banner">
+        <img src="{{terrainBanner}}" alt="Night events" style="object-position: {{terrainBannerPos}}">
+    </div>
+    {{> rosterStrip}}
+    <div class="respite-events">
+
+        {{#if eventsRolled}}
+        {{!-- POST-ROLL: Show event results --}}
+
+        {{!-- Disaster Choice: nat 1 GM pick --}}
+        {{#if disasterChoice}}
+        <div class="respite-event-card encounter disaster-choice-card">
+            <div class="event-name"><i class="fas fa-skull"></i> Natural 1 — Disaster!</div>
+            <div class="event-description">
+                A terrible omen. Choose how the night unfolds.
+            </div>
+            {{#if isGM}}
+            <div class="disaster-buttons">
+                {{#if disasterChoice.tree}}
+                <button type="button" class="btn-disaster tree" data-action="disasterChoice" data-pick="tree">
+                    <i class="fas fa-skull"></i>
+                    <div class="disaster-btn-content">
+                        <strong>Disaster Event</strong>
+                        <span class="disaster-preview">{{disasterChoice.tree.name}}</span>
+                    </div>
+                </button>
+                {{/if}}
+                {{#if disasterChoice.encounter}}
+                <button type="button" class="btn-disaster encounter" data-action="disasterChoice" data-pick="encounter">
+                    <i class="fas fa-swords"></i>
+                    <div class="disaster-btn-content">
+                        <strong>Combat Encounter</strong>
+                        <span class="disaster-preview">{{disasterChoice.encounter.name}}</span>
+                    </div>
+                </button>
+                {{/if}}
+                {{#if disasterChoice.normals.length}}
+                <button type="button" class="btn-disaster normals" data-action="disasterChoice" data-pick="normals">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div class="disaster-btn-content">
+                        <strong>{{disasterChoice.normalsLabel}}</strong>
+                        <span class="disaster-preview">
+                            {{#each disasterChoice.normals}}{{name}}{{#unless @last}}, {{/unless}}{{/each}}
+                        </span>
+                    </div>
+                </button>
+                {{/if}}
+                <div class="disaster-dismiss">
+                    <a href="#" data-action="disasterChoice" data-pick="dismiss">Dismiss and continue</a>
+                </div>
+            </div>
+            {{else}}
+            <div class="event-check-waiting">
+                <i class="fas fa-skull"></i> Something terrible stirs. The GM is deciding...
+            </div>
+            {{/if}}
+        </div>
+        {{else}}
+
+        {{!-- Decision Tree: Interactive choices (GM only controls, players see read-only) --}}
+        {{#if activeTreeState}}
+        <div class="respite-decision-tree">
+            <div class="respite-event-card complication tree-active">
+                <div class="event-name"><i class="fas fa-exclamation-triangle"></i> {{activeTreeState.eventName}}</div>
+                <div class="event-description">{{activeTreeState.description}}</div>
+            </div>
+
+            {{!-- Tree History (previous choices) --}}
+            {{#each activeTreeState.history}}
+            <div class="tree-history-entry">
+                <div class="tree-choice-made">
+                    <i class="fas fa-arrow-right"></i>
+                    <strong>{{choiceLabel}}</strong>
+                    <span class="tree-result {{#if result.success}}success{{else}}failure{{/if}}">
+                        {{#if result.success}}Passed{{else}}Failed{{/if}}
+                        ({{result.passCount}}/{{result.rolls.length}})
+                    </span>
+                </div>
+            </div>
+            {{/each}}
+
+            {{!-- Current Prompt and Choices (GM can interact, players see read-only) --}}
+            {{#unless activeTreeState.resolved}}
+            <div class="tree-prompt">
+                <p>{{activeTreeState.prompt}}</p>
+            </div>
+            {{#if isGM}}
+            <div class="tree-choices">
+                {{#each activeTreeState.options}}
+                <button type="button" class="btn-tree-choice" data-action="resolveTreeChoice" data-choice-id="{{id}}">
+                    <div class="choice-label">{{label}}</div>
+                    <div class="choice-check">
+                        {{#each check.skills}}
+                        <span class="skill-tag">{{this}}</span>
+                        {{/each}}
+                        DC {{check.dc}}
+                    </div>
+                </button>
+                {{/each}}
+            </div>
+            {{else}}
+            <div class="tree-waiting">
+                <i class="fas fa-dice-d20"></i> The GM is making a decision...
+            </div>
+            {{/if}}
+            {{/unless}}
+
+            {{!-- Resolved Outcome --}}
+            {{#if activeTreeState.resolved}}
+            <div class="tree-resolved">
+                <div class="tree-final-narrative">{{activeTreeState.finalNarrative}}</div>
+                {{#if activeTreeState.finalEffects.length}}
+                <div class="tree-effects">
+                    {{#each activeTreeState.finalEffects}}
+                    <div class="tree-effect"><i class="fas fa-bolt"></i> {{description}}</div>
+                    {{/each}}
+                </div>
+                {{/if}}
+            </div>
+            {{/if}}
+        </div>
+        {{else}}
+
+        {{!-- Regular Events --}}
+        {{#if triggeredEvents.length}}
+        {{#each triggeredEvents}}
+        <div class="respite-event-card {{category}} {{#if resolvedOutcome}}resolved-event collapsed{{/if}} {{#if (eq result 'scouting_hazard')}}scouting-hazard{{/if}} {{#if (eq result 'scouting_bonus')}}scouting-bonus{{/if}}" {{#if resolvedOutcome}}data-action="toggleResolvedEvent"{{/if}}>
+            <div class="event-header">
+                <div class="event-name">
+                    {{#if (eq category "encounter")}}<i class="fas fa-swords"></i>
+                    {{else if (eq category "complication")}}<i class="fas fa-exclamation-triangle"></i>
+                    {{else if (eq category "discovery")}}<i class="fas fa-search"></i>
+                    {{else}}<i class="fas fa-moon"></i>
+                    {{/if}}
+                    {{name}}
+                </div>
+                {{#if resolvedOutcome}}
+                <span class="event-verdict-inline {{#if (eq resolvedOutcome "success")}}pass{{else if (eq resolvedOutcome "partial")}}partial{{else}}fail{{/if}}">
+                    {{#if (eq resolvedOutcome "success")}}<i class="fas fa-check"></i> Passed{{else if (eq resolvedOutcome "partial")}}<i class="fas fa-exclamation-triangle"></i> Partial{{else}}<i class="fas fa-times"></i> Failed{{/if}}
+                </span>
+                <i class="fas fa-chevron-down event-expand-toggle"></i>
+                {{/if}}
+                {{#if (eq result "scouting_hazard")}}<span class="event-badge hazard">Scouting Hazard</span>{{/if}}
+                {{#if (eq result "scouting_bonus")}}<span class="event-badge bonus">Scouting Bonus</span>{{/if}}
+            </div>
+            {{#if @root.isGM}}<div class="event-description">{{narrative}}</div>{{/if}}
+
+            {{!-- Skill Check Details --}}
+            {{#if mechanical}}
+            {{#if (eq mechanical.type "skill_check")}}
+            <div class="event-mechanical">
+
+                {{#if resolvedOutcome}}
+                {{!-- RESOLVED: DC at top as context for the rolls --}}
+                <div class="event-check-header">
+                    <div class="event-dc-badge">
+                        <span class="dc-label">DC</span>
+                        <span class="dc-value">{{mechanical.dc}}</span>
+                    </div>
+                    <div class="event-check-info">
+                        <strong class="check-skill-name">{{skillName}}</strong>
+                        <span class="event-check-target">
+                            {{#if (eq mechanical.targets "watch")}}On-duty characters{{else if (eq mechanical.targets "all")}}Entire party{{else}}On-duty characters{{/if}}
+                            · Group Check (averaged)
+                        </span>
+                        <span class="event-check-direction">All rolls averaged against DC</span>
+                    </div>
+                </div>
+
+                {{!-- Per-character results (visible to all clients) --}}
+                {{#if resolvedRolls}}
+                <div class="event-roll-results">
+                    {{#each resolvedRolls}}
+                    <div class="event-roll-line {{#if passed}}pass{{else}}fail{{/if}}">
+                        <span class="roll-char-name">{{name}}</span>
+                        <span class="roll-total">rolled <strong>{{total}}</strong></span>
+                        <span class="roll-badge {{#if passed}}pass{{else}}fail{{/if}}">
+                            {{#if passed}}<i class="fas fa-check"></i> Pass{{else}}<i class="fas fa-times"></i> Fail{{/if}}
+                        </span>
+                    </div>
+                    {{/each}}
+                    {{!-- Group average summary (group policy only) --}}
+                    {{#if groupAverage}}
+                    <div class="event-roll-average">
+                        <span class="avg-label">Group Average:</span>
+                        <strong>{{groupAverage}}</strong>
+                        <span class="avg-vs">vs DC</span>
+                        <strong>{{mechanical.dc}}</strong>
+                    </div>
+                    {{/if}}
+                </div>
+                {{/if}}
+                <div class="event-verdict {{#if (eq resolvedOutcome "success")}}pass{{else if (eq resolvedOutcome "partial")}}partial{{else}}fail{{/if}}">
+                    {{#if (eq resolvedOutcome "success")}}
+                    <i class="fas fa-shield-alt"></i> Check Passed
+                    {{else if (eq resolvedOutcome "partial")}}
+                    <i class="fas fa-exclamation-triangle"></i> Partial Success
+                    {{else}}
+                    <i class="fas fa-skull-crossbones"></i> Check Failed
+                    {{/if}}
+                </div>
+
+                {{#if (eq resolvedOutcome "success")}}
+                <div class="event-outcome success resolved">
+                    <i class="fas fa-check-circle"></i>
+                    {{#if @root.isGM}}<span>{{mechanical.onSuccess.narrative}}</span>{{/if}}
+                </div>
+                {{else if (eq resolvedOutcome "partial")}}
+                <div class="event-outcome partial resolved">
+                    <i class="fas fa-exclamation-circle"></i>
+                    {{#if @root.isGM}}<span>{{mechanical.onPartial.narrative}}</span>{{/if}}
+                    {{#each mechanical.onPartial.effects}}
+                    <div class="event-effect">
+                        {{#if (eq type "damage")}}<i class="fas fa-heart-broken"></i> {{formula}} {{damageType}} ({{scope}})
+                        {{else if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> Recovery x{{hpMultiplier}}
+                        {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> {{condition}} {{#if duration}}({{duration}}){{/if}}
+                        {{else if (eq type "consume_resource")}}<i class="fas fa-box-open"></i> Lose {{amount}} {{resource}}
+                        {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{narrative}}
+                        {{/if}}
+                    </div>
+                    {{/each}}
+                </div>
+                {{else}}
+                <div class="event-outcome failure resolved">
+                    <i class="fas fa-times-circle"></i>
+                    {{#if @root.isGM}}<span>{{mechanical.onFailure.narrative}}</span>{{/if}}
+                    {{#each mechanical.onFailure.effects}}
+                    <div class="event-effect">
+                        {{#if (eq type "damage")}}<i class="fas fa-heart-broken"></i> {{formula}} {{damageType}} ({{scope}})
+                        {{else if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> Recovery x{{hpMultiplier}}
+                        {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> {{condition}} {{#if duration}}({{duration}}){{/if}}
+                        {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{narrative}}
+                        {{else if (eq type "encounter")}}<i class="fas fa-swords"></i> {{description}}
+                        {{else if (eq type "consume_resource")}}<i class="fas fa-box-open"></i> Lose {{amount}} {{resource}}
+                        {{/if}}
+                    </div>
+                    {{/each}}
+                </div>
+                {{/if}}
+
+                {{else}}
+                {{!-- PENDING: scene → stakes → check → action --}}
+                {{#if @root.isGM}}
+
+                {{#if awaitingRolls}}
+                {{!-- GM: Awaiting player rolls --}}
+                <div class="event-narration-advisory">
+                    <i class="fas fa-hourglass-half"></i>
+                    <em>Waiting for players to roll...</em>
+                </div>
+                {{#if resolvedRolls.length}}
+                <div class="event-roll-results">
+                    {{#each resolvedRolls}}
+                    <div class="event-roll-line {{#if passed}}pass{{else}}fail{{/if}}">
+                        <span class="roll-char-name">{{name}}</span>
+                        <span class="roll-value">{{total}}</span>
+                        <i class="fas {{#if passed}}fa-check-circle{{else}}fa-times-circle{{/if}}"></i>
+                    </div>
+                    {{/each}}
+                </div>
+                {{/if}}
+                {{#if pendingRolls.length}}
+                <div class="event-check-waiting" style="font-size:0.75rem;opacity:0.6;">
+                    <i class="fas fa-spinner fa-spin"></i> Still waiting: {{pendingRolls.length}} roll(s)
+                </div>
+                {{/if}}
+                <div class="event-override-links">
+                    <a href="#" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="success">Force Pass</a>
+                    <a href="#" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="failure">Force Fail</a>
+                </div>
+
+                {{else}}
+                {{!-- GM: Pre-request state --}}
+
+                {{!-- 1. Narrate prompt --}}
+                <div class="event-narration-advisory">
+                    <i class="fas fa-theater-masks"></i>
+                    <em>Narrate this for the party, then resolve below.</em>
+                </div>
+
+                {{!-- 2. Stakes preview --}}
+                <div class="event-outcome-preview">
+                    <div class="outcome-preview-row pass">
+                        <span class="outcome-preview-label"><i class="fas fa-check-circle"></i> Pass:</span>
+                        <span class="outcome-preview-text">{{mechanical.onSuccess.narrative}}</span>
+                    </div>
+                    {{#each mechanical.onSuccess.effects}}
+                    <div class="outcome-preview-effect pass"><i class="fas fa-cog"></i> {{description}}</div>
+                    {{/each}}
+                    <div class="outcome-preview-row fail">
+                        <span class="outcome-preview-label"><i class="fas fa-times-circle"></i> Fail:</span>
+                        <span class="outcome-preview-text">{{mechanical.onFailure.narrative}}</span>
+                    </div>
+                    {{#each mechanical.onFailure.effects}}
+                    <div class="outcome-preview-effect fail"><i class="fas fa-cog"></i> {{description}}</div>
+                    {{/each}}
+                </div>
+
+                {{!-- 3. DC + skill check details --}}
+                <div class="event-check-header">
+                    <div class="event-dc-badge">
+                        <span class="dc-label">DC</span>
+                        <span class="dc-value">{{mechanical.dc}}</span>
+                    </div>
+                    <div class="event-check-info">
+                        <strong class="check-skill-name">{{skillName}}</strong>
+                        <span class="event-check-target">
+                            {{#if (eq mechanical.targets "watch")}}Watch only{{else if (eq mechanical.targets "all")}}Entire party{{else}}Watch{{/if}}
+                            · Group Check (averaged)
+                        </span>
+                        <span class="event-check-direction">All rolls averaged against DC</span>
+                    </div>
+                </div>
+                {{#if @root.isGM}}
+                <div class="event-gm-hint">
+                    <i class="fas fa-info-circle"></i>
+                    Averaged rolls trend toward ~10. DCs above 13 are harder, below 8 are easier than individual checks.
+                </div>
+                {{/if}}
+
+                {{!-- 4. Watch roster --}}
+                {{#if targetNames.length}}
+                <div class="event-watch-roster">
+                    <i class="fas fa-eye"></i>
+                    <strong>{{#if (eq mechanical.targets "all")}}Targets:{{else}}Watch:{{/if}}</strong> {{join targetNames ", "}}
+                </div>
+                {{/if}}
+
+                {{!-- 5. Action buttons --}}
+                <div class="event-adjudicate-buttons">
+                    <button type="button" class="btn-resolve-check" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="auto"
+                        {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}disabled title="Resolve the current event first"{{/unless}}{{/if}}>
+                        <i class="fas fa-dice-d20"></i> Request Rolls
+                    </button>
+                    <div class="event-override-links">
+                        <a href="#" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="success"
+                            {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}style="pointer-events:none;opacity:0.3"{{/unless}}{{/if}}>Force Pass</a>
+                        <a href="#" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="failure"
+                            {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}style="pointer-events:none;opacity:0.3"{{/unless}}{{/if}}>Force Fail</a>
+                    </div>
+                </div>
+                {{/if}}
+
+                {{else}}
+                {{!-- PLAYER: Show roll buttons or waiting state --}}
+                {{#if @root.pendingEventRoll}}
+                {{#if (eq @index @root.pendingEventRoll.eventIndex)}}
+                {{!-- This is the event the GM requested rolls for --}}
+                {{#if @root.pendingEventRoll.ownedTargets.length}}
+                <div class="event-player-roll-area">
+                    {{#each @root.pendingEventRoll.ownedTargets}}
+                    {{#if rolled}}
+                    <div class="event-roll-submitted">
+                        <i class="fas fa-check"></i> {{name}} has rolled.
+                    </div>
+                    {{else}}
+                    <button type="button" class="btn-player-roll" data-action="rollEventCheck" data-character-id="{{id}}">
+                        <i class="fas fa-dice-d20"></i> Roll {{@root.pendingEventRoll.skillName}} — {{name}}
+                    </button>
+                    {{/if}}
+                    {{/each}}
+                </div>
+                {{else}}
+                <div class="event-check-waiting">
+                    <i class="fas fa-hourglass-half"></i> Waiting for watch to roll...
+                </div>
+                {{/if}}
+                {{else}}
+                {{!-- Different event, not this one's turn --}}
+                <div class="event-check-waiting">
+                    <i class="fas fa-hourglass-half"></i> The GM is adjudicating...
+                </div>
+                {{/if}}
+                {{else}}
+                <div class="event-check-waiting">
+                    <i class="fas fa-hourglass-half"></i> The GM is adjudicating...
+                </div>
+                {{/if}}
+                {{/if}}
+                {{/if}}
+            </div>
+            {{/if}}
+
+            {{!-- Encounter Hints (GM only, after failed check) --}}
+            {{#if @root.isGM}}
+            {{#if (eq resolvedOutcome "failure")}}
+            {{#each mechanical.onFailure.effects}}
+            {{#if encounterHints}}
+            <div class="event-encounter-hints">
+                <div class="encounter-hint-title"><i class="fas fa-dragon"></i> Encounter Setup</div>
+                {{#if encounterHints.creatureSuggestions}}
+                <div class="encounter-hint"><strong>Creatures:</strong> {{join encounterHints.creatureSuggestions ", "}}</div>
+                {{/if}}
+                {{#if encounterHints.groupSize}}
+                <div class="encounter-hint"><strong>Group:</strong> {{encounterHints.groupSize}}</div>
+                {{/if}}
+                {{#if encounterHints.environment}}
+                <div class="encounter-hint"><strong>Environment:</strong> {{encounterHints.environment}}</div>
+                {{/if}}
+                {{#if encounterHints.tactics}}
+                <div class="encounter-hint"><strong>Tactics:</strong> {{encounterHints.tactics}}</div>
+                {{/if}}
+                {{#if encounterHints.awareness}}
+                <div class="encounter-hint"><strong>Awareness:</strong> {{encounterHints.awareness}}</div>
+                {{/if}}
+                {{#if encounterHints.loot}}
+                <div class="encounter-hint"><strong>Loot:</strong> {{encounterHints.loot}}</div>
+                {{/if}}
+            </div>
+            {{/if}}
+            {{/each}}
+            {{/if}}
+            {{/if}}
+            {{/if}}
+
+            {{#if treeHistory}}
+            <div class="tree-history-summary">
+                {{#each treeHistory}}
+                <span class="tree-step"><i class="fas fa-chevron-right"></i> {{choiceLabel}}: {{#if
+                    result.success}}Passed{{else}}Failed{{/if}}</span>
+                {{/each}}
+            </div>
+            {{/if}}
+        </div>
+        {{/each}}
+        {{else}}
+        <div class="respite-event-card ambient">
+            <div class="event-name">Quiet Rest</div>
+            <div class="event-description">The night passes without incident.</div>
+        </div>
+        {{/if}}
+
+        {{#if @root.isGM}}
+        <div class="event-narration-hint">
+            <i class="fas fa-theater-masks"></i>
+            <em>Describe the outcome to your players before proceeding.</em>
+        </div>
+        {{/if}}
+        {{/if}}
+
+        {{/if}} {{!-- disasterChoice --}}
+
+        {{else}}
+        {{!-- PRE-ROLL: Camp preparations then Night Watch --}}
+        {{#if isGM}}
+
+        {{!-- Camp Preparations: camp activity rolls (persists after resolve for GM narration) --}}
+        {{#if pendingCampRolls.length}}
+        <div class="respite-event-card ambient camp-prep-card">
+            <div class="event-name"><i class="fas fa-shield-alt"></i> Camp Preparations</div>
+            <div class="event-description">
+                {{#if campPrepsResolved}}Describe the results to your players before the encounter check.{{else}}Waiting for camp activity rolls to resolve before the encounter check.{{/if}}
+            </div>
+            <div class="camp-prep-list">
+                {{#each pendingCampRolls}}
+                <div class="camp-prep-entry {{status}}">
+                    <i class="{{icon}}"></i>
+                    <span class="camp-prep-name">{{characterName}}</span>
+                    <span class="camp-prep-activity">{{activityName}}</span>
+                    {{#if (eq status 'pass')}}
+                    <span class="camp-prep-skill">{{skillName}} DC {{dc}}</span>
+                    <span class="camp-prep-result pass"><i class="fas fa-check"></i> {{total}}</span>
+                    {{else if (eq status 'fail')}}
+                    <span class="camp-prep-skill">{{skillName}} DC {{dc}}</span>
+                    <span class="camp-prep-result fail"><i class="fas fa-times"></i> {{total}}</span>
+                    {{else}}
+                    {{#if requested}}
+                    <span class="camp-prep-skill">{{skillName}} DC {{dc}}{{#unless (eq dc baseDC)}} <span class="camp-dc-base">(was {{baseDC}})</span>{{/unless}}</span>
+                    <span class="camp-prep-result pending"><i class="fas fa-paper-plane"></i> Sent</span>
+                    {{else}}
+                    <span class="camp-prep-dc-controls">
+                        <span class="camp-prep-skill">{{skillName}}</span>
+                        <button type="button" class="camp-dc-btn" data-action="adjustCampDC" data-character-id="{{characterId}}" data-delta="-1" title="Lower DC">−</button>
+                        <span class="camp-dc-value">DC {{dc}}{{#unless (eq dc baseDC)}} <span class="camp-dc-base">({{baseDC}})</span>{{/unless}}</span>
+                        <button type="button" class="camp-dc-btn" data-action="adjustCampDC" data-character-id="{{characterId}}" data-delta="1" title="Raise DC">+</button>
+                    </span>
+                    <button type="button" class="camp-prep-roll-btn" data-action="requestCampRoll" data-character-id="{{characterId}}" title="Send roll request to player">
+                        <i class="fas fa-dice-d20"></i>
+                    </button>
+                    {{/if}}
+                    {{/if}}
+                </div>
+                {{#if narrative}}
+                <div class="camp-prep-narrative {{status}}">
+                    <i class="fas {{#if (eq status 'pass')}}fa-check-circle{{else}}fa-times-circle{{/if}}"></i>
+                    {{narrative}}
+                </div>
+                {{/if}}
+                {{#each effectDescriptions}}
+                <div class="camp-prep-effect">
+                    <i class="fas fa-cog"></i> {{this}}
+                </div>
+                {{/each}}
+                {{/each}}
+            </div>
+        </div>
+        {{/if}}
+
+        {{!-- Night Watch: shown when camp preps resolved or no preps needed --}}
+        {{#if campPrepsResolved}}
+        <div class="respite-event-card ambient event-roll-prompt">
+            <div class="event-name"><i class="fas fa-dice-d20"></i> Night Watch</div>
+            <div class="event-description">
+                {{#if pendingCampRolls.length}}Camp preparations complete. {{/if}}Roll a d20 against the encounter threshold to see what the night brings.
+            </div>
+            {{#if encounterBar}}
+            <div class="event-check-header">
+                <div class="event-dc-badge">
+                    <span class="dc-label">DC</span>
+                    <span class="dc-value">{{encounterBar.effectiveDC}}</span>
+                </div>
+                <div class="event-check-info">
+                    <strong class="check-skill-name">Encounter Threshold</strong>
+                    <span class="event-check-direction event-outcome-advisory">
+                        <i class="fas fa-moon"></i> Roll {{encounterBar.effectiveDC}}+: quiet night
+                    </span>
+                    <span class="event-check-direction event-outcome-advisory warn">
+                        <i class="fas fa-exclamation-triangle"></i> Roll below {{encounterBar.effectiveDC}}: event triggers
+                    </span>
+                    <span class="event-check-direction event-outcome-advisory disaster">
+                        <i class="fas fa-skull"></i> Natural 1: Disaster!
+                    </span>
+                </div>
+            </div>
+            {{/if}}
+        </div>
+        {{/if}}
+
+        {{else}}
+        {{!-- PLAYER VIEW: activity-specific messaging --}}
+        <div class="respite-event-card ambient player-activity-card">
+            <div class="event-name"><i class="fas fa-moon"></i> Resting...</div>
+            <div class="event-description">
+                The party settles in for the night. The GM will determine what the darkness holds.
+            </div>
+
+            {{!-- Camp roll buttons for owned characters --}}
+            {{#if pendingCampRoll.activities.length}}
+            <div class="camp-roll-section">
+                {{#each pendingCampRoll.activities}}
+                <div class="camp-roll-prompt {{status}}">
+                    <div class="camp-roll-info">
+                        <strong>{{activityName}}</strong>
+                        <span class="camp-roll-skill">{{skillName}} DC {{dc}}</span>
+                    </div>
+                    {{#if (eq status 'pass')}}
+                    <span class="camp-roll-result pass" title="Success! Rolled {{total}}">
+                        <i class="fas fa-check-circle"></i> {{total}} — Passed
+                    </span>
+                    {{#each effectDescriptions}}
+                    <div class="camp-roll-effect"><i class="fas fa-cog"></i> {{this}}</div>
+                    {{/each}}
+                    {{else if (eq status 'fail')}}
+                    <span class="camp-roll-result fail" title="Failed. Rolled {{total}}">
+                        <i class="fas fa-times-circle"></i> {{total}} — Failed
+                    </span>
+                    {{#each effectDescriptions}}
+                    <div class="camp-roll-effect"><i class="fas fa-cog"></i> {{this}}</div>
+                    {{/each}}
+                    {{else if rolled}}
+                    <span class="camp-roll-result pending">
+                        <i class="fas fa-spinner fa-spin"></i> Awaiting...
+                    </span>
+                    {{else}}
+                    <button type="button" class="btn-primary btn-camp-roll" data-action="rollCampCheck"
+                        data-character-id="{{characterId}}">
+                        <i class="fas fa-dice-d20"></i> Roll
+                    </button>
+                    {{/if}}
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+        </div>
+        {{/if}}
+        {{/if}}
+
+    </div>
+    {{#if isGM}}
+    <div class="respite-action-bar">
+        {{#if eventsRolled}}
+            {{#if awaitingCombat}}
+            {{!-- Combat in progress, GM decides when complete --}}
+            <button type="button" class="btn-primary btn-combat-complete" data-action="completeEncounter">
+                <i class="fas fa-check-circle"></i> Combat Complete
+            </button>
+            <span class="combat-hint">Click when the encounter is resolved to continue the rest.</span>
+            {{else if hasEncounterEvent}}
+            {{!-- Encounter triggered but not yet acknowledged --}}
+            <div class="encounter-gate">
+                <div class="encounter-instructions">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>An encounter has been triggered. Set up the combat before proceeding.</span>
+                </div>
+                {{#if combatBuffs}}
+                <div class="combat-readiness-report">
+                    <div class="combat-readiness-header">
+                        <i class="fas fa-shield-alt"></i> Combat Readiness
+                    </div>
+                    {{#if combatBuffs.perCharacter.length}}
+                    <div class="combat-readiness-list">
+                        {{#each combatBuffs.perCharacter}}
+                        <div class="combat-buff-entry">
+                            <span class="combat-buff-name">{{characterName}}</span>
+                            <span class="combat-buff-activity">({{activityName}})</span>
+                            <span class="combat-buff-summary">{{summary}}</span>
+                        </div>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                    {{#if combatBuffs.partyWide.summary}}
+                    <div class="combat-readiness-party">
+                        <i class="fas fa-users"></i> {{combatBuffs.partyWide.summary}}
+                    </div>
+                    {{/if}}
+                    {{#unless combatBuffs.perCharacter.length}}
+                    <div class="combat-readiness-none">
+                        No combat modifiers from the party's activities.
+                    </div>
+                    {{/unless}}
+                </div>
+                {{/if}}
+                <button type="button" class="btn-primary btn-acknowledge-encounter" data-action="acknowledgeEncounter">
+                    <i class="fas fa-swords"></i> Begin Combat
+                </button>
+            </div>
+            {{else}}
+            {{!-- No encounter, or encounter resolved, allow rest resolution --}}
+            <button type="button" class="btn-primary" data-action="resolveEvents"
+                {{#if disasterChoice}}disabled title="Choose a disaster outcome first"{{/if}}
+                {{#if activeTreeState}}{{#unless activeTreeState.resolved}}disabled title="Resolve the decision tree first"{{/unless}}{{/if}}
+                {{#unless allEventChecksResolved}}disabled title="Resolve all event skill checks first"{{/unless}}>
+                <i class="fas fa-arrow-right"></i> Proceed to Resolution
+            </button>
+            {{/if}}
+        {{else}}
+        <button type="button" class="btn-primary btn-roll-events" data-action="rollEvents"
+            {{#unless campPrepsResolved}}disabled title="Awaiting camp activity rolls"{{/unless}}>
+            <i class="fas fa-dice-d20"></i> Roll for Events
+        </button>
+        {{/if}}
+    </div>
+    {{else}}
+    <div class="respite-action-bar">
+        {{#if eventsRolled}}
+        <span class="phase-waiting-label"><i class="fas fa-hourglass-half"></i> The GM is resolving events...</span>
+        {{else}}
+        <span class="phase-waiting-label"><i class="fas fa-moon"></i> The party rests...</span>
+        {{/if}}
+    </div>
+    {{/if}}
+    {{/if}}
+
+    {{!-- =============== RESOLUTION PHASE =============== --}}
+    {{#if (eq phase 'resolve')}}
+    <div class="phase-banner">
+        <img src="{{terrainBanner}}" alt="Dawn breaks" style="object-position: {{terrainBannerPos}}">
+    </div>
+    {{> rosterStrip}}
+
+    {{#if isGM}}
+    <div class="respite-resolution">
+        {{#each outcomes}}
+        <div class="respite-outcome-card">
+            <div class="outcome-header">
+                <strong>{{characterName}}</strong>
+                <span class="comfort-indicator {{recovery.comfortLevel}}">{{recovery.comfortLevel}}</span>
+            </div>
+            {{#if eventDisrupted}}
+            <div class="outcome-disrupted">
+                <i class="fas fa-exclamation-triangle"></i> Rest disrupted by event
+            </div>
+            {{/if}}
+            {{#each outcomes}}
+            {{#if (eq source "event")}}
+            <div class="outcome-event {{category}}">
+                <div class="outcome-event-header">
+                    <i class="fas {{#if (eq category 'complication')}}fa-exclamation-triangle{{else if (eq category 'encounter')}}fa-swords{{else if (eq category 'discovery')}}fa-search{{else}}fa-moon{{/if}}"></i>
+                    <strong>{{eventName}}</strong>
+                    {{#if resolvedOutcome}}
+                    <span class="roll-verdict {{resolvedOutcome}}">{{#if (eq resolvedOutcome "success")}}Passed{{else}}Failed{{/if}}</span>
+                    {{/if}}
+                </div>
+                <div class="outcome-narrative">{{narrative}}</div>
+                {{#if effects.length}}
+                <div class="outcome-effects">
+                    {{#each effects}}
+                    <div class="outcome-effect-line">
+                        {{#if (eq type "damage")}}<i class="fas fa-heart-broken"></i> {{formula}} {{damageType}} damage
+                        {{else if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> Recovery reduced (x{{hpMultiplier}})
+                        {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> Gained {{condition}} {{#if duration}}({{duration}}){{/if}}
+                        {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{narrative}}
+                        {{else if (eq type "encounter")}}<i class="fas fa-swords"></i> Combat encounter
+                        {{else}}{{narrative}}
+                        {{/if}}
+                    </div>
+                    {{/each}}
+                </div>
+                {{/if}}
+            </div>
+            {{else}}
+            {{#if result}}
+            <span class="roll-verdict {{result}}">
+                {{#if (eq result "exceptional")}}<i class="fas fa-star"></i> Exceptional
+                {{else if (eq result "success")}}<i class="fas fa-check"></i> Success
+                {{else if (eq result "failure")}}<i class="fas fa-times"></i> Failed
+                {{else if (eq result "failure_complication")}}<i class="fas fa-exclamation-triangle"></i> Failed
+                {{/if}}
+            </span>
+            {{/if}}
+            <div class="outcome-narrative">{{narrative}}</div>
+            {{#if effects.length}}
+            <div class="outcome-effects">
+                {{#each effects}}
+                <div class="outcome-effect-line">
+                    <i class="fas fa-cog"></i> {{description}}
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+            {{#if craftingResult}}
+            <div class="outcome-craft-detail">
+                Rolled {{craftingResult.roll}} vs DC {{craftingResult.dc}} ({{craftingResult.riskTier}})
+            </div>
+            {{/if}}
+            {{#unless (eq source "event")}}
+            {{#if items.length}}
+            <div class="outcome-items">
+                {{#each items}}
+                <div class="item-gained"><i class="fas fa-plus-circle"></i> {{#if
+                    name}}{{name}}{{else}}{{itemRef}}{{/if}} {{#if quantity}}x{{quantity}}{{/if}}</div>
+                {{/each}}
+            </div>
+            {{/if}}
+            {{/unless}}
+            {{/if}}
+            {{/each}}
+        </div>
+        {{/each}}
+    </div>
+    {{#if partyDiscoveries.length}}
+    <div class="party-discoveries">
+        <div class="party-discoveries-header"><i class="fas fa-gem"></i> Party Discoveries</div>
+        {{#each partyDiscoveries}}
+        <div class="party-discovery-item">
+            {{#if granted}}
+            <i class="fas fa-check-circle discovery-granted-icon"></i>
+            <span class="discovery-name">{{#if grantedItemName}}{{grantedItemName}}{{else}}{{#if name}}{{name}}{{else}}{{itemRef}}{{/if}}{{/if}}</span>
+            <span class="discovery-qty">x{{grantedQty}}</span>
+            <span class="discovery-granted-to"><i class="fas fa-arrow-right"></i> {{grantedTo}}</span>
+            {{else}}
+            <i class="fas fa-plus-circle"></i>
+            <span class="discovery-name">{{#if name}}{{name}}{{else}}{{itemRef}}{{/if}}</span>
+            {{#if quantity}}<span class="discovery-qty">x{{quantity}}</span>{{/if}}
+            <span class="discovery-source">from {{eventName}}</span>
+            <select class="discovery-actor-select">
+                <option value="">Assign to...</option>
+                {{#each @root.grantActors}}
+                <option value="{{id}}">{{name}}</option>
+                {{/each}}
+            </select>
+            <button type="button" class="discovery-grant-btn" data-action="grantDiscoveryItem"
+                data-grant-key="{{grantKey}}" data-item-ref="{{itemRef}}" data-quantity="{{quantity}}">
+                <i class="fas fa-gift"></i> Grant
+            </button>
+            {{/if}}
+        </div>
+        {{/each}}
+        <div class="party-discoveries-hint"><i class="fas fa-info-circle"></i> Items are rolled and created on the character sheet when granted.</div>
+    </div>
+    {{/if}}
+    <div class="respite-action-bar">
+        {{#if recoverySummary.length}}
+        <div class="recovery-preview">
+            {{#each recoverySummary}}
+            <span class="recovery-chip">{{name}}: +{{hp}} HP{{#if gearBonuses.hp}} <span class="gear-annotation">(+1 mess kit)</span>{{/if}}, +{{hd}} HD{{#if gearBonuses.hd}} <span class="gear-annotation">(+1 bedroll)</span>{{/if}}</span>
+            {{/each}}
+            {{#each activitySummary}}
+            <span class="recovery-chip {{#if (eq result 'failure')}}failure{{/if}}{{#if (eq result 'failure_complication')}}failure{{/if}}">
+                {{#if (eq result 'failure')}}<i class="fas fa-times"></i>{{else}}{{#if (eq result 'failure_complication')}}<i class="fas fa-times"></i>{{else}}<i class="fas fa-check"></i>{{/if}}{{/if}}
+                {{name}}: {{activityName}}
+            </span>
+            {{/each}}
+        </div>
+        {{/if}}
+        <button type="button" class="btn-primary" data-action="finalize" style="white-space: nowrap;">
+            <i class="fas fa-times"></i> Close
+        </button>
+    </div>
+    {{else}}
+    {{!-- Player: show personal results --}}
+    <div class="respite-resolution">
+        {{#if outcomes.length}}
+        {{#each outcomes}}
+        <div class="respite-outcome-card">
+            <div class="outcome-header">
+                <strong>{{characterName}}</strong>
+                {{#if recovery.comfortLevel}}
+                <span class="comfort-indicator {{recovery.comfortLevel}}" title="Rest comfort level affects HP recovery">
+                    <i class="fas fa-bed"></i> Comfort: {{recovery.comfortLevel}}
+                </span>
+                {{/if}}
+            </div>
+            {{#each outcomes}}
+            <div class="outcome-narrative">{{narrative}}</div>
+            {{#if craftingResult}}
+            <div class="outcome-craft-detail">
+                Rolled {{craftingResult.roll}} vs DC {{craftingResult.dc}} ({{craftingResult.riskTier}})
+            </div>
+            {{/if}}
+            {{#unless (eq source "event")}}
+            {{#if items.length}}
+            <div class="outcome-items">
+                {{#each items}}
+                <div class="item-gained"><i class="fas fa-plus-circle"></i> {{#if
+                    name}}{{name}}{{else}}{{itemRef}}{{/if}} {{#if quantity}}x{{quantity}}{{/if}}</div>
+                {{/each}}
+            </div>
+            {{/if}}
+            {{/unless}}
+            {{/each}}
+        </div>
+        {{/each}}
+        {{#if partyDiscoveries.length}}
+        <div class="party-discoveries">
+            <div class="party-discoveries-header"><i class="fas fa-gem"></i> Party Discoveries</div>
+            {{#each partyDiscoveries}}
+            <div class="party-discovery-item">
+                <i class="fas fa-plus-circle"></i>
+                <span class="discovery-name">{{#if name}}{{name}}{{else}}{{itemRef}}{{/if}}</span>
+                {{#if quantity}}<span class="discovery-qty">x{{quantity}}</span>{{/if}}
+                <span class="discovery-source">from {{eventName}}</span>
+            </div>
+            {{/each}}
+        </div>
+        {{/if}}
+        {{#if recoverySummary.length}}
+        <div class="recovery-preview">
+            {{#each recoverySummary}}
+            <span class="recovery-chip">{{name}}: +{{hp}} HP{{#if gearBonuses.hp}} <span class="gear-annotation">(+1 mess kit)</span>{{/if}}, +{{hd}} HD{{#if gearBonuses.hd}} <span class="gear-annotation">(+1 bedroll)</span>{{/if}}</span>
+            {{/each}}
+            {{#each activitySummary}}
+            <span class="recovery-chip {{#if (eq result 'failure')}}failure{{/if}}{{#if (eq result 'failure_complication')}}failure{{/if}}">
+                {{#if (eq result 'failure')}}<i class="fas fa-times"></i>{{else}}{{#if (eq result 'failure_complication')}}<i class="fas fa-times"></i>{{else}}<i class="fas fa-check"></i>{{/if}}{{/if}}
+                {{name}}: {{activityName}}
+            </span>
+            {{/each}}
+        </div>
+        {{/if}}
+        <div class="respite-waiting-message resolution-complete">
+            <p class="whisper-hint">The GM will finalize and apply these results shortly.</p>
+        </div>
+        {{else}}
+        <div class="respite-waiting-message resolution-complete">
+            <i class="fas fa-sun"></i>
+            <p>Dawn breaks. The GM is finalizing rest outcomes.</p>
+        </div>
+        {{/if}}
+    </div>
+    {{/if}}
+    {{/if}}
+
+    {{!-- GM Copy Spell Transaction Card --}}
+    {{#if gmCopySpellProposal}}
+    <div class="gm-copy-spell-card" style="background: rgba(80,60,140,0.15); border: 1px solid {{#if gmCopySpellProposal.charged}}rgba(34,197,94,0.4){{else}}rgba(160,120,220,0.4){{/if}}; border-radius: 6px; padding: 0.6rem 0.75rem; margin: 0.5rem 0.75rem;">
+        {{#if gmCopySpellProposal.charged}}
+        {{!-- CHARGED STATE: Gold taken, awaiting player's Arcana roll --}}
+        <div style="font-weight: 600; color: rgba(34,197,94,0.9); font-size: 0.85rem; margin-bottom: 0.4rem;">
+            <i class="fas fa-coins"></i> Gold Charged — Awaiting Arcana Roll
+        </div>
+        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.75); line-height: 1.5;">
+            <strong>{{gmCopySpellProposal.actorName}}</strong>:
+            Level <strong>{{gmCopySpellProposal.spellLevel}}</strong> spell.
+            <strong>{{gmCopySpellProposal.cost}}gp</strong> charged
+            ({{gmCopySpellProposal.remainingGold}}gp remaining).<br>
+            <i class="fas fa-dice-d20" style="color: rgba(126,184,218,0.8);"></i>
+            Waiting for player to roll Arcana DC <strong>{{gmCopySpellProposal.dc}}</strong>.
+        </div>
+        <div style="font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 0.3rem; font-style: italic;">
+            If the player disconnected, use re-send or roll on their behalf.
+        </div>
+        <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem;">
+            <button type="button" data-action="resendCopySpellRoll"
+                style="flex: 1; padding: 0.3rem 0.5rem; border-radius: 4px; background: linear-gradient(135deg, rgba(126,184,218,0.3), rgba(126,184,218,0.15)); border: 1px solid rgba(126,184,218,0.4); color: rgba(255,255,255,0.9); font-weight: 600; font-size: 0.75rem; cursor: pointer;">
+                <i class="fas fa-redo"></i> Re-send Roll
+            </button>
+            <button type="button" data-action="gmCopySpellFallback"
+                style="flex: 1; padding: 0.3rem 0.5rem; border-radius: 4px; background: linear-gradient(135deg, rgba(243,156,18,0.3), rgba(243,156,18,0.15)); border: 1px solid rgba(243,156,18,0.4); color: rgba(255,255,255,0.9); font-weight: 600; font-size: 0.75rem; cursor: pointer;">
+                <i class="fas fa-dice-d20"></i> GM Rolls Instead
+            </button>
+            <button type="button" data-action="dismissGmCopySpell"
+                style="padding: 0.3rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 0.75rem; cursor: pointer;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        {{else}}
+        {{!-- INITIAL STATE: Proposal received, GM decides to charge --}}
+        <div style="font-weight: 600; color: rgba(180,140,240,0.9); font-size: 0.85rem; margin-bottom: 0.4rem;">
+            <i class="fas fa-scroll"></i> Copy Spell Request
+        </div>
+        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.75); line-height: 1.5;">
+            <strong>{{gmCopySpellProposal.actorName}}</strong> wants to copy a
+            <strong>Level {{gmCopySpellProposal.spellLevel}}</strong> spell.<br>
+            <i class="fas fa-coins" style="color: rgba(255,200,100,0.8);"></i>
+            Cost: <strong>{{gmCopySpellProposal.cost}}gp</strong>
+            (has {{gmCopySpellProposal.currentGold}}gp)
+            {{#unless gmCopySpellProposal.canAfford}}
+            <span style="color: #ef9a9a;"> — insufficient gold</span>
+            {{/unless}}
+            <br>
+            <i class="fas fa-dice-d20" style="color: rgba(126,184,218,0.8);"></i>
+            Arcana DC: <strong>{{gmCopySpellProposal.dc}}</strong>
+        </div>
+        <div style="font-size: 0.65rem; color: rgba(255,255,255,0.4); margin-top: 0.3rem; font-style: italic;">
+            Determine which spell the player is copying. On success, add it to their spell listing.
+            If copying from a scroll, the scroll is consumed regardless of outcome.
+        </div>
+        <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem;">
+            {{#if gmCopySpellProposal.canAfford}}
+            <button type="button" data-action="processGmCopySpell"
+                style="flex: 1; padding: 0.3rem 0.5rem; border-radius: 4px; background: linear-gradient(135deg, rgba(34,197,94,0.3), rgba(34,197,94,0.15)); border: 1px solid rgba(34,197,94,0.4); color: rgba(255,255,255,0.9); font-weight: 600; font-size: 0.75rem; cursor: pointer;">
+                <i class="fas fa-coins"></i> Charge & Send Roll
+            </button>
+            {{else}}
+            <button type="button" disabled
+                style="flex: 1; padding: 0.3rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.3); font-weight: 600; font-size: 0.75rem; cursor: not-allowed;">
+                <i class="fas fa-coins"></i> Can't Afford
+            </button>
+            {{/if}}
+            <button type="button" data-action="dismissGmCopySpell"
+                style="padding: 0.3rem 0.5rem; border-radius: 4px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 0.75rem; cursor: pointer;">
+                <i class="fas fa-times"></i> Dismiss
+            </button>
+        </div>
+        {{/if}}
+    </div>
+    {{/if}}
+
+    {{!-- Player Copy Spell Roll Card --}}
+    {{#if copySpellRollPrompt}}
+    <div class="player-copy-spell-roll" style="background: rgba(60,80,140,0.15); border: 1px solid rgba(126,184,218,0.4); border-radius: 6px; padding: 0.6rem 0.75rem; margin: 0.5rem 0.75rem;">
+        <div style="font-weight: 600; color: rgba(126,184,218,0.9); font-size: 0.85rem; margin-bottom: 0.4rem;">
+            <i class="fas fa-dice-d20"></i> Arcana Check Required
+        </div>
+        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.75); line-height: 1.5;">
+            <strong>{{copySpellRollPrompt.cost}}gp</strong> charged for a
+            <strong>Level {{copySpellRollPrompt.spellLevel}}</strong> spell.
+            ({{copySpellRollPrompt.remainingGold}}gp remaining)<br>
+            Roll Arcana to meet <strong>DC {{copySpellRollPrompt.dc}}</strong>.
+        </div>
+        <div style="margin-top: 0.5rem;">
+            <button type="button" data-action="rollCopySpellArcana"
+                style="width: 100%; padding: 0.4rem 0.5rem; border-radius: 4px; background: linear-gradient(135deg, rgba(126,184,218,0.35), rgba(126,184,218,0.15)); border: 1px solid rgba(126,184,218,0.5); color: rgba(255,255,255,0.95); font-weight: 600; font-size: 0.85rem; cursor: pointer;">
+                <i class="fas fa-dice-d20"></i> Roll Arcana
+            </button>
+        </div>
+    </div>
+    {{/if}}
+
+    {{!-- Encounter Status Bar: persistent footer --}}
+    {{#if encounterBar}}
+    <div class="encounter-bar">
+        <span class="encounter-bar-label" title="A hidden d20 is rolled against this DC. Events only trigger if the roll stays BELOW this number. Higher DC = safer camp. Shelter, scouting, and fire can raise the DC.">
+            <i class="fas fa-dice-d20"></i>
+            {{encounterBar.totalLabel}}
+        </span>
+        {{#if encounterBar.chips.length}}
+        <span class="encounter-bar-chips">
+            {{#each encounterBar.chips}}
+            <span class="encounter-chip {{#if warn}}warn{{/if}}">
+                <i class="{{icon}}"></i> {{label}}{{#if value}} {{value}}{{/if}}
+            </span>
+            {{/each}}
+        </span>
+        {{/if}}
+        {{#if encounterBar.isGM}}
+        <span class="encounter-gm-adj">
+            <button type="button" class="encounter-adj-btn" data-action="encounterAdjDown" title="Reduce DC">−</button>
+            <button type="button" class="encounter-adj-btn" data-action="encounterAdjUp" title="Increase DC">+</button>
+        </span>
+        {{/if}}
+    </div>
+    {{/if}}
+
+</form>

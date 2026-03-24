@@ -1,0 +1,125 @@
+{
+    "tables": [
+        {
+            "id": "table_tavern_default",
+            "name": "Tavern Rest Events",
+            "terrainTag": "tavern",
+            "rollFormula": "1d20",
+            "noEventThreshold": 10,
+            "entries": [
+                {
+                    "range": [1, 4],
+                    "eventId": "evt_tavern_bard"
+                },
+                {
+                    "range": [5, 8],
+                    "eventId": "evt_tavern_gossip"
+                },
+                {
+                    "range": [9, 12],
+                    "eventId": "evt_tavern_brawl_rumor"
+                },
+                {
+                    "range": [13, 16],
+                    "eventId": "evt_tavern_merchant"
+                },
+                {
+                    "range": [17, 20],
+                    "eventId": "evt_tavern_cat"
+                }
+            ]
+        }
+    ],
+    "events": [
+        {
+            "id": "evt_tavern_bard",
+            "name": "A Familiar Tune",
+            "category": "ambient",
+            "terrainTags": ["tavern"],
+            "weight": 5,
+            "watchTarget": "none",
+            "levelRange": [1, 20],
+            "noWatchBehavior": "skip",
+            "gmPrompt": "A traveling bard in the corner strikes up an old, familiar ballad. The hearth is warm, the ale is flowing. For a moment, the road's hardships fade into memory.",
+            "checkContext": "No check. Ambient event.",
+            "gmGuidance": "Pure atmosphere. A warm moment. If a player character is a bard, this is a natural RP prompt for them to join in or request a song. No mechanical consequence.",
+            "description": "A bard plays a familiar ballad. The hearth is warm. The road feels far away.",
+            "mechanical": null,
+            "tier": "normal",
+            "sentiment": "positive",
+            "pack": "base"
+        },
+        {
+            "id": "evt_tavern_gossip",
+            "name": "Local Gossip",
+            "category": "ambient",
+            "terrainTags": ["tavern"],
+            "weight": 5,
+            "watchTarget": "none",
+            "levelRange": [1, 20],
+            "noWatchBehavior": "skip",
+            "gmPrompt": "The common room is abuzz with hushed whispers. Over a shared plate, the locals gossip about recent strange occurrences in the area.",
+            "checkContext": "No check. Ambient event.",
+            "gmGuidance": "Plot hook delivery. The GM should use this to drop a local rumour, quest hook, or piece of world-building. If no hook is prepared, the gossip is generic (taxes, weather, a local festival). No mechanical consequence.",
+            "description": "The common room buzzes with local gossip about recent strange occurrences.",
+            "mechanical": null,
+            "tier": "normal",
+            "sentiment": "neutral",
+            "pack": "base"
+        },
+        {
+            "id": "evt_tavern_brawl_rumor",
+            "name": "Tense Words",
+            "category": "ambient",
+            "terrainTags": ["tavern"],
+            "weight": 5,
+            "watchTarget": "none",
+            "levelRange": [1, 20],
+            "noWatchBehavior": "skip",
+            "gmPrompt": "A heated argument breaks out near the bar between rough-looking patrons. It threatens to escalate, but the innkeeper defuses it before a brawl starts.",
+            "checkContext": "No check. Ambient event.",
+            "gmGuidance": "Colour and tension. The brawl does not happen -- the innkeeper handles it. If a player character intervenes, that is player-driven outside this event. The GM can use the argument's topic as another plot hook. No mechanical consequence.",
+            "description": "A heated argument near the bar. The innkeeper steps in before it escalates.",
+            "mechanical": null,
+            "tier": "normal",
+            "sentiment": "neutral",
+            "pack": "base"
+        },
+        {
+            "id": "evt_tavern_merchant",
+            "name": "Wandering Merchant",
+            "category": "ambient",
+            "terrainTags": ["tavern"],
+            "weight": 5,
+            "watchTarget": "none",
+            "levelRange": [1, 20],
+            "noWatchBehavior": "skip",
+            "gmPrompt": "A traveling merchant has laid out a small velvet cloth on a corner table, displaying peculiar trinkets, odd charms, and minor curiosities.",
+            "checkContext": "No check. Ambient event.",
+            "gmGuidance": "Flavour only. The merchant is not a mechanical shop -- this is atmosphere. If the GM wants to make it interactive, that is their call outside the event system. The trinkets are colourful but mundane unless the GM decides otherwise.",
+            "description": "A merchant displays trinkets and curiosities on a velvet cloth in the corner.",
+            "mechanical": null,
+            "tier": "normal",
+            "sentiment": "positive",
+            "pack": "base"
+        },
+        {
+            "id": "evt_tavern_cat",
+            "name": "The Local Cat",
+            "category": "ambient",
+            "terrainTags": ["tavern"],
+            "weight": 5,
+            "watchTarget": "none",
+            "levelRange": [1, 20],
+            "noWatchBehavior": "skip",
+            "gmPrompt": "The local cat has decided. It hops up onto your bed, turns three times, curls into a tight ball against your side, and begins to purr. Loud, steady, and completely unbothered by who you are or what you have done.",
+            "checkContext": "No check. Ambient event.",
+            "gmGuidance": "Pure comfort. The cat does not care about your backstory. It is warm, you are warm, this is the arrangement. If a player has a familiar or animal companion, the cat either ignores it or washes its face at it. Rest undisturbed.",
+            "description": "The local cat curls up on your bed and purrs.",
+            "mechanical": null,
+            "tier": "normal",
+            "sentiment": "positive",
+            "pack": "base"
+        }
+    ]
+}

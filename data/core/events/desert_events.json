@@ -1,0 +1,245 @@
+{
+    "tables": [
+        {
+            "id": "table_desert_default",
+            "name": "Desert Rest Events",
+            "terrainTag": "desert",
+            "rollFormula": "1d20",
+            "noEventThreshold": 11,
+            "entries": [
+                {
+                    "range": [
+                        1,
+                        2
+                    ],
+                    "eventId": "evt_desert_sandstorm_burial"
+                },
+                {
+                    "range": [
+                        3,
+                        4
+                    ],
+                    "eventId": "evt_desert_scorpions"
+                },
+                {
+                    "range": [
+                        5,
+                        6
+                    ],
+                    "eventId": "evt_desert_dehydration"
+                },
+                {
+                    "range": [
+                        7,
+                        8
+                    ],
+                    "eventId": "evt_desert_oasis_cache"
+                },
+                {
+                    "range": [
+                        9,
+                        10
+                    ],
+                    "eventId": "evt_desert_stars"
+                }
+            ]
+        }
+    ],
+    "events": [
+        {
+            "id": "evt_desert_sandstorm_burial",
+            "name": "Sand Burial",
+            "category": "complication",
+            "terrainTags": [
+                "desert"
+            ],
+            "weight": 2,
+            "watchTarget": "all",
+            "description": "The wind picks up without warning. Sand blasts exposed skin and buries everything not tied down.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "sur",
+                "dc": 14,
+                "targets": "watch",
+                "bestOfN": true,
+                "onSuccess": {
+                    "narrative": "You raised the alarm in time. Gear was secured beneath tarps. The storm passes overhead.",
+                    "effects": []
+                },
+                "onFailure": {
+                    "narrative": "Camp is half-buried. Packs are full of sand. Critical supplies are damaged.",
+                    "effects": [
+                        {
+                            "type": "item_at_risk",
+                            "filter": "camp_gear",
+                            "narrative": "Sand has gotten into everything. Something is ruined."
+                        },
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.75,
+                            "description": "Poor rest quality from sand-buried camp."
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_desert_scorpions",
+            "name": "Scorpion Nest",
+            "category": "encounter",
+            "terrainTags": [
+                "desert"
+            ],
+            "weight": 2,
+            "watchTarget": "watch",
+            "description": "The ground crunches underfoot. Camp was pitched on a scorpion nest. They emerge after dark.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "prc",
+                "dc": 13,
+                "targets": "watch",
+                "bestOfN": true,
+                "onSuccess": {
+                    "narrative": "You spot them before anyone is stung. The camp relocates a few yards. Crisis averted.",
+                    "effects": []
+                },
+                "onFailure": {
+                    "narrative": "Stings and panic. The camp scrambles awake in the dark.",
+                    "effects": [
+                        {
+                            "type": "damage",
+                            "formula": "1d4",
+                            "damageType": "poison",
+                            "scope": "random_one",
+                            "description": "Scorpion sting."
+                        },
+                        {
+                            "type": "condition",
+                            "condition": "poisoned",
+                            "duration": "4_hours",
+                            "description": "Venom from a scorpion sting."
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_desert_dehydration",
+            "name": "Water Shortage",
+            "category": "complication",
+            "terrainTags": [
+                "desert"
+            ],
+            "weight": 2,
+            "watchTarget": "all",
+            "description": "The heat is relentless even at night. Water consumption has been higher than expected.",
+            "dutyRelevance": {
+                "defenses": {
+                    "effect": "cancel",
+                    "narrative": "The windbreak reduced exposure. Water consumption stayed manageable."
+                }
+            },
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "sur",
+                "dc": 12,
+                "targets": "all",
+                "bestOfN": false,
+                "onSuccess": {
+                    "narrative": "Careful rationing and damp cloth over the mouth. You make it through.",
+                    "effects": []
+                },
+                "onFailure": {
+                    "narrative": "Parched and lightheaded. The morning sun will be brutal.",
+                    "effects": [
+                        {
+                            "type": "consume_resource",
+                            "resource": "water",
+                            "amount": 1
+                        },
+                        {
+                            "type": "condition",
+                            "condition": "exhaustion",
+                            "level": 1,
+                            "scope": "failed"
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_desert_oasis_cache",
+            "name": "Buried Trade Goods",
+            "category": "discovery",
+            "terrainTags": [
+                "desert"
+            ],
+            "weight": 2,
+            "watchTarget": "watch",
+            "description": "Wind-scoured ground reveals the edge of a buried cache. Old trade goods, half swallowed by sand.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "inv",
+                "dc": 12,
+                "targets": "watch",
+                "bestOfN": true,
+                "onSuccess": {
+                    "narrative": "Sealed clay jars. Preserved spices and a stoppered waterskin still holding.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "desert_spices",
+                            "quantity": "1d3",
+                            "itemData": {
+                                "name": "Desert Spices",
+                                "type": "loot",
+                                "img": "icons/consumables/food/spice-jars-red-background.webp",
+                                "system": {
+                                    "description": {
+                                        "value": "<p>Preserved desert spices. Valuable in the right market.</p>"
+                                    },
+                                    "rarity": "common",
+                                    "price": {
+                                        "value": 2,
+                                        "denomination": "gp"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "The jars crumble when you pull them free. Nothing salvageable.",
+                    "effects": []
+                }
+            },
+            "tier": "normal",
+            "sentiment": "positive",
+            "pack": "base"
+        },
+        {
+            "id": "evt_desert_stars",
+            "name": "Desert Sky",
+            "category": "ambient",
+            "terrainTags": [
+                "desert"
+            ],
+            "weight": 3,
+            "watchTarget": "none",
+            "description": "Without clouds or canopy, the sky is overwhelming. Stars stretch horizon to horizon. A shooting star traces a line across the void. The desert, for all its cruelty, has its moments.",
+            "mechanical": null,
+            "tier": "normal",
+            "sentiment": "neutral",
+            "pack": "base"
+        }
+    ]
+}

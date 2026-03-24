@@ -1,0 +1,214 @@
+{
+    "tables": [
+        {
+            "id": "table_forest_default",
+            "name": "Forest Rest Events",
+            "terrainTag": "forest",
+            "rollFormula": "1d20",
+            "noEventThreshold": 12,
+            "entries": [
+                {
+                    "range": [
+                        1,
+                        2
+                    ],
+                    "eventId": "evt_forest_wolves"
+                },
+                {
+                    "range": [
+                        3,
+                        4
+                    ],
+                    "eventId": "evt_forest_deadfall"
+                },
+                {
+                    "range": [
+                        5,
+                        6
+                    ],
+                    "eventId": "evt_forest_mist"
+                },
+                {
+                    "range": [
+                        7,
+                        9
+                    ],
+                    "eventId": "evt_forest_clearing"
+                },
+                {
+                    "range": [
+                        10,
+                        11
+                    ],
+                    "eventId": "evt_forest_birdsong"
+                }
+            ]
+        }
+    ],
+    "events": [
+        {
+            "id": "evt_forest_wolves",
+            "name": "Pack Circling",
+            "category": "encounter",
+            "terrainTags": [
+                "forest"
+            ],
+            "weight": 2,
+            "watchTarget": "watch",
+            "description": "Low growling from multiple directions. Eyes glint at the edge of the firelight, circling.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "ani",
+                "dc": 13,
+                "targets": "watch",
+                "onSuccess": {
+                    "narrative": "You hold your ground, keep the fire high, and stare them down. The pack moves on.",
+                    "effects": []
+                },
+                "onFailure": {
+                    "narrative": "The pack rushes camp looking for food. They scatter with whatever they can grab.",
+                    "effects": [
+                        {
+                            "type": "consume_resource",
+                            "resource": "rations",
+                            "amount": 2
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_forest_deadfall",
+            "name": "Widowmaker",
+            "category": "complication",
+            "terrainTags": [
+                "forest"
+            ],
+            "weight": 2,
+            "watchTarget": "watch",
+            "description": "A creak and groan from above. A dead branch, heavy with rot, shifts in the canopy directly over the sleeping camp.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "prc",
+                "dc": 12,
+                "targets": "watch",
+                "onSuccess": {
+                    "narrative": "You spot the danger and quietly move the sleepers. The branch crashes down on empty bedrolls.",
+                    "effects": []
+                },
+                "onFailure": {
+                    "narrative": "The branch falls. Someone catches it across the shoulders.",
+                    "effects": [
+                        {
+                            "type": "damage",
+                            "formula": "2d6",
+                            "damageType": "bludgeoning",
+                            "scope": "random_one",
+                            "description": "A heavy branch falls on a sleeping character."
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_forest_mist",
+            "name": "Creeping Fog",
+            "category": "complication",
+            "terrainTags": [
+                "forest"
+            ],
+            "weight": 2,
+            "watchTarget": "all",
+            "description": "A thick fog rolls in from the lowland. Everything beyond arm's reach disappears.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "sur",
+                "dc": 11,
+                "targets": "watch",
+                "onSuccess": {
+                    "narrative": "You mark the camp perimeter with rope lines. Nobody wanders off.",
+                    "effects": []
+                },
+                "onFailure": {
+                    "narrative": "The fog disorients camp. Packing up takes twice as long and something is missing.",
+                    "effects": [
+                        {
+                            "type": "consume_resource",
+                            "resource": "supplies",
+                            "amount": 1
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_forest_clearing",
+            "name": "Moonlit Clearing",
+            "category": "discovery",
+            "terrainTags": [
+                "forest"
+            ],
+            "weight": 3,
+            "watchTarget": "watch",
+            "description": "The watch finds a small clearing carpeted in wildflowers. Mushrooms ring the edges in perfect circles.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "nat",
+                "dc": 12,
+                "targets": "watch",
+                "onSuccess": {
+                    "narrative": "Edible mushrooms and a few useful herbs. A good find.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "forest_mushrooms",
+                            "quantity": "1d4",
+                            "itemData": {
+                                "name": "Forest Mushrooms",
+                                "type": "loot",
+                                "img": "icons/consumables/mushrooms/mushroom-brown-tan.webp",
+                                "system": {
+                                    "description": {
+                                        "value": "<p>Edible forest mushrooms. Can be used in cooking or sold.</p>"
+                                    },
+                                    "rarity": "common"
+                                }
+                            }
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "Beautiful to look at, but you are not confident enough to pick anything in the dark.",
+                    "effects": []
+                }
+            },
+            "tier": "normal",
+            "sentiment": "positive",
+            "pack": "base"
+        },
+        {
+            "id": "evt_forest_birdsong",
+            "name": "Dawn Chorus",
+            "category": "ambient",
+            "terrainTags": [
+                "forest"
+            ],
+            "weight": 3,
+            "watchTarget": "none",
+            "description": "The first birds begin before dawn. One song, then another, until the canopy rings with it. The air smells of damp earth and new growth. A good omen for the day ahead.",
+            "mechanical": null,
+            "tier": "normal",
+            "sentiment": "neutral",
+            "pack": "base"
+        }
+    ]
+}

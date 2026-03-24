@@ -1,0 +1,130 @@
+<section class="campfire-body">
+
+    {{!-- Fire area: big, clickable, central focus --}}
+    <div class="campfire-fire-area fire-level-{{fireLevel}}" data-action="pokeFire">
+        <canvas class="campfire-physics-canvas"></canvas>
+
+        {{#if lit}}
+            <div class="campfire-flames">
+                <div class="flame flame-core"></div>
+                <div class="flame flame-mid"></div>
+                <div class="flame flame-outer"></div>
+                <div class="flame flame-wisp flame-wisp-1"></div>
+                <div class="flame flame-wisp flame-wisp-2"></div>
+                <div class="flame flame-ember-glow"></div>
+            </div>
+            <div class="campfire-coals"></div>
+        {{else}}
+            <div class="campfire-kindling {{#if kindlingPlaced}}has-kindling{{/if}}">
+                {{#if kindlingPlaced}}
+                    <i class="fas fa-fire-alt"></i>
+                    <span>Ready to light</span>
+                {{else}}
+                    <i class="fas fa-campground"></i>
+                    <span>Kindling pile</span>
+                {{/if}}
+            </div>
+        {{/if}}
+
+        {{!-- Lit banner (fades) --}}
+        {{#if showLitBanner}}
+            <div class="campfire-lit-banner">
+                <i class="fas fa-fire"></i> <span style="color:{{litByColor}}">{{litBy}}</span> lit the fire!
+            </div>
+        {{/if}}
+    </div>
+
+    {{!-- Interaction strip --}}
+    <div class="campfire-interactions">
+
+        {{#unless lit}}
+            {{!-- Unlit: guided sequence - show only the current step --}}
+            {{#unless kindlingPlaced}}
+                {{!-- Step 1: Place kindling --}}
+                {{#if firewoodCount}}
+                <div class="campfire-guided-step">
+                    <div class="firewood-log" draggable="true" title="Drag kindling to the fire pit">
+                        <i class="fas fa-grip-lines-vertical"></i>
+                    </div>
+                    <span class="guided-label">Drag firewood to start a fire</span>
+                </div>
+                {{else}}
+                <div class="campfire-guided-step dimmed">
+                    <i class="fas fa-fire"></i>
+                    <span class="guided-label">No firewood in inventory</span>
+                </div>
+                {{/if}}
+            {{else}}
+                {{!-- Step 2: Ignite (tinderbox and/or cantrip) --}}
+                {{#if hasFireCantrip}}
+                <div class="campfire-guided-step">
+                    <button type="button" data-action="cantripIgnite" class="campfire-btn strike-btn cantrip-btn">
+                        <i class="fas fa-hat-wizard"></i> {{fireCantrip}}
+                    </button>
+                </div>
+                {{/if}}
+                {{#if hasTinderbox}}
+                <div class="campfire-guided-step">
+                    <button type="button" data-action="strikeFlint" class="campfire-btn strike-btn">
+                        <i class="fas fa-hand-sparkles"></i> Strike Flint
+                    </button>
+                    <span class="strike-hint">Attempt {{strikeCount}}</span>
+                </div>
+                {{/if}}
+                {{#unless hasTinderbox}}
+                {{#unless hasFireCantrip}}
+                <div class="campfire-guided-step dimmed">
+                    <i class="fas fa-hand-sparkles"></i>
+                    <span class="guided-label">Needs a Tinderbox or fire cantrip</span>
+                </div>
+                {{/unless}}
+                {{/unless}}
+            {{/unless}}
+        {{else}}
+            {{!-- Lit: compact vertical stack --}}
+
+            {{!-- Firewood + Emotes: combined row --}}
+            <div class="campfire-tool-row combined-row">
+                {{#if firewoodCount}}
+                    <div class="firewood-log" draggable="true" title="Drag to fire ({{firewoodCount}} remaining)">
+                        <i class="fas fa-grip-lines-vertical"></i>
+                    </div>
+                    <span class="firewood-count">&times;{{firewoodCount}}</span>
+                {{else}}
+                    <span class="firewood-empty"><i class="fas fa-fire"></i> No wood</span>
+                {{/if}}
+                <span class="tool-row-sep"></span>
+                {{#each emotes}}
+                    <button type="button" class="emote-btn" data-action="emote" data-emote-id="{{this.id}}" title="{{this.label}}">
+                        <i class="{{this.icon}}"></i>
+                    </button>
+                {{/each}}
+            </div>
+
+            {{!-- Whittle: separate activity --}}
+            <div class="whittle-area"></div>
+            <div class="campfire-tool-row">
+                <button type="button" data-action="whittle" class="campfire-btn whittle-btn compact">
+                    <i class="fas fa-knife"></i> Whittle
+                </button>
+                <div class="whittle-progress-bar">
+                    <div class="whittle-progress-fill" style="width: {{whittlePct}}%"></div>
+                </div>
+            </div>
+            <div class="whittle-tray"></div>
+        {{/unless}}
+    </div>
+
+    {{!-- Fire meter (only when lit) --}}
+    {{#if lit}}
+    <div class="fire-meter">
+        <div class="fire-meter-track">
+            <div class="fire-meter-fill"></div>
+            <div class="fire-meter-needle"></div>
+            <div class="fire-meter-zone zone-embers" title="Dim and cold, but harder to spot.">Embers</div>
+            <div class="fire-meter-zone zone-campfire" title="Steady warmth. A fair balance of comfort and caution.">Campfire</div>
+            <div class="fire-meter-zone zone-bonfire" title="Raises comfort, but the light carries far.">Bonfire</div>
+        </div>
+    </div>
+    {{/if}}
+</section>

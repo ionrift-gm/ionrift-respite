@@ -1,0 +1,47 @@
+{
+    "id": "ionrift-respite",
+    "title": "Ionrift Respite",
+    "description": "Structured rest phases for Foundry VTT. Replaces the default rest dialog with terrain-driven events, camp activities, and meaningful recovery.",
+    "bugs": "https://discord.gg/YmgdNNu4",
+    "version": "0.1.0",
+    "compatibility": {
+        "minimum": "12",
+        "verified": "13"
+    },
+    "esmodules": [
+        "scripts/module.js"
+    ],
+    "packs": [
+        {
+            "name": "respite-items",
+            "label": "Respite Items",
+            "type": "Item",
+            "system": "dnd5e",
+            "path": "packs/respite-items"
+        },
+        {
+            "name": "respite-guide",
+            "label": "Respite Guide",
+            "type": "JournalEntry",
+            "path": "packs/respite-guide"
+        }
+    ],
+    "socket": true,
+    "styles": [
+        "styles/respite.css"
+    ],
+    "relationships": {
+        "requires": [
+            {
+                "id": "ionrift-library",
+                "type": "module"
+            }
+        ]
+    },
+    "authors": [
+        {
+            "name": "Ionrift",
+            "url": "https://patreon.com/ionrift"
+        }
+    ]
+}

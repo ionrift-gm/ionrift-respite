@@ -1,0 +1,19 @@
+{
+    "id": "forest",
+    "label": "Forest",
+    "icon": "fas fa-tree",
+    "comfort": "rough",
+    "comfortReason": "Trees overhead but still outdoors. Rain, wildlife, and insects make it rough.",
+    "scoutingAvailable": true,
+    "scoutGuidance": "Survival check. Poor: 2-7 | Average: 8-12 | Good: 13+. Ranger or druid has advantage. Heavy armor has disadvantage.",
+    "scoutFlavor": {
+        "nat1":    ["A mossy clearing under old growth. Peaceful.", "A grove by a stream. Soft ground, good water.", "Flat ground under old oaks. Feels like it was made for resting."],
+        "poor":    ["Dense forest floor. Roots everywhere.", "A damp hollow. Mushrooms and mud.", "Under the canopy. Better than the open."],
+        "average": ["A dry clearing with good tree cover.", "A fallen oak creates a natural shelter.", "A deer trail leads to a quiet glade."],
+        "good":    ["A thicket so dense nothing can approach unseen.", "A hollow tree large enough for a camp.", "A ridge with clear lines of sight."],
+        "nat20":   ["A hidden sylvan grove, unnaturally peaceful.", "An ancient treehouse platform, sturdy and concealed.", "A dry cave behind a moss curtain, invisible from outside."]
+    },
+    "mealRules": { "waterPerDay": 1, "foodPerDay": 1 },
+    "weather": ["clear", "overcast", "fog", "rain", "heavy_rain", "hail"],
+    "eventsFile": "core/events/forest_events.json"
+}

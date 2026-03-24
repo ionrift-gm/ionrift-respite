@@ -1,0 +1,234 @@
+﻿defaf9b feat: v1 launch polish - settings alignment, professions descoped, journal guide, README update
+d7473d0 refactor: eliminate hardcoded terrain constants, introduce TerrainRegistry
+e1c0a58 sec: sanitize .gitignore comments, strip internal repo refs
+a3f13d8 fix: tavern Begin Rest blocked by shelterChosen gate, strip unreleased pack refs
+2673b19 fix: remove underdark weather (fungal spores, faerzress) from dungeon terrain
+3d88820 fix: filter terrain probe against manifest (prevents unreleased terrains in dropdown)
+5250141 copy: update interrupted rest warning for v1 (no crafting/foraging refs)
+7f75c75 fix: remove forage/profession 404s, rename welcome_pack to wanderers_pack
+44ee024 fix: remove 404 imports for deleted compendiumBuilder and RespiteTestRunner
+25695ca chore: move welcome_pack to brand staging
+2b78dcb chore: purge dev tooling, cut features, LevelDB runtime from release
+415d07a chore: strip forage items, dev docs, and AI artifacts from release build
+21e2987 fix: align campfire UI language from kindling to firewood, fix item icon
+f0c3a26 feat: logger migration, short rest, E2E harness, event data, and terrain banners
+4d19808 chore: release infrastructure, split license, and gitignore whitelist
+7dcdd2a chore: update gitignore and gitattributes for release prep
+c18e355 test(meal): add B6 full-skip result validation and manual test scenarios MT-11 to MT-13
+70ded08 feat(meal): complete meal phase flow with CON save broadcasts and rations outcome panel
+219e8b9 refactor: centralized item granting with inventory stacking
+6368aeb feat: sign off Pray, Fletch, Train activities
+67a2987 fix: Fletch Arrows always has default selection + pill-toggle radio styling
+0c86bcc fix: missing reflection.png - reuse banner.png for campfire phase
+3babe99 feat: persist charged Copy Spell transactions in rest state
+17ed676 fix: block Proceed to Events while Copy Spell transaction active
+aea2395 fix: clear GM Copy Spell card when player roll result arrives
+233f3be feat: player roll agency - Roll Arcana button instead of auto-roll
+c23cfa2 feat: Copy Spell recovery state + busy guard
+9db3e13 feat: player rolls Arcana check, result shared to both sides
+f33cef2 feat: gold-aware Copy Spell dropdown + GM transaction card
+9b3b162 fix: Copy Spell UI polish - pending badge, result replaces pending
+483d9e0 fix: Copy Spell proposal in actual player confirm path
+0b2d820 fix: Copy Spell proposal runs outside _engine guard
+a4b3c4d fix: dropdown options, player scan button, abandon indicator
+156d687 fix: Copy Spell flow works from both GM and player sides
+a502435 fix: abandon rest removes indicator bar, players can scan
+3262d44 feat: Copy Spell transaction flow with player approval
+0889d2a feat: Copy Spell GM charge card with gold deduction and receipt
+7fed7f0 fix: scan only detects items with identified === false
+595dc60 fix: cap scan results panel height with scroll
+404765a fix: scan used non-existent engine.roster (split-brain)
+1031fd8 fix: detect items named 'unidentified' even when flag is true
+3c76189 fix: block new rest while resume prompt is open + Ionrift modal
+625fd68 fix: faded advisory tooltip names specific unprepared spells
+9194064 fix: spell API deprecation + scan diagnostics
+7ee0233 fix: abandon dialog uses custom Ionrift overlay instead of DialogV2
+b1e29ae fix: broaden unidentified item detection in DetectMagicScanner
+7483278 feat: faded minor activity hints + modal abandon dialog
+0abbfb0 debug: log spell preparation data + move abandon button to top-right
+fff2a8f feat: GM Abandon Rest button + fix spell prerequisite detection
+8e4854c feat: implement Detect Magic / Identify rest activity workflow
+e620300 fix: unify back button placement in crafting drawer to match activity detail
+0423fcc fix: revert begin combat back to close() for indicator bar UX
+4e7f24d fix: hide encounter DC after events roll, active Combat Complete button, scouting prompt text
+c93cc5b feat: combat readiness report in rest UI with debug jump mock encounter
+01c0426 fix: debug jumps no longer overwrite _activities definitions with character assignment tuples
+ce1ad64 fix: remove undefined respiteFlowActive variable assignment breaking debug jump methods
+6daf462 fix: debug jumps now properly broadcast restStarted and restSnapshot to sync clients
+e2208ab feat: add forceReload socket handler and game.ionrift.respite.reloadAll() API
+357e16e debug: add game.ionrift.respite.jumpToEncounter() for combat buff whisper testing
+72ac7ed fix: unify X-button close with modal overlay, include ungranted discovery warning
+41bc45c fix: use modal overlay for ungranted discoveries warning (matches armor pattern)
+4625e59 fix: single item with system.quantity, warn on close with ungranted discoveries
+6672a74 feat: GM item grant flow for party discoveries with dice rolling and compendium lookup
+35d562a Fix: remove invalid loadActivities call in debug jump
+d5ee92d Debug: add game.ionrift.respite.jumpToResolution() for quick testing
+d296057 Party Discoveries: show event items once as shared party find, not per-character
+069e7f3 Backlog: activity tone consistency, event items as party discoveries
+d001661 UX: Auto-collapse resolved events with inline verdict badge and click-to-expand
+d26f7ae UX: Group Check label on roll request, GM probability hint for averaging
+0361094 Fix: study radio clipping, Watch vs Targets label, group average display context
+ad6f55c Fix stale player rest windows: close old window on new rest with restId tracking
+b78fd3c Make event descriptions GM-only: GM narrates the story verbally
+c1d239e Fix: wait for Dice So Nice animation before broadcasting event verdict
+0631c8a Implement party check policy: average-of-rolls, checkPolicy field, partial tier, player-visible results
+c122852 Backlog: terrain event coverage audit for non-watch event diversity
+006c95e Fix event roll visibility: show dice for watch-only skips, try alternative events; fix CampfireEmbed deprecation warnings
+6f0066a Add eventsRolled diagnostic logging at all state transition points
+1f38087 Add state management unit tests: serialization round-trip, state reset, DC consistency
+1478a0d Fix: reset eventsRolled and event state when starting new rest engine
+bf5988e Add diagnostic logging for encounter DC computation in UI and engine
+7ac40bf Custom modal overlay for armor warning: opaque, blocking, Ionrift Glass theme
+c815611 Make ionrift-window modal dialogs nearly opaque (0.96 alpha)
+e5ae97a Fix GM firewood drag bug, restyle armor dialog to Ionrift Glass theme
+b881683 Armor confirmation dialog on activity confirm when sleeping in medium/heavy armor
+120503f Study: remove proficiency gate, add skill selection dropdown (Arcana/History/Investigation/Nature/Religion)
+b2f30db Fix: exclude already-attuned items from attune dropdown and prerequisite check
+fe30d8d Study gate setting, attune item dropdown with slot counter, tile glow animation, badge text fix
+b60ed70 Gate all Xanathar armor signals behind armorDoffRule setting (on by default)
+fee2bdd Armor waiver: 'No HP or HD recovery penalty' for mechanical clarity
+cdf181d Armor hint audit: warn on ALL non-waiver activities, explicit penalty mention in waiver
+bdcb549 Immersive armor waiver hint: sleeping light between rotations
+156ad1f Tweak armor waiver copy: honest gameplay simplification framing
+260df5d Tweak armor waiver hint: explicit Xanathar's rule justification
+5366305 Fix: armor advisory conflict - neutral top bar, contextual activity hints with Xanathar flavor
+8a1e87d Fix: armorSleepWaiver not passed to tile objects, causing wrong hint on Keep Watch
+a6a4674 Add system adapter scaffold: base class, DnD5e impl, PF2e/DH stubs, factory
+277ca10 Fix: act_copy_spell -> act_scribe in combat readiness spec
+e5ec9ad Fix: pass config to RestFlowEngine constructor in tests
+4a585e6 Add data integrity + logic coverage tests: activities, recipes, events, combat spec, comfort, fletch
+4b1640b Add RespiteTestRunner: 6 test groups, ~30 assertions, GM-whispered results
+0e09faa Update backlog: mark completed items, restructure remaining
+d8877d2 Xanathar armor sleep penalties, training desc fix, 6 terrain forage loot tables
+5b410fe Wire combat buff whisper to both encounter flows (disaster + regular)
+e6e37b7 Combat buff aggregation method, armor-aware activity hints
+db8fc83 Armor-aware hints in activity detail: on-duty waiver (green), sleep warning (amber)
+6e5ac85 Whisper activity rolls to player+GM with outcome narrative and color
+ae910a7 Backlog: expand armor section (waiver tooltip, sleep gating, enforcement), add food/water tracking
+af3d25d Add project backlog: food/water tracking, armor penalties, terrain loot, stacking rules
+a724fc5 ActivityResolver: best ability, followUp itemMap, maxLevel gate, training streak, streak reset
+c1eaa28 Clarify Training diminishing returns (consecutive rests), add diminishingReturns config
+6ba78ef Resolve Training 'best' ability to actual highest score (e.g. STR 18 DC 15)
+2f1f73f Fix radio button initial state: pre-compute isSelected in JS context
+c5ecf8f GM interactive follow-up pickers: dropdown for Tend Wounds, radio for Fletch Arrows
+2a638cf Armor sleep waiver flags for active duties, Fletch dynamic item ref (arrows/bolts)
+8e9f2ff Tier 2 activity follow-ups: Tend Wounds target picker, Fletch arrows/bolts radio, partial heal on fail, GM detail display
+c4da8c1 Fix Fletch Arrows icon from arrow to crosshairs
+215792b Open Tend Wounds to all, update Training to match journal design (DC15, XP on fail, level 5 cap)
+1444fe1 Clean up Scout Perimeter: remove redundant effect text, keep narrative + unique tactical benefit
+f0c90be Keep Watch: bump init to +3, simplify effect text
+b1787c6 Simplify Keep Watch effects: narrative only, combat modifiers handle mechanics
+4dbc4ca Remove 'Guaranteed:' prefix from Keep Watch effect descriptions
+50964c4 Move Rest Fully from Camp Duties to Personal section
+88e0efe Add 'If combat occurs:' context label to combat readiness hints
+acc5705 Wire combatModifiers through tile builders and activity detail context for GM+client views
+b8c4341 Add combatModifiers to all activities, show readiness hints in activity picker
+de9cb88 Add CalendarHandler adapter: centralize calendar interactions, add rest chat announcement
+013f5f1 Events phase polish: auto-apply, alert roster, layout rework, player scoping
+ba96ef8 feat(events): disaster choice, watch filtering, multi-event sequencing, scroll
+92471c5 refactor(roster): AFK toggle as tall card button with coffee cup portrait swap
+15e3f7d feat: nat 1 deduplication and GM dismiss option - Disaster picks now exclude scouting hazard event IDs (no duplicates) - All minor picks exclude each other and scouting events - Added 'Dismiss and continue' link on disaster card for GM discretion - Dismiss clears disaster without adding events, scouting events remain
+e81dcb7 fix: prevent duplicate events in disaster minor picks - _pickBonusEvent now accepts excludeIds to prevent same event twice - Second minor pick excludes the first minor's ID
+b3b3253 fix: inverted GM encounter DC adjustment - Pressing + now correctly increases the DC (more dangerous) - Both display and roll calculation now agree on direction
+223fb5e feat: nat 1 disaster mechanic with GM choice - Natural 1 on event roll triggers disaster: GM picks major event or two minors - EventResolver detects raw die = 1, picks encounter + complication/discovery options - Disaster choice card with preview of event names - Night Watch card shows nat 1 advisory in red - Players see 'Something terrible stirs. The GM is deciding...' during choice
+b86d1a2 feat: encounter DC badge and outcome advisory on Night Watch card - GM sees DC badge with encounter threshold before rolling - Advisory lines: 'Roll 11+: quiet night' and 'Roll below 11: event triggers' - Yellow warning color for event trigger line, blue moon for quiet night
+d8cc2b9 feat: redesigned skill check UI with prominent DC badge - Large DC number badge with purple accent border - Skill name, target scope, and direction hint on separate lines - 'Meet or beat DC to pass' clarifies roll direction - Per-character results show 'rolled 18 Pass/Fail' with colored badges - Full-width verdict bar for check outcome
+5df0465 fix: rename Resolve Rest to Proceed to Resolution
+4d10bbb feat: narration hint after event resolution - GM sees subtle prompt to narrate outcome before proceeding - Theater masks icon, light italic text, matches advisory style
+718cc27 fix: wait for Dice So Nice animation on event trigger roll - Event roll chat messages now wait for 3D dice animation before proceeding - Prevents 'night passes without incident' text appearing before dice settle - Same diceSoNiceRollComplete hook pattern with 5s fallback
+1520b7e feat: dice animation wait + roster roll indicators - Wait for Dice So Nice animation before sending result (diceSoNiceRollComplete hook + 5s fallback) - Disable roll button immediately, show spinner during animation - Roster strip shows pulsing dice for pending rolls, check for completed - GM side reads from triggeredEvents, player side from pendingEventRoll
+b41797f chore: extract COMFORT_RANK/RANK_TO_KEY to class constants, remove dead submitPlayerChoices
+63234ea fix: extract SKILL_NAMES to class constant, add GM guard to receiveRollResult, remove SKILL_MAP identity map
+b9b7b81 fix: remove duplicate receivePhaseChange, fix submissionUpdate ID mismatch
+f7f4b46 fix: GM override sync + encounter DC tooltip clarity - Remove duplicate receiveSubmissionUpdate that was hiding GM overrides from client - Fix encounter DC tooltip: events trigger BELOW DC, higher = safer camp - Correct misleading tooltip text about roll direction
+dd6de2f feat: player-initiated event rolls via socket round-trip - GM clicks Request Rolls -> broadcasts eventRollRequest to players - Player sees Roll [Skill] button, rolls actor.rollSkill on own client - Result sent back via eventRollResult socket message - GM collects results, shows partial progress, auto-resolves when all in - Force Pass/Fail remains as GM escape hatch - CSS for player roll button and submitted state
+c20260a fix: campStatus in snapshot + full skill names in event cards - Add campStatus to getRestSnapshot/receiveRestSnapshot for persistence - Map skill abbreviations to full names (prc->Perception, sur->Survival etc) - Template shows full skill name in check prompt
+80708af fix: sync campStatus badges and fire level to clients
+9adf2d9 feat(events): watch roster, per-character rolls, Resolve Rest gating, DC tooltip - Show watch character names in pending event card - Per-character roll results with individual pass/fail display - Resolve Rest button disabled until all event skill checks adjudicated - Encounter DC bar tooltip explains higher DC = events less likely - CSS for watch roster and per-character roll lines
+cac0df6 fix: confirm dialog when GM closes rest during resolution phase
+042b733 feat(resolution): integrate event effects into resolution outcomes - RestFlowEngine.resolve() now checks resolvedOutcome for correct narrative - Failed events include failure effects (damage, conditions, item risk, recovery) - eventDisrupted flag per character for disrupted rest banner - Resolution template renders event blocks with name, category, verdict, effects - CSS for disrupted banner, event outcome blocks, and effect lines
+4fba989 feat(events): interactive skill checks, comfort badge fix, apply button fix - Event cards now have pending/resolved two-state flow - GM clicks Resolve Check to auto-roll watch character skill checks - Uses actor.rollSkill() with actual modifiers, posts to Foundry chat - Auto-determines pass/fail from best watcher roll vs DC - Force Pass/Fail override links for edge cases - Narration advisory prompts GM to describe events - Comfort badge now shows Comfort: level with bed icon - Apply button changed to Apply Rest with nowrap - 120 lines CSS for interactive check elements
+04346f2 feat(events): terrain event content, Nat 1/20 injection, event card UI - Add 5 terrain event files: desert, mountain, urban, ruins, dungeon - Add encounter events to coast, swamp, underdark with encounterHints - Nat 1 scouting injects guaranteed complication, Nat 20 guaranteed discovery - Fix GM encounter DC adjustment flowing to actual event roll - Event card UI with skill check prompts, outcomes, encounter hints panel - Register eq and join Handlebars helpers - 160 lines CSS for event card expanded details - Register new terrains in TERRAIN_EVENT_FILES loader
+cc031c5 feat: phase-aware terrain banners (pre-cropped strips)
+fc4819f feat: actual target DC + mechanical tooltips everywhere
+33e46ca ui: label gear bonuses specifically (mess kit/bedroll)
+73e96b6 fix: Copy Spell requires spellbook (Wizard/Tome Warlock only)
+6c490ec fix: attune/copy spell sort last in Personal section
+3a0518f fix: setup weather/comfort/scouting not reaching engine
+fc373da feat: encounter bar full breakdown + GM DC adjustment
+1aab596 feat: informative encounter bar + clearer section labels
+c5c1bc7 ui: empty whittle tray indicator with dashed border + hint
+07dea33 fix: fire level badge syncs with campfire state
+ed3a95e ui: merge emotes into firewood row with separator
+5a6f373 fix: viewport-responsive campfire drawer height
+2ef65bc fix: restore whittling shaving particles + campfire overflow
+70b873e fix: roster strip below banner + campfire overflow containment
+2a6597a feat: persistent roster strip + encounter status bar
+a4c0439 feat: activity detail preview panel + locked state display
+a4732c9 feat: inline crafting drawer + fix firewood detection for GM
+1cbf26a polish: compact detail header, consolidated headings, professions at end
+d9dd9e0 fix: non-owned chips dimmed, party grid removed, professions first
+54507ea fix: roster shows all party members, scroll pins roster at top
+1a08fbb feat: roster strip replaces accordion cards
+a098c33 feat: Create Bonfire cantrip ignites at bonfire heat (70)
+9f51d44 feat: fire cantrips as ignition alternatives
+555e626 fix: notification banner wraps in narrow drawer
+ea2598c tweak: 1/3 ratio - drawer 240px, window 720px
+0471a4c tweak: fire area 220px in drawer for better flame visibility
+b2db8fc feat: restructured campfire drawer UI
+7323825 feat: compact drawer layout + Open Air + scrollable activities
+9871c31 fix: campfire state persists through re-renders and alt-tab
+dcbe384 fix: campfire drawer survives re-render, drop trinkets, tighten layout
+d1a202a fix: widen default window to 680px for campfire drawer
+6e70ac2 fix: open campfire drawer after render, not before
+83932ce feat: campfire slide-out drawer + No Shelter + tent badge
+11d0cd5 fix: mansion hint acknowledges own hearth and kitchen
+0b60530 feat: magical shelters block campfire, cooking, and brewing
+8d9b32a fix(shelter): align encounter mods with RAW spell protection
+eeefbf3 feat(shelter): add RP prompts, inline hints, and effect preview
+54909d6 feat(campfire): align fire modifiers with approved design
+66becb2 fix: re-center window vertically on each render
+21dc37e fix(nat1): rewrite flavor to sound purely positive
+61b6898 fix: auto-height window eliminates dead space on Section 1
+1aa650a fix: rest type hint reflects condition-dependent recovery
+206bb10 polish(section1): add hint text + terrain preview
+621e3aa rebalance: forest -> rough (1 safe / 2 sheltered / 3 rough / 5 hostile)
+093d05e rebalance(comfort): desert + mountain now hostile
+6b7de31 polish(section2): full UI restructure
+7051554 refactor(comfort): '(terrain default)' + justification text
+b4d8262 feat(scouting): tier-mapped thresholds instead of single DC
+d8aaf55 feat(nat1): hidden complication indicator in preview bar
+05645b8 refactor(comfort): inline '(recommended)' in dropdown, remove advisory
+1ce4ed0 fix(layout): move advisory and scouting outside terrain-grid
+ad57425 fix(urban): add druid disadvantage to scouting guidance
+f34b39c fix(arctic): swap cold gear disadv for survival proficiency disadv
+b614922 polish: tighten Section 2 spacing + add class dis/advantage to scouting
+9359174 feat: tavern shelter skip + player 'preparing rest' notification
+55acf38 feat(env): alphabetized, last-used persistence, comfort advisory
+62a5749 fix(comfort): clarify HD recovery hint text
+af6b419 fix(scouting): advise blind rolls, Nat 1 is GM-only info
+6c365a1 feat(preview): live comfort/encounter preview + scouting guidance
+1af2608 feat(terrain): implied comfort, scouting visibility, and flavor text
+4fea925 fix(wizard): rename section 1, remove Use Defaults button
+89092b8 feat(wizard): restructure setup into 3-section wizard flow
+f34a6ba fix(weather): initialize terrain filter default to jungle
+0c8bd69 feat(tavern): atmospheric weather and lodging grades (flavor only)
+fc3a268 feat(scouting): add scouting result dropdown to setup
+722a721 refactor(weather): terrain-filtered dropdown, partial tent mitigation, new biome types
+f22ffa0 feat(weather): add weather dropdown to setup with comfort penalties
+902b754 refactor(recovery): flat HD penalties replace multipliers (RAW-aligned)
+c3dd8b1 refactor(shelter): radio-style selection with effect summary
+9621323 feat(ui): gear bonus annotations on resolution recovery chips
+806b761 feat(ui): per-character gear badges on activity cards
+da2fa8d feat(ui): persistent camp status bar with comfort/shelter/fire chips
+e34f3fb fix(comfort): hint text updates reactively on dropdown change
+7165c62 fix(shelter): polish button layout, rest-type filtering, comfort guidance
+c08eb27 feat(shelter): GM shelter config panel in rest setup
+24723c8 fix(campfire): use character names in strike/ignite banners
+e47317f feat(comfort): gear detection for bedroll (+1 HD), mess kit (+1 HP), tent (-2 encounter)
+e56610a feat(activities): audit pass - balance, categories, skill assignments, tooltips
+488e113 feat(activities): gate Cook/Brew behind lit fire, faded profession tiles
+061bd63 feat(campfire): firewood drag-drop, kindling requirement, fire advisory, decay tuning
+11c7611 feat(campfire): interactive campfire side panel with fidget mechanics
+62ff69e fix: rename Scribe Scroll to Copy Spell (PHB spellbook transcription, not scroll creation)
+95eb6f7 feat: spell-aware activities, category organization, and resolution polish

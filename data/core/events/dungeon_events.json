@@ -1,0 +1,206 @@
+{
+    "tables": [
+        {
+            "id": "table_dungeon_default",
+            "name": "Dungeon Rest Events",
+            "terrainTag": "dungeon",
+            "rollFormula": "1d20",
+            "noEventThreshold": 9,
+            "entries": [
+                {
+                    "range": [
+                        1,
+                        2
+                    ],
+                    "eventId": "evt_dungeon_wandering_monster"
+                },
+                {
+                    "range": [
+                        3,
+                        4
+                    ],
+                    "eventId": "evt_dungeon_door_breach"
+                },
+                {
+                    "range": [
+                        5,
+                        6
+                    ],
+                    "eventId": "evt_dungeon_bad_air"
+                },
+                {
+                    "range": [
+                        7,
+                        8
+                    ],
+                    "eventId": "evt_dungeon_salvage"
+                }
+            ]
+        }
+    ],
+    "events": [
+        {
+            "id": "evt_dungeon_wandering_monster",
+            "name": "Wandering Patrol",
+            "category": "encounter",
+            "terrainTags": [
+                "dungeon"
+            ],
+            "weight": 2,
+            "watchTarget": "watch",
+            "description": "Torchlight flickers in the corridor. Footsteps and low voices, getting closer.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "ste",
+                "dc": 14,
+                "targets": "watch",
+                "bestOfN": true,
+                "onSuccess": {
+                    "narrative": "Lights doused, mouths shut. They pass without noticing the barricaded door.",
+                    "effects": []
+                },
+                "onFailure": {
+                    "narrative": "They heard something. The door rattles. Combat is inevitable.",
+                    "effects": [
+                        {
+                            "type": "encounter",
+                            "description": "GM resolves a wandering monster encounter (CR appropriate to dungeon level)."
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_dungeon_door_breach",
+            "name": "Compromised Position",
+            "category": "complication",
+            "terrainTags": [
+                "dungeon"
+            ],
+            "weight": 2,
+            "watchTarget": "watch",
+            "description": "The door you barricaded is not holding. Hinges are rusted and the frame is rotten.",
+            "dutyRelevance": {
+                "defenses": {
+                    "effect": "cancel",
+                    "narrative": "The pitons and rope you hammered in hold the door. It creaks but does not give."
+                }
+            },
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "sur",
+                "dc": 13,
+                "targets": "watch",
+                "bestOfN": true,
+                "onSuccess": {
+                    "narrative": "You brace the door with a shield and stack debris behind it. It holds through the night.",
+                    "effects": []
+                },
+                "onFailure": {
+                    "narrative": "The door gives way in the small hours. Cold air and the dungeon's noises flood the room. Sleep is fitful after that.",
+                    "effects": [
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.5,
+                            "description": "Exposed position, poor rest quality."
+                        },
+                        {
+                            "type": "condition",
+                            "condition": "exhaustion",
+                            "level": 1,
+                            "scope": "all"
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_dungeon_bad_air",
+            "name": "Stale Air",
+            "category": "complication",
+            "terrainTags": [
+                "dungeon"
+            ],
+            "weight": 2,
+            "watchTarget": "all",
+            "description": "The air is thick and still. The fire gutters. Something is wrong with the ventilation.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "sur",
+                "dc": 12,
+                "targets": "watch",
+                "bestOfN": true,
+                "onSuccess": {
+                    "narrative": "You crack a vent and keep the fire low. Breathable, barely.",
+                    "effects": []
+                },
+                "onFailure": {
+                    "narrative": "Headaches and dizziness. The fire dies. A grim night in the dark.",
+                    "effects": [
+                        {
+                            "type": "condition",
+                            "condition": "exhaustion",
+                            "level": 1,
+                            "scope": "all"
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_dungeon_salvage",
+            "name": "Previous Expedition",
+            "category": "discovery",
+            "terrainTags": [
+                "dungeon"
+            ],
+            "weight": 2,
+            "watchTarget": "watch",
+            "description": "Behind a collapsed shelf, a pack. Not old. Someone else camped here, and did not leave by choice.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "inv",
+                "dc": 11,
+                "targets": "watch",
+                "bestOfN": true,
+                "onSuccess": {
+                    "narrative": "Chalk, iron spikes, and a torn but readable map fragment. Useful.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "dungeon_salvage",
+                            "quantity": "1",
+                            "itemData": {
+                                "name": "Dungeoneering Supplies",
+                                "type": "loot",
+                                "img": "icons/tools/hand/pickaxe-steel-grey.webp",
+                                "system": {
+                                    "description": {
+                                        "value": "<p>Salvaged dungeoneering supplies: chalk, iron spikes, and a torn map. Recovered from a previous expedition.</p>"
+                                    },
+                                    "rarity": "common"
+                                }
+                            }
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "The pack is trapped. A small glass vial shatters. Alchemist's fire, thankfully spent.",
+                    "effects": []
+                }
+            },
+            "tier": "normal",
+            "sentiment": "positive",
+            "pack": "base"
+        }
+    ]
+}

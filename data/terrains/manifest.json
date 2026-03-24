@@ -1,0 +1,11 @@
+{
+    "released": [
+        "forest",
+        "swamp",
+        "desert",
+        "urban",
+        "dungeon",
+        "tavern"
+    ],
+    "_comment": "Only released terrains are loaded in production. Add terrain names here to release them."
+}

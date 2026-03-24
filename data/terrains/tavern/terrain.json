@@ -1,0 +1,11 @@
+{
+    "id": "tavern",
+    "label": "Tavern / Safe Haven",
+    "icon": "fas fa-beer",
+    "comfort": "safe",
+    "comfortReason": "Walls, a roof, and a door. The standard for a comfortable rest.",
+    "scoutingAvailable": false,
+    "mealRules": { "waterPerDay": 0, "foodPerDay": 0, "note": "Food and water are provided by the establishment." },
+    "weather": ["clear", "tavern_rain", "tavern_storm", "tavern_flophouse", "tavern_modest", "tavern_fine", "tavern_luxury"],
+    "eventsFile": "core/events/tavern_events.json"
+}

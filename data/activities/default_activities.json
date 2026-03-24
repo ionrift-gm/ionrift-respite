@@ -1,0 +1,852 @@
+[
+    {
+        "id": "act_keep_watch",
+        "name": "Keep Watch",
+        "professions": [],
+        "description": "Stand guard over the camp. Stay awake and alert so the party is not caught off guard. A safe, reliable choice.",
+        "restTypes": [
+            "long",
+            "short"
+        ],
+        "prerequisites": {},
+        "check": null,
+        "outcomes": {
+            "success": {
+                "narrative": "You keep a vigilant watch. The camp is protected.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "initiative_bonus",
+                        "value": 3,
+                        "description": "Awake, alert, and ready to act."
+                    }
+                ]
+            }
+        },
+        "combatModifiers": {
+            "initiative": 3,
+            "surpriseImmune": true,
+            "partyInitiative": 1,
+            "description": "+3 initiative, cannot be surprised. Party gains +1 initiative (alarm)."
+        },
+        "armorSleepWaiver": true,
+        "category": "camp"
+    },
+    {
+        "id": "act_rest_fully",
+        "name": "Rest Fully",
+        "professions": [],
+        "description": "Focus entirely on recovery. Sleep deeply and let your body heal.",
+        "restTypes": [
+            "long",
+            "short"
+        ],
+        "prerequisites": {},
+        "check": null,
+        "outcomes": {
+            "success": {
+                "narrative": "A deep, uninterrupted rest. You feel restored.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "comfort_boost",
+                        "description": "Effective comfort level increased by one tier for personal recovery."
+                    }
+                ]
+            }
+        },
+        "combatModifiers": {
+            "initiativeDisadvantage": true,
+            "surpriseDisadvantage": true,
+            "description": "Disadvantage on initiative and surprise saves. Deep sleep."
+        },
+        "category": "active"
+    },
+    {
+        "id": "act_forage",
+        "name": "Forage",
+        "professions": [
+            "leatherworker",
+            "cobbler"
+        ],
+        "description": "Search the surrounding area for useful materials.",
+        "restTypes": [
+            "long"
+        ],
+        "prerequisites": {
+            "proficiencies": [
+                "sur"
+            ],
+            "tools": [],
+            "minimumLevel": 1
+        },
+        "check": {
+            "skill": "sur",
+            "dc": 12,
+            "advantageIf": [
+                "profession_match",
+                "terrain_familiar"
+            ]
+        },
+        "outcomes": {
+            "success": {
+                "narrative": "You return with a bundle of useful materials.",
+                "items": [
+                    {
+                        "pool": "resource_pool_${terrain}",
+                        "rolls": 2
+                    }
+                ]
+            },
+            "exceptional": {
+                "threshold": 20,
+                "narrative": "You find something remarkable among the undergrowth.",
+                "items": [
+                    {
+                        "pool": "resource_pool_${terrain}",
+                        "rolls": 2
+                    },
+                    {
+                        "pool": "resource_pool_${terrain}_rare",
+                        "rolls": 1
+                    }
+                ]
+            },
+            "failure": {
+                "narrative": "The area yields nothing useful.",
+                "items": [],
+                "effects": []
+            }
+        },
+        "combatModifiers": {
+            "initiative": -5,
+            "description": "-5 initiative. Away from camp, scrambling back."
+        },
+        "category": "active"
+    },
+    {
+        "id": "act_cook",
+        "name": "Cook",
+        "professions": [
+            "cook"
+        ],
+        "description": "Prepare a meal from available ingredients. View recipes, choose your risk level, and cook.",
+        "restTypes": [
+            "long"
+        ],
+        "prerequisites": {
+            "proficiencies": [],
+            "tools": [
+                "cook"
+            ],
+            "minimumLevel": 1
+        },
+        "crafting": {
+            "enabled": true,
+            "profession": "cooking"
+        },
+        "requiresFire": true,
+        "check": null,
+        "outcomes": {
+            "success": {
+                "narrative": "You prepare a simple meal from your supplies.",
+                "items": [],
+                "effects": []
+            }
+        },
+        "combatModifiers": {
+            "description": "Normal readiness. Near the fire, reasonably alert."
+        },
+        "category": "profession"
+    },
+    {
+        "id": "act_brew",
+        "name": "Brew",
+        "professions": [
+            "alchemist",
+            "poisoner"
+        ],
+        "description": "Use your supplies to brew a draught, salve, or tincture. View recipes, choose your risk level, and brew.",
+        "restTypes": [
+            "long"
+        ],
+        "prerequisites": {
+            "proficiencies": [],
+            "tools": [
+                "alchemist",
+                "brewer",
+                "herbalism"
+            ],
+            "minimumLevel": 1
+        },
+        "crafting": {
+            "enabled": true,
+            "profession": "brewing"
+        },
+        "requiresFire": true,
+        "check": null,
+        "outcomes": {
+            "success": {
+                "narrative": "You mix what you have into something passable.",
+                "items": [],
+                "effects": []
+            }
+        },
+        "combatModifiers": {
+            "description": "Normal readiness. Near the fire, reasonably alert."
+        },
+        "category": "profession"
+    },
+    {
+        "id": "act_craft",
+        "name": "Craft",
+        "professions": [
+            "tinker",
+            "potter",
+            "glassblower",
+            "mason"
+        ],
+        "description": "Work raw materials into something functional.",
+        "restTypes": [
+            "long"
+        ],
+        "prerequisites": {
+            "proficiencies": [],
+            "tools": [
+                "tinker",
+                "potter",
+                "glassblower",
+                "mason",
+                "smith"
+            ],
+            "minimumLevel": 1
+        },
+        "check": {
+            "skill": "sle",
+            "dc": 13,
+            "advantageIf": [
+                "profession_match"
+            ]
+        },
+        "outcomes": {
+            "success": {
+                "narrative": "Your hands know the work. A serviceable piece takes shape.",
+                "items": [],
+                "effects": []
+            },
+            "exceptional": {
+                "threshold": 20,
+                "narrative": "Inspired work. This piece has real quality.",
+                "items": [],
+                "effects": []
+            },
+            "failure": {
+                "narrative": "The material resists. Nothing usable comes from the effort.",
+                "items": [],
+                "effects": []
+            }
+        },
+        "category": "profession"
+    },
+    {
+        "id": "act_tailor",
+        "name": "Tailor",
+        "professions": [
+            "weaver",
+            "leatherworker"
+        ],
+        "description": "Cut and stitch materials into useful gear. View patterns, choose your risk level, and sew.",
+        "restTypes": [
+            "long"
+        ],
+        "prerequisites": {
+            "proficiencies": [],
+            "tools": [
+                "weaver",
+                "cobbler",
+                "leatherworker"
+            ],
+            "minimumLevel": 1
+        },
+        "crafting": {
+            "enabled": true,
+            "profession": "tailoring"
+        },
+        "check": null,
+        "outcomes": {
+            "success": {
+                "narrative": "You mend and stitch what you can from available materials.",
+                "items": [],
+                "effects": []
+            }
+        },
+        "combatModifiers": {
+            "description": "Normal readiness. Hands busy but aware."
+        },
+        "category": "profession"
+    },
+    {
+        "id": "act_study",
+        "name": "Study",
+        "professions": [
+            "calligrapher",
+            "cartographer"
+        ],
+        "description": "Review your notes, maps, and clues. Ask the GM about something that has been nagging you. A chance to piece together what you know.",
+        "restTypes": [
+            "long"
+        ],
+        "prerequisites": {
+            "minimumLevel": 1
+        },
+        "check": {
+            "skill": "best",
+            "dc": 12,
+            "advantageIf": [
+                "profession_match"
+            ]
+        },
+        "followUp": {
+            "type": "radio",
+            "label": "What are you studying?",
+            "default": "inv",
+            "options": [
+                { "value": "arc", "label": "Arcana" },
+                { "value": "his", "label": "History" },
+                { "value": "inv", "label": "Investigation" },
+                { "value": "nat", "label": "Nature" },
+                { "value": "rel", "label": "Religion" }
+            ]
+        },
+        "outcomes": {
+            "success": {
+                "narrative": "Something clicks. A detail you overlooked, a connection you missed.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "insight",
+                        "description": "On success: the GM may share a clue, clarify a detail, or reveal something about a carried item."
+                    }
+                ]
+            },
+            "exceptional": {
+                "threshold": 18,
+                "narrative": "The pieces fall into place. You see the bigger picture.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "revelation",
+                        "description": "On exceptional: the GM reveals a significant campaign detail, hidden connection, or identifies a magic item."
+                    }
+                ]
+            },
+            "failure": {
+                "narrative": "The text blurs. Nothing clicks tonight.",
+                "items": [],
+                "effects": []
+            }
+        },
+        "combatModifiers": {
+            "initiativeDisadvantage": true,
+            "description": "Disadvantage on initiative. Absorbed in notes."
+        },
+        "category": "active"
+    },
+    {
+        "id": "act_tend_wounds",
+        "name": "Tend Wounds",
+        "professions": [],
+        "description": "Care for an injured companion. Clean wounds, set bones, change dressings.",
+        "restTypes": [
+            "long",
+            "short"
+        ],
+        "prerequisites": {
+            "proficiencies": [],
+            "tools": [],
+            "minimumLevel": 1
+        },
+        "check": {
+            "skill": "med",
+            "dc": 12,
+            "advantageIf": [
+                "healer_kit"
+            ]
+        },
+        "outcomes": {
+            "success": {
+                "narrative": "Your steady hands ease the pain. Your companion rests easier.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "heal_bonus",
+                        "description": "Target character recovers an additional hit die worth of HP."
+                    }
+                ]
+            },
+            "failure": {
+                "narrative": "You do your best, but the wounds are stubborn.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "heal_partial",
+                        "description": "Target recovers a small amount of HP. Not a wasted effort."
+                    }
+                ]
+            }
+        },
+        "followUp": {
+            "type": "partyMember",
+            "label": "Who are you tending?",
+            "filter": "injured"
+        },
+        "combatModifiers": {
+            "description": "Normal readiness. Awake and attentive."
+        },
+        "category": "recovery"
+    },
+    {
+        "id": "act_scout",
+        "name": "Scout Perimeter",
+        "professions": [],
+        "description": "Move through the surrounding area. Map escape routes, identify approaches, spot threats before they arrive.",
+        "restTypes": [
+            "long"
+        ],
+        "prerequisites": {
+            "proficiencies": [],
+            "tools": [],
+            "minimumLevel": 1
+        },
+        "check": {
+            "skill": "ste",
+            "altSkill": "prc",
+            "dc": 14,
+            "advantageIf": [
+                "terrain_familiar"
+            ]
+        },
+        "outcomes": {
+            "success": {
+                "narrative": "You mapped the exits and checked the blind spots. If trouble comes, you will see it first.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "early_warning",
+                        "description": "Escape routes mapped, blind spots covered."
+                    }
+                ]
+            },
+            "exceptional": {
+                "threshold": 18,
+                "narrative": "You found a secondary escape route and identified natural chokepoints.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "tactical_advantage",
+                        "description": "Party may choose starting positions if an encounter triggers."
+                    }
+                ]
+            },
+            "failure": {
+                "narrative": "A twig snaps underfoot. Nothing useful learned.",
+                "items": [],
+                "effects": []
+            }
+        },
+        "combatModifiers": {
+            "initiativeAdvantage": true,
+            "surpriseAdvantage": true,
+            "description": "Advantage on initiative and surprise saves. Outside camp, aware of approaches."
+        },
+        "armorSleepWaiver": true,
+        "category": "camp"
+    },
+    {
+        "id": "act_tell_tales",
+        "name": "Tell Tales",
+        "professions": [],
+        "description": "Share stories around the fire. Keep spirits up. Remind the party why they are here.",
+        "restTypes": [
+            "long"
+        ],
+        "prerequisites": {
+            "proficiencies": [
+                "prf"
+            ],
+            "tools": [],
+            "minimumLevel": 1
+        },
+        "check": {
+            "skill": "prf",
+            "dc": 10,
+            "advantageIf": []
+        },
+        "outcomes": {
+            "success": {
+                "narrative": "The stories land. Laughter and warmth fill the camp.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "inspiration",
+                        "description": "One party member gains Inspiration."
+                    }
+                ]
+            },
+            "exceptional": {
+                "threshold": 18,
+                "narrative": "A tale for the ages. The party hangs on every word.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "inspiration_all",
+                        "description": "All party members gain Inspiration."
+                    }
+                ]
+            },
+            "failure": {
+                "narrative": "Tough crowd tonight.",
+                "items": [],
+                "effects": []
+            }
+        },
+        "combatModifiers": {
+            "description": "Normal readiness. Around the fire, socially alert."
+        },
+        "category": "active"
+    },
+    {
+        "id": "act_pray",
+        "name": "Pray / Meditate",
+        "professions": [],
+        "description": "Commune with your faith or centre your focus. Find clarity in silence.",
+        "restTypes": [
+            "long",
+            "short"
+        ],
+        "prerequisites": {
+            "proficiencies": [
+                "rel",
+                "ins"
+            ],
+            "tools": [],
+            "minimumLevel": 1
+        },
+        "check": {
+            "skill": "rel",
+            "altSkill": "ins",
+            "dc": 10,
+            "advantageIf": []
+        },
+        "outcomes": {
+            "success": {
+                "narrative": "Peace settles over you. Your resolve hardens.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "temp_hp",
+                        "value": 3,
+                        "description": "Gain temporary hit points equal to your proficiency bonus."
+                    }
+                ]
+            },
+            "failure": {
+                "narrative": "The silence is just silence tonight.",
+                "items": [],
+                "effects": []
+            }
+        },
+        "combatModifiers": {
+            "initiativeDisadvantage": true,
+            "description": "Disadvantage on initiative. Deep focus, slow to break."
+        },
+        "category": "active"
+    },
+    {
+        "id": "act_fletch",
+        "name": "Fletch Arrows",
+        "professions": [],
+        "description": "Whittle sticks and bind feathers to replenish your ammunition supply.",
+        "restTypes": [
+            "long"
+        ],
+        "prerequisites": {
+            "proficiencies": [],
+            "tools": [],
+            "minimumLevel": 1
+        },
+        "check": {
+            "skill": "sle",
+            "altSkill": "nat",
+            "dc": 12,
+            "advantageIf": []
+        },
+        "outcomes": {
+            "success": {
+                "narrative": "Steady hands and sharp edges. You add to the quiver.",
+                "items": [
+                    {
+                        "itemRef": "followUp",
+                        "itemMap": {
+                            "arrows": "Arrow",
+                            "bolts": "Crossbow Bolt"
+                        },
+                        "itemDataMap": {
+                            "arrows": { "name": "Arrow", "type": "consumable", "img": "icons/weapons/ammunition/arrow-head-war-flight.webp", "system": { "quantity": 1 } },
+                            "bolts": { "name": "Crossbow Bolt", "type": "consumable", "img": "icons/weapons/ammunition/bolt-tip-engraved.webp", "system": { "quantity": 1 } }
+                        },
+                        "quantity": "1d4+prof"
+                    }
+                ],
+                "effects": []
+            },
+            "failure": {
+                "narrative": "The shafts split. Nothing usable tonight.",
+                "items": [],
+                "effects": []
+            }
+        },
+        "followUp": {
+            "type": "radio",
+            "label": "What are you making?",
+            "options": [
+                { "value": "arrows", "label": "Arrows" },
+                { "value": "bolts", "label": "Crossbow Bolts" }
+            ],
+            "default": "arrows"
+        },
+        "combatModifiers": {
+            "description": "Normal readiness. Hands busy but aware."
+        },
+        "category": "active"
+    },
+    {
+        "id": "act_defenses",
+        "name": "Set Up Defenses",
+        "professions": [],
+        "description": "Secure the camp. Set tripwires, cover tracks, mask signs of the fire, and use the terrain to your advantage. Less likely to draw attention.",
+        "restTypes": [
+            "long"
+        ],
+        "prerequisites": {
+            "proficiencies": [],
+            "tools": [],
+            "minimumLevel": 1
+        },
+        "check": {
+            "skill": "ste",
+            "altSkill": "sur",
+            "dc": 12,
+            "advantageIf": [
+                "terrain_familiar"
+            ]
+        },
+        "group": true,
+        "outcomes": {
+            "success": {
+                "narrative": "Tripwires set, sight lines cleared. The camp is harder to approach unnoticed.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "encounter_reduction",
+                        "value": 2,
+                        "description": "Encounter threshold reduced by 2. Enemies are less likely to approach."
+                    }
+                ]
+            },
+            "failure": {
+                "narrative": "The terrain works against you. Your preparations feel inadequate.",
+                "items": [],
+                "effects": []
+            }
+        },
+        "combatModifiers": {
+            "partyInitiativeOnSuccess": 1,
+            "description": "On success: party gains +1 initiative (tripwire warning)."
+        },
+        "armorSleepWaiver": true,
+        "category": "camp"
+    },
+    {
+        "id": "act_identify",
+        "name": "Identify Items",
+        "professions": [],
+        "minor": true,
+        "description": "Cast Identify as a ritual (1 minute) to reveal magical item properties. Does not consume your rest activity.",
+        "restTypes": [
+            "long",
+            "short"
+        ],
+        "prerequisites": {
+            "spells": [
+                "Identify",
+                "Detect Magic"
+            ]
+        },
+        "check": null,
+        "outcomes": {
+            "success": {
+                "narrative": "You trace arcane sigils over each item, and their secrets reveal themselves.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "identify_items",
+                        "description": "Ritual casting reveals the properties of magical items."
+                    }
+                ]
+            }
+        },
+        "combatModifiers": null,
+        "category": "minor"
+    },
+    {
+        "id": "act_attune",
+        "name": "Attune Item",
+        "professions": [],
+        "description": "Focus on a magical item to form a bond with it. Requires concentration during a rest period.",
+        "restTypes": [
+            "long",
+            "short"
+        ],
+        "prerequisites": {
+            "_requiresAttuneableItems": true
+        },
+        "check": null,
+        "followUp": {
+            "type": "actorItem",
+            "label": "Which item are you attuning?",
+            "filter": "attuneable"
+        },
+        "outcomes": {
+            "success": {
+                "narrative": "You meditate on the item, feeling its resonance align with yours. Attunement complete.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "attune_item",
+                        "description": "Attune to a magical item during the rest."
+                    }
+                ]
+            }
+        },
+        "combatModifiers": {
+            "initiativeDisadvantage": true,
+            "description": "Disadvantage on initiative. Meditation focus."
+        },
+        "category": "arcane"
+    },
+    {
+        "id": "act_scribe",
+        "name": "Copy Spell",
+        "professions": [],
+        "description": "Transcribe a spell from a scroll or borrowed spellbook into your own. Costs 50gp per spell level in fine inks. If copying from a scroll, the scroll is consumed regardless of success.",
+        "restTypes": [
+            "long"
+        ],
+        "prerequisites": {
+            "requiresSpellbook": true
+        },
+        "check": {
+            "skill": "arc",
+            "dynamicDc": "copySpell",
+            "advantageIf": [
+                "profession_match"
+            ]
+        },
+        "followUp": {
+            "type": "select",
+            "label": "Spell level being copied",
+            "default": "1",
+            "options": [
+                { "value": "1", "label": "Level 1 — 50gp, DC 11" },
+                { "value": "2", "label": "Level 2 — 100gp, DC 12" },
+                { "value": "3", "label": "Level 3 — 150gp, DC 13" },
+                { "value": "4", "label": "Level 4 — 200gp, DC 14" },
+                { "value": "5", "label": "Level 5 — 250gp, DC 15" },
+                { "value": "6", "label": "Level 6 — 300gp, DC 16" },
+                { "value": "7", "label": "Level 7 — 350gp, DC 17" },
+                { "value": "8", "label": "Level 8 — 400gp, DC 18" },
+                { "value": "9", "label": "Level 9 — 450gp, DC 19" }
+            ]
+        },
+        "outcomes": {
+            "success": {
+                "narrative": "You study the unfamiliar notation, deciphering its meaning. The spell takes shape in your book, written in your own hand.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "copy_spell",
+                        "description": "A spell is transcribed into your spellbook. GM: charge 50gp per spell level and remove the source scroll if applicable."
+                    }
+                ]
+            },
+            "failure": {
+                "narrative": "The notation resists your understanding. The inks and materials are consumed, but the spell eludes you. If copying from a scroll, the scroll is destroyed.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "copy_spell_failed",
+                        "description": "The attempt fails. Materials are spent. GM: charge 50gp per spell level regardless."
+                    }
+                ]
+            }
+        },
+        "combatModifiers": {
+            "initiativeDisadvantage": true,
+            "surpriseDisadvantage": true,
+            "description": "Disadvantage on initiative and surprise saves. Deep arcane concentration."
+        },
+        "category": "arcane"
+    },
+    {
+        "id": "act_train",
+        "name": "Training",
+        "professions": [],
+        "category": "active",
+        "description": "Drill, study, or practice during a rest. Make an ability check (using your highest score) against DC 15. Consecutive rests training yield diminishing returns. Ineffective beyond level 5.",
+        "restTypes": [
+            "long"
+        ],
+        "prerequisites": {
+            "maximumLevel": 5
+        },
+        "check": {
+            "ability": "best",
+            "dc": 15,
+            "advantageIf": []
+        },
+        "outcomes": {
+            "success": {
+                "narrative": "Sweat drips as you run through form after form. Your body remembers what your mind forgets.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "training_xp",
+                        "value": 45,
+                        "description": "Gain 45 XP. Reduced by 5 XP for each consecutive rest spent training. Resets when you choose a different activity."
+                    }
+                ]
+            },
+            "failure": {
+                "narrative": "You push through the motions but can't find the edge. Still, the effort counts for something.",
+                "items": [],
+                "effects": [
+                    {
+                        "type": "training_xp",
+                        "value": 15,
+                        "description": "Gain 15 XP. Partial gains despite falling short."
+                    }
+                ]
+            }
+        },
+        "combatModifiers": {
+            "initiative": 2,
+            "description": "+2 initiative. Already warmed up and physically active."
+        },
+        "diminishingReturns": {
+            "perConsecutiveRest": -5,
+            "actorFlag": "trainingStreak",
+            "resetsOnDifferentActivity": true
+        }
+    }
+]

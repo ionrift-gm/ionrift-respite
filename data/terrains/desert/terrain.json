@@ -1,0 +1,19 @@
+{
+    "id": "desert",
+    "label": "Desert",
+    "icon": "fas fa-sun",
+    "comfort": "hostile",
+    "comfortReason": "Extreme heat, zero shade, no water. Survival without shelter is a gamble.",
+    "scoutingAvailable": true,
+    "scoutGuidance": "Survival check. Poor: 2-11 | Average: 12-16 | Good: 17+. Ranger has advantage. No nature proficiency has disadvantage.",
+    "scoutFlavor": {
+        "nat1":    ["A sheltered dune with good shade from a rock face.", "Rock overhang with shade. Looks like a solid spot.", "A small oasis with clear water and palm cover."],
+        "poor":    ["Open sand. No shade, no cover.", "A shallow depression. Better than nothing.", "Rocky ground. Hard, hot, exposed."],
+        "average": ["A rock formation provides shade.", "A dried riverbed with steep banks.", "Wind-carved alcove in a cliff face."],
+        "good":    ["A deep canyon slot, hidden from the wind.", "An abandoned waystation, walls still standing.", "A cave mouth facing away from the wind."],
+        "nat20":   ["A hidden spring in a sheltered grotto.", "An intact underground cistern, cool and defensible.", "A palm grove oasis, surrounded by natural barriers."]
+    },
+    "mealRules": { "waterPerDay": 2, "foodPerDay": 1, "dehydrationDC": 15, "note": "Arid heat causes rapid dehydration. Double water requirement." },
+    "weather": ["clear", "overcast", "extreme_heat", "sandstorm"],
+    "eventsFile": "core/events/desert_events.json"
+}

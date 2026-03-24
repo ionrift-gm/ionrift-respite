@@ -1,0 +1,280 @@
+{
+    "tables": [
+        {
+            "id": "table_swamp_default",
+            "name": "Swamp Rest Events",
+            "terrainTag": "swamp",
+            "rollFormula": "1d20",
+            "noEventThreshold": 12,
+            "entries": [
+                {
+                    "range": [
+                        1,
+                        2
+                    ],
+                    "eventId": "evt_swamp_leeches"
+                },
+                {
+                    "range": [
+                        3,
+                        4
+                    ],
+                    "eventId": "evt_swamp_stalkers"
+                },
+                {
+                    "range": [
+                        5,
+                        6
+                    ],
+                    "eventId": "evt_swamp_miasma"
+                },
+                {
+                    "range": [
+                        7,
+                        8
+                    ],
+                    "eventId": "evt_swamp_bog_rot"
+                },
+                {
+                    "range": [
+                        9,
+                        10
+                    ],
+                    "eventId": "evt_swamp_will_o_wisp"
+                },
+                {
+                    "range": [
+                        11,
+                        11
+                    ],
+                    "eventId": "evt_swamp_peat_find"
+                }
+            ]
+        }
+    ],
+    "events": [
+        {
+            "id": "evt_swamp_stalkers",
+            "name": "Swamp Stalkers",
+            "category": "encounter",
+            "terrainTags": [
+                "swamp"
+            ],
+            "weight": 2,
+            "watchTarget": "watch",
+            "description": "Ripples in still water. Something is approaching camp from the marshes. It moves without sound.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "prc",
+                "dc": 14,
+                "targets": "watch",
+                "bestOfN": true,
+                "onSuccess": {
+                    "narrative": "You caught the movement in time. Weapons drawn and fire stoked, the creatures slip back into the dark water.",
+                    "effects": []
+                },
+                "onFailure": {
+                    "narrative": "They rise from the water at the camp's edge. Mud-covered and silent until now.",
+                    "effects": [
+                        {
+                            "type": "encounter",
+                            "description": "Swamp ambush on the camp.",
+                            "encounterHints": {
+                                "creatureSuggestions": [
+                                    "lizardfolk",
+                                    "bullywugs",
+                                    "grung",
+                                    "shambling mound"
+                                ],
+                                "crRange": {
+                                    "min": "party_level - 1",
+                                    "max": "party_level + 1"
+                                },
+                                "groupSize": "3-5",
+                                "environment": "knee-deep water, mud, reeds, low visibility, night",
+                                "awareness": "surprised if watch failed, otherwise standard initiative",
+                                "tactics": "Territorial defense. Drag targets into water. Retreat to deep marsh if losing.",
+                                "loot": "Trophies, salvaged weapons, or a map scratched on hide showing dry paths through the swamp."
+                            }
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_swamp_leeches",
+            "name": "Leech Infestation",
+            "category": "complication",
+            "terrainTags": [
+                "swamp"
+            ],
+            "weight": 2,
+            "watchTarget": "all",
+            "description": "The damp ground is alive with leeches. They find every gap in clothing and armour during the night.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "med",
+                "dc": 12,
+                "targets": "all",
+                "onSuccess": {
+                    "narrative": "Salt from the rations and careful inspection. All leeches removed before they cause real harm.",
+                    "effects": []
+                },
+                "onFailure": {
+                    "narrative": "Blood loss and irritation. Everyone wakes lightheaded and covered in welts.",
+                    "effects": [
+                        {
+                            "type": "damage",
+                            "formula": "1d4",
+                            "damageType": "necrotic",
+                            "scope": "all",
+                            "description": "Blood loss from leech bites."
+                        },
+                        {
+                            "type": "condition",
+                            "condition": "disadvantage",
+                            "checks": [
+                                "con"
+                            ],
+                            "duration": "next_rest",
+                            "description": "Weakened from blood loss."
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_swamp_miasma",
+            "name": "Foul Miasma",
+            "category": "complication",
+            "terrainTags": [
+                "swamp"
+            ],
+            "weight": 2,
+            "watchTarget": "all",
+            "description": "A putrid fog rolls in from deeper in the swamp. The stench is overwhelming, thick enough to taste.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "sur",
+                "dc": 13,
+                "targets": "all",
+                "onSuccess": {
+                    "narrative": "Wet cloth over the mouth and nose. Unpleasant but manageable.",
+                    "effects": []
+                },
+                "onFailure": {
+                    "narrative": "The miasma seeps into everything. Nausea grips the camp.",
+                    "effects": [
+                        {
+                            "type": "condition",
+                            "condition": "poisoned",
+                            "duration": "4_hours",
+                            "description": "Nausea from swamp miasma."
+                        },
+                        {
+                            "type": "condition",
+                            "condition": "disadvantage",
+                            "checks": [
+                                "prc"
+                            ],
+                            "duration": "next_rest",
+                            "description": "Senses dulled by the stench."
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_swamp_bog_rot",
+            "name": "Bog Rot",
+            "category": "complication",
+            "terrainTags": [
+                "swamp"
+            ],
+            "weight": 2,
+            "watchTarget": "any",
+            "description": "The moisture seeps into wounds and scratches. Infections bloom overnight.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "med",
+                "dc": 13,
+                "targets": "all",
+                "onSuccess": {
+                    "narrative": "Wounds cleaned and dressed before infection sets in.",
+                    "effects": []
+                },
+                "onFailure": {
+                    "narrative": "Infected wounds fester. Recovery will be slower.",
+                    "effects": [
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.5,
+                            "description": "Infected wounds reduce healing."
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_swamp_will_o_wisp",
+            "name": "Dancing Lights",
+            "category": "ambient",
+            "terrainTags": [
+                "swamp"
+            ],
+            "weight": 3,
+            "watchTarget": "none",
+            "description": "Pale lights drift between the twisted trees, hovering just above the water's surface. They pulse gently, beckoning. Nobody follows them. That is the wise choice.",
+            "mechanical": null,
+            "tier": "normal",
+            "sentiment": "neutral",
+            "pack": "base"
+        },
+        {
+            "id": "evt_swamp_peat_find",
+            "name": "Peat Bed Discovery",
+            "category": "discovery",
+            "terrainTags": [
+                "swamp"
+            ],
+            "weight": 2,
+            "watchTarget": "watch",
+            "description": "A patch of dry peat near camp. It burns slow and hot, perfect for drying gear and warming the camp.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "sur",
+                "dc": 10,
+                "targets": "watch",
+                "onSuccess": {
+                    "narrative": "A peat fire burns through the night. Everything dries out. Camp morale improves.",
+                    "effects": [
+                        {
+                            "type": "recovery_bonus",
+                            "hpMultiplier": 1.25,
+                            "description": "Warm, dry conditions improve rest quality."
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "The peat is too waterlogged to burn properly. Still, the effort was worthwhile.",
+                    "effects": []
+                }
+            },
+            "tier": "normal",
+            "sentiment": "positive",
+            "pack": "base"
+        }
+    ]
+}
