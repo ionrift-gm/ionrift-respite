@@ -153,7 +153,7 @@ export class ActivityResolver {
                 const ownerIds = game.users.filter(u => actor.testUserPermission(u, "OWNER")).map(u => u.id);
                 await roll.toMessage({
                     speaker: ChatMessage.getSpeaker({ actor }),
-                    flavor: `<strong>${activity.name}</strong> (${rollLabel}) — DC ${adjustedDc}<br><em style="color:#e88;">Failed.</em> ${activity.outcomes.failure?.narrative ?? "The attempt fails."}`,
+                    flavor: `<strong>${activity.name}</strong> (${rollLabel}) - DC ${adjustedDc}<br><em style="color:#e88;">Failed.</em> ${activity.outcomes.failure?.narrative ?? "The attempt fails."}`,
                     whisper: ownerIds
                 });
 
@@ -179,7 +179,7 @@ export class ActivityResolver {
         const ownerIds = game.users.filter(u => actor.testUserPermission(u, "OWNER") || u.isGM).map(u => u.id);
         await roll.toMessage({
             speaker: ChatMessage.getSpeaker({ actor }),
-            flavor: `<strong>${activity.name}</strong> (${rollLabel}) — DC ${adjustedDc}<br><em style="color:${tierColor};">${tierLabel}.</em> ${outcome.narrative ?? ""}`,
+            flavor: `<strong>${activity.name}</strong> (${rollLabel}) - DC ${adjustedDc}<br><em style="color:${tierColor};">${tierLabel}.</em> ${outcome.narrative ?? ""}`,
             whisper: ownerIds
         });
 

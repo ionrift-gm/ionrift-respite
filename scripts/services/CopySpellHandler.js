@@ -174,14 +174,14 @@ export class CopySpellHandler {
         const ownerIds = game.users.filter(u => actor.testUserPermission(u, "OWNER") || u.isGM).map(u => u.id);
         await roll.toMessage({
             speaker: ChatMessage.getSpeaker({ actor }),
-            flavor: `<strong>Copy Spell</strong> (ARC) — DC ${dc}<br><em style="color:${tierColor};">${tierLabel}.</em> ${narrative}<br><span style="font-size:0.75em;color:#888;">(Rolled by GM on behalf of player)</span>`,
+            flavor: `<strong>Copy Spell</strong> (ARC) - DC ${dc}<br><em style="color:${tierColor};">${tierLabel}.</em> ${narrative}<br><span style="font-size:0.75em;color:#888;">(Rolled by GM on behalf of player)</span>`,
             whisper: ownerIds
         });
 
         const receiptHtml = `
             <div style="border: 1px solid rgba(120,180,220,0.3); border-radius: 6px; padding: 0.5rem; background: rgba(30,35,50,0.85);">
                 <div style="font-weight: 600; color: ${tierColor};">
-                    <i class="fas fa-receipt"></i> Spell Transcription Receipt — ${tierLabel}
+                    <i class="fas fa-receipt"></i> Spell Transcription Receipt - ${tierLabel}
                 </div>
                 <div style="font-size: 0.85rem; color: #ccc; margin-top: 0.3rem;">
                     <strong>${actor.name}</strong> spent <strong>${cost}gp</strong> on inks to copy a level ${proposal.spellLevel} spell.<br>
@@ -216,7 +216,7 @@ export class CopySpellHandler {
             cost
         });
 
-        ui.notifications.info(`${actor.name}: Copy Spell — ${tierLabel}. (GM rolled on behalf of player)`);
+        ui.notifications.info(`${actor.name}: Copy Spell - ${tierLabel}. (GM rolled on behalf of player)`);
         gmApp.render();
     }
 
@@ -369,7 +369,7 @@ export class CopySpellHandler {
         const ownerIds = game.users.filter(u => actor.testUserPermission(u, "OWNER") || u.isGM).map(u => u.id);
         await roll.toMessage({
             speaker: ChatMessage.getSpeaker({ actor }),
-            flavor: `<strong>Copy Spell</strong> (ARC) — DC ${dc}<br><em style="color:${tierColor};">${tierLabel}.</em> ${narrative}`,
+            flavor: `<strong>Copy Spell</strong> (ARC) - DC ${dc}<br><em style="color:${tierColor};">${tierLabel}.</em> ${narrative}`,
             whisper: ownerIds
         });
 
@@ -377,7 +377,7 @@ export class CopySpellHandler {
         const receiptHtml = `
             <div style="border: 1px solid rgba(120,180,220,0.3); border-radius: 6px; padding: 0.5rem; background: rgba(30,35,50,0.85);">
                 <div style="font-weight: 600; color: ${tierColor};">
-                    <i class="fas fa-receipt"></i> Spell Transcription Receipt — ${tierLabel}
+                    <i class="fas fa-receipt"></i> Spell Transcription Receipt - ${tierLabel}
                 </div>
                 <div style="font-size: 0.85rem; color: #ccc; margin-top: 0.3rem;">
                     <strong>${actor.name}</strong> spent <strong>${cost}gp</strong> on inks to copy a level ${data.spellLevel} spell.<br>
@@ -440,7 +440,7 @@ export class CopySpellHandler {
             app._gmCopySpellProposal = null;
             const tierLabel = data.success ? "Success" : "Failed";
             const actor = game.actors.get(data.actorId);
-            ui.notifications.info(`${actor?.name ?? "Player"}: Copy Spell — ${tierLabel}. ${data.cost}gp charged.`);
+            ui.notifications.info(`${actor?.name ?? "Player"}: Copy Spell - ${tierLabel}. ${data.cost}gp charged.`);
             app.render();
             app._saveRestState?.();
         } else {

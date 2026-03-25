@@ -101,7 +101,7 @@ export class EventResolver {
         if (rawDie === 1) {
             await roll.toMessage({
                 speaker: { alias: "Night Watch" },
-                flavor: `<strong>Event Roll</strong> (${terrainTag}) DC ${effectiveDC}<br><em style="color:#e74c3c;">Natural 1 — Disaster!</em>`,
+                flavor: `<strong>Event Roll</strong> (${terrainTag}) DC ${effectiveDC}<br><em style="color:#e74c3c;">Natural 1 - Disaster!</em>`,
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
             if (game.modules.get("dice-so-nice")?.active) {

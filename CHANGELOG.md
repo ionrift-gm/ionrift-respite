@@ -7,7 +7,7 @@ Initial public release.
 ### Core
 - Four-phase rest flow: Setup, Activities, Events, Resolution
 - Terrain-driven event system with weighted random selection
-- Camp activity selection (Guard, Scout, Rest, Fortify, Campfire, Training)
+- 12 rest activities across camp, personal, arcane, and recovery categories (Keep Watch, Scout Perimeter, Set Up Defenses, Rest Fully, Study, Tell Tales, Pray/Meditate, Fletch Arrows, Training, Tend Wounds, Attune Item, Copy Spell)
 - Comfort-tier recovery model (Safe, Sheltered, Rough, Hostile)
 - Structured meal phase with multi-day tracking and starvation/dehydration consequences
 - Short rest support with per-die HD rolling

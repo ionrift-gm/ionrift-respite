@@ -122,7 +122,7 @@ export class CraftingEngine {
 
         await roll.toMessage({
             speaker: ChatMessage.getSpeaker({ actor }),
-            flavor: `${recipe.name} (${skill.toUpperCase()}) — DC ${adjustedDc} [${riskTier}]`
+            flavor: `${recipe.name} (${skill.toUpperCase()}) - DC ${adjustedDc} [${riskTier}]`
         });
 
         const success = roll.total >= adjustedDc;

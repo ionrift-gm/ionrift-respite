@@ -136,14 +136,19 @@ Hooks.once("init", async () => {
         },
         /** Debug: get the active RestSetupApp instance. */
         getActiveApp: () => activeRestSetupApp,
-        /** Run regression test suite. GM only. */
+        /** Run regression test suite. GM only. Requires local test files (not shipped). */
         runTests: async () => {
             if (!game.user.isGM) { console.warn(`${MODULE_ID} | Tests are GM-only.`); return; }
-            const { RespiteTestRunner } = await import("./tests/RespiteTestRunner.js");
-            const runner = new RespiteTestRunner();
-            return await runner.runAll();
+            try {
+                const probe = await fetch(`modules/${MODULE_ID}/scripts/tests/RespiteTestRunner.js`, { method: "HEAD" });
+                if (!probe.ok) { console.warn(`${MODULE_ID} | Test suite not found. Tests are dev-only and not included in release builds.`); return; }
+                const { RespiteTestRunner } = await import("./tests/RespiteTestRunner.js");
+                const runner = new RespiteTestRunner();
+                return await runner.runAll();
+            } catch (e) {
+                console.warn(`${MODULE_ID} | Failed to load test suite:`, e.message);
+            }
         },
-
         /** Reload all connected clients, then reload the GM. */
         reloadAll: () => {
             if (!game.user.isGM) return;

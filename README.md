@@ -1,4 +1,6 @@
 # Ionrift Respite
+![Downloads](https://img.shields.io/github/downloads/ionrift-gm/ionrift-respite/total?color=violet&label=Downloads)
+![Version](https://img.shields.io/github/v/release/ionrift-gm/ionrift-respite?color=violet&label=Latest%20Version)
 ![Foundry Version](https://img.shields.io/badge/Foundry-v12-333333?style=flat&logo=foundryvirtualtabletop)
 ![Systems](https://img.shields.io/badge/system-dnd5e-blue)
 

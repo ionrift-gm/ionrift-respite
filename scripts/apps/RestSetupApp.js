@@ -12,44 +12,14 @@ import { CopySpellHandler } from "../services/CopySpellHandler.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
 import { CraftingPickerApp } from "./CraftingPickerApp.js";
 import { CampfireEmbed } from "./CampfireEmbed.js";
+import { CraftingDelegate } from "./delegates/CraftingDelegate.js";
+import { MealDelegate } from "./delegates/MealDelegate.js";
+import { CopySpellDelegate } from "./delegates/CopySpellDelegate.js";
+import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS } from "./RestConstants.js";
 import { registerActiveRestApp, clearActiveRestApp, setActiveRestData, registerCampfireApp, clearCampfireApp, _showGmRestIndicator, _removeGmRestIndicator } from "../module.js";
 
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
-
-/**
- * Weather master table. Each entry defines comfort penalty, encounter DC modifier,
- * and tent interaction. `tentReduces` means tent lowers penalty by 1 (partial help).
- */
-const WEATHER_TABLE = {
-    clear:          { label: "Clear",          hint: "No effect on comfort or encounters.",                                       comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    overcast:       { label: "Overcast",       hint: "No effect. Dimmer light, neutral conditions.",                              comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    fog:            { label: "Fog",            hint: "Encounter DC +2. Weather hides camp, but also masks approaching threats.",  comfortPenalty: 0, encounterDC: 2, tentCancels: true,  tentReduces: false },
-    rain:           { label: "Rain",           hint: "Comfort -1 step if unsheltered. Tent cancels.",                             comfortPenalty: 1, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    heavy_rain:     { label: "Heavy Rain",     hint: "Comfort -1. Encounter DC +1. Tent cancels.",                               comfortPenalty: 1, encounterDC: 1, tentCancels: true,  tentReduces: false },
-    thunderstorm:   { label: "Thunderstorm",   hint: "Comfort -2. Encounter DC +2. Tent reduces to -1. Hut cancels.",            comfortPenalty: 2, encounterDC: 2, tentCancels: false, tentReduces: true },
-    snow:           { label: "Snow",           hint: "Comfort -1 step if unsheltered. Tent cancels.",                             comfortPenalty: 1, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    blizzard:       { label: "Blizzard",       hint: "Comfort -2. Encounter DC +1. Tent reduces to -1. Hut cancels.",            comfortPenalty: 2, encounterDC: 1, tentCancels: false, tentReduces: true },
-    extreme_cold:   { label: "Extreme Cold",   hint: "Comfort -1. Extra CON DC 10 or +1 exhaustion. Tent: partial.",             comfortPenalty: 1, encounterDC: 0, tentCancels: false, tentReduces: true },
-    extreme_heat:   { label: "Extreme Heat",   hint: "Comfort -1. Extra CON DC 10 or +1 exhaustion. Tent does not help.",        comfortPenalty: 1, encounterDC: 0, tentCancels: false, tentReduces: false },
-    sandstorm:      { label: "Sandstorm",      hint: "Comfort -2. Encounter DC +2. Tent: partial. Hut cancels.",                 comfortPenalty: 2, encounterDC: 2, tentCancels: false, tentReduces: true },
-    hail:           { label: "Hail",           hint: "Comfort -1. Minor damage risk. Tent cancels.",                             comfortPenalty: 1, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    volcanic_ash:   { label: "Volcanic Ash",   hint: "Comfort -1. Encounter DC +1. Difficult breathing.",                        comfortPenalty: 1, encounterDC: 1, tentCancels: false, tentReduces: true },
-    fungal_spores:  { label: "Fungal Spores",  hint: "Comfort -1. CON save or poisoned. Tent: partial.",                         comfortPenalty: 1, encounterDC: 0, tentCancels: false, tentReduces: true },
-    faerzress:      { label: "Faerzress",      hint: "No comfort penalty. Wild magic risk on spellcasting during rest.",          comfortPenalty: 0, encounterDC: 0, tentCancels: false, tentReduces: false },
-    // Tavern atmosphere (flavor only, zero mechanical effect)
-    tavern_rain:    { label: "Raining Outside",  hint: "Rain patters on the windows. A somber, reflective evening.",              comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    tavern_storm:   { label: "Stormy Outside",   hint: "Thunder rattles the shutters. Good night to be indoors.",                 comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    // Tavern grades (flavor only, zero mechanical effect)
-    tavern_flophouse: { label: "Flophouse",      hint: "Hard beds, thin walls, sounds you'd rather not identify.",               comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    tavern_modest:    { label: "Modest Inn",      hint: "Clean sheets, warm stew. Nothing fancy, nothing wrong.",                comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    tavern_fine:      { label: "Fine Lodgings",   hint: "Feather pillows, a hot bath, and someone else's cooking.",              comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    tavern_luxury:    { label: "Luxury Suite",    hint: "You could get used to this. You probably shouldn't.",                   comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    // Underground atmosphere (flavor)
-    dungeon_normal:   { label: "Normal",          hint: "Still air. Unremarkable conditions.",                                   comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    dungeon_damp:     { label: "Damp",            hint: "Water drips from the ceiling. Everything feels clammy.",                comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false }
-};
-
 
 
 
@@ -137,19 +107,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 
     /** DnD5e skill abbreviation -> readable name */
-    static SKILL_NAMES = {
-        acr: "Acrobatics", ani: "Animal Handling", arc: "Arcana", ath: "Athletics",
-        dec: "Deception", his: "History", ins: "Insight", itm: "Intimidation",
-        inv: "Investigation", med: "Medicine", nat: "Nature", prc: "Perception",
-        prf: "Performance", per: "Persuasion", rel: "Religion", sle: "Sleight of Hand",
-        ste: "Stealth", sur: "Survival"
-    };
+    static SKILL_NAMES = SKILL_NAMES;
 
     /** Comfort tier ranking for comparison and arithmetic */
-    static COMFORT_RANK = { hostile: 0, rough: 1, sheltered: 2, safe: 3 };
+    static COMFORT_RANK = COMFORT_RANK;
 
     /** Comfort tiers indexed by rank value */
-    static RANK_TO_KEY = ["hostile", "rough", "sheltered", "safe"];
+    static RANK_TO_KEY = RANK_TO_KEY;
 
     constructor(options = {}, restData = null) {
         super(options);
@@ -192,6 +156,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Party discovery item grants: key = "eventId:itemRef", value = { actorName, rolled, itemName }
         this._grantedDiscoveries = new Map();
+
+        // Delegates
+        this._crafting = new CraftingDelegate(this);
+        this._meals = new MealDelegate(this);
+        this._copySpell = new CopySpellDelegate(this);
 
         // Player mode: receive rest data from socket instead of loading files
         this._restData = restData;
@@ -629,17 +598,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const defaultComfort = terrainDefaults.comfort;
 
         // ── Shelter detection ──
-        const SHELTER_SPELLS = [
-            { id: "tiny_hut", name: "Tiny Hut", altNames: ["leomund's tiny hut", "tiny hut"], icon: "fas fa-igloo", comfortFloor: "sheltered", encounterMod: 5, restTypes: ["long", "short"], blocksFire: true,
-                hint: "Impenetrable force dome. Comfort floor: Sheltered. Encounter DC +5. No campfire, cooking, or brewing (sealed dome).",
-                rpPrompt: "Who casts it? What color is the dome? Can you see out? What does the air feel like inside?" },
-            { id: "rope_trick", name: "Rope Trick", altNames: ["rope trick"], icon: "fas fa-hat-wizard", comfortFloor: null, encounterMod: 5, restTypes: ["short"], blocksFire: true,
-                hint: "Hidden extradimensional space. Short rest only (1 hr). Encounter DC +5. No campfire (no ventilation).",
-                rpPrompt: "Who casts it? Where does the rope lead? What does the space look like inside? Is it comfortable or unsettling?" },
-            { id: "magnificent_mansion", name: "Mansion", altNames: ["magnificent mansion", "mordenkainen's magnificent mansion", "mordenkainen"], icon: "fas fa-chess-rook", comfortFloor: "safe", encounterMod: 99, restTypes: ["long", "short"], blocksFire: true,
-                hint: "Separate dimension. No encounters. Safe rest guaranteed. Has its own hearth and kitchen.",
-                rpPrompt: "Describe the entrance. What does the foyer look like? What's on the menu tonight? Do the servants have names?" }
-        ];
+
 
         // Determine current rest type from form (defaults to long)
         const currentRestType = this.element?.querySelector('[name="restType"]')?.value ?? "long";
@@ -715,16 +674,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const SKILL_NAMES = RestSetupApp.SKILL_NAMES;
 
         // Activity icon mapping
-        const ACTIVITY_ICONS = {
-            act_keep_watch: "fas fa-eye", act_rest_fully: "fas fa-bed",
-            act_forage: "fas fa-leaf", act_study: "fas fa-book",
-            act_scout: "fas fa-binoculars", act_tell_tales: "fas fa-theater-masks",
-            act_tend_wounds: "fas fa-hand-holding-medical", act_pray: "fas fa-pray",
-            act_cook: "fas fa-utensils", act_brew: "fas fa-flask", act_tailor: "fas fa-cut",
-            act_craft: "fas fa-tools", act_fletch: "fas fa-crosshairs",
-            act_defenses: "fas fa-shield-alt", act_train: "fas fa-dumbbell",
-            act_identify: "fas fa-search", act_attune: "fas fa-gem", act_scribe: "fas fa-scroll"
-        };
+
 
         const characterStatuses = partyActors.map(a => {
             const gmOverride = this._gmOverrides.get(a.id);
@@ -1316,12 +1266,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             activityDetail: this._buildActivityDetailContext(selectedCharacter),
             campStatus: this._engine ? (() => {
                 const comfort = this._engine.comfort;
-                const COMFORT_TIPS = {
-                    hostile: "Hostile: 75% HP, -2 HD, CON DC 15 or +1 exhaustion",
-                    rough: "Rough: full HP, -1 HD, CON DC 10 or +1 exhaustion",
-                    sheltered: "Sheltered: full HP, full HD recovery",
-                    safe: "Safe: full HP, full HD recovery, no encounter risk"
-                };
+
                 const weatherKey = this._engine.weather ?? "clear";
                 const wx = WEATHER_TABLE[weatherKey] ?? WEATHER_TABLE.clear;
                 const weatherParts = [];
@@ -1491,89 +1436,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Builds context data for the inline crafting drawer.
      */
     _buildCraftingDrawerContext() {
-        if (!this._craftingDrawerOpen || !this._craftingDrawerProfession) return null;
-
-        const charId = this._selectedCharacterId;
-        const actor = charId ? game.actors.get(charId) : null;
-        if (!actor) return null;
-
-        const professionId = this._craftingDrawerProfession;
-        const professionLabels = {
-            cooking: "Cooking", alchemy: "Alchemy",
-            smithing: "Smithing", leatherworking: "Leatherworking",
-            brewing: "Brewing", tailoring: "Tailoring"
-        };
-
-        const terrainTag = this._engine?.terrainTag ?? this._restData?.terrainTag ?? null;
-        const status = this._craftingEngine.getRecipeStatus(actor, professionId, terrainTag);
-
-        const riskMods = { safe: -3, standard: 0, ambitious: 5 };
-        const enrichRecipe = (recipe) => {
-            const adjustedDc = (recipe.dc ?? 12) + (riskMods[this._craftingDrawerRisk] ?? 0);
-            return {
-                ...recipe,
-                dcDisplay: adjustedDc,
-                outputName: recipe.output?.name ?? "Unknown",
-                outputImg: recipe.output?.img ?? "icons/svg/mystery-man.svg",
-                ambitiousOutput: recipe.ambitiousOutput,
-                isSelected: recipe.id === this._craftingDrawerRecipeId,
-                ingredientList: (recipe.ingredients ?? []).map(ing => {
-                    const detail = recipe.ingredientStatus?.details?.find(d => d.name === ing.name);
-                    return {
-                        name: ing.name,
-                        required: ing.quantity ?? 1,
-                        available: detail?.available ?? 0,
-                        met: detail?.met ?? false
-                    };
-                })
-            };
-        };
-
-        const available = status.available.map(r => enrichRecipe(r));
-        const partial = status.partial.map(r => enrichRecipe(r));
-        const selectedRecipe = available.find(r => r.id === this._craftingDrawerRecipeId);
-
-        let commitSummary = null;
-        if (selectedRecipe && !this._craftingDrawerHasCrafted) {
-            const adjustedDc = (selectedRecipe.dc ?? 12) + (riskMods[this._craftingDrawerRisk] ?? 0);
-            const outputForRisk = this._craftingDrawerRisk === "ambitious" && selectedRecipe.ambitiousOutput
-                ? selectedRecipe.ambitiousOutput
-                : selectedRecipe.output;
-
-            commitSummary = {
-                recipeName: selectedRecipe.name,
-                dc: adjustedDc,
-                risk: this._craftingDrawerRisk,
-                riskLabel: { safe: "Safe", standard: "Standard", ambitious: "Ambitious" }[this._craftingDrawerRisk],
-                outputName: outputForRisk?.name ?? selectedRecipe.outputName,
-                outputQuantity: outputForRisk?.quantity ?? 1,
-                ingredientCost: (selectedRecipe.ingredients ?? []).map(i => `${i.quantity ?? 1}x ${i.name}`).join(", "),
-                failConsequence: this._craftingDrawerRisk === "safe"
-                    ? "Ingredients preserved on failure"
-                    : "Ingredients consumed on failure",
-                skill: (selectedRecipe.skill ?? "sur").toUpperCase()
-            };
-        }
-
-        return {
-            isOpen: true,
-            profession: professionLabels[professionId] ?? professionId,
-            professionId,
-            actorName: actor.name,
-            selectedRisk: this._craftingDrawerRisk,
-            selectedRecipeId: this._craftingDrawerRecipeId,
-            hasCrafted: this._craftingDrawerHasCrafted,
-            showMissing: this._craftingDrawerShowMissing,
-            riskTiers: [
-                { id: "safe", label: "Safe", hint: "DC -3, ingredients preserved on failure", selected: this._craftingDrawerRisk === "safe" },
-                { id: "standard", label: "Standard", hint: "Base DC, ingredients consumed", selected: this._craftingDrawerRisk === "standard" },
-                { id: "ambitious", label: "Ambitious", hint: "DC +5, enhanced output on success", selected: this._craftingDrawerRisk === "ambitious" }
-            ],
-            available,
-            partial,
-            commitSummary,
-            craftingResult: this._craftingDrawerResult
-        };
+        return this._crafting.buildContext();
     }
 
     /**
@@ -2306,7 +2169,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const total = roll.total;
         await roll.toMessage({
             speaker: ChatMessage.getSpeaker({ actor }),
-            flavor: `<strong>${actor.name}</strong> — ${activityEntry.activityName} (${activityEntry.skillName}) DC ${activityEntry.dc}`
+            flavor: `<strong>${actor.name}</strong> - ${activityEntry.activityName} (${activityEntry.skillName}) DC ${activityEntry.dc}`
         });
 
         // Disable roll button
@@ -2975,94 +2838,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /**
      * Crafting drawer: select a recipe.
      */
-    static #onCraftDrawerSelectRecipe(event, target) {
-        if (this._craftingDrawerHasCrafted) return;
-        this._craftingDrawerRecipeId = target.dataset.recipeId;
-        this.render();
-    }
-
-    /**
-     * Crafting drawer: select risk level.
-     */
-    static #onCraftDrawerSelectRisk(event, target) {
-        if (this._craftingDrawerHasCrafted) return;
-        this._craftingDrawerRisk = target.dataset.risk;
-        this.render();
-    }
-
-    /**
-     * Crafting drawer: execute the craft.
-     */
-    static async #onCraftDrawerCraft(event, target) {
-        if (this._craftingDrawerHasCrafted || !this._craftingDrawerRecipeId) return;
-
-        const charId = this._selectedCharacterId;
-        const actor = charId ? game.actors.get(charId) : null;
-        if (!actor) return;
-
-        const terrainTag = this._engine?.terrainTag ?? this._restData?.terrainTag ?? null;
-        this._craftingDrawerResult = await this._craftingEngine.resolve(
-            actor, this._craftingDrawerRecipeId, this._craftingDrawerProfession, this._craftingDrawerRisk, terrainTag
-        );
-        this._craftingDrawerHasCrafted = true;
-        this.render();
-    }
-
-    /**
-     * Crafting drawer: toggle missing recipes visibility.
-     */
-    static #onCraftDrawerToggleMissing(event, target) {
-        this._craftingDrawerShowMissing = !this._craftingDrawerShowMissing;
-        this.render();
-    }
-
-    /**
-     * Crafting drawer: close and commit result.
-     */
-    static #onCraftDrawerClose(event, target) {
-        const characterId = this._selectedCharacterId;
-        const profession = this._craftingDrawerProfession;
-        const result = this._craftingDrawerResult;
-
-        // Clear crafting-in-progress
-        this._craftingInProgress?.delete(characterId);
-        this._craftingDrawerOpen = false;
-
-        // If crafting was completed, commit the result
-        if (this._craftingDrawerHasCrafted && result) {
-            this._craftingResults.set(characterId, result);
-
-            const craftingActivity = (this._activities ?? []).find(a => a.crafting?.profession === profession);
-            if (craftingActivity) {
-                if (this._isGM) {
-                    this._gmOverrides.set(characterId, craftingActivity.id);
-                    this._rebuildCharacterChoices();
-
-                    const submissions = {};
-                    for (const [charId, actId] of this._characterChoices) {
-                        const act = this._activities?.find(a => a.id === actId);
-                        submissions[charId] = { activityId: actId, activityName: act?.name ?? actId, source: this._gmOverrides.has(charId) ? "gm" : "player" };
-                    }
-                    game.socket.emit(`module.${MODULE_ID}`, { type: "submissionUpdate", submissions });
-                } else {
-                    this._characterChoices.set(characterId, craftingActivity.id);
-                    this._lockedCharacters = this._lockedCharacters ?? new Set();
-                    this._lockedCharacters.add(characterId);
-
-                    game.socket.emit(`module.${MODULE_ID}`, {
-                        type: "activityChoice",
-                        userId: game.user.id,
-                        choices: Object.fromEntries(this._characterChoices),
-                        craftingResults: { [characterId]: result }
-                    });
-                    const actor = game.actors.get(characterId);
-                    if (actor) ui.notifications.info(`${actor.name}'s activity submitted.`);
-                }
-            }
-        }
-
-        this.render();
-    }
+    static #onCraftDrawerSelectRecipe(event, target) { this._crafting.onSelectRecipe(event, target); }
+    static #onCraftDrawerSelectRisk(event, target) { this._crafting.onSelectRisk(event, target); }
+    static async #onCraftDrawerCraft(event, target) { await this._crafting.onCraft(event, target); }
+    static #onCraftDrawerToggleMissing(event, target) { this._crafting.onToggleMissing(event, target); }
+    static #onCraftDrawerClose(event, target) { this._crafting.onClose(event, target); }
 
     /**
      * Activity detail panel: confirm the selected activity.
@@ -3464,652 +3244,43 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /**
      * Meal: GM selects a food option for a character.
      */
-    static #onMealSelectFood(event, target) {
-        const charId = target.dataset.characterId;
-        const value = target.value ?? target.getAttribute("value") ?? "skip";
-        if (!charId) return;
-
-        if (!this._mealChoices) this._mealChoices = new Map();
-        const existing = this._mealChoices.get(charId) ?? {};
-        this._mealChoices.set(charId, { ...existing, food: value });
-        this.render();
-    }
-
-    /**
-     * Meal: GM selects a water option for a character.
-     */
-    static #onMealSelectWater(event, target) {
-        const charId = target.dataset.characterId;
-        const value = target.value ?? target.getAttribute("value") ?? "skip";
-        if (!charId) return;
-
-        if (!this._mealChoices) this._mealChoices = new Map();
-        const existing = this._mealChoices.get(charId) ?? {};
-        this._mealChoices.set(charId, { ...existing, water: value });
-        this.render();
-    }
+    static #onMealSelectFood(event, target) { this._meals.onSelectFood(event, target); }
+    static #onMealSelectWater(event, target) { this._meals.onSelectWater(event, target); }
 
     /**
      * Meal: Consume the current day's food/water for all owned characters.
      * Deducts items from inventory immediately, saves state, advances to next day.
      */
-    static async #onConsumeMealDay(event, target) {
-        if (!this._mealChoices) this._mealChoices = new Map();
-        // GM consumes for the currently selected roster character only; clients for their own
-        const characterIds = this._isGM
-            ? [this._selectedCharacterId].filter(Boolean)
-            : (this._myCharacterIds ? Array.from(this._myCharacterIds) : []);
-
-        for (const charId of characterIds) {
-            const choice = this._mealChoices.get(charId) ?? { food: [], water: [], consumedDays: [], currentDay: 0 };
-            const consumedDays = choice.consumedDays ?? [];
-            const currentDay = choice.currentDay ?? consumedDays.length;
-            const food = Array.isArray(choice.food) ? [...choice.food] : [];
-            const water = Array.isArray(choice.water) ? [...choice.water] : [];
-
-            // Consume items from inventory for this day
-            const actor = game.actors.get(charId);
-            if (actor) {
-                for (const itemId of food) {
-                    if (itemId && itemId !== "skip") {
-                        await MealPhaseHandler._consumeItem(actor, itemId, 1);
-                    }
-                }
-                for (const itemId of water) {
-                    if (itemId && itemId !== "skip") {
-                        // Per-waterskin: drain all remaining charges (1 slot = 1 full skin)
-                        const item = actor.items.get(itemId);
-                        const drainAmount = item?.system?.uses?.value || 1;
-                        await MealPhaseHandler._consumeItem(actor, itemId, drainAmount);
-                    }
-                }
-            }
-
-            // Push consumed day and advance
-            consumedDays.push({ food, water });
-            this._mealChoices.set(charId, {
-                food: [],    // Clear active day selections
-                water: [],
-                consumedDays,
-                currentDay: currentDay + 1
-            });
-        }
-
-        await this._saveRestState();
-
-        // Broadcast to GM so they see progress
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "mealDayConsumed",
-            userId: game.user.id,
-            mealChoices: Object.fromEntries(this._mealChoices)
-        });
-
-        this.render();
-    }
+    static async #onConsumeMealDay(event, target) { await this._meals.onConsumeMealDay(event, target); }
 
     /**
      * Meal: Player submits their meal choices via socket to the GM.
      */
-    static async #onSubmitMealChoices(event, target) {
-        if (this._isGM) return; // GM doesn't submit via socket
-
-        const choices = {};
-        const skippedSlots = [];
-        if (this._mealChoices) {
-            const totalDays = this._engine?.durationDays ?? 1;
-            for (const [charId, choice] of this._mealChoices) {
-                if (this._myCharacterIds?.has(charId)) {
-                    // If character has already consumed all days, active choices will be empty. Don't warn.
-                    if ((choice.consumedDays?.length ?? 0) >= totalDays) {
-                        choices[charId] = choice;
-                        continue;
-                    }
-
-                    choices[charId] = choice;
-                    const actor = game.actors.get(charId);
-                    const name = actor?.name ?? charId;
-                    // Check food slots (array)
-                    const foodArr = Array.isArray(choice.food) ? choice.food : [];
-                    const foodEmpty = foodArr.filter(v => !v || v === "skip").length;
-                    if (foodArr.length === 0 || foodEmpty > 0) skippedSlots.push(`${name}: ${foodArr.length === 0 ? "no food" : `${foodEmpty} food slot${foodEmpty > 1 ? "s" : ""} empty`}`);
-                    // Check water slots (array)
-                    const waterArr = Array.isArray(choice.water) ? choice.water : [];
-                    const waterEmpty = waterArr.filter(v => !v || v === "skip").length;
-                    if (waterArr.length === 0 || waterEmpty > 0) skippedSlots.push(`${name}: ${waterArr.length === 0 ? "no water" : `${waterEmpty} water slot${waterEmpty > 1 ? "s" : ""} empty`}`);
-                }
-            }
-        }
-
-        // Check for characters with no choices at all
-        if (this._myCharacterIds) {
-            for (const charId of this._myCharacterIds) {
-                if (!choices[charId]) {
-                    const actor = game.actors.get(charId);
-                    const name = actor?.name ?? charId;
-                    skippedSlots.push(`${name}: no food`);
-                    skippedSlots.push(`${name}: no water`);
-                    choices[charId] = { food: [], water: [] };
-                }
-            }
-        }
-
-        // Warn about empty plates using Ionrift modal overlay
-        if (skippedSlots.length > 0) {
-            const confirmed = await new Promise(resolve => {
-                const overlay = document.createElement("div");
-                overlay.classList.add("ionrift-armor-modal-overlay");
-                overlay.innerHTML = `
-                    <div class="ionrift-armor-modal">
-                        <h3><i class="fas fa-exclamation-triangle"></i> Skip Meals?</h3>
-                        <p>The following meals are empty:</p>
-                        <ul>${skippedSlots.map(s => `<li>${s}</li>`).join("")}</ul>
-                        <p>Skipping meals has consequences.</p>
-                        <div class="ionrift-armor-modal-buttons">
-                            <button class="btn-armor-confirm"><i class="fas fa-check"></i> Continue</button>
-                            <button class="btn-armor-cancel"><i class="fas fa-arrow-left"></i> Go Back</button>
-                        </div>
-                    </div>`;
-                document.body.appendChild(overlay);
-                overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => {
-                    overlay.remove();
-                    resolve(true);
-                });
-                overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => {
-                    overlay.remove();
-                    resolve(false);
-                });
-            });
-            if (!confirmed) return;
-        }
-
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "mealChoice",
-            userId: game.user.id,
-            choices
-        });
-
-        this._mealSubmitted = true;
-        this.render();
-        ui.notifications.info("Meal choices submitted.");
-    }
+    static async #onSubmitMealChoices(event, target) { await this._meals.onSubmitMealChoices(event, target); }
 
     /**
      * GM receives meal choices from a player via socket.
      * Merges into _mealChoices and tracks submission status.
      */
-    receiveMealChoices(userId, choices) {
-        if (!this._mealChoices) this._mealChoices = new Map();
-        if (!this._mealSubmissions) this._mealSubmissions = new Map();
+    receiveMealChoices(userId, choices) { this._meals.receiveMealChoices(userId, choices); }
 
-        // Merge player choices into the GM's meal choices
-        for (const [charId, choice] of Object.entries(choices)) {
-            this._mealChoices.set(charId, choice);
-        }
+    async receiveMealDayConsumed(userId, clientChoices) { await this._meals.receiveMealDayConsumed(userId, clientChoices); }
 
-        // Track which users have submitted
-        this._mealSubmissions.set(userId, {
-            timestamp: Date.now(),
-            characterIds: Object.keys(choices)
-        });
+    async receiveDehydrationPrompt(characterId, actorName, dc) { await this._meals.receiveDehydrationPrompt(characterId, actorName, dc); }
 
-        console.log(`[Respite:Meal] Received meal choices from user ${userId}:`, choices);
-        this.render();
-    }
-
-    /**
-     * GM receives a client's consumed meal day progress via socket.
-     * Merges consumedDays from client into the GM's _mealChoices and re-saves.
-     */
-    async receiveMealDayConsumed(userId, clientChoices) {
-        if (!this._mealChoices) this._mealChoices = new Map();
-
-        for (const [charId, choice] of Object.entries(clientChoices)) {
-            const existing = this._mealChoices.get(charId) ?? {};
-            // Client's consumedDays is authoritative (they deducted items)
-            this._mealChoices.set(charId, {
-                ...existing,
-                consumedDays: choice.consumedDays ?? existing.consumedDays ?? [],
-                currentDay: choice.currentDay ?? existing.currentDay ?? 0,
-                food: choice.food ?? [],
-                water: choice.water ?? []
-            });
-        }
-
-        console.log(`[Respite:Meal] Received meal day consumed from user ${userId}:`, clientChoices);
-        await this._saveRestState();
-        this.render();
-    }
-
-    /**
-     * Player receives a dehydration save request from the GM.
-     * Shows a modal prompt and rolls CON save on click.
-     */
-    async receiveDehydrationPrompt(characterId, actorName, dc) {
-        const actor = game.actors.get(characterId);
-        if (!actor) return;
-
-        // Show modal prompt
-        const overlay = document.createElement("div");
-        overlay.classList.add("ionrift-armor-modal-overlay");
-        overlay.innerHTML = `
-            <div class="ionrift-armor-modal">
-                <h3><i class="fas fa-tint-slash"></i> Dehydration Check</h3>
-                <p><strong>${actorName}</strong> has gone without water.</p>
-                <p>Constitution save DC ${dc} or gain 1 level of exhaustion.</p>
-                <div class="ionrift-armor-modal-buttons">
-                    <button class="btn-armor-confirm"><i class="fas fa-dice-d20"></i> Roll CON Save</button>
-                </div>
-            </div>`;
-        document.body.appendChild(overlay);
-
-        overlay.querySelector(".btn-armor-confirm").addEventListener("click", async () => {
-            overlay.remove();
-
-            // Roll the save directly (bypasses system API + Midi-QOL patching for reliability)
-            let total = 0;
-            let passed = false;
-            try {
-                const conMod = actor.system?.abilities?.con?.mod ?? 0;
-                const profBonus = actor.system?.abilities?.con?.save
-                    ? (actor.system?.attributes?.prof ?? 0) : 0;
-                const roll = await new Roll(`1d20 + ${conMod} + ${profBonus}`).evaluate();
-                total = roll.total;
-                passed = total >= dc;
-
-                // Show 3D dice animation
-                if (game.dice3d) {
-                    await game.dice3d.showForRoll(roll, game.user, true);
-                }
-            } catch (e) {
-                console.error(`[Respite] Dehydration save roll failed for ${actorName}:`, e);
-                ui.notifications.error(`Could not roll CON save for ${actorName}. Treating as failed.`);
-            }
-
-            // Wait a few seconds for dice animation to play out so player can see it
-            setTimeout(() => {
-                // Send result back to GM (always, even on error)
-                game.socket.emit(`module.${MODULE_ID}`, {
-                    type: "dehydrationSaveResult",
-                    characterId,
-                    actorName,
-                    dc,
-                    total,
-                    passed,
-                    userId: game.user.id
-                });
-            }, 3500);
-        });
-    }
-
-    /**
-     * GM receives a dehydration save result from a player.
-     * Applies exhaustion if failed, posts chat, and transitions when all resolved.
-     */
-    async receiveDehydrationResult(data) {
-        const { characterId, actorName, dc, total, passed } = data;
-        const actor = game.actors.get(characterId);
-
-        if (!passed && actor) {
-            const current = actor.system?.attributes?.exhaustion ?? 0;
-            const newLevel = Math.min(6, current + 1);
-            if (newLevel > current) {
-                await actor.update({ "system.attributes.exhaustion": newLevel });
-            }
-            await ChatMessage.create({
-                content: `<div class="respite-recovery-chat"><strong>${actorName}</strong> fails the CON save (${total} vs DC ${dc}) and gains 1 level of exhaustion from dehydration.</div>`,
-                speaker: ChatMessage.getSpeaker({ actor })
-            });
-        } else if (passed) {
-            await ChatMessage.create({
-                content: `<div class="respite-recovery-chat"><strong>${actorName}</strong> passes the CON save (${total} vs DC ${dc}) and fights off dehydration.</div>`,
-                speaker: actor ? ChatMessage.getSpeaker({ actor }) : undefined
-            });
-        }
-
-        // Mark save as resolved and store outcome
-        if (this._pendingDehydrationSaves) {
-            const pending = this._pendingDehydrationSaves.find(s => s.characterId === characterId);
-            if (pending) {
-                pending.resolved = true;
-                pending.total = total;
-                pending.passed = passed;
-            }
-
-            // Re-render after each save so GM sees results incrementally
-            this._saveRestState();
-            this.render();
-
-            // Broadcast updated results to all players
-            const resolvedResults = this._pendingDehydrationSaves
-                .filter(s => s.resolved)
-                .map(s => ({ actorName: s.actorName, total: s.total, passed: s.passed, dc: s.dc, reason: s.reason ?? null, pending: !s.resolved }));
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "dehydrationResultsBroadcast",
-                results: resolvedResults
-            });
-        }
-    }
+    async receiveDehydrationResult(data) { await this._meals.receiveDehydrationResult(data); }
 
     /**
      * Meal -> Reflection: GM proceeds from meal phase.
      * Applies consumption (decrements rations/waterskin) and updates tracking flags.
      */
-    static async #onProceedFromMeal(event, target) {
-        // Re-entry guard: don't re-process if dehydration saves are pending
-        if (this._pendingDehydrationSaves?.length > 0) {
-            const unresolved = this._pendingDehydrationSaves.filter(s => !s.resolved);
-            if (unresolved.length > 0) {
-                ui.notifications.warn(`Still waiting for ${unresolved.length} dehydration save(s).`);
-                return;
-            }
-        }
-        console.log(`[Respite:Meal] #onProceedFromMeal — starting`);
-
-        // Check if all player-owned characters have submitted
-        const characterIds = this._engine?.characterChoices ? Array.from(this._engine.characterChoices.keys()) : [];
-        if (!this._mealChoices) this._mealChoices = new Map();
-
-        const unsubmitted = [];
-        for (const charId of characterIds) {
-            const actor = game.actors.get(charId);
-            if (!actor) continue;
-            const isPlayerOwned = game.users.some(u => !u.isGM && actor.testUserPermission(u, "OWNER"));
-            if (!isPlayerOwned) continue; // GM-owned characters are managed by the GM
-
-            const choice = this._mealChoices.get(charId);
-            const hasConsumed = choice?.consumedDays?.length > 0;
-            const hasSelections = (choice?.food?.some(id => id && id !== "skip")) || (choice?.water?.some(id => id && id !== "skip"));
-
-            // Also check if the player actually submitted via socket (handles intentional full-skip)
-            const ownerUser = game.users.find(u => !u.isGM && actor.testUserPermission(u, "OWNER"));
-            const ownerSubmitted = ownerUser && this._mealSubmissions?.has(ownerUser.id);
-
-            if (!hasConsumed && !hasSelections && !ownerSubmitted) {
-                unsubmitted.push(actor.name);
-            }
-        }
-
-        if (unsubmitted.length > 0) {
-            const confirmed = await new Promise(resolve => {
-                const overlay = document.createElement("div");
-                overlay.classList.add("ionrift-armor-modal-overlay");
-                overlay.innerHTML = `
-                    <div class="ionrift-armor-modal">
-                        <h3><i class="fas fa-exclamation-triangle"></i> Not All Players Ready</h3>
-                        <p>These characters haven't submitted their meal choices:</p>
-                        <ul>${unsubmitted.map(n => `<li>${n}</li>`).join("")}</ul>
-                        <p>Proceeding now treats them as having skipped all meals.</p>
-                        <div class="ionrift-armor-modal-buttons">
-                            <button class="btn-armor-confirm"><i class="fas fa-forward"></i> Proceed Anyway</button>
-                            <button class="btn-armor-cancel"><i class="fas fa-clock"></i> Wait</button>
-                        </div>
-                    </div>`;
-                document.body.appendChild(overlay);
-                overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => { overlay.remove(); resolve(true); });
-                overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => { overlay.remove(); resolve(false); });
-            });
-            if (!confirmed) return;
-        }
-
-        // Auto-fill any characters without explicit choices
-        for (const charId of characterIds) {
-            if (!this._mealChoices.has(charId)) {
-                const terrainTag = this._engine?.terrainTag ?? "forest";
-                const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
-                const cards = MealPhaseHandler.buildMealContext(
-                    [charId], terrainTag, terrainMealRules,
-                    this._daysSinceLastRest ?? 1, this._mealChoices
-                );
-                if (cards.length > 0) {
-                    this._mealChoices.set(charId, {
-                        food: cards[0].selectedFood,
-                        water: cards[0].selectedWater
-                    });
-                }
-            }
-        }
-
-        // Apply consumption and compute consequences only ONCE per rest phase
-        let mealResults = [];
-        if (!this._mealProcessed) {
-            this._mealProcessed = true;
-            try {
-                const terrainTag = this._engine?.terrainTag ?? "forest";
-                const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
-                const totalDays = this._daysSinceLastRest ?? 1;
-
-                const outcome = await MealPhaseHandler.processAndApply(this._mealChoices, totalDays, terrainMealRules);
-                mealResults = outcome.results;
-                console.log(`[Respite:Meal] Consumption results:`, mealResults);
-            } catch (err) {
-                console.error(`[Respite:Meal] Error applying meal choices:`, err);
-            }
-
-            // --- Apply starvation exhaustion (auto, no save) ---
-            this._pendingDehydrationSaves = [];
-            for (const r of mealResults) {
-                if (r.starvationExhaustion > 0) {
-                    const actor = game.actors.get(r.characterId);
-                    if (actor) {
-                        const current = actor.system?.attributes?.exhaustion ?? 0;
-                        const newLevel = Math.min(6, current + r.starvationExhaustion);
-                        if (newLevel > current) {
-                            await actor.update({ "system.attributes.exhaustion": newLevel });
-                            await ChatMessage.create({
-                                content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.starvationExhaustion}</strong> level${r.starvationExhaustion > 1 ? "s" : ""} of exhaustion from starvation.</div>`,
-                                speaker: ChatMessage.getSpeaker({ actor })
-                            });
-                        }
-                        // Add to results panel as a resolved entry
-                        this._pendingDehydrationSaves.push({
-                            characterId: r.characterId,
-                            actorName: r.actorName,
-                            dc: 0,
-                            resolved: true,
-                            passed: false,
-                            total: 0,
-                            reason: `starvation (${r.starvationExhaustion} exhaustion)`
-                        });
-                    }
-                }
-            }
-
-            // --- Apply dehydration consequences ---
-            for (const r of mealResults) {
-                if (r.dehydrationAutoFail) {
-                    // Auto-fail: 2+ days without water, exhaustion applied directly
-                    const actor = game.actors.get(r.characterId);
-                    if (actor) {
-                        const current = actor.system?.attributes?.exhaustion ?? 0;
-                        const newLevel = Math.min(6, current + 1);
-                        if (newLevel > current) {
-                            await actor.update({ "system.attributes.exhaustion": newLevel });
-                        }
-                        const restsSinceWater = actor.getFlag("ionrift-respite", "restsSinceWater") ?? 0;
-                        await ChatMessage.create({
-                            content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains 1 level of exhaustion from severe dehydration (auto-fail, ${restsSinceWater} rests without water).</div>`,
-                            speaker: ChatMessage.getSpeaker({ actor })
-                        });
-                        // Add to results panel as a resolved auto-fail entry
-                        this._pendingDehydrationSaves.push({
-                            characterId: r.characterId,
-                            actorName: r.actorName,
-                            dc: 0,
-                            resolved: true,
-                            passed: false,
-                            total: 0,
-                            reason: `dehydration auto-fail (${restsSinceWater} rests without water)`
-                        });
-                    }
-                } else if (r.dehydrationSaveDC > 0) {
-                    // CON save required: find owning player and prompt
-                    const actor = game.actors.get(r.characterId);
-                    if (!actor) continue;
-
-                    // Find player who owns this character
-                    const ownerUser = game.users.find(u =>
-                        !u.isGM && actor.testUserPermission(u, "OWNER")
-                    );
-
-                    if (ownerUser) {
-                        // Send save prompt to player
-                        this._pendingDehydrationSaves.push({
-                            characterId: r.characterId,
-                            actorName: r.actorName,
-                            dc: r.dehydrationSaveDC,
-                            userId: ownerUser.id,
-                            resolved: false
-                        });
-                        game.socket.emit(`module.${MODULE_ID}`, {
-                            type: "dehydrationSaveRequest",
-                            characterId: r.characterId,
-                            actorName: r.actorName,
-                            dc: r.dehydrationSaveDC,
-                            targetUserId: ownerUser.id
-                        });
-                        console.log(`[Respite:Meal] Sent dehydration save request for ${r.actorName} to user ${ownerUser.name}`);
-                    } else {
-                        // GM-owned character: roll directly (bypasses system API + Midi-QOL)
-                        const conMod = actor.system?.abilities?.con?.mod ?? 0;
-                        const profBonus = actor.system?.abilities?.con?.save
-                            ? (actor.system?.attributes?.prof ?? 0) : 0;
-                        const roll = await new Roll(`1d20 + ${conMod} + ${profBonus}`).evaluate();
-                        const total = roll.total;
-                        const passed = total >= r.dehydrationSaveDC;
-
-                        if (game.dice3d) {
-                            await game.dice3d.showForRoll(roll, game.user, true);
-                        }
-                        if (!passed) {
-                            const current = actor.system?.attributes?.exhaustion ?? 0;
-                            const newLevel = Math.min(6, current + 1);
-                            if (newLevel > current) {
-                                await actor.update({ "system.attributes.exhaustion": newLevel });
-                            }
-                            await ChatMessage.create({
-                                content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> fails the CON save (${total} vs DC ${r.dehydrationSaveDC}) and gains 1 level of exhaustion from dehydration.</div>`,
-                                speaker: ChatMessage.getSpeaker({ actor })
-                            });
-                        } else {
-                            await ChatMessage.create({
-                                content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> passes the CON save (${total} vs DC ${r.dehydrationSaveDC}) and fights off dehydration.</div>`,
-                                speaker: ChatMessage.getSpeaker({ actor })
-                            });
-                        }
-                        // Mark as resolved directly for GM-owned since they were instantly rolled
-                        this._pendingDehydrationSaves.push({
-                            characterId: r.characterId,
-                            actorName: r.actorName,
-                            dc: r.dehydrationSaveDC,
-                            userId: game.user.id,
-                            resolved: true
-                        });
-                    }
-                }
-            }
-        }
-
-        // Broadcast results to players and render so everyone sees outcomes
-        if (this._pendingDehydrationSaves?.length > 0) {
-            const allResults = this._pendingDehydrationSaves
-                .map(s => ({
-                    actorName: s.actorName,
-                    total: s.total ?? 0,
-                    passed: s.passed ?? false,
-                    dc: s.dc ?? 0,
-                    reason: s.reason ?? null,
-                    pending: !s.resolved
-                }));
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "dehydrationResultsBroadcast",
-                results: allResults
-            });
-        }
-
-        // If dehydration saves are pending OR resolved but not yet cleared
-        if (this._pendingDehydrationSaves?.length > 0) {
-            const allResolved = this._pendingDehydrationSaves.every(s => s.resolved);
-            if (!allResolved) {
-                console.log(`[Respite:Meal] Waiting for dehydration save(s) to resolve...`);
-                ui.notifications.info(`Waiting for dehydration save(s) to resolve before proceeding.`);
-                await this._saveRestState();
-                this.render();
-                return; // Stop here, wait for resolves
-            } else {
-                // All resolved: show results, then allow second click to proceed
-                if (!this._mealResultsReviewed) {
-                    this._mealResultsReviewed = true;
-                    await this._saveRestState();
-                    this.render();
-                    return; // First click: show results. Second click: proceed.
-                }
-                // Second click: clear and proceed
-                this._pendingDehydrationSaves = [];
-            }
-        }
-
-        // Transition to reflection (always fires)
-        this._phase = "reflection";
-        console.log(`[Respite:Meal] Transitioning to reflection, emitting phaseChanged`);
-
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: this._phase,
-            phaseData: { campStatus: this._campStatus }
-        });
-
-        await this._saveRestState();
-        this.render();
-    }
+    static async #onProceedFromMeal(event, target) { await this._meals.onProceedFromMeal(event, target); }
 
     /**
      * GM skips all unresolved dehydration saves, auto-failing them.
      * Applies exhaustion and posts chat for each, then unblocks the flow.
      */
-    static async #onSkipPendingSaves(event, target) {
-        if (!this._pendingDehydrationSaves?.length) return;
-
-        const unresolved = this._pendingDehydrationSaves.filter(s => !s.resolved);
-        if (!unresolved.length) return;
-
-        for (const save of unresolved) {
-            const actor = game.actors.get(save.characterId);
-            if (actor) {
-                const current = actor.system?.attributes?.exhaustion ?? 0;
-                const newLevel = Math.min(6, current + 1);
-                if (newLevel > current) {
-                    await actor.update({ "system.attributes.exhaustion": newLevel });
-                }
-                await ChatMessage.create({
-                    content: `<div class="respite-recovery-chat"><strong>${save.actorName}</strong> fails the CON save (skipped by GM) and gains 1 level of exhaustion from dehydration.</div>`,
-                    speaker: ChatMessage.getSpeaker({ actor })
-                });
-            }
-
-            save.resolved = true;
-            save.passed = false;
-            save.total = 0;
-            save.reason = "dehydration (GM skipped)";
-        }
-
-        // Broadcast updated results to players
-        const allResults = this._pendingDehydrationSaves.map(s => ({
-            actorName: s.actorName,
-            total: s.total ?? 0,
-            passed: s.passed ?? false,
-            dc: s.dc ?? 0,
-            reason: s.reason ?? null,
-            pending: !s.resolved
-        }));
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "dehydrationResultsBroadcast",
-            results: allResults
-        });
-
-        await this._saveRestState();
-        this.render();
-        ui.notifications.info(`Skipped ${unresolved.length} pending save(s). Exhaustion applied.`);
-    }
+    static async #onSkipPendingSaves(event, target) { await this._meals.onSkipPendingSaves(event, target); }
 
     /**
      * Phase 3 (reflection) -> 4 (events): GM moves past campfire to the night.
@@ -4474,63 +3645,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /**
      * Player approves a Copy Spell transaction.
      */
-    static #onApproveCopySpell(event, target) {
-        if (!this._copySpellProposal) return;
-        CopySpellHandler.approveProposal(this._copySpellProposal);
-        this._copySpellProposal = null;
-        this.render();
-    }
-
-    /**
-     * Player declines a Copy Spell transaction.
-     */
-    static #onDeclineCopySpell(event, target) {
-        if (!this._copySpellProposal) return;
-        CopySpellHandler.declineProposal(this._copySpellProposal, this);
-    }
-
-    /**
-     * GM processes a Copy Spell transaction from the GM card.
-     */
-    static async #onProcessGmCopySpell(event, target) {
-        if (!game.user.isGM) return;
-        await CopySpellHandler.processGmProposal(this);
-        await this._saveRestState();
-    }
-
-    /**
-     * GM dismisses a Copy Spell transaction card.
-     */
-    static async #onDismissGmCopySpell(event, target) {
-        if (!game.user.isGM) return;
-        CopySpellHandler.clearGmProposal(this);
-        await this._saveRestState();
-    }
-
-    /**
-     * GM re-sends the Copy Spell roll prompt to the player.
-     */
-    static #onResendCopySpellRoll(event, target) {
-        if (!game.user.isGM) return;
-        CopySpellHandler.resendRollPrompt(this);
-    }
-
-    /**
-     * GM rolls Arcana as a fallback when the player can't roll.
-     */
-    static async #onGmCopySpellFallback(event, target) {
-        if (!game.user.isGM) return;
-        await CopySpellHandler.gmRollFallback(this);
-        await this._saveRestState();
-    }
-
-    /**
-     * Player clicks "Roll Arcana" button for Copy Spell.
-     */
-    static async #onRollCopySpellArcana(event, target) {
-        if (game.user.isGM) return;
-        await CopySpellHandler.executePlayerRoll(this);
-    }
+    static #onApproveCopySpell(event, target) { this._copySpell.onApprove(event, target); }
+    static #onDeclineCopySpell(event, target) { this._copySpell.onDecline(event, target); }
+    static async #onProcessGmCopySpell(event, target) { await this._copySpell.onProcessGm(event, target); }
+    static async #onDismissGmCopySpell(event, target) { await this._copySpell.onDismiss(event, target); }
+    static #onResendCopySpellRoll(event, target) { this._copySpell.onResendRoll(event, target); }
+    static async #onGmCopySpellFallback(event, target) { await this._copySpell.onGmFallback(event, target); }
+    static async #onRollCopySpellArcana(event, target) { await this._copySpell.onRollArcana(event, target); }
 
     /**
      * Phase 3 (events): GM chooses between disaster tree, combat encounter, or two normal events after a nat 1.
