@@ -5,37 +5,7 @@
             "name": "Dungeon Rest Events",
             "terrainTag": "dungeon",
             "rollFormula": "1d20",
-            "noEventThreshold": 9,
-            "entries": [
-                {
-                    "range": [
-                        1,
-                        2
-                    ],
-                    "eventId": "evt_dungeon_wandering_monster"
-                },
-                {
-                    "range": [
-                        3,
-                        4
-                    ],
-                    "eventId": "evt_dungeon_door_breach"
-                },
-                {
-                    "range": [
-                        5,
-                        6
-                    ],
-                    "eventId": "evt_dungeon_bad_air"
-                },
-                {
-                    "range": [
-                        7,
-                        8
-                    ],
-                    "eventId": "evt_dungeon_salvage"
-                }
-            ]
+            "noEventThreshold": 9
         }
     ],
     "events": [
@@ -48,23 +18,46 @@
             ],
             "weight": 2,
             "watchTarget": "watch",
-            "description": "Torchlight flickers in the corridor. Footsteps and low voices, getting closer.",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "auto_fail",
+            "noWatchAmplifier": 1,
+            "gmPrompt": "Movement in the corridor outside. Light, sound, or both. Something is passing through this section of the dungeon. It has not noticed the party yet.",
+            "checkContext": "Can the watch keep the camp concealed as the patrol passes?",
+            "gmGuidance": "The patrol is on a circuit, not searching for the party. What the party detects depends on the creature type: torchlight and voices (humanoid), shuffling and a cold draft (undead), skittering and clicking (vermin), grinding stone (construct). Use generateEncounter(dungeon, tier) for the combat. If no encounter module, 2-4 creatures appropriate to the dungeon level.",
+            "description": "Movement in the corridor outside. Something is passing through this section of the dungeon.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "ste",
                 "dc": 14,
                 "targets": "watch",
-                "bestOfN": true,
-                "onSuccess": {
-                    "narrative": "Lights doused, mouths shut. They pass without noticing the barricaded door.",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "You spotted them well in advance. Fire smothered, bodies still, weapons ready but not needed. They passed close enough to touch and never broke stride.",
                     "effects": []
                 },
+                "onSuccess": {
+                    "narrative": "Lights doused, mouths shut. They pass without noticing the camp.",
+                    "effects": []
+                },
+                "onMixed": {
+                    "narrative": "They paused outside the door. One of them muttered something. A long silence. Then footsteps, moving on. Nobody sleeps well after that.",
+                    "effects": [
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.85,
+                            "description": "The near-miss kept everyone on edge."
+                        }
+                    ]
+                },
                 "onFailure": {
-                    "narrative": "They heard something. The door rattles. Combat is inevitable.",
+                    "narrative": "They heard something. The door rattles. A voice calls out in the dark. Combat is inevitable.",
                     "effects": [
                         {
                             "type": "encounter",
-                            "description": "GM resolves a wandering monster encounter (CR appropriate to dungeon level)."
+                            "description": "GM resolves a wandering monster encounter. Use generateEncounter(dungeon, tier, [humanoid, undead]) or CR appropriate to dungeon level."
                         }
                     ]
                 }
@@ -74,44 +67,77 @@
             "pack": "base"
         },
         {
-            "id": "evt_dungeon_door_breach",
-            "name": "Compromised Position",
+            "id": "evt_dungeon_vermin_nest",
+            "name": "Vermin Nest",
             "category": "complication",
             "terrainTags": [
                 "dungeon"
             ],
             "weight": 2,
-            "watchTarget": "watch",
-            "description": "The door you barricaded is not holding. Hinges are rusted and the frame is rotten.",
-            "dutyRelevance": {
-                "defenses": {
-                    "effect": "cancel",
-                    "narrative": "The pitons and rope you hammered in hold the door. It creaks but does not give."
-                }
-            },
+            "watchTarget": "all",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "escalate",
+            "noWatchAmplifier": 1,
+            "gmPrompt": "It starts with one. A fat centipede crossing someone's bedroll. Then another. Then the scratching from the walls becomes impossible to ignore. The camp is on top of a nest, and the inhabitants are emerging.",
+            "checkContext": "Can the party drive the vermin back before they contaminate the supplies?",
+            "gmGuidance": "Not a combat encounter. These are mundane vermin: rats, centipedes, cave spiders. Individually harmless, collectively relentless. The threat is to gear, food, and sleep, not HP. Nature or Survival to manage them. escalate (not auto_fail) because without a watch they get into everything, but nobody dies.",
+            "description": "Vermin are emerging from the walls and floor. The camp is on top of a nest.",
             "mechanical": {
                 "type": "skill_check",
-                "skill": "sur",
-                "dc": 13,
+                "skill": "nat",
+                "dc": 12,
                 "targets": "watch",
-                "bestOfN": true,
-                "onSuccess": {
-                    "narrative": "You brace the door with a shield and stack debris behind it. It holds through the night.",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "You spotted the first scouts and traced them to the nest entrance. A torch held to the crack and some smoke drove them deep. They did not come back.",
                     "effects": []
                 },
-                "onFailure": {
-                    "narrative": "The door gives way in the small hours. Cold air and the dungeon's noises flood the room. Sleep is fitful after that.",
+                "onSuccess": {
+                    "narrative": "Boots and torchlight kept them at bay. An unpleasant hour, but the supplies are intact.",
+                    "effects": []
+                },
+                "onMixed": {
+                    "narrative": "You drove most of them off, but they got into the ration packs first. Nibbled, contaminated, ruined. Nobody slept well with the scratching.",
                     "effects": [
+                        {
+                            "type": "consume_resource",
+                            "resource": "rations",
+                            "method": "percent_roll",
+                            "roll": "1d4+1",
+                            "multiplier": 5,
+                            "min": 1,
+                            "maxPercent": 25,
+                            "severity": "standard",
+                            "description": "Vermin-contaminated rations."
+                        },
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.85,
+                            "description": "Constant scratching and crawling disrupted sleep."
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "They swarmed. Everything on the ground is covered. Ration packs chewed through, waterskins gnawed, bedrolls fouled. A wretched night.",
+                    "effects": [
+                        {
+                            "type": "consume_resource",
+                            "resource": "rations",
+                            "method": "percent_roll",
+                            "roll": "2d4+2",
+                            "multiplier": 5,
+                            "min": 3,
+                            "maxPercent": 50,
+                            "severity": "standard",
+                            "description": "Vermin destroyed a significant portion of the food supply."
+                        },
                         {
                             "type": "recovery_penalty",
                             "hpMultiplier": 0.5,
-                            "description": "Exposed position, poor rest quality."
-                        },
-                        {
-                            "type": "condition",
-                            "condition": "exhaustion",
-                            "level": 1,
-                            "scope": "all"
+                            "description": "No rest possible under a blanket of vermin."
                         }
                     ]
                 }
@@ -129,19 +155,42 @@
             ],
             "weight": 2,
             "watchTarget": "all",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "escalate",
+            "noWatchAmplifier": 1,
+            "gmPrompt": "The air is thick and still. The campfire gutters and dims without wind. Breathing feels heavy. Something is wrong with the ventilation in this section.",
+            "checkContext": "Can the watch identify the air quality problem and find a solution before it affects the sleepers?",
+            "gmGuidance": "This is carbon dioxide buildup, not poison gas. The solution is ventilation, not medicine. The fire consuming oxygen is the tell. Putting it out buys time but does not solve the root cause. A crack in the wall, a cleared vent, or a draft from a side passage would fix it. escalate (not auto_fail) because without a watch it is worse but not immediately lethal.",
             "description": "The air is thick and still. The fire gutters. Something is wrong with the ventilation.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "sur",
                 "dc": 12,
                 "targets": "watch",
-                "bestOfN": true,
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "You noticed the fire dimming early and traced the problem to a blocked vent. A few minutes with a crowbar opened a draft from the corridor above. Fresh air, relatively speaking.",
+                    "effects": []
+                },
                 "onSuccess": {
                     "narrative": "You crack a vent and keep the fire low. Breathable, barely.",
                     "effects": []
                 },
+                "onMixed": {
+                    "narrative": "You managed it, but not before the headaches started. The fire stayed out for the rest of the night. Cold and unpleasant.",
+                    "effects": [
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.85,
+                            "description": "Mild headaches from poor air quality."
+                        }
+                    ]
+                },
                 "onFailure": {
-                    "narrative": "Headaches and dizziness. The fire dies. A grim night in the dark.",
+                    "narrative": "Headaches and dizziness. The fire dies. A grim night in the dark, breathing thin air. Everyone wakes sluggish.",
                     "effects": [
                         {
                             "type": "condition",
@@ -165,41 +214,88 @@
             ],
             "weight": 2,
             "watchTarget": "watch",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "skip",
+            "gmPrompt": "Behind a collapsed shelf, half-buried in dust and rubble, a pack. The leather is stiff but not brittle. Someone else camped in this room, and they did not leave by choice.",
+            "checkContext": "Can the watch identify anything useful in the salvage without triggering any traps?",
+            "gmGuidance": "Discovery only fires if watch is set. The pack belonged to a previous adventuring party. The contents scale with the dungeon level. The trap on failure is always minor (spent alchemist fire, not a glyph of warding). This is a reward event, not a gotcha.",
             "description": "Behind a collapsed shelf, a pack. Not old. Someone else camped here, and did not leave by choice.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "inv",
                 "dc": 11,
                 "targets": "watch",
-                "bestOfN": true,
-                "onSuccess": {
-                    "narrative": "Chalk, iron spikes, and a torn but readable map fragment. Useful.",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "You found the trap first, then the good stuff. Iron spikes hammered into cracks, splintered crate planks for fuel, and a stoppered healing potion tucked in a hidden pocket. Whoever packed this knew what they were doing.",
                     "effects": [],
                     "items": [
                         {
-                            "itemRef": "dungeon_salvage",
+                            "itemRef": "rusty_pitons",
+                            "quantity": "1d2"
+                        },
+                        {
+                            "itemRef": "crate_wood",
+                            "quantity": "1d2"
+                        },
+                        {
+                            "itemRef": "potion_of_healing",
                             "quantity": "1",
-                            "itemData": {
-                                "name": "Dungeoneering Supplies",
-                                "type": "loot",
-                                "img": "icons/tools/hand/pickaxe-steel-grey.webp",
-                                "system": {
-                                    "description": {
-                                        "value": "<p>Salvaged dungeoneering supplies: chalk, iron spikes, and a torn map. Recovered from a previous expedition.</p>"
-                                    },
-                                    "rarity": "common"
-                                }
-                            }
+                            "source": "srd"
                         }
                     ]
                 },
+                "onSuccess": {
+                    "narrative": "Iron spikes and some dry crate wood. Useful. The rest is rusted or rotted through.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "rusty_pitons",
+                            "quantity": "1d2"
+                        },
+                        {
+                            "itemRef": "crate_wood",
+                            "quantity": "1d2"
+                        }
+                    ]
+                },
+                "onMixed": {
+                    "narrative": "Some useful bits. Chalk and a couple of iron spikes. The rest is ruined or rusted through.",
+                    "effects": []
+                },
                 "onFailure": {
-                    "narrative": "The pack is trapped. A small glass vial shatters. Alchemist's fire, thankfully spent.",
+                    "narrative": "The pack is trapped. A small glass vial shatters. Alchemist fire, thankfully spent. Nothing salvageable.",
                     "effects": []
                 }
             },
             "tier": "normal",
             "sentiment": "positive",
+            "pack": "base"
+        },
+        {
+            "id": "evt_dungeon_claw_marks",
+            "name": "Claw Marks",
+            "category": "ambient",
+            "terrainTags": [
+                "dungeon"
+            ],
+            "weight": 3,
+            "watchTarget": "none",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "skip",
+            "gmPrompt": "Deep gouges score the stone walls near camp. Three parallel lines, wide-set, dragged downward with clear force. Whatever made them was large, and the stone dust at the base is fresh.",
+            "checkContext": "No check. Ambient event.",
+            "gmGuidance": "Pure atmosphere. The marks are real and recent, but whatever made them is not here now. Let the table draw their own conclusions. If players want to investigate further, that is a player-driven choice outside this event. The rest is undisturbed.",
+            "description": "Deep gouges score the stone walls near camp. Three parallel lines, wide-set, dragged downward. The stone dust at the base is fresh.",
+            "mechanical": null,
+            "tier": "normal",
+            "sentiment": "neutral",
             "pack": "base"
         }
     ]

@@ -5,29 +5,7 @@
             "name": "Tavern Rest Events",
             "terrainTag": "tavern",
             "rollFormula": "1d20",
-            "noEventThreshold": 10,
-            "entries": [
-                {
-                    "range": [1, 4],
-                    "eventId": "evt_tavern_bard"
-                },
-                {
-                    "range": [5, 8],
-                    "eventId": "evt_tavern_gossip"
-                },
-                {
-                    "range": [9, 12],
-                    "eventId": "evt_tavern_brawl_rumor"
-                },
-                {
-                    "range": [13, 16],
-                    "eventId": "evt_tavern_merchant"
-                },
-                {
-                    "range": [17, 20],
-                    "eventId": "evt_tavern_cat"
-                }
-            ]
+            "noEventThreshold": 10
         }
     ],
     "events": [
@@ -35,10 +13,15 @@
             "id": "evt_tavern_bard",
             "name": "A Familiar Tune",
             "category": "ambient",
-            "terrainTags": ["tavern"],
+            "terrainTags": [
+                "tavern"
+            ],
             "weight": 5,
             "watchTarget": "none",
-            "levelRange": [1, 20],
+            "levelRange": [
+                1,
+                20
+            ],
             "noWatchBehavior": "skip",
             "gmPrompt": "A traveling bard in the corner strikes up an old, familiar ballad. The hearth is warm, the ale is flowing. For a moment, the road's hardships fade into memory.",
             "checkContext": "No check. Ambient event.",
@@ -53,10 +36,15 @@
             "id": "evt_tavern_gossip",
             "name": "Local Gossip",
             "category": "ambient",
-            "terrainTags": ["tavern"],
+            "terrainTags": [
+                "tavern"
+            ],
             "weight": 5,
             "watchTarget": "none",
-            "levelRange": [1, 20],
+            "levelRange": [
+                1,
+                20
+            ],
             "noWatchBehavior": "skip",
             "gmPrompt": "The common room is abuzz with hushed whispers. Over a shared plate, the locals gossip about recent strange occurrences in the area.",
             "checkContext": "No check. Ambient event.",
@@ -71,10 +59,15 @@
             "id": "evt_tavern_brawl_rumor",
             "name": "Tense Words",
             "category": "ambient",
-            "terrainTags": ["tavern"],
+            "terrainTags": [
+                "tavern"
+            ],
             "weight": 5,
             "watchTarget": "none",
-            "levelRange": [1, 20],
+            "levelRange": [
+                1,
+                20
+            ],
             "noWatchBehavior": "skip",
             "gmPrompt": "A heated argument breaks out near the bar between rough-looking patrons. It threatens to escalate, but the innkeeper defuses it before a brawl starts.",
             "checkContext": "No check. Ambient event.",
@@ -89,10 +82,15 @@
             "id": "evt_tavern_merchant",
             "name": "Wandering Merchant",
             "category": "ambient",
-            "terrainTags": ["tavern"],
+            "terrainTags": [
+                "tavern"
+            ],
             "weight": 5,
             "watchTarget": "none",
-            "levelRange": [1, 20],
+            "levelRange": [
+                1,
+                20
+            ],
             "noWatchBehavior": "skip",
             "gmPrompt": "A traveling merchant has laid out a small velvet cloth on a corner table, displaying peculiar trinkets, odd charms, and minor curiosities.",
             "checkContext": "No check. Ambient event.",
@@ -107,10 +105,15 @@
             "id": "evt_tavern_cat",
             "name": "The Local Cat",
             "category": "ambient",
-            "terrainTags": ["tavern"],
+            "terrainTags": [
+                "tavern"
+            ],
             "weight": 5,
             "watchTarget": "none",
-            "levelRange": [1, 20],
+            "levelRange": [
+                1,
+                20
+            ],
             "noWatchBehavior": "skip",
             "gmPrompt": "The local cat has decided. It hops up onto your bed, turns three times, curls into a tight ball against your side, and begins to purr. Loud, steady, and completely unbothered by who you are or what you have done.",
             "checkContext": "No check. Ambient event.",

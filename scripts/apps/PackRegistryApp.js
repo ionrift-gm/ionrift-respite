@@ -55,10 +55,11 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
                 const data = await resp.json();
                 for (const event of (data.events ?? [])) {
                     const pack = _ensurePack(event.pack ?? "base");
+                    if (event.tier) pack.tiers[event.tier] = (pack.tiers[event.tier] ?? 0) + 1;
+                    if (event.tier === "disaster") continue;
                     for (const tag of (event.terrainTags ?? [])) {
                         pack.terrains[tag] = (pack.terrains[tag] ?? 0) + 1;
                     }
-                    if (event.tier) pack.tiers[event.tier] = (pack.tiers[event.tier] ?? 0) + 1;
                     pack.totalItems++;
                 }
             } catch (e) {
@@ -66,23 +67,6 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             }
         }
 
-        // ── Scan Wanderer's Pack ──
-        try {
-            const resp = await fetch(`modules/ionrift-respite/data/wanderers_pack/events.json`);
-            if (resp.ok) {
-                const data = await resp.json();
-                for (const event of (data.events ?? [])) {
-                    const pack = _ensurePack(event.pack ?? "wanderers_pack");
-                    for (const tag of (event.terrainTags ?? [])) {
-                        pack.terrains[tag] = (pack.terrains[tag] ?? 0) + 1;
-                    }
-                    if (event.tier) pack.tiers[event.tier] = (pack.tiers[event.tier] ?? 0) + 1;
-                    pack.totalItems++;
-                }
-            }
-        } catch (e) {
-            console.warn(`[Respite:PackRegistry] Failed to load wanderers_pack:`, e);
-        }
 
         // ── Scan terrain pack events via manifest ──
         try {
@@ -91,7 +75,7 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             if (manifestResp.ok) {
                 const manifest = await manifestResp.json();
                 // Core terrains have events in data/core/events/, skip them here
-                const coreTerrains = new Set(["forest", "swamp", "desert", "urban", "dungeon"]);
+                const coreTerrains = new Set(["forest", "swamp", "desert", "urban", "dungeon", "tavern"]);
                 for (const terrain of (manifest.released ?? [])) {
                     if (coreTerrains.has(terrain)) continue;
                     try {
@@ -100,10 +84,11 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
                         const data = await resp.json();
                         for (const event of (data.events ?? [])) {
                             const pack = _ensurePack(event.pack ?? `terrain_${terrain}`);
+                            if (event.tier) pack.tiers[event.tier] = (pack.tiers[event.tier] ?? 0) + 1;
+                            if (event.tier === "disaster") continue;
                             for (const tag of (event.terrainTags ?? [])) {
                                 pack.terrains[tag] = (pack.terrains[tag] ?? 0) + 1;
                             }
-                            if (event.tier) pack.tiers[event.tier] = (pack.tiers[event.tier] ?? 0) + 1;
                             pack.totalItems++;
                         }
                     } catch (e) {
@@ -117,12 +102,10 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
 
 
 
-        // Sort: base first, wanderers_pack second, then alphabetical
+        // Sort: base first, then alphabetical
         const packList = [...packs.values()].sort((a, b) => {
             if (a.id === "base") return -1;
             if (b.id === "base") return 1;
-            if (a.id === "wanderers_pack") return -1;
-            if (b.id === "wanderers_pack") return 1;
             if (a.type !== b.type) return a.type === "event" ? -1 : 1;
             return a.label.localeCompare(b.label);
         });
@@ -283,27 +266,18 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
     }
 
     _formatPackLabel(packId) {
-        const labels = {
-            "base": "Base Pack",
-            "wanderers_pack": "Wanderer's Pack"
-        };
-        return labels[packId] ?? packId.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+        if (packId === "base") return "Base Pack";
+        return packId.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
     }
 
     _getPackIcon(packId) {
-        const icons = {
-            "base": "fas fa-campground",
-            "wanderers_pack": "fas fa-hiking"
-        };
-        return icons[packId] ?? "fas fa-box";
+        if (packId === "base") return "fas fa-campground";
+        return "fas fa-box";
     }
 
     _getPackDescription(packId) {
-        const descs = {
-            "base": "Core events for common terrains",
-            "wanderers_pack": "Starter events across all core terrains"
-        };
-        return descs[packId] ?? "Additional content";
+        if (packId === "base") return "Core events for common terrains";
+        return "Additional content";
     }
 
     _getTerrainIcon(tag) {

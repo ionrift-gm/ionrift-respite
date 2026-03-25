@@ -136,6 +136,13 @@ Hooks.once("init", async () => {
         },
         /** Debug: get the active RestSetupApp instance. */
         getActiveApp: () => activeRestSetupApp,
+        /** Run regression test suite. GM only. */
+        runTests: async () => {
+            if (!game.user.isGM) { console.warn(`${MODULE_ID} | Tests are GM-only.`); return; }
+            const { RespiteTestRunner } = await import("./tests/RespiteTestRunner.js");
+            const runner = new RespiteTestRunner();
+            return await runner.runAll();
+        },
 
         /** Reload all connected clients, then reload the GM. */
         reloadAll: () => {
@@ -180,22 +187,17 @@ Hooks.once("init", async () => {
 
     // Register settings
 
-    game.settings.register(MODULE_ID, "defaultComfort", {
-        name: "Default Comfort Level",
-        hint: "Comfort level used when the GM does not specify one.",
-        scope: "world",
-        config: true,
-        type: String,
-        choices: {
-            safe: "Safe (Full recovery)",
-            sheltered: "Sheltered (Full HP, half HD)",
-            rough: "Rough (Half HP, half HD)",
-            hostile: "Hostile (Quarter HP, quarter HD)"
-        },
-        default: "sheltered",
+    // HEADER: Content Packs button (registerMenu renders above register items)
+    game.settings.registerMenu(MODULE_ID, "contentPacks", {
+        name: "Content Packs",
+        label: "Manage Packs",
+        hint: "Enable or disable event content packs. Shows event counts per terrain.",
+        icon: "fas fa-box-open",
+        type: PackRegistryApp,
         restricted: true
     });
 
+    // BODY: Gameplay settings
     game.settings.register(MODULE_ID, "interceptRests", {
         name: "Intercept Player Rests",
         hint: "Block the default Short/Long Rest buttons for players. Rests must go through the GM-managed Respite flow.",
@@ -207,8 +209,8 @@ Hooks.once("init", async () => {
     });
 
     game.settings.register(MODULE_ID, "armorDoffRule", {
-        name: "Armor Doff/Don Advisory",
-        hint: "Show advisory for characters wearing medium or heavy armor about sleeping penalties (Xanathar's optional rule). Characters who keep watch may stay armored.",
+        name: "Armor Sleep Penalties",
+        hint: "Characters sleeping in medium or heavy armor recover fewer Hit Dice and cannot reduce exhaustion (Xanathar's). Characters on watch are exempt.",
         scope: "world",
         config: true,
         type: Boolean,
@@ -280,17 +282,7 @@ Hooks.once("init", async () => {
         scope: "world",
         config: false,
         type: Object,
-        default: { base: true, wanderers_pack: true }
-    });
-
-    // Content Packs button in module settings
-    game.settings.registerMenu(MODULE_ID, "contentPacks", {
-        name: "Content Packs",
-        label: "Manage Packs",
-        hint: "Enable or disable event content packs. Shows event counts per terrain.",
-        icon: "fas fa-box-open",
-        type: PackRegistryApp,
-        restricted: true
+        default: { base: true }
     });
 
     // FOOTER: Discord + Wiki (standardised via ionrift-library)

@@ -444,13 +444,14 @@ export class ActivityResolver {
         // Also check for physical tool items in inventory
         // dnd5e tool items have system.type.value = "art" or "music" or tool key
         // and system.type.baseItem matching the config key (e.g. "cook", "herb")
+        // NOTE: DnD5e v5+ may normalise tool items to a different type,
+        // so we scan ALL items for baseItem and name-based indicators.
         for (const item of actor.items ?? []) {
-            if (item.type !== "tool") continue;
             const baseItem = item.system?.type?.baseItem;
             if (baseItem) profKeys.add(baseItem);
 
             // Fallback: match by name for common tools
-            const nameLower = item.name.toLowerCase();
+            const nameLower = (item.name ?? "").toLowerCase();
             if (nameLower.includes("cook")) profKeys.add("cook");
             if (nameLower.includes("herbalism")) profKeys.add("herb");
             if (nameLower.includes("alchemist")) profKeys.add("alchemist");

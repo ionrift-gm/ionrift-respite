@@ -1065,6 +1065,11 @@
                     <button type="button" class="btn-primary" disabled>
                         <i class="fas fa-hourglass-half"></i> Waiting for {{pendingDehydrationSaves}} CON save(s)...
                     </button>
+                    {{#if hasUnresolvedSaves}}
+                    <button type="button" class="btn-secondary" data-action="skipPendingSaves" title="Auto-fail all pending saves and apply exhaustion">
+                        <i class="fas fa-forward"></i> Skip Pending Saves
+                    </button>
+                    {{/if}}
                     {{/if}}
                 {{else}}
                 <button type="button" class="btn-primary" data-action="proceedFromMeal">

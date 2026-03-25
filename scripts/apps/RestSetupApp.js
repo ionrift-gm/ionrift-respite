@@ -123,7 +123,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             proceedFromMeal: RestSetupApp.#onProceedFromMeal,
             submitMealChoices: RestSetupApp.#onSubmitMealChoices,
             consumeMealDay: RestSetupApp.#onConsumeMealDay,
-            adjustDaysSinceRest: RestSetupApp.#onAdjustDaysSinceRest
+            adjustDaysSinceRest: RestSetupApp.#onAdjustDaysSinceRest,
+            skipPendingSaves: RestSetupApp.#onSkipPendingSaves
         }
     };
 
@@ -625,7 +626,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (lastTerrain && TerrainRegistry.get(lastTerrain)) this._selectedTerrain = lastTerrain;
         }
         const terrainDefaults = TerrainRegistry.getDefaults(this._selectedTerrain ?? "forest");
-        const defaultComfort = terrainDefaults.comfort ?? game.settings.get(MODULE_ID, "defaultComfort");
+        const defaultComfort = terrainDefaults.comfort;
 
         // ── Shelter detection ──
         const SHELTER_SPELLS = [
@@ -1451,6 +1452,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             })(),
             pendingDehydrationSaves: this._pendingDehydrationSaves?.length > 0 ? this._pendingDehydrationSaves.length : 0,
             allDehydrationResolved: this._pendingDehydrationSaves?.length > 0 && this._pendingDehydrationSaves.every(s => s.resolved),
+            hasUnresolvedSaves: this._pendingDehydrationSaves?.length > 0 && this._pendingDehydrationSaves.some(s => !s.resolved),
             dehydrationResults: (() => {
                 // GM: use pending saves data; Player: use broadcast results
                 const fromPending = (this._pendingDehydrationSaves ?? []).filter(s => s.resolved).map(s => ({
@@ -4058,6 +4060,55 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         await this._saveRestState();
         this.render();
+    }
+
+    /**
+     * GM skips all unresolved dehydration saves, auto-failing them.
+     * Applies exhaustion and posts chat for each, then unblocks the flow.
+     */
+    static async #onSkipPendingSaves(event, target) {
+        if (!this._pendingDehydrationSaves?.length) return;
+
+        const unresolved = this._pendingDehydrationSaves.filter(s => !s.resolved);
+        if (!unresolved.length) return;
+
+        for (const save of unresolved) {
+            const actor = game.actors.get(save.characterId);
+            if (actor) {
+                const current = actor.system?.attributes?.exhaustion ?? 0;
+                const newLevel = Math.min(6, current + 1);
+                if (newLevel > current) {
+                    await actor.update({ "system.attributes.exhaustion": newLevel });
+                }
+                await ChatMessage.create({
+                    content: `<div class="respite-recovery-chat"><strong>${save.actorName}</strong> fails the CON save (skipped by GM) and gains 1 level of exhaustion from dehydration.</div>`,
+                    speaker: ChatMessage.getSpeaker({ actor })
+                });
+            }
+
+            save.resolved = true;
+            save.passed = false;
+            save.total = 0;
+            save.reason = "dehydration (GM skipped)";
+        }
+
+        // Broadcast updated results to players
+        const allResults = this._pendingDehydrationSaves.map(s => ({
+            actorName: s.actorName,
+            total: s.total ?? 0,
+            passed: s.passed ?? false,
+            dc: s.dc ?? 0,
+            reason: s.reason ?? null,
+            pending: !s.resolved
+        }));
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "dehydrationResultsBroadcast",
+            results: allResults
+        });
+
+        await this._saveRestState();
+        this.render();
+        ui.notifications.info(`Skipped ${unresolved.length} pending save(s). Exhaustion applied.`);
     }
 
     /**

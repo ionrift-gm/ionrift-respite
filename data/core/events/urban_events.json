@@ -5,44 +5,7 @@
             "name": "Urban Rest Events",
             "terrainTag": "urban",
             "rollFormula": "1d20",
-            "noEventThreshold": 14,
-            "entries": [
-                {
-                    "range": [
-                        1,
-                        3
-                    ],
-                    "eventId": "evt_urban_thieves"
-                },
-                {
-                    "range": [
-                        4,
-                        6
-                    ],
-                    "eventId": "evt_urban_noise"
-                },
-                {
-                    "range": [
-                        7,
-                        9
-                    ],
-                    "eventId": "evt_urban_street_merchant"
-                },
-                {
-                    "range": [
-                        10,
-                        11
-                    ],
-                    "eventId": "evt_urban_patrol"
-                },
-                {
-                    "range": [
-                        12,
-                        13
-                    ],
-                    "eventId": "evt_urban_nightlife"
-                }
-            ]
+            "noEventThreshold": 14
         }
     ],
     "events": [
@@ -55,24 +18,63 @@
             ],
             "weight": 3,
             "watchTarget": "watch",
-            "description": "A shadow detaches from the alley wall. Someone is going through your packs.",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "auto_fail",
+            "noWatchAmplifier": 1,
+            "gmPrompt": "A shadow detaches itself from the alley wall. Soft, barely audible fabric against fabric. Someone is testing whether the camp is watched.",
+            "checkContext": "Can the watch spot the thief before they reach the packs?",
+            "gmGuidance": "Urban pickpocket, not a combat threat. They flee if spotted. The check is spotting them before they start, not fighting. auto_fail without a watch because nobody is awake to notice. item_at_risk targets consumables and gold. Severity 2/5 on mixed, 3/5 on failure. Never takes weapons or armour.",
+            "description": "Someone is testing whether the camp is watched.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "prc",
                 "dc": 14,
                 "targets": "watch",
-                "bestOfN": true,
-                "onSuccess": {
-                    "narrative": "You spotted them before they reached anything valuable. A sharp word and they vanish.",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "You caught the shadow testing the approach before they even reached the packs. A drawn weapon and a steady look. They backed off and disappeared.",
                     "effects": []
                 },
-                "onFailure": {
-                    "narrative": "Quick hands in the dark. Something is missing from the packs.",
+                "onSuccess": {
+                    "narrative": "You spotted the silhouette just as they reached the first pack. A sharp word and steel drawn. They vanished into the side streets before grabbing anything.",
+                    "effects": []
+                },
+                "onMixed": {
+                    "narrative": "You caught them with hands already in the packs. They bolted, but not before pocketing a few things. A potion here, a handful of coin there.",
                     "effects": [
                         {
                             "type": "item_at_risk",
-                            "filter": "consumable",
-                            "narrative": "A thief made off with something from the packs."
+                            "filter": [
+                                "minor_consumable"
+                            ],
+                            "severity": 2,
+                            "narrative": "A thief got away with a couple of small items."
+                        },
+                        {
+                            "type": "consume_gold",
+                            "severity": 1,
+                            "description": "A handful of coin lifted from the packs."
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "Quick hands, professional job. By the time anyone wakes, the shadow is long gone. Packs rifled through, potions missing, coin purses lighter.",
+                    "effects": [
+                        {
+                            "type": "item_at_risk",
+                            "filter": [
+                                "consumable"
+                            ],
+                            "severity": 3,
+                            "narrative": "A thief cleaned out several items."
+                        },
+                        {
+                            "type": "consume_gold",
+                            "severity": 2,
+                            "description": "Coin purses noticeably lighter."
                         }
                     ]
                 }
@@ -90,19 +92,42 @@
             ],
             "weight": 3,
             "watchTarget": "all",
-            "description": "Shouting, breaking glass, and running footsteps. The neighbourhood is not settling down tonight.",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "escalate",
+            "noWatchAmplifier": 1,
+            "gmPrompt": "Shouting. The shattering of a glass bottle. Heavy running footsteps. The neighbourhood is not settling down tonight.",
+            "checkContext": "Can the party sleep through the noise?",
+            "gmGuidance": "Not a threat, just noise. Constitution save to sleep through it. Per-character because some people sleep heavier than others. This is the most common urban event -- a reminder that cities are loud. The noise is external and unrelated to the party.",
+            "description": "The neighbourhood is not settling down tonight. Shouting, bottles, running footsteps.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "con",
                 "dc": 10,
                 "targets": "all",
-                "bestOfN": false,
-                "onSuccess": {
-                    "narrative": "Earplugs, a pillow over the head, and sheer willpower. You sleep through it.",
+                "volunteerPolicy": "each",
+                "onTriumph": {
+                    "narrative": "Out cold within minutes. The city could burn down around you and you would not notice. Best sleep in weeks.",
                     "effects": []
                 },
+                "onSuccess": {
+                    "narrative": "Earplugs, pillow over the head, and sheer exhaustion. You sleep through the worst of it.",
+                    "effects": []
+                },
+                "onMixed": {
+                    "narrative": "Woke twice. Managed to get back to sleep both times, but the rest was shallow.",
+                    "effects": [
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.85,
+                            "description": "Shallow sleep from intermittent noise."
+                        }
+                    ]
+                },
                 "onFailure": {
-                    "narrative": "Nobody sleeps well. The noise continues until an hour before dawn.",
+                    "narrative": "The noise continues until an hour before dawn. Tossing and turning all night. Exhausted by morning.",
                     "effects": [
                         {
                             "type": "recovery_penalty",
@@ -125,40 +150,51 @@
             ],
             "weight": 3,
             "watchTarget": "watch",
-            "description": "A quiet knock at the door. A hooded figure with a cart full of odds and ends, selling at unusual hours.",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "skip",
+            "gmPrompt": "A quiet, rhythmic knock. A hooded figure outside with a pushcart. They have a few useful things mixed in with the junk.",
+            "checkContext": "Can the watch judge the goods and get a fair deal?",
+            "gmGuidance": "Insight to read the merchant. This is not a full shop. Triumph auto-grants a healing potion, success auto-grants an antitoxin. No gold transaction automated (payment is narrative only, same as other discovery rewards). Mixed/failure are a decline. Proper vendor workflow deferred to Workshop module. Only fires if watch is set.",
+            "description": "A late-night peddler with a few useful things mixed in with the junk.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "ins",
                 "dc": 12,
                 "targets": "watch",
-                "bestOfN": true,
-                "onSuccess": {
-                    "narrative": "Legitimate goods at fair prices. A useful find at an odd hour.",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "Legitimate stock, fair prices. A healing potion wrapped in cloth at the bottom of the cart. A good deal by anyone's measure.",
                     "effects": [],
                     "items": [
                         {
-                            "itemRef": "urban_sundries",
+                            "itemRef": "potion_of_healing",
                             "quantity": "1",
-                            "itemData": {
-                                "name": "Sundry Goods",
-                                "type": "loot",
-                                "img": "icons/containers/bags/pouch-simple-worn-brown.webp",
-                                "system": {
-                                    "description": {
-                                        "value": "<p>Assorted useful supplies purchased from a late-night merchant. Candles, twine, chalk, and a few other odds and ends.</p>"
-                                    },
-                                    "rarity": "common",
-                                    "price": {
-                                        "value": 1,
-                                        "denomination": "gp"
-                                    }
-                                }
-                            }
+                            "source": "srd",
+                            "description": "Found via late-night peddler."
                         }
                     ]
                 },
+                "onSuccess": {
+                    "narrative": "Good enough stock. An antitoxin buried under a pile of trinkets. Worth picking up.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "antitoxin",
+                            "quantity": "1",
+                            "source": "srd",
+                            "description": "Found via late-night peddler."
+                        }
+                    ]
+                },
+                "onMixed": {
+                    "narrative": "The prices did not add up. You thanked the merchant and closed the door. No deal, no harm.",
+                    "effects": []
+                },
                 "onFailure": {
-                    "narrative": "Something felt off about the deal. You declined. Probably wise.",
+                    "narrative": "Nothing on that cart was worth the risk. A polite decline and a bolted door. Time saved, coin kept.",
                     "effects": []
                 }
             },
@@ -175,19 +211,42 @@
             ],
             "weight": 2,
             "watchTarget": "watch",
-            "description": "Lantern light and the clink of armour. The city watch is making rounds.",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "escalate",
+            "noWatchAmplifier": 2,
+            "gmPrompt": "The sweeping glow of a bullseye lantern and the clink of chainmail. The city watch is making aggressive neighbourhood rounds tonight.",
+            "checkContext": "Can the watch handle the patrol without disrupting the rest of the party?",
+            "gmGuidance": "Charisma to talk your way through it. The watch is not hostile, just suspicious. Triumph gets a friendly exchange. Failure gets an hour of interrogation. escalate without a watch because an unattended camp in a city looks suspicious. noWatchAmplifier 2 because the watch will wake everyone and search everything.",
+            "description": "The city watch is making rounds. Lanterns and chainmail approaching.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "cha",
                 "dc": 12,
                 "targets": "watch",
-                "bestOfN": true,
-                "onSuccess": {
-                    "narrative": "A friendly exchange. They move on without trouble.",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "A confident greeting and a brief, friendly exchange. The watchmen nod, wish you well, and move on. They might even mention something useful about the neighbourhood.",
                     "effects": []
                 },
+                "onSuccess": {
+                    "narrative": "Polite greeting, confident explanation. The watchmen seem satisfied and move on without trouble.",
+                    "effects": []
+                },
+                "onMixed": {
+                    "narrative": "They lingered. Papers checked, a few pointed questions, some suspicious glances. Eventually moved on, but the interruption woke half the camp.",
+                    "effects": [
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.85,
+                            "description": "Watch interruption disrupted the camp."
+                        }
+                    ]
+                },
                 "onFailure": {
-                    "narrative": "Questions about your business, papers examined, packs searched. An hour wasted.",
+                    "narrative": "The patrol is suspicious and thorough. An hour of pointed questions, travel papers scrutinised, packs searched. They leave eventually, but the rest is ruined.",
                     "effects": [
                         {
                             "type": "recovery_penalty",
@@ -210,7 +269,15 @@
             ],
             "weight": 3,
             "watchTarget": "none",
-            "description": "Distant music from a tavern. The smell of baking bread from a bakery starting early. A cat yowls on a rooftop. The city never truly sleeps, but tonight, it hums rather than screams.",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "skip",
+            "gmPrompt": "Distant lute music from a tavern blocks away. The smell of baking bread from a bakery starting its ovens early. A lone tomcat yowling from a rooftop. The city never truly sleeps, but tonight it hums a gentle tune rather than screaming.",
+            "checkContext": "No check. Ambient event.",
+            "gmGuidance": "Pure atmosphere. No mechanical consequence. A moment of warmth and normality. Contrast to the wilderness terrains. Rest is undisturbed.",
+            "description": "The city hums gently tonight. Distant music, baking bread, a yowling tomcat.",
             "mechanical": null,
             "tier": "normal",
             "sentiment": "neutral",

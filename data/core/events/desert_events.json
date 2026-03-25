@@ -5,44 +5,7 @@
             "name": "Desert Rest Events",
             "terrainTag": "desert",
             "rollFormula": "1d20",
-            "noEventThreshold": 11,
-            "entries": [
-                {
-                    "range": [
-                        1,
-                        2
-                    ],
-                    "eventId": "evt_desert_sandstorm_burial"
-                },
-                {
-                    "range": [
-                        3,
-                        4
-                    ],
-                    "eventId": "evt_desert_scorpions"
-                },
-                {
-                    "range": [
-                        5,
-                        6
-                    ],
-                    "eventId": "evt_desert_dehydration"
-                },
-                {
-                    "range": [
-                        7,
-                        8
-                    ],
-                    "eventId": "evt_desert_oasis_cache"
-                },
-                {
-                    "range": [
-                        9,
-                        10
-                    ],
-                    "eventId": "evt_desert_stars"
-                }
-            ]
+            "noEventThreshold": 11
         }
     ],
     "events": [
@@ -55,24 +18,64 @@
             ],
             "weight": 2,
             "watchTarget": "all",
-            "description": "The wind picks up without warning. Sand blasts exposed skin and buries everything not tied down.",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "escalate",
+            "noWatchAmplifier": 1,
+            "gmPrompt": "The evening wind picks up without warning. Within minutes it is a blinding, howling gale. Sand stings exposed skin and piles against anything that stays still. Everything not tied down is moving.",
+            "checkContext": "Can the watch secure the camp before the storm buries it?",
+            "gmGuidance": "This is wind and sand, not a magical storm. The solution is physical: lash gear down, cover packs with tarps, weight tent stakes. escalate without a watch because nobody notices the wind building until it is too late. The storm lasts 2-3 hours.",
+            "description": "The evening wind picks up without warning, quickly howling into a blinding gale. A violent sandstorm threatens to bury everything in camp.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "sur",
                 "dc": 14,
                 "targets": "watch",
-                "bestOfN": true,
-                "onSuccess": {
-                    "narrative": "You raised the alarm in time. Gear was secured beneath tarps. The storm passes overhead.",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "You read the wind shift early. By the time the storm hit, every stake was double-deep, every pack was under a weighted tarp. The party slept through it.",
                     "effects": []
                 },
-                "onFailure": {
-                    "narrative": "Camp is half-buried. Packs are full of sand. Critical supplies are damaged.",
+                "onSuccess": {
+                    "narrative": "You raised the alarm just in time. Tents staked, gear secured. The worst of the storm rages harmlessly overhead. Some grit in everything, but nothing lost.",
+                    "effects": []
+                },
+                "onMixed": {
+                    "narrative": "You caught the storm late. Most of the gear is secured, but the sand got into the food packs and one tent collapsed. A gritty, miserable night.",
                     "effects": [
                         {
-                            "type": "item_at_risk",
-                            "filter": "camp_gear",
-                            "narrative": "Sand has gotten into everything. Something is ruined."
+                            "type": "consume_resource",
+                            "resource": "rations",
+                            "method": "percent_roll",
+                            "roll": "1d4+1",
+                            "multiplier": 5,
+                            "min": 1,
+                            "maxPercent": 25,
+                            "severity": "standard",
+                            "description": "Sand-contaminated rations."
+                        },
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.85,
+                            "description": "Grit, noise, and collapsed shelter disrupted rest."
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "The storm catches the camp unprepared. By morning, the camp is half-buried beneath dunes. Packs are full of grit. Some critical supplies have been scoured away or buried beyond recovery.",
+                    "effects": [
+                        {
+                            "type": "consume_resource",
+                            "resource": "rations",
+                            "method": "percent_roll",
+                            "roll": "2d4+2",
+                            "multiplier": 5,
+                            "min": 3,
+                            "maxPercent": 50,
+                            "severity": "standard",
+                            "description": "Supplies buried or scoured away by the sandstorm."
                         },
                         {
                             "type": "recovery_penalty",
@@ -95,31 +98,70 @@
             ],
             "weight": 2,
             "watchTarget": "watch",
-            "description": "The ground crunches underfoot. Camp was pitched on a scorpion nest. They emerge after dark.",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "auto_fail",
+            "noWatchAmplifier": 1,
+            "gmPrompt": "The sandy ground crunches strangely underfoot. As the firelight catches the shifting sand, pale shapes are moving. The camp was pitched directly over a nest of desert scorpions, and they are emerging to hunt in the cool night air.",
+            "checkContext": "Can the watch spot the swarm and relocate the camp before anyone is stung?",
+            "gmGuidance": "Not a combat encounter unless the GM escalates. These are mundane scorpions, not giant ones. The threat is a sting to a sleeping character, not a fight. Perception to spot them, then a quick relocation. auto_fail without a watch because nobody sees them until someone gets stung.",
+            "description": "The camp was pitched over a scorpion nest. Pale shapes are emerging from the sand.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "prc",
                 "dc": 13,
                 "targets": "watch",
-                "bestOfN": true,
-                "onSuccess": {
-                    "narrative": "You spot them before anyone is stung. The camp relocates a few yards. Crisis averted.",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "You noticed the first pale shape well before the main swarm surfaced. Everyone up, gear off the ground, camp relocated thirty yards upwind. Done before anyone got stung.",
                     "effects": []
                 },
-                "onFailure": {
-                    "narrative": "Stings and panic. The camp scrambles awake in the dark.",
+                "onSuccess": {
+                    "narrative": "You spot the swelling swarm before anyone rolls onto them. The party relocates quickly. An unsettling hour, but no stings.",
+                    "effects": []
+                },
+                "onMixed": {
+                    "narrative": "You caught it, but not before one got into a boot. A painful sting, a panicked relocation, and a nervous night checking every fold of fabric.",
                     "effects": [
                         {
                             "type": "damage",
-                            "formula": "1d4",
+                            "roll": "1d4",
                             "damageType": "poison",
-                            "scope": "random_one",
+                            "scope": "randomTarget",
+                            "randomTarget": {
+                                "pool": "sleeping",
+                                "count": 1
+                            },
+                            "description": "Scorpion sting."
+                        },
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.85,
+                            "description": "Nobody slept soundly after the scorpion scare."
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "A sudden, sharp cry breaks the night. Stings and panic as the camp scrambles awake in the dark, shaking out blankets and boots. The venom burns.",
+                    "effects": [
+                        {
+                            "type": "damage",
+                            "roll": "1d4",
+                            "damageType": "poison",
+                            "scope": "randomTarget",
+                            "randomTarget": {
+                                "pool": "sleeping",
+                                "count": "1d2"
+                            },
                             "description": "Scorpion sting."
                         },
                         {
                             "type": "condition",
                             "condition": "poisoned",
                             "duration": "4_hours",
+                            "scope": "stung",
                             "description": "Venom from a scorpion sting."
                         }
                     ]
@@ -138,7 +180,16 @@
             ],
             "weight": 2,
             "watchTarget": "all",
-            "description": "The heat is relentless even at night. Water consumption has been higher than expected.",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "escalate",
+            "noWatchAmplifier": 1,
+            "gmPrompt": "The heat has not broken. Even hours after sunset the rocks are still radiating warmth like a furnace. Exposed skin is hot to the touch. Everyone is drinking more than planned, and the containers are emptying fast.",
+            "checkContext": "Can the party manage the extreme heat and limit water consumption?",
+            "gmGuidance": "This is an unusually hot night, not a supply management failure. It works whether the party has two waterskins or twenty -- the heat forces extra consumption either way. Create Water or Goodberry cancels outright. A windbreak (defenses) cancels. The consume_resource effect goes through ResourceSink. If the party has no water, the noResourceFallback triggers exhaustion instead.",
+            "description": "The heat has not broken. Everyone is drinking more than planned.",
             "dutyRelevance": {
                 "defenses": {
                     "effect": "cancel",
@@ -150,24 +201,53 @@
                 "skill": "sur",
                 "dc": 12,
                 "targets": "all",
-                "bestOfN": false,
-                "onSuccess": {
-                    "narrative": "Careful rationing and damp cloth over the mouth. You make it through.",
+                "volunteerPolicy": "each",
+                "onTriumph": {
+                    "narrative": "You knew this heat was unusual. Damp cloths over mouths, shelter angled against the radiant rock, disciplined sips only. Everyone came through without dipping into reserves.",
                     "effects": []
                 },
-                "onFailure": {
-                    "narrative": "Parched and lightheaded. The morning sun will be brutal.",
+                "onSuccess": {
+                    "narrative": "Through careful discipline and a damp cloth technique, the party manages the heat without burning through extra water.",
+                    "effects": []
+                },
+                "onMixed": {
+                    "narrative": "The heat wins the argument. Extra water consumed to keep everyone functional. Tomorrow's supply will be tighter.",
                     "effects": [
                         {
                             "type": "consume_resource",
                             "resource": "water",
-                            "amount": 1
+                            "amount": 1,
+                            "noResourceFallback": {
+                                "type": "condition",
+                                "condition": "exhaustion",
+                                "level": 1,
+                                "description": "No water available. Dehydration sets in."
+                            },
+                            "description": "Extra water consumed to manage the heat."
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "The heat is unrelenting. Extra water consumed and it still was not enough. Everyone wakes parched and sluggish. Facing the morning sun will be brutal.",
+                    "effects": [
+                        {
+                            "type": "consume_resource",
+                            "resource": "water",
+                            "amount": 1,
+                            "noResourceFallback": {
+                                "type": "condition",
+                                "condition": "exhaustion",
+                                "level": 2,
+                                "description": "No water available. Severe dehydration."
+                            },
+                            "description": "Extra water consumed, still not enough."
                         },
                         {
                             "type": "condition",
                             "condition": "exhaustion",
                             "level": 1,
-                            "scope": "failed"
+                            "scope": "failed",
+                            "description": "The heat broke them despite the water."
                         }
                     ]
                 }
@@ -185,31 +265,89 @@
             ],
             "weight": 2,
             "watchTarget": "watch",
-            "description": "Wind-scoured ground reveals the edge of a buried cache. Old trade goods, half swallowed by sand.",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "skip",
+            "gmPrompt": "While pacing the perimeter, the wind-scoured ground reveals the polished edge of something buried. It looks like old trade goods from a lost caravan, half swallowed by the encroaching dunes.",
+            "checkContext": "Can the watch excavate the cache without damaging the contents?",
+            "gmGuidance": "Reward event. The cache is from a long-dead trade caravan. Contents are mundane but valuable: spices, preserved goods, maybe a sealed waterskin. Failure breaks the fragile containers, not a trap. Only fires if watch is set.",
+            "description": "Wind-scoured ground reveals the edge of a buried cache. Old trade goods from a lost caravan.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "inv",
                 "dc": 12,
                 "targets": "watch",
-                "bestOfN": true,
-                "onSuccess": {
-                    "narrative": "Sealed clay jars. Preserved spices and a stoppered waterskin still holding.",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "Patient excavation. You clear the sand without disturbing the clay seals. Intact jars of preserved spices, a sealed waterskin still holding fluid, and a leather pouch of trade coins.",
                     "effects": [],
                     "items": [
                         {
-                            "itemRef": "desert_spices",
-                            "quantity": "1d3",
+                            "itemRef": "cached_gold",
+                            "quantity": "3d6",
                             "itemData": {
-                                "name": "Desert Spices",
+                                "name": "Buried Coins",
                                 "type": "loot",
-                                "img": "icons/consumables/food/spice-jars-red-background.webp",
+                                "img": "icons/commodities/currency/coins-assorted-mix-copper-silver-gold.webp",
                                 "system": {
                                     "description": {
-                                        "value": "<p>Preserved desert spices. Valuable in the right market.</p>"
+                                        "value": "<p>A handful of old coins recovered from a buried trade cache. Tarnished but spendable.</p>"
                                     },
                                     "rarity": "common",
                                     "price": {
-                                        "value": 2,
+                                        "value": 1,
+                                        "denomination": "gp"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                "onSuccess": {
+                    "narrative": "Carefully digging it out, you uncover several intact sealed clay jars holding preserved exotic spices.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "cached_gold",
+                            "quantity": "2d6",
+                            "itemData": {
+                                "name": "Buried Coins",
+                                "type": "loot",
+                                "img": "icons/commodities/currency/coins-assorted-mix-copper-silver-gold.webp",
+                                "system": {
+                                    "description": {
+                                        "value": "<p>A handful of old coins recovered from a buried trade cache. Tarnished but spendable.</p>"
+                                    },
+                                    "rarity": "common",
+                                    "price": {
+                                        "value": 1,
+                                        "denomination": "gp"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                "onMixed": {
+                    "narrative": "You pulled one jar free intact, but the rest crumbled. A single jar of spices, better than nothing.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "cached_gold",
+                            "quantity": "1d6",
+                            "itemData": {
+                                "name": "Buried Coins",
+                                "type": "loot",
+                                "img": "icons/commodities/currency/coins-assorted-mix-copper-silver-gold.webp",
+                                "system": {
+                                    "description": {
+                                        "value": "<p>A handful of old coins recovered from a buried trade cache. Tarnished but spendable.</p>"
+                                    },
+                                    "rarity": "common",
+                                    "price": {
+                                        "value": 1,
                                         "denomination": "gp"
                                     }
                                 }
@@ -218,7 +356,7 @@
                     ]
                 },
                 "onFailure": {
-                    "narrative": "The jars crumble when you pull them free. Nothing salvageable.",
+                    "narrative": "In your excitement, you pull too hard. The ancient clay jars crumble to dust in your hands, their contents blowing away in the night breeze. Nothing salvageable.",
                     "effects": []
                 }
             },
@@ -235,7 +373,15 @@
             ],
             "weight": 3,
             "watchTarget": "none",
-            "description": "Without clouds or canopy, the sky is overwhelming. Stars stretch horizon to horizon. A shooting star traces a line across the void. The desert, for all its cruelty, has its moments.",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "skip",
+            "gmPrompt": "Without cloud or canopy, the vast night sky is overwhelming. Countless stars stretch from horizon to horizon. A shooting star traces a line across the void. The desert, for all its daytime cruelty, offers a profound serenity tonight. This is a quiet RP moment if the table wants it.",
+            "checkContext": "No check. Ambient event.",
+            "gmGuidance": "Pure atmosphere. No mechanical consequence. If the table likes RP moments, this is a chance for characters to reflect, share a moment, or just take in the silence. If the table does not care for ambiance, skip it and move on. Either way, the rest is undisturbed.",
+            "description": "The vast desert night sky is overwhelming. Countless stars stretch from horizon to horizon. A shooting star traces a line across the void.",
             "mechanical": null,
             "tier": "normal",
             "sentiment": "neutral",

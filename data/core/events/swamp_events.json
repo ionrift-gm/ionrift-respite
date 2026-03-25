@@ -241,40 +241,6 @@
             "tier": "normal",
             "sentiment": "neutral",
             "pack": "base"
-        },
-        {
-            "id": "evt_swamp_peat_find",
-            "name": "Peat Bed Discovery",
-            "category": "discovery",
-            "terrainTags": [
-                "swamp"
-            ],
-            "weight": 2,
-            "watchTarget": "watch",
-            "description": "A patch of dry peat near camp. It burns slow and hot, perfect for drying gear and warming the camp.",
-            "mechanical": {
-                "type": "skill_check",
-                "skill": "sur",
-                "dc": 10,
-                "targets": "watch",
-                "onSuccess": {
-                    "narrative": "A peat fire burns through the night. Everything dries out. Camp morale improves.",
-                    "effects": [
-                        {
-                            "type": "recovery_bonus",
-                            "hpMultiplier": 1.25,
-                            "description": "Warm, dry conditions improve rest quality."
-                        }
-                    ]
-                },
-                "onFailure": {
-                    "narrative": "The peat is too waterlogged to burn properly. Still, the effort was worthwhile.",
-                    "effects": []
-                }
-            },
-            "tier": "normal",
-            "sentiment": "positive",
-            "pack": "base"
         }
     ]
 }

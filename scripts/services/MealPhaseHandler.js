@@ -468,6 +468,9 @@ export class MealPhaseHandler {
      * Consume up to `amount` units of an item (decrement quantity or uses).
      * Returns the number of units actually consumed (handles partial supply).
      *
+     * Supports both DnD5e legacy (uses.value writable) and v5+
+     * (uses.spent/uses.max, where value = max - spent and is read-only).
+     *
      * @param {Actor} actor
      * @param {string} itemId - Item ID to consume
      * @param {number} amount - Number of units to consume
@@ -483,29 +486,38 @@ export class MealPhaseHandler {
 
         // Items with charges (waterskin 4/4, rations 1/1)
         if (uses && uses.max > 0) {
-            if (uses.value > 0) {
-                consumed = Math.min(amount, uses.value);
-                const newVal = uses.value - consumed;
-                if (newVal <= 0 && qty > 1) {
+            // DnD5e v5+: uses.spent exists, value = max - spent (read-only)
+            // Legacy: uses.value is directly writable
+            const isV5 = ("spent" in uses);
+            const currentCharges = isV5 ? (uses.max - (uses.spent ?? 0)) : (uses.value ?? 0);
+
+            if (currentCharges > 0) {
+                consumed = Math.min(amount, currentCharges);
+                const remaining = currentCharges - consumed;
+
+                if (remaining <= 0 && qty > 1) {
                     // Charges depleted: use next unit (decrement qty, reset charges)
-                    await item.update({
-                        "system.uses.value": uses.max,
-                        "system.quantity": qty - 1
-                    });
-                } else if (newVal <= 0 && qty <= 1) {
+                    const resetUpdate = isV5
+                        ? { "system.uses.spent": 0, "system.quantity": qty - 1 }
+                        : { "system.uses.value": uses.max, "system.quantity": qty - 1 };
+                    await item.update(resetUpdate);
+                } else if (remaining <= 0 && qty <= 1) {
                     // Last unit, last charge: delete item
                     await actor.deleteEmbeddedDocuments("Item", [item.id]);
                 } else {
-                    await item.update({ "system.uses.value": newVal });
+                    const chargeUpdate = isV5
+                        ? { "system.uses.spent": (uses.spent ?? 0) + consumed }
+                        : { "system.uses.value": remaining };
+                    await item.update(chargeUpdate);
                 }
                 return consumed;
             }
-            // uses.value is 0 but qty > 0: reset charges and consume from next unit
+            // No charges but qty > 0: reset charges and consume from next unit
             if (qty > 1) {
-                await item.update({
-                    "system.uses.value": uses.max - 1,
-                    "system.quantity": qty - 1
-                });
+                const resetConsumeUpdate = isV5
+                    ? { "system.uses.spent": 1, "system.quantity": qty - 1 }
+                    : { "system.uses.value": uses.max - 1, "system.quantity": qty - 1 };
+                await item.update(resetConsumeUpdate);
                 return 1;
             }
             // qty <= 1 and no charges left: nothing to consume

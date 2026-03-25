@@ -15,6 +15,7 @@ data/wanderers_pack/
 # Unreleased data
 data/professions/
 data/core/forage/
+data/core/events/mountain_events.json
 
 # Node / dev tooling
 node_modules/
@@ -40,4 +41,3 @@ audit_*.txt
 audit_*.js
 packs/src/archive/
 
-data/welcome_pack/

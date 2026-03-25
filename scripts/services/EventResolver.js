@@ -222,6 +222,16 @@ export class EventResolver {
     /**
      * Picks a random event from the pool matching the given criteria.
      * Uses weighted random selection based on each event's weight field.
+     *
+     * Recency tracking:
+     * - disasterHistory: array of previously picked disaster event IDs.
+     *   Events in this list are excluded. If ALL matching disasters are in
+     *   the history (full cycle), the filter resets and any may be picked.
+     *   Cap: 20 entries (oldest are dropped).
+     * - eventHistory: array of previously picked standard event IDs.
+     *   Events in the most recent 4 entries are excluded. If ALL matching
+     *   events are in the window, the filter resets.
+     *
      * @param {string} terrainTag
      * @param {Object} filters
      * @param {string} [filters.tier] - Required tier (normal, disaster).
@@ -230,6 +240,8 @@ export class EventResolver {
      * @param {boolean} [filters.hasWatch=true] - Whether watch roster has members.
      * @param {boolean} [filters.skipDecisionTrees=false] - Exclude decision_tree events.
      * @param {string[]} [filters.excludeIds=[]] - Event IDs to exclude.
+     * @param {string[]} [filters.disasterHistory=[]] - Previously picked disaster IDs.
+     * @param {string[]} [filters.eventHistory=[]] - Previously picked standard event IDs.
      * @returns {Object|null}
      */
     _pickFromPool(terrainTag, filters = {}) {
@@ -237,9 +249,12 @@ export class EventResolver {
             tier, sentiment, category,
             hasWatch = true,
             skipDecisionTrees = false,
-            excludeIds = []
+            excludeIds = [],
+            disasterHistory = [],
+            eventHistory = []
         } = filters;
 
+        // Build base candidate pool
         const candidates = [];
         for (const event of this.events.values()) {
             if (!event.terrainTags?.includes(terrainTag)) continue;
@@ -253,7 +268,27 @@ export class EventResolver {
         }
 
         if (candidates.length === 0) return null;
-        return this._weightedRandom(candidates);
+
+        // Apply recency filter based on tier
+        let filtered = candidates;
+
+        if (tier === "disaster" && disasterHistory.length > 0) {
+            // Disaster recency: exclude all IDs in history (capped at 20)
+            const history = disasterHistory.slice(-20);
+            const historySet = new Set(history);
+            filtered = candidates.filter(e => !historySet.has(e.id));
+            // Full-cycle reset: if every candidate was seen, allow all
+            if (filtered.length === 0) filtered = candidates;
+        } else if (tier !== "disaster" && eventHistory.length > 0) {
+            // Standard event recency: exclude IDs in last 4 entries
+            const recentWindow = eventHistory.slice(-4);
+            const recentSet = new Set(recentWindow);
+            filtered = candidates.filter(e => !recentSet.has(e.id));
+            // Full-cycle reset: if every candidate was in the window, allow all
+            if (filtered.length === 0) filtered = candidates;
+        }
+
+        return this._weightedRandom(filtered);
     }
 
     /**

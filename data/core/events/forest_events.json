@@ -5,44 +5,7 @@
             "name": "Forest Rest Events",
             "terrainTag": "forest",
             "rollFormula": "1d20",
-            "noEventThreshold": 12,
-            "entries": [
-                {
-                    "range": [
-                        1,
-                        2
-                    ],
-                    "eventId": "evt_forest_wolves"
-                },
-                {
-                    "range": [
-                        3,
-                        4
-                    ],
-                    "eventId": "evt_forest_deadfall"
-                },
-                {
-                    "range": [
-                        5,
-                        6
-                    ],
-                    "eventId": "evt_forest_mist"
-                },
-                {
-                    "range": [
-                        7,
-                        9
-                    ],
-                    "eventId": "evt_forest_clearing"
-                },
-                {
-                    "range": [
-                        10,
-                        11
-                    ],
-                    "eventId": "evt_forest_birdsong"
-                }
-            ]
+            "noEventThreshold": 12
         }
     ],
     "events": [
@@ -55,23 +18,59 @@
             ],
             "weight": 2,
             "watchTarget": "watch",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "auto_fail",
+            "noWatchAmplifier": 2,
+            "gmPrompt": "Low growling from multiple directions. Eyes glint at the edge of the firelight, circling closer.",
+            "checkContext": "Can the watch stare down the pack before they rush camp?",
+            "gmGuidance": "The pack likely scatters if confronted aggressively. GM can absolutely set a proper fight here if it suits the table. Hook: generateEncounter(forest, tier, [beast, pack]). Fallback: provide a CR-appropriate wolf pack. At higher levels, lean into colour over threat.",
             "description": "Low growling from multiple directions. Eyes glint at the edge of the firelight, circling.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "ani",
                 "dc": 13,
                 "targets": "watch",
-                "onSuccess": {
-                    "narrative": "You hold your ground, keep the fire high, and stare them down. The pack moves on.",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "You lock eyes with the alpha, feed the fire until it roars, and hold absolutely still. The alpha breaks first. The pack vanishes into the dark without a sound.",
                     "effects": []
                 },
-                "onFailure": {
-                    "narrative": "The pack rushes camp looking for food. They scatter with whatever they can grab.",
+                "onSuccess": {
+                    "narrative": "You hold your ground, keep the fire high, and stare them down. The pack circles twice more, then moves on.",
+                    "effects": []
+                },
+                "onMixed": {
+                    "narrative": "The pack rushes camp but the watchers drive them back quickly. A ration bag torn open in the chaos, but the response kept the damage contained.",
                     "effects": [
                         {
                             "type": "consume_resource",
                             "resource": "rations",
-                            "amount": 2
+                            "method": "percent_roll",
+                            "roll": "1d2",
+                            "multiplier": 10,
+                            "min": 1,
+                            "maxPercent": 25,
+                            "severity": "normal",
+                            "timing": "immediate"
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "The pack walks straight through camp and takes everything edible. Ration packs torn apart, a waterskin dragged into the brush.",
+                    "effects": [
+                        {
+                            "type": "consume_resource",
+                            "resource": "rations",
+                            "method": "percent_roll",
+                            "roll": "1d4",
+                            "multiplier": 10,
+                            "min": 1,
+                            "maxPercent": 50,
+                            "severity": "normal",
+                            "timing": "immediate"
                         }
                     ]
                 }
@@ -89,24 +88,54 @@
             ],
             "weight": 2,
             "watchTarget": "watch",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "auto_fail",
+            "noWatchAmplifier": 1,
+            "randomTarget": {
+                "pool": "sleeping",
+                "count": "1"
+            },
+            "gmPrompt": "A creak and groan from above. A dead branch, heavy with rot, shifts in the canopy directly over the sleeping camp.",
+            "checkContext": "Does the watch spot the danger overhead in time?",
+            "gmGuidance": "The 'Roll Target' button selects which sleeper is underneath. At higher levels the damage is trivial but the narrative still works. Consider describing the near-miss on a triumph.",
             "description": "A creak and groan from above. A dead branch, heavy with rot, shifts in the canopy directly over the sleeping camp.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "prc",
                 "dc": 12,
                 "targets": "watch",
-                "onSuccess": {
-                    "narrative": "You spot the danger and quietly move the sleepers. The branch crashes down on empty bedrolls.",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "You heard the crack before anyone else. Sleepers moved, and the branch crashes harmlessly onto empty bedrolls. Good timber, too. You drag it to the fire.",
                     "effects": []
                 },
-                "onFailure": {
-                    "narrative": "The branch falls. Someone catches it across the shoulders.",
+                "onSuccess": {
+                    "narrative": "Sleepers rolled clear just as the branch hammers into empty bedrolls. Close call, no injuries.",
+                    "effects": []
+                },
+                "onMixed": {
+                    "narrative": "You see it too late to move everyone clear. The branch clips a shoulder on the way down. Painful but not serious.",
                     "effects": [
                         {
                             "type": "damage",
-                            "formula": "2d6",
+                            "roll": "1d6",
                             "damageType": "bludgeoning",
-                            "scope": "random_one",
+                            "scope": "randomTarget",
+                            "description": "Glancing blow from a falling branch."
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "The branch catches a sleeper full across the back.",
+                    "effects": [
+                        {
+                            "type": "damage",
+                            "roll": "2d6",
+                            "damageType": "bludgeoning",
+                            "scope": "randomTarget",
                             "description": "A heavy branch falls on a sleeping character."
                         }
                     ]
@@ -125,23 +154,59 @@
             ],
             "weight": 2,
             "watchTarget": "all",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "escalate",
+            "noWatchAmplifier": 2,
+            "gmPrompt": "A thick fog rolls in from the lowland. Everything beyond arm's reach disappears.",
+            "checkContext": "Can the watch secure the camp before the fog disorients everyone?",
+            "gmGuidance": "Without a watch, everyone wakes in fog with no reference points. Escalate: the party loses time and supplies trying to regroup at dawn. Consider allowing alternative skills (Arcana for a light cantrip, etc.).",
             "description": "A thick fog rolls in from the lowland. Everything beyond arm's reach disappears.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "sur",
                 "dc": 11,
                 "targets": "watch",
-                "onSuccess": {
-                    "narrative": "You mark the camp perimeter with rope lines. Nobody wanders off.",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "Read the weather early. Watch doubled, camp tightened, fire kept visible. The fog rolled in and found nothing to exploit. Dawn came without incident.",
                     "effects": []
                 },
-                "onFailure": {
-                    "narrative": "The fog disorients camp. Packing up takes twice as long and something is missing.",
+                "onSuccess": {
+                    "narrative": "Tight watch rotations. Fog burns off at dawn. Camp intact. A tense but uneventful night.",
+                    "effects": []
+                },
+                "onMixed": {
+                    "narrative": "Fog rolled in heavier than expected. Camp held together but packing up at dawn was slow. Some small items misplaced in the murk.",
                     "effects": [
                         {
                             "type": "consume_resource",
                             "resource": "supplies",
-                            "amount": 1
+                            "method": "percent_roll",
+                            "roll": "1d2",
+                            "multiplier": 5,
+                            "min": 1,
+                            "maxPercent": 15,
+                            "severity": "normal",
+                            "timing": "immediate"
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "Something used the fog as cover. The party wakes to tracks circling camp and supplies disturbed.",
+                    "effects": [
+                        {
+                            "type": "consume_resource",
+                            "resource": "supplies",
+                            "method": "percent_roll",
+                            "roll": "1d2",
+                            "multiplier": 10,
+                            "min": 1,
+                            "maxPercent": 25,
+                            "severity": "normal",
+                            "timing": "immediate"
                         }
                     ]
                 }
@@ -159,26 +224,89 @@
             ],
             "weight": 3,
             "watchTarget": "watch",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "skip",
+            "gmPrompt": "The watch finds a small clearing carpeted in wildflowers. Mushrooms ring the edges in perfect circles.",
+            "checkContext": "Can the watch identify anything useful in the clearing?",
+            "gmGuidance": "Discovery only fires if a watch is set. The fairy ring is colour, not mechanical. At higher levels consider rarer herbs (via ResourceSource scaling).",
             "description": "The watch finds a small clearing carpeted in wildflowers. Mushrooms ring the edges in perfect circles.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "nat",
                 "dc": 12,
                 "targets": "watch",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "You recognise the fairy ring and know exactly what grows here. A careful harvest yields choice mushrooms and a clutch of useful herbs tucked between the roots.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "rations_foraged",
+                            "method": "scaled_roll",
+                            "roll": "1d6",
+                            "tierMultiplier": 1,
+                            "min": 2,
+                            "max": 6,
+                            "itemData": {
+                                "name": "Rations (Foraged)",
+                                "type": "consumable",
+                                "img": "icons/consumables/food/berries-basket-brown-green.webp",
+                                "system": {
+                                    "description": {
+                                        "value": "<p>Edible plants and mushrooms gathered from the forest. Good for a meal.</p>"
+                                    },
+                                    "rarity": "common"
+                                }
+                            }
+                        }
+                    ]
+                },
                 "onSuccess": {
                     "narrative": "Edible mushrooms and a few useful herbs. A good find.",
                     "effects": [],
                     "items": [
                         {
-                            "itemRef": "forest_mushrooms",
-                            "quantity": "1d4",
+                            "itemRef": "rations_foraged",
+                            "method": "scaled_roll",
+                            "roll": "1d4",
+                            "tierMultiplier": 1,
+                            "min": 1,
+                            "max": 4,
                             "itemData": {
-                                "name": "Forest Mushrooms",
-                                "type": "loot",
-                                "img": "icons/consumables/mushrooms/mushroom-brown-tan.webp",
+                                "name": "Rations (Foraged)",
+                                "type": "consumable",
+                                "img": "icons/consumables/food/berries-basket-brown-green.webp",
                                 "system": {
                                     "description": {
-                                        "value": "<p>Edible forest mushrooms. Can be used in cooking or sold.</p>"
+                                        "value": "<p>Edible plants and mushrooms gathered from the forest. Good for a meal.</p>"
+                                    },
+                                    "rarity": "common"
+                                }
+                            }
+                        }
+                    ]
+                },
+                "onMixed": {
+                    "narrative": "You pick a few mushrooms but are not confident enough to harvest the rest in the dark. Better safe than sorry.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "rations_foraged",
+                            "method": "scaled_roll",
+                            "roll": "1d2",
+                            "tierMultiplier": 1,
+                            "min": 1,
+                            "max": 2,
+                            "itemData": {
+                                "name": "Rations (Foraged)",
+                                "type": "consumable",
+                                "img": "icons/consumables/food/berries-basket-brown-green.webp",
+                                "system": {
+                                    "description": {
+                                        "value": "<p>Edible plants and mushrooms gathered from the forest. Good for a meal.</p>"
                                     },
                                     "rarity": "common"
                                 }
@@ -187,7 +315,7 @@
                     ]
                 },
                 "onFailure": {
-                    "narrative": "Beautiful to look at, but you are not confident enough to pick anything in the dark.",
+                    "narrative": "Beautiful to look at, but you are not confident enough to pick anything in the dark. The risk of grabbing something toxic is too high.",
                     "effects": []
                 }
             },
@@ -204,6 +332,10 @@
             ],
             "weight": 3,
             "watchTarget": "none",
+            "levelRange": [
+                1,
+                20
+            ],
             "description": "The first birds begin before dawn. One song, then another, until the canopy rings with it. The air smells of damp earth and new growth. A good omen for the day ahead.",
             "mechanical": null,
             "tier": "normal",
