@@ -2,7 +2,7 @@
     "id": "ionrift-respite",
     "title": "Ionrift Respite",
     "description": "Structured rest phases for Foundry VTT. Replaces the default rest dialog with terrain-driven events, camp activities, and meaningful recovery.",
-    "bugs": "https://discord.gg/YmgdNNu4",
+    "bugs": "https://discord.gg/8p9Fp6wa",
     "version": "1.0.0-rc.1",
     "url": "https://github.com/ionrift-gm/ionrift-respite",
     "manifest": "https://github.com/ionrift-gm/ionrift-respite/releases/latest/download/module.json",

@@ -83,7 +83,7 @@ All configuration is under **Game Settings > Module Settings > Ionrift Respite**
 ## Bug reports
 
 1. Check the **[Ionrift Wiki](https://github.com/ionrift-gm/ionrift-library/wiki)** for common fixes.
-2. Post to the **[Ionrift Discord](https://discord.gg/YmgdNNu4)** with Foundry version, module versions, and any console errors (F12).
+2. Post to the **[Ionrift Discord](https://discord.gg/8p9Fp6wa)** with Foundry version, module versions, and any console errors (F12).
 3. Or open a **[GitHub Issue](https://github.com/ionrift-gm/ionrift-respite/issues)**.
 
 ## License
@@ -96,4 +96,4 @@ Event narratives, terrain data, and item descriptions in the `data/` directory a
 
 **Part of the [Ionrift Module Suite](https://github.com/ionrift-gm)**
 
-[Wiki / Guides](https://github.com/ionrift-gm/ionrift-library/wiki) · [Discord](https://discord.gg/YmgdNNu4) · [Patreon](https://patreon.com/ionrift)
+[Wiki / Guides](https://github.com/ionrift-gm/ionrift-library/wiki) · [Discord](https://discord.gg/8p9Fp6wa) · [Patreon](https://patreon.com/ionrift)
