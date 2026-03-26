@@ -27,6 +27,7 @@ pack-items.mjs
 scripts/tests/
 scripts/utils/
 scripts/dev-link-packs.ps1
+macros/
 
 # LevelDB runtime files (created by Foundry at boot)
 packs/*/LOCK

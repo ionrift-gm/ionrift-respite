@@ -83,6 +83,11 @@ export class RecoveryHandler {
             const actor = game.actors.get(outcome.characterId);
             if (!actor) continue;
             const result = await this.apply(actor, outcome.recovery);
+
+            // Apply event damage from failed complication effects
+            const damageApplied = await this._applyEventDamage(actor, outcome);
+            if (damageApplied > 0) result.eventDamage = damageApplied;
+
             results.push({ characterId: outcome.characterId, ...result });
         }
         return results;
@@ -200,13 +205,24 @@ export class RecoveryHandler {
         if (exhaustionDelta < 0) parts.push(`${Math.abs(exhaustionDelta)} exhaustion reduced`);
         if (exhaustionDelta > 0) parts.push(`${exhaustionDelta} exhaustion gained`);
 
-        // Skip chat if nothing was restored or changed
-        if (parts.length === 0) return;
+        // Advisory when exhaustion reduction is blocked
+        let exhaustionNote = null;
+        if (recovery.comfortLevel === "hostile" && recovery.restType === "long") {
+            exhaustionNote = "Hostile conditions prevent natural exhaustion recovery.";
+        } else if (recovery.armorSleepPenalty && recovery.restType === "long") {
+            exhaustionNote = "Sleeping in armor prevents exhaustion recovery.";
+        }
+
+        // Skip chat if nothing was restored or changed and no advisory
+        if (parts.length === 0 && !exhaustionNote) return;
+
+        const recoveredLine = parts.length > 0 ? `Recovered: ${parts.join(", ")}.` : "";
+        const noteLine = exhaustionNote ? `<br><em style="color:#e67e22;"><i class="fas fa-exclamation-circle"></i> ${exhaustionNote}</em>` : "";
 
         const content = `
             <div class="respite-recovery-chat">
                 <strong>${actor.name}</strong> rests in <em>${comfortLabel}</em> conditions.<br>
-                Recovered: ${parts.join(", ")}.
+                ${recoveredLine}${noteLine}
             </div>
         `;
 
@@ -215,5 +231,49 @@ export class RecoveryHandler {
             content,
             whisper: game.users.filter(u => u.isGM).map(u => u.id)
         });
+    }
+
+    /**
+     * Rolls and applies event damage from failed complication effects.
+     * @param {Actor} actor
+     * @param {Object} outcome - Full outcome object with sub-outcomes
+     * @returns {number} Total damage applied
+     */
+    static async _applyEventDamage(actor, outcome) {
+        let totalDamage = 0;
+
+        for (const sub of (outcome.outcomes ?? [])) {
+            if (sub.source !== "event" || sub.resolvedOutcome === "success") continue;
+
+            for (const effect of (sub.effects ?? [])) {
+                if (effect.type !== "damage" || !effect.formula) continue;
+
+                try {
+                    const roll = await new Roll(effect.formula).evaluate();
+                    const damage = roll.total;
+                    totalDamage += damage;
+
+                    // Post damage roll to GM chat
+                    await roll.toMessage({
+                        speaker: { alias: sub.eventName ?? "Rest Event" },
+                        flavor: `<strong>${actor.name}</strong>: ${effect.formula} ${effect.damageType ?? ""} damage<br><em>${effect.description ?? ""}</em>`,
+                        whisper: game.users.filter(u => u.isGM).map(u => u.id)
+                    });
+                } catch (e) {
+                    console.warn(`${MODULE_ID} | Failed to roll event damage:`, e);
+                }
+            }
+        }
+
+        // Deduct total damage from actor HP
+        if (totalDamage > 0) {
+            const hp = actor.system?.attributes?.hp;
+            if (hp) {
+                const newHp = Math.max(0, (hp.value ?? 0) - totalDamage);
+                await actor.update({ "system.attributes.hp.value": newHp });
+            }
+        }
+
+        return totalDamage;
     }
 }

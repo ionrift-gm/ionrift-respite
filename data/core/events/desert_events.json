@@ -127,7 +127,7 @@
                     "effects": [
                         {
                             "type": "damage",
-                            "roll": "1d4",
+                            "formula": "1d4",
                             "damageType": "poison",
                             "scope": "randomTarget",
                             "randomTarget": {
@@ -148,7 +148,7 @@
                     "effects": [
                         {
                             "type": "damage",
-                            "roll": "1d4",
+                            "formula": "1d4",
                             "damageType": "poison",
                             "scope": "randomTarget",
                             "randomTarget": {

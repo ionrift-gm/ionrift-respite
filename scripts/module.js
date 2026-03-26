@@ -103,6 +103,11 @@ Hooks.once("init", async () => {
     Handlebars.registerHelper("gte", (a, b) => a >= b);
     Handlebars.registerHelper("eq", (a, b) => a === b);
     Handlebars.registerHelper("join", (arr, sep) => Array.isArray(arr) ? arr.join(sep) : "");
+    Handlebars.registerHelper("upper", (str) => typeof str === "string" ? str.toUpperCase() : str);
+    Handlebars.registerHelper("humanDuration", (d) => {
+        const map = { next_rest: "until next rest", end_of_rest: "end of rest", "1_hour": "1 hour", "8_hours": "8 hours", permanent: "permanent" };
+        return typeof d === "string" ? (map[d] ?? d.replace(/_/g, " ")) : d;
+    });
 
     // Register partials
     foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/roster-strip.hbs"]);

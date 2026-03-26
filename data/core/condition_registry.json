@@ -1,0 +1,81 @@
+{
+    "_meta": {
+        "version": "1.0.0",
+        "description": "Condition registry for Ionrift Respite. Source of truth for all conditions the module can apply to actors.",
+        "backlog": "v1.1: Expose entries in Convenient Effects UI listing"
+    },
+    "durationMap": {
+        "next_rest": { "seconds": null, "removal": "respite_cleanup", "daeSpecial": "longRest", "label": "Until next rest" },
+        "end_of_rest": { "seconds": null, "removal": "respite_cleanup", "daeSpecial": "shortRest", "label": "End of current rest" },
+        "4_hours": { "seconds": 14400, "removal": "timer", "daeSpecial": null, "label": "4 hours" },
+        "8_hours": { "seconds": 28800, "removal": "timer", "daeSpecial": null, "label": "8 hours" },
+        "24_hours": { "seconds": 86400, "removal": "timer", "daeSpecial": "newDay", "label": "24 hours" },
+        "permanent": { "seconds": null, "removal": "manual", "daeSpecial": null, "label": "Permanent" }
+    },
+    "conditions": [
+        {
+            "id": "respite-poisoned",
+            "condition": "poisoned",
+            "ceStandard": true,
+            "ceId": "ce-poisoned",
+            "label": "Poisoned",
+            "icon": null,
+            "description": "Nausea or venom. Disadvantage on attack rolls and ability checks.",
+            "defaultDuration": "next_rest",
+            "colorTheme": "green"
+        },
+        {
+            "id": "respite-disadv-con",
+            "condition": "disadvantage",
+            "checks": ["con"],
+            "ceStandard": false,
+            "label": "Weakened (CON)",
+            "icon": "modules/ionrift-respite/assets/conditions/weakened_con.webp",
+            "description": "Blood loss or physical strain has left you weakened. Disadvantage on CON checks and saves.",
+            "defaultDuration": "next_rest",
+            "colorTheme": "red",
+            "changes": [
+                { "key": "flags.midi-qol.disadvantage.ability.check.con", "mode": 0, "value": "1" },
+                { "key": "flags.midi-qol.disadvantage.ability.save.con", "mode": 0, "value": "1" }
+            ]
+        },
+        {
+            "id": "respite-disadv-prc",
+            "condition": "disadvantage",
+            "checks": ["prc"],
+            "ceStandard": false,
+            "label": "Dulled Senses",
+            "icon": "modules/ionrift-respite/assets/conditions/dulled_senses.webp",
+            "description": "Your senses are clouded and unreliable. Disadvantage on Perception checks.",
+            "defaultDuration": "next_rest",
+            "colorTheme": "grey",
+            "changes": [
+                { "key": "flags.midi-qol.disadvantage.skill.prc", "mode": 0, "value": "1" }
+            ]
+        },
+        {
+            "id": "respite-exhaustion-1",
+            "condition": "exhaustion",
+            "level": 1,
+            "ceStandard": true,
+            "ceId": "ce-exhaustion-1",
+            "label": "Exhaustion (1)",
+            "icon": null,
+            "description": "Disadvantage on ability checks.",
+            "defaultDuration": "permanent",
+            "colorTheme": "amber"
+        },
+        {
+            "id": "respite-exhaustion-2",
+            "condition": "exhaustion",
+            "level": 2,
+            "ceStandard": true,
+            "ceId": "ce-exhaustion-2",
+            "label": "Exhaustion (2)",
+            "icon": null,
+            "description": "Speed halved, disadvantage on ability checks.",
+            "defaultDuration": "permanent",
+            "colorTheme": "amber"
+        }
+    ]
+}

@@ -139,8 +139,9 @@
                             "checks": [
                                 "con"
                             ],
+                            "label": "Leech Weakness (CON)",
                             "duration": "next_rest",
-                            "description": "Weakened from blood loss."
+                            "description": "Leech bites have drained your vitality. Disadvantage on CON checks and saves until your next long rest."
                         }
                     ]
                 }
@@ -174,8 +175,9 @@
                         {
                             "type": "condition",
                             "condition": "poisoned",
+                            "label": "Miasma Sickness",
                             "duration": "4_hours",
-                            "description": "Nausea from swamp miasma."
+                            "description": "The putrid bog air has turned your stomach."
                         },
                         {
                             "type": "condition",
@@ -183,8 +185,9 @@
                             "checks": [
                                 "prc"
                             ],
+                            "label": "Dulled by Stench",
                             "duration": "next_rest",
-                            "description": "Senses dulled by the stench."
+                            "description": "The stench has overwhelmed your senses."
                         }
                     ]
                 }

@@ -10,6 +10,7 @@ import { RecoveryHandler } from "../services/RecoveryHandler.js";
 import { CalendarHandler } from "../services/CalendarHandler.js";
 import { CopySpellHandler } from "../services/CopySpellHandler.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
+import { ConditionAdvisory } from "../services/ConditionAdvisory.js";
 import { CraftingPickerApp } from "./CraftingPickerApp.js";
 import { CampfireEmbed } from "./CampfireEmbed.js";
 import { CraftingDelegate } from "./delegates/CraftingDelegate.js";
@@ -94,7 +95,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             submitMealChoices: RestSetupApp.#onSubmitMealChoices,
             consumeMealDay: RestSetupApp.#onConsumeMealDay,
             adjustDaysSinceRest: RestSetupApp.#onAdjustDaysSinceRest,
-            skipPendingSaves: RestSetupApp.#onSkipPendingSaves
+            skipPendingSaves: RestSetupApp.#onSkipPendingSaves,
+            hideWindow: RestSetupApp.#onHideWindow
         }
     };
 
@@ -458,16 +460,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const disasters = await disasterResp.json();
             this._eventResolver.load(disasters.tables, disasters.events);
 
-            // Load Wanderer's Pack events (additional terrain events, no tables)
-            try {
-                const wpResp = await fetch(`modules/${MODULE_ID}/data/wanderers_pack/events.json`);
-                if (wpResp.ok) {
-                    const wpEvents = await wpResp.json();
-                    this._eventResolver.load(wpEvents.tables, wpEvents.events);
-                }
-            } catch (e) {
-                console.warn(`${MODULE_ID} | Failed to load Wanderer's Pack events:`, e);
-            }
+            // Wanderer's Pack events (future content pack, not yet shipped)
+            // Will be loaded here when data/wanderers_pack/events.json exists
         } catch (e) {
             console.error(`${MODULE_ID} | Failed to load seed data:`, e);
         }
@@ -590,6 +584,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!this._shelterOverrides) this._shelterOverrides = {};
 
         const partyActors = game.actors.filter(a => a.hasPlayerOwner);
+        const emptyParty = partyActors.length === 0;
         if (!this._selectedTerrain) {
             const lastTerrain = game.settings.get(MODULE_ID, "lastTerrain");
             if (lastTerrain && TerrainRegistry.get(lastTerrain)) this._selectedTerrain = lastTerrain;
@@ -1114,6 +1109,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         return {
             isGM: this._isGM,
+            emptyParty,
             trackFood: game.settings.get(MODULE_ID, "trackFood"),
             gmCopySpellProposal: this._gmCopySpellProposal ?? null,
             copySpellRollPrompt: this._copySpellRollPrompt ?? null,
@@ -1256,6 +1252,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             hasEncounterEvent: (this._triggeredEvents ?? []).some(e => e.category === "encounter" && e.resolvedOutcome !== "success") && !this._awaitingCombat && !this._combatAcknowledged,
             combatBuffs: this._combatBuffs ?? null,
             awaitingCombat: this._awaitingCombat ?? false,
+            encounterAwareness: (() => {
+                const enc = (this._triggeredEvents ?? []).find(e => e.category === "encounter" && e.resolvedOutcome !== "success");
+                if (!enc) return null;
+                const hints = enc.mechanical?.onFailure?.effects?.find(ef => ef.type === "encounter")?.encounterHints;
+                return hints?.awareness ?? null;
+            })(),
             fireLevel: this._fireLevel ?? "campfire",
             activeTreeState: this._activeTreeState,
             engine: this._engine,
@@ -3538,6 +3540,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Hide the rest window during combat without ending the rest.
+     * GM can reopen via the persistent GM banner.
+     */
+    static #onHideWindow(event, target) {
+        this.close();
+    }
+
+    /**
      * Detect Magic: scan party inventories for unidentified magical items.
      */
     static async #onDetectMagicScan(event, target) {
@@ -3836,6 +3846,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         } catch (e) {
             console.warn(`${MODULE_ID} | Item processing failed:`, e);
             ui.notifications.info("Rest complete.");
+        }
+
+        // Post condition advisory for any unhandled condition/temp_hp effects
+        try {
+            await ConditionAdvisory.processAll(this._outcomes);
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Condition advisory failed:`, e);
         }
 
         // Send private whispered rest summary to each player

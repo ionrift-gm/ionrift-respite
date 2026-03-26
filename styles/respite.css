@@ -644,6 +644,33 @@
     margin-right: 0.2rem;
 }
 
+/* ---- Empty Party Hint ---- */
+
+.respite-empty-party-hint {
+    text-align: center;
+    padding: 2rem 1.5rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.respite-empty-party-hint i {
+    font-size: 2rem;
+    color: rgba(255, 180, 80, 0.6);
+    margin-bottom: 0.75rem;
+    display: block;
+}
+
+.respite-empty-party-hint p {
+    margin: 0.25rem 0;
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.respite-empty-party-hint p:first-of-type {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+}
+
 /* ---- Activity Phase Layout (activities + campfire drawer) ---- */
 
 .activity-phase-layout {
@@ -6191,4 +6218,162 @@
     margin-top: 0.3rem;
     font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.4);
+}
+
+/* ---- Condition Advisory Chat Card ---- */
+
+.respite-condition-advisory {
+    padding: 0.6rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    background: linear-gradient(135deg, #1a1525 0%, #201830 100%);
+    border: 1px solid rgba(160, 120, 255, 0.2);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.respite-condition-advisory h3 hr,
+.respite-condition-advisory hr {
+    border: none;
+    border-top: 1px solid rgba(160, 120, 255, 0.15);
+    margin: 0.3rem 0;
+}
+
+.respite-condition-advisory h3 {
+    margin: 0 0 0.3rem;
+    font-size: 0.9rem;
+    color: rgba(255, 180, 80, 0.9);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.respite-condition-advisory .advisory-subtitle {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+    margin: 0 0 0.5rem;
+}
+
+.respite-condition-advisory .advisory-character {
+    margin-bottom: 0.5rem;
+    padding: 0.3rem 0.5rem;
+    background: rgba(0, 0, 0, 0.15);
+    border-left: 2px solid rgba(255, 180, 80, 0.4);
+    border-radius: 0 4px 4px 0;
+}
+
+.respite-condition-advisory .advisory-character strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.respite-condition-advisory .advisory-effect {
+    margin: 0.2rem 0;
+    padding-left: 0.5rem;
+}
+
+.respite-condition-advisory .advisory-effect i {
+    color: rgba(255, 120, 80, 0.8);
+    margin-right: 0.2rem;
+}
+
+.respite-condition-advisory .effect-label {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.respite-condition-advisory .effect-duration {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.respite-condition-advisory .effect-desc {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+}
+
+.respite-condition-advisory .advisory-effect.applied {
+    opacity: 0.6;
+}
+
+.respite-condition-advisory .effect-applied {
+    font-size: 0.65rem;
+    color: rgba(80, 200, 120, 0.9);
+    margin-left: 0.3rem;
+}
+
+/* ---- Force Pass/Fail Override Links ---- */
+
+.event-override-links {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 0.25rem;
+}
+
+.btn-override-link {
+    background: none;
+    border: none;
+    padding: 0.15rem 0.25rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.7rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.btn-override-link:hover {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: underline;
+}
+
+.btn-override-link:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* ---- Combat Card: Hide Button ---- */
+
+.btn-hide-window {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.5);
+    padding: 0.35rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.2s ease;
+    margin-left: 0.5rem;
+}
+
+.btn-hide-window:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* ---- Encounter Awareness Advisory ---- */
+
+.encounter-awareness-advisory {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    margin: 0.35rem 0;
+    background: rgba(255, 200, 80, 0.08);
+    border-left: 2px solid rgba(255, 200, 80, 0.4);
+    border-radius: 0 4px 4px 0;
+    font-size: 0.75rem;
+    font-style: italic;
+    color: rgba(255, 200, 80, 0.8);
+    line-height: 1.4;
+}
+
+.encounter-awareness-advisory i {
+    margin-top: 0.1rem;
+    flex-shrink: 0;
+    color: rgba(255, 200, 80, 0.6);
 }

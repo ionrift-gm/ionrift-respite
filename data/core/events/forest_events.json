@@ -121,7 +121,7 @@
                     "effects": [
                         {
                             "type": "damage",
-                            "roll": "1d6",
+                            "formula": "1d6",
                             "damageType": "bludgeoning",
                             "scope": "randomTarget",
                             "description": "Glancing blow from a falling branch."
@@ -133,7 +133,7 @@
                     "effects": [
                         {
                             "type": "damage",
-                            "roll": "2d6",
+                            "formula": "2d6",
                             "damageType": "bludgeoning",
                             "scope": "randomTarget",
                             "description": "A heavy branch falls on a sleeping character."

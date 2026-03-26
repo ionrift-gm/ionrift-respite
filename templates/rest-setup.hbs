@@ -75,6 +75,15 @@
     </div>
 
     {{#if isGM}}
+    {{#if emptyParty}}
+    <div class="respite-setup">
+        <div class="respite-empty-party-hint">
+            <i class="fas fa-users-slash"></i>
+            <p>No player-owned characters found.</p>
+            <p>Create or import characters and assign them to players, then reopen Respite.</p>
+        </div>
+    </div>
+    {{else}}
     <div class="respite-setup">
 
         {{!-- ===== SECTION 1: Where Are We? ===== --}}
@@ -295,6 +304,7 @@
         </button>
         {{/if}}
     </div>
+    {{/if}} {{!-- /emptyParty --}}
     {{else}}
     {{!-- Player: waiting for GM to start --}}
     <div class="respite-setup">
@@ -1393,7 +1403,7 @@
                     <div class="event-effect">
                         {{#if (eq type "damage")}}<i class="fas fa-heart-broken"></i> {{formula}} {{damageType}} ({{scope}})
                         {{else if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> Recovery x{{hpMultiplier}}
-                        {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> {{condition}} {{#if duration}}({{duration}}){{/if}}
+                        {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> {{condition}}{{#if checks.length}} on {{#each checks}}{{#if @index}}, {{/if}}{{upper this}}{{/each}} checks{{/if}} {{#if duration}}({{humanDuration duration}}){{/if}}
                         {{else if (eq type "consume_resource")}}<i class="fas fa-box-open"></i> Lose {{amount}} {{resource}}
                         {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{narrative}}
                         {{/if}}
@@ -1408,7 +1418,7 @@
                     <div class="event-effect">
                         {{#if (eq type "damage")}}<i class="fas fa-heart-broken"></i> {{formula}} {{damageType}} ({{scope}})
                         {{else if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> Recovery x{{hpMultiplier}}
-                        {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> {{condition}} {{#if duration}}({{duration}}){{/if}}
+                        {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> {{condition}}{{#if checks.length}} on {{#each checks}}{{#if @index}}, {{/if}}{{upper this}}{{/each}} checks{{/if}} {{#if duration}}({{humanDuration duration}}){{/if}}
                         {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{narrative}}
                         {{else if (eq type "encounter")}}<i class="fas fa-swords"></i> {{description}}
                         {{else if (eq type "consume_resource")}}<i class="fas fa-box-open"></i> Lose {{amount}} {{resource}}
@@ -1445,8 +1455,8 @@
                 </div>
                 {{/if}}
                 <div class="event-override-links">
-                    <a href="#" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="success">Force Pass</a>
-                    <a href="#" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="failure">Force Fail</a>
+                    <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="success">Force Pass</button>
+                    <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="failure">Force Fail</button>
                 </div>
 
                 {{else}}
@@ -1513,10 +1523,10 @@
                         <i class="fas fa-dice-d20"></i> Request Rolls
                     </button>
                     <div class="event-override-links">
-                        <a href="#" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="success"
-                            {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}style="pointer-events:none;opacity:0.3"{{/unless}}{{/if}}>Force Pass</a>
-                        <a href="#" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="failure"
-                            {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}style="pointer-events:none;opacity:0.3"{{/unless}}{{/if}}>Force Fail</a>
+                        <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="success"
+                            {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}disabled{{/unless}}{{/if}}>Force Pass</button>
+                        <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="failure"
+                            {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}disabled{{/unless}}{{/if}}>Force Fail</button>
                     </div>
                 </div>
                 {{/if}}
@@ -1764,7 +1774,9 @@
             <button type="button" class="btn-primary btn-combat-complete" data-action="completeEncounter">
                 <i class="fas fa-check-circle"></i> Combat Complete
             </button>
-            <span class="combat-hint">Click when the encounter is resolved to continue the rest.</span>
+            <button type="button" class="btn-secondary btn-hide-window" data-action="hideWindow">
+                <i class="fas fa-eye-slash"></i> Hide
+            </button>
             {{else if hasEncounterEvent}}
             {{!-- Encounter triggered but not yet acknowledged --}}
             <div class="encounter-gate">
@@ -1772,6 +1784,12 @@
                     <i class="fas fa-exclamation-triangle"></i>
                     <span>An encounter has been triggered. Set up the combat before proceeding.</span>
                 </div>
+                {{#if encounterAwareness}}
+                <div class="encounter-awareness-advisory">
+                    <i class="fas fa-eye"></i>
+                    <span>{{encounterAwareness}}</span>
+                </div>
+                {{/if}}
                 {{#if combatBuffs}}
                 <div class="combat-readiness-report">
                     <div class="combat-readiness-header">
@@ -1868,7 +1886,7 @@
                     <div class="outcome-effect-line">
                         {{#if (eq type "damage")}}<i class="fas fa-heart-broken"></i> {{formula}} {{damageType}} damage
                         {{else if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> Recovery reduced (x{{hpMultiplier}})
-                        {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> Gained {{condition}} {{#if duration}}({{duration}}){{/if}}
+                        {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> Gained {{condition}}{{#if checks.length}} on {{#each checks}}{{#if @index}}, {{/if}}{{upper this}}{{/each}} checks{{/if}} {{#if duration}}({{humanDuration duration}}){{/if}}
                         {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{narrative}}
                         {{else if (eq type "encounter")}}<i class="fas fa-swords"></i> Combat encounter
                         {{else}}{{narrative}}
