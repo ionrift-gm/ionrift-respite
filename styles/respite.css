@@ -489,6 +489,54 @@
     font-style: italic;
 }
 
+/* Rest type toggle (segmented control) */
+.rest-type-toggle-group {
+    grid-column: 1 / -1;
+}
+
+.rest-type-toggle {
+    display: flex;
+    gap: 0;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.rest-type-btn {
+    flex: 1;
+    padding: 0.4rem 0.75rem;
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.5);
+    border: none;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+}
+
+.rest-type-btn:not(:last-child) {
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rest-type-btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.rest-type-btn.active {
+    background: rgba(180, 140, 255, 0.15);
+    color: rgba(180, 140, 255, 0.95);
+    box-shadow: inset 0 0 12px rgba(180, 140, 255, 0.1);
+}
+
+.rest-type-btn i {
+    font-size: 0.7rem;
+}
+
 .comfort-reason {
     display: block;
     font-size: 0.63rem;
@@ -6377,3 +6425,198 @@
     flex-shrink: 0;
     color: rgba(255, 200, 80, 0.6);
 }
+
+/* ---- Campfire Token Advisory (GM Reflection Phase) ---- */
+
+.campfire-advisory {
+    margin-bottom: 0.6rem;
+    padding: 0.4rem 0.5rem;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.campfire-advisory-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 5px;
+}
+
+.campfire-advisory-row i {
+    flex-shrink: 0;
+    font-size: 0.65rem;
+}
+
+.campfire-advisory-row.advisory-ok {
+    background: rgba(100, 200, 120, 0.08);
+    border: 1px solid rgba(100, 200, 120, 0.15);
+    color: rgba(130, 220, 150, 0.85);
+}
+
+.campfire-advisory-row.advisory-warn {
+    background: rgba(255, 180, 50, 0.08);
+    border: 1px solid rgba(255, 180, 50, 0.2);
+    color: rgba(255, 200, 100, 0.85);
+}
+
+.campfire-advisory-row.advisory-info {
+    background: rgba(100, 180, 255, 0.06);
+    border: 1px solid rgba(100, 180, 255, 0.12);
+    color: rgba(140, 200, 255, 0.7);
+}
+
+/* ============================================================
+   SHORT REST APP
+   ============================================================ */
+
+.short-rest-app .window-content {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.short-rest-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* ---- Banner ---- */
+.sr-banner {
+    position: relative;
+    width: 100%;
+    height: 120px;
+    background-size: cover;
+    background-position: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.sr-banner-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(13, 17, 23, 0.2), rgba(13, 17, 23, 0.95));
+    display: flex;
+    align-items: flex-end;
+    padding: 0.5rem 1rem;
+}
+
+.sr-banner-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* ---- Shelter Toggle ---- */
+.short-rest-shelter {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.shelter-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.6rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.shelter-toggle:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.shelter-toggle.active {
+    background: rgba(0, 200, 220, 0.12);
+    border-color: rgba(0, 200, 220, 0.4);
+    color: rgba(0, 220, 240, 0.9);
+    box-shadow: 0 0 8px rgba(0, 200, 220, 0.15);
+}
+
+.shelter-toggle input[type='checkbox'] { display: none; }
+
+.shelter-caster { font-size: 0.65rem; color: rgba(255, 255, 255, 0.4); font-style: italic; }
+
+/* ---- Character Cards ---- */
+.short-rest-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.5rem; padding: 0.75rem; overflow-y: auto; max-height: 50vh; }
+
+.short-rest-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 0.6rem 0.75rem;
+    transition: border-color 0.2s ease;
+}
+.short-rest-card:hover { border-color: rgba(255, 255, 255, 0.12); }
+
+.sr-card-header { display: flex; align-items: center; gap: 0.6rem; }
+.sr-portrait { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255, 255, 255, 0.12); flex-shrink: 0; }
+.sr-identity { flex: 1; min-width: 0; }
+.sr-name { font-size: 0.85rem; font-weight: 600; color: rgba(255, 255, 255, 0.85); display: block; }
+.sr-hp-row { display: flex; gap: 0.75rem; margin-top: 0.15rem; }
+.sr-hp { font-size: 0.75rem; color: rgba(220, 90, 90, 0.85); }
+.sr-hp.full { color: rgba(80, 200, 120, 0.85); }
+.sr-hp i, .sr-hd-count i { margin-right: 0.2rem; font-size: 0.65rem; }
+.sr-hd-count { font-size: 0.75rem; color: rgba(180, 140, 255, 0.8); }
+
+/* ---- HD Pips ---- */
+.sr-hd-pips { display: flex; gap: 4px; margin-top: 0.4rem; flex-wrap: wrap; }
+.sr-pip { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(180, 140, 255, 0.35); transition: all 0.2s ease; }
+.sr-pip.filled { background: rgba(180, 140, 255, 0.6); border-color: rgba(180, 140, 255, 0.7); box-shadow: 0 0 4px rgba(180, 140, 255, 0.3); }
+.sr-pip.empty { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.12); }
+
+/* ---- Roll Log ---- */
+.sr-roll-log { display: flex; align-items: center; gap: 0.35rem; margin-top: 0.4rem; flex-wrap: wrap; }
+.sr-roll-entry { display: inline-flex; align-items: center; padding: 0.1rem 0.4rem; background: rgba(80, 200, 120, 0.1); border: 1px solid rgba(80, 200, 120, 0.2); border-radius: 4px; font-size: 0.7rem; font-weight: 600; color: rgba(80, 200, 120, 0.85); animation: srRollPop 0.3s ease-out; }
+@keyframes srRollPop { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+.sr-roll-total { font-size: 0.7rem; color: rgba(80, 200, 120, 0.6); margin-left: auto; }
+.sr-roll-total i { margin-right: 0.2rem; }
+
+/* ---- Actions ---- */
+.sr-actions { margin-top: 0.4rem; }
+.sr-spend-btn { background: rgba(180, 140, 255, 0.12); border: 1px solid rgba(180, 140, 255, 0.3); color: rgba(180, 140, 255, 0.9); padding: 0.3rem 0.7rem; border-radius: 5px; cursor: pointer; font-size: 0.75rem; font-weight: 600; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 0.3rem; }
+.sr-spend-btn:hover { background: rgba(180, 140, 255, 0.2); border-color: rgba(180, 140, 255, 0.5); box-shadow: 0 0 8px rgba(180, 140, 255, 0.15); }
+.sr-spend-btn.faded { opacity: 0.32; cursor: not-allowed; }
+.sr-spend-btn.faded:hover { background: rgba(180, 140, 255, 0.12); border-color: rgba(180, 140, 255, 0.3); box-shadow: none; }
+.sr-hint { font-size: 0.7rem; font-style: italic; color: rgba(255, 255, 255, 0.4); }
+.sr-hint i { margin-right: 0.2rem; }
+
+/* ---- RP Prompt ---- */
+.sr-rp-prompt { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.6rem 0.75rem; margin: 0 0.75rem; background: rgba(255, 200, 100, 0.04); border-left: 2px solid rgba(255, 200, 100, 0.25); border-radius: 0 4px 4px 0; font-size: 0.75rem; font-style: italic; color: rgba(255, 200, 100, 0.7); line-height: 1.4; }
+.sr-rp-prompt i { color: rgba(255, 200, 100, 0.4); margin-top: 0.1rem; flex-shrink: 0; }
+
+/* ---- Footer ---- */
+.sr-footer { display: flex; justify-content: center; padding: 0.6rem 0.75rem; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.sr-complete-btn { background: rgba(80, 200, 120, 0.12); border: 1px solid rgba(80, 200, 120, 0.3); color: rgba(80, 200, 120, 0.9); padding: 0.4rem 1rem; border-radius: 5px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 0.35rem; }
+.sr-complete-btn:hover { background: rgba(80, 200, 120, 0.2); border-color: rgba(80, 200, 120, 0.5); box-shadow: 0 0 10px rgba(80, 200, 120, 0.15); }
+.sr-waiting { font-size: 0.75rem; font-style: italic; color: rgba(255, 255, 255, 0.4); }
+.sr-waiting i { margin-right: 0.25rem; }
+
+/* ---- Rest Type Toggle Buttons ---- */
+.rest-type-toggle { display: flex; gap: 0; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 7px; overflow: hidden; width: fit-content; }
+.application .rest-type-toggle .rest-type-btn { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.85rem; font-size: 0.78rem; font-weight: 600; color: rgba(255,255,255,0.45); background: transparent; border: none !important; outline: none !important; box-shadow: none !important; cursor: pointer; transition: background 0.2s ease, color 0.2s ease; white-space: nowrap; margin: 0; }
+.application .rest-type-toggle .rest-type-btn:hover { color: rgba(255,255,255,0.75); background: rgba(255,255,255,0.05); }
+.application .rest-type-toggle .rest-type-btn.active { background: rgba(155,89,182,0.2); color: rgba(200,160,255,0.95); box-shadow: inset 0 0 0 1px rgba(155,89,182,0.35) !important; }
+.application .rest-type-toggle .rest-type-btn:focus,
+.application .rest-type-toggle .rest-type-btn:focus-visible,
+.application .rest-type-toggle .rest-type-btn:active { outline: none !important; border: none !important; box-shadow: none !important; }
+.application .rest-type-toggle .rest-type-btn.active:focus { box-shadow: inset 0 0 0 1px rgba(155,89,182,0.35) !important; }
+.application .rest-type-toggle .rest-type-btn i { font-size: 0.7rem; }

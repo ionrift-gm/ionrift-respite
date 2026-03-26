@@ -8,6 +8,7 @@
  */
 const MODULE_ID = "ionrift-respite";
 import { CampfirePhysics } from "./CampfirePhysics.js";
+import { CampfireTokenLinker } from "../services/CampfireTokenLinker.js";
 
 const TRINKETS = [
     { id: "pinecone", icon: "fas fa-tree", label: "Pinecone", color: "#4ade80" },
@@ -525,6 +526,9 @@ export class CampfireEmbed {
         this._showLitBanner = true;
         this.render();
 
+        // Sync campfire token light on the canvas
+        CampfireTokenLinker.setLightState(true);
+
         if (this._litNotifyTimer) clearTimeout(this._litNotifyTimer);
         this._litNotifyTimer = setTimeout(() => {
             this._showLitBanner = false;
@@ -612,6 +616,19 @@ export class CampfireEmbed {
         if (!actor) return false;
         const firewood = actor.items.find(i => i.name === "Kindling" && (i.system?.quantity ?? 1) > 0);
         if (!firewood) return false;
+
+        // Check if current user can modify this actor's items
+        const canModify = actor.isOwner;
+        if (!canModify) {
+            // Route through GM: emit socket, GM performs the mutation
+            game.socket.emit(`module.${MODULE_ID}`, {
+                type: "consumeFirewood",
+                actorId: actor.id,
+                itemId: firewood.id
+            });
+            return true; // Optimistic: assume GM will handle it
+        }
+
         const qty = firewood.system?.quantity ?? 1;
         if (qty <= 1) { await firewood.delete(); }
         else { await firewood.update({ "system.quantity": qty - 1 }); }

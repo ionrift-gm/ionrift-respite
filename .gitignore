@@ -5,6 +5,7 @@ data/terrains/*/
 !data/terrains/desert/
 !data/terrains/dungeon/
 !data/terrains/forest/
+!data/terrains/short-rest/
 !data/terrains/swamp/
 !data/terrains/tavern/
 !data/terrains/urban/

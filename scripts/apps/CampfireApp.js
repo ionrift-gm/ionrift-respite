@@ -8,6 +8,7 @@
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 import { CampfirePhysics } from "./CampfirePhysics.js";
+import { CampfireTokenLinker } from "../services/CampfireTokenLinker.js";
 
 /** Trinkets that can be tossed into the fire with colored flash effects. */
 const TRINKETS = [
@@ -589,6 +590,9 @@ export class CampfireApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._showLitBanner = true;
         this.render();
 
+        // Sync campfire token light on the canvas
+        CampfireTokenLinker.setLightState(true);
+
         if (this._litNotifyTimer) clearTimeout(this._litNotifyTimer);
         this._litNotifyTimer = setTimeout(() => {
             this._showLitBanner = false;
@@ -624,6 +628,18 @@ export class CampfireApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!actor) return false;
         const firewood = actor.items.find(i => i.name === "Kindling" && (i.system?.quantity ?? 1) > 0);
         if (!firewood) return false;
+
+        // Check if current user can modify this actor's items
+        const canModify = actor.isOwner;
+        if (!canModify) {
+            // Route through GM: emit socket, GM performs the mutation
+            game.socket.emit(`module.${MODULE_ID}`, {
+                type: "consumeFirewood",
+                actorId: actor.id,
+                itemId: firewood.id
+            });
+            return true; // Optimistic: assume GM will handle it
+        }
 
         const qty = firewood.system?.quantity ?? 1;
 

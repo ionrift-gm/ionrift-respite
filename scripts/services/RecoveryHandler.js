@@ -89,6 +89,9 @@ export class RecoveryHandler {
             if (damageApplied > 0) result.eventDamage = damageApplied;
 
             results.push({ characterId: outcome.characterId, ...result });
+
+            // Write exhaustion delta back to outcome.recovery so UI can display it
+            if (outcome.recovery) outcome.recovery.exhaustionDelta = result.exhaustion ?? 0;
         }
         return results;
     }

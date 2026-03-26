@@ -244,6 +244,7 @@ export class RestFlowEngine {
             spellSlotsRestored: this.restType === "long",
             comfortLevel: this.comfort,
             restType: this.restType,
+            restedFully: activitySchema?.id === "act_rest_fully",
             exhaustionDC,
             armorSleepPenalty,
             gearBonuses: { hp: gearBonusHp, hd: gearBonusHd },

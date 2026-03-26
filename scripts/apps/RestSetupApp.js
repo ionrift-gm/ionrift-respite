@@ -11,12 +11,14 @@ import { CalendarHandler } from "../services/CalendarHandler.js";
 import { CopySpellHandler } from "../services/CopySpellHandler.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
 import { ConditionAdvisory } from "../services/ConditionAdvisory.js";
+import { CampfireTokenLinker } from "../services/CampfireTokenLinker.js";
 import { CraftingPickerApp } from "./CraftingPickerApp.js";
 import { CampfireEmbed } from "./CampfireEmbed.js";
 import { CraftingDelegate } from "./delegates/CraftingDelegate.js";
 import { MealDelegate } from "./delegates/MealDelegate.js";
 import { CopySpellDelegate } from "./delegates/CopySpellDelegate.js";
 import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS } from "./RestConstants.js";
+import { ShortRestApp } from "./ShortRestApp.js";
 import { registerActiveRestApp, clearActiveRestApp, setActiveRestData, registerCampfireApp, clearCampfireApp, _showGmRestIndicator, _removeGmRestIndicator } from "../module.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -46,6 +48,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         },
         actions: {
             beginRest: RestSetupApp.#onBeginRest,
+            beginShortRest: RestSetupApp.#onBeginShortRest,
             submitActivities: RestSetupApp.#onSubmitActivities,
             proceedToEvents: RestSetupApp.#onProceedToEvents,
             setFireLevel: RestSetupApp.#onSetFireLevel,
@@ -1059,6 +1062,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 name: o.characterName,
                 hp: o.recovery?.hpRestored ?? 0,
                 hd: o.recovery?.hdRestored ?? 0,
+                exhaustionDelta: o.recovery?.exhaustionDelta ?? 0,
                 gearBonuses: o.recovery?.gearBonuses ?? {},
                 gearDescriptors: o.recovery?.gearDescriptors ?? []
             }));
@@ -1158,7 +1162,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             })(),
             terrainBannerPos: "center", // banners are pre-cropped 640×120 strips
             selectedTerrainLabel: this._terrainLabel ?? "Forest",
-            selectedRestType: this._selectedRestType === "short" ? "Short Rest" : "Long Rest",
+            selectedRestType: this._selectedRestType ?? "long",
+            selectedRestTypeLabel: this._selectedRestType === "short" ? "Short Rest" : "Long Rest",
+            isShortRest: (this._selectedRestType ?? "long") === "short",
             selectedWeatherLabel: WEATHER_TABLE[this._selectedWeather]?.label ?? "Clear",
             selectedScoutLabel: this._selectedScout ?? "None",
             scoutingAvailable: terrainDefaults.scoutingAvailable ?? false,
@@ -1259,6 +1265,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 return hints?.awareness ?? null;
             })(),
             fireLevel: this._fireLevel ?? "campfire",
+            campfireTokenDetected: CampfireTokenLinker.hasCampfireToken(),
+            campfireTokenSettingName: CampfireTokenLinker.getTokenName(),
             activeTreeState: this._activeTreeState,
             engine: this._engine,
             recoverySummary,
@@ -1687,17 +1695,41 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
-        // Rest type hint: update on dropdown change
-        const restTypeSelect = this.element.querySelector('[name="restType"]');
+        // Rest type toggle buttons: update hidden input + hints on click
+        const restTypeButtons = this.element.querySelectorAll('.rest-type-btn');
+        const restTypeInput = this.element.querySelector('[name="restType"]');
         const restTypeHint = this.element.querySelector('.rest-type-hint');
-        if (restTypeSelect && restTypeHint) {
+        const terrainHint = this.element.querySelector('.terrain-hint');
+        if (restTypeButtons.length && restTypeInput) {
             const hints = {
                 long: "8 hrs. HP and Hit Dice recovery varies by comfort and conditions.",
-                short: "1 hr. Spend Hit Dice to heal. No other recovery."
+                short: "1 hr. Spend Hit Dice to heal. Continue to pick a shelter."
             };
-            restTypeSelect.addEventListener("change", () => {
-                restTypeHint.textContent = hints[restTypeSelect.value] ?? "";
+            const terrainHintShort = "Sets the backdrop for the rest.";
+            // Cache server-rendered terrain hint for restoration
+            if (terrainHint && !terrainHint.dataset.longHint) {
+                terrainHint.dataset.longHint = terrainHint.textContent;
+            }
+            const _applyRestType = (value) => {
+                const isShort = value === "short";
+                restTypeInput.value = value;
+                restTypeButtons.forEach(btn => {
+                    btn.classList.toggle("active", btn.dataset.restType === value);
+                });
+                if (restTypeHint) restTypeHint.textContent = hints[value] ?? "";
+                if (terrainHint) {
+                    terrainHint.textContent = isShort
+                        ? terrainHintShort
+                        : (terrainHint.dataset.longHint ?? terrainHint.textContent);
+                }
+                const daysBlock = this.element.querySelector(".days-since-rest-block");
+                if (daysBlock) daysBlock.style.display = isShort ? "none" : "";
+            };
+            restTypeButtons.forEach(btn => {
+                btn.addEventListener("click", () => _applyRestType(btn.dataset.restType));
             });
+            // Apply initial state from hidden input value
+            _applyRestType(restTypeInput.value ?? "long");
         }
 
         // Comfort hint: update on dropdown change
@@ -2035,6 +2067,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // Persist last-used terrain
             game.settings.set(MODULE_ID, "lastTerrain", this._selectedTerrain);
             this._daysSinceLastRest = this._daysSinceLastRest ?? 1;
+
+            // Short rest: advance to shelter step (step 2) instead of bypassing entirely
+            if (this._selectedRestType === "short") {
+                if (!this._shelterOverrides) this._shelterOverrides = {};
+                this._setupStep = 2;
+                this.render();
+                return;
+            }
         } else if (step === 2) {
             this._selectedWeather = formData.weather ?? "clear";
             this._selectedComfort = formData.comfort ?? "sheltered";
@@ -2072,6 +2112,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const formData = form ? Object.fromEntries(new FormData(form)) : {};
         this._selectedTerrain = formData.terrain ?? this._selectedTerrain ?? "forest";
         this._selectedRestType = formData.restType ?? "long";
+
         const terrainOpt = this.element.querySelector('[name="terrain"] option:checked');
         this._terrainLabel = terrainOpt?.textContent?.trim() ?? this._selectedTerrain;
         this._selectedWeather = "clear";
@@ -2637,6 +2678,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Begin Short Rest: reads selected shelter and launches ShortRestApp.
+     * Called from the short-rest shelter step (step 2).
+     */
+    static async #onBeginShortRest(event, target) {
+        // Find the active shelter from overrides (the one marked active)
+        const activeShelter = Object.entries(this._shelterOverrides ?? {})
+            .find(([, v]) => v)?.[0] ?? "none";
+        this.close();
+        new ShortRestApp({ initialShelter: activeShelter }).render({ force: true });
+    }
+
+    /**
      * Phase 1 -> 2: Begin rest, broadcast to all connected players.
      */
     static async #onBeginRest(event, target) {
@@ -3111,6 +3164,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         const drawer = this.element?.querySelector(".campfire-drawer");
         if (drawer) drawer.classList.remove("open");
+
+        // Turn off the campfire token's light on the canvas
+        CampfireTokenLinker.setLightState(false);
     }
 
     /**
@@ -3881,6 +3937,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const recParts = [];
                 if (recovery.hpRestored > 0) recParts.push(`+${recovery.hpRestored} HP`);
                 if (recovery.hdRestored > 0) recParts.push(`+${recovery.hdRestored} HD`);
+                if (recovery.exhaustionDelta < 0) recParts.push(`${recovery.exhaustionDelta} Exhaustion`);
+                else if (recovery.exhaustionDelta > 0) recParts.push(`+${recovery.exhaustionDelta} Exhaustion`);
                 if (recParts.length) {
                     lines.push(`<p><i class="fas fa-heartbeat"></i> ${recParts.join(", ")} restored</p>`);
                 }

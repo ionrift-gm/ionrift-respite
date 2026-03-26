@@ -92,7 +92,7 @@
                 <span class="section-step">1</span>
                 <span class="section-title">Environment</span>
                 {{#unless (eq setupStep 1)}}
-                <span class="section-summary"><i class="fas fa-check"></i> {{selectedTerrainLabel}} &middot; {{selectedRestType}}</span>
+                <span class="section-summary"><i class="fas fa-check"></i> {{selectedTerrainLabel}} &middot; {{selectedRestTypeLabel}}</span>
                 {{/unless}}
             </div>
             {{#if (eq setupStep 1)}}
@@ -100,10 +100,17 @@
                 <div class="terrain-grid">
                     <div class="form-group">
                         <label>Rest Type</label>
-                        <select name="restType">
-                            <option value="long">Long Rest</option>
-                            <option value="short">Short Rest</option>
-                        </select>
+                        <div class="rest-type-toggle">
+                            <button type="button" class="rest-type-btn {{#unless (eq selectedRestType 'short')}}active{{/unless}}"
+                                data-rest-type="long">
+                                <i class="fas fa-moon"></i> Long Rest
+                            </button>
+                            <button type="button" class="rest-type-btn {{#if (eq selectedRestType 'short')}}active{{/if}}"
+                                data-rest-type="short">
+                                <i class="fas fa-mug-hot"></i> Short Rest
+                            </button>
+                            <input type="hidden" name="restType" value="{{#if (eq selectedRestType 'short')}}short{{else}}long{{/if}}">
+                        </div>
                         <span class="rest-type-hint">8 hrs. HP and Hit Dice recovery varies by comfort and conditions.</span>
                     </div>
                     <div class="form-group">
@@ -141,7 +148,51 @@
             {{/if}}
         </div>
 
-        {{!-- ===== SECTION 2: Setting Up Camp ===== --}}
+        {{!-- ===== SECTION 2 (Short Rest): Shelter ===== --}}
+        {{#if isShortRest}}
+        {{#if (gte setupStep 2)}}
+        <div class="setup-section active" data-section="2">
+            <div class="setup-section-header">
+                <span class="section-step">2</span>
+                <span class="section-title">Shelter</span>
+            </div>
+            <div class="setup-section-body">
+                <div class="shelter-config">
+                    <div class="shelter-options">
+                        {{#each shelterOptions}}
+                        <label class="shelter-radio {{#if active}}active{{/if}} {{#unless available}}faded{{/unless}}">
+                            <input type="radio" name="shelter" value="{{id}}"
+                                {{#if active}}checked{{/if}}
+                                {{#unless available}}disabled{{/unless}}
+                                data-shelter-id="{{id}}"
+                                data-action="toggleShelter">
+                            <i class="{{icon}}"></i>
+                            <span class="shelter-name">{{name}}</span>
+                            <span class="shelter-hint">{{hint}}</span>
+                        </label>
+                        {{/each}}
+                    </div>
+                    {{#if shelterEffect.rpPrompt}}
+                    <div class="shelter-rp-prompt">
+                        <i class="fas fa-comment-dots"></i> {{shelterEffect.rpPrompt}}
+                    </div>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+        <div class="respite-action-bar">
+            <button type="button" class="btn-secondary" data-action="setupBack" data-step="1">
+                <i class="fas fa-chevron-left"></i> Back
+            </button>
+            <button type="button" class="btn-primary" data-action="beginShortRest" {{#unless shelterChosen}}disabled{{/unless}}>
+                <i class="fas fa-mug-hot"></i> Begin Short Rest
+            </button>
+        </div>
+        {{/if}}
+        {{/if}}
+
+        {{!-- ===== SECTION 2 (Long Rest): Setting Up Camp ===== --}}
+        {{#unless isShortRest}}
         {{#if (gte setupStep 2)}}
         <div class="setup-section {{#if (eq setupStep 2)}}active{{else}}collapsed{{/if}}" data-section="2">
             <div class="setup-section-header" data-action="setupBack" data-step="2">
@@ -239,6 +290,7 @@
             {{/if}}
         </div>
         {{/if}}
+        {{/unless}}
 
         {{!-- ===== SECTION 3: Shelter (skipped for tavern) ===== --}}
         {{#if shelterNeeded}}
@@ -770,6 +822,25 @@
     {{!-- Campfire slide-out drawer --}}
     <div class="campfire-drawer">
         <div class="campfire-drawer-content"></div>
+        {{#if isGM}}
+        <div class="campfire-advisory">
+            {{#if campfireTokenDetected}}
+            <div class="campfire-advisory-row advisory-ok">
+                <i class="fas fa-link"></i>
+                <span>Campfire token linked. Light will follow fire state.</span>
+            </div>
+            {{else}}
+            <div class="campfire-advisory-row advisory-warn">
+                <i class="fas fa-unlink"></i>
+                <span>No token named "{{campfireTokenSettingName}}" on this scene.</span>
+            </div>
+            {{/if}}
+            <div class="campfire-advisory-row advisory-info">
+                <i class="fas fa-info-circle"></i>
+                <span>Players add firewood from their inventory.</span>
+            </div>
+        </div>
+        {{/if}}
     </div>
     </div>{{!-- /activity-phase-layout --}}
     <div class="respite-action-bar">
@@ -1139,7 +1210,6 @@
     <div class="respite-reflection">
 
 
-
         <div class="reflection-grid">
             <div class="reflection-tile">
                 <div class="reflection-tile-icon"><i class="fas fa-book-open"></i></div>
@@ -1236,7 +1306,7 @@
                 </button>
                 {{/if}}
                 <div class="disaster-dismiss">
-                    <a href="#" data-action="disasterChoice" data-pick="dismiss">Dismiss and continue</a>
+                    <button type="button" class="btn-override-link" data-action="disasterChoice" data-pick="dismiss">Dismiss and continue</button>
                 </div>
             </div>
             {{else}}
@@ -1971,7 +2041,7 @@
         {{#if recoverySummary.length}}
         <div class="recovery-preview">
             {{#each recoverySummary}}
-            <span class="recovery-chip">{{name}}: +{{hp}} HP{{#if gearBonuses.hp}} <span class="gear-annotation">(+1 mess kit)</span>{{/if}}, +{{hd}} HD{{#if gearBonuses.hd}} <span class="gear-annotation">(+1 bedroll)</span>{{/if}}</span>
+            <span class="recovery-chip">{{name}}: +{{hp}} HP{{#if gearBonuses.hp}} <span class="gear-annotation">(+1 mess kit)</span>{{/if}}, +{{hd}} HD{{#if gearBonuses.hd}} <span class="gear-annotation">(+1 bedroll)</span>{{/if}}{{#if exhaustionDelta}}, {{exhaustionDelta}} Exhaustion{{/if}}</span>
             {{/each}}
             {{#each activitySummary}}
             <span class="recovery-chip {{#if (eq result 'failure')}}failure{{/if}}{{#if (eq result 'failure_complication')}}failure{{/if}}">
@@ -2035,7 +2105,7 @@
         {{#if recoverySummary.length}}
         <div class="recovery-preview">
             {{#each recoverySummary}}
-            <span class="recovery-chip">{{name}}: +{{hp}} HP{{#if gearBonuses.hp}} <span class="gear-annotation">(+1 mess kit)</span>{{/if}}, +{{hd}} HD{{#if gearBonuses.hd}} <span class="gear-annotation">(+1 bedroll)</span>{{/if}}</span>
+            <span class="recovery-chip">{{name}}: +{{hp}} HP{{#if gearBonuses.hp}} <span class="gear-annotation">(+1 mess kit)</span>{{/if}}, +{{hd}} HD{{#if gearBonuses.hd}} <span class="gear-annotation">(+1 bedroll)</span>{{/if}}{{#if exhaustionDelta}}, {{exhaustionDelta}} Exhaustion{{/if}}</span>
             {{/each}}
             {{#each activitySummary}}
             <span class="recovery-chip {{#if (eq result 'failure')}}failure{{/if}}{{#if (eq result 'failure_complication')}}failure{{/if}}">

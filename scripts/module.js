@@ -8,6 +8,8 @@ import { TerrainRegistry } from "./services/TerrainRegistry.js";
 import { RestSetupApp } from "./apps/RestSetupApp.js";
 import { ActivityPickerApp } from "./apps/ActivityPickerApp.js";
 import { CampfireApp } from "./apps/CampfireApp.js";
+import { ShortRestApp } from "./apps/ShortRestApp.js";
+import { CampfireTokenLinker } from "./services/CampfireTokenLinker.js";
 
 import { createAdapter } from "./adapters/adapterFactory.js";
 import { PackRegistryApp } from "./apps/PackRegistryApp.js";
@@ -31,6 +33,9 @@ let activeRestData = null;
 
 // Active campfire panel reference for socket routing.
 let activeCampfireApp = null;
+
+// Active short rest app reference for socket routing.
+let activeShortRestApp = null;
 
 /**
  * Registers the active CampfireApp so socket events route to it.
@@ -71,6 +76,22 @@ export function clearActiveRestApp() {
     activeRestData = null;
     respiteFlowActive = false;
     _removeGmRestIndicator();
+}
+
+/**
+ * Registers the active ShortRestApp so socket messages route to it.
+ */
+export function registerActiveShortRestApp(app) {
+    activeShortRestApp = app;
+    respiteFlowActive = true;
+}
+
+/**
+ * Clears the active ShortRestApp reference.
+ */
+export function clearActiveShortRestApp() {
+    activeShortRestApp = null;
+    respiteFlowActive = false;
 }
 
 /**
@@ -255,6 +276,16 @@ Hooks.once("init", async () => {
         config: true,
         type: Boolean,
         default: true,
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "campfireTokenName", {
+        name: "Campfire Token Name",
+        hint: "Name of the token on the scene to link with the campfire. When the campfire is lit, the token's light turns on. Case-insensitive.",
+        scope: "world",
+        config: true,
+        type: String,
+        default: "Campfire",
         restricted: true
     });
 
@@ -829,12 +860,57 @@ function _onSocketMessage(data) {
             }
             break;
 
+        // Player -> GM: consume firewood from actor inventory
+        case "consumeFirewood":
+            if (!game.user.isGM) return;
+            _handleConsumeFirewood(data);
+            break;
+
+        // Player -> GM: toggle campfire token light on canvas
+        case "campfireTokenSync":
+            if (!game.user.isGM) return;
+            CampfireTokenLinker.setLightState(data.lit);
+            break;
+
         // GM -> All: force all clients to reload (dev tool)
         case "forceReload":
             console.log(`${MODULE_ID} | Received forceReload, refreshing page...`);
             setTimeout(() => window.location.reload(), 200);
             break;
+
+        // Short Rest: GM started short rest
+        case "shortRestStarted":
+            if (game.user.isGM) return;
+            _handleShortRestStarted(data);
+            break;
+
+        // Short Rest: HD spent (broadcast)
+        case "shortRestHdSpent":
+            if (activeShortRestApp?.receiveHdSpent) {
+                activeShortRestApp.receiveHdSpent(data);
+            }
+            break;
+
+        // Short Rest: complete
+        case "shortRestComplete":
+            if (game.user.isGM) return;
+            if (activeShortRestApp) {
+                ui.notifications.info("Short rest complete. Class features recovered.");
+                activeShortRestApp.close();
+                activeShortRestApp = null;
+            }
+            break;
     }
+}
+
+/**
+ * Player handler: GM started a short rest, open ShortRestApp.
+ */
+function _handleShortRestStarted(data) {
+    if (activeShortRestApp) activeShortRestApp.close();
+    activeShortRestApp = new ShortRestApp();
+    activeShortRestApp.receiveStarted(data);
+    activeShortRestApp.render({ force: true });
 }
 
 /**
@@ -1066,4 +1142,24 @@ function _handleRequestRestState(data) {
         snapshot,
         targetUserId: requestingUserId
     });
+}
+
+/**
+ * GM handler: A player requested firewood consumption from an actor they
+ * cannot modify directly. The GM performs the item mutation on their behalf.
+ */
+async function _handleConsumeFirewood(data) {
+    const actor = game.actors.get(data.actorId);
+    if (!actor) return;
+
+    const firewood = actor.items.get(data.itemId);
+    if (!firewood) return;
+
+    const qty = firewood.system?.quantity ?? 1;
+    if (qty <= 1) {
+        await firewood.delete();
+    } else {
+        await firewood.update({ "system.quantity": qty - 1 });
+    }
+    console.log(`${MODULE_ID} | GM consumed firewood for ${actor.name} (remaining: ${qty - 1})`);
 }
