@@ -10,6 +10,8 @@ Replaces the default long rest dialog with a phased flow. The party sets camp, p
 
 Built for DnD 5e. System stubs exist for PF2e and Daggerheart but they're proof-of-concept only.
 
+[![Respite preview](https://img.youtube.com/vi/uAOHxdlr7rg/maxresdefault.jpg)](https://youtu.be/uAOHxdlr7rg)
+
 ![Setup phase showing terrain, comfort, and encounter DC](assets/screenshots/setup.png)
 
 ## How it works
