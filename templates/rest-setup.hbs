@@ -71,7 +71,7 @@
     {{!-- =============== SETUP PHASE =============== --}}
     {{#if (eq phase 'setup')}}
     <div class="phase-banner">
-        <img src="{{terrainBanner}}" alt="Camp setup" style="object-position: {{terrainBannerPos}}">
+        <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
 
     {{#if isGM}}
@@ -371,7 +371,7 @@
     {{!-- =============== ACTIVITY PHASE =============== --}}
     {{#if (eq phase 'activity')}}
     <div class="phase-banner">
-        <img src="{{terrainBanner}}" alt="Camp activities" style="object-position: {{terrainBannerPos}}">
+        <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
     {{> rosterStrip}}
     <div class="activity-phase-layout">
@@ -863,7 +863,7 @@
     {{!-- =============== MEAL PHASE =============== --}}
     {{#if (eq phase 'meal')}}
     <div class="phase-banner">
-        <img src="{{terrainBanner}}" alt="Meal time" style="object-position: {{terrainBannerPos}}">
+        <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
     {{> rosterStrip}}
     <div class="activity-phase-layout">
@@ -1204,7 +1204,7 @@
     {{!-- =============== REFLECTION PHASE =============== --}}
     {{#if (eq phase 'reflection')}}
     <div class="phase-banner">
-        <img src="{{terrainBanner}}" alt="Campfire" style="object-position: {{terrainBannerPos}}">
+        <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
     {{> rosterStrip}}
     <div class="respite-reflection">
@@ -1259,7 +1259,7 @@
     {{!-- =============== EVENTS PHASE =============== --}}
     {{#if (eq phase 'events')}}
     <div class="phase-banner">
-        <img src="{{terrainBanner}}" alt="Night events" style="object-position: {{terrainBannerPos}}">
+        <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
     {{> rosterStrip}}
     <div class="respite-events">
@@ -1922,7 +1922,7 @@
     {{!-- =============== RESOLUTION PHASE =============== --}}
     {{#if (eq phase 'resolve')}}
     <div class="phase-banner">
-        <img src="{{terrainBanner}}" alt="Dawn breaks" style="object-position: {{terrainBannerPos}}">
+        <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
     {{> rosterStrip}}
 

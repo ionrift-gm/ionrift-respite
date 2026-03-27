@@ -12,6 +12,7 @@ import { Logger } from "../lib/Logger.js";
 import { registerActiveShortRestApp, clearActiveShortRestApp } from "../module.js";
 
 const MODULE_ID = "ionrift-respite";
+import { ImageResolver } from "../util/ImageResolver.js";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 /** RP prompts -- one picked at random per rest. */
@@ -191,8 +192,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             rpPrompt: this._rpPrompt,
             allSpent: characters.every(c => c.isFullHp || c.noHdLeft || !c.isOwner),
             banner: isRopeTrick
-                ? `modules/${MODULE_ID}/data/terrains/short-rest/rope_trick.png`
-                : `modules/${MODULE_ID}/data/terrains/short-rest/banner.png`,
+                ? ImageResolver.terrainBanner("short-rest", "rope_trick.png")
+                : ImageResolver.terrainBanner("short-rest", "banner.png"),
+            bannerFallback: ImageResolver.fallbackBanner,
         };
     }
 

@@ -12,6 +12,7 @@ import { CopySpellHandler } from "../services/CopySpellHandler.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
 import { ConditionAdvisory } from "../services/ConditionAdvisory.js";
 import { CampfireTokenLinker } from "../services/CampfireTokenLinker.js";
+import { ImageResolver } from "../util/ImageResolver.js";
 import { CraftingPickerApp } from "./CraftingPickerApp.js";
 import { CampfireEmbed } from "./CampfireEmbed.js";
 import { CraftingDelegate } from "./delegates/CraftingDelegate.js";
@@ -1158,8 +1159,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 
                 // All terrains look in their specific folder.
                 const filename = (p === "activity" || p === "reflection" || p === "meal") ? "banner.png" : `${p}.png`;
-                return `modules/ionrift-respite/data/terrains/${t}/${filename}`;
+                return ImageResolver.terrainBanner(t, filename);
             })(),
+            terrainBannerFallback: ImageResolver.fallbackBanner,
             terrainBannerPos: "center", // banners are pre-cropped 640×120 strips
             selectedTerrainLabel: this._terrainLabel ?? "Forest",
             selectedRestType: this._selectedRestType ?? "long",

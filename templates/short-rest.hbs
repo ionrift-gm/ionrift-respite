@@ -2,7 +2,7 @@
 <div class="short-rest-container ionrift-window">
 
     {{!-- Banner header --}}
-    <div class="sr-banner" style="background-image: url('{{banner}}');"></div>
+    <div class="sr-banner"><img src="{{banner}}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.src='{{bannerFallback}}'"></div>
 
     {{!-- Status strip (matching long rest camp-status-bar) --}}
     <div class="camp-status-bar">

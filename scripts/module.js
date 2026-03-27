@@ -14,6 +14,7 @@ import { CampfireTokenLinker } from "./services/CampfireTokenLinker.js";
 import { createAdapter } from "./adapters/adapterFactory.js";
 import { PackRegistryApp } from "./apps/PackRegistryApp.js";
 import { CopySpellHandler } from "./services/CopySpellHandler.js";
+import { ImageResolver } from "./util/ImageResolver.js";
 
 const MODULE_ID = "ionrift-respite";
 const MODULE_LABEL = "Respite";
@@ -384,6 +385,9 @@ Hooks.on("chatMessage", (log, message, chatData) => {
 Hooks.once("ready", async () => {
     console.log(`${MODULE_ID} | Ready hook firing...`);
     Logger.log?.(MODULE_LABEL, "Ready.");
+
+    // Initialize image resolver (art pack detection)
+    ImageResolver.init();
 
     // Initialize terrain registry early so data is available before first rest
     await TerrainRegistry.init();
