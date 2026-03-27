@@ -30,8 +30,9 @@ async function main() {
 
     const batch = [];
 
-    // Journal parent document
+    // Journal parent document - pages array must list page IDs
     const journalKey = `!journal!${src._id}`;
+    const pageIds = src.pages.map(p => p._id);
     batch.push({
         type: 'put',
         key: journalKey,
@@ -39,7 +40,8 @@ async function main() {
             _key: journalKey,
             _id: src._id,
             name: src.name,
-            pages: [],
+            pages: pageIds,
+            categories: [],
             ownership: src.ownership || { default: 2 },
             flags: src.flags || {},
             sort: src.sort || 0,
