@@ -464,17 +464,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const disasters = await disasterResp.json();
             this._eventResolver.load(disasters.tables, disasters.events);
 
-            // Wanderer's Pack (Welcome Pack): additional events for all terrains
-            try {
-                const wpResp = await fetch(`modules/${MODULE_ID}/data/wanderers_pack/events.json`);
-                if (wpResp.ok) {
-                    const wpData = await wpResp.json();
-                    this._eventResolver.load(wpData.tables, wpData.events);
-                    console.log(`${MODULE_ID} | Loaded Wanderer's Pack: ${wpData.events.length} events`);
-                }
-            } catch (e) {
-                console.warn(`${MODULE_ID} | Wanderer's Pack not found, skipping`);
-            }
+            // Wanderer's Pack events (future content pack, not yet shipped)
+            // Will be loaded here when data/wanderers_pack/events.json exists
         } catch (e) {
             console.error(`${MODULE_ID} | Failed to load seed data:`, e);
         }
