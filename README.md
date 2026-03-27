@@ -19,17 +19,17 @@ Respite replaces the default long rest dialog with a phased flow. Players pick t
 3. **Events** - GM rolls against the encounter threshold. Events pull from terrain-specific pools with narrative outcomes, skill checks, and decision trees.
 4. **Resolution** - HP/HD recovery based on comfort level. Each player is presented with the full results of their rest privately.
 
-There's a tension between guarding the camp and getting rest. Someone on watch is safe if combat breaks out but recovers less. Someone resting fully recovers better but wakes up groggy. Sleeping in armor avoids the scramble to gear up but costs recovery (optional Xanathar's rules). The module surfaces these tradeoffs without the GM having to explain them.
+There's a tension between guarding the camp and getting rest. Someone on watch is safe if combat breaks out but recovers less. Someone resting fully recovers better but wakes up groggy. Sleeping in armor avoids the scramble to gear up but costs recovery (optional Xanathar's rules). These tradeoffs are shown to the player up front so the GM doesn't have to explain them.
 
 ## Activities
 
-Players pick from a grid and the module handles the mechanics. Most activities are fully self-serve; Copy Spell still needs some GM interaction with an agreement/transaction flow, but the spell level, gold cost, and Arcana DC are calculated and deducted for you.
+Players pick from a grid and it handles the mechanics. Most activities are fully self-serve; Copy Spell still needs some GM interaction with an agreement/transaction flow, but the spell level, gold cost, and Arcana DC are calculated and deducted for you.
 
-Camp duties (Keep Watch, Scout, Set Defenses, Tend Wounds) protect the party. Personal activities (Train, Rest Fully, Forage, Fletch Arrows) provide individual benefits. Spell-gated activities (Identify, Attune, Copy Spell) only appear if the character has the right spells.
+Camp duties (Keep Watch, Scout, Set Defenses, Tend Wounds) protect the party. Personal activities (Train, Rest Fully, Forage, Fletch Arrows) are for your own character. Spell-gated activities (Identify, Attune, Copy Spell) only show up if you have the right spells.
 
 ![Copy Spell - full PHB workflow with gold cost, Arcana DC, and GM approval](assets/screenshots/pure/activities/activity_copy_spell.png)
 
-Copy Spell runs the full PHB workflow: pick a spell level, system calculates gold cost, rolls Arcana, sends the GM a socket-based approval request. Identify lets casters ritual-scan the party's gear without consuming their activity slot. Attune shows un-attuned items with slot tracking.
+Copy Spell runs the full PHB workflow. Pick a spell level, the system works out the gold cost, rolls Arcana, and sends the GM an approval request. Identify lets casters ritual-scan the party's gear without using up their activity slot. Attune shows un-attuned items with slot tracking.
 
 **[See all activities with screenshots](assets/screenshots/pure/activities/README.md)**
 
