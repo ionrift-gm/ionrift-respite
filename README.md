@@ -36,7 +36,7 @@ Copy Spell runs the full PHB workflow. Pick a spell level, the system works out 
 
 ## Events
 
-30+ hand-written events across 6 terrains (forest, desert, swamp, urban, dungeon, tavern), each with multiple outcome tiers. Collected over years of running a primitive version of this module at the table. Events have weighted probability and narrative branching. The GM can Force Pass or Force Fail any outcome.
+30+ events across 6 terrains (forest, desert, swamp, urban, dungeon, tavern), each with multiple outcome tiers. Collected over years of running a primitive version of this module at the table. Events have weighted probability and narrative branching. The GM can Force Pass or Force Fail any outcome.
 
 ![Vermin Nest event with group Nature check](assets/screenshots/pure/12_events_vermin.png)
 
