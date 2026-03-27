@@ -1,8 +1,8 @@
 {
     "id": "ionrift-respite",
     "title": "Ionrift Respite",
-    "description": "Structured rest phases for DnD 5e. Replaces the default rest dialog with a guided flow where players self-serve their downtime needs - identifying magic items, attuning gear, copying spells, crafting arrows - while the GM runs terrain-driven encounters and events. 60+ hand-written event outcomes across 6 terrains, collected over years of running a primitive version of this module at the table.",
-    "bugs": "https://discord.gg/8p9Fp6wa",
+    "description": "Structured rest phases for DnD 5e. Replaces the default rest dialog with a guided flow where players self-serve their downtime needs - identifying magic items, attuning gear, copying spells, crafting arrows - while the GM runs terrain-driven encounters and events. 30+ hand-written events across 6 terrains, each with multiple outcome tiers, collected over years of running a primitive version of this module at the table.",
+    "bugs": "https://discord.gg/vFGXf7Fncj",
     "version": "1.0.1",
     "url": "https://github.com/ionrift-gm/ionrift-respite",
     "manifest": "https://github.com/ionrift-gm/ionrift-respite/releases/latest/download/module.json",

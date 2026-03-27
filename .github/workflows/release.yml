@@ -54,7 +54,7 @@ jobs:
         if: success() && !contains(github.ref_name, '-rc') && !contains(github.ref_name, '-beta') && !contains(github.ref_name, '-alpha')
         uses: actions/github-script@v7
         env:
-          FOUNDRY_TOKEN: ${{ secrets.FOUNDRY_RELEASE_TOKEN }}
+          FOUNDRY_TOKEN: ${{ secrets.FOUNDRY_PACKAGE_TOKEN }}
         with:
           script: |
             const fs = require('fs');
