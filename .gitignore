@@ -11,7 +11,7 @@ data/terrains/*/
 !data/terrains/urban/
 
 # Content packs
-data/wanderers_pack/
+# data/wanderers_pack/ — now shipped (Welcome Pack)
 
 # Unreleased data
 data/professions/
