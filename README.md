@@ -73,7 +73,7 @@ All under **Game Settings > Module Settings > Ionrift Respite**: default comfort
 ## Bug reports
 
 1. **[Ionrift Wiki](https://github.com/ionrift-gm/ionrift-library/wiki)** for common fixes.
-2. **[Ionrift Discord](https://discord.gg/8p9Fp6wa)** with Foundry version, module versions, and console errors.
+2. **[Ionrift Discord](https://discord.gg/vFGXf7Fncj)** with Foundry version, module versions, and console errors.
 3. **[GitHub Issues](https://github.com/ionrift-gm/ionrift-respite/issues)**.
 
 ## License
@@ -86,4 +86,4 @@ Event narratives, terrain data, and item descriptions in `data/` are copyright I
 
 **Part of the [Ionrift Module Suite](https://github.com/ionrift-gm)**
 
-[Wiki](https://github.com/ionrift-gm/ionrift-library/wiki) · [Discord](https://discord.gg/8p9Fp6wa) · [Patreon](https://patreon.com/ionrift)
+[Wiki](https://github.com/ionrift-gm/ionrift-library/wiki) · [Discord](https://discord.gg/vFGXf7Fncj) · [Patreon](https://patreon.com/ionrift)
