@@ -10,10 +10,13 @@ data/terrains/*/
 !data/terrains/tavern/
 !data/terrains/urban/
 
-# Content packs
+# !! CONTENT PACKS — PATREON ONLY !!
+# These paths contain proprietary content distributed through Patreon.
+# DO NOT remove these exclusions. DO NOT commit content pack data to this repo.
+# See DEV_PROTOCOLS.md Section 28: Content Pack Safety.
 data/wanderers_pack/
 
-# Unreleased data
+# Unreleased data (not shipped in current version)
 data/professions/
 data/core/forage/
 data/core/events/mountain_events.json
