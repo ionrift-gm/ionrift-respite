@@ -30,6 +30,12 @@
             "path": "packs/respite-guide"
         }
     ],
+    "packFolders": [
+        {
+            "name": "Ionrift",
+            "packs": ["respite-items", "respite-guide"]
+        }
+    ],
     "socket": true,
     "styles": [
         "styles/respite.css"
