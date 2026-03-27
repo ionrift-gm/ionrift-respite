@@ -30,6 +30,7 @@ export class ActivityResolver {
         const available = [];
         for (const activity of this.activities.values()) {
             if (!activity.restTypes.includes(restType)) continue;
+            if (activity.disabled) continue;
 
             // Gate Study behind module setting
             if (activity.id === "act_study") {
@@ -386,8 +387,8 @@ export class ActivityResolver {
             // Use toObject() to avoid DnD5e 5.1 deprecation warnings on SpellData#preparation
             const raw = item.toObject?.()?.system ?? {};
 
-            // DnD5e 5.1+: top-level `method` replaces `preparation.mode`
-            //             top-level `prepared` replaces `preparation.prepared`
+            // DnD5e 5.1+: top-level method replaces preparation.mode
+            //             top-level prepared replaces preparation.prepared
             const mode = raw.method ?? raw.preparation?.mode ?? "";
             const isPrepared = raw.prepared ?? raw.preparation?.prepared ?? false;
 

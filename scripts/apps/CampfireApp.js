@@ -317,7 +317,7 @@ export class CampfireApp extends HandlebarsApplicationMixin(ApplicationV2) {
         setTimeout(() => wisp.remove(), 3000);
     }
 
-    // ──────── 4. Whittle → Canvas Pile → Burn ────────
+    // ---- 4. Whittle > Canvas Pile > Burn ----
 
     static async #onWhittle(event, target) {
         this._whittleProgress++;

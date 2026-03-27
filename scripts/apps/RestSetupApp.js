@@ -628,19 +628,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 };
             });
 
-        // Add tent as first shelter option
-        shelterOptions.unshift({
-            id: "tent",
-            name: "Tent",
-            icon: "fas fa-campground",
-            available: tentAvailable,
-            casterNames: tentOwnerNames,
-            hint: tentAvailable ? `Carried by ${tentOwnerNames}. Weather shield. Encounter DC +2.` : "No tent in party inventory.",
-            rpPrompt: "Who sets it up? Where do they pitch it? Is it large enough for everyone, or do some sleep outside?",
-            comfortFloor: null,
-            encounterMod: 2,
-            active: !!this._shelterOverrides.tent
-        });
+        // Add tent as first shelter option (long rest only)
+        if (currentRestType === "long") {
+            shelterOptions.unshift({
+                id: "tent",
+                name: "Tent",
+                icon: "fas fa-campground",
+                available: tentAvailable,
+                casterNames: tentOwnerNames,
+                hint: tentAvailable ? `Carried by ${tentOwnerNames}. Weather shield. Encounter DC +2.` : "No tent in party inventory.",
+                rpPrompt: "Who sets it up? Where do they pitch it? Is it large enough for everyone, or do some sleep outside?",
+                comfortFloor: null,
+                encounterMod: 2,
+                active: !!this._shelterOverrides.tent
+            });
+        }
 
         // Add "No Shelter" as the last option (always available)
         shelterOptions.push({

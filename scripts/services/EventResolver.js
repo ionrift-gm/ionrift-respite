@@ -50,7 +50,7 @@ export class EventResolver {
     async roll(terrainTag, watchRoster = [], effectiveDC = 15, scoutTier = "none") {
         const table = this.tables.get(terrainTag);
         if (!table) {
-            // No table for this terrain — check if we have any events at all
+            // No table for this terrain - check if we have any events at all
             const hasEvents = [...this.events.values()].some(e => e.terrainTags?.includes(terrainTag));
             if (!hasEvents) return [];
         }
@@ -95,7 +95,7 @@ export class EventResolver {
         const roll = await new Roll(rollFormula).evaluate();
         const rawDie = roll.total;
 
-        console.log(`[Respite:EventResolver] roll — terrain=${terrainTag}, rawDie=${rawDie}, effectiveDC=${effectiveDC}, passesThreshold=${rawDie >= effectiveDC}`);
+        console.log(`[Respite:EventResolver] roll - terrain=${terrainTag}, rawDie=${rawDie}, effectiveDC=${effectiveDC}, passesThreshold=${rawDie >= effectiveDC}`);
 
         // ── Nat 1: Disaster roll (only actual nat 1 on the die) ──
         if (rawDie === 1) {
