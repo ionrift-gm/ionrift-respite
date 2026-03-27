@@ -464,8 +464,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const disasters = await disasterResp.json();
             this._eventResolver.load(disasters.tables, disasters.events);
 
-            // Wanderer's Pack events (future content pack, not yet shipped)
-            // Will be loaded here when data/wanderers_pack/events.json exists
+            // Wanderer's Pack: load from private packs module if present (dev/Patreon only)
+            // Content lives in ionrift-respite-packs repo, not this repo.
+            // See DEV_PROTOCOLS.md Section 28: Content Pack Safety.
+            try {
+                const wpResp = await fetch(`modules/ionrift-respite-packs/wanderers_pack/events.json`);
+                if (wpResp.ok) {
+                    const wpData = await wpResp.json();
+                    this._eventResolver.load(wpData.tables, wpData.events);
+                    console.log(`${MODULE_ID} | Loaded Wanderer's Pack: ${wpData.events.length} events`);
+                }
+            } catch (e) {
+                // Packs module not installed, skip silently
+            }
         } catch (e) {
             console.error(`${MODULE_ID} | Failed to load seed data:`, e);
         }
