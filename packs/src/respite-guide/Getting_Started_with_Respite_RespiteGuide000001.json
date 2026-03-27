@@ -1,6 +1,6 @@
 {
-    "_key": "!journal!RespiteGuide000001",
-    "_id": "RespiteGuide000001",
+    "_key": "!journal!1Zh2gDQ1xOLFUrhW",
+    "_id": "1Zh2gDQ1xOLFUrhW",
     "name": "Getting Started with Respite",
     "ownership": {
         "default": 2
@@ -8,7 +8,7 @@
     "flags": {},
     "pages": [
         {
-            "_id": "RespGuidePage0001",
+            "_id": "aQc3PtQPrYDi9Mlx",
             "name": "How to Start a Rest",
             "type": "text",
             "text": {
@@ -23,7 +23,7 @@
             "flags": {}
         },
         {
-            "_id": "RespGuidePage0002",
+            "_id": "dvr4TYdYmX88MCCf",
             "name": "Rest Phases",
             "type": "text",
             "text": {
@@ -38,7 +38,7 @@
             "flags": {}
         },
         {
-            "_id": "RespGuidePage0003",
+            "_id": "uUZqFRiGZkQLNbjW",
             "name": "Terrain and Comfort",
             "type": "text",
             "text": {
@@ -53,7 +53,7 @@
             "flags": {}
         },
         {
-            "_id": "RespGuidePage0004",
+            "_id": "yRwt7dwMRQbNp96Q",
             "name": "Meals and Rations",
             "type": "text",
             "text": {
@@ -68,7 +68,7 @@
             "flags": {}
         },
         {
-            "_id": "RespGuidePage0005",
+            "_id": "Vnk9XsDNGBF6yTbu",
             "name": "Settings Reference",
             "type": "text",
             "text": {
@@ -83,7 +83,7 @@
             "flags": {}
         },
         {
-            "_id": "RespGuidePage0006",
+            "_id": "zA0gnfQJRBoM7wiw",
             "name": "Terrains & Events (GM Only)",
             "type": "text",
             "text": {
