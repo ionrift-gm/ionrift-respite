@@ -2538,6 +2538,52 @@
     font-style: italic;
 }
 
+.exhaustion-gained {
+    color: #f1948a;
+    font-weight: 600;
+}
+
+.exhaustion-recovered {
+    color: #82e0aa;
+    font-weight: 600;
+}
+
+.outcome-exhaustion-advisory {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: #f9d77e;
+    padding: 0.3rem 0.5rem;
+    margin-top: 0.4rem;
+    background: rgba(243, 156, 18, 0.08);
+    border: 1px solid rgba(243, 156, 18, 0.15);
+    border-radius: 4px;
+}
+
+.outcome-exhaustion-advisory i {
+    font-size: 0.7rem;
+    opacity: 0.8;
+}
+
+.outcome-exhaustion-advisory.hostile-note {
+    color: #f1948a;
+    background: rgba(231, 76, 60, 0.08);
+    border-color: rgba(231, 76, 60, 0.15);
+}
+
+.outcome-exhaustion-advisory.save-passed {
+    color: #82e0aa;
+    background: rgba(46, 204, 113, 0.08);
+    border-color: rgba(46, 204, 113, 0.15);
+}
+
+.outcome-exhaustion-advisory.save-failed {
+    color: #f1948a;
+    background: rgba(231, 76, 60, 0.08);
+    border-color: rgba(231, 76, 60, 0.15);
+}
+
 /* ============================================================
    CRAFTING PICKER
    ============================================================ */

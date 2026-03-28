@@ -51,6 +51,7 @@ export class CampfireEmbed {
         this._litNotifyTimer = null;
         this._showLitBanner = false;
         this._onFireLevelChange = options.onFireLevelChange ?? null;
+        this._partyCharacterIds = options.partyCharacterIds ?? [];
         this._whittleProgress = 0;
         this._whittleTarget = 12;
         this._lastWhittledFigure = null;
@@ -553,24 +554,35 @@ export class CampfireEmbed {
     }
 
     _hasTinderbox() {
-        const actor = this._getPlayerActor();
-        if (!actor) return false;
-        return !!actor.items.find(i => {
-            const n = i.name?.toLowerCase() ?? "";
-            return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
-        });
+        if (game.user?.isGM) return false;
+        for (const id of this._partyCharacterIds) {
+            const actor = game.actors.get(id);
+            if (!actor) continue;
+            const found = actor.items.find(i => {
+                const n = i.name?.toLowerCase() ?? "";
+                return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
+            });
+            if (found) return true;
+        }
+        return false;
     }
 
     static FIRE_CANTRIPS = ["Fire Bolt", "Produce Flame", "Create Bonfire", "Control Flames", "Prestidigitation"];
 
     _findFireCantrip() {
-        const actor = this._getPlayerActor();
-        if (!actor) return null;
-        return actor.items.find(i =>
-            i.type === "spell"
-            && (i.system?.level === 0)
-            && CampfireEmbed.FIRE_CANTRIPS.includes(i.name)
-        ) ?? null;
+        // Campfire lighting is a player action; GM observes only
+        if (game.user?.isGM) return null;
+        for (const id of this._partyCharacterIds) {
+            const actor = game.actors.get(id);
+            if (!actor) continue;
+            const cantrip = actor.items.find(i =>
+                i.type === "spell"
+                && (i.system?.level === 0)
+                && CampfireEmbed.FIRE_CANTRIPS.includes(i.name)
+            );
+            if (cantrip) return cantrip;
+        }
+        return null;
     }
 
     _onCantripIgnite() {

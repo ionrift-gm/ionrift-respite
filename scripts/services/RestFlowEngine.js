@@ -177,9 +177,9 @@ export class RestFlowEngine {
      *   Rough:          full HP, half HD - 1 (min 0), CON DC 10 exhaustion
      *   Hostile:        3/4 HP,  half HD - 2 (min 0), CON DC 15 exhaustion
      *
-     * Personal gear (flat bonuses, always apply, independent of comfort):
-     *   Bedroll: +1 HD
-     *   Mess Kit / Cook's Utensils: +1 HP
+     * Personal gear:
+     *   Bedroll: +1 HD recovered
+     *   Mess Kit / Cook's Utensils: advantage on exhaustion save (requires lit fire)
      *
      * @param {Actor} actor
      * @param {Object} [activitySchema] - The activity schema for the character's chosen activity.
@@ -229,25 +229,34 @@ export class RestFlowEngine {
         const hasCooksUtensils = items.some(n => n?.includes("cook") && n?.includes("utensil"));
         const hasDiningGear = hasMessKit || hasCooksUtensils;
 
-        // Flat gear bonuses (always apply, never affected by comfort tier)
-        const gearBonusHp = hasDiningGear ? 1 : 0;
+        // Gear bonuses
         const gearBonusHd = hasBedroll ? 1 : 0;
+        // Mess Kit / Cook's Utensils: advantage on exhaustion save when fire is lit
+        const fireIsLit = this.fireLevel && this.fireLevel !== "unlit";
+        const exhaustionAdvantage = !!(hasDiningGear && fireIsLit && exhaustionDC);
 
         const gearDescriptors = [];
-        if (gearBonusHp > 0) gearDescriptors.push(hasCooksUtensils ? "Cook's Utensils: +1 HP" : "Mess Kit: +1 HP");
+        if (exhaustionAdvantage) {
+            const gearLabel = hasCooksUtensils ? "Cook's Utensils" : "Mess Kit";
+            gearDescriptors.push(`${gearLabel}: advantage on exhaustion save`);
+        } else if (hasDiningGear && !fireIsLit && exhaustionDC) {
+            const gearLabel = hasCooksUtensils ? "Cook's Utensils" : "Mess Kit";
+            gearDescriptors.push(`${gearLabel}: no fire (advantage inactive)`);
+        }
         if (gearBonusHd > 0) gearDescriptors.push("Bedroll: +1 HD");
         if (armorSleepPenalty) gearDescriptors.push(`Sleeping in ${equippedArmor.name}: 1/4 HD, exhaustion not reduced`);
 
         return {
-            hpRestored: baseHpRestored + gearBonusHp,
+            hpRestored: baseHpRestored,
             hdRestored: baseHdRecovered + gearBonusHd,
             spellSlotsRestored: this.restType === "long",
             comfortLevel: this.comfort,
             restType: this.restType,
             restedFully: activitySchema?.id === "act_rest_fully",
             exhaustionDC,
+            exhaustionAdvantage,
             armorSleepPenalty,
-            gearBonuses: { hp: gearBonusHp, hd: gearBonusHd },
+            gearBonuses: { hd: gearBonusHd, exhaustionAdvantage },
             gearDescriptors
         };
     }
@@ -334,6 +343,7 @@ export class RestFlowEngine {
             scoutingResult: this.scoutingResult ?? null,
             scoutingComplication: this.scoutingComplication ?? false,
             fireRollModifier: this.fireRollModifier ?? 0,
+            fireLevel: this.fireLevel ?? "unlit",
             _baseDC: this._baseDC ?? 15,
             awaitingCombat: this.awaitingCombat ?? false
         };
@@ -365,6 +375,7 @@ export class RestFlowEngine {
         engine.scoutingResult = data.scoutingResult ?? null;
         engine.scoutingComplication = data.scoutingComplication ?? false;
         engine.fireRollModifier = data.fireRollModifier ?? 0;
+        engine.fireLevel = data.fireLevel ?? "unlit";
         engine._baseDC = data._baseDC ?? 15;
         engine.awaitingCombat = data.awaitingCombat ?? false;
         return engine;

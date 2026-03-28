@@ -888,7 +888,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const actorItems = a.items?.map(i => i.name?.toLowerCase()) ?? [];
             const gearBadges = [
                 { id: "bedroll", icon: "fas fa-bed", name: "Bedroll", present: actorItems.some(n => n?.includes("bedroll")), tooltip: "Bedroll: +1 Hit Die recovered during long rest" },
-                { id: "messkit", icon: "fas fa-utensils", name: "Mess Kit", present: actorItems.some(n => n?.includes("mess kit") || (n?.includes("cook") && n?.includes("utensil"))), tooltip: "Mess Kit: +1 HP recovered during long rest" },
+                { id: "messkit", icon: "fas fa-utensils", name: "Mess Kit", present: actorItems.some(n => n?.includes("mess kit") || (n?.includes("cook") && n?.includes("utensil"))), tooltip: "Mess Kit: advantage on exhaustion saves (requires lit fire)" },
                 { id: "tent", icon: "fas fa-campground", name: "Tent", present: actorItems.some(n => n?.includes("tent")), tooltip: "Tent: personal shelter, cancels or reduces weather penalties" }
             ];
 
@@ -1066,6 +1066,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 hp: o.recovery?.hpRestored ?? 0,
                 hd: o.recovery?.hdRestored ?? 0,
                 exhaustionDelta: o.recovery?.exhaustionDelta ?? 0,
+                exhaustionDC: o.recovery?.exhaustionDC ?? 0,
+                exhaustionSaveResult: o.recovery?.exhaustionSaveResult ?? null,
                 gearBonuses: o.recovery?.gearBonuses ?? {},
                 gearDescriptors: o.recovery?.gearDescriptors ?? []
             }));
@@ -3111,6 +3113,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
             const restApp = this;
             this._campfireApp = new CampfireEmbed(drawerContainer, {
+                partyCharacterIds: this._myCharacterIds ? Array.from(this._myCharacterIds) : [],
                 onFireLevelChange: (level) => {
                     restApp._fireLevel = level;
                     // Save snapshot on every fire level change
@@ -3373,6 +3376,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const FIRE_ENCOUNTER_MOD = { unlit: 0, embers: 0, campfire: 1, bonfire: -1 };
         if (this._engine) {
             this._engine.fireRollModifier = FIRE_ENCOUNTER_MOD[this._fireLevel] ?? 0;
+            this._engine.fireLevel = this._fireLevel;
         }
 
         // Close campfire panel
@@ -3941,10 +3945,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const recParts = [];
                 if (recovery.hpRestored > 0) recParts.push(`+${recovery.hpRestored} HP`);
                 if (recovery.hdRestored > 0) recParts.push(`+${recovery.hdRestored} HD`);
-                if (recovery.exhaustionDelta < 0) recParts.push(`${recovery.exhaustionDelta} Exhaustion`);
-                else if (recovery.exhaustionDelta > 0) recParts.push(`+${recovery.exhaustionDelta} Exhaustion`);
                 if (recParts.length) {
                     lines.push(`<p><i class="fas fa-heartbeat"></i> ${recParts.join(", ")} restored</p>`);
+                }
+                // Exhaustion change with reason
+                if (recovery.exhaustionDelta < 0) {
+                    lines.push(`<p><i class="fas fa-arrow-down" style="color:#82e0aa;"></i> <span style="color:#82e0aa;">${Math.abs(recovery.exhaustionDelta)} exhaustion recovered</span></p>`);
+                } else if (recovery.exhaustionDelta > 0) {
+                    const reason = recovery.exhaustionDC ? `failed CON save DC ${recovery.exhaustionDC}` : "rest conditions";
+                    lines.push(`<p><i class="fas fa-arrow-up" style="color:#f1948a;"></i> <span style="color:#f1948a;">+${recovery.exhaustionDelta} exhaustion (${reason})</span></p>`);
+                }
+                if (recovery.comfortLevel === "hostile") {
+                    lines.push(`<p style="font-size:0.85em;color:#f9d77e;"><i class="fas fa-skull"></i> Hostile conditions prevent natural exhaustion recovery</p>`);
+                }
+                // Surface gear contributions so the player sees their inventory mattered
+                if (recovery.gearDescriptors?.length) {
+                    const gearLine = recovery.gearDescriptors.map(d => `<i class="fas fa-cog"></i> ${d}`).join("<br>");
+                    lines.push(`<p style="font-size:0.85em;opacity:0.8;">${gearLine}</p>`);
                 }
             }
 
@@ -4124,7 +4141,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return {
             phase: this._phase,
             submissions,
-            triggeredEvents: this._triggeredEvents ?? [],
+            triggeredEvents: (this._triggeredEvents ?? []).map(e => ({
+                ...e,
+                name: undefined,
+                narrative: undefined
+            })),
             activeTreeState: this._activeTreeState ?? null,
             outcomes: (this._outcomes ?? []).map(o => ({
                 characterId: o.characterId,
@@ -4179,7 +4200,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     receivePhaseChange(phase, phaseData = {}) {
         this._phase = phase;
-        if (phaseData.triggeredEvents) this._triggeredEvents = phaseData.triggeredEvents;
+        if (phaseData.triggeredEvents) {
+            this._triggeredEvents = this._isGM ? phaseData.triggeredEvents
+                : phaseData.triggeredEvents.map(e => ({ ...e, name: undefined, narrative: undefined }));
+        }
         if (phaseData.activeTreeState) this._activeTreeState = phaseData.activeTreeState;
         if (phaseData.eventsRolled !== undefined) this._eventsRolled = phaseData.eventsRolled;
         if (phaseData.fireLevel) this._fireLevel = phaseData.fireLevel;
@@ -4303,7 +4327,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (snapshot.phase) {
             this._phase = snapshot.phase;
         }
-        if (snapshot.triggeredEvents) this._triggeredEvents = snapshot.triggeredEvents;
+        if (snapshot.triggeredEvents) {
+            this._triggeredEvents = this._isGM ? snapshot.triggeredEvents
+                : snapshot.triggeredEvents.map(e => ({ ...e, name: undefined, narrative: undefined }));
+        }
         if (snapshot.activeTreeState) this._activeTreeState = snapshot.activeTreeState;
         if (snapshot.outcomes?.length) this._outcomes = snapshot.outcomes;
         if (snapshot.eventsRolled !== undefined) this._eventsRolled = snapshot.eventsRolled;

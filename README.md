@@ -53,7 +53,7 @@ Missing meals trigger CON saves. Exhaustion stacks following the standard 5e var
 - **Encounter DC** - Terrain baseline + shelter + fire + scouting + defenses + weather. Visible breakdown in the UI.
 - **Comfort tiers** - Hostile, Rough, Sheltered, Safe. Drives HP/HD recovery scaling.
 - **Shelter spells** - Tiny Hut, Rope Trick, Mansion auto-detected from party spell lists.
-- **Gear badges** - Bedroll (+1 HD), Mess Kit (+1 HP), Tent (weather shield) detected from inventory.
+- **Gear badges** - Bedroll (+1 HD), Mess Kit (advantage on exhaustion saves with fire), Tent (weather shield) detected from inventory.
 - **Campfire** - Interactive fire panel with whittle mechanic and three stages (embers, campfire, bonfire).
 - **Armor penalty** - Xanathar's sleeping-in-armor rule. Warns players before they commit.
 

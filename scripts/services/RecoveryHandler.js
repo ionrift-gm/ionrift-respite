@@ -44,7 +44,8 @@ export class RecoveryHandler {
         const hdRecovered = this._recoverHitDice(actor, recovery.hdRestored);
 
         // --- Exhaustion Recovery ---
-        const exhaustionDelta = this._calculateExhaustionDelta(actor, recovery);
+        const exhaustionDelta = await this._calculateExhaustionDelta(actor, recovery);
+        recovery.exhaustionDelta = exhaustionDelta;
 
         // Apply HP update
         if (newHp !== currentHp) {
@@ -151,14 +152,16 @@ export class RecoveryHandler {
      * Long rest: -1 by default (dnd5e rules).
      * Hostile comfort: no reduction (0).
      * 'Rest Fully' activity: extra -1.
+     * Rough/Hostile: CON save against exhaustionDC or gain +1 exhaustion.
+     * Mess Kit + fire: advantage on the exhaustion save.
      * Events may add exhaustion (+N).
      * @param {Actor} actor
      * @param {Object} recovery
      * @returns {number} Net exhaustion change (negative = reduction, positive = gained)
      */
-    static _calculateExhaustionDelta(actor, recovery) {
+    static async _calculateExhaustionDelta(actor, recovery) {
         const currentExhaustion = actor.system?.attributes?.exhaustion ?? 0;
-        if (currentExhaustion === 0 && !(recovery.exhaustionGain > 0)) return 0;
+        if (currentExhaustion === 0 && !(recovery.exhaustionGain > 0) && !recovery.exhaustionDC) return 0;
 
         let delta = 0;
 
@@ -175,6 +178,34 @@ export class RecoveryHandler {
         // 'Rest Fully' activity bonus: extra -1 for choosing to rest instead of craft/watch
         if (recovery.restedFully) {
             delta -= 1;
+        }
+
+        // CON save at rough/hostile: fail = +1 exhaustion
+        if (recovery.exhaustionDC) {
+            const conMod = actor.system?.abilities?.con?.mod ?? 0;
+            const advantage = !!recovery.exhaustionAdvantage;
+
+            // Roll the save (2d20kh for advantage, 1d20 otherwise)
+            const formula = advantage ? "2d20kh" : "1d20";
+            const roll = await new Roll(`${formula} + ${conMod}`).evaluate();
+            const passed = roll.total >= recovery.exhaustionDC;
+
+            // Post the save roll to chat (GM-whispered)
+            const advLabel = advantage ? " (advantage from hot meal)" : "";
+            await roll.toMessage({
+                speaker: ChatMessage.getSpeaker({ actor }),
+                flavor: `<strong>${actor.name}</strong>: CON save vs exhaustion DC ${recovery.exhaustionDC}${advLabel}`,
+                whisper: game.users.filter(u => u.isGM).map(u => u.id)
+            });
+
+            if (!passed) {
+                delta += 1;
+                recovery.exhaustionSaveResult = "failed";
+                console.log(`[Respite:Recovery] ${actor.name} failed exhaustion save (${roll.total} vs DC ${recovery.exhaustionDC}), +1 exhaustion`);
+            } else {
+                recovery.exhaustionSaveResult = "passed";
+                console.log(`[Respite:Recovery] ${actor.name} passed exhaustion save (${roll.total} vs DC ${recovery.exhaustionDC})`);
+            }
         }
 
         // Event-inflicted exhaustion (from complication effects)
@@ -221,11 +252,14 @@ export class RecoveryHandler {
 
         const recoveredLine = parts.length > 0 ? `Recovered: ${parts.join(", ")}.` : "";
         const noteLine = exhaustionNote ? `<br><em style="color:#e67e22;"><i class="fas fa-exclamation-circle"></i> ${exhaustionNote}</em>` : "";
+        const gearLine = recovery.gearDescriptors?.length
+            ? `<br><span style="font-size:0.85em;opacity:0.7;">${recovery.gearDescriptors.join(" · ")}</span>`
+            : "";
 
         const content = `
             <div class="respite-recovery-chat">
                 <strong>${actor.name}</strong> rests in <em>${comfortLabel}</em> conditions.<br>
-                ${recoveredLine}${noteLine}
+                ${recoveredLine}${gearLine}${noteLine}
             </div>
         `;
 
