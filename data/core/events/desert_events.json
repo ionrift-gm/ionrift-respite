@@ -25,7 +25,7 @@
             "noWatchBehavior": "escalate",
             "noWatchAmplifier": 1,
             "gmPrompt": "The evening wind picks up without warning. Within minutes it is a blinding, howling gale. Sand stings exposed skin and piles against anything that stays still. Everything not tied down is moving.",
-            "checkContext": "Can the watch secure the camp before the storm buries it?",
+            "checkContext": "Survival check to secure the camp before the storm buries it.",
             "gmGuidance": "This is wind and sand, not a magical storm. The solution is physical: lash gear down, cover packs with tarps, weight tent stakes. escalate without a watch because nobody notices the wind building until it is too late. The storm lasts 2-3 hours.",
             "description": "The evening wind picks up without warning, quickly howling into a blinding gale. A violent sandstorm threatens to bury everything in camp.",
             "mechanical": {
@@ -105,7 +105,7 @@
             "noWatchBehavior": "auto_fail",
             "noWatchAmplifier": 1,
             "gmPrompt": "The sandy ground crunches strangely underfoot. As the firelight catches the shifting sand, pale shapes are moving. The camp was pitched directly over a nest of desert scorpions, and they are emerging to hunt in the cool night air.",
-            "checkContext": "Can the watch spot the swarm and relocate the camp before anyone is stung?",
+            "checkContext": "Perception check to spot the swarm and relocate the camp before anyone is stung.",
             "gmGuidance": "Not a combat encounter unless the GM escalates. These are mundane scorpions, not giant ones. The threat is a sting to a sleeping character, not a fight. Perception to spot them, then a quick relocation. auto_fail without a watch because nobody sees them until someone gets stung.",
             "description": "The camp was pitched over a scorpion nest. Pale shapes are emerging from the sand.",
             "mechanical": {
@@ -187,7 +187,7 @@
             "noWatchBehavior": "escalate",
             "noWatchAmplifier": 1,
             "gmPrompt": "The heat has not broken. Even hours after sunset the rocks are still radiating warmth like a furnace. Exposed skin is hot to the touch. Everyone is drinking more than planned, and the containers are emptying fast.",
-            "checkContext": "Can the party manage the extreme heat and limit water consumption?",
+            "checkContext": "Survival check to manage the extreme heat and limit water consumption.",
             "gmGuidance": "This is an unusually hot night, not a supply management failure. It works whether the party has two waterskins or twenty -- the heat forces extra consumption either way. Create Water or Goodberry cancels outright. A windbreak (defenses) cancels. The consume_resource effect goes through ResourceSink. If the party has no water, the noResourceFallback triggers exhaustion instead.",
             "description": "The heat has not broken. Everyone is drinking more than planned.",
             "dutyRelevance": {
@@ -271,7 +271,7 @@
             ],
             "noWatchBehavior": "skip",
             "gmPrompt": "While pacing the perimeter, the wind-scoured ground reveals the polished edge of something buried. It looks like old trade goods from a lost caravan, half swallowed by the encroaching dunes.",
-            "checkContext": "Can the watch excavate the cache without damaging the contents?",
+            "checkContext": "Investigation check to excavate the cache without damaging the contents.",
             "gmGuidance": "Reward event. The cache is from a long-dead trade caravan. Contents are mundane but valuable: spices, preserved goods, maybe a sealed waterskin. Failure breaks the fragile containers, not a trap. Only fires if watch is set.",
             "description": "Wind-scoured ground reveals the edge of a buried cache. Old trade goods from a lost caravan.",
             "mechanical": {

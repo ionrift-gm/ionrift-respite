@@ -25,7 +25,7 @@
             "noWatchBehavior": "auto_fail",
             "noWatchAmplifier": 2,
             "gmPrompt": "Low growling from multiple directions. Eyes glint at the edge of the firelight, circling closer.",
-            "checkContext": "Can the watch stare down the pack before they rush camp?",
+            "checkContext": "Animal Handling check to stare down the pack before they rush camp.",
             "gmGuidance": "The pack likely scatters if confronted aggressively. GM can absolutely set a proper fight here if it suits the table. Hook: generateEncounter(forest, tier, [beast, pack]). Fallback: provide a CR-appropriate wolf pack. At higher levels, lean into colour over threat.",
             "description": "Low growling from multiple directions. Eyes glint at the edge of the firelight, circling.",
             "mechanical": {
@@ -161,7 +161,7 @@
             "noWatchBehavior": "escalate",
             "noWatchAmplifier": 2,
             "gmPrompt": "A thick fog rolls in from the lowland. Everything beyond arm's reach disappears.",
-            "checkContext": "Can the watch secure the camp before the fog disorients everyone?",
+            "checkContext": "Survival check to secure the camp before the fog disorients everyone.",
             "gmGuidance": "Without a watch, everyone wakes in fog with no reference points. Escalate: the party loses time and supplies trying to regroup at dawn. Consider allowing alternative skills (Arcana for a light cantrip, etc.).",
             "description": "A thick fog rolls in from the lowland. Everything beyond arm's reach disappears.",
             "mechanical": {
@@ -230,7 +230,7 @@
             ],
             "noWatchBehavior": "skip",
             "gmPrompt": "The watch finds a small clearing carpeted in wildflowers. Mushrooms ring the edges in perfect circles.",
-            "checkContext": "Can the watch identify anything useful in the clearing?",
+            "checkContext": "Nature check to identify useful plants and fungi in the clearing.",
             "gmGuidance": "Discovery only fires if a watch is set. The fairy ring is colour, not mechanical. At higher levels consider rarer herbs (via ResourceSource scaling).",
             "description": "The watch finds a small clearing carpeted in wildflowers. Mushrooms ring the edges in perfect circles.",
             "mechanical": {

@@ -25,7 +25,7 @@
             "noWatchBehavior": "auto_fail",
             "noWatchAmplifier": 1,
             "gmPrompt": "A shadow detaches itself from the alley wall. Soft, barely audible fabric against fabric. Someone is testing whether the camp is watched.",
-            "checkContext": "Can the watch spot the thief before they reach the packs?",
+            "checkContext": "Perception check to spot the thief before they reach the packs.",
             "gmGuidance": "Urban pickpocket, not a combat threat. They flee if spotted. The check is spotting them before they start, not fighting. auto_fail without a watch because nobody is awake to notice. item_at_risk targets consumables and gold. Severity 2/5 on mixed, 3/5 on failure. Never takes weapons or armour.",
             "description": "Someone is testing whether the camp is watched.",
             "mechanical": {
@@ -99,7 +99,7 @@
             "noWatchBehavior": "escalate",
             "noWatchAmplifier": 1,
             "gmPrompt": "Shouting. The shattering of a glass bottle. Heavy running footsteps. The neighbourhood is not settling down tonight.",
-            "checkContext": "Can the party sleep through the noise?",
+            "checkContext": "Constitution save to sleep through the street noise.",
             "gmGuidance": "Not a threat, just noise. Constitution save to sleep through it. Per-character because some people sleep heavier than others. This is the most common urban event -- a reminder that cities are loud. The noise is external and unrelated to the party.",
             "description": "The neighbourhood is not settling down tonight. Shouting, bottles, running footsteps.",
             "mechanical": {
@@ -156,7 +156,7 @@
             ],
             "noWatchBehavior": "skip",
             "gmPrompt": "A quiet, rhythmic knock. A hooded figure outside with a pushcart. They have a few useful things mixed in with the junk.",
-            "checkContext": "Can the watch judge the goods and get a fair deal?",
+            "checkContext": "Insight check to judge the goods and negotiate a fair deal.",
             "gmGuidance": "Insight to read the merchant. This is not a full shop. Triumph auto-grants a healing potion, success auto-grants an antitoxin. No gold transaction automated (payment is narrative only, same as other discovery rewards). Mixed/failure are a decline. Proper vendor workflow deferred to Workshop module. Only fires if watch is set.",
             "description": "A late-night peddler with a few useful things mixed in with the junk.",
             "mechanical": {
@@ -218,7 +218,7 @@
             "noWatchBehavior": "escalate",
             "noWatchAmplifier": 2,
             "gmPrompt": "The sweeping glow of a bullseye lantern and the clink of chainmail. The city watch is making aggressive neighbourhood rounds tonight.",
-            "checkContext": "Can the watch handle the patrol without disrupting the rest of the party?",
+            "checkContext": "Charisma check to handle the patrol without waking the rest of the party.",
             "gmGuidance": "Charisma to talk your way through it. The watch is not hostile, just suspicious. Triumph gets a friendly exchange. Failure gets an hour of interrogation. escalate without a watch because an unattended camp in a city looks suspicious. noWatchAmplifier 2 because the watch will wake everyone and search everything.",
             "description": "The city watch is making rounds. Lanterns and chainmail approaching.",
             "mechanical": {
