@@ -100,7 +100,25 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             console.warn(`[Respite:PackRegistry] Failed to load terrain manifest:`, e);
         }
 
+        // ── Scan imported content packs (from world storage) ──
+        const importedPacks = game.settings.get("ionrift-respite", "importedPacks") ?? {};
+        for (const [packId, packData] of Object.entries(importedPacks)) {
+            const events = packData.events ?? [];
+            if (!events.length) continue;
 
+            const pack = _ensurePack(packId);
+            pack.label = packData.name ?? packId.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+            pack.icon = packData.icon ?? "fas fa-hiking";
+            pack.description = packData.description ?? "Imported content pack";
+            for (const event of events) {
+                if (event.tier) pack.tiers[event.tier] = (pack.tiers[event.tier] ?? 0) + 1;
+                if (event.tier === "disaster") continue;
+                for (const tag of (event.terrainTags ?? [])) {
+                    pack.terrains[tag] = (pack.terrains[tag] ?? 0) + 1;
+                }
+                pack.totalItems++;
+            }
+        }
 
         // Sort: base first, then alphabetical
         const packList = [...packs.values()].sort((a, b) => {
@@ -204,6 +222,9 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
         // Actions
         html += `
         <div class="pack-actions">
+            <button type="button" class="pack-import-btn">
+                <i class="fas fa-file-import"></i> Import Pack
+            </button>
             <button type="button" class="pack-save-btn">
                 <i class="fas fa-save"></i> Save Changes
             </button>
@@ -232,7 +253,67 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             this.close();
         });
 
+        // Import Pack
+        el.querySelector(".pack-import-btn").addEventListener("click", () => this._importPack());
+
         return el;
+    }
+
+    /**
+     * Opens a file picker and imports a content pack JSON file into world storage.
+     * Expected file structure: { id, name, description, icon, terrains, events[] }
+     */
+    async _importPack() {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".json";
+        input.addEventListener("change", async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+
+                // Validate required fields
+                if (!data.id) throw new Error("Pack JSON is missing 'id' field.");
+                if (!Array.isArray(data.events) || data.events.length === 0) {
+                    throw new Error("Pack JSON has no events.");
+                }
+
+                // Validate each event has minimum required fields
+                for (const evt of data.events) {
+                    if (!evt.id) throw new Error(`Event missing 'id' field.`);
+                    if (!evt.terrainTags?.length) throw new Error(`Event ${evt.id} missing 'terrainTags'.`);
+                }
+
+                // Store in world settings
+                const importedPacks = game.settings.get("ionrift-respite", "importedPacks") ?? {};
+                importedPacks[data.id] = {
+                    name: data.name ?? data.id,
+                    description: data.description ?? "",
+                    icon: data.icon ?? "fas fa-hiking",
+                    terrains: data.terrains ?? [],
+                    events: data.events,
+                    tables: data.tables ?? null,
+                    version: data.version ?? "1.0.0",
+                    importedAt: new Date().toISOString()
+                };
+                await game.settings.set("ionrift-respite", "importedPacks", importedPacks);
+
+                // Enable by default
+                const enabledPacks = game.settings.get("ionrift-respite", "enabledPacks") ?? {};
+                enabledPacks[data.id] = true;
+                await game.settings.set("ionrift-respite", "enabledPacks", enabledPacks);
+
+                ui.notifications.info(`Imported "${data.name ?? data.id}" (${data.events.length} events). Active on next rest.`);
+                this.render({ force: true });
+            } catch (err) {
+                ui.notifications.error(`Import failed: ${err.message}`);
+                console.error("[Respite:PackRegistry] Import error:", err);
+            }
+        });
+        input.click();
     }
 
     /** @override */

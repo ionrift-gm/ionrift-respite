@@ -117,7 +117,7 @@
             "noWatchBehavior": "skip",
             "gmPrompt": "The local cat has decided. It hops up onto your bed, turns three times, curls into a tight ball against your side, and begins to purr. Loud, steady, and completely unbothered by who you are or what you have done.",
             "checkContext": "No check. Ambient event.",
-            "gmGuidance": "Pure comfort. The cat does not care about your backstory. It is warm, you are warm, this is the arrangement. If a player has a familiar or animal companion, the cat either ignores it or washes its face at it. Rest undisturbed.",
+            "gmGuidance": "Pure comfort. The cat does not care about your backstory. It is warm, you are warm, this is the arrangement. If a player has a familiar or animal companion, the cat either ignores it or washes its face at it. Speak with Animals: the cat wants warmth and stillness. It is not interested in conversation. Rest undisturbed.",
             "description": "The local cat curls up on your bed and purrs.",
             "mechanical": null,
             "tier": "normal",

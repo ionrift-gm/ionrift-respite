@@ -327,6 +327,13 @@ Hooks.once("init", async () => {
         default: { base: true }
     });
 
+    game.settings.register(MODULE_ID, "importedPacks", {
+        scope: "world",
+        config: false,
+        type: Object,
+        default: {}
+    });
+
     // FOOTER: Discord + Wiki (standardised via ionrift-library)
     const { SettingsLayout } = await import("../../ionrift-library/scripts/SettingsLayout.js");
     SettingsLayout.registerFooter(MODULE_ID);

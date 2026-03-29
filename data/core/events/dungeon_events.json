@@ -163,7 +163,7 @@
             "noWatchAmplifier": 1,
             "gmPrompt": "The air is thick and still. The campfire gutters and dims without wind. Breathing feels heavy. Something is wrong with the ventilation in this section.",
             "checkContext": "Survival check to identify the air quality problem and restore ventilation before it affects the sleepers.",
-            "gmGuidance": "This is carbon dioxide buildup, not poison gas. The solution is ventilation, not medicine. The fire consuming oxygen is the tell. Putting it out buys time but does not solve the root cause. A crack in the wall, a cleared vent, or a draft from a side passage would fix it. escalate (not auto_fail) because without a watch it is worse but not immediately lethal.",
+            "gmGuidance": "Bad air, not poison. The fire eating the oxygen is the tell. The solution is ventilation, not medicine. Putting it out buys time but does not solve the root cause. A crack in the wall, a cleared vent, or a draft from a side passage would fix it. escalate (not auto_fail) because without a watch it is worse but not immediately lethal.",
             "description": "The air is thick and still. The fire gutters. Something is wrong with the ventilation.",
             "mechanical": {
                 "type": "skill_check",

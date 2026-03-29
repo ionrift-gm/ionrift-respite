@@ -26,7 +26,7 @@
             "noWatchAmplifier": 2,
             "gmPrompt": "Low growling from multiple directions. Eyes glint at the edge of the firelight, circling closer.",
             "checkContext": "Animal Handling check to stare down the pack before they rush camp.",
-            "gmGuidance": "The pack likely scatters if confronted aggressively. GM can absolutely set a proper fight here if it suits the table. Hook: generateEncounter(forest, tier, [beast, pack]). Fallback: provide a CR-appropriate wolf pack. At higher levels, lean into colour over threat.",
+            "gmGuidance": "The pack likely scatters if confronted aggressively. GM can absolutely set a proper fight here if it suits the table. Hook: generateEncounter(forest, tier, [beast, pack]). Fallback: provide a CR-appropriate wolf pack. At higher levels, lean into colour over threat. Speak with Animals: the alpha communicates territory, hunger, and pack size. It is not interested in negotiation. The pack wants food or it wants to leave.",
             "description": "Low growling from multiple directions. Eyes glint at the edge of the firelight, circling.",
             "mechanical": {
                 "type": "skill_check",
@@ -99,7 +99,7 @@
                 "count": "1"
             },
             "gmPrompt": "A creak and groan from above. A dead branch, heavy with rot, shifts in the canopy directly over the sleeping camp.",
-            "checkContext": "Does the watch spot the danger overhead in time?",
+            "checkContext": "Perception check to spot the falling branch before it hits a sleeper.",
             "gmGuidance": "The 'Roll Target' button selects which sleeper is underneath. At higher levels the damage is trivial but the narrative still works. Consider describing the near-miss on a triumph.",
             "description": "A creak and groan from above. A dead branch, heavy with rot, shifts in the canopy directly over the sleeping camp.",
             "mechanical": {
@@ -124,6 +124,7 @@
                             "formula": "1d6",
                             "damageType": "bludgeoning",
                             "scope": "randomTarget",
+                            "timing": "post_rest",
                             "description": "Glancing blow from a falling branch."
                         }
                     ]
@@ -136,6 +137,7 @@
                             "formula": "2d6",
                             "damageType": "bludgeoning",
                             "scope": "randomTarget",
+                            "timing": "post_rest",
                             "description": "A heavy branch falls on a sleeping character."
                         }
                     ]
@@ -259,6 +261,11 @@
                                         "value": "<p>Edible plants and mushrooms gathered from the forest. Good for a meal.</p>"
                                     },
                                     "rarity": "common"
+                                },
+                                "flags": {
+                                    "ionrift-respite": {
+                                        "itemCategory": "food"
+                                    }
                                 }
                             }
                         }
@@ -284,6 +291,11 @@
                                         "value": "<p>Edible plants and mushrooms gathered from the forest. Good for a meal.</p>"
                                     },
                                     "rarity": "common"
+                                },
+                                "flags": {
+                                    "ionrift-respite": {
+                                        "itemCategory": "food"
+                                    }
                                 }
                             }
                         }
@@ -309,6 +321,11 @@
                                         "value": "<p>Edible plants and mushrooms gathered from the forest. Good for a meal.</p>"
                                     },
                                     "rarity": "common"
+                                },
+                                "flags": {
+                                    "ionrift-respite": {
+                                        "itemCategory": "food"
+                                    }
                                 }
                             }
                         }

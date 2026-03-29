@@ -464,10 +464,38 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const disasters = await disasterResp.json();
             this._eventResolver.load(disasters.tables, disasters.events);
 
-            // Content packs: events are added to data/ when vetted and shipped as module updates.
-            // See ionrift-respite-packs repo for authoring workspace.
+            // Content packs: loaded from world storage via Import Pack workflow.
+            // Packs are NOT Foundry modules. They are JSON files downloaded from
+            // Patreon and imported through Respite's Content Packs settings UI.
+            await this._loadContentPacks();
         } catch (e) {
             console.error(`${MODULE_ID} | Failed to load seed data:`, e);
+        }
+    }
+
+    /**
+     * Loads imported content pack events from world storage.
+     * Packs are stored as world-level settings after being imported
+     * through the Content Packs UI (JSON file upload from Patreon).
+     */
+    async _loadContentPacks() {
+        const enabledPacks = game.settings.get(MODULE_ID, "enabledPacks") ?? {};
+        const importedPacks = game.settings.get(MODULE_ID, "importedPacks") ?? {};
+
+        for (const [packId, packData] of Object.entries(importedPacks)) {
+            if (enabledPacks[packId] === false) {
+                console.log(`${MODULE_ID} | Pack ${packId}: disabled`);
+                continue;
+            }
+
+            try {
+                const events = packData.events ?? [];
+                if (!events.length) continue;
+                this._eventResolver.load(packData.tables ?? null, events);
+                console.log(`${MODULE_ID} | Pack ${packId}: loaded ${events.length} events`);
+            } catch (e) {
+                console.warn(`${MODULE_ID} | Failed to load pack ${packId}:`, e);
+            }
         }
     }
 

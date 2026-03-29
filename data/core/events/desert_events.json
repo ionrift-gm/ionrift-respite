@@ -106,7 +106,7 @@
             "noWatchAmplifier": 1,
             "gmPrompt": "The sandy ground crunches strangely underfoot. As the firelight catches the shifting sand, pale shapes are moving. The camp was pitched directly over a nest of desert scorpions, and they are emerging to hunt in the cool night air.",
             "checkContext": "Perception check to spot the swarm and relocate the camp before anyone is stung.",
-            "gmGuidance": "Not a combat encounter unless the GM escalates. These are mundane scorpions, not giant ones. The threat is a sting to a sleeping character, not a fight. Perception to spot them, then a quick relocation. auto_fail without a watch because nobody sees them until someone gets stung.",
+            "gmGuidance": "Not a combat encounter unless the GM escalates. These are mundane scorpions, not giant ones. The threat is a sting to a sleeping character, not a fight. Perception to spot them, then a quick relocation. auto_fail without a watch because nobody sees them until someone gets stung. Speak with Animals: scorpions are instinctual. No conversation. Hunt and flee only.",
             "description": "The camp was pitched over a scorpion nest. Pale shapes are emerging from the sand.",
             "mechanical": {
                 "type": "skill_check",
@@ -134,11 +134,13 @@
                                 "pool": "sleeping",
                                 "count": 1
                             },
-                            "description": "Scorpion sting."
+                            "description": "Scorpion sting.",
+                            "timing": "post_rest"
                         },
                         {
                             "type": "recovery_penalty",
                             "hpMultiplier": 0.85,
+                            "scope": "all",
                             "description": "Nobody slept soundly after the scorpion scare."
                         }
                     ]
@@ -155,12 +157,13 @@
                                 "pool": "sleeping",
                                 "count": "1d2"
                             },
-                            "description": "Scorpion sting."
+                            "description": "Scorpion sting.",
+                            "timing": "post_rest"
                         },
                         {
                             "type": "condition",
                             "condition": "poisoned",
-                            "duration": "4_hours",
+                            "duration": "next_rest",
                             "scope": "stung",
                             "description": "Venom from a scorpion sting."
                         }
@@ -188,7 +191,7 @@
             "noWatchAmplifier": 1,
             "gmPrompt": "The heat has not broken. Even hours after sunset the rocks are still radiating warmth like a furnace. Exposed skin is hot to the touch. Everyone is drinking more than planned, and the containers are emptying fast.",
             "checkContext": "Survival check to manage the extreme heat and limit water consumption.",
-            "gmGuidance": "This is an unusually hot night, not a supply management failure. It works whether the party has two waterskins or twenty -- the heat forces extra consumption either way. Create Water or Goodberry cancels outright. A windbreak (defenses) cancels. The consume_resource effect goes through ResourceSink. If the party has no water, the noResourceFallback triggers exhaustion instead.",
+            "gmGuidance": "An unusually hot night, not a supply management failure. It works whether the party has two waterskins or twenty -- the heat forces extra consumption either way. Create Water or Goodberry cancels outright. A windbreak (defenses) cancels. The consume_resource effect goes through ResourceSink. If the party has no water, the noResourceFallback triggers exhaustion instead.",
             "description": "The heat has not broken. Everyone is drinking more than planned.",
             "dutyRelevance": {
                 "defenses": {
@@ -300,6 +303,11 @@
                                         "value": 1,
                                         "denomination": "gp"
                                     }
+                                },
+                                "flags": {
+                                    "ionrift-respite": {
+                                        "itemCategory": "loot"
+                                    }
                                 }
                             }
                         }
@@ -325,6 +333,11 @@
                                         "value": 1,
                                         "denomination": "gp"
                                     }
+                                },
+                                "flags": {
+                                    "ionrift-respite": {
+                                        "itemCategory": "loot"
+                                    }
                                 }
                             }
                         }
@@ -349,6 +362,11 @@
                                     "price": {
                                         "value": 1,
                                         "denomination": "gp"
+                                    }
+                                },
+                                "flags": {
+                                    "ionrift-respite": {
+                                        "itemCategory": "loot"
                                     }
                                 }
                             }

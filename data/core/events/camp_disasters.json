@@ -15,6 +15,15 @@
                 "type": "decision_tree",
                 "prompt": "Muddy water is rushing through camp. Gear is being swept away. You have seconds to act.",
                 "maxDepth": 2,
+                "stallPenalty": {
+                    "dcBump": 2,
+                    "upfrontLoss": {
+                        "type": "supply_loss",
+                        "formula": "1d10",
+                        "description": "Water rose while the camp argued."
+                    },
+                    "narrative": "The water does not wait. While the party argued, the level rose another foot. Loose gear is already floating downstream. The situation is worse now."
+                },
                 "options": [
                     {
                         "id": "run",

@@ -5908,10 +5908,11 @@
 .pack-actions {
     display: flex;
     justify-content: flex-end;
-    padding-top: 0.25rem;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
 }
 
-.pack-save-btn {
+.pack-actions button {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
@@ -5920,20 +5921,36 @@
     font-size: 0.78rem;
     font-weight: 600;
     cursor: pointer;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+.pack-actions button i {
+    font-size: 0.7rem;
+}
+
+.pack-import-btn {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.pack-import-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.22);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.pack-save-btn {
     border: 1px solid rgba(155, 89, 182, 0.35);
     background: rgba(155, 89, 182, 0.15);
     color: rgba(155, 89, 182, 0.9);
-    transition: all 0.2s ease;
 }
 
 .pack-save-btn:hover {
     background: rgba(155, 89, 182, 0.25);
     border-color: rgba(155, 89, 182, 0.5);
     box-shadow: 0 0 10px rgba(155, 89, 182, 0.15);
-}
-
-.pack-save-btn i {
-    font-size: 0.7rem;
 }
 
 /* ---- Section Headers & Dividers ---- */

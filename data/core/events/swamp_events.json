@@ -62,16 +62,40 @@
             ],
             "weight": 2,
             "watchTarget": "watch",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "auto_fail",
+            "noWatchAmplifier": 1,
+            "gmPrompt": "Ripples in still water. No wind, no current, but something is displacing the surface twenty yards out. It moves without sound, and it is getting closer.",
+            "checkContext": "Perception check to spot the approach before the creatures reach the camp perimeter.",
+            "gmGuidance": "The creatures are territorial, not hunting the party specifically. They approach because the camp is in their territory. Perception to spot them early gives the party time to prepare or deter. If the watch fails, the creatures rise from the water at the camp edge. Use generateEncounter(swamp, tier, [beast, humanoid]) or provide lizardfolk, bullywugs, or grung appropriate to the dungeon level. Speak with Animals: if the creatures are beasts, they communicate territorial aggression. They want the camp gone, not a conversation.",
             "description": "Ripples in still water. Something is approaching camp from the marshes. It moves without sound.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "prc",
                 "dc": 14,
                 "targets": "watch",
-                "bestOfN": true,
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "You caught the ripples early and tracked the movement to three shapes, low in the water, fifty yards out. A sustained torch held at the waterline and a clear, loud warning. They stopped, watched for a long moment, then sank back beneath the surface and did not return.",
+                    "effects": []
+                },
                 "onSuccess": {
                     "narrative": "You caught the movement in time. Weapons drawn and fire stoked, the creatures slip back into the dark water.",
                     "effects": []
+                },
+                "onMixed": {
+                    "narrative": "You spotted them, but only when they reached the shallows. Mud-slicked shapes rising at the waterline, already too close. The camp scrambles awake in the dark. They withdrew when they saw the numbers, but nobody slept after that.",
+                    "effects": [
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.85,
+                            "scope": "all",
+                            "description": "The camp was woken by shapes rising from the water at close range."
+                        }
+                    ]
                 },
                 "onFailure": {
                     "narrative": "They rise from the water at the camp's edge. Mud-covered and silent until now.",
@@ -113,15 +137,40 @@
             ],
             "weight": 2,
             "watchTarget": "all",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "escalate",
+            "noWatchAmplifier": 1,
+            "gmPrompt": "The damp ground is alive with leeches. Small, dark, and relentless. They find every gap in clothing and armour during the night, drawn by warmth and the smell of blood.",
+            "checkContext": "Medicine check to remove the leeches properly and treat the bites before infection sets in.",
+            "gmGuidance": "Not a combat encounter. These are mundane leeches, individually harmless but collectively draining. The threat is blood loss and infection, not death. Medicine to remove them properly (heat or salt, not pulling). Pulling tears the skin and leaves mouthparts embedded. escalate without a watch because nobody notices until morning. Speak with Animals: leeches have no conversation in them. Single-minded feeders.",
             "description": "The damp ground is alive with leeches. They find every gap in clothing and armour during the night.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "med",
                 "dc": 12,
                 "targets": "all",
+                "volunteerPolicy": "each",
+                "onTriumph": {
+                    "narrative": "Salt from the rations and a heated blade. Every leech removed cleanly, every bite dressed. Nobody lost more than a drop.",
+                    "effects": []
+                },
                 "onSuccess": {
                     "narrative": "Salt from the rations and careful inspection. All leeches removed before they cause real harm.",
                     "effects": []
+                },
+                "onMixed": {
+                    "narrative": "Most removed, but a few had already gorged and dropped off. Welts and itching, blood-spotted bedrolls. An unpleasant night but nothing serious.",
+                    "effects": [
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.85,
+                            "scope": "all",
+                            "description": "Leech bites and itching disrupted sleep."
+                        }
+                    ]
                 },
                 "onFailure": {
                     "narrative": "Blood loss and irritation. Everyone wakes lightheaded and covered in welts.",
@@ -131,6 +180,7 @@
                             "formula": "1d4",
                             "damageType": "necrotic",
                             "scope": "all",
+                            "timing": "post_rest",
                             "description": "Blood loss from leech bites."
                         },
                         {
@@ -159,15 +209,40 @@
             ],
             "weight": 2,
             "watchTarget": "all",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "escalate",
+            "noWatchAmplifier": 1,
+            "gmPrompt": "A putrid fog rolls in from deeper in the swamp. The stench is overwhelming, thick enough to taste. It settles low to the ground and clings to everything.",
+            "checkContext": "Survival check to manage the exposure before the nausea sets in.",
+            "gmGuidance": "Bog gas, not magical effect. The solution is physical: wet cloth over the mouth, move upwind if possible, keep low and breathe shallow. escalate without a watch because nobody notices until the nausea wakes them. The fog lasts 2-3 hours and dissipates before dawn.",
             "description": "A putrid fog rolls in from deeper in the swamp. The stench is overwhelming, thick enough to taste.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "sur",
                 "dc": 13,
                 "targets": "all",
+                "volunteerPolicy": "each",
+                "onTriumph": {
+                    "narrative": "You smelled it coming on the wind shift and had everyone masked before the worst arrived. Damp cloth, shallow breathing, faces turned from the source. Unpleasant but manageable.",
+                    "effects": []
+                },
                 "onSuccess": {
                     "narrative": "Wet cloth over the mouth and nose. Unpleasant but manageable.",
                     "effects": []
+                },
+                "onMixed": {
+                    "narrative": "The cloth helped, but the stench seeped through. Everyone woke groggy with a headache and a sour stomach.",
+                    "effects": [
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.85,
+                            "scope": "all",
+                            "description": "Nausea and headache from bog gas exposure."
+                        }
+                    ]
                 },
                 "onFailure": {
                     "narrative": "The miasma seeps into everything. Nausea grips the camp.",
@@ -176,7 +251,7 @@
                             "type": "condition",
                             "condition": "poisoned",
                             "label": "Miasma Sickness",
-                            "duration": "4_hours",
+                            "duration": "next_rest",
                             "description": "The putrid bog air has turned your stomach."
                         },
                         {
@@ -205,15 +280,40 @@
             ],
             "weight": 2,
             "watchTarget": "any",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "escalate",
+            "noWatchAmplifier": 1,
+            "gmPrompt": "The moisture seeps into everything. Scratches from the day's march that seemed minor are now angry red and warm to the touch. The swamp is working on them.",
+            "checkContext": "Medicine check to clean and dress the wounds before infection takes hold.",
+            "gmGuidance": "Bog rot targets existing wounds, not fresh ones. If the party took no damage during the day, the GM can skip this event or reframe it as blisters and abrasions from wet boots. The check is per-character because each person's wounds are different. escalate without a watch because nobody checks their wounds in the dark.",
             "description": "The moisture seeps into wounds and scratches. Infections bloom overnight.",
             "mechanical": {
                 "type": "skill_check",
                 "skill": "med",
                 "dc": 13,
                 "targets": "all",
+                "volunteerPolicy": "each",
+                "onTriumph": {
+                    "narrative": "Clean water, boiled cloth strips, and a steady hand. Every wound cleaned, dried, and wrapped tight. The swamp gets nothing tonight.",
+                    "effects": []
+                },
                 "onSuccess": {
                     "narrative": "Wounds cleaned and dressed before infection sets in.",
                     "effects": []
+                },
+                "onMixed": {
+                    "narrative": "Most wounds treated, but a few deeper scratches are already swelling. Uncomfortable, but not dangerous yet.",
+                    "effects": [
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.85,
+                            "scope": "all",
+                            "description": "Minor infections slowed recovery."
+                        }
+                    ]
                 },
                 "onFailure": {
                     "narrative": "Infected wounds fester. Recovery will be slower.",
@@ -239,6 +339,14 @@
             ],
             "weight": 3,
             "watchTarget": "none",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "skip",
+            "gmPrompt": "Pale lights drift between the twisted trees, hovering just above the water's surface. They pulse gently, beckoning. Nobody follows them. That is the wise choice.",
+            "checkContext": "No check. Ambient event.",
+            "gmGuidance": "Pure atmosphere. The lights are real and present but following them leads nowhere good. If a player wants to investigate, that is a player-driven choice outside this event. Speak with Animals would not work here. Will-o-wisps are not beasts. Rest undisturbed.",
             "description": "Pale lights drift between the twisted trees, hovering just above the water's surface. They pulse gently, beckoning. Nobody follows them. That is the wise choice.",
             "mechanical": null,
             "tier": "normal",
