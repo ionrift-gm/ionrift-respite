@@ -8,6 +8,13 @@
 
 [![Watch the trailer](https://img.youtube.com/vi/-juG6sDkabU/maxresdefault.jpg)](https://youtu.be/-juG6sDkabU)
 
+> Documentation, setup guides, and troubleshooting: **[Ionrift Wiki](https://github.com/ionrift-gm/ionrift-library/wiki)**
+
+### Support Ionrift
+
+[![Patreon](https://img.shields.io/badge/Patreon-ionrift-ff424d?logo=patreon&logoColor=white)](https://patreon.com/ionrift)
+[![Discord](https://img.shields.io/discord/1483208289507479725?color=5865F2&logo=discord&logoColor=white&label=Discord)](https://discord.gg/vFGXf7Fncj)
+
 Long rests have a bottleneck. Everyone wants to do something - identify that ring, copy a spell, attune new gear - but the GM has to manage each request one by one or cut things short to keep the session moving. The GM is already overloaded, and breaking out of character to manage rest logistics one player at a time is a problem most tables solve by just skipping the interesting parts.
 
 Respite replaces the default long rest dialog with a phased flow. Players pick their own activities and handle their own downtime. The GM runs the encounter roll and events. The bookkeeping that can eat the better part of an hour gets handled by the module.
@@ -89,3 +96,4 @@ Event narratives, terrain data, and item descriptions in `data/` are copyright I
 **Part of the [Ionrift Module Suite](https://github.com/ionrift-gm)**
 
 [Wiki](https://github.com/ionrift-gm/ionrift-library/wiki) · [Discord](https://discord.gg/vFGXf7Fncj) · [Patreon](https://patreon.com/ionrift)
+
