@@ -189,14 +189,14 @@
             ],
             "noWatchBehavior": "escalate",
             "noWatchAmplifier": 1,
-            "gmPrompt": "The heat has not broken. Even hours after sunset the rocks are still radiating warmth like a furnace. Exposed skin is hot to the touch. Everyone is drinking more than planned, and the containers are emptying fast.",
-            "checkContext": "Survival check to manage the extreme heat and limit water consumption.",
-            "gmGuidance": "An unusually hot night, not a supply management failure. It works whether the party has two waterskins or twenty -- the heat forces extra consumption either way. Create Water or Goodberry cancels outright. A windbreak (defenses) cancels. The consume_resource effect goes through ResourceSink. If the party has no water, the noResourceFallback triggers exhaustion instead.",
-            "description": "The heat has not broken. Everyone is drinking more than planned.",
+            "gmPrompt": "The heat has not broken. Even hours after sunset the rocks are still radiating warmth like a furnace. The air is thick and wet. Sweat does not evaporate, it just sits on the skin. Drinking more water barely helps. It is warm before it reaches the mouth.",
+            "checkContext": "Survival check to manage the extreme heat and reduce exposure.",
+            "gmGuidance": "An unusually hot night, not a supply management failure. The threat is heat and humidity, not water rationing. The air is too humid for sweat to evaporate, so the body cannot cool itself. Drinking more water just means pouring warm water through yourself. The survival check is about reducing heat exposure (shelter, shade, ground contact), not rationing supplies. It works whether the party has two waterskins or twenty. Create Water or Goodberry cancels outright. A windbreak (defenses) mitigates (downgrades the outcome by one tier) but does not cancel -- shelter reduces exposure but does not replace cooling. The consume_resource effect goes through ResourceSink. If the party has no water, the noResourceFallback triggers exhaustion instead.",
+            "description": "The heat has not broken. The rocks are still radiating warmth hours after sunset.",
             "dutyRelevance": {
                 "defenses": {
-                    "effect": "cancel",
-                    "narrative": "The windbreak reduced exposure. Water consumption stayed manageable."
+                    "effect": "mitigate",
+                    "narrative": "The shelter kept the worst of the radiant heat off the camp. It helped, but the air is still furnace-dry."
                 }
             },
             "mechanical": {
@@ -206,11 +206,11 @@
                 "targets": "all",
                 "volunteerPolicy": "each",
                 "onTriumph": {
-                    "narrative": "You knew this heat was unusual. Damp cloths over mouths, shelter angled against the radiant rock, disciplined sips only. Everyone came through without dipping into reserves.",
+                    "narrative": "You repositioned the shelter to block the radiant rock face, dug a shallow trench for cooler ground contact, and kept everyone resting low. The heat was brutal, but the camp rode it out.",
                     "effects": []
                 },
                 "onSuccess": {
-                    "narrative": "Through careful discipline and a damp cloth technique, the party manages the heat without burning through extra water.",
+                    "narrative": "Shelter angled away from the hot rock. Damp cloths where they counted. The heat was bad but the camp held together.",
                     "effects": []
                 },
                 "onMixed": {
@@ -396,9 +396,9 @@
                 20
             ],
             "noWatchBehavior": "skip",
-            "gmPrompt": "Without cloud or canopy, the vast night sky is overwhelming. Countless stars stretch from horizon to horizon. A shooting star traces a line across the void. The desert, for all its daytime cruelty, offers a profound serenity tonight. This is a quiet RP moment if the table wants it.",
+            "gmPrompt": "Without cloud or canopy, the vast night sky is overwhelming. Countless stars stretch from horizon to horizon. A shooting star traces a line across the void. The desert, for all its daytime cruelty, offers a profound serenity tonight.",
             "checkContext": "No check. Ambient event.",
-            "gmGuidance": "Pure atmosphere. No mechanical consequence. If the table likes RP moments, this is a chance for characters to reflect, share a moment, or just take in the silence. If the table does not care for ambiance, skip it and move on. Either way, the rest is undisturbed.",
+            "gmGuidance": "Pure atmosphere. No mechanical consequence. A quiet RP moment if the table wants it. Characters might reflect, share a moment, or just take in the silence. If the table does not care for ambiance, skip it and move on. Rest undisturbed.",
             "description": "The vast desert night sky is overwhelming. Countless stars stretch from horizon to horizon. A shooting star traces a line across the void.",
             "mechanical": null,
             "tier": "normal",

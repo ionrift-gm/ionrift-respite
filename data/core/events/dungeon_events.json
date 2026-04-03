@@ -57,7 +57,16 @@
                     "effects": [
                         {
                             "type": "encounter",
-                            "description": "GM resolves a wandering monster encounter. Use generateEncounter(dungeon, tier, [humanoid, undead]) or CR appropriate to dungeon level."
+                            "description": "Dungeon patrol discovers the camp.",
+                            "encounterHints": {
+                                "creatureSuggestions": ["hobgoblins", "skeletons", "goblins", "duergar"],
+                                "crRange": { "min": "party_level - 1", "max": "party_level + 1" },
+                                "groupSize": "2-4",
+                                "environment": "stone corridor, dim light from patrol torches, close quarters",
+                                "awareness": "surprised if watch failed, otherwise standard initiative",
+                                "tactics": "Patrol on a circuit. Calls for reinforcements if outnumbered. Falls back to choke points if losing.",
+                                "loot": "Patrol supplies, a crude map of the level, or a key to a nearby door."
+                            }
                         }
                     ]
                 }
@@ -80,7 +89,7 @@
                 20
             ],
             "noWatchBehavior": "escalate",
-            "noWatchAmplifier": 1,
+            "noWatchAmplifier": 2,
             "gmPrompt": "It starts with one. A fat centipede crossing someone's bedroll. Then another. Then the scratching from the walls becomes impossible to ignore. The camp is on top of a nest, and the inhabitants are emerging.",
             "checkContext": "Nature check to drive the vermin back before they contaminate the supplies.",
             "gmGuidance": "Not a combat encounter. These are mundane vermin: rats, centipedes, cave spiders. Individually harmless, collectively relentless. The threat is to gear, food, and sleep, not HP. Nature or Survival to manage them. escalate (not auto_fail) because without a watch they get into everything, but nobody dies.",
@@ -89,7 +98,7 @@
                 "type": "skill_check",
                 "skill": "nat",
                 "dc": 12,
-                "targets": "watch",
+                "targets": "all",
                 "volunteerPolicy": "best_of",
                 "onTriumph": {
                     "narrative": "You spotted the first scouts and traced them to the nest entrance. A torch held to the crack and some smoke drove them deep. They did not come back.",

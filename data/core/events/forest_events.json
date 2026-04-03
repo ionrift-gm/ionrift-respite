@@ -26,7 +26,7 @@
             "noWatchAmplifier": 2,
             "gmPrompt": "Low growling from multiple directions. Eyes glint at the edge of the firelight, circling closer.",
             "checkContext": "Animal Handling check to stare down the pack before they rush camp.",
-            "gmGuidance": "The pack likely scatters if confronted aggressively. GM can absolutely set a proper fight here if it suits the table. Hook: generateEncounter(forest, tier, [beast, pack]). Fallback: provide a CR-appropriate wolf pack. At higher levels, lean into colour over threat. Speak with Animals: the alpha communicates territory, hunger, and pack size. It is not interested in negotiation. The pack wants food or it wants to leave.",
+            "gmGuidance": "The pack likely scatters if confronted aggressively. GM can absolutely set a proper fight here if it suits the table. Hook: generateEncounter(forest, tier, [beast, pack]). Fallback: provide a CR-appropriate wolf pack. At higher levels the wolves are not a real danger. Describe the eyes, the circling, the growl, and let the party handle it without a roll if the table would find the fight trivial. The scene is about the wildness of the forest, not the combat. Speak with Animals: the alpha communicates territory, hunger, and pack size. It is not interested in negotiation. The pack wants food or it wants to leave.",
             "description": "Low growling from multiple directions. Eyes glint at the edge of the firelight, circling.",
             "mechanical": {
                 "type": "skill_check",
@@ -109,19 +109,63 @@
                 "targets": "watch",
                 "volunteerPolicy": "best_of",
                 "onTriumph": {
-                    "narrative": "You heard the crack before anyone else. Sleepers moved, and the branch crashes harmlessly onto empty bedrolls. Good timber, too. You drag it to the fire.",
-                    "effects": []
+                    "narrative": "You heard the crack before anyone else. Sleepers moved, and the branch crashes harmlessly onto empty bedrolls. Good kindling. You drag it to the fire.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "kindling",
+                            "quantity": "1d4",
+                            "itemData": {
+                                "name": "Kindling",
+                                "type": "consumable",
+                                "img": "icons/commodities/wood/wood-pile-worn-brown.webp",
+                                "system": {
+                                    "description": {
+                                        "value": "<p>Dry wood harvested from a fallen branch. Burns well.</p>"
+                                    },
+                                    "rarity": "common"
+                                },
+                                "flags": {
+                                    "ionrift-respite": {
+                                        "itemCategory": "fuel"
+                                    }
+                                }
+                            }
+                        }
+                    ]
                 },
                 "onSuccess": {
-                    "narrative": "Sleepers rolled clear just as the branch hammers into empty bedrolls. Close call, no injuries.",
-                    "effects": []
+                    "narrative": "Sleepers rolled clear just as the branch hammers into empty bedrolls. Close call, no injuries. Some of the dry wood is worth keeping.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "kindling",
+                            "quantity": "1d2",
+                            "itemData": {
+                                "name": "Kindling",
+                                "type": "consumable",
+                                "img": "icons/commodities/wood/wood-pile-worn-brown.webp",
+                                "system": {
+                                    "description": {
+                                        "value": "<p>Dry wood harvested from a fallen branch. Burns well.</p>"
+                                    },
+                                    "rarity": "common"
+                                },
+                                "flags": {
+                                    "ionrift-respite": {
+                                        "itemCategory": "fuel"
+                                    }
+                                }
+                            }
+                        }
+                    ]
                 },
                 "onMixed": {
                     "narrative": "You see it too late to move everyone clear. The branch clips a shoulder on the way down. Painful but not serious.",
                     "effects": [
                         {
                             "type": "damage",
-                            "formula": "1d6",
+                            "formula": "1d4",
                             "damageType": "bludgeoning",
                             "scope": "randomTarget",
                             "timing": "post_rest",
@@ -134,7 +178,7 @@
                     "effects": [
                         {
                             "type": "damage",
-                            "formula": "2d6",
+                            "formula": "2d4",
                             "damageType": "bludgeoning",
                             "scope": "randomTarget",
                             "timing": "post_rest",
@@ -163,7 +207,7 @@
             "noWatchBehavior": "escalate",
             "noWatchAmplifier": 2,
             "gmPrompt": "A thick fog rolls in from the lowland. Everything beyond arm's reach disappears.",
-            "checkContext": "Survival check to secure the camp before the fog disorients everyone.",
+            "checkContext": "Survival check to keep the camp together as the fog rolls in.",
             "gmGuidance": "Without a watch, everyone wakes in fog with no reference points. Escalate: the party loses time and supplies trying to regroup at dawn. Consider allowing alternative skills (Arcana for a light cantrip, etc.).",
             "description": "A thick fog rolls in from the lowland. Everything beyond arm's reach disappears.",
             "mechanical": {
@@ -173,7 +217,7 @@
                 "targets": "watch",
                 "volunteerPolicy": "best_of",
                 "onTriumph": {
-                    "narrative": "Read the weather early. Watch doubled, camp tightened, fire kept visible. The fog rolled in and found nothing to exploit. Dawn came without incident.",
+                    "narrative": "You smelled the damp before it arrived. Fire stoked, landmarks called out, gear pulled close. The fog came and went. Dawn came without incident.",
                     "effects": []
                 },
                 "onSuccess": {
@@ -353,7 +397,11 @@
                 1,
                 20
             ],
-            "description": "The first birds begin before dawn. One song, then another, until the canopy rings with it. The air smells of damp earth and new growth. A good omen for the day ahead.",
+            "noWatchBehavior": "skip",
+            "gmPrompt": "The first birds begin before dawn. One song, then another, until the canopy rings with it. The air smells of damp earth.",
+            "checkContext": "No check. Ambient event.",
+            "gmGuidance": "Pure atmosphere. No mechanical consequence. A good omen for the day ahead. Rest undisturbed.",
+            "description": "The first birds begin before dawn. One song, then another, until the canopy rings with it. The air smells of damp earth. A good omen for the day ahead.",
             "mechanical": null,
             "tier": "normal",
             "sentiment": "neutral",

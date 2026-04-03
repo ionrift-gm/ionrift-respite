@@ -279,7 +279,7 @@
                 "swamp"
             ],
             "weight": 2,
-            "watchTarget": "any",
+            "watchTarget": "all",
             "levelRange": [
                 1,
                 20
@@ -344,9 +344,9 @@
                 20
             ],
             "noWatchBehavior": "skip",
-            "gmPrompt": "Pale lights drift between the twisted trees, hovering just above the water's surface. They pulse gently, beckoning. Nobody follows them. That is the wise choice.",
+            "gmPrompt": "Pale lights drift between the twisted trees, hovering just above the water's surface. They pulse gently, beckoning.",
             "checkContext": "No check. Ambient event.",
-            "gmGuidance": "Pure atmosphere. The lights are real and present but following them leads nowhere good. If a player wants to investigate, that is a player-driven choice outside this event. Speak with Animals would not work here. Will-o-wisps are not beasts. Rest undisturbed.",
+            "gmGuidance": "Pure atmosphere. Nobody follows them. That is the wise choice. The lights are real and present but following them leads nowhere good. If a player wants to investigate, that is a player-driven choice outside this event. Speak with Animals would not work here. Will-o-wisps are not beasts. Rest undisturbed.",
             "description": "Pale lights drift between the twisted trees, hovering just above the water's surface. They pulse gently, beckoning. Nobody follows them. That is the wise choice.",
             "mechanical": null,
             "tier": "normal",
