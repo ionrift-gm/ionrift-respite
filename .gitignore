@@ -26,6 +26,7 @@ node_modules/
 package.json
 package-lock.json
 pack-items.mjs
+pack-actors.mjs
 
 # Dev scripts & test suites
 scripts/tests/

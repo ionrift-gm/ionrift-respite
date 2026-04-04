@@ -11,6 +11,7 @@ import { CalendarHandler } from "../services/CalendarHandler.js";
 import { CopySpellHandler } from "../services/CopySpellHandler.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
 import { ConditionAdvisory } from "../services/ConditionAdvisory.js";
+import { ResourceSink } from "../services/ResourceSink.js";
 import { CampfireTokenLinker } from "../services/CampfireTokenLinker.js";
 import { ImageResolver } from "../util/ImageResolver.js";
 import { CraftingPickerApp } from "./CraftingPickerApp.js";
@@ -56,6 +57,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             rollEvents: RestSetupApp.#onRollEvents,
             resolveEvents: RestSetupApp.#onResolveEvents,
             resolveTreeChoice: RestSetupApp.#onResolveTreeChoice,
+            applyStallPenalty: RestSetupApp.#onApplyStallPenalty,
+            treeDcAdjUp: RestSetupApp.#onTreeDcAdjUp,
+            treeDcAdjDown: RestSetupApp.#onTreeDcAdjDown,
             acknowledgeEncounter: RestSetupApp.#onAcknowledgeEncounter,
             openCrafting: RestSetupApp.#onOpenCrafting,
             craftDrawerSelectRecipe: RestSetupApp.#onCraftDrawerSelectRecipe,
@@ -193,6 +197,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!game.ionrift.respite) game.ionrift.respite = {};
         game.ionrift.respite.jumpToResolution = () => this._debugJumpToResolution();
         game.ionrift.respite.jumpToEncounter = () => this._debugJumpToEncounter();
+        game.ionrift.respite.jumpToDisaster = () => this._debugJumpToDisaster();
+        game.ionrift.respite.addSupplies = (qty = 50) => RestSetupApp._debugAddSupplies(qty);
 
         // Inventory sync: auto-refresh meal options when items change (e.g. player transfers)
         this._inventoryDebounce = null;
@@ -349,6 +355,110 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         this.render(true);
         console.log("[Respite:Debug] Jumped to events phase with mock encounter and combat readiness report.");
+    }
+
+    /**
+     * Debug: Jump to the events phase with the Flash Flood disaster decision tree active.
+     * Usage: game.ionrift.respite.jumpToDisaster()
+     */
+    async _debugJumpToDisaster() {
+        if (!game.user.isGM) return console.warn("GM only");
+
+        const { RestFlowEngine } = await import("../services/RestFlowEngine.js");
+        const terrainTag = this._engine?.terrainTag ?? "forest";
+        const targets = game.actors.filter(a => a.hasPlayerOwner).map(a => a.id);
+
+        if (!this._engine) {
+            this._engine = new RestFlowEngine({
+                restType: "long", terrainTag, comfort: "rough"
+            });
+        }
+
+        for (const id of targets) {
+            this._engine.registerChoice(id, "act_keep_watch");
+            this._characterChoices.set(id, "act_keep_watch");
+        }
+
+        // Load Flash Flood from JSON
+        const resp = await fetch("modules/ionrift-respite/data/core/events/camp_disasters.json");
+        const data = await resp.json();
+        const flood = data.events.find(e => e.id === "evt_disaster_flash_flood");
+        if (!flood) {
+            ui.notifications.error("Flash Flood event not found in camp_disasters.json");
+            return;
+        }
+
+        // Inject as triggered event and create tree state
+        this._triggeredEvents = [flood];
+        this._eventsRolled = true;
+        this._activeTreeState = DecisionTreeResolver.createTreeState(flood, targets);
+        // Ensure stallPenalty is present (bypass ES module cache)
+        if (flood.mechanical?.stallPenalty) {
+            this._activeTreeState.stallPenalty = flood.mechanical.stallPenalty;
+            this._activeTreeState.hasStallPenalty = true;
+            this._activeTreeState.stalled = false;
+        }
+        this._phase = "events";
+        this._engine._phase = "events";
+
+        registerActiveRestApp(this);
+        await this._saveRestState();
+
+        const restPayload = {
+            restId: `rest_${Date.now()}`, terrainTag: this._engine.terrainTag, comfort: this._engine.comfort,
+            restType: this._engine.restType, activities: this._activities ?? [],
+            recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
+        };
+        setActiveRestData(restPayload);
+        game.socket.emit(`module.${MODULE_ID}`, { type: "restStarted", restData: restPayload });
+
+        setTimeout(() => {
+            const snapshot = this.getRestSnapshot?.();
+            if (snapshot) game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
+            game.socket.emit(`module.${MODULE_ID}`, {
+                type: "phaseChanged", phase: "events",
+                phaseData: {
+                    triggeredEvents: this._triggeredEvents,
+                    activeTreeState: this._activeTreeState,
+                    eventsRolled: true
+                }
+            });
+        }, 200);
+
+        this.render(true);
+        console.log("[Respite:Debug] Jumped to events phase with Flash Flood decision tree.");
+        ui.notifications.info("Flash Flood disaster injected. Decision tree active.");
+    }
+
+    /**
+     * Debug: Add supplies to all party actors.
+     * Usage: game.ionrift.respite.addSupplies(qty)
+     */
+    static async _debugAddSupplies(qty = 50) {
+        if (!game.user.isGM) return console.warn("GM only");
+
+        const actors = game.actors.filter(a => a.hasPlayerOwner && a.type === "character");
+        for (const actor of actors) {
+            // Check if they already have supplies
+            const existing = actor.items.find(i =>
+                ["supplies", "adventuring supplies", "camp supplies"].includes(i.name.toLowerCase().trim())
+            );
+            if (existing) {
+                await actor.updateEmbeddedDocuments("Item", [
+                    { _id: existing.id, "system.quantity": (existing.system?.quantity ?? 0) + qty }
+                ]);
+                console.log(`[Respite:Debug] ${actor.name}: added ${qty} to existing ${existing.name} (now ${(existing.system?.quantity ?? 0) + qty})`);
+            } else {
+                await actor.createEmbeddedDocuments("Item", [{
+                    name: "Supplies",
+                    type: "loot",
+                    img: "icons/containers/bags/pack-leather-brown.webp",
+                    system: { quantity: qty, weight: { value: 0.5 }, price: { value: 1, denomination: "gp" } }
+                }]);
+                console.log(`[Respite:Debug] ${actor.name}: created Supplies x${qty}`);
+            }
+        }
+        ui.notifications.info(`Added ${qty} supplies to ${actors.length} party members.`);
     }
 
     // ── Rest State Persistence ────────────────────────────────────
@@ -2851,6 +2961,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         ui.notifications.info("Rest phase started. Activity pickers sent to all players.");
         this._phase = "activity";
+
+        // Campfire token: ensure hidden at rest start (fire not lit yet)
+        CampfireTokenLinker.setLightState(false);
         // Reset event-related state from any prior rest
         this._eventsRolled = false;
         this._triggeredEvents = [];
@@ -3561,6 +3674,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 { id: treeEvent.id, name: treeEvent.name, description: treeEvent.description, mechanical: treeEvent.mechanical },
                 treeEvent.targets
             );
+            // Ensure stallPenalty is present
+            if (treeEvent.mechanical?.stallPenalty) {
+                this._activeTreeState.stallPenalty = treeEvent.mechanical.stallPenalty;
+                this._activeTreeState.hasStallPenalty = true;
+                this._activeTreeState.stalled = false;
+            }
         }
 
         // Broadcast results to players
@@ -3847,10 +3966,262 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     treeHistory: this._activeTreeState.history
                 };
             }
-            this._activeTreeState = null;
+            // Keep _activeTreeState alive so the resolved outcome panel renders.
+            // It will be cleared when the GM proceeds to resolution phase.
         }
 
+        await this._saveRestState();
         this.render();
+    }
+
+    /**
+     * Phase 3 (events): GM applies the stall penalty to the decision tree.
+     * Bumps all option DCs, posts the stall narrative, and marks as stalled.
+     */
+    static async #onApplyStallPenalty(event, target) {
+        if (!this._activeTreeState?.stallPenalty) return;
+
+        const penalty = this._activeTreeState.stallPenalty;
+        const bump = penalty.dcBump ?? 2;
+        const stallCount = (this._activeTreeState.stallCount ?? 0) + 1;
+
+        // Bump DC on all current options
+        for (const opt of this._activeTreeState.options) {
+            if (opt.check) opt.check.dc += bump;
+        }
+
+        this._activeTreeState.stalled = true;
+        this._activeTreeState.stallCount = stallCount;
+        this._activeTreeState.totalStallBump = (this._activeTreeState.totalStallBump ?? 0) + bump;
+
+        // Post stall narrative to chat
+        const suffix = stallCount > 1 ? ` (x${stallCount})` : "";
+        ChatMessage.create({
+            content: `<div class="respite-stall-message"><strong>The party stalled${suffix}.</strong><br>${penalty.narrative}</div>`,
+            speaker: { alias: "Respite" }
+        });
+
+        // Track upfront loss as an effect to apply at resolution
+        if (penalty.upfrontLoss) {
+            if (!this._activeTreeState.stallEffects) this._activeTreeState.stallEffects = [];
+            this._activeTreeState.stallEffects.push(penalty.upfrontLoss);
+        }
+
+        await this._saveRestState();
+        this.render();
+    }
+
+    /**
+     * Phase 3 (events): GM adjusts the DC on all decision tree options up by 1.
+     */
+    static #onTreeDcAdjUp(event, target) {
+        if (!this._activeTreeState?.options) return;
+        for (const opt of this._activeTreeState.options) {
+            if (opt.check) opt.check.dc += 1;
+        }
+        this._activeTreeState.treeDcAdj = (this._activeTreeState.treeDcAdj ?? 0) + 1;
+        this._saveRestState();
+        this.render();
+    }
+
+    /**
+     * Phase 3 (events): GM adjusts the DC on all decision tree options down by 1.
+     */
+    static #onTreeDcAdjDown(event, target) {
+        if (!this._activeTreeState?.options) return;
+        for (const opt of this._activeTreeState.options) {
+            if (opt.check) opt.check.dc = Math.max(1, opt.check.dc - 1);
+        }
+        this._activeTreeState.treeDcAdj = (this._activeTreeState.treeDcAdj ?? 0) - 1;
+        this._saveRestState();
+        this.render();
+    }
+
+    /**
+     * Show a unified GM approval modal for all disaster resource losses.
+     * Handles supply_loss, item_at_risk, and consume_gold in one overlay.
+     *
+     * @param {Object} unified - { supplyProposals, itemAtRiskProposals, goldProposals }
+     * @returns {Promise<boolean>}
+     */
+    static async #showResourceLossApproval(unified) {
+        const { supplyProposals, itemAtRiskProposals, goldProposals } = unified;
+
+        // Track all checkable entries for tally
+        const allEntries = [];
+
+        // Collect all loss rows keyed by actorId
+        // Each entry: { uid, actorId, actorName, img, name, qtyLabel, rangeLabel }
+        const byActor = new Map();
+
+        function ensureActor(actorId, actorName) {
+            if (!byActor.has(actorId)) byActor.set(actorId, { name: actorName, rows: [] });
+            return byActor.get(actorId);
+        }
+
+        // ── Supplies ──
+        for (const proposal of supplyProposals) {
+            for (const entry of proposal.breakdown) {
+                const uid = `supply-${entry.actorId}-${entry.itemId}`;
+                const actor = game.actors.get(entry.actorId);
+                const item = actor?.items.get(entry.itemId);
+                const img = item?.img ?? "icons/containers/bags/pack-leather-brown.webp";
+                const remaining = entry.currentQty - entry.lossQty;
+                entry._uid = uid;
+                allEntries.push({ uid });
+                ensureActor(entry.actorId, entry.actorName).rows.push({
+                    uid, img, name: item?.name ?? entry.itemName,
+                    qtyLabel: `-${entry.lossQty}`,
+                    rangeLabel: `${entry.currentQty} → ${remaining}`
+                });
+            }
+        }
+
+        // ── Items at Risk ──
+        for (const proposal of itemAtRiskProposals) {
+            for (const candidate of proposal.candidates) {
+                const uid = `item-${candidate.actor.id}-${candidate.item.id}`;
+                candidate._uid = uid;
+                const remaining = candidate.currentQty - candidate.lossQty;
+                allEntries.push({ uid });
+                ensureActor(candidate.actor.id, candidate.actor.name).rows.push({
+                    uid, img: candidate.item.img ?? "icons/svg/mystery-man.svg",
+                    name: candidate.item.name,
+                    qtyLabel: candidate.lossQty > 1 ? `-${candidate.lossQty}` : "lost",
+                    rangeLabel: candidate.currentQty > 1 ? `${candidate.currentQty} → ${remaining}` : "removed"
+                });
+            }
+        }
+
+        // ── Gold ──
+        for (const proposal of goldProposals) {
+            for (const entry of proposal.breakdown) {
+                const uid = `gold-${entry.actorId}`;
+                entry._uid = uid;
+                const remaining = entry.currentGp - entry.lossGp;
+                allEntries.push({ uid });
+                ensureActor(entry.actorId, entry.actorName).rows.push({
+                    uid, img: "icons/commodities/currency/coins-assorted-mix-copper-silver-gold.webp",
+                    name: "Gold",
+                    qtyLabel: `-${entry.lossGp} gp`,
+                    rangeLabel: `${entry.currentGp} → ${remaining} gp`
+                });
+            }
+        }
+
+        // If nothing to show at all
+        if (allEntries.length === 0) {
+            return new Promise(resolve => {
+                const overlay = document.createElement("div");
+                overlay.classList.add("ionrift-armor-modal-overlay");
+                overlay.innerHTML = `
+                    <div class="ionrift-armor-modal" style="max-width:420px;">
+                        <h3><i class="fas fa-water"></i> Disaster Losses</h3>
+                        <p>The disaster had no material impact. No supplies, items, or gold were at risk.</p>
+                        <div class="ionrift-armor-modal-buttons">
+                            <button class="btn-armor-confirm"><i class="fas fa-check"></i> Acknowledged</button>
+                        </div>
+                    </div>`;
+                document.body.appendChild(overlay);
+                overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => {
+                    overlay.remove();
+                    resolve(true);
+                });
+            });
+        }
+
+        // Build per-actor sections
+        let scrollContent = "";
+        for (const [actorId, group] of byActor) {
+            let rows = "";
+            for (const r of group.rows) {
+                rows += `
+                    <label class="loss-item-row" data-uid="${r.uid}">
+                        <input type="checkbox" checked data-uid="${r.uid}" class="loss-checkbox" />
+                        <img src="${r.img}" width="20" height="20" style="border-radius:3px; border:1px solid rgba(255,255,255,0.1);" />
+                        <span class="loss-item-name">${r.name}</span>
+                        <span class="loss-item-qty">${r.qtyLabel}</span>
+                        <span class="loss-item-current">${r.rangeLabel}</span>
+                    </label>`;
+            }
+            scrollContent += `
+                <div class="loss-actor-section">
+                    <div class="loss-section-label"><i class="fas fa-user"></i> ${group.name}</div>
+                    ${rows}
+                </div>`;
+        }
+
+        return new Promise(resolve => {
+            const overlay = document.createElement("div");
+            overlay.classList.add("ionrift-armor-modal-overlay");
+            overlay.innerHTML = `
+                <div class="ionrift-armor-modal" style="max-width:520px;">
+                    <h3><i class="fas fa-water"></i> Disaster Loss Approval</h3>
+                    <div class="loss-summary">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>The disaster proposes <strong>${allEntries.length}</strong> losses across the party. Review and confirm.</span>
+                    </div>
+                    <div class="loss-controls">
+                        <button type="button" class="loss-select-all"><i class="fas fa-check-double"></i> Select All</button>
+                        <button type="button" class="loss-select-none"><i class="fas fa-times"></i> Select None</button>
+                    </div>
+                    <div class="loss-scrollable">
+                        ${scrollContent}
+                    </div>
+                    <div class="loss-tally">
+                        <i class="fas fa-calculator"></i>
+                        <span class="loss-tally-count">${allEntries.length} losses selected</span>
+                    </div>
+                    <div class="ionrift-armor-modal-buttons">
+                        <button class="btn-armor-confirm"><i class="fas fa-check"></i> Confirm Losses</button>
+                        <button class="btn-armor-cancel"><i class="fas fa-times"></i> Cancel</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+
+            function updateTally() {
+                const count = overlay.querySelectorAll(".loss-checkbox:checked").length;
+                const tally = overlay.querySelector(".loss-tally-count");
+                if (tally) tally.textContent = `${count} losses selected`;
+            }
+
+            overlay.querySelector(".loss-select-all").addEventListener("click", () => {
+                overlay.querySelectorAll(".loss-checkbox").forEach(cb => cb.checked = true);
+                updateTally();
+            });
+            overlay.querySelector(".loss-select-none").addEventListener("click", () => {
+                overlay.querySelectorAll(".loss-checkbox").forEach(cb => cb.checked = false);
+                updateTally();
+            });
+            overlay.querySelectorAll(".loss-checkbox").forEach(cb => cb.addEventListener("change", updateTally));
+
+            // Confirm: mark approved entries on the original proposals
+            overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => {
+                const checked = new Set(
+                    [...overlay.querySelectorAll(".loss-checkbox:checked")].map(cb => cb.dataset.uid)
+                );
+
+                for (const p of supplyProposals) {
+                    p.breakdown = p.breakdown.filter(e => checked.has(e._uid));
+                    p.totalLoss = p.breakdown.reduce((s, e) => s + e.lossQty, 0);
+                }
+                for (const p of itemAtRiskProposals) {
+                    for (const c of p.candidates) c._approved = checked.has(c._uid);
+                }
+                for (const p of goldProposals) {
+                    p.breakdown = p.breakdown.filter(e => checked.has(e._uid));
+                    p.totalLoss = p.breakdown.reduce((s, e) => s + e.lossGp, 0);
+                }
+
+                overlay.remove();
+                resolve(true);
+            });
+
+            overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => {
+                overlay.remove();
+                resolve(false);
+            });
+        });
     }
 
     /**
@@ -3858,7 +4229,156 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Injects stored crafting results into activity outcomes.
      */
     static async #onResolveEvents(event, target) {
+        // Collect ALL resource-loss effects from resolved tree and stall penalties
+        const allEffects = [];
+        for (const evt of (this._triggeredEvents ?? [])) {
+            if (!evt.effects) continue;
+            for (const eff of evt.effects) {
+                if (["supply_loss", "item_at_risk", "consume_gold"].includes(eff.type)) {
+                    allEffects.push(eff);
+                }
+            }
+        }
+        if (this._activeTreeState?.stallEffects) {
+            for (const eff of this._activeTreeState.stallEffects) {
+                if (["supply_loss", "item_at_risk", "consume_gold"].includes(eff.type)) {
+                    allEffects.push(eff);
+                }
+            }
+        }
+
+
+        if (allEffects.length > 0) {
+            const characters = game.actors.filter(a => a.hasPlayerOwner && a.type === "character");
+            const context = { characters };
+
+            // Build unified proposal: { supplyProposals, itemAtRiskProposals, goldProposals }
+            const unified = { supplyProposals: [], itemAtRiskProposals: [], goldProposals: [] };
+
+            for (const eff of allEffects) {
+                if (eff.type === "supply_loss") {
+                    unified.supplyProposals.push(await ResourceSink.proposeSupplyLoss(eff, context));
+                } else if (eff.type === "item_at_risk") {
+                    unified.itemAtRiskProposals.push(await ResourceSink._resolveItemAtRisk(eff, context));
+                } else if (eff.type === "consume_gold") {
+                    unified.goldProposals.push(await ResourceSink.proposeGoldLoss(eff, context));
+                }
+            }
+
+
+            const approved = await RestSetupApp.#showResourceLossApproval(unified);
+            if (!approved) return; // GM cancelled
+
+            // Apply all approved losses
+            for (const p of unified.supplyProposals) {
+                if (p.totalLoss > 0) await ResourceSink.applySupplyLossProposal(p);
+            }
+            for (const p of unified.itemAtRiskProposals) {
+                const checked = p.candidates.filter(c => c._approved);
+                if (checked.length > 0) await ResourceSink.applyItemLoss(checked);
+            }
+            for (const p of unified.goldProposals) {
+                if (p.totalLoss > 0) await ResourceSink.applyGoldLossProposal(p);
+            }
+
+            // Whisper each player what they lost
+            const lossByActor = new Map();
+            function addLoss(actorId, actorName, line) {
+                if (!lossByActor.has(actorId)) lossByActor.set(actorId, { name: actorName, lines: [] });
+                lossByActor.get(actorId).lines.push(line);
+            }
+
+            for (const p of unified.supplyProposals) {
+                for (const e of p.breakdown) {
+                    addLoss(e.actorId, e.actorName,
+                        `<i class="fas fa-box-open" style="color:#f1948a;"></i> <strong>${e.itemName ?? "Supplies"}</strong> &times;${e.lossQty} lost`);
+                }
+            }
+            for (const p of unified.itemAtRiskProposals) {
+                for (const c of p.candidates) {
+                    if (!c._approved) continue;
+                    const label = c.lossQty > 1 ? `${c.item.name} &times;${c.lossQty}` : c.item.name;
+                    addLoss(c.actor.id, c.actor.name,
+                        `<i class="fas fa-times-circle" style="color:#f1948a;"></i> <strong>${label}</strong> lost`);
+                }
+            }
+            for (const p of unified.goldProposals) {
+                for (const e of p.breakdown) {
+                    addLoss(e.actorId, e.actorName,
+                        `<i class="fas fa-coins" style="color:#f1948a;"></i> <strong>${e.lossGp} gp</strong> lost`);
+                }
+            }
+
+            for (const [actorId, data] of lossByActor) {
+                if (data.lines.length === 0) continue;
+                const actor = game.actors.get(actorId);
+                if (!actor) continue;
+                const ownerUser = game.users.find(u => !u.isGM && actor.testUserPermission(u, "OWNER"));
+                const whisperTargets = ownerUser ? [ownerUser.id] : game.users.filter(u => u.isGM).map(u => u.id);
+
+                try {
+                    await ChatMessage.create({
+                        content: `<h3><i class="fas fa-water"></i> ${data.name}'s Disaster Losses</h3>\n${data.lines.join("\n")}`,
+                        whisper: whisperTargets,
+                        speaker: { alias: "Respite" },
+                        flags: { [MODULE_ID]: { type: "disasterLoss" } }
+                    });
+                } catch (e) {
+                    console.warn(`${MODULE_ID} | Failed to whisper disaster loss to ${data.name}:`, e);
+                }
+            }
+        }
+
+        // Clear the resolved tree state now that we're proceeding past events
+        // but first collect any condition effects (exhaustion) from the tree
+        const conditionEffects = [];
+        for (const evt of (this._triggeredEvents ?? [])) {
+            if (!evt.effects) continue;
+            for (const eff of evt.effects) {
+                if (eff.type === "condition" && eff.condition === "exhaustion") {
+                    conditionEffects.push(eff);
+                }
+            }
+        }
+        if (this._activeTreeState?.stallEffects) {
+            for (const eff of this._activeTreeState.stallEffects) {
+                if (eff.type === "condition" && eff.condition === "exhaustion") {
+                    conditionEffects.push(eff);
+                }
+            }
+        }
+
+        // Apply disaster exhaustion to actors and track per-actor gains
+        const disasterExhaustion = new Map(); // actorId -> total levels gained
+        if (conditionEffects.length > 0) {
+            const characters = game.actors.filter(a => a.hasPlayerOwner && a.type === "character");
+            for (const eff of conditionEffects) {
+                const level = eff.level ?? 1;
+                const scope = eff.scope ?? "all";
+                const targets = scope === "all" ? characters : characters.filter(a => a.id === scope);
+
+                for (const actor of targets) {
+                    const current = actor.system?.attributes?.exhaustion ?? 0;
+                    const gain = disasterExhaustion.get(actor.id) ?? 0;
+                    disasterExhaustion.set(actor.id, gain + level);
+                    const newLevel = Math.min(6, current + gain + level);
+                    await actor.update({ "system.attributes.exhaustion": newLevel });
+                }
+            }
+        }
+
+        this._activeTreeState = null;
+
         this._outcomes = await this._engine.resolve(this._activityResolver, this._triggeredEvents, this._earlyResults);
+
+        // Inject disaster exhaustion into recovery so RecoveryHandler
+        // won't undo it with the natural -1 long rest reduction.
+        for (const outcome of this._outcomes) {
+            const gain = disasterExhaustion.get(outcome.characterId);
+            if (gain && outcome.recovery) {
+                outcome.recovery.exhaustionGain = (outcome.recovery.exhaustionGain ?? 0) + gain;
+            }
+        }
 
         // Inject crafting results into outcomes
         for (const outcome of this._outcomes) {

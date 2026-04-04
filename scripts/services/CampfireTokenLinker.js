@@ -15,6 +15,9 @@
  */
 const MODULE_ID = "ionrift-respite";
 
+/** Path to the shipped campfire token sprite. */
+export const CAMPFIRE_TOKEN_IMG = `modules/${MODULE_ID}/assets/tokens/campfire_topdown_128x128.webm`;
+
 /** Sensible fallback if no template actor exists. */
 const DEFAULT_LIGHT = {
     bright: 20,
@@ -123,14 +126,15 @@ export class CampfireTokenLinker {
 
         if (lit) {
             const lightData = CampfireTokenLinker.getTemplateLightData();
-            await token.update({ light: lightData });
-            console.log(`${MODULE_ID} | CampfireTokenLinker: light ON`);
+            await token.update({ hidden: false, light: lightData });
+            console.log(`${MODULE_ID} | CampfireTokenLinker: light ON, token visible`);
         } else {
             await token.update({
+                hidden: true,
                 "light.bright": 0,
                 "light.dim": 0
             });
-            console.log(`${MODULE_ID} | CampfireTokenLinker: light OFF`);
+            console.log(`${MODULE_ID} | CampfireTokenLinker: light OFF, token hidden`);
         }
     }
 

@@ -6708,3 +6708,575 @@
 .application .rest-type-toggle .rest-type-btn:active { outline: none !important; border: none !important; box-shadow: none !important; }
 .application .rest-type-toggle .rest-type-btn.active:focus { box-shadow: inset 0 0 0 1px rgba(155,89,182,0.35) !important; }
 .application .rest-type-toggle .rest-type-btn i { font-size: 0.7rem; }
+/* ---- Decision Tree ---- */
+
+.respite-decision-tree {
+    padding: 0 0.5rem;
+}
+
+/* Fix 2: scrollable events area */
+.respite-events {
+    overflow-y: auto;
+    max-height: calc(100vh - 300px);
+    padding-bottom: 0.5rem;
+}
+
+.tree-choices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+}
+
+.btn-tree-choice {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+    min-height: 7rem;
+    padding: 0.5rem 0.6rem;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(220, 80, 50, 0.2);
+    border-top: 2px solid rgba(220, 80, 50, 0.6);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.btn-tree-choice:hover {
+    background: rgba(0, 0, 0, 0.45);
+    border-color: rgba(220, 80, 50, 0.4);
+    border-top-color: rgba(220, 80, 50, 0.9);
+    box-shadow: 0 2px 12px rgba(220, 80, 50, 0.15);
+    transform: translateY(-1px);
+}
+
+.btn-tree-choice:hover .choice-action-icon {
+    color: rgba(255, 220, 130, 0.9);
+    transform: translateX(2px);
+}
+
+/* Fix 4: disaster-tier red/danger tint */
+.tree-active .btn-tree-choice {
+    border-color: rgba(220, 80, 50, 0.2);
+    border-top-color: rgba(220, 80, 50, 0.6);
+}
+
+.tree-active .btn-tree-choice:hover {
+    border-color: rgba(220, 80, 50, 0.4);
+    border-top-color: rgba(220, 80, 50, 0.9);
+    box-shadow: 0 2px 12px rgba(220, 80, 50, 0.15);
+}
+
+/* Fix 3: choice header row with action icon */
+.choice-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    width: 100%;
+    gap: 0.3rem;
+}
+
+.choice-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.95);
+    line-height: 1.25;
+    flex: 1;
+}
+
+.choice-action-icon {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 0.7rem;
+    margin-top: 0.15rem;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.choice-description {
+    font-size: 0.7rem;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.65);
+    font-weight: 400;
+    line-height: 1.3;
+    margin: 0.15rem 0;
+    flex: 1;
+}
+
+.choice-check {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 600;
+    margin-top: auto;
+}
+
+.choice-check .skill-tag {
+    display: inline-block;
+    padding: 0.1rem 0.4rem;
+    background: rgba(155, 89, 182, 0.2);
+    border: 1px solid rgba(155, 89, 182, 0.4);
+    border-radius: 4px;
+    font-size: 0.62rem;
+    color: rgba(220, 190, 255, 0.95);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+}
+
+.choice-check .skill-best-of {
+    font-size: 0.58rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+    font-weight: 400;
+}
+
+.choice-check .skill-sep {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-weight: 400;
+}
+
+.choice-check .choice-dc {
+    margin-left: 0.15rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* Fix 1: prompt separator */
+.tree-prompt {
+    margin: 0.4rem 0 0.6rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tree-prompt p {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.4;
+    margin: 0;
+}
+
+/* GM Narration Hint */
+.tree-narration-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    padding: 0.35rem 0.5rem;
+    margin-bottom: 0.3rem;
+    background: rgba(255, 200, 100, 0.05);
+    border-left: 2px solid rgba(255, 200, 100, 0.3);
+    border-radius: 0 4px 4px 0;
+    font-size: 0.7rem;
+    font-style: italic;
+    color: rgba(255, 200, 100, 0.7);
+    line-height: 1.35;
+}
+
+.tree-narration-hint i {
+    margin-top: 0.1rem;
+    flex-shrink: 0;
+    color: rgba(255, 200, 100, 0.5);
+}
+
+/* Stall Penalty Area */
+.tree-stall-area {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0.5rem 0;
+    padding: 0.5rem 0.6rem;
+    background: rgba(255, 80, 50, 0.06);
+    border: 1px solid rgba(255, 80, 50, 0.15);
+    border-radius: 6px;
+}
+
+.btn-stall-penalty {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.85rem;
+    background: rgba(255, 80, 50, 0.12);
+    border: 1px solid rgba(255, 80, 50, 0.4);
+    border-radius: 5px;
+    color: rgba(255, 140, 90, 0.95);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.btn-stall-penalty:hover {
+    background: rgba(255, 80, 50, 0.22);
+    border-color: rgba(255, 80, 50, 0.6);
+    box-shadow: 0 0 12px rgba(255, 80, 50, 0.2), 0 0 4px rgba(255, 80, 50, 0.1) inset;
+    color: rgba(255, 160, 110, 1);
+}
+
+.btn-stall-penalty i {
+    font-size: 0.7rem;
+}
+
+.stall-hint {
+    font-size: 0.65rem;
+    color: rgba(255, 200, 150, 0.5);
+    font-style: italic;
+    line-height: 1.35;
+}
+
+.stall-applied-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(255, 120, 80, 0.95);
+}
+
+.stall-applied-count i {
+    font-size: 0.65rem;
+    color: rgba(255, 80, 50, 0.7);
+}
+
+.tree-stall-applied {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.5rem;
+    background: rgba(255, 80, 50, 0.08);
+    border: 1px solid rgba(255, 80, 50, 0.2);
+    border-radius: 5px;
+    font-size: 0.7rem;
+    color: rgba(255, 120, 80, 0.85);
+}
+
+/* Choice card wrapper for DC adj */
+.tree-choice-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.tree-choice-card .btn-tree-choice {
+    flex: 1;
+}
+
+/* Tree DC Adjustment (matches encounter DC adj pattern) */
+.tree-dc-adj {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    justify-content: flex-end;
+    padding: 0.2rem 0.3rem 0;
+}
+
+.tree-dc-adj-label {
+    font-size: 0.6rem;
+    color: rgba(255, 200, 100, 0.6);
+    font-weight: 600;
+    margin-left: 0.25rem;
+}
+
+
+.tree-stall-applied i {
+    font-size: 0.6rem;
+    flex-shrink: 0;
+}
+
+.tree-history-entry {
+    padding: 0.3rem 0.5rem;
+    margin-bottom: 0.3rem;
+    background: rgba(0, 0, 0, 0.15);
+    border-left: 2px solid rgba(155, 89, 182, 0.4);
+    border-radius: 0 4px 4px 0;
+    font-size: 0.75rem;
+}
+
+.tree-choice-made {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.tree-choice-made i {
+    color: rgba(155, 89, 182, 0.6);
+    font-size: 0.65rem;
+}
+
+.tree-result.success { color: rgba(100, 220, 130, 0.9); }
+.tree-result.failure { color: rgba(255, 120, 100, 0.9); }
+
+.tree-resolved {
+    margin-top: 0.5rem;
+    padding: 0.6rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.tree-outcome-header {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255, 220, 130, 0.85);
+    margin-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.tree-outcome-header i {
+    font-size: 0.7rem;
+    color: rgba(255, 220, 130, 0.6);
+}
+
+.tree-final-narrative {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 2px solid rgba(255, 220, 130, 0.3);
+    border-radius: 0 4px 4px 0;
+    font-style: italic;
+}
+
+.tree-effects {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-bottom: 0.4rem;
+}
+
+.tree-effects-header {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 120, 80, 0.7);
+    margin-bottom: 0.1rem;
+}
+
+.tree-effect {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.5rem;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 5px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tree-effect i {
+    font-size: 0.65rem;
+    flex-shrink: 0;
+    width: 1rem;
+    text-align: center;
+}
+
+.tree-effect.effect-supply_loss i { color: rgba(255, 180, 80, 0.7); }
+.tree-effect.effect-condition i { color: rgba(220, 80, 80, 0.8); }
+.tree-effect.effect-damage i { color: rgba(255, 80, 80, 0.8); }
+
+.tree-effect .effect-label {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    text-transform: capitalize;
+}
+
+.tree-effect .effect-detail {
+    font-size: 0.7rem;
+    color: rgba(255, 200, 130, 0.8);
+    font-weight: 600;
+    padding: 0.05rem 0.3rem;
+    background: rgba(255, 200, 130, 0.08);
+    border: 1px solid rgba(255, 200, 130, 0.15);
+    border-radius: 3px;
+}
+
+.tree-effect .effect-desc {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+    margin-left: auto;
+}
+
+.tree-effect .effect-scope {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-style: italic;
+}
+
+.tree-waiting {
+    text-align: center;
+    padding: 0.5rem;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-style: italic;
+}
+
+.tree-waiting i {
+    margin-right: 0.3rem;
+}
+
+/* ---- Supply Loss Approval Modal ---- */
+
+.ionrift-supply-loss-modal {
+    padding: 0.4rem 0;
+}
+
+.loss-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    background: rgba(255, 80, 50, 0.08);
+    border: 1px solid rgba(255, 80, 50, 0.2);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    color: rgba(255, 140, 90, 0.95);
+}
+
+.loss-summary i {
+    font-size: 0.8rem;
+    color: rgba(255, 180, 80, 0.7);
+}
+
+.loss-summary.loss-empty {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.loss-summary.loss-empty i { color: rgba(255, 255, 255, 0.3); }
+
+.loss-note {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.5;
+    padding: 0.3rem 0.4rem;
+}
+
+.loss-note strong { color: rgba(255, 200, 130, 0.7); }
+
+.loss-controls {
+    display: flex;
+    gap: 0.3rem;
+    margin-bottom: 0.4rem;
+}
+
+.loss-controls button {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.loss-controls button:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.loss-controls button i { margin-right: 0.2rem; }
+
+.loss-scrollable {
+    max-height: 280px;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.1);
+    padding: 0.3rem;
+    margin-bottom: 0.4rem;
+}
+
+.loss-actor-section {
+    margin-bottom: 0.3rem;
+}
+
+.loss-actor-section:last-child { margin-bottom: 0; }
+
+.loss-actor-header {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: rgba(255, 220, 130, 0.8);
+    padding: 0.25rem 0.4rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.loss-item-row {
+    display: grid;
+    grid-template-columns: 1.4rem 1.4rem 3fr 1fr 2fr;
+    gap: 0.3rem;
+    align-items: center;
+    padding: 0.25rem 0.4rem;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.1s;
+}
+
+.loss-item-row:hover { background: rgba(255, 255, 255, 0.04); }
+
+.loss-item-row input[type="checkbox"] {
+    width: 0.85rem;
+    height: 0.85rem;
+    margin: 0;
+    accent-color: rgba(255, 120, 80, 0.8);
+}
+
+.loss-item-name { font-weight: 500; }
+
+.loss-item-qty {
+    color: rgba(255, 100, 70, 0.9);
+    font-weight: 700;
+    text-align: right;
+}
+
+.loss-item-current {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: right;
+}
+
+.loss-tally {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.72rem;
+    color: rgba(255, 180, 80, 0.7);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.loss-tally i { font-size: 0.65rem; }
+
+.loss-section-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 120, 80, 0.6);
+    padding: 0.3rem 0.4rem 0.15rem;
+}
+

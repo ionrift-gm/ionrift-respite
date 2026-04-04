@@ -10,10 +10,11 @@
             ],
             "weight": 1,
             "watchTarget": "all",
+            "gmGuidance": "Fires on a nat 1 encounter roll. The party has two choices: move people and what they can carry to high ground, or stay in the rising water and fight to hold camp together. The stall penalty exists if the party cannot decide quickly.",
             "description": "A wall of brown water surges through the campsite. The river has burst its banks.",
             "mechanical": {
                 "type": "decision_tree",
-                "prompt": "Muddy water is rushing through camp. Gear is being swept away. You have seconds to act.",
+                "prompt": "Muddy water is rushing through camp. Gear is being swept away. You cannot save everything. What does the party prioritise?",
                 "maxDepth": 2,
                 "stallPenalty": {
                     "dcBump": 2,
@@ -26,48 +27,64 @@
                 },
                 "options": [
                     {
-                        "id": "run",
-                        "label": "Run for Higher Ground",
+                        "id": "move_high",
+                        "label": "Move What You Can to High Ground",
+                        "description": "Get everyone up the slope. Grab what you can carry and go. The rest stays behind.",
                         "check": {
                             "type": "group_dc",
                             "skills": [
                                 "ath",
                                 "dex"
                             ],
-                            "dc": 15
+                            "dc": 15,
+                            "checkContext": "Scramble uphill together through mud and debris. Athletics to power through, Dexterity to keep footing on slick ground."
                         },
                         "onSuccess": {
-                            "narrative": "Everyone scrambles up the slope before the water reaches waist height. Camp is a wreck but the party is unharmed.",
+                            "narrative": "Everyone makes it up the slope before the water reaches waist height. The camp below is a wreck, but the party is together and unharmed.",
                             "effects": [
                                 {
                                     "type": "supply_loss",
                                     "formula": "1d20 * 2",
                                     "description": "Supplies washed downstream."
+                                },
+                                {
+                                    "type": "item_at_risk",
+                                    "filter": ["disaster"],
+                                    "severity": 3,
+                                    "narrative": "Some gear was swept away before you could reach it."
                                 }
                             ]
                         },
                         "onFailure": {
-                            "narrative": "The current pulls several of you off your feet. The water is rising fast.",
+                            "narrative": "The slope is slick with mud. The water catches the group before you reach solid ground and rises fast.",
                             "prompt": "You are caught in the flood. The current drags you downstream.",
                             "options": [
                                 {
-                                    "id": "cling",
-                                    "label": "Cling to Trees",
+                                    "id": "brace",
+                                    "label": "Brace Against the Current",
+                                    "description": "Grab a tree trunk or a boulder and hold on. Let the water pass around you. You will take a beating, but you stay put.",
                                     "check": {
                                         "type": "group_dc",
                                         "skills": [
                                             "str",
                                             "ath"
                                         ],
-                                        "dc": 13
+                                        "dc": 13,
+                                        "checkContext": "Grab a tree trunk or boulder and hold on. The current slams debris into you from every side."
                                     },
                                     "onSuccess": {
-                                        "narrative": "Bruised and soaked, you hold on until the surge passes.",
+                                        "narrative": "Bruised and soaked, you hold on until the surge passes. The camp is gone but everyone is still standing.",
                                         "effects": [
                                             {
                                                 "type": "supply_loss",
                                                 "formula": "1d20 * 3",
                                                 "description": "Supplies swept away."
+                                            },
+                                            {
+                                                "type": "item_at_risk",
+                                                "filter": ["disaster"],
+                                                "severity": 4,
+                                                "narrative": "Loose gear battered by the current."
                                             },
                                             {
                                                 "type": "condition",
@@ -86,6 +103,16 @@
                                                 "description": "Camp devastated."
                                             },
                                             {
+                                                "type": "item_at_risk",
+                                                "filter": ["disaster"],
+                                                "severity": 5,
+                                                "narrative": "The flood tore through everything."
+                                            },
+                                            {
+                                                "type": "consume_gold",
+                                                "severity": 1
+                                            },
+                                            {
                                                 "type": "condition",
                                                 "condition": "exhaustion",
                                                 "level": 1,
@@ -101,15 +128,17 @@
                                     }
                                 },
                                 {
-                                    "id": "swim",
-                                    "label": "Swim to Shore",
+                                    "id": "fight_through",
+                                    "label": "Fight Through to the Bank",
+                                    "description": "Swim for it. Fight the current and try to reach solid ground before your strength gives out.",
                                     "check": {
                                         "type": "group_dc",
                                         "skills": [
                                             "ath",
                                             "con"
                                         ],
-                                        "dc": 15
+                                        "dc": 15,
+                                        "checkContext": "Fight the current and swim for the bank. Athletics to make headway, Constitution to keep going when your lungs burn."
                                     },
                                     "onSuccess": {
                                         "narrative": "Strong strokes carry you to the bank. Exhausted but alive.",
@@ -154,43 +183,53 @@
                         }
                     },
                     {
-                        "id": "shelter",
-                        "label": "Shelter in Place and Protect Gear",
+                        "id": "dig_in",
+                        "label": "Dig In and Weather the Flood",
+                        "description": "Hold your ground. Stack packs above the waterline, brace the shelter, form a chain. The water is chest-high and the cold cuts through you, but the camp stays together.",
                         "check": {
                             "type": "group_dc",
                             "skills": [
                                 "str",
                                 "con"
                             ],
-                            "dc": 13
+                            "dc": 13,
+                            "checkContext": "Brace against the rising water and haul supplies above the flood line. Strength to lift and stack, Constitution to endure the cold and pressure."
                         },
                         "onSuccess": {
-                            "narrative": "You brace against the flood and hold camp together. Water rushes past chest-high but you hold the line. Minimal losses.",
+                            "narrative": "You hold the line. Water rushes past chest-high, freezing and relentless, but the camp holds together. By the time the surge passes, your teeth are chattering and your muscles burn from the effort.",
                             "effects": [
                                 {
                                     "type": "supply_loss",
                                     "formula": "1d10",
                                     "description": "Minor supply losses."
+                                },
+                                {
+                                    "type": "condition",
+                                    "condition": "exhaustion",
+                                    "level": 1,
+                                    "scope": "all"
                                 }
                             ]
                         },
                         "onFailure": {
-                            "narrative": "The water is too deep. It tears the camp apart around you.",
-                            "prompt": "The camp is destroyed. You are neck-deep in floodwater with debris everywhere.",
+                            "narrative": "The water is too deep. It tears the camp apart around you despite everything you threw at it.",
+                            "prompt": "The camp is breaking apart. You are neck-deep in floodwater with debris everywhere.",
                             "options": [
                                 {
-                                    "id": "salvage",
-                                    "label": "Dive for Critical Supplies",
+                                    "id": "go_back",
+                                    "label": "Go Back for the Packs",
+                                    "description": "Dive back into the murky water and feel for submerged gear. You might save something, or you might lose more time.",
                                     "check": {
                                         "type": "group_dc",
                                         "skills": [
                                             "ath",
                                             "sur"
                                         ],
-                                        "dc": 14
+                                        "dc": 14,
+                                        "checkContext": "Dive into murky chest-deep water and feel for submerged packs. Athletics to swim under, Survival to know which gear matters most."
                                     },
                                     "onSuccess": {
-                                        "narrative": "You recover some essential gear from the murky water before it is swept away.",
+                                        "narrative": "You pull essential gear from the murky water before the current takes it. Not everything, but enough salvaged from a total loss.",
                                         "effects": [
                                             {
                                                 "type": "supply_loss",
@@ -223,28 +262,30 @@
                                     }
                                 },
                                 {
-                                    "id": "abandon",
-                                    "label": "Abandon Camp and Get to Safety",
+                                    "id": "cut_losses",
+                                    "label": "Cut Your Losses",
+                                    "description": "Leave what is gone. Wade to higher ground and regroup. The camp is finished, but you can still walk away.",
                                     "check": {
                                         "type": "group_dc",
                                         "skills": [
                                             "con",
                                             "dex"
                                         ],
-                                        "dc": 12
+                                        "dc": 12,
+                                        "checkContext": "Wade through waist-deep floodwater toward higher ground. Constitution to push through the cold, Dexterity to dodge floating debris."
                                     },
                                     "onSuccess": {
-                                        "narrative": "You leave everything and wade to safety. Alive, but with nothing.",
+                                        "narrative": "You pull back to dry ground. The camp is gone, but everyone is accounted for.",
                                         "effects": [
                                             {
                                                 "type": "supply_loss",
                                                 "formula": "1d20 * 4",
-                                                "description": "Camp abandoned."
+                                                "description": "Camp lost."
                                             }
                                         ]
                                     },
                                     "onFailure": {
-                                        "narrative": "Debris catches you on the way out. Battered and bruised.",
+                                        "narrative": "Debris catches you on the way out. Battered and shaking from the cold.",
                                         "effects": [
                                             {
                                                 "type": "supply_loss",

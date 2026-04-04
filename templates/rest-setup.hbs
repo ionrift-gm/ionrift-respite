@@ -1341,21 +1341,63 @@
 
             {{!-- Current Prompt and Choices (GM can interact, players see read-only) --}}
             {{#unless activeTreeState.resolved}}
+
+            {{!-- GM Narration Hint --}}
+            {{#if isGM}}
+            <div class="tree-narration-hint">
+                <i class="fas fa-theater-masks"></i>
+                <span>Set the scene for your players. Use the prompt as a guide, present the two options, and let them decide. The DCs are for your eyes only.</span>
+            </div>
+            {{/if}}
+
             <div class="tree-prompt">
                 <p>{{activeTreeState.prompt}}</p>
             </div>
+
             {{#if isGM}}
+            {{!-- Stall Penalty Button (between prompt and cards) --}}
+            {{#if activeTreeState.hasStallPenalty}}
+            <div class="tree-stall-area">
+                <button type="button" class="btn-stall-penalty" data-action="applyStallPenalty">
+                    <i class="fas fa-hourglass-half"></i> Players Stalling
+                </button>
+                {{#if activeTreeState.stallCount}}
+                <span class="stall-applied-count">
+                    <i class="fas fa-exclamation-triangle"></i> Applied {{activeTreeState.stallCount}}x — DCs +{{activeTreeState.totalStallBump}}, supplies lost
+                </span>
+                {{else}}
+                <span class="stall-hint">If the party is debating too long or negotiating for a third option that does not exist. DCs increase by +{{activeTreeState.stallPenalty.dcBump}} and supplies are lost to the delay.</span>
+                {{/if}}
+            </div>
+            {{/if}}
+
             <div class="tree-choices">
                 {{#each activeTreeState.options}}
+                <div class="tree-choice-card">
                 <button type="button" class="btn-tree-choice" data-action="resolveTreeChoice" data-choice-id="{{id}}">
-                    <div class="choice-label">{{label}}</div>
+                    <div class="choice-header">
+                        <div class="choice-label">{{label}}</div>
+                        <i class="fas fa-chevron-right choice-action-icon"></i>
+                    </div>
+                    {{#if description}}<div class="choice-description">{{description}}</div>{{/if}}
                     <div class="choice-check">
+                        <span class="skill-best-of">Best of</span>
                         {{#each check.skills}}
+                        {{#if @index}}<span class="skill-sep">/</span>{{/if}}
                         <span class="skill-tag">{{this}}</span>
                         {{/each}}
-                        DC {{check.dc}}
+                        <span class="skill-sep">·</span>
+                        <span class="choice-dc">DC {{check.dc}}</span>
                     </div>
                 </button>
+                {{#if @root.isGM}}
+                <div class="tree-dc-adj">
+                    <button type="button" class="encounter-adj-btn" data-action="treeDcAdjDown" title="Reduce DC">−</button>
+                    <button type="button" class="encounter-adj-btn" data-action="treeDcAdjUp" title="Increase DC">+</button>
+                    {{#if @root.activeTreeState.treeDcAdj}}<span class="tree-dc-adj-label">GM adj: {{@root.activeTreeState.treeDcAdj}}</span>{{/if}}
+                </div>
+                {{/if}}
+                </div>
                 {{/each}}
             </div>
             {{else}}
@@ -1368,12 +1410,41 @@
             {{!-- Resolved Outcome --}}
             {{#if activeTreeState.resolved}}
             <div class="tree-resolved">
+                <div class="tree-outcome-header">
+                    <i class="fas fa-flag-checkered"></i> Outcome
+                </div>
                 <div class="tree-final-narrative">{{activeTreeState.finalNarrative}}</div>
                 {{#if activeTreeState.finalEffects.length}}
                 <div class="tree-effects">
+                    <div class="tree-effects-header">Consequences</div>
                     {{#each activeTreeState.finalEffects}}
-                    <div class="tree-effect"><i class="fas fa-bolt"></i> {{description}}</div>
+                    <div class="tree-effect effect-{{type}}">
+                        {{#if (eq type "supply_loss")}}
+                        <i class="fas fa-box-open"></i>
+                        <span class="effect-label">Supply Loss</span>
+                        <span class="effect-detail">{{formula}}</span>
+                        {{#if description}}<span class="effect-desc">{{description}}</span>{{/if}}
+                        {{else if (eq type "condition")}}
+                        <i class="fas fa-skull-crossbones"></i>
+                        <span class="effect-label">{{condition}}</span>
+                        {{#if level}}<span class="effect-detail">level {{level}}</span>{{/if}}
+                        {{#if scope}}<span class="effect-scope">({{scope}})</span>{{/if}}
+                        {{else if (eq type "damage")}}
+                        <i class="fas fa-heart-broken"></i>
+                        <span class="effect-label">{{formula}} {{damageType}}</span>
+                        {{#if description}}<span class="effect-desc">{{description}}</span>{{/if}}
+                        {{else}}
+                        <i class="fas fa-bolt"></i>
+                        <span class="effect-label">{{description}}</span>
+                        {{/if}}
+                    </div>
                     {{/each}}
+                </div>
+                {{/if}}
+                {{#if isGM}}
+                <div class="tree-narration-hint">
+                    <i class="fas fa-theater-masks"></i>
+                    <span>Describe the outcome to your players before proceeding.</span>
                 </div>
                 {{/if}}
             </div>
@@ -1894,12 +1965,16 @@
             </div>
             {{else}}
             {{!-- No encounter, or encounter resolved, allow rest resolution --}}
+            {{#if activeTreeState}}{{#unless activeTreeState.resolved}}
+            {{!-- Hidden while decision tree is active --}}
+            {{/unless}}{{/if}}
+            {{#unless (and activeTreeState (not activeTreeState.resolved))}}
             <button type="button" class="btn-primary" data-action="resolveEvents"
                 {{#if disasterChoice}}disabled title="Choose a disaster outcome first"{{/if}}
-                {{#if activeTreeState}}{{#unless activeTreeState.resolved}}disabled title="Resolve the decision tree first"{{/unless}}{{/if}}
                 {{#unless allEventChecksResolved}}disabled title="Resolve all event skill checks first"{{/unless}}>
                 <i class="fas fa-arrow-right"></i> Proceed to Resolution
             </button>
+            {{/unless}}
             {{/if}}
         {{else}}
         <button type="button" class="btn-primary btn-roll-events" data-action="rollEvents"

@@ -183,6 +183,8 @@ Hooks.once("init", async () => {
             console.log(`${MODULE_ID} | Sent forceReload to all clients. GM reloading in 500ms...`);
             setTimeout(() => window.location.reload(), 500);
         },
+        /** Debug: Add supplies to all party actors. Usage: game.ionrift.respite.addSupplies(50) */
+        addSupplies: (qty = 50) => RestSetupApp._debugAddSupplies(qty),
         /** Check which terrain packs are currently linked (accessible). */
         packStatus: async () => {
             if (!game.user.isGM) return;

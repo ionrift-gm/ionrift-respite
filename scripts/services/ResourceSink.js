@@ -18,9 +18,7 @@ export class ResourceSink {
         camp_gear: (item) => {
             const type = item.type;
             if (!["loot", "tool", "equipment"].includes(type)) return false;
-            // Exclude weapons, armour, shields (shouldn't match type, but guard)
             if (["weapon", "armor"].includes(type)) return false;
-            // Exclude profession/artisan kits and spellcasting foci
             if (ResourceSink._isProtectedItem(item)) return false;
             return true;
         },
@@ -34,6 +32,26 @@ export class ResourceSink {
             if (ResourceSink._isProtectedItem(item)) return false;
             const price = item.system?.price?.value ?? 0;
             return price < 50;
+        },
+        // Broad disaster filter: everything except weapons, armor,
+        // profession kits, foci, and spellbooks. Rations and water
+        // ARE eligible. High-value uniques (qty 1, >100gp) excluded.
+        disaster: (item) => {
+            const type = item.type;
+            if (["weapon", "armor", "spell", "feat", "class", "subclass", "background"].includes(type)) return false;
+            if (!(["loot", "tool", "equipment", "consumable", "container"].includes(type))) return false;
+            // Only protect profession kits and foci, NOT rations/water
+            if (item.flags?.["ionrift-respite"]?.protected) return false;
+            const name = item.name?.toLowerCase().trim() ?? "";
+            if (ResourceSink.PROFESSION_NAMES.has(name)) return false;
+            if (name.includes("instrument") || name.includes("artisan")) return false;
+            // Exclude supply-named items (handled by supply_loss)
+            if (ResourceSink.RESOURCE_NAMES.supplies.includes(name)) return false;
+            // Protect unique high-value items
+            const qty = item.system?.quantity ?? 1;
+            const price = item.system?.price?.value ?? 0;
+            if (qty <= 1 && price > 100) return false;
+            return true;
         }
     };
 
@@ -56,11 +74,28 @@ export class ResourceSink {
         "waterskin", "water", "canteen"
     ]);
 
+    // Subset: only profession kits and foci (used by disaster filter).
+    // These are ALWAYS protected, even in disasters.
+    static PROFESSION_NAMES = new Set([
+        "alchemist's supplies", "brewer's supplies", "calligrapher's supplies",
+        "carpenter's tools", "cartographer's tools", "cobbler's tools",
+        "cook's utensils", "glassblower's tools", "jeweler's tools",
+        "leatherworker's tools", "mason's tools", "painter's supplies",
+        "potter's tools", "smith's tools", "tinker's tools",
+        "weaver's tools", "woodcarver's tools", "herbalism kit",
+        "poisoner's kit", "forgery kit", "disguise kit",
+        "thieves' tools", "navigator's tools",
+        "component pouch", "arcane focus", "druidic focus",
+        "holy symbol", "spellbook"
+    ]);
+
     // Quantity selection per severity level.
     static SEVERITY_QTY = {
         1: { items: 1, maxQtyPer: 1 },
         2: { items: 2, maxQtyPer: 1 },
-        3: { items: 3, maxQtyPer: 2 }
+        3: { items: 3, maxQtyPer: 2 },
+        4: { items: 5, maxQtyPer: 3 },
+        5: { items: 8, maxQtyPer: 5 }
     };
 
     // ── Resource Name Map ────────────────────────────────────────
@@ -195,12 +230,28 @@ export class ResourceSink {
      * @returns {Object} { resource, lost, remaining, method }
      */
     static async _consumeSupplyLoss(effect, context) {
+        const proposal = await this.proposeSupplyLoss(effect, context);
+        if (proposal.totalLoss === 0) return { resource: "supplies", lost: 0, remaining: proposal.totalAvailable, method: "supply_loss", fallback: null };
+        await this.applySupplyLossProposal(proposal);
+        return { resource: "supplies", lost: proposal.totalLoss, remaining: proposal.totalAvailable - proposal.totalLoss, method: "supply_loss", fallback: null };
+    }
+
+    /**
+     * Propose a supply_loss without mutating inventory.
+     * Returns a breakdown of per-actor losses for GM approval.
+     *
+     * @param {Object} effect - { formula, description }
+     * @param {Object} context - { characters: Actor[] }
+     * @returns {Object} Proposal with breakdown
+     */
+    static async proposeSupplyLoss(effect, context) {
         const actors = context.characters ?? [];
-        const holdings = this._findResourceItems(actors, "supplies");
+        const resource = effect.resource ?? "supplies";
+        const holdings = this._findResourceItems(actors, resource);
         const totalQty = holdings.reduce((sum, h) => sum + h.qty, 0);
 
         if (totalQty === 0) {
-            return { resource: "supplies", lost: 0, remaining: 0, method: "supply_loss", fallback: null };
+            return { formula: effect.formula, rollResult: 0, totalAvailable: 0, totalLoss: 0, breakdown: [], description: effect.description ?? "Supply loss" };
         }
 
         // Evaluate formula as a Foundry Roll
@@ -210,25 +261,91 @@ export class ResourceSink {
             percent = Math.min(roll.total, 100);
         } catch (e) {
             Logger.warn(`Bad supply_loss formula: ${effect.formula}`, e);
-            return { resource: "supplies", lost: 0, remaining: totalQty, method: "supply_loss", fallback: null };
+            return { formula: effect.formula, rollResult: 0, totalAvailable: totalQty, totalLoss: 0, breakdown: [], description: effect.description ?? "Supply loss" };
         }
 
         const lossQty = Math.min(Math.ceil(totalQty * percent / 100), totalQty);
 
-        // Distribute proportionally across actors with jitter
-        const actualLost = await this._distributeResourceLoss(holdings, lossQty);
-        Logger.log(
-            `supply_loss: lost ${actualLost} supplies ` +
-            `(${totalQty - actualLost} remaining). Formula: ${effect.formula} = ${percent}%`
-        );
+        // Calculate distribution (same jitter logic) but don't apply
+        const breakdown = this._planResourceDistribution(holdings, lossQty);
 
         return {
-            resource: "supplies",
-            lost: actualLost,
-            remaining: totalQty - actualLost,
-            method: "supply_loss",
-            fallback: null
+            formula: effect.formula,
+            rollResult: percent,
+            totalAvailable: totalQty,
+            totalLoss: breakdown.reduce((s, b) => s + b.lossQty, 0),
+            breakdown,
+            description: effect.description ?? "Supply loss"
         };
+    }
+
+    /**
+     * Apply an approved supply loss proposal to inventory.
+     * @param {Object} proposal - From proposeSupplyLoss()
+     */
+    static async applySupplyLossProposal(proposal) {
+        for (const entry of proposal.breakdown) {
+            if (entry.lossQty <= 0) continue;
+            const actor = game.actors.get(entry.actorId);
+            if (!actor) continue;
+            const item = actor.items.get(entry.itemId);
+            if (!item) continue;
+
+            const newQty = (item.system?.quantity ?? 0) - entry.lossQty;
+            if (newQty <= 0) {
+                await actor.deleteEmbeddedDocuments("Item", [item.id]);
+            } else {
+                await actor.updateEmbeddedDocuments("Item", [
+                    { _id: item.id, "system.quantity": newQty }
+                ]);
+            }
+
+            Logger.log(`supply_loss: removed ${entry.lossQty}x supplies from ${actor.name} (${Math.max(0, newQty)} remaining)`);
+        }
+    }
+
+    /**
+     * Plan resource distribution across holders without applying.
+     * Returns a serialisable breakdown array.
+     *
+     * @param {Object[]} holdings - [{ actor, item, qty }]
+     * @param {number} totalLoss - Total quantity to deduct.
+     * @returns {Object[]} [{ actorId, actorName, itemId, itemName, currentQty, lossQty }]
+     */
+    static _planResourceDistribution(holdings, totalLoss) {
+        if (!holdings.length || totalLoss <= 0) return [];
+
+        const totalQty = holdings.reduce((sum, h) => sum + h.qty, 0);
+
+        const raw = holdings.map(h => {
+            const share = h.qty / totalQty;
+            const jitter = 0.7 + Math.random() * 0.6;
+            return { holding: h, weight: share * jitter };
+        });
+
+        const weightSum = raw.reduce((s, r) => s + r.weight, 0);
+        const planned = raw.map(r => {
+            const idealLoss = (r.weight / weightSum) * totalLoss;
+            const loss = Math.min(Math.round(idealLoss), r.holding.qty);
+            return { holding: r.holding, loss };
+        });
+
+        // Reconcile rounding
+        const distributed = planned.reduce((s, p) => s + p.loss, 0);
+        const remainder = totalLoss - distributed;
+        if (remainder !== 0 && planned.length > 0) {
+            const last = planned[planned.length - 1];
+            last.loss = Math.min(last.loss + remainder, last.holding.qty);
+        }
+
+        return planned.filter(p => p.loss > 0).map(p => ({
+            actorId: p.holding.actor.id,
+            actorName: p.holding.actor.name,
+            itemId: p.holding.item.id,
+            itemName: p.holding.item.name,
+            currentQty: p.holding.qty,
+            lossQty: p.loss
+        }));
     }
 
     // ── Internal: Distribute Resource Loss ───────────────────────
@@ -365,11 +482,31 @@ export class ResourceSink {
      * @returns {Object} { resource: "gold", lost, remaining, method, breakdown }
      */
     static async _consumeGold(effect, context) {
+        const proposal = await this.proposeGoldLoss(effect, context);
+        if (proposal.totalLoss === 0) return { resource: "gold", lost: 0, remaining: 0, method: "consume_gold", breakdown: [] };
+        await this.applyGoldLossProposal(proposal);
+        return {
+            resource: "gold",
+            lost: proposal.totalLoss,
+            remaining: proposal.totalGp - proposal.totalLoss,
+            method: "consume_gold",
+            breakdown: proposal.breakdown.map(b => ({ actor: b.actorName, lost: b.lossGp, had: b.currentGp }))
+        };
+    }
+
+    /**
+     * Propose gold loss without applying it.
+     * Returns a serializable breakdown for GM approval.
+     *
+     * @param {Object} effect - { severity }
+     * @param {Object} context - { characters }
+     * @returns {Object} { totalGp, totalLoss, severity, breakdown: [{ actorId, actorName, currentGp, lossGp }] }
+     */
+    static async proposeGoldLoss(effect, context) {
         const actors = context.characters ?? [];
         const severity = Math.max(1, Math.min(3, effect.severity ?? 1));
         const config = this.GOLD_SEVERITY[severity];
 
-        // Gather gold holdings per actor
         const holdings = [];
         for (const actor of actors) {
             const gp = actor?.system?.currency?.gp ?? 0;
@@ -378,10 +515,9 @@ export class ResourceSink {
 
         const totalGp = holdings.reduce((sum, h) => sum + h.gp, 0);
         if (totalGp === 0) {
-            return { resource: "gold", lost: 0, remaining: 0, method: "consume_gold", breakdown: [] };
+            return { totalGp: 0, totalLoss: 0, severity, breakdown: [] };
         }
 
-        // Calculate percent loss
         let rollResult;
         try {
             const roll = await new Roll(config.roll).evaluate();
@@ -396,33 +532,36 @@ export class ResourceSink {
         const calcLoss = Math.ceil(totalGp * clampedPercent / 100);
         const totalLoss = Math.min(Math.max(config.minGp, calcLoss), totalGp);
 
-        // Distribute with jitter
-        const breakdown = this._distributeGoldLoss(holdings, totalLoss);
+        const distributed = this._distributeGoldLoss(holdings, totalLoss);
 
-        // Apply deductions
-        for (const entry of breakdown) {
-            const newGp = entry.holding.gp - entry.loss;
-            await entry.holding.actor.update({ "system.currency.gp": Math.max(0, newGp) });
-        }
+        const breakdown = distributed.map(d => ({
+            actorId: d.holding.actor.id,
+            actorName: d.holding.actor.name,
+            currentGp: d.holding.gp,
+            lossGp: d.loss
+        }));
 
-        const remaining = totalGp - totalLoss;
         Logger.log(
-            `gold: lost ${totalLoss}gp ` +
-            `(${remaining}gp remaining). Severity ${severity}, ` +
-            `roll ${rollResult} * ${config.multiplier} = ${rawPercent}% (cap ${config.maxPercent}%)`
+            `gold proposal: ${totalLoss}gp from ${holdings.length} actors ` +
+            `(severity ${severity}, roll ${rollResult} * ${config.multiplier} = ${rawPercent}%)`
         );
 
-        return {
-            resource: "gold",
-            lost: totalLoss,
-            remaining,
-            method: "consume_gold",
-            breakdown: breakdown.map(b => ({
-                actor: b.holding.actor.name,
-                lost: b.loss,
-                had: b.holding.gp
-            }))
-        };
+        return { totalGp, totalLoss, severity, breakdown };
+    }
+
+    /**
+     * Apply a confirmed gold loss proposal.
+     * @param {Object} proposal - from proposeGoldLoss
+     */
+    static async applyGoldLossProposal(proposal) {
+        for (const entry of proposal.breakdown) {
+            const actor = game.actors.get(entry.actorId);
+            if (!actor) continue;
+            const currentGp = actor.system?.currency?.gp ?? 0;
+            const newGp = Math.max(0, currentGp - entry.lossGp);
+            await actor.update({ "system.currency.gp": newGp });
+            Logger.log(`gold: deducted ${entry.lossGp}gp from ${entry.actorName} (${newGp}gp remaining)`);
+        }
     }
 
     /**
@@ -527,8 +666,8 @@ export class ResourceSink {
     static async _resolveItemAtRisk(effect, context) {
         const actors = context.characters ?? [];
         const filterNames = effect.filter ?? ["camp_gear"];
-        const severity = Math.max(1, Math.min(3, effect.severity ?? 1));
-        const config = this.SEVERITY_QTY[severity];
+        const severity = Math.max(1, Math.min(5, effect.severity ?? 1));
+        const config = this.SEVERITY_QTY[severity] ?? this.SEVERITY_QTY[3];
 
         // Collect eligible items across all actors
         const eligible = [];
@@ -563,12 +702,14 @@ export class ResourceSink {
             };
         }
 
-        // Weight toward cheaper/more abundant items
+        // Weight by inverse price and item type bias.
+        // Loot is most expendable, consumables nearly as much, tools least.
+        const TYPE_BIAS = { loot: 3.0, consumable: 2.5, equipment: 1.5, tool: 1.0, container: 0.5 };
         const weighted = eligible.map(e => {
             const price = e.item.system?.price?.value ?? 1;
-            // Inverse price weighting: cheaper items are more likely
-            const weight = 1 / Math.max(price, 0.1);
-            return { ...e, weight };
+            const priceWeight = 1 / Math.max(price, 0.1);
+            const typeBias = TYPE_BIAS[e.item.type] ?? 1.0;
+            return { ...e, weight: priceWeight * typeBias };
         });
 
         // Select candidates
