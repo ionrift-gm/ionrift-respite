@@ -142,7 +142,7 @@ export class RestFlowEngine {
                     result: e.result,
                     resolvedOutcome: e.resolvedOutcome ?? null,
                     items: (passed ? e.mechanical?.onSuccess?.items : e.items) ?? [],
-                    effects: failed ? (e.mechanical?.onFailure?.effects ?? e.effects ?? []) : [],
+                    effects: (failed || (e.resolved && !passed)) ? (e.mechanical?.onFailure?.effects ?? e.effects ?? []) : [],
                     narrative
                 };
             });
@@ -160,7 +160,7 @@ export class RestFlowEngine {
                     activityResult,
                     ...eventOutcomes
                 ],
-                recovery: this._calculateRecovery(actor, activityResolver.activities.get(choice.activityId))
+                recovery: this._calculateRecovery(actor, activityResolver.activities.get(choice.activityId), eventOutcomes)
             });
         }
 
@@ -185,22 +185,51 @@ export class RestFlowEngine {
      * @param {Object} [activitySchema] - The activity schema for the character's chosen activity.
      * @returns {Object}
      */
-    _calculateRecovery(actor, activitySchema = null) {
+    _calculateRecovery(actor, activitySchema = null, eventOutcomes = []) {
         const maxHp = actor.system?.attributes?.hp?.max ?? 0;
+        const currentHp = actor.system?.attributes?.hp?.value ?? 0;
         const totalHd = actor.system?.attributes?.hd?.max ?? actor.system?.details?.level ?? 0;
         const rawHdRecovery = Math.max(1, Math.floor(totalHd / 2));
 
-        // Comfort tier penalties
+        // Effective comfort: start with camp comfort, boost if activity has comfort_boost
+        const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
+        let effectiveComfort = this.comfort;
+        const hasComfortBoost = activitySchema?.outcomes?.success?.effects?.some(e => e.type === "comfort_boost");
+        if (hasComfortBoost) {
+            const idx = COMFORT_TIERS.indexOf(this.comfort);
+            if (idx >= 0 && idx < COMFORT_TIERS.length - 1) {
+                effectiveComfort = COMFORT_TIERS[idx + 1];
+            }
+        }
+
+        // Comfort tier penalties (using effective comfort)
         const HD_PENALTY = { safe: 0, sheltered: 0, rough: 1, hostile: 2 };
-        const hdPenalty = HD_PENALTY[this.comfort] ?? 0;
+        const hdPenalty = HD_PENALTY[effectiveComfort] ?? 0;
         let baseHdRecovered = Math.max(0, rawHdRecovery - hdPenalty);
 
-        const isHostile = this.comfort === "hostile";
-        const baseHpRestored = isHostile ? Math.floor(maxHp * 0.75) : maxHp;
+        const isHostile = effectiveComfort === "hostile";
+        const maxHpRestorable = isHostile ? Math.floor(maxHp * 0.75) : maxHp;
+        let baseHpRestored = maxHpRestorable;
 
-        // Exhaustion risk at Rough/Hostile
-        let exhaustionDC = this.comfort === "hostile" ? 15
-            : this.comfort === "rough" ? 10
+        // hpMultiplier automation (from event effects)
+        let overallHpMultiplier = 1.0;
+        for (const outcome of eventOutcomes) {
+            for (const effect of (outcome.effects || [])) {
+                if (["recovery_penalty", "recovery_bonus"].includes(effect.type) && typeof effect.hpMultiplier === "number") {
+                    overallHpMultiplier *= effect.hpMultiplier;
+                }
+            }
+        }
+
+        if (overallHpMultiplier !== 1.0) {
+            const recoveryGap = maxHp - currentHp;
+            const naturalHealing = Math.min(maxHpRestorable, recoveryGap);
+            baseHpRestored = Math.max(0, Math.floor(naturalHealing * overallHpMultiplier));
+        }
+
+        // Exhaustion risk at Rough/Hostile (using effective comfort)
+        let exhaustionDC = effectiveComfort === "hostile" ? 15
+            : effectiveComfort === "rough" ? 10
             : null;
 
         // ── Xanathar's Armor Sleep Penalty (gated by setting) ──
@@ -250,7 +279,8 @@ export class RestFlowEngine {
             hpRestored: baseHpRestored,
             hdRestored: baseHdRecovered + gearBonusHd,
             spellSlotsRestored: this.restType === "long",
-            comfortLevel: this.comfort,
+            comfortLevel: effectiveComfort,
+            campComfort: this.comfort,
             restType: this.restType,
             restedFully: activitySchema?.id === "act_rest_fully",
             exhaustionDC,

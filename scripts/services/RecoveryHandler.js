@@ -241,9 +241,9 @@ export class RecoveryHandler {
 
         // Advisory when exhaustion reduction is blocked
         let exhaustionNote = null;
-        if (recovery.comfortLevel === "hostile" && recovery.restType === "long") {
+        if (recovery.comfortLevel === "hostile" && recovery.restType === "long" && exhaustionDelta >= 0) {
             exhaustionNote = "Hostile conditions prevent natural exhaustion recovery.";
-        } else if (recovery.armorSleepPenalty && recovery.restType === "long") {
+        } else if (recovery.armorSleepPenalty && recovery.restType === "long" && exhaustionDelta >= 0) {
             exhaustionNote = "Sleeping in armor prevents exhaustion recovery.";
         }
 

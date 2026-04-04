@@ -1455,7 +1455,7 @@
         {{!-- Regular Events --}}
         {{#if triggeredEvents.length}}
         {{#each triggeredEvents}}
-        <div class="respite-event-card {{category}} {{#if resolvedOutcome}}resolved-event{{/if}} {{#if (eq result 'scouting_hazard')}}scouting-hazard{{/if}} {{#if (eq result 'scouting_bonus')}}scouting-bonus{{/if}}" {{#if resolvedOutcome}}data-action="toggleResolvedEvent"{{/if}}>
+        <div class="respite-event-card {{category}} {{#if resolvedOutcome}}resolved-event {{#if (gt @root.triggeredEvents.length 1)}}collapsed{{/if}}{{/if}} {{#if (eq result 'scouting_hazard')}}scouting-hazard{{/if}} {{#if (eq result 'scouting_bonus')}}scouting-bonus{{/if}}" {{#if resolvedOutcome}}data-action="toggleResolvedEvent"{{/if}}>
             <div class="event-header">
                 <div class="event-name">
                     {{#if (eq category "encounter")}}<i class="fas fa-swords"></i>
@@ -2011,7 +2011,7 @@
             </div>
             {{#if eventDisrupted}}
             <div class="outcome-disrupted">
-                <i class="fas fa-exclamation-triangle"></i> Rest disrupted by event
+                <i class="fas fa-exclamation-triangle"></i> Complications during rest
             </div>
             {{/if}}
             {{#each outcomes}}
@@ -2090,11 +2090,20 @@
                 <i class="fas fa-bed"></i>
                 <span>CON save DC {{recovery.exhaustionDC}}{{#if recovery.exhaustionAdvantage}} <span class="gear-annotation">(advantage from hot meal)</span>{{/if}}{{#if (eq recovery.exhaustionSaveResult 'passed')}} <span class="exhaustion-recovered">Passed (no exhaustion gained)</span>{{else if (eq recovery.exhaustionSaveResult 'failed')}} <span class="exhaustion-gained">Failed (+1 Exhaustion)</span>{{/if}}</span>
             </div>
+            <div class="outcome-effect-line" style="opacity:0.6;font-size:0.75em;padding-left:1.2rem;">{{#if (eq recovery.comfortLevel 'hostile')}}Hostile{{else}}Rough{{/if}} rest conditions require a Constitution save to avoid exhaustion.</div>
             {{/if}}
             {{#if (eq recovery.comfortLevel "hostile")}}
+            {{#unless (lt recovery.exhaustionDelta 0)}}
             <div class="outcome-exhaustion-advisory hostile-note">
                 <i class="fas fa-skull"></i>
                 <span>Hostile conditions block recovery of existing exhaustion</span>
+            </div>
+            {{/unless}}
+            {{/if}}
+            {{#if recovery.eventDamage}}
+            <div class="outcome-exhaustion-advisory" style="background: rgba(231, 76, 60, 0.1); border-left: 2px solid #e74c3c;">
+                <i class="fas fa-tint" style="color: #e74c3c;"></i>
+                <span style="color: #e74c3c;">Took {{recovery.eventDamage}} damage</span>
             </div>
             {{/if}}
         </div>
@@ -2135,7 +2144,7 @@
         {{#if recoverySummary.length}}
         <div class="recovery-preview">
             {{#each recoverySummary}}
-            <span class="recovery-chip">{{name}}: +{{hp}} HP, +{{hd}} HD{{#if gearBonuses.hd}} <span class="gear-annotation">(+1 bedroll)</span>{{/if}}{{#if exhaustionDC}}{{#if exhaustionDelta}}{{#if (gt exhaustionDelta 0)}}, <span class="exhaustion-gained">+{{exhaustionDelta}} Exhaustion</span>{{else}}, <span class="exhaustion-recovered">exhaustion save: passed{{#if gearBonuses.exhaustionAdvantage}} (advantage){{/if}}</span>{{/if}}{{else}} <span class="gear-annotation">(CON DC {{exhaustionDC}}{{#if gearBonuses.exhaustionAdvantage}}, advantage{{/if}})</span>{{/if}}{{/if}}{{#unless exhaustionDC}}{{#if exhaustionDelta}}{{#if (gt exhaustionDelta 0)}}, <span class="exhaustion-gained">+{{exhaustionDelta}} Exhaustion</span>{{else}}, <span class="exhaustion-recovered">{{exhaustionDelta}} Exhaustion</span>{{/if}}{{/if}}{{/unless}}</span>
+            <span class="recovery-chip{{#if eventDamage}} has-damage{{/if}}">{{name}}: +{{hp}} HP, +{{hd}} HD{{#if gearBonuses.hd}} <span class="gear-annotation">(+1 bedroll)</span>{{/if}}{{#if eventDamage}}, <span class="event-damage">-{{eventDamage}} dmg</span>{{/if}}{{#if exhaustionDC}}{{#if exhaustionDelta}}{{#if (gt exhaustionDelta 0)}}, <span class="exhaustion-gained">+{{exhaustionDelta}} Exhaustion</span>{{else}}, <span class="exhaustion-recovered">exhaustion save: passed{{#if gearBonuses.exhaustionAdvantage}} (advantage){{/if}}</span>{{/if}}{{else}} <span class="gear-annotation">(CON DC {{exhaustionDC}}{{#if gearBonuses.exhaustionAdvantage}}, advantage{{/if}})</span>{{/if}}{{/if}}{{#unless exhaustionDC}}{{#if exhaustionDelta}}{{#if (gt exhaustionDelta 0)}}, <span class="exhaustion-gained">+{{exhaustionDelta}} Exhaustion</span>{{else}}, <span class="exhaustion-recovered">{{exhaustionDelta}} Exhaustion</span>{{/if}}{{/if}}{{/unless}}</span>
             {{/each}}
             {{#each activitySummary}}
             <span class="recovery-chip {{#if (eq result 'failure')}}failure{{/if}}{{#if (eq result 'failure_complication')}}failure{{/if}}">
@@ -2193,11 +2202,20 @@
                 <i class="fas fa-bed"></i>
                 <span>CON save DC {{recovery.exhaustionDC}}{{#if recovery.exhaustionAdvantage}} <span class="gear-annotation">(advantage from hot meal)</span>{{/if}}{{#if (eq recovery.exhaustionSaveResult 'passed')}} <span class="exhaustion-recovered">Passed (no exhaustion gained)</span>{{else if (eq recovery.exhaustionSaveResult 'failed')}} <span class="exhaustion-gained">Failed (+1 Exhaustion)</span>{{/if}}</span>
             </div>
+            <div class="outcome-effect-line" style="opacity:0.6;font-size:0.75em;padding-left:1.2rem;">{{#if (eq recovery.comfortLevel 'hostile')}}Hostile{{else}}Rough{{/if}} rest conditions require a Constitution save to avoid exhaustion.</div>
             {{/if}}
             {{#if (eq recovery.comfortLevel "hostile")}}
+            {{#unless (lt recovery.exhaustionDelta 0)}}
             <div class="outcome-exhaustion-advisory hostile-note">
                 <i class="fas fa-skull"></i>
                 <span>Hostile conditions block recovery of existing exhaustion</span>
+            </div>
+            {{/unless}}
+            {{/if}}
+            {{#if recovery.eventDamage}}
+            <div class="outcome-exhaustion-advisory" style="background: rgba(231, 76, 60, 0.1); border-left: 2px solid #e74c3c;">
+                <i class="fas fa-tint" style="color: #e74c3c;"></i>
+                <span style="color: #e74c3c;">Took {{recovery.eventDamage}} damage</span>
             </div>
             {{/if}}
         </div>
@@ -2218,7 +2236,7 @@
         {{#if recoverySummary.length}}
         <div class="recovery-preview">
             {{#each recoverySummary}}
-            <span class="recovery-chip">{{name}}: +{{hp}} HP, +{{hd}} HD{{#if gearBonuses.hd}} <span class="gear-annotation">(+1 bedroll)</span>{{/if}}{{#if exhaustionDC}}{{#if exhaustionDelta}}{{#if (gt exhaustionDelta 0)}}, <span class="exhaustion-gained">+{{exhaustionDelta}} Exhaustion</span>{{else}}, <span class="exhaustion-recovered">exhaustion save: passed{{#if gearBonuses.exhaustionAdvantage}} (advantage){{/if}}</span>{{/if}}{{else}} <span class="gear-annotation">(CON DC {{exhaustionDC}}{{#if gearBonuses.exhaustionAdvantage}}, advantage{{/if}})</span>{{/if}}{{/if}}{{#unless exhaustionDC}}{{#if exhaustionDelta}}{{#if (gt exhaustionDelta 0)}}, <span class="exhaustion-gained">+{{exhaustionDelta}} Exhaustion</span>{{else}}, <span class="exhaustion-recovered">{{exhaustionDelta}} Exhaustion</span>{{/if}}{{/if}}{{/unless}}</span>
+            <span class="recovery-chip{{#if eventDamage}} has-damage{{/if}}">{{name}}: +{{hp}} HP, +{{hd}} HD{{#if gearBonuses.hd}} <span class="gear-annotation">(+1 bedroll)</span>{{/if}}{{#if eventDamage}}, <span class="event-damage">-{{eventDamage}} dmg</span>{{/if}}{{#if exhaustionDC}}{{#if exhaustionDelta}}{{#if (gt exhaustionDelta 0)}}, <span class="exhaustion-gained">+{{exhaustionDelta}} Exhaustion</span>{{else}}, <span class="exhaustion-recovered">exhaustion save: passed{{#if gearBonuses.exhaustionAdvantage}} (advantage){{/if}}</span>{{/if}}{{else}} <span class="gear-annotation">(CON DC {{exhaustionDC}}{{#if gearBonuses.exhaustionAdvantage}}, advantage{{/if}})</span>{{/if}}{{/if}}{{#unless exhaustionDC}}{{#if exhaustionDelta}}{{#if (gt exhaustionDelta 0)}}, <span class="exhaustion-gained">+{{exhaustionDelta}} Exhaustion</span>{{else}}, <span class="exhaustion-recovered">{{exhaustionDelta}} Exhaustion</span>{{/if}}{{/if}}{{/unless}}</span>
             {{/each}}
             {{#each activitySummary}}
             <span class="recovery-chip {{#if (eq result 'failure')}}failure{{/if}}{{#if (eq result 'failure_complication')}}failure{{/if}}">

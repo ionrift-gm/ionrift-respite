@@ -198,6 +198,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         game.ionrift.respite.jumpToResolution = () => this._debugJumpToResolution();
         game.ionrift.respite.jumpToEncounter = () => this._debugJumpToEncounter();
         game.ionrift.respite.jumpToDisaster = () => this._debugJumpToDisaster();
+        game.ionrift.respite.jumpToRecoveryPenalty = () => this._debugJumpToRecoveryPenalty();
+        game.ionrift.respite.jumpToDamageTest = () => this._debugJumpToDamageTest();
+        game.ionrift.respite.jumpToHostileComfort = () => this._debugJumpToHostileComfort();
         game.ionrift.respite.addSupplies = (qty = 50) => RestSetupApp._debugAddSupplies(qty);
 
         // Inventory sync: auto-refresh meal options when items change (e.g. player transfers)
@@ -428,6 +431,305 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this.render(true);
         console.log("[Respite:Debug] Jumped to events phase with Flash Flood decision tree.");
         ui.notifications.info("Flash Flood disaster injected. Decision tree active.");
+    }
+
+    /**
+     * Debug: Jump directly to the resolution phase with a pre-resolved Bog Rot
+     * failure event, demonstrating the 0.5 hpMultiplier recovery penalty.
+     *
+     * Sets all player characters to half HP first, so the recovery gap is visible.
+     * On the Resolution screen, you should see recovery = floor(gap * 0.5).
+     *
+     * Usage: game.ionrift.respite.jumpToRecoveryPenalty()
+     */
+    async _debugJumpToRecoveryPenalty() {
+        if (!game.user.isGM) return console.warn("GM only");
+
+        const { RestFlowEngine } = await import("../services/RestFlowEngine.js");
+        const terrainTag = "swamp";
+        const targets = game.actors.filter(a => a.hasPlayerOwner && a.type === "character").map(a => a.id);
+
+        if (targets.length === 0) {
+            ui.notifications.warn("No player-owned characters found.");
+            return;
+        }
+
+        // Set all player characters to half HP so the recovery gap is obvious
+        for (const id of targets) {
+            const actor = game.actors.get(id);
+            if (!actor) continue;
+            const maxHp = actor.system?.attributes?.hp?.max ?? 0;
+            const halfHp = Math.floor(maxHp / 2);
+            await actor.update({ "system.attributes.hp.value": halfHp });
+            console.log(`[Respite:Debug] ${actor.name}: HP set to ${halfHp}/${maxHp}`);
+        }
+
+        // Create engine at rough comfort (so base recovery is normal, penalty comes from event)
+        this._engine = new RestFlowEngine({
+            restType: "long", terrainTag, comfort: "rough"
+        });
+
+        for (const id of targets) {
+            this._engine.registerChoice(id, "act_keep_watch");
+            this._characterChoices.set(id, "act_keep_watch");
+        }
+
+        // Inject Bog Rot as already resolved with a failure outcome (0.5 hpMultiplier)
+        this._triggeredEvents = [{
+            id: "evt_swamp_bog_rot",
+            name: "Bog Rot",
+            category: "complication",
+            description: "Infected wounds fester. Recovery will be slower.",
+            narrative: "Infected wounds fester. Recovery will be slower.",
+            targets,
+            result: "failure",
+            resolvedOutcome: "failure",
+            effects: [
+                {
+                    type: "recovery_penalty",
+                    hpMultiplier: 0.5,
+                    description: "Infected wounds reduce healing."
+                }
+            ]
+        }];
+
+        // Build outcomes via the engine (this runs _calculateRecovery with the penalty)
+        this._eventsRolled = true;
+        this._outcomes = await this._engine.resolve(this._activityResolver, this._triggeredEvents, new Map());
+        this._phase = "resolve";
+        this._engine._phase = "resolve";
+
+        // Register and broadcast
+        registerActiveRestApp(this);
+        await this._saveRestState();
+        const restPayload = {
+            restId: `rest_${Date.now()}`, terrainTag: this._engine.terrainTag, comfort: this._engine.comfort,
+            restType: this._engine.restType, activities: this._activities ?? [],
+            recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
+        };
+        setActiveRestData(restPayload);
+        game.socket.emit(`module.${MODULE_ID}`, { type: "restStarted", restData: restPayload });
+
+        setTimeout(() => {
+            const snapshot = this.getRestSnapshot?.();
+            if (snapshot) game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
+            game.socket.emit(`module.${MODULE_ID}`, {
+                type: "phaseChanged", phase: "resolve", phaseData: { outcomes: this._outcomes }
+            });
+        }, 200);
+
+        this.render(true);
+
+        // Log expected values for easy verification
+        for (const o of this._outcomes) {
+            const actor = game.actors.get(o.characterId);
+            const maxHp = actor?.system?.attributes?.hp?.max ?? 0;
+            const curHp = actor?.system?.attributes?.hp?.value ?? 0;
+            const gap = maxHp - curHp;
+            const expected = Math.floor(gap * 0.5);
+            console.log(`[Respite:Debug] ${o.characterName}: gap=${gap}, expected recovery=${expected}, actual recovery=${o.recovery?.hpRestored ?? "?"}`);
+        }
+        console.log("[Respite:Debug] Jumped to resolution with Bog Rot 0.5x hpMultiplier penalty.");
+        ui.notifications.info("Recovery penalty scenario loaded. Check the resolution screen.");
+    }
+
+    /**
+     * Debug: Jump directly to the resolution phase with a pre-resolved damage
+     * event. Sets Randal (or first PC) to 5 HP, then runs a rest with 10
+     * bludgeoning damage. Expected final HP = max - 10.
+     *
+     * Usage: game.ionrift.respite.jumpToDamageTest()
+     */
+    async _debugJumpToDamageTest() {
+        if (!game.user.isGM) return console.warn("GM only");
+
+        const { RestFlowEngine } = await import("../services/RestFlowEngine.js");
+        const terrainTag = "forest";
+        const targets = game.actors.filter(a => a.hasPlayerOwner && a.type === "character").map(a => a.id);
+
+        if (targets.length === 0) {
+            ui.notifications.warn("No player-owned characters found.");
+            return;
+        }
+
+        // Set all player characters to 5 HP so the long rest healing is visible
+        for (const id of targets) {
+            const actor = game.actors.get(id);
+            if (!actor) continue;
+            const maxHp = actor.system?.attributes?.hp?.max ?? 0;
+            const startHp = Math.min(5, maxHp);
+            await actor.update({ "system.attributes.hp.value": startHp });
+            console.log(`[Respite:Debug] ${actor.name}: HP set to ${startHp}/${maxHp}`);
+        }
+
+        // Create engine at sheltered comfort (standard recovery)
+        this._engine = new RestFlowEngine({
+            restType: "long", terrainTag, comfort: "sheltered"
+        });
+
+        for (const id of targets) {
+            this._engine.registerChoice(id, "act_rest_fully");
+            this._characterChoices.set(id, "act_rest_fully");
+        }
+
+        // Inject a simple damage event (no decision tree, no checks)
+        this._triggeredEvents = [{
+            id: "evt_test_damage",
+            name: "Falling Branch",
+            category: "complication",
+            description: "A large branch cracks loose and crashes into camp.",
+            narrative: "A large branch cracks loose and crashes into camp.",
+            targets,
+            resolved: true,
+            resolvedOutcome: "failure",
+            effects: [
+                { type: "damage", formula: "10", damageType: "bludgeoning", description: "Struck by falling branch." }
+            ]
+        }];
+
+        // Build outcomes
+        this._eventsRolled = true;
+        this._outcomes = await this._engine.resolve(this._activityResolver, this._triggeredEvents, new Map());
+        this._phase = "resolve";
+        this._engine._phase = "resolve";
+
+        // Inject eventDamage into recovery (normally done by RecoveryHandler.applyAll)
+        for (const o of this._outcomes) {
+            // Sum up all damage effects from event outcomes
+            let totalDamage = 0;
+            for (const sub of (o.outcomes ?? [])) {
+                if (sub.source === "event" && sub.resolvedOutcome !== "success") {
+                    for (const eff of (sub.effects ?? [])) {
+                        if (eff.type === "damage") {
+                            // Parse flat formula or use the number directly
+                            const dmg = parseInt(eff.formula) || 0;
+                            totalDamage += dmg;
+                        }
+                    }
+                }
+            }
+            if (totalDamage > 0 && o.recovery) {
+                o.recovery.eventDamage = totalDamage;
+            }
+        }
+
+        // Register and broadcast
+        registerActiveRestApp(this);
+        await this._saveRestState();
+        const restPayload = {
+            restId: `rest_${Date.now()}`, terrainTag: this._engine.terrainTag, comfort: this._engine.comfort,
+            restType: this._engine.restType, activities: this._activities ?? [],
+            recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
+        };
+        setActiveRestData(restPayload);
+        game.socket.emit(`module.${MODULE_ID}`, { type: "restStarted", restData: restPayload });
+
+        setTimeout(() => {
+            const snapshot = this.getRestSnapshot?.();
+            if (snapshot) game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
+            game.socket.emit(`module.${MODULE_ID}`, {
+                type: "phaseChanged", phase: "resolve", phaseData: { outcomes: this._outcomes }
+            });
+        }, 200);
+
+        this.render(true);
+
+        // Log expected values
+        for (const o of this._outcomes) {
+            const actor = game.actors.get(o.characterId);
+            const maxHp = actor?.system?.attributes?.hp?.max ?? 0;
+            console.log(`[Respite:Debug] ${o.characterName}: maxHp=${maxHp}, recovery=${o.recovery?.hpRestored ?? "?"}, expected final=${maxHp} - 10 = ${maxHp - 10}`);
+            // Check if damage effects came through
+            for (const sub of (o.outcomes ?? [])) {
+                if (sub.source === "event") {
+                    console.log(`  Event outcome: ${sub.eventName}, resolvedOutcome=${sub.resolvedOutcome}, effects=${JSON.stringify(sub.effects)}`);
+                }
+            }
+        }
+        console.log("[Respite:Debug] Jumped to resolution with 10 bludgeoning damage event.");
+        ui.notifications.info("Damage test scenario loaded. Click 'Apply Results' to apply.");
+    }
+
+    /**
+     * Debug: Jump to resolution at hostile camp comfort.
+     * First PC gets Rest Fully (comfort boosted to rough, CON DC 10).
+     * Others get Keep Watch (stays hostile, CON DC 15).
+     * No events injected - clean rest to inspect exhaustion advisory text.
+     *
+     * Usage: game.ionrift.respite.jumpToHostileComfort()
+     */
+    async _debugJumpToHostileComfort() {
+        if (!game.user.isGM) return console.warn("GM only");
+
+        const { RestFlowEngine } = await import("../services/RestFlowEngine.js");
+        const terrainTag = "forest";
+        const targets = game.actors.filter(a => a.hasPlayerOwner && a.type === "character").map(a => a.id);
+
+        if (targets.length === 0) {
+            ui.notifications.warn("No player-owned characters found.");
+            return;
+        }
+
+        // Set all PCs to half HP so recovery numbers are visible
+        for (const id of targets) {
+            const actor = game.actors.get(id);
+            if (!actor) continue;
+            const maxHp = actor.system?.attributes?.hp?.max ?? 0;
+            const halfHp = Math.floor(maxHp / 2);
+            await actor.update({ "system.attributes.hp.value": halfHp });
+            console.log(`[Respite:Debug] ${actor.name}: HP set to ${halfHp}/${maxHp}`);
+        }
+
+        // Hostile camp comfort
+        this._engine = new RestFlowEngine({
+            restType: "long", terrainTag, comfort: "hostile"
+        });
+
+        // First PC: Rest Fully (gets comfort boost), others: Keep Watch
+        const firstId = targets[0];
+        this._engine.registerChoice(firstId, "act_rest_fully");
+        this._characterChoices.set(firstId, "act_rest_fully");
+        for (const id of targets.slice(1)) {
+            this._engine.registerChoice(id, "act_keep_watch");
+            this._characterChoices.set(id, "act_keep_watch");
+        }
+
+        // No events - clean rest
+        this._triggeredEvents = [];
+        this._eventsRolled = true;
+        this._outcomes = await this._engine.resolve(this._activityResolver, this._triggeredEvents, new Map());
+        this._phase = "resolve";
+        this._engine._phase = "resolve";
+
+        // Register and broadcast
+        registerActiveRestApp(this);
+        await this._saveRestState();
+        const restPayload = {
+            restId: `rest_${Date.now()}`, terrainTag: this._engine.terrainTag, comfort: this._engine.comfort,
+            restType: this._engine.restType, activities: this._activities ?? [],
+            recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
+        };
+        setActiveRestData(restPayload);
+        game.socket.emit(`module.${MODULE_ID}`, { type: "restStarted", restData: restPayload });
+
+        setTimeout(() => {
+            const snapshot = this.getRestSnapshot?.();
+            if (snapshot) game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
+            game.socket.emit(`module.${MODULE_ID}`, {
+                type: "phaseChanged", phase: "resolve", phaseData: { outcomes: this._outcomes }
+            });
+        }, 200);
+
+        this.render(true);
+
+        // Log results
+        for (const o of this._outcomes) {
+            const eff = o.recovery?.comfortLevel ?? "?";
+            const camp = o.recovery?.campComfort ?? "?";
+            console.log(`[Respite:Debug] ${o.characterName}: camp=${camp}, effective=${eff}, exhaustionDC=${o.recovery?.exhaustionDC ?? "none"}`);
+        }
+        console.log("[Respite:Debug] Hostile comfort scenario loaded.");
+        ui.notifications.info("Hostile comfort scenario loaded. Check exhaustion advisories.");
     }
 
     /**
@@ -669,31 +971,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     ? `<p><strong>${ungrantedCount} discovered item${ungrantedCount > 1 ? "s have" : " has"} not been granted.</strong> These will be lost.</p>`
                     : "";
 
-                return new Promise(resolve => {
-                    const overlay = document.createElement("div");
-                    overlay.classList.add("ionrift-armor-modal-overlay");
-                    overlay.innerHTML = `
-                        <div class="ionrift-armor-modal">
-                            <h3><i class="fas fa-exclamation-triangle"></i> Discard Rest?</h3>
-                            <p>The rest has not been applied yet. Closing now will discard all results.</p>
-                            ${ungrantedNote}
-                            <div class="ionrift-armor-modal-buttons">
-                                <button class="btn-armor-confirm"><i class="fas fa-times"></i> Discard</button>
-                                <button class="btn-armor-cancel"><i class="fas fa-arrow-left"></i> Go Back</button>
-                            </div>
-                        </div>`;
-                    document.body.appendChild(overlay);
-                    overlay.querySelector(".btn-armor-confirm").addEventListener("click", async () => {
-                        overlay.remove();
-                        game.socket.emit(`module.${MODULE_ID}`, { type: "restResolved" });
-                        await super.close(options);
-                        resolve();
-                    });
-                    overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => {
-                        overlay.remove();
-                        resolve();
-                    });
+                const confirmed = await game.ionrift.library.confirm({
+                    title: "Discard Rest?",
+                    content: `<p>The rest has not been applied yet. Closing now will discard all results.</p>${ungrantedNote}`,
+                    yesLabel: "Discard",
+                    noLabel: "Go Back",
+                    yesIcon: "fas fa-times",
+                    noIcon: "fas fa-arrow-left",
+                    defaultYes: false
                 });
+
+                if (confirmed) {
+                    game.socket.emit(`module.${MODULE_ID}`, { type: "restResolved" });
+                    await super.close(options);
+                }
+                return;
             }
 
             // If rest is unresolved (not in resolve phase), show persistent indicator
@@ -1203,6 +1495,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 name: o.characterName,
                 hp: o.recovery?.hpRestored ?? 0,
                 hd: o.recovery?.hdRestored ?? 0,
+                eventDamage: o.recovery?.eventDamage ?? 0,
                 exhaustionDelta: o.recovery?.exhaustionDelta ?? 0,
                 exhaustionDC: o.recovery?.exhaustionDC ?? 0,
                 exhaustionSaveResult: o.recovery?.exhaustionSaveResult ?? null,
@@ -4444,7 +4737,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Apply recovery (HP, HD, exhaustion) immediately at resolution
         const skipRecovery = game.settings.get(MODULE_ID, "restRecoveryDetected");
-        await RecoveryHandler.applyAll(this._outcomes, skipRecovery);
+        const recoveryResults = await RecoveryHandler.applyAll(this._outcomes, skipRecovery);
+
+        // Inject event damage into outcomes so the whispers and UI can display it
+        for (const outcome of this._outcomes) {
+            const res = recoveryResults.find(r => r.characterId === outcome.characterId);
+            if (res?.eventDamage > 0) {
+                outcome.recovery.eventDamage = res.eventDamage;
+            }
+        }
 
         // Create items from outcomes (forage, crafts, etc.)
         try {
@@ -4510,6 +4811,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (recovery.gearDescriptors?.length) {
                     const gearLine = recovery.gearDescriptors.map(d => `<i class="fas fa-cog"></i> ${d}`).join("<br>");
                     lines.push(`<p style="font-size:0.85em;opacity:0.8;">${gearLine}</p>`);
+                }
+                
+                // Display event damage visually
+                if (recovery.eventDamage > 0) {
+                    const dmgEvents = (outcome.outcomes ?? [])
+                        .filter(sub => sub.source === "event" && sub.effects?.some(e => e.type === "damage"))
+                        .map(sub => sub.eventName);
+                    const sourceText = dmgEvents.length > 0 ? dmgEvents.join(", ") : "an event";
+                    lines.push(`<p><i class="fas fa-tint" style="color:#e74c3c;"></i> <strong style="color:#e74c3c;">Took ${recovery.eventDamage} damage</strong> from ${sourceText}</p>`);
                 }
             }
 
