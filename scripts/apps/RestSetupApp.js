@@ -21,7 +21,7 @@ import { MealDelegate } from "./delegates/MealDelegate.js";
 import { CopySpellDelegate } from "./delegates/CopySpellDelegate.js";
 import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS } from "./RestConstants.js";
 import { ShortRestApp } from "./ShortRestApp.js";
-import { registerActiveRestApp, clearActiveRestApp, setActiveRestData, registerCampfireApp, clearCampfireApp, _showGmRestIndicator, _removeGmRestIndicator } from "../module.js";
+import { registerActiveRestApp, clearActiveRestApp, setActiveRestData, registerCampfireApp, clearCampfireApp, _showGmRestIndicator, _removeGmRestIndicator, getPartyActors } from "../module.js";
 
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -229,7 +229,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const { RestFlowEngine } = await import("../services/RestFlowEngine.js");
         const terrainTag = this._engine?.terrainTag ?? "forest";
-        const targets = game.actors.filter(a => a.hasPlayerOwner).map(a => a.id);
+        const targets = getPartyActors().map(a => a.id);
 
         // Create a minimal engine if none exists
         if (!this._engine) {
@@ -301,7 +301,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const { RestFlowEngine } = await import("../services/RestFlowEngine.js");
         const terrainTag = this._engine?.terrainTag ?? "forest";
-        const targets = game.actors.filter(a => a.hasPlayerOwner).map(a => a.id);
+        const targets = getPartyActors().map(a => a.id);
 
         if (!this._engine) {
             this._engine = new RestFlowEngine({
@@ -369,7 +369,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const { RestFlowEngine } = await import("../services/RestFlowEngine.js");
         const terrainTag = this._engine?.terrainTag ?? "forest";
-        const targets = game.actors.filter(a => a.hasPlayerOwner).map(a => a.id);
+        const targets = getPartyActors().map(a => a.id);
 
         if (!this._engine) {
             this._engine = new RestFlowEngine({
@@ -447,7 +447,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const { RestFlowEngine } = await import("../services/RestFlowEngine.js");
         const terrainTag = "swamp";
-        const targets = game.actors.filter(a => a.hasPlayerOwner && a.type === "character").map(a => a.id);
+        const targets = getPartyActors().map(a => a.id);
 
         if (targets.length === 0) {
             ui.notifications.warn("No player-owned characters found.");
@@ -545,7 +545,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const { RestFlowEngine } = await import("../services/RestFlowEngine.js");
         const terrainTag = "forest";
-        const targets = game.actors.filter(a => a.hasPlayerOwner && a.type === "character").map(a => a.id);
+        const targets = getPartyActors().map(a => a.id);
 
         if (targets.length === 0) {
             ui.notifications.warn("No player-owned characters found.");
@@ -663,7 +663,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const { RestFlowEngine } = await import("../services/RestFlowEngine.js");
         const terrainTag = "forest";
-        const targets = game.actors.filter(a => a.hasPlayerOwner && a.type === "character").map(a => a.id);
+        const targets = getPartyActors().map(a => a.id);
 
         if (targets.length === 0) {
             ui.notifications.warn("No player-owned characters found.");
@@ -739,7 +739,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static async _debugAddSupplies(qty = 50) {
         if (!game.user.isGM) return console.warn("GM only");
 
-        const actors = game.actors.filter(a => a.hasPlayerOwner && a.type === "character");
+        const actors = getPartyActors();
         for (const actor of actors) {
             // Check if they already have supplies
             const existing = actor.items.find(i =>
@@ -1017,7 +1017,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!this._craftingInProgress) this._craftingInProgress = new Set();
         if (!this._shelterOverrides) this._shelterOverrides = {};
 
-        const partyActors = game.actors.filter(a => a.hasPlayerOwner);
+        const partyActors = getPartyActors();
         const emptyParty = partyActors.length === 0;
         if (!this._selectedTerrain) {
             const lastTerrain = game.settings.get(MODULE_ID, "lastTerrain");
@@ -1550,6 +1550,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return {
             isGM: this._isGM,
             emptyParty,
+            rosterInfo: (() => {
+                const roster = getPartyActors();
+                return {
+                    count: roster.length,
+                    names: roster.map(a => a.name),
+                    portraits: roster.slice(0, 6).map(a => ({
+                        img: a.img ?? "icons/svg/mystery-man.svg",
+                        name: a.name
+                    })),
+                    overflow: Math.max(0, roster.length - 6)
+                };
+            })(),
             trackFood: game.settings.get(MODULE_ID, "trackFood"),
             gmCopySpellProposal: this._gmCopySpellProposal ?? null,
             copySpellRollPrompt: this._copySpellRollPrompt ?? null,
@@ -1709,7 +1721,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             recoverySummary,
             activitySummary,
             partyDiscoveries,
-            grantActors: game.actors.filter(a => a.hasPlayerOwner).map(a => ({ id: a.id, name: a.name })),
+            grantActors: getPartyActors().map(a => ({ id: a.id, name: a.name })),
             activityDetail: this._buildActivityDetailContext(selectedCharacter),
             campStatus: this._engine ? (() => {
                 const comfort = this._engine.comfort;
@@ -1792,12 +1804,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
                 const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
 
-                // GM: all characters. Player: only owned characters.
+                // GM: roster characters only. Player: only owned + rostered characters.
+                const rosterIds = new Set(getPartyActors().map(a => a.id));
                 let characterIds;
                 if (this._isGM) {
-                    characterIds = this._engine?.characterChoices ? Array.from(this._engine.characterChoices.keys()) : [];
+                    characterIds = this._engine?.characterChoices
+                        ? Array.from(this._engine.characterChoices.keys()).filter(id => rosterIds.has(id))
+                        : [];
                 } else {
-                    characterIds = this._myCharacterIds ? Array.from(this._myCharacterIds) : [];
+                    characterIds = this._myCharacterIds
+                        ? Array.from(this._myCharacterIds).filter(id => rosterIds.has(id))
+                        : [];
                 }
 
                 const allCards = MealPhaseHandler.buildMealContext(
@@ -1930,7 +1947,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             };
 
             if (tile.followUp.type === "partyMember") {
-                const partyActors = game.actors.filter(a => a.hasPlayerOwner && a.type === "character" && a.id !== selectedCharacter.id);
+                const partyActors = getPartyActors().filter(a => a.id !== selectedCharacter.id);
                 followUpData.options = partyActors.sort((a, b) => {
                     const aRatio = a.system.attributes?.hp?.value / a.system.attributes?.hp?.max;
                     const bRatio = b.system.attributes?.hp?.value / b.system.attributes?.hp?.max;
@@ -2848,7 +2865,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const watchIds = triggeredEvent.targets ?? [];
             const actors = watchIds.length > 0
                 ? watchIds.map(id => game.actors.get(id)).filter(Boolean)
-                : game.actors.filter(a => a.hasPlayerOwner);
+                : getPartyActors();
 
             const pendingRolls = actors.map(a => a.id);
             triggeredEvent.awaitingRolls = true;
@@ -3823,7 +3840,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // ── Camp Preparations: identify camp activities needing pre-event rolls ──
         this._pendingCampRolls = [];
         const campActivities = (this._activities ?? []).filter(a => a.category === "camp");
-        const partyActors = game.actors.filter(a => a.hasPlayerOwner && a.type === "character");
+        const partyActors = getPartyActors();
 
         for (const actor of partyActors) {
             const gmOverride = this._gmOverrides.get(actor.id);
@@ -3911,7 +3928,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 });
                 if (encounterEntry) {
                     const ev = this._eventResolver.events.get(encounterEntry.eventId);
-                    const targets = game.actors.filter(a => a.hasPlayerOwner).map(a => a.id);
+                    const targets = getPartyActors().map(a => a.id);
                     this._triggeredEvents = [{
                         id: ev.id, name: ev.name, category: ev.category,
                         description: ev.description, mechanical: ev.mechanical,
@@ -4059,8 +4076,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const { DetectMagicScanner } = await import("../services/DetectMagicScanner.js");
 
         // Get party actors directly (same source as _prepareContext, not engine.roster)
-        const actorIds = game.actors
-            .filter(a => a.hasPlayerOwner && a.type === "character")
+        const actorIds = getPartyActors()
             .map(a => a.id);
         console.log(`[Respite:Scan] Scanning ${actorIds.length} actors:`, actorIds);
         const results = DetectMagicScanner.scanParty(actorIds);
@@ -4542,7 +4558,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 
         if (allEffects.length > 0) {
-            const characters = game.actors.filter(a => a.hasPlayerOwner && a.type === "character");
+            const characters = getPartyActors();
             const context = { characters };
 
             // Build unified proposal: { supplyProposals, itemAtRiskProposals, goldProposals }
@@ -4644,7 +4660,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Apply disaster exhaustion to actors and track per-actor gains
         const disasterExhaustion = new Map(); // actorId -> total levels gained
         if (conditionEffects.length > 0) {
-            const characters = game.actors.filter(a => a.hasPlayerOwner && a.type === "character");
+            const characters = getPartyActors();
             for (const eff of conditionEffects) {
                 const level = eff.level ?? 1;
                 const scope = eff.scope ?? "all";
@@ -4744,6 +4760,29 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const res = recoveryResults.find(r => r.characterId === outcome.characterId);
             if (res?.eventDamage > 0) {
                 outcome.recovery.eventDamage = res.eventDamage;
+            }
+        }
+
+        // Trigger DnD5e native rest for spell slots, class features, item uses.
+        // HP/HD/Exhaustion already handled by RecoveryHandler above;
+        // the preRestCompleted hook in module.js suppresses those from the
+        // system's own recovery so there is no double-dipping.
+        // When rest-recovery module is active it handles everything, so we skip.
+        if (!skipRecovery) {
+            const restType = this._engine?.restType ?? "long";
+            for (const outcome of this._outcomes) {
+                const actor = game.actors.get(outcome.characterId);
+                if (!actor) continue;
+                try {
+                    if (restType === "long") {
+                        await actor.longRest({ dialog: false, chat: false, advanceTime: false });
+                    } else {
+                        await actor.shortRest({ dialog: false, chat: false, advanceTime: false });
+                    }
+                    console.log(`${MODULE_ID} | Native ${restType} rest applied for ${actor.name} (spell slots, features, item uses).`);
+                } catch (e) {
+                    console.warn(`${MODULE_ID} | Native rest failed for ${actor.name}:`, e);
+                }
             }
         }
 

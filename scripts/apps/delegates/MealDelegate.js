@@ -7,6 +7,7 @@
 
 import { MealPhaseHandler } from "../../services/MealPhaseHandler.js";
 import { TerrainRegistry } from "../../services/TerrainRegistry.js";
+import { getPartyActors } from "../../module.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -202,7 +203,10 @@ export class MealDelegate {
         }
         console.log(`[Respite:Meal] #onProceedFromMeal — starting`);
 
-        const characterIds = app._engine?.characterChoices ? Array.from(app._engine.characterChoices.keys()) : [];
+        const rosterIds = new Set(getPartyActors().map(a => a.id));
+        const characterIds = app._engine?.characterChoices
+            ? Array.from(app._engine.characterChoices.keys()).filter(id => rosterIds.has(id))
+            : [];
         if (!app._mealChoices) app._mealChoices = new Map();
 
         // Check for unsubmitted player characters
@@ -548,22 +552,17 @@ export class MealDelegate {
         const actor = game.actors.get(characterId);
         if (!actor) return;
 
-        const overlay = document.createElement("div");
-        overlay.classList.add("ionrift-armor-modal-overlay");
-        overlay.innerHTML = `
-            <div class="ionrift-armor-modal">
-                <h3><i class="fas fa-tint-slash"></i> Dehydration Check</h3>
-                <p><strong>${actorName}</strong> has gone without water.</p>
-                <p>Constitution save DC ${dc} or gain 1 level of exhaustion.</p>
-                <div class="ionrift-armor-modal-buttons">
-                    <button class="btn-armor-confirm"><i class="fas fa-dice-d20"></i> Roll CON Save</button>
-                </div>
-            </div>`;
-        document.body.appendChild(overlay);
+        const confirmed = await game.ionrift.library.confirm({
+            title: "Dehydration Check",
+            content: `<p><strong>${actorName}</strong> has gone without water.</p><p>Constitution save DC ${dc} or gain 1 level of exhaustion.</p>`,
+            yesLabel: "Roll CON Save",
+            noLabel: "Cancel",
+            yesIcon: "fas fa-dice-d20",
+            noIcon: "fas fa-times",
+            defaultYes: true
+        });
 
-        overlay.querySelector(".btn-armor-confirm").addEventListener("click", async () => {
-            overlay.remove();
-
+        if (confirmed) {
             let total = 0;
             let passed = false;
             try {
@@ -593,7 +592,7 @@ export class MealDelegate {
                     userId: game.user.id
                 });
             }, 3500);
-        });
+        }
     }
 
     /**

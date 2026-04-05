@@ -1,3 +1,5 @@
+import { getPartyActors } from "../module.js";
+
 /**
  * RestFlowEngine
  * Orchestrates the four-phase rest sequence: Setup, Activity, Events, Resolution.
@@ -104,7 +106,11 @@ export class RestFlowEngine {
         this._phase = "resolve";
         const outcomes = [];
 
+        // Filter through current roster to exclude characters removed mid-rest
+        const rosterIds = new Set(getPartyActors().map(a => a.id));
+
         for (const [characterId, choice] of this.characterChoices) {
+            if (!rosterIds.has(characterId)) continue;
             const actor = game.actors.get(characterId);
             if (!actor) continue;
 

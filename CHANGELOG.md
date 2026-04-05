@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.12] - 2026-04-05
+
+### Fixed
+- Spell slots, pact slots, and class features (Channel Divinity, Action Surge, etc.) now recover after a Respite rest. Previously only HP, Hit Dice, and exhaustion were handled. Tables without the rest-recovery module were silently broken.
+
+### Added
+- Party Roster. GMs can now choose which characters participate in Respite rests via Module Settings. Summons, familiars, and sidekick tokens with player ownership are no longer included automatically. The roster persists across rests and shows a compact indicator in the setup wizard.
+
+
 ## [1.0.11] - 2026-04-04
 
 ### Fixed

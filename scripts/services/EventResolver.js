@@ -1,3 +1,5 @@
+import { getPartyActors } from "../module.js";
+
 /**
  * EventResolver
  * Pool-based event selection during the Events phase.
@@ -374,13 +376,13 @@ export class EventResolver {
             return watchRoster.map(w => w.characterId);
         }
         if (event.mechanical?.targets === "all") {
-            return game.actors.filter(a => a.hasPlayerOwner).map(a => a.id);
+            return getPartyActors().map(a => a.id);
         }
         // Default: target watchers if present, otherwise random party member
         if (watchRoster.length > 0) {
             return watchRoster.map(w => w.characterId);
         }
-        const partyActors = game.actors.filter(a => a.hasPlayerOwner);
+        const partyActors = getPartyActors();
         if (partyActors.length === 0) return [];
         const randomIndex = Math.floor(Math.random() * partyActors.length);
         return [partyActors[randomIndex].id];

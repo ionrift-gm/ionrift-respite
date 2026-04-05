@@ -97,6 +97,23 @@
             </div>
             {{#if (eq setupStep 1)}}
             <div class="setup-section-body">
+                {{!-- Party Roster Indicator --}}
+                {{#if rosterInfo}}
+                <div class="roster-indicator">
+                    <div class="roster-indicator-portraits">
+                        {{#each rosterInfo.portraits}}
+                        <img class="roster-indicator-portrait" src="{{img}}" alt="{{name}}" title="{{name}}">
+                        {{/each}}
+                        {{#if rosterInfo.overflow}}
+                        <span class="roster-indicator-overflow">+{{rosterInfo.overflow}}</span>
+                        {{/if}}
+                    </div>
+                    <span class="roster-indicator-label">{{rosterInfo.count}} characters</span>
+                    <button type="button" class="roster-indicator-edit" onclick="game.settings.menus.get('ionrift-respite.partyRosterMenu')?.type?.prototype?.constructor && new (game.settings.menus.get('ionrift-respite.partyRosterMenu').type)().render(true)" title="Edit Party Roster">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                </div>
+                {{/if}}
                 <div class="terrain-grid">
                     <div class="form-group">
                         <label>Rest Type</label>

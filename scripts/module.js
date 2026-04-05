@@ -13,6 +13,7 @@ import { CampfireTokenLinker } from "./services/CampfireTokenLinker.js";
 
 import { createAdapter } from "./adapters/adapterFactory.js";
 import { PackRegistryApp } from "./apps/PackRegistryApp.js";
+import { PartyRosterApp } from "./apps/PartyRosterApp.js";
 import { CopySpellHandler } from "./services/CopySpellHandler.js";
 import { ImageResolver } from "./util/ImageResolver.js";
 
@@ -93,6 +94,20 @@ export function registerActiveShortRestApp(app) {
 export function clearActiveShortRestApp() {
     activeShortRestApp = null;
     respiteFlowActive = false;
+}
+
+/**
+ * Returns the GM-approved party actors from the world setting.
+ * Falls back to all player-owned characters if the roster is empty (first use).
+ * Exported so RestSetupApp, EventResolver, and other services can use it.
+ * @returns {Actor[]} Array of approved party actors.
+ */
+export function getPartyActors() {
+    const roster = game.settings.get(MODULE_ID, "partyRoster");
+    if (!roster?.length) {
+        return game.actors.filter(a => a.hasPlayerOwner && a.type === "character");
+    }
+    return roster.map(id => game.actors.get(id)).filter(Boolean);
 }
 
 /**
@@ -229,6 +244,22 @@ Hooks.once("init", async () => {
         icon: "fas fa-box-open",
         type: PackRegistryApp,
         restricted: true
+    });
+
+    game.settings.registerMenu(MODULE_ID, "partyRosterMenu", {
+        name: "Party Roster",
+        label: "Edit Roster",
+        hint: "Choose which characters participate in Respite rests. Excludes summons, familiars, and companion sheets.",
+        icon: "fas fa-users",
+        type: PartyRosterApp,
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "partyRoster", {
+        scope: "world",
+        config: false,
+        type: Array,
+        default: []
     });
 
     // BODY: Gameplay settings
@@ -456,34 +487,19 @@ Hooks.once("ready", async () => {
         // Block new rest creation while the resume prompt is open
         respiteFlowActive = true;
 
-        const resume = await new Promise(resolve => {
-            const overlay = document.createElement("div");
-            overlay.classList.add("ionrift-armor-modal-overlay");
-            const isPastSetup = savedRest.phase && savedRest.phase !== "setup";
-            const rewardWarning = isPastSetup
-                ? `<p style="color: #e8a44a;"><i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> Activities have been selected. Spell copies or event discoveries may have already granted items. Discarding and re-resting could produce duplicate rewards.</p>`
-                : "";
-            overlay.innerHTML = `
-                <div class="ionrift-armor-modal">
-                    <h3><i class="fas fa-campground"></i> Interrupted Rest Found</h3>
-                    <p>An interrupted rest was found (saved ${ageLabel}).</p>
-                    <p><strong>Phase:</strong> ${savedRest.phase ?? "unknown"}</p>
-                    <p><strong>Terrain:</strong> ${savedRest.engine.terrainTag ?? "unknown"}</p>
-                    ${rewardWarning}
-                    <div class="ionrift-armor-modal-buttons">
-                        <button class="btn-armor-confirm"><i class="fas fa-campground"></i> Resume Rest</button>
-                        <button class="btn-armor-cancel"><i class="fas fa-trash"></i> Discard</button>
-                    </div>
-                </div>`;
-            document.body.appendChild(overlay);
-            overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => {
-                overlay.remove();
-                resolve(true);
-            });
-            overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => {
-                overlay.remove();
-                resolve(false);
-            });
+        const isPastSetup = savedRest.phase && savedRest.phase !== "setup";
+        const rewardWarning = isPastSetup
+            ? `<p style="color: #e8a44a;"><i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> Activities have been selected. Spell copies or event discoveries may have already granted items. Discarding and re-resting could produce duplicate rewards.</p>`
+            : "";
+
+        const resume = await game.ionrift.library.confirm({
+            title: "Interrupted Rest Found",
+            content: `<p>An interrupted rest was found (saved ${ageLabel}).</p><p><strong>Phase:</strong> ${savedRest.phase ?? "unknown"}</p><p><strong>Terrain:</strong> ${savedRest.engine.terrainTag ?? "unknown"}</p>${rewardWarning}`,
+            yesLabel: "Resume Rest",
+            noLabel: "Discard",
+            yesIcon: "fas fa-campground",
+            noIcon: "fas fa-trash",
+            defaultYes: true
         });
 
         if (resume) {
@@ -590,8 +606,11 @@ Hooks.on("dnd5e.preLongRest", _blockPlayerRest);
 Hooks.on("dnd5e.preRestCompleted", (actor, result, config) => {
     if (!respiteFlowActive) return true;
 
-    // Suppress HP recovery: system would set hp to max, we zero the delta
+    // Suppress HP recovery: system would set hp to max, we zero the delta and strip the payload
     if (result.dhp !== undefined) result.dhp = 0;
+    if (result.updateData?.["system.attributes.hp.value"] !== undefined) {
+        delete result.updateData["system.attributes.hp.value"];
+    }
 
     // Suppress HD recovery: zero out the array of restored HD
     if (result.dhd !== undefined) result.dhd = 0;
