@@ -6040,6 +6040,154 @@
     opacity: 0.5;
 }
 
+/* ---- Tab Bar ---- */
+
+.pack-tab-bar {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 0.5rem;
+}
+
+.pack-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-bottom: 2px solid transparent !important;
+    border-radius: 6px 6px 0 0;
+    background: rgba(0, 0, 0, 0.15) !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pack-tab:hover {
+    background: rgba(0, 0, 0, 0.25) !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.pack-tab.active {
+    background: rgba(155, 89, 182, 0.1) !important;
+    border-bottom-color: var(--ionrift-accent, #9b59b6) !important;
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.pack-tab i {
+    font-size: 0.7rem;
+}
+
+/* ---- Tab Panels ---- */
+
+.pack-tab-panel {
+    display: none;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.pack-tab-panel.active {
+    display: flex;
+}
+
+/* ---- Art Status Card ---- */
+
+.art-status-card {
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.art-status-card.active {
+    border-color: rgba(74, 222, 128, 0.25);
+}
+
+.art-status-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 0.4rem;
+}
+
+.art-status-card.active .art-status-header i {
+    color: #4ade80;
+}
+
+.art-status-card.inactive .art-status-header i {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.art-status-detail {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.art-path {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 0.7rem;
+    color: rgba(155, 89, 182, 0.7);
+}
+
+.art-hint {
+    font-style: italic;
+}
+
+/* ---- Art Instructions ---- */
+
+.art-instructions {
+    padding: 0.6rem 0.75rem;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.art-instructions p {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.45);
+    margin: 0 0 0.4rem;
+    line-height: 1.4;
+}
+
+.art-instructions p:last-child {
+    margin-bottom: 0;
+    margin-top: 0.4rem;
+}
+
+.art-instructions code {
+    display: block;
+    font-size: 0.68rem;
+    font-family: "Consolas", "Courier New", monospace;
+    color: rgba(167, 139, 250, 0.7);
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.4rem 0.6rem;
+    border-radius: 4px;
+    line-height: 1.6;
+}
+
+/* ---- Art Import Button ---- */
+
+.pack-import-art-btn {
+    border: 1px solid rgba(155, 89, 182, 0.35) !important;
+    background: rgba(155, 89, 182, 0.15) !important;
+    color: rgba(155, 89, 182, 0.9) !important;
+}
+
+.pack-import-art-btn:hover {
+    background: rgba(155, 89, 182, 0.25) !important;
+    border-color: rgba(155, 89, 182, 0.5) !important;
+    box-shadow: 0 0 10px rgba(155, 89, 182, 0.15);
+}
+
 /* ============================================================
    PARTY ROSTER
    ============================================================ */

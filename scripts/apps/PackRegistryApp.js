@@ -3,8 +3,9 @@ import { ImageResolver } from "../util/ImageResolver.js";
 
 /**
  * PackRegistryApp
- * GM-only settings panel showing installed content packs (events + professions),
- * with counts, terrain/recipe breakdowns, and enable/disable toggles.
+ * GM-only settings panel with two tabs:
+ *   - Event Packs: content packs (events + professions) with enable/disable toggles
+ *   - Art Packs: terrain art import via ZIP
  * Uses Ionrift Glass theme.
  */
 export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
@@ -75,7 +76,6 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             const manifestResp = await fetch(`modules/ionrift-respite/data/terrains/manifest.json`);
             if (manifestResp.ok) {
                 const manifest = await manifestResp.json();
-                // Core terrains have events in data/core/events/, skip them here
                 const coreTerrains = new Set(["forest", "swamp", "desert", "urban", "dungeon", "tavern"]);
                 for (const terrain of (manifest.released ?? [])) {
                     if (coreTerrains.has(terrain)) continue;
@@ -140,47 +140,55 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
         const el = document.createElement("div");
         el.classList.add("respite-pack-registry");
 
-        // Summary bar
-        let html = `
-        <div class="pack-summary-bar">
-            <div class="pack-summary-stat">
-                <span class="stat-value">${context.totalEnabled}</span>
-                <span class="stat-label">active items</span>
-            </div>
-            <div class="pack-summary-stat">
-                <span class="stat-value">${context.packs.filter(p => p.enabled).length}</span>
-                <span class="stat-label">packs enabled</span>
-            </div>
-            <div class="pack-summary-stat">
-                <span class="stat-value">${context.totalAll}</span>
-                <span class="stat-label">total available</span>
-            </div>
-        </div>`;
+        const hasArt = ImageResolver.hasArtPack;
+        const artPath = ImageResolver.artPackPath ?? "Not imported";
 
-        // Section headers and pack cards
+        // ── Tab bar ──
+        let html = `
+        <div class="pack-tab-bar">
+            <button type="button" class="pack-tab active" data-tab="events">
+                <i class="fas fa-bolt"></i> Event Packs
+            </button>
+            <button type="button" class="pack-tab" data-tab="art">
+                <i class="fas fa-image"></i> Art Packs
+            </button>
+        </div>
+
+        <!-- ═══ Events Tab ═══ -->
+        <div class="pack-tab-panel active" data-panel="events">
+            <div class="pack-summary-bar">
+                <div class="pack-summary-stat">
+                    <span class="stat-value">${context.totalEnabled}</span>
+                    <span class="stat-label">active items</span>
+                </div>
+                <div class="pack-summary-stat">
+                    <span class="stat-value">${context.packs.filter(p => p.enabled).length}</span>
+                    <span class="stat-label">packs enabled</span>
+                </div>
+                <div class="pack-summary-stat">
+                    <span class="stat-value">${context.totalAll}</span>
+                    <span class="stat-label">total available</span>
+                </div>
+            </div>`;
+
+        // Pack cards
         let lastType = null;
         for (const pack of context.packs) {
-            // Section divider when switching from events to professions
             if (pack.type !== lastType) {
-                if (lastType !== null) {
-                    html += `<div class="pack-section-divider"></div>`;
-                }
+                if (lastType !== null) html += `<div class="pack-section-divider"></div>`;
                 const sectionLabel = pack.type === "profession" ? "Professions" : "Events";
                 const sectionIcon = pack.type === "profession" ? "fas fa-hammer" : "fas fa-bolt";
                 html += `<div class="pack-section-header"><i class="${sectionIcon}"></i> ${sectionLabel}</div>`;
                 lastType = pack.type;
             }
 
-            // Build card body content
             let bodyContent = "";
             if (pack.type === "profession") {
-                // Show recipe names as badges
                 const recipeBadges = pack.recipes
                     .map(name => `<span class="pack-recipe-badge"><i class="fas fa-scroll"></i> ${name}</span>`)
                     .join("");
                 bodyContent = `<div class="pack-recipe-list">${recipeBadges}</div>`;
             } else {
-                // Show terrain badges
                 const terrainBadges = Object.entries(pack.terrains)
                     .sort(([a], [b]) => a.localeCompare(b))
                     .map(([tag, count]) =>
@@ -220,23 +228,56 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             </div>`;
         }
 
-        // Actions
         html += `
-        <div class="pack-actions">
-            <button type="button" class="pack-import-art-btn" title="Import terrain art from a ZIP file">
-                <i class="fas fa-image"></i> Import Art Pack
-            </button>
-            <button type="button" class="pack-import-btn">
-                <i class="fas fa-file-import"></i> Import Events
-            </button>
-            <button type="button" class="pack-save-btn">
-                <i class="fas fa-save"></i> Save Changes
-            </button>
+            <div class="pack-actions">
+                <button type="button" class="pack-import-btn">
+                    <i class="fas fa-file-import"></i> Import Events
+                </button>
+                <button type="button" class="pack-save-btn">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+        </div>
+
+        <!-- ═══ Art Tab ═══ -->
+        <div class="pack-tab-panel" data-panel="art">
+            <div class="art-status-card ${hasArt ? "active" : "inactive"}">
+                <div class="art-status-header">
+                    <i class="fas ${hasArt ? "fa-check-circle" : "fa-times-circle"}"></i>
+                    <span>${hasArt ? "Art Pack Installed" : "No Art Pack"}</span>
+                </div>
+                <div class="art-status-detail">
+                    ${hasArt
+                        ? `<span class="art-path"><i class="fas fa-folder-open"></i> ${artPath}</span>`
+                        : `<span class="art-hint">Import a terrain art pack to replace placeholder banners with illustrated terrain art.</span>`
+                    }
+                </div>
+            </div>
+            <div class="art-instructions">
+                <p>Art packs are ZIP files containing terrain images organized in subfolders:</p>
+                <code>data/terrains/forest/banner.png<br>data/terrains/desert/setup.png<br>data/terrains/swamp/events.png</code>
+                <p>Accepted formats: .webp, .png, .jpg</p>
+            </div>
+            <div class="pack-actions">
+                <button type="button" class="pack-import-art-btn">
+                    <i class="fas fa-file-archive"></i> ${hasArt ? "Re-import Art Pack" : "Import Art Pack"}
+                </button>
+            </div>
         </div>`;
 
         el.innerHTML = html;
 
-        // Wire toggle visual feedback
+        // ── Tab switching ──
+        el.querySelectorAll(".pack-tab").forEach(tab => {
+            tab.addEventListener("click", () => {
+                el.querySelectorAll(".pack-tab").forEach(t => t.classList.remove("active"));
+                el.querySelectorAll(".pack-tab-panel").forEach(p => p.classList.remove("active"));
+                tab.classList.add("active");
+                el.querySelector(`.pack-tab-panel[data-panel="${tab.dataset.tab}"]`)?.classList.add("active");
+            });
+        });
+
+        // ── Event tab wiring ──
         el.querySelectorAll(".pack-toggle-input").forEach(cb => {
             cb.addEventListener("change", () => {
                 const card = cb.closest(".pack-card");
@@ -246,7 +287,6 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             });
         });
 
-        // Save
         el.querySelector(".pack-save-btn").addEventListener("click", async () => {
             const updated = {};
             el.querySelectorAll(".pack-toggle-input").forEach(cb => {
@@ -257,10 +297,9 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             this.close();
         });
 
-        // Import Events (JSON content pack)
         el.querySelector(".pack-import-btn").addEventListener("click", () => this._importPack());
 
-        // Import Art Pack (ZIP via library)
+        // ── Art tab wiring ──
         el.querySelector(".pack-import-art-btn").addEventListener("click", () => this._importArtPack());
 
         return el;
