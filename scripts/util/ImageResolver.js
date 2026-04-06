@@ -70,24 +70,26 @@ export class ImageResolver {
                     this.#importedArtPath = importedPath;
                     this.#basePath = importedPath;
 
-                    // Count files and detect terrain dirs
-                    let fileCount = browse.files?.length ?? 0;
+                    // Recursively count files and detect terrain dirs
+                    let fileCount = 0;
                     const terrains = [];
-                    for (const dir of (browse.dirs ?? [])) {
+
+                    const walk = async (path, depth = 0) => {
                         try {
-                            const sub = await FP.browse("data", dir);
-                            // Check for terrain subdirs (e.g. data/terrains/forest/)
-                            for (const terrainDir of (sub.dirs ?? [])) {
-                                const name = terrainDir.split("/").pop();
-                                if (name) terrains.push(name);
-                                try {
-                                    const terrainBrowse = await FP.browse("data", terrainDir);
-                                    fileCount += terrainBrowse.files?.length ?? 0;
-                                } catch { /* skip */ }
+                            const result = await FP.browse("data", path);
+                            fileCount += result.files?.length ?? 0;
+                            for (const subDir of (result.dirs ?? [])) {
+                                const dirName = subDir.split("/").pop();
+                                // Detect terrain names (children of a "terrains" dir)
+                                const parentName = path.split("/").pop();
+                                if (parentName === "terrains" && dirName) {
+                                    terrains.push(dirName);
+                                }
+                                await walk(subDir, depth + 1);
                             }
-                            fileCount += sub.files?.length ?? 0;
-                        } catch { /* skip */ }
-                    }
+                        } catch { /* skip inaccessible dirs */ }
+                    };
+                    await walk(importedPath);
                     this.#artFileCount = fileCount;
                     this.#artTerrains = terrains.sort();
                 }
