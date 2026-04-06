@@ -258,15 +258,15 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             <div class="pack-summary-bar">
                 <div class="pack-summary-stat">
                     <span class="pack-summary-number">${hasArt ? ImageResolver.artFileCount : 0}</span>
-                    <span class="pack-summary-label">FILES</span>
+                    <span class="pack-summary-label">TOTAL FILES</span>
                 </div>
                 <div class="pack-summary-stat">
                     <span class="pack-summary-number">${hasArt ? ImageResolver.artTerrains.length : 0}</span>
                     <span class="pack-summary-label">TERRAINS</span>
                 </div>
                 <div class="pack-summary-stat">
-                    <span class="pack-summary-number">${hasArt ? "Active" : "None"}</span>
-                    <span class="pack-summary-label">STATUS</span>
+                    <span class="pack-summary-number">${hasArt ? Math.floor(ImageResolver.artFileCount / ImageResolver.artTerrains.length) : 0}</span>
+                    <span class="pack-summary-label">PER TERRAIN</span>
                 </div>
             </div>
             ${hasArt ? (() => {
