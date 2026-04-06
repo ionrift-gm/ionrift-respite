@@ -549,6 +549,9 @@ export class CampfireEmbed {
     _getPlayerActor() {
         return game.user?.character
             ?? canvas?.tokens?.controlled?.[0]?.actor
+            ?? this._partyCharacterIds
+                .map(id => game.actors.get(id))
+                .find(a => a?.testUserPermission(game.user, "OWNER"))
             ?? (game.user?.isGM ? game.actors?.find(a => a.type === "character" && a.hasPlayerOwner) : null)
             ?? null;
     }
@@ -567,18 +570,18 @@ export class CampfireEmbed {
         return false;
     }
 
-    static FIRE_CANTRIPS = ["Fire Bolt", "Produce Flame", "Create Bonfire", "Control Flames", "Prestidigitation"];
-
     _findFireCantrip() {
         // Campfire lighting is a player action; GM observes only
         if (game.user?.isGM) return null;
+        const fireCantrips = game.ionrift?.respite?.adapter?.getFireCantrips() ?? [];
+        if (fireCantrips.length === 0) return null;
         for (const id of this._partyCharacterIds) {
             const actor = game.actors.get(id);
             if (!actor) continue;
             const cantrip = actor.items.find(i =>
                 i.type === "spell"
                 && (i.system?.level === 0)
-                && CampfireEmbed.FIRE_CANTRIPS.includes(i.name)
+                && fireCantrips.includes(i.name)
             );
             if (cantrip) return cantrip;
         }
@@ -619,14 +622,14 @@ export class CampfireEmbed {
         const actor = this._getPlayerActor();
         if (!actor) return 0;
         return actor.items
-            .filter(i => i.name === "Kindling")
+            .filter(i => i.name?.toLowerCase() === "kindling")
             .reduce((sum, i) => sum + (i.system?.quantity ?? 1), 0);
     }
 
     async _consumeFirewood() {
         const actor = this._getPlayerActor();
         if (!actor) return false;
-        const firewood = actor.items.find(i => i.name === "Kindling" && (i.system?.quantity ?? 1) > 0);
+        const firewood = actor.items.find(i => i.name?.toLowerCase() === "kindling" && (i.system?.quantity ?? 1) > 0);
         if (!firewood) return false;
 
         // Check if current user can modify this actor's items

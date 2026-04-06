@@ -96,6 +96,15 @@ export class SystemAdapter {
      */
     filterActivities(activities) { return activities; }
 
+    // ── Campfire ─────────────────────────────────────────────
+
+    /**
+     * Returns cantrip names that can light a campfire.
+     * System-specific: override in concrete adapters.
+     * @returns {string[]}
+     */
+    getFireCantrips() { return []; }
+
     // ── Internal ─────────────────────────────────────────────
 
     /** @private */

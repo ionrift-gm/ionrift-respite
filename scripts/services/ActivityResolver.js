@@ -327,6 +327,7 @@ export class ActivityResolver {
         const isFireLit = options.isFireLit ?? true;
 
         for (const activity of this.activities.values()) {
+            if (activity.disabled) continue;
             if (!activity.restTypes.includes(restType)) continue;
 
             // Runtime attunement check

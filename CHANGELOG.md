@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.13] - 2026-04-06
+
+### Fixed
+- Forage activity no longer appears in the activity picker. It was leaking past the disabled flag into the UI despite being marked as unavailable.
+- Kindling detection now works when the player's character is not linked in User Configuration. The campfire checks the party roster as a fallback.
+- Kindling name matching is now case-insensitive.
+
+### Changed
+- Fire-starting cantrip list moved from a hardcoded constant to the system adapter. Elementalism (2024 PHB) and Thaumaturgy are now recognised for lighting the campfire. Other system adapters can supply their own fire spells.
+
 ## [1.0.12] - 2026-04-05
 
 ### Fixed

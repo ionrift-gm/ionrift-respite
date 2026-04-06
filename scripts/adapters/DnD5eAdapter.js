@@ -156,4 +156,14 @@ export class DnD5eAdapter extends SystemAdapter {
         // All 17 activities are valid for DnD5e
         return activities;
     }
+
+    // ── Campfire ─────────────────────────────────────────────
+
+    getFireCantrips() {
+        return [
+            "Fire Bolt", "Produce Flame", "Create Bonfire",
+            "Control Flames", "Prestidigitation",
+            "Elementalism", "Thaumaturgy"
+        ];
+    }
 }
