@@ -10,6 +10,9 @@ import { ImageResolver } from "../util/ImageResolver.js";
  */
 export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
 
+    /** Tracks which tab is active across re-renders. */
+    #activeTab = "events";
+
     static DEFAULT_OPTIONS = {
         id: "respite-pack-registry",
         window: {
@@ -143,19 +146,21 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
         const hasArt = ImageResolver.hasArtPack;
         const artPath = ImageResolver.artPackPath ?? "Not imported";
 
+        const isArt = this.#activeTab === "art";
+
         // ── Tab bar ──
         let html = `
         <div class="pack-tab-bar">
-            <button type="button" class="pack-tab active" data-tab="events">
+            <button type="button" class="pack-tab ${isArt ? "" : "active"}" data-tab="events">
                 <i class="fas fa-bolt"></i> Event Packs
             </button>
-            <button type="button" class="pack-tab" data-tab="art">
+            <button type="button" class="pack-tab ${isArt ? "active" : ""}" data-tab="art">
                 <i class="fas fa-image"></i> Art Packs
             </button>
         </div>
 
         <!-- ═══ Events Tab ═══ -->
-        <div class="pack-tab-panel active" data-panel="events">
+        <div class="pack-tab-panel ${isArt ? "" : "active"}" data-panel="events">
           <div class="pack-tab-content">
             <div class="pack-summary-bar">
                 <div class="pack-summary-stat">
@@ -242,7 +247,8 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
         </div>
 
         <!-- ═══ Art Tab ═══ -->
-        <div class="pack-tab-panel" data-panel="art">
+        <!-- ═══ Art Tab ═══ -->
+        <div class="pack-tab-panel ${isArt ? "active" : ""}" data-panel="art">
           <div class="pack-tab-content">
             ${hasArt ? (() => {
                 const fileCount = ImageResolver.artFileCount;
@@ -271,12 +277,8 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             <div class="art-empty-state">
                 <i class="fas fa-image"></i>
                 <p>No art packs installed.</p>
-                <span>Import a terrain art pack to replace placeholder banners with illustrated terrain art.</span>
-            </div>
-            <div class="art-instructions">
-                <p>Art packs are ZIP files with terrain images in subfolders:</p>
-                <code>data/terrains/forest/banner.png<br>data/terrains/desert/setup.png<br>data/terrains/swamp/events.png</code>
-                <p>Accepted formats: .webp, .png, .jpg</p>
+                <span>Import a ZIP with terrain images to replace placeholder banners.</span>
+                <span class="art-format-hint">Accepted formats: .webp, .png, .jpg</span>
             </div>
             `}
           </div>
@@ -296,6 +298,7 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
                 el.querySelectorAll(".pack-tab-panel").forEach(p => p.classList.remove("active"));
                 tab.classList.add("active");
                 el.querySelector(`.pack-tab-panel[data-panel="${tab.dataset.tab}"]`)?.classList.add("active");
+                this.#activeTab = tab.dataset.tab;
             });
         });
 

@@ -5668,12 +5668,18 @@
    PACK REGISTRY
    ============================================================ */
 
-/* Foundry ApplicationV2 scroll: target both window-body and window-content */
+/* Foundry ApplicationV2 overrides */
+#respite-pack-registry {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
 #respite-pack-registry .window-body,
 #respite-pack-registry .window-content,
 .application#respite-pack-registry .window-body {
-    overflow-y: auto !important;
+    overflow-y: hidden !important;
     overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .respite-pack-registry {
@@ -6272,7 +6278,7 @@
 
 .art-empty-state > i {
     font-size: 2rem;
-    opacity: 0.3;
+    opacity: 0.45;
 }
 
 .art-empty-state p {
@@ -6285,6 +6291,13 @@
 .art-empty-state span {
     font-size: 0.72rem;
     font-style: italic;
+}
+
+.art-format-hint {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.25);
+    font-style: normal;
+    margin-top: 0.3rem;
 }
 
 /* ============================================================
