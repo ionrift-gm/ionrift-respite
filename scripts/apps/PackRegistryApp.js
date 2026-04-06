@@ -244,34 +244,41 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
         <!-- ═══ Art Tab ═══ -->
         <div class="pack-tab-panel" data-panel="art">
           <div class="pack-tab-content">
-            ${hasArt ? `
+            ${hasArt ? (() => {
+                const fileCount = ImageResolver.artFileCount;
+                const terrains = ImageResolver.artTerrains;
+                const terrainBadges = terrains
+                    .map(t => `<span class="pack-terrain-badge"><i class="${this._getTerrainIcon(t)}"></i> ${t}</span>`)
+                    .join("");
+                return `
             <div class="pack-card enabled" data-art-type="terrain">
                 <div class="pack-card-header">
                     <div class="pack-title-block">
                         <span class="pack-title"><i class="fas fa-palette"></i> Terrain Art</span>
                         <span class="pack-desc">${artPath}</span>
                     </div>
-                    <span class="art-pack-badge installed"><i class="fas fa-check"></i> Installed</span>
-                </div>
-                <div class="pack-card-body">
-                    <span class="art-pack-note">Illustrated banners for rest setup, events, and resolution phases.</span>
-                    <button type="button" class="art-uninstall-btn" title="Remove art pack">
-                        <i class="fas fa-trash-alt"></i> Uninstall
+                    <span class="pack-event-count" title="${fileCount} files">${fileCount}</span>
+                    <button type="button" class="art-uninstall-btn" title="Uninstall art pack">
+                        <i class="fas fa-trash-alt"></i>
                     </button>
                 </div>
-            </div>
-            ` : `
+                <div class="pack-card-body">
+                    <div class="pack-terrain-list">${terrainBadges}</div>
+                    <span class="art-pack-badge installed"><i class="fas fa-check"></i> Installed</span>
+                </div>
+            </div>`;
+            })() : `
             <div class="art-empty-state">
                 <i class="fas fa-image"></i>
                 <p>No art packs installed.</p>
                 <span>Import a terrain art pack to replace placeholder banners with illustrated terrain art.</span>
             </div>
-            `}
             <div class="art-instructions">
                 <p>Art packs are ZIP files with terrain images in subfolders:</p>
                 <code>data/terrains/forest/banner.png<br>data/terrains/desert/setup.png<br>data/terrains/swamp/events.png</code>
                 <p>Accepted formats: .webp, .png, .jpg</p>
             </div>
+            `}
           </div>
             <div class="pack-actions">
                 <button type="button" class="pack-import-art-btn">

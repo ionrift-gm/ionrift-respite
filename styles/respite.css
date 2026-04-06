@@ -6238,24 +6238,23 @@
 .art-uninstall-btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    padding: 0.25rem 0.6rem;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
     border-radius: 4px !important;
-    font-size: 0.68rem;
-    font-weight: 600;
+    font-size: 0.65rem;
     cursor: pointer;
-    background: rgba(248, 113, 113, 0.1) !important;
-    border: 1px solid rgba(248, 113, 113, 0.25) !important;
-    color: rgba(248, 113, 113, 0.7) !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    color: rgba(255, 255, 255, 0.2) !important;
     box-shadow: none !important;
     transition: all 0.2s;
     flex-shrink: 0;
-    margin-left: auto;
 }
 
 .art-uninstall-btn:hover {
-    background: rgba(248, 113, 113, 0.2) !important;
-    border-color: rgba(248, 113, 113, 0.5) !important;
+    background: rgba(248, 113, 113, 0.15) !important;
+    border-color: rgba(248, 113, 113, 0.35) !important;
     color: #f87171 !important;
 }
 
