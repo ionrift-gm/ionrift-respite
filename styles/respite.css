@@ -5668,9 +5668,19 @@
    PACK REGISTRY
    ============================================================ */
 
-/* Foundry ApplicationV2 overrides */
+/* Foundry ApplicationV2 overrides: kill red/warm color bleed */
 #respite-pack-registry {
+    --color-shadow-primary: rgba(0, 0, 0, 0.5) !important;
+    --color-border-highlight-alt: rgba(155, 89, 182, 0.3) !important;
+    --color-warm-2: rgba(155, 89, 182, 0.6) !important;
     border-color: rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.6) !important;
+}
+
+#respite-pack-registry *:focus,
+#respite-pack-registry *:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 #respite-pack-registry .window-body,
@@ -5688,6 +5698,7 @@
     flex-direction: column;
     gap: 0.5rem;
     min-height: 0;
+    flex: 1;
 }
 
 /* ---- Summary Bar ---- */
