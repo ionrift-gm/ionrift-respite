@@ -429,6 +429,8 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             await ImageResolver.init();
             ui.notifications.info(`Art pack ready. ${result.imported} terrain images loaded.`);
             this.render({ force: true });
+            // Re-render the rest UI if it's open so banners update immediately
+            this._refreshOpenRestApp();
         }
     }
 
@@ -441,6 +443,7 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
         await ImageResolver.init();
         ui.notifications.info("Art pack disabled. Placeholder banners will be used.");
         this.render({ force: true });
+        this._refreshOpenRestApp();
     }
 
     /** @override */
@@ -492,5 +495,22 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
         // Pull icon from terrain manifest if available, fallback to generic
         const terrain = TerrainRegistry.get(tag);
         return terrain?.icon ?? "fas fa-map-marker-alt";
+    }
+
+    /**
+     * Re-render the rest setup UI if it's currently open,
+     * so art pack changes take effect immediately.
+     */
+    _refreshOpenRestApp() {
+        // Foundry v13 ApplicationV2 instances registry
+        const instances = foundry.applications?.instances;
+        if (instances) {
+            for (const app of instances.values()) {
+                if (app.options?.id === "ionrift-respite-setup" && app.rendered) {
+                    app.render({ force: true });
+                    break;
+                }
+            }
+        }
     }
 }
