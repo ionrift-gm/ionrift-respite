@@ -237,8 +237,8 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
         html += `
           </div>
             <div class="pack-links">
-                <a href="https://patreon.com/ionrift" target="_blank"><i class="fas fa-download"></i> Get more packs</a>
-                <a href="https://github.com/ionrift-gm/ionrift-respite/wiki/Authoring-Kit" target="_blank"><i class="fas fa-pencil-alt"></i> Create your own</a>
+                <a href="https://www.patreon.com/collection/2079931" target="_blank"><i class="fas fa-download"></i> Get more packs</a>
+                <a href="https://github.com/ionrift-gm/ionrift-library/wiki/Authoring-Kit" target="_blank"><i class="fas fa-pencil-alt"></i> Create your own</a>
             </div>
             <div class="pack-actions">
                 <button type="button" class="pack-import-btn">
@@ -302,8 +302,8 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             `}
           </div>
             <div class="pack-links">
-                <a href="https://patreon.com/ionrift" target="_blank"><i class="fas fa-download"></i> Get art packs</a>
-                <a href="https://github.com/ionrift-gm/ionrift-respite/wiki/Art-Packs" target="_blank"><i class="fas fa-book"></i> Documentation</a>
+                <a href="https://www.patreon.com/collection/2079931" target="_blank"><i class="fas fa-download"></i> Get art packs</a>
+                <a href="https://github.com/ionrift-gm/ionrift-library/wiki/Art-Packs" target="_blank"><i class="fas fa-book"></i> Documentation</a>
             </div>
             <div class="pack-actions">
                 <button type="button" class="pack-import-art-btn">
