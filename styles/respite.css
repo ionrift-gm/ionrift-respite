@@ -5955,32 +5955,31 @@
     font-size: 0.55rem;
 }
 
-/* ---- Pack Links ---- */
+/* ---- Pack Links (in footer) ---- */
 
 .pack-links {
     display: flex;
     justify-content: center;
-    gap: 1.2rem;
-    padding: 0.5rem 0 0.25rem;
-    margin-top: auto;
+    gap: 1.5rem;
+    padding: 0.4rem 0;
 }
 
 .pack-links a {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    font-size: 0.7rem;
-    color: rgba(155, 89, 182, 0.55);
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: rgba(180, 140, 255, 0.65);
     text-decoration: none;
     transition: color 0.2s;
 }
 
 .pack-links a:hover {
-    color: rgba(155, 89, 182, 0.9);
+    color: rgba(180, 140, 255, 1);
 }
 
 .pack-links a i {
-    font-size: 0.6rem;
+    font-size: 0.65rem;
 }
 
 /* ---- Actions (sticky footer) ---- */
@@ -6106,6 +6105,7 @@
     display: flex;
     gap: 2px;
     margin-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .pack-tab {
@@ -6114,13 +6114,13 @@
     align-items: center;
     justify-content: center;
     gap: 0.4rem;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
     border-bottom: 2px solid transparent !important;
     border-radius: 6px 6px 0 0;
-    background: rgba(0, 0, 0, 0.15) !important;
-    color: rgba(255, 255, 255, 0.4) !important;
-    font-size: 0.78rem;
+    background: rgba(255, 255, 255, 0.04) !important;
+    color: rgba(255, 255, 255, 0.55) !important;
+    font-size: 0.82rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
