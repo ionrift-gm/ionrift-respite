@@ -20,7 +20,7 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             icon: "fas fa-box-open",
             resizable: true
         },
-        position: { width: 480, height: 420 },
+        position: { width: 480, height: 520 },
         classes: ["ionrift-window"]
     };
 
@@ -255,6 +255,20 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
         <div class="pack-tab-panel ${isArt ? "active" : ""}" data-panel="art">
           <div class="pack-tab-content">
             <h4 class="pack-section-header"><i class="fas fa-image"></i> TERRAIN ART</h4>
+            <div class="pack-summary-bar">
+                <div class="pack-summary-stat">
+                    <span class="pack-summary-number">${hasArt ? ImageResolver.artFileCount : 0}</span>
+                    <span class="pack-summary-label">FILES</span>
+                </div>
+                <div class="pack-summary-stat">
+                    <span class="pack-summary-number">${hasArt ? ImageResolver.artTerrains.length : 0}</span>
+                    <span class="pack-summary-label">TERRAINS</span>
+                </div>
+                <div class="pack-summary-stat">
+                    <span class="pack-summary-number">${hasArt ? "Active" : "None"}</span>
+                    <span class="pack-summary-label">STATUS</span>
+                </div>
+            </div>
             ${hasArt ? (() => {
                 const fileCount = ImageResolver.artFileCount;
                 const terrains = ImageResolver.artTerrains;
