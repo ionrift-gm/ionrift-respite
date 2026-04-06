@@ -621,9 +621,11 @@ Hooks.on("dnd5e.preRestCompleted", (actor, result, config) => {
         });
     }
 
-    // Suppress exhaustion recovery: Respite handles this via RecoveryHandler
-    if (config?.exhaustionDelta) {
-        delete result.updateData?.["system.attributes.exhaustion"];
+    // Suppress exhaustion recovery: Respite handles this via RecoveryHandler.
+    // The system always tries to reduce exhaustion by 1 on long rest;
+    // we must strip it unconditionally or it will revert our changes.
+    if (result.updateData?.["system.attributes.exhaustion"] !== undefined) {
+        delete result.updateData["system.attributes.exhaustion"];
     }
 
     Logger.log?.(MODULE_LABEL,
@@ -781,6 +783,22 @@ function _onSocketMessage(data) {
             if (!game.user.isGM) return;
             if (activeRestSetupApp?.receiveRollResult) {
                 activeRestSetupApp.receiveRollResult(data);
+            }
+            break;
+
+        // GM -> Players: request decision tree roll from party
+        case "treeRollRequest":
+            if (game.user.isGM) return;
+            if (activePlayerRestApp?.receiveTreeRollRequest) {
+                activePlayerRestApp.receiveTreeRollRequest(data);
+            }
+            break;
+
+        // Player -> GM: decision tree roll result
+        case "treeRollResult":
+            if (!game.user.isGM) return;
+            if (activeRestSetupApp?.receiveTreeRollResult) {
+                activeRestSetupApp.receiveTreeRollResult(data);
             }
             break;
 

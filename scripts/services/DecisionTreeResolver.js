@@ -8,10 +8,12 @@
  *
  * Max depth: 2 (primary choice + secondary choice on failure).
  *
- * This resolver does NOT auto-resolve. It produces a structured
- * "tree state" that the GM UI renders, and the GM drives each
- * step by choosing options and rolling checks.
+ * This resolver does NOT roll dice. It produces structured states
+ * that the UI renders, and the roll results come in from players
+ * (or GM fallback) via the socket system.
  */
+
+import { pickBestSkill, getSkillMod } from "./RollRequestManager.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -51,56 +53,121 @@ export class DecisionTreeResolver {
             history: [],
             resolved: false,
             finalEffects: [],
-            finalNarrative: ""
+            finalNarrative: "",
+            // Roll tracking (new)
+            awaitingRolls: false,
+            pendingChoice: null,
+            pendingRolls: [],
+            resolvedRolls: []
         };
     }
 
     /**
-     * Processes a GM's choice: rolls the group DC check and
-     * returns the next state (resolved outcome or deeper branch).
+     * Phase 1: Prepares a choice for rolling without resolving it.
+     * Returns the check parameters so the caller can request player rolls.
+     *
      * @param {Object} treeState - Current tree state.
      * @param {string} choiceId - The option.id the GM selected.
-     * @returns {Object} Updated tree state.
+     * @returns {{ option: Object, check: Object, targetIds: string[], skills: string[] } | null}
      */
-    static async resolveChoice(treeState, choiceId) {
+    static prepareChoice(treeState, choiceId) {
         const option = treeState.options.find(o => o.id === choiceId);
         if (!option) {
             console.warn(`${MODULE_ID} | Decision tree: option "${choiceId}" not found.`);
-            return treeState;
+            return null;
         }
 
-        // Roll group DC check for all targets
-        const checkResult = await this._rollGroupCheck(option.check, treeState.targetIds);
+        const check = option.check ?? {};
+        const skills = check.skills ?? [];
+
+        return {
+            option,
+            check,
+            targetIds: treeState.targetIds,
+            skills,
+            dc: check.dc ?? 12,
+            choiceId,
+            choiceLabel: option.label
+        };
+    }
+
+    /**
+     * Phase 2: Resolves a choice using collected roll results.
+     * Called after all player rolls are in (or GM used "Roll for them").
+     *
+     * @param {Object} treeState - Current tree state.
+     * @param {string} choiceId - The option.id that was chosen.
+     * @param {{ success: boolean, rolls: Object[], passCount: number, failCount: number, groupAverage: number }} checkResult
+     * @returns {Object} Updated tree state.
+     */
+    static resolveWithResults(treeState, choiceId, checkResult) {
+        const option = treeState.options.find(o => o.id === choiceId);
+        if (!option) return treeState;
+
+        // Clear roll tracking
+        const state = {
+            ...treeState,
+            awaitingRolls: false,
+            pendingChoice: null,
+            pendingRolls: [],
+            resolvedRolls: checkResult.rolls ?? []
+        };
 
         // Record in history
-        treeState.history.push({
+        state.history = [...(treeState.history ?? []), {
             depth: treeState.depth,
             choiceId: option.id,
             choiceLabel: option.label,
             check: option.check,
             result: checkResult
-        });
+        }];
 
         if (checkResult.success) {
-            // Success: apply success effects, resolve tree
-            return this._resolveOutcome(treeState, option.onSuccess);
+            return this._resolveOutcome(state, option.onSuccess);
         } else {
-            // Failure: check for sub-tree or apply failure effects
             const failure = option.onFailure;
             if (failure.options && treeState.depth < treeState.maxDepth) {
                 // Branch deeper
                 return {
-                    ...treeState,
+                    ...state,
                     depth: treeState.depth + 1,
                     prompt: failure.prompt ?? failure.narrative,
                     options: failure.options,
                     description: failure.narrative
                 };
             } else {
-                // No further branching: apply failure effects
-                return this._resolveOutcome(treeState, failure);
+                return this._resolveOutcome(state, failure);
             }
         }
+    }
+
+    /**
+     * Legacy: Resolves a choice with immediate GM rolls.
+     * Kept for backwards compatibility with Force Pass/Fail overrides.
+     *
+     * @param {Object} treeState - Current tree state.
+     * @param {string} choiceId - The option.id the GM selected.
+     * @param {string} [forceOutcome] - "success" or "failure" to skip rolling.
+     * @returns {Object} Updated tree state.
+     */
+    static async resolveChoice(treeState, choiceId, forceOutcome) {
+        const option = treeState.options.find(o => o.id === choiceId);
+        if (!option) {
+            console.warn(`${MODULE_ID} | Decision tree: option "${choiceId}" not found.`);
+            return treeState;
+        }
+
+        let checkResult;
+        if (forceOutcome === "success") {
+            checkResult = { success: true, rolls: [], passCount: 0, failCount: 0, groupAverage: 0 };
+        } else if (forceOutcome === "failure") {
+            checkResult = { success: false, rolls: [], passCount: 0, failCount: 0, groupAverage: 0 };
+        } else {
+            // Legacy: auto-roll (used only as fallback, not the normal flow)
+            checkResult = await this._rollGroupCheck(option.check, treeState.targetIds);
+        }
+
+        return this.resolveWithResults(treeState, choiceId, checkResult);
     }
 
     /**
@@ -119,12 +186,31 @@ export class DecisionTreeResolver {
     }
 
     /**
-     * Rolls a group DC check for all targets.
-     * Each target rolls the specified skill/ability check.
-     * The overall result is based on the average of all rolls vs DC.
-     * @param {Object} check - { type: "group_dc", skills: ["dex","str"], dc: 15 }
-     * @param {string[]} targetIds - Actor IDs.
-     * @returns {Object} { success, rolls: [{ actorName, total, passed }], passCount, failCount, groupAverage }
+     * Computes the group check result from collected rolls.
+     * Average rule: group succeeds if average roll >= DC.
+     *
+     * @param {Object[]} rolls - Array of { actorId, total, passed, ... }
+     * @param {number} dc - Difficulty class.
+     * @returns {{ success: boolean, rolls: Object[], passCount: number, failCount: number, groupAverage: number }}
+     */
+    static computeGroupResult(rolls, dc) {
+        let passCount = 0;
+        let failCount = 0;
+        for (const r of rolls) {
+            if (r.passed) passCount++;
+            else failCount++;
+        }
+        const avg = rolls.length > 0
+            ? rolls.reduce((sum, r) => sum + r.total, 0) / rolls.length
+            : 0;
+        const success = Math.round(avg) >= dc;
+        return { success, rolls, passCount, failCount, groupAverage: Math.round(avg) };
+    }
+
+    /**
+     * Legacy: Rolls a group DC check for all targets.
+     * Kept as internal fallback. Normal flow uses player-driven rolls.
+     * @private
      */
     static async _rollGroupCheck(check, targetIds) {
         if (!check || !targetIds.length) {
@@ -141,11 +227,8 @@ export class DecisionTreeResolver {
             const actor = game.actors.get(actorId);
             if (!actor) continue;
 
-            // Pick the best skill for this actor from the allowed list
-            const skill = this._pickBestSkill(actor, skills);
-            const mod = this._getSkillMod(actor, skill);
-
-            // Roll 1d20 + mod
+            const skill = pickBestSkill(actor, skills);
+            const mod = getSkillMod(actor, skill);
             const roll = await new Roll(`1d20 + ${mod}`).evaluate();
             const passed = roll.total >= dc;
 
@@ -153,71 +236,20 @@ export class DecisionTreeResolver {
             else failCount++;
 
             rolls.push({
-                actorId,
-                actorName: actor.name,
-                skill,
-                mod,
-                total: roll.total,
-                dc,
-                passed
+                actorId, actorName: actor.name, skill, mod,
+                total: roll.total, dc, passed
             });
 
-            // Post individual roll to chat
             await roll.toMessage({
                 speaker: ChatMessage.getSpeaker({ actor }),
                 flavor: `${skill.toUpperCase()} check (DC ${dc}) -- ${passed ? "Success" : "Failure"}`
             });
         }
 
-        // Average rule: group succeeds if average roll >= DC
         const avg = rolls.length > 0
             ? rolls.reduce((sum, r) => sum + r.total, 0) / rolls.length
             : 0;
         const success = Math.round(avg) >= dc;
         return { success, rolls, passCount, failCount, groupAverage: Math.round(avg) };
-    }
-
-    /**
-     * Picks the best skill for an actor from a list of options.
-     * Uses the actor's modifiers to choose the highest.
-     * @param {Actor} actor
-     * @param {string[]} skills - Skill abbreviations (e.g. ["dex", "str"])
-     * @returns {string} Best skill abbreviation.
-     */
-    static _pickBestSkill(actor, skills) {
-        if (!skills.length) return "dex"; // fallback
-
-        // Check if these are abilities or skills
-        let best = skills[0];
-        let bestMod = -99;
-
-        for (const s of skills) {
-            const mod = this._getSkillMod(actor, s);
-            if (mod > bestMod) {
-                bestMod = mod;
-                best = s;
-            }
-        }
-
-        return best;
-    }
-
-    /**
-     * Gets the modifier for a skill or ability on an actor.
-     * Handles both dnd5e skill abbreviations and ability abbreviations.
-     * @param {Actor} actor
-     * @param {string} key - Skill/ability abbreviation.
-     * @returns {number}
-     */
-    static _getSkillMod(actor, key) {
-        // Try as a skill first (e.g., "prc", "sur", "ath")
-        const skill = actor.system?.skills?.[key];
-        if (skill) return skill.total ?? skill.mod ?? 0;
-
-        // Try as an ability (e.g., "dex", "str", "con")
-        const ability = actor.system?.abilities?.[key];
-        if (ability) return ability.mod ?? 0;
-
-        return 0;
     }
 }

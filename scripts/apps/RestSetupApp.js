@@ -1,4 +1,5 @@
 import { RestFlowEngine } from "../services/RestFlowEngine.js";
+import { executePlayerRoll, rollForPlayer, pickBestSkill, SKILL_DISPLAY_NAMES, waitForDiceSoNice } from "../services/RollRequestManager.js";
 import { TerrainRegistry } from "../services/TerrainRegistry.js";
 import { ActivityResolver } from "../services/ActivityResolver.js";
 import { EventResolver } from "../services/EventResolver.js";
@@ -104,7 +105,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             consumeMealDay: RestSetupApp.#onConsumeMealDay,
             adjustDaysSinceRest: RestSetupApp.#onAdjustDaysSinceRest,
             skipPendingSaves: RestSetupApp.#onSkipPendingSaves,
-            hideWindow: RestSetupApp.#onHideWindow
+            hideWindow: RestSetupApp.#onHideWindow,
+            rollTreeForPlayer: RestSetupApp.#onRollTreeForPlayer,
+            resendTreeRollRequest: RestSetupApp.#onResendTreeRollRequest,
+            rollEventForPlayer: RestSetupApp.#onRollEventForPlayer,
+            rollCampForPlayer: RestSetupApp.#onRollCampForPlayer,
+            rollTreeCheck: RestSetupApp.#onRollTreeCheck
         }
     };
 
@@ -201,6 +207,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         game.ionrift.respite.jumpToRecoveryPenalty = () => this._debugJumpToRecoveryPenalty();
         game.ionrift.respite.jumpToDamageTest = () => this._debugJumpToDamageTest();
         game.ionrift.respite.jumpToHostileComfort = () => this._debugJumpToHostileComfort();
+        game.ionrift.respite.jumpToSingleEvent = () => this._debugJumpToSingleEvent();
         game.ionrift.respite.addSupplies = (qty = 50) => RestSetupApp._debugAddSupplies(qty);
 
         // Inventory sync: auto-refresh meal options when items change (e.g. player transfers)
@@ -218,6 +225,57 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             Hooks.on("deleteItem", this._inventoryHookHandler),
             Hooks.on("updateItem", this._inventoryHookHandler)
         ];
+    }
+
+    /**
+     * Debug: Jump to events phase with exactly one resolved event.
+     * Validates single-event auto-expand (no collapsed class).
+     * Usage: game.ionrift.respite.jumpToSingleEvent()
+     */
+    async _debugJumpToSingleEvent() {
+        if (!game.user.isGM) return console.warn("GM only");
+
+        const { RestFlowEngine } = await import("../services/RestFlowEngine.js");
+        const terrainTag = "forest";
+        const targets = getPartyActors().map(a => a.id);
+
+        if (targets.length === 0) {
+            ui.notifications.warn("No player-owned characters found.");
+            return;
+        }
+
+        this._engine = new RestFlowEngine({ restType: "long", terrainTag, comfort: "rough" });
+        for (const id of targets) {
+            this._engine.registerChoice(id, "act_keep_watch");
+            this._characterChoices.set(id, "act_keep_watch");
+        }
+
+        // Inject exactly ONE resolved complication
+        this._triggeredEvents = [{
+            id: "test_single_event", name: "Wolf Tracks", category: "complication",
+            description: "Fresh wolf tracks circle the camp perimeter.",
+            narrative: "Fresh wolf tracks circle the camp perimeter.",
+            mechanical: {
+                type: "skill_check", skill: "sur", dc: 12, targets: "watch",
+                onSuccess: { narrative: "The pack moves on.", effects: [] },
+                onFailure: { narrative: "The wolves grow bolder.", effects: [] }
+            },
+            targets, result: "triggered",
+            resolvedOutcome: "success",
+            resolvedRolls: targets.map(id => ({ id, name: game.actors.get(id)?.name ?? "Unknown", total: 15, passed: true })),
+            groupAverage: 15,
+            skillName: "Survival",
+            effects: []
+        }];
+
+        this._eventsRolled = true;
+        this._phase = "events";
+        this._engine._phase = "events";
+        registerActiveRestApp(this);
+
+        this.render(true);
+        console.log("[Respite:Debug] Single event injected. Card should be expanded (not collapsed).");
+        ui.notifications.info("Single event loaded. Verify the card is expanded.");
     }
 
     /**
@@ -994,6 +1052,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 // Don't clear the active app reference; rest is still in progress
                 _showGmRestIndicator(this);
             } else {
+                // Notify players to close their rest windows
+                if (options.resolved) {
+                    game.socket.emit(`module.${MODULE_ID}`, { type: "restResolved" });
+                }
                 clearActiveRestApp();
                 _removeGmRestIndicator();
             }
@@ -1684,6 +1746,30 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     }));
                 return { ...this._pendingEventRoll, ownedTargets };
             })() : null,
+            pendingTreeRoll: this._pendingTreeRoll ? (() => {
+                const ownedTargets = (this._pendingTreeRoll.targets ?? [])
+                    .map(id => game.actors.get(id))
+                    .filter(a => a?.isOwner)
+                    .map(a => {
+                        const rolled = this._pendingTreeRoll.rolledCharacters?.has(a.id) ?? false;
+                        const result = this._pendingTreeRoll.rolledResults?.get(a.id);
+                        return {
+                            id: a.id,
+                            name: a.name,
+                            rolled,
+                            total: result?.total ?? null,
+                            passed: result?.passed ?? null
+                        };
+                    });
+                return { ...this._pendingTreeRoll, ownedTargets };
+            })() : null,
+            actorLookup: (() => {
+                const lookup = {};
+                for (const a of getPartyActors()) {
+                    lookup[a.id] = { name: a.name, img: a.img };
+                }
+                return lookup;
+            })(),
             eventsRolled: this._eventsRolled ?? false,
             pendingCampRolls: this._pendingCampRolls ?? [],
             campPrepsResolved: !this._pendingCampRolls?.length || this._pendingCampRolls.every(p => p.status !== "pending"),
@@ -3024,6 +3110,66 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Player receives a tree roll request from the GM.
+     * Stores the request so the template can show Roll buttons for owned characters.
+     */
+    receiveTreeRollRequest(data) {
+        this._pendingTreeRoll = {
+            choiceId: data.choiceId,
+            skills: data.skills ?? [],
+            skillName: data.skillName,
+            dc: data.dc,
+            targets: data.targets ?? [],
+            eventName: data.eventName,
+            rolledCharacters: new Set()
+        };
+        this.render();
+    }
+
+    /**
+     * Player action: roll a decision tree skill check for an owned character.
+     * Posts the roll to chat and sends the result back to the GM.
+     */
+    static async #onRollTreeCheck(event, target) {
+        event.preventDefault?.();
+        const characterId = target.dataset.characterId;
+        const pending = this._pendingTreeRoll;
+        if (!pending || !characterId) return;
+
+        const actor = game.actors.get(characterId);
+        if (!actor) return;
+
+        if (!actor.isOwner) {
+            ui.notifications.warn("You do not own this character.");
+            return;
+        }
+
+        // Already rolled?
+        if (pending.rolledCharacters?.has(characterId)) return;
+
+        const skill = pickBestSkill(actor, pending.skills);
+        const flavor = `<strong>${actor.name}</strong> - ${pending.eventName} (${pending.skillName}) DC ${pending.dc}`;
+        const { total } = await executePlayerRoll(actor, skill, pending.dc, flavor, target);
+
+        // Mark as rolled locally and store result for display
+        if (!pending.rolledCharacters) pending.rolledCharacters = new Set();
+        pending.rolledCharacters.add(characterId);
+        if (!pending.rolledResults) pending.rolledResults = new Map();
+        pending.rolledResults.set(characterId, { total, passed: total >= pending.dc });
+
+        // Send result to GM
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "treeRollResult",
+            characterId,
+            characterName: actor.name,
+            total
+        });
+
+        ui.notifications.info(`${actor.name} rolled ${total} for ${pending.skillName}.`);
+        this.render();
+    }
+
+    /**
      * Player action: roll a skill check for an owned character.
      * Posts the roll to chat and sends the result back to the GM.
      */
@@ -4251,36 +4397,233 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /**
      * Phase 3 (events): GM selects a decision tree choice.
-     * Resolves the check and advances or resolves the tree.
+     * Enters pending-roll state and broadcasts roll request to players.
      */
     static async #onResolveTreeChoice(event, target) {
         const choiceId = target.dataset.choiceId;
         if (!choiceId || !this._activeTreeState) return;
 
-        this._activeTreeState = await DecisionTreeResolver.resolveChoice(
-            this._activeTreeState, choiceId
-        );
+        const prepared = DecisionTreeResolver.prepareChoice(this._activeTreeState, choiceId);
+        if (!prepared) return;
 
-        // If tree is resolved, merge effects into triggered events
-        if (this._activeTreeState.resolved) {
-            // Replace the original decision tree event with the resolved outcome
-            const idx = this._triggeredEvents.findIndex(e => e.id === this._activeTreeState.eventId);
-            if (idx >= 0) {
-                this._triggeredEvents[idx] = {
-                    ...this._triggeredEvents[idx],
-                    narrative: this._activeTreeState.finalNarrative,
-                    effects: this._activeTreeState.finalEffects,
-                    isDecisionTree: false,
-                    resolved: true,
-                    treeHistory: this._activeTreeState.history
-                };
+        // Enter pending-roll state
+        this._activeTreeState.awaitingRolls = true;
+        this._activeTreeState.pendingChoice = choiceId;
+        this._activeTreeState.pendingRolls = [...prepared.targetIds];
+        this._activeTreeState.resolvedRolls = [];
+        this._activeTreeState.pendingCheck = prepared.check;
+
+        // Determine skill name for display
+        const skillKey = pickBestSkill(
+            game.actors.get(prepared.targetIds[0]),
+            prepared.skills
+        );
+        const skillName = SKILL_DISPLAY_NAMES[skillKey] ?? skillKey;
+        this._activeTreeState.pendingSkillName = skillName;
+        this._activeTreeState.pendingSkillKey = skillKey;
+        this._activeTreeState.pendingDC = prepared.dc;
+
+        // Broadcast roll request to players
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "treeRollRequest",
+            choiceId,
+            choiceLabel: prepared.choiceLabel,
+            skills: prepared.skills,
+            skillName,
+            dc: prepared.dc,
+            targets: prepared.targetIds,
+            eventName: this._activeTreeState.eventName
+        });
+
+        // Broadcast updated tree state so players see roll buttons
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "phaseChanged",
+            phase: "events",
+            phaseData: {
+                triggeredEvents: this._triggeredEvents,
+                activeTreeState: this._activeTreeState,
+                eventsRolled: true,
+                campStatus: this._campStatus
             }
-            // Keep _activeTreeState alive so the resolved outcome panel renders.
-            // It will be cleared when the GM proceeds to resolution phase.
-        }
+        });
 
         await this._saveRestState();
         this.render();
+    }
+
+    /**
+     * GM receives a decision tree roll result from a player.
+     * Collects results and auto-resolves when all expected rolls are in.
+     */
+    async receiveTreeRollResult(data) {
+        if (!game.user.isGM) return;
+        const { characterId, characterName, total } = data;
+
+        if (!this._activeTreeState?.awaitingRolls) return;
+
+        const dc = this._activeTreeState.pendingDC ?? 12;
+        const passed = total >= dc;
+
+        // Add to resolved rolls (avoid duplicates)
+        if (!this._activeTreeState.resolvedRolls) this._activeTreeState.resolvedRolls = [];
+        if (this._activeTreeState.resolvedRolls.some(r => r.characterId === characterId)) return;
+        this._activeTreeState.resolvedRolls.push({
+            characterId, name: characterName, total, passed,
+            actorName: characterName, actorId: characterId, dc
+        });
+
+        // Remove from pending
+        if (this._activeTreeState.pendingRolls) {
+            this._activeTreeState.pendingRolls = this._activeTreeState.pendingRolls.filter(id => id !== characterId);
+        }
+
+        // Check if all rolls are in
+        if (!this._activeTreeState.pendingRolls?.length) {
+            // Wait for DSN
+            await waitForDiceSoNice(4000);
+
+            // Compute group result and resolve the tree
+            const choiceId = this._activeTreeState.pendingChoice;
+            const checkResult = DecisionTreeResolver.computeGroupResult(
+                this._activeTreeState.resolvedRolls, dc
+            );
+
+            this._activeTreeState = DecisionTreeResolver.resolveWithResults(
+                this._activeTreeState, choiceId, checkResult
+            );
+
+            // If tree is resolved, merge effects into triggered events
+            if (this._activeTreeState.resolved) {
+                const idx = this._triggeredEvents.findIndex(e => e.id === this._activeTreeState.eventId);
+                if (idx >= 0) {
+                    this._triggeredEvents[idx] = {
+                        ...this._triggeredEvents[idx],
+                        narrative: this._activeTreeState.finalNarrative,
+                        effects: this._activeTreeState.finalEffects,
+                        isDecisionTree: false,
+                        resolved: true,
+                        treeHistory: this._activeTreeState.history
+                    };
+                }
+            }
+        }
+
+        // Broadcast updated state to all players
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "phaseChanged",
+            phase: "events",
+            phaseData: {
+                triggeredEvents: this._triggeredEvents,
+                activeTreeState: this._activeTreeState,
+                eventsRolled: true,
+                campStatus: this._campStatus
+            }
+        });
+
+        await this._saveRestState();
+        this.render();
+    }
+
+    /**
+     * GM rolls a tree check on behalf of an unresponsive player.
+     */
+    static async #onRollTreeForPlayer(event, target) {
+        if (!game.user.isGM) return;
+        const characterId = target.dataset.characterId;
+        if (!characterId || !this._activeTreeState?.awaitingRolls) return;
+
+        const actor = game.actors.get(characterId);
+        if (!actor) return;
+
+        const skills = this._activeTreeState.pendingCheck?.skills ?? [];
+        const dc = this._activeTreeState.pendingDC ?? 12;
+        const context = `${this._activeTreeState.eventName} - Decision`;
+
+        const result = await rollForPlayer(actor, skills, dc, context);
+
+        // Feed the result back through the normal collection path
+        await this.receiveTreeRollResult({
+            characterId,
+            characterName: actor.name,
+            total: result.total
+        });
+    }
+
+    /**
+     * GM re-broadcasts the tree roll request for crash recovery.
+     */
+    static #onResendTreeRollRequest(event, target) {
+        if (!game.user.isGM) return;
+        if (!this._activeTreeState?.awaitingRolls) return;
+
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "treeRollRequest",
+            choiceId: this._activeTreeState.pendingChoice,
+            skills: this._activeTreeState.pendingCheck?.skills ?? [],
+            skillName: this._activeTreeState.pendingSkillName ?? "Skill",
+            dc: this._activeTreeState.pendingDC ?? 12,
+            targets: this._activeTreeState.pendingRolls ?? [],
+            eventName: this._activeTreeState.eventName
+        });
+
+        ui.notifications.info("Tree roll request re-sent to players.");
+    }
+
+    /**
+     * GM rolls an event check on behalf of an unresponsive player.
+     */
+    static async #onRollEventForPlayer(event, target) {
+        if (!game.user.isGM) return;
+        const characterId = target.dataset.characterId;
+        const eventIndex = parseInt(target.dataset.eventIndex);
+        const triggeredEvent = this._triggeredEvents?.[eventIndex];
+        if (!triggeredEvent?.awaitingRolls || !characterId) return;
+
+        const actor = game.actors.get(characterId);
+        if (!actor) return;
+
+        const skill = triggeredEvent.mechanical?.skill ?? "sur";
+        const dc = triggeredEvent.mechanical?.dc ?? 10;
+        const skillName = SKILL_DISPLAY_NAMES[skill] ?? skill;
+        const context = `${triggeredEvent.name ?? "Event"} (${skillName})`;
+
+        const result = await rollForPlayer(actor, [skill], dc, context);
+
+        // Feed through the normal collection path
+        await this.receiveRollResult({
+            eventIndex,
+            characterId,
+            characterName: actor.name,
+            total: result.total
+        });
+    }
+
+    /**
+     * GM rolls a camp activity check on behalf of an unresponsive player.
+     */
+    static async #onRollCampForPlayer(event, target) {
+        if (!game.user.isGM) return;
+        const characterId = target.dataset.characterId;
+        if (!characterId) return;
+
+        const entry = this._pendingCampRolls?.find(
+            p => p.characterId === characterId && p.status === "pending" && p.requested
+        );
+        if (!entry) return;
+
+        const actor = game.actors.get(characterId);
+        if (!actor) return;
+
+        const context = `${entry.activityName} (${entry.skillName})`;
+        const result = await rollForPlayer(actor, [entry.skill], entry.dc, context);
+
+        // Feed through the normal collection path
+        this.receiveCampRollResult({
+            characterId,
+            characterName: actor.name,
+            activityId: entry.activityId,
+            total: result.total
+        });
     }
 
     /**
@@ -4302,6 +4645,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._activeTreeState.stalled = true;
         this._activeTreeState.stallCount = stallCount;
         this._activeTreeState.totalStallBump = (this._activeTreeState.totalStallBump ?? 0) + bump;
+
+        // If rolls are in progress, bump the pending DC for remaining rolls
+        if (this._activeTreeState.awaitingRolls && this._activeTreeState.pendingDC) {
+            this._activeTreeState.pendingDC += bump;
+        }
 
         // Post stall narrative to chat
         const suffix = stallCount > 1 ? ` (x${stallCount})` : "";
@@ -5228,7 +5576,33 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._triggeredEvents = this._isGM ? snapshot.triggeredEvents
                 : snapshot.triggeredEvents.map(e => ({ ...e, name: undefined, narrative: undefined }));
         }
-        if (snapshot.activeTreeState) this._activeTreeState = snapshot.activeTreeState;
+        if (snapshot.activeTreeState) {
+            this._activeTreeState = snapshot.activeTreeState;
+            // Reconstruct player-side tree roll request from tree state
+            if (!this._isGM && snapshot.activeTreeState.awaitingRolls) {
+                const alreadyRolled = new Set(
+                    (snapshot.activeTreeState.resolvedRolls ?? []).map(r => r.characterId ?? r.actorId)
+                );
+                this._pendingTreeRoll = {
+                    choiceId: snapshot.activeTreeState.pendingChoice,
+                    skills: snapshot.activeTreeState.pendingCheck?.skills ?? [],
+                    skillName: snapshot.activeTreeState.pendingSkillName ?? "Skill",
+                    dc: snapshot.activeTreeState.pendingDC ?? 12,
+                    targets: [
+                        ...(snapshot.activeTreeState.pendingRolls ?? []),
+                        ...(snapshot.activeTreeState.resolvedRolls ?? []).map(r => r.characterId ?? r.actorId)
+                    ],
+                    eventName: snapshot.activeTreeState.eventName,
+                    rolledCharacters: alreadyRolled,
+                    rolledResults: new Map(
+                        (snapshot.activeTreeState.resolvedRolls ?? []).map(r => [
+                            r.characterId ?? r.actorId,
+                            { total: r.total, passed: r.passed }
+                        ])
+                    )
+                };
+            }
+        }
         if (snapshot.outcomes?.length) this._outcomes = snapshot.outcomes;
         if (snapshot.eventsRolled !== undefined) this._eventsRolled = snapshot.eventsRolled;
         if (snapshot.fireLevel) this._fireLevel = snapshot.fireLevel;

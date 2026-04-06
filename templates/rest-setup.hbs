@@ -1387,6 +1387,74 @@
                 {{/if}}
             </div>
             {{/if}}
+            {{/if}}
+
+            {{#if activeTreeState.awaitingRolls}}
+            {{!-- GM: Waiting for player rolls --}}
+            {{#if isGM}}
+            <div class="tree-awaiting-rolls">
+                <div class="tree-roll-header">
+                    <i class="fas fa-dice-d20"></i>
+                    Awaiting Player Rolls — {{activeTreeState.pendingSkillName}} DC {{activeTreeState.pendingDC}}
+                </div>
+                <div class="tree-roll-tracker">
+                    {{#each activeTreeState.resolvedRolls}}
+                    <div class="tree-roll-entry resolved">
+                        <span class="roll-name">{{name}}</span>
+                        <span class="roll-total {{#if passed}}pass{{else}}fail{{/if}}">{{total}}</span>
+                        <i class="fas {{#if passed}}fa-check-circle{{else}}fa-times-circle{{/if}}"></i>
+                    </div>
+                    {{/each}}
+                    {{#each activeTreeState.pendingRolls}}
+                    <div class="tree-roll-entry pending">
+                        <span class="roll-name">{{lookup (lookup @root.actorLookup this) "name"}}</span>
+                        <span class="roll-status"><i class="fas fa-spinner fa-spin"></i> Waiting...</span>
+                        <button type="button" class="btn-roll-for-player" data-action="rollTreeForPlayer" data-character-id="{{this}}" title="Roll on their behalf">
+                            <i class="fas fa-dice"></i> Roll for them
+                        </button>
+                    </div>
+                    {{/each}}
+                </div>
+                <div class="tree-roll-actions">
+                    <button type="button" class="btn-resend-roll" data-action="resendTreeRollRequest" title="Re-send the roll request to players">
+                        <i class="fas fa-paper-plane"></i> Resend
+                    </button>
+                </div>
+            </div>
+            {{else}}
+            {{!-- Player: Show roll buttons when tree roll is pending --}}
+            {{#if @root.pendingTreeRoll}}
+            <div class="tree-player-roll-area">
+                <div class="tree-roll-header">
+                    <i class="fas fa-dice-d20"></i>
+                    {{@root.pendingTreeRoll.eventName}} — {{@root.pendingTreeRoll.skillName}} Check
+                </div>
+                {{#each @root.pendingTreeRoll.ownedTargets}}
+                <div class="tree-roll-character">
+                    {{#if rolled}}
+                    <div class="tree-roll-result {{#if passed}}pass{{else}}fail{{/if}}">
+                        <i class="fas {{#if passed}}fa-check-circle{{else}}fa-times-circle{{/if}}"></i>
+                        <span class="roll-char-name">{{name}}</span>
+                        <span class="roll-total">{{total}}</span>
+                    </div>
+                    {{else}}
+                    <button type="button" class="btn-tree-roll" data-action="rollTreeCheck" data-character-id="{{id}}">
+                        <i class="fas fa-dice-d20"></i> Roll for {{name}}
+                    </button>
+                    {{/if}}
+                </div>
+                {{/each}}
+            </div>
+            {{else}}
+            <div class="tree-waiting">
+                <i class="fas fa-dice-d20"></i> Waiting for a decision...
+            </div>
+            {{/if}}
+            {{/if}}
+
+            {{else}}
+            {{!-- Normal choice selection (not awaiting rolls) --}}
+            {{#if isGM}}
 
             <div class="tree-choices">
                 {{#each activeTreeState.options}}
@@ -1418,9 +1486,11 @@
                 {{/each}}
             </div>
             {{else}}
+            {{!-- Player: Waiting for GM to pick a choice --}}
             <div class="tree-waiting">
                 <i class="fas fa-dice-d20"></i> The GM is making a decision...
             </div>
+            {{/if}}
             {{/if}}
             {{/unless}}
 
@@ -1608,8 +1678,16 @@
                 </div>
                 {{/if}}
                 {{#if pendingRolls.length}}
-                <div class="event-check-waiting" style="font-size:0.75rem;opacity:0.6;">
-                    <i class="fas fa-spinner fa-spin"></i> Still waiting: {{pendingRolls.length}} roll(s)
+                <div class="event-pending-rolls">
+                    {{#each pendingRolls}}
+                    <div class="event-roll-line pending">
+                        <span class="roll-char-name">{{lookup (lookup @root.actorLookup this) "name"}}</span>
+                        <span class="roll-status"><i class="fas fa-spinner fa-spin"></i> Waiting...</span>
+                        <button type="button" class="btn-roll-for-player" data-action="rollEventForPlayer" data-character-id="{{this}}" data-event-index="{{@../index}}" title="Roll on their behalf">
+                            <i class="fas fa-dice"></i> Roll for them
+                        </button>
+                    </div>
+                    {{/each}}
                 </div>
                 {{/if}}
                 <div class="event-override-links">
@@ -1815,6 +1893,9 @@
                     {{#if requested}}
                     <span class="camp-prep-skill">{{skillName}} DC {{dc}}{{#unless (eq dc baseDC)}} <span class="camp-dc-base">(was {{baseDC}})</span>{{/unless}}</span>
                     <span class="camp-prep-result pending"><i class="fas fa-paper-plane"></i> Sent</span>
+                    <button type="button" class="btn-roll-for-player camp-fallback" data-action="rollCampForPlayer" data-character-id="{{characterId}}" title="Roll on their behalf">
+                        <i class="fas fa-dice"></i>
+                    </button>
                     {{else}}
                     <span class="camp-prep-dc-controls">
                         <span class="camp-prep-skill">{{skillName}}</span>

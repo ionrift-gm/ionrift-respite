@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.0.14] - 2026-04-06
+
+### Added
+- Player-driven disaster rolls. When the GM picks a disaster choice, each player now rolls their own skill check instead of the GM auto-rolling for them. Players see their result (total, pass/fail) inline.
+- "Roll for them" fallback on all roll contexts. If a player is disconnected or unresponsive, the GM can roll on their behalf during disaster checks, event group checks, and camp activity checks.
+- Resend button for disaster roll requests. If a player refreshes mid-roll, the GM can re-broadcast the roll request.
+- Per-character pending roll tracker for the GM during event group checks (replaces the old generic "Still waiting: X roll(s)" counter).
+- Shared roll utilities via RollRequestManager for consistent roll construction, Dice So Nice integration, and button disabling across all roll contexts.
+
+### Fixed
+- Exhaustion from failed CON saves now persists. The native DnD5e long rest was silently reverting Respite's exhaustion changes because the suppression hook had a faulty guard clause. Exhaustion set by RecoveryHandler is no longer overwritten.
+- Stalling during an active disaster roll now correctly bumps the pending DC for remaining rolls. Previously the stall penalty only updated the option DCs but not the in-flight roll target.
+- Player tree roll state now survives a client refresh. The pending roll request is reconstructed from the GM's snapshot, preserving already-rolled results.
+
+### Changed
+- DecisionTreeResolver split into two phases: `prepareChoice()` for roll request preparation and `resolveWithResults()` for final state resolution. The old synchronous `resolveChoice()` is kept only for Force Pass/Fail overrides.
+
 ## [1.0.13] - 2026-04-06
 
 ### Fixed

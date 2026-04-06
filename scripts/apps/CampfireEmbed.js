@@ -192,10 +192,11 @@ export class CampfireEmbed {
                 const emoteId = btn.dataset.emoteId;
                 const emote = EMOTES.find(e => e.id === emoteId);
                 if (!emote) return;
+                const displayName = this._resolveDisplayName(game.user.name);
                 const color = this._getPlayerColor(game.user.name);
-                this._playEmote(emote, game.user.name, color);
+                this._playEmote(emote, displayName, color);
                 game.socket.emit(`module.${MODULE_ID}`, {
-                    type: "campfireEmote", emoteId, userName: game.user.name, color
+                    type: "campfireEmote", emoteId, userName: displayName, color
                 });
             });
         }
@@ -319,12 +320,13 @@ export class CampfireEmbed {
             this._lastWhittledFigure = figure;
             this._whittleProgress = 0;
             this._whittleTarget = 10 + Math.floor(Math.random() * 6);
-            this._showWhittleComplete(figure, game.user.name);
+            const displayName = this._resolveDisplayName(game.user.name);
+            this._showWhittleComplete(figure, displayName);
             this._updateWhittleProgressBar(0);
             game.socket.emit(`module.${MODULE_ID}`, {
                 type: "campfireWhittle", complete: true,
                 figure: { id: figure.id, icon: figure.icon, label: figure.label },
-                userName: game.user.name
+                userName: displayName
             });
         } else {
             this._updateWhittleProgressBar(
@@ -544,6 +546,11 @@ export class CampfireEmbed {
         const user = game.users?.find(u => u.name === nameOrUserName)
             ?? game.users?.find(u => u.character?.name === nameOrUserName);
         return user?.color?.toString() ?? "#ffdc82";
+    }
+
+    _resolveDisplayName(userName) {
+        const user = game.users?.find(u => u.name === userName);
+        return user?.character?.name ?? userName;
     }
 
     _getPlayerActor() {
