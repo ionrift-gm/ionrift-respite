@@ -251,7 +251,6 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
         </div>
 
         <!-- ═══ Art Tab ═══ -->
-        <!-- ═══ Art Tab ═══ -->
         <div class="pack-tab-panel ${isArt ? "active" : ""}" data-panel="art">
           <div class="pack-tab-content">
             <div class="pack-summary-bar">
