@@ -5955,6 +5955,34 @@
     font-size: 0.55rem;
 }
 
+/* ---- Pack Links ---- */
+
+.pack-links {
+    display: flex;
+    justify-content: center;
+    gap: 1.2rem;
+    padding: 0.5rem 0 0.25rem;
+    margin-top: auto;
+}
+
+.pack-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.7rem;
+    color: rgba(155, 89, 182, 0.55);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.pack-links a:hover {
+    color: rgba(155, 89, 182, 0.9);
+}
+
+.pack-links a i {
+    font-size: 0.6rem;
+}
+
 /* ---- Actions (sticky footer) ---- */
 
 .pack-actions {
