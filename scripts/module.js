@@ -367,6 +367,13 @@ Hooks.once("init", async () => {
         default: {}
     });
 
+    game.settings.register(MODULE_ID, "artPackDisabled", {
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false
+    });
+
     // FOOTER: Discord + Wiki (standardised via ionrift-library)
     const { SettingsLayout } = await import("../../ionrift-library/scripts/SettingsLayout.js");
     SettingsLayout.registerFooter(MODULE_ID);

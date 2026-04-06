@@ -156,6 +156,7 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
 
         <!-- ═══ Events Tab ═══ -->
         <div class="pack-tab-panel active" data-panel="events">
+          <div class="pack-tab-content">
             <div class="pack-summary-bar">
                 <div class="pack-summary-stat">
                     <span class="stat-value">${context.totalEnabled}</span>
@@ -229,6 +230,7 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
         }
 
         html += `
+          </div>
             <div class="pack-actions">
                 <button type="button" class="pack-import-btn">
                     <i class="fas fa-file-import"></i> Import Events
@@ -241,23 +243,36 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
 
         <!-- ═══ Art Tab ═══ -->
         <div class="pack-tab-panel" data-panel="art">
-            <div class="art-status-card ${hasArt ? "active" : "inactive"}">
-                <div class="art-status-header">
-                    <i class="fas ${hasArt ? "fa-check-circle" : "fa-times-circle"}"></i>
-                    <span>${hasArt ? "Art Pack Installed" : "No Art Pack"}</span>
+          <div class="pack-tab-content">
+            ${hasArt ? `
+            <div class="pack-card enabled" data-art-type="terrain">
+                <div class="pack-card-header">
+                    <div class="pack-title-block">
+                        <span class="pack-title"><i class="fas fa-palette"></i> Terrain Art</span>
+                        <span class="pack-desc">${artPath}</span>
+                    </div>
+                    <span class="art-pack-badge installed"><i class="fas fa-check"></i> Installed</span>
                 </div>
-                <div class="art-status-detail">
-                    ${hasArt
-                        ? `<span class="art-path"><i class="fas fa-folder-open"></i> ${artPath}</span>`
-                        : `<span class="art-hint">Import a terrain art pack to replace placeholder banners with illustrated terrain art.</span>`
-                    }
+                <div class="pack-card-body">
+                    <span class="art-pack-note">Illustrated banners for rest setup, events, and resolution phases.</span>
+                    <button type="button" class="art-uninstall-btn" title="Remove art pack">
+                        <i class="fas fa-trash-alt"></i> Uninstall
+                    </button>
                 </div>
             </div>
+            ` : `
+            <div class="art-empty-state">
+                <i class="fas fa-image"></i>
+                <p>No art packs installed.</p>
+                <span>Import a terrain art pack to replace placeholder banners with illustrated terrain art.</span>
+            </div>
+            `}
             <div class="art-instructions">
-                <p>Art packs are ZIP files containing terrain images organized in subfolders:</p>
+                <p>Art packs are ZIP files with terrain images in subfolders:</p>
                 <code>data/terrains/forest/banner.png<br>data/terrains/desert/setup.png<br>data/terrains/swamp/events.png</code>
                 <p>Accepted formats: .webp, .png, .jpg</p>
             </div>
+          </div>
             <div class="pack-actions">
                 <button type="button" class="pack-import-art-btn">
                     <i class="fas fa-file-archive"></i> ${hasArt ? "Re-import Art Pack" : "Import Art Pack"}
@@ -301,6 +316,7 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
 
         // ── Art tab wiring ──
         el.querySelector(".pack-import-art-btn").addEventListener("click", () => this._importArtPack());
+        el.querySelector(".art-uninstall-btn")?.addEventListener("click", () => this._uninstallArtPack());
 
         return el;
     }
@@ -373,6 +389,9 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             return;
         }
 
+        // Clear disabled flag if re-importing
+        await game.settings.set("ionrift-respite", "artPackDisabled", false);
+
         const result = await game.ionrift.library.importZipPack({
             moduleId: "respite",
             assetType: "art",
@@ -391,7 +410,19 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             // Re-initialize ImageResolver to pick up the new art
             await ImageResolver.init();
             ui.notifications.info(`Art pack ready. ${result.imported} terrain images loaded.`);
+            this.render({ force: true });
         }
+    }
+
+    /**
+     * Disables the art pack by setting a world flag.
+     * Files remain on disk but ImageResolver will ignore them.
+     */
+    async _uninstallArtPack() {
+        await game.settings.set("ionrift-respite", "artPackDisabled", true);
+        await ImageResolver.init();
+        ui.notifications.info("Art pack disabled. Placeholder banners will be used.");
+        this.render({ force: true });
     }
 
     /** @override */

@@ -39,6 +39,18 @@ export class ImageResolver {
      * Detects whether an art pack has been imported via the Zip Importer.
      */
     static async init() {
+        // Reset state for re-init (uninstall/re-import cycles)
+        this.#artPackActive = false;
+        this.#importedArtPath = null;
+        this.#basePath = `modules/${MODULE_ID}`;
+
+        // Check for GM disable flag
+        const disabled = game.settings.get(MODULE_ID, "artPackDisabled") ?? false;
+        if (disabled) {
+            console.log(`${MODULE_ID} | ImageResolver: artPack=disabled (GM override)`);
+            return;
+        }
+
         // Check the shared ionrift-data directory for imported art
         const importedPath = game.ionrift?.library?.getZipTargetDir?.("respite", "art");
         if (importedPath) {

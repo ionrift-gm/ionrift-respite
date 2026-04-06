@@ -5938,13 +5938,16 @@
     font-size: 0.55rem;
 }
 
-/* ---- Actions ---- */
+/* ---- Actions (sticky footer) ---- */
 
 .pack-actions {
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
-    padding-top: 0.5rem;
+    padding: 0.5rem 0 0;
+    margin-top: auto;
+    flex-shrink: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .pack-actions button {
@@ -5952,12 +5955,17 @@
     align-items: center;
     gap: 0.4rem;
     padding: 0.45rem 1rem;
-    border-radius: 6px;
+    border-radius: 6px !important;
     font-size: 0.78rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
     line-height: 1;
+    /* Kill Foundry default red button bleed */
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+    box-shadow: none !important;
 }
 
 .pack-actions button i {
@@ -6086,11 +6094,25 @@
 .pack-tab-panel {
     display: none;
     flex-direction: column;
-    gap: 0.5rem;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .pack-tab-panel.active {
     display: flex;
+}
+
+/* Scrollable content area within each tab */
+.pack-tab-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-bottom: 0.25rem;
 }
 
 /* ---- Art Status Card ---- */
@@ -6186,6 +6208,84 @@
     background: rgba(155, 89, 182, 0.25) !important;
     border-color: rgba(155, 89, 182, 0.5) !important;
     box-shadow: 0 0 10px rgba(155, 89, 182, 0.15);
+}
+
+/* ---- Art Pack Card Elements ---- */
+
+.art-pack-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.art-pack-badge.installed {
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.25);
+    color: #4ade80;
+}
+
+.art-pack-note {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.4);
+    flex: 1;
+}
+
+.art-uninstall-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px !important;
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: rgba(248, 113, 113, 0.1) !important;
+    border: 1px solid rgba(248, 113, 113, 0.25) !important;
+    color: rgba(248, 113, 113, 0.7) !important;
+    box-shadow: none !important;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.art-uninstall-btn:hover {
+    background: rgba(248, 113, 113, 0.2) !important;
+    border-color: rgba(248, 113, 113, 0.5) !important;
+    color: #f87171 !important;
+}
+
+/* ---- Art Empty State ---- */
+
+.art-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 1.5rem 1rem;
+    color: rgba(255, 255, 255, 0.3);
+    text-align: center;
+}
+
+.art-empty-state > i {
+    font-size: 2rem;
+    opacity: 0.3;
+}
+
+.art-empty-state p {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.art-empty-state span {
+    font-size: 0.72rem;
+    font-style: italic;
 }
 
 /* ============================================================
