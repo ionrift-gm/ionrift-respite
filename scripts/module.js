@@ -426,8 +426,8 @@ Hooks.once("ready", async () => {
     console.log(`${MODULE_ID} | Ready hook firing...`);
     Logger.log?.(MODULE_LABEL, "Ready.");
 
-    // Initialize image resolver (art pack detection)
-    ImageResolver.init();
+    // Initialize image resolver (art pack detection — probes ionrift-data/)
+    await ImageResolver.init();
 
     // Initialize terrain registry early so data is available before first rest
     await TerrainRegistry.init();

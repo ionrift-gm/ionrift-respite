@@ -1,4 +1,5 @@
 import { TerrainRegistry } from "../services/TerrainRegistry.js";
+import { ImageResolver } from "../util/ImageResolver.js";
 
 /**
  * PackRegistryApp
@@ -222,8 +223,11 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
         // Actions
         html += `
         <div class="pack-actions">
+            <button type="button" class="pack-import-art-btn" title="Import terrain art from a ZIP file">
+                <i class="fas fa-image"></i> Import Art Pack
+            </button>
             <button type="button" class="pack-import-btn">
-                <i class="fas fa-file-import"></i> Import Pack
+                <i class="fas fa-file-import"></i> Import Events
             </button>
             <button type="button" class="pack-save-btn">
                 <i class="fas fa-save"></i> Save Changes
@@ -253,8 +257,11 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             this.close();
         });
 
-        // Import Pack
+        // Import Events (JSON content pack)
         el.querySelector(".pack-import-btn").addEventListener("click", () => this._importPack());
+
+        // Import Art Pack (ZIP via library)
+        el.querySelector(".pack-import-art-btn").addEventListener("click", () => this._importArtPack());
 
         return el;
     }
@@ -314,6 +321,38 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             }
         });
         input.click();
+    }
+
+    /**
+     * Opens the Zip Pack Importer for terrain art assets.
+     * Art lands in ionrift-data/respite/art/ and ImageResolver
+     * will detect it on next init.
+     */
+    async _importArtPack() {
+        if (!game.ionrift?.library?.importZipPack) {
+            ui.notifications.error("Ionrift Library v1.5.0+ is required for art pack imports.");
+            return;
+        }
+
+        const result = await game.ionrift.library.importZipPack({
+            moduleId: "respite",
+            assetType: "art",
+            allowedExtensions: [".webp", ".png", ".jpg", ".jpeg"],
+            schemaValidator: (entries) => {
+                // Require at least one file in a subfolder (terrain directory structure)
+                const hasTerrain = entries.some(e => e.dir.length > 0);
+                if (!hasTerrain) {
+                    return { valid: false, errors: ["Art pack should contain terrain subfolders (e.g. forest/, desert/)."] };
+                }
+                return { valid: true, errors: [] };
+            }
+        });
+
+        if (result && result.imported > 0) {
+            // Re-initialize ImageResolver to pick up the new art
+            await ImageResolver.init();
+            ui.notifications.info(`Art pack ready. ${result.imported} terrain images loaded.`);
+        }
     }
 
     /** @override */
