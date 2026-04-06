@@ -109,7 +109,8 @@ export class ImageResolver {
      * for that terrain, otherwise the universal fallback.
      */
     static terrainBanner(terrain, filename) {
-        if (this.#artPackActive) {
+        // Art pack active AND this terrain is covered by the pack
+        if (this.#artPackActive && this.#artTerrains.includes(terrain)) {
             return `${this.#basePath}/data/terrains/${terrain}/${filename}`;
         }
 
