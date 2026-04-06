@@ -256,16 +256,16 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
           <div class="pack-tab-content">
             <div class="pack-summary-bar">
                 <div class="pack-summary-stat">
-                    <span class="stat-value">${hasArt ? ImageResolver.artFileCount : 0}</span>
-                    <span class="stat-label">total files</span>
-                </div>
-                <div class="pack-summary-stat">
                     <span class="stat-value">${hasArt ? ImageResolver.artTerrains.length : 0}</span>
                     <span class="stat-label">terrains</span>
                 </div>
                 <div class="pack-summary-stat">
                     <span class="stat-value">${hasArt ? Math.floor(ImageResolver.artFileCount / ImageResolver.artTerrains.length) : 0}</span>
                     <span class="stat-label">per terrain</span>
+                </div>
+                <div class="pack-summary-stat">
+                    <span class="stat-value">${hasArt ? ImageResolver.artFileCount : 0}</span>
+                    <span class="stat-label">total files</span>
                 </div>
             </div>
             <div class="pack-section-header"><i class="fas fa-image"></i> TERRAIN ART</div>
