@@ -254,6 +254,7 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
         <!-- ═══ Art Tab ═══ -->
         <div class="pack-tab-panel ${isArt ? "active" : ""}" data-panel="art">
           <div class="pack-tab-content">
+            <h4 class="pack-section-header"><i class="fas fa-image"></i> TERRAIN ART</h4>
             ${hasArt ? (() => {
                 const fileCount = ImageResolver.artFileCount;
                 const terrains = ImageResolver.artTerrains;
