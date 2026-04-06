@@ -5983,6 +5983,13 @@
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
     color: rgba(255, 255, 255, 0.6) !important;
     box-shadow: none !important;
+    outline: none !important;
+}
+
+.pack-actions button:focus,
+.pack-actions button:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 .pack-actions button i {
@@ -6089,6 +6096,8 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 .pack-tab:hover {
@@ -6096,10 +6105,19 @@
     color: rgba(255, 255, 255, 0.6) !important;
 }
 
+.pack-tab:focus,
+.pack-tab:focus-visible,
+.pack-tab:active {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
 .pack-tab.active {
     background: rgba(155, 89, 182, 0.1) !important;
     border-bottom-color: var(--ionrift-accent, #9b59b6) !important;
     color: rgba(255, 255, 255, 0.85) !important;
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 .pack-tab i {
