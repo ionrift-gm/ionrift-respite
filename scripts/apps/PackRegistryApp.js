@@ -453,8 +453,8 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
      * Files remain on disk but ImageResolver will ignore them.
      */
     async _uninstallArtPack() {
-        if (this._uninstallPending) return;
-        this._uninstallPending = true;
+        if (PackRegistryApp._uninstallPending) return;
+        PackRegistryApp._uninstallPending = true;
 
         try {
             const confirmed = await foundry.applications.api.DialogV2.confirm({
@@ -471,7 +471,7 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             this.render({ force: true });
             this._refreshOpenRestApp();
         } finally {
-            this._uninstallPending = false;
+            PackRegistryApp._uninstallPending = false;
         }
     }
 
