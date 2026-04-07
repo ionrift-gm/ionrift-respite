@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.17] - 2026-04-07
+
+### Added
+- Custom Food Items setting. GMs can add a comma-separated list of item names that count as food in the meal phase. Works for homebrew diets, Gatherer output, and any non-standard food.
+- Custom Water Items setting. Same idea for water. A Warforged that drinks oil? Add "oil" to the list and it appears in the water lane.
+
 ## [1.0.16] - 2026-04-07
 
 ### Fixed
