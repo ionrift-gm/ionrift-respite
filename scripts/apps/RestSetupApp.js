@@ -656,7 +656,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // Sum up all damage effects from event outcomes
             let totalDamage = 0;
             for (const sub of (o.outcomes ?? [])) {
-                if (sub.source === "event" && sub.resolvedOutcome !== "success") {
+                if (sub.source === "event" && !["success", "triumph"].includes(sub.resolvedOutcome)) {
                     for (const eff of (sub.effects ?? [])) {
                         if (eff.type === "damage") {
                             // Parse flat formula or use the number directly
@@ -1790,11 +1790,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     ? "Two Complications"
                     : "One Complication"
             } : null,
-            hasEncounterEvent: (this._triggeredEvents ?? []).some(e => e.category === "encounter" && e.resolvedOutcome !== "success") && !this._awaitingCombat && !this._combatAcknowledged,
+            hasEncounterEvent: (this._triggeredEvents ?? []).some(e => e.category === "encounter" && !["success", "triumph"].includes(e.resolvedOutcome)) && !this._awaitingCombat && !this._combatAcknowledged,
             combatBuffs: this._combatBuffs ?? null,
             awaitingCombat: this._awaitingCombat ?? false,
             encounterAwareness: (() => {
-                const enc = (this._triggeredEvents ?? []).find(e => e.category === "encounter" && e.resolvedOutcome !== "success");
+                const enc = (this._triggeredEvents ?? []).find(e => e.category === "encounter" && !["success", "triumph"].includes(e.resolvedOutcome));
                 if (!enc) return null;
                 const hints = enc.mechanical?.onFailure?.effects?.find(ef => ef.type === "encounter")?.encounterHints;
                 return hints?.awareness ?? null;
@@ -3050,12 +3050,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const roundedAvg = Math.round(avg);
                 triggeredEvent.groupAverage = roundedAvg;
 
+                // 4-tier outcome classification (triumph, success, mixed, failure)
+                // Tier activation is gated by whether the event data defines the block.
+                const hasTriumph = !!triggeredEvent.mechanical?.onTriumph;
+                const hasMixed = !!triggeredEvent.mechanical?.onMixed;
+
                 let outcome;
-                if (roundedAvg >= dc + 5 || rolls.every(r => r.passed)) {
+                if (roundedAvg >= dc + 5 && hasTriumph) {
+                    outcome = "triumph";
+                } else if (roundedAvg >= dc || rolls.every(r => r.passed)) {
                     outcome = "success";
-                } else if (roundedAvg >= dc) {
-                    // Partial: average passes but not by much
-                    outcome = triggeredEvent.mechanical.onPartial ? "partial" : "success";
+                } else if (roundedAvg >= dc - 5 && hasMixed) {
+                    outcome = "mixed";
                 } else {
                     outcome = "failure";
                 }

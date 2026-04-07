@@ -285,7 +285,7 @@ export class RecoveryHandler {
         let totalDamage = 0;
 
         for (const sub of (outcome.outcomes ?? [])) {
-            if (sub.source !== "event" || sub.resolvedOutcome === "success") continue;
+            if (sub.source !== "event" || ["success", "triumph"].includes(sub.resolvedOutcome)) continue;
 
             for (const effect of (sub.effects ?? [])) {
                 if (effect.type !== "damage" || !effect.formula) continue;

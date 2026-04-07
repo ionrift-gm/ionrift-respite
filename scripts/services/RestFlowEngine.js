@@ -131,15 +131,24 @@ export class RestFlowEngine {
 
             // Map events to outcome entries with resolved effects
             const eventOutcomes = characterEvents.map(e => {
-                const failed = e.resolvedOutcome === "failure";
-                const passed = e.resolvedOutcome === "success";
-                // Use the correct narrative based on adjudication
-                let narrative = e.narrative ?? "";
-                if (passed && e.mechanical?.onSuccess?.narrative) {
-                    narrative = e.mechanical.onSuccess.narrative;
-                } else if (failed && e.mechanical?.onFailure?.narrative) {
-                    narrative = e.mechanical.onFailure.narrative;
-                }
+                // Resolve the correct outcome block from the 4-tier schema
+                // Fallback chain: triumph > success, mixed > failure
+                const TIER_MAP = {
+                    triumph: "onTriumph",
+                    success: "onSuccess",
+                    mixed: "onMixed",
+                    failure: "onFailure"
+                };
+                const FALLBACK = { triumph: "onSuccess", mixed: "onFailure" };
+
+                const tierKey = TIER_MAP[e.resolvedOutcome] ?? "onFailure";
+                const fallbackKey = FALLBACK[e.resolvedOutcome];
+                const block = e.mechanical?.[tierKey]
+                    ?? (fallbackKey ? e.mechanical?.[fallbackKey] : null)
+                    ?? {};
+
+                const isPositive = ["triumph", "success"].includes(e.resolvedOutcome);
+
                 return {
                     source: "event",
                     eventId: e.id,
@@ -147,15 +156,16 @@ export class RestFlowEngine {
                     category: e.category,
                     result: e.result,
                     resolvedOutcome: e.resolvedOutcome ?? null,
-                    items: (passed ? e.mechanical?.onSuccess?.items : e.items) ?? [],
-                    effects: (failed || (e.resolved && !passed)) ? (e.mechanical?.onFailure?.effects ?? e.effects ?? []) : [],
-                    narrative
+                    items: block.items ?? [],
+                    effects: isPositive ? [] : (block.effects ?? []),
+                    narrative: block.narrative ?? e.narrative ?? ""
                 };
             });
 
-            // Flag if any event disrupted the rest (failed complication or any encounter)
+            // Flag if any event disrupted the rest (failure/mixed complication, or unresolved encounter)
             const eventDisrupted = eventOutcomes.some(
-                e => e.resolvedOutcome === "failure" || e.category === "encounter"
+                e => ["failure", "mixed"].includes(e.resolvedOutcome)
+                    || (e.category === "encounter" && !["success", "triumph"].includes(e.resolvedOutcome))
             );
 
             outcomes.push({
