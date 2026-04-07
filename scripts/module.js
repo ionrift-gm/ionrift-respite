@@ -231,6 +231,18 @@ Hooks.once("init", async () => {
             const FP = foundry.applications.apps?.FilePicker?.implementation ?? FilePicker;
             await FP.upload("data", "ionrift_debug", file, { notify: false });
             ui.notifications.info("UNLINK_PACKS command sent. Waiting for DevTools to execute...");
+        },
+        /** GM escape hatch: clears stale rest state and reloads. Usage: game.ionrift.respite.resetFlowState() */
+        resetFlowState: async () => {
+            if (!game.user.isGM) { console.warn(`${MODULE_ID} | resetFlowState is GM-only.`); return; }
+            respiteFlowActive = false;
+            activeRestSetupApp = null;
+            activeRestData = null;
+            activeShortRestApp = null;
+            await game.settings.set(MODULE_ID, "activeRest", {});
+            game.socket.emit(`module.${MODULE_ID}`, { type: "forceReload" });
+            ui.notifications.info("Rest state cleared. Reloading...");
+            setTimeout(() => window.location.reload(), 500);
         }
     };
 
@@ -406,6 +418,30 @@ Hooks.once("init", async () => {
         config: true,
         type: Boolean,
         default: false
+    });
+
+    // Clear Rest State: GM escape hatch for stuck rests (renders below debug)
+    game.settings.registerMenu(MODULE_ID, "clearRestState", {
+        name: "Clear Rest State",
+        label: "Clear Stuck Rest",
+        hint: "If a rest is stuck and cannot be resumed or dismissed, this clears all rest state and reloads. Use when the rest dialog won't open or a previous rest didn't clean up.",
+        icon: "fas fa-broom",
+        type: class ClearRestStateApp extends FormApplication {
+            async _updateObject() {
+                await game.ionrift.respite.resetFlowState();
+            }
+            async render() {
+                const proceed = await Dialog.confirm({
+                    title: "Clear Rest State",
+                    content: "<p>This will discard any in-progress rest and reload all connected clients.</p><p>Only use this if a rest is stuck and cannot be resolved normally.</p>",
+                    yes: () => true,
+                    no: () => false,
+                    defaultYes: false
+                });
+                if (proceed) await this._updateObject();
+            }
+        },
+        restricted: true
     });
 });
 
