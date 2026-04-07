@@ -6,6 +6,45 @@
  * All item grants go through grantItemsToActor() which stacks onto existing
  * inventory entries by name match rather than creating duplicates.
  */
+
+/**
+ * Fallback item definitions for itemRefs that lack compendium entries.
+ * These are superseded by any compendium, Workshop, or world item match.
+ * Backlog: create proper compendium items for each of these.
+ */
+const FALLBACK_ITEMS = {
+    rusty_pitons: {
+        name: "Rusty Pitons",
+        type: "loot",
+        img: "icons/tools/fasteners/spike-square-brown.webp",
+        system: { quantity: 1, description: { value: "Iron spikes salvaged from a previous expedition. Bent but serviceable." } }
+    },
+    crate_wood: {
+        name: "Crate Wood",
+        type: "loot",
+        img: "icons/commodities/wood/wood-pile-brown.webp",
+        system: { quantity: 1, description: { value: "Splintered crate planks. Dry enough to burn as fuel." } }
+    },
+    cached_gold: {
+        name: "Cached Gold",
+        type: "loot",
+        img: "icons/commodities/currency/coins-assorted-mix-copper-gold-silver.webp",
+        system: { quantity: 1, description: { value: "A small purse of coins buried by a previous traveller." } }
+    },
+    potion_of_healing: {
+        name: "Potion of Healing",
+        type: "consumable",
+        img: "icons/consumables/potions/potion-bottle-corked-red.webp",
+        system: { quantity: 1, type: { value: "potion" } }
+    },
+    antitoxin: {
+        name: "Antitoxin",
+        type: "consumable",
+        img: "icons/consumables/potions/potion-tube-corked-glowing-green.webp",
+        system: { quantity: 1, type: { value: "potion" } }
+    }
+};
+
 export class ItemOutcomeHandler {
 
     // ── Centralized Grant ────────────────────────────────────────
@@ -228,7 +267,21 @@ export class ItemOutcomeHandler {
         // 4. Inline fallback
         if (itemEntry.itemData) return itemEntry.itemData;
 
-        return null;
+        // 5. Built-in fallback for refs without compendium entries yet
+        const fallback = FALLBACK_ITEMS[ref];
+        if (fallback) {
+            console.log(`ItemOutcomeHandler | Resolved "${ref}" via built-in fallback`);
+            return { ...fallback };
+        }
+
+        // 6. Last resort: synthesize a generic loot item from the ref name
+        console.warn(`ItemOutcomeHandler | Unresolved itemRef "${ref}", creating generic loot`);
+        return {
+            name: ref.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
+            type: "loot",
+            img: "icons/svg/item-bag.svg",
+            system: { quantity: 1 }
+        };
     }
 
     /**
