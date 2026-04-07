@@ -3711,6 +3711,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const restApp = this;
             this._campfireApp = new CampfireEmbed(drawerContainer, {
                 partyCharacterIds: this._myCharacterIds ? Array.from(this._myCharacterIds) : [],
+                terrainTag: this._engine?.terrainTag ?? null,
                 onFireLevelChange: (level) => {
                     restApp._fireLevel = level;
                     // Save snapshot on every fire level change

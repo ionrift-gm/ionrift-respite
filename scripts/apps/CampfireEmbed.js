@@ -52,11 +52,13 @@ export class CampfireEmbed {
         this._showLitBanner = false;
         this._onFireLevelChange = options.onFireLevelChange ?? null;
         this._partyCharacterIds = options.partyCharacterIds ?? [];
+        this._terrainTag = options.terrainTag ?? null;
         this._whittleProgress = 0;
         this._whittleTarget = 12;
         this._lastWhittledFigure = null;
         this._peakHeat = 0;
         this._kindlingPlaced = false;
+        this._autoLitApplied = false;
         /** @type {CampfirePhysics|null} */
         this._physics = null;
         this._emberInterval = null;
@@ -87,10 +89,29 @@ export class CampfireEmbed {
 
     async render() {
         if (!this._container) return;
+
+        // Taverns have a hearth: auto-light the fire on first render
+        if (!this._autoLitApplied && this._isHearthTerrain()) {
+            this._autoLitApplied = true;
+            this._kindlingPlaced = true;
+            this._lit = true;
+            this._litBy = "The Hearth";
+            this._heat = 45;
+            this._peakHeat = 45;
+        }
+
         const ctx = this._prepareContext();
         const html = await foundry.applications.handlebars.renderTemplate(this._templatePath, ctx);
         this._container.innerHTML = html;
         this._onRender();
+    }
+
+    /**
+     * Returns true for terrain types where fire is provided (e.g. tavern hearth).
+     */
+    _isHearthTerrain() {
+        const tag = this._terrainTag?.toLowerCase();
+        return tag === "tavern" || tag?.startsWith("tavern_");
     }
 
     _prepareContext() {

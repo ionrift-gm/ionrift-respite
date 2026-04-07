@@ -489,7 +489,9 @@ Hooks.once("ready", async () => {
         const age = Date.now() - (savedRest.timestamp ?? 0);
         const ageLabel = age < 3600000
             ? `${Math.round(age / 60000)} minutes ago`
-            : `${Math.round(age / 3600000)} hours ago`;
+            : age < 86400000
+                ? `${Math.round(age / 3600000)} hours ago`
+                : `${Math.round(age / 86400000)} days ago`;
 
         // Block new rest creation while the resume prompt is open
         respiteFlowActive = true;
@@ -499,27 +501,31 @@ Hooks.once("ready", async () => {
             ? `<p style="color: #e8a44a;"><i class="fas fa-exclamation-triangle"></i> <strong>Warning:</strong> Activities have been selected. Spell copies or event discoveries may have already granted items. Discarding and re-resting could produce duplicate rewards.</p>`
             : "";
 
-        const resume = await game.ionrift.library.confirm({
-            title: "Interrupted Rest Found",
-            content: `<p>An interrupted rest was found (saved ${ageLabel}).</p><p><strong>Phase:</strong> ${savedRest.phase ?? "unknown"}</p><p><strong>Terrain:</strong> ${savedRest.engine.terrainTag ?? "unknown"}</p>${rewardWarning}`,
-            yesLabel: "Resume Rest",
-            noLabel: "Discard",
-            yesIcon: "fas fa-campground",
-            noIcon: "fas fa-trash",
-            defaultYes: true
-        });
+        let resume = false;
+        try {
+            resume = await game.ionrift.library.confirm({
+                title: "Interrupted Rest Found",
+                content: `<p>An interrupted rest was found (saved ${ageLabel}).</p><p><strong>Phase:</strong> ${savedRest.phase ?? "unknown"}</p><p><strong>Terrain:</strong> ${savedRest.engine.terrainTag ?? "unknown"}</p>${rewardWarning}`,
+                yesLabel: "Resume Rest",
+                noLabel: "Discard",
+                yesIcon: "fas fa-campground",
+                noIcon: "fas fa-trash",
+                defaultYes: true
+            });
+        } catch (e) {
+            console.error(`${MODULE_ID} | Resume dialog failed, clearing stale state:`, e);
+            respiteFlowActive = false;
+            await game.settings.set(MODULE_ID, "activeRest", {});
+        }
 
         if (resume) {
             try {
                 const app = new RestSetupApp();
-                // _loadRestState awaits _dataReady internally, no manual delay needed
                 const restored = await app._loadRestState();
                 if (restored) {
-                    // Re-register as active so socket routing works
                     registerActiveRestApp(app);
                     respiteFlowActive = true;
 
-                    // Rebuild rest data payload for player resync
                     const restPayload = {
                         terrainTag: app._engine?.terrainTag,
                         comfort: app._engine?.comfort,
@@ -535,7 +541,6 @@ Hooks.once("ready", async () => {
                     ui.notifications.info("Interrupted rest resumed.");
                     Logger.log?.(MODULE_LABEL, "Restored interrupted rest from world flags.");
 
-                    // Give players a moment then broadcast current state
                     setTimeout(() => {
                         game.socket.emit(`module.${MODULE_ID}`, {
                             type: "restStarted",
@@ -564,7 +569,6 @@ Hooks.once("ready", async () => {
         } else {
             respiteFlowActive = false;
             await game.settings.set(MODULE_ID, "activeRest", {});
-            // Notify players the rest has been cancelled
             game.socket.emit(`module.${MODULE_ID}`, { type: "restResolved" });
             Logger.log?.(MODULE_LABEL, "Discarded interrupted rest.");
         }
