@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.16] - 2026-04-07
+
+### Fixed
+- Event item grants (rusty pitons, crate wood, cached gold, potions, antitoxin) no longer fail with "Could not resolve item". Added built-in fallback definitions for items that lack compendium entries. Any unrecognised itemRef now creates a named loot item instead of throwing an error.
+
 ## [1.0.15] - 2026-04-07
 
 ### Added
