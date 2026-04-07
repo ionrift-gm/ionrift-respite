@@ -338,60 +338,124 @@ export class MealPhaseHandler {
 
     // ── Internal Helpers ─────────────────────────────────────────
 
+    /** Known food item names (lowercase). Used as fallback when type/flag detection misses. */
+    static FOOD_NAMES = new Set([
+        "rations", "rations (1 day)", "trail rations", "iron rations"
+    ]);
+
     /**
      * Build food options from actor inventory.
-     * Looks for items named "Rations" or with type "consumable" + food-like properties.
+     *
+     * Detection strategy (first match wins per item):
+     *   1. DnD5e consumable subtype: item.system.type.value === "food"
+     *   2. Respite flag: item.flags["ionrift-respite"].foodType === "food"
+     *   3. Name fallback: matches FOOD_NAMES allowlist
+     *
+     * This allows custom food items (homebrew diets, Gatherer outputs,
+     * crafted meals) to appear in the meal phase without name hacking.
      */
     static _buildFoodOptions(actor) {
         const options = [];
 
         for (const item of actor.items) {
-            const name = item.name?.toLowerCase().trim();
             const qty = item.system?.quantity ?? 1;
             if (qty <= 0) continue;
 
-            // Match common food items by name
-            if (name === "rations" || name === "rations (1 day)" || name === "trail rations") {
-                options.push({
-                    value: item.id,
-                    label: `${item.name} (\u00d7${qty})`,
-                    itemId: item.id,
-                    available: qty,
-                    icon: item.img ?? "icons/consumables/food/bread-loaf-round-white.webp"
-                });
-            }
+            const isFood = this._isFoodItem(item);
+            if (!isFood) continue;
+
+            options.push({
+                value: item.id,
+                label: `${item.name} (\u00d7${qty})`,
+                itemId: item.id,
+                available: qty,
+                icon: item.img ?? "icons/consumables/food/bread-loaf-round-white.webp"
+            });
         }
 
         return options;
     }
 
     /**
+     * Check if an item qualifies as food for the meal phase.
+     * @param {Item} item - Foundry Item document
+     * @returns {boolean}
+     */
+    static _isFoodItem(item) {
+        // Guard: DnD5e types all food AND drink as "food" (there is no
+        // separate "drink" subtype). Exclude anything the water detector
+        // would claim so waterskins/water pints stay in the water lane.
+        if (this._isWaterItem(item)) return false;
+
+        // 1. DnD5e consumable subtype: "food" (native system field)
+        if (item.type === "consumable" && item.system?.type?.value === "food") return true;
+
+        // 2. Respite flag: explicitly marked as food by GM, content pack, or crafting output
+        if (item.flags?.["ionrift-respite"]?.foodType === "food") return true;
+
+        // 3. Name fallback: standard PHB ration names
+        const name = item.name?.toLowerCase().trim();
+        if (name && this.FOOD_NAMES.has(name)) return true;
+
+        return false;
+    }
+
+    /** Known water item names (lowercase). Used as fallback when flag detection misses. */
+    static WATER_NAMES = new Set([
+        "waterskin", "water flask", "canteen",
+        "water (pint)", "water, fresh (pint)", "water, salt (pint)"
+    ]);
+
+    /**
      * Build water options from actor inventory.
-     * Looks for Waterskin items.
+     *
+     * Detection strategy (first match wins per item):
+     *   1. Respite flag: item.flags["ionrift-respite"].foodType === "water"
+     *   2. Name fallback: matches WATER_NAMES allowlist
+     *
+     * DnD5e has no native "water" consumable subtype, so we rely on
+     * flags and names. The flag path lets content packs and GMs mark
+     * custom water sources (oil flasks for warforged, etc.).
      */
     static _buildWaterOptions(actor, rules) {
         const options = [];
 
         for (const item of actor.items) {
-            const name = item.name?.toLowerCase().trim();
             const qty = item.system?.quantity ?? 1;
             const uses = item.system?.uses;
             if (qty <= 0 && (!uses || uses.value <= 0)) continue;
 
-            if (name === "waterskin" || name === "water flask" || name === "canteen") {
-                // Per-waterskin: show quantity of skins, not internal pint charges
-                const avail = uses ? (uses.value > 0 ? qty : Math.max(0, qty - 1)) : qty;
-                options.push({
-                    value: item.id,
-                    label: `${item.name} (\u00d7${avail})`,
-                    itemId: item.id,
-                    available: avail,
-                    icon: item.img ?? "icons/consumables/drinks/waterskin-leather-tan.webp"
-                });
-            }
+            const isWater = this._isWaterItem(item);
+            if (!isWater) continue;
+
+            // Per-waterskin: show quantity of skins, not internal pint charges
+            const avail = uses ? (uses.value > 0 ? qty : Math.max(0, qty - 1)) : qty;
+            options.push({
+                value: item.id,
+                label: `${item.name} (\u00d7${avail})`,
+                itemId: item.id,
+                available: avail,
+                icon: item.img ?? "icons/consumables/drinks/waterskin-leather-tan.webp"
+            });
         }
 
         return options;
+    }
+
+    /**
+     * Check if an item qualifies as water/drink for the meal phase.
+     * @param {Item} item - Foundry Item document
+     * @returns {boolean}
+     */
+    static _isWaterItem(item) {
+        // 1. Respite flag: explicitly marked as water by GM or content pack
+        if (item.flags?.["ionrift-respite"]?.foodType === "water") return true;
+
+        // 2. Name fallback: standard PHB water containers
+        const name = item.name?.toLowerCase().trim();
+        if (name && this.WATER_NAMES.has(name)) return true;
+
+        return false;
     }
 
     /**

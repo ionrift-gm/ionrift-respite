@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.0.15] - 2026-04-07
+
+### Added
+- Tavern hearth auto-fire. Resting in a tavern lights the campfire automatically (no kindling or cantrip needed). The linked scene token now syncs correctly with the hearth state.
+- Food and water detection overhaul. The meal phase now recognises items by three methods: DnD5e consumable subtype (`food`), Respite item flags (`ionrift-respite.foodType`), and the existing name fallback. Custom food items from content packs, homebrew, and crafting outputs appear in the meal picker without renaming.
+- Water detection extended. Waterskins, Water Flasks, Canteens, and pint-type water items are now detected. Content packs and GMs can flag custom water sources for non-standard characters.
+- Short rest terrain banner support in the art pack system.
+
+### Fixed
+- Stale rest guard no longer auto-discards after 24 hours. Interrupted rests persist across sessions regardless of how long the gap is. The resume dialog now shows how long ago the rest was interrupted.
+- Resume dialog failure no longer permanently blocks new rests. If the dialog fails to render, the flow flag resets cleanly.
+- Art pack uninstall now requires confirmation and prevents double-clicking.
+
 ## [1.0.14] - 2026-04-06
 
 ### Added
