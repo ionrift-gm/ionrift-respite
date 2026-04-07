@@ -639,28 +639,32 @@ Hooks.on("dnd5e.preRestCompleted", (actor, result, config) => {
 
     // Suppress HP recovery: system would set hp to max, we zero the delta and strip the payload
     if (result.dhp !== undefined) result.dhp = 0;
+    if (result.deltas?.hitPoints !== undefined) result.deltas.hitPoints = 0;
     if (result.updateData?.["system.attributes.hp.value"] !== undefined) {
         delete result.updateData["system.attributes.hp.value"];
     }
 
     // Suppress HD recovery: zero out the array of restored HD
+    // v3: "system.hitDiceUsed", v4+: "system.hd.spent"
     if (result.dhd !== undefined) result.dhd = 0;
+    if (result.deltas?.hitDice !== undefined) result.deltas.hitDice = 0;
     if (Array.isArray(result.updateItems)) {
         result.updateItems = result.updateItems.filter(u => {
             // Keep spell slot and feature recharges, strip HD restoration
-            return !("system.hitDiceUsed" in u);
+            return !("system.hitDiceUsed" in u) && !("system.hd.spent" in u);
         });
     }
 
     // Suppress exhaustion recovery: Respite handles this via RecoveryHandler.
-    // The system always tries to reduce exhaustion by 1 on long rest;
-    // we must strip it unconditionally or it will revert our changes.
+    // v5+: system reads config.exhaustionDelta to decide reduction.
+    // Zero both the config path and any updateData entry.
+    if (config.exhaustionDelta) config.exhaustionDelta = 0;
     if (result.updateData?.["system.attributes.exhaustion"] !== undefined) {
         delete result.updateData["system.attributes.exhaustion"];
     }
 
     Logger.log?.(MODULE_LABEL,
-        `Suppressed default HP/HD recovery for ${actor.name} (Respite flow active).`
+        `Suppressed default HP/HD/exhaustion recovery for ${actor.name} (Respite flow active).`
     );
     return true;
 });

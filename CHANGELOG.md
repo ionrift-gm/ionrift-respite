@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.18] - 2026-04-07
+
+### Fixed
+- Hit Dice recovery now works correctly with DnD5e v4+ (2024 PHB and later). The system changed its internal field name from `hitDiceUsed` to `hd.spent`, which caused Respite's comfort-based recovery to silently fail. Hostile and rough conditions now correctly limit HD recovery as intended.
+- Exhaustion suppression updated for DnD5e v5+. The system now reads exhaustion recovery from the rest config rather than just the update payload. Hostile conditions now correctly block exhaustion reduction.
+- RecoveryHandler HD restoration updated to read and write the correct field for DnD5e v4+ class items. Previously, HD recovery would find 0 spent dice and restore nothing.
+
 ## [1.0.17] - 2026-04-07
 
 ### Added

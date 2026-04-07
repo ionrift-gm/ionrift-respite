@@ -106,40 +106,45 @@ export class RecoveryHandler {
     static _recoverHitDice(actor, hdToRecover) {
         if (hdToRecover <= 0) return 0;
 
-        // DnD5e v3+: actor.system.attributes.hd contains HD data
-        // Classes each have their own HD pool
         const classes = actor.items.filter(i => i.type === "class");
         if (!classes.length) return 0;
 
         // Sort by die size descending (d12 before d10 before d8...)
+        // v4+: system.hd.denomination / system.hd.spent
+        // v3:  system.hitDice / system.hitDiceUsed
         const sorted = classes
             .map(cls => ({
                 item: cls,
-                dieSize: parseInt(cls.system?.hitDice?.replace("d", "")) || 8,
-                spent: (cls.system?.hitDiceUsed ?? 0),
+                dieSize: parseInt((cls.system?.hd?.denomination ?? cls.system?.hitDice ?? "d8").replace("d", "")) || 8,
+                spent: (cls.system?.hd?.spent ?? cls.system?.hitDiceUsed ?? 0),
                 max: cls.system?.levels ?? 0
             }))
-            .filter(c => c.spent > 0) // Only classes with spent HD
+            .filter(c => c.spent > 0)
             .sort((a, b) => b.dieSize - a.dieSize);
 
         let remaining = hdToRecover;
         let totalRecovered = 0;
         const updates = [];
 
+        // Detect field name: v4+ uses system.hd.spent, v3 uses system.hitDiceUsed
+        const useNewField = classes[0]?.system?.hd !== undefined;
+
         for (const cls of sorted) {
             if (remaining <= 0) break;
             const canRecover = Math.min(remaining, cls.spent);
             if (canRecover > 0) {
-                updates.push({
-                    _id: cls.item.id,
-                    "system.hitDiceUsed": cls.spent - canRecover
-                });
+                const update = { _id: cls.item.id };
+                if (useNewField) {
+                    update["system.hd.spent"] = cls.spent - canRecover;
+                } else {
+                    update["system.hitDiceUsed"] = cls.spent - canRecover;
+                }
+                updates.push(update);
                 remaining -= canRecover;
                 totalRecovered += canRecover;
             }
         }
 
-        // Apply HD updates
         if (updates.length > 0) {
             actor.updateEmbeddedDocuments("Item", updates);
         }
