@@ -393,9 +393,10 @@ export class MealPhaseHandler {
         // 2. Respite flag: explicitly marked as food by GM, content pack, or crafting output
         if (item.flags?.["ionrift-respite"]?.foodType === "food") return true;
 
-        // 3. Name fallback: standard PHB ration names
+        // 3. Name fallback: standard PHB ration names + GM custom list
         const name = item.name?.toLowerCase().trim();
         if (name && this.FOOD_NAMES.has(name)) return true;
+        if (name && this._getCustomNames("customFoodNames").has(name)) return true;
 
         return false;
     }
@@ -451,11 +452,28 @@ export class MealPhaseHandler {
         // 1. Respite flag: explicitly marked as water by GM or content pack
         if (item.flags?.["ionrift-respite"]?.foodType === "water") return true;
 
-        // 2. Name fallback: standard PHB water containers
+        // 2. Name fallback: standard PHB water containers + GM custom list
         const name = item.name?.toLowerCase().trim();
         if (name && this.WATER_NAMES.has(name)) return true;
+        if (name && this._getCustomNames("customWaterNames").has(name)) return true;
 
         return false;
+    }
+
+    /**
+     * Parses a comma-separated GM setting into a Set of lowercase names.
+     * @param {string} settingKey - Module setting key
+     * @returns {Set<string>}
+     */
+    static _getCustomNames(settingKey) {
+        try {
+            const raw = game.settings.get(MODULE_ID, settingKey) ?? "";
+            return new Set(
+                raw.split(",").map(s => s.toLowerCase().trim()).filter(s => s.length > 0)
+            );
+        } catch {
+            return new Set();
+        }
     }
 
     /**

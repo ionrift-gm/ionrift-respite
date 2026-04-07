@@ -323,6 +323,26 @@ Hooks.once("init", async () => {
         restricted: true
     });
 
+    game.settings.register(MODULE_ID, "customFoodNames", {
+        name: "Custom Food Items",
+        hint: "Comma-separated list of additional item names to recognise as food in the meal phase. Case-insensitive. Example: scrap metal, goodberries, dried fish",
+        scope: "world",
+        config: true,
+        type: String,
+        default: "",
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "customWaterNames", {
+        name: "Custom Water Items",
+        hint: "Comma-separated list of additional item names to recognise as water in the meal phase. Case-insensitive. Example: oil, wine, ale, milk",
+        scope: "world",
+        config: true,
+        type: String,
+        default: "",
+        restricted: true
+    });
+
     game.settings.register(MODULE_ID, "restRecoveryDetected", {
         scope: "world",
         config: false,
