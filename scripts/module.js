@@ -640,8 +640,13 @@ Hooks.on("dnd5e.preRestCompleted", (actor, result, config) => {
     // Suppress HP recovery: system would set hp to max, we zero the delta and strip the payload
     if (result.dhp !== undefined) result.dhp = 0;
     if (result.deltas?.hitPoints !== undefined) result.deltas.hitPoints = 0;
-    if (result.updateData?.["system.attributes.hp.value"] !== undefined) {
-        delete result.updateData["system.attributes.hp.value"];
+    // Flat dot-notation keys (v3 direct assignment in _getRestHitPointRecovery)
+    delete result.updateData?.["system.attributes.hp.value"];
+    delete result.updateData?.["system.attributes.hp.temp"];
+    delete result.updateData?.["system.attributes.hp.tempmax"];
+    // Nested keys: DnD5e v5 mergeObject expands dot-notation into an object tree
+    if (result.updateData?.system?.attributes?.hp) {
+        delete result.updateData.system.attributes.hp;
     }
 
     // Suppress HD recovery: zero out the array of restored HD
@@ -650,17 +655,18 @@ Hooks.on("dnd5e.preRestCompleted", (actor, result, config) => {
     if (result.deltas?.hitDice !== undefined) result.deltas.hitDice = 0;
     if (Array.isArray(result.updateItems)) {
         result.updateItems = result.updateItems.filter(u => {
-            // Keep spell slot and feature recharges, strip HD restoration
             return !("system.hitDiceUsed" in u) && !("system.hd.spent" in u);
         });
     }
 
     // Suppress exhaustion recovery: Respite handles this via RecoveryHandler.
     // v5+: system reads config.exhaustionDelta to decide reduction.
-    // Zero both the config path and any updateData entry.
     if (config.exhaustionDelta) config.exhaustionDelta = 0;
-    if (result.updateData?.["system.attributes.exhaustion"] !== undefined) {
-        delete result.updateData["system.attributes.exhaustion"];
+    // Flat key (v3)
+    delete result.updateData?.["system.attributes.exhaustion"];
+    // Nested key (v5 mergeObject expansion)
+    if (result.updateData?.system?.attributes?.exhaustion !== undefined) {
+        delete result.updateData.system.attributes.exhaustion;
     }
 
     Logger.log?.(MODULE_LABEL,

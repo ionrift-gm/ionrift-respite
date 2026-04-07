@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.19] - 2026-04-07
+
+### Fixed
+- HP and exhaustion suppression now correctly handles DnD5e v5 nested update data. The system's `mergeObject` call expands dot-notation keys into a nested object tree, so the previous flat-key deletion (`"system.attributes.hp.value"`) never matched. HP is no longer silently reset to max after a Respite rest. This is the real fix for the issue reported in v1.0.18.
+
 ## [1.0.18] - 2026-04-07
 
 ### Fixed
