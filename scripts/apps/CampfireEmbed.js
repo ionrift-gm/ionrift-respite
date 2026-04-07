@@ -98,6 +98,8 @@ export class CampfireEmbed {
             this._litBy = "The Hearth";
             this._heat = 45;
             this._peakHeat = 45;
+            // Sync the on-scene campfire token so it matches the hearth state
+            CampfireTokenLinker.setLightState(true);
         }
 
         const ctx = this._prepareContext();
