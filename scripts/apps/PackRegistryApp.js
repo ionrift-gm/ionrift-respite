@@ -453,19 +453,26 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
      * Files remain on disk but ImageResolver will ignore them.
      */
     async _uninstallArtPack() {
-        const confirmed = await foundry.applications.api.DialogV2.confirm({
-            window: { title: "Uninstall Art Pack" },
-            content: "<p>Remove all terrain art and revert to placeholder banners?</p><p>You can re-import the pack at any time.</p>",
-            yes: { label: "Uninstall", icon: "fas fa-trash-alt" },
-            no: { label: "Cancel", icon: "fas fa-times" }
-        });
-        if (!confirmed) return;
+        if (this._uninstallPending) return;
+        this._uninstallPending = true;
 
-        await game.settings.set("ionrift-respite", "artPackDisabled", true);
-        await ImageResolver.init();
-        ui.notifications.info("Art pack disabled. Placeholder banners will be used.");
-        this.render({ force: true });
-        this._refreshOpenRestApp();
+        try {
+            const confirmed = await foundry.applications.api.DialogV2.confirm({
+                window: { title: "Uninstall Art Pack" },
+                content: "<p>Remove all terrain art and revert to placeholder banners?</p><p>You can re-import the pack at any time.</p>",
+                yes: { label: "Uninstall", icon: "fas fa-trash-alt" },
+                no: { label: "Cancel", icon: "fas fa-times" }
+            });
+            if (!confirmed) return;
+
+            await game.settings.set("ionrift-respite", "artPackDisabled", true);
+            await ImageResolver.init();
+            ui.notifications.info("Art pack disabled. Placeholder banners will be used.");
+            this.render({ force: true });
+            this._refreshOpenRestApp();
+        } finally {
+            this._uninstallPending = false;
+        }
     }
 
     /** @override */
