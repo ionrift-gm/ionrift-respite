@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.20] - 2026-04-08
+
+### Added
+- 4-tier event outcome resolution. Events now resolve as triumph, success, mixed, or failure based on how far the party's roll beats the DC. Triumph triggers at DC+5 and above, mixed at DC-3 and above. Events that only define two tiers still work as before.
+- Event Browser. GMs can open a read-only event viewer from the Pack Registry to browse every loaded event with terrain filter, sentiment badge, and full outcome narratives.
+- Core event toggle. The base event pack can now be disabled in the Pack Registry, allowing GMs to run purely custom content packs. A confirmation dialog warns when a terrain has zero enabled events.
+- Clear Stuck Rest button in module settings (GM only). Shows a confirmation, then wipes the active rest state and reloads all clients. Also available in the console as `game.ionrift.respite.resetFlowState()`.
+
+### Fixed
+- Empty event pool handling. If no events are enabled for a terrain, the GM receives a whispered notice instead of a silent failure.
+
 ## [1.0.19] - 2026-04-07
 
 ### Fixed
