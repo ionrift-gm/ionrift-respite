@@ -9,7 +9,7 @@ import { Logger } from "../lib/Logger.js";
  * Calls actor.shortRest() on completion for class feature recovery.
  */
 
-import { registerActiveShortRestApp, clearActiveShortRestApp } from "../module.js";
+import { registerActiveShortRestApp, clearActiveShortRestApp, getPartyActors } from "../module.js";
 
 const MODULE_ID = "ionrift-respite";
 import { ImageResolver } from "../util/ImageResolver.js";
@@ -111,7 +111,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     // ── Context ────────────────────────────────────────────────
 
     async _prepareContext(options) {
-        const partyActors = game.actors.filter(a => a.hasPlayerOwner);
+        const partyActors = getPartyActors();
 
         // Detect which shelter spells anyone in the party has prepared
         const preparedShelterIds = new Set(["none"]);
@@ -142,12 +142,12 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Build character cards
         const characters = partyActors.map(a => {
             const hp = a.system?.attributes?.hp ?? {};
-            const currentHp = hp.value ?? 0;
+            const currentHp = Number(hp.value) || 0;
             const maxHp = hp.max ?? 0;
 
             const hdData = this._getHitDiceInfo(a);
             const rolls = this._rolls.get(a.id) ?? [];
-            const totalHealed = rolls.reduce((sum, r) => sum + r.total, 0);
+            const totalHealed = rolls.reduce((sum, r) => sum + (Number(r.total) || 0), 0);
 
             // Build pip array
             const hdPips = [];
@@ -155,13 +155,15 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 hdPips.push({ filled: i < hdData.remaining });
             }
 
+            // Use actor's live HP (already updated by dnd5e.rollHitDie)
+            // rather than manually adding totalHealed on top (double-count)
             return {
                 id: a.id,
                 name: a.name,
                 img: a.img || "icons/svg/mystery-man.svg",
-                currentHp: Math.min(currentHp + totalHealed, maxHp),
+                currentHp,
                 maxHp,
-                isFullHp: (currentHp + totalHealed) >= maxHp,
+                isFullHp: currentHp >= maxHp,
                 hdRemaining: hdData.remaining,
                 hdMax: hdData.max,
                 hdDie: hdData.die,
@@ -200,33 +202,47 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /**
      * Extracts Hit Dice info from a DnD5e actor.
-     * Supports both v3.x (single HD pool) and v4.x (per-class HD).
+     * Derives all data from class items (the source of truth in DnD5e v4/v5).
+     * Falls back to system.attributes.hd for older versions.
      */
     _getHitDiceInfo(actor) {
-        const hd = actor.system?.attributes?.hd;
-        if (!hd) return { remaining: 0, max: 0, die: 8 };
+        const classItems = actor.items?.filter(i => i.type === "class") ?? [];
 
-        // DnD5e v4.x: hd is an object with .value (remaining) and .max
-        if (typeof hd.value === "number") {
-            const classes = Object.values(actor.system?.classes ?? actor.classes ?? {});
-            const firstClass = classes[0];
-            const die = firstClass?.hitDice ?? firstClass?.system?.hitDice ?? 8;
-            const dieNum = typeof die === "string" ? parseInt(die.replace("d", "")) : die;
+        if (classItems.length) {
+            let totalMax = 0;
+            let totalUsed = 0;
+
+            for (const cls of classItems) {
+                totalMax += cls.system?.levels ?? 0;
+                totalUsed += cls.system?.hitDiceUsed ?? cls.system?.hd?.spent ?? 0;
+            }
+
+            // Primary die = highest-level class (first if tied)
+            const sorted = [...classItems].sort((a, b) =>
+                (b.system?.levels ?? 0) - (a.system?.levels ?? 0)
+            );
+            const rawDie = sorted[0]?.system?.hitDice
+                ?? sorted[0]?.system?.hd?.denomination
+                ?? "d8";
+            const primaryDie = typeof rawDie === "string"
+                ? parseInt(rawDie.replace("d", "")) || 8
+                : rawDie;
+
             return {
-                remaining: hd.value,
-                max: hd.max ?? actor.system?.details?.level ?? 0,
-                die: dieNum || 8,
+                remaining: Math.max(0, totalMax - totalUsed),
+                max: totalMax,
+                die: primaryDie,
             };
         }
 
-        // v3.x fallback
+        // Fallback: no class items (legacy or unusual actor)
+        const hd = actor.system?.attributes?.hd;
+        if (hd && typeof hd.value === "number") {
+            return { remaining: hd.value, max: hd.max ?? 0, die: 8 };
+        }
         const level = actor.system?.details?.level ?? 0;
-        const spent = hd.spent ?? 0;
-        return {
-            remaining: Math.max(0, level - spent),
-            max: level,
-            die: 8,
-        };
+        const spent = hd?.spent ?? 0;
+        return { remaining: Math.max(0, level - spent), max: level, die: 8 };
     }
 
     /**
@@ -238,7 +254,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const classItems = actor.items?.filter(i => i.type === "class") ?? [];
         if (classItems.length) {
             const cls = classItems[0];
-            const hd = cls.system?.hitDice ?? cls.hitDice;
+            const hd = cls.system?.hitDice ?? cls.system?.hd?.denomination ?? cls.hitDice;
             if (typeof hd === "string") return hd;           // already "d8"
             if (typeof hd === "number") return `d${hd}`;
         }
@@ -286,12 +302,16 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         if (!roll) return; // Cancelled
 
+        // DnD5e v5.x returns an array of Roll objects; unwrap if needed
+        const singleRoll = Array.isArray(roll) ? roll[0] : roll;
+        const rollTotal = Number(singleRoll?.total) || 0;
+
         const conMod = actor.system?.abilities?.con?.mod ?? 0;
 
         // Record the roll locally
         if (!this._rolls.has(actorId)) this._rolls.set(actorId, []);
         this._rolls.get(actorId).push({
-            total: roll.total ?? roll,
+            total: rollTotal,
             die: hdData.die,
             conMod,
         });
@@ -300,7 +320,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         game.socket.emit(`module.${MODULE_ID}`, {
             type: "shortRestHdSpent",
             actorId,
-            rollTotal: roll.total ?? roll,
+            rollTotal,
             die: hdData.die,
             conMod,
         });
@@ -315,7 +335,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onCompleteShortRest(event, target) {
         if (!this._isGM) return;
 
-        const partyActors = game.actors.filter(a => a.hasPlayerOwner);
+        const partyActors = getPartyActors();
         for (const actor of partyActors) {
             try {
                 await actor.shortRest({ dialog: false, chat: true });

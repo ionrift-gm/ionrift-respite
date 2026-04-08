@@ -1,5 +1,6 @@
 import { TerrainRegistry } from "../services/TerrainRegistry.js";
 import { ImageResolver } from "../util/ImageResolver.js";
+import { EventBrowserApp } from "./EventBrowserApp.js";
 
 /**
  * PackRegistryApp
@@ -61,7 +62,6 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
                 for (const event of (data.events ?? [])) {
                     const pack = _ensurePack(event.pack ?? "base");
                     if (event.tier) pack.tiers[event.tier] = (pack.tiers[event.tier] ?? 0) + 1;
-                    if (event.tier === "disaster") continue;
                     for (const tag of (event.terrainTags ?? [])) {
                         pack.terrains[tag] = (pack.terrains[tag] ?? 0) + 1;
                     }
@@ -207,17 +207,15 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             }
 
             const isBase = pack.id === "base";
-            const lockedClass = isBase ? "locked" : "";
-            const disabledAttr = isBase ? 'disabled title="Core pack cannot be disabled"' : "";
             const enabledClass = pack.enabled ? "enabled" : "disabled";
             const countLabel = pack.type === "profession" ? "recipes" : "events";
 
             html += `
-            <div class="pack-card ${enabledClass} ${lockedClass}" data-pack-id="${pack.id}">
+            <div class="pack-card ${enabledClass}" data-pack-id="${pack.id}">
                 <div class="pack-card-header">
                     <label class="pack-toggle-label">
                         <input type="checkbox" class="pack-toggle-input"
-                               ${pack.enabled ? "checked" : ""} ${disabledAttr}
+                               ${pack.enabled ? "checked" : ""}
                                data-pack-id="${pack.id}" />
                         <span class="pack-toggle-switch"></span>
                     </label>
@@ -229,7 +227,6 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
                 </div>
                 <div class="pack-card-body">
                     ${bodyContent}
-                    ${isBase ? '<span class="pack-lock-label"><i class="fas fa-lock"></i> Core</span>' : ''}
                 </div>
             </div>`;
         }
@@ -241,6 +238,9 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
                 <a href="https://www.patreon.com/collection/2096842" target="_blank"><i class="fas fa-pencil-alt"></i> Create your own</a>
             </div>
             <div class="pack-actions">
+                <button type="button" class="pack-browse-btn">
+                    <i class="fas fa-book-open"></i> Browse Events
+                </button>
                 <button type="button" class="pack-import-btn">
                     <i class="fas fa-file-import"></i> Import Events
                 </button>
@@ -339,11 +339,50 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             el.querySelectorAll(".pack-toggle-input").forEach(cb => {
                 updated[cb.dataset.packId] = cb.checked;
             });
+
+            // Check for terrains with zero enabled events before saving
+            const enabledTerrains = new Map();
+            const cards = el.querySelectorAll(".pack-card");
+            cards.forEach(card => {
+                const checked = card.querySelector(".pack-toggle-input")?.checked;
+                if (!checked) return;
+                card.querySelectorAll(".pack-terrain-badge").forEach(badge => {
+                    const text = badge.textContent.trim();
+                    const tag = text.replace(/\s*\d+$/, "").trim();
+                    if (tag) enabledTerrains.set(tag, (enabledTerrains.get(tag) ?? 0) + 1);
+                });
+            });
+
+            const allTerrains = new Set();
+            el.querySelectorAll(".pack-terrain-badge").forEach(badge => {
+                const text = badge.textContent.trim();
+                const tag = text.replace(/\s*\d+$/, "").trim();
+                if (tag) allTerrains.add(tag);
+            });
+            const emptyTerrains = [...allTerrains].filter(t => !enabledTerrains.has(t));
+
+            if (emptyTerrains.length > 0) {
+                const proceed = await Dialog.confirm({
+                    title: "No Events for Some Terrains",
+                    content: `<p>The following terrains have no enabled events:</p>
+                              <p><strong>${emptyTerrains.join(", ")}</strong></p>
+                              <p>Rests in these terrains will be uneventful. Save anyway?</p>`,
+                    yes: () => true,
+                    no: () => false,
+                    defaultYes: false
+                });
+                if (!proceed) return;
+            }
+
             await game.settings.set("ionrift-respite", "enabledPacks", updated);
             ui.notifications.info("Content packs updated. Changes take effect on next rest.");
             this.close();
         });
 
+
+        el.querySelector(".pack-browse-btn").addEventListener("click", () => {
+            new EventBrowserApp().render(true);
+        });
         el.querySelector(".pack-import-btn").addEventListener("click", () => this._importPack());
 
         // ── Art tab wiring ──

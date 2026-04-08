@@ -196,7 +196,16 @@ export class EventResolver {
             excludeIds: existingIds
         });
 
-        if (!event) return results;
+        if (!event) {
+            // Pool exhausted or all packs disabled for this terrain
+            console.warn(`[Respite:EventResolver] No events available for terrain "${terrainTag}". Check Content Packs settings.`);
+            await ChatMessage.create({
+                content: `<em>No events available for <strong>${terrainTag}</strong> terrain. Check <strong>Content Packs</strong> in module settings.</em>`,
+                whisper: game.users.filter(u => u.isGM).map(u => u.id),
+                speaker: { alias: "Respite" }
+            });
+            return results;
+        }
 
         // Post event roll to chat (GM only)
         await roll.toMessage({
