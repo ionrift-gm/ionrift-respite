@@ -491,18 +491,19 @@ Hooks.on("chatMessage", (log, message, chatData) => {
     }
 });
 
+// Item Enrichment: inject Respite mechanical notes into SRD item sheets.
+// Registered at top-level (not inside ready) so hooks are always installed
+// regardless of script load order or hot reloads.
+// ApplicationV2 (dnd5e v3 / Foundry v12) fires hooks as render<ClassName>
+// with signature (app, element, context, options) where element is HTMLElement.
+const _enrichItem = (...args) => ItemEnrichmentRegistry.onRenderItemSheet(...args);
+Hooks.on("renderItemSheet", _enrichItem);       // Legacy v11/dnd5e v2
+Hooks.on("renderItemSheet5e", _enrichItem);     // dnd5e v3 (ApplicationV2)
+Hooks.on("renderItemSheet5e2", _enrichItem);    // dnd5e v3 alternate class name
+
 Hooks.once("ready", async () => {
     console.log(`${MODULE_ID} | Ready hook firing...`);
     Logger.log?.(MODULE_LABEL, "Ready.");
-
-    // Item Enrichment: inject Respite mechanical notes into SRD item sheets.
-    // ApplicationV2 (dnd5e v3 / Foundry v12) fires hooks as render<ClassName>
-    // with signature (app, element, context, options) where element is HTMLElement.
-    // We must register against the specific class names used by dnd5e v3.
-    const _enrichItem = (...args) => ItemEnrichmentRegistry.onRenderItemSheet(...args);
-    Hooks.on("renderItemSheet", _enrichItem);       // Legacy v11/dnd5e v2
-    Hooks.on("renderItemSheet5e", _enrichItem);     // dnd5e v3 (ApplicationV2)
-    Hooks.on("renderItemSheet5e2", _enrichItem);    // dnd5e v3 alternate class name
 
     // Initialize image resolver (art pack detection — probes ionrift-data/)
     await ImageResolver.init();
