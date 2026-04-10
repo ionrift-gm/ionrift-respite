@@ -26,22 +26,22 @@ export class ItemEnrichmentRegistry {
 
         // ── Tents ────────────────────────────────────────────────────
         "two-person tent": {
-            html: `<hr><p><strong>Respite:</strong> Provides <strong>Shelter</strong> for up to 2 characters during rest. Shelter reduces the encounter DC and can negate minor weather effects. Place in a character's inventory to count toward the camp's shelter total.</p>`,
-            tags: ["Shelter (2 persons)", "Weather Protection"]
+            html: `<hr><p><strong>Respite:</strong> Provides <strong>Shelter</strong> during rest. Shelter reduces the encounter DC and can negate minor weather effects.</p>`,
+            tags: ["Shelter", "Weather Protection"]
         },
 
         "tent, two-person": {
-            html: `<hr><p><strong>Respite:</strong> Provides <strong>Shelter</strong> for up to 2 characters during rest. Shelter reduces the encounter DC and can negate minor weather effects. Place in a character's inventory to count toward the camp's shelter total.</p>`,
-            tags: ["Shelter (2 persons)", "Weather Protection"]
+            html: `<hr><p><strong>Respite:</strong> Provides <strong>Shelter</strong> during rest. Shelter reduces the encounter DC and can negate minor weather effects.</p>`,
+            tags: ["Shelter", "Weather Protection"]
         },
 
         "pavilion": {
-            html: `<hr><p><strong>Respite:</strong> A large pavilion tent provides <strong>Shelter</strong> for up to 10 characters during rest. Provides full weather protection and significantly reduces the encounter DC. Ideal for large parties or extended camps.</p>`,
-            tags: ["Shelter (10 persons)", "Full Weather Protection"]
+            html: `<hr><p><strong>Respite:</strong> A large pavilion tent provides <strong>Shelter</strong> during rest. Provides full weather protection and significantly reduces the encounter DC.</p>`,
+            tags: ["Shelter", "Full Weather Protection"]
         },
 
         "tent": {
-            html: `<hr><p><strong>Respite:</strong> Provides <strong>Shelter</strong> during rest. Shelter reduces the encounter DC and can negate minor weather effects. The number of characters sheltered depends on the tent's size.</p>`,
+            html: `<hr><p><strong>Respite:</strong> Provides <strong>Shelter</strong> during rest. Shelter reduces the encounter DC and can negate minor weather effects.</p>`,
             tags: ["Shelter", "Weather Protection"]
         },
 
