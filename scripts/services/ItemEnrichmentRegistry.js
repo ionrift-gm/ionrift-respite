@@ -118,50 +118,66 @@ export class ItemEnrichmentRegistry {
     }
 
     /**
-     * Hook handler for renderItemSheet / renderApplication.
-     * Injects a Respite mechanical notes block into the item description pane.
-     * Works for Foundry v11 (ApplicationV1/jQuery) and v12 (ApplicationV2/HTMLElement).
+     * Hook handler for renderItemSheet / renderItemSheet5e (ApplicationV2).
+     * Injects a Respite mechanical-notes block into the item description pane.
+     *
+     * AppV1 signature: (app, jQueryHtml, data)
+     * AppV2 signature: (app, htmlElement, context, options)
+     *
      * @param {Application} app
      * @param {jQuery|HTMLElement} html
-     * @param {Object} data
      */
-    static onRenderItemSheet(app, html, data) {
+    static onRenderItemSheet(app, html, ...rest) {
         const item = app.document ?? app.object ?? app.item;
-        if (!item?.name || item.documentName !== "Item") return;
+        if (!item?.name) return;
+        // Belt-and-suspenders: only process Item documents
+        if (item.documentName && item.documentName !== "Item") return;
 
         const enrichment = ItemEnrichmentRegistry.get(item.name);
         if (!enrichment) return;
 
-        // Resolve root element — ApplicationV2 exposes app.element which is the
-        // authoritative rendered HTMLElement. app.element is unset until rendered.
-        let root = app.element instanceof HTMLElement ? app.element : null;
-        if (!root) {
-            if (html instanceof HTMLElement)       root = html;
-            else if (html instanceof jQuery)       root = html[0];
-            else if (html?.element instanceof HTMLElement) root = html.element;
-            else root = html;
+        // Resolve the root HTMLElement.
+        // AppV2:  html IS the HTMLElement directly
+        // AppV1:  html is jQuery, unwrap with [0]
+        // Fallback: try app.element (AppV2 stores rendered DOM here)
+        let root;
+        if (html instanceof HTMLElement) {
+            root = html;
+        } else if (typeof jQuery !== "undefined" && html instanceof jQuery) {
+            root = html[0];
+        } else if (app.element instanceof HTMLElement) {
+            root = app.element;
+        } else if (app.element?.[0] instanceof HTMLElement) {
+            // Legacy jQuery-wrapped app.element
+            root = app.element[0];
+        } else {
+            root = html;
         }
-        if (!root?.querySelector) return;
+        if (!root?.querySelector) {
+            console.warn("Ionrift Respite | Cannot resolve root element for:", item.name);
+            return;
+        }
 
         // Guard: don't inject twice on re-renders
         if (root.querySelector(".ionrift-enrichment")) return;
 
-        console.log(`Ionrift Respite | Enriching "${item.name}". Root:`, root.tagName, root.className);
+        console.log(`Ionrift Respite | Enriching "${item.name}". Root: <${root.tagName}> classes="${root.className}"`);
 
-        // Priority selector list — ordered from most specific to most general.
-        // dnd5e v3 (ApplicationV2): description is in an accordion body inside a tab section.
-        // dnd5e v2 (ApplicationV1): description is in a .tab.description div or .editor.
+        // Selector list ordered from most specific (dnd5e v3) to most general (legacy).
+        // dnd5e v3 confirmed DOM: section.description.tab > .card.description.collapsible
+        //   > .details.collapsible-content > .editor.editor-content.wrapper
         const selectors = [
-            // dnd5e v3: the accordion section that holds the item prose
-            ".description .card-header + .card-body",
-            ".description .accordion-content",
-            // dnd5e v3: tab section holding all description cards
-            "section.tab.description",
-            "section[data-tab='description']",
-            // dnd5e v2 / generic
+            // dnd5e v3: inside the first collapsible description card
+            ".card.description .collapsible-content",
+            ".card.description .details",
+            // dnd5e v3: the description tab section itself
+            "section.description.tab",
+            "section.tab[data-tab='description']",
+            // dnd5e v2 / generic AppV1
+            ".tab.description",
             ".tab[data-tab='description']",
             "[data-tab='description']",
-            ".sheet-body .editor-content",
+            // Broad fallbacks
             ".editor-content",
             ".editor",
             "form"
@@ -171,21 +187,22 @@ export class ItemEnrichmentRegistry {
         for (const sel of selectors) {
             const el = root.querySelector(sel);
             if (el) {
-                console.log(`Ionrift Respite | Target found via: "${sel}"`);
+                console.log(`Ionrift Respite | Injection target matched: "${sel}"`);
                 target = el;
                 break;
             }
         }
 
         if (!target) {
-            console.warn("ItemEnrichmentRegistry | No injection target for:", item.name, root);
+            console.warn("Ionrift Respite | No injection target for:", item.name,
+                "Root children:", [...root.children].map(c => `${c.tagName}.${c.className}`));
             return;
         }
 
         const enrichDiv = document.createElement("div");
         enrichDiv.className = "ionrift-enrichment";
         enrichDiv.style.cssText = [
-            "margin: 0 0 12px",
+            "margin: 8px 0 12px",
             "padding: 8px 10px",
             "background: rgba(155, 89, 182, 0.10)",
             "border-left: 3px solid rgba(155, 89, 182, 0.6)",
@@ -196,6 +213,7 @@ export class ItemEnrichmentRegistry {
         enrichDiv.innerHTML = enrichment.html;
 
         target.insertBefore(enrichDiv, target.firstChild);
+        console.log(`Ionrift Respite | Injected enrichment for "${item.name}"`);
     }
 }
 
