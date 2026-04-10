@@ -136,9 +136,17 @@ export class ItemEnrichmentRegistry {
         if (jHtml.find(".ionrift-enrichment").length) return;
 
         // Find the description editor container
-        const descBlock = jHtml.find(".editor[data-edit='system.description.value']")
-            ?? jHtml.find(".editor-content");
-        if (!descBlock.length) return;
+        let descBlock = jHtml.find(".editor[data-edit='system.description.value']");
+        
+        // Fallbacks for newer/different sheet layouts (e.g. D&D 5e v3)
+        if (!descBlock.length) descBlock = jHtml.find(".tab[data-tab='description'] .editor");
+        if (!descBlock.length) descBlock = jHtml.find('.tab.description .editor-content');
+        if (!descBlock.length) descBlock = jHtml.find(".editor-content");
+
+        if (!descBlock.length) {
+            console.warn("ItemEnrichmentRegistry | Could not find description DOM to inject enrichment.");
+            return;
+        }
 
         const enrichBlock = $(`<div class="ionrift-enrichment" style="
             margin-top: 8px;

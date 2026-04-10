@@ -1,8 +1,8 @@
 /**
  * CalendarHandler
  * Centralizes all calendar interactions behind a stable adapter interface.
- * Currently supports Simple Calendar; additional providers can be added
- * by extending the detection and API mapping in each method.
+ * Supports Simple Calendar and Simple Timekeeping (by TheRipper93).
+ * Additional providers can be added by extending detection and API mapping.
  */
 
 const MODULE_ID = "ionrift-respite";
@@ -18,8 +18,10 @@ export class CalendarHandler {
         if (game.modules.get("foundryvtt-simple-calendar")?.active && typeof SimpleCalendar !== "undefined") {
             return true;
         }
-        // Stub: add other calendar providers here
-        // if (game.modules.get("calendar-weather")?.active) return true;
+        // Simple Timekeeping (TheRipper93) - uses core Foundry time API
+        if (game.modules.get("simple-timekeeping")?.active) {
+            return true;
+        }
         return false;
     }
 
@@ -33,7 +35,11 @@ export class CalendarHandler {
                 const dt = SimpleCalendar.api.currentDateTime();
                 return `${dt.year}-${dt.month}-${dt.day}`;
             }
-            // Stub: other providers
+            // Simple Timekeeping: uses game.time.components
+            if (game.modules.get("simple-timekeeping")?.active && game.time?.components) {
+                const tc = game.time.components;
+                return `${tc.year}-${tc.month}-${tc.day}`;
+            }
         } catch (e) {
             console.warn(`${MODULE_ID} | CalendarHandler.getCurrentDate failed:`, e);
         }
@@ -49,14 +55,17 @@ export class CalendarHandler {
         try {
             if (game.modules.get("foundryvtt-simple-calendar")?.active && typeof SimpleCalendar !== "undefined") {
                 const dt = SimpleCalendar.api.currentDateTime();
-                // Simple Calendar provides month names via the configuration
                 const monthName = SimpleCalendar.api.getCurrentMonth?.()?.name;
                 if (monthName) {
                     return `Day ${dt.day + 1} of ${monthName}, Year ${dt.year}`;
                 }
                 return `Day ${dt.day + 1}, Month ${dt.month + 1}, Year ${dt.year}`;
             }
-            // Stub: other providers
+            // Simple Timekeeping: uses game.time.components
+            if (game.modules.get("simple-timekeeping")?.active && game.time?.components) {
+                const tc = game.time.components;
+                return `Day ${tc.day + 1}, Month ${tc.month + 1}, Year ${tc.year}`;
+            }
         } catch (e) {
             console.warn(`${MODULE_ID} | CalendarHandler.getFormattedDate failed:`, e);
         }
