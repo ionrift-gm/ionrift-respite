@@ -135,21 +135,20 @@ export class ItemEnrichmentRegistry {
         const jHtml = html instanceof jQuery ? html : $(html);
         if (jHtml.find(".ionrift-enrichment").length) return;
 
-        // Find the description editor container
-        let descBlock = jHtml.find(".editor[data-edit='system.description.value']");
+        // Find the description tab or a suitable fallback container
+        let target = jHtml.find("[data-tab='description']");
         
-        // Fallbacks for newer/different sheet layouts (e.g. D&D 5e v3)
-        if (!descBlock.length) descBlock = jHtml.find(".tab[data-tab='description'] .editor");
-        if (!descBlock.length) descBlock = jHtml.find('.tab.description .editor-content');
-        if (!descBlock.length) descBlock = jHtml.find(".editor-content");
+        // If no data-tab="description" is found (some alternative sheets), fall back to the editor container
+        if (!target.length) target = jHtml.find(".editor").first();
+        if (!target.length) target = jHtml.find(".editor-content").first();
 
-        if (!descBlock.length) {
+        if (!target.length) {
             console.warn("ItemEnrichmentRegistry | Could not find description DOM to inject enrichment.");
             return;
         }
 
         const enrichBlock = $(`<div class="ionrift-enrichment" style="
-            margin-top: 8px;
+            margin-bottom: 12px;
             padding: 8px 10px;
             background: rgba(155, 89, 182, 0.08);
             border-left: 3px solid rgba(155, 89, 182, 0.5);
@@ -158,6 +157,6 @@ export class ItemEnrichmentRegistry {
             line-height: 1.4;
         ">${enrichment.html}</div>`);
 
-        descBlock.after(enrichBlock);
+        target.prepend(enrichBlock);
     }
 }
