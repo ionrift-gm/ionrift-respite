@@ -16,6 +16,7 @@ import { PackRegistryApp } from "./apps/PackRegistryApp.js";
 import { PartyRosterApp } from "./apps/PartyRosterApp.js";
 import { CopySpellHandler } from "./services/CopySpellHandler.js";
 import { ImageResolver } from "./util/ImageResolver.js";
+import { ItemEnrichmentRegistry } from "./services/ItemEnrichmentRegistry.js";
 
 const MODULE_ID = "ionrift-respite";
 const MODULE_LABEL = "Respite";
@@ -243,7 +244,12 @@ Hooks.once("init", async () => {
             game.socket.emit(`module.${MODULE_ID}`, { type: "forceReload" });
             ui.notifications.info("Rest state cleared. Reloading...");
             setTimeout(() => window.location.reload(), 500);
-        }
+        },
+        /** Item Enrichment: returns Respite-specific mechanical notes for SRD items. */
+        getItemEnrichment: (itemName) => ItemEnrichmentRegistry.get(itemName),
+        /** Item Enrichment: returns all registered enrichment names (debug). */
+        getEnrichmentNames: () => ItemEnrichmentRegistry.getRegisteredNames(),
+        ItemEnrichmentRegistry
     };
 
     // Register settings
@@ -488,6 +494,9 @@ Hooks.on("chatMessage", (log, message, chatData) => {
 Hooks.once("ready", async () => {
     console.log(`${MODULE_ID} | Ready hook firing...`);
     Logger.log?.(MODULE_LABEL, "Ready.");
+
+    // Item Enrichment: inject Respite mechanical notes into SRD item sheets
+    Hooks.on("renderItemSheet", ItemEnrichmentRegistry.onRenderItemSheet);
 
     // Initialize image resolver (art pack detection — probes ionrift-data/)
     await ImageResolver.init();
