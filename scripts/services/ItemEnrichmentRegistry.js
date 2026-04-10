@@ -135,12 +135,15 @@ export class ItemEnrichmentRegistry {
         const jHtml = html instanceof jQuery ? html : $(html);
         if (jHtml.find(".ionrift-enrichment").length) return;
 
-        // Find the description tab or a suitable fallback container
-        let target = jHtml.find("[data-tab='description']");
+        // Find the description tab content pane. Avoid a nav element that might also have data-tab=description.
+        let target = jHtml.find(".tab[data-tab='description']");
         
-        // If no data-tab="description" is found (some alternative sheets), fall back to the editor container
+        // V1 fallback
         if (!target.length) target = jHtml.find(".editor").first();
         if (!target.length) target = jHtml.find(".editor-content").first();
+
+        // Blind fallback
+        if (!target.length) target = jHtml.find("form");
 
         if (!target.length) {
             console.warn("ItemEnrichmentRegistry | Could not find description DOM to inject enrichment.");
@@ -150,7 +153,7 @@ export class ItemEnrichmentRegistry {
         const enrichBlock = $(`<div class="ionrift-enrichment" style="
             margin-bottom: 12px;
             padding: 8px 10px;
-            background: rgba(155, 89, 182, 0.08);
+            background: rgba(155, 89, 182, 0.08); /* faint purple */
             border-left: 3px solid rgba(155, 89, 182, 0.5);
             border-radius: 0 4px 4px 0;
             font-size: 0.9em;

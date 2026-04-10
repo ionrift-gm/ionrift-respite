@@ -28,6 +28,7 @@ Respite owns all flora/ingredient items. These have mechanical value (foraging r
 ### Situational Gear Enrichments
 - [ ] Expand `ItemEnrichmentRegistry` to cover more situational mundane gear.
 - [ ] Evaluate items like **Blanket**, **Winter Blanket**, or **Cold Weather Clothing** to provide advantage on specific event saves (e.g. cold-weather exposure events during resolution).
+- [ ] Review **Healer's Kit** mechanical use to ensure it actively triggers logic in the `Tend Wounds` activity.
 - [ ] Ensure `RestFlowEngine` checks for these specific items when applying event DCs or save modifiers.
 
 ---
