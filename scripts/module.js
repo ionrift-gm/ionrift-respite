@@ -495,8 +495,17 @@ Hooks.once("ready", async () => {
     console.log(`${MODULE_ID} | Ready hook firing...`);
     Logger.log?.(MODULE_LABEL, "Ready.");
 
-    // Item Enrichment: inject Respite mechanical notes into SRD item sheets
-    Hooks.on("renderItemSheet", ItemEnrichmentRegistry.onRenderItemSheet);
+    // Item Enrichment: inject Respite mechanical notes into SRD item sheets.
+    // We register both "renderItemSheet" (Foundry v11/dnd5e v2)
+    // and a catch-all "renderApplication" filtered to Item documents
+    // to cover dnd5e v3 ApplicationV2 sheets whose hook name is class-specific.
+    const _enrichItem = ItemEnrichmentRegistry.onRenderItemSheet.bind(ItemEnrichmentRegistry);
+    Hooks.on("renderItemSheet", _enrichItem);
+    Hooks.on("renderApplication", (app, html, data) => {
+        if (app.document?.documentName === "Item" || app.object?.documentName === "Item") {
+            _enrichItem(app, html, data);
+        }
+    });
 
     // Initialize image resolver (art pack detection — probes ionrift-data/)
     await ImageResolver.init();

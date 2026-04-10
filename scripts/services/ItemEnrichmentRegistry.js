@@ -118,44 +118,50 @@ export class ItemEnrichmentRegistry {
     }
 
     /**
-     * Hook handler for renderItemSheet. Injects Respite enrichment HTML into
-     * the item's description tab.
-     * @param {Application} app - The ItemSheet application.
-     * @param {jQuery|HTMLElement} html - The rendered HTML.
-     * @param {Object} data - Sheet data.
+     * Hook handler for renderItemSheet / renderApplication.
+     * Injects a Respite mechanical notes block into the item description pane.
+     * Works for Foundry v11 (ApplicationV1/jQuery) and v12 (ApplicationV2/HTMLElement).
+     * @param {Application} app
+     * @param {jQuery|HTMLElement} html
+     * @param {Object} data
      */
     static onRenderItemSheet(app, html, data) {
-        const item = app.document ?? app.object;
-        if (!item?.name) return;
+        const item = app.document ?? app.object ?? app.item;
+        if (!item?.name || item.documentName !== "Item") return;
 
         const enrichment = ItemEnrichmentRegistry.get(item.name);
         if (!enrichment) return;
 
-        // Normalise to a plain HTMLElement regardless of Foundry version
-        let root;
-        if (html instanceof HTMLElement) {
-            root = html;
-        } else if (html instanceof jQuery) {
-            root = html[0];
-        } else if (html?.element instanceof HTMLElement) {
-            root = html.element;
-        } else {
-            root = html;
+        // Resolve root element — ApplicationV2 exposes app.element which is the
+        // authoritative rendered HTMLElement. app.element is unset until rendered.
+        let root = app.element instanceof HTMLElement ? app.element : null;
+        if (!root) {
+            if (html instanceof HTMLElement)       root = html;
+            else if (html instanceof jQuery)       root = html[0];
+            else if (html?.element instanceof HTMLElement) root = html.element;
+            else root = html;
         }
-        if (!root) return;
+        if (!root?.querySelector) return;
 
         // Guard: don't inject twice on re-renders
-        if (root.querySelector?.(".ionrift-enrichment")) return;
+        if (root.querySelector(".ionrift-enrichment")) return;
 
-        // Debug trace so we can see the actual DOM structure from the console
-        console.log(`Ionrift Respite | Enriching "${item.name}". Root tag: ${root.tagName}, classes: ${root.className}`);
+        console.log(`Ionrift Respite | Enriching "${item.name}". Root:`, root.tagName, root.className);
 
-        // Try selectors in priority order — covering dnd5e v2 & v3 sheet layouts
+        // Priority selector list — ordered from most specific to most general.
+        // dnd5e v3 (ApplicationV2): description is in an accordion body inside a tab section.
+        // dnd5e v2 (ApplicationV1): description is in a .tab.description div or .editor.
         const selectors = [
-            ".tab[data-tab='description']",
+            // dnd5e v3: the accordion section that holds the item prose
+            ".description .card-header + .card-body",
+            ".description .accordion-content",
+            // dnd5e v3: tab section holding all description cards
+            "section.tab.description",
             "section[data-tab='description']",
+            // dnd5e v2 / generic
+            ".tab[data-tab='description']",
             "[data-tab='description']",
-            ".sheet-body",
+            ".sheet-body .editor-content",
             ".editor-content",
             ".editor",
             "form"
@@ -163,7 +169,7 @@ export class ItemEnrichmentRegistry {
 
         let target = null;
         for (const sel of selectors) {
-            const el = root.querySelector?.(sel);
+            const el = root.querySelector(sel);
             if (el) {
                 console.log(`Ionrift Respite | Target found via: "${sel}"`);
                 target = el;
@@ -172,13 +178,21 @@ export class ItemEnrichmentRegistry {
         }
 
         if (!target) {
-            console.warn("ItemEnrichmentRegistry | No injection target found for:", item.name);
+            console.warn("ItemEnrichmentRegistry | No injection target for:", item.name, root);
             return;
         }
 
         const enrichDiv = document.createElement("div");
         enrichDiv.className = "ionrift-enrichment";
-        enrichDiv.style.cssText = "margin-bottom:12px;padding:8px 10px;background:rgba(155,89,182,0.08);border-left:3px solid rgba(155,89,182,0.5);border-radius:0 4px 4px 0;font-size:0.9em;line-height:1.4;";
+        enrichDiv.style.cssText = [
+            "margin: 0 0 12px",
+            "padding: 8px 10px",
+            "background: rgba(155, 89, 182, 0.10)",
+            "border-left: 3px solid rgba(155, 89, 182, 0.6)",
+            "border-radius: 0 4px 4px 0",
+            "font-size: 0.9em",
+            "line-height: 1.5"
+        ].join(";");
         enrichDiv.innerHTML = enrichment.html;
 
         target.insertBefore(enrichDiv, target.firstChild);
