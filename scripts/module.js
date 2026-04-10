@@ -16,7 +16,7 @@ import { PackRegistryApp } from "./apps/PackRegistryApp.js";
 import { PartyRosterApp } from "./apps/PartyRosterApp.js";
 import { CopySpellHandler } from "./services/CopySpellHandler.js";
 import { ImageResolver } from "./util/ImageResolver.js";
-import { ItemEnrichmentRegistry } from "./services/ItemEnrichmentRegistry.js";
+// ItemEnrichmentRegistry removed — engine lives in ionrift-library (ItemEnrichmentEngine).
 
 const MODULE_ID = "ionrift-respite";
 const MODULE_LABEL = "Respite";
@@ -245,11 +245,10 @@ Hooks.once("init", async () => {
             ui.notifications.info("Rest state cleared. Reloading...");
             setTimeout(() => window.location.reload(), 500);
         },
-        /** Item Enrichment: returns Respite-specific mechanical notes for SRD items. */
-        getItemEnrichment: (itemName) => ItemEnrichmentRegistry.get(itemName),
+        /** Item Enrichment: delegates to ionrift-library kernel (backward compat). */
+        getItemEnrichment: (itemName) => game.ionrift?.library?.enrichment?.get(itemName) ?? null,
         /** Item Enrichment: returns all registered enrichment names (debug). */
-        getEnrichmentNames: () => ItemEnrichmentRegistry.getRegisteredNames(),
-        ItemEnrichmentRegistry
+        getEnrichmentNames: () => game.ionrift?.library?.enrichment?.getRegisteredNames() ?? []
     };
 
     // Register settings
@@ -449,7 +448,89 @@ Hooks.once("init", async () => {
         },
         restricted: true
     });
+
+    // Register Respite-specific item enrichments with the shared library engine.
+    // The library (ItemEnrichmentEngine) owns the hook wiring and injection logic.
+    // Other modules can add their own entries via game.ionrift.library.enrichment.register().
+    game.ionrift?.library?.enrichment?.registerBatch({
+        // ── Bedroll ────────────────────────────────────────────────────
+        "bedroll": {
+            html: `<hr><p><strong>Respite:</strong> A character carrying a bedroll recovers <strong>+1 Hit Die</strong> during a long rest, regardless of camp comfort level. This bonus stacks with normal HD recovery.</p>`,
+            tags: ["+1 HD Recovery"]
+        },
+
+        // ── Tents ──────────────────────────────────────────────────────
+        "two-person tent": {
+            html: `<hr><p><strong>Respite:</strong> Provides <strong>Shelter</strong> during rest. Shelter reduces the encounter DC and can negate minor weather effects.</p>`,
+            tags: ["Shelter", "Weather Protection"]
+        },
+        "tent, two-person": {
+            html: `<hr><p><strong>Respite:</strong> Provides <strong>Shelter</strong> during rest. Shelter reduces the encounter DC and can negate minor weather effects.</p>`,
+            tags: ["Shelter", "Weather Protection"]
+        },
+        "pavilion": {
+            html: `<hr><p><strong>Respite:</strong> A large pavilion tent provides <strong>Shelter</strong> during rest. Provides full weather protection and significantly reduces the encounter DC.</p>`,
+            tags: ["Shelter", "Full Weather Protection"]
+        },
+        "tent": {
+            html: `<hr><p><strong>Respite:</strong> Provides <strong>Shelter</strong> during rest. Shelter reduces the encounter DC and can negate minor weather effects.</p>`,
+            tags: ["Shelter", "Weather Protection"]
+        },
+
+        // ── Mess Kit ───────────────────────────────────────────────────
+        "mess kit": {
+            html: `<hr><p><strong>Respite:</strong> A character carrying a mess kit gains <strong>advantage on the exhaustion save</strong> during rest, but only when the campfire is lit. Without a fire, the mess kit provides no mechanical benefit. Functions identically to Cook's Utensils for this purpose.</p>`,
+            tags: ["Exhaustion Advantage (with fire)"]
+        },
+
+        // ── Cook's Utensils ────────────────────────────────────────────
+        "cook's utensils": {
+            html: `<hr><p><strong>Respite:</strong> A character carrying Cook's Utensils gains <strong>advantage on the exhaustion save</strong> during rest when the campfire is lit. Also qualifies for the <strong>Cooking</strong> crafting profession, allowing the character to prepare meals that grant temporary buffs.</p>`,
+            tags: ["Exhaustion Advantage (with fire)", "Cooking Profession"]
+        },
+
+        // ── Rations ────────────────────────────────────────────────────
+        "rations": {
+            html: `<hr><p><strong>Respite:</strong> Consumed during the <strong>Meal Phase</strong> of a long rest. Each character requires 1 ration per day (some terrains require 2). Characters who go without food risk exhaustion after their grace period expires. Rations are automatically decremented during the rest flow.</p>`,
+            tags: ["Meal Phase (1/day)"]
+        },
+        "rations (1 day)": {
+            html: `<hr><p><strong>Respite:</strong> Consumed during the <strong>Meal Phase</strong> of a long rest. Each character requires 1 ration per day (some terrains require 2). Characters who go without food risk exhaustion after their grace period expires. Rations are automatically decremented during the rest flow.</p>`,
+            tags: ["Meal Phase (1/day)"]
+        },
+
+        // ── Waterskin ──────────────────────────────────────────────────
+        "waterskin": {
+            html: `<hr><p><strong>Respite:</strong> Consumed during the <strong>Meal Phase</strong> of a long rest. Each character requires 1 waterskin per day (desert and arid terrains require 2). Dehydration is tracked separately from hunger and triggers a CON save. Waterskins are automatically decremented during the rest flow.</p>`,
+            tags: ["Meal Phase (1/day)", "Dehydration Tracking"]
+        },
+
+        // ── Herbalism Kit ──────────────────────────────────────────────
+        "herbalism kit": {
+            html: `<hr><p><strong>Respite:</strong> Qualifies for the <strong>Herbalism</strong> crafting profession during rest. Characters proficient with this kit can gather and prepare herbal remedies, antidotes, and poultices during the Activity phase.</p>`,
+            tags: ["Herbalism Profession"]
+        },
+
+        // ── Healer's Kit ───────────────────────────────────────────────
+        "healer's kit": {
+            html: `<hr><p><strong>Respite:</strong> Used during the <strong>Tend Wounds</strong> activity. A character with a Healer's Kit can spend charges to provide additional HP recovery to injured party members beyond the standard rest recovery.</p>`,
+            tags: ["Tend Wounds Activity"]
+        },
+
+        // ── Alchemist's Supplies ───────────────────────────────────────
+        "alchemist's supplies": {
+            html: `<hr><p><strong>Respite:</strong> Qualifies for the <strong>Alchemy</strong> crafting profession during rest. Characters proficient with these supplies can brew potions and concoctions during the Activity phase.</p>`,
+            tags: ["Alchemy Profession"]
+        },
+
+        // ── Tinker's Tools ─────────────────────────────────────────────
+        "tinker's tools": {
+            html: `<hr><p><strong>Respite:</strong> Qualifies for the <strong>Tinkering</strong> crafting profession during rest. Characters proficient with these tools can repair gear or craft small mechanical devices during the Activity phase.</p>`,
+            tags: ["Tinkering Profession"]
+        }
+    });
 });
+
 
 // Scene Controls: Campfire button in the token controls group
 Hooks.on("getSceneControlButtons", (controls) => {
@@ -491,15 +572,8 @@ Hooks.on("chatMessage", (log, message, chatData) => {
     }
 });
 
-// Item Enrichment: inject Respite mechanical notes into SRD item sheets.
-// Registered at top-level (not inside ready) so hooks are always installed
-// regardless of script load order or hot reloads.
-// ApplicationV2 (dnd5e v3 / Foundry v12) fires hooks as render<ClassName>
-// with signature (app, element, context, options) where element is HTMLElement.
-const _enrichItem = (...args) => ItemEnrichmentRegistry.onRenderItemSheet(...args);
-Hooks.on("renderItemSheet", _enrichItem);       // Legacy v11/dnd5e v2
-Hooks.on("renderItemSheet5e", _enrichItem);     // dnd5e v3 (ApplicationV2)
-Hooks.on("renderItemSheet5e2", _enrichItem);    // dnd5e v3 alternate class name
+// Item Enrichment hooks are now wired by ionrift-library (ItemEnrichmentEngine).
+// Respite enrichment data is registered in the init hook below via registerBatch().
 
 Hooks.once("ready", async () => {
     console.log(`${MODULE_ID} | Ready hook firing...`);
