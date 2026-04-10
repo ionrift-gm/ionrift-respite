@@ -211,10 +211,10 @@ export class ItemEnrichmentRegistry {
             "line-height: 1.5"
         ].join(";");
 
-        // Inject a little tent icon before the "Respite:" bold prefix
+        // Inject a little campsite icon before the "Respite:" bold prefix
         enrichDiv.innerHTML = enrichment.html.replace(
             "<strong>Respite:</strong>",
-            "<i class=\"fa-solid fa-tent\"></i> <strong>Respite:</strong>"
+            "<i class=\"fas fa-campground\"></i> <strong>Respite:</strong>"
         );
 
         target.insertBefore(enrichDiv, target.firstChild);
