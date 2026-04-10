@@ -210,7 +210,12 @@ export class ItemEnrichmentRegistry {
             "font-size: 0.9em",
             "line-height: 1.5"
         ].join(";");
-        enrichDiv.innerHTML = enrichment.html;
+
+        // Inject a little tent icon before the "Respite:" bold prefix
+        enrichDiv.innerHTML = enrichment.html.replace(
+            "<strong>Respite:</strong>",
+            "<i class=\"fa-solid fa-tent\"></i> <strong>Respite:</strong>"
+        );
 
         target.insertBefore(enrichDiv, target.firstChild);
         console.log(`Ionrift Respite | Injected enrichment for "${item.name}"`);
