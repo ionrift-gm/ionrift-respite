@@ -118,8 +118,8 @@ export class ItemEnrichmentRegistry {
     }
 
     /**
-     * Hook handler for renderItemSheet. Appends enrichment HTML to the
-     * description tab when viewing an SRD item that has a Respite enrichment.
+     * Hook handler for renderItemSheet. Injects Respite enrichment HTML into
+     * the item's description tab.
      * @param {Application} app - The ItemSheet application.
      * @param {jQuery|HTMLElement} html - The rendered HTML.
      * @param {Object} data - Sheet data.
@@ -131,35 +131,57 @@ export class ItemEnrichmentRegistry {
         const enrichment = ItemEnrichmentRegistry.get(item.name);
         if (!enrichment) return;
 
-        // Guard: don't inject twice (re-renders)
-        const jHtml = html instanceof jQuery ? html : $(html);
-        if (jHtml.find(".ionrift-enrichment").length) return;
+        // Normalise to a plain HTMLElement regardless of Foundry version
+        let root;
+        if (html instanceof HTMLElement) {
+            root = html;
+        } else if (html instanceof jQuery) {
+            root = html[0];
+        } else if (html?.element instanceof HTMLElement) {
+            root = html.element;
+        } else {
+            root = html;
+        }
+        if (!root) return;
 
-        // Find the description tab content pane. Avoid a nav element that might also have data-tab=description.
-        let target = jHtml.find(".tab[data-tab='description']");
-        
-        // V1 fallback
-        if (!target.length) target = jHtml.find(".editor").first();
-        if (!target.length) target = jHtml.find(".editor-content").first();
+        // Guard: don't inject twice on re-renders
+        if (root.querySelector?.(".ionrift-enrichment")) return;
 
-        // Blind fallback
-        if (!target.length) target = jHtml.find("form");
+        // Debug trace so we can see the actual DOM structure from the console
+        console.log(`Ionrift Respite | Enriching "${item.name}". Root tag: ${root.tagName}, classes: ${root.className}`);
 
-        if (!target.length) {
-            console.warn("ItemEnrichmentRegistry | Could not find description DOM to inject enrichment.");
+        // Try selectors in priority order — covering dnd5e v2 & v3 sheet layouts
+        const selectors = [
+            ".tab[data-tab='description']",
+            "section[data-tab='description']",
+            "[data-tab='description']",
+            ".sheet-body",
+            ".editor-content",
+            ".editor",
+            "form"
+        ];
+
+        let target = null;
+        for (const sel of selectors) {
+            const el = root.querySelector?.(sel);
+            if (el) {
+                console.log(`Ionrift Respite | Target found via: "${sel}"`);
+                target = el;
+                break;
+            }
+        }
+
+        if (!target) {
+            console.warn("ItemEnrichmentRegistry | No injection target found for:", item.name);
             return;
         }
 
-        const enrichBlock = $(`<div class="ionrift-enrichment" style="
-            margin-bottom: 12px;
-            padding: 8px 10px;
-            background: rgba(155, 89, 182, 0.08); /* faint purple */
-            border-left: 3px solid rgba(155, 89, 182, 0.5);
-            border-radius: 0 4px 4px 0;
-            font-size: 0.9em;
-            line-height: 1.4;
-        ">${enrichment.html}</div>`);
+        const enrichDiv = document.createElement("div");
+        enrichDiv.className = "ionrift-enrichment";
+        enrichDiv.style.cssText = "margin-bottom:12px;padding:8px 10px;background:rgba(155,89,182,0.08);border-left:3px solid rgba(155,89,182,0.5);border-radius:0 4px 4px 0;font-size:0.9em;line-height:1.4;";
+        enrichDiv.innerHTML = enrichment.html;
 
-        target.prepend(enrichBlock);
+        target.insertBefore(enrichDiv, target.firstChild);
     }
 }
+
