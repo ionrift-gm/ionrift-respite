@@ -104,6 +104,12 @@ export function clearActiveShortRestApp() {
  * @returns {Actor[]} Array of approved party actors.
  */
 export function getPartyActors() {
+    // BACKLOG: This is the canonical party roster implementation for Respite.
+    // ionrift-workshop's Progression Registry uses an identical naive stub
+    // (_resolvePartyMembers in SignatureLedger.js). Both should eventually
+    // delegate to game.ionrift?.library?.party?.getMembers?.() when ionrift-lib
+    // ships a PartyRoster service. The settings-backed roster here is the right
+    // design; the lib service should lift this exact pattern.
     const roster = game.settings.get(MODULE_ID, "partyRoster");
     if (!roster?.length) {
         return game.actors.filter(a => a.hasPlayerOwner && a.type === "character");
