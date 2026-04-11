@@ -115,46 +115,70 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract changelog entry
-        id: changelog
-        run: |
-          BODY=$(awk '
-            /^## / { if (found) exit; found=1; next }
-            found && /^### / { printf "\n**%s**\n", substr($0,5); next }
-            found { print }
-          ' CHANGELOG.md | sed '/^[[:space:]]*$/d' | head -80)
-
-          VERSION=$(awk '/^## / { match($0, /\[([^]]+)\]/, a); print a[1]; exit }' CHANGELOG.md)
-
-          BODY_TRIMMED=$(echo "$BODY" | head -c 3900)
-          [ "${#BODY}" -gt 3900 ] && BODY_TRIMMED="${BODY_TRIMMED}"$'\n\n_...see full notes on GitHub_'
-
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          {
-            echo 'body<<CHANGELOG_EOF'
-            echo "$BODY_TRIMMED"
-            echo 'CHANGELOG_EOF'
-          } >> $GITHUB_OUTPUT
-
       - name: Post to Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: |
-          VERSION="${{ steps.changelog.outputs.version }}"
-          BODY="${{ steps.changelog.outputs.body }}"
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
-          ICON_URL="https://raw.githubusercontent.com/${{ github.repository }}/main/assets/module-icon.png"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
 
-          jq -n \
-            --arg title "🔥 Ionrift Respite — v${VERSION}" \
-            --arg desc  "$BODY" \
-            --arg url   "$RELEASE_URL" \
-            --arg icon  "$ICON_URL" \
-            --arg footer "The Austere Maker • ionrift.com" \
-            '{embeds:[{title:$title, description:$desc, color:13210154, url:$url, footer:{text:$footer}, thumbnail:{url:$icon}}]}' \
-            > payload.json
+            // Extract version from first ## heading
+            const versionMatch = changelog.match(/^## \[([^\]]+)\]/m);
+            const version = versionMatch ? versionMatch[1] : 'unknown';
 
-          curl -s -o /dev/null -w "%{http_code}" \
-            -H "Content-Type: application/json" \
-            -d @payload.json \
-            "$DISCORD_WEBHOOK" | grep -qE '^2' || { echo "Discord webhook POST failed"; exit 1; }
+            // Extract body between first and second ## headings
+            const lines = changelog.split('\n');
+            let body = [];
+            let found = false;
+            for (const line of lines) {
+              if (line.startsWith('## ')) {
+                if (found) break;
+                found = true;
+                continue;
+              }
+              if (found) {
+                if (line.startsWith('### ')) {
+                  body.push('', `**${line.slice(4)}**`);
+                } else {
+                  body.push(line);
+                }
+              }
+            }
+            let desc = body.join('\n').trim();
+            if (desc.length > 3900) {
+              desc = desc.slice(0, 3900) + '\n\n_...see full notes on GitHub_';
+            }
+
+            const repo = process.env.GITHUB_REPOSITORY;
+            const tag = process.env.GITHUB_REF_NAME;
+            const payload = {
+              embeds: [{
+                title: `🔥 Ionrift Respite — v${version}`,
+                description: desc,
+                color: 0xC9952A,
+                url: `https://github.com/${repo}/releases/tag/${tag}`,
+                footer: { text: 'The Austere Maker • ionrift.com' },
+                thumbnail: { url: `https://raw.githubusercontent.com/${repo}/main/assets/module-icon.png` }
+              }]
+            };
+
+            const webhook = process.env.DISCORD_WEBHOOK;
+            if (!webhook) {
+              core.warning('DISCORD_WEBHOOK_URL secret is not set — skipping Discord notification');
+              return;
+            }
+
+            const resp = await fetch(webhook, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+            if (!resp.ok) {
+              const text = await resp.text();
+              core.setFailed(`Discord webhook failed (${resp.status}): ${text}`);
+            } else {
+              console.log('Discord notification posted successfully.');
+            }
