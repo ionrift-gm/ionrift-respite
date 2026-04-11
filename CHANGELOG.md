@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.22] - 2026-04-11
+## [1.0.23] - 2026-04-11
 
 ### Added
 - Two-phase disaster roll workflow. The GM now configures roll modifiers before dispatching a roll request to players. Phase 1 shows a \"Configure\" header with per-character selectors. Phase 2 shows a dispatched confirmation so the GM knows the request is live.
