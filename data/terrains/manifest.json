@@ -5,7 +5,9 @@
         "desert",
         "urban",
         "dungeon",
-        "tavern"
+        "tavern",
+        "mountain",
+        "arctic"
     ],
     "_comment": "Only released terrains are loaded in production. Add terrain names here to release them."
 }

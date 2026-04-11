@@ -210,6 +210,11 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             const enabledClass = pack.enabled ? "enabled" : "disabled";
             const countLabel = pack.type === "profession" ? "recipes" : "events";
 
+            let eventCountHtml = `<span class="pack-event-count" title="${pack.totalItems} ${countLabel}">${pack.totalItems}</span>`;
+            if (pack.totalItems === 0 && pack.tiers && pack.tiers.disaster > 0) {
+                eventCountHtml = `<span class="pack-event-count pack-event-count-disaster" title="${pack.tiers.disaster} disasters" style="color: var(--color-level-error); border-color: var(--color-level-error);"><i class="fas fa-skull-crossbones" style="margin-right: 2px;"></i> ${pack.tiers.disaster}</span>`;
+            }
+
             html += `
             <div class="pack-card ${enabledClass}" data-pack-id="${pack.id}">
                 <div class="pack-card-header">
@@ -223,7 +228,7 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
                         <span class="pack-title"><i class="${pack.icon}"></i> ${pack.label}</span>
                         <span class="pack-desc">${pack.description}</span>
                     </div>
-                    <span class="pack-event-count" title="${pack.totalItems} ${countLabel}">${pack.totalItems}</span>
+                    ${eventCountHtml}
                 </div>
                 <div class="pack-card-body">
                     ${bodyContent}

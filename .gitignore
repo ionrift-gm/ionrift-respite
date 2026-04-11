@@ -2,9 +2,11 @@
 
 # Terrain packs: ignore all, then whitelist shipped terrains
 data/terrains/*/
+!data/terrains/arctic/
 !data/terrains/desert/
 !data/terrains/dungeon/
 !data/terrains/forest/
+!data/terrains/mountain/
 !data/terrains/short-rest/
 !data/terrains/swamp/
 !data/terrains/tavern/

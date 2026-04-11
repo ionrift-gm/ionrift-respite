@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.26] - 2026-04-11
+
+### Added
+- Mountain and Arctic terrain stubs. These terrains are now registered in the engine and appear in the environment dropdown when a content pack provides events for them.
+- Terrain dropdown gating. Terrains without event coverage (core or content pack) are now hidden from the environment dropdown, preventing users from selecting non-viable terrains.
+
+### Fixed
+- Duplicate `_onRender` override. A second method definition was silently overriding the first, which caused terrain change listeners, rest type toggles, activity tile clicks, campfire drawer mounting, and meal drag-drop bindings to never execute. All setup-phase interactivity is now restored.
+- Banner art now updates immediately when changing the environment dropdown during setup. Previously the banner was stale until the next phase.
+- Short rest shelter options now correctly show Rope Trick instead of the long rest set (Tent, Tiny Hut, Mansion). The rest type was being read from the DOM before it existed, always defaulting to "long".
+- Content pack event data is now awaited before building the terrain dropdown, fixing a race condition where pack-dependent terrains were excluded on first render.
+
 ## [1.0.25] - 2026-04-11
 
 ### Added

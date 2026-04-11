@@ -1077,6 +1077,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     async _prepareContext(options) {
         // Ensure terrain registry is loaded (no-ops after first call)
         await TerrainRegistry.init();
+        // Ensure content packs and event data are loaded before building terrain options
+        if (this._dataReady) await this._dataReady;
 
         if (!this._pendingSelections) this._pendingSelections = new Map();
         if (!this._expandedCards) this._expandedCards = new Set();
@@ -1095,8 +1097,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // ── Shelter detection ──
 
 
-        // Determine current rest type from form (defaults to long)
-        const currentRestType = this.element?.querySelector('[name="restType"]')?.value ?? "long";
+        // Determine current rest type from state (defaults to long)
+        const currentRestType = this._selectedRestType ?? "long";
 
         // Detect tents from party inventory
         const tentOwners = partyActors.filter(a =>
@@ -1634,7 +1636,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             phase: this._phase,
             terrainOptions: (() => {
                 const lastTerrain = game.settings.get(MODULE_ID, "lastTerrain");
-                const opts = TerrainRegistry.getAll().map(t => ({ value: t.id, label: t.label }));
+                // Only show terrains that have event sources (core eventsFile or content pack events)
+                const opts = TerrainRegistry.getAll()
+                    .filter(t => {
+                        // Has built-in core events file
+                        if (t.eventsFile) return true;
+                        // Has events loaded from an enabled content pack
+                        if (this._eventResolver?.tables?.has(t.id)) return true;
+                        return false;
+                    })
+                    .map(t => ({ value: t.id, label: t.label }));
                 if (lastTerrain) {
                     const match = opts.find(o => o.value === lastTerrain);
                     if (match) match.label += " (last used)";
@@ -2169,7 +2180,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return `${abilityLabel}${skillPart} DC ${check.dc ?? "?"}`;
     }
 
-    _onRender(context, options) {
+    _onRenderBindings(context, options) {
         // Re-center window vertically after content changes
         requestAnimationFrame(() => {
             const el = this.element;
@@ -3328,6 +3339,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /** @override */
     _onRender(context, options) {
         super._onRender?.(context, options);
+        this._onRenderBindings(context, options);
 
         // Roll mode selects: update state + broadcast without re-rendering (preserves scroll).
         if (game.user.isGM) {

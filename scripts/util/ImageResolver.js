@@ -113,7 +113,6 @@ export class ImageResolver {
         if (this.#artPackActive && this.#artTerrains.includes(terrain)) {
             return `${this.#basePath}/data/terrains/${terrain}/${filename}`;
         }
-
         const key = `${terrain}/${filename}`;
         if (KNOWN_BASE_IMAGES.has(key)) {
             return `modules/${MODULE_ID}/data/terrains/${terrain}/${filename}`;

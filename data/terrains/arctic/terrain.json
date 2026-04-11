@@ -1,0 +1,19 @@
+{
+    "id": "arctic",
+    "label": "Arctic",
+    "icon": "fas fa-snowflake",
+    "comfort": "hostile",
+    "comfortReason": "Extreme cold, constant wind, no natural shelter. Everything freezes. Survival depends on preparation and fire.",
+    "scoutingAvailable": true,
+    "scoutGuidance": "Survival check. Poor: 2-7 | Average: 8-12 | Good: 13+. Ranger or outlander has advantage. Cold weather gear recommended.",
+    "scoutFlavor": {
+        "nat1":    ["A natural ice hollow, packed snow walls blocking the wind. Someone wintered here before.", "A frozen stream bed with high banks on both sides. Perfect windbreak.", "A sheltered depression behind a pressure ridge. Invisible from the flats."],
+        "poor":    ["Open tundra. Nothing but flat white in every direction.", "A slight dip in the ice. Marginal cover.", "Packed snow, at least. Flat enough to sleep on."],
+        "average": ["A cluster of ice boulders providing some wind cover.", "A firm snow bank deep enough to dig into.", "A frozen ridge offering partial shelter."],
+        "good":    ["A natural snow cave, stable and insulated.", "A sheltered ice ravine with high walls.", "A wind-carved alcove in a glacier face."],
+        "nat20":   ["An abandoned expedition cache shelter, still intact.", "A geothermal vent warming a sheltered hollow. Steam rises gently.", "A deep ice cave, eerily beautiful and completely still."]
+    },
+    "mealRules": { "waterPerDay": 1, "foodPerDay": 1 },
+    "weather": ["clear", "overcast", "snow", "blizzard", "whiteout"],
+    "eventsFile": null
+}

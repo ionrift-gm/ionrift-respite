@@ -1,0 +1,19 @@
+{
+    "id": "mountain",
+    "label": "Mountain",
+    "icon": "fas fa-mountain",
+    "comfort": "exposed",
+    "comfortReason": "High altitude, thin air, hard ground. Exposed rock offers no insulation. Wind cuts through everything.",
+    "scoutingAvailable": true,
+    "scoutGuidance": "Survival check. Poor: 2-7 | Average: 8-12 | Good: 13+. Ranger or druid has advantage. Nature proficiency helps identify stable ground.",
+    "scoutFlavor": {
+        "nat1":    ["A flat ledge tucked behind a ridge. Sheltered from the wind, solid ground.", "A shallow cave under an overhang. Dry, defensible, out of sight from below.", "A plateau with a natural stone windbreak. Perfect."],
+        "poor":    ["A rocky shelf. Exposed, but flat.", "A gulley between two ridges. Some wind cover.", "Loose scree underfoot. Not ideal."],
+        "average": ["A dry ledge with good sight lines.", "A flat area behind a boulder field. Decent shelter.", "A natural alcove in the cliff face."],
+        "good":    ["A concealed shelf behind a rock spur. Invisible from below.", "A dry cave mouth with clear approaches in both directions.", "A ridge saddle with natural wind barriers."],
+        "nat20":   ["An abandoned shepherd's shelter, stone walls still standing.", "A hidden cave system, dry and warm from geothermal vents.", "A clifftop eyrie with 360-degree views and a natural windbreak."]
+    },
+    "mealRules": { "waterPerDay": 1, "foodPerDay": 1 },
+    "weather": ["clear", "overcast", "wind", "rain", "snow", "storm"],
+    "eventsFile": null
+}
