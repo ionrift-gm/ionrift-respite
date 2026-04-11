@@ -139,27 +139,21 @@ jobs:
       - name: Post to Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          EMBED_TITLE: "🔥 Ionrift Respite — v${{ steps.changelog.outputs.version }}"
-          EMBED_BODY: ${{ steps.changelog.outputs.body }}
-          EMBED_URL: "https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
-          EMBED_COLOR: "13210154"
-          EMBED_ICON: "https://raw.githubusercontent.com/${{ github.repository }}/main/assets/module-icon.png"
-          EMBED_FOOTER: "The Austere Maker • ionrift.com"
         run: |
-          python3 - << 'PYEOF' > payload.json
-import json, os
-data = {
-  "embeds": [{
-    "title":       os.environ["EMBED_TITLE"],
-    "description": os.environ["EMBED_BODY"],
-    "color":       int(os.environ["EMBED_COLOR"]),
-    "url":         os.environ["EMBED_URL"],
-    "footer":      {"text": os.environ["EMBED_FOOTER"]},
-    "thumbnail":   {"url": os.environ["EMBED_ICON"]}
-  }]
-}
-print(json.dumps(data))
-PYEOF
+          VERSION="${{ steps.changelog.outputs.version }}"
+          BODY="${{ steps.changelog.outputs.body }}"
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
+          ICON_URL="https://raw.githubusercontent.com/${{ github.repository }}/main/assets/module-icon.png"
+
+          jq -n \
+            --arg title "🔥 Ionrift Respite — v${VERSION}" \
+            --arg desc  "$BODY" \
+            --arg url   "$RELEASE_URL" \
+            --arg icon  "$ICON_URL" \
+            --arg footer "The Austere Maker • ionrift.com" \
+            '{embeds:[{title:$title, description:$desc, color:13210154, url:$url, footer:{text:$footer}, thumbnail:{url:$icon}}]}' \
+            > payload.json
+
           curl -s -o /dev/null -w "%{http_code}" \
             -H "Content-Type: application/json" \
             -d @payload.json \
