@@ -624,6 +624,13 @@ Hooks.once("ready", async () => {
             "rest-recovery module detected. Respite will defer HP/HD modification to rest-recovery and only handle events/activities."
         );
         game.settings.set(MODULE_ID, "restRecoveryDetected", true);
+    } else {
+        // Clear the flag if rest-recovery was previously active but has since been removed
+        const wasDetected = game.settings.get(MODULE_ID, "restRecoveryDetected");
+        if (wasDetected) {
+            Logger.log?.(MODULE_LABEL, "rest-recovery no longer active. Resuming native rest recovery.");
+            game.settings.set(MODULE_ID, "restRecoveryDetected", false);
+        }
     }
 
     // Detect Workshop for item handoff

@@ -1337,10 +1337,31 @@
         {{!-- Decision Tree: Interactive choices (GM only controls, players see read-only) --}}
         {{#if activeTreeState}}
         <div class="respite-decision-tree">
-            <div class="respite-event-card complication tree-active">
-                <div class="event-name"><i class="fas fa-exclamation-triangle"></i> {{activeTreeState.eventName}}</div>
-                <div class="event-description">{{activeTreeState.description}}</div>
+            {{!-- Hidden data holder for gmGuidance text (GM only) --}}
+            {{#if isGM}}
+            {{#if activeTreeState.gmGuidance}}
+            <div class="tree-gm-sidebar" aria-hidden="true">
+                <div class="tree-gm-sidebar-body">{{activeTreeState.gmGuidance}}</div>
             </div>
+            {{/if}}
+            {{/if}}
+            <div class="respite-event-card complication tree-active">
+                <div class="event-name">
+                    <span class="event-name-text"><i class="fas fa-exclamation-triangle"></i> {{activeTreeState.eventName}}</span>
+                    {{#if isGM}}
+                    {{#if activeTreeState.gmGuidance}}
+                    <button type="button" class="tree-gm-notes-btn" data-action="toggleGmGuidance" title="GM Guidance">
+                        <i class="fas fa-book-reader"></i> GM Notes
+                    </button>
+                    {{/if}}
+                    {{/if}}
+                </div>
+                {{!-- Description: suppress if gmPrompt present (avoids duplicate scene-setting) --}}
+                {{#unless activeTreeState.gmPrompt}}
+                <div class="event-description">{{activeTreeState.description}}</div>
+                {{/unless}}
+            </div>
+
 
             {{!-- Tree History (previous choices) --}}
             {{#each activeTreeState.history}}
@@ -1371,19 +1392,24 @@
                 <p>{{activeTreeState.prompt}}</p>
             </div>
 
+            {{!-- Scene / Options divider --}}
+            <div class="tree-phase-divider">
+                <i class="fas fa-campground tree-phase-divider-icon"></i>
+            </div>
+
             {{#if isGM}}
             {{!-- Stall Penalty Button (between prompt and cards) --}}
             {{#if activeTreeState.hasStallPenalty}}
             <div class="tree-stall-area">
-                <button type="button" class="btn-stall-penalty" data-action="applyStallPenalty">
+                <button type="button" class="btn-stall-penalty" data-action="applyStallPenalty"
+                    title="The mountain does not negotiate. DCs +{{activeTreeState.stallPenalty.dcBump}}, supplies lost to the delay. Can be applied multiple times.">
                     <i class="fas fa-hourglass-half"></i> Players Stalling
                 </button>
+                <span class="stall-hint-text">Third option bid &middot; negotiating between choices &middot; repeating answered questions</span>
                 {{#if activeTreeState.stallCount}}
                 <span class="stall-applied-count">
                     <i class="fas fa-exclamation-triangle"></i> Applied {{activeTreeState.stallCount}}x — DCs +{{activeTreeState.totalStallBump}}, supplies lost
                 </span>
-                {{else}}
-                <span class="stall-hint">If the party is debating too long or negotiating for a third option that does not exist. DCs increase by +{{activeTreeState.stallPenalty.dcBump}} and supplies are lost to the delay.</span>
                 {{/if}}
             </div>
             {{/if}}
@@ -1393,10 +1419,32 @@
             {{!-- GM: Waiting for player rolls --}}
             {{#if isGM}}
             <div class="tree-awaiting-rolls">
+                {{#if activeTreeState.rollRequestSent}}
+                {{!-- === PHASE 2: Request sent — awaiting results === --}}
                 <div class="tree-roll-header">
                     <i class="fas fa-dice-d20"></i>
                     Awaiting Player Rolls — {{activeTreeState.pendingSkillName}} DC {{activeTreeState.pendingDC}}
                 </div>
+                <div class="tree-roll-dispatched-note">
+                    <i class="fas fa-paper-plane"></i> Roll request dispatched — players will see their roll button now.
+                </div>
+                {{else}}
+                {{!-- === PHASE 1: Configure modifiers before sending === --}}
+                <div class="tree-roll-header tree-roll-header--configure">
+                    <i class="fas fa-sliders-h"></i>
+                    Configure Roll Modifiers — {{activeTreeState.pendingSkillName}} DC {{activeTreeState.pendingDC}}
+                </div>
+                <div class="tree-roll-configure-note">
+                    <i class="fas fa-info-circle"></i> Set modifiers per character, then send the roll request to players.
+                </div>
+                {{/if}}
+                {{!-- Spell rulings advisory --}}
+                {{#if activeTreeState.pendingChoiceSpellRulings}}
+                <div class="tree-spell-rulings-advisory">
+                    <i class="fas fa-hat-wizard"></i>
+                    <span>{{activeTreeState.pendingChoiceSpellRulings}}</span>
+                </div>
+                {{/if}}
                 <div class="tree-roll-tracker">
                     {{#each activeTreeState.resolvedRolls}}
                     <div class="tree-roll-entry resolved">
@@ -1405,20 +1453,37 @@
                         <i class="fas {{#if passed}}fa-check-circle{{else}}fa-times-circle{{/if}}"></i>
                     </div>
                     {{/each}}
-                    {{#each activeTreeState.pendingRolls}}
+                    {{#each activeTreeState.pendingRollsEnriched}}
                     <div class="tree-roll-entry pending">
-                        <span class="roll-name">{{lookup (lookup @root.actorLookup this) "name"}}</span>
-                        <span class="roll-status"><i class="fas fa-spinner fa-spin"></i> Waiting...</span>
-                        <button type="button" class="btn-roll-for-player" data-action="rollTreeForPlayer" data-character-id="{{this}}" title="Roll on their behalf">
-                            <i class="fas fa-dice"></i> Roll for them
+                        <span class="roll-name">{{name}}</span>
+                        {{!-- Roll mode selector --}}
+                        <select class="select-roll-mode roll-mode--{{rollMode}}"
+                            data-character-id="{{id}}"
+                            title="Set roll modifier for this player">
+                            <option value="normal"       {{#if (eq rollMode "normal")}}selected{{/if}}>— Normal</option>
+                            <option value="advantage"    {{#if (eq rollMode "advantage")}}selected{{/if}}>↑ Adv</option>
+                            <option value="disadvantage" {{#if (eq rollMode "disadvantage")}}selected{{/if}}>↓ Dis</option>
+                            <option value="force-pass"   {{#if (eq rollMode "force-pass")}}selected{{/if}}>✓ Pass</option>
+                            <option value="force-fail"   {{#if (eq rollMode "force-fail")}}selected{{/if}}>✗ Fail</option>
+                        </select>
+                        {{#if @root.activeTreeState.rollRequestSent}}
+                        <button type="button" class="btn-roll-for-player" data-action="rollTreeForPlayer" data-character-id="{{id}}" title="Roll on their behalf">
+                            <i class="fas fa-dice"></i>
                         </button>
+                        {{/if}}
                     </div>
                     {{/each}}
                 </div>
                 <div class="tree-roll-actions">
+                    {{#if activeTreeState.rollRequestSent}}
                     <button type="button" class="btn-resend-roll" data-action="resendTreeRollRequest" title="Re-send the roll request to players">
                         <i class="fas fa-paper-plane"></i> Resend
                     </button>
+                    {{else}}
+                    <button type="button" class="btn-send-roll-request" data-action="sendTreeRollRequest" title="Dispatch roll request to all players with current modifiers">
+                        <i class="fas fa-paper-plane"></i> Send Roll Request
+                    </button>
+                    {{/if}}
                 </div>
             </div>
             {{else}}
@@ -1438,9 +1503,27 @@
                         <span class="roll-total">{{total}}</span>
                     </div>
                     {{else}}
+                    {{!-- Roll mode badge (visible to player before rolling) --}}
+                    {{#if (or (eq rollMode "advantage") (eq rollMode "disadvantage") (eq rollMode "force-pass") (eq rollMode "force-fail"))}}
+                    <div class="roll-mode-badge roll-mode-badge--{{rollMode}}">
+                        {{#if (eq rollMode "advantage")}}<i class="fas fa-chevron-double-up"></i> Roll with Advantage
+                        {{else if (eq rollMode "disadvantage")}}<i class="fas fa-chevron-double-down"></i> Roll with Disadvantage
+                        {{else if (eq rollMode "force-pass")}}<i class="fas fa-check"></i> Auto-Success
+                        {{else if (eq rollMode "force-fail")}}<i class="fas fa-times"></i> Auto-Fail
+                        {{/if}}
+                    </div>
+                    {{/if}}
+                    {{#if (or (eq rollMode "force-pass") (eq rollMode "force-fail"))}}
+                    <button type="button" class="btn-tree-roll btn-tree-roll--{{rollMode}}" data-action="rollTreeCheck" data-character-id="{{id}}">
+                        {{#if (eq rollMode "force-pass")}}<i class="fas fa-check"></i> Confirm Auto-Success for {{name}}
+                        {{else}}<i class="fas fa-times"></i> Confirm Auto-Failure for {{name}}
+                        {{/if}}
+                    </button>
+                    {{else}}
                     <button type="button" class="btn-tree-roll" data-action="rollTreeCheck" data-character-id="{{id}}">
                         <i class="fas fa-dice-d20"></i> Roll for {{name}}
                     </button>
+                    {{/if}}
                     {{/if}}
                 </div>
                 {{/each}}
@@ -1465,6 +1548,7 @@
                         <i class="fas fa-chevron-right choice-action-icon"></i>
                     </div>
                     {{#if description}}<div class="choice-description">{{description}}</div>{{/if}}
+                    {{#if spellRulings}}<div class="choice-spell-rulings"><i class="fas fa-hat-wizard"></i>{{spellRulings}}</div>{{/if}}
                     <div class="choice-check">
                         <span class="skill-best-of">Best of</span>
                         {{#each check.skills}}
@@ -1553,8 +1637,8 @@
                     {{#if name}}{{name}}{{else}}{{#if (eq category "encounter")}}Something stirs...{{else if (eq category "complication")}}A complication arises...{{else if (eq category "discovery")}}Something catches your eye...{{else}}The night passes...{{/if}}{{/if}}
                 </div>
                 {{#if resolvedOutcome}}
-                <span class="event-verdict-inline {{#if (eq resolvedOutcome "success")}}pass{{else if (eq resolvedOutcome "partial")}}partial{{else}}fail{{/if}}">
-                    {{#if (eq resolvedOutcome "success")}}<i class="fas fa-check"></i> Passed{{else if (eq resolvedOutcome "partial")}}<i class="fas fa-exclamation-triangle"></i> Partial{{else}}<i class="fas fa-times"></i> Failed{{/if}}
+                <span class="event-verdict-inline {{#if (eq resolvedOutcome "triumph")}}pass{{else if (eq resolvedOutcome "success")}}pass{{else if (eq resolvedOutcome "partial")}}partial{{else}}fail{{/if}}">
+                    {{#if (eq resolvedOutcome "triumph")}}<i class="fas fa-check"></i> Passed{{else if (eq resolvedOutcome "success")}}<i class="fas fa-check"></i> Passed{{else if (eq resolvedOutcome "partial")}}<i class="fas fa-exclamation-triangle"></i> Partial{{else}}<i class="fas fa-times"></i> Failed{{/if}}
                 </span>
                 <i class="fas fa-chevron-down event-expand-toggle"></i>
                 {{/if}}
@@ -1608,8 +1692,10 @@
                     {{/if}}
                 </div>
                 {{/if}}
-                <div class="event-verdict {{#if (eq resolvedOutcome "success")}}pass{{else if (eq resolvedOutcome "partial")}}partial{{else}}fail{{/if}}">
-                    {{#if (eq resolvedOutcome "success")}}
+                <div class="event-verdict {{#if (eq resolvedOutcome "triumph")}}pass{{else if (eq resolvedOutcome "success")}}pass{{else if (eq resolvedOutcome "partial")}}partial{{else}}fail{{/if}}">
+                    {{#if (eq resolvedOutcome "triumph")}}
+                    <i class="fas fa-shield-alt"></i> Check Passed
+                    {{else if (eq resolvedOutcome "success")}}
                     <i class="fas fa-shield-alt"></i> Check Passed
                     {{else if (eq resolvedOutcome "partial")}}
                     <i class="fas fa-exclamation-triangle"></i> Partial Success
@@ -1618,7 +1704,12 @@
                     {{/if}}
                 </div>
 
-                {{#if (eq resolvedOutcome "success")}}
+                {{#if (eq resolvedOutcome "triumph")}}
+                <div class="event-outcome success resolved">
+                    <i class="fas fa-check-circle"></i>
+                    {{#if @root.isGM}}<span>{{mechanical.onTriumph.narrative}}</span>{{else}}<span>The party rises to the occasion.</span>{{/if}}
+                </div>
+                {{else if (eq resolvedOutcome "success")}}
                 <div class="event-outcome success resolved">
                     <i class="fas fa-check-circle"></i>
                     {{#if @root.isGM}}<span>{{mechanical.onSuccess.narrative}}</span>{{else}}<span>The party weathers the challenge.</span>{{/if}}
@@ -2186,7 +2277,7 @@
             {{#if recovery.exhaustionDC}}
             <div class="outcome-exhaustion-advisory {{#if (eq recovery.exhaustionSaveResult 'passed')}}save-passed{{else if (eq recovery.exhaustionSaveResult 'failed')}}save-failed{{/if}}">
                 <i class="fas fa-bed"></i>
-                <span>CON save DC {{recovery.exhaustionDC}}{{#if recovery.exhaustionAdvantage}} <span class="gear-annotation">(advantage from hot meal)</span>{{/if}}{{#if (eq recovery.exhaustionSaveResult 'passed')}} <span class="exhaustion-recovered">Passed (no exhaustion gained)</span>{{else if (eq recovery.exhaustionSaveResult 'failed')}} <span class="exhaustion-gained">Failed (+1 Exhaustion)</span>{{/if}}</span>
+                <span>CON save DC {{recovery.exhaustionDC}}{{#if recovery.exhaustionAdvantage}} <span class="gear-annotation">(advantage from hot meal)</span>{{/if}}{{#if (eq recovery.exhaustionSaveResult 'passed')}} <span class="exhaustion-recovered">Passed (no exhaustion gained)</span>{{else if (eq recovery.exhaustionSaveResult 'failed')}}{{#if (gt recovery.exhaustionDelta 0)}} <span class="exhaustion-gained">Failed (+1 Exhaustion)</span>{{else}} <span class="exhaustion-offset">Failed (offset by rest recovery)</span>{{/if}}{{/if}}</span>
             </div>
             <div class="outcome-effect-line" style="opacity:0.6;font-size:0.75em;padding-left:1.2rem;">{{#if (eq recovery.comfortLevel 'hostile')}}Hostile{{else}}Rough{{/if}} rest conditions require a Constitution save to avoid exhaustion.</div>
             {{/if}}
@@ -2298,7 +2389,7 @@
             {{#if recovery.exhaustionDC}}
             <div class="outcome-exhaustion-advisory {{#if (eq recovery.exhaustionSaveResult 'passed')}}save-passed{{else if (eq recovery.exhaustionSaveResult 'failed')}}save-failed{{/if}}">
                 <i class="fas fa-bed"></i>
-                <span>CON save DC {{recovery.exhaustionDC}}{{#if recovery.exhaustionAdvantage}} <span class="gear-annotation">(advantage from hot meal)</span>{{/if}}{{#if (eq recovery.exhaustionSaveResult 'passed')}} <span class="exhaustion-recovered">Passed (no exhaustion gained)</span>{{else if (eq recovery.exhaustionSaveResult 'failed')}} <span class="exhaustion-gained">Failed (+1 Exhaustion)</span>{{/if}}</span>
+                <span>CON save DC {{recovery.exhaustionDC}}{{#if recovery.exhaustionAdvantage}} <span class="gear-annotation">(advantage from hot meal)</span>{{/if}}{{#if (eq recovery.exhaustionSaveResult 'passed')}} <span class="exhaustion-recovered">Passed (no exhaustion gained)</span>{{else if (eq recovery.exhaustionSaveResult 'failed')}}{{#if (gt recovery.exhaustionDelta 0)}} <span class="exhaustion-gained">Failed (+1 Exhaustion)</span>{{else}} <span class="exhaustion-offset">Failed (offset by rest recovery)</span>{{/if}}{{/if}}</span>
             </div>
             <div class="outcome-effect-line" style="opacity:0.6;font-size:0.75em;padding-left:1.2rem;">{{#if (eq recovery.comfortLevel 'hostile')}}Hostile{{else}}Rough{{/if}} rest conditions require a Constitution save to avoid exhaustion.</div>
             {{/if}}
@@ -2457,7 +2548,7 @@
     {{!-- Encounter Status Bar: persistent footer --}}
     {{#if encounterBar}}
     <div class="encounter-bar">
-        <span class="encounter-bar-label" title="A hidden d20 is rolled against this DC. Events only trigger if the roll stays BELOW this number. Higher DC = safer camp. Shelter, scouting, and fire can raise the DC.">
+        <span class="encounter-bar-label" title="A hidden d20 is rolled against this DC. Events only trigger if the roll stays BELOW this number. Lower DC = safer camp. Shelter, scouting, and fire reduce the DC.">
             <i class="fas fa-dice-d20"></i>
             {{encounterBar.totalLabel}}
         </span>

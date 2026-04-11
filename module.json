@@ -3,11 +3,11 @@
     "title": "Ionrift Respite",
     "description": "Structured long rest and short rest phases for DnD 5e. Replaces the default rest dialog with a guided camping flow. Players self-serve their downtime activities: identifying magic items, attuning gear, copying spells, crafting arrows, cooking, foraging, and more. The GM runs terrain-driven wilderness encounters and random events. 37 rest events across 6 terrains with multiple outcome tiers. Built for tables that want immersive camping without the bookkeeping.",
     "bugs": "https://discord.gg/vFGXf7Fncj",
-    "version": "1.0.20",
+    "version": "1.0.21",
     "url": "https://github.com/ionrift-gm/ionrift-respite",
     "manifest": "https://github.com/ionrift-gm/ionrift-respite/releases/latest/download/module.json",
     "readme": "https://raw.githubusercontent.com/ionrift-gm/ionrift-respite/main/README.md",
-    "download": "https://github.com/ionrift-gm/ionrift-respite/releases/download/v1.0.20/module.zip",
+    "download": "https://github.com/ionrift-gm/ionrift-respite/releases/download/v1.0.21/module.zip",
     "compatibility": {
         "minimum": "12",
         "verified": "13"

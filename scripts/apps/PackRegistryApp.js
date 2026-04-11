@@ -354,10 +354,12 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             });
 
             const allTerrains = new Set();
+            const knownTerrains = TerrainRegistry.getAvailableIds();
             el.querySelectorAll(".pack-terrain-badge").forEach(badge => {
                 const text = badge.textContent.trim();
                 const tag = text.replace(/\s*\d+$/, "").trim();
-                if (tag) allTerrains.add(tag);
+                // Only consider tags that are actual selectable terrains, not metadata tags
+                if (tag && (knownTerrains.size === 0 || knownTerrains.has(tag))) allTerrains.add(tag);
             });
             const emptyTerrains = [...allTerrains].filter(t => !enabledTerrains.has(t));
 

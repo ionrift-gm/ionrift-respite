@@ -79,6 +79,28 @@ export class RecoveryHandler {
             return outcomes.map(o => ({ characterId: o.characterId, hp: 0, hd: 0, deferred: true }));
         }
 
+        // Pre-resolve "random" scope to a specific actor ID.
+        // Uses a stable key per effect so the same random target is picked
+        // consistently across all character outcomes.
+        const allCharacterIds = outcomes.map(o => o.characterId).filter(Boolean);
+        if (allCharacterIds.length > 0) {
+            const randomTargetCache = new Map();
+            for (const outcome of outcomes) {
+                for (const sub of (outcome.outcomes ?? [])) {
+                    for (const effect of (sub.effects ?? [])) {
+                        if (effect.scope === "random") {
+                            const key = `${sub.eventId ?? sub.eventName ?? ""}:${effect.type}:${effect.description ?? ""}`;
+                            if (!randomTargetCache.has(key)) {
+                                const idx = Math.floor(Math.random() * allCharacterIds.length);
+                                randomTargetCache.set(key, allCharacterIds[idx]);
+                            }
+                            effect._resolvedScope = randomTargetCache.get(key);
+                        }
+                    }
+                }
+            }
+        }
+
         const results = [];
         for (const outcome of outcomes) {
             const actor = game.actors.get(outcome.characterId);
@@ -289,6 +311,15 @@ export class RecoveryHandler {
 
             for (const effect of (sub.effects ?? [])) {
                 if (effect.type !== "damage" || !effect.formula) continue;
+
+                // Scope filtering: skip this effect if the actor is not the intended target
+                const scope = effect.scope ?? "all";
+                if (scope === "random") {
+                    // "random" should have been pre-resolved to a specific actor ID in applyAll
+                    if (effect._resolvedScope && effect._resolvedScope !== actor.id) continue;
+                } else if (scope !== "all" && scope !== actor.id) {
+                    continue;
+                }
 
                 try {
                     const roll = await new Roll(effect.formula).evaluate();

@@ -1,6 +1,24 @@
 # Changelog
 
+## [1.0.21] - 2026-04-11
+
+### Added
+- Two-phase disaster roll workflow. The GM now configures roll modifiers before dispatching a roll request to players. Phase 1 shows a \"Configure\" header with per-character selectors. Phase 2 shows a dispatched confirmation so the GM knows the request is live.
+- Per-character roll modifier selectors in the disaster decision tree. GMs can set Normal, Advantage, Disadvantage, Force Pass, or Force Fail per character before sending the roll.
+- Force Pass / Force Fail outcomes. When forced, no dice are rolled — the result is synthetic, posted immediately, and shown to the player as a confirmed outcome rather than a standard roll.
+- GM Guidance flyout. A body-level panel opens alongside the disaster tree showing GM-only scene-setting notes and tactical guidance. Tears down cleanly when the rest window closes.
+- `random` effect scope in disaster JSON. Effects with `"scope": "random"` now resolve to a single consistent target across all character outcome calculations. Stable per effect key; re-rolls are deterministic within a single rest.
+- Stall penalty hint text. A permanent muted label lists common stall triggers (repeating questions, third option bids) so the GM knows when to apply a stall.
+- Spell rulings advisory in the tree panel. If a choice has `pendingChoiceSpellRulings`, a wizard-hat advisory appears below the choice header for the configuring GM.
+
+### Fixed
+- Exhaustion resolution display now shows net exhaustion change rather than raw save outcome. Characters whose long rest recovery offsets a failed CON save no longer display "+1 Exhaustion" when the net result is zero.
+- Empty event pool chat message now shows the actual watch roll (via `roll.toMessage()`) alongside the advisory. GMs can see the roll that would have triggered an event alongside the \"no events available\" notice.
+- Dice So Nice integration for empty-pool event rolls. The GM's watch roll now waits for the animation to complete before continuing.
+- Roll modifier state (`rollModes`) is now persisted in the tree roll snapshot. If a player client refreshes after a roll request is sent, their roll mode is correctly restored from the GM's state.
+
 ## [1.0.20] - 2026-04-08
+
 
 ### Added
 - 4-tier event outcome resolution. Events now resolve as triumph, success, mixed, or failure based on how far the party's roll beats the DC. Triumph triggers at DC+5 and above, mixed at DC-3 and above. Events that only define two tiers still work as before.

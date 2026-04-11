@@ -47,15 +47,19 @@ export function getSkillMod(actor, key) {
 }
 
 /**
- * Builds a 1d20 + modifier roll for a given actor and skill.
+ * Builds a skill roll for a given actor, skill, and roll mode.
  * Does NOT evaluate or post to chat.
  * @param {Actor} actor
  * @param {string} skillKey - Skill abbreviation.
+ * @param {'normal'|'advantage'|'disadvantage'} [rollMode='normal']
  * @returns {{ roll: Roll, modifier: number, skillKey: string }}
  */
-export function buildSkillRoll(actor, skillKey) {
+export function buildSkillRoll(actor, skillKey, rollMode = "normal") {
     const modifier = getSkillMod(actor, skillKey);
-    const roll = new Roll(`1d20 + ${modifier}`);
+    const formula = rollMode === "advantage"    ? `2d20kh1 + ${modifier}`
+                  : rollMode === "disadvantage" ? `2d20kl1 + ${modifier}`
+                  : `1d20 + ${modifier}`;
+    const roll = new Roll(formula);
     return { roll, modifier, skillKey };
 }
 
@@ -109,17 +113,19 @@ export function disableRollButton(target) {
  * @param {string|string[]} skills - Skill key or array of skill keys.
  * @param {number} dc - Difficulty class.
  * @param {string} [context="Skill check"] - Context label for chat flavor.
+ * @param {'normal'|'advantage'|'disadvantage'} [rollMode='normal']
  * @returns {Promise<{ total: number, passed: boolean, skill: string, modifier: number }>}
  */
-export async function rollForPlayer(actor, skills, dc, context = "Skill check") {
+export async function rollForPlayer(actor, skills, dc, context = "Skill check", rollMode = "normal") {
     const skillList = Array.isArray(skills) ? skills : [skills];
     const skill = pickBestSkill(actor, skillList);
-    const { roll, modifier } = buildSkillRoll(actor, skill);
+    const { roll, modifier } = buildSkillRoll(actor, skill, rollMode);
     await roll.evaluate();
 
     const skillName = SKILL_DISPLAY_NAMES[skill] ?? skill.toUpperCase();
     const passed = roll.total >= dc;
-    const flavor = `<strong>${actor.name}</strong> - ${context} (${skillName}, DC ${dc}) [GM roll]`;
+    const modeLabel = rollMode === "advantage" ? " [Advantage]" : rollMode === "disadvantage" ? " [Disadvantage]" : "";
+    const flavor = `<strong>${actor.name}</strong> - ${context} (${skillName}, DC ${dc}) [GM roll]${modeLabel}`;
 
     await postRollToChat(actor, roll, flavor);
     await waitForDiceSoNice();
@@ -136,10 +142,11 @@ export async function rollForPlayer(actor, skills, dc, context = "Skill check") 
  * @param {number} dc - Difficulty class.
  * @param {string} flavorText - Chat message flavor.
  * @param {HTMLElement} [buttonTarget] - Optional button to disable.
+ * @param {'normal'|'advantage'|'disadvantage'} [rollMode='normal']
  * @returns {Promise<{ total: number, passed: boolean }>}
  */
-export async function executePlayerRoll(actor, skillKey, dc, flavorText, buttonTarget) {
-    const { roll } = buildSkillRoll(actor, skillKey);
+export async function executePlayerRoll(actor, skillKey, dc, flavorText, buttonTarget, rollMode = "normal") {
+    const { roll } = buildSkillRoll(actor, skillKey, rollMode);
     await roll.evaluate();
 
     await postRollToChat(actor, roll, flavorText);

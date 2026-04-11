@@ -110,7 +110,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             resendTreeRollRequest: RestSetupApp.#onResendTreeRollRequest,
             rollEventForPlayer: RestSetupApp.#onRollEventForPlayer,
             rollCampForPlayer: RestSetupApp.#onRollCampForPlayer,
-            rollTreeCheck: RestSetupApp.#onRollTreeCheck
+            rollTreeCheck: RestSetupApp.#onRollTreeCheck,
+            sendTreeRollRequest: RestSetupApp.#onSendTreeRollRequest,
+            toggleGmGuidance: RestSetupApp.#onToggleGmGuidance
         }
     };
 
@@ -1067,6 +1069,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             Hooks.off("updateItem", this._inventoryHookIds[2]);
             this._inventoryHookIds = null;
         }
+        // Tear down the body-level GM guidance flyout so it doesn't linger over the canvas
+        document.getElementById("ionrift-gm-guidance-flyout")?.remove();
         return super.close(options);
     }
 
@@ -1747,6 +1751,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 return { ...this._pendingEventRoll, ownedTargets };
             })() : null,
             pendingTreeRoll: this._pendingTreeRoll ? (() => {
+                const rollModes = this._pendingTreeRoll.rollModes ?? {};
                 const ownedTargets = (this._pendingTreeRoll.targets ?? [])
                     .map(id => game.actors.get(id))
                     .filter(a => a?.isOwner)
@@ -1758,7 +1763,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                             name: a.name,
                             rolled,
                             total: result?.total ?? null,
-                            passed: result?.passed ?? null
+                            passed: result?.passed ?? null,
+                            rollMode: rollModes[a.id] ?? "normal"
                         };
                     });
                 return { ...this._pendingTreeRoll, ownedTargets };
@@ -1802,7 +1808,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             fireLevel: this._fireLevel ?? "campfire",
             campfireTokenDetected: CampfireTokenLinker.hasCampfireToken(),
             campfireTokenSettingName: CampfireTokenLinker.getTokenName(),
-            activeTreeState: this._activeTreeState,
+            activeTreeState: (() => {
+                const ts = this._activeTreeState;
+                if (!ts) return null;
+                // Enrich pending rolls with actor name and rollMode for clean template iteration
+                const rollModes = ts.pendingRollModes ?? {};
+                const pendingRollsEnriched = (ts.pendingRolls ?? []).map(id => ({
+                    id,
+                    name: game.actors.get(id)?.name ?? id,
+                    rollMode: rollModes[id] ?? "normal"
+                }));
+                return { ...ts, pendingRollsEnriched };
+            })(),
             engine: this._engine,
             recoverySummary,
             activitySummary,
@@ -3127,6 +3144,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             dc: data.dc,
             targets: data.targets ?? [],
             eventName: data.eventName,
+            rollModes: data.rollModes ?? {},
             rolledCharacters: new Set()
         };
         this.render();
@@ -3135,6 +3153,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /**
      * Player action: roll a decision tree skill check for an owned character.
      * Posts the roll to chat and sends the result back to the GM.
+     * Respects rollMode (advantage/disadvantage/force-pass/force-fail).
      */
     static async #onRollTreeCheck(event, target) {
         event.preventDefault?.();
@@ -3153,15 +3172,37 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Already rolled?
         if (pending.rolledCharacters?.has(characterId)) return;
 
+        const rollMode = pending.rollModes?.[characterId] ?? "normal";
+        const dc = pending.dc;
+
+        // Force outcomes: send a synthetic total without rolling dice
+        if (rollMode === "force-pass" || rollMode === "force-fail") {
+            const total = rollMode === "force-pass" ? dc : 0;
+            if (!pending.rolledCharacters) pending.rolledCharacters = new Set();
+            pending.rolledCharacters.add(characterId);
+            if (!pending.rolledResults) pending.rolledResults = new Map();
+            pending.rolledResults.set(characterId, { total, passed: rollMode === "force-pass" });
+            game.socket.emit(`module.${MODULE_ID}`, {
+                type: "treeRollResult",
+                characterId,
+                characterName: actor.name,
+                total
+            });
+            ui.notifications.info(`${actor.name}: ${rollMode === "force-pass" ? "Auto-success" : "Auto-fail"} applied.`);
+            this.render();
+            return;
+        }
+
         const skill = pickBestSkill(actor, pending.skills);
-        const flavor = `<strong>${actor.name}</strong> - ${pending.eventName} (${pending.skillName}) DC ${pending.dc}`;
-        const { total } = await executePlayerRoll(actor, skill, pending.dc, flavor, target);
+        const modeLabel = rollMode === "advantage" ? " [Advantage]" : rollMode === "disadvantage" ? " [Disadvantage]" : "";
+        const flavor = `<strong>${actor.name}</strong> - ${pending.eventName} (${pending.skillName}) DC ${dc}${modeLabel}`;
+        const { total } = await executePlayerRoll(actor, skill, dc, flavor, target, rollMode);
 
         // Mark as rolled locally and store result for display
         if (!pending.rolledCharacters) pending.rolledCharacters = new Set();
         pending.rolledCharacters.add(characterId);
         if (!pending.rolledResults) pending.rolledResults = new Map();
-        pending.rolledResults.set(characterId, { total, passed: total >= pending.dc });
+        pending.rolledResults.set(characterId, { total, passed: total >= dc });
 
         // Send result to GM
         game.socket.emit(`module.${MODULE_ID}`, {
@@ -3173,6 +3214,149 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         ui.notifications.info(`${actor.name} rolled ${total} for ${pending.skillName}.`);
         this.render();
+    }
+
+    /**
+     * Converts \n\n-delimited guidance text into <p> tags for paragraph styling.
+     * @param {string} text - Raw gmGuidance string.
+     * @returns {string} HTML string.
+     */
+    static #formatGmGuidance(text) {
+        return text.split(/\n\n+/).map((raw, i) => {
+            const p = raw.trim();
+            // Non-first paragraphs: auto-chip a leading "Label:" or "Label text:" prefix
+            if (i > 0) {
+                const labelMatch = p.match(/^([A-Z][^:]{2,30}):\s*/);
+                if (labelMatch) {
+                    const label = labelMatch[1];
+                    const rest  = p.slice(labelMatch[0].length);
+                    return `<p><strong>${label}</strong>${rest}</p>`;
+                }
+            }
+            return `<p>${p}</p>`;
+        }).join("");
+    }
+
+    /**
+     * Opens (or repositions) the GM guidance flyout, anchored to the left edge
+     * of the Foundry app window. Creates the body-level singleton on first call.
+     * @param {HTMLElement} triggerEl - The button that triggered the open.
+     * @param {string} guidanceHtml - Formatted HTML content for the flyout body.
+     */
+    static #openGmGuidanceFlyout(triggerEl, guidanceHtml) {
+        const FLYOUT_ID = "ionrift-gm-guidance-flyout";
+        let flyout = document.getElementById(FLYOUT_ID);
+
+        if (!flyout) {
+            flyout = document.createElement("div");
+            flyout.id = FLYOUT_ID;
+            flyout.className = "tree-gm-sidebar";
+            flyout.innerHTML = `
+                <div class="tree-gm-sidebar-header">
+                    <span><i class="fas fa-book-reader"></i> GM Guidance</span>
+                    <button type="button" class="tree-gm-sidebar-close"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="tree-gm-sidebar-body"></div>
+            `;
+            document.body.appendChild(flyout);
+            flyout.querySelector(".tree-gm-sidebar-close").addEventListener("click", () => {
+                flyout.classList.remove("open");
+                // Clear active state on whichever button opened it
+                document.querySelectorAll(".tree-gm-notes-btn.active").forEach(b => b.classList.remove("active"));
+            });
+        }
+
+        flyout.querySelector(".tree-gm-sidebar-body").innerHTML = guidanceHtml;
+
+        // Anchor flyout: right of window (X), level with the button (Y)
+        const windowEl = triggerEl.closest(".ionrift-window");
+        const windowRect = windowEl?.getBoundingClientRect() ?? triggerEl.getBoundingClientRect();
+        const btnRect = triggerEl.getBoundingClientRect();
+
+        const applyPosition = (wRect, bTopOffset) => {
+            flyout.style.left = `${wRect.right + 4}px`;
+            flyout.style.top  = `${Math.max(8, Math.min(wRect.top + bTopOffset, window.innerHeight - 400))}px`;
+        };
+
+        // Store the button's vertical offset relative to the window top
+        const btnTopOffset = btnRect.top - windowRect.top;
+        applyPosition(windowRect, btnTopOffset);
+
+        // Track window drag — reposition flyout whenever the window moves
+        if (flyout._dragObserver) flyout._dragObserver.disconnect();
+        if (windowEl) {
+            flyout._dragObserver = new MutationObserver(() => {
+                if (!flyout.classList.contains("open")) return;
+                applyPosition(windowEl.getBoundingClientRect(), btnTopOffset);
+            });
+            flyout._dragObserver.observe(windowEl, { attributes: true, attributeFilter: ["style"] });
+        }
+
+        // Disconnect observer when flyout is closed
+        flyout.querySelector(".tree-gm-sidebar-close").addEventListener("click", () => {
+            flyout._dragObserver?.disconnect();
+        }, { once: true });
+
+        flyout.classList.add("open");
+    }
+
+    /**
+     * GM action: toggle the GM Guidance flyout.
+     */
+    static #onToggleGmGuidance(event, target) {
+        event.preventDefault?.();
+        const FLYOUT_ID = "ionrift-gm-guidance-flyout";
+        const flyout = document.getElementById(FLYOUT_ID);
+
+        // If already open, close it and clear button state
+        if (flyout?.classList.contains("open")) {
+            flyout.classList.remove("open");
+            document.querySelectorAll(".tree-gm-notes-btn.active").forEach(b => b.classList.remove("active"));
+            return;
+        }
+
+        // Get guidance text from the hidden data holder in the tree
+        const tree = target.closest(".respite-decision-tree");
+        if (!tree) return;
+        const raw = tree.querySelector(".tree-gm-sidebar-body")?.textContent?.trim();
+        if (!raw) return;
+
+        target.classList.add("active");
+        RestSetupApp.#openGmGuidanceFlyout(target, RestSetupApp.#formatGmGuidance(raw));
+    }
+
+    /** @override */
+    _onRender(context, options) {
+        super._onRender?.(context, options);
+
+        // Roll mode selects: update state + broadcast without re-rendering (preserves scroll).
+        if (game.user.isGM) {
+            for (const sel of this.element.querySelectorAll(".select-roll-mode")) {
+                sel.addEventListener("change", () => {
+                    const characterId = sel.dataset.characterId;
+                    const mode = sel.value;
+                    if (!characterId || !this._activeTreeState?.awaitingRolls) return;
+
+                    if (!this._activeTreeState.pendingRollModes) this._activeTreeState.pendingRollModes = {};
+                    this._activeTreeState.pendingRollModes[characterId] = mode;
+
+                    // Update this select's colour class in-place (no render)
+                    sel.className = sel.className.replace(/roll-mode--\S+/, "") + ` roll-mode--${mode}`;
+
+                    // Broadcast updated rollModes to players
+                    game.socket.emit(`module.${MODULE_ID}`, {
+                        type: "phaseChanged",
+                        phase: "events",
+                        phaseData: {
+                            triggeredEvents: this._triggeredEvents,
+                            activeTreeState: this._activeTreeState,
+                            eventsRolled: true,
+                            campStatus: this._campStatus
+                        }
+                    });
+                });
+            }
+        }
     }
 
     /**
@@ -4404,7 +4588,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /**
      * Phase 3 (events): GM selects a decision tree choice.
-     * Enters pending-roll state and broadcasts roll request to players.
+     * Enters the configure-modifiers phase (no request sent to players yet).
+     * The GM must click "Send Roll Request" to dispatch.
      */
     static async #onResolveTreeChoice(event, target) {
         const choiceId = target.dataset.choiceId;
@@ -4413,12 +4598,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const prepared = DecisionTreeResolver.prepareChoice(this._activeTreeState, choiceId);
         if (!prepared) return;
 
-        // Enter pending-roll state
+        // Enter pending-roll state — but do NOT dispatch to players yet
         this._activeTreeState.awaitingRolls = true;
+        this._activeTreeState.rollRequestSent = false;
         this._activeTreeState.pendingChoice = choiceId;
         this._activeTreeState.pendingRolls = [...prepared.targetIds];
         this._activeTreeState.resolvedRolls = [];
         this._activeTreeState.pendingCheck = prepared.check;
+        // Roll modes: per-character override map (normal/advantage/disadvantage/force-pass/force-fail)
+        this._activeTreeState.pendingRollModes = {};
+        // Spell rulings advisory for the awaiting panel
+        this._activeTreeState.pendingChoiceSpellRulings = prepared.option.spellRulings ?? null;
 
         // Determine skill name for display
         const skillKey = pickBestSkill(
@@ -4430,16 +4620,30 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._activeTreeState.pendingSkillKey = skillKey;
         this._activeTreeState.pendingDC = prepared.dc;
 
+        await this._saveRestState();
+        this.render();
+    }
+
+    /**
+     * GM dispatches the tree roll request to players.
+     * Called after the GM has finished configuring per-character modifiers.
+     */
+    static async #onSendTreeRollRequest(event, target) {
+        if (!game.user.isGM) return;
+        if (!this._activeTreeState?.awaitingRolls) return;
+
+        this._activeTreeState.rollRequestSent = true;
+
         // Broadcast roll request to players
         game.socket.emit(`module.${MODULE_ID}`, {
             type: "treeRollRequest",
-            choiceId,
-            choiceLabel: prepared.choiceLabel,
-            skills: prepared.skills,
-            skillName,
-            dc: prepared.dc,
-            targets: prepared.targetIds,
-            eventName: this._activeTreeState.eventName
+            choiceId: this._activeTreeState.pendingChoice,
+            skills: this._activeTreeState.pendingCheck?.skills ?? [],
+            skillName: this._activeTreeState.pendingSkillName ?? "Skill",
+            dc: this._activeTreeState.pendingDC ?? 12,
+            targets: this._activeTreeState.pendingRolls ?? [],
+            eventName: this._activeTreeState.eventName,
+            rollModes: this._activeTreeState.pendingRollModes ?? {}
         });
 
         // Broadcast updated tree state so players see roll buttons
@@ -4533,6 +4737,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /**
      * GM rolls a tree check on behalf of an unresponsive player.
+     * Respects the pendingRollModes flag for that character.
+     * Force-pass / force-fail bypass the dice entirely.
      */
     static async #onRollTreeForPlayer(event, target) {
         if (!game.user.isGM) return;
@@ -4542,11 +4748,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const actor = game.actors.get(characterId);
         if (!actor) return;
 
-        const skills = this._activeTreeState.pendingCheck?.skills ?? [];
+        const rollMode = this._activeTreeState.pendingRollModes?.[characterId] ?? "normal";
         const dc = this._activeTreeState.pendingDC ?? 12;
+
+        // Force outcomes inject a synthetic total
+        if (rollMode === "force-pass" || rollMode === "force-fail") {
+            const total = rollMode === "force-pass" ? dc : 0;
+            await this.receiveTreeRollResult({ characterId, characterName: actor.name, total });
+            return;
+        }
+
+        const skills = this._activeTreeState.pendingCheck?.skills ?? [];
         const context = `${this._activeTreeState.eventName} - Decision`;
 
-        const result = await rollForPlayer(actor, skills, dc, context);
+        const result = await rollForPlayer(actor, skills, dc, context, rollMode);
 
         // Feed the result back through the normal collection path
         await this.receiveTreeRollResult({
@@ -4558,6 +4773,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /**
      * GM re-broadcasts the tree roll request for crash recovery.
+     * Includes current rollModes so players get any existing flags.
      */
     static #onResendTreeRollRequest(event, target) {
         if (!game.user.isGM) return;
@@ -4570,10 +4786,42 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             skillName: this._activeTreeState.pendingSkillName ?? "Skill",
             dc: this._activeTreeState.pendingDC ?? 12,
             targets: this._activeTreeState.pendingRolls ?? [],
-            eventName: this._activeTreeState.eventName
+            eventName: this._activeTreeState.eventName,
+            rollModes: this._activeTreeState.pendingRollModes ?? {}
         });
 
         ui.notifications.info("Tree roll request re-sent to players.");
+    }
+
+    /**
+     * GM cycles the roll mode for a specific character in the pending tree roll.
+     * Order: normal → advantage → disadvantage → force-pass → force-fail → normal
+     * Broadcasts updated tree state so player badges update immediately.
+     */
+    static #onCycleTreeRollMode(event, target) {
+        event.preventDefault?.();
+        if (!game.user.isGM) return;
+        const characterId = target.dataset.characterId;
+        if (!characterId || !this._activeTreeState?.awaitingRolls) return;
+
+        if (!this._activeTreeState.pendingRollModes) this._activeTreeState.pendingRollModes = {};
+        const CYCLE = { "normal": "advantage", "advantage": "disadvantage", "disadvantage": "force-pass", "force-pass": "force-fail", "force-fail": "normal" };
+        const current = this._activeTreeState.pendingRollModes[characterId] ?? "normal";
+        this._activeTreeState.pendingRollModes[characterId] = CYCLE[current] ?? "normal";
+
+        // Push updated rollModes to players so their badge refreshes live
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "phaseChanged",
+            phase: "events",
+            phaseData: {
+                triggeredEvents: this._triggeredEvents,
+                activeTreeState: this._activeTreeState,
+                eventsRolled: true,
+                campStatus: this._campStatus
+            }
+        });
+
+        this.render();
     }
 
     /**
@@ -5019,7 +5267,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             for (const eff of conditionEffects) {
                 const level = eff.level ?? 1;
                 const scope = eff.scope ?? "all";
-                const targets = scope === "all" ? characters : characters.filter(a => a.id === scope);
+                let targets;
+                if (scope === "all") {
+                    targets = characters;
+                } else if (scope === "random") {
+                    targets = [characters[Math.floor(Math.random() * characters.length)]];
+                } else {
+                    targets = characters.filter(a => a.id === scope);
+                }
 
                 for (const actor of targets) {
                     const current = actor.system?.attributes?.exhaustion ?? 0;
@@ -5600,6 +5855,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         ...(snapshot.activeTreeState.resolvedRolls ?? []).map(r => r.characterId ?? r.actorId)
                     ],
                     eventName: snapshot.activeTreeState.eventName,
+                    rollModes: snapshot.activeTreeState.pendingRollModes ?? {},
                     rolledCharacters: alreadyRolled,
                     rolledResults: new Map(
                         (snapshot.activeTreeState.resolvedRolls ?? []).map(r => [

@@ -5,6 +5,12 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      dry_run_discord:
+        description: 'Post Discord notification only (no release artifact)'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
   build:
@@ -108,3 +114,82 @@ jobs:
             } else {
               console.log("Foundry VTT notified successfully.");
             }
+
+  notify-discord:
+    name: Notify Discord
+    runs-on: ubuntu-latest
+    needs: build
+    if: >
+      success() &&
+      !contains(github.ref_name, '-rc') &&
+      !contains(github.ref_name, '-beta') &&
+      !contains(github.ref_name, '-alpha')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract changelog entry
+        id: changelog
+        run: |
+          # Extract the block from the first ## heading to just before the second ## heading.
+          # Strips leading/trailing blank lines and Markdown ### sub-headers.
+          BODY=$(awk '
+            /^## / { if (found) exit; found=1; next }
+            found && /^### / { printf "\n**%s**\n", substr($0,5); next }
+            found { print }
+          ' CHANGELOG.md | sed '/^[[:space:]]*$/d' | head -80)
+
+          # Grab the version number from the first ## line
+          VERSION=$(awk '/^## / { match($0, /\[([^]]+)\]/, a); print a[1]; exit }' CHANGELOG.md)
+
+          # Truncate body to 3900 chars (Discord embed description limit is 4096)
+          BODY_TRIMMED=$(echo "$BODY" | head -c 3900)
+          if [ "${#BODY}" -gt 3900 ]; then
+            BODY_TRIMMED="${BODY_TRIMMED}\n\n_...see full notes on GitHub_"
+          fi
+
+          # Escape for JSON: newlines → \n, quotes → \"
+          BODY_JSON=$(echo "$BODY_TRIMMED" | python3 -c "
+import sys, json
+print(json.dumps(sys.stdin.read()))
+" | sed 's/^"//;s/"$//')
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$BODY_JSON" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Post to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          VERSION="${{ steps.changelog.outputs.version }}"
+          BODY="${{ steps.changelog.outputs.body }}"
+          REPO_URL="https://github.com/${{ github.repository }}"
+          RELEASE_URL="${REPO_URL}/releases/tag/${{ github.ref_name }}"
+
+          PAYLOAD=$(python3 -c "
+import json, sys
+
+version = sys.argv[1]
+body    = sys.argv[2]
+url     = sys.argv[3]
+
+data = {
+  \"embeds\": [{
+    \"title\": f\"\\U0001f525 Ionrift Respite — v{version}\",
+    \"description\": body,
+    \"color\": 0xC9952A,
+    \"url\": url,
+    \"footer\": {\"text\": \"The Austere Maker • ionrift.com\"},
+    \"thumbnail\": {\"url\": \"https://raw.githubusercontent.com/${{ github.repository }}/main/assets/module-icon.png\"}
+  }]
+}
+print(json.dumps(data))
+" "$VERSION" "$BODY" "$RELEASE_URL")
+
+          curl -s -o /dev/null -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK" | grep -qE '^2' || { echo "Discord webhook POST failed"; exit 1; }

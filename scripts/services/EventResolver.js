@@ -199,11 +199,17 @@ export class EventResolver {
         if (!event) {
             // Pool exhausted or all packs disabled for this terrain
             console.warn(`[Respite:EventResolver] No events available for terrain "${terrainTag}". Check Content Packs settings.`);
-            await ChatMessage.create({
-                content: `<em>No events available for <strong>${terrainTag}</strong> terrain. Check <strong>Content Packs</strong> in module settings.</em>`,
-                whisper: game.users.filter(u => u.isGM).map(u => u.id),
-                speaker: { alias: "Respite" }
+            await roll.toMessage({
+                speaker: { alias: "Night Watch" },
+                flavor: `<strong>Event Roll</strong> (${terrainTag}) DC ${effectiveDC}<br><em>Roll would trigger an event, but no events are available for this terrain. Check <strong>Content Packs</strong> in module settings.</em>`,
+                whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
+            if (game.modules.get("dice-so-nice")?.active) {
+                await new Promise(resolve => {
+                    const timeout = setTimeout(resolve, 5000);
+                    Hooks.once("diceSoNiceRollComplete", () => { clearTimeout(timeout); resolve(); });
+                });
+            }
             return results;
         }
 
