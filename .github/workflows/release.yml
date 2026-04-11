@@ -159,7 +159,6 @@ jobs:
                 description: desc,
                 color: 0xC9952A,
                 url: `https://github.com/${repo}/releases/tag/${tag}`,
-                footer: { text: 'ionrift.com' },
                 thumbnail: { url: `https://raw.githubusercontent.com/${repo}/main/assets/module-icon.png` }
               }]
             };
