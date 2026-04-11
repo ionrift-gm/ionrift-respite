@@ -26,7 +26,6 @@ jobs:
 
       - name: Validate Assets
         run: |
-          # Ensure LFS-tracked PNGs are real images, not pointer stubs
           FIRST_PNG=$(find assets -name '*.png' -type f | head -1)
           if [ -z "$FIRST_PNG" ]; then
             echo "WARNING: No PNG files found in assets/ — skipping validation"
@@ -39,7 +38,6 @@ jobs:
             echo "OK: Asset files are real images (first file: $FIRST_PNG, ${SIZE} bytes)"
           fi
 
-          # Ensure WebM token assets are real files, not LFS pointer stubs
           FIRST_WEBM=$(find assets -name '*.webm' -type f | head -1)
           if [ -z "$FIRST_WEBM" ]; then
             echo "INFO: No WebM files found in assets/ — skipping"
@@ -78,7 +76,6 @@ jobs:
           script: |
             const fs = require('fs');
             const manifest = JSON.parse(fs.readFileSync('module.json', 'utf8'));
-            
             const payload = {
               id: manifest.id,
               release: {
@@ -88,27 +85,16 @@ jobs:
                 compatibility: manifest.compatibility
               }
             };
-            
             console.log("Sending payload:", JSON.stringify(payload, null, 2));
-            
             const response = await fetch("https://foundryvtt.com/_api/packages/release_version/", {
               method: "POST",
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': process.env.FOUNDRY_TOKEN
-              },
+              headers: { 'Content-Type': 'application/json', 'Authorization': process.env.FOUNDRY_TOKEN },
               body: JSON.stringify(payload)
             });
-            
             const text = await response.text();
             let data;
-            try {
-              data = JSON.parse(text);
-            } catch {
-              data = text;
-            }
+            try { data = JSON.parse(text); } catch { data = text; }
             console.log("Response:", typeof data === 'string' ? data : JSON.stringify(data, null, 2));
-            
             if (!response.ok) {
               core.setFailed(`Foundry API Error (${response.status}): ${typeof data === 'string' ? data : JSON.stringify(data)}`);
             } else {
@@ -132,64 +118,49 @@ jobs:
       - name: Extract changelog entry
         id: changelog
         run: |
-          # Extract the block from the first ## heading to just before the second ## heading.
-          # Strips leading/trailing blank lines and Markdown ### sub-headers.
           BODY=$(awk '
             /^## / { if (found) exit; found=1; next }
             found && /^### / { printf "\n**%s**\n", substr($0,5); next }
             found { print }
           ' CHANGELOG.md | sed '/^[[:space:]]*$/d' | head -80)
 
-          # Grab the version number from the first ## line
           VERSION=$(awk '/^## / { match($0, /\[([^]]+)\]/, a); print a[1]; exit }' CHANGELOG.md)
 
-          # Truncate body to 3900 chars (Discord embed description limit is 4096)
           BODY_TRIMMED=$(echo "$BODY" | head -c 3900)
-          if [ "${#BODY}" -gt 3900 ]; then
-            BODY_TRIMMED="${BODY_TRIMMED}\n\n_...see full notes on GitHub_"
-          fi
-
-          # Escape for JSON: newlines → \n, quotes → \"
-          BODY_JSON=$(echo "$BODY_TRIMMED" | python3 -c "
-import sys, json
-print(json.dumps(sys.stdin.read()))
-" | sed 's/^"//;s/"$//')
+          [ "${#BODY}" -gt 3900 ] && BODY_TRIMMED="${BODY_TRIMMED}"$'\n\n_...see full notes on GitHub_'
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "body<<EOF" >> $GITHUB_OUTPUT
-          echo "$BODY_JSON" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          {
+            echo 'body<<CHANGELOG_EOF'
+            echo "$BODY_TRIMMED"
+            echo 'CHANGELOG_EOF'
+          } >> $GITHUB_OUTPUT
 
       - name: Post to Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          EMBED_TITLE: "🔥 Ionrift Respite — v${{ steps.changelog.outputs.version }}"
+          EMBED_BODY: ${{ steps.changelog.outputs.body }}
+          EMBED_URL: "https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
+          EMBED_COLOR: "13210154"
+          EMBED_ICON: "https://raw.githubusercontent.com/${{ github.repository }}/main/assets/module-icon.png"
+          EMBED_FOOTER: "The Austere Maker • ionrift.com"
         run: |
-          VERSION="${{ steps.changelog.outputs.version }}"
-          BODY="${{ steps.changelog.outputs.body }}"
-          REPO_URL="https://github.com/${{ github.repository }}"
-          RELEASE_URL="${REPO_URL}/releases/tag/${{ github.ref_name }}"
-
-          PAYLOAD=$(python3 -c "
-import json, sys
-
-version = sys.argv[1]
-body    = sys.argv[2]
-url     = sys.argv[3]
-
+          python3 - << 'PYEOF' > payload.json
+import json, os
 data = {
-  \"embeds\": [{
-    \"title\": f\"\\U0001f525 Ionrift Respite — v{version}\",
-    \"description\": body,
-    \"color\": 0xC9952A,
-    \"url\": url,
-    \"footer\": {\"text\": \"The Austere Maker • ionrift.com\"},
-    \"thumbnail\": {\"url\": \"https://raw.githubusercontent.com/${{ github.repository }}/main/assets/module-icon.png\"}
+  "embeds": [{
+    "title":       os.environ["EMBED_TITLE"],
+    "description": os.environ["EMBED_BODY"],
+    "color":       int(os.environ["EMBED_COLOR"]),
+    "url":         os.environ["EMBED_URL"],
+    "footer":      {"text": os.environ["EMBED_FOOTER"]},
+    "thumbnail":   {"url": os.environ["EMBED_ICON"]}
   }]
 }
 print(json.dumps(data))
-" "$VERSION" "$BODY" "$RELEASE_URL")
-
+PYEOF
           curl -s -o /dev/null -w "%{http_code}" \
             -H "Content-Type: application/json" \
-            -d "$PAYLOAD" \
+            -d @payload.json \
             "$DISCORD_WEBHOOK" | grep -qE '^2' || { echo "Discord webhook POST failed"; exit 1; }
