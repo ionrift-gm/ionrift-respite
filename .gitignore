@@ -30,7 +30,7 @@ package-lock.json
 pack-items.mjs
 pack-actors.mjs
 
-# Dev scripts & test suites
+# Dev scripts & test suites (IP-sensitive — hosted in private ionrift-tests repo)
 scripts/tests/
 scripts/utils/
 scripts/dev-link-packs.ps1
@@ -48,4 +48,7 @@ audit_*.json
 audit_*.txt
 audit_*.js
 packs/src/archive/
+
+# Cursor handoff specs (ephemeral, see DEV_PROTOCOLS §30)
+.cursor/specs/
 

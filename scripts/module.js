@@ -98,6 +98,13 @@ export function clearActiveShortRestApp() {
 }
 
 /**
+ * Called by players to show a rejoin notification for an active short rest.
+ */
+export function notifyShortRestActive() {
+    _showShortRestRejoinNotification();
+}
+
+/**
  * Returns the GM-approved party actors from the world setting.
  * Falls back to all player-owned characters if the roster is empty (first use).
  * Exported so RestSetupApp, EventResolver, and other services can use it.
@@ -127,6 +134,16 @@ function _canStartRest() {
         ui.notifications.warn("A rest is already in progress.");
         return false;
     }
+
+    // Belt-and-suspenders: check world settings in case respiteFlowActive lost sync
+    try {
+        const savedLong = game.settings.get(MODULE_ID, "activeRest");
+        const savedShort = game.settings.get(MODULE_ID, "activeShortRest");
+        if (savedLong?.engine || savedShort?.timestamp) {
+            ui.notifications.warn("A rest is already in progress. Clear it from module settings if stuck.");
+            return false;
+        }
+    } catch { /* settings not registered yet */ }
 
     // Calendar: 1 long rest per in-game day
     if (CalendarHandler.hasRestedToday()) {
@@ -198,6 +215,32 @@ Hooks.once("init", async () => {
                 console.warn(`${MODULE_ID} | Failed to load test suite:`, e.message);
             }
         },
+        /** Run short rest feature parity E2E tests only. GM only. Dev builds only. */
+        runShortRestE2E: async () => {
+            if (!game.user.isGM) { console.warn(`${MODULE_ID} | Tests are GM-only.`); return; }
+            try {
+                const probe = await fetch(`modules/${MODULE_ID}/scripts/tests/RespiteTestRunner.js`, { method: "HEAD" });
+                if (!probe.ok) { console.warn(`${MODULE_ID} | Test suite not found (dev-only, not in releases).`); return; }
+                const { RespiteTestRunner } = await import("./tests/RespiteTestRunner.js");
+                const runner = new RespiteTestRunner();
+                return await runner.runShortRestE2E();
+            } catch (e) {
+                console.warn(`${MODULE_ID} | Failed to load test suite:`, e.message);
+            }
+        },
+        /** Run short rest state persistence tests only. GM only. Dev builds only. */
+        runShortRestPersistenceTests: async () => {
+            if (!game.user.isGM) { console.warn(`${MODULE_ID} | Tests are GM-only.`); return; }
+            try {
+                const probe = await fetch(`modules/${MODULE_ID}/scripts/tests/RespiteTestRunner.js`, { method: "HEAD" });
+                if (!probe.ok) { console.warn(`${MODULE_ID} | Test suite not found (dev-only, not in releases).`); return; }
+                const { RespiteTestRunner } = await import("./tests/RespiteTestRunner.js");
+                const runner = new RespiteTestRunner();
+                return await runner.runShortRestPersistence();
+            } catch (e) {
+                console.warn(`${MODULE_ID} | Failed to load test suite:`, e.message);
+            }
+        },
         /** Reload all connected clients, then reload the GM. */
         reloadAll: () => {
             if (!game.user.isGM) return;
@@ -247,6 +290,7 @@ Hooks.once("init", async () => {
             activeRestData = null;
             activeShortRestApp = null;
             await game.settings.set(MODULE_ID, "activeRest", {});
+            await game.settings.set(MODULE_ID, "activeShortRest", {});
             game.socket.emit(`module.${MODULE_ID}`, { type: "forceReload" });
             ui.notifications.info("Rest state cleared. Reloading...");
             setTimeout(() => window.location.reload(), 500);
@@ -304,6 +348,30 @@ Hooks.once("init", async () => {
         type: Boolean,
         default: true,
         restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "spellRecoveryMaxLevel", {
+        name: "Spell Recovery Max Level",
+        hint: "Maximum spell slot level recoverable via Arcane Recovery and Natural Recovery. The default matches the 2014 rules cap of 5. Increase for homebrew.",
+        scope: "world",
+        config: true,
+        type: Number,
+        default: 5,
+        range: { min: 1, max: 9, step: 1 },
+    });
+
+    game.settings.register(MODULE_ID, "songOfRestTiming", {
+        name: "Song of Rest Timing",
+        hint: "End of rest: bonus die is rolled for each qualifying character when the GM completes the short rest (strict table timing). With first Hit Die: each character’s bonus is rolled and applied as soon as they spend their first Hit Die this rest (clearer at the table, still once per character per rest).",
+        scope: "world",
+        config: true,
+        type: String,
+        default: "endOfRest",
+        choices: {
+            endOfRest: "End of short rest (strict timing)",
+            withFirstHitDie: "With first Hit Die (per character, immediate)",
+        },
+        restricted: true,
     });
 
     game.settings.register(MODULE_ID, "enableStudy", {
@@ -396,6 +464,13 @@ Hooks.once("init", async () => {
         default: {}
     });
 
+    game.settings.register(MODULE_ID, "activeShortRest", {
+        scope: "world",
+        config: false,
+        type: Object,
+        default: {}
+    });
+
     game.settings.register(MODULE_ID, "enabledPacks", {
         scope: "world",
         config: false,
@@ -415,6 +490,13 @@ Hooks.once("init", async () => {
         config: false,
         type: Boolean,
         default: false
+    });
+
+    game.settings.register(MODULE_ID, "artPackCache", {
+        scope: "world",
+        config: false,
+        type: Object,
+        default: { active: false, path: null, terrains: [] }
     });
 
     // FOOTER: Discord + Wiki (standardised via ionrift-library)
@@ -599,17 +681,25 @@ Hooks.once("ready", async () => {
         setTimeout(() => {
             console.log(`${MODULE_ID} | Player requesting rest state...`);
             game.socket.emit(`module.${MODULE_ID}`, { type: "requestRestState", userId: game.user.id });
+            // Also check for active short rest
+            game.socket.emit(`module.${MODULE_ID}`, { type: "requestShortRestState", userId: game.user.id });
         }, 1000);
 
         // Auto-resync when player returns from minimize/tab switch (debounced)
         let _lastResyncTime = 0;
         document.addEventListener("visibilitychange", () => {
-            if (!document.hidden && _playerRestActive && activePlayerRestApp) {
+            if (!document.hidden) {
                 const now = Date.now();
                 if (now - _lastResyncTime < 500) return;
                 _lastResyncTime = now;
-                console.log(`${MODULE_ID} | Tab visible, resyncing rest state...`);
-                game.socket.emit(`module.${MODULE_ID}`, { type: "requestRestState", userId: game.user.id });
+                if (_playerRestActive && activePlayerRestApp) {
+                    console.log(`${MODULE_ID} | Tab visible, resyncing rest state...`);
+                    game.socket.emit(`module.${MODULE_ID}`, { type: "requestRestState", userId: game.user.id });
+                }
+                if (activeShortRestApp) {
+                    console.log(`${MODULE_ID} | Tab visible, resyncing short rest state...`);
+                    game.socket.emit(`module.${MODULE_ID}`, { type: "requestShortRestState", userId: game.user.id });
+                }
             }
         });
         return;
@@ -730,6 +820,62 @@ Hooks.once("ready", async () => {
             await game.settings.set(MODULE_ID, "activeRest", {});
             game.socket.emit(`module.${MODULE_ID}`, { type: "restResolved" });
             Logger.log?.(MODULE_LABEL, "Discarded interrupted rest.");
+        }
+    }
+
+    // ── Short Rest Session Recovery ───────────────────────────────
+    const savedShortRest = game.settings.get(MODULE_ID, "activeShortRest");
+    if (savedShortRest?.timestamp && !respiteFlowActive) {
+        const age = Date.now() - (savedShortRest.timestamp ?? 0);
+        const ageLabel = age < 3600000
+            ? `${Math.round(age / 60000)} minutes ago`
+            : age < 86400000
+                ? `${Math.round(age / 3600000)} hours ago`
+                : `${Math.round(age / 86400000)} days ago`;
+
+        respiteFlowActive = true;
+
+        let resume = false;
+        try {
+            resume = await game.ionrift.library.confirm({
+                title: "Interrupted Short Rest Found",
+                content: `<p>An interrupted short rest was found (saved ${ageLabel}).</p><p><strong>Shelter:</strong> ${savedShortRest.activeShelter ?? "none"}</p>`,
+                yesLabel: "Resume Short Rest",
+                noLabel: "Discard",
+                yesIcon: "fas fa-mug-hot",
+                noIcon: "fas fa-trash",
+                defaultYes: true
+            });
+        } catch (e) {
+            console.error(`${MODULE_ID} | Short rest resume dialog failed:`, e);
+            respiteFlowActive = false;
+            await game.settings.set(MODULE_ID, "activeShortRest", {});
+        }
+
+        if (resume) {
+            try {
+                const app = new ShortRestApp({ initialShelter: savedShortRest.activeShelter ?? "none" });
+                const restored = app._loadShortRestState();
+                if (restored) {
+                    registerActiveShortRestApp(app);
+                    app.render({ force: true });
+                    ui.notifications.info("Interrupted short rest resumed.");
+                    Logger.log?.(MODULE_LABEL, "Restored interrupted short rest from world settings.");
+                } else {
+                    respiteFlowActive = false;
+                    ui.notifications.warn("Could not restore short rest state. Starting fresh.");
+                    await game.settings.set(MODULE_ID, "activeShortRest", {});
+                }
+            } catch (e) {
+                respiteFlowActive = false;
+                console.error(`${MODULE_ID} | Failed to restore short rest state:`, e);
+                await game.settings.set(MODULE_ID, "activeShortRest", {});
+            }
+        } else {
+            respiteFlowActive = false;
+            await game.settings.set(MODULE_ID, "activeShortRest", {});
+            game.socket.emit(`module.${MODULE_ID}`, { type: "shortRestAbandoned" });
+            Logger.log?.(MODULE_LABEL, "Discarded interrupted short rest.");
         }
     }
 
@@ -1111,7 +1257,26 @@ function _onSocketMessage(data) {
         // Short Rest: GM started short rest
         case "shortRestStarted":
             if (game.user.isGM) return;
+            if (data.targetUserId && data.targetUserId !== game.user.id) return;
             _handleShortRestStarted(data);
+            break;
+
+        case "shortRestAfkUpdate":
+            if (activeShortRestApp?.receiveShortRestAfk) {
+                activeShortRestApp.receiveShortRestAfk(data.characterId, data.isAfk);
+            }
+            break;
+
+        case "shortRestPlayerFinished":
+            if (activeShortRestApp?.receivePlayerFinished) {
+                activeShortRestApp.receivePlayerFinished(data);
+            }
+            break;
+
+        case "shortRestSongVolunteer":
+            if (activeShortRestApp?.receiveSongVolunteer) {
+                activeShortRestApp.receiveSongVolunteer(data);
+            }
             break;
 
         // Short Rest: HD spent (broadcast)
@@ -1126,9 +1291,40 @@ function _onSocketMessage(data) {
             if (game.user.isGM) return;
             if (activeShortRestApp) {
                 ui.notifications.info("Short rest complete. Class features recovered.");
+                activeShortRestApp._isTerminating = true;
                 activeShortRestApp.close();
                 activeShortRestApp = null;
             }
+            _removeShortRestRejoinNotification();
+            break;
+
+        // Short Rest: abandoned by GM
+        case "shortRestAbandoned":
+            if (game.user.isGM) return;
+            if (activeShortRestApp) {
+                ui.notifications.info("The GM has abandoned the short rest.");
+                activeShortRestApp._isTerminating = true;
+                activeShortRestApp.close();
+                activeShortRestApp = null;
+            }
+            _removeShortRestRejoinNotification();
+            break;
+
+        // Short Rest: GM dismissed window (rest still active, players close)
+        case "shortRestDismissed":
+            if (game.user.isGM) return;
+            if (activeShortRestApp) {
+                activeShortRestApp._isTerminating = true;
+                activeShortRestApp.close();
+                activeShortRestApp = null;
+            }
+            _showShortRestRejoinNotification();
+            break;
+
+        // Player -> GM: request short rest state (late join / rejoin)
+        case "requestShortRestState":
+            if (!game.user.isGM) return;
+            _handleRequestShortRestState(data);
             break;
     }
 }
@@ -1137,7 +1333,12 @@ function _onSocketMessage(data) {
  * Player handler: GM started a short rest, open ShortRestApp.
  */
 function _handleShortRestStarted(data) {
-    if (activeShortRestApp) activeShortRestApp.close();
+    _removeShortRestRejoinNotification();
+    _removePrepNotification();
+    if (activeShortRestApp) {
+        activeShortRestApp._isTerminating = true;
+        activeShortRestApp.close();
+    }
     activeShortRestApp = new ShortRestApp();
     activeShortRestApp.receiveStarted(data);
     activeShortRestApp.render({ force: true });
@@ -1259,6 +1460,86 @@ function _removeRejoinNotification() {
 }
 
 /**
+ * Shows a persistent rejoin notification when the player's short rest window
+ * is closed but the short rest is still active.
+ */
+function _showShortRestRejoinNotification() {
+    _removeShortRestRejoinNotification();
+    const el = document.createElement("div");
+    el.id = "respite-short-rest-rejoin-bar";
+    el.innerHTML = `
+        <i class="fas fa-mug-hot"></i>
+        <span>A short rest is in progress.</span>
+        <button type="button" id="respite-short-rest-rejoin-btn">Rejoin</button>
+    `;
+    el.querySelector("#respite-short-rest-rejoin-btn").addEventListener("click", () => {
+        _rejoinShortRest();
+    });
+    document.body.appendChild(el);
+}
+
+/**
+ * Removes the short rest rejoin notification bar.
+ */
+function _removeShortRestRejoinNotification() {
+    document.getElementById("respite-short-rest-rejoin-bar")?.remove();
+}
+
+/**
+ * Player rejoins an in-progress short rest by requesting state from the GM.
+ */
+function _rejoinShortRest() {
+    _removeShortRestRejoinNotification();
+    game.socket.emit(`module.${MODULE_ID}`, { type: "requestShortRestState", userId: game.user.id });
+}
+
+/**
+ * GM handler: A player requested short rest state (late join / rejoin).
+ * Broadcasts shortRestStarted with full state back to the requesting user.
+ */
+function _handleRequestShortRestState(data) {
+    if (!activeShortRestApp) {
+        // No live app — check if persisted state exists in settings (GM may have dismissed window)
+        const saved = game.settings.get(MODULE_ID, "activeShortRest");
+        if (!saved?.timestamp) return;
+
+        // Re-create the app from saved state, then broadcast
+        const app = new ShortRestApp({ initialShelter: saved.activeShelter ?? "none" });
+        const restored = app._loadShortRestState();
+        if (!restored) return;
+
+        registerActiveShortRestApp(app);
+        // Don't render on GM side (window was deliberately closed)
+        // Just broadcast state to the requesting player
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "shortRestStarted",
+            targetUserId: data.userId ?? null,
+            rolls: app._serializeRolls(),
+            songBonuses: app._serializeSongBonuses(),
+            afkCharacterIds: [...app._afkCharacters],
+            finishedUserIds: [...app._finishedUsers],
+            activeShelter: app._activeShelter,
+            rpPrompt: app._rpPrompt,
+            songVolunteer: app._songVolunteer,
+        });
+        return;
+    }
+
+    // Live app exists -- broadcast current state to the requesting player
+    game.socket.emit(`module.${MODULE_ID}`, {
+        type: "shortRestStarted",
+        targetUserId: data.userId ?? null,
+        rolls: activeShortRestApp._serializeRolls(),
+        songBonuses: activeShortRestApp._serializeSongBonuses(),
+        afkCharacterIds: [...activeShortRestApp._afkCharacters],
+        finishedUserIds: [...activeShortRestApp._finishedUsers],
+        activeShelter: activeShortRestApp._activeShelter,
+        rpPrompt: activeShortRestApp._rpPrompt,
+        songVolunteer: activeShortRestApp._songVolunteer,
+    });
+}
+
+/**
  * Shows a "preparing rest" notification when the GM opens the setup wizard.
  */
 function _showPrepNotification() {
@@ -1308,6 +1589,53 @@ export function _showGmRestIndicator(app) {
  */
 export function _removeGmRestIndicator() {
     document.getElementById("respite-gm-rest-bar")?.remove();
+}
+
+/**
+ * Shows a persistent GM indicator when the short rest window is closed but the rest persists.
+ * The Resume button reconstructs ShortRestApp from the world setting.
+ */
+export function _showGmShortRestIndicator() {
+    _removeGmShortRestIndicator();
+    const el = document.createElement("div");
+    el.id = "respite-gm-short-rest-bar";
+    el.innerHTML = `
+        <i class="fas fa-mug-hot"></i>
+        <span>Short rest in progress</span>
+        <button type="button" id="respite-gm-short-rest-resume-btn">Resume</button>
+    `;
+    el.querySelector("#respite-gm-short-rest-resume-btn").addEventListener("click", () => {
+        _removeGmShortRestIndicator();
+        _resumeGmShortRest();
+    });
+    document.body.appendChild(el);
+}
+
+/**
+ * Removes the GM short rest indicator bar.
+ */
+export function _removeGmShortRestIndicator() {
+    document.getElementById("respite-gm-short-rest-bar")?.remove();
+}
+
+/**
+ * Reconstructs and re-opens the GM short rest app from persisted state.
+ */
+function _resumeGmShortRest() {
+    const saved = game.settings.get(MODULE_ID, "activeShortRest");
+    if (!saved?.timestamp) {
+        ui.notifications.warn("No short rest state found.");
+        respiteFlowActive = false;
+        return;
+    }
+    const app = new ShortRestApp({ initialShelter: saved.activeShelter ?? "none" });
+    const restored = app._loadShortRestState();
+    if (!restored) {
+        ui.notifications.warn("Could not restore short rest state.");
+        return;
+    }
+    registerActiveShortRestApp(app);
+    app.render({ force: true });
 }
 
 /**

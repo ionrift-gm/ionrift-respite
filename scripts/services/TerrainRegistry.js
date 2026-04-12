@@ -10,6 +10,9 @@
 
 const MODULE_ID = "ionrift-respite";
 
+/** Camp comfort keys used by RestSetupApp and RestFlowEngine */
+const VALID_COMFORT = new Set(["safe", "sheltered", "rough", "hostile"]);
+
 export class TerrainRegistry {
 
     /** @type {Map<string, object>} Cached terrain manifests keyed by terrain id */
@@ -105,8 +108,13 @@ export class TerrainRegistry {
     static getDefaults(tag) {
         const t = this.get(tag);
         if (!t) return { comfort: "sheltered", scoutingAvailable: false, mealRules: { waterPerDay: 1, foodPerDay: 1 } };
+        const rawComfort = t.comfort ?? "sheltered";
+        const comfort = VALID_COMFORT.has(rawComfort) ? rawComfort : "rough";
+        if (!VALID_COMFORT.has(rawComfort)) {
+            console.warn(`${MODULE_ID} | TerrainRegistry: Invalid comfort "${rawComfort}" for "${tag}", using rough`);
+        }
         return {
-            comfort: t.comfort ?? "sheltered",
+            comfort,
             scoutingAvailable: t.scoutingAvailable ?? false,
             scoutGuidance: t.scoutGuidance ?? null,
             scoutFlavor: t.scoutFlavor ?? null,

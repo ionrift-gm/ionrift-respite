@@ -159,7 +159,7 @@ jobs:
                 description: desc,
                 color: 0xC9952A,
                 url: `https://github.com/${repo}/releases/tag/${tag}`,
-                thumbnail: { url: `https://raw.githubusercontent.com/${repo}/main/assets/module-icon.png` }
+                thumbnail: { url: `https://raw.githubusercontent.com/${repo}/master/assets/module-icon.png` }
               }]
             };
 

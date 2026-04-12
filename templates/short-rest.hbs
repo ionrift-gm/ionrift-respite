@@ -1,24 +1,85 @@
 {{!-- Short Rest: single-screen HD spending view --}}
 <div class="short-rest-container ionrift-window">
 
+    {{!-- Abandon button: top-right, matching long rest placement --}}
+    {{#if isGM}}
+    <button type="button" class="btn-abandon-rest" data-action="abandonShortRest" title="Abandon this short rest">
+        <i class="fas fa-times"></i> Abandon Rest
+    </button>
+    {{/if}}
+
+    {{!-- Camp status badges above the banner (matches long rest placement) --}}
+    <div class="sr-camp-meta">
+        <div class="camp-status-bar">
+            <span class="camp-status-chip shelter-chip shelter-chip-{{shelterBadge.id}}" title="{{shelterBadge.name}}">
+                <i class="{{shelterBadge.icon}}"></i> {{shelterBadge.name}}
+            </span>
+            {{#if songOfRest}}
+            <span class="camp-status-chip sr-song-chip" title="Song of Rest: {{songOfRest.bardName}} rolls {{songOfRest.songDie}} extra healing for each character who spends at least one Hit Die. {{#if songOfRest.timingEnd}}Applied when the GM completes this rest.{{else}}Applied immediately with each character's first Hit Die.{{/if}}">
+                <i class="fas fa-music"></i> {{songOfRest.bardName}} · {{songOfRest.songDie}} · {{#if songOfRest.timingEnd}}on complete (if you spend HD){{else}}on 1st HD{{/if}}
+            </span>
+            {{/if}}
+        </div>
+    </div>
+
     {{!-- Banner header --}}
     <div class="sr-banner"><img src="{{banner}}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.src='{{bannerFallback}}'"></div>
 
-    {{!-- Status strip (matching long rest camp-status-bar) --}}
-    <div class="camp-status-bar">
-        <span class="camp-status-chip shelter-chip shelter-chip-{{shelterBadge.id}}" title="{{shelterBadge.name}}">
-            <i class="{{shelterBadge.icon}}"></i> {{shelterBadge.name}}
-        </span>
-    </div>
+    {{!-- Roster strip: AFK toggle | player chips (with readiness) | GM chip --}}
+    {{#if roster.length}}
+    <div class="roster-strip sr-roster-strip">
+        <div class="roster-afk-btn {{#if selfAfk}}active{{/if}}" data-action="toggleSrAfk" data-roster-id="{{selfAfkId}}"
+            title="{{#if selfAfk}}Mark yourself present{{else}}Step away from the table{{/if}}" role="button" tabindex="0">
+            <i class="fas fa-mug-hot"></i>
+            <span>AFK</span>
+        </div>
 
-    {{!-- Character cards --}}
-    <div class="short-rest-cards">
-        {{#each characters}}
-        <div class="short-rest-card" data-actor-id="{{id}}">
+        <div class="roster-divider"></div>
+
+        <div class="roster-players">
+            {{#each roster}}
+            <div class="roster-chip {{#if isAfk}}afk{{/if}} {{#if isFinished}}sr-finished{{/if}}" data-roster-id="{{id}}" title="{{fullName}}">
+                {{#if isAfk}}
+                <span class="roster-afk-portrait"><i class="fas fa-mug-hot"></i></span>
+                {{else}}
+                <img class="roster-portrait" src="{{img}}" alt="{{name}}">
+                {{/if}}
+                <span class="roster-name">{{name}}</span>
+                <span class="roster-status">
+                    {{#if isAfk}}
+                    <i class="fas fa-mug-hot" title="AFK"></i>
+                    {{else if isFinished}}
+                    <i class="fas fa-check-circle" title="Finished"></i>
+                    {{else}}
+                    <i class="fas fa-hourglass-half" title="Resting"></i>
+                    {{/if}}
+                </span>
+            </div>
+            {{/each}}
+        </div>
+
+        <div class="roster-chip gm-chip {{#if gmRosterChip.isAfk}}afk{{/if}}" data-roster-id="gm" title="{{gmRosterChip.fullName}}">
+            {{#if gmRosterChip.isAfk}}
+            <span class="roster-afk-portrait"><i class="fas fa-mug-hot"></i></span>
+            {{else}}
+            <span class="roster-gm-icon"><i class="fas fa-dice-d20"></i></span>
+            {{/if}}
+            <span class="roster-name">{{gmRosterChip.name}}</span>
+        </div>
+    </div>
+    {{/if}}
+
+    {{!-- Scrollable body: character cards --}}
+    <div class="sr-scroll-body">
+
+    {{!-- Expanded cards (self card for players, all cards for GM) --}}
+    <div class="short-rest-cards {{#if isGM}}sr-gm-grid{{/if}}">
+        {{#each expandedCards}}
+        <div class="short-rest-card {{#if isAfk}}is-afk{{/if}} {{#if isSelfCard}}is-self-card{{/if}}" data-actor-id="{{id}}">
             <div class="sr-card-header">
                 <img src="{{img}}" alt="{{name}}" class="sr-portrait">
                 <div class="sr-identity">
-                    <span class="sr-name">{{name}}</span>
+                    <span class="sr-name">{{name}}{{#if isSelfCard}}<span class="sr-you-pill">You</span>{{/if}}</span>
                     <div class="sr-hp-row">
                         <span class="sr-hp {{#if isFullHp}}full{{/if}}">
                             <i class="fas fa-heart"></i> {{currentHp}} / {{maxHp}}
@@ -30,61 +91,201 @@
                 </div>
             </div>
 
-            {{!-- HD pips --}}
-            <div class="sr-hd-pips">
-                {{#each hdPips}}
-                <span class="sr-pip {{#if filled}}filled{{else}}empty{{/if}}"></span>
-                {{/each}}
+            {{!-- HD pips + spend in one row --}}
+            <div class="sr-card-action-row">
+                <div class="sr-hd-pips">
+                    {{#each hdPips}}
+                    <span class="sr-pip {{#if filled}}filled{{else}}empty{{/if}}"></span>
+                    {{/each}}
+                </div>
+                {{#if isOwner}}
+                {{#if isFullHp}}
+                <button type="button" class="sr-spend-btn faded" disabled title="Already at full HP.">
+                    <i class="fas fa-dice-d20"></i> Spend HD
+                </button>
+                {{else if noHdLeft}}
+                <button type="button" class="sr-spend-btn faded" disabled title="No Hit Dice remaining.">
+                    <i class="fas fa-dice-d20"></i> Spend HD
+                </button>
+                {{else}}
+                <button type="button" class="sr-spend-btn" data-action="spendHitDie" data-actor-id="{{id}}">
+                    <i class="fas fa-dice-d20"></i> Spend HD
+                </button>
+                {{/if}}
+                {{/if}}
             </div>
 
-            {{!-- Roll log --}}
+            {{!-- Roll log (compressed after 3 rolls) --}}
             {{#if rolls.length}}
             <div class="sr-roll-log">
-                {{#each rolls}}
-                <span class="sr-roll-entry" title="d{{die}} + {{conMod}} CON">+{{total}}</span>
+                {{#if rollsCompressed}}
+                <span class="sr-roll-hidden-badge" title="{{rollsHidden}} earlier rolls">+{{rollsHidden}} more</span>
+                {{/if}}
+                {{#each rollsToShow}}
+                <span class="sr-roll-entry" title="d{{die}} + {{conMod}} CON{{#if annotations.length}} | {{#each annotations}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}">+{{total}}{{#if annotations.length}}<span class="sr-roll-mod-badge">{{#each annotations}}{{this}}{{#unless @last}} · {{/unless}}{{/each}}</span>{{/if}}</span>
                 {{/each}}
                 <span class="sr-roll-total">
-                    <i class="fas fa-plus-circle"></i> {{totalHealed}} HP restored
+                    <i class="fas fa-plus-circle"></i> {{totalHealed}} HP{{#if songBonusTotal}} <span class="sr-roll-song-addon">+ {{songBonusTotal}} Song</span>{{/if}}
                 </span>
             </div>
             {{/if}}
 
-            {{!-- Spend button --}}
-            {{#if isOwner}}
-            <div class="sr-actions">
-                {{#if isFullHp}}
-                <button type="button" class="sr-spend-btn faded" disabled title="Already at full HP.">
-                    <i class="fas fa-dice-d20"></i> Spend 1 Hit Die
+            {{#if songCard}}
+            <div class="sr-song-card-line {{songCard.kind}}">
+                {{#if songCard.isPendingEnd}}
+                <i class="fas fa-hourglass-half"></i>
+                <span class="sr-song-card-text">Song: <strong>{{songCard.die}}</strong> on complete (spent HD)</span>
+                {{/if}}
+                {{#if songCard.isAppliedImmediate}}
+                <i class="fas fa-music"></i>
+                <span class="sr-song-card-text">Song: <strong>+{{songCard.total}} HP</strong> <span class="sr-song-formula">({{songCard.formula}})</span></span>
+                {{/if}}
+            </div>
+            {{/if}}
+
+            {{!-- Song of Rest volunteer --}}
+            {{#if isEligibleBard}}
+            <div class="sr-song-volunteer">
+                {{#if hasVolunteeredSong}}
+                <button type="button" class="sr-volunteer-btn active" data-action="volunteerSong" data-actor-id="{{id}}">
+                    <i class="fas fa-music"></i> Song offered ({{bardSongDie}})
                 </button>
-                {{else if noHdLeft}}
-                <button type="button" class="sr-spend-btn faded" disabled title="No Hit Dice remaining until next long rest.">
-                    <i class="fas fa-dice-d20"></i> Spend 1 Hit Die
+                {{else if canVolunteerSong}}
+                <button type="button" class="sr-volunteer-btn" data-action="volunteerSong" data-actor-id="{{id}}">
+                    <i class="fas fa-music"></i> Offer Song of Rest ({{bardSongDie}})
                 </button>
-                {{else}}
-                <button type="button" class="sr-spend-btn" data-action="spendHitDie" data-actor-id="{{id}}">
-                    <i class="fas fa-dice-d20"></i> Spend 1 Hit Die
+                {{else if songVolunteerLocked}}
+                <span class="sr-volunteer-locked"><i class="fas fa-music"></i> Song claimed</span>
+                {{/if}}
+            </div>
+            {{/if}}
+
+            {{!-- Spell Slot Recovery --}}
+            {{#if spellRecovery}}
+            {{#if spellRecovery.exhausted}}
+            <div class="sr-spell-recovery sr-spell-recovery-static exhausted">
+                <div class="sr-spell-header">
+                    <i class="fas fa-moon"></i>
+                    <span class="sr-spell-label">{{spellRecovery.featureName}}</span>
+                    <span class="sr-spell-budget sr-spell-budget-muted">0 / {{spellRecovery.maxBudget}} lvls</span>
+                </div>
+                <p class="sr-spell-static-msg">Used. Resets on long rest.</p>
+            </div>
+            {{else if spellRecovery.noRecoverableSlots}}
+            <div class="sr-spell-recovery sr-spell-recovery-static">
+                <div class="sr-spell-header">
+                    <i class="fas fa-hat-wizard"></i>
+                    <span class="sr-spell-label">{{spellRecovery.featureName}}</span>
+                    <span class="sr-spell-budget">0 / {{spellRecovery.maxBudget}} lvls</span>
+                </div>
+                <p class="sr-spell-static-msg">No spent slots to recover.</p>
+            </div>
+            {{else}}
+            <div class="sr-spell-recovery {{#if spellRecovery.confirmed}}confirmed{{/if}}">
+                <div class="sr-spell-header">
+                    <i class="fas fa-hat-wizard"></i>
+                    <span class="sr-spell-label">{{spellRecovery.featureName}}</span>
+                    <span class="sr-spell-budget">{{spellRecovery.currentSpend}} / {{spellRecovery.maxBudget}} lvls</span>
+                    {{#if spellRecovery.confirmed}}
+                    <span class="sr-spell-confirmed-badge"><i class="fas fa-check-circle"></i> Confirmed</span>
+                    {{/if}}
+                </div>
+                <div class="sr-spell-slots">
+                    {{#each spellRecovery.slots}}
+                    <div class="sr-spell-slot-row">
+                        <span class="sr-spell-level">Level {{level}}</span>
+                        <span class="sr-spell-count">{{selected}} / {{spent}} spent</span>
+                        <div class="sr-spell-controls">
+                            {{#if canRemove}}
+                            <button type="button" class="sr-spell-btn sr-spell-minus" data-action="removeSpellSlot" data-actor-id="{{../spellRecovery.actorId}}" data-level="{{level}}">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            {{else}}
+                            <button type="button" class="sr-spell-btn sr-spell-minus faded" disabled>
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            {{/if}}
+                            {{#if canAdd}}
+                            <button type="button" class="sr-spell-btn sr-spell-plus" data-action="addSpellSlot" data-actor-id="{{../spellRecovery.actorId}}" data-level="{{level}}">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            {{else}}
+                            <button type="button" class="sr-spell-btn sr-spell-plus faded" disabled>
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            {{/if}}
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+                {{#if spellRecovery.confirmed}}
+                <button type="button" class="sr-spell-edit-btn" data-action="editRecovery" data-actor-id="{{spellRecovery.actorId}}">
+                    <i class="fas fa-pen"></i> Edit
+                </button>
+                {{else if spellRecovery.hasSelections}}
+                <button type="button" class="sr-spell-confirm-btn" data-action="confirmRecovery" data-actor-id="{{spellRecovery.actorId}}">
+                    <i class="fas fa-check"></i> Confirm
                 </button>
                 {{/if}}
             </div>
+            {{/if}}
             {{/if}}
         </div>
         {{/each}}
     </div>
 
-    {{!-- RP prompt --}}
-    <div class="sr-rp-prompt">
-        <i class="fas fa-feather-alt"></i>
-        <span>{{rpPrompt}}</span>
+    {{!-- Collapsed party cards (player view only, non-self characters) --}}
+    {{#if collapsedCards.length}}
+    <div class="sr-collapsed-cards">
+        {{#each collapsedCards}}
+        <div class="short-rest-card is-collapsed {{#if isAfk}}is-afk{{/if}}" data-actor-id="{{id}}">
+            <div class="sr-card-header">
+                <img src="{{img}}" alt="{{name}}" class="sr-portrait">
+                <div class="sr-identity">
+                    <span class="sr-name">{{name}}</span>
+                    <div class="sr-hp-row">
+                        <span class="sr-hp {{#if isFullHp}}full{{/if}}">
+                            <i class="fas fa-heart"></i> {{currentHp}} / {{maxHp}}
+                        </span>
+                        <span class="sr-hd-count">
+                            <i class="fas fa-dice-d20"></i> {{hdRemaining}} / {{hdMax}}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="sr-card-action-row">
+                <div class="sr-hd-pips">
+                    {{#each hdPips}}
+                    <span class="sr-pip {{#if filled}}filled{{else}}empty{{/if}}"></span>
+                    {{/each}}
+                </div>
+            </div>
+        </div>
+        {{/each}}
     </div>
+    {{/if}}
 
-    {{!-- Footer --}}
+    </div>{{!-- /sr-scroll-body --}}
+
+    {{!-- Sticky footer --}}
     <div class="sr-footer">
-        {{#if isGM}}
-        <button type="button" class="btn-primary sr-complete-btn" data-action="completeShortRest">
-            <i class="fas fa-check"></i> Complete Short Rest
-        </button>
-        {{else}}
-        <span class="sr-waiting"><i class="fas fa-hourglass-half"></i> Waiting for GM to complete rest...</span>
-        {{/if}}
+        <div class="sr-footer-row">
+            {{#unless isGM}}
+            <button type="button" class="sr-finished-toggle {{#if shortRestFooter.myFinished}}active{{/if}}" data-action="toggleShortRestFinished">
+                {{#if shortRestFooter.myFinished}}
+                <i class="fas fa-undo"></i> Still resting
+                {{else}}
+                <i class="fas fa-flag-checkered"></i> I'm finished
+                {{/if}}
+            </button>
+            {{/unless}}
+            {{#if isGM}}
+            <button type="button" class="btn-primary sr-complete-btn" data-action="completeShortRest">
+                <i class="fas fa-check"></i> Complete Short Rest
+            </button>
+            {{else}}
+            <span class="sr-waiting"><i class="fas fa-hourglass-half"></i> Waiting for GM...</span>
+            {{/if}}
+        </div>
     </div>
 </div>

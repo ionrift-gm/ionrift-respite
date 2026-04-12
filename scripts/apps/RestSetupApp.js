@@ -184,6 +184,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._restData = restData;
         if (restData) {
             this._restId = restData.restId ?? null;
+            this._selectedTerrain = restData.terrainTag ?? null;
+            this._selectedRestType = restData.restType ?? "long";
             this._activities = restData.activities ?? [];
             this._activityResolver.load(this._activities);
             if (restData.recipes) {

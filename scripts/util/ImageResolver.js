@@ -16,11 +16,11 @@ const FALLBACK_BANNER = `modules/${MODULE_ID}/assets/placeholder-banner.webp`;
 // Foundry v13 namespaced FilePicker; fall back to global for v12
 const FP = foundry.applications?.apps?.FilePicker ?? FilePicker;
 
-// Hand-drawn images known to exist in the base module's terrain folders.
-// Add entries here as the partner delivers replacement art.
+// Hand-drawn images known to exist in the base module's assets/terrains/ folders.
+// Add entries here as bundled art is committed to the module.
 // Format: "terrain/filename" e.g. "forest/banner.png"
 const KNOWN_BASE_IMAGES = new Set([
-    // "forest/banner.png",
+    // No bundled art yet — all terrain art ships via the Patreon art pack.
 ]);
 
 export class ImageResolver {
@@ -42,7 +42,8 @@ export class ImageResolver {
 
     /**
      * Call once during the ready hook.
-     * Detects whether an art pack has been imported via the Zip Importer.
+     * GM: probes the filesystem and caches results in a world setting.
+     * Player: reads the cached setting (FilePicker.browse is GM-only).
      */
     static async init() {
         // Reset state for re-init (uninstall/re-import cycles)
@@ -59,18 +60,29 @@ export class ImageResolver {
             return;
         }
 
-        // Check the shared ionrift-data directory for imported art
+        if (!game.user.isGM) {
+            // Non-GM: read the cached detection result written by the GM
+            const cache = game.settings.get(MODULE_ID, "artPackCache") ?? {};
+            if (cache.active && cache.path) {
+                this.#artPackActive = true;
+                this.#importedArtPath = cache.path;
+                this.#basePath = cache.path;
+                this.#artTerrains = cache.terrains ?? [];
+            }
+            console.log(`${MODULE_ID} | ImageResolver (player): artPack=${this.#artPackActive}${this.#artPackActive ? ` (${this.#importedArtPath}, ${this.#artTerrains.length} terrains)` : ""}`);
+            return;
+        }
+
+        // GM: probe the filesystem
         const importedPath = game.ionrift?.library?.getZipTargetDir?.("respite", "art");
         if (importedPath) {
             try {
                 const browse = await FP.browse("data", importedPath);
-                // Consider art pack active if at least one file or subdirectory exists
                 if (browse.dirs?.length > 0 || browse.files?.length > 0) {
                     this.#artPackActive = true;
                     this.#importedArtPath = importedPath;
                     this.#basePath = importedPath;
 
-                    // Recursively count files and detect terrain dirs
                     let fileCount = 0;
                     const terrains = [];
 
@@ -80,7 +92,6 @@ export class ImageResolver {
                             fileCount += result.files?.length ?? 0;
                             for (const subDir of (result.dirs ?? [])) {
                                 const dirName = subDir.split("/").pop();
-                                // Detect terrain names (children of a "terrains" dir)
                                 const parentName = path.split("/").pop();
                                 if (parentName === "terrains" && dirName) {
                                     terrains.push(dirName);
@@ -96,6 +107,17 @@ export class ImageResolver {
             } catch {
                 // Directory doesn't exist yet, no art imported
             }
+        }
+
+        // Persist detection to world setting so players can read it
+        try {
+            await game.settings.set(MODULE_ID, "artPackCache", {
+                active: this.#artPackActive,
+                path: this.#importedArtPath,
+                terrains: this.#artTerrains
+            });
+        } catch (e) {
+            console.warn(`${MODULE_ID} | ImageResolver: failed to persist art pack cache:`, e);
         }
 
         console.log(`${MODULE_ID} | ImageResolver: artPack=${this.#artPackActive}${this.#artPackActive ? ` (${this.#importedArtPath})` : ""}`);
@@ -115,7 +137,7 @@ export class ImageResolver {
         }
         const key = `${terrain}/${filename}`;
         if (KNOWN_BASE_IMAGES.has(key)) {
-            return `modules/${MODULE_ID}/data/terrains/${terrain}/${filename}`;
+            return `modules/${MODULE_ID}/assets/terrains/${terrain}/${filename}`;
         }
 
         return FALLBACK_BANNER;

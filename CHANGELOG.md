@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.1.0] - 2026-04-12
+
+### Added
+- **Short Rest Overhaul.** The short rest flow is now a full-featured screen with per-die HD spending, live HP tracking, and hit die pip display. Players spend their own dice; the GM oversees and completes the rest.
+- **Durable feat support.** Characters with the Durable feat now have a minimum healing floor of 2× their CON modifier on each Hit Die roll. Detected automatically from the character sheet.
+- **Periapt of Wound Closure support.** Characters attuned to a Periapt of Wound Closure now double their Hit Die healing. Detected automatically from attunement state.
+- **Song of Rest (Bard).** If a bard (level 2+) is in the party, they can volunteer their Song of Rest. A bonus healing die (d6 to d12 by bard level) is rolled for each character who spent at least one Hit Die. Configurable timing: applied at end of rest (strict) or with each character's first Hit Die (immediate).
+- **Arcane Recovery / Natural Recovery.** Wizards and druids with these features now get a spell slot recovery picker during the short rest. Budget-limited (half class level, rounded up), with commit/edit flow so players can lock in their choices. GM receives a warning if anyone has unconfirmed selections when completing the rest.
+- **Player readiness signals.** AFK toggle and "I'm done" button let players signal their status. GM sees a roster strip with readiness indicators. AFK characters trigger a confirmation before rest completion.
+- **GM completion guard.** If any players haven't signalled "done" when the GM completes the rest, a confirmation modal warns before proceeding.
+- **Short rest session persistence.** Interrupted short rests survive page refreshes and GM disconnects. The GM sees a resume prompt on reconnect with elapsed time.
+- **Song of Rest Timing setting.** GM can choose between strict (end of rest) and immediate (with first Hit Die) timing for the Song of Rest bonus.
+- **Spell Recovery Max Level setting.** Maximum spell slot level for Arcane/Natural Recovery (default 5, configurable 1-9 for homebrew rules).
+- **Art pack detection caching.** Player clients now read cached art pack state from a world setting instead of calling FilePicker.browse (which is GM-only). Fixes art pack detection for players.
+
+### Fixed
+- Mountain terrain comfort corrected from "exposed" to "rough".
+- Discord patch notes embed thumbnail URL now references the correct branch.
+- RestSetupApp session recovery now restores terrain and rest type selections when resuming an interrupted long rest.
+- Tab visibility re-sync now handles long rest and short rest states independently instead of only checking long rests.
+
+### Changed
+- Test suites moved to private repository for IP isolation.
+
 ## [1.0.26] - 2026-04-11
 
 ### Added
