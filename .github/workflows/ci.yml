@@ -3,7 +3,7 @@ name: CI — Lint & Static Analysis
 on:
   push:
     branches:
-      - main
+      - master
     # Explicitly skip tag pushes — release.yml owns those
     tags-ignore:
       - '**'
