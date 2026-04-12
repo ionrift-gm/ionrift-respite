@@ -1,0 +1,190 @@
+name: CI — Lint & Static Analysis
+
+on:
+  push:
+    branches:
+      - main
+    # Explicitly skip tag pushes — release.yml owns those
+    tags-ignore:
+      - '**'
+
+  # Allow manual trigger for diagnosis
+  workflow_dispatch:
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 1 — ESLint
+  # Catches syntax errors, undeclared vars, and style violations.
+  # ─────────────────────────────────────────────────────────────────────────────
+  eslint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install ESLint
+        run: npm install --no-save eslint@8
+
+      - name: Run ESLint
+        env:
+          ESLINT_USE_FLAT_CONFIG: 'false'
+        run: |
+          npx eslint scripts/ \
+            --ext .js \
+            --config .eslintrc.json \
+            --max-warnings 200
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 2 — Inclusion Scan
+  # Rejects prohibited identity terminology ("Male", "Female", "Sex", "Gender").
+  # Permitted: Masculine, Feminine, Identity.
+  # ─────────────────────────────────────────────────────────────────────────────
+  inclusion-scan:
+    name: Inclusion Terminology Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scan for prohibited terms
+        run: |
+          # Search .js and .html files. Exit 1 if any match found.
+          MATCHES=$(grep -rn --include="*.js" --include="*.html" \
+            -E '\b(Male|Female|Sex|Gender)\b' scripts/ lang/ || true)
+          if [ -n "$MATCHES" ]; then
+            echo "❌ Prohibited identity terminology detected:"
+            echo "$MATCHES"
+            echo ""
+            echo "Use: Masculine / Feminine / Identity"
+            exit 1
+          fi
+          echo "✅ Inclusion scan passed."
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 3 — Import Integrity Check
+  # Detects broken relative imports (files referenced in JS that do not exist).
+  # ─────────────────────────────────────────────────────────────────────────────
+  import-integrity:
+    name: Import Integrity Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check relative imports resolve
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = require('path');
+          const ROOT = path.resolve('scripts');
+          let failed = false;
+
+          function check(dir) {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) { check(full); continue; }
+              if (!entry.name.endsWith('.js')) continue;
+              const src = fs.readFileSync(full, 'utf8');
+              const imports = [...src.matchAll(/(?:import|from)\s+['\"](\\.[^'\"]+)['\"]\/g)]
+                .map(m => m[1]);
+              for (const imp of imports) {
+                const resolved = path.resolve(path.dirname(full), imp);
+                const candidates = [resolved, resolved + '.js'];
+                if (!candidates.some(c => fs.existsSync(c))) {
+                  console.error('❌ Broken import in ' + path.relative(ROOT, full) + ': ' + imp);
+                  failed = true;
+                }
+              }
+            }
+          }
+          check(ROOT);
+          if (failed) process.exit(1);
+          console.log('✅ Import integrity passed.');
+          "
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 4 — Case-Sensitivity Check
+  # Catches imports that differ only in case, which break on Linux CI but not
+  # Windows dev machines.
+  # ─────────────────────────────────────────────────────────────────────────────
+  case-sensitivity:
+    name: Case-Sensitivity Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build lowercase file manifest and check imports
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = require('path');
+          const ROOT = path.resolve('scripts');
+          let failed = false;
+
+          // Build a map of lowercased path -> real path for all JS files
+          const manifest = new Map();
+          function index(dir) {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) { index(full); continue; }
+              manifest.set(full.toLowerCase(), full);
+            }
+          }
+          index(ROOT);
+
+          function check(dir) {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) { check(full); continue; }
+              if (!entry.name.endsWith('.js')) continue;
+              const src = fs.readFileSync(full, 'utf8');
+              const imports = [...src.matchAll(/(?:import|from)\s+['\"](\\.[^'\"]+)['\"]\/g)]
+                .map(m => m[1]);
+              for (const imp of imports) {
+                let resolved = path.resolve(path.dirname(full), imp);
+                if (!resolved.endsWith('.js')) resolved += '.js';
+                const real = manifest.get(resolved.toLowerCase());
+                if (real && real !== resolved) {
+                  console.error('❌ Case mismatch in ' + path.relative(ROOT, full) + ': imported as ' + imp + ' but real path is ' + path.relative(ROOT, real));
+                  failed = true;
+                }
+              }
+            }
+          }
+          check(ROOT);
+          if (failed) process.exit(1);
+          console.log('✅ Case-sensitivity check passed.');
+          "
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 5 — Signal Check
+  # Runs tools/signal_check.js against the scripts directory.
+  # tools/ holds a local CI copy — authoring source is ionrift-devtools/scripts/.
+  # When patterns change in devtools, copy here and commit.
+  # ─────────────────────────────────────────────────────────────────────────────
+  signal-check:
+    name: Signal Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run signal check
+        run: node tools/signal_check.js scripts/
