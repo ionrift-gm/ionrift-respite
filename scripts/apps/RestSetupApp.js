@@ -5737,8 +5737,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Meal phase data from GM
-        // eslint-disable-next-line eqeqeq -- intentional: != null catches both null and undefined
-        if (phaseData.daysSinceLastRest != null) this._daysSinceLastRest = phaseData.daysSinceLastRest;
+        if (phaseData.daysSinceLastRest !== null && phaseData.daysSinceLastRest !== undefined) {
+            this._daysSinceLastRest = phaseData.daysSinceLastRest;
+        }
         if (phaseData.selectedTerrain) this._selectedTerrain = phaseData.selectedTerrain;
         if (phase === "meal") {
             // Only reset submission if this is a genuinely new meal phase,

@@ -107,8 +107,7 @@ export class ResourceSource {
      * @returns {Promise<number>}
      */
     static async _resolveSimpleQuantity(quantity) {
-        // eslint-disable-next-line eqeqeq -- intentional: == null catches both null and undefined
-        if (quantity == null) return 1;
+        if (quantity === null || quantity === undefined) return 1;
 
         // Literal number
         if (typeof quantity === "number") {
