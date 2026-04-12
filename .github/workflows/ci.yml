@@ -230,3 +230,26 @@ jobs:
             exit 1
           fi
           echo "✅ LevelDB sweep passed."
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 7 — Unit Tests (Vitest)
+  # Runs headless tests for DecisionTreeResolver and ResourceSink.
+  # No Foundry runtime required.
+  # ─────────────────────────────────────────────────────────────────────────────
+  vitest:
+    name: Unit Tests (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install --no-save vitest@3
+
+      - name: Run Vitest
+        run: npx vitest run --config tests/vitest.config.js
