@@ -55,7 +55,7 @@ jobs:
       - name: Scan for prohibited terms
         run: |
           # Search .js and .html files. Exit 1 if any match found.
-          MATCHES=$(grep -rn --include="*.js" --include="*.html" \
+          MATCHES=(grep -rn --include="*.js" --include="*.html" \
             -E '\b(Male|Female|Sex|Gender)\b' scripts/ lang/ || true)
           if [ -n "$MATCHES" ]; then
             echo "❌ Prohibited identity terminology detected:"
@@ -188,3 +188,45 @@ jobs:
 
       - name: Run signal check
         run: node tools/signal_check.js scripts/
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # JOB 6 — Artifact Hygiene Gate
+  # Detects dev docs, test tooling, and LevelDB runtime files committed to the repo.
+  # Translates the manual RELEASE_PROCESS §3.2 sweep into a CI gate.
+  # ─────────────────────────────────────────────────────────────────────────────
+  artifact-hygiene:
+    name: Artifact Hygiene Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dev document sweep
+        run: |
+          MATCHES=$(git ls-files | grep -iE "BACKLOG|DESIGN|CHECKLIST|CONTENT_GUIDE|scenarios/" || true)
+          if [ -n "$MATCHES" ]; then
+            echo "❌ Dev documents found in tracked files:"
+            echo "$MATCHES"
+            exit 1
+          fi
+          echo "✅ Dev document sweep passed."
+
+      - name: Dev tooling sweep
+        run: |
+          MATCHES=$(git ls-files | grep -iE "scripts/tests/|scripts/utils/|dev-link|compendiumBuilder" || true)
+          if [ -n "$MATCHES" ]; then
+            echo "❌ Dev tooling found in tracked files:"
+            echo "$MATCHES"
+            exit 1
+          fi
+          echo "✅ Dev tooling sweep passed."
+
+      - name: LevelDB runtime sweep
+        run: |
+          MATCHES=$(git ls-files | grep -iE "packs/.*\.(LOCK|LOG|LOG\.old|log)$" || true)
+          if [ -n "$MATCHES" ]; then
+            echo "❌ LevelDB runtime files found in tracked files:"
+            echo "$MATCHES"
+            exit 1
+          fi
+          echo "✅ LevelDB sweep passed."
