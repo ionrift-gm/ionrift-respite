@@ -252,7 +252,7 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install --no-save vitest@3
+        run: npm ci
 
       - name: Run Vitest
         run: npx vitest run --config tests/vitest.config.js
