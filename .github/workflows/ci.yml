@@ -11,6 +11,9 @@ on:
   # Allow manual trigger for diagnosis
   workflow_dispatch:
 
+  repository_dispatch:
+    types: [lib-updated]
+
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
   # JOB 1 — ESLint
