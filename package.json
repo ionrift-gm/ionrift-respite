@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "test": "vitest run --config tests/vitest.config.js"
+  },
+  "dependencies": {
+    "classic-level": "^3.0.0"
+  },
+  "devDependencies": {
+    "sharp": "^0.34.5",
+    "vitest": "^3.0.0"
+  }
+}
