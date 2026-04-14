@@ -28,6 +28,7 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
     /** @override */
     async _prepareContext() {
         const enabledPacks = game.settings.get("ionrift-respite", "enabledPacks") ?? {};
+        const installedPacks = game.settings.get("ionrift-library", "installedPacks") ?? {};
         const packs = new Map();
 
         const _ensurePack = (packId) => {
@@ -42,7 +43,8 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
                     terrains: {},
                     recipes: [],
                     tiers: { normal: 0, disaster: 0 },
-                    totalItems: 0
+                    totalItems: 0,
+                    version: null
                 });
             }
             return packs.get(packId);
@@ -114,6 +116,7 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             pack.label = packData.name ?? packId.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
             pack.icon = packData.icon ?? "fas fa-hiking";
             pack.description = packData.description ?? "Imported content pack";
+            pack.version = packData.version ?? installedPacks[packId]?.version ?? null;
             for (const event of events) {
                 if (event.tier) pack.tiers[event.tier] = (pack.tiers[event.tier] ?? 0) + 1;
                 if (event.tier === "disaster") continue;
@@ -124,6 +127,10 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             }
         }
 
+        // Set base pack version from module manifest
+        const basePack = packs.get("base");
+        if (basePack) basePack.version = game.modules.get("ionrift-respite")?.version ?? null;
+
         // Sort: base first, then alphabetical
         const packList = [...packs.values()].sort((a, b) => {
             if (a.id === "base") return -1;
@@ -132,10 +139,35 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
             return a.label.localeCompare(b.label);
         });
 
+        // Mark packs that have a pending cloud update
+        // NOTE: distribution IDs (from registry) may differ from internal event pack IDs
+        // so we surface updates as a dedicated section rather than per-card.
+        const rawUpdates = game?.ionrift?.library?._packUpdates ?? [];
+        const isConnected = !!game?.ionrift?.library?.cloud?.isConnected?.();
+        const userTier = game?.ionrift?.library?.cloud?.getTierClaim?.() ?? null;
+
+        // Tier ordering for access comparison
+        const TIER_ORDER = ["Free", "Initiate", "Acolyte", "Weaver", "Artificer"];
+        const userRank = userTier ? TIER_ORDER.indexOf(userTier) : -1;
+
+        const pendingUpdates = rawUpdates.map(u => {
+            const requiredTier = u.available?.tier ?? "Free";
+            const reqRank = TIER_ORDER.indexOf(requiredTier);
+            const canUpdate = isConnected && userRank >= reqRank;
+            return {
+                ...u,
+                requiredTier,
+                canUpdate,
+                isConnected,
+                patreonUrl: u.available?.patreonUrl ?? null
+            };
+        });
+
         const totalEnabled = packList.filter(p => p.enabled).reduce((s, p) => s + p.totalItems, 0);
         const totalAll = packList.reduce((s, p) => s + p.totalItems, 0);
+        const updateCount = pendingUpdates.length;
 
-        return { packs: packList, totalEnabled, totalAll };
+        return { packs: packList, totalEnabled, totalAll, updateCount, pendingUpdates, installedPacks };
     }
 
     /** @override */
@@ -148,11 +180,16 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
 
         const isArt = this.#activeTab === "art";
 
+        // Tab update badge (Event Packs tab only — cloud updates are always event packs)
+        const tabBadge = context.updateCount > 0
+            ? `<span class="pack-tab-update-count" title="${context.updateCount} update${context.updateCount === 1 ? "" : "s"} available">${context.updateCount}</span>`
+            : "";
+
         // ── Tab bar ──
         let html = `
         <div class="pack-tab-bar">
             <button type="button" class="pack-tab ${isArt ? "" : "active"}" data-tab="events">
-                <i class="fas fa-bolt"></i> Event Packs
+                <i class="fas fa-bolt"></i> Event Packs ${tabBadge}
             </button>
             <button type="button" class="pack-tab ${isArt ? "active" : ""}" data-tab="art">
                 <i class="fas fa-image"></i> Art Packs
@@ -176,6 +213,54 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
                     <span class="stat-label">total available</span>
                 </div>
             </div>`;
+
+        // ── Updates Available section ──
+        if (context.pendingUpdates.length > 0) {
+            html += `<div class="pack-updates-banner">
+                <div class="pack-updates-header">
+                    <i class="fas fa-arrow-circle-up"></i> Updates Available
+                </div>`;
+            for (const update of context.pendingUpdates) {
+                const label = update.packId.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()).replace(/ Data$/, "");
+
+                let actionHtml;
+                if (update.canUpdate) {
+                    // Tier sufficient + connected → offer the button
+                    actionHtml = `
+                        <button type="button" class="pack-update-now-btn" data-pack-id="${update.packId}"
+                            title="Download and install v${update.available.latest} now">
+                            <i class="fas fa-download"></i> Update Now
+                        </button>`;
+                } else if (!update.isConnected) {
+                    // Not connected at all → prompt to connect
+                    actionHtml = `
+                        <span class="pack-update-tier-label" title="Connect your Patreon account to access cloud updates">
+                            <i class="fas fa-link"></i> Connect Patreon to update
+                        </span>`;
+                } else {
+                    // Connected but tier too low → show requirement, link to Patreon
+                    const patreonLink = update.patreonUrl
+                        ? `<a href="${update.patreonUrl}" target="_blank" class="pack-update-tier-link" title="View on Patreon">
+                               <i class="fas fa-external-link-alt"></i> Requires ${update.requiredTier}
+                           </a>`
+                        : `<span class="pack-update-tier-label">
+                               <i class="fas fa-lock"></i> Requires ${update.requiredTier}
+                           </span>`;
+                    actionHtml = patreonLink;
+                }
+
+                html += `
+                <div class="pack-update-item" data-update-pack="${update.packId}">
+                    <div class="pack-update-info">
+                        <span class="pack-update-name">${label}</span>
+                        <span class="pack-update-version">v${update.installed.version} to v${update.available.latest}</span>
+                    </div>
+                    ${actionHtml}
+                </div>`;
+            }
+            html += `</div>`;
+        }
+
 
         // Pack cards
         let lastType = null;
@@ -226,7 +311,7 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
                     </label>
                     <div class="pack-title-block">
                         <span class="pack-title"><i class="${pack.icon}"></i> ${pack.label}</span>
-                        <span class="pack-desc">${pack.description}</span>
+                        <span class="pack-desc">${pack.description}${pack.version ? ` <span class="pack-version">v${pack.version}</span>` : ""}</span>
                     </div>
                     ${eventCountHtml}
                 </div>
@@ -279,12 +364,14 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
                 const terrainBadges = terrains
                     .map(t => `<span class="pack-terrain-badge"><i class="${this._getTerrainIcon(t)}"></i> ${t}</span>`)
                     .join("");
+                const artVersion = context.installedPacks?.["respite-art-core"]?.version ?? null;
+                const artVersionHtml = artVersion ? ` <span class="pack-version">v${artVersion}</span>` : "";
                 return `
             <div class="pack-card enabled" data-art-type="terrain">
                 <div class="pack-card-header">
                     <div class="pack-title-block">
                         <span class="pack-title"><i class="fas fa-palette"></i> Terrain Art</span>
-                        <span class="pack-desc">${artPath}</span>
+                        <span class="pack-desc">${artPath}${artVersionHtml}</span>
                     </div>
                     <span class="pack-event-count" title="${fileCount} files">${fileCount}</span>
                     <button type="button" class="art-uninstall-btn" title="Uninstall art pack">
@@ -392,6 +479,28 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
         });
         el.querySelector(".pack-import-btn").addEventListener("click", () => this._importPack());
 
+        // ── Update Now buttons ──
+        el.querySelectorAll(".pack-update-now-btn").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                if (btn.disabled) return;
+                const packId = btn.dataset.packId;
+
+                // Optimistic UI feedback
+                btn.disabled = true;
+                btn.innerHTML = "<i class=\"fas fa-spinner fa-spin\"></i> Updating\u2026";
+
+                const result = await game.ionrift?.library?.downloadPackUpdate?.(packId);
+                if (result) {
+                    // Re-render so the update row disappears and counts refresh
+                    this.render({ force: true });
+                } else {
+                    // Reset button if download failed
+                    btn.disabled = false;
+                    btn.innerHTML = "<i class=\"fas fa-download\"></i> Update Now";
+                }
+            });
+        });
+
         // ── Art tab wiring ──
         el.querySelector(".pack-import-art-btn").addEventListener("click", () => this._importArtPack());
         el.querySelector(".art-uninstall-btn")?.addEventListener("click", () => this._uninstallArtPack());
@@ -401,33 +510,30 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
 
     /**
      * Opens a file picker and imports a content pack JSON file into world storage.
+     * Delegates to the library's JsonPackService for file picking, manifest
+     * validation, and unified installedPacks metadata tracking.
      * Expected file structure: { id, name, description, icon, terrains, events[] }
      */
     async _importPack() {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = ".json";
-        input.addEventListener("change", async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+        if (!game.ionrift?.library?.importJsonPack) {
+            ui.notifications.error("Ionrift Library v1.6.0+ is required for content pack imports.");
+            return;
+        }
 
-            try {
-                const text = await file.text();
-                const data = JSON.parse(text);
-
-                // Validate required fields
-                if (!data.id) throw new Error("Pack JSON is missing 'id' field.");
+        const result = await game.ionrift.library.importJsonPack({
+            moduleId: "respite",
+            schemaValidator: (data) => {
+                if (!data.id) return { valid: false, errors: ["Pack JSON is missing 'id' field."] };
                 if (!Array.isArray(data.events) || data.events.length === 0) {
-                    throw new Error("Pack JSON has no events.");
+                    return { valid: false, errors: ["Pack JSON has no events."] };
                 }
-
-                // Validate each event has minimum required fields
                 for (const evt of data.events) {
-                    if (!evt.id) throw new Error(`Event missing 'id' field.`);
-                    if (!evt.terrainTags?.length) throw new Error(`Event ${evt.id} missing 'terrainTags'.`);
+                    if (!evt.id) return { valid: false, errors: ["Event missing 'id' field."] };
+                    if (!evt.terrainTags?.length) return { valid: false, errors: [`Event ${evt.id} missing 'terrainTags'.`] };
                 }
-
-                // Store in world settings
+                return { valid: true, errors: [] };
+            },
+            onImport: async (data) => {
                 const importedPacks = game.settings.get("ionrift-respite", "importedPacks") ?? {};
                 importedPacks[data.id] = {
                     name: data.name ?? data.id,
@@ -441,19 +547,18 @@ export class PackRegistryApp extends foundry.applications.api.ApplicationV2 {
                 };
                 await game.settings.set("ionrift-respite", "importedPacks", importedPacks);
 
-                // Enable by default
                 const enabledPacks = game.settings.get("ionrift-respite", "enabledPacks") ?? {};
                 enabledPacks[data.id] = true;
                 await game.settings.set("ionrift-respite", "enabledPacks", enabledPacks);
 
-                ui.notifications.info(`Imported "${data.name ?? data.id}" (${data.events.length} events). Active on next rest.`);
-                this.render({ force: true });
-            } catch (err) {
-                ui.notifications.error(`Import failed: ${err.message}`);
-                console.error("[Respite:PackRegistry] Import error:", err);
+                return { packId: data.id, name: data.name ?? data.id, eventCount: data.events.length };
             }
         });
-        input.click();
+
+        if (result?.success) {
+            ui.notifications.info(`Imported "${result.packId}" successfully. Active on next rest.`);
+            this.render({ force: true });
+        }
     }
 
     /**
