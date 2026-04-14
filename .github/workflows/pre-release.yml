@@ -1,0 +1,11 @@
+name: Pre-Release Gate
+
+on:
+  workflow_dispatch:
+
+jobs:
+  gate:
+    uses: ionrift-gm/ionrift-ci/.github/workflows/pre-release.yml@main
+    with:
+      eslint_max_warnings: 200
+      vitest_command: 'npx vitest run --config tests/vitest.config.js'
