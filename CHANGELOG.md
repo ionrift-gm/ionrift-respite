@@ -1,17 +1,23 @@
 # Changelog
 
+## [1.1.2] - 2026-04-15
+
+### Fixed
+- Discord patch-notes embed now shows the module icon. The icon was stored in Git LFS which raw.githubusercontent.com serves as a pointer stub - moved to standard git tracking so the image resolves correctly.
+- Training activity setting was already present but undocumented. The "Training Activity" toggle in module settings gates the training option during long rests for characters level 5 and below.
+
 ## [1.1.1] - 2026-04-15
 
 ### Added
-- **Pack update notifications.** The Content Packs screen now shows when a newer version of an installed pack is available — with a Patreon download link if you're on the free tier, or a one-click install button if you're connected to Ionrift Cloud. No more guessing whether your packs are current.
-- **JSON pack import.** Content packs can now ship as standalone JSON files and import through the same unified pack service as ZIP packs — manifest validation, version tracking, and all.
+- **Pack update notifications.** The Content Packs screen now shows when a newer version of an installed pack is available - with a Patreon download link if you're on the free tier, or a one-click install button if you're connected to Ionrift Cloud. No more guessing whether your packs are current.
+- **JSON pack import.** Content packs can now ship as standalone JSON files and import through the same unified pack service as ZIP packs - manifest validation, version tracking, and all.
 
 ### Changed
-- The settings panel now uses the standardised Ionrift layout — support links and diagnostics live at the bottom behind a visual divider, consistent with the rest of the suite.
+- The settings panel now uses the standardised Ionrift layout - support links and diagnostics live at the bottom behind a visual divider, consistent with the rest of the suite.
 
 ### Fixed
 - LevelDB runtime files are no longer tracked in the repository.
-- Strict equality checks throughout — no more `==` where `===` belongs.
+- Strict equality checks throughout - no more `==` where `===` belongs.
 
 ## [1.1.0] - 2026-04-12
 
