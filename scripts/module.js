@@ -500,8 +500,9 @@ Hooks.once("init", async () => {
     });
 
     // FOOTER: Discord + Wiki (standardised via ionrift-library)
-    const { SettingsLayout } = await import("../../ionrift-library/scripts/SettingsLayout.js");
-    SettingsLayout.registerFooter(MODULE_ID);
+    // Use the published library API — direct cross-repo path breaks on CI (single-repo checkout).
+    const SettingsLayout = game.ionrift?.library?.SettingsLayout;
+    SettingsLayout?.registerFooter(MODULE_ID);
 
     // Debug (registers last so it renders at the bottom)
     game.settings.register(MODULE_ID, "debug", {
@@ -723,12 +724,12 @@ Hooks.once("ready", async () => {
         }
     }
 
-    // Detect Workshop for item handoff
+    // Detect Quartermaster for item handoff
     const workshop = game.modules.get("ionrift-workshop");
     if (workshop?.active && workshop.api?.items) {
-        Logger.log?.(MODULE_LABEL, "Workshop detected. Items will be normalized via WorkshopItemFactory.");
+        Logger.log?.(MODULE_LABEL, "Quartermaster detected. Items will be normalized via WorkshopItemFactory.");
     } else {
-        Logger.log?.(MODULE_LABEL, "Workshop not detected. Items will be created with minimal normalization.");
+        Logger.log?.(MODULE_LABEL, "Quartermaster not detected. Items will be created with minimal normalization.");
     }
 
     // ── Session Recovery ──────────────────────────────────────────
