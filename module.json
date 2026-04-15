@@ -3,11 +3,11 @@
     "title": "Ionrift Respite",
     "description": "Structured long rest and short rest phases for DnD 5e. Replaces the default rest dialog with a guided camping flow. Players self-serve their downtime activities: identifying magic items, attuning gear, copying spells, crafting arrows, cooking, foraging, and more. The GM runs terrain-driven wilderness encounters and random events. 37 rest events across 6 terrains with multiple outcome tiers. Built for tables that want immersive camping without the bookkeeping.",
     "bugs": "https://discord.gg/vFGXf7Fncj",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "url": "https://github.com/ionrift-gm/ionrift-respite",
     "manifest": "https://github.com/ionrift-gm/ionrift-respite/releases/latest/download/module.json",
     "readme": "https://raw.githubusercontent.com/ionrift-gm/ionrift-respite/main/README.md",
-    "download": "https://github.com/ionrift-gm/ionrift-respite/releases/download/v1.1.0/module.zip",
+    "download": "https://github.com/ionrift-gm/ionrift-respite/releases/download/v1.1.1/module.zip",
     "compatibility": {
         "minimum": "12",
         "verified": "13"
@@ -21,7 +21,8 @@
             "label": "Respite Items",
             "type": "Item",
             "system": "dnd5e",
-            "path": "packs/respite-items"
+            "path": "packs/respite-items",
+            "ownership": { "GAMEMASTER": "OWNER" }
         },
         {
             "name": "respite-guide",
@@ -34,13 +35,19 @@
             "label": "Respite Actors",
             "type": "Actor",
             "system": "dnd5e",
-            "path": "packs/respite-actors"
+            "path": "packs/respite-actors",
+            "ownership": { "GAMEMASTER": "OWNER" }
         }
     ],
     "packFolders": [
         {
             "name": "Ionrift",
-            "packs": ["respite-items", "respite-guide", "respite-actors"]
+            "folders": [
+                {
+                    "name": "Respite",
+                    "packs": ["respite-actors", "respite-guide", "respite-items"]
+                }
+            ]
         }
     ],
     "socket": true,
