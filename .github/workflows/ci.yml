@@ -31,5 +31,7 @@ jobs:
   vitest:
     uses: ionrift-gm/ionrift-ci/.github/workflows/vitest.yml@main
     with:
-      # Respite uses an explicit vitest config path.
-      vitest_command: 'npx vitest run --config tests/vitest.config.js'
+      testharness_repo: 'ionrift-gm/ionrift-testharness'
+      testharness_config: 'vitest/respite/vitest.config.js'
+    secrets:
+      CI_PAT: ${{ secrets.IONRIFT_CI_PAT }}

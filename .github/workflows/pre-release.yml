@@ -8,4 +8,7 @@ jobs:
     uses: ionrift-gm/ionrift-ci/.github/workflows/pre-release.yml@main
     with:
       eslint_max_warnings: 200
-      vitest_command: 'npx vitest run --config tests/vitest.config.js'
+      testharness_repo: 'ionrift-gm/ionrift-testharness'
+      testharness_config: 'vitest/respite/vitest.config.js'
+    secrets:
+      CI_PAT: ${{ secrets.IONRIFT_CI_PAT }}
