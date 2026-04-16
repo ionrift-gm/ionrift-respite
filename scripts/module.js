@@ -112,7 +112,7 @@ export function notifyShortRestActive() {
  */
 export function getPartyActors() {
     // BACKLOG: This is the canonical party roster implementation for Respite.
-    // ionrift-workshop's Progression Registry uses an identical naive stub
+    // ionrift-quartermaster's Progression Registry uses an identical naive stub
     // (_resolvePartyMembers in SignatureLedger.js). Both should eventually
     // delegate to game.ionrift?.library?.party?.getMembers?.() when ionrift-lib
     // ships a PartyRoster service. The settings-backed roster here is the right
@@ -377,6 +377,16 @@ Hooks.once("init", async () => {
     game.settings.register(MODULE_ID, "enableStudy", {
         name: "Study Activity",
         hint: "Allow the Study activity during rests. Requires Arcana or Investigation proficiency.",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: true,
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "enableTraining", {
+        name: "Training Activity",
+        hint: "Allow the Training activity during long rests. Characters level 5 and below can train to earn XP.",
         scope: "world",
         config: true,
         type: Boolean,
@@ -725,7 +735,7 @@ Hooks.once("ready", async () => {
     }
 
     // Detect Quartermaster for item handoff
-    const workshop = game.modules.get("ionrift-workshop");
+    const workshop = game.modules.get("ionrift-quartermaster");
     if (workshop?.active && workshop.api?.items) {
         Logger.log?.(MODULE_LABEL, "Quartermaster detected. Items will be normalized via WorkshopItemFactory.");
     } else {

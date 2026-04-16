@@ -249,10 +249,10 @@ export class ItemOutcomeHandler {
         if (compendiumItem) return compendiumItem;
 
         // 2. Workshop compendium lookup
-        const workshop = game.modules.get("ionrift-workshop");
+        const workshop = game.modules.get("ionrift-quartermaster");
         if (workshop?.active) {
             const worldItem = game.items.find(
-                i => i.getFlag("ionrift-workshop", "sourceId") === ref ||
+                i => i.getFlag("ionrift-quartermaster", "sourceId") === ref ||
                     i.name?.toLowerCase() === ref.replace(/_/g, " ")
             );
             if (worldItem) return worldItem.toObject();
@@ -315,7 +315,7 @@ export class ItemOutcomeHandler {
      * @returns {Object[]}
      */
     static _normalize(items) {
-        const workshop = game.modules.get("ionrift-workshop");
+        const workshop = game.modules.get("ionrift-quartermaster");
         if (workshop?.active && workshop.api?.items?.normalize) {
             return items.map(i => workshop.api.items.normalize(i));
         }
