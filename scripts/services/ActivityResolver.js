@@ -39,6 +39,13 @@ export class ActivityResolver {
                 } catch (e) { /* setting may not exist yet */ }
             }
 
+            // Gate Training behind module setting
+            if (activity.id === "act_train") {
+                try {
+                    if (!game.settings.get("ionrift-respite", "enableTraining")) continue;
+                } catch (e) { /* setting may not exist yet */ }
+            }
+
             if (this._meetsPrerequisites(actor, activity.prerequisites)) {
                 available.push(activity);
             }
@@ -293,10 +300,12 @@ export class ActivityResolver {
             if (!hasSlots) return false;
         }
 
-        // Check requiresSpellbook (Wizard or has a spellbook item)
+        // Check requiresSpellbook (Wizard class, or non-Artificer with a spellbook/Book of Shadows)
         if (prereqs.requiresSpellbook) {
-            const className = (actor.system?.details?.class ?? actor.classes?.wizard?.name ?? "").toLowerCase();
-            const isWizard = className.includes("wizard");
+            const classEntries = actor.classes ?? {};
+            const isWizard = !!classEntries.wizard;
+            const isArtificer = !!classEntries.artificer;
+            if (isArtificer && !isWizard) return false;
             const hasSpellbook = (actor.items ?? []).some(i =>
                 i.name?.toLowerCase().includes("spellbook") || i.name?.toLowerCase().includes("book of shadows")
             );
@@ -329,6 +338,20 @@ export class ActivityResolver {
         for (const activity of this.activities.values()) {
             if (activity.disabled) continue;
             if (!activity.restTypes.includes(restType)) continue;
+
+            // Gate Study behind module setting
+            if (activity.id === "act_study") {
+                try {
+                    if (!game.settings.get("ionrift-respite", "enableStudy")) continue;
+                } catch (e) { /* setting may not exist yet */ }
+            }
+
+            // Gate Training behind module setting
+            if (activity.id === "act_train") {
+                try {
+                    if (!game.settings.get("ionrift-respite", "enableTraining")) continue;
+                } catch (e) { /* setting may not exist yet */ }
+            }
 
             // Runtime attunement check
             if (activity.id === "act_attune" && !this._hasAttuneableItems(actor)) {

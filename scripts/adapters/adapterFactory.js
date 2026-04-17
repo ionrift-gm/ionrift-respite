@@ -21,7 +21,7 @@ export function createAdapter() {
             return new DnD5eAdapter();
 
         case "pf2e":
-            console.warn(`${MODULE_ID} | System adapter: PF2e (stub – limited support)`);
+            console.log(`${MODULE_ID} | System adapter: PF2e (early support)`);
             return new PF2eAdapter();
 
         case "daggerheart":

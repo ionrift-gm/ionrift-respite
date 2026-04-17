@@ -303,14 +303,10 @@ Hooks.once("init", async () => {
 
     // Register settings
 
-    // HEADER: Content Packs button (registerMenu renders above register items)
-    game.settings.registerMenu(MODULE_ID, "contentPacks", {
-        name: "Content Packs",
-        label: "Manage Packs",
-        hint: "Enable or disable event content packs. Shows event counts per terrain.",
-        icon: "fas fa-box-open",
-        type: PackRegistryApp,
-        restricted: true
+    // HEADER: Content Packs button (via kernel)
+    const SettingsLayoutForPack = game.ionrift?.library?.SettingsLayout;
+    SettingsLayoutForPack?.registerPackButton(MODULE_ID, PackRegistryApp, {
+        hint: "Enable or disable event content packs. Shows event counts per terrain."
     });
 
     game.settings.registerMenu(MODULE_ID, "partyRosterMenu", {
@@ -509,6 +505,14 @@ Hooks.once("init", async () => {
         default: { active: false, path: null, terrains: [] }
     });
 
+    // PF2e early-support advisory (one-time)
+    game.settings.register(MODULE_ID, "pf2eAdvisoryShown", {
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false
+    });
+
     // FOOTER: Discord + Wiki (standardised via ionrift-library)
     // Use the published library API — direct cross-repo path breaks on CI (single-repo checkout).
     const SettingsLayout = game.ionrift?.library?.SettingsLayout;
@@ -678,6 +682,18 @@ Hooks.once("ready", async () => {
     console.log(`${MODULE_ID} | Ready hook firing...`);
     Logger.log?.(MODULE_LABEL, "Ready.");
 
+    // ── Register adapter contract tests ──────────────────────
+    if (game.ionrift?.library?.tests) {
+        game.ionrift.library.tests.register("ionrift-respite", {
+            name: "Respite System Adapters",
+            description: "Contract tests for DnD5e + PF2e adapters (mock actors, any world)",
+            runFn: async () => {
+                const { runAdapterTests } = await import("./tests/AdapterTests.js");
+                return runAdapterTests();
+            }
+        });
+    }
+
     // Initialize image resolver (art pack detection — probes ionrift-data/)
     await ImageResolver.init();
 
@@ -740,6 +756,40 @@ Hooks.once("ready", async () => {
         Logger.log?.(MODULE_LABEL, "Quartermaster detected. Items will be normalized via WorkshopItemFactory.");
     } else {
         Logger.log?.(MODULE_LABEL, "Quartermaster not detected. Items will be created with minimal normalization.");
+    }
+
+    // ── PF2e Early-Support Advisory ───────────────────────────────
+    if (game.system.id === "pf2e") {
+        try {
+            const shown = game.settings.get(MODULE_ID, "pf2eAdvisoryShown");
+            if (!shown) {
+                const openDiscord = await game.ionrift.library.confirm({
+                    title: "Pathfinder 2e: Early Support",
+                    content: `
+                        <p>Respite's <strong>Pathfinder 2e support is early</strong>. The core rest flow (activities, campfire, terrain events, comfort tiers, and recovery) is functional.</p>
+                        <p>However, some PF2e-specific mechanics are <strong>not yet implemented</strong>:</p>
+                        <ul>
+                            <li>Treat Wounds (Medicine activity)</li>
+                            <li>Refocus (Focus Point recovery activity)</li>
+                            <li>Repair (Shield / equipment repair)</li>
+                            <li>Subsist (Earn income / forage equivalent)</li>
+                        </ul>
+                        <p>If you hit a bug or have a suggestion, please report it on Discord. Your feedback shapes what gets built next.</p>
+                    `,
+                    yesLabel: "Join Discord",
+                    noLabel: "Got It",
+                    yesIcon: "fab fa-discord",
+                    noIcon: "fas fa-check",
+                    defaultYes: false
+                });
+                if (openDiscord) {
+                    window.open("https://discord.gg/vFGXf7Fncj", "_blank");
+                }
+                game.settings.set(MODULE_ID, "pf2eAdvisoryShown", true);
+            }
+        } catch (e) {
+            // Graceful fail — don't block startup for an advisory
+        }
     }
 
     // ── Session Recovery ──────────────────────────────────────────

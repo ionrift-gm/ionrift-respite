@@ -20,6 +20,7 @@ import { CampfireEmbed } from "./CampfireEmbed.js";
 import { CraftingDelegate } from "./delegates/CraftingDelegate.js";
 import { MealDelegate } from "./delegates/MealDelegate.js";
 import { CopySpellDelegate } from "./delegates/CopySpellDelegate.js";
+import { SoundDelegate } from "./delegates/SoundDelegate.js";
 import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS } from "./RestConstants.js";
 import { ShortRestApp } from "./ShortRestApp.js";
 import { registerActiveRestApp, clearActiveRestApp, setActiveRestData, registerCampfireApp, clearCampfireApp, _showGmRestIndicator, _removeGmRestIndicator, getPartyActors } from "../module.js";
@@ -1852,7 +1853,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const SHELTER_TOOLTIPS = {
                     tent: "Tent: +2 encounter DC, cancels or reduces weather",
                     tiny_hut: "Tiny Hut: comfort floor sheltered, +5 encounter DC",
-                    rope_trick: "Rope Trick: +5 encounter DC, extradimensional shelter",
+                    rope_trick: "Rope Trick: extradimensional shelter, hidden from the outside",
                     magnificent_mansion: "Mansion: comfort floor safe, no encounters"
                 };
                 const FIRE_TIPS = {
@@ -3854,6 +3855,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (this._engine.restType === "short") {
             this._triggeredEvents = [];
             this._eventsRolled = true;
+            SoundDelegate.stopAll();
             this._phase = "resolve";
         } else {
             // Long rest: check if food tracking is enabled
@@ -5278,6 +5280,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const disasterExhaustion = new Map(); // actorId -> total levels gained
         if (conditionEffects.length > 0) {
             const characters = getPartyActors();
+            const adapter = game.ionrift?.respite?.adapter;
             for (const eff of conditionEffects) {
                 const level = eff.level ?? 1;
                 const scope = eff.scope ?? "all";
@@ -5291,11 +5294,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
 
                 for (const actor of targets) {
-                    const current = actor.system?.attributes?.exhaustion ?? 0;
                     const gain = disasterExhaustion.get(actor.id) ?? 0;
                     disasterExhaustion.set(actor.id, gain + level);
-                    const newLevel = Math.min(6, current + gain + level);
-                    await actor.update({ "system.attributes.exhaustion": newLevel });
+                    if (adapter) {
+                        await adapter.applyExhaustionDelta(actor, level);
+                    } else {
+                        // Fallback: direct 5e path
+                        const current = actor.system?.attributes?.exhaustion ?? 0;
+                        const newLevel = Math.min(6, current + gain + level);
+                        await actor.update({ "system.attributes.exhaustion": newLevel });
+                    }
                 }
             }
         }
@@ -5337,6 +5345,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
+        SoundDelegate.stopAll();
         this._phase = "resolve";
         this._clearRestState();
 
@@ -5392,7 +5401,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // the preRestCompleted hook in module.js suppresses those from the
         // system's own recovery so there is no double-dipping.
         // When rest-recovery module is active it handles everything, so we skip.
-        if (!skipRecovery) {
+        // PF2e has no actor.longRest() — skip for non-5e systems.
+        if (!skipRecovery && game.system.id === "dnd5e") {
             const restType = this._engine?.restType ?? "long";
             for (const outcome of this._outcomes) {
                 const actor = game.actors.get(outcome.characterId);
@@ -5408,6 +5418,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     console.warn(`${MODULE_ID} | Native rest failed for ${actor.name}:`, e);
                 }
             }
+        } else if (!skipRecovery && game.system.id !== "dnd5e") {
+            console.log(`${MODULE_ID} | Skipping native rest call (system: ${game.system.id} — no longRest/shortRest API).`);
         }
 
         // Create items from outcomes (forage, crafts, etc.)

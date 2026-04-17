@@ -52,12 +52,18 @@ export class RecoveryHandler {
             await actor.update({ "system.attributes.hp.value": newHp });
         }
 
-        // Apply exhaustion update
+        // Apply exhaustion update (route through adapter for system compatibility)
         if (exhaustionDelta !== 0) {
-            const currentExhaustion = actor.system?.attributes?.exhaustion ?? 0;
-            const newExhaustion = Math.max(0, Math.min(6, currentExhaustion + exhaustionDelta));
-            if (newExhaustion !== currentExhaustion) {
-                await actor.update({ "system.attributes.exhaustion": newExhaustion });
+            const adapter = game.ionrift?.respite?.adapter;
+            if (adapter) {
+                await adapter.applyExhaustionDelta(actor, exhaustionDelta);
+            } else {
+                // Fallback: direct 5e path
+                const currentExhaustion = actor.system?.attributes?.exhaustion ?? 0;
+                const newExhaustion = Math.max(0, Math.min(6, currentExhaustion + exhaustionDelta));
+                if (newExhaustion !== currentExhaustion) {
+                    await actor.update({ "system.attributes.exhaustion": newExhaustion });
+                }
             }
         }
 
@@ -187,7 +193,8 @@ export class RecoveryHandler {
      * @returns {number} Net exhaustion change (negative = reduction, positive = gained)
      */
     static async _calculateExhaustionDelta(actor, recovery) {
-        const currentExhaustion = actor.system?.attributes?.exhaustion ?? 0;
+        const adapter = game.ionrift?.respite?.adapter;
+        const currentExhaustion = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
         if (currentExhaustion === 0 && !(recovery.exhaustionGain > 0) && !recovery.exhaustionDC) return 0;
 
         let delta = 0;

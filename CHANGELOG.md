@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.2.0] - 2026-04-17
+
+### Added
+- **Pathfinder 2e support (early).** The core rest flow now works with PF2e. Activities, campfire, terrain events, comfort tiers, and the encounter DC system all function as expected. HP recovery maps to the PF2e actor model. Focus Points stand in for Hit Dice in the recovery display. The fatigued condition is toggled in place of 5e's numeric exhaustion. Fire cantrips (Produce Flame, Ignition, Prestidigitation) are recognised for campfire lighting. D&D-specific activities (Attune Item, Copy Spell) are hidden from the PF2e activity grid.
+- PF2e-unique rest activities (Treat Wounds, Refocus, Repair, Subsist) are planned for a future update. If you run PF2e and try this, report what breaks.
+
+### Fixed
+- Resolved a crash at rest resolution on non-5e systems. The native `actor.longRest()` call is now gated to DnD5e only.
+- All exhaustion reads and writes throughout the rest flow (recovery, meals, starvation, dehydration, disaster events) now route through the system adapter instead of hardcoding the 5e data path. PF2e toggles the "fatigued" condition correctly.
+- Shelter spell detection now recognises PF2e equivalents: Cozy Cabin (maps to Tiny Hut) and Resplendent Mansion (maps to Mansion).
+
 ## [1.1.2] - 2026-04-15
 
 ### Fixed

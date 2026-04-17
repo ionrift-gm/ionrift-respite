@@ -9,6 +9,7 @@ const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 import { CampfirePhysics } from "./CampfirePhysics.js";
 import { CampfireTokenLinker } from "../services/CampfireTokenLinker.js";
+import { SoundDelegate } from "./delegates/SoundDelegate.js";
 
 /** Trinkets that can be tossed into the fire with colored flash effects. */
 const TRINKETS = [
@@ -594,6 +595,7 @@ export class CampfireApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Sync campfire token light on the canvas
         CampfireTokenLinker.setLightState(true);
+        SoundDelegate.startCampfire("embers");
 
         if (this._litNotifyTimer) clearTimeout(this._litNotifyTimer);
         this._litNotifyTimer = setTimeout(() => {
@@ -817,6 +819,7 @@ export class CampfireApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (current !== this._lastFireLevel) {
             this._lastFireLevel = current;
             if (this._onFireLevelChange) this._onFireLevelChange(current);
+            SoundDelegate.updateCampfireLevel(current);
         }
     }
 
@@ -846,6 +849,7 @@ export class CampfireApp extends HandlebarsApplicationMixin(ApplicationV2) {
     // ──────── Cleanup ────────
 
     async close(...args) {
+        SoundDelegate.stopAll();
         if (this._decayInterval) { clearInterval(this._decayInterval); this._decayInterval = null; }
         if (this._litNotifyTimer) { clearTimeout(this._litNotifyTimer); this._litNotifyTimer = null; }
         if (this._emberInterval) { clearInterval(this._emberInterval); this._emberInterval = null; }

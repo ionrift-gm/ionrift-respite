@@ -2,9 +2,9 @@
 ![Downloads](https://img.shields.io/github/downloads/ionrift-gm/ionrift-respite/latest/total?color=violet&label=Downloads)
 ![Version](https://img.shields.io/github/v/release/ionrift-gm/ionrift-respite?color=violet&label=Latest%20Version)
 ![Foundry Version](https://img.shields.io/badge/Foundry-v12-333333?style=flat&logo=foundryvirtualtabletop)
-![Systems](https://img.shields.io/badge/system-dnd5e-blue)
+![Systems](https://img.shields.io/badge/system-dnd5e%20%7C%20pf2e-blue)
 
-**Structured rest phases for DnD 5e.**
+**Structured rest phases for DnD 5e and Pathfinder 2e.**
 
 [![Watch the trailer](https://img.youtube.com/vi/-juG6sDkabU/maxresdefault.jpg)](https://youtu.be/-juG6sDkabU)
 
@@ -64,6 +64,14 @@ Missing meals trigger CON saves. Exhaustion stacks following the standard 5e var
 - **Shelter spells** - Tiny Hut, Rope Trick, Mansion auto-detected from party spell lists.
 - **Gear badges** - Bedroll (+1 HD), Mess Kit (advantage on exhaustion saves with fire), Tent (weather shield) detected from inventory.
 - **Campfire** - Interactive fire panel with whittle mechanic and three stages (embers, campfire, bonfire).
+
+## System support
+
+| System | Status | What works |
+|---|---|---|
+| DnD 5e | Full | All activities, recovery, events, campfire, professions, short rest |
+| Pathfinder 2e | Early | Core rest flow, campfire, events, activity grid, HP/focus recovery. PF2e-specific activities (Treat Wounds, Refocus) and condition automation are coming. |
+| Daggerheart | Stub | Adapter exists but untested. Community feedback welcome. |
 - **Armor penalty** - Xanathar's sleeping-in-armor rule. Warns players before they commit.
 
 ## Short rest

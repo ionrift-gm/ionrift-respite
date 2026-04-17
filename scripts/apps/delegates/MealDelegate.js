@@ -289,15 +289,20 @@ export class MealDelegate {
                 if (r.starvationExhaustion > 0) {
                     const actor = game.actors.get(r.characterId);
                     if (actor) {
-                        const current = actor.system?.attributes?.exhaustion ?? 0;
-                        const newLevel = Math.min(6, current + r.starvationExhaustion);
-                        if (newLevel > current) {
-                            await actor.update({ "system.attributes.exhaustion": newLevel });
-                            await ChatMessage.create({
+                        const adapter = game.ionrift?.respite?.adapter;
+                        if (adapter) {
+                            await adapter.applyExhaustionDelta(actor, r.starvationExhaustion);
+                        } else {
+                            const current = actor.system?.attributes?.exhaustion ?? 0;
+                            const newLevel = Math.min(6, current + r.starvationExhaustion);
+                            if (newLevel > current) {
+                                await actor.update({ "system.attributes.exhaustion": newLevel });
+                            }
+                        }
+                        await ChatMessage.create({
                                 content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.starvationExhaustion}</strong> level${r.starvationExhaustion > 1 ? "s" : ""} of exhaustion from starvation.</div>`,
                                 speaker: ChatMessage.getSpeaker({ actor })
                             });
-                        }
                         app._pendingDehydrationSaves.push({
                             characterId: r.characterId,
                             actorName: r.actorName,
@@ -316,10 +321,15 @@ export class MealDelegate {
                 if (r.dehydrationAutoFail) {
                     const actor = game.actors.get(r.characterId);
                     if (actor) {
-                        const current = actor.system?.attributes?.exhaustion ?? 0;
-                        const newLevel = Math.min(6, current + 1);
-                        if (newLevel > current) {
-                            await actor.update({ "system.attributes.exhaustion": newLevel });
+                        const adapter = game.ionrift?.respite?.adapter;
+                        if (adapter) {
+                            await adapter.applyExhaustionDelta(actor, 1);
+                        } else {
+                            const current = actor.system?.attributes?.exhaustion ?? 0;
+                            const newLevel = Math.min(6, current + 1);
+                            if (newLevel > current) {
+                                await actor.update({ "system.attributes.exhaustion": newLevel });
+                            }
                         }
                         const restsSinceWater = actor.getFlag("ionrift-respite", "restsSinceWater") ?? 0;
                         await ChatMessage.create({
@@ -373,10 +383,15 @@ export class MealDelegate {
                             await game.dice3d.showForRoll(roll, game.user, true);
                         }
                         if (!passed) {
-                            const current = actor.system?.attributes?.exhaustion ?? 0;
-                            const newLevel = Math.min(6, current + 1);
-                            if (newLevel > current) {
-                                await actor.update({ "system.attributes.exhaustion": newLevel });
+                            const adapter = game.ionrift?.respite?.adapter;
+                            if (adapter) {
+                                await adapter.applyExhaustionDelta(actor, 1);
+                            } else {
+                                const current = actor.system?.attributes?.exhaustion ?? 0;
+                                const newLevel = Math.min(6, current + 1);
+                                if (newLevel > current) {
+                                    await actor.update({ "system.attributes.exhaustion": newLevel });
+                                }
                             }
                             await ChatMessage.create({
                                 content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> fails the CON save (${total} vs DC ${r.dehydrationSaveDC}) and gains 1 level of exhaustion from dehydration.</div>`,
@@ -464,10 +479,15 @@ export class MealDelegate {
         for (const save of unresolved) {
             const actor = game.actors.get(save.characterId);
             if (actor) {
-                const current = actor.system?.attributes?.exhaustion ?? 0;
-                const newLevel = Math.min(6, current + 1);
-                if (newLevel > current) {
-                    await actor.update({ "system.attributes.exhaustion": newLevel });
+                const adapter = game.ionrift?.respite?.adapter;
+                if (adapter) {
+                    await adapter.applyExhaustionDelta(actor, 1);
+                } else {
+                    const current = actor.system?.attributes?.exhaustion ?? 0;
+                    const newLevel = Math.min(6, current + 1);
+                    if (newLevel > current) {
+                        await actor.update({ "system.attributes.exhaustion": newLevel });
+                    }
                 }
                 await ChatMessage.create({
                     content: `<div class="respite-recovery-chat"><strong>${save.actorName}</strong> fails the CON save (skipped by GM) and gains 1 level of exhaustion from dehydration.</div>`,
@@ -604,10 +624,15 @@ export class MealDelegate {
         const actor = game.actors.get(characterId);
 
         if (!passed && actor) {
-            const current = actor.system?.attributes?.exhaustion ?? 0;
-            const newLevel = Math.min(6, current + 1);
-            if (newLevel > current) {
-                await actor.update({ "system.attributes.exhaustion": newLevel });
+            const adapter = game.ionrift?.respite?.adapter;
+            if (adapter) {
+                await adapter.applyExhaustionDelta(actor, 1);
+            } else {
+                const current = actor.system?.attributes?.exhaustion ?? 0;
+                const newLevel = Math.min(6, current + 1);
+                if (newLevel > current) {
+                    await actor.update({ "system.attributes.exhaustion": newLevel });
+                }
             }
             await ChatMessage.create({
                 content: `<div class="respite-recovery-chat"><strong>${actorName}</strong> fails the CON save (${total} vs DC ${dc}) and gains 1 level of exhaustion from dehydration.</div>`,
