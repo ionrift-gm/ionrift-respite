@@ -427,7 +427,40 @@
     margin-bottom: 0.1rem;
 }
 
-/* Scouting block: visually separated from weather/comfort */
+.scouting-toggle-block {
+    margin-top: 0.4rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.scouting-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+}
+
+.scouting-toggle-label input[type="checkbox"] {
+    accent-color: rgba(155, 89, 182, 0.8);
+}
+
+.scouting-toggle-label i {
+    color: rgba(180, 140, 255, 0.5);
+    font-size: 0.65rem;
+}
+
+.scouting-toggle-hint {
+    display: block;
+    margin-top: 0.15rem;
+    margin-left: 1.5rem;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.3);
+    line-height: 1.3;
+}
+
+/* Scouting block (legacy): visually separated from weather/comfort */
 .scouting-block {
     margin-top: 0.4rem;
     padding-top: 0.4rem;
@@ -9763,5 +9796,1715 @@
 .sr-roll-song-addon {
     color: rgba(180, 220, 160, 0.95);
     font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DIET CONFIGURATION APP
+   ═══════════════════════════════════════════════════════════ */
+
+/* Diet Config — the window-body must constrain so children can scroll */
+#respite-diet-config .window-body {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.respite-diet-config {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.25rem;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Summary bar */
+.diet-summary-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.65rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.diet-summary-count {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.diet-summary-count strong {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.85rem;
+}
+
+.diet-summary-count i {
+    margin-right: 0.3rem;
+    color: rgba(100, 180, 255, 0.6);
+}
+
+.diet-summary-hint {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.35);
+    font-style: italic;
+}
+
+/* Actor list — flex-fills remaining space so overflow-y actually triggers */
+.diet-actor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 0.15rem;
+    scrollbar-color: #6d28d9 rgba(0, 0, 0, 0.4);
+    scrollbar-width: thin;
+}
+
+/* Actor card */
+.diet-actor-card {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.15s;
+    flex-shrink: 0;
+}
+
+.diet-actor-card:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.diet-actor-card.expanded {
+    border-color: rgba(155, 89, 182, 0.25);
+}
+
+/* Card header row */
+.diet-actor-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+}
+
+.diet-actor-portrait {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+}
+
+.diet-actor-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.diet-actor-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.diet-actor-label {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+/* Preset dropdown */
+.diet-preset-select {
+    width: 140px;
+    flex-shrink: 0;
+    padding: 0.25rem 0.4rem;
+    font-size: 0.72rem;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+}
+
+.diet-preset-select:focus {
+    outline: none;
+    border-color: rgba(155, 89, 182, 0.4);
+}
+
+/* Expand button */
+.diet-expand-btn {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    color: rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    font-size: 0.65rem;
+    transition: all 0.15s;
+}
+
+.diet-expand-btn:hover {
+    background: rgba(0, 0, 0, 0.35);
+    color: rgba(255, 255, 255, 0.7);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Detail panel (expanded state) */
+.diet-detail-panel {
+    padding: 0.5rem 0.65rem 0.6rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.diet-field-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.diet-field-row > label,
+.diet-field-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.45);
+    letter-spacing: 0.02em;
+}
+
+/* Checkbox tag groups (canEat, canDrink) */
+.diet-tag-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.diet-tag-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.55rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+    position: relative;
+}
+
+.diet-tag-label.active {
+    background: rgba(155, 89, 182, 0.1);
+    border-color: rgba(155, 89, 182, 0.25);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.diet-tag-label:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.diet-tag-label.active:hover {
+    background: rgba(155, 89, 182, 0.15);
+}
+
+/* Hide native checkbox, use custom indicator */
+.diet-tag-label input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.diet-tag-check {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+    transition: all 0.15s;
+    position: relative;
+}
+
+.diet-tag-label.active .diet-tag-check {
+    background: var(--ionrift-accent, #9b59b6);
+    border-color: var(--ionrift-accent, #9b59b6);
+}
+
+.diet-tag-label.active .diet-tag-check::after {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 0.5px;
+    width: 4px;
+    height: 7px;
+    border: solid #fff;
+    border-width: 0 1.5px 1.5px 0;
+    transform: rotate(45deg);
+}
+
+.diet-tag-text {
+    line-height: 1;
+}
+
+/* Text inputs (comma-separated lists) */
+.diet-text-input {
+    width: 100%;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.72rem;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.diet-text-input::placeholder {
+    color: rgba(255, 255, 255, 0.2);
+    font-style: italic;
+}
+
+.diet-text-input:focus {
+    outline: none;
+    border-color: rgba(155, 89, 182, 0.4);
+}
+
+/* Custom items section */
+.diet-custom-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding-top: 0.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.diet-show-custom-btn {
+    align-self: flex-start;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.62rem;
+    border-radius: 4px;
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.diet-show-custom-btn:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.diet-show-custom-btn i {
+    margin-right: 0.2rem;
+    font-size: 0.55rem;
+}
+
+/* Sustenance toggle row */
+/* (sustenance row/select removed — preset drives sustenance type) */
+
+.diet-sustenance-hint {
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+    flex: 1;
+}
+
+/* Essence section for non-biological characters */
+.diet-essence-section {
+    padding: 0.15rem 0;
+}
+
+.diet-essence-section .diet-field-label i {
+    color: rgba(230, 176, 50, 0.8);
+    margin-right: 0.25rem;
+}
+
+.diet-essence-hint {
+    display: block;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+    padding: 0.15rem 0 0;
+}
+
+.diet-essence-icon {
+    color: rgba(230, 176, 50, 0.7);
+    font-size: 0.6rem;
+    margin-left: 0.2rem;
+}
+
+/* Balance warning dialog */
+.diet-balance-warning {
+    padding: 0.5rem;
+    line-height: 1.5;
+}
+
+.diet-balance-warning p {
+    margin: 0 0 0.6rem;
+}
+
+.diet-balance-warning i.fa-exclamation-triangle {
+    color: #f39c12;
+    margin-right: 0.4rem;
+}
+
+/* Save button */
+.diet-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.5rem 0.4rem 0.4rem;
+    margin-top: 0.15rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    flex-shrink: 0;
+}
+
+.diet-save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 1rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid rgba(155, 89, 182, 0.35);
+    background: rgba(155, 89, 182, 0.15);
+    color: rgba(155, 89, 182, 0.9);
+}
+
+.diet-save-btn:hover {
+    background: rgba(155, 89, 182, 0.25);
+    border-color: rgba(155, 89, 182, 0.5);
+    box-shadow: 0 0 10px rgba(155, 89, 182, 0.15);
+}
+
+.diet-save-btn i {
+    font-size: 0.7rem;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TRAVEL RESOLUTION PHASE
+   ═══════════════════════════════════════════════════════════ */
+
+.respite-travel-phase {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem 0.5rem;
+}
+
+.travel-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.travel-header i {
+    color: rgba(155, 89, 182, 0.7);
+}
+
+.travel-day-tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.travel-day-tab {
+    flex: 1;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.travel-day-tab:hover {
+    background: rgba(155, 89, 182, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.travel-day-tab.active {
+    background: rgba(155, 89, 182, 0.15);
+    border-color: rgba(155, 89, 182, 0.3);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.travel-day-tab.resolved {
+    color: rgba(100, 200, 100, 0.6);
+}
+
+.travel-day-tab.resolved.active {
+    color: rgba(100, 200, 100, 0.8);
+}
+
+.travel-day-tab i {
+    font-size: 0.55rem;
+    margin-left: 0.15rem;
+}
+
+.travel-scout-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.5rem;
+    margin-bottom: 0.4rem;
+    font-size: 0.65rem;
+    color: rgba(100, 180, 255, 0.7);
+    background: rgba(100, 180, 255, 0.06);
+    border: 1px solid rgba(100, 180, 255, 0.1);
+    border-radius: 4px;
+}
+
+.travel-day-resolved-label {
+    font-size: 0.7rem;
+    color: rgba(100, 200, 100, 0.6);
+}
+
+.travel-day-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 0.3rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.travel-global-actions {
+    margin-top: 0.3rem;
+    padding-top: 0.3rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.travel-result.scout {
+    color: rgba(100, 180, 255, 0.8);
+}
+
+.travel-result.other {
+    color: rgba(200, 200, 200, 0.6);
+    font-size: 0.65rem;
+}
+
+/* ── GM Scouting Debrief Panel ── */
+
+.travel-scouting-debrief {
+    margin-top: 0.4rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    background: rgba(100, 180, 255, 0.06);
+    border: 1px solid rgba(100, 180, 255, 0.12);
+    max-height: 12rem;
+    overflow-y: auto;
+}
+
+.travel-scouting-debrief.nat1 {
+    background: rgba(255, 80, 80, 0.06);
+    border-color: rgba(255, 80, 80, 0.15);
+}
+
+.travel-scouting-debrief.nat20 {
+    background: rgba(100, 255, 100, 0.06);
+    border-color: rgba(100, 255, 100, 0.12);
+}
+
+.travel-scouting-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.travel-scouting-header i {
+    color: rgba(100, 180, 255, 0.7);
+}
+
+.nat1 .travel-scouting-header i {
+    color: rgba(255, 80, 80, 0.7);
+}
+
+.scouting-effect {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.3rem;
+    background: rgba(100, 200, 100, 0.1);
+    border-radius: 3px;
+    color: rgba(100, 200, 100, 0.7);
+}
+
+.travel-scouting-narrative {
+    margin-top: 0.3rem;
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.4;
+    padding-left: 0.3rem;
+    border-left: 2px solid rgba(100, 180, 255, 0.15);
+}
+
+.nat1 .travel-scouting-narrative {
+    border-left-color: rgba(255, 80, 80, 0.15);
+}
+
+.travel-scouting-gm-hint {
+    margin-top: 0.3rem;
+    font-size: 0.62rem;
+    color: rgba(255, 200, 50, 0.7);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.travel-scouting-gm-hint.danger {
+    color: rgba(255, 80, 80, 0.8);
+    font-weight: 600;
+}
+
+/* ── Player Debrief ── */
+
+.travel-debrief-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: 0.3rem;
+    max-height: 14rem;
+    overflow-y: auto;
+}
+
+.travel-debrief-entry {
+    padding: 0.4rem 0.5rem;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.travel-debrief-entry.success {
+    border-left: 3px solid rgba(100, 200, 100, 0.4);
+}
+
+.travel-debrief-entry.nat20 {
+    border-left: 3px solid rgba(255, 215, 0, 0.5);
+    background: rgba(255, 215, 0, 0.03);
+}
+
+.travel-debrief-entry.nat1 {
+    border-left: 3px solid rgba(255, 80, 80, 0.4);
+    background: rgba(255, 80, 80, 0.03);
+}
+
+.travel-debrief-entry.failure {
+    border-left: 3px solid rgba(255, 255, 255, 0.1);
+}
+
+.travel-debrief-header {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.travel-debrief-header i {
+    font-size: 0.6rem;
+}
+
+.debrief-activity {
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.debrief-total {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.3);
+    margin-left: auto;
+}
+
+.travel-debrief-items {
+    margin-top: 0.2rem;
+    padding-left: 0.3rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+}
+
+.travel-debrief-mishap {
+    margin-top: 0.2rem;
+    font-size: 0.62rem;
+    color: rgba(255, 120, 50, 0.7);
+}
+
+.travel-debrief-nothing {
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+    margin-top: 0.1rem;
+}
+
+.travel-player-scout-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.68rem;
+    color: rgba(100, 180, 255, 0.6);
+    background: rgba(100, 180, 255, 0.04);
+    border: 1px solid rgba(100, 180, 255, 0.08);
+    border-radius: 4px;
+}
+
+.travel-waiting-gm {
+    margin-top: 0.3rem;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+/* ── Player Hero Card (owned characters) ── */
+
+.travel-hero-card {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    margin-bottom: 0.3rem;
+    background: rgba(155, 89, 182, 0.06);
+    border: 1px solid rgba(155, 89, 182, 0.12);
+    border-radius: 6px;
+}
+
+.travel-hero-portrait {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(155, 89, 182, 0.25);
+    flex-shrink: 0;
+}
+
+.travel-hero-card.confirmed {
+    border-color: rgba(100, 200, 100, 0.2);
+    background: rgba(100, 200, 100, 0.04);
+}
+
+.travel-hero-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.travel-hero-name {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Confirm button & confirmed label ── */
+
+.travel-confirm-btn {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border: 1px solid rgba(100, 200, 100, 0.25);
+    border-radius: 4px;
+    background: rgba(100, 200, 100, 0.08);
+    color: rgba(100, 200, 100, 0.7);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    font-size: 0.65rem;
+}
+
+.travel-confirm-btn:hover {
+    background: rgba(100, 200, 100, 0.15);
+    border-color: rgba(100, 200, 100, 0.4);
+    color: rgba(100, 200, 100, 0.9);
+}
+
+.travel-confirmed-label {
+    font-size: 0.65rem;
+    color: rgba(100, 200, 100, 0.7);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    background: rgba(100, 200, 100, 0.06);
+    border: 1px solid rgba(100, 200, 100, 0.12);
+    white-space: nowrap;
+}
+
+.travel-confirmed-label i {
+    font-size: 0.55rem;
+}
+
+.travel-confirmed-icon {
+    color: rgba(100, 200, 100, 0.5);
+    font-size: 0.5rem;
+    margin-left: 0.2rem;
+}
+
+.travel-grid-confirmed-icon {
+    color: rgba(100, 200, 100, 0.5);
+    font-size: 0.45rem;
+    margin-right: 0.1rem;
+}
+
+.travel-grid-card.confirmed {
+    border-color: rgba(100, 200, 100, 0.1);
+}
+
+.travel-character-row.player-confirmed {
+    border-left: 2px solid rgba(100, 200, 100, 0.25);
+}
+
+/* ── Party Grid (other characters, compact) ── */
+
+.travel-party-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 0.25rem;
+    margin-top: 0.3rem;
+}
+
+.travel-grid-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.3rem 0.2rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 4px;
+    transition: border-color 0.15s;
+}
+
+.travel-grid-card:hover {
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.travel-grid-portrait {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.travel-grid-name {
+    font-size: 0.55rem;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80px;
+}
+
+.travel-grid-activity {
+    font-size: 0.55rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.travel-grid-activity.idle {
+    opacity: 0.3;
+}
+
+.travel-grid-activity i.fa-seedling { color: rgba(100, 200, 100, 0.6); }
+.travel-grid-activity i.fa-crosshairs { color: rgba(255, 150, 50, 0.6); }
+.travel-grid-activity i.fa-binoculars { color: rgba(100, 180, 255, 0.6); }
+
+/* ── Scout Roster in GM Debrief ── */
+
+.travel-scout-roster {
+    margin-top: 0.3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.travel-scout-roster.multi {
+    max-height: 7rem;
+    overflow-y: auto;
+}
+
+.travel-scout-entry {
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    padding: 0.2rem 0.3rem;
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 3px;
+}
+
+.travel-scout-entry.best {
+    background: rgba(100, 180, 255, 0.06);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.scout-name {
+    font-weight: 600;
+}
+
+.scout-total {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.6rem;
+}
+
+.scout-best-badge {
+    font-size: 0.55rem;
+    color: rgba(255, 215, 0, 0.8);
+    font-weight: 600;
+}
+
+.scout-narrative {
+    width: 100%;
+    margin-top: 0.1rem;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.4);
+    line-height: 1.3;
+    padding-left: 0.2rem;
+    border-left: 2px solid rgba(100, 180, 255, 0.1);
+}
+
+.travel-scout-entry.best .scout-narrative {
+    border-left-color: rgba(100, 180, 255, 0.2);
+}
+
+/* ── Responsive scrolling for tall content ── */
+
+.travel-character-list {
+    max-height: 20rem;
+    overflow-y: auto;
+}
+
+.travel-no-options {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.6rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+}
+
+.travel-dc-bar {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.travel-dc-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.68rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.travel-last-hint {
+    font-size: 0.6rem;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.25);
+    font-style: italic;
+}
+
+.travel-dc-chip > i:first-child {
+    font-size: 0.6rem;
+    color: rgba(100, 180, 255, 0.6);
+}
+
+.travel-dc-chip .encounter-gm-adj {
+    margin-left: 0.15rem;
+}
+
+.travel-dc-chip .encounter-chip {
+    margin-left: 0.2rem;
+}
+
+.travel-character-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.travel-character-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    transition: all 0.15s;
+}
+
+.travel-character-row:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.travel-character-row.resolved {
+    border-color: rgba(155, 89, 182, 0.2);
+}
+
+.travel-portrait {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+
+.travel-char-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.travel-char-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.travel-char-mod {
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.travel-activity-select {
+    width: 110px;
+    flex-shrink: 0;
+    padding: 0.25rem 0.4rem;
+    font-size: 0.72rem;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+}
+
+.travel-activity-select:focus {
+    outline: none;
+    border-color: rgba(155, 89, 182, 0.4);
+}
+
+.travel-result {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.travel-result.success {
+    color: rgba(139, 195, 74, 0.9);
+    background: rgba(139, 195, 74, 0.1);
+    border: 1px solid rgba(139, 195, 74, 0.2);
+}
+
+.travel-result.nat20 {
+    color: rgba(76, 175, 80, 1);
+    background: rgba(76, 175, 80, 0.15);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    text-shadow: 0 0 6px rgba(76, 175, 80, 0.3);
+}
+
+.travel-result.failure {
+    color: rgba(255, 152, 0, 0.8);
+    background: rgba(255, 152, 0, 0.08);
+    border: 1px solid rgba(255, 152, 0, 0.15);
+}
+
+.travel-result.nat1 {
+    color: rgba(244, 67, 54, 0.9);
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid rgba(244, 67, 54, 0.2);
+}
+
+.travel-roll-total {
+    font-weight: 400;
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.travel-items-gained {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.15rem 0.5rem 0.3rem 2.8rem;
+}
+
+.travel-item-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.15);
+    color: rgba(76, 175, 80, 0.8);
+}
+
+.travel-item-badge i {
+    font-size: 0.55rem;
+}
+
+.travel-mishap {
+    padding: 0.25rem 0.5rem 0.3rem 2.8rem;
+    font-size: 0.68rem;
+    color: rgba(244, 67, 54, 0.8);
+    font-style: italic;
+}
+
+.travel-mishap i {
+    margin-right: 0.2rem;
+}
+
+/* Disabled terrain state */
+.respite-travel-phase.travel-disabled {
+    opacity: 0.85;
+}
+
+.travel-disabled-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.8rem;
+    margin: 0.25rem 0;
+    background: rgba(255, 152, 0, 0.06);
+    border: 1px solid rgba(255, 152, 0, 0.15);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: rgba(255, 200, 100, 0.7);
+}
+
+.travel-disabled-notice i {
+    color: rgba(255, 152, 0, 0.5);
+    font-size: 0.8rem;
+    flex-shrink: 0;
+    margin-left: 0.15rem;
+}
+
+.travel-row-disabled {
+    opacity: 0.45;
+}
+
+.travel-activity-disabled {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.25);
+    padding-right: 0.3rem;
+}
+
+/* Locked activity label (after roll requests sent) */
+.travel-locked-label {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+}
+
+.travel-locked-label i {
+    margin-right: 0.15rem;
+    font-size: 0.6rem;
+}
+
+/* Inline custom DC for "Other" characters */
+.travel-other-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    margin-left: 0.3rem;
+}
+
+.travel-other-dc-input {
+    width: 2.2rem;
+    padding: 0.1rem 0.2rem;
+    font-size: 0.6rem;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 3px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.travel-other-dc-input:focus {
+    border-color: rgba(155, 89, 182, 0.4);
+    outline: none;
+}
+
+.travel-other-send-btn {
+    padding: 0.1rem 0.3rem;
+    font-size: 0.6rem;
+    background: rgba(155, 89, 182, 0.15);
+    border: 1px solid rgba(155, 89, 182, 0.25);
+    border-radius: 3px;
+    color: rgba(155, 89, 182, 0.8);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.travel-other-send-btn:hover {
+    background: rgba(155, 89, 182, 0.25);
+}
+
+.travel-other-roll-btn {
+    padding: 0.1rem 0.3rem;
+    font-size: 0.6rem;
+    background: rgba(100, 200, 100, 0.1);
+    border: 1px solid rgba(100, 200, 100, 0.2);
+    border-radius: 3px;
+    color: rgba(100, 200, 100, 0.7);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.travel-other-roll-btn:hover {
+    background: rgba(100, 200, 100, 0.2);
+}
+
+.travel-other-dc-badge {
+    font-size: 0.6rem;
+    color: rgba(155, 89, 182, 0.6);
+    font-style: italic;
+}
+
+/* GM: pending label */
+.travel-pending-label {
+    font-size: 0.7rem;
+    color: rgba(155, 89, 182, 0.7);
+    white-space: nowrap;
+}
+
+/* GM: roll-for-player button */
+.travel-fallback {
+    padding: 0.15rem 0.3rem;
+    font-size: 0.65rem;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.travel-fallback:hover {
+    border-color: rgba(155, 89, 182, 0.4);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* GM: waiting label in action bar */
+.travel-waiting-label {
+    font-size: 0.72rem;
+    color: rgba(155, 89, 182, 0.6);
+    font-style: italic;
+}
+
+/* Player view */
+.travel-player-view {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.travel-player-info {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+}
+
+.travel-player-info i {
+    color: rgba(155, 89, 182, 0.5);
+}
+
+.travel-roll-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.travel-roll-prompt {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(155, 89, 182, 0.2);
+    border-radius: 6px;
+}
+
+.travel-roll-prompt.rolled {
+    opacity: 0.6;
+}
+
+.travel-roll-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.travel-roll-info strong {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.travel-roll-skill {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.travel-roll-result {
+    font-size: 0.72rem;
+    color: rgba(155, 89, 182, 0.7);
+}
+
+.btn-travel-roll {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.72rem;
+    flex-shrink: 0;
+}
+
+.travel-player-select {
+    width: 110px;
+    flex-shrink: 0;
+    padding: 0.25rem 0.4rem;
+    font-size: 0.72rem;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+}
+
+.travel-player-select:focus {
+    outline: none;
+    border-color: rgba(155, 89, 182, 0.4);
+}
+
+.travel-row-other {
+    opacity: 0.6;
+}
+
+.travel-other-choice {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: rgba(155, 89, 182, 0.8);
+    background: rgba(155, 89, 182, 0.08);
+    border: 1px solid rgba(155, 89, 182, 0.15);
+    flex-shrink: 0;
+}
+
+.travel-other-choice.idle {
+    color: rgba(255, 255, 255, 0.25);
+    background: none;
+    border-color: transparent;
+}
+
+.travel-other-choice i {
+    font-size: 0.6rem;
+}
+
+/* ---- Monster Cooking: Butcher Prompt Card ---- */
+
+.respite-butcher-card {
+    background: linear-gradient(135deg, rgba(20, 12, 28, 0.95), rgba(30, 18, 40, 0.95));
+    border: 1px solid rgba(155, 89, 182, 0.3);
+    border-radius: 8px;
+    padding: 0.8rem;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.8rem;
+}
+
+.respite-butcher-card.result {
+    border-color: rgba(212, 175, 55, 0.4);
+}
+
+.butcher-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+}
+
+.butcher-creature-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    border: 1px solid rgba(155, 89, 182, 0.3);
+    object-fit: cover;
+}
+
+.butcher-card-title h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.butcher-tier {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    margin-top: 0.15rem;
+}
+
+.butcher-tier.tier-common {
+    color: rgba(200, 200, 200, 0.9);
+    background: rgba(200, 200, 200, 0.1);
+}
+
+.butcher-tier.tier-uncommon {
+    color: rgba(46, 204, 113, 0.9);
+    background: rgba(46, 204, 113, 0.1);
+}
+
+.butcher-tier.tier-rare {
+    color: rgba(52, 152, 219, 0.9);
+    background: rgba(52, 152, 219, 0.1);
+}
+
+.butcher-tier.tier-legendary {
+    color: rgba(212, 175, 55, 0.9);
+    background: rgba(212, 175, 55, 0.15);
+}
+
+.butcher-flavour {
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.55);
+    margin: 0.4rem 0;
+    font-size: 0.75rem;
+    line-height: 1.3;
+}
+
+.butcher-card-info {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 0.4rem;
+}
+
+.butcher-card-info strong {
+    color: rgba(155, 89, 182, 0.8);
+}
+
+.butcher-holders {
+    font-size: 0.72rem;
+    color: rgba(155, 89, 182, 0.7);
+    margin: 0.3rem 0;
+}
+
+.butcher-holders i {
+    margin-right: 0.25rem;
+}
+
+.butcher-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.btn-butcher {
+    flex: 1;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid rgba(155, 89, 182, 0.4);
+    background: rgba(155, 89, 182, 0.15);
+    color: rgba(200, 160, 220, 0.95);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-butcher:hover:not(:disabled) {
+    background: rgba(155, 89, 182, 0.25);
+    border-color: rgba(155, 89, 182, 0.6);
+}
+
+.btn-butcher:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-butcher-pass {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.78rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.5);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.btn-butcher-pass:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.butcher-passed {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.35);
+    font-style: italic;
+}
+
+/* Butcher result card */
+
+.butcher-result-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.4rem 0;
+    font-size: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.butcher-who {
+    color: rgba(155, 89, 182, 0.7);
+}
+
+.butcher-roll {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.butcher-roll strong {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.butcher-outcome {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+}
+
+.butcher-outcome.outcome-nat20 {
+    color: rgba(212, 175, 55, 1);
+    background: rgba(212, 175, 55, 0.15);
+}
+
+.butcher-outcome.outcome-nat1 {
+    color: rgba(231, 76, 60, 0.9);
+    background: rgba(231, 76, 60, 0.12);
+}
+
+.butcher-outcome.outcome-exceptional {
+    color: rgba(52, 152, 219, 0.9);
+    background: rgba(52, 152, 219, 0.1);
+}
+
+.butcher-outcome.outcome-standard {
+    color: rgba(46, 204, 113, 0.9);
+    background: rgba(46, 204, 113, 0.1);
+}
+
+.butcher-outcome.outcome-basic {
+    color: rgba(200, 200, 200, 0.7);
+    background: rgba(200, 200, 200, 0.08);
+}
+
+.butcher-yields {
+    list-style: none;
+    padding: 0;
+    margin: 0.3rem 0;
+}
+
+.butcher-yields li {
+    padding: 0.15rem 0;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.butcher-yields li::before {
+    content: "\f6d6";
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    margin-right: 0.4rem;
+    font-size: 0.6rem;
+    color: rgba(155, 89, 182, 0.5);
+}
+
+.butcher-yields .loot-tag {
+    font-size: 0.6rem;
+    color: rgba(212, 175, 55, 0.7);
+    background: rgba(212, 175, 55, 0.1);
+    padding: 0 0.3rem;
+    border-radius: 2px;
+    margin-left: 0.25rem;
+}
+
+.butcher-mishap {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    padding: 0.4rem 0.5rem;
+    margin-top: 0.4rem;
+    background: rgba(231, 76, 60, 0.08);
+    border: 1px solid rgba(231, 76, 60, 0.2);
+    border-radius: 5px;
+    font-size: 0.72rem;
+    color: rgba(231, 76, 60, 0.85);
+}
+
+.butcher-mishap i {
+    margin-top: 0.1rem;
+    flex-shrink: 0;
+}
+
+.mishap-damage {
+    display: block;
+    font-weight: 600;
+    margin-top: 0.15rem;
+}
+
+/* ---- Monster Cooking Splash Card ---- */
+
+.respite-monster-cooking-splash {
+    background: linear-gradient(135deg, rgba(20, 12, 28, 0.98), rgba(45, 25, 60, 0.95));
+    border: 2px solid rgba(212, 175, 55, 0.4);
+    border-radius: 10px;
+    padding: 0;
+    overflow: hidden;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.splash-banner {
+    width: 100%;
+    height: 120px;
+    overflow: hidden;
+    position: relative;
+    background: linear-gradient(180deg, rgba(155, 89, 182, 0.15), rgba(212, 175, 55, 0.1));
+}
+
+.splash-dish-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid rgba(212, 175, 55, 0.5);
+    object-fit: cover;
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20, 12, 28, 0.9);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.splash-title {
+    text-align: center;
+    margin: 1.2rem 0.8rem 0.3rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.splash-title.rarity-common { color: rgba(200, 200, 200, 0.95); }
+.splash-title.rarity-uncommon { color: rgba(46, 204, 113, 0.95); }
+.splash-title.rarity-rare { color: rgba(52, 152, 219, 0.95); }
+.splash-title.rarity-very.rare { color: rgba(155, 89, 182, 0.95); }
+.splash-title.rarity-legendary { color: rgba(212, 175, 55, 0.95); }
+
+.splash-cook {
+    text-align: center;
+    font-size: 0.75rem;
+    color: rgba(155, 89, 182, 0.7);
+    margin: 0 0 0.5rem;
+}
+
+.splash-cook strong {
+    color: rgba(155, 89, 182, 0.9);
+}
+
+.splash-ingredients {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.3rem;
+    padding: 0 0.8rem;
+    margin-bottom: 0.5rem;
+}
+
+.splash-ingredient {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.5rem;
+    background: rgba(155, 89, 182, 0.1);
+    border: 1px solid rgba(155, 89, 182, 0.2);
+    border-radius: 3px;
+    color: rgba(200, 160, 220, 0.8);
+}
+
+.splash-description {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.75);
+    line-height: 1.4;
+    margin: 0;
+}
+
+.splash-narrative {
+    padding: 0.4rem 0.8rem 0.8rem;
+    font-size: 0.72rem;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.3;
+    margin: 0;
 }
 

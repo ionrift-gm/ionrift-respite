@@ -7,7 +7,10 @@
     <div class="respite-phase-header">
         <div class="phase-indicator">
             <div
-                class="phase-dot {{#if (eq phase 'setup')}}active{{/if}} {{#if (or (eq phase 'activity') (eq phase 'meal') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+                class="phase-dot {{#if (eq phase 'setup')}}active{{/if}} {{#if (or (eq phase 'travel') (eq phase 'activity') (eq phase 'meal') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+            </div>
+            <div
+                class="phase-dot {{#if (eq phase 'travel')}}active{{/if}} {{#if (or (eq phase 'activity') (eq phase 'meal') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
             </div>
             <div
                 class="phase-dot {{#if (eq phase 'activity')}}active{{/if}} {{#if (or (eq phase 'meal') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
@@ -24,6 +27,7 @@
         </div>
         <span class="phase-label">
             {{#if (eq phase 'setup')}}Setup{{/if}}
+            {{#if (eq phase 'travel')}}Travel{{/if}}
             {{#if (eq phase 'activity')}}Activities ({{resolvedCount}}/{{totalCharacters}}){{/if}}
             {{#if (eq phase 'meal')}}Rations{{/if}}
             {{#if (eq phase 'reflection')}}Campfire{{/if}}
@@ -253,36 +257,13 @@
                     </div>
                 </div>
                 {{#if scoutingAvailable}}
-                <div class="scouting-block">
-                    <div class="scouting-guidance">
+                <div class="scouting-toggle-block">
+                    <label class="scouting-toggle-label">
+                        <input type="checkbox" name="scoutingAllowed" {{#if scoutingAllowed}}checked{{/if}} />
                         <i class="fas fa-binoculars"></i>
-                        <span>Ask the party who is scouting for a campsite and how they approach it. Set the result below based on their roll.</span>
-                    </div>
-                    {{#if scoutTiers}}
-                    <div class="scouting-tiers">
-                        <span class="tier-label">{{scoutSkill}} check:</span>
-                        <span class="tier poor">Poor {{scoutTiers.poor}}</span>
-                        <span class="tier-sep">|</span>
-                        <span class="tier avg">Avg {{scoutTiers.average}}</span>
-                        <span class="tier-sep">|</span>
-                        <span class="tier good">Good {{scoutTiers.good}}</span>
-                    </div>
-                    {{/if}}
-                    {{#if scoutAdvantage}}
-                    <span class="scouting-advantage">{{scoutAdvantage}}</span>
-                    {{/if}}
-                    <div class="form-group">
-                        <label>Scouting Result</label>
-                        <select name="scouting">
-                            <option value="none" title="No scouting roll attempted.">Not Attempted</option>
-                            <option value="nat1" title="GM only: looks viable, but hidden complication. Revealed during events. Tell the player it looks fine.">Nat 1</option>
-                            <option value="poor" title="No comfort adjustment. Default site for this terrain.">Poor</option>
-                            <option value="average" title="Comfort +1 step. Found decent cover or natural shelter.">Average</option>
-                            <option value="good" title="Comfort +1 step. Encounter DC +1. Well-concealed position.">Good</option>
-                            <option value="nat20" title="Comfort +2 steps. Perfect campsite. Hidden, defensible.">Nat 20</option>
-                        </select>
-                        <span class="scouting-hint">No scouting roll attempted.</span>
-                    </div>
+                        <span>Allow scouting during travel</span>
+                    </label>
+                    <span class="scouting-toggle-hint">When enabled, characters can scout for a campsite on the final day of travel. Scouting affects comfort and encounter risk.</span>
                 </div>
                 {{/if}}
                 <div class="setup-preview">
@@ -383,6 +364,428 @@
         </div>
     </div>
     {{/if}}
+    {{/if}}
+
+    {{!-- =============== TRAVEL RESOLUTION PHASE =============== --}}
+    {{#if (eq phase 'travel')}}
+    <div class="phase-banner">
+        <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
+    </div>
+
+    {{#if travelContext}}
+    <div class="respite-travel-phase {{#unless travelContext.hasTravelOptions}}travel-disabled{{/unless}}">
+        {{#if isGM}}
+        <div class="travel-header">
+            <i class="fas fa-hiking"></i>
+            <span>Travel Resolution — {{travelContext.terrainLabel}}</span>
+        </div>
+        {{/if}}
+
+        {{#if travelContext.hasTravelOptions}}
+
+        {{!-- ═══ GM VIEW ═══ --}}
+        {{#if isGM}}
+        <div class="travel-dc-bar">
+            {{#if travelContext.canForage}}
+            <span class="travel-dc-chip">
+                <i class="fas fa-seedling"></i> Forage DC {{travelContext.forageDC}}
+                {{#if travelContext.forageGMAdj}}
+                <span class="encounter-chip"><i class="fas fa-wrench"></i> GM {{travelContext.forageGMAdj}}</span>
+                {{/if}}
+                <span class="encounter-gm-adj">
+                    <button type="button" class="encounter-adj-btn" data-action="adjustGlobalDC" data-activity="forage" data-delta="-1" title="Reduce Forage DC">−</button>
+                    <button type="button" class="encounter-adj-btn" data-action="adjustGlobalDC" data-activity="forage" data-delta="1" title="Increase Forage DC">+</button>
+                </span>
+            </span>
+            {{/if}}
+            {{#if travelContext.canHunt}}
+            <span class="travel-dc-chip">
+                <i class="fas fa-crosshairs"></i> Hunt DC {{travelContext.huntDC}}
+                {{#if travelContext.huntGMAdj}}
+                <span class="encounter-chip"><i class="fas fa-wrench"></i> GM {{travelContext.huntGMAdj}}</span>
+                {{/if}}
+                <span class="encounter-gm-adj">
+                    <button type="button" class="encounter-adj-btn" data-action="adjustGlobalDC" data-activity="hunt" data-delta="-1" title="Reduce Hunt DC">−</button>
+                    <button type="button" class="encounter-adj-btn" data-action="adjustGlobalDC" data-activity="hunt" data-delta="1" title="Increase Hunt DC">+</button>
+                </span>
+            </span>
+            {{/if}}
+        </div>
+
+        {{!-- Multi-day tabs --}}
+        {{#if travelContext.isMultiDay}}
+        <div class="travel-day-tabs">
+            {{#each travelContext.days}}
+            <button type="button" class="travel-day-tab {{#if isActive}}active{{/if}} {{#if resolved}}resolved{{/if}}" data-action="switchTravelDay" data-day="{{day}}">
+                {{#if resolved}}<i class="fas fa-check"></i>{{/if}}
+                Day {{day}}{{#if isFinalDay}} <i class="fas fa-campground" title="Arrival day — scouting available"></i>{{/if}}
+            </button>
+            {{/each}}
+        </div>
+        {{/if}}
+
+        {{!-- Active day content --}}
+        {{#each travelContext.days}}
+        {{#if isActive}}
+        <div class="travel-day-section" data-day="{{day}}">
+
+            {{#if isFinalDay}}
+            {{#if ../travelContext.canScout}}
+            <div class="travel-scout-notice">
+                <i class="fas fa-binoculars"></i> Arrival day — characters can scout for a campsite.
+            </div>
+            {{/if}}
+            {{/if}}
+
+            <div class="travel-character-list">
+                {{#each characters}}
+                <div class="travel-character-row {{#if (eq status 'resolved')}}resolved{{/if}} {{#if confirmed}}player-confirmed{{/if}}">
+                    <img class="travel-portrait" src="{{img}}" alt="{{name}}" />
+                    <div class="travel-char-info">
+                        <span class="travel-char-name">{{name}}{{#if lastActivity}} <span class="travel-last-hint">[{{lastActivity}}]</span>{{/if}}{{#if confirmed}} <i class="fas fa-check travel-confirmed-icon" title="Player locked in"></i>{{/if}}</span>
+                        <span class="travel-char-mod">Survival {{survivalMod}}</span>
+                    </div>
+
+                    {{#if result}}
+                    <div class="travel-result {{#if (eq result.activity 'other')}}other{{else if result.nat20}}nat20{{else if result.nat1}}nat1{{else if result.success}}success{{else if (eq result.activity 'scout')}}scout{{else}}failure{{/if}}">
+                        {{#if (eq result.activity 'other')}}<i class="fas fa-dice-d20"></i> {{result.total}} vs DC {{result.dc}} {{#if result.success}}✓{{else}}✗{{/if}}
+                        {{else if (eq result.activity 'scout')}}<i class="fas fa-binoculars"></i> Scouted ({{result.total}})
+                        {{else if result.nat20}}<i class="fas fa-star"></i> Nat 20!
+                        {{else if result.nat1}}<i class="fas fa-skull"></i> Nat 1!
+                        {{else if result.exceptional}}<i class="fas fa-award"></i> Exceptional
+                        {{else if result.success}}<i class="fas fa-check"></i> Success
+                        {{else}}<i class="fas fa-times"></i> Failed{{/if}}
+                        {{#unless (eq result.activity 'scout')}}{{#unless (eq result.activity 'other')}}<span class="travel-roll-total">({{result.total}})</span>{{/unless}}{{/unless}}
+                    </div>
+
+                    {{else if (eq status 'rolled')}}
+                    <span class="travel-result success"><i class="fas fa-check"></i> Rolled {{total}}</span>
+
+                    {{else if requested}}
+                    <span class="travel-pending-label"><i class="fas fa-paper-plane"></i> Sent</span>
+                    <button type="button" class="btn-roll-for-player travel-fallback" data-action="rollTravelForPlayer" data-actor-id="{{id}}" data-day="{{../day}}" title="Roll on their behalf">
+                        <i class="fas fa-dice"></i>
+                    </button>
+
+                    {{else}}
+                    {{#if ../locked}}
+                    {{!-- Locked: show fixed label --}}
+                    <span class="travel-locked-label">
+                        {{#if (eq activity 'forage')}}<i class="fas fa-seedling"></i> Forage
+                        {{else if (eq activity 'hunt')}}<i class="fas fa-crosshairs"></i> Hunt
+                        {{else if (eq activity 'scout')}}<i class="fas fa-binoculars"></i> Scout
+                        {{else}}🏕️ Other{{/if}}
+                    </span>
+                    {{#if (eq activity 'nothing')}}
+                    <span class="travel-other-inline" data-actor-id="{{id}}" data-day="{{../day}}">
+                        {{#if hasCustomRoll}}
+                        <span class="travel-other-dc-badge">DC {{customDC}}</span>
+                        <button type="button" class="btn-roll-for-player travel-fallback" data-action="rollTravelForPlayer" data-actor-id="{{id}}" data-day="{{../day}}" title="Roll on their behalf">
+                            <i class="fas fa-dice"></i>
+                        </button>
+                        {{else}}
+                        <input type="number" class="travel-other-dc-input" value="12" min="1" max="30" title="Custom DC" />
+                        <button type="button" class="travel-other-send-btn" data-action="requestOtherRoll" data-actor-id="{{id}}" data-day="{{../day}}" title="Send roll request to player">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                        <button type="button" class="btn-roll-for-player travel-other-roll-btn" data-action="rollTravelForPlayer" data-actor-id="{{id}}" data-day="{{../day}}" title="Set DC and roll on their behalf">
+                            <i class="fas fa-dice"></i>
+                        </button>
+                        {{/if}}
+                    </span>
+                    {{/if}}
+                    {{else}}
+                    <select class="travel-activity-select" data-actor-id="{{id}}" data-day="{{../day}}">
+                        <option value="nothing" {{#if (eq activity 'nothing')}}selected{{/if}}>🏕️ Other</option>
+                        {{#if ../../travelContext.canForage}}<option value="forage" {{#if (eq activity 'forage')}}selected{{/if}}>🌿 Forage</option>{{/if}}
+                        {{#if ../../travelContext.canHunt}}<option value="hunt" {{#if (eq activity 'hunt')}}selected{{/if}}>🎯 Hunt</option>{{/if}}
+                        {{#if ../canScout}}<option value="scout" {{#if (eq activity 'scout')}}selected{{/if}}>🔭 Scout</option>{{/if}}
+                    </select>
+                    {{/if}}
+                    {{/if}}
+                </div>
+
+                {{#if result.items.length}}
+                <div class="travel-items-gained">
+                    {{#each result.items}}
+                    <span class="travel-item-badge"><i class="fas fa-leaf"></i> {{quantity}}x {{itemData.name}}</span>
+                    {{/each}}
+                </div>
+                {{/if}}
+
+                {{#if result.mishap}}
+                <div class="travel-mishap">
+                    <i class="fas fa-exclamation-triangle"></i> {{result.mishap.description}}
+                </div>
+                {{/if}}
+                {{/each}}
+            </div>
+
+            {{!-- Day action bar --}}
+            <div class="respite-action-bar">
+                {{#if resolved}}
+                <span class="travel-day-resolved-label"><i class="fas fa-check"></i> Day {{day}} resolved</span>
+                {{else if allRollsIn}}
+                <button type="button" class="btn-primary" data-action="resolveTravelDay" data-day="{{day}}">
+                    <i class="fas fa-check"></i> Resolve Day {{day}}
+                </button>
+                {{else if anyRequested}}
+                <span class="travel-waiting-label"><i class="fas fa-hourglass-half"></i> Waiting for rolls...</span>
+                {{else if hasDeclarations}}
+                <button type="button" class="btn-primary" data-action="requestTravelRolls" data-day="{{day}}">
+                    <i class="fas fa-dice-d20"></i> Send Roll Requests ({{declarationCount}})
+                </button>
+                {{/if}}
+            </div>
+        </div>
+        {{/if}}
+        {{/each}}
+
+        {{!-- GM Scouting debrief panel --}}
+        {{#if scoutingDebrief}}
+        <div class="travel-scouting-debrief {{scoutingDebrief.tier}}">
+            <div class="travel-scouting-header">
+                <i class="fas fa-binoculars"></i>
+                <strong>Scouting: {{scoutingDebrief.tierLabel}}</strong>
+                {{#if scoutingDebrief.comfortBonus}}<span class="scouting-effect">Comfort +{{scoutingDebrief.comfortBonus}}</span>{{/if}}
+                {{#if scoutingDebrief.encounterDC}}<span class="scouting-effect">Encounter DC +{{scoutingDebrief.encounterDC}}</span>{{/if}}
+            </div>
+
+            {{!-- Scout roster --}}
+            <div class="travel-scout-roster {{#if scoutingDebrief.multipleScouts}}multi{{/if}}">
+                {{#each scoutingDebrief.scouts}}
+                <div class="travel-scout-entry {{#if isBest}}best{{/if}}">
+                    <span class="scout-name">{{actorName}}</span>
+                    <span class="scout-total">{{total}}</span>
+                    {{#if isBest}}<span class="scout-best-badge">★ Best</span>{{/if}}
+                    {{#if narrative}}
+                    <div class="scout-narrative"><em>"{{narrative}}"</em></div>
+                    {{/if}}
+                </div>
+                {{/each}}
+            </div>
+
+            {{#if scoutingDebrief.gmHint}}
+            <div class="travel-scouting-gm-hint">
+                <i class="fas fa-exclamation-triangle"></i> {{scoutingDebrief.gmHint}}
+            </div>
+            {{/if}}
+            {{#if scoutingDebrief.isNat1}}
+            <div class="travel-scouting-gm-hint danger">
+                <i class="fas fa-skull-crossbones"></i> A hidden complication will trigger during the event phase. The players believe this is a good campsite.
+            </div>
+            {{/if}}
+        </div>
+        {{/if}}
+
+        {{!-- Global travel action bar --}}
+        <div class="respite-action-bar travel-global-actions">
+            {{#if travelContext.fullyResolved}}
+            <button type="button" class="btn-primary" data-action="skipTravelPhase">
+                <i class="fas fa-arrow-right"></i> Continue to Activities
+            </button>
+            {{else}}
+            <button type="button" data-action="skipTravelPhase">
+                <i class="fas fa-forward"></i> Skip Travel
+            </button>
+            {{/if}}
+        </div>
+
+        {{!-- ═══ PLAYER VIEW ═══ --}}
+        {{else}}
+        <div class="travel-player-view">
+
+            {{!-- Priority 1: Debrief (results received from GM) --}}
+            {{#if travelDebrief}}
+            <div class="travel-player-info">
+                <i class="fas fa-scroll"></i>
+                <span>Travel results are in.</span>
+            </div>
+            <div class="travel-debrief-section">
+                {{#each travelDebrief}}
+                <div class="travel-debrief-entry {{#if result.success}}success{{else if result.nat20}}nat20{{else if result.nat1}}nat1{{else}}failure{{/if}}">
+                    <div class="travel-debrief-header">
+                        {{#if result.nat20}}<i class="fas fa-star"></i>{{else if result.nat1}}<i class="fas fa-skull"></i>{{else if result.success}}<i class="fas fa-check"></i>{{else}}<i class="fas fa-times"></i>{{/if}}
+                        <strong>{{result.actorName}}</strong>
+                        <span class="debrief-activity">
+                            {{#if (eq activity 'forage')}}🌿 Foraged{{else if (eq activity 'hunt')}}🎯 Hunted{{else}}Rolled{{/if}}
+                        </span>
+                        <span class="debrief-total">({{result.total}})</span>
+                    </div>
+                    {{#if result.items.length}}
+                    <div class="travel-debrief-items">
+                        {{#each result.items}}
+                        <span class="travel-item-badge"><i class="fas fa-leaf"></i> {{quantity}}x {{itemData.name}}</span>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                    {{#if result.mishap}}
+                    <div class="travel-debrief-mishap">
+                        <i class="fas fa-exclamation-triangle"></i> {{result.mishap.description}}
+                    </div>
+                    {{/if}}
+                    {{#unless result.success}}
+                    {{#unless result.items}}
+                    <div class="travel-debrief-nothing">
+                        <span>Nothing found.</span>
+                    </div>
+                    {{/unless}}
+                    {{/unless}}
+                </div>
+                {{/each}}
+            </div>
+
+            {{#if travelScoutingDone}}
+            <div class="travel-player-scout-summary">
+                <i class="fas fa-binoculars"></i>
+                <span>Scouts have found a campsite. The GM will describe what you see.</span>
+            </div>
+            {{/if}}
+
+            {{#if travelFullyResolved}}
+            <div class="travel-player-info travel-waiting-gm">
+                <i class="fas fa-hourglass-half"></i>
+                <span>Waiting for the GM to continue...</span>
+            </div>
+            {{/if}}
+
+            {{!-- Priority 2: Roll requests from GM --}}
+            {{else if pendingTravelRoll.activities.length}}
+            <div class="travel-player-info">
+                <i class="fas fa-dice-d20"></i>
+                <span>The GM has called for travel rolls.</span>
+            </div>
+            <div class="travel-roll-section">
+                {{#each pendingTravelRoll.activities}}
+                {{#if isOwner}}
+                <div class="travel-roll-prompt {{#if rolled}}rolled{{/if}}">
+                    <div class="travel-roll-info">
+                        <strong>{{actorName}} — {{activityLabel}}</strong>
+                        <span class="travel-roll-skill">{{skillName}}{{#if dc}} DC {{dc}}{{/if}}</span>
+                    </div>
+                    {{#if rolled}}
+                    <span class="travel-roll-result pending">
+                        <i class="fas fa-spinner fa-spin"></i> Awaiting...
+                    </span>
+                    {{else}}
+                    <button type="button" class="btn-primary btn-travel-roll" data-action="rollTravelCheck" data-actor-id="{{actorId}}" data-day="{{day}}">
+                        <i class="fas fa-dice-d20"></i> Roll
+                    </button>
+                    {{/if}}
+                </div>
+                {{/if}}
+                {{/each}}
+            </div>
+
+            {{!-- Priority 3: Declaration phase --}}
+            {{else if travelContext.hasTravelOptions}}
+
+            <div class="travel-player-info">
+                <i class="fas fa-hiking"></i>
+                <span>{{travelContext.terrainLabel}} — {{#if travelContext.isMultiDay}}{{travelContext.totalDays}} days of travel{{else}}What did you do while travelling?{{/if}}</span>
+            </div>
+
+            {{#each travelContext.days}}
+            {{#if isActive}}
+            <div class="travel-day-section" data-day="{{day}}">
+                {{#if ../travelContext.isMultiDay}}
+                <div class="travel-day-label">Day {{day}}{{#if isFinalDay}} — Arrival{{/if}}</div>
+                {{/if}}
+
+                {{!-- Owned characters: hero cards --}}
+                {{#each characters}}
+                {{#if isOwner}}
+                <div class="travel-hero-card {{#if confirmed}}confirmed{{/if}}">
+                    <img class="travel-hero-portrait" src="{{img}}" alt="{{name}}" />
+                    <div class="travel-hero-info">
+                        <span class="travel-hero-name">{{name}}{{#if lastActivity}} <span class="travel-last-hint">[{{lastActivity}}]</span>{{/if}}</span>
+                        <span class="travel-char-mod">Survival {{survivalMod}}</span>
+                    </div>
+                    {{#if confirmed}}
+                    <span class="travel-confirmed-label">
+                        {{#if (eq declaration 'forage')}}🌿 Forage
+                        {{else if (eq declaration 'hunt')}}🎯 Hunt
+                        {{else if (eq declaration 'scout')}}🔭 Scout
+                        {{else}}🏕️ Other{{/if}}
+                        <i class="fas fa-check"></i>
+                    </span>
+                    {{else}}
+                    <select class="travel-player-select" data-actor-id="{{id}}" data-day="{{../day}}">
+                        <option value="nothing" {{#if (eq declaration 'nothing')}}selected{{/if}}>🏕️ Other</option>
+                        {{#if ../../travelContext.canForage}}<option value="forage" {{#if (eq declaration 'forage')}}selected{{/if}}>🌿 Forage</option>{{/if}}
+                        {{#if ../../travelContext.canHunt}}<option value="hunt" {{#if (eq declaration 'hunt')}}selected{{/if}}>🎯 Hunt</option>{{/if}}
+                        {{#if ../canScout}}<option value="scout" {{#if (eq declaration 'scout')}}selected{{/if}}>🔭 Scout</option>{{/if}}
+                    </select>
+                    <button type="button" class="travel-confirm-btn" data-actor-id="{{id}}" data-day="{{../day}}" title="Lock in choice">
+                        <i class="fas fa-check"></i>
+                    </button>
+                    {{/if}}
+                </div>
+                {{/if}}
+                {{/each}}
+
+                {{!-- Other characters: compact grid --}}
+                <div class="travel-party-grid">
+                    {{#each characters}}
+                    {{#unless isOwner}}
+                    <div class="travel-grid-card {{#if confirmed}}confirmed{{/if}}" title="{{name}}{{#if confirmed}} — locked in{{/if}}">
+                        <img class="travel-grid-portrait" src="{{img}}" alt="{{name}}" />
+                        <span class="travel-grid-name">{{name}}</span>
+                        <span class="travel-grid-activity {{#unless declarationIcon}}idle{{/unless}}">
+                            {{#if confirmed}}<i class="fas fa-check travel-grid-confirmed-icon"></i>{{/if}}
+                            {{#if declarationIcon}}<i class="fas {{declarationIcon}}"></i>{{else}}🏕️{{/if}}
+                        </span>
+                    </div>
+                    {{/unless}}
+                    {{/each}}
+                </div>
+            </div>
+            {{/if}}
+            {{/each}}
+
+            {{else}}
+            <div class="travel-player-info">
+                <i class="fas fa-hiking"></i>
+                <span>Waiting for the GM...</span>
+            </div>
+            {{/if}}
+        </div>
+        {{/if}}
+
+        {{else}}
+
+        {{!-- ═══ TERRAIN DISABLED ═══ --}}
+        <div class="travel-disabled-notice">
+            <i class="fas fa-ban"></i>
+            <span>{{travelContext.disabledReason}}</span>
+        </div>
+
+        {{#with (lookup travelContext.days 0)}}
+        <div class="travel-character-list">
+            {{#each characters}}
+            <div class="travel-character-row travel-row-disabled">
+                <img class="travel-portrait" src="{{img}}" alt="{{name}}" />
+                <div class="travel-char-info">
+                    <span class="travel-char-name">{{name}}</span>
+                </div>
+                <span class="travel-activity-disabled">—</span>
+            </div>
+            {{/each}}
+        </div>
+        {{/with}}
+
+        {{#if isGM}}
+        <div class="respite-action-bar">
+            <button type="button" class="btn-primary" data-action="skipTravelPhase">
+                <i class="fas fa-arrow-right"></i> Continue to Activities
+            </button>
+        </div>
+        {{/if}}
+
+        {{/if}}
+    </div>
+    {{/if}}
+
     {{/if}}
 
     {{!-- =============== ACTIVITY PHASE =============== --}}

@@ -16,7 +16,9 @@ import { PackRegistryApp } from "./apps/PackRegistryApp.js";
 import { PartyRosterApp } from "./apps/PartyRosterApp.js";
 import { CopySpellHandler } from "./services/CopySpellHandler.js";
 import { ImageResolver } from "./util/ImageResolver.js";
-// ItemEnrichmentRegistry removed — engine lives in ionrift-library (ItemEnrichmentEngine).
+import { ItemClassifier } from "./services/ItemClassifier.js";
+import { DietConfigApp } from "./apps/DietConfigApp.js";
+import { ButcherResolver } from "./services/ButcherResolver.js";
 
 const MODULE_ID = "ionrift-respite";
 const MODULE_LABEL = "Respite";
@@ -298,7 +300,27 @@ Hooks.once("init", async () => {
         /** Item Enrichment: delegates to ionrift-library kernel (backward compat). */
         getItemEnrichment: (itemName) => game.ionrift?.library?.enrichment?.get(itemName) ?? null,
         /** Item Enrichment: returns all registered enrichment names (debug). */
-        getEnrichmentNames: () => game.ionrift?.library?.enrichment?.getRegisteredNames() ?? []
+        getEnrichmentNames: () => game.ionrift?.library?.enrichment?.getRegisteredNames() ?? [],
+        /** Item classification: unified food/water/fuel classification. */
+        ItemClassifier,
+        /** Monster butchering: graduated outcome resolution. */
+        ButcherResolver,
+        /** Diet configuration UI. Usage: game.ionrift.respite.openDietConfig() or game.ionrift.respite.openDietConfig(actorId) */
+        DietConfigApp,
+        openDietConfig: (actorId) => {
+            if (!game.user.isGM) return;
+            new DietConfigApp(actorId ? { actorId } : {}).render({ force: true });
+        },
+        /** Classify a single item. Usage: game.ionrift.respite.classifyItem(item) */
+        classifyItem: (item) => ItemClassifier.classify(item),
+        /** Get an actor's diet profile. Usage: game.ionrift.respite.getDiet(actor) */
+        getDiet: (actor) => ItemClassifier.getDiet(actor),
+        /** Set an actor's diet profile. Usage: game.ionrift.respite.setDiet(actor, { label: "Custom", canEat: ["food", "fuel"] }) */
+        setDiet: (actor, diet) => ItemClassifier.setDiet(actor, diet),
+        /** Apply a preset diet. Usage: game.ionrift.respite.applyDietPreset(actor, "warforged") */
+        applyDietPreset: (actor, presetId) => ItemClassifier.applyPreset(actor, presetId),
+        /** List available diet presets. Usage: game.ionrift.respite.getDietPresets() */
+        getDietPresets: () => ItemClassifier.getPresets()
     };
 
     // Register settings
@@ -323,6 +345,15 @@ Hooks.once("init", async () => {
         config: false,
         type: Array,
         default: []
+    });
+
+    game.settings.registerMenu(MODULE_ID, "dietConfigMenu", {
+        name: "Diet Profiles",
+        label: "Configure Diets",
+        hint: "Set per-character dietary rules: what each character can eat and drink, preset profiles (Warforged, Herbivore, etc.), and custom overrides.",
+        icon: "fas fa-utensils",
+        type: DietConfigApp,
+        restricted: true
     });
 
     // BODY: Gameplay settings
@@ -437,6 +468,16 @@ Hooks.once("init", async () => {
         config: true,
         type: String,
         default: "",
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "enableMonsterCooking", {
+        name: "Monster Cooking",
+        hint: "After combat with notable creatures, characters carrying the Dungeon Gourmand's Handbook can butcher carcasses for exotic cooking ingredients. Requires a content pack with monster recipes and a butcher registry.",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: false,
         restricted: true
     });
 
@@ -672,6 +713,98 @@ Hooks.on("chatMessage", (log, message, chatData) => {
         if (!_canStartRest()) return false;
         new RestSetupApp().render({ force: true });
         return false;
+    }
+});
+
+// ── Monster Cooking: Chat Card Button Wiring ─────────────────
+// Wires "Butcher" and "Pass" buttons on the butcher prompt chat cards.
+Hooks.on("renderChatMessage", (message, html) => {
+    const card = html[0]?.querySelector?.(".respite-butcher-card")
+        ?? html.find?.(".respite-butcher-card")?.[0];
+    if (!card) return;
+
+    const butcherBtn = card.querySelector(".btn-butcher");
+    const passBtn = card.querySelector(".btn-butcher-pass");
+
+    if (butcherBtn) {
+        butcherBtn.addEventListener("click", async (ev) => {
+            ev.preventDefault();
+            ev.currentTarget.disabled = true;
+
+            const flags = message.flags?.[MODULE_ID];
+            if (!flags?.butcherPrompt) return;
+
+            const holderIds = flags.holderIds ?? [];
+            const userActors = game.actors.filter(a =>
+                a.hasPlayerOwner && holderIds.includes(a.id) &&
+                a.ownership?.[game.user.id] >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+            );
+
+            let actor;
+            if (game.user.isGM) {
+                actor = game.actors.get(holderIds[0]);
+            } else if (userActors.length === 1) {
+                actor = userActors[0];
+            } else if (userActors.length > 1) {
+                actor = userActors[0];
+            } else {
+                ui.notifications.warn("None of the characters carrying the Handbook belong to this player.");
+                ev.currentTarget.disabled = false;
+                return;
+            }
+
+            if (!actor) {
+                ui.notifications.warn("Could not find the butchering character.");
+                ev.currentTarget.disabled = false;
+                return;
+            }
+
+            const target = {
+                combatant: { id: flags.combatantId },
+                actor: game.actors.get(flags.creatureId) ?? { id: flags.creatureId },
+                actorName: flags.creatureName,
+                actorImg: flags.creatureImg,
+                classifierResult: { id: flags.classifierId },
+                registryEntry: ButcherResolver.lookup(flags.classifierId, flags.cr),
+                cr: flags.cr
+            };
+
+            if (!target.registryEntry) {
+                ui.notifications.warn("Butcher registry entry not found for this creature.");
+                ev.currentTarget.disabled = false;
+                return;
+            }
+
+            const result = await ButcherResolver.resolve(actor, target);
+            const resultContent = ButcherResolver.buildResultCard(result, actor.name);
+
+            await ChatMessage.create({
+                content: resultContent,
+                speaker: { alias: "Respite" },
+                flags: {
+                    [MODULE_ID]: {
+                        butcherResult: true,
+                        outcome: result.outcome,
+                        tier: result.tier
+                    }
+                }
+            });
+
+            butcherBtn.style.display = "none";
+            if (passBtn) passBtn.style.display = "none";
+        });
+    }
+
+    if (passBtn) {
+        passBtn.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            if (butcherBtn) butcherBtn.style.display = "none";
+            passBtn.style.display = "none";
+            const actionsDiv = card.querySelector(".butcher-card-actions");
+            if (actionsDiv) {
+                actionsDiv.innerHTML = `<span class="butcher-passed"><i class="fas fa-times"></i> Passed</span>`;
+            }
+        });
     }
 });
 
@@ -953,6 +1086,54 @@ Hooks.once("ready", async () => {
         Logger.log?.(MODULE_LABEL, "Combat ended, rest flow unblocked.");
     });
 
+    // ── Monster Cooking: Butcher Prompt after Combat ──────────────
+    // Double gate: setting enabled + cookbook holder + registry loaded.
+    // Posts a butcher prompt card to chat when a notable creature is killed.
+    Hooks.on("deleteCombat", async (combat, options, userId) => {
+        if (!game.user.isGM) return;
+
+        try {
+            const enabled = game.settings.get(MODULE_ID, "enableMonsterCooking");
+            if (!enabled) return;
+        } catch { return; }
+
+        if (!ButcherResolver.hasRegistry) {
+            Logger.log?.(MODULE_LABEL, "Monster cooking enabled but no butcher registry loaded. Skipping.");
+            return;
+        }
+
+        const partyActors = getPartyActors();
+        const holders = ButcherResolver.findCookbookHolders(partyActors);
+        if (!holders.length) return;
+
+        const targets = ButcherResolver.findButcherTargets(combat);
+        if (!targets.length) return;
+
+        const bestTarget = targets[0];
+        Logger.log?.(MODULE_LABEL,
+            `Butcher opportunity: ${bestTarget.actorName} (CR ${bestTarget.cr}, ${bestTarget.registryEntry.tier})`
+        );
+
+        const content = ButcherResolver.buildPromptCard(bestTarget, holders);
+        await ChatMessage.create({
+            content,
+            speaker: { alias: "Respite" },
+            flags: {
+                [MODULE_ID]: {
+                    butcherPrompt: true,
+                    creatureId: bestTarget.actor?.id ?? null,
+                    combatantId: bestTarget.combatant?.id ?? null,
+                    creatureName: bestTarget.actorName,
+                    creatureImg: bestTarget.actorImg,
+                    classifierId: bestTarget.classifierResult?.id,
+                    cr: bestTarget.cr,
+                    tier: bestTarget.registryEntry.tier,
+                    holderIds: holders.map(a => a.id)
+                }
+            }
+        });
+    });
+
     console.log(`${MODULE_ID} | Boot complete.`);
 });
 
@@ -1129,6 +1310,55 @@ function _onSocketMessage(data) {
         case "requestRestState":
             if (!game.user.isGM) return;
             _handleRequestRestState(data);
+            break;
+
+        // Player -> GM: travel activity declaration
+        case "travelDeclaration":
+            if (!game.user.isGM) return;
+            if (activeRestSetupApp?.receiveTravelDeclaration) {
+                activeRestSetupApp.receiveTravelDeclaration(data);
+            }
+            break;
+
+        // GM -> Players: live sync of all travel declarations (multi-day)
+        case "travelDeclarationsSync":
+            if (game.user.isGM) return;
+            if (activePlayerRestApp) {
+                activePlayerRestApp._syncedTravelDeclarations = data.declarations ?? {};
+                if (data.activeDay != null) activePlayerRestApp._travelActiveDay = data.activeDay;
+                if (data.totalDays != null) activePlayerRestApp._travelTotalDays = data.totalDays;
+                if (data.scoutingAllowed != null) activePlayerRestApp._travelScoutingAllowed = data.scoutingAllowed;
+                activePlayerRestApp.render();
+            }
+            break;
+
+        // GM -> Players: travel roll request
+        case "travelRollRequest":
+            if (game.user.isGM) return;
+            if (activePlayerRestApp?.receiveTravelRollRequest) {
+                activePlayerRestApp.receiveTravelRollRequest(data);
+            }
+            break;
+
+        // Player -> GM: travel roll result
+        case "travelRollResult":
+            if (!game.user.isGM) return;
+            if (activeRestSetupApp?.receiveTravelRollResult) {
+                activeRestSetupApp.receiveTravelRollResult(data);
+            }
+            break;
+
+        // GM -> specific Player: private travel debrief
+        case "travelDebrief":
+            if (game.user.isGM) return;
+            if (data.targetUserId !== game.user.id) return;
+            if (activePlayerRestApp) {
+                if (!activePlayerRestApp._travelDebrief) activePlayerRestApp._travelDebrief = [];
+                activePlayerRestApp._travelDebrief.push(...(data.results ?? []));
+                activePlayerRestApp._travelFullyResolved = !!data.fullyResolved;
+                activePlayerRestApp._travelScoutingDone = !!data.scoutingDone;
+                activePlayerRestApp.render();
+            }
             break;
 
         // Player -> GM: camp activity roll result
