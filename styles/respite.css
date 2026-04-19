@@ -6591,12 +6591,12 @@
     flex: 1;
 }
 
-.art-uninstall-btn {
+.pack-delete-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
     border-radius: 4px !important;
     font-size: 0.65rem;
     cursor: pointer;
@@ -6606,9 +6606,10 @@
     box-shadow: none !important;
     transition: all 0.2s;
     flex-shrink: 0;
+    margin-left: 4px;
 }
 
-.art-uninstall-btn:hover {
+.pack-delete-btn:hover {
     background: rgba(248, 113, 113, 0.15) !important;
     border-color: rgba(248, 113, 113, 0.35) !important;
     color: #f87171 !important;
@@ -11556,4 +11557,45 @@
 
 .respite-diet-btn:hover {
     color: rgba(200, 180, 255, 1);
+}
+
+/* ---- Ionrift-themed DialogV2 confirm overrides ---- */
+
+.ionrift-window.dialog .window-content {
+    padding: 16px 20px !important;
+}
+
+.ionrift-window.dialog .dialog-content {
+    padding: 4px 0 12px;
+    color: var(--ionrift-text-muted, #ccc);
+    line-height: 1.5;
+}
+
+.ionrift-window.dialog .dialog-content p {
+    margin: 0 0 8px;
+}
+
+.ionrift-window.dialog .form-footer {
+    display: flex;
+    gap: 8px;
+    padding: 8px 0 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ionrift-window.dialog .form-footer button {
+    flex: 1;
+    background: linear-gradient(to bottom, #4a4a4a, #2a2a2a) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #fff !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.ionrift-window.dialog .form-footer button:hover {
+    background: rgba(139, 92, 246, 0.6) !important;
+    border-color: var(--ionrift-accent, #8b5cf6) !important;
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.4) !important;
 }

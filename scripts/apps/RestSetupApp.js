@@ -23,6 +23,7 @@ import { CopySpellDelegate } from "./delegates/CopySpellDelegate.js";
 import { SoundDelegate } from "./delegates/SoundDelegate.js";
 import { TravelResolutionDelegate } from "./delegates/TravelResolutionDelegate.js";
 import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS } from "./RestConstants.js";
+import { STUB_RECIPES, STUB_POOLS, STUB_HUNT_YIELDS } from "../data/stub-content.js";
 import { ShortRestApp } from "./ShortRestApp.js";
 import { registerActiveRestApp, clearActiveRestApp, setActiveRestData, registerCampfireApp, clearCampfireApp, _showGmRestIndicator, _removeGmRestIndicator, getPartyActors } from "../module.js";
 
@@ -964,13 +965,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Loads imported content pack events from world storage.
+     * Loads imported content pack data from world storage.
      * Packs are stored as world-level settings after being imported
      * through the Content Packs UI (JSON file upload from Patreon).
+     * Feeds events, recipes, resource pools, and hunt yields into their engines.
      */
     async _loadContentPacks() {
         const enabledPacks = game.settings.get(MODULE_ID, "enabledPacks") ?? {};
         const importedPacks = game.settings.get(MODULE_ID, "importedPacks") ?? {};
+
+        let totalRecipes = 0, totalPools = 0, totalYieldTerrains = 0;
 
         for (const [packId, packData] of Object.entries(importedPacks)) {
             if (enabledPacks[packId] === false) {
@@ -979,13 +983,63 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
 
             try {
+                const loaded = [];
+
+                // Events
                 const events = packData.events ?? [];
-                if (!events.length) continue;
-                this._eventResolver.load(packData.tables ?? null, events);
-                console.log(`${MODULE_ID} | Pack ${packId}: loaded ${events.length} events`);
+                if (events.length) {
+                    this._eventResolver.load(packData.tables ?? null, events);
+                    loaded.push(`${events.length} events`);
+                }
+
+                // Recipes -- keyed by profession (e.g. { cooking: [...] })
+                if (packData.recipes && typeof packData.recipes === "object") {
+                    for (const [profId, recipeList] of Object.entries(packData.recipes)) {
+                        if (Array.isArray(recipeList) && recipeList.length) {
+                            this._craftingEngine.load(profId, recipeList);
+                            totalRecipes += recipeList.length;
+                        }
+                    }
+                    loaded.push(`${totalRecipes} recipes`);
+                }
+
+                // Resource Pools
+                if (Array.isArray(packData.resourcePools) && packData.resourcePools.length && this._travel) {
+                    this._travel.loadPoolsFromData(packData.resourcePools);
+                    totalPools += packData.resourcePools.length;
+                    loaded.push(`${packData.resourcePools.length} pools`);
+                }
+
+                // Hunt Yields
+                if (packData.huntYields && typeof packData.huntYields === "object" && this._travel) {
+                    this._travel.loadHuntYieldsFromData(packData.huntYields);
+                    const terrainCount = Object.keys(packData.huntYields).length;
+                    totalYieldTerrains += terrainCount;
+                    loaded.push(`${terrainCount} hunt terrains`);
+                }
+
+                if (loaded.length) {
+                    console.log(`${MODULE_ID} | Pack ${packId}: loaded ${loaded.join(", ")}`);
+                }
             } catch (e) {
                 console.warn(`${MODULE_ID} | Failed to load pack ${packId}:`, e);
             }
+        }
+
+        // Fall back to built-in stub content when no packs provided data
+        if (totalRecipes === 0) {
+            for (const [profId, recipeList] of Object.entries(STUB_RECIPES)) {
+                this._craftingEngine.load(profId, recipeList);
+            }
+            console.log(`${MODULE_ID} | Using built-in stub recipes`);
+        }
+        if (totalPools === 0 && this._travel) {
+            this._travel.loadPoolsFromData(STUB_POOLS);
+            console.log(`${MODULE_ID} | Using built-in stub forage pools`);
+        }
+        if (totalYieldTerrains === 0 && this._travel) {
+            this._travel.loadHuntYieldsFromData(STUB_HUNT_YIELDS);
+            console.log(`${MODULE_ID} | Using built-in stub hunt yields`);
         }
     }
 
@@ -3762,7 +3816,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._phase = "travel";
             this._travel.setTotalDays(this._daysSinceLastRest ?? 1);
             this._travel.scoutingAllowed = this._scoutingAllowed ?? true;
-            this._travel.loadPools();
 
             setTimeout(() => {
                 game.socket.emit(`module.${MODULE_ID}`, {

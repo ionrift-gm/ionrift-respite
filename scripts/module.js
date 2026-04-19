@@ -10,6 +10,8 @@ import { ActivityPickerApp } from "./apps/ActivityPickerApp.js";
 import { CampfireApp } from "./apps/CampfireApp.js";
 import { ShortRestApp } from "./apps/ShortRestApp.js";
 import { CampfireTokenLinker } from "./services/CampfireTokenLinker.js";
+import { TorchTokenLinker } from "./services/TorchTokenLinker.js";
+import { placeTorch, placePerimeter, clearTorches, toggleTorches, placeCampfire, placeCamp } from "./services/CampPropPlacer.js";
 
 import { createAdapter } from "./adapters/adapterFactory.js";
 import { PackRegistryApp } from "./apps/PackRegistryApp.js";
@@ -322,7 +324,23 @@ Hooks.once("init", async () => {
         /** Apply a preset diet. Usage: game.ionrift.respite.applyDietPreset(actor, "warforged") */
         applyDietPreset: (actor, presetId) => ItemClassifier.applyPreset(actor, presetId),
         /** List available diet presets. Usage: game.ionrift.respite.getDietPresets() */
-        getDietPresets: () => ItemClassifier.getPresets()
+        getDietPresets: () => ItemClassifier.getPresets(),
+
+        // ── Camp Prop Placement ──────────────────────────────────────
+        /** Place a campfire (base + fire overlay) via crosshair. GM only. */
+        placeCampfire,
+        /** Place a single torch pair (stake + fire overlay) via crosshair. GM only. */
+        placeTorch,
+        /** Place a ring of torch pairs around the selected token or a clicked point. GM only. */
+        placePerimeter,
+        /** Place a full camp: campfire + perimeter ring, one click. GM only. */
+        placeCamp,
+        /** Remove all torch tokens (stakes + fire overlays) from the scene. GM only. */
+        clearTorches,
+        /** Toggle all perimeter torch lights on/off. GM only. */
+        toggleTorches,
+        /** TorchTokenLinker service reference. */
+        TorchTokenLinker
     };
 
     // Register settings
@@ -450,6 +468,26 @@ Hooks.once("init", async () => {
         config: true,
         type: String,
         default: "Campfire",
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "torchTokenName", {
+        name: "Perimeter Torch Token Name",
+        hint: "Name of the tokens on the scene used as perimeter torches. All matching tokens toggle together. Case-insensitive.",
+        scope: "world",
+        config: true,
+        type: String,
+        default: "Perimeter Torch",
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "torchAutoLink", {
+        name: "Auto-Link Torches to Campfire",
+        hint: "When enabled, perimeter torches automatically light and extinguish with the campfire.",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: true,
         restricted: true
     });
 
@@ -1873,6 +1911,12 @@ function _onSocketMessage(data) {
         case "campfireTokenSync":
             if (!game.user.isGM) return;
             CampfireTokenLinker.setLightState(data.lit);
+            break;
+
+        // Player -> GM: toggle perimeter torch tokens on canvas
+        case "torchTokenSync":
+            if (!game.user.isGM) return;
+            TorchTokenLinker.setLightState(data.lit);
             break;
 
         // GM -> All: force all clients to reload (dev tool)

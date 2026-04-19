@@ -136,6 +136,18 @@ export class CampfireTokenLinker {
             });
             console.log(`${MODULE_ID} | CampfireTokenLinker: light OFF, token hidden`);
         }
+
+        // Auto-link: sync perimeter torches when campfire state changes
+        try {
+            const autoLink = game.settings.get(MODULE_ID, "torchAutoLink");
+            if (autoLink !== false) {
+                const { TorchTokenLinker } = await import("./TorchTokenLinker.js");
+                await TorchTokenLinker.setLightState(lit);
+            }
+        } catch (e) {
+            // Silently ignore if torch setting not registered yet (first load)
+            console.debug(`${MODULE_ID} | CampfireTokenLinker: torch auto-link skipped`, e.message);
+        }
     }
 
     /**
