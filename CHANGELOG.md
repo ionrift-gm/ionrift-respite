@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.2.1] - 2026-04-19
+
+### Fixed
+- Art pack detection now works on The Forge. The terrain images were uploaded correctly but Respite was searching the wrong file source, so the Content Packs screen showed 0 terrains and 0 files. Self-hosted installs were unaffected.
+
 ## [1.2.0] - 2026-04-17
 
 ### Added

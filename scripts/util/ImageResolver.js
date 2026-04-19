@@ -16,6 +16,16 @@ const FALLBACK_BANNER = `modules/${MODULE_ID}/assets/placeholder-banner.webp`;
 // Foundry v13 namespaced FilePicker; fall back to global for v12
 const FP = foundry.applications?.apps?.FilePicker ?? FilePicker;
 
+/**
+ * Returns the correct FilePicker source for the hosting platform.
+ * Forge VTT uses "forgevtt" (S3-backed Assets Library);
+ * self-hosted Foundry uses "data".
+ */
+function _fileSource() {
+    return (typeof ForgeVTT !== "undefined" && ForgeVTT.usingTheForge)
+        ? "forgevtt" : "data";
+}
+
 // Hand-drawn images known to exist in the base module's assets/terrains/ folders.
 // Add entries here as bundled art is committed to the module.
 // Format: "terrain/filename" e.g. "forest/banner.png"
@@ -77,7 +87,8 @@ export class ImageResolver {
         const importedPath = game.ionrift?.library?.getZipTargetDir?.("respite", "art");
         if (importedPath) {
             try {
-                const browse = await FP.browse("data", importedPath);
+                const source = _fileSource();
+                const browse = await FP.browse(source, importedPath);
                 if (browse.dirs?.length > 0 || browse.files?.length > 0) {
                     this.#artPackActive = true;
                     this.#importedArtPath = importedPath;
@@ -88,7 +99,7 @@ export class ImageResolver {
 
                     const walk = async (path, depth = 0) => {
                         try {
-                            const result = await FP.browse("data", path);
+                            const result = await FP.browse(source, path);
                             fileCount += result.files?.length ?? 0;
                             for (const subDir of (result.dirs ?? [])) {
                                 const dirName = subDir.split("/").pop();
