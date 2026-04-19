@@ -1,4 +1,5 @@
 import { ResourcePoolRoller } from "./ResourcePoolRoller.js";
+import { CalendarHandler } from "./CalendarHandler.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -207,12 +208,20 @@ export class TravelResolver {
     async grantItems(actor, items) {
         if (!actor || !items?.length) return [];
 
+        const harvestedDate = CalendarHandler.getCurrentDate() ?? String(game.time.worldTime);
         const created = [];
         for (const entry of items) {
             if (!entry.itemData) continue;
             const data = foundry.utils.deepClone(entry.itemData);
             data.system = data.system ?? {};
             data.system.quantity = entry.quantity ?? 1;
+
+            // Stamp harvestedDate on perishable items
+            const respFlags = data.flags?.[MODULE_ID];
+            if (respFlags?.spoilsAfter != null && !respFlags.harvestedDate) {
+                data.flags[MODULE_ID].harvestedDate = harvestedDate;
+            }
+
             const [item] = await actor.createEmbeddedDocuments("Item", [data]);
             if (item) created.push(item);
         }
