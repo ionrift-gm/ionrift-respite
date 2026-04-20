@@ -13,21 +13,17 @@
 const MODULE_ID = "ionrift-respite";
 const FALLBACK_BANNER = `modules/${MODULE_ID}/assets/placeholder-banner.webp`;
 
-// Forge VTT monkey-patches the global FilePicker but NOT the v13
-// namespaced version. Use the global on Forge so browse("forgevtt")
-// resolves correctly; use namespaced on self-hosted to avoid deprecation.
-const FP = (typeof ForgeVTT !== "undefined" && ForgeVTT.usingTheForge)
-    ? FilePicker
-    : (foundry.applications?.apps?.FilePicker ?? FilePicker);
-
 /**
- * Returns the correct FilePicker source for the hosting platform.
- * Forge VTT uses "forgevtt" (S3-backed Assets Library);
- * self-hosted Foundry uses "data".
+ * Returns the platform-correct FilePicker class and source string
+ * via the kernel API. Falls back gracefully if the library hasn't
+ * initialized yet (e.g. during early hooks).
  */
-function _fileSource() {
-    return (typeof ForgeVTT !== "undefined" && ForgeVTT.usingTheForge)
-        ? "forgevtt" : "data";
+function _platform() {
+    const p = game.ionrift?.library?.platform;
+    return {
+        FP: p?.FP ?? FilePicker,
+        source: p?.fileSource ?? "data"
+    };
 }
 
 // Hand-drawn images known to exist in the base module's assets/terrains/ folders.
@@ -91,7 +87,7 @@ export class ImageResolver {
         const importedPath = game.ionrift?.library?.getZipTargetDir?.("respite", "art");
         if (importedPath) {
             try {
-                const source = _fileSource();
+                const { FP, source } = _platform();
                 const browse = await FP.browse(source, importedPath);
                 if (browse.dirs?.length > 0 || browse.files?.length > 0) {
                     this.#artPackActive = true;
