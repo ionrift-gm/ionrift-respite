@@ -1469,13 +1469,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             : characterStatuses.filter(c => !c.isOwner);
 
         // Roster strip: compact summary for ALL characters (everyone sees the full party)
-        // Validate _selectedCharacterId against current roster — if the party
-        // composition changed (e.g. PartyRosterApp save) the cached ID may
-        // reference a character that is no longer in the party, which causes
-        // GM overrides to be keyed to a stale ID and the confirm loop bug.
-        const selectedStillValid = this._selectedCharacterId
-            && heroCharacters.some(c => c.id === this._selectedCharacterId);
-        if (!selectedStillValid && heroCharacters.length > 0) {
+        if (!this._selectedCharacterId && heroCharacters.length > 0) {
             this._selectedCharacterId = heroCharacters[0].id;
         }
         const roster = characterStatuses.map(c => {
@@ -2823,7 +2817,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /** Adjust days since last rest via +/- stepper buttons. */
     static #onAdjustDaysSinceRest(event, target) {
         const delta = parseInt(target.dataset.delta, 10) || 0;
-        this._daysSinceLastRest = Math.max(1, Math.min(3, (this._daysSinceLastRest ?? 1) + delta));
+        this._daysSinceLastRest = Math.max(1, Math.min(9, (this._daysSinceLastRest ?? 1) + delta));
         this.render();
     }
 
@@ -6489,31 +6483,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /**
      * GM skips the travel phase (or continues after full resolution).
-     * Warns if any travel days have unresolved declarations.
      */
-    static async #onSkipTravelPhase(event, target) {
-        if (this._travel && !this._travel.isFullyResolved() && this._travel.hasDeclarations()) {
-            const confirmed = await new Promise(resolve => {
-                const overlay = document.createElement("div");
-                overlay.classList.add("ionrift-armor-modal-overlay");
-                overlay.innerHTML = `
-                    <div class="ionrift-armor-modal">
-                        <h3><i class="fas fa-exclamation-triangle"></i> Unresolved Travel Activities</h3>
-                        <p>Not all travel days have been resolved. Characters with pending foraging, hunting, or scouting rolls will lose their results.</p>
-                        <p>Are you sure you want to skip?</p>
-                        <div class="ionrift-armor-modal-buttons">
-                            <button class="btn-armor-confirm"><i class="fas fa-forward"></i> Skip Anyway</button>
-                            <button class="btn-armor-cancel"><i class="fas fa-clock"></i> Go Back</button>
-                        </div>
-                    </div>`;
-                document.body.appendChild(overlay);
-                overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => { overlay.remove(); resolve(true); });
-                overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => { overlay.remove(); resolve(false); });
-            });
-            if (!confirmed) return;
-        }
-
-        if (this._travel?.scoutingResult) {
+    static #onSkipTravelPhase(event, target) {
+        if (this._travel.scoutingResult) {
             this._applyScoutingFromTravel();
         }
 

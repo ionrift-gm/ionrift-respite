@@ -60,34 +60,23 @@ const DRINK_TYPES = new Set(["water", "alcohol", "oil"]);
 const FOOD_TAGS = new Set(["meat", "plant", "prepared"]);
 
 /**
- * Default spoilage windows (in rests/days) by food tag.
- * Used when an item has no explicit spoilsAfter flag.
- * null = does not spoil (preserved / shelf-stable).
- */
-const DEFAULT_SPOILS_AFTER = {
-    meat: 1,
-    plant: 3,
-    prepared: null
-};
-
-/**
  * Name-based food tag inference for items without an explicit flag.
  * First match wins.
  */
 const FOOD_TAG_NAMES = {
     meat: new Set([
-        "fresh meat", "fresh fish", "choice cut", "bird eggs",
-        "raw meat", "game meat", "venison", "mutton", "pork", "beef"
+        "fresh meat", "fresh fish", "smoked fish", "spiced jerky",
+        "choice cut", "bird eggs", "raw meat", "game meat",
+        "venison", "mutton", "pork", "beef"
     ]),
     plant: new Set([
         "edible berries", "wild berries", "snow berries", "edible mushrooms",
-        "cattail stalks", "desert tubers", "wild honeycomb",
+        "cattail stalks", "desert tubers", "wild honeycomb", "berry preserves",
         "wild herbs", "healing herbs", "alpine herbs", "goodberries"
     ]),
     prepared: new Set([
         "rations", "rations (1 day)", "trail rations", "iron rations",
-        "camp porridge", "smoked fish", "spiced jerky", "berry preserves",
-        "fortified trail rations"
+        "camp porridge"
     ])
 };
 
@@ -273,28 +262,6 @@ export class ItemClassifier {
         if (type === "food") return "prepared";
 
         return null;
-    }
-
-    /**
-     * Get the spoilage window for an item in days/rests.
-     * Checks explicit flag first, then infers from food tag.
-     * Returns null for non-perishable or non-food items.
-     *
-     * @param {Item} item - Foundry Item document
-     * @returns {number|null} Days until spoilage, or null if shelf-stable
-     */
-    static getSpoilsAfter(item) {
-        if (!item) return null;
-
-        // Explicit flag takes priority
-        const explicit = item.flags?.[MODULE_ID]?.spoilsAfter;
-        if (explicit != null) return explicit > 0 ? explicit : null;
-
-        // Infer from food tag
-        const tag = this.getFoodTag(item);
-        if (!tag) return null;
-
-        return DEFAULT_SPOILS_AFTER[tag] ?? null;
     }
 
     /**

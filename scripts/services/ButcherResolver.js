@@ -82,6 +82,7 @@ export class ButcherResolver {
         if (!ButcherResolver.hasRegistry) return [];
 
         const classifyCreature = game.ionrift?.library?.classifyCreature;
+        if (!classifyCreature) return [];
 
         const targets = [];
 
@@ -94,17 +95,8 @@ export class ButcherResolver {
             if (hp > 0) continue;
 
             const cr = actor.system?.details?.cr ?? 0;
-
-            // Use library classifier if available, otherwise fall back to raw creature type
-            let result = classifyCreature ? classifyCreature(actor) : null;
-            if (!result?.id || result.id === "unknown") {
-                const rawType = (actor.system?.details?.type?.value ?? "").toLowerCase();
-                if (rawType) {
-                    result = { id: rawType, label: rawType };
-                } else {
-                    continue;
-                }
-            }
+            const result = classifyCreature(actor);
+            if (!result?.id || result.id === "unknown") continue;
 
             const entry = ButcherResolver.lookup(result.id, cr);
             if (!entry) continue;

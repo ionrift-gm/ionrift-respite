@@ -1,5 +1,3 @@
-import { CalendarHandler } from "./CalendarHandler.js";
-
 /**
  * ItemOutcomeHandler
  * Processes ItemOutcome payloads. Resolves item references and
@@ -8,8 +6,6 @@ import { CalendarHandler } from "./CalendarHandler.js";
  * All item grants go through grantItemsToActor() which stacks onto existing
  * inventory entries by name match rather than creating duplicates.
  */
-
-const MODULE_ID = "ionrift-respite";
 
 /**
  * Fallback item definitions for itemRefs that lack compendium entries.
@@ -84,15 +80,6 @@ export class ItemOutcomeHandler {
                 toUpdate.push({ _id: existing.id, "system.quantity": currentQty + qty });
                 summary.push({ name: grant.name, quantity: qty, stacked: true });
             } else {
-                // Stamp harvestedDate on perishable items for spoilage tracking
-                const grantFlags = grant.flags?.[MODULE_ID] ?? {};
-                if (grantFlags.spoilsAfter != null && !grantFlags.harvestedDate) {
-                    grant.flags = grant.flags ?? {};
-                    grant.flags[MODULE_ID] = grant.flags[MODULE_ID] ?? {};
-                    grant.flags[MODULE_ID].harvestedDate =
-                        CalendarHandler.getCurrentDate() ?? String(game.time.worldTime);
-                }
-
                 // Create new item with correct quantity
                 const itemData = this._normalize([{
                     name: grant.name,
@@ -101,8 +88,7 @@ export class ItemOutcomeHandler {
                     system: {
                         quantity: qty,
                         ...(grant.system ?? {})
-                    },
-                    flags: grant.flags ?? {}
+                    }
                 }]);
                 toCreate.push(...itemData);
                 summary.push({ name: grant.name, quantity: qty, stacked: false });

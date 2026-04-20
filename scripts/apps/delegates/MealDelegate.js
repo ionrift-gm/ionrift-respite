@@ -268,17 +268,6 @@ export class MealDelegate {
             }
         }
 
-        // Resolve spoilage before consumption so rotten food is removed first
-        if (!app._spoilageProcessed) {
-            app._spoilageProcessed = true;
-            try {
-                const daysSince = app._daysSinceLastRest ?? 1;
-                await MealPhaseHandler.resolveSpoilage(characterIds, daysSince);
-            } catch (err) {
-                console.error(`[Respite:Meal] Error resolving spoilage:`, err);
-            }
-        }
-
         // Apply consumption and compute consequences
         let mealResults = [];
         if (!app._mealProcessed) {
