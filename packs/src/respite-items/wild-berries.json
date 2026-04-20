@@ -1,0 +1,36 @@
+{
+    "_key": "!items!a1b2c3d4e5f60002",
+    "_id": "a1b2c3d4e5f60002",
+    "name": "Wild Berries",
+    "type": "consumable",
+    "img": "icons/consumables/food/berries-ration-round-red.webp",
+    "system": {
+        "description": {
+            "value": "<p>A pouch of tart wild berries gathered from bushes and hedgerows. Edible raw, better cooked into preserves.</p>"
+        },
+        "rarity": "common",
+        "weight": 0.1,
+        "price": {
+            "value": 1,
+            "denomination": "cp"
+        },
+        "type": {
+            "value": "food",
+            "subtype": ""
+        }
+    },
+    "folder": "f0ra6e0000000001",
+    "flags": {
+        "ionrift-respite": {
+            "itemRef": "wild_berries",
+            "terrain": "forest,swamp,wilderness",
+            "category": "forage",
+            "spoilsAfter": 3
+        }
+    },
+    "effects": [],
+    "ownership": {
+        "default": 0
+    },
+    "sort": 200
+}

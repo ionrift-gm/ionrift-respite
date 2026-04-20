@@ -268,6 +268,17 @@ export class MealDelegate {
             }
         }
 
+        // Resolve spoilage before consumption so rotten food is removed first
+        if (!app._spoilageProcessed) {
+            app._spoilageProcessed = true;
+            try {
+                const daysSince = app._daysSinceLastRest ?? 1;
+                await MealPhaseHandler.resolveSpoilage(characterIds, daysSince);
+            } catch (err) {
+                console.error(`[Respite:Meal] Error resolving spoilage:`, err);
+            }
+        }
+
         // Apply consumption and compute consequences
         let mealResults = [];
         if (!app._mealProcessed) {
@@ -311,6 +322,38 @@ export class MealDelegate {
                             passed: false,
                             total: 0,
                             reason: `starvation (${r.starvationExhaustion} exhaustion)`
+                        });
+                    }
+                }
+            }
+
+            // Apply essence depletion exhaustion (same model as starvation)
+            for (const r of mealResults) {
+                if ((r.essenceExhaustion ?? 0) > 0) {
+                    const actor = game.actors.get(r.characterId);
+                    if (actor) {
+                        const adapter = game.ionrift?.respite?.adapter;
+                        if (adapter) {
+                            await adapter.applyExhaustionDelta(actor, r.essenceExhaustion);
+                        } else {
+                            const current = actor.system?.attributes?.exhaustion ?? 0;
+                            const newLevel = Math.min(6, current + r.essenceExhaustion);
+                            if (newLevel > current) {
+                                await actor.update({ "system.attributes.exhaustion": newLevel });
+                            }
+                        }
+                        await ChatMessage.create({
+                            content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.essenceExhaustion}</strong> level${r.essenceExhaustion > 1 ? "s" : ""} of exhaustion from essence depletion.</div>`,
+                            speaker: ChatMessage.getSpeaker({ actor })
+                        });
+                        app._pendingDehydrationSaves.push({
+                            characterId: r.characterId,
+                            actorName: r.actorName,
+                            dc: 0,
+                            resolved: true,
+                            passed: false,
+                            total: 0,
+                            reason: `essence depletion (${r.essenceExhaustion} exhaustion)`
                         });
                     }
                 }

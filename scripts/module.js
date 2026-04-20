@@ -10,13 +10,18 @@ import { ActivityPickerApp } from "./apps/ActivityPickerApp.js";
 import { CampfireApp } from "./apps/CampfireApp.js";
 import { ShortRestApp } from "./apps/ShortRestApp.js";
 import { CampfireTokenLinker } from "./services/CampfireTokenLinker.js";
+import { TorchTokenLinker } from "./services/TorchTokenLinker.js";
+import { placeTorch, placePerimeter, clearTorches, toggleTorches, placeCampfire, placeCamp } from "./services/CampPropPlacer.js";
 
 import { createAdapter } from "./adapters/adapterFactory.js";
 import { PackRegistryApp } from "./apps/PackRegistryApp.js";
 import { PartyRosterApp } from "./apps/PartyRosterApp.js";
 import { CopySpellHandler } from "./services/CopySpellHandler.js";
 import { ImageResolver } from "./util/ImageResolver.js";
-// ItemEnrichmentRegistry removed — engine lives in ionrift-library (ItemEnrichmentEngine).
+import { ItemClassifier } from "./services/ItemClassifier.js";
+import { DietConfigApp } from "./apps/DietConfigApp.js";
+import { ButcherResolver } from "./services/ButcherResolver.js";
+import { MealPhaseHandler } from "./services/MealPhaseHandler.js";
 
 const MODULE_ID = "ionrift-respite";
 const MODULE_LABEL = "Respite";
@@ -291,6 +296,7 @@ Hooks.once("init", async () => {
             activeShortRestApp = null;
             await game.settings.set(MODULE_ID, "activeRest", {});
             await game.settings.set(MODULE_ID, "activeShortRest", {});
+            await game.settings.set(MODULE_ID, "lastRestDate", "");
             game.socket.emit(`module.${MODULE_ID}`, { type: "forceReload" });
             ui.notifications.info("Rest state cleared. Reloading...");
             setTimeout(() => window.location.reload(), 500);
@@ -298,7 +304,43 @@ Hooks.once("init", async () => {
         /** Item Enrichment: delegates to ionrift-library kernel (backward compat). */
         getItemEnrichment: (itemName) => game.ionrift?.library?.enrichment?.get(itemName) ?? null,
         /** Item Enrichment: returns all registered enrichment names (debug). */
-        getEnrichmentNames: () => game.ionrift?.library?.enrichment?.getRegisteredNames() ?? []
+        getEnrichmentNames: () => game.ionrift?.library?.enrichment?.getRegisteredNames() ?? [],
+        /** Item classification: unified food/water/fuel classification. */
+        ItemClassifier,
+        /** Monster butchering: graduated outcome resolution. */
+        ButcherResolver,
+        /** Diet configuration UI. Usage: game.ionrift.respite.openDietConfig() or game.ionrift.respite.openDietConfig(actorId) */
+        DietConfigApp,
+        openDietConfig: (actorId) => {
+            if (!game.user.isGM) return;
+            new DietConfigApp(actorId ? { actorId } : {}).render({ force: true });
+        },
+        /** Classify a single item. Usage: game.ionrift.respite.classifyItem(item) */
+        classifyItem: (item) => ItemClassifier.classify(item),
+        /** Get an actor's diet profile. Usage: game.ionrift.respite.getDiet(actor) */
+        getDiet: (actor) => ItemClassifier.getDiet(actor),
+        /** Set an actor's diet profile. Usage: game.ionrift.respite.setDiet(actor, { label: "Custom", canEat: ["food", "fuel"] }) */
+        setDiet: (actor, diet) => ItemClassifier.setDiet(actor, diet),
+        /** Apply a preset diet. Usage: game.ionrift.respite.applyDietPreset(actor, "warforged") */
+        applyDietPreset: (actor, presetId) => ItemClassifier.applyPreset(actor, presetId),
+        /** List available diet presets. Usage: game.ionrift.respite.getDietPresets() */
+        getDietPresets: () => ItemClassifier.getPresets(),
+
+        // ── Camp Prop Placement ──────────────────────────────────────
+        /** Place a campfire (base + fire overlay) via crosshair. GM only. */
+        placeCampfire,
+        /** Place a single torch pair (stake + fire overlay) via crosshair. GM only. */
+        placeTorch,
+        /** Place a ring of torch pairs around the selected token or a clicked point. GM only. */
+        placePerimeter,
+        /** Place a full camp: campfire + perimeter ring, one click. GM only. */
+        placeCamp,
+        /** Remove all torch tokens (stakes + fire overlays) from the scene. GM only. */
+        clearTorches,
+        /** Toggle all perimeter torch lights on/off. GM only. */
+        toggleTorches,
+        /** TorchTokenLinker service reference. */
+        TorchTokenLinker
     };
 
     // Register settings
@@ -323,6 +365,15 @@ Hooks.once("init", async () => {
         config: false,
         type: Array,
         default: []
+    });
+
+    game.settings.registerMenu(MODULE_ID, "dietConfigMenu", {
+        name: "Diet Profiles",
+        label: "Configure Diets",
+        hint: "Set per-character dietary rules: what each character can eat and drink, preset profiles (Warforged, Herbivore, etc.), and custom overrides.",
+        icon: "fas fa-utensils",
+        type: DietConfigApp,
+        restricted: true
     });
 
     // BODY: Gameplay settings
@@ -420,6 +471,26 @@ Hooks.once("init", async () => {
         restricted: true
     });
 
+    game.settings.register(MODULE_ID, "torchTokenName", {
+        name: "Perimeter Torch Token Name",
+        hint: "Name of the tokens on the scene used as perimeter torches. All matching tokens toggle together. Case-insensitive.",
+        scope: "world",
+        config: true,
+        type: String,
+        default: "Perimeter Torch",
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "torchAutoLink", {
+        name: "Auto-Link Torches to Campfire",
+        hint: "When enabled, perimeter torches automatically light and extinguish with the campfire.",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: true,
+        restricted: true
+    });
+
     game.settings.register(MODULE_ID, "customFoodNames", {
         name: "Custom Food Items",
         hint: "Comma-separated list of additional item names to recognise as food in the meal phase. Case-insensitive. Example: scrap metal, goodberries, dried fish",
@@ -437,6 +508,16 @@ Hooks.once("init", async () => {
         config: true,
         type: String,
         default: "",
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "enableMonsterCooking", {
+        name: "Monster Cooking",
+        hint: "After combat with notable creatures, characters carrying the Dungeon Gourmand's Handbook can butcher carcasses for exotic cooking ingredients. Requires a content pack with monster recipes and a butcher registry.",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: false,
         restricted: true
     });
 
@@ -530,9 +611,9 @@ Hooks.once("init", async () => {
 
     // Clear Rest State: GM escape hatch for stuck rests (renders below debug)
     game.settings.registerMenu(MODULE_ID, "clearRestState", {
-        name: "Clear Rest State",
-        label: "Clear Stuck Rest",
-        hint: "If a rest is stuck and cannot be resumed or dismissed, this clears all rest state and reloads. Use when the rest dialog won't open or a previous rest didn't clean up.",
+        name: "Reset Rest State",
+        label: "Reset Rest State",
+        hint: "Clears all rest state including flow locks, active rest data, and the daily rest cooldown. Use when resting won't start or a previous rest didn't clean up.",
         icon: "fas fa-broom",
         type: class ClearRestStateApp extends FormApplication {
             async _updateObject() {
@@ -540,8 +621,8 @@ Hooks.once("init", async () => {
             }
             async render() {
                 const proceed = await Dialog.confirm({
-                    title: "Clear Rest State",
-                    content: "<p>This will discard any in-progress rest and reload all connected clients.</p><p>Only use this if a rest is stuck and cannot be resolved normally.</p>",
+                    title: "Reset Rest State",
+                    content: "<p>This will discard any in-progress rest, clear the daily rest cooldown, and reload all connected clients.</p><p>Only use this if resting is stuck or blocked.</p>",
                     yes: () => true,
                     no: () => false,
                     defaultYes: false
@@ -630,6 +711,64 @@ Hooks.once("init", async () => {
         "tinker's tools": {
             html: `<hr><p><strong>Respite:</strong> Qualifies for the <strong>Tinkering</strong> crafting profession during rest. Characters proficient with these tools can repair gear or craft small mechanical devices during the Activity phase.</p>`,
             tags: ["Tinkering Profession"]
+        },
+
+        // ── Dungeon Gourmand's Handbook ──────────────────────────────
+        "dungeon gourmand's handbook": {
+            html: `<hr><p><strong>Respite:</strong> After combat with notable creatures (<strong>CR 2+</strong>), characters carrying this book are offered the chance to <strong>butcher the carcass</strong> for exotic cooking ingredients. The quality of the yield depends on a Survival check. The resulting ingredients unlock special <strong>monster recipes</strong> during the next rest.</p>`,
+            tags: ["Monster Cooking", "Butchering"]
+        },
+
+        // ── Tinderbox ─────────────────────────────────────────────────
+        "tinderbox": {
+            html: `<hr><p><strong>Respite:</strong> Required to <strong>light the campfire</strong> during the Camp phase. Without a tinderbox (or equivalent), the party cannot start a fire, losing access to cooking, warmth bonuses, and campfire-dependent activities. One tinderbox serves the whole party.</p>`,
+            tags: ["Campfire (required)"]
+        },
+
+        // ── Perishable Foods ──────────────────────────────────────────
+        "fresh meat": {
+            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (1 day).</strong> Raw game meat from hunting. Spoils after 1 rest if not cooked or preserved. Used as a cooking ingredient for recipes that call for meat. Cooking transforms it into a meal that feeds the party and may grant temporary buffs.</p>`,
+            tags: ["Perishable (1 day)", "Cooking Ingredient"]
+        },
+        "fresh fish": {
+            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (1 day).</strong> Caught fresh from rivers or marshland. Spoils after 1 rest if not cooked. Used as a cooking ingredient for fish-based recipes.</p>`,
+            tags: ["Perishable (1 day)", "Cooking Ingredient"]
+        },
+        "choice cut": {
+            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (1 day).</strong> A prime cut from an exceptional hunt. Spoils after 1 rest but produces superior meals when cooked. Higher-quality recipes may require choice cuts specifically.</p>`,
+            tags: ["Perishable (1 day)", "Premium Ingredient"]
+        },
+        "wild berries": {
+            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (3 days).</strong> Foraged fruit. Can be eaten raw or used as a cooking ingredient. Spoils after 3 rests. Recipes using berries tend to produce preserves that last longer.</p>`,
+            tags: ["Perishable (3 days)", "Edible Raw", "Cooking Ingredient"]
+        },
+        "edible berries": {
+            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (3 days).</strong> Foraged fruit. Can be eaten raw or used as a cooking ingredient. Spoils after 3 rests.</p>`,
+            tags: ["Perishable (3 days)", "Edible Raw", "Cooking Ingredient"]
+        },
+        "edible mushrooms": {
+            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (3 days).</strong> Foraged fungi. Can be eaten raw (with some risk) or used in cooking. Spoils after 3 rests.</p>`,
+            tags: ["Perishable (3 days)", "Cooking Ingredient"]
+        },
+        "wild herbs": {
+            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (3 days).</strong> Aromatic herbs foraged in the wild. Essential cooking ingredient for many recipes. Also used in herbalism. Spoils after 3 rests.</p>`,
+            tags: ["Perishable (3 days)", "Cooking Ingredient", "Herbalism Ingredient"]
+        },
+        "healing herbs": {
+            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (3 days).</strong> Medicinal herbs foraged in the wild. Used in herbalism recipes and some advanced cooking. Spoils after 3 rests.</p>`,
+            tags: ["Perishable (3 days)", "Herbalism Ingredient"]
+        },
+        "spiced jerky": {
+            html: `<hr><p><strong>Respite:</strong> Dried, seasoned meat strips. <strong>Shelf-stable</strong> (does not spoil). Equivalent to rations for the Meal Phase. A cooking output that preserves meat for long journeys.</p>`,
+            tags: ["Shelf-stable", "Meal Phase (1/day)"]
+        },
+        "smoked fish": {
+            html: `<hr><p><strong>Respite:</strong> Cured fish. <strong>Shelf-stable</strong> (does not spoil). Equivalent to rations for the Meal Phase. A cooking output that preserves fish for travel.</p>`,
+            tags: ["Shelf-stable", "Meal Phase (1/day)"]
+        },
+        "bird eggs": {
+            html: `<hr><p><strong>Respite:</strong> <strong>Perishable (1 day).</strong> Foraged or gathered from nests. Fragile and quick to spoil. Used as a cooking ingredient.</p>`,
+            tags: ["Perishable (1 day)", "Cooking Ingredient"]
         }
     });
 });
@@ -675,6 +814,306 @@ Hooks.on("chatMessage", (log, message, chatData) => {
     }
 });
 
+// ── Diet Config: Actor Sheet Button ──────────────────────────
+// Injects a small "Diet" icon button into character sheet headers so GMs can
+// open DietConfigApp scoped to that actor without hunting through module settings.
+function _injectDietButton(app, html) {
+    if (!game.user.isGM) return;
+    const actor = app.actor ?? app.document;
+    if (!actor || actor.type !== "character") return;
+
+    // Normalise html to a DOM element (jQuery or raw)
+    const el = html instanceof HTMLElement ? html
+        : html?.[0] instanceof HTMLElement ? html[0]
+        : html?.get?.(0)
+        ?? app.element;
+    if (!el) return;
+
+    // Avoid duplicate injection
+    if (el.querySelector(".respite-diet-btn")) return;
+
+    // ApplicationV2: header is inside the app element
+    // ApplicationV1: header is .window-header inside the passed html
+    const header = el.querySelector("header.window-header")
+        ?? el.closest?.(".app")?.querySelector("header.window-header")
+        ?? el.querySelector(".window-header");
+    if (!header) return;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "header-control-button respite-diet-btn";
+    btn.dataset.tooltip = "Diet Configuration";
+    btn.setAttribute("aria-label", "Diet Configuration");
+    btn.innerHTML = `<i class="fas fa-utensils"></i>`;
+    btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        new DietConfigApp({ actorId: actor.id }).render({ force: true });
+    });
+
+    // Insert before the close button if present, otherwise append to header
+    const closeBtn = header.querySelector("button.close, button[data-action='close']");
+    if (closeBtn) {
+        closeBtn.before(btn);
+    } else {
+        header.appendChild(btn);
+    }
+}
+
+// Register on all possible actor sheet hook names (v1 + ApplicationV2 + dnd5e specific)
+for (const hookName of [
+    "renderActorSheet",
+    "renderActorSheetV2",
+    "renderActorSheet5eCharacter2",
+    "renderActorSheet5eCharacter"
+]) {
+    Hooks.on(hookName, (app, html, context) => _injectDietButton(app, html));
+}
+
+// ── Spoilage Badge: Inventory Item Freshness Indicator ───────
+// Scans visible inventory item rows on character sheets and injects a small
+// badge showing days remaining before spoilage. Uses ItemClassifier.getSpoilsAfter()
+// to recognise perishable items by flag OR by name/food-tag inference.
+// Only shows on active party roster members.
+function _injectSpoilageBadges(app, html) {
+    const actor = app.actor ?? app.document;
+    if (!actor || actor.type !== "character") return;
+
+    // Only badge party roster members
+    try {
+        const roster = game.settings.get(MODULE_ID, "partyRoster") ?? [];
+        if (roster.length && !roster.includes(actor.id)) return;
+    } catch { /* setting not yet registered */ }
+
+    const el = html instanceof HTMLElement ? html
+        : html?.[0] instanceof HTMLElement ? html[0]
+        : html?.get?.(0)
+        ?? app.element;
+    if (!el) return;
+
+    const now = CalendarHandler.getCurrentDate();
+    const nowEpoch = game.time.worldTime;
+
+    // Find all item list entries (dnd5e v4 uses [data-item-id])
+    const itemRows = el.querySelectorAll("[data-item-id]");
+    for (const row of itemRows) {
+        const itemId = row.dataset.itemId;
+        if (!itemId) continue;
+
+        const item = actor.items.get(itemId);
+        if (!item) continue;
+
+        // Use ItemClassifier to detect spoilage (flag or inferred from food tag)
+        const flags = item.flags?.[MODULE_ID] ?? {};
+        if (flags.spoiled) continue;
+
+        const spoilsAfter = ItemClassifier.getSpoilsAfter(item);
+        if (spoilsAfter == null || spoilsAfter <= 0) continue;
+
+        // Avoid duplicate badges
+        if (row.querySelector(".respite-spoil-badge")) continue;
+
+        // Calculate days remaining (items with harvestedDate use calendar math)
+        let daysLeft = spoilsAfter;
+        const harvested = flags.harvestedDate;
+        if (harvested) {
+            if (now && harvested.includes("-")) {
+                const daysPassed = MealPhaseHandler._dateDiffDays(harvested, now);
+                daysLeft = Math.max(0, spoilsAfter - daysPassed);
+            } else {
+                const harvestedEpoch = parseInt(harvested, 10);
+                if (!isNaN(harvestedEpoch)) {
+                    const daysPassed = Math.floor((nowEpoch - harvestedEpoch) / 86400);
+                    daysLeft = Math.max(0, spoilsAfter - daysPassed);
+                }
+            }
+        }
+
+        const badge = document.createElement("span");
+        badge.className = "respite-spoil-badge";
+        if (daysLeft <= 0) {
+            badge.classList.add("spoil-expired");
+            badge.textContent = "SPOILED";
+            badge.dataset.tooltip = "This food has gone off.";
+        } else if (daysLeft === 1) {
+            badge.classList.add("spoil-urgent");
+            badge.textContent = "1d";
+            badge.dataset.tooltip = "Spoils within a day. Eat or cook it.";
+        } else {
+            badge.classList.add("spoil-fresh");
+            badge.textContent = `${daysLeft}d`;
+            badge.dataset.tooltip = `${daysLeft} days until spoilage.`;
+        }
+
+        // Insert into the item name area
+        const nameEl = row.querySelector(".item-name, .entry-name, h4, .name");
+        if (nameEl) {
+            nameEl.appendChild(badge);
+        } else {
+            row.appendChild(badge);
+        }
+    }
+}
+
+for (const hookName of [
+    "renderActorSheet",
+    "renderActorSheetV2",
+    "renderActorSheet5eCharacter2",
+    "renderActorSheet5eCharacter"
+]) {
+    Hooks.on(hookName, (app, html, context) => _injectSpoilageBadges(app, html));
+}
+
+// ── Calendar-Driven Spoilage ─────────────────────────────────
+// When in-game time advances (Simple Calendar or core worldTime), check all
+// party member inventories for perishable items that have expired based on
+// their harvestedDate. Replaces spoiled items with "Spoiled Food" and
+// whispers a summary to the GM.
+{
+    let _spoilageDebounce = null;
+
+    Hooks.on("updateWorldTime", (worldTime, dt) => {
+        if (!game.user.isGM) return;
+        if (_spoilageDebounce) clearTimeout(_spoilageDebounce);
+        _spoilageDebounce = setTimeout(() => _runCalendarSpoilage(), 2000);
+    });
+
+    // Simple Calendar fires its own date change hook
+    Hooks.on("simple-calendar-date-time-change", () => {
+        if (!game.user.isGM) return;
+        if (_spoilageDebounce) clearTimeout(_spoilageDebounce);
+        _spoilageDebounce = setTimeout(() => _runCalendarSpoilage(), 2000);
+    });
+
+    async function _runCalendarSpoilage() {
+        _spoilageDebounce = null;
+        try {
+            const roster = game.settings.get(MODULE_ID, "partyRoster") ?? [];
+            const actors = roster.map(id => game.actors.get(id)).filter(Boolean);
+            if (!actors.length) return;
+
+            const report = await MealPhaseHandler.resolveCalendarSpoilage(actors);
+
+            // Re-render open actor sheets so spoilage badges update live
+            for (const actor of actors) {
+                actor?.sheet?.render(false);
+            }
+
+            if (!report.length) return;
+
+            const totalSpoiled = report.reduce(
+                (sum, r) => sum + r.spoiled.reduce((s, i) => s + i.qty, 0), 0
+            );
+            const lines = report.flatMap(r =>
+                r.spoiled.map(s => `<strong>${r.actorName}</strong>: ${s.qty}x ${s.name}`)
+            );
+
+            await ChatMessage.create({
+                content: `<p><i class="fas fa-hourglass-end"></i> <strong>Food Spoilage (time advance):</strong> ${totalSpoiled} item(s) have spoiled.</p><ul>${lines.map(l => `<li>${l}</li>`).join("")}</ul>`,
+                speaker: { alias: "Respite" },
+                whisper: game.users.filter(u => u.isGM).map(u => u.id),
+                type: CONST.CHAT_MESSAGE_TYPES.WHISPER ?? 4
+            });
+
+            Logger?.log?.(MODULE_LABEL, `Calendar spoilage: ${totalSpoiled} items spoiled across ${report.length} characters.`);
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Calendar spoilage check failed:`, e);
+        }
+    }
+}
+
+// ── Monster Cooking: Chat Card Button Wiring ─────────────────
+// Wires "Butcher" and "Pass" buttons on the butcher prompt chat cards.
+Hooks.on("renderChatMessage", (message, html) => {
+    const card = html[0]?.querySelector?.(".respite-butcher-card")
+        ?? html.find?.(".respite-butcher-card")?.[0];
+    if (!card) return;
+
+    const butcherBtn = card.querySelector(".btn-butcher");
+    const passBtn = card.querySelector(".btn-butcher-pass");
+
+    if (butcherBtn) {
+        butcherBtn.addEventListener("click", async (ev) => {
+            ev.preventDefault();
+            ev.currentTarget.disabled = true;
+
+            const flags = message.flags?.[MODULE_ID];
+            if (!flags?.butcherPrompt) return;
+
+            const holderIds = flags.holderIds ?? [];
+            const userActors = game.actors.filter(a =>
+                a.hasPlayerOwner && holderIds.includes(a.id) &&
+                a.ownership?.[game.user.id] >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+            );
+
+            let actor;
+            if (game.user.isGM) {
+                actor = game.actors.get(holderIds[0]);
+            } else if (userActors.length === 1) {
+                actor = userActors[0];
+            } else if (userActors.length > 1) {
+                actor = userActors[0];
+            } else {
+                ui.notifications.warn("None of the characters carrying the Handbook belong to this player.");
+                ev.currentTarget.disabled = false;
+                return;
+            }
+
+            if (!actor) {
+                ui.notifications.warn("Could not find the butchering character.");
+                ev.currentTarget.disabled = false;
+                return;
+            }
+
+            const target = {
+                combatant: { id: flags.combatantId },
+                actor: game.actors.get(flags.creatureId) ?? { id: flags.creatureId },
+                actorName: flags.creatureName,
+                actorImg: flags.creatureImg,
+                classifierResult: { id: flags.classifierId },
+                registryEntry: ButcherResolver.lookup(flags.classifierId, flags.cr),
+                cr: flags.cr
+            };
+
+            if (!target.registryEntry) {
+                ui.notifications.warn("Butcher registry entry not found for this creature.");
+                ev.currentTarget.disabled = false;
+                return;
+            }
+
+            const result = await ButcherResolver.resolve(actor, target);
+            const resultContent = ButcherResolver.buildResultCard(result, actor.name);
+
+            await ChatMessage.create({
+                content: resultContent,
+                speaker: { alias: "Respite" },
+                flags: {
+                    [MODULE_ID]: {
+                        butcherResult: true,
+                        outcome: result.outcome,
+                        tier: result.tier
+                    }
+                }
+            });
+
+            butcherBtn.style.display = "none";
+            if (passBtn) passBtn.style.display = "none";
+        });
+    }
+
+    if (passBtn) {
+        passBtn.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            if (butcherBtn) butcherBtn.style.display = "none";
+            passBtn.style.display = "none";
+            const actionsDiv = card.querySelector(".butcher-card-actions");
+            if (actionsDiv) {
+                actionsDiv.innerHTML = `<span class="butcher-passed"><i class="fas fa-times"></i> Passed</span>`;
+            }
+        });
+    }
+});
+
 // Item Enrichment hooks are now wired by ionrift-library (ItemEnrichmentEngine).
 // Respite enrichment data is registered in the init hook below via registerBatch().
 
@@ -699,6 +1138,46 @@ Hooks.once("ready", async () => {
 
     // Initialize terrain registry early so data is available before first rest
     await TerrainRegistry.init();
+
+    // Load butcher registry for monster cooking (from imported packs or dev fallback)
+    if (game.user.isGM) {
+        try {
+            const enabled = game.settings.get(MODULE_ID, "enableMonsterCooking");
+            if (enabled) {
+                let loaded = false;
+
+                // 1. Try imported content packs
+                const importedPacks = game.settings.get(MODULE_ID, "importedPacks") ?? {};
+                for (const [, packData] of Object.entries(importedPacks)) {
+                    if (packData.butcherRegistry) {
+                        ButcherResolver.load(packData.butcherRegistry);
+                        loaded = true;
+                        break;
+                    }
+                }
+
+                // 2. Dev fallback: load from workshop pack on disk
+                if (!loaded) {
+                    try {
+                        const resp = await fetch("ionrift-pack-workshop/packs/respite/content/cooking/butcher_registry.json");
+                        if (resp.ok) {
+                            const data = await resp.json();
+                            ButcherResolver.load(data);
+                            loaded = true;
+                        }
+                    } catch { /* no workshop pack on disk, that's fine */ }
+                }
+
+                if (loaded) {
+                    console.log(`${MODULE_ID} | Butcher registry loaded (${Object.keys(ButcherResolver._registry ?? {}).length} entries)`);
+                } else {
+                    console.log(`${MODULE_ID} | Monster cooking enabled but no butcher registry found.`);
+                }
+            }
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Failed to load butcher registry:`, e);
+        }
+    }
 
     // Register socket handler
     game.socket.on(`module.${MODULE_ID}`, _onSocketMessage);
@@ -953,6 +1432,82 @@ Hooks.once("ready", async () => {
         Logger.log?.(MODULE_LABEL, "Combat ended, rest flow unblocked.");
     });
 
+    // ── Monster Cooking: Butcher Prompt after Combat ──────────────
+    // Double gate: setting enabled + cookbook holder + registry loaded.
+    // Posts a butcher prompt card to chat when a notable creature is killed.
+    Hooks.on("deleteCombat", async (combat, options, userId) => {
+        if (!game.user.isGM) return;
+
+        try {
+            const enabled = game.settings.get(MODULE_ID, "enableMonsterCooking");
+            if (!enabled) return;
+        } catch { return; }
+
+        if (!ButcherResolver.hasRegistry) {
+            Logger.log?.(MODULE_LABEL, "Monster cooking enabled but no butcher registry loaded. Skipping.");
+            return;
+        }
+
+        const partyActors = getPartyActors();
+        const holders = ButcherResolver.findCookbookHolders(partyActors);
+        if (!holders.length) return;
+
+        const targets = ButcherResolver.findButcherTargets(combat);
+        if (!targets.length) return;
+
+        const bestTarget = targets[0];
+        Logger.log?.(MODULE_LABEL,
+            `Butcher opportunity: ${bestTarget.actorName} (CR ${bestTarget.cr}, ${bestTarget.registryEntry.tier})`
+        );
+
+        const promptFlags = {
+            butcherPrompt: true,
+            creatureId: bestTarget.actor?.id ?? null,
+            combatantId: bestTarget.combatant?.id ?? null,
+            creatureName: bestTarget.actorName,
+            creatureImg: bestTarget.actorImg,
+            classifierId: bestTarget.classifierResult?.id,
+            cr: bestTarget.cr,
+            tier: bestTarget.registryEntry.tier,
+            holderIds: holders.map(a => a.id)
+        };
+
+        const content = ButcherResolver.buildPromptCard(bestTarget, holders);
+        await ChatMessage.create({
+            content,
+            speaker: { alias: "Respite" },
+            flags: { [MODULE_ID]: promptFlags }
+        });
+
+        // Send popup to owning players (and GM for solo testing)
+        const dc = ButcherResolver.calculateDC(bestTarget.cr);
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "butcherPromptPopup",
+            creatureName: bestTarget.actorName,
+            creatureImg: bestTarget.actorImg,
+            tier: bestTarget.registryEntry.tier ?? "common",
+            flavour: bestTarget.registryEntry.flavour ?? "",
+            cr: bestTarget.cr,
+            dc,
+            holderIds: holders.map(a => a.id),
+            holderNames: holders.map(a => a.name).join(", "),
+            flags: promptFlags
+        });
+
+        // Also show on GM client immediately
+        _showButcherPopup({
+            creatureName: bestTarget.actorName,
+            creatureImg: bestTarget.actorImg,
+            tier: bestTarget.registryEntry.tier ?? "common",
+            flavour: bestTarget.registryEntry.flavour ?? "",
+            cr: bestTarget.cr,
+            dc,
+            holderIds: holders.map(a => a.id),
+            holderNames: holders.map(a => a.name).join(", "),
+            flags: promptFlags
+        });
+    });
+
     console.log(`${MODULE_ID} | Boot complete.`);
 });
 
@@ -1129,6 +1684,55 @@ function _onSocketMessage(data) {
         case "requestRestState":
             if (!game.user.isGM) return;
             _handleRequestRestState(data);
+            break;
+
+        // Player -> GM: travel activity declaration
+        case "travelDeclaration":
+            if (!game.user.isGM) return;
+            if (activeRestSetupApp?.receiveTravelDeclaration) {
+                activeRestSetupApp.receiveTravelDeclaration(data);
+            }
+            break;
+
+        // GM -> Players: live sync of all travel declarations (multi-day)
+        case "travelDeclarationsSync":
+            if (game.user.isGM) return;
+            if (activePlayerRestApp) {
+                activePlayerRestApp._syncedTravelDeclarations = data.declarations ?? {};
+                if (data.activeDay != null) activePlayerRestApp._travelActiveDay = data.activeDay;
+                if (data.totalDays != null) activePlayerRestApp._travelTotalDays = data.totalDays;
+                if (data.scoutingAllowed != null) activePlayerRestApp._travelScoutingAllowed = data.scoutingAllowed;
+                activePlayerRestApp.render();
+            }
+            break;
+
+        // GM -> Players: travel roll request
+        case "travelRollRequest":
+            if (game.user.isGM) return;
+            if (activePlayerRestApp?.receiveTravelRollRequest) {
+                activePlayerRestApp.receiveTravelRollRequest(data);
+            }
+            break;
+
+        // Player -> GM: travel roll result
+        case "travelRollResult":
+            if (!game.user.isGM) return;
+            if (activeRestSetupApp?.receiveTravelRollResult) {
+                activeRestSetupApp.receiveTravelRollResult(data);
+            }
+            break;
+
+        // GM -> specific Player: private travel debrief
+        case "travelDebrief":
+            if (game.user.isGM) return;
+            if (data.targetUserId !== game.user.id) return;
+            if (activePlayerRestApp) {
+                if (!activePlayerRestApp._travelDebrief) activePlayerRestApp._travelDebrief = [];
+                activePlayerRestApp._travelDebrief.push(...(data.results ?? []));
+                activePlayerRestApp._travelFullyResolved = !!data.fullyResolved;
+                activePlayerRestApp._travelScoutingDone = !!data.scoutingDone;
+                activePlayerRestApp.render();
+            }
             break;
 
         // Player -> GM: camp activity roll result
@@ -1309,6 +1913,12 @@ function _onSocketMessage(data) {
             CampfireTokenLinker.setLightState(data.lit);
             break;
 
+        // Player -> GM: toggle perimeter torch tokens on canvas
+        case "torchTokenSync":
+            if (!game.user.isGM) return;
+            TorchTokenLinker.setLightState(data.lit);
+            break;
+
         // GM -> All: force all clients to reload (dev tool)
         case "forceReload":
             console.log(`${MODULE_ID} | Received forceReload, refreshing page...`);
@@ -1387,7 +1997,61 @@ function _onSocketMessage(data) {
             if (!game.user.isGM) return;
             _handleRequestShortRestState(data);
             break;
+
+        // GM -> Players: butcher opportunity popup
+        case "butcherPromptPopup":
+            if (game.user.isGM) return;
+            _showButcherPopup(data);
+            break;
     }
+}
+
+/**
+ * Shows an in-your-face butcher opportunity popup to relevant players/GM.
+ * Only displays if the current user owns one of the cookbook-holding characters.
+ */
+function _showButcherPopup(data) {
+    const holderIds = data.holderIds ?? [];
+
+    // Only show to users who own a cookbook holder (or GM)
+    if (!game.user.isGM) {
+        const ownsHolder = holderIds.some(id => {
+            const actor = game.actors.get(id);
+            return actor?.ownership?.[game.user.id] >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
+        });
+        if (!ownsHolder) return;
+    }
+
+    const tierColors = { common: "#8b8b8b", uncommon: "#1a9c3a", rare: "#4a6de5", legendary: "#c44ade" };
+    const tierColor = tierColors[data.tier] ?? tierColors.common;
+
+    const overlay = document.createElement("div");
+    overlay.classList.add("ionrift-armor-modal-overlay");
+    overlay.style.zIndex = "10001";
+    overlay.innerHTML = `
+        <div class="ionrift-armor-modal" style="max-width: 420px;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+                <img src="${data.creatureImg}" alt="${data.creatureName}"
+                     style="width: 64px; height: 64px; border-radius: 8px; border: 2px solid ${tierColor}; object-fit: cover;" />
+                <div>
+                    <h3 style="margin: 0;"><i class="fas fa-drumstick-bite"></i> Butcher Opportunity</h3>
+                    <p style="margin: 2px 0; font-size: 1.1em; font-weight: bold;">${data.creatureName}</p>
+                    <span style="background: ${tierColor}; color: #fff; padding: 1px 8px; border-radius: 3px; font-size: 0.8em; text-transform: uppercase;">${data.tier}</span>
+                </div>
+            </div>
+            <p style="font-style: italic; margin: 6px 0; color: #ccc;">${data.flavour}</p>
+            <p style="margin: 6px 0;"><strong>Survival DC:</strong> ${data.dc} &nbsp; <strong>CR:</strong> ${data.cr}</p>
+            <p style="margin: 6px 0;"><i class="fas fa-book"></i> ${data.holderNames} can butcher this creature.</p>
+            <p style="margin: 8px 0; font-size: 0.9em; color: #aaa;">Use the <strong>Butcher</strong> button in chat to attempt the harvest.</p>
+            <div class="ionrift-armor-modal-buttons">
+                <button class="btn-armor-confirm"><i class="fas fa-check"></i> Got it</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => overlay.remove());
+
+    // Auto-dismiss after 30 seconds
+    setTimeout(() => { if (overlay.parentNode) overlay.remove(); }, 30000);
 }
 
 /**
