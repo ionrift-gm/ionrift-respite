@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.2.4] - 2026-04-20
+
+### Changed
+- Platform logic (Forge detection, FilePicker resolution, directory creation) now delegates to the ionrift-library kernel instead of carrying local copies. No user-facing changes - this is a maintenance update that requires ionrift-library 1.9.0 or later.
+
 ## [1.2.3] - 2026-04-20
 
 ### Fixed

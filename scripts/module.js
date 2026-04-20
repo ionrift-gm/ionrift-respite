@@ -270,16 +270,16 @@ Hooks.once("init", async () => {
         linkPacks: async () => {
             if (!game.user.isGM) return;
             const file = new File(["LINK_PACKS"], "cmd.txt", { type: "text/plain" });
-            const FP = foundry.applications.apps?.FilePicker?.implementation ?? FilePicker;
-            await FP.upload("data", "ionrift_debug", file, { notify: false });
+                const FP = game.ionrift?.library?.platform?.FP ?? FilePicker;
+                await FP.upload("data", "ionrift_debug", file, { notify: false });
             ui.notifications.info("LINK_PACKS command sent. Waiting for DevTools to execute...");
         },
         /** Write UNLINK_PACKS to cmd.txt for the DevTools CommandListener. */
         unlinkPacks: async () => {
             if (!game.user.isGM) return;
             const file = new File(["UNLINK_PACKS"], "cmd.txt", { type: "text/plain" });
-            const FP = foundry.applications.apps?.FilePicker?.implementation ?? FilePicker;
-            await FP.upload("data", "ionrift_debug", file, { notify: false });
+                const FP = game.ionrift?.library?.platform?.FP ?? FilePicker;
+                await FP.upload("data", "ionrift_debug", file, { notify: false });
             ui.notifications.info("UNLINK_PACKS command sent. Waiting for DevTools to execute...");
         },
         /** GM escape hatch: clears stale rest state and reloads. Usage: game.ionrift.respite.resetFlowState() */
