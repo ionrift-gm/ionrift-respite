@@ -8,12 +8,7 @@
  * - Consume selected items from inventory (multi-day aware, handles partial supply)
  * - Generate advisories about starvation/dehydration consequences
  * - Apply exhaustion at resolution when thresholds are exceeded
- *
- * Item classification is delegated to ItemClassifier. Diet-aware filtering
- * ensures each character only sees items compatible with their diet profile.
  */
-
-import { ItemClassifier } from "./ItemClassifier.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -21,70 +16,11 @@ const MODULE_ID = "ionrift-respite";
 const MEAL_DEFAULTS = {
     waterPerDay: 1,
     foodPerDay: 1,
-    essencePerDay: 2,
     dehydrationDC: 15,
     foodGraceDays: null  // null = 3 + CON mod (calculated per character)
 };
 
 export class MealPhaseHandler {
-
-    /**
-     * Resolve food spoilage across all party members before the meal phase.
-     * Checks every inventory item with a `spoilsAfter` flag against
-     * `daysSinceLastRest`. Items that have expired are removed. Items
-     * foraged/hunted during this rest (flagged `foragedThisRest`) are skipped.
-     *
-     * @param {string[]} characterIds - Actor IDs in the rest
-     * @param {number} daysSinceLastRest - Days elapsed since last rest
-     * @returns {Object[]} Spoilage report per character: { actorName, spoiled: [{ name, qty }] }
-     */
-    static async resolveSpoilage(characterIds, daysSinceLastRest = 1) {
-        const report = [];
-
-        for (const charId of characterIds) {
-            const actor = game.actors.get(charId);
-            if (!actor) continue;
-
-            const spoiled = [];
-            const deletes = [];
-            const updates = [];
-
-            for (const item of actor.items) {
-                const flags = item.flags?.[MODULE_ID] ?? {};
-                if (flags.foragedThisRest) continue;
-
-                const spoilsAfter = flags.spoilsAfter;
-                if (spoilsAfter == null || spoilsAfter <= 0) continue;
-
-                if (daysSinceLastRest >= spoilsAfter) {
-                    const qty = item.system?.quantity ?? 1;
-                    spoiled.push({ name: item.name, qty });
-                    deletes.push(item.id);
-                }
-            }
-
-            if (deletes.length) {
-                await actor.deleteEmbeddedDocuments("Item", deletes);
-            }
-
-            if (spoiled.length) {
-                report.push({ characterId: charId, actorName: actor.name, spoiled });
-            }
-        }
-
-        if (report.length) {
-            const lines = report.flatMap(r =>
-                r.spoiled.map(s => `<strong>${r.actorName}</strong> lost ${s.qty}x ${s.name}`)
-            );
-            const dayLabel = daysSinceLastRest === 1 ? "1 day" : `${daysSinceLastRest} days`;
-            await ChatMessage.create({
-                content: `<div class="respite-recovery-chat"><p><i class="fas fa-skull-crossbones"></i> <strong>Spoilage</strong></p><p>After ${dayLabel} of travel, perishable food has gone off:</p><ul>${lines.map(l => `<li>${l}</li>`).join("")}</ul></div>`,
-                speaker: { alias: "Respite" }
-            });
-        }
-
-        return report;
-    }
 
     /**
      * Build meal context for all characters in the rest.
@@ -212,67 +148,6 @@ export class MealPhaseHandler {
                 summaryWaterSufficient = summaryWaterFilled >= summaryWaterRequired;
             }
 
-            // Essence tracking for non-biological characters (slot-based, like food/water)
-            const needsEssence = ItemClassifier.requiresEssence(actor);
-            const essenceOptions = needsEssence ? this._buildEssenceOptions(actor) : [];
-
-            const essenceArr = Array.isArray(currentChoice.essence) ? currentChoice.essence : [];
-            const essenceSlots = [];
-            const essRequired = rules.essencePerDay;
-            if (needsEssence) {
-                for (let i = 0; i < essRequired; i++) {
-                    const sel = essenceArr[i] ?? "skip";
-                    essenceSlots.push({ index: i, selected: sel, filled: sel && sel !== "skip" });
-                }
-            }
-            const essenceFilledCount = essenceSlots.filter(s => s.filled).length;
-            const essenceSufficient = essenceFilledCount >= essRequired;
-
-            // Essence consumed-days summary
-            let lastEssenceDay = -1;
-            for (let i = consumedDays.length - 1; i >= 0; i--) {
-                if ((consumedDays[i].essence ?? []).some(v => v && v !== "skip")) { lastEssenceDay = i; break; }
-            }
-            let restsSinceEssence;
-            if (lastEssenceDay >= 0) {
-                restsSinceEssence = currentDay - (lastEssenceDay + 1);
-            } else {
-                restsSinceEssence = (actor.getFlag(MODULE_ID, "restsSinceEssence") ?? 0) + daysSinceLastRest;
-            }
-
-            let summaryEssenceFilled = essenceFilledCount;
-            let summaryEssenceSufficient = essenceSufficient;
-            let summaryEssenceRequired = essRequired;
-            if (allDaysConsumed && consumedDays.length > 0 && needsEssence) {
-                summaryEssenceFilled = consumedDays.reduce((sum, d) =>
-                    sum + (d.essence ?? []).filter(v => v && v !== "skip").length, 0);
-                summaryEssenceRequired = essRequired * totalDays;
-                summaryEssenceSufficient = summaryEssenceFilled >= summaryEssenceRequired;
-            }
-
-            // Essence uses the same grace period as food (3 + CON mod)
-            if (needsEssence) {
-                const essenceGrace = rules.foodGraceDays ?? (3 + Math.max(0, conMod));
-                if (restsSinceEssence > 0 && restsSinceEssence <= essenceGrace) {
-                    const remaining = essenceGrace - restsSinceEssence;
-                    advisories.push({
-                        level: essenceSufficient ? "ok" : "warning",
-                        icon: essenceSufficient ? "fas fa-check-circle" : "fas fa-bolt",
-                        message: essenceSufficient
-                            ? `Recharging this rest. All ${essRequired} essence slots filled.`
-                            : `Has not recharged since ${restsSinceEssence === 1 ? "last rest" : `${restsSinceEssence} rests ago`}. Can go ${remaining} more rest${remaining !== 1 ? "s" : ""} before exhaustion.`
-                    });
-                } else if (restsSinceEssence > essenceGrace) {
-                    advisories.push({
-                        level: essenceSufficient ? "ok" : "danger",
-                        icon: essenceSufficient ? "fas fa-check-circle" : "fas fa-skull",
-                        message: essenceSufficient
-                            ? `Recharging this rest. Was depleted (${restsSinceEssence} rests without essence).`
-                            : `Depleted. Has not recharged in ${restsSinceEssence} rests. Skipping causes 1 level of exhaustion.`
-                    });
-                }
-            }
-
             cards.push({
                 characterId: charId,
                 actorName: actor.name,
@@ -299,15 +174,7 @@ export class MealPhaseHandler {
                 consumedDaysCount: consumedDays.length,
                 daySegments,
                 allDaysConsumed,
-                isMultiDay: totalDays > 1,
-                needsEssence,
-                essenceOptions,
-                hasEssence: essenceOptions.length > 0,
-                essenceSlots,
-                essenceFilledCount: allDaysConsumed ? summaryEssenceFilled : essenceFilledCount,
-                essenceSufficient: allDaysConsumed ? summaryEssenceSufficient : essenceSufficient,
-                essenceRequired: allDaysConsumed ? summaryEssenceRequired : essRequired,
-                restsSinceEssence: needsEssence ? restsSinceEssence : 0
+                isMultiDay: totalDays > 1
             });
         }
 
@@ -346,11 +213,7 @@ export class MealPhaseHandler {
                 waterShortfall: 0,
                 starvationExhaustion: 0,
                 dehydrationSaveDC: 0,
-                dehydrationAutoFail: false,
-                essenceConsumed: 0,
-                essenceShortfall: 0,
-                essenceDeprivation: false,
-                essenceExhaustion: 0
+                dehydrationAutoFail: false
             };
 
             // Count filled slots across all consumed days
@@ -410,61 +273,21 @@ export class MealPhaseHandler {
                 await actor.setFlag(MODULE_ID, "restsSinceWater", current + 1);
             }
 
-            // --- Essence / Recharge ---
-            const needsEssence = ItemClassifier.requiresEssence(actor);
-            if (needsEssence) {
-                let totalEssenceFilled = 0;
-                const essenceUsage = new Map();
-                for (const day of consumedDays) {
-                    for (const id of (day.essence ?? [])) {
-                        if (id && id !== "skip") {
-                            essenceUsage.set(id, (essenceUsage.get(id) ?? 0) + 1);
-                            totalEssenceFilled++;
-                        }
-                    }
-                }
-                for (const [itemId, amount] of essenceUsage) {
-                    await this._consumeItem(actor, itemId, amount);
-                }
-
-                const essenceNeeded = totalDays * rules.essencePerDay;
-                result.essenceConsumed = totalEssenceFilled;
-                result.essenceShortfall = Math.max(0, essenceNeeded - totalEssenceFilled);
-
-                if (result.essenceShortfall === 0) {
-                    await actor.setFlag(MODULE_ID, "restsSinceEssence", 0);
-                } else {
-                    const current = actor.getFlag(MODULE_ID, "restsSinceEssence") ?? 0;
-                    await actor.setFlag(MODULE_ID, "restsSinceEssence", current + 1);
-                    result.essenceDeprivation = true;
-                }
-
-                // Exhaustion from essence deprivation — same grace period as food
-                const essConMod = actor.system?.abilities?.con?.mod ?? 0;
-                const essGrace = rules.foodGraceDays ?? (3 + Math.max(0, essConMod));
-                const restsSinceEssence = actor.getFlag(MODULE_ID, "restsSinceEssence") ?? 0;
-                if (restsSinceEssence > essGrace) {
-                    result.essenceExhaustion = restsSinceEssence - essGrace;
-                }
-            }
-
-            // --- Starvation / Dehydration ---
-            // Skip penalties for characters whose diet does not require sustenance
-            const needsSustenance = ItemClassifier.requiresSustenance(actor);
-
+            // --- Starvation exhaustion (PHB p.185) ---
             // Grace period: 3 + CON mod days without food before consequences
             // Each day past grace = 1 level of exhaustion (auto-applied)
             const conMod = actor.system?.abilities?.con?.mod ?? 0;
             const foodGrace = rules.foodGraceDays ?? (3 + Math.max(0, conMod));
             const restsSinceFood = actor.getFlag(MODULE_ID, "restsSinceFood") ?? 0;
-            if (needsSustenance && restsSinceFood > foodGrace) {
+            if (restsSinceFood > foodGrace) {
                 result.starvationExhaustion = restsSinceFood - foodGrace;
             }
 
+            // --- Dehydration consequences (PHB p.185) ---
             // Any day without water: CON save DC 15 or gain 1 exhaustion
             // If already dehydrated (2+ rests): auto-fail (no save)
             const restsSinceWater = actor.getFlag(MODULE_ID, "restsSinceWater") ?? 0;
-            if (needsSustenance && restsSinceWater > 0) {
+            if (restsSinceWater > 0) {
                 if (restsSinceWater >= 2) {
                     result.dehydrationAutoFail = true;
                 } else {
@@ -494,20 +317,16 @@ export class MealPhaseHandler {
             const consumed = choice.consumedDays ?? [];
             const food = Array.isArray(choice.food) ? choice.food : [];
             const water = Array.isArray(choice.water) ? choice.water : [];
-            const essence = Array.isArray(choice.essence) ? choice.essence : [];
-            const hasActiveSelections = food.some(id => id && id !== "skip")
-                || water.some(id => id && id !== "skip")
-                || essence.some(id => id && id !== "skip");
+            const hasActiveSelections = food.some(id => id && id !== "skip") || water.some(id => id && id !== "skip");
 
             if (consumed.length < totalDays && hasActiveSelections) {
-                consumed.push({ food: [...food], water: [...water], essence: [...essence] });
+                consumed.push({ food: [...food], water: [...water] });
                 mealChoices.set(charId, {
                     ...choice,
                     consumedDays: consumed,
                     currentDay: consumed.length,
                     food: [],
-                    water: [],
-                    essence: []
+                    water: []
                 });
                 console.log(`[Respite:Meal] Auto-consumed active selections for ${charId} (day ${consumed.length})`);
             }
@@ -519,9 +338,21 @@ export class MealPhaseHandler {
 
     // ── Internal Helpers ─────────────────────────────────────────
 
+    /** Known food item names (lowercase). Used as fallback when type/flag detection misses. */
+    static FOOD_NAMES = new Set([
+        "rations", "rations (1 day)", "trail rations", "iron rations"
+    ]);
+
     /**
      * Build food options from actor inventory.
-     * Delegates classification to ItemClassifier with diet-aware filtering.
+     *
+     * Detection strategy (first match wins per item):
+     *   1. DnD5e consumable subtype: item.system.type.value === "food"
+     *   2. Respite flag: item.flags["ionrift-respite"].foodType === "food"
+     *   3. Name fallback: matches FOOD_NAMES allowlist
+     *
+     * This allows custom food items (homebrew diets, Gatherer outputs,
+     * crafted meals) to appear in the meal phase without name hacking.
      */
     static _buildFoodOptions(actor) {
         const options = [];
@@ -530,7 +361,8 @@ export class MealPhaseHandler {
             const qty = item.system?.quantity ?? 1;
             if (qty <= 0) continue;
 
-            if (!ItemClassifier.isFood(item, actor)) continue;
+            const isFood = this._isFoodItem(item);
+            if (!isFood) continue;
 
             options.push({
                 value: item.id,
@@ -546,17 +378,45 @@ export class MealPhaseHandler {
 
     /**
      * Check if an item qualifies as food for the meal phase.
-     * Thin wrapper around ItemClassifier for backward compatibility.
      * @param {Item} item - Foundry Item document
      * @returns {boolean}
      */
     static _isFoodItem(item) {
-        return ItemClassifier.isFood(item);
+        // Guard: DnD5e types all food AND drink as "food" (there is no
+        // separate "drink" subtype). Exclude anything the water detector
+        // would claim so waterskins/water pints stay in the water lane.
+        if (this._isWaterItem(item)) return false;
+
+        // 1. DnD5e consumable subtype: "food" (native system field)
+        if (item.type === "consumable" && item.system?.type?.value === "food") return true;
+
+        // 2. Respite flag: explicitly marked as food by GM, content pack, or crafting output
+        if (item.flags?.["ionrift-respite"]?.foodType === "food") return true;
+
+        // 3. Name fallback: standard PHB ration names + GM custom list
+        const name = item.name?.toLowerCase().trim();
+        if (name && this.FOOD_NAMES.has(name)) return true;
+        if (name && this._getCustomNames("customFoodNames").has(name)) return true;
+
+        return false;
     }
+
+    /** Known water item names (lowercase). Used as fallback when flag detection misses. */
+    static WATER_NAMES = new Set([
+        "waterskin", "water flask", "canteen",
+        "water (pint)", "water, fresh (pint)", "water, salt (pint)"
+    ]);
 
     /**
      * Build water options from actor inventory.
-     * Delegates classification to ItemClassifier with diet-aware filtering.
+     *
+     * Detection strategy (first match wins per item):
+     *   1. Respite flag: item.flags["ionrift-respite"].foodType === "water"
+     *   2. Name fallback: matches WATER_NAMES allowlist
+     *
+     * DnD5e has no native "water" consumable subtype, so we rely on
+     * flags and names. The flag path lets content packs and GMs mark
+     * custom water sources (oil flasks for warforged, etc.).
      */
     static _buildWaterOptions(actor, rules) {
         const options = [];
@@ -566,8 +426,10 @@ export class MealPhaseHandler {
             const uses = item.system?.uses;
             if (qty <= 0 && (!uses || uses.value <= 0)) continue;
 
-            if (!ItemClassifier.isWater(item, actor)) continue;
+            const isWater = this._isWaterItem(item);
+            if (!isWater) continue;
 
+            // Per-waterskin: show quantity of skins, not internal pint charges
             const avail = uses ? (uses.value > 0 ? qty : Math.max(0, qty - 1)) : qty;
             options.push({
                 value: item.id,
@@ -583,12 +445,35 @@ export class MealPhaseHandler {
 
     /**
      * Check if an item qualifies as water/drink for the meal phase.
-     * Thin wrapper around ItemClassifier for backward compatibility.
      * @param {Item} item - Foundry Item document
      * @returns {boolean}
      */
     static _isWaterItem(item) {
-        return ItemClassifier.isWater(item);
+        // 1. Respite flag: explicitly marked as water by GM or content pack
+        if (item.flags?.["ionrift-respite"]?.foodType === "water") return true;
+
+        // 2. Name fallback: standard PHB water containers + GM custom list
+        const name = item.name?.toLowerCase().trim();
+        if (name && this.WATER_NAMES.has(name)) return true;
+        if (name && this._getCustomNames("customWaterNames").has(name)) return true;
+
+        return false;
+    }
+
+    /**
+     * Parses a comma-separated GM setting into a Set of lowercase names.
+     * @param {string} settingKey - Module setting key
+     * @returns {Set<string>}
+     */
+    static _getCustomNames(settingKey) {
+        try {
+            const raw = game.settings.get(MODULE_ID, settingKey) ?? "";
+            return new Set(
+                raw.split(",").map(s => s.toLowerCase().trim()).filter(s => s.length > 0)
+            );
+        } catch {
+            return new Set();
+        }
     }
 
     /**
@@ -659,31 +544,6 @@ export class MealPhaseHandler {
         }
 
         return advisories;
-    }
-
-    /**
-     * Build essence/recharge options from actor inventory.
-     * For non-biological characters that require essence.
-     */
-    static _buildEssenceOptions(actor) {
-        const options = [];
-
-        for (const item of actor.items) {
-            const qty = item.system?.quantity ?? 1;
-            if (qty <= 0) continue;
-
-            if (!ItemClassifier.isEssence(item)) continue;
-
-            options.push({
-                value: item.id,
-                label: `${item.name} (\u00d7${qty})`,
-                itemId: item.id,
-                available: qty,
-                icon: item.img ?? "icons/commodities/gems/gem-rough-white-blue.webp"
-            });
-        }
-
-        return options;
     }
 
     /**

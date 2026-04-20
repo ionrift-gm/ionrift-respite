@@ -316,38 +316,6 @@ export class MealDelegate {
                 }
             }
 
-            // Apply essence depletion exhaustion (same model as starvation)
-            for (const r of mealResults) {
-                if ((r.essenceExhaustion ?? 0) > 0) {
-                    const actor = game.actors.get(r.characterId);
-                    if (actor) {
-                        const adapter = game.ionrift?.respite?.adapter;
-                        if (adapter) {
-                            await adapter.applyExhaustionDelta(actor, r.essenceExhaustion);
-                        } else {
-                            const current = actor.system?.attributes?.exhaustion ?? 0;
-                            const newLevel = Math.min(6, current + r.essenceExhaustion);
-                            if (newLevel > current) {
-                                await actor.update({ "system.attributes.exhaustion": newLevel });
-                            }
-                        }
-                        await ChatMessage.create({
-                            content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.essenceExhaustion}</strong> level${r.essenceExhaustion > 1 ? "s" : ""} of exhaustion from essence depletion.</div>`,
-                            speaker: ChatMessage.getSpeaker({ actor })
-                        });
-                        app._pendingDehydrationSaves.push({
-                            characterId: r.characterId,
-                            actorName: r.actorName,
-                            dc: 0,
-                            resolved: true,
-                            passed: false,
-                            total: 0,
-                            reason: `essence depletion (${r.essenceExhaustion} exhaustion)`
-                        });
-                    }
-                }
-            }
-
             // Apply dehydration consequences
             for (const r of mealResults) {
                 if (r.dehydrationAutoFail) {

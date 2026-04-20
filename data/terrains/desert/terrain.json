@@ -15,6 +15,5 @@
     },
     "mealRules": { "waterPerDay": 2, "foodPerDay": 1, "dehydrationDC": 15, "note": "Arid heat causes rapid dehydration. Double water requirement." },
     "weather": ["clear", "overcast", "extreme_heat", "sandstorm"],
-    "eventsFile": "core/events/desert_events.json",
-    "travelActivities": ["forage", "hunt", "scout"]
+    "eventsFile": "core/events/desert_events.json"
 }

@@ -15,6 +15,5 @@
     },
     "mealRules": { "waterPerDay": 1, "foodPerDay": 1 },
     "weather": ["clear", "overcast", "fog", "rain", "heavy_rain", "thunderstorm"],
-    "eventsFile": "core/events/swamp_events.json",
-    "travelActivities": ["forage", "hunt", "scout"]
+    "eventsFile": "core/events/swamp_events.json"
 }

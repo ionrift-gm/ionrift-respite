@@ -7,6 +7,5 @@
     "scoutingAvailable": false,
     "mealRules": { "waterPerDay": 0, "foodPerDay": 0, "note": "Food and water are provided by the establishment." },
     "weather": ["clear", "tavern_rain", "tavern_storm", "tavern_flophouse", "tavern_modest", "tavern_fine", "tavern_luxury"],
-    "eventsFile": "core/events/tavern_events.json",
-    "travelActivities": []
+    "eventsFile": "core/events/tavern_events.json"
 }

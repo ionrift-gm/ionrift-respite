@@ -1,5 +1,4 @@
 import { Logger } from "../lib/Logger.js";
-import { ItemClassifier } from "./ItemClassifier.js";
 
 /**
  * ResourceSink
@@ -8,9 +7,6 @@ import { ItemClassifier } from "./ItemClassifier.js";
  *
  * Operates at party level: scans all party actors' inventories for the
  * named resource and deducts from whoever has stock.
- *
- * Item matching uses ItemClassifier for flag-based detection alongside
- * the existing name-based fallback.
  */
 export class ResourceSink {
 
@@ -446,8 +442,7 @@ export class ResourceSink {
 
     /**
      * Finds all inventory items matching a resource key across party actors.
-     * Uses ItemClassifier for unified flag/type detection, with name-based
-     * fallback for resource keys that map to specific item names (rations, supplies).
+     * Checks both name matching and flags.ionrift-respite.resourceType.
      *
      * @param {Actor[]} actors - Party actors.
      * @param {string} resourceKey - e.g. "rations", "supplies", "water"
@@ -460,9 +455,7 @@ export class ResourceSink {
         for (const actor of actors) {
             if (!actor?.items) continue;
             for (const item of actor.items) {
-                const classifiedType = ItemClassifier.classify(item);
-                const flagMatch = classifiedType === resourceKey
-                    || item.flags?.["ionrift-respite"]?.resourceType === resourceKey;
+                const flagMatch = item.flags?.["ionrift-respite"]?.resourceType === resourceKey;
                 const nameMatch = candidateNames.includes(item.name?.toLowerCase().trim());
 
                 if (flagMatch || nameMatch) {

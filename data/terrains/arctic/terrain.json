@@ -15,6 +15,5 @@
     },
     "mealRules": { "waterPerDay": 1, "foodPerDay": 1 },
     "weather": ["clear", "overcast", "snow", "blizzard", "whiteout"],
-    "eventsFile": null,
-    "travelActivities": ["forage", "hunt", "scout"]
+    "eventsFile": null
 }
