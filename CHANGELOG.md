@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.3] - 2026-04-20
+
+### Fixed
+- Art pack detection on The Forge when running Foundry v13. The Forge module patches the global FilePicker but not the v13 namespaced copy. Browse calls now use the correct class on each platform.
+- Reverted work-in-progress cooking, travel, and spoilage features that shipped prematurely in v1.2.1/v1.2.2. No user-facing functionality has changed from v1.2.0.
+
 ## [1.2.2] - 2026-04-20
 
 ### Fixed
