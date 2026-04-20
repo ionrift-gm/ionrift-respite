@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.2.2] - 2026-04-20
+
+### Fixed
+- Art pack detection on The Forge when running Foundry v13. The v13 namespaced FilePicker bypasses the Forge module's monkey-patch, so browse calls for the Forge asset library silently failed. Now uses the correct (patched) FilePicker on Forge instances.
+
 ## [1.2.1] - 2026-04-19
 
 ### Fixed

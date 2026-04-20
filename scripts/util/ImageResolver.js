@@ -13,8 +13,12 @@
 const MODULE_ID = "ionrift-respite";
 const FALLBACK_BANNER = `modules/${MODULE_ID}/assets/placeholder-banner.webp`;
 
-// Foundry v13 namespaced FilePicker; fall back to global for v12
-const FP = foundry.applications?.apps?.FilePicker ?? FilePicker;
+// Forge VTT monkey-patches the global FilePicker but NOT the v13
+// namespaced version. Use the global on Forge so browse("forgevtt")
+// resolves correctly; use namespaced on self-hosted to avoid deprecation.
+const FP = (typeof ForgeVTT !== "undefined" && ForgeVTT.usingTheForge)
+    ? FilePicker
+    : (foundry.applications?.apps?.FilePicker ?? FilePicker);
 
 /**
  * Returns the correct FilePicker source for the hosting platform.
