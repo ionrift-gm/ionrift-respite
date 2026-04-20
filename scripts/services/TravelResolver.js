@@ -17,9 +17,6 @@ export class TravelResolver {
     /** @type {ResourcePoolRoller} */
     #poolRoller;
 
-    /** @type {Object|null} Loaded hunt yield data keyed by terrain. */
-    #huntYields = null;
-
     constructor() {
         this.#poolRoller = new ResourcePoolRoller();
     }
@@ -30,20 +27,6 @@ export class TravelResolver {
      */
     loadPools(poolData) {
         this.#poolRoller.load(poolData);
-    }
-
-    /**
-     * Load hunt yield data from a content pack.
-     * @param {Object} yieldsData - Object keyed by terrain tag, each with standard/exceptional arrays.
-     */
-    loadHuntYields(yieldsData) {
-        if (!yieldsData || typeof yieldsData !== "object") return;
-        this.#huntYields = { ...(this.#huntYields ?? {}), ...yieldsData };
-    }
-
-    /** @returns {boolean} true if hunt yield data has been loaded from a pack. */
-    get hasHuntYields() {
-        return this.#huntYields !== null && Object.keys(this.#huntYields).length > 0;
     }
 
     /**
@@ -309,9 +292,8 @@ export class TravelResolver {
      */
     _getHuntYield(terrainTag, exceptional) {
         const tier = exceptional ? "exceptional" : "standard";
-        const source = this.#huntYields ?? TravelResolver.HUNT_YIELDS;
-        const fallback = source.wilderness?.[tier] ?? [{ type: "meat", qty: 1 }];
-        const yields = source[terrainTag]?.[tier] ?? fallback;
+        const yields = TravelResolver.HUNT_YIELDS[terrainTag]?.[tier]
+            ?? TravelResolver.HUNT_YIELDS.wilderness[tier];
         return yields.map(entry => {
             if (entry.type === "meat") return this._makeMeat(entry.qty ?? 1, entry.desc);
             if (entry.type === "fish") return this._makeFish(entry.qty ?? 1, entry.desc);
@@ -500,12 +482,61 @@ TravelResolver.FORAGE_DC = FORAGE_DC;
 TravelResolver.HUNT_DC = HUNT_DC;
 
 /**
- * Minimal fallback yields when no content pack is loaded.
- * Full per-terrain data is provided by content packs via loadHuntYields().
+ * Per-terrain hunt yield descriptors.
+ * Each entry specifies a type (meat, fish, choice_cut, animal_fat, venom_sac)
+ * and optional qty/desc. _getHuntYield() maps these to item objects at runtime.
  */
 TravelResolver.HUNT_YIELDS = {
+    forest: {
+        standard: [
+            { type: "meat", qty: 1, desc: "<p>Deer or rabbit from the forest. Needs cooking.</p>" }
+        ],
+        exceptional: [
+            { type: "choice_cut", qty: 1 },
+            { type: "meat", qty: 1, desc: "<p>Deer or rabbit from the forest. Needs cooking.</p>" }
+        ]
+    },
+    swamp: {
+        standard: [
+            { type: "fish", qty: 2, desc: "<p>Marsh fish pulled from the shallows. Needs cooking.</p>" }
+        ],
+        exceptional: [
+            { type: "fish", qty: 4, desc: "<p>A good haul of marsh fish. Needs cooking.</p>" }
+        ]
+    },
+    mountain: {
+        standard: [
+            { type: "meat", qty: 1, desc: "<p>Mountain hare or ptarmigan. Lean but filling.</p>" }
+        ],
+        exceptional: [
+            { type: "choice_cut", qty: 1 }
+        ]
+    },
+    arctic: {
+        standard: [
+            { type: "meat", qty: 1, desc: "<p>Arctic hare or seal. Rich in fat, essential for warmth.</p>" }
+        ],
+        exceptional: [
+            { type: "choice_cut", qty: 1 },
+            { type: "animal_fat", qty: 1 }
+        ]
+    },
+    desert: {
+        standard: [
+            { type: "meat", qty: 1, desc: "<p>Desert lizard or snake. Tough but edible.</p>" }
+        ],
+        exceptional: [
+            { type: "meat", qty: 1, desc: "<p>Desert lizard or snake. Tough but edible.</p>" },
+            { type: "venom_sac", qty: 1 }
+        ]
+    },
     wilderness: {
-        standard: [{ type: "meat", qty: 1 }],
-        exceptional: [{ type: "meat", qty: 1 }]
+        standard: [
+            { type: "meat", qty: 1 }
+        ],
+        exceptional: [
+            { type: "choice_cut", qty: 1 },
+            { type: "meat", qty: 1 }
+        ]
     }
 };

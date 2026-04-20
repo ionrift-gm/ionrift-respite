@@ -135,37 +135,20 @@ export class TravelResolutionDelegate {
         return { mod: `${sign}${best}`, skill, total: best };
     }
 
-    // ── Pool / yield loading ──
+    // ── Pool loading ──
 
-    /**
-     * Load resource pool data from a content pack.
-     * @param {Object[]} poolData - Array of resource pool definitions.
-     */
-    loadPoolsFromData(poolData) {
-        if (!Array.isArray(poolData) || !poolData.length) return;
-        this.#resolver.loadPools(poolData);
+    async loadPools() {
+        if (this.#poolsLoaded) return;
+        try {
+            const resp = await fetch(`modules/${MODULE_ID}/data/pools/resource_pools.json`);
+            if (resp.ok) {
+                const data = await resp.json();
+                this.#resolver.loadPools(data);
+            }
+        } catch (e) {
+            console.warn(`[Respite:TravelDelegate] Failed to load resource pools:`, e);
+        }
         this.#poolsLoaded = true;
-    }
-
-    /**
-     * Load hunt yield data from a content pack.
-     * @param {Object} yieldsData - Object keyed by terrain tag.
-     */
-    loadHuntYieldsFromData(yieldsData) {
-        if (!yieldsData || typeof yieldsData !== "object") return;
-        this.#resolver.loadHuntYields(yieldsData);
-    }
-
-    /**
-     * Reset pool/yield state (for re-import scenarios).
-     */
-    resetPools() {
-        this.#poolsLoaded = false;
-    }
-
-    /** @returns {boolean} true if pool data has been loaded. */
-    get poolsLoaded() {
-        return this.#poolsLoaded;
     }
 
     // ── Entry key helpers ──
@@ -431,9 +414,7 @@ export class TravelResolutionDelegate {
      * For scouting (final day), determines the best scout tier.
      */
     async resolveDay(day, partyActors, terrainTag) {
-        if (!this.#poolsLoaded) {
-            console.warn("[Respite:TravelDelegate] No resource pools loaded from content packs. Foraging will produce no results.");
-        }
+        await this.loadPools();
 
         const scoutTotals = [];
 
