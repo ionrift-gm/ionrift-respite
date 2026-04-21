@@ -300,11 +300,15 @@ export class ActivityResolver {
             if (!hasSlots) return false;
         }
 
-        // Check requiresSpellbook (Wizard class, or non-Artificer with a spellbook/Book of Shadows)
+        // Check requiresSpellbook (Wizard class, or Warlock with Book of Shadows)
+        // Artificers are explicitly excluded: they prepare spells but do not use a spellbook.
         if (prereqs.requiresSpellbook) {
             const classEntries = actor.classes ?? {};
-            const isWizard = !!classEntries.wizard;
-            const isArtificer = !!classEntries.artificer;
+            const classNames = new Set(
+                Object.values(classEntries).map(c => c.name?.toLowerCase().trim())
+            );
+            const isWizard = !!classEntries.wizard || classNames.has("wizard");
+            const isArtificer = !!classEntries.artificer || classNames.has("artificer");
             if (isArtificer && !isWizard) return false;
             const hasSpellbook = (actor.items ?? []).some(i =>
                 i.name?.toLowerCase().includes("spellbook") || i.name?.toLowerCase().includes("book of shadows")
