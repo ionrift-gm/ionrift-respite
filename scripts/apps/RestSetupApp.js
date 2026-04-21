@@ -206,10 +206,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     this._craftingEngine.load(profId, recipeList);
                 }
             }
-            // Identify this player's characters
+            // Identify this player's characters (intersected with roster)
+            const rosterMembers = new Set(getPartyActors().map(a => a.id));
             this._myCharacterIds = new Set(
                 game.actors.filter(a => a.hasPlayerOwner && a.isOwner && a.type === "character")
                     .map(a => a.id)
+                    .filter(id => rosterMembers.has(id))
             );
         } else {
             this._dataReady = this._loadData();

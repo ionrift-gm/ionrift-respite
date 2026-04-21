@@ -1,4 +1,5 @@
 import { ItemClassifier } from "../services/ItemClassifier.js";
+import { getPartyActors } from "../module.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -55,15 +56,12 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
 
     /** @override */
     async _prepareContext() {
-        const partyRoster = game.settings.get(MODULE_ID, "partyRoster") ?? [];
         let actors;
         if (this.#focusActorId) {
             const a = game.actors.get(this.#focusActorId);
             actors = a ? [a] : [];
-        } else if (partyRoster.length) {
-            actors = partyRoster.map(id => game.actors.get(id)).filter(Boolean);
         } else {
-            actors = game.actors.filter(a => a.hasPlayerOwner && a.type === "character");
+            actors = getPartyActors();
         }
 
         const presets = ItemClassifier.getPresets();
@@ -463,15 +461,12 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
     }
 
     _getAllDiets() {
-        const partyRoster = game.settings.get(MODULE_ID, "partyRoster") ?? [];
         let actors;
         if (this.#focusActorId) {
             const a = game.actors.get(this.#focusActorId);
             actors = a ? [a] : [];
-        } else if (partyRoster.length) {
-            actors = partyRoster.map(id => game.actors.get(id)).filter(Boolean);
         } else {
-            actors = game.actors.filter(a => a.hasPlayerOwner && a.type === "character");
+            actors = getPartyActors();
         }
         return actors.map(a => ({
             id: a.id,

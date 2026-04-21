@@ -15,7 +15,6 @@ import { placeTorch, placePerimeter, clearTorches, toggleTorches, placeCampfire,
 
 import { createAdapter } from "./adapters/adapterFactory.js";
 import { PackRegistryApp } from "./apps/PackRegistryApp.js";
-import { PartyRosterApp } from "./apps/PartyRosterApp.js";
 import { CopySpellHandler } from "./services/CopySpellHandler.js";
 import { ImageResolver } from "./util/ImageResolver.js";
 import { ItemClassifier } from "./services/ItemClassifier.js";
@@ -110,18 +109,15 @@ export function notifyShortRestActive() {
 }
 
 /**
- * Returns the GM-approved party actors from the world setting.
- * Falls back to all player-owned characters if the roster is empty (first use).
- * Exported so RestSetupApp, EventResolver, and other services can use it.
- * @returns {Actor[]} Array of approved party actors.
+ * Returns the active party actors. Delegates to the library PartyRoster
+ * service when available; falls back to local logic if the library is
+ * not active or too old.
+ * @returns {Actor[]}
  */
 export function getPartyActors() {
-    // BACKLOG: This is the canonical party roster implementation for Respite.
-    // ionrift-quartermaster's Progression Registry uses an identical naive stub
-    // (_resolvePartyMembers in SignatureLedger.js). Both should eventually
-    // delegate to game.ionrift?.library?.party?.getMembers?.() when ionrift-lib
-    // ships a PartyRoster service. The settings-backed roster here is the right
-    // design; the lib service should lift this exact pattern.
+    const libParty = game.ionrift?.library?.party;
+    if (libParty?.getMembers) return libParty.getMembers();
+
     const roster = game.settings.get(MODULE_ID, "partyRoster");
     if (!roster?.length) {
         return game.actors.filter(a => a.hasPlayerOwner && a.type === "character");
@@ -351,15 +347,8 @@ Hooks.once("init", async () => {
         hint: "Enable or disable event content packs. Shows event counts per terrain."
     });
 
-    game.settings.registerMenu(MODULE_ID, "partyRosterMenu", {
-        name: "Party Roster",
-        label: "Edit Roster",
-        hint: "Choose which characters participate in Respite rests. Excludes summons, familiars, and companion sheets.",
-        icon: "fas fa-users",
-        type: PartyRosterApp,
-        restricted: true
-    });
-
+    // Party Roster now lives in ionrift-library. Keep a local setting for
+    // backward compat (migration reads it), but do not register a menu.
     game.settings.register(MODULE_ID, "partyRoster", {
         scope: "world",
         config: false,
@@ -881,8 +870,13 @@ function _injectSpoilageBadges(app, html) {
 
     // Only badge party roster members
     try {
-        const roster = game.settings.get(MODULE_ID, "partyRoster") ?? [];
-        if (roster.length && !roster.includes(actor.id)) return;
+        const libParty = game.ionrift?.library?.party;
+        if (libParty?.isRostered) {
+            if (!libParty.isRostered(actor.id)) return;
+        } else {
+            const roster = game.settings.get(MODULE_ID, "partyRoster") ?? [];
+            if (roster.length && !roster.includes(actor.id)) return;
+        }
     } catch { /* setting not yet registered */ }
 
     const el = html instanceof HTMLElement ? html
@@ -988,8 +982,7 @@ for (const hookName of [
     async function _runCalendarSpoilage() {
         _spoilageDebounce = null;
         try {
-            const roster = game.settings.get(MODULE_ID, "partyRoster") ?? [];
-            const actors = roster.map(id => game.actors.get(id)).filter(Boolean);
+            const actors = getPartyActors();
             if (!actors.length) return;
 
             const report = await MealPhaseHandler.resolveCalendarSpoilage(actors);

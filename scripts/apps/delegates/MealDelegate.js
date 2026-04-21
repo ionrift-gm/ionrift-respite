@@ -572,7 +572,9 @@ export class MealDelegate {
         if (!app._mealChoices) app._mealChoices = new Map();
         if (!app._mealSubmissions) app._mealSubmissions = new Map();
 
+        const rosterIds = new Set(getPartyActors().map(a => a.id));
         for (const [charId, choice] of Object.entries(choices)) {
+            if (!rosterIds.has(charId)) continue;
             app._mealChoices.set(charId, choice);
         }
 
@@ -592,7 +594,9 @@ export class MealDelegate {
         const app = this._app;
         if (!app._mealChoices) app._mealChoices = new Map();
 
+        const rosterIds = new Set(getPartyActors().map(a => a.id));
         for (const [charId, choice] of Object.entries(clientChoices)) {
+            if (!rosterIds.has(charId)) continue;
             const existing = app._mealChoices.get(charId) ?? {};
             app._mealChoices.set(charId, {
                 ...existing,
