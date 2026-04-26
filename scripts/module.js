@@ -12,6 +12,7 @@ import { ShortRestApp } from "./apps/ShortRestApp.js";
 import { CampfireTokenLinker } from "./services/CampfireTokenLinker.js";
 import { TorchTokenLinker } from "./services/TorchTokenLinker.js";
 import { placeTorch, placePerimeter, clearTorches, toggleTorches, placeCampfire, placeCamp } from "./services/CampPropPlacer.js";
+import { placePlayerGear, clearCampTokens, clearPlayerCampGear, resetCampSession } from "./services/CompoundCampPlacer.js";
 
 import { createAdapter } from "./adapters/adapterFactory.js";
 import { PackRegistryApp } from "./apps/PackRegistryApp.js";
@@ -1305,6 +1306,8 @@ Hooks.once("ready", async () => {
             console.error(`${MODULE_ID} | Resume dialog failed, clearing stale state:`, e);
             respiteFlowActive = false;
             await game.settings.set(MODULE_ID, "activeRest", {});
+            clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup on dialog error:`, err));
+            resetCampSession();
         }
 
         if (resume) {
@@ -1349,16 +1352,22 @@ Hooks.once("ready", async () => {
                     respiteFlowActive = false;
                     ui.notifications.warn("Could not restore rest state. Starting fresh.");
                     await game.settings.set(MODULE_ID, "activeRest", {});
+                    clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup on failed restore:`, err));
+                    resetCampSession();
                 }
             } catch (e) {
                 respiteFlowActive = false;
                 console.error(`${MODULE_ID} | Failed to restore rest state:`, e);
                 await game.settings.set(MODULE_ID, "activeRest", {});
+                clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup on restore error:`, err));
+                resetCampSession();
             }
         } else {
             respiteFlowActive = false;
             await game.settings.set(MODULE_ID, "activeRest", {});
             game.socket.emit(`module.${MODULE_ID}`, { type: "restResolved" });
+            clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup on discard failed:`, err));
+            resetCampSession();
             Logger.log?.(MODULE_LABEL, "Discarded interrupted rest.");
         }
     }
@@ -2003,6 +2012,32 @@ function _onSocketMessage(data) {
             if (game.user.isGM) return;
             _showButcherPopup(data);
             break;
+
+        // Player -> GM: place camp gear on scene
+        case "campGearPlace":
+            if (!game.user.isGM) return;
+            _handleCampGearPlace(data);
+            break;
+
+        // Player -> GM: remove own placed camp gear only
+        case "campGearClearPlayer":
+            if (!game.user.isGM) return;
+            _handleCampGearClearPlayer(data);
+            break;
+
+        // GM -> All: camp gear placed confirmation
+        case "campGearPlaced": {
+            const campApp = activeRestSetupApp ?? activePlayerRestApp;
+            if (campApp) campApp.render();
+            break;
+        }
+
+        // GM -> All: camp tokens were removed from the scene
+        case "campSceneCleared": {
+            const campApp2 = activeRestSetupApp ?? activePlayerRestApp;
+            if (campApp2) campApp2.render();
+            break;
+        }
     }
 }
 
@@ -2445,4 +2480,47 @@ async function _handleConsumeFirewood(data) {
         await firewood.update({ "system.quantity": qty - 1 });
     }
     console.log(`${MODULE_ID} | GM consumed firewood for ${actor.name} (remaining: ${qty - 1})`);
+}
+
+/**
+ * GM handler: a player requested camp gear placement on the scene.
+ * GM creates the token on their behalf and broadcasts confirmation.
+ */
+async function _handleCampGearPlace(data) {
+    const { actorId, gearType, x, y } = data;
+    if (!actorId || !gearType || x == null || y == null) return;
+
+    const placed = await placePlayerGear(x, y, gearType, actorId);
+    if (placed) {
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "campGearPlaced",
+            actorId,
+            gearType
+        });
+        if (activeRestSetupApp) activeRestSetupApp.render();
+    }
+}
+
+/**
+ * GM: player asked to remove their own tent, bedroll, and mess kit tokens.
+ */
+async function _handleCampGearClearPlayer(data) {
+    const { actorId, userId } = data;
+    if (!actorId || !userId) return;
+
+    const actor = game.actors.get(actorId);
+    const user = game.users.get(userId);
+    if (!actor || !user) return;
+
+    if (!actor.testUserPermission(user, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)) {
+        console.warn(`${MODULE_ID} | campGearClearPlayer rejected (not owner)`);
+        return;
+    }
+
+    const n = await clearPlayerCampGear(actorId);
+    if (n > 0) {
+        game.socket.emit(`module.${MODULE_ID}`, { type: "campSceneCleared", actorId });
+    }
+    activeRestSetupApp?.render();
+    activePlayerRestApp?.render();
 }

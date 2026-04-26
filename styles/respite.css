@@ -1126,15 +1126,15 @@
 }
 
 .camp-comfort-breakdown {
-    padding: 0.25rem 0.6rem;
+    padding: 0.2rem 0.6rem 0.25rem;
 }
 
 .comfort-breakdown-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.15rem 0;
-    font-size: 0.72rem;
+    padding: 0.1rem 0;
+    font-size: 0.7rem;
     color: rgba(255, 255, 255, 0.5);
 }
 
@@ -1211,12 +1211,20 @@
     padding: 0.35rem 0.6rem;
 }
 
+.camp-personal-section.camp-personal-section-tight .camp-personal-grid {
+    padding: 0.3rem 0.4rem;
+}
+
 .camp-personal-card {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 6px;
     padding: 0.35rem 0.5rem;
     transition: border-color 0.2s ease;
+}
+
+.camp-personal-section.camp-personal-section-tight .camp-personal-card {
+    padding: 0.3rem 0.45rem 0.35rem;
 }
 
 .camp-personal-card:hover {
@@ -1228,6 +1236,20 @@
     align-items: center;
     gap: 0.4rem;
     margin-bottom: 0.25rem;
+}
+
+.personal-name-icon {
+    font-size: 0.7rem;
+    color: rgba(180, 140, 255, 0.55);
+    flex-shrink: 0;
+}
+
+.personal-comfort-inline {
+    margin-left: auto;
+    margin-bottom: 0;
+    font-size: 0.62rem;
+    line-height: 1;
+    padding: 0.12rem 0.4rem;
 }
 
 .personal-portrait {
@@ -1242,48 +1264,6 @@
     font-size: 0.75rem;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.8);
-}
-
-.personal-gear-row {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.3rem;
-    flex-wrap: wrap;
-}
-
-.gear-check {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.68rem;
-    padding: 0.1rem 0.4rem;
-    border-radius: 8px;
-}
-
-.gear-check.has {
-    color: rgba(100, 200, 120, 0.85);
-    background: rgba(100, 200, 120, 0.08);
-    border: 1px solid rgba(100, 200, 120, 0.15);
-}
-
-.gear-check.missing {
-    color: rgba(255, 255, 255, 0.25);
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.gear-check.missing s {
-    text-decoration-color: rgba(255, 255, 255, 0.15);
-}
-
-.gear-hint {
-    font-size: 0.55rem;
-    color: rgba(100, 200, 120, 0.6);
-    font-weight: 600;
-}
-
-.gear-check i {
-    font-size: 0.6rem;
 }
 
 .personal-comfort-label {
@@ -1353,7 +1333,11 @@
     gap: 0.35rem;
     font-size: 0.68rem;
     color: rgba(255, 255, 255, 0.55);
-    padding: 0.1rem 0;
+    padding: 0.08rem 0;
+}
+
+.camp-personal-section.camp-personal-section-tight .personal-recovery {
+    gap: 0.15rem;
 }
 
 .recovery-row i {
@@ -12828,4 +12812,514 @@
     background: rgba(139, 92, 246, 0.6) !important;
     border-color: var(--ionrift-accent, #8b5cf6) !important;
     box-shadow: 0 0 10px rgba(139, 92, 246, 0.4) !important;
+}
+
+/* ── Make Camp Phase: Scene Placement ────────────────────────────── */
+
+.camp-placement-section,
+.camp-gear-section {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 0.75rem;
+}
+
+.camp-placement-header,
+.camp-gear-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.625rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.camp-placement-header i,
+.camp-gear-header i {
+    color: var(--ionrift-accent, #8b5cf6);
+}
+
+.camp-drag-handle {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px dashed rgba(139, 92, 246, 0.3);
+    border-radius: 6px;
+    cursor: grab;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.camp-drag-handle:hover {
+    background: rgba(139, 92, 246, 0.08);
+    border-color: rgba(139, 92, 246, 0.5);
+}
+
+.camp-drag-handle:active,
+.camp-drag-handle.dragging {
+    cursor: grabbing;
+    opacity: 0.6;
+    border-color: var(--ionrift-accent, #8b5cf6);
+    background: rgba(139, 92, 246, 0.12);
+}
+
+.camp-drag-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: rgba(255, 147, 41, 0.15);
+    color: #ff9329;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.camp-drag-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    flex: 1;
+}
+
+.camp-drag-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.camp-drag-hint {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+}
+
+.camp-drag-layout-preview {
+    display: grid;
+    grid-template-areas:
+        ".   top  ."
+        "left mid right"
+        ".   bot  .";
+    grid-template-columns: 20px 20px 20px;
+    grid-template-rows: 20px 20px 20px;
+    gap: 1px;
+    flex-shrink: 0;
+}
+
+.camp-drag-layout-preview .layout-piece {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 2px;
+}
+
+.camp-drag-layout-preview .layout-piece.center {
+    color: #ff9329;
+    background: rgba(255, 147, 41, 0.12);
+}
+
+.camp-drag-layout-preview .layout-piece:nth-child(1) { grid-area: top; }
+.camp-drag-layout-preview .layout-piece:nth-child(2) { grid-area: left; }
+.camp-drag-layout-preview .layout-piece:nth-child(3) { grid-area: mid; }
+.camp-drag-layout-preview .layout-piece:nth-child(4) { grid-area: right; }
+.camp-drag-layout-preview .layout-piece:nth-child(5) { grid-area: bot; }
+
+.camp-placed-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    color: #4ade80;
+    font-size: 0.85rem;
+}
+
+.camp-placed-indicator i {
+    font-size: 1rem;
+}
+
+/* Gear cards grid */
+
+.camp-gear-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.camp-gear-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    padding: 0.5rem;
+}
+
+.camp-gear-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.375rem;
+}
+
+.camp-gear-portrait {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.camp-gear-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.camp-gear-items {
+    display: flex;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+}
+
+.gear-drag-handle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.3rem 0.625rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px dashed rgba(139, 92, 246, 0.25);
+    border-radius: 4px;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: grab;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.gear-drag-handle:hover:not(.deployed) {
+    background: rgba(139, 92, 246, 0.08);
+    border-color: rgba(139, 92, 246, 0.4);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.gear-drag-handle.dragging {
+    cursor: grabbing;
+    opacity: 0.5;
+    border-color: var(--ionrift-accent, #8b5cf6);
+}
+
+.gear-drag-handle.deployed {
+    cursor: default;
+    border-style: solid;
+    border-color: rgba(74, 222, 128, 0.3);
+    background: rgba(74, 222, 128, 0.06);
+    color: #4ade80;
+}
+
+.gear-drag-handle .deployed-check {
+    font-size: 0.7rem;
+    color: #4ade80;
+}
+
+.camp-gear-none {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+    padding: 0.25rem 0;
+}
+
+/* Campfire column: GM scene token + single-card gear row */
+
+.camp-fire-scene-block {
+    padding: 0.4rem 0.5rem 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 0.25rem;
+}
+
+.camp-fire-scene-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.45);
+    margin-bottom: 0.35rem;
+}
+
+.camp-fire-scene-block .camp-placed-indicator {
+    padding: 0.35rem 0.4rem;
+    font-size: 0.75rem;
+}
+
+.btn-camp-clear-all {
+    width: 100%;
+    margin-top: 0.35rem;
+    padding: 0.28rem 0.45rem;
+    font-size: 0.65rem;
+    line-height: 1.2;
+    border-radius: 4px;
+    border: 1px solid rgba(220, 90, 90, 0.35);
+    background: rgba(220, 70, 70, 0.12);
+    color: rgba(255, 200, 200, 0.9);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+}
+
+.btn-camp-clear-all:hover {
+    background: rgba(220, 70, 70, 0.22);
+    border-color: rgba(240, 120, 120, 0.45);
+}
+
+.camp-clear-own-row {
+    margin-top: 0.3rem;
+    padding-top: 0.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.btn-camp-clear-own {
+    width: 100%;
+    padding: 0.26rem 0.4rem;
+    font-size: 0.62rem;
+    line-height: 1.2;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.65);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+}
+
+.btn-camp-clear-own:hover {
+    background: rgba(255, 255, 255, 0.09);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.camp-drag-handle-compact {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+}
+
+.camp-drag-handle-compact .camp-drag-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+}
+
+.camp-drag-handle-compact .camp-drag-title {
+    font-size: 0.78rem;
+}
+
+.camp-drag-handle-compact .camp-drag-hint {
+    font-size: 0.65rem;
+}
+
+.camp-personal-grid-single {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+}
+
+.camp-personal-pick-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.4rem;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+}
+
+.camp-gear-scene-row {
+    margin: 0.25rem 0 0.35rem;
+    padding: 0.35rem 0.4rem 0.4rem;
+    background: rgba(139, 92, 246, 0.06);
+    border: 1px solid rgba(139, 92, 246, 0.12);
+    border-radius: 6px;
+}
+
+.camp-gear-scene-row.camp-gear-scene-row-tight {
+    margin: 0.2rem 0 0.3rem;
+    padding: 0.3rem 0.35rem;
+}
+
+.camp-gear-scene-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    margin-bottom: 0.3rem;
+}
+
+.camp-gear-scene-label {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.camp-gear-scene-hint {
+    font-size: 0.65rem;
+    line-height: 1.25;
+    color: rgba(255, 255, 255, 0.38);
+    font-style: italic;
+}
+
+.camp-gear-scene-slots {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.35rem;
+    align-items: stretch;
+}
+
+@media (max-width: 520px) {
+    .camp-gear-scene-slots {
+        grid-template-columns: 1fr;
+    }
+}
+
+.camp-gear-scene-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-width: 0;
+}
+
+.camp-gear-scene-placeholder {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
+    padding: 0.35rem 0.4rem;
+    border: 2px dashed rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.12);
+    color: rgba(255, 255, 255, 0.38);
+}
+
+.camp-gear-scene-placeholder .placeholder-head {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.2rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: rgba(255, 255, 255, 0.42);
+}
+
+.camp-gear-scene-placeholder .placeholder-head i {
+    font-size: 0.85rem;
+    opacity: 0.65;
+}
+
+.camp-gear-scene-placeholder .placeholder-body {
+    font-size: 0.62rem;
+    line-height: 1.3;
+    color: rgba(255, 255, 255, 0.4);
+    margin: 0;
+}
+
+.camp-gear-scene-placeholder .placeholder-body.no-border {
+    text-align: left;
+    width: 100%;
+}
+
+.camp-gear-scene-locked {
+    min-height: 3.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0.35rem 0.3rem;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.42);
+    font-size: 0.62rem;
+    line-height: 1.25;
+}
+
+.camp-gear-mess-scene {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.camp-gear-mechanic-note {
+    font-size: 0.57rem;
+    line-height: 1.2;
+    color: rgba(251, 191, 36, 0.9);
+    margin: 0;
+    padding: 0 0.05rem 0.05rem;
+}
+.camp-gear-mechanic-note.benefit {
+    color: rgba(134, 239, 172, 0.85);
+}
+
+.gear-drag-handle.gear-drag-handle-scene {
+    display: flex;
+    flex: 1;
+    min-height: 3.75rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    text-align: center;
+    padding: 0.35rem 0.4rem;
+    gap: 0.4rem;
+    border-width: 2px;
+    border-style: dashed;
+}
+
+.gear-drag-handle.gear-drag-handle-scene > i {
+    font-size: 1.05rem;
+    flex-shrink: 0;
+}
+
+.gear-drag-scene-pill {
+    font-size: 0.65rem;
+    font-weight: 600;
+    line-height: 1.2;
+    flex: 1 1 5rem;
+    min-width: 0;
+    text-align: left;
+}
+
+.gear-drag-handle.gear-drag-handle-scene.deployed {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+}
+
+.gear-drag-handle.gear-drag-handle-scene .deployed-check {
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.camp-gear-mess-scene .gear-drag-handle.gear-drag-handle-scene {
+    min-height: 3.25rem;
+}
+
+.camp-gear-mess-scene.has-fire-note .gear-drag-handle.gear-drag-handle-scene {
+    min-height: 2.75rem;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
 }

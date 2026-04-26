@@ -39,6 +39,10 @@ const CAMPFIRE_BASES = [
 // Campfire fire overlay
 const CAMPFIRE_FLAME = `modules/${MODULE_ID}/assets/tokens/campfire_topdown_128x128.webm`;
 
+/** Stacking at same elevation: HUD bring-to-front uses `sort` (higher = on top). Not flight. */
+const PROP_PAIR_BASE_SORT = 100;
+const PROP_PAIR_OVERLAY_SORT = 101;
+
 /**
  * Pick a random torch stake variant.
  * @returns {string} Asset path
@@ -113,6 +117,7 @@ async function createTorchPair(x, y, stakeImg) {
         texture: { src: img },
         width: 1,
         height: 1,
+        sort: PROP_PAIR_BASE_SORT,
         x: tx,
         y: ty,
         hidden: false,
@@ -157,6 +162,7 @@ async function createTorchPair(x, y, stakeImg) {
         texture: { src: flameSrc, scaleX: flameScale, scaleY: flameScale },
         width: 1,
         height: 1,
+        sort: PROP_PAIR_OVERLAY_SORT,
         x: tx,
         y: ty,
         hidden: true,
@@ -205,6 +211,7 @@ async function createCampfirePair(x, y) {
         texture: { src: randomCampfireBase() },
         width: 1,
         height: 1,
+        sort: PROP_PAIR_BASE_SORT,
         x: tx,
         y: ty,
         hidden: false,
@@ -247,6 +254,7 @@ async function createCampfirePair(x, y) {
         texture: { src: flameSrc, scaleX: 1, scaleY: 1 },
         width: 1,
         height: 1,
+        sort: PROP_PAIR_OVERLAY_SORT,
         x: tx,
         y: ty,
         hidden: true,

@@ -407,6 +407,7 @@ export class TravelResolutionDelegate {
             canHunt,
             canScout,
             hasTravelOptions,
+            travelSkipRecommended: !canForage && !canHunt,
             disabledReason,
             terrainTag,
             terrainLabel: terrain?.label ?? terrainTag,

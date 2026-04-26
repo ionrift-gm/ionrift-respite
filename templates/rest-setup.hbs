@@ -704,56 +704,131 @@
                     {{/if}}
                 </div>
 
-                {{!-- Personal Comfort Cards --}}
-                <div class="camp-personal-section">
-                    <div class="camp-personal-header">
-                        <i class="fas fa-bed"></i>
-                        <span>Your Rest</span>
-                    </div>
-                    <div class="camp-personal-grid">
-                        {{#each campScan.personalCards}}
+                {{!-- Personal comfort: roster-selected character only --}}
+                <div class="camp-personal-section camp-personal-section-tight">
+                    {{#if campPersonalSelected}}
+                    <div class="camp-personal-grid camp-personal-grid-single">
                         <div class="camp-personal-card">
                             <div class="personal-card-header">
-                                <img src="{{actorImg}}" alt="{{actorName}}" class="personal-portrait">
-                                <span class="personal-name">{{actorName}}</span>
-                            </div>
-
-                            <div class="personal-gear-row">
-                                <span class="gear-check {{#if hasTent}}has{{else}}missing{{/if}}">
-                                    <i class="fas fa-campground"></i>
-                                    {{#if hasTent}}Tent{{else}}<s>Tent</s>{{/if}}
-                                </span>
-                                <span class="gear-check {{#if hasBedroll}}has{{else}}missing{{/if}}">
-                                    <i class="fas fa-bed"></i>
-                                    {{#if hasBedroll}}Bedroll{{else}}<s>Bedroll</s>{{/if}}
-                                </span>
-                                <span class="gear-check {{#if hasMessKit}}has{{else}}missing{{/if}}">
-                                    <i class="fas fa-utensils"></i>
-                                    {{#if hasMessKit}}Mess Kit{{else}}<s>Mess Kit</s>{{/if}}
+                                <img src="{{campPersonalSelected.actorImg}}" alt="{{campPersonalSelected.actorName}}" class="personal-portrait">
+                                <i class="fas fa-bed personal-name-icon" aria-hidden="true"></i>
+                                <span class="personal-name">{{campPersonalSelected.actorName}}</span>
+                                <span class="personal-comfort-label personal-comfort-inline comfort-{{campPersonalSelected.personalComfort}}">
+                                    {{campPersonalSelected.personalComfortLabel}}
                                 </span>
                             </div>
 
-                            <div class="personal-comfort-label comfort-{{personalComfort}}">
-                                {{personalComfortLabel}}
+                            {{#if campGearForSelected}}
+                            <div class="camp-gear-scene-row camp-gear-scene-row-tight">
+                                <div class="camp-gear-scene-slots">
+                                    {{!-- Tent --}}
+                                    <div class="camp-gear-scene-slot">
+                                        {{#if campGearForSelected.hasTent}}
+                                            {{#if campGearForSelected.canDrag}}
+                                            <div class="gear-drag-handle gear-drag-handle-scene {{#if campGearForSelected.tentDeployed}}deployed{{/if}}"
+                                                 draggable="{{#unless campGearForSelected.tentDeployed}}true{{else}}false{{/unless}}"
+                                                 data-drag-type="player-gear" data-gear-type="tent" data-actor-id="{{campGearForSelected.actorId}}"
+                                                 title="{{#if campGearForSelected.tentDeployed}}Tent on map.{{else}}In pack: weather shield, encounter DC +2. Drag to mark.{{/if}}">
+                                                <i class="fas fa-campground"></i>
+                                                <span class="gear-drag-scene-pill">{{#if campGearForSelected.tentDeployed}}Tent placed{{else}}Tent{{/if}}</span>
+                                                {{#if campGearForSelected.tentDeployed}}<i class="fas fa-check deployed-check"></i>{{/if}}
+                                            </div>
+                                            <p class="camp-gear-mechanic-note benefit">Weather shield, encounter DC +2.</p>
+                                            {{else}}
+                                            <div class="camp-gear-scene-locked" title="Only owner or GM can place">Tent: owner places.</div>
+                                            {{/if}}
+                                        {{else}}
+                                        <div class="camp-gear-scene-placeholder">
+                                            <div class="placeholder-head"><i class="fas fa-campground" aria-hidden="true"></i><span>Tent</span></div>
+                                            <p class="placeholder-body">No tent. No weather shield.</p>
+                                        </div>
+                                        {{/if}}
+                                    </div>
+                                    {{!-- Bedroll --}}
+                                    <div class="camp-gear-scene-slot">
+                                        {{#if campGearForSelected.hasBedroll}}
+                                            {{#if campGearForSelected.canDrag}}
+                                            <div class="gear-drag-handle gear-drag-handle-scene {{#if campGearForSelected.bedrollDeployed}}deployed{{/if}}"
+                                                 draggable="{{#unless campGearForSelected.bedrollDeployed}}true{{else}}false{{/unless}}"
+                                                 data-drag-type="player-gear" data-gear-type="bedroll" data-actor-id="{{campGearForSelected.actorId}}"
+                                                 title="{{#if campGearForSelected.bedrollDeployed}}Bedroll on map.{{else}}In pack: +1 personal comfort, +1 Hit Dice. Drag to mark.{{/if}}">
+                                                <i class="fas fa-bed"></i>
+                                                <span class="gear-drag-scene-pill">{{#if campGearForSelected.bedrollDeployed}}Bedroll placed{{else}}Bedroll{{/if}}</span>
+                                                {{#if campGearForSelected.bedrollDeployed}}<i class="fas fa-check deployed-check"></i>{{/if}}
+                                            </div>
+                                            <p class="camp-gear-mechanic-note benefit">+1 personal comfort, +1 Hit Dice.</p>
+                                            {{else}}
+                                            <div class="camp-gear-scene-locked" title="Only owner or GM can place">Bedroll: owner places.</div>
+                                            {{/if}}
+                                        {{else}}
+                                        <div class="camp-gear-scene-placeholder">
+                                            <div class="placeholder-head"><i class="fas fa-bed" aria-hidden="true"></i><span>Bedroll</span></div>
+                                            <p class="placeholder-body">No bedroll. Lose +1 comfort, +1 HD.</p>
+                                        </div>
+                                        {{/if}}
+                                    </div>
+                                    {{!-- Mess kit: small map token; mechanics need fire for exhaustion advantage --}}
+                                    <div class="camp-gear-scene-slot">
+                                        {{#if campGearForSelected.hasMessKit}}
+                                            {{#if campGearForSelected.canDrag}}
+                                            <div class="camp-gear-mess-scene {{#if campGearForSelected.messAdvantageOff}}has-fire-note{{/if}}">
+                                            <div class="gear-drag-handle gear-drag-handle-scene gear-drag-scene-mess {{#if campGearForSelected.messKitDeployed}}deployed{{/if}}"
+                                                 draggable="{{#unless campGearForSelected.messKitDeployed}}true{{else}}false{{/unless}}"
+                                                 data-drag-type="player-gear" data-gear-type="messkit" data-actor-id="{{campGearForSelected.actorId}}"
+                                                 title="{{#if campGearForSelected.messKitDeployed}}Mess kit on map.{{else}}In pack: advantage on exhaustion CON if fire is lit. Small token.{{/if}}">
+                                                <i class="fas fa-utensils"></i>
+                                                <span class="gear-drag-scene-pill">{{#if campGearForSelected.messKitDeployed}}Mess placed{{else}}Mess kit{{/if}}</span>
+                                                {{#if campGearForSelected.messKitDeployed}}<i class="fas fa-check deployed-check"></i>{{/if}}
+                                            </div>
+                                            {{#if campGearForSelected.messAdvantageOff}}
+                                            <p class="camp-gear-mechanic-note" title="Advantage on the exhaustion save only applies with a lit fire.">Light fire for save advantage.</p>
+                                            {{else}}
+                                            <p class="camp-gear-mechanic-note benefit">Advantage on exhaustion CON save.</p>
+                                            {{/if}}
+                                            </div>
+                                            {{else}}
+                                            <div class="camp-gear-scene-locked" title="Only owner or GM can place">Mess: owner places.</div>
+                                            {{/if}}
+                                        {{else}}
+                                        <div class="camp-gear-scene-placeholder">
+                                            <div class="placeholder-head"><i class="fas fa-utensils" aria-hidden="true"></i><span>Mess kit</span></div>
+                                            <p class="placeholder-body">No mess kit. Lose exhaustion-save advantage.</p>
+                                        </div>
+                                        {{/if}}
+                                    </div>
+                                </div>
+                                {{#if campGearForSelected.showClearOwnGear}}
+                                <div class="camp-clear-own-row">
+                                    <button type="button" class="btn-camp-clear-own" data-action="clearMyCampGear" data-actor-id="{{campGearForSelected.actorId}}" title="Removes only this character's tent, bedroll, and mess kit from the map.">
+                                        <i class="fas fa-broom"></i> Clear my camp tokens
+                                    </button>
+                                </div>
+                                {{/if}}
                             </div>
+                            {{/if}}
 
                             <div class="personal-recovery">
-                                <div class="recovery-row recovery-hp {{#if recovery.hpFull}}positive{{/if}}">
+                                <div class="recovery-row recovery-hp {{#if campPersonalSelected.recovery.hpFull}}positive{{/if}}">
                                     <i class="fas fa-heart"></i>
-                                    <span>{{recovery.hpLabel}}</span>
+                                    <span>{{campPersonalSelected.recovery.hpLabel}}</span>
                                 </div>
                                 <div class="recovery-row recovery-hd">
                                     <i class="fas fa-dice-d20"></i>
-                                    <span>{{recovery.hdLabel}}</span>
+                                    <span>{{campPersonalSelected.recovery.hdLabel}}</span>
                                 </div>
-                                <div class="recovery-row recovery-exhaustion {{recovery.exhaustionSeverity}}">
-                                    <i class="fas {{#if recovery.exhaustionDC}}fa-exclamation-triangle{{else}}fa-check-circle{{/if}}"></i>
-                                    <span>{{recovery.exhaustionLabel}}</span>
+                                <div class="recovery-row recovery-exhaustion {{campPersonalSelected.recovery.exhaustionSeverity}}">
+                                    <i class="fas {{#if campPersonalSelected.recovery.exhaustionDC}}fa-exclamation-triangle{{else}}fa-check-circle{{/if}}"></i>
+                                    <span>{{campPersonalSelected.recovery.exhaustionLabel}}</span>
                                 </div>
                             </div>
                         </div>
-                        {{/each}}
                     </div>
+                    {{else}}
+                    <div class="camp-personal-pick-hint">
+                        <i class="fas fa-user"></i>
+                        <span>Select a character in the roster above.</span>
+                    </div>
+                    {{/if}}
                 </div>
             </div>
 
@@ -763,6 +838,34 @@
                     <i class="fas fa-fire"></i>
                     <span>Campfire</span>
                 </div>
+
+                {{#if isGM}}
+                <div class="camp-fire-scene-block">
+                    <div class="camp-fire-scene-label">
+                        <i class="fas fa-map-pin"></i>
+                        <span>Scene</span>
+                    </div>
+                    {{#unless campPlaced}}
+                    <div class="camp-drag-handle camp-drag-handle-compact" draggable="true" data-drag-type="compound-camp" title="Drag onto the map to place the camp token layout (fire, tables, station)">
+                        <div class="camp-drag-icon">
+                            <i class="fas fa-fire"></i>
+                        </div>
+                        <div class="camp-drag-label">
+                            <span class="camp-drag-title">Camp layout</span>
+                            <span class="camp-drag-hint">Drag to scene</span>
+                        </div>
+                    </div>
+                    {{else}}
+                    <div class="camp-placed-indicator">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Camp on scene</span>
+                    </div>
+                    {{/unless}}
+                    <button type="button" class="btn-camp-clear-all" data-action="clearAllCampScene" title="Removes the camp layout and every placed tent, bedroll, and mess kit on this scene.">
+                        <i class="fas fa-trash-alt"></i> Clear scene camp
+                    </button>
+                </div>
+                {{/if}}
 
                 {{#unless campScan.fireIsLit}}
                 <div class="camp-fire-body">

@@ -849,5 +849,28 @@
             "actorFlag": "trainingStreak",
             "resetsOnDifferentActivity": true
         }
+    },
+    {
+        "id": "act_other",
+        "name": "Other",
+        "professions": [],
+        "description": "Spend the evening your own way. Socialise, journal, whittle, stargaze, or simply sit in companionable silence. No skill check required.",
+        "restTypes": [
+            "long",
+            "short"
+        ],
+        "prerequisites": {},
+        "check": null,
+        "outcomes": {
+            "success": {
+                "narrative": "A quiet evening, spent on your own terms.",
+                "items": [],
+                "effects": []
+            }
+        },
+        "combatModifiers": {
+            "description": "Normal readiness. Present and aware."
+        },
+        "category": "active"
     }
 ]

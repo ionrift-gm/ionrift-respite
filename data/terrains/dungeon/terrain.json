@@ -8,5 +8,5 @@
     "mealRules": { "waterPerDay": 1, "foodPerDay": 1, "note": "Supplies are limited underground. Ration carefully." },
     "weather": ["dungeon_normal", "dungeon_damp", "extreme_cold"],
     "eventsFile": "core/events/dungeon_events.json",
-    "travelActivities": ["scout"]
+    "travelActivities": []
 }

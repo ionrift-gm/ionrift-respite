@@ -15,6 +15,15 @@ import { ConditionAdvisory } from "../services/ConditionAdvisory.js";
 import { ResourceSink } from "../services/ResourceSink.js";
 import { CampfireTokenLinker } from "../services/CampfireTokenLinker.js";
 import { CampGearScanner } from "../services/CampGearScanner.js";
+import {
+    placeCompoundCamp,
+    placePlayerGear,
+    clearCampTokens,
+    clearPlayerCampGear,
+    hasCampPlaced,
+    isGearDeployed,
+    resetCampSession
+} from "../services/CompoundCampPlacer.js";
 import { ImageResolver } from "../util/ImageResolver.js";
 import { CraftingPickerApp } from "./CraftingPickerApp.js";
 import { CampfireEmbed } from "./CampfireEmbed.js";
@@ -127,7 +136,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             rollTravelCheck: RestSetupApp.#onRollTravelCheck,
             rollTravelForPlayer: RestSetupApp.#onRollTravelForPlayer,
             lightCampfire: RestSetupApp.#onLightCampfire,
-            proceedFromCamp: RestSetupApp.#onProceedFromCamp
+            proceedFromCamp: RestSetupApp.#onProceedFromCamp,
+            clearAllCampScene: RestSetupApp.#onClearAllCampScene,
+            clearMyCampGear: RestSetupApp.#onClearMyCampGear
         }
     };
 
@@ -166,6 +177,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._campfireSnapshot = null;
         this._selectedCharacterId = null;
         this._activitySubTab = "identify"; // identify | activity | meal
+        this._deployedGear = new Map();
+        this._boundCampCanvasDrop = this._onCampCanvasDrop.bind(this);
 
         // Inline crafting drawer state
         this._craftingDrawerOpen = false;
@@ -1119,20 +1132,54 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
                 if (confirmed) {
                     game.socket.emit(`module.${MODULE_ID}`, { type: "restResolved" });
+                    clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
+                    resetCampSession();
                     await super.close(options);
                 }
                 return;
             }
 
-            // If rest is unresolved (not in resolve phase), show persistent indicator
+            // If rest is unresolved (not in resolve phase), offer discard or minimize
             const restActive = this._phase && this._phase !== "resolve" && this._phase !== "setup";
             if (restActive && !options.resolved) {
-                // Don't clear the active app reference; rest is still in progress
-                _showGmRestIndicator(this);
+                const choice = await new Promise(resolve => {
+                    const overlay = document.createElement("div");
+                    overlay.classList.add("ionrift-armor-modal-overlay");
+                    overlay.innerHTML = `
+                        <div class="ionrift-armor-modal">
+                            <h3><i class="fas fa-campground"></i> Rest in Progress</h3>
+                            <p>The rest is still active. Discard it (cleans up camp tokens) or minimize to the status bar?</p>
+                            <div class="ionrift-armor-modal-buttons">
+                                <button class="btn-armor-confirm"><i class="fas fa-times"></i> Discard</button>
+                                <button class="btn-armor-minimize"><i class="fas fa-window-minimize"></i> Minimize</button>
+                                <button class="btn-armor-cancel"><i class="fas fa-arrow-left"></i> Go Back</button>
+                            </div>
+                        </div>`;
+                    document.body.appendChild(overlay);
+                    overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => { overlay.remove(); resolve("discard"); });
+                    overlay.querySelector(".btn-armor-minimize").addEventListener("click", () => { overlay.remove(); resolve("minimize"); });
+                    overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => { overlay.remove(); resolve("cancel"); });
+                });
+
+                if (choice === "discard") {
+                    await game.settings.set(MODULE_ID, "activeRest", {});
+                    game.socket.emit(`module.${MODULE_ID}`, { type: "restAbandoned" });
+                    clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
+                    resetCampSession();
+                    clearActiveRestApp();
+                    _removeGmRestIndicator();
+                    await super.close(options);
+                    return;
+                } else if (choice === "minimize") {
+                    _showGmRestIndicator(this);
+                }
+                return;
             } else {
                 // Notify players to close their rest windows
                 if (options.resolved) {
                     game.socket.emit(`module.${MODULE_ID}`, { type: "restResolved" });
+                    clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
+                    resetCampSession();
                 }
                 clearActiveRestApp();
                 _removeGmRestIndicator();
@@ -1709,6 +1756,64 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             ? this._outcomes
             : (this._outcomes ?? []).filter(o => this._myCharacterIds?.has(o.characterId));
 
+        let campScanData = null;
+        if (this._phase === "camp") {
+            const terrainTagCamp = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
+            const terrainCamp = TerrainRegistry.get(terrainTagCamp);
+            campScanData = CampGearScanner.scan(
+                this._engine?.comfort ?? "rough",
+                this._fireLevel ?? "unlit",
+                (this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")
+                    ? SHELTER_SPELLS[(this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")]?.label ?? null
+                    : null,
+                terrainCamp?.comfortReason ?? "",
+                terrainCamp?.label ?? terrainTagCamp,
+                this._engine?.fireRollModifier ?? 1
+            );
+        }
+        const campPersonalSelected = campScanData && this._selectedCharacterId
+            ? (campScanData.personalCards.find(p => p.actorId === this._selectedCharacterId) ?? null)
+            : null;
+        const campGearForSelected = (() => {
+            if (this._phase !== "camp" || !this._selectedCharacterId) return null;
+            const a = game.actors.get(this._selectedCharacterId);
+            if (!a) return null;
+            const items = a.items?.map(i => i.name?.toLowerCase() ?? "") ?? [];
+            const hasBedroll = items.some(n => n.includes("bedroll"));
+            const hasTent = items.some(n => n.includes("tent"));
+            const hasMessKit = items.some(n =>
+                n.includes("mess kit") || (n.includes("cook") && n.includes("utensil"))
+            );
+            const canDrag = this._isGM || !!a.isOwner;
+            const isOwner = !!a.isOwner;
+            const personalCamp = campScanData?.personalCards?.find(p => p.actorId === this._selectedCharacterId);
+            const exhaustionRisk = !!personalCamp?.recovery?.exhaustionDC;
+            const fireIsLit = (this._fireLevel ?? "unlit") !== "unlit";
+            const tentDeployed = isGearDeployed(a.id, "tent");
+            const bedrollDeployed = isGearDeployed(a.id, "bedroll");
+            const messKitDeployed = isGearDeployed(a.id, "messkit");
+            const hasDeployedCampGear = tentDeployed || bedrollDeployed || messKitDeployed;
+            return {
+                actorId: a.id,
+                actorName: a.name,
+                actorImg: a.img || "icons/svg/mystery-man.svg",
+                hasBedroll,
+                hasTent,
+                hasMessKit,
+                bedrollDeployed,
+                tentDeployed,
+                messKitDeployed,
+                canDrag,
+                isOwner,
+                showClearOwnGear: !this._isGM && isOwner && hasDeployedCampGear,
+                fireIsLit,
+                exhaustionRisk,
+                sceneHasDroppables: hasTent || hasBedroll || hasMessKit,
+                /** Mess kit: advantage is inactive when a save is relevant and fire is out. */
+                messAdvantageOff: hasMessKit && !fireIsLit && exhaustionRisk
+            };
+        })();
+
         return {
             isGM: this._isGM,
             emptyParty,
@@ -2245,18 +2350,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     })
                 };
             })() : this._campStatus ?? null,
-            campScan: this._phase === "camp" ? (() => {
-                const terrainTag = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
-                const terrain = TerrainRegistry.get(terrainTag);
-                return CampGearScanner.scan(
-                    this._engine?.comfort ?? "rough",
-                    (this._fireLevel ?? "unlit") !== "unlit",
-                    (this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none") ? SHELTER_SPELLS[(this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")]?.label ?? null : null,
-                    terrain?.comfortReason ?? "",
-                    terrain?.label ?? terrainTag,
-                    this._engine?.fireRollModifier ?? 1
-                );
-            })() : null,
+            campScan: campScanData,
+            campPersonalSelected,
+            campGearForSelected,
             craftingDrawer: this._buildCraftingDrawerContext(),
             encounterBar: (this._engine && !this._eventsRolled) ? (() => {
                 const bd = this._engine._encounterBreakdown ?? {};
@@ -2389,7 +2485,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (this._phase !== "meal") return null;
                 const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
                 return TerrainRegistry.getDefaults(terrainTag)?.mealRules?.note ?? null;
-            })()
+            })(),
+            campPlaced: hasCampPlaced()
         };
     }
 
@@ -2576,6 +2673,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Bind meal drag-drop when in meal phase
         if (this._phase === "meal") {
             this._bindMealDragDrop(this.element);
+        }
+
+        // Bind camp placement drag handles when in camp phase
+        if (this._phase === "camp") {
+            this._bindCampDragHandlers(this.element);
         }
 
         // Bind travel activity selects (change event, not click)
@@ -4970,6 +5072,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Broadcast to players so they close their windows
         game.socket.emit(`module.${MODULE_ID}`, { type: "restAbandoned" });
 
+        // Clean up camp tokens from the scene
+        clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
+        resetCampSession();
+
         // Clear module-level references
         const { clearActiveRestApp } = await import("../module.js");
         clearActiveRestApp();
@@ -7000,6 +7106,146 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         await this._saveRestState();
         this.render();
+    }
+
+    /**
+     * GM: remove compound camp and all ionrift-respite camp tokens from the scene.
+     */
+    static async #onClearAllCampScene(event, target) {
+        event.preventDefault?.();
+        if (!game.user.isGM) return;
+        const n = await clearCampTokens();
+        if (n > 0) {
+            ui.notifications.info(`Removed ${n} camp token(s) from the scene.`);
+        } else {
+            ui.notifications.info("No camp tokens to remove on this scene.");
+        }
+        game.socket.emit(`module.${MODULE_ID}`, { type: "campSceneCleared" });
+        this.render();
+    }
+
+    /**
+     * Owner: request removal of own tent, bedroll, and mess kit tokens only.
+     * GM may clear any character's placed gear from the roster view.
+     */
+    static async #onClearMyCampGear(event, target) {
+        event.preventDefault?.();
+        const actorId = target.dataset.actorId;
+        if (!actorId) return;
+
+        if (game.user.isGM) {
+            const n = await clearPlayerCampGear(actorId);
+            if (n > 0) {
+                ui.notifications.info(`Removed ${n} camp token(s) for that character.`);
+                game.socket.emit(`module.${MODULE_ID}`, { type: "campSceneCleared", actorId });
+            } else {
+                ui.notifications.info("No camp tokens for that character on the scene.");
+            }
+            this.render();
+            return;
+        }
+
+        const actor = game.actors.get(actorId);
+        if (!actor?.isOwner) {
+            ui.notifications.warn("You can only clear tokens for a character you own.");
+            return;
+        }
+
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "campGearClearPlayer",
+            actorId,
+            userId: game.user.id
+        });
+    }
+
+    /**
+     * Bind drag-to-canvas handlers for camp placement elements.
+     * Called from _onRender when in the camp phase.
+     */
+    _bindCampDragHandlers(html) {
+        // GM compound camp drag handle
+        const campHandle = html.querySelector('.camp-drag-handle[draggable="true"]');
+        if (campHandle) {
+            campHandle.addEventListener("dragstart", (e) => {
+                e.dataTransfer.setData("text/plain", JSON.stringify({ type: "ionrift-compound-camp" }));
+                e.dataTransfer.effectAllowed = "copy";
+                campHandle.classList.add("dragging");
+
+                const board = document.getElementById("board");
+                if (board) {
+                    board.addEventListener("drop", this._boundCampCanvasDrop, { once: true });
+                }
+            });
+            campHandle.addEventListener("dragend", () => {
+                campHandle.classList.remove("dragging");
+            });
+        }
+
+        // Player gear drag handles (bedroll, tent)
+        const gearHandles = html.querySelectorAll('.gear-drag-handle[draggable="true"]');
+        for (const handle of gearHandles) {
+            handle.addEventListener("dragstart", (e) => {
+                const gearType = handle.dataset.gearType;
+                const actorId = handle.dataset.actorId;
+                e.dataTransfer.setData("text/plain", JSON.stringify({
+                    type: "ionrift-player-gear",
+                    gearType,
+                    actorId
+                }));
+                e.dataTransfer.effectAllowed = "copy";
+                handle.classList.add("dragging");
+
+                const board = document.getElementById("board");
+                if (board) {
+                    board.addEventListener("drop", this._boundCampCanvasDrop, { once: true });
+                }
+            });
+            handle.addEventListener("dragend", () => {
+                handle.classList.remove("dragging");
+            });
+        }
+    }
+
+    /**
+     * Canvas drop handler for camp placement (compound camp and player gear).
+     * Converts browser coords to canvas world coords and dispatches placement.
+     */
+    async _onCampCanvasDrop(event) {
+        event.preventDefault();
+
+        let data;
+        try {
+            data = JSON.parse(event.dataTransfer.getData("text/plain"));
+        } catch { return; }
+
+        const t = canvas.stage.worldTransform;
+        const x = (event.clientX - t.tx) / canvas.stage.scale.x;
+        const y = (event.clientY - t.ty) / canvas.stage.scale.y;
+
+        if (data?.type === "ionrift-compound-camp") {
+            if (!game.user.isGM) return;
+            await placeCompoundCamp(x, y);
+            const fireIsLit = this._fireLevel && this._fireLevel !== "unlit";
+            await CampfireTokenLinker.setLightState(fireIsLit);
+            this.render();
+            return;
+        }
+
+        if (data?.type === "ionrift-player-gear") {
+            const { gearType, actorId } = data;
+            if (game.user.isGM) {
+                await placePlayerGear(x, y, gearType, actorId);
+                this.render();
+            } else {
+                game.socket.emit(`module.${MODULE_ID}`, {
+                    type: "campGearPlace",
+                    actorId,
+                    gearType,
+                    x, y
+                });
+            }
+            return;
+        }
     }
 
 }
