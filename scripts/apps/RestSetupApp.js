@@ -14,6 +14,7 @@ import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
 import { ConditionAdvisory } from "../services/ConditionAdvisory.js";
 import { ResourceSink } from "../services/ResourceSink.js";
 import { CampfireTokenLinker } from "../services/CampfireTokenLinker.js";
+import { CampGearScanner } from "../services/CampGearScanner.js";
 import { ImageResolver } from "../util/ImageResolver.js";
 import { CraftingPickerApp } from "./CraftingPickerApp.js";
 import { CampfireEmbed } from "./CampfireEmbed.js";
@@ -22,7 +23,7 @@ import { MealDelegate } from "./delegates/MealDelegate.js";
 import { CopySpellDelegate } from "./delegates/CopySpellDelegate.js";
 import { SoundDelegate } from "./delegates/SoundDelegate.js";
 import { TravelResolutionDelegate } from "./delegates/TravelResolutionDelegate.js";
-import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS } from "./RestConstants.js";
+import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, getActivityAdvisory, buildPartyState } from "./RestConstants.js";
 import { STUB_RECIPES, STUB_POOLS, STUB_HUNT_YIELDS } from "../data/stub-content.js";
 import { ShortRestApp } from "./ShortRestApp.js";
 import { registerActiveRestApp, clearActiveRestApp, setActiveRestData, registerCampfireApp, clearCampfireApp, _showGmRestIndicator, _removeGmRestIndicator, getPartyActors } from "../module.js";
@@ -124,7 +125,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             requestTravelRolls: RestSetupApp.#onRequestTravelRolls,
             requestOtherRoll: RestSetupApp.#onRequestOtherRoll,
             rollTravelCheck: RestSetupApp.#onRollTravelCheck,
-            rollTravelForPlayer: RestSetupApp.#onRollTravelForPlayer
+            rollTravelForPlayer: RestSetupApp.#onRollTravelForPlayer,
+            lightCampfire: RestSetupApp.#onLightCampfire,
+            proceedFromCamp: RestSetupApp.#onProceedFromCamp
         }
     };
 
@@ -162,6 +165,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._campfireApp = null;
         this._campfireSnapshot = null;
         this._selectedCharacterId = null;
+        this._activitySubTab = "identify"; // identify | activity | meal
 
         // Inline crafting drawer state
         this._craftingDrawerOpen = false;
@@ -1248,7 +1252,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Activity icon mapping
 
-
+        // Pre-compute party state for contextual advisories
+        const _bd = this._engine?._encounterBreakdown ?? {};
+        const _baseDC = this._eventResolver?.tables?.get(this._engine?.terrainTag)?.noEventThreshold ?? 15;
+        const _mods = (_bd.shelter ?? 0) + (_bd.weather ?? 0) + (_bd.scouting ?? 0) + (this._engine?.fireRollModifier ?? 0);
+        const _defenses = _bd.defenses ?? 0;
+        const _currentDC = Math.max(1, _baseDC - _mods + (this._engine?.gmEncounterAdj ?? 0) - _defenses);
+        const partyState = buildPartyState(partyActors, this._pendingSelections, _currentDC);
         const characterStatuses = partyActors.map(a => {
             const gmOverride = this._gmOverrides.get(a.id);
             const playerChoice = this._getPlayerChoiceForCharacter(a.id);
@@ -1389,6 +1399,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 else if (act.check) typeTag = "Skill";
                 if (act.group) typeTag = "Group";
 
+                const advisory = getActivityAdvisory(act.id, a, partyState);
+
                 return {
                     id: act.id,
                     name: act.name,
@@ -1406,7 +1418,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     combatModifiers: act.combatModifiers ?? null,
                     followUp: act.followUp ?? null,
                     armorSleepWaiver: act.armorSleepWaiver ?? false,
-                    hasAttuneable: act.id === "act_attune"
+                    hasAttuneable: act.id === "act_attune",
+                    hint: advisory.text,
+                    hintUrgent: advisory.urgent
                 };
             });
 
@@ -1714,6 +1728,146 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             gmCopySpellProposal: this._gmCopySpellProposal ?? null,
             copySpellRollPrompt: this._copySpellRollPrompt ?? null,
             phase: this._phase,
+            activitySubTab: (() => {
+                if (this._phase !== "activity") return null;
+                // Build unidentified items list
+                const unidentifiedItems = [];
+                const identifyCasters = [];
+                for (const a of partyActors) {
+                    // Scan for unidentified items
+                    for (const item of a.items ?? []) {
+                        if (item.system?.identified === false) {
+                            // Check if the item has unidentified text (magic items do)
+                            const hasUnidentifiedData = !!(item.system?.unidentified?.name || item.system?.unidentified?.description);
+                            const isPotion = item.type === "consumable" && item.system?.type?.value === "potion";
+                            const rawRarity = (item.system?.rarity ?? "common").replace(/\s+(\w)/g, (_, c) => c.toUpperCase());
+                            unidentifiedItems.push({
+                                itemId: item.id,
+                                actorId: a.id,
+                                actorName: a.name,
+                                name: item.system?.unidentified?.name || item.name || "Unknown Item",
+                                img: item.img || "icons/svg/mystery-man.svg",
+                                rarity: rawRarity,
+                                rarityLabel: rawRarity.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase()).trim(),
+                                type: item.type,
+                                isPotion,
+                                hasUnidentifiedData,
+                                requiresAttunement: !!item.system?.attunement,
+                                identified: false
+                            });
+                        }
+                    }
+                    // Check for Identify spell capability
+                    const hasIdentify = [...(a.items ?? [])].some(i =>
+                        i.type === "spell" && (
+                            i.name?.toLowerCase() === "identify" ||
+                            i.name?.toLowerCase() === "detect magic"
+                        ) && (i.system?.preparation?.prepared || i.system?.preparation?.mode === "always" || i.system?.preparation?.mode === "innate")
+                    );
+                    if (hasIdentify) {
+                        identifyCasters.push({ id: a.id, name: a.name });
+                    }
+                }
+                // Track already-identified items from this rest
+                const identifiedThisRest = this._identifiedItems ?? [];
+                const hasUnidentified = unidentifiedItems.length > 0;
+
+                // Default to Activity tab on arrival, but keep Identify inspectable
+                if (!this._activitySubTabUserSet && !hasUnidentified) {
+                    this._activitySubTab = "activity";
+                }
+
+                // ── DEBUG: inject dummy items for UI review ──
+                // Remove this block after UI review is complete
+                if (this._activitySubTab === "identify") {
+                    const dummyActor = partyActors[0];
+                    if (dummyActor) {
+                        unidentifiedItems.push(
+                            {
+                                itemId: "demo_potion", actorId: dummyActor.id, actorName: dummyActor.name,
+                                name: "Shimmering Potion", img: "icons/svg/potion.svg",
+                                rarity: "uncommon", rarityLabel: "Uncommon",
+                                type: "consumable", isPotion: true,
+                                hasUnidentifiedData: true, requiresAttunement: false, identified: false
+                            },
+                            {
+                                itemId: "demo_ring", actorId: dummyActor.id, actorName: dummyActor.name,
+                                name: "Engraved Silver Ring", img: "icons/svg/aura.svg",
+                                rarity: "rare", rarityLabel: "Rare",
+                                type: "equipment", isPotion: false,
+                                hasUnidentifiedData: true, requiresAttunement: true, identified: false
+                            },
+                            {
+                                itemId: "demo_sword", actorId: (partyActors[1] ?? dummyActor).id,
+                                actorName: (partyActors[1] ?? dummyActor).name,
+                                name: "Rune-Etched Longsword", img: "icons/svg/sword.svg",
+                                rarity: "veryRare", rarityLabel: "Very Rare",
+                                type: "weapon", isPotion: false,
+                                hasUnidentifiedData: true, requiresAttunement: true, identified: false
+                            },
+                            {
+                                itemId: "demo_scroll", actorId: (partyActors[2] ?? dummyActor).id,
+                                actorName: (partyActors[2] ?? dummyActor).name,
+                                name: "Sealed Scroll", img: "icons/svg/book.svg",
+                                rarity: "uncommon", rarityLabel: "Uncommon",
+                                type: "consumable", isPotion: false,
+                                hasUnidentifiedData: false, requiresAttunement: false, identified: false
+                            }
+                        );
+                    }
+                }
+                // ── END DEBUG ──
+
+                // Build compact meal summary for the Meal sub-tab
+                const trackFood = game.settings.get(MODULE_ID, "trackFood");
+                let mealSummary = null;
+                if (trackFood) {
+                    const charIds = partyActors.map(a => a.id);
+                    const terrainTag = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
+                    const terrainDefaults = TerrainRegistry.getDefaults(terrainTag);
+                    const terrainMealRules = terrainDefaults.mealRules ?? {};
+                    const daysSinceLastRest = this._engine?.daysSinceLastRest ?? 1;
+                    const mealCards = MealPhaseHandler.buildMealContext(
+                        charIds, terrainTag, terrainMealRules, daysSinceLastRest,
+                        this._mealChoices ?? new Map()
+                    );
+                    const allSufficient = mealCards.every(c => c.foodSufficient && c.waterSufficient);
+                    const anyWarning = mealCards.some(c => !c.foodSufficient || !c.waterSufficient);
+                    mealSummary = {
+                        characters: mealCards.map(c => ({
+                            id: c.characterId,
+                            name: c.actorName,
+                            img: c.actorImg,
+                            foodCount: c.foodOptions.reduce((sum, o) => sum + o.available, 0),
+                            waterCount: c.waterOptions.reduce((sum, o) => sum + o.available, 0),
+                            hasFood: c.hasFood,
+                            hasWater: c.hasWater,
+                            foodSufficient: c.foodSufficient,
+                            waterSufficient: c.waterSufficient,
+                            advisories: c.advisories.filter(a => a.level === "danger" || a.level === "warning")
+                        })),
+                        allSufficient,
+                        anyWarning,
+                        daysSinceLastRest,
+                        autoConsume: this._mealAutoConsume ?? true
+                    };
+                }
+
+                return {
+                    current: this._activitySubTab,
+                    isIdentify: this._activitySubTab === "identify",
+                    isActivity: this._activitySubTab === "activity",
+                    isMeal: this._activitySubTab === "meal",
+                    hasUnidentified: hasUnidentified || unidentifiedItems.length > 0,
+                    unidentifiedItems,
+                    identifyCasters,
+                    identifiedThisRest,
+                    canIdentifyByRest: true,
+                    itemCount: unidentifiedItems.length,
+                    trackFood,
+                    mealSummary
+                };
+            })(),
             travelContext: (() => {
                 if (this._phase !== "travel") return null;
                 const terrainTag = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
@@ -1805,6 +1959,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     isMultiDay: totalDays > 1,
                     activeDay,
                     canForage, canHunt, canScout, hasTravelOptions,
+                    travelSkipRecommended: !canForage && !canHunt,
                     disabledReason,
                     terrainTag,
                     terrainLabel: terrain?.label ?? terrainTag,
@@ -1856,9 +2011,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const scout = d.scoutingAvailable !== false ? "Scouting available." : "No scouting.";
                 return `Implied comfort: ${comfort}. ${scout}`;
             })(),
-            weatherOptions: TerrainRegistry.getWeather(this._selectedTerrain ?? "forest")
-                .map(key => ({ value: key, ...WEATHER_TABLE[key] }))
-                .filter(w => w.label),
+            weatherOptions: (() => {
+                const defaultKey = TerrainRegistry.getWeather(this._selectedTerrain ?? "forest")[0] ?? "clear";
+                return TerrainRegistry.getWeather(this._selectedTerrain ?? "forest")
+                    .map(key => ({ value: key, ...WEATHER_TABLE[key] }))
+                    .filter(w => w.label)
+                    .map(w => w.value === defaultKey ? { ...w, label: `${w.label} (Default)` } : w);
+            })(),
             defaultWeather: TerrainRegistry.getWeather(this._selectedTerrain ?? "forest")[0] ?? "clear",
             comfortOptions: (() => {
                 const opts = [
@@ -1879,7 +2038,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const p = this._phase ?? "setup";
                 
                 // All terrains look in their specific folder.
-                const filename = (p === "activity" || p === "reflection" || p === "meal" || p === "travel") ? "banner.png" : `${p}.png`;
+                const filename = (p === "activity" || p === "reflection" || p === "meal" || p === "travel" || p === "camp") ? "banner.png" : `${p}.png`;
                 return ImageResolver.terrainBanner(t, filename);
             })(),
             terrainBannerFallback: ImageResolver.fallbackBanner,
@@ -2036,7 +2195,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             grantActors: getPartyActors().map(a => ({ id: a.id, name: a.name })),
             activityDetail: this._buildActivityDetailContext(selectedCharacter),
             campStatus: this._engine ? (() => {
-                const comfort = this._engine.comfort;
+                // Use effective camp comfort (includes fire/shelter modifiers) rather than raw terrain
+                const rawComfort = this._engine.comfort;
+                const fireIsLit = (this._fireLevel ?? "unlit") !== "unlit";
+                const activeShelters = this._engine.activeShelters ?? [];
+                const shelterSpell = activeShelters.find(s => s !== "tent" && s !== "none") ? SHELTER_SPELLS[activeShelters.find(s => s !== "tent" && s !== "none")]?.label ?? null : null;
+                const tiers = ["hostile", "rough", "comfortable", "sheltered", "safe"];
+                let effectiveIdx = tiers.indexOf(rawComfort);
+                if (effectiveIdx < 0) effectiveIdx = 1;
+                if (shelterSpell) {
+                    const shelterIdx = tiers.indexOf("sheltered");
+                    if (effectiveIdx < shelterIdx) effectiveIdx = shelterIdx;
+                }
+                if (fireIsLit) effectiveIdx = Math.min(effectiveIdx + 1, tiers.length - 1);
+                const comfort = tiers[effectiveIdx];
 
                 const weatherKey = this._engine.weather ?? "clear";
                 const wx = WEATHER_TABLE[weatherKey] ?? WEATHER_TABLE.clear;
@@ -2061,6 +2233,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     comfort,
                     comfortTooltip: COMFORT_TIPS[comfort] ?? comfort,
                     weather: weatherKey !== "clear" ? weatherKey : null,
+                    weatherLabel: wx.label,
                     weatherTooltip: weatherParts.length ? `${wx.label}: ${weatherParts.join(", ")}` : wx.label,
                     fireLevel: this._fireLevel ?? "unlit",
                     fireTooltip: FIRE_TIPS[this._fireLevel ?? "unlit"] ?? "Fire",
@@ -2072,6 +2245,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     })
                 };
             })() : this._campStatus ?? null,
+            campScan: this._phase === "camp" ? (() => {
+                const terrainTag = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
+                const terrain = TerrainRegistry.get(terrainTag);
+                return CampGearScanner.scan(
+                    this._engine?.comfort ?? "rough",
+                    (this._fireLevel ?? "unlit") !== "unlit",
+                    (this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none") ? SHELTER_SPELLS[(this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")]?.label ?? null : null,
+                    terrain?.comfortReason ?? "",
+                    terrain?.label ?? terrainTag,
+                    this._engine?.fireRollModifier ?? 1
+                );
+            })() : null,
             craftingDrawer: this._buildCraftingDrawerContext(),
             encounterBar: (this._engine && !this._eventsRolled) ? (() => {
                 const bd = this._engine._encounterBreakdown ?? {};
@@ -2543,6 +2728,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
                 const daysBlock = this.element.querySelector(".days-since-rest-block");
                 if (daysBlock) daysBlock.style.display = isShort ? "none" : "";
+                const envBlock = this.element.querySelector(".scene-environment");
+                if (envBlock) envBlock.style.display = isShort ? "none" : "";
+                const wxBlock = this.element.querySelector(".scene-weather");
+                if (wxBlock) wxBlock.style.display = isShort ? "none" : "";
+                const advBlock = this.element.querySelector(".scene-advanced-drawer");
+                if (advBlock) advBlock.style.display = isShort ? "none" : "";
             };
             restTypeButtons.forEach(btn => {
                 btn.addEventListener("click", () => _applyRestType(btn.dataset.restType));
@@ -2618,8 +2809,58 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Initial computation
         updatePreview();
 
+        // Bind sub-tab switching (Identify / Activity / Meal)
+        for (const btn of this.element.querySelectorAll("[data-action='switchActivityTab']")) {
+            btn.addEventListener("click", (e) => {
+                const tab = e.currentTarget.dataset.tab;
+                if (tab && tab !== this._activitySubTab) {
+                    this._activitySubTab = tab;
+                    this._activitySubTabUserSet = true;
+                    this.render();
+                }
+            });
+        }
+
+        // Bind meal auto-consume toggle
+        const autoConsumeToggle = this.element.querySelector("[data-action='toggleMealAutoConsume']");
+        if (autoConsumeToggle) {
+            autoConsumeToggle.addEventListener("change", (e) => {
+                this._mealAutoConsume = e.currentTarget.checked;
+                this.render();
+            });
+        }
+
+        // Bind identify item buttons
+        for (const btn of this.element.querySelectorAll("[data-action='identifyItem']")) {
+            btn.addEventListener("click", async (e) => {
+                const { itemId, actorId, method } = e.currentTarget.dataset;
+                if (!itemId || !actorId) return;
+                const actor = game.actors.get(actorId);
+                const item = actor?.items?.get(itemId);
+                if (!item) return;
+
+                // Mark as identified via the DnD5e system
+                try {
+                    await item.update({ "system.identified": true });
+                    if (!this._identifiedItems) this._identifiedItems = [];
+                    this._identifiedItems.push({
+                        itemId, actorId,
+                        name: item.name,
+                        img: item.img,
+                        actorName: actor.name,
+                        requiresAttunement: !!item.system?.attunement
+                    });
+                    ui.notifications.info(`${item.name} identified by ${actor.name}.`);
+                    this.render();
+                } catch (err) {
+                    console.error(`[Respite] Failed to identify item:`, err);
+                    ui.notifications.error("Failed to identify item.");
+                }
+            });
+        }
+
         // Bind click events on activity tiles
-        const tiles = this.element.querySelectorAll(".activity-tile");
+        const tiles = this.element.querySelectorAll(".activity-card");
         for (const tile of tiles) {
             tile.addEventListener("click", () => {
                 const grid = tile.closest(".activity-grid");
@@ -3832,7 +4073,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this._broadcastTravelDeclarations();
             }, 200);
         } else {
-            this._phase = "activity";
+            this._phase = "camp";
         }
 
         // Campfire token: ensure hidden at rest start (fire not lit yet)
@@ -6530,7 +6771,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         await this._travel.resolveAll(partyActors, terrainTag);
         this._applyScoutingFromTravel();
 
-        this._phase = "activity";
+        this._phase = "camp";
 
         game.socket.emit(`module.${MODULE_ID}`, {
             type: "phaseChanged",
@@ -6572,7 +6813,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._applyScoutingFromTravel();
         }
 
-        this._phase = "activity";
+        this._phase = "camp";
 
         game.socket.emit(`module.${MODULE_ID}`, {
             type: "phaseChanged",
@@ -6672,6 +6913,93 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             rank = Math.min(3, rank + effects.comfortBonus);
             this._engine.comfort = RANK_TO_KEY[rank];
         }
+    }
+
+    // ──────── Make Camp Phase Handlers ────────────────────────
+
+    /**
+     * Player or GM lights the campfire during Make Camp.
+     * Consumes 1 firewood from the first holder and re-renders.
+     */
+    static async #onLightCampfire(event, target) {
+        const actors = getPartyActors();
+
+        // Find the first actor with firewood
+        let supplier = null;
+        let firewoodItem = null;
+        for (const actor of actors) {
+            firewoodItem = actor.items.find(i => {
+                const n = i.name?.toLowerCase() ?? "";
+                return n.includes("firewood") || n === "kindling";
+            });
+            if (firewoodItem && (firewoodItem.system?.quantity ?? 0) > 0) {
+                supplier = actor;
+                break;
+            }
+        }
+
+        if (!supplier || !firewoodItem) {
+            ui.notifications.warn("No firewood available to light the fire.");
+            return;
+        }
+
+        // Check tinderbox
+        const hasTinderbox = actors.some(a => a.items.some(i => {
+            const n = i.name?.toLowerCase() ?? "";
+            return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
+        }));
+        if (!hasTinderbox) {
+            ui.notifications.warn("No one has a tinderbox or flint & steel to light the fire.");
+            return;
+        }
+
+        // Consume 1 firewood
+        const qty = firewoodItem.system?.quantity ?? 1;
+        if (qty <= 1) {
+            await firewoodItem.delete();
+        } else {
+            await firewoodItem.update({ "system.quantity": qty - 1 });
+        }
+
+        this._fireLevel = "campfire";
+        if (this._engine) {
+            this._engine.fireLevel = "campfire";
+            // Recalculate fire roll modifier
+            this._engine.fireRollModifier = 1;
+        }
+
+        CampfireTokenLinker.setLightState(true);
+
+        ui.notifications.info(`${supplier.name} lights the campfire using firewood.`);
+
+        // Broadcast fire state to players
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "phaseChanged",
+            phase: "camp",
+            phaseData: { fireLevel: "campfire" }
+        });
+
+        await this._saveRestState();
+        this.render();
+    }
+
+    /**
+     * GM advances from Make Camp to Activities.
+     */
+    static async #onProceedFromCamp(event, target) {
+        this._phase = "activity";
+
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "phaseChanged",
+            phase: this._phase,
+            phaseData: {
+                campStatus: this._campStatus,
+                fireLevel: this._fireLevel
+            }
+        });
+
+        await this._saveRestState();
+        this.render();
     }
 
 }

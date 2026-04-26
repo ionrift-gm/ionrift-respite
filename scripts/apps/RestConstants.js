@@ -61,8 +61,135 @@ export const ACTIVITY_ICONS = {
     act_cook: "fas fa-utensils", act_brew: "fas fa-flask", act_tailor: "fas fa-cut",
     act_craft: "fas fa-tools", act_fletch: "fas fa-crosshairs",
     act_defenses: "fas fa-shield-alt", act_train: "fas fa-dumbbell",
-    act_identify: "fas fa-search", act_attune: "fas fa-gem", act_scribe: "fas fa-scroll"
+    act_identify: "fas fa-search", act_attune: "fas fa-gem", act_scribe: "fas fa-scroll",
+    act_other: "fas fa-comments"
 };
+
+/** Static fallback hints for activities without dynamic advisories */
+const ACTIVITY_HINTS_STATIC = {
+    act_study: "Ask the GM about a clue or detail",
+    act_tell_tales: "Performance check, may grant Inspiration",
+    act_cook: "Prepare a meal from ingredients",
+    act_brew: "Brew a potion or salve",
+    act_tailor: "Stitch materials into gear",
+    act_craft: "Work raw materials into items",
+    act_other: "Roleplay, journal, socialise"
+};
+
+/**
+ * Generate a contextual advisory for an activity card.
+ * @param {string} activityId - The activity ID
+ * @param {Actor5e} actor - The actor considering this activity
+ * @param {object} partyState - Pre-computed party state from buildPartyState()
+ * @returns {{text: string, urgent: boolean}}
+ */
+export function getActivityAdvisory(activityId, actor, partyState) {
+    const hp = actor.system?.attributes?.hp ?? {};
+    const hpPct = hp.max ? Math.round((hp.value / hp.max) * 100) : 100;
+    const hd = actor.system?.attributes?.hd ?? {};
+    const hdAvail = typeof hd.value === "number" ? hd.value : (hd.available ?? 0);
+    const hdMax = hd.max ?? actor.system?.details?.level ?? 1;
+    const hdDeficit = hdMax - hdAvail;
+
+    switch (activityId) {
+        case "act_keep_watch": {
+            if (!partyState.hasWatcher)
+                return { text: "No one is watching – party vulnerable", urgent: true };
+            return { text: "Can't be surprised, +3 initiative", urgent: false };
+        }
+        case "act_tend_wounds": {
+            const injured = partyState.injuredMembers.filter(m => m.id !== actor.id);
+            if (injured.length) {
+                const worst = injured[0];
+                return { text: `${worst.name} is at ${worst.hpPct}% HP`, urgent: worst.hpPct < 50 };
+            }
+            return { text: "Medicine check, heals a companion", urgent: false };
+        }
+        case "act_defenses": {
+            const dc = partyState.encounterDC ?? 14;
+            if (dc <= 10)
+                return { text: `Encounter DC is ${dc} – defenses would help`, urgent: true };
+            return { text: "Lowers encounter risk for the party", urgent: false };
+        }
+        case "act_scout": {
+            const dc = partyState.encounterDC ?? 14;
+            if (dc <= 10)
+                return { text: "High encounter risk – scout escape routes", urgent: true };
+            return { text: "Stealth/Perception check, maps escape routes", urgent: false };
+        }
+        case "act_rest_fully": {
+            if (hdDeficit >= 2)
+                return { text: `Missing ${hdDeficit} Hit Dice – rest to recover`, urgent: true };
+            if (hpPct < 50)
+                return { text: `At ${hpPct}% HP – full rest maximises recovery`, urgent: true };
+            return { text: "Best recovery, but vulnerable if attacked", urgent: false };
+        }
+        case "act_pray": {
+            const tempHP = hp.temp ?? 0;
+            if (tempHP === 0 && hpPct < 100)
+                return { text: "No temp HP – meditation could help", urgent: false };
+            return { text: "Temp HP on success", urgent: false };
+        }
+        case "act_fletch": {
+            const ammo = _countAmmo(actor);
+            if (ammo !== null && ammo < 10)
+                return { text: `Low ammo: ${ammo} remaining`, urgent: true };
+            return { text: "Craft arrows or bolts", urgent: false };
+        }
+        case "act_train": {
+            const xp = actor.system?.details?.xp ?? {};
+            if (xp.max && xp.value != null) {
+                const gap = xp.max - xp.value;
+                if (gap > 0 && gap <= 100)
+                    return { text: `${gap} XP to next level`, urgent: true };
+            }
+            return { text: "Gain XP (levels 1–5 only)", urgent: false };
+        }
+        case "act_attune":
+            return { text: "Bond with a magical item", urgent: false };
+        case "act_scribe":
+            return { text: "Transcribe a spell (costs gold)", urgent: false };
+        default:
+            return { text: ACTIVITY_HINTS_STATIC[activityId] ?? null, urgent: false };
+    }
+}
+
+/**
+ * Pre-compute party state for advisory generation.
+ * Call once per render, pass to each getActivityAdvisory call.
+ * @param {Actor5e[]} partyActors - All actors in the rest
+ * @param {Map} pendingSelections - Map of actorId → activityId
+ * @param {number} encounterDC - Current effective encounter DC
+ * @returns {object}
+ */
+export function buildPartyState(partyActors, pendingSelections, encounterDC) {
+    const hasWatcher = [...(pendingSelections?.values() ?? [])].includes("act_keep_watch");
+    const injuredMembers = partyActors
+        .map(a => {
+            const hp = a.system?.attributes?.hp ?? {};
+            const pct = hp.max ? Math.round((hp.value / hp.max) * 100) : 100;
+            return { id: a.id, name: a.name, hpPct: pct };
+        })
+        .filter(m => m.hpPct < 100)
+        .sort((a, b) => a.hpPct - b.hpPct);
+
+    return { hasWatcher, injuredMembers, encounterDC: encounterDC ?? 14 };
+}
+
+/** Count ammunition (arrows, bolts, darts) in an actor's inventory */
+function _countAmmo(actor) {
+    const AMMO_NAMES = /arrow|bolt|dart|sling bullet/i;
+    let total = 0;
+    let found = false;
+    for (const item of actor.items ?? []) {
+        if (item.type === "consumable" && item.system?.type?.value === "ammo" &&
+            AMMO_NAMES.test(item.name)) {
+            total += item.system?.quantity ?? 0;
+            found = true;
+        }
+    }
+    return found ? total : null;
+}
 
 /** Shelter spell definitions. Used in setup phase for shelter detection. */
 export const SHELTER_SPELLS = [

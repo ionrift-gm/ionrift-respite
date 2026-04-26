@@ -7,10 +7,13 @@
     <div class="respite-phase-header">
         <div class="phase-indicator">
             <div
-                class="phase-dot {{#if (eq phase 'setup')}}active{{/if}} {{#if (or (eq phase 'travel') (eq phase 'activity') (eq phase 'meal') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+                class="phase-dot {{#if (eq phase 'setup')}}active{{/if}} {{#if (or (eq phase 'travel') (eq phase 'camp') (eq phase 'activity') (eq phase 'meal') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
             </div>
             <div
-                class="phase-dot {{#if (eq phase 'travel')}}active{{/if}} {{#if (or (eq phase 'activity') (eq phase 'meal') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+                class="phase-dot {{#if (eq phase 'travel')}}active{{/if}} {{#if (or (eq phase 'camp') (eq phase 'activity') (eq phase 'meal') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+            </div>
+            <div
+                class="phase-dot {{#if (eq phase 'camp')}}active{{/if}} {{#if (or (eq phase 'activity') (eq phase 'meal') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
             </div>
             <div
                 class="phase-dot {{#if (eq phase 'activity')}}active{{/if}} {{#if (or (eq phase 'meal') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
@@ -28,22 +31,24 @@
         <span class="phase-label">
             {{#if (eq phase 'setup')}}Setup{{/if}}
             {{#if (eq phase 'travel')}}Travel{{/if}}
-            {{#if (eq phase 'activity')}}Activities ({{resolvedCount}}/{{totalCharacters}}){{/if}}
+            {{#if (eq phase 'camp')}}Make Camp{{/if}}
+            {{#if (eq phase 'activity')}}Activities{{/if}}
             {{#if (eq phase 'meal')}}Rations{{/if}}
             {{#if (eq phase 'reflection')}}Campfire{{/if}}
             {{#if (eq phase 'events')}}Events{{/if}}
             {{#if (eq phase 'resolve')}}Resolution{{/if}}
         </span>
-    </div>
 
-    {{#if isGM}}
-    <button type="button" class="btn-abandon-rest" data-action="abandonRest" title="Cancel this rest for all players">
-        <i class="fas fa-times"></i> Abandon Rest
-    </button>
-    {{/if}}
+        {{#if isGM}}
+        <button type="button" class="btn-abandon-rest" data-action="abandonRest" title="Cancel this rest for all players">
+            <i class="fas fa-times"></i> Abandon Rest
+        </button>
+        {{/if}}
+    </div>
 
     {{!-- Camp Status Bar: persistent across all phases post-setup --}}
     {{#if campStatus}}
+    {{#unless (eq phase 'activity')}}
     <div class="camp-status-bar">
         <span class="camp-status-chip comfort-{{campStatus.comfort}}" title="{{campStatus.comfortTooltip}}">
             <i class="fas fa-bed"></i> {{campStatus.comfort}}
@@ -51,7 +56,7 @@
         {{#if campStatus.weather}}
         {{#unless (eq campStatus.weather "clear")}}
         <span class="camp-status-chip weather-chip" title="{{campStatus.weatherTooltip}}">
-            <i class="fas fa-cloud-sun-rain"></i> {{campStatus.weather}}
+            <i class="fas fa-cloud-sun-rain"></i> {{campStatus.weatherLabel}}
         </span>
         {{/unless}}
         {{/if}}
@@ -69,6 +74,7 @@
             <i class="fas fa-fire"></i> <span class="fire-level-text">{{campStatus.fireLevel}}</span>
         </span>
     </div>
+    {{/unless}}
     {{/if}}
 
 
@@ -90,60 +96,75 @@
     {{else}}
     <div class="respite-setup">
 
-        {{!-- ===== SECTION 1: Where Are We? ===== --}}
-        <div class="setup-section {{#if (eq setupStep 1)}}active{{else}}collapsed{{/if}}" data-section="1">
-            <div class="setup-section-header" data-action="setupBack" data-step="1">
-                <span class="section-step">1</span>
-                <span class="section-title">Environment</span>
-                {{#unless (eq setupStep 1)}}
-                <span class="section-summary"><i class="fas fa-check"></i> {{selectedTerrainLabel}} &middot; {{selectedRestTypeLabel}}</span>
-                {{/unless}}
-            </div>
-            {{#if (eq setupStep 1)}}
-            <div class="setup-section-body">
-                {{!-- Party Roster Indicator --}}
-                {{#if rosterInfo}}
-                <div class="roster-indicator">
-                    <div class="roster-indicator-portraits">
-                        {{#each rosterInfo.portraits}}
-                        <img class="roster-indicator-portrait" src="{{img}}" alt="{{name}}" title="{{name}}">
-                        {{/each}}
-                        {{#if rosterInfo.overflow}}
-                        <span class="roster-indicator-overflow">+{{rosterInfo.overflow}}</span>
-                        {{/if}}
-                    </div>
-                    <span class="roster-indicator-label">{{rosterInfo.count}} characters</span>
-                    <button type="button" class="roster-indicator-edit" onclick="game.settings.menus.get('ionrift-respite.partyRosterMenu')?.type?.prototype?.constructor && new (game.settings.menus.get('ionrift-respite.partyRosterMenu').type)().render(true)" title="Edit Party Roster">
-                        <i class="fas fa-pencil-alt"></i>
-                    </button>
-                </div>
+        {{!-- Party Roster Indicator --}}
+        {{#if rosterInfo}}
+        <div class="roster-indicator">
+            <div class="roster-indicator-portraits">
+                {{#each rosterInfo.portraits}}
+                <img class="roster-indicator-portrait" src="{{img}}" alt="{{name}}" title="{{name}}">
+                {{/each}}
+                {{#if rosterInfo.overflow}}
+                <span class="roster-indicator-overflow">+{{rosterInfo.overflow}}</span>
                 {{/if}}
-                <div class="terrain-grid">
-                    <div class="form-group">
-                        <label>Rest Type</label>
-                        <div class="rest-type-toggle">
-                            <button type="button" class="rest-type-btn {{#unless (eq selectedRestType 'short')}}active{{/unless}}"
-                                data-rest-type="long">
-                                <i class="fas fa-moon"></i> Long Rest
-                            </button>
-                            <button type="button" class="rest-type-btn {{#if (eq selectedRestType 'short')}}active{{/if}}"
-                                data-rest-type="short">
-                                <i class="fas fa-mug-hot"></i> Short Rest
-                            </button>
-                            <input type="hidden" name="restType" value="{{#if (eq selectedRestType 'short')}}short{{else}}long{{/if}}">
-                        </div>
-                        <span class="rest-type-hint">8 hrs. HP and Hit Dice recovery varies by comfort and conditions.</span>
-                    </div>
-                    <div class="form-group">
-                        <label>Environment</label>
-                        <select name="terrain">
-                            {{#each terrainOptions}}
-                            <option value="{{value}}" {{#if (eq value ../selectedTerrain)}}selected{{/if}}>{{label}}</option>
-                            {{/each}}
-                        </select>
-                        <span class="terrain-hint" id="terrain-hint">{{terrainPreview}}</span>
-                    </div>
+            </div>
+            <span class="roster-indicator-label">{{rosterInfo.count}} characters</span>
+            <button type="button" class="roster-indicator-edit" onclick="game.settings.menus.get('ionrift-respite.partyRosterMenu')?.type?.prototype?.constructor && new (game.settings.menus.get('ionrift-respite.partyRosterMenu').type)().render(true)" title="Edit Party Roster">
+                <i class="fas fa-pencil-alt"></i>
+            </button>
+        </div>
+        {{/if}}
+
+        {{!-- Scene: Rest Type + Environment + Weather --}}
+        <div class="scene-grid">
+            <div class="form-group scene-rest-type">
+                <label>Rest Type</label>
+                <div class="rest-type-toggle">
+                    <button type="button" class="rest-type-btn {{#unless (eq selectedRestType 'short')}}active{{/unless}}"
+                        data-rest-type="long">
+                        <i class="fas fa-moon"></i> Long Rest
+                    </button>
+                    <button type="button" class="rest-type-btn {{#if (eq selectedRestType 'short')}}active{{/if}}"
+                        data-rest-type="short">
+                        <i class="fas fa-mug-hot"></i> Short Rest
+                    </button>
+                    <input type="hidden" name="restType" value="{{#if (eq selectedRestType 'short')}}short{{else}}long{{/if}}">
                 </div>
+            </div>
+            {{#unless isShortRest}}
+            <div class="form-group scene-environment">
+                <label>Environment</label>
+                <select name="terrain">
+                    {{#each terrainOptions}}
+                    <option value="{{value}}" {{#if (eq value ../selectedTerrain)}}selected{{/if}}>{{label}}</option>
+                    {{/each}}
+                </select>
+                <span class="terrain-hint" id="terrain-hint">{{terrainPreview}}</span>
+            </div>
+            {{/unless}}
+            {{!-- Weather: only shown for Long Rest --}}
+            {{#unless isShortRest}}
+            <div class="form-group scene-weather">
+                <label>Weather</label>
+                <select name="weather">
+                    {{#each weatherOptions}}
+                    <option value="{{value}}" title="{{hint}}" {{#if (eq value ../defaultWeather)}}selected{{/if}}>{{label}}</option>
+                    {{/each}}
+                </select>
+                {{#each weatherOptions}}
+                {{#if (eq value ../defaultWeather)}}
+                <span class="weather-hint">{{hint}}</span>
+                {{/if}}
+                {{/each}}
+            </div>
+            {{/unless}}
+        </div>
+
+        {{!-- Advanced Drawer (collapsed by default) --}}
+        <details class="scene-advanced-drawer">
+            <summary class="scene-advanced-toggle">
+                <i class="fas fa-cog"></i> Advanced
+            </summary>
+            <div class="scene-advanced-body">
                 {{#if trackFood}}
                 <div class="days-since-rest-block">
                     <div class="days-since-rest-row">
@@ -160,102 +181,6 @@
                     {{/if}}
                 </div>
                 {{/if}}
-                <div class="setup-section-actions">
-                    <button type="button" class="btn-primary" data-action="setupContinue" data-step="1">
-                        Continue <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
-            </div>
-            {{/if}}
-        </div>
-
-        {{!-- ===== SECTION 2 (Short Rest): Shelter ===== --}}
-        {{#if isShortRest}}
-        {{#if (gte setupStep 2)}}
-        <div class="setup-section active" data-section="2">
-            <div class="setup-section-header">
-                <span class="section-step">2</span>
-                <span class="section-title">Shelter</span>
-            </div>
-            <div class="setup-section-body">
-                <div class="shelter-config">
-                    <div class="shelter-options">
-                        {{#each shelterOptions}}
-                        <label class="shelter-radio {{#if active}}active{{/if}} {{#unless available}}faded{{/unless}}">
-                            <input type="radio" name="shelter" value="{{id}}"
-                                {{#if active}}checked{{/if}}
-                                {{#unless available}}disabled{{/unless}}
-                                data-shelter-id="{{id}}"
-                                data-action="toggleShelter">
-                            <i class="{{icon}}"></i>
-                            <span class="shelter-name">{{name}}</span>
-                            <span class="shelter-hint">{{hint}}</span>
-                        </label>
-                        {{/each}}
-                    </div>
-                    {{#if shelterEffect.rpPrompt}}
-                    <div class="shelter-rp-prompt">
-                        <i class="fas fa-comment-dots"></i> {{shelterEffect.rpPrompt}}
-                    </div>
-                    {{/if}}
-                </div>
-            </div>
-        </div>
-        <div class="respite-action-bar">
-            <button type="button" class="btn-secondary" data-action="setupBack" data-step="1">
-                <i class="fas fa-chevron-left"></i> Back
-            </button>
-            <button type="button" class="btn-primary" data-action="beginShortRest" {{#unless shelterChosen}}disabled{{/unless}}>
-                <i class="fas fa-mug-hot"></i> Begin Short Rest
-            </button>
-        </div>
-        {{/if}}
-        {{/if}}
-
-        {{!-- ===== SECTION 2 (Long Rest): Setting Up Camp ===== --}}
-        {{#unless isShortRest}}
-        {{#if (gte setupStep 2)}}
-        <div class="setup-section {{#if (eq setupStep 2)}}active{{else}}collapsed{{/if}}" data-section="2">
-            <div class="setup-section-header" data-action="setupBack" data-step="2">
-                <span class="section-step">2</span>
-                <span class="section-title">Setting Up Camp</span>
-                {{#unless (eq setupStep 2)}}
-                <span class="section-summary"><i class="fas fa-check"></i> {{selectedWeatherLabel}} &middot; Scout: {{selectedScoutLabel}}</span>
-                {{/unless}}
-            </div>
-            {{#if (eq setupStep 2)}}
-            <div class="setup-section-body">
-                <div class="terrain-grid">
-                    <div class="form-group">
-                        <label>Weather</label>
-                        <select name="weather">
-                            {{#each weatherOptions}}
-                            <option value="{{value}}" title="{{hint}}" {{#if (eq value ../defaultWeather)}}selected{{/if}}>{{label}}</option>
-                            {{/each}}
-                        </select>
-                        {{#each weatherOptions}}
-                        {{#if (eq value ../defaultWeather)}}
-                        <span class="weather-hint">{{hint}}</span>
-                        {{/if}}
-                        {{/each}}
-                    </div>
-                    <div class="form-group">
-                        <label>Comfort</label>
-                        <select name="comfort">
-                            {{#each comfortOptions}}
-                            <option value="{{value}}" title="{{hint}}" {{#if (eq value ../defaultComfort)}}selected{{/if}}>{{label}}</option>
-                            {{/each}}
-                        </select>
-                        {{#each comfortOptions}}
-                        {{#if (eq value ../defaultComfort)}}
-                        <span class="comfort-hint">{{hint}}</span>
-                        {{/if}}
-                        {{/each}}
-                        {{#if comfortReason}}
-                        <span class="comfort-reason">{{comfortReason}}</span>
-                        {{/if}}
-                    </div>
-                </div>
                 {{#if scoutingAvailable}}
                 <div class="scouting-toggle-block">
                     <label class="scouting-toggle-label">
@@ -263,93 +188,29 @@
                         <i class="fas fa-binoculars"></i>
                         <span>Allow scouting during travel</span>
                     </label>
-                    <span class="scouting-toggle-hint">When enabled, characters can scout for a campsite on the final day of travel. Scouting affects comfort and encounter risk.</span>
+                    <span class="scouting-toggle-hint">When enabled, characters can scout for a campsite during travel. Scouting adjusts encounter risk.</span>
                 </div>
                 {{/if}}
-                <div class="setup-preview">
-                    <div class="preview-item">
-                        <span class="preview-label">Effective Comfort</span>
-                        <span class="preview-value" id="preview-comfort">{{defaultComfort}}</span>
-                    </div>
-                    <div class="preview-item">
-                        <span class="preview-label" title="Modifier to the encounter chance roll. Higher = harder to avoid encounters.">Encounter Check</span>
-                        <span class="preview-value" id="preview-encounter">+0</span>
-                    </div>
-                </div>
-                <div class="setup-section-actions">
-                    <button type="button" class="btn-secondary" data-action="setupBack" data-step="1">
-                        <i class="fas fa-chevron-left"></i> Back
-                    </button>
-                    <button type="button" class="btn-primary" data-action="setupContinue" data-step="2">
-                        Continue <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
-            </div>
-            {{/if}}
-        </div>
-        {{/if}}
-        {{/unless}}
-
-        {{!-- ===== SECTION 3: Shelter (skipped for tavern) ===== --}}
-        {{#if shelterNeeded}}
-        {{#if (gte setupStep 3)}}
-        <div class="setup-section {{#if (eq setupStep 3)}}active{{else}}collapsed{{/if}}" data-section="3">
-            <div class="setup-section-header" data-action="setupBack" data-step="3">
-                <span class="section-step">3</span>
-                <span class="section-title">Shelter</span>
-            </div>
-            {{#if (eq setupStep 3)}}
-            <div class="setup-section-body">
-                <div class="shelter-config">
-                    <div class="shelter-options">
-                        {{#each shelterOptions}}
-                        <label class="shelter-radio {{#if active}}active{{/if}} {{#unless available}}faded{{/unless}}">
-                            <input type="radio" name="shelter" value="{{id}}"
-                                {{#if active}}checked{{/if}}
-                                {{#unless available}}disabled{{/unless}}
-                                data-shelter-id="{{id}}"
-                                data-action="toggleShelter">
-                            <i class="{{icon}}"></i>
-                            <span class="shelter-name">{{name}}</span>
-                            <span class="shelter-hint">{{hint}}</span>
-                        </label>
+                <div class="form-group scene-comfort-override">
+                    <label>Comfort Override</label>
+                    <select name="comfort">
+                        {{#each comfortOptions}}
+                        <option value="{{value}}" title="{{hint}}" {{#if (eq value ../defaultComfort)}}selected{{/if}}>{{label}}</option>
                         {{/each}}
-                    </div>
-                    {{#if shelterEffect}}
-                    <div class="shelter-effect-summary">
-                        {{#if shelterEffect.rpPrompt}}
-                        <div class="shelter-rp-prompt">
-                            <i class="fas fa-comment-dots"></i> {{shelterEffect.rpPrompt}}
-                        </div>
-                        {{/if}}
-                        <div class="shelter-effect-chips">
-                            {{#if shelterEffect.encounterMod}}
-                            <span class="shelter-effect-chip encounter">
-                                <i class="fas fa-eye-slash"></i> Encounter DC +{{shelterEffect.encounterMod}}
-                            </span>
-                            {{/if}}
-                            {{#if shelterEffect.comfortFloor}}
-                            <span class="shelter-effect-chip comfort-floor">
-                                <i class="fas fa-arrow-up"></i> Comfort floor: {{shelterEffect.comfortFloor}}
-                            </span>
-                            {{/if}}
-                        </div>
-                    </div>
-                    {{/if}}
+                    </select>
+                    <span class="comfort-hint">Override the comfort derived from player gear. Leave at terrain default unless you have a reason to change it.</span>
                 </div>
             </div>
-            {{/if}}
-        </div>
-        {{/if}}
-        {{/if}}
+        </details>
 
     </div>
     <div class="respite-action-bar">
-        {{#if (eq setupStep 3)}}
-        {{#unless shelterChosen}}
-        <span class="shelter-choose-hint"><i class="fas fa-exclamation-circle"></i> Choose a shelter option above</span>
-        {{/unless}}
-        <button type="button" class="btn-primary" data-action="beginRest" {{#unless shelterChosen}}disabled{{/unless}}>
+        {{#if isShortRest}}
+        <button type="button" class="btn-primary" data-action="beginShortRest">
+            <i class="fas fa-mug-hot"></i> Begin Short Rest
+        </button>
+        {{else}}
+        <button type="button" class="btn-primary" data-action="beginRest">
             <i class="fas fa-campground"></i> Begin Rest
         </button>
         {{/if}}
@@ -373,7 +234,7 @@
     </div>
 
     {{#if travelContext}}
-    <div class="respite-travel-phase {{#unless travelContext.hasTravelOptions}}travel-disabled{{/unless}}">
+    <div class="respite-travel-phase {{#if travelContext.travelSkipRecommended}}travel-skip-mode{{else}}{{#unless travelContext.hasTravelOptions}}travel-disabled{{/unless}}{{/if}}">
         {{#if isGM}}
         <div class="travel-header">
             <i class="fas fa-hiking"></i>
@@ -381,6 +242,25 @@
         </div>
         {{/if}}
 
+        {{!-- ═══ SKIP ACKNOWLEDGMENT (no forage/hunt) ═══ --}}
+        {{#if travelContext.travelSkipRecommended}}
+        <div class="travel-skip-notice">
+            <p class="travel-skip-reason">{{travelContext.disabledReason}}</p>
+        </div>
+        {{#if isGM}}
+        <div class="respite-action-bar">
+            <button type="button" class="btn-primary travel-skip-pulse" data-action="skipTravelPhase">
+                <i class="fas fa-forward"></i> Continue
+            </button>
+        </div>
+        {{else}}
+        <div class="travel-player-info">
+            <i class="fas fa-hiking"></i>
+            <span>The party presses on...</span>
+        </div>
+        {{/if}}
+
+        {{else}}
         {{#if travelContext.hasTravelOptions}}
 
         {{!-- ═══ GM VIEW ═══ --}}
@@ -782,10 +662,203 @@
         </div>
         {{/if}}
 
-        {{/if}}
+        {{/if}} {{!-- /hasTravelOptions --}}
+        {{/if}} {{!-- /travelSkipRecommended --}}
     </div>
     {{/if}}
 
+    {{/if}}
+
+    {{!-- =============== MAKE CAMP PHASE =============== --}}
+    {{#if (eq phase 'camp')}}
+    <div class="phase-banner">
+        <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
+    </div>
+    {{> rosterStrip}}
+    <div class="respite-make-camp">
+
+        <div class="camp-layout">
+            {{!-- LEFT COLUMN: Comfort + Personal Rest --}}
+            <div class="camp-main">
+                {{!-- Camp Comfort Breakdown --}}
+                <div class="camp-comfort-section">
+                    <div class="camp-comfort-header">
+                        <i class="fas fa-campground"></i>
+                        <span>Camp Comfort</span>
+                        <span class="camp-comfort-tier comfort-tier comfort-{{campScan.campComfort}}">{{campScan.campComfortLabel}}</span>
+                    </div>
+                    {{#if campScan.comfortReason}}
+                    <div class="camp-comfort-reason">{{campScan.terrainLabel}} — {{campScan.comfortReason}}</div>
+                    {{/if}}
+                    {{#if campScan.hasModifiers}}
+                    <div class="camp-comfort-breakdown">
+                        {{#each campScan.campBreakdown}}
+                        <div class="comfort-breakdown-row">
+                            <span class="breakdown-label">{{label}}</span>
+                            <span class="breakdown-value {{#if delta}}bonus{{/if}}">
+                                {{#if delta}}+{{delta}}{{else}}{{value}}{{/if}}
+                            </span>
+                        </div>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                </div>
+
+                {{!-- Personal Comfort Cards --}}
+                <div class="camp-personal-section">
+                    <div class="camp-personal-header">
+                        <i class="fas fa-bed"></i>
+                        <span>Your Rest</span>
+                    </div>
+                    <div class="camp-personal-grid">
+                        {{#each campScan.personalCards}}
+                        <div class="camp-personal-card">
+                            <div class="personal-card-header">
+                                <img src="{{actorImg}}" alt="{{actorName}}" class="personal-portrait">
+                                <span class="personal-name">{{actorName}}</span>
+                            </div>
+
+                            <div class="personal-gear-row">
+                                <span class="gear-check {{#if hasTent}}has{{else}}missing{{/if}}">
+                                    <i class="fas fa-campground"></i>
+                                    {{#if hasTent}}Tent{{else}}<s>Tent</s>{{/if}}
+                                </span>
+                                <span class="gear-check {{#if hasBedroll}}has{{else}}missing{{/if}}">
+                                    <i class="fas fa-bed"></i>
+                                    {{#if hasBedroll}}Bedroll{{else}}<s>Bedroll</s>{{/if}}
+                                </span>
+                                <span class="gear-check {{#if hasMessKit}}has{{else}}missing{{/if}}">
+                                    <i class="fas fa-utensils"></i>
+                                    {{#if hasMessKit}}Mess Kit{{else}}<s>Mess Kit</s>{{/if}}
+                                </span>
+                            </div>
+
+                            <div class="personal-comfort-label comfort-{{personalComfort}}">
+                                {{personalComfortLabel}}
+                            </div>
+
+                            <div class="personal-recovery">
+                                <div class="recovery-row recovery-hp {{#if recovery.hpFull}}positive{{/if}}">
+                                    <i class="fas fa-heart"></i>
+                                    <span>{{recovery.hpLabel}}</span>
+                                </div>
+                                <div class="recovery-row recovery-hd">
+                                    <i class="fas fa-dice-d20"></i>
+                                    <span>{{recovery.hdLabel}}</span>
+                                </div>
+                                <div class="recovery-row recovery-exhaustion {{recovery.exhaustionSeverity}}">
+                                    <i class="fas {{#if recovery.exhaustionDC}}fa-exclamation-triangle{{else}}fa-check-circle{{/if}}"></i>
+                                    <span>{{recovery.exhaustionLabel}}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {{/each}}
+                    </div>
+                </div>
+            </div>
+
+            {{!-- RIGHT COLUMN: Campfire Sidebar --}}
+            <div class="camp-fire-section {{#if campScan.fireIsLit}}fire-lit{{/if}}">
+                <div class="camp-fire-header">
+                    <i class="fas fa-fire"></i>
+                    <span>Campfire</span>
+                </div>
+
+                {{#unless campScan.fireIsLit}}
+                <div class="camp-fire-body">
+                    <div class="camp-fire-benefits">
+                        <span class="fire-benefit"><i class="fas fa-utensils"></i> Cooking</span>
+                        <span class="fire-benefit"><i class="fas fa-temperature-high"></i> Warmth</span>
+                        <span class="fire-benefit"><i class="fas fa-heart"></i> Morale</span>
+                    </div>
+                    <div class="camp-fire-hint">
+                        Consumes 1 firewood. Improves camp comfort by one tier.
+                    </div>
+                    <div class="camp-fire-tradeoff">
+                        <i class="fas fa-eye"></i> Light attracts attention (+{{campScan.fireEncounterMod}} encounter DC)
+                    </div>
+
+                    {{#if campScan.firewoodHolders.length}}
+                    <div class="camp-firewood-list">
+                        {{#each campScan.firewoodHolders}}
+                        <div class="camp-firewood-holder">
+                            <i class="fas fa-tree"></i>
+                            <span>{{name}} has {{count}} firewood</span>
+                        </div>
+                        {{/each}}
+                    </div>
+                    {{else}}
+                    <div class="camp-firewood-empty">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>No one has firewood</span>
+                    </div>
+                    {{/if}}
+
+                    {{#if campScan.fireLighters.length}}
+                    <div class="camp-fire-lighters">
+                        <i class="fas fa-fire-alt"></i>
+                        <span>Can light: {{#each campScan.fireLighters}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}</span>
+                    </div>
+                    {{else}}
+                    <div class="camp-fire-lighters no-lighter">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>No one has a tinderbox or flint &amp; steel</span>
+                    </div>
+                    {{/if}}
+
+                    {{#if campScan.canLightFire}}
+                    <button type="button" class="btn-light-fire" data-action="lightCampfire">
+                        <i class="fas fa-fire"></i> Light the Fire
+                    </button>
+                    {{else}}
+                    <button type="button" class="btn-light-fire" disabled>
+                        <i class="fas fa-fire"></i> Cannot Light Fire
+                    </button>
+                    {{/if}}
+                </div>
+                {{else}}
+                <div class="camp-fire-body fire-active">
+                    <div class="camp-fire-lit-display">
+                        <i class="fas fa-fire fa-2x camp-fire-icon-lit"></i>
+                        <span>Fire is burning</span>
+                    </div>
+                </div>
+                {{/unless}}
+
+                {{!-- Shelter Spell Toggle --}}
+                {{#if campScan.shelterSpellAvailable}}
+                <div class="camp-shelter-spell">
+                    <div class="shelter-spell-info">
+                        <i class="fas fa-home"></i>
+                        <span>{{campScan.shelterSpellName}} ({{campScan.shelterSpellCaster}})</span>
+                    </div>
+                    <div class="shelter-spell-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Replaces campfire. No cooking, no fire bonuses. Full weather protection.
+                    </div>
+                    <button type="button" class="btn-shelter-spell" data-action="toggleShelterSpell">
+                        <i class="fas fa-magic"></i>
+                        {{#if campScan.shelterSpell}}Dismiss{{else}}Cast{{/if}}
+                    </button>
+                </div>
+                {{/if}}
+            </div>
+        </div>
+
+    </div>
+
+    {{!-- Action Bar --}}
+    {{#if isGM}}
+    <div class="respite-action-bar">
+        <button type="button" class="btn-primary" data-action="proceedFromCamp">
+            <i class="fas fa-arrow-right"></i> Proceed to Activities
+        </button>
+    </div>
+    {{else}}
+    <div class="respite-action-bar">
+        <span class="phase-waiting-label"><i class="fas fa-campground"></i> Setting up camp...</span>
+    </div>
+    {{/if}}
     {{/if}}
 
     {{!-- =============== ACTIVITY PHASE =============== --}}
@@ -794,6 +867,174 @@
         <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
     {{> rosterStrip}}
+
+    {{!-- Sub-tab bar --}}
+    {{#if activitySubTab}}
+    <div class="activity-sub-tabs">
+        <button type="button" class="sub-tab {{#if activitySubTab.isIdentify}}active{{/if}} {{#unless activitySubTab.hasUnidentified}}faded{{/unless}}"
+            data-action="switchActivityTab" data-tab="identify">
+            <i class="fas fa-search"></i> Identify
+            {{#if activitySubTab.hasUnidentified}}
+            <span class="tab-badge">{{activitySubTab.itemCount}}</span>
+            {{/if}}
+        </button>
+        <button type="button" class="sub-tab {{#if activitySubTab.isActivity}}active{{/if}}"
+            data-action="switchActivityTab" data-tab="activity">
+            <i class="fas fa-campground"></i> Activity
+        </button>
+        {{#if activitySubTab.trackFood}}
+        <button type="button" class="sub-tab {{#if activitySubTab.isMeal}}active{{/if}}"
+            data-action="switchActivityTab" data-tab="meal">
+            <i class="fas fa-drumstick-bite"></i> Meal
+            {{#if activitySubTab.mealSummary}}
+                {{#if activitySubTab.mealSummary.anyWarning}}
+                <span class="tab-badge warning"><i class="fas fa-exclamation"></i></span>
+                {{else}}
+                <span class="tab-badge ok"><i class="fas fa-check"></i></span>
+                {{/if}}
+            {{/if}}
+        </button>
+        {{/if}}
+    </div>
+    {{/if}}
+
+    {{!-- ── IDENTIFY SUB-TAB ── --}}
+    {{#if activitySubTab.isIdentify}}
+    <div class="activity-phase-layout">
+    <div class="respite-activities identify-tab">
+        <div class="identify-scroll-area">
+        {{#if activitySubTab.identifyCasters.length}}
+        <div class="identify-caster-advisory">
+            <i class="fas fa-hat-wizard"></i>
+            {{#each activitySubTab.identifyCasters}}{{#unless @first}}, {{/unless}}{{name}}{{/each}}
+            can cast Identify (ritual – free)
+        </div>
+        {{/if}}
+
+        {{#each activitySubTab.unidentifiedItems}}
+        <div class="identify-item-card" data-item-id="{{itemId}}" data-actor-id="{{actorId}}">
+            <img src="{{img}}" class="identify-item-img" alt="" onerror="this.src='icons/svg/mystery-man.svg'">
+            <div class="identify-item-body">
+                <span class="identify-item-name">{{name}}</span>
+                <span class="identify-item-meta">
+                    Held by {{actorName}}
+                    <span class="rarity-badge rarity-{{rarity}}">{{rarityLabel}}</span>
+                    {{#if isPotion}} · <i class="fas fa-flask"></i> Potion{{/if}}
+                    {{#if requiresAttunement}} · <i class="fas fa-gem"></i> Attunement{{/if}}
+                </span>
+            </div>
+            <div class="identify-item-actions">
+                {{#if isPotion}}
+                <button type="button" class="btn-identify" data-action="identifyItem"
+                    data-item-id="{{itemId}}" data-actor-id="{{actorId}}" data-method="taste"
+                    title="Taste to identify">
+                    <i class="fas fa-flask"></i> Taste
+                </button>
+                {{else}}
+                <button type="button" class="btn-identify" data-action="identifyItem"
+                    data-item-id="{{itemId}}" data-actor-id="{{actorId}}" data-method="rest"
+                    title="Focus during rest (1 item per character)">
+                    <i class="fas fa-hand-holding"></i> Focus
+                </button>
+                {{/if}}
+            </div>
+        </div>
+        {{/each}}
+
+        {{#unless activitySubTab.unidentifiedItems.length}}
+        <div class="identify-empty">
+            <div class="identify-empty-content">
+                <i class="fas fa-check-circle"></i>
+                <span class="identify-empty-title">Nothing to identify</span>
+                <span class="identify-empty-hint">
+                    Unidentified magic items would appear here. Items can be identified
+                    by focusing during a rest (1 per character) or via the Identify spell (ritual, free).
+                    Potions can be tasted to identify instantly.
+                </span>
+            </div>
+        </div>
+        {{/unless}}
+        </div>{{!-- /identify-scroll-area --}}
+
+        {{#if activitySubTab.unidentifiedItems.length}}
+        <div class="identify-footer">
+            <button type="button" class="btn-primary" data-action="switchActivityTab" data-tab="activity">
+                <i class="fas fa-arrow-right"></i> Proceed to Activities
+            </button>
+        </div>
+        {{/if}}
+    </div>
+    </div>{{!-- /activity-phase-layout --}}
+
+    {{else if activitySubTab.isMeal}}
+    {{!-- ── MEAL SUB-TAB ── --}}
+    <div class="activity-phase-layout">
+    <div class="respite-activities meal-tab">
+        <div class="meal-compact">
+            {{#if activitySubTab.mealSummary}}
+            <div class="meal-compact-header">
+                <span class="meal-compact-title"><i class="fas fa-drumstick-bite"></i> Rations</span>
+                <label class="meal-auto-toggle">
+                    <input type="checkbox" data-action="toggleMealAutoConsume"
+                        {{#if activitySubTab.mealSummary.autoConsume}}checked{{/if}}>
+                    Auto-consume
+                </label>
+            </div>
+
+            {{#if activitySubTab.mealSummary.autoConsume}}
+            <div class="meal-character-rows">
+                {{#each activitySubTab.mealSummary.characters}}
+                <div class="meal-character-row {{#unless foodSufficient}}warn-food{{/unless}} {{#unless waterSufficient}}warn-water{{/unless}}">
+                    <img src="{{img}}" alt="" class="meal-char-portrait" onerror="this.src='icons/svg/mystery-man.svg'">
+                    <span class="meal-char-name">{{name}}</span>
+                    <span class="meal-char-supply {{#if hasFood}}ok{{else}}empty{{/if}}">
+                        <i class="fas fa-drumstick-bite"></i> {{foodCount}} rations
+                    </span>
+                    <span class="meal-char-supply {{#if hasWater}}ok{{else}}empty{{/if}}">
+                        <i class="fas fa-tint"></i> {{#if hasWater}}Waterskin{{else}}No water{{/if}}
+                    </span>
+                    <span class="meal-char-status">
+                        {{#if foodSufficient}}{{#if waterSufficient}}
+                        <i class="fas fa-check-circle meal-ok"></i>
+                        {{else}}
+                        <i class="fas fa-exclamation-triangle meal-warn"></i>
+                        {{/if}}{{else}}
+                        <i class="fas fa-exclamation-triangle meal-warn"></i>
+                        {{/if}}
+                    </span>
+                </div>
+                {{#each advisories}}
+                <div class="meal-advisory-inline {{level}}">
+                    <i class="{{icon}}"></i> {{message}}
+                </div>
+                {{/each}}
+                {{/each}}
+            </div>
+
+            <div class="meal-compact-note">
+                <i class="fas fa-info-circle"></i>
+                {{activitySubTab.mealSummary.daysSinceLastRest}} day{{#unless (eq activitySubTab.mealSummary.daysSinceLastRest 1)}}s{{/unless}} since last rest.
+                1 ration + 1 water per character will be consumed.
+            </div>
+            {{else}}
+            <div class="meal-compact-note">
+                <i class="fas fa-info-circle"></i>
+                Auto-consume is off. Rations will be managed manually during the Meal phase.
+            </div>
+            {{/if}}
+
+            {{else}}
+            <div class="meal-compact-note">
+                <i class="fas fa-check-circle"></i>
+                Food tracking is disabled. No rations will be consumed.
+            </div>
+            {{/if}}
+        </div>
+    </div>
+    </div>{{!-- /activity-phase-layout --}}
+
+    {{else}}
+    {{!-- ── ACTIVITY SUB-TAB (existing content) ── --}}
     <div class="activity-phase-layout">
     <div class="respite-activities">
 
@@ -803,11 +1044,7 @@
             <div class="detail-header">
                 <div class="detail-header-info">
                     <span class="character-name">{{selectedCharacter.name}}</span>
-                    <span class="gear-badges">
-                        {{#each selectedCharacter.gearBadges}}
-                        <i class="{{icon}} gear-badge {{#unless present}}absent{{/unless}}" title="{{tooltip}}{{#unless present}} (missing){{/unless}}"></i>
-                        {{/each}}
-                    </span>
+                    {{!-- Gear badges removed: resolved in setup phase, not relevant to activities --}}
                     {{#if (eq selectedCharacter.source 'player')}}
                     <span class="respite-activity-badge default">
                         <i class="fas fa-check-circle"></i> {{selectedCharacter.activityName}}
@@ -824,7 +1061,7 @@
             </div>
             </div>
 
-            {{!-- Armor advisory --}}
+            {{!-- Armor don/doff: deferred to individual activity dialogs where relevant
             {{#if selectedCharacter.armorWarning}}
             <div class="armor-advisory {{#if selectedCharacter.armorWarning.isDoffed}}doffed{{/if}}" title="{{selectedCharacter.armorWarning.hint}}">
                 <i class="fas fa-shield-alt"></i>
@@ -848,6 +1085,7 @@
                 </button>
             </div>
             {{/if}}
+            --}}
 
             {{!-- Minor activity advisories --}}
             {{#each selectedCharacter.minorActivities}}
@@ -1192,16 +1430,19 @@
                 <span class="tile-section-label">{{label}}</span>
                 <div class="activity-grid" data-character-id="{{../selectedCharacter.id}}">
                     {{#each tiles}}
-                    <button type="button"
-                        class="activity-tile {{#if isSelected}}selected{{/if}} {{#if isDisabled}}disabled{{/if}} {{#if isFaded}}faded{{/if}} {{#if hasAttuneable}}has-attuneable{{/if}}"
+                    <div
+                        class="activity-card {{typeTag}} {{#if isSelected}}selected{{/if}} {{#if isDisabled}}disabled{{/if}} {{#if isFaded}}faded{{/if}} {{#if hasAttuneable}}has-attuneable{{/if}}"
                         data-activity-id="{{id}}"
                         data-is-crafting="false"
                         title="{{tooltip}}"
-                        {{#if isDisabled}}disabled{{/if}}>
+                        role="button"
+                        tabindex="0">
                         <i class="{{icon}}"></i>
-                        <span class="tile-name">{{name}}</span>
-                        <span class="tile-type {{typeTag}}">{{typeTag}}</span>
-                    </button>
+                        <div class="card-body">
+                            <span class="card-name">{{name}}</span>
+                            {{#if hint}}<span class="card-hint {{#if hintUrgent}}urgent{{/if}}">{{hint}}</span>{{/if}}
+                        </div>
+                    </div>
                     {{/each}}
                 </div>
             </div>
@@ -1239,30 +1480,31 @@
         {{/if}}
 
     </div>
-    {{!-- Campfire slide-out drawer --}}
-    <div class="campfire-drawer">
-        <div class="campfire-drawer-content"></div>
-        {{#if isGM}}
-        <div class="campfire-advisory">
-            {{#if campfireTokenDetected}}
-            <div class="campfire-advisory-row advisory-ok">
-                <i class="fas fa-link"></i>
-                <span>Campfire token linked. Light will follow fire state.</span>
-            </div>
-            {{else}}
-            <div class="campfire-advisory-row advisory-warn">
-                <i class="fas fa-unlink"></i>
-                <span>No token named "{{campfireTokenSettingName}}" on this scene.</span>
-            </div>
-            {{/if}}
-            <div class="campfire-advisory-row advisory-info">
-                <i class="fas fa-info-circle"></i>
-                <span>Players add firewood from their inventory.</span>
-            </div>
+    {{!-- Camp Status Summary (carry-forward from Make Camp) --}}
+    <div class="camp-status-summary">
+        <div class="camp-summary-header"><i class="fas fa-campground"></i> Camp Status</div>
+        <div class="camp-summary-row">
+            <span class="summary-label">Comfort</span>
+            <span class="summary-value comfort-tier comfort-{{campStatus.comfort}}">{{campStatus.comfort}}</span>
+        </div>
+        <div class="camp-summary-row">
+            <span class="summary-label">Fire</span>
+            <span class="summary-value fire-status fire-{{campStatus.fireLevel}}">
+                <i class="fas fa-fire"></i> {{campStatus.fireLevel}}
+            </span>
+        </div>
+        {{#if encounterBar}}
+        <div class="camp-summary-row">
+            <span class="summary-label">Encounter DC</span>
+            <span class="summary-value">{{encounterBar.effectiveDC}}</span>
         </div>
         {{/if}}
     </div>
     </div>{{!-- /activity-phase-layout --}}
+    {{/if}}{{!-- /activitySubTab.isIdentify else --}}
+    {{!-- Action bar: hidden during Identify sub-tab (progressive disclosure —
+         don't show a CTA for a step two hops away) --}}
+    {{#if activitySubTab.isActivity}}
     <div class="respite-action-bar">
         <span class="submission-counter">
             {{resolvedCount}} of {{totalCharacters}} resolved
@@ -1278,6 +1520,24 @@
         {{/if}}
         {{/if}}
     </div>
+    {{/if}}
+    {{#if activitySubTab.isMeal}}
+    <div class="respite-action-bar">
+        <span class="submission-counter">
+            {{resolvedCount}} of {{totalCharacters}} resolved
+        </span>
+        {{#if isGM}}
+        <button type="button" class="btn-primary" data-action="submitActivities" {{#unless
+            allResolved}}disabled{{/unless}}>
+            <i class="fas fa-arrow-right"></i> Proceed to Events
+        </button>
+        {{else}}
+        {{#if allResolved}}
+        <span class="phase-waiting-label"><i class="fas fa-hourglass-half"></i> Waiting for the GM to progress...</span>
+        {{/if}}
+        {{/if}}
+    </div>
+    {{/if}}
     {{/if}}
 
     {{!-- =============== MEAL PHASE =============== --}}

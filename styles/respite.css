@@ -1,6 +1,43 @@
 /* Ionrift Respite - Module Styles */
 /* Uses Ionrift Glass theme via .ionrift-window class from ionrift-lib */
 
+/* ── Purple Scrollbar Override ──────────────────────────────────────
+   The library's .ionrift-window scrollbar rules lose to Foundry's
+   default styling due to CSS load order. This nuclear override uses
+   the module-specific class to guarantee purple scrollbars.
+   Values match ionrift-library/styles/ionrift.css lines 744-787.
+   See: 00_Foundation/UI/IONRIFT_UI_HANDBOOK.md                     */
+.ionrift-respite-app,
+.ionrift-respite-app * {
+    scrollbar-color: #6d28d9 rgba(0, 0, 0, 0.4) !important;
+    scrollbar-width: thin !important;
+}
+
+.ionrift-respite-app ::-webkit-scrollbar,
+.ionrift-respite-app *::-webkit-scrollbar {
+    width: 6px !important;
+    height: 6px !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+}
+
+.ionrift-respite-app ::-webkit-scrollbar-track,
+.ionrift-respite-app *::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.4) !important;
+    border-radius: 4px;
+}
+
+.ionrift-respite-app ::-webkit-scrollbar-thumb,
+.ionrift-respite-app *::-webkit-scrollbar-thumb {
+    background: #6d28d9 !important;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ionrift-respite-app ::-webkit-scrollbar-thumb:hover,
+.ionrift-respite-app *::-webkit-scrollbar-thumb:hover {
+    background: #8b5cf6 !important;
+}
+
 /* ---- Ionrift Armor Modal Overlay ---- */
 .ionrift-armor-modal-overlay {
     position: fixed;
@@ -267,6 +304,60 @@
 .respite-setup {
     padding: 1rem;
 }
+
+/* Scene grid: single-screen layout */
+.scene-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.scene-rest-type {
+    grid-column: 1 / -1;
+}
+
+/* Advanced drawer */
+.scene-advanced-drawer {
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.15);
+    margin-top: 0.25rem;
+}
+
+.scene-advanced-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s ease;
+}
+
+.scene-advanced-toggle:hover {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.scene-advanced-toggle i {
+    font-size: 0.65rem;
+}
+
+.scene-advanced-body {
+    padding: 0.25rem 0.75rem 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.scene-comfort-override label {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 0.1rem;
+}
+
 
 /* Setup wizard sections */
 .setup-section {
@@ -752,7 +843,1038 @@
     font-size: 0.9rem;
 }
 
-/* ---- Activity Phase Layout (activities + campfire drawer) ---- */
+/* ---- Make Camp Phase ---- */
+
+.respite-make-camp {
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.camp-layout {
+    display: grid;
+    grid-template-columns: 1fr 220px;
+    gap: 0.5rem;
+    align-items: start;
+}
+
+.camp-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+/* Campfire Section */
+.camp-fire-section {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    transition: border-color 0.3s ease;
+}
+
+.camp-fire-section.fire-lit {
+    border-color: rgba(240, 160, 40, 0.3);
+    box-shadow: 0 0 12px rgba(240, 160, 40, 0.08);
+}
+
+.camp-fire-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.camp-fire-section.fire-lit .camp-fire-header i {
+    color: rgba(240, 160, 40, 0.9);
+}
+
+.camp-fire-body {
+    padding: 0.35rem 0.6rem 0.5rem;
+}
+
+.camp-fire-benefits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem 0.6rem;
+    margin-bottom: 0.25rem;
+}
+
+.fire-benefit {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.fire-benefit i {
+    color: rgba(240, 160, 40, 0.6);
+    font-size: 0.65rem;
+}
+
+.camp-fire-hint {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.35);
+    font-style: italic;
+    line-height: 1.3;
+    margin-bottom: 0.3rem;
+}
+
+.camp-firewood-list,
+.camp-firewood-empty {
+    margin-bottom: 0.2rem;
+}
+
+.camp-firewood-holder {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.55);
+    padding: 0.15rem 0;
+}
+
+.camp-firewood-holder i {
+    color: rgba(120, 180, 80, 0.6);
+    font-size: 0.65rem;
+}
+
+.camp-firewood-empty {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    color: rgba(230, 150, 50, 0.7);
+}
+
+.camp-fire-lighters {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 0.3rem;
+}
+
+.camp-fire-lighters i {
+    color: rgba(240, 160, 40, 0.6);
+    font-size: 0.65rem;
+}
+
+.camp-fire-lighters.no-lighter {
+    color: rgba(220, 90, 70, 0.8);
+}
+
+.camp-fire-lighters.no-lighter i {
+    color: rgba(220, 90, 70, 0.7);
+}
+
+.btn-light-fire {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    background: rgba(240, 160, 40, 0.15);
+    border: 1px solid rgba(240, 160, 40, 0.3);
+    color: rgba(240, 160, 40, 0.9);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-light-fire:hover:not(:disabled) {
+    background: rgba(240, 160, 40, 0.25);
+    box-shadow: 0 0 12px rgba(240, 160, 40, 0.15);
+}
+
+.btn-light-fire:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+/* Fire lit display */
+.camp-fire-body.fire-active {
+    padding: 1rem 0.75rem;
+}
+
+.camp-fire-lit-display {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: rgba(240, 160, 40, 0.9);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.camp-fire-icon-lit {
+    color: rgba(240, 160, 40, 0.85);
+    animation: campfire-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes campfire-glow {
+    from { text-shadow: 0 0 6px rgba(240, 160, 40, 0.3); }
+    to   { text-shadow: 0 0 12px rgba(255, 120, 20, 0.5); }
+}
+
+/* Shelter spell toggle */
+.camp-shelter-spell {
+    padding: 0.5rem 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.shelter-spell-info {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: rgba(130, 180, 240, 0.85);
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+}
+
+.shelter-spell-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.3rem;
+    font-size: 0.65rem;
+    color: rgba(230, 150, 50, 0.7);
+    font-style: italic;
+    line-height: 1.3;
+    margin-bottom: 0.4rem;
+}
+
+.btn-shelter-spell {
+    padding: 0.35rem 0.75rem;
+    border-radius: 4px;
+    background: rgba(130, 180, 240, 0.12);
+    border: 1px solid rgba(130, 180, 240, 0.25);
+    color: rgba(130, 180, 240, 0.85);
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-shelter-spell:hover {
+    background: rgba(130, 180, 240, 0.2);
+}
+
+/* Camp Comfort Breakdown */
+.camp-comfort-section {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.camp-comfort-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.65);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.camp-comfort-header i {
+    color: rgba(180, 140, 255, 0.6);
+}
+
+.camp-comfort-reason {
+    padding: 0.2rem 0.6rem 0.15rem;
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.35);
+    font-style: italic;
+    line-height: 1.3;
+}
+
+.camp-comfort-tier {
+    margin-left: auto;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: capitalize;
+}
+
+.camp-fire-tradeoff {
+    font-size: 0.62rem;
+    color: rgba(230, 150, 50, 0.6);
+    padding: 0.1rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.camp-fire-tradeoff i {
+    font-size: 0.55rem;
+}
+
+.camp-comfort-breakdown {
+    padding: 0.25rem 0.6rem;
+}
+
+.comfort-breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.15rem 0;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.breakdown-label {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.breakdown-value {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: capitalize;
+}
+
+.breakdown-value.bonus {
+    color: rgba(100, 200, 120, 0.85);
+}
+
+.comfort-breakdown-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.35rem 0 0.2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    margin-top: 0.2rem;
+}
+
+.comfort-breakdown-total .breakdown-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.comfort-breakdown-total .breakdown-value {
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+/* Comfort tier colors (reused from camp-status-chip) */
+.comfort-tier.comfort-safe       { color: rgba(80, 200, 120, 0.9); }
+.comfort-tier.comfort-sheltered  { color: rgba(80, 160, 220, 0.9); }
+.comfort-tier.comfort-comfortable { color: rgba(80, 160, 220, 0.9); }
+.comfort-tier.comfort-rough      { color: rgba(220, 170, 50, 0.9); }
+.comfort-tier.comfort-hostile    { color: rgba(220, 70, 70, 0.9); }
+
+/* Personal Comfort Cards */
+.camp-personal-section {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.camp-personal-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.65);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.camp-personal-header i {
+    color: rgba(180, 140, 255, 0.6);
+}
+
+.camp-personal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.35rem;
+    padding: 0.35rem 0.6rem;
+}
+
+.camp-personal-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 0.35rem 0.5rem;
+    transition: border-color 0.2s ease;
+}
+
+.camp-personal-card:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.personal-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.25rem;
+}
+
+.personal-portrait {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.personal-name {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.personal-gear-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.3rem;
+    flex-wrap: wrap;
+}
+
+.gear-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.68rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 8px;
+}
+
+.gear-check.has {
+    color: rgba(100, 200, 120, 0.85);
+    background: rgba(100, 200, 120, 0.08);
+    border: 1px solid rgba(100, 200, 120, 0.15);
+}
+
+.gear-check.missing {
+    color: rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.gear-check.missing s {
+    text-decoration-color: rgba(255, 255, 255, 0.15);
+}
+
+.gear-hint {
+    font-size: 0.55rem;
+    color: rgba(100, 200, 120, 0.6);
+    font-weight: 600;
+}
+
+.gear-check i {
+    font-size: 0.6rem;
+}
+
+.personal-comfort-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    margin-bottom: 0.2rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.personal-comfort-label.comfort-safe {
+    color: rgba(80, 200, 120, 0.9);
+    background: rgba(80, 200, 120, 0.08);
+}
+
+.personal-comfort-label.comfort-sheltered {
+    color: rgba(80, 160, 220, 0.9);
+    background: rgba(80, 160, 220, 0.08);
+}
+
+.personal-comfort-label.comfort-comfortable {
+    color: rgba(80, 160, 220, 0.9);
+    background: rgba(80, 160, 220, 0.08);
+}
+
+.personal-comfort-label.comfort-rough {
+    color: rgba(220, 170, 50, 0.9);
+    background: rgba(220, 170, 50, 0.08);
+}
+
+.personal-comfort-label.comfort-hostile {
+    color: rgba(220, 70, 70, 0.9);
+    background: rgba(220, 70, 70, 0.08);
+}
+
+/* Recovery Preview */
+.personal-gear-advisory {
+    font-size: 0.58rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+    margin-top: 0.2rem;
+    padding-top: 0.2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.personal-gear-advisory.fire-advisory {
+    color: rgba(240, 160, 40, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.personal-gear-advisory.fire-advisory i {
+    font-size: 0.5rem;
+}
+
+.personal-recovery {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.recovery-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.55);
+    padding: 0.1rem 0;
+}
+
+.recovery-row i {
+    font-size: 0.6rem;
+    width: 0.8rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.recovery-row.recovery-hp i {
+    color: rgba(220, 80, 80, 0.7);
+}
+
+.recovery-row.recovery-hd i {
+    color: rgba(130, 180, 240, 0.7);
+}
+
+.recovery-row.recovery-exhaustion i {
+    color: rgba(100, 200, 120, 0.7);
+}
+
+.recovery-row.positive i,
+.recovery-row.positive span {
+    color: rgba(100, 200, 120, 0.8);
+}
+
+.recovery-row.danger {
+    background: rgba(200, 50, 50, 0.08);
+    border-radius: 4px;
+    padding: 0.15rem 0.3rem;
+    margin: 0.1rem -0.3rem;
+}
+
+.recovery-row.danger i {
+    color: rgba(220, 70, 60, 0.9);
+}
+
+.recovery-row.danger span {
+    color: rgba(220, 70, 60, 0.85);
+    font-weight: 600;
+}
+
+.recovery-row.warning i {
+    color: rgba(230, 160, 50, 0.8);
+}
+
+.recovery-row.warning span {
+    color: rgba(230, 160, 50, 0.75);
+}
+
+/* "Without Fire" Preview */
+.camp-no-fire-preview {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(220, 90, 60, 0.15);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.no-fire-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(220, 90, 60, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid rgba(220, 90, 60, 0.1);
+}
+
+.no-fire-rows {
+    padding: 0.35rem 0.75rem;
+}
+
+.no-fire-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.45);
+    padding: 0.12rem 0;
+}
+
+.no-fire-row i {
+    font-size: 0.6rem;
+    width: 0.8rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.no-fire-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    font-size: 0.6rem;
+    width: auto;
+}
+
+.no-fire-row.warning {
+    color: rgba(230, 150, 50, 0.8);
+}
+
+.no-fire-row.warning i {
+    color: rgba(230, 150, 50, 0.8);
+}
+
+/* ---- Activity Sub-Tab Bar ---- */
+
+.activity-sub-tabs {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem 1.25rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── Nuclear Reset: strip all Foundry button defaults first ── */
+.activity-sub-tabs .sub-tab {
+    all: unset !important;
+}
+
+/* ── Then re-apply intended styles ── */
+.activity-sub-tabs .sub-tab {
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.65rem !important;
+    padding: 0.55rem 1.5rem !important;
+    font-size: 0.65rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    color: rgba(255, 255, 255, 0.35) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    transition: color 0.2s, background 0.2s, border-color 0.2s !important;
+    line-height: 1.2 !important;
+}
+
+.activity-sub-tabs .sub-tab:hover {
+    color: rgba(255, 255, 255, 0.7) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.activity-sub-tabs .sub-tab.active {
+    color: #c9a0dc !important;
+    background: rgba(139, 92, 246, 0.15) !important;
+    border-color: rgba(139, 92, 246, 0.35) !important;
+}
+
+.activity-sub-tabs .sub-tab:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.activity-sub-tabs .sub-tab.faded {
+    opacity: 0.4;
+}
+
+.activity-sub-tabs .sub-tab.faded:hover {
+    opacity: 0.75;
+}
+
+.activity-sub-tabs .tab-badge {
+    background: #c9a0dc;
+    color: #1a1a2e;
+    font-size: 0.5rem;
+    font-weight: 700;
+    padding: 0.15rem 0.45rem;
+    border-radius: 8px;
+    min-width: 0.85rem;
+    text-align: center;
+    line-height: 1.2;
+    margin-left: 0.35rem;
+}
+
+/* ---- Identify Tab ---- */
+
+.identify-tab {
+    /* ── Content Padding ──────────────────────────────────────────
+       !important needed to override .respite-activities { padding: 0 }
+       which is set on the same element via dual-class.
+       See: 00_Foundation/UI/IONRIFT_UI_HANDBOOK.md § Content Padding */
+    padding: 0.75rem 1.25rem 0.5rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.identify-scroll-area {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    min-height: 0;
+    padding-bottom: 0.25rem;
+}
+
+/* Caster advisory */
+.identify-caster-advisory {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.4);
+    padding: 0.35rem 0.6rem;
+    margin-bottom: 0.6rem;
+    background: rgba(139, 92, 246, 0.08);
+    border: 1px solid rgba(139, 92, 246, 0.15);
+    border-radius: 4px;
+}
+
+.identify-caster-advisory i {
+    color: #8b5cf6;
+    font-size: 0.7rem;
+}
+
+.identify-item-card {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.6rem;
+    margin-bottom: 0.35rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-left: 3px solid #8b5cf6;
+    border-radius: 4px;
+    transition: background 0.15s;
+}
+
+.identify-item-card:hover {
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.identify-item-img {
+    width: 32px;
+    height: 32px;
+    border-radius: 3px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+
+.identify-item-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.identify-item-name {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.identify-item-meta {
+    font-size: 0.58rem;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.identify-item-meta i {
+    margin-right: 0.1rem;
+}
+
+.identify-item-actions {
+    flex-shrink: 0;
+}
+
+/* ── Nuclear Reset: strip Foundry button defaults ── */
+.btn-identify {
+    all: unset !important;
+}
+
+/* ── Then re-apply intended styles ── */
+.btn-identify {
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.6rem !important;
+    padding: 0.45rem 1rem !important;
+    font-size: 0.6rem !important;
+    font-weight: 600 !important;
+    background: rgba(139, 92, 246, 0.2) !important;
+    color: #c9a0dc !important;
+    border: 1px solid rgba(139, 92, 246, 0.3) !important;
+    border-radius: 3px !important;
+    cursor: pointer !important;
+    transition: background 0.15s, border-color 0.15s !important;
+    white-space: nowrap !important;
+    line-height: 1.2 !important;
+}
+
+.btn-identify:hover {
+    background: rgba(139, 92, 246, 0.35) !important;
+    border-color: rgba(139, 92, 246, 0.5) !important;
+}
+
+.identify-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.identify-empty-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    text-align: center;
+}
+
+.identify-empty i {
+    color: #4ade80;
+    font-size: 1.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.identify-empty-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.identify-empty-hint {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.25);
+    max-width: 320px;
+    line-height: 1.4;
+}
+
+/* Rarity badges */
+.rarity-badge {
+    font-size: 0.5rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.05rem 0.3rem;
+    border-radius: 3px;
+    margin-left: 0.3rem;
+    vertical-align: middle;
+}
+
+.rarity-common { background: rgba(150, 150, 150, 0.2); color: rgba(200, 200, 200, 0.6); }
+.rarity-uncommon { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+.rarity-rare { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
+.rarity-veryRare { background: rgba(167, 139, 250, 0.15); color: #a78bfa; }
+.rarity-legendary { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+.rarity-artifact { background: rgba(251, 113, 133, 0.15); color: #fb7185; }
+
+.identify-footer {
+    flex-shrink: 0;
+    padding: 0.5rem 0 0.25rem;
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ---- Meal Sub-Tab (compact rations view) ---- */
+
+.meal-tab {
+    padding: 0.75rem 1.25rem 0.5rem !important;
+}
+
+.meal-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.meal-compact-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.meal-compact-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    letter-spacing: 0.03em;
+}
+
+.meal-compact-title i {
+    margin-right: 0.4rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.meal-auto-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.55);
+    cursor: pointer;
+    user-select: none;
+}
+
+.meal-auto-toggle input[type="checkbox"] {
+    accent-color: #8b5cf6;
+    cursor: pointer;
+}
+
+.meal-character-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.meal-character-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-left: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.meal-character-row.warn-food,
+.meal-character-row.warn-water {
+    border-left-color: #f39c12;
+    background: rgba(243, 156, 18, 0.04);
+}
+
+.meal-char-portrait {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+
+.meal-char-name {
+    flex: 0 0 auto;
+    min-width: 80px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.meal-char-supply {
+    flex: 1 1 auto;
+    font-size: 0.75rem;
+}
+
+.meal-char-supply.ok {
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.meal-char-supply.empty {
+    color: #f39c12;
+}
+
+.meal-char-supply i {
+    margin-right: 0.25rem;
+    width: 12px;
+    text-align: center;
+}
+
+.meal-char-status {
+    flex-shrink: 0;
+    width: 18px;
+    text-align: center;
+}
+
+.meal-ok { color: #2ecc71; }
+.meal-warn { color: #f39c12; }
+
+.meal-advisory-inline {
+    padding: 0.25rem 0.5rem 0.25rem 2rem;
+    font-size: 0.7rem;
+    line-height: 1.3;
+}
+
+.meal-advisory-inline.warning {
+    color: #f39c12;
+}
+
+.meal-advisory-inline.danger {
+    color: #e74c3c;
+}
+
+.meal-advisory-inline i {
+    margin-right: 0.3rem;
+    width: 12px;
+    text-align: center;
+}
+
+.meal-compact-note {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.meal-compact-note i {
+    margin-right: 0.3rem;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* Meal tab-badge states */
+.tab-badge.warning {
+    background: rgba(243, 156, 18, 0.25) !important;
+    color: #f39c12 !important;
+}
+
+.tab-badge.ok {
+    background: rgba(46, 204, 113, 0.2) !important;
+    color: #2ecc71 !important;
+}
 
 .activity-phase-layout {
     display: flex;
@@ -763,6 +1885,82 @@
 .activity-phase-layout > .respite-activities {
     flex: 1 1 auto;
     min-width: 0;
+    overflow-x: hidden;
+}
+
+/* Camp Status Summary (sidebar replacement) */
+.camp-status-summary {
+    width: 200px;
+    flex-shrink: 0;
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-left: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.camp-summary-header {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.camp-summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.camp-summary-row .summary-label {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.camp-summary-row .summary-value {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    text-transform: capitalize;
+}
+
+.camp-summary-row .fire-status {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.camp-summary-row .fire-status.fire-campfire,
+.camp-summary-row .fire-status.fire-bonfire,
+.camp-summary-row .fire-status.fire-embers {
+    color: rgba(240, 160, 40, 0.9);
+}
+
+.camp-summary-row .fire-status.fire-unlit {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* Activity card hint text */
+.activity-card .card-hint {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.35);
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+}
+
+/* Urgent advisory — amber highlight */
+.activity-card .card-hint.urgent {
+    color: #f9d77e;
 }
 
 /* Campfire slide-out drawer */
@@ -889,6 +2087,12 @@
 .activity-phase-layout > .respite-activities {
     overflow-y: auto;
     max-height: 60vh;
+}
+
+/* Identify tab: overflow moves to inner .identify-scroll-area
+   so the footer stays pinned below the scroll area */
+.activity-phase-layout > .identify-tab {
+    overflow-y: hidden !important;
 }
 
 /* ---- Activity Phase: Roster Strip ---- */
@@ -1429,8 +2633,6 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
 .respite-event-card {
@@ -2416,10 +3618,8 @@
 
 /* Abandon rest button - top-right, subtle */
 .btn-abandon-rest {
-    position: absolute;
-    top: 0.3rem;
-    right: 0.5rem;
-    z-index: 10;
+    margin-left: auto;
+    flex-shrink: 0;
     background: none;
     border: 1px solid rgba(220, 80, 80, 0.2);
     border-radius: 4px;
@@ -3219,8 +4419,8 @@
     background: rgba(255, 255, 255, 0.15);
 }
 
-/* Faded activity tiles (spell known but not prepared) */
-.activity-tile.faded {
+/* Faded activity cards (spell known but not prepared) */
+.activity-card.faded {
     opacity: 0.35;
     pointer-events: none;
     border-style: dashed;
@@ -4091,104 +5291,103 @@
 .activity-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.35rem;
+    gap: 0.4rem;
     margin-top: 0.5rem;
     padding: 0 0.25rem;
+    overflow: hidden;
 }
 
-.activity-tile {
+.activity-card {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
-    padding: 0.35rem 0.5rem;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-left: 2px solid rgba(255, 255, 255, 0.1);
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.15s ease;
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.7);
-    text-align: left;
-    line-height: 1.2;
+    color: rgba(255, 255, 255, 0.75);
+    user-select: none;
 }
 
-.activity-tile i {
-    font-size: 0.8rem;
-    width: 16px;
+.activity-card > i {
+    font-size: 0.85rem;
+    width: 18px;
     text-align: center;
     flex-shrink: 0;
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(255, 255, 255, 0.4);
 }
 
-.activity-tile .tile-name {
+.activity-card .card-body {
     flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+}
+
+.activity-card .card-name {
+    font-size: 0.75rem;
+    font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 1.3;
 }
 
-.activity-tile .tile-type {
+.activity-card .card-hint {
     font-size: 0.6rem;
-    padding: 0.1rem 0.3rem;
-    border-radius: 3px;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.35);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.15;
 }
 
-.activity-tile .tile-type.Passive {
-    background: rgba(126, 184, 218, 0.15);
-    color: #7eb8da;
-}
-
-.activity-tile .tile-type.Skill {
-    background: rgba(46, 204, 113, 0.15);
-    color: #82e0aa;
-}
-
-.activity-tile .tile-type.Craft {
-    background: rgba(155, 89, 182, 0.15);
-    color: #c39bd3;
-}
-
-.activity-tile .tile-type.Group {
-    background: rgba(243, 156, 18, 0.15);
-    color: #f9d77e;
-}
-
-.activity-tile:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.15);
+/* Hover */
+.activity-card:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.12);
     color: rgba(255, 255, 255, 0.9);
 }
 
-.activity-tile:hover i {
-    color: rgba(255, 255, 255, 0.8);
+.activity-card:hover > i {
+    color: rgba(255, 255, 255, 0.7);
 }
 
-.activity-tile.selected {
-    background: rgba(155, 89, 182, 0.15);
-    border-color: var(--ionrift-accent, #9b59b6);
+/* Selected */
+.activity-card.selected {
+    background: rgba(155, 89, 182, 0.12);
+    border-color: rgba(155, 89, 182, 0.4);
+    border-left-color: var(--ionrift-accent, #9b59b6);
     color: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 0 6px rgba(155, 89, 182, 0.3);
+    box-shadow: 0 0 6px rgba(155, 89, 182, 0.25);
 }
 
-.activity-tile.selected i {
+.activity-card.selected > i {
     color: var(--ionrift-accent, #9b59b6);
 }
 
-.activity-tile.disabled {
-    opacity: 0.35;
+/* Disabled / Faded */
+.activity-card.disabled {
+    opacity: 0.3;
     cursor: not-allowed;
     pointer-events: none;
 }
 
-.activity-tile.has-attuneable {
-    border-color: rgba(155, 89, 182, 0.35);
+.activity-card.faded {
+    opacity: 0.4;
+}
+
+/* Attuneable glow */
+.activity-card.has-attuneable {
+    border-left-color: rgba(155, 89, 182, 0.6);
     animation: attune-glow 2.5s ease-in-out infinite;
 }
 
-.activity-tile.has-attuneable i {
+.activity-card.has-attuneable > i {
     color: #c39bd3;
 }
 
@@ -9861,8 +11060,6 @@
     min-height: 0;
     overflow-y: auto;
     padding-right: 0.15rem;
-    scrollbar-color: #6d28d9 rgba(0, 0, 0, 0.4);
-    scrollbar-width: thin;
 }
 
 /* Actor card */
@@ -10938,6 +12135,40 @@
     font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.25);
     padding-right: 0.3rem;
+}
+
+/* Travel Skip Acknowledgment */
+.travel-skip-mode {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.travel-skip-notice {
+    text-align: center;
+    padding: 1.25rem 1.25rem 0.75rem;
+}
+
+.travel-skip-reason {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.5;
+    max-width: 340px;
+    margin: 0 auto;
+    font-style: italic;
+}
+
+.travel-skip-pulse {
+    animation: skip-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes skip-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(180, 140, 255, 0.25);
+    }
+    50% {
+        box-shadow: 0 0 10px 2px rgba(180, 140, 255, 0.15);
+    }
 }
 
 /* Locked activity label (after roll requests sent) */

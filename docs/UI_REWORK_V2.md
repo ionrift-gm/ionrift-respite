@@ -34,42 +34,61 @@ wait, then players pick an activity. The rework flips this:
 
 Phases 1-3 can auto-collapse when defaults are fine.
 Phase 5 is atmospheric, not a blocker.
-The *felt* flow for a standard rest:
+The *felt* flow for a standard long rest:
 
 ```
-Scene (1 click) → Activities → Encounters → Morning
+Scene (2 picks + begin) → Make Camp → Activities → Encounters → Morning
 ```
 
 ---
 
 ## Phase 1: SCENE (GM Only)
 
-### Default Mode
-One screen. Pre-filled from terrain.
+### Core Decisions
+
+Two things the GM *must* pick — rest type and environment. Neither can be
+assumed. But they share a single screen, not a multi-step accordion.
 
 ```
-┌─────────────────────────────────────────────┐
-│  🏔️ Mountain Pass · Long Rest              │
-│                                             │
-│  Weather: Clear ☀️          [Change ▾]      │
-│  Comfort: Rough (terrain default)           │
-│                                             │
-│  [ ⚙️ Advanced ]        [ Begin Rest ▶ ]   │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│  RESPITE — Set the Scene                        │
+│                                                 │
+│  Rest Type                                      │
+│  [ 🌙 Long Rest ]  [ ☕ Short Rest ]            │
+│                                                 │
+│  Where are you?                                 │
+│  [ Forest              ▾ ]                      │
+│  Dense canopy. Ample foraging. Moderate cover.  │
+│                                                 │
+│  Weather: Clear ☀️                [Change ▾]    │
+│                                                 │
+│  [ ⚙️ Advanced ]          [ Begin Rest ▶ ]     │
+│                                                 │
+│  ── Terrain Banner ──────────────────────────   │
+│  [atmospheric art for selected terrain]         │
+└─────────────────────────────────────────────────┘
 ```
 
-- Terrain auto-detected from scene or last-used. One dropdown if needed.
-- Weather defaults to Clear. One-click override.
-- Comfort is *derived*, not configured. Shown as a label, not a dropdown.
-  The GM sees what the terrain gives them. Player gear adjusts it later.
-- **"Advanced"** expands: scouting toggle, encounter DC adjustment,
-  days-since-rest stepper, comfort override.
+- **Rest type** is a toggle, not a dropdown. Long Rest is default (highlighted).
+  Short Rest changes the downstream flow (skip travel, simplified activities).
+- **Environment** is a dropdown — the GM picks the terrain. Can't be guessed.
+  The terrain hint below the dropdown explains what it means in plain language.
+  Last-used terrain is remembered as the default for convenience.
+- **Weather** defaults to Clear. One-click dropdown override. Only shown for
+  Long Rest (weather doesn't matter for a 1-hour short rest).
+- **Comfort** is NOT shown here. It's derived from player gear in Phase 3.
+  The GM doesn't need to think about comfort at this point.
+- **"Advanced"** expands: scouting toggle, days-since-rest stepper,
+  comfort override, shelter spell toggles.
+- **Encounter DC adjustment** is NOT here — it lives at the actual encounter
+  roll (Phase 6) where the GM has context from activities, fire, and table talk.
 - **No shelter step.** Shelter is inferred from player gear in Phase 3.
 
 ### What changes from current
-- Weather + Comfort + Shelter collapsed into one screen with smart defaults
-- No 3-step accordion — single view with optional Advanced drawer
-- Shelter concept removed from setup entirely
+- Environment + Rest Type + Weather on one screen (no accordion)
+- Comfort removed from setup — derived from gear later
+- Shelter removed from setup — inferred from inventory
+- Short Rest path is a toggle, not a separate flow
 
 ---
 
@@ -77,6 +96,8 @@ One screen. Pre-filled from terrain.
 
 Only appears when terrain has travel options (forage/hunt/scout enabled).
 Skipped entirely for inn/tavern/city terrains.
+
+> **Rules references:** Travel Pace (PHB p.182), Foraging (DMG p.111).
 
 ### Simple Mode (default)
 ```
@@ -109,78 +130,140 @@ Skipped entirely for inn/tavern/city terrains.
 ## Phase 3: MAKE CAMP (Players)
 
 **This is the new phase.** Currently shelter/comfort is a GM dropdown.
-The rework makes it player-facing and gear-driven.
+The rework makes it player-facing and gear-driven, and teaches players
+what comfort means through their own inventory.
+
+### Two Comfort Layers
+
+The UI shows **camp comfort** (shared) and **personal comfort** (per-PC):
+
+- **Camp Comfort** — determined by terrain baseline, fire, and shelter spells.
+  This is the floor for everyone.
+- **Personal Comfort** — camp comfort + individual gear (bedroll, tent).
+  Each PC can be different depending on what they carry.
+
+### Wireframe
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  ⛺ Make Camp                                       │
-│                                                     │
-│  ┌─────────────────────────────────────────────┐    │
-│  │  🔥 CAMPFIRE                                │    │
-│  │                                             │    │
-│  │  [Light the Fire]                           │    │
-│  │                                             │    │
-│  │  Why: Cooking, warmth, morale.              │    │
-│  │  Fire improves comfort and enables cooking. │    │
-│  │  Requires firewood (1 log per night).       │    │
-│  └─────────────────────────────────────────────┘    │
-│                                                     │
-│  ┌─────────────────┐  ┌─────────────────┐           │
-│  │  ⛺ TENT        │  │  🛏️ BEDROLL     │           │
-│  │                 │  │                 │           │
-│  │  Randal: ✅ Has │  │  Randal: ✅ Has │           │
-│  │  Mira:   ❌ No  │  │  Mira:   ✅ Has │           │
-│  │                 │  │                 │           │
-│  │  Blocks weather │  │  +1 comfort     │           │
-│  │  penalties      │  │  for that PC    │           │
-│  └─────────────────┘  └─────────────────┘           │
-│                                                     │
-│  ┌─────────────────┐                                │
-│  │  🍳 MESS KIT    │                                │
-│  │                 │                                │
-│  │  Randal: ✅ Has │                                │
-│  │  Mira:   ✅ Has │                                │
-│  │                 │                                │
-│  │  Enables cooked │                                │
-│  │  meals (better  │                                │
-│  │  food bonuses)  │                                │
-│  └─────────────────┘                                │
-│                                                     │
-│  Camp Comfort: Rough → Comfortable (bedrolls + fire)│
-│                                                     │
-│  [ Continue ▶ ]                                     │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  ⛺ Make Camp — Forest                                  │
+│                                                         │
+│  ┌────────────────────────────────────────────────┐     │
+│  │  🔥 CAMPFIRE                                   │     │
+│  │                                                │     │
+│  │     [ Light the Fire ]                         │     │
+│  │                                                │     │
+│  │  Cooking · Warmth · Morale                     │     │
+│  │  Consumes 1 firewood. Enables cooking.         │     │
+│  │  Improves camp comfort by one tier.            │     │
+│  │                                                │     │
+│  │  🪵 Randal has 3 firewood                      │     │
+│  │  🪵 Mira has 0 firewood                        │     │
+│  │                                                │     │
+│  │  🔧 Can light: Randal (tinderbox)              │     │
+│  └────────────────────────────────────────────────┘     │
+│                                                         │
+│  ── Camp Comfort ──────────────────────────────────     │
+│  Base (Forest):     Rough                               │
+│  + Fire:            +1                                  │
+│  = Camp Comfort:    Comfortable                         │
+│                                                         │
+│  ── Your Rest ─────────────────────────────────────     │
+│                                                         │
+│  ┌─────────────────────────┐ ┌─────────────────────────┐│
+│  │ 🧔 Randal               │ │ 🧙 Mira                ││
+│  │                         │ │                         ││
+│  │ ⛺ Tent: ✅   🛏️ ✅     │ │ ⛺ Tent: ❌   🛏️ ✅     ││
+│  │ 🍳 Mess Kit: ✅         │ │ 🍳 Mess Kit: ❌         ││
+│  │                         │ │                         ││
+│  │ Comfort: Sheltered      │ │ Comfort: Comfortable    ││
+│  │ ─────────────────────── │ │ ─────────────────────── ││
+│  │ ❤️ HP: Full recovery    │ │ ❤️ HP: Full recovery    ││
+│  │ 🎲 HD: Recover half     │ │ 🎲 HD: Recover half     ││
+│  │    (2 of 4 HD)          │ │    (1 of 3 HD)          ││
+│  │ 😴 No exhaustion risk   │ │ 😴 No exhaustion risk   ││
+│  └─────────────────────────┘ └─────────────────────────┘│
+│                                                         │
+│  ── Without fire ──────────────────────────────────     │
+│   🔥→❌  Camp drops to Rough                            │
+│   ❤️     HP still recovers fully                        │
+│   🎲 ⬇️  HD recovery reduced (half level − 2)           │
+│   😴 ⚠️  CON save DC 15 or gain exhaustion              │
+│                                                         │
+│  [ Continue ▶ ]                                         │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ### Key Design Decisions
 
-1. **Gear-driven comfort.** The system scans each character's inventory for
-   tent, bedroll, mess kit, firewood. No GM dropdown needed.
+1. **Dual comfort display.** Camp comfort is shared (terrain + fire + spells).
+   Personal comfort stacks individual gear on top. Each player sees their
+   own card with a clear breakdown of what contributes.
 
 2. **Comfort is *explained*, not configured.** Instead of "Comfort: Sheltered"
    as an opaque label, the player sees *why*:
    - Base: Rough (terrain default)
-   - +1 Bedroll
    - +1 Fire lit
-   - = Comfortable
+   - +1 Bedroll
+   - +1 Tent
+   - = Sheltered
 
-3. **Tent replaces Shelter step.** If someone has a tent, they block weather.
-   If nobody does, weather penalties apply. No radio buttons needed.
-   If the party has Leomund's Tiny Hut or similar, the system detects it
-   from spell prep (already implemented) and auto-applies.
+3. **Leomund's Tiny Hut is a trade-off, not an assumption.** If a caster has
+   Tiny Hut prepared, it appears as a toggle:
+   ```
+   🏠 Leomund's Tiny Hut (Mira)     [ Cast ]
+   ⚠️ Replaces campfire. No cooking, no fire bonuses.
+      Maximum comfort: Sheltered. Full weather protection.
+   ```
+   The player decides. Tiny Hut blocks fire/cooking but gives weather
+   protection and high base comfort. It's a genuine choice, not auto-applied.
 
-4. **Fire is a player interaction.** Currently fire lives in a drawer during
-   Activities. Moving it to Make Camp makes it a visible, meaningful choice:
-   "Do you burn a firewood log for warmth and cooking?"
+4. **Tent replaces Shelter step.** If a PC has a tent, they get weather
+   protection and +1 comfort. No radio buttons, no GM selection — just
+   inventory scanning.
 
-5. **Mess Kit enables cooking.** This ties into the cooking branch work —
-   if you have a mess kit and a fire, you can cook during Activities.
-   Without them, you eat raw rations.
+5. **Fire lifecycle.** The campfire is **fully expanded** during Make Camp —
+   it's the centrepiece of this phase. Once camp is established:
+   - **Activities phase:** fire shrinks to a compact sidebar on the right
+     (just the fire icon + state label, no controls).
+   - **Nightfall phase:** fire visible as ambient element, no interaction.
+
+6. **Simplified fire controls (v2 scope).** For this rework, fire is binary:
+   lit or unlit. Drop fire level management, firewood quantity tracking
+   beyond "has/doesn't have", whittling, and emotes. These can return
+   in a future polish pass once the core flow is clean.
+
+7. **Mess Kit enables cooking.** Visible on the personal comfort card.
+   If you have a mess kit and the fire is lit, "Cook a Meal" appears
+   in Activities. Without either, you eat raw rations.
+
+### Scouting — Simplified
+
+Scouting is a Travel activity (Phase 2), not a Make Camp feature.
+In the current system, scout results feed into a debrief panel that
+adjusts comfort. This adds UI complexity to Make Camp for a subtle bonus.
+
+**Rework:** Scouting results feed directly into the encounter DC in Phase 6.
+- **Best-of, not stacking.** Multiple scouts don't multiply the bonus —
+  the system takes the single best scout roll. More scouts improve the
+  odds of a good roll, but the DC adjustment is capped at one scout's
+  contribution. (Narratively: they all find the same campsite, the best
+  scout picks the spot.)
+- Good scout → encounter DC increases (harder for enemies to find you)
+- Bad scout / nat 1 → encounter DC decreases or hidden complication
+- No debrief panel, no comfort adjustment, no Make Camp UI
+
+The GM sees a chip at the encounter roll: "🔭 Scouted: DC +2".
+The payoff is immediate and visible where it matters.
 
 ### What changes from current
 - Shelter step eliminated from Setup
 - Comfort dropdown eliminated — derived from gear
-- Fire moved from Activities sidebar to Make Camp
+- Comfort shown as dual-layer breakdown (camp vs personal)
+- Leomund's Tiny Hut is a player toggle with trade-off, not auto-applied
+- Fire moved from Activities sidebar to Make Camp (expanded)
+- Fire controls simplified to lit/unlit (drop levels, firewood tracking, emotes)
+- Scouting outcome removed from Make Camp — feeds encounter DC only
 - Players understand what their gear does through the UI
 - GM only intervenes if they want to override (Advanced in Scene)
 
@@ -188,7 +271,8 @@ The rework makes it player-facing and gear-driven.
 
 ## Phase 4: ACTIVITIES (Players)
 
-Similar to current but simplified:
+Similar to current but simplified. Fire is visible as a collapsed sidebar
+on the right (carried forward from Make Camp).
 
 ### Changes from current
 
@@ -212,30 +296,30 @@ Similar to current but simplified:
    Auto-consume is on by default. Click to override (drag-drop for edge cases).
 
 ```
-┌────────────────────────────────────────────────────────┐
-│  🎯 Activities (1/2 resolved)                          │
-│                                                        │
-│  [ AFK ] [ 🧝 Elandril ] [ 🧔 Randal ✓ ] [GM 🎲]    │
-│                                                        │
-│  Randal · Keep Watch                                   │
-│                                                        │
-│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐   │
-│  │ 👁️ Keep      │ │ 💤 Rest      │ │ 🩹 Tend      │   │
-│  │ Watch  [SEL] │ │ Fully        │ │ Wounds       │   │
-│  │   PASSIVE    │ │   PASSIVE    │ │   SKILL      │   │
-│  └──────────────┘ └──────────────┘ └──────────────┘   │
-│  ┌──────────────┐ ┌──────────────┐                     │
-│  │ 🍳 Cook a    │ │ ▼ More...    │                     │
-│  │ Meal         │ │              │                     │
-│  │   SKILL      │ │              │                     │
-│  └──────────────┘ └──────────────┘                     │
-│                                                        │
-│  ─── Rations ──────────────────────────────────        │
-│  🍖 Auto-consume [✓]  4 rations remaining             │
-│  💧 Auto-consume [✓]  Waterskin (full)                 │
-│                                                        │
-│  [ Proceed to Nightfall ▶ ]                            │
-└────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│  🎯 Activities (1/2 resolved)                                  │
+│                                                                │
+│  [ AFK ] [ 🧝 Elandril ] [ 🧔 Randal ✓ ] [GM 🎲]            │
+│                                                    ┌─────────┐│
+│  Randal · Keep Watch                               │ 🔥 Lit  ││
+│                                                    │         ││
+│  ┌──────────────┐ ┌──────────────┐ ┌────────────┐  │ Camp    ││
+│  │ 👁️ Keep      │ │ 💤 Rest      │ │ 🩹 Tend    │  │ comfort ││
+│  │ Watch  [SEL] │ │ Fully        │ │ Wounds     │  │ Comfy   ││
+│  │   PASSIVE    │ │   PASSIVE    │ │   SKILL    │  │         ││
+│  └──────────────┘ └──────────────┘ └────────────┘  └─────────┘│
+│  ┌──────────────┐ ┌──────────────┐                             │
+│  │ 🍳 Cook a    │ │ ▼ More...    │                             │
+│  │ Meal         │ │              │                             │
+│  │   SKILL      │ │              │                             │
+│  └──────────────┘ └──────────────┘                             │
+│                                                                │
+│  ─── Rations ──────────────────────────────────                │
+│  🍖 Auto-consume [✓]  4 rations remaining                     │
+│  💧 Auto-consume [✓]  Waterskin (full)                         │
+│                                                                │
+│  [ Proceed to Nightfall ▶ ]                                    │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -279,6 +363,10 @@ Mostly unchanged — this is the strongest phase in the current flow.
 Minor tweaks:
 
 - Rename from "Events" to "Encounters" — clearer for new GMs.
+- **Encounter DC adjustment lives here**, not in Setup. By this point the GM
+  knows: who kept watch, whether defenses were set, fire state, scouting
+  results, and anything the players discussed. The +/- buttons sit next
+  to the encounter roll, where the GM has full context to adjust.
 - If the encounter roll produces nothing, show a brief "Peaceful night" message
   and auto-advance after 3 seconds (with a "Wait" button to pause).
 
@@ -296,7 +384,7 @@ Mostly unchanged. Rename from "Resolution" to "Morning" for flavour.
 
 | Phase | GM Clicks | Player Clicks |
 |---|---|---|
-| Scene | 1 (Begin Rest) | 0 |
+| Scene | 3 (rest type + environment + begin) | 0 |
 | Travel | skipped | skipped |
 | Make Camp | 0 (auto-scanned) | 1 (light fire) |
 | Activities | 0 (pre-selected) | 0-1 (change if desired) |
@@ -304,7 +392,7 @@ Mostly unchanged. Rename from "Resolution" to "Morning" for flavour.
 | Encounters | 1-2 (depends on roll) | 0 |
 | Morning | 1 (Apply Results) | 0 |
 
-**Total: ~4 GM clicks, ~1 player click** for a standard rest.
+**Total: ~6 GM clicks, ~1 player click** for a standard rest.
 Current flow: ~12+ GM clicks, ~4+ player clicks.
 
 ### Maximum-Control Path (advanced travel, custom comfort, cooking)
