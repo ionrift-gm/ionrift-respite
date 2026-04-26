@@ -1121,10 +1121,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         return spell.altNames.some(alt => spellName.includes(alt));
                     })
                 );
+                const hasCaster = casters.length > 0;
                 return {
                     ...spell,
-                    available: casters.length > 0,
+                    available: hasCaster,
                     casterNames: casters.map(a => a.name).join(", "),
+                    hint: hasCaster ? spell.hint : `Requires ${spell.name} spell. No one in the party has it prepared.`,
                     active: !!this._shelterOverrides[spell.id]
                 };
             });

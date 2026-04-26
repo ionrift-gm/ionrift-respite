@@ -20,26 +20,39 @@ export class DetectMagicScanner {
             const unidentified = [];
             const validTypes = new Set(["weapon", "equipment", "consumable", "tool", "loot", "container"]);
 
+            const summarise = game.ionrift?.workshop?.getLatentSummary ?? null;
+
             for (const item of actor.items) {
                 if (!validTypes.has(item.type)) continue;
 
-                // Diagnostic: log all equipment items and their identified state
                 const raw = item.toObject?.()?.system ?? {};
                 const identifiedLive = item.system?.identified;
                 const identifiedRaw = raw.identified;
 
-                // Only items explicitly marked unidentified via DnD5e's system
-                if (identifiedLive !== false && identifiedRaw !== false) continue;
+                // Two paths into "unidentified magic":
+                //   1. dnd5e native: system.identified === false
+                //   2. Quartermaster takeover: identified=true but latentMagic
+                //      or cursedMeta flag is present (the flag is the signal)
+                const quartermasterLatent = summarise?.(item);
+                const isQmMasked = !!quartermasterLatent
+                    && quartermasterLatent.kind !== "mundane";
+                const isNativeUnidentified = identifiedLive === false || identifiedRaw === false;
+                if (!isQmMasked && !isNativeUnidentified) continue;
 
                 const unidDesc = item.system?.unidentified?.description ?? raw.unidentified?.description;
                 const unidName = item.system?.unidentified?.name ?? raw.unidentified?.name;
 
+                const trueName = quartermasterLatent?.originalName ?? item.name;
+                const displayName = isNativeUnidentified
+                    ? (unidName || item.name)
+                    : item.name;
+
                 unidentified.push({
                     itemId: item.id,
-                    displayName: unidName || item.name,
-                    trueName: item.name,
+                    displayName,
+                    trueName,
                     school: item.system?.school ?? null,
-                    rarity: item.system?.rarity ?? null,
+                    rarity: quartermasterLatent?.originalRarity ?? item.system?.rarity ?? null,
                     img: item.img ?? "icons/svg/mystery-man.svg",
                     requiresAttunement: !!item.system?.attunement,
                     identified: false
@@ -62,6 +75,12 @@ export class DetectMagicScanner {
 
     /**
      * Identify a specific item on an actor, revealing its true properties.
+     *
+     * Routes through Quartermaster's IdentificationService when available
+     * so that latentMagic and cursedMeta items promote their stashed
+     * properties (and pass the identification guard with curseBypass).
+     * Falls back to the raw flag toggle for worlds without Quartermaster.
+     *
      * @param {string} actorId
      * @param {string} itemId
      * @returns {{ trueName: string, school: string, requiresAttunement: boolean }}
@@ -73,10 +92,13 @@ export class DetectMagicScanner {
         const item = actor.items.get(itemId);
         if (!item) throw new Error(`Item ${itemId} not found on ${actor.name}`);
 
-        // Flip the identified flag
-        await item.update({ "system.identified": true });
+        const quartermasterIdentify = game.ionrift?.workshop?.identify;
+        if (typeof quartermasterIdentify === "function") {
+            await quartermasterIdentify(item, { silent: true });
+        } else {
+            await item.update({ "system.identified": true });
+        }
 
-        // Announce in chat
         const school = item.system?.school;
         const schoolLabel = school ? ` (${school})` : "";
         const attunement = item.system?.attunement ? " Requires attunement." : "";
