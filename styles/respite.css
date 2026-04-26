@@ -4712,8 +4712,7 @@
 }
 
 .reflection-tile:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(126, 184, 218, 0.25);
+    background: rgba(255, 255, 255, 0.06);
 }
 
 .reflection-tile-icon {
@@ -4723,7 +4722,7 @@
 }
 
 .reflection-tile:hover .reflection-tile-icon {
-    color: rgba(240, 192, 64, 0.9);
+    color: rgba(240, 192, 64, 0.7);
 }
 
 .reflection-tile-label {
