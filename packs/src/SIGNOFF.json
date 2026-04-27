@@ -1,0 +1,86 @@
+{
+  "$schema": "./signoff-schema.json",
+  "version": "1",
+  "items": {
+    "alpine-herbs.json": {
+      "status": "draft",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/consumables/plants/herb-tied-bundle-green.webp"
+    },
+    "berry-preserves.json": {
+      "status": "draft",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/consumables/food/preserves-jam-jelly-jar-brown-red.webp"
+    },
+    "camp-porridge.json": {
+      "status": "draft",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/consumables/food/bowl-stew-tofu-potato-brown.webp"
+    },
+    "edible-mushrooms.json": {
+      "status": "draft",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/consumables/mushrooms/bell-shiitake-brown.webp"
+    },
+    "fresh-fish.json": {
+      "status": "draft",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/consumables/meat/fish-whole-blue.webp"
+    },
+    "fresh-meat.json": {
+      "status": "draft",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/consumables/meat/steak-raw-red-pink.webp"
+    },
+    "hearty-stew.json": {
+      "status": "draft",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/consumables/food/bowl-stew-brown.webp"
+    },
+    "kindling.json": {
+      "status": "draft",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/commodities/wood/kindling-sticks-brown.webp"
+    },
+    "prickly-pear.json": {
+      "status": "draft",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/consumables/fruit/pickly-pear-cactus-red-yellow.webp"
+    },
+    "roasted-mushrooms.json": {
+      "status": "draft",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/consumables/food/plate-chicken-grilled-mushroom-brown.webp"
+    },
+    "seasoned-rations.json": {
+      "status": "draft",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/consumables/food/dried-meat-jerky-fish-red.webp"
+    },
+    "smoked-fish.json": {
+      "status": "draft",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/consumables/food/fish-fillet-steak-brown.webp"
+    },
+    "wild-berries.json": {
+      "status": "draft",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/consumables/food/berries-ration-round-red.webp"
+    },
+    "wild-herbs.json": {
+      "status": "draft",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/consumables/plants/leaf-herb-green.webp"
+    }
+  },
+  "actors": {},
+  "guide": {
+    "Getting_Started_with_Respite_RespiteGuide000001.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-04-27",
+      "assetSource": "none",
+      "assetSourceNote": "Journal entry, no images"
+    }
+  }
+}
