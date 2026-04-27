@@ -16,12 +16,22 @@ import { ResourceSink } from "../services/ResourceSink.js";
 import { CampfireTokenLinker } from "../services/CampfireTokenLinker.js";
 import { CampGearScanner } from "../services/CampGearScanner.js";
 import {
-    placeCompoundCamp,
+    placeCampfire,
+    placeStation,
     placePlayerGear,
     clearCampTokens,
     clearPlayerCampGear,
+    clearPlayerCampGearType,
+    clearSharedCampStation,
     hasCampPlaced,
+    hasCampfirePlaced,
     isGearDeployed,
+    isStationDeployed,
+    canPlaceStation,
+    stationPlacementRequirementHint,
+    validatePlayerGearDrop,
+    validateStationEquipmentDrop,
+    CAMP_STATION_PLACEMENT_KEYS,
     resetCampSession
 } from "../services/CompoundCampPlacer.js";
 import {
@@ -30,7 +40,6 @@ import {
 } from "../services/DetectMagicInventoryGlowBridge.js";
 import { ImageResolver } from "../util/ImageResolver.js";
 import { CraftingPickerApp } from "./CraftingPickerApp.js";
-import { CampfireEmbed } from "./CampfireEmbed.js";
 import { CraftingDelegate } from "./delegates/CraftingDelegate.js";
 import { MealDelegate } from "./delegates/MealDelegate.js";
 import { CopySpellDelegate } from "./delegates/CopySpellDelegate.js";
@@ -56,7 +65,17 @@ import {
 
 import { STUB_RECIPES, STUB_POOLS, STUB_HUNT_YIELDS } from "../data/stub-content.js";
 import { ShortRestApp } from "./ShortRestApp.js";
-import { registerActiveRestApp, clearActiveRestApp, setActiveRestData, registerCampfireApp, clearCampfireApp, _showGmRestIndicator, _removeGmRestIndicator, getPartyActors } from "../module.js";
+import {
+    registerActiveRestApp,
+    clearActiveRestApp,
+    setActiveRestData,
+    clearCampfireApp,
+    _showGmRestIndicator,
+    _removeGmRestIndicator,
+    getPartyActors,
+    showAfkPanel
+} from "../module.js";
+import * as RestAfkState from "../services/RestAfkState.js";
 
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -261,7 +280,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             resolveSkillCheck: RestSetupApp.#onResolveSkillCheck,
             rollEventCheck: RestSetupApp.#onRollEventCheck,
             disasterChoice: RestSetupApp.#onDisasterChoice,
-            afkToggle: RestSetupApp.#onAfkToggle,
             rollCampCheck: RestSetupApp.#onRollCampCheck,
             adjustCampDC: RestSetupApp.#onAdjustCampDC,
             requestCampRoll: RestSetupApp.#onRequestCampRoll,
@@ -303,9 +321,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             rollTravelCheck: RestSetupApp.#onRollTravelCheck,
             rollTravelForPlayer: RestSetupApp.#onRollTravelForPlayer,
             lightCampfire: RestSetupApp.#onLightCampfire,
+            selectCampFireLevel: RestSetupApp.#onSelectCampFireLevel,
             proceedFromCamp: RestSetupApp.#onProceedFromCamp,
             clearAllCampScene: RestSetupApp.#onClearAllCampScene,
             clearMyCampGear: RestSetupApp.#onClearMyCampGear,
+            reclaimCampGear: RestSetupApp.#onReclaimCampGear,
+            reclaimCampStation: RestSetupApp.#onReclaimCampStation,
             exitStationChoiceReview: RestSetupApp.#onExitStationChoiceReview
         }
     };
@@ -315,6 +336,25 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             template: `modules/${MODULE_ID}/templates/rest-setup.hbs`
         }
     };
+
+    /**
+     * Legacy snapshot shape for activeRest / broadcast (minigame removed; fire level is canonical).
+     * @param {string} fireLevel
+     * @returns {object|null}
+     */
+    static _campfireSnapshotFromFireLevel(fireLevel) {
+        const fl = fireLevel ?? "unlit";
+        if (fl === "unlit") return null;
+        return {
+            lit: true,
+            litBy: null,
+            heat: 0,
+            strikeCount: 0,
+            kindlingPlaced: 0,
+            peakHeat: 0,
+            lastFireLevel: fl
+        };
+    }
 
 
 
@@ -341,6 +381,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._activeTreeState = null;
         this._craftingResults = new Map();
         this._fireLevel = "unlit";
+        /** Make Camp step 1: hover preview for fire tier comfort (embers | campfire | bonfire). */
+        this._campFirePreviewLevel = null;
+        /** Prefer this user's owned actors when spending firewood at proceed (player fire-tier request). */
+        this._campFireWoodSpendUserId = null;
         this._campfireApp = null;
         this._campfireSnapshot = null;
         this._selectedCharacterId = null;
@@ -382,7 +426,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._playerSubmissions = new Map();
         this._gmOverrides = new Map();
         this._gmFollowUps = new Map();
-        this._afkCharacters = new Set();
         this._lockedCharacters = new Set();
 
         // Party discovery item grants: key = "eventId:itemRef", value = { actorName, rolled, itemName }
@@ -1054,6 +1097,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             eventsRolled: this._eventsRolled ?? false,
             activeTreeState: this._activeTreeState,
             fireLevel: this._fireLevel,
+            campFireWoodSpendUserId: this._campFireWoodSpendUserId ?? null,
             selectedTerrain: this._selectedTerrain,
             selectedRestType: this._selectedRestType,
             selectedWeather: this._selectedWeather,
@@ -1071,15 +1115,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             mealSubmissions: this._mealSubmissions ? Array.from(this._mealSubmissions.entries()) : [],
             activityMealRationsSubmitted: [...(this._activityMealRationsSubmitted ?? [])],
             daysSinceLastRest: this._daysSinceLastRest ?? 1,
-            campfireSnapshot: this._campfireApp ? {
-                lit: this._campfireApp._lit ?? false,
-                litBy: this._campfireApp._litBy ?? null,
-                heat: this._campfireApp._heat ?? 0,
-                strikeCount: this._campfireApp._strikeCount ?? 0,
-                kindlingPlaced: this._campfireApp._kindlingPlaced ?? 0,
-                peakHeat: this._campfireApp._peakHeat ?? 0,
-                lastFireLevel: this._campfireApp._lastFireLevel ?? "unlit"
-            } : (this._campfireSnapshot ?? null),
+            campfireSnapshot: RestSetupApp._campfireSnapshotFromFireLevel(this._fireLevel),
             travelState: this._travel?.serialize() ?? null,
             magicScanComplete: this._magicScanComplete ?? false,
             magicScanResults: this._magicScanResults ?? null,
@@ -1103,6 +1139,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         console.log(`[Respite:State] _loadRestState — phase=${this._phase}, eventsRolled=${this._eventsRolled}, hasEngine=${!!this._engine}`);
         this._activeTreeState = state.activeTreeState ?? null;
         this._fireLevel = state.fireLevel ?? "unlit";
+        this._campFireWoodSpendUserId = state.campFireWoodSpendUserId ?? null;
         this._selectedTerrain = state.selectedTerrain;
         this._selectedRestType = state.selectedRestType;
         this._selectedWeather = state.selectedWeather;
@@ -1365,7 +1402,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 game.socket.emit(`module.${MODULE_ID}`, { type: "restPreparing" });
             }
         }
-        return super.render(options);
+        const out = super.render(options);
+        void Promise.resolve(out).then(() => showAfkPanel());
+        return out;
     }
 
     async close(options = {}) {
@@ -1777,6 +1816,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 })
                 .filter(Boolean);
 
+            /** Two flex columns so short stations (e.g. Workbench) do not leave a tall row gap above the next left card. */
+            const stationCardColumns = [[], []];
+            for (let i = 0; i < stationCards.length; i++) {
+                stationCardColumns[i % 2].push(stationCards[i]);
+            }
+
             // Comfort gear badges
             const actorItems = a.items?.map(i => i.name?.toLowerCase()) ?? [];
             const gearBadges = [
@@ -1795,6 +1840,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 professionBadges,
                 tileCategories,
                 stationCards,
+                stationCardColumns,
                 professionTiles,
                 armorWarning,
                 gearBadges,
@@ -1813,7 +1859,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 hasProfessionTiles: professionTiles.length > 0,
                 hasPending: !!pendingId,
                 isOwner: this._isGM || this._myCharacterIds?.has(a.id),
-                isAfk: this._afkCharacters.has(a.id),
+                isAfk: RestAfkState.isAfk(a.id),
                 isLocked: source !== "pending" || this._lockedCharacters.has(a.id),
                 earlyResult: (() => {
                     // Suppress early result if a Copy Spell result exists (final replaces pending)
@@ -1917,7 +1963,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 fullName: c.name,
                 img: c.img,
                 source: c.source,
-                isAfk: this._afkCharacters?.has(c.id) ?? false,
+                isAfk: RestAfkState.isAfk(c.id),
                 isOwner: c.isOwner,
                 isSelected: c.id === this._selectedCharacterId,
                 exhaustion: c.exhaustion,
@@ -1927,32 +1973,32 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             };
         });
 
-        // GM chip: right-aligned in roster, shows GM roll status
-        let gmPending = false;
-        let gmRolled = null;
-        if (this._phase === "events" && !this._eventsRolled) {
-            const campPrepsResolved = !this._pendingCampRolls?.length || this._pendingCampRolls.every(p => p.status !== "pending");
-            if (campPrepsResolved) gmPending = true;
-        } else if (this._phase === "events" && this._eventsRolled) {
-            gmRolled = "done";
-        }
-        const gmRosterChip = {
-            id: "gm",
-            name: "GM",
-            fullName: game.users.find(u => u.isGM)?.name ?? "Game Master",
-            img: null,
-            source: "gm",
-            isAfk: this._afkCharacters?.has("gm") ?? false,
-            isOwner: this._isGM,
-            isGmChip: true,
-            pendingRoll: gmPending,
-            rolledResult: gmRolled
-        };
         const selectedCharacter = heroCharacters.find(c => c.id === this._selectedCharacterId) ?? heroCharacters[0] ?? null;
 
         const totalCharacters = partyActors.length;
         const resolvedCount = characterStatuses.filter(c => c.source !== "pending").length;
         const allResolved = resolvedCount === totalCharacters && !this._gmCopySpellProposal;
+        const trackFoodSetting = game.settings.get(MODULE_ID, "trackFood");
+        const activityPhasePlayerOverview =
+            this._phase === "activity" && !this._isGM
+                ? {
+                      resolvedCount,
+                      totalCharacters,
+                      allResolved,
+                      trackFood: !!trackFoodSetting,
+                      mealRationsSubmitted: this._activityMealRationsSubmitted?.size ?? 0,
+                      activityProgressPercent:
+                          totalCharacters > 0
+                              ? Math.round((resolvedCount / totalCharacters) * 100)
+                              : 0,
+                      mealRationsProgressPercent:
+                          totalCharacters > 0
+                              ? Math.round(
+                                    ((this._activityMealRationsSubmitted?.size ?? 0) / totalCharacters) * 100
+                                )
+                              : 0
+                  }
+                : null;
 
         // Build recovery summary for the resolution phase
         let recoverySummary = [];
@@ -2019,19 +2065,83 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             : (this._outcomes ?? []).filter(o => this._myCharacterIds?.has(o.characterId));
 
         let campScanData = null;
+        let campMakeCampPlacementUnlocked = false;
+        let campMakeCampStep = 1;
+        let campFireEncounterHint = "";
+        let campFirePickerLevels = [];
+        let campFireGatePit = false;
+        let campFireGateLevel = false;
         if (this._phase === "camp") {
             const terrainTagCamp = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
             const terrainCamp = TerrainRegistry.get(terrainTagCamp);
+            const shelterSpellCamp = (this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")
+                ? SHELTER_SPELLS[(this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")]?.label ?? null
+                : null;
+            const campfirePlacedGate = hasCampfirePlaced();
+            const fireCommitted = (this._fireLevel ?? "unlit") !== "unlit";
+            campMakeCampPlacementUnlocked = campfirePlacedGate && fireCommitted;
+            campMakeCampStep = campMakeCampPlacementUnlocked ? 2 : 1;
+            campFireGatePit = campfirePlacedGate;
+            campFireGateLevel = fireCommitted;
+            const effectiveScanLevel = campMakeCampPlacementUnlocked
+                ? (this._fireLevel ?? "unlit")
+                : (this._campFirePreviewLevel ?? this._fireLevel ?? "unlit");
+            // RestFlowEngine: effectiveDC = baseDC - (… + fireRollModifier + …). Positive fireRollModifier
+            // lowers the number shown as Encounter DC (fewer night events). Copy matches that display.
+            if (effectiveScanLevel === "unlit") {
+                campFireEncounterHint = "No committed fire yet. Preview uses the hovered tier.";
+            } else if (effectiveScanLevel === "embers") {
+                campFireEncounterHint = "Embers: small red glow on the map. Same Encounter DC as a minimal lit camp.";
+            } else if (effectiveScanLevel === "campfire") {
+                campFireEncounterHint = "Campfire: Encounter DC is 1 lower than embers (clearer ring of light).";
+            } else if (effectiveScanLevel === "bonfire") {
+                campFireEncounterHint = "Bonfire: Encounter DC is 1 higher than embers (very hard to miss at night).";
+            } else {
+                campFireEncounterHint = "";
+            }
             campScanData = CampGearScanner.scan(
                 this._engine?.comfort ?? "rough",
-                this._fireLevel ?? "unlit",
-                (this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")
-                    ? SHELTER_SPELLS[(this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")]?.label ?? null
-                    : null,
+                effectiveScanLevel,
+                shelterSpellCamp,
                 terrainCamp?.comfortReason ?? "",
                 terrainCamp?.label ?? terrainTagCamp,
-                this._engine?.fireRollModifier ?? 1
+                encMod
             );
+            const fs = campScanData.fireSelection ?? {};
+            const cur = this._fireLevel ?? "unlit";
+            campFirePickerLevels = [
+                {
+                    id: "embers",
+                    label: "Embers",
+                    costLabel: "0 firewood",
+                    body: "Minimal light on the map (deep red, short reach). No cooking. No comfort change from fire. Baseline Encounter DC for a lit camp on the tracker.",
+                    disabled: !fs.canPickEmbers,
+                    disabledReason: fs.canPickEmbers ? "" : "Someone needs a tinderbox or flint and steel.",
+                    selected: cur === "embers"
+                },
+                {
+                    id: "campfire",
+                    label: "Campfire",
+                    costLabel: "1 firewood",
+                    body: "Cooking, warmth, morale. Encounter DC is 1 lower than embers (warm orange light, medium reach).",
+                    disabled: !fs.canPickCampfire,
+                    disabledReason: !fs.canPickCampfire
+                        ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 1 firewood in the party.")
+                        : "",
+                    selected: cur === "campfire"
+                },
+                {
+                    id: "bonfire",
+                    label: "Bonfire",
+                    costLabel: "2 firewood",
+                    body: "+1 camp comfort, full cooking. Encounter DC is 1 higher than embers (broad yellow light, long reach).",
+                    disabled: !fs.canPickBonfire,
+                    disabledReason: !fs.canPickBonfire
+                        ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 2 firewood in the party.")
+                        : "",
+                    selected: cur === "bonfire"
+                }
+            ];
         }
         const campPersonalSelected = campScanData && this._selectedCharacterId
             ? (campScanData.personalCards.find(p => p.actorId === this._selectedCharacterId) ?? null)
@@ -2055,6 +2165,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const bedrollDeployed = isGearDeployed(a.id, "bedroll");
             const messKitDeployed = isGearDeployed(a.id, "messkit");
             const hasDeployedCampGear = tentDeployed || bedrollDeployed || messKitDeployed;
+            const placementUnlocked = campMakeCampPlacementUnlocked ?? false;
+            const canDragGear = canDrag && (hasDeployedCampGear || placementUnlocked);
             return {
                 actorId: a.id,
                 actorName: a.name,
@@ -2065,7 +2177,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 bedrollDeployed,
                 tentDeployed,
                 messKitDeployed,
-                canDrag,
+                canDrag: canDragGear,
                 isOwner,
                 showClearOwnGear: !this._isGM && isOwner && hasDeployedCampGear,
                 fireIsLit,
@@ -2074,6 +2186,44 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 /** Mess kit: advantage is inactive when a save is relevant and fire is out. */
                 messAdvantageOff: hasMessKit && !fireIsLit && exhaustionRisk
             };
+        })();
+
+        const campPlacementRuleHint = this._phase === "camp"
+            ? "Place within 3 squares of the campfire. Tokens cannot overlap."
+            : "";
+
+        const campfirePlaced = this._phase === "camp" && hasCampfirePlaced();
+        const campStationCards = (() => {
+            if (this._phase !== "camp") return [];
+            const actor = this._selectedCharacterId ? game.actors.get(this._selectedCharacterId) : null;
+            const rosterSelected = !!actor;
+            return CAMP_STATION_PLACEMENT_KEYS.map(key => {
+                const st = CAMP_STATIONS.find(s => s.furnitureKey === key);
+                const deployed = isStationDeployed(key);
+                const meetsRequirement = actor ? canPlaceStation(actor, key) : false;
+                const isOwner = !!actor?.isOwner;
+                let canDrag = false;
+                if (campMakeCampPlacementUnlocked && campfirePlaced && !deployed) {
+                    if (this._isGM) canDrag = true;
+                    else if (rosterSelected && isOwner && meetsRequirement) canDrag = true;
+                }
+                const canRecallStation = deployed && (
+                    this._isGM || (rosterSelected && isOwner && meetsRequirement)
+                );
+                return {
+                    furnitureKey: key,
+                    label: st?.label ?? key,
+                    icon: st?.icon ?? "fas fa-cube",
+                    deployed,
+                    canDrag,
+                    canRecallStation,
+                    requirementHint: stationPlacementRequirementHint(key),
+                    rosterSelected,
+                    meetsRequirement,
+                    isOwner,
+                    actorId: actor?.id ?? ""
+                };
+            });
         })();
 
         return {
@@ -2091,17 +2241,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     overflow: Math.max(0, roster.length - 6)
                 };
             })(),
-            trackFood: game.settings.get(MODULE_ID, "trackFood"),
+            trackFood: trackFoodSetting,
             gmCopySpellProposal: this._gmCopySpellProposal ?? null,
             copySpellRollPrompt: this._copySpellRollPrompt ?? null,
             phase: this._phase,
             postStationChoiceReview: !this._isGM && this._phase === "activity" && !!this._postStationChoiceReview,
             activitySubTab: (() => {
                 if (this._phase !== "activity") return null;
+                /** Players use map stations for Identify / Meal; main sheet shows activity overview only. */
+                const renderSubTab = this._isGM ? this._activitySubTab : "activity";
                 const { unidentifiedItems, identifyCasters, detectMagicCasters } = collectPartyIdentifyEmbedData(partyActors);
                 // Track already-identified items from this rest
                 const identifiedThisRest = this._identifiedItems ?? [];
-                const hasUnidentified = unidentifiedItems.length > 0;
+                const preDummyUnidentifiedCount = unidentifiedItems.length;
+                const hasUnidentified = preDummyUnidentifiedCount > 0;
 
                 // Default to Activity tab on arrival, but keep Identify inspectable
                 if (!this._activitySubTabUserSet && !hasUnidentified) {
@@ -2110,7 +2263,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
                 // ── DEBUG: inject dummy items for UI review ──
                 // Remove this block after UI review is complete
-                if (this._activitySubTab === "identify") {
+                if (this._isGM && this._activitySubTab === "identify") {
                     const dummyActor = partyActors[0];
                     if (dummyActor) {
                         unidentifiedItems.push(
@@ -2149,8 +2302,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
                 // ── END DEBUG ──
 
+                const hidePartyIdentifyListFromPlayerAfterScan =
+                    !this._isGM && !!this._magicScanComplete;
+                const unidentifiedItemsForUi = hidePartyIdentifyListFromPlayerAfterScan
+                    ? []
+                    : unidentifiedItems;
+
                 // Build compact meal summary for the Meal sub-tab
-                const trackFood = game.settings.get(MODULE_ID, "trackFood");
+                const trackFood = trackFoodSetting;
                 let mealSummary = null;
                 if (trackFood) {
                     const charIds = partyActors.map(a => a.id);
@@ -2185,18 +2344,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
 
                 return {
-                    current: this._activitySubTab,
-                    isIdentify: this._activitySubTab === "identify",
-                    isActivity: this._activitySubTab === "activity",
-                    isMeal: this._activitySubTab === "meal",
-                    hasUnidentified: hasUnidentified || unidentifiedItems.length > 0,
-                    unidentifiedItems,
+                    current: renderSubTab,
+                    isIdentify: renderSubTab === "identify",
+                    isActivity: renderSubTab === "activity",
+                    isMeal: renderSubTab === "meal",
+                    hasUnidentified:
+                        preDummyUnidentifiedCount > 0
+                        || unidentifiedItems.length > 0
+                        || !!this._magicScanComplete,
+                    unidentifiedItems: unidentifiedItemsForUi,
                     identifyCasters,
                     detectMagicCasters,
                     canShowDetectMagicScanButton: computeCanShowDetectMagicScanButton(partyActors),
                     identifiedThisRest,
                     canIdentifyByRest: true,
-                    itemCount: unidentifiedItems.length,
+                    itemCount: unidentifiedItemsForUi.length,
                     trackFood,
                     mealSummary
                 };
@@ -2406,19 +2568,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             shelterChosen,
             heroCharacters,
             roster,
-            gmRosterChip,
-            selfAfk: game.user.isGM
-                ? (this._afkCharacters?.has("gm") ?? false)
-                : roster.some(r => r.isOwner && r.isAfk),
-            selfAfkId: game.user.isGM
-                ? "gm"
-                : (roster.find(r => r.isOwner)?.id ?? ""),
             canvasFocusedStationId: this._canvasFocusedStationId ?? null,
             selectedCharacter,
             partyCharacters,
             totalCharacters,
             resolvedCount,
             allResolved,
+            activityPhasePlayerOverview,
             outcomes: personalOutcomes ?? [],
             triggeredEvents: (this._triggeredEvents ?? []).map(e => {
                 // Resolve target IDs to actor names for the template
@@ -2507,7 +2663,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const hints = enc.mechanical?.onFailure?.effects?.find(ef => ef.type === "encounter")?.encounterHints;
                 return hints?.awareness ?? null;
             })(),
-            fireLevel: this._fireLevel ?? "campfire",
+            fireLevel: this._fireLevel ?? "unlit",
             campfireTokenDetected: CampfireTokenLinker.hasCampfireToken(),
             campfireTokenSettingName: CampfireTokenLinker.getTokenName(),
             activeTreeState: (() => {
@@ -2559,9 +2715,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 };
                 const FIRE_TIPS = {
                     unlit: "Unlit: -1 comfort step at resolution",
-                    embers: "Embers: no comfort change, fire active",
-                    campfire: "Campfire: +1 encounter DC (aids watchkeeping)",
-                    bonfire: "Bonfire: +1 comfort step, -1 encounter DC (visible)"
+                    embers: "Embers: small red flame token, 8 ft bright / 20 ft dim. Baseline Encounter DC for a lit camp.",
+                    campfire: "Campfire: warm orange light, wider reach. Encounter DC 1 lower than embers on the tracker.",
+                    bonfire: "Bonfire: large yellow light (+1 comfort). Encounter DC 1 higher than embers on the tracker."
                 };
                 return this._campStatus = {
                     comfort,
@@ -2580,8 +2736,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 };
             })() : this._campStatus ?? null,
             campScan: campScanData,
+            campMakeCampPlacementUnlocked,
+            canProceedFromCamp: this._phase === "camp" && !!campMakeCampPlacementUnlocked,
+            campMakeCampStep,
+            campFireEncounterHint,
+            campFirePickerLevels,
+            campFireGatePit,
+            campFireGateLevel,
             campPersonalSelected,
             campGearForSelected,
+            campPlacementRuleHint,
+            campfirePlaced,
+            campStationCards,
             craftingDrawer: this._buildCraftingDrawerContext(),
             encounterBar: (this._engine && !this._eventsRolled) ? (() => {
                 const bd = this._engine._encounterBreakdown ?? {};
@@ -2917,6 +3083,32 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Bind camp placement drag handles when in camp phase
         if (this._phase === "camp") {
             this._bindCampDragHandlers(this.element);
+            const picker = this.element?.querySelector(".camp-fire-tier-picker");
+            if (picker && !picker.dataset.ionriftPreviewBound) {
+                picker.dataset.ionriftPreviewBound = "1";
+                picker.addEventListener(
+                    "pointerenter",
+                    (e) => {
+                        const row = e.target.closest?.("[data-fire-preview]");
+                        if (!row || (this._fireLevel ?? "unlit") !== "unlit") return;
+                        const lev = row.dataset.firePreview;
+                        if (!lev || this._campFirePreviewLevel === lev) return;
+                        this._campFirePreviewLevel = lev;
+                        this.render({ force: true });
+                    },
+                    true
+                );
+                picker.addEventListener("pointerleave", (e) => {
+                    if (!picker.contains(e.relatedTarget)) {
+                        if (this._campFirePreviewLevel != null) {
+                            this._campFirePreviewLevel = null;
+                            if ((this._fireLevel ?? "unlit") === "unlit") {
+                                this.render({ force: true });
+                            }
+                        }
+                    }
+                });
+            }
         }
 
         // Bind travel activity selects (change event, not click)
@@ -2972,38 +3164,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
-        // Auto-open or re-mount campfire drawer when meal/activity/reflection phase renders
         if (this._phase === "meal" || this._phase === "activity" || this._phase === "reflection") {
             const drawerContainer = this.element?.querySelector(".campfire-drawer-content");
-            if (!this._campfireApp && drawerContainer) {
-                // First open (or re-open after _campfireApp was lost)
+            if (drawerContainer) {
                 this._openCampfire();
-                // Restore from saved snapshot if available
-                if (this._campfireSnapshot && this._campfireApp) {
-                    this._campfireApp._lit = this._campfireSnapshot.lit;
-                    this._campfireApp._litBy = this._campfireSnapshot.litBy;
-                    this._campfireApp._heat = this._campfireSnapshot.heat;
-                    this._campfireApp._strikeCount = this._campfireSnapshot.strikeCount;
-                    this._campfireApp._kindlingPlaced = this._campfireSnapshot.kindlingPlaced;
-                    this._campfireApp._peakHeat = this._campfireSnapshot.peakHeat;
-                    this._campfireApp._lastFireLevel = this._campfireSnapshot.lastFireLevel;
-                    this._campfireApp.render();
-                }
-            } else if (this._campfireApp && drawerContainer) {
-                // Save state before re-mount (DOM was replaced)
-                this._campfireSnapshot = {
-                    lit: this._campfireApp._lit,
-                    litBy: this._campfireApp._litBy,
-                    heat: this._campfireApp._heat,
-                    strikeCount: this._campfireApp._strikeCount,
-                    kindlingPlaced: this._campfireApp._kindlingPlaced,
-                    peakHeat: this._campfireApp._peakHeat,
-                    lastFireLevel: this._campfireApp._lastFireLevel
-                };
-                // Re-mount to fresh DOM container
-                this._campfireApp._container = drawerContainer;
-                this._campfireApp.render();
-                // Re-expand instantly (no animation) if user hasn't manually collapsed
                 const drawer = this.element?.querySelector(".campfire-drawer");
                 if (drawer && !this._campfireCollapsed) {
                     drawer.style.transition = "none";
@@ -3184,8 +3348,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const tiles = this.element.querySelectorAll(".activity-card");
         for (const tile of tiles) {
             tile.addEventListener("click", () => {
-                const grid = tile.closest(".activity-grid");
-                const characterId = grid?.dataset.characterId;
+                // Activity phase uses station columns; legacy grids used .activity-grid only.
+                const host =
+                    tile.closest(".activity-grid")
+                    || tile.closest(".station-activities")
+                    || tile.closest(".character-detail");
+                const characterId = host?.dataset?.characterId;
                 const activityId = tile.dataset.activityId;
                 if (!characterId || !activityId) return;
 
@@ -3364,25 +3532,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             });
         }
 
-        const afkBoxes = this.element.querySelectorAll(".afk-checkbox");
-        for (const box of afkBoxes) {
-            box.addEventListener("change", () => {
-                const charId = box.dataset.characterId;
-                if (box.checked) {
-                    this._afkCharacters.add(charId);
-                } else {
-                    this._afkCharacters.delete(charId);
-                }
-                // Broadcast AFK status
-                game.socket.emit(`module.${MODULE_ID}`, {
-                    type: "afkUpdate",
-                    characterId: charId,
-                    isAfk: box.checked,
-                    characterName: game.actors.get(charId)?.name ?? "Unknown"
-                });
-                this.render();
-            });
-        }
     }
 
     // ──────── Static action handlers ────────
@@ -3487,56 +3636,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!game.user.isGM || !this._engine) return;
         this._engine.gmEncounterAdj = (this._engine.gmEncounterAdj ?? 0) - 1;
         this.render({ force: true });
-    }
-
-    /**
-     * Toggle AFK status for a character (or GM). GM-only control.
-     * Broadcasts the change to all players via socket.
-     */
-    static #onAfkToggle(event, target) {
-        const rosterId = target.dataset.rosterId
-            ?? target.closest("[data-roster-id]")?.dataset.rosterId;
-        if (!rosterId) return;
-
-        if (!this._afkCharacters) this._afkCharacters = new Set();
-
-        // Build list of IDs to toggle
-        let ids = [rosterId];
-
-        // If this is the AFK button, toggle ALL owned characters
-        const isBtn = target.closest(".roster-afk-btn") || target.classList?.contains("roster-afk-btn");
-        if (isBtn) {
-            if (game.user.isGM) {
-                ids = ["gm"];
-            } else {
-                ids = game.actors
-                    .filter(a => a.hasPlayerOwner && a.isOwner && a.type === "character")
-                    .map(a => a.id);
-            }
-        } else {
-            // Roster chip click: GM can toggle individual characters
-            if (!game.user.isGM) return;
-        }
-
-        // Simple toggle: if all are AFK, un-AFK. Otherwise, mark all AFK.
-        const allAfk = ids.every(id => this._afkCharacters.has(id));
-        const newState = !allAfk;
-
-        for (const id of ids) {
-            if (newState) {
-                this._afkCharacters.add(id);
-            } else {
-                this._afkCharacters.delete(id);
-            }
-
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "afkUpdate",
-                characterId: id,
-                isAfk: newState
-            });
-        }
-
-        this.render();
     }
 
     /**
@@ -4127,6 +4226,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         super._onRender?.(context, options);
         this._onRenderBindings(context, options);
 
+        const titleEl =
+            this.element?.querySelector(".window-header .window-title")
+            ?? this.element?.querySelector(".window-title")
+            ?? this.element?.querySelector("header.window-header h4");
+        if (titleEl) {
+            let t = "Respite: Rest Phase";
+            if (this._phase === "activity" && this._isGM) t = "Respite: GM overview";
+            else if (this._phase === "activity" && !this._isGM) t = "Respite: Party progress";
+            titleEl.textContent = t;
+        }
+
         {
             const rosterPhases = new Set(["camp", "travel", "activity", "meal"]);
             if (rosterPhases.has(this._phase)) this._installGmStationTokenSyncHook();
@@ -4697,94 +4807,61 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Opens the campfire as a slide-out drawer inside the rest window.
+     * Opens the campfire drawer with a read-only fire level (set during Make Camp).
      */
     _openCampfire() {
-        if (this._campfireApp) return;
-
-        // Magical shelters block campfire (sealed dome, no ventilation, etc.)
         const magicalShelters = ["tiny_hut", "rope_trick", "magnificent_mansion"];
         const activeShelterIds = Object.entries(this._shelterOverrides ?? {})
             .filter(([, v]) => v)
             .map(([id]) => id);
         if (activeShelterIds.some(id => magicalShelters.includes(id))) {
-            console.log(`${MODULE_ID} | Campfire skipped: magical shelter active`);
+            console.log(`${MODULE_ID} | Campfire drawer skipped: magical shelter active`);
             return;
         }
 
-        console.log(`${MODULE_ID} | _openCampfire called, isGM=${game.user.isGM}`);
-
-        try {
-            const drawerContainer = this.element?.querySelector(".campfire-drawer-content");
-            if (!drawerContainer) {
-                console.warn(`${MODULE_ID} | No .campfire-drawer-content found in DOM`);
-                return;
-            }
-
-            const restApp = this;
-            this._campfireApp = new CampfireEmbed(drawerContainer, {
-                partyCharacterIds: this._myCharacterIds ? Array.from(this._myCharacterIds) : [],
-                terrainTag: this._engine?.terrainTag ?? null,
-                onFireLevelChange: (level) => {
-                    restApp._fireLevel = level;
-                    // Save snapshot on every fire level change
-                    if (restApp._campfireApp) {
-                        restApp._campfireSnapshot = {
-                            lit: restApp._campfireApp._lit,
-                            litBy: restApp._campfireApp._litBy,
-                            heat: restApp._campfireApp._heat,
-                            strikeCount: restApp._campfireApp._strikeCount,
-                            kindlingPlaced: restApp._campfireApp._kindlingPlaced,
-                            peakHeat: restApp._campfireApp._peakHeat,
-                            lastFireLevel: restApp._campfireApp._lastFireLevel
-                        };
-                    }
-                    // Update fire level badge without full re-render
-                    const badge = restApp.element?.querySelector(".camp-status-chip.fire-chip");
-                    if (badge) {
-                        const textEl = badge.querySelector(".fire-level-text");
-                        if (textEl) textEl.textContent = level;
-                        badge.className = badge.className.replace(/fire-(unlit|embers|campfire|bonfire)/g, `fire-${level}`);
-                        badge.title = `Fire: ${level}`;
-                    }
-                    // Re-render activity tiles when fire level changes (cook/brew availability)
-                    if (restApp._lastRenderedFireLevel !== level) {
-                        restApp._lastRenderedFireLevel = level;
-                        restApp.render({ force: true });
-                    }
-                    restApp._saveRestState();
-                }
-            });
-            registerCampfireApp(this._campfireApp);
-
-            // Render campfire into the drawer
-            this._campfireApp.render().then(() => {
-                console.log(`${MODULE_ID} | CampfireEmbed rendered into drawer`);
-                // Expand the window to show the drawer
-                const drawer = this.element?.querySelector(".campfire-drawer");
-                if (drawer) drawer.classList.add("open");
-            }).catch(err => {
-                console.error(`${MODULE_ID} | CampfireEmbed render failed:`, err);
-            });
-        } catch (err) {
-            console.error(`${MODULE_ID} | _openCampfire error:`, err);
+        const drawerContainer = this.element?.querySelector(".campfire-drawer-content");
+        if (!drawerContainer) {
+            console.warn(`${MODULE_ID} | No .campfire-drawer-content found in DOM`);
+            return;
         }
+
+        const level = this._fireLevel ?? "unlit";
+        const LEVEL_LABELS = {
+            unlit: "Unlit",
+            embers: "Embers",
+            campfire: "Campfire",
+            bonfire: "Bonfire"
+        };
+        drawerContainer.innerHTML = `
+            <div class="campfire-static-status">
+                <div class="campfire-static-inner">
+                    <i class="fas fa-fire" aria-hidden="true"></i>
+                    <span class="campfire-static-title">${LEVEL_LABELS[level] ?? level}</span>
+                </div>
+                <p class="campfire-static-hint">Fire level was chosen during Make Camp.</p>
+            </div>`;
+        const drawer = this.element?.querySelector(".campfire-drawer");
+        if (drawer) drawer.classList.add("open");
     }
 
     /**
      * Closes the campfire drawer.
      */
     _closeCampfire() {
+        const hadLegacyEmbed = !!this._campfireApp;
         if (this._campfireApp) {
             this._campfireApp.destroy();
             this._campfireApp = null;
             clearCampfireApp();
         }
+        const drawerContent = this.element?.querySelector(".campfire-drawer-content");
+        if (drawerContent) drawerContent.innerHTML = "";
         const drawer = this.element?.querySelector(".campfire-drawer");
         if (drawer) drawer.classList.remove("open");
 
-        // Turn off the campfire token's light on the canvas
-        CampfireTokenLinker.setLightState(false);
+        if (hadLegacyEmbed) {
+            CampfireTokenLinker.setLightState(false);
+        }
     }
 
     /**
@@ -4795,6 +4872,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const level = target.dataset.fireLevel;
         if (!level) return;
         this._fireLevel = level;
+
+        if (game.user.isGM && ["embers", "campfire", "bonfire"].includes(level)) {
+            void CampfireTokenLinker.setLightState(true, level);
+        }
 
         // Sync to players
         game.socket.emit(`module.${MODULE_ID}`, {
@@ -5103,16 +5184,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Applies fire level comfort modifications before events.
      */
     static async #onProceedToEvents(event, target) {
-        // Read peak fire level from campfire app if available
-        if (this._campfireApp) {
-            const level = this._campfireApp.peakFireLevel;
-            if (level && level !== "unlit") {
-                this._fireLevel = level;
-            }
-        }
-
         // Apply fire level comfort modifications
-        // Unlit: -1 comfort step | Embers: 0 | Campfire: 0 | Bonfire: +1 comfort step
+        // Unlit: -1 comfort step | Embers: 0 | Campfire: 0 | Bonfire: +1 camp comfort
         const FIRE_COMFORT_MOD = { unlit: -1, embers: 0, campfire: 0, bonfire: 1 };
         const fireComfortMod = FIRE_COMFORT_MOD[this._fireLevel] ?? 0;
         if (fireComfortMod !== 0 && this._engine) {
@@ -5441,6 +5514,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Clean up camp tokens from the scene
         clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
         resetCampSession();
+        this._campFireWoodSpendUserId = null;
         this._tearDownStationLayerCanvas();
         this._removeGmStationTokenSyncHook();
 
@@ -7447,19 +7521,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 outcomes: o.outcomes,
                 recovery: o.recovery
             })),
-            afkCharacters: [...(this._afkCharacters ?? [])],
+            afkCharacters: RestAfkState.getAfkCharacterIds(),
             doffedArmor: this._doffedArmor ? [...this._doffedArmor] : [],
             eventsRolled: this._eventsRolled ?? false,
-            fireLevel: this._fireLevel ?? "campfire",
-            campfireSnapshot: this._campfireApp ? {
-                lit: this._campfireApp._lit ?? false,
-                litBy: this._campfireApp._litBy ?? null,
-                heat: this._campfireApp._heat ?? 0,
-                strikeCount: this._campfireApp._strikeCount ?? 0,
-                kindlingPlaced: this._campfireApp._kindlingPlaced ?? 0,
-                peakHeat: this._campfireApp._peakHeat ?? 0,
-                lastFireLevel: this._campfireApp._lastFireLevel ?? "unlit"
-            } : (this._campfireSnapshot ?? null),
+            fireLevel: this._fireLevel ?? "unlit",
+            campfireSnapshot: RestSetupApp._campfireSnapshotFromFireLevel(this._fireLevel),
             campStatus: this._campStatus ?? null,
             daysSinceLastRest: this._daysSinceLastRest ?? 1,
             selectedTerrain: this._selectedTerrain ?? "forest",
@@ -7504,7 +7570,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         if (phaseData.activeTreeState) this._activeTreeState = phaseData.activeTreeState;
         if (phaseData.eventsRolled !== undefined) this._eventsRolled = phaseData.eventsRolled;
-        if (phaseData.fireLevel) this._fireLevel = phaseData.fireLevel;
+        if (phaseData.fireLevel !== undefined && phaseData.fireLevel !== null) {
+            this._fireLevel = phaseData.fireLevel;
+            this._campFirePreviewLevel = null;
+            if (this._engine) {
+                this._engine.fireLevel = phaseData.fireLevel;
+                const enc = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[phaseData.fireLevel] ?? 0;
+                this._engine.fireRollModifier = enc;
+            }
+        }
         if (phaseData.campStatus) this._campStatus = phaseData.campStatus;
         if (phaseData.outcomes) this._outcomes = phaseData.outcomes;
 
@@ -7661,11 +7735,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._rebuildCharacterChoices();
         }
 
-        // Apply AFK
-        if (snapshot.afkCharacters) {
-            for (const charId of snapshot.afkCharacters) {
-                this._afkCharacters.add(charId);
-            }
+        if (snapshot.afkCharacters !== undefined) {
+            RestAfkState.replaceAll(snapshot.afkCharacters ?? []);
         }
 
         // Apply phase + phase data
@@ -7706,20 +7777,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         if (snapshot.outcomes?.length) this._outcomes = snapshot.outcomes;
         if (snapshot.eventsRolled !== undefined) this._eventsRolled = snapshot.eventsRolled;
-        if (snapshot.fireLevel) this._fireLevel = snapshot.fireLevel;
+        if (snapshot.fireLevel !== undefined && snapshot.fireLevel !== null) {
+            this._fireLevel = snapshot.fireLevel;
+            if (this._engine) {
+                this._engine.fireLevel = snapshot.fireLevel;
+                const enc = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[snapshot.fireLevel] ?? 0;
+                this._engine.fireRollModifier = enc;
+            }
+        }
         if (snapshot.campfireSnapshot) {
             this._campfireSnapshot = snapshot.campfireSnapshot;
-            // Apply immediately if campfire app is already mounted
-            if (this._campfireApp) {
-                this._campfireApp._lit = snapshot.campfireSnapshot.lit;
-                this._campfireApp._litBy = snapshot.campfireSnapshot.litBy;
-                this._campfireApp._heat = snapshot.campfireSnapshot.heat;
-                this._campfireApp._strikeCount = snapshot.campfireSnapshot.strikeCount;
-                this._campfireApp._kindlingPlaced = snapshot.campfireSnapshot.kindlingPlaced;
-                this._campfireApp._peakHeat = snapshot.campfireSnapshot.peakHeat;
-                this._campfireApp._lastFireLevel = snapshot.campfireSnapshot.lastFireLevel;
-                this._campfireApp.render();
-            }
         }
         if (snapshot.campStatus) this._campStatus = snapshot.campStatus;
 
@@ -7808,18 +7875,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._doffedArmor.set(actorId, itemId);
         } else {
             this._doffedArmor.delete(actorId);
-        }
-        this.render();
-    }
-
-    /**
-     * Receives an AFK update from another client.
-     */
-    receiveAfkUpdate(characterId, isAfk) {
-        if (isAfk) {
-            this._afkCharacters.add(characterId);
-        } else {
-            this._afkCharacters.delete(characterId);
         }
         this.render();
     }
@@ -8285,22 +8340,36 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Only the GM may change Item documents; players request via socket.
      */
     static async #onLightCampfire(event, target) {
+        await RestSetupApp.#onSelectCampFireLevel.call(this, event, { dataset: { fireLevel: "campfire" } });
+    }
+
+    static async #onSelectCampFireLevel(event, target) {
+        const root = target?.closest?.("[data-action=\"selectCampFireLevel\"]") ?? target;
+        const level = root?.dataset?.fireLevel;
+        if (!level || !["embers", "campfire", "bonfire"].includes(level)) return;
+
         if (!game.user.isGM) {
             game.socket.emit(`module.${MODULE_ID}`, {
-                type:   "campLightFireRequest",
-                userId: game.user.id
+                type: "campFireLevelRequest",
+                userId: game.user.id,
+                fireLevel: level
             });
-            ui.notifications.info("Request sent to the GM to light the fire and spend firewood.");
+            ui.notifications.info("Fire choice sent to the GM.");
             return;
         }
-        await this._runLightCampfireForGm(null);
+        await this._runSetCampFireLevelForGm(level, null);
     }
 
     /**
-     * GM-only: consume one party firewood, set fire level, sync scene token and clients.
-     * @param {string|null} requestingUserId - optional; party actors owned by this user are checked first for firewood
+     * GM-only: deduct `cost` units of party firewood (one per loop). Prefer actors owned by `requestingUserId` when set.
+     * @param {number} cost
+     * @param {string|null} requestingUserId
+     * @returns {Promise<{ ok: boolean, spendNames: string[], error?: string }>}
      */
-    async _runLightCampfireForGm(requestingUserId = null) {
+    async _spendPartyFirewoodForMakeCamp(cost, requestingUserId = null) {
+        const spendNames = [];
+        if (cost <= 0) return { ok: true, spendNames };
+
         const actors = getPartyActors();
         const OWNER = CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
         const sortedActors = requestingUserId
@@ -8311,54 +8380,88 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             })
             : actors;
 
-        let supplier = null;
-        let firewoodItem = null;
-        for (const actor of sortedActors) {
-            firewoodItem = actor.items.find(i => {
-                const n = i.name?.toLowerCase() ?? "";
-                return n.includes("firewood") || n === "kindling";
-            });
-            if (firewoodItem && (firewoodItem.system?.quantity ?? 0) > 0) {
-                supplier = actor;
+        let remaining = cost;
+        while (remaining > 0) {
+            let spentOne = false;
+            for (const actor of sortedActors) {
+                const firewoodItem = actor.items.find(i => {
+                    const n = i.name?.toLowerCase() ?? "";
+                    return n.includes("firewood") || n === "kindling";
+                });
+                if (!firewoodItem || (firewoodItem.system?.quantity ?? 0) <= 0) continue;
+                const qty = firewoodItem.system?.quantity ?? 1;
+                if (qty <= 1) await firewoodItem.delete();
+                else await firewoodItem.update({ "system.quantity": qty - 1 });
+                spendNames.push(actor.name);
+                remaining--;
+                spentOne = true;
                 break;
             }
+            if (!spentOne) {
+                return { ok: false, spendNames, error: "Could not spend firewood (inventory changed)." };
+            }
         }
+        return { ok: true, spendNames };
+    }
 
-        if (!supplier || !firewoodItem) {
-            ui.notifications.warn("No firewood available to light the fire.");
-            return;
-        }
+    /**
+     * GM-only: set fire level and encounter modifier, sync token light and clients. Firewood is spent when leaving
+     * Make Camp via Proceed to activities, not here, so the GM can change tier until then.
+     * @param {string} level - embers | campfire | bonfire
+     * @param {string|null} requestingUserId - reserved for spend order when spend runs at proceed (player request path)
+     */
+    async _runSetCampFireLevelForGm(level, requestingUserId = null) {
+        if (!game.user.isGM) return;
+        if (!["embers", "campfire", "bonfire"].includes(level)) return;
 
+        const actors = getPartyActors();
         const hasTinderbox = actors.some(a => a.items.some(i => {
             const n = i.name?.toLowerCase() ?? "";
             return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
         }));
         if (!hasTinderbox) {
-            ui.notifications.warn("No one has a tinderbox or flint & steel to light the fire.");
+            ui.notifications.warn("No one has a tinderbox or flint & steel to start a fire.");
             return;
         }
 
-        const qty = firewoodItem.system?.quantity ?? 1;
-        if (qty <= 1) {
-            await firewoodItem.delete();
-        } else {
-            await firewoodItem.update({ "system.quantity": qty - 1 });
+        const cost = CampGearScanner.FIREWOOD_COST_BY_LEVEL[level] ?? 0;
+        const totalFirewood = actors.reduce((sum, a) => {
+            const it = a.items.find(i => {
+                const n = i.name?.toLowerCase() ?? "";
+                return n.includes("firewood") || n === "kindling";
+            });
+            return sum + (it?.system?.quantity ?? 0);
+        }, 0);
+        if (cost > totalFirewood) {
+            ui.notifications.warn("Not enough firewood in the party for that fire size.");
+            return;
         }
 
-        this._fireLevel = "campfire";
+        if (level === (this._fireLevel ?? "unlit")) return;
+
+        this._campFireWoodSpendUserId = requestingUserId ?? null;
+
+        const FIRE_ENCOUNTER_MOD = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL;
+        this._fireLevel = level;
+        this._campFirePreviewLevel = null;
         if (this._engine) {
-            this._engine.fireLevel = "campfire";
-            this._engine.fireRollModifier = 1;
+            this._engine.fireLevel = level;
+            this._engine.fireRollModifier = FIRE_ENCOUNTER_MOD[level] ?? 0;
         }
 
-        await CampfireTokenLinker.setLightState(true);
+        await CampfireTokenLinker.setLightState(true, level);
 
-        ui.notifications.info(`${supplier.name} lights the campfire using firewood.`);
+        const label = level.charAt(0).toUpperCase() + level.slice(1);
+        if (cost > 0) {
+            ui.notifications.info(`${label} selected. ${cost} firewood will be spent when you proceed to activities.`);
+        } else {
+            ui.notifications.info(`${label} selected.`);
+        }
 
         game.socket.emit(`module.${MODULE_ID}`, {
             type: "phaseChanged",
             phase: "camp",
-            phaseData: { fireLevel: "campfire" }
+            phaseData: { fireLevel: level }
         });
 
         await this._saveRestState();
@@ -8369,6 +8472,48 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * GM advances from Make Camp to Activities.
      */
     static async #onProceedFromCamp(event, target) {
+        if (!game.user.isGM) return;
+        if (this._phase !== "camp") return;
+        const pit = hasCampfirePlaced();
+        const fireOk = (this._fireLevel ?? "unlit") !== "unlit";
+        if (!pit || !fireOk) {
+            ui.notifications?.warn("Place the campfire pit on the scene and choose a fire size first.");
+            return;
+        }
+
+        const level = this._fireLevel ?? "unlit";
+        const cost = CampGearScanner.FIREWOOD_COST_BY_LEVEL[level] ?? 0;
+        const actors = getPartyActors();
+        const hasTinderbox = actors.some(a => a.items.some(i => {
+            const n = i.name?.toLowerCase() ?? "";
+            return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
+        }));
+        if (!hasTinderbox) {
+            ui.notifications.warn("No one has a tinderbox or flint & steel to start a fire.");
+            return;
+        }
+        const totalFirewood = actors.reduce((sum, a) => {
+            const it = a.items.find(i => {
+                const n = i.name?.toLowerCase() ?? "";
+                return n.includes("firewood") || n === "kindling";
+            });
+            return sum + (it?.system?.quantity ?? 0);
+        }, 0);
+        if (cost > totalFirewood) {
+            ui.notifications.warn("Not enough firewood for the selected fire size. Choose Embers or add wood before continuing.");
+            return;
+        }
+
+        const spend = await this._spendPartyFirewoodForMakeCamp(cost, this._campFireWoodSpendUserId ?? null);
+        if (!spend.ok) {
+            ui.notifications.error(spend.error ?? "Could not spend firewood.");
+            return;
+        }
+        if (cost > 0 && spend.spendNames.length > 0) {
+            ui.notifications.info(`${spend.spendNames[0] ?? "The party"} spends ${cost} firewood for ${level}.`);
+        }
+        this._campFireWoodSpendUserId = null;
+
         this._phase = "activity";
 
         game.socket.emit(`module.${MODULE_ID}`, {
@@ -8399,7 +8544,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         } else {
             ui.notifications.info("No camp tokens to remove on this scene.");
         }
-        game.socket.emit(`module.${MODULE_ID}`, { type: "campSceneCleared" });
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "campSceneCleared",
+            resetFireLevel: true
+        });
+        this._fireLevel = "unlit";
+        this._campFirePreviewLevel = null;
+        this._campFireWoodSpendUserId = null;
+        if (this._engine) {
+            this._engine.fireLevel = "unlit";
+            this._engine.fireRollModifier = 0;
+        }
+        void CampfireTokenLinker.setLightState(false);
+        await this._saveRestState();
         this.render();
     }
 
@@ -8409,11 +8566,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #onClearMyCampGear(event, target) {
         event.preventDefault?.();
-        const actorId = target.dataset.actorId;
+        const root = target?.closest?.("[data-action=\"clearMyCampGear\"]") ?? target;
+        const actorId = root?.dataset?.actorId;
         if (!actorId) return;
 
+        const sceneIdGm = canvas?.scene?.id ?? null;
+
         if (game.user.isGM) {
-            const n = await clearPlayerCampGear(actorId);
+            const n = await clearPlayerCampGear(actorId, sceneIdGm);
             if (n > 0) {
                 ui.notifications.info(`Removed ${n} camp token(s) for that character.`);
                 game.socket.emit(`module.${MODULE_ID}`, { type: "campSceneCleared", actorId });
@@ -8430,11 +8590,134 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
+        const sceneId = canvas?.scene?.id ?? null;
         game.socket.emit(`module.${MODULE_ID}`, {
             type: "campGearClearPlayer",
             actorId,
+            userId: game.user.id,
+            sceneId
+        });
+    }
+
+    /**
+     * Pick up one deployed camp gear token (tent, bedroll, or mess kit) from the map.
+     */
+    static async #onReclaimCampGear(event, target) {
+        event.preventDefault?.();
+        const root = target?.closest?.("[data-action=\"reclaimCampGear\"]") ?? target;
+        const actorId = root?.dataset?.actorId;
+        const gearType = root?.dataset?.gearType;
+        if (!actorId || !gearType) return;
+
+        const sceneIdGm = canvas?.scene?.id ?? null;
+
+        if (game.user.isGM) {
+            const n = await clearPlayerCampGearType(actorId, gearType, sceneIdGm);
+            if (n > 0) {
+                ui.notifications.info("Gear picked up from the scene.");
+                game.socket.emit(`module.${MODULE_ID}`, {
+                    type: "campGearPlaced",
+                    actorId,
+                    gearType
+                });
+            } else {
+                ui.notifications.info("Nothing to pick up on the scene for that slot.");
+            }
+            this.render();
+            return;
+        }
+
+        const actor = game.actors.get(actorId);
+        if (!actor?.isOwner) {
+            ui.notifications.warn("You can only reclaim gear for a character you own.");
+            return;
+        }
+
+        const sceneId = canvas?.scene?.id ?? null;
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "campGearReclaim",
+            actorId,
+            gearType,
+            userId: game.user.id,
+            sceneId
+        });
+        ui.notifications.info("Pick-up sent to the GM.");
+    }
+
+    /**
+     * Pick up a shared camp station token (weapon rack, workbench, medical bed, cooking station).
+     */
+    static async #onReclaimCampStation(event, target) {
+        event.preventDefault?.();
+        const root = target?.closest?.("[data-action=\"reclaimCampStation\"]") ?? target;
+        const actorId = root?.dataset?.actorId;
+        const stationKey = root?.dataset?.stationKey;
+        if (!actorId || !stationKey) return;
+
+        if (game.user.isGM) {
+            const n = await clearSharedCampStation(stationKey);
+            if (n > 0) {
+                ui.notifications.info("Station picked up from the scene.");
+                game.socket.emit(`module.${MODULE_ID}`, { type: "campStationPlaced" });
+            } else {
+                ui.notifications.info("Nothing to pick up on the scene for that station.");
+            }
+            this.render();
+            return;
+        }
+
+        const actor = game.actors.get(actorId);
+        if (!actor?.isOwner) {
+            ui.notifications.warn("You can only pick up stations for a character you own.");
+            return;
+        }
+        if (!canPlaceStation(actor, stationKey)) {
+            ui.notifications.warn("That character cannot pick up this station.");
+            return;
+        }
+
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "campStationReclaim",
+            actorId,
+            stationKey,
             userId: game.user.id
         });
+        ui.notifications.info("Pick-up sent to the GM.");
+    }
+
+    /**
+     * Clone of the dragged control for HTML5 drag preview (semi-transparent).
+     * @param {DragEvent} e
+     * @param {HTMLElement} sourceEl
+     */
+    _applyCampDragGhost(e, sourceEl) {
+        try {
+            const ghost = document.createElement("div");
+            ghost.className = "camp-drag-ghost-float";
+            ghost.innerHTML = sourceEl.innerHTML;
+            ghost.style.cssText = [
+                "position:fixed",
+                "left:-9999px",
+                "top:0",
+                "max-width:200px",
+                "padding:6px 8px",
+                "background:rgba(18,14,28,0.92)",
+                "border:1px solid rgba(139,92,246,0.5)",
+                "border-radius:8px",
+                "box-shadow:0 8px 28px rgba(0,0,0,0.55)",
+                "opacity:0.88",
+                "pointer-events:none",
+                "color:#e8e4f0",
+                "font-size:0.72rem"
+            ].join(";");
+            document.body.appendChild(ghost);
+            const w = ghost.offsetWidth || 120;
+            const h = ghost.offsetHeight || 48;
+            e.dataTransfer.setDragImage(ghost, Math.round(w / 2), Math.round(h / 2));
+            requestAnimationFrame(() => ghost.remove());
+        } catch {
+            /* ignore */
+        }
     }
 
     /**
@@ -8446,8 +8729,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const campHandle = html.querySelector('.camp-drag-handle[draggable="true"]');
         if (campHandle) {
             campHandle.addEventListener("dragstart", (e) => {
-                e.dataTransfer.setData("text/plain", JSON.stringify({ type: "ionrift-compound-camp" }));
+                e.dataTransfer.setData("text/plain", JSON.stringify({ type: "ionrift-campfire-only" }));
                 e.dataTransfer.effectAllowed = "copy";
+                this._applyCampDragGhost(e, campHandle);
                 campHandle.classList.add("dragging");
 
                 const board = document.getElementById("board");
@@ -8473,8 +8757,32 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     actorId
                 }));
                 e.dataTransfer.effectAllowed = "copy";
+                this._applyCampDragGhost(e, handle);
                 handle.classList.add("dragging");
 
+                const board = document.getElementById("board");
+                if (board) {
+                    board.addEventListener("drop", this._boundCampCanvasDrop, { once: true });
+                }
+            });
+            handle.addEventListener("dragend", () => {
+                handle.classList.remove("dragging");
+            });
+        }
+
+        const stationHandles = html.querySelectorAll(".camp-station-placeable[draggable=\"true\"]");
+        for (const handle of stationHandles) {
+            handle.addEventListener("dragstart", (e) => {
+                const stationKey = handle.dataset.stationKey;
+                const actorId = handle.dataset.actorId ?? "";
+                e.dataTransfer.setData("text/plain", JSON.stringify({
+                    type: "ionrift-camp-station",
+                    stationKey,
+                    actorId
+                }));
+                e.dataTransfer.effectAllowed = "copy";
+                this._applyCampDragGhost(e, handle);
+                handle.classList.add("dragging");
                 const board = document.getElementById("board");
                 if (board) {
                     board.addEventListener("drop", this._boundCampCanvasDrop, { once: true });
@@ -8502,17 +8810,52 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const x = (event.clientX - t.tx) / canvas.stage.scale.x;
         const y = (event.clientY - t.ty) / canvas.stage.scale.y;
 
-        if (data?.type === "ionrift-compound-camp") {
+        if (data?.type === "ionrift-campfire-only" || data?.type === "ionrift-compound-camp") {
             if (!game.user.isGM) return;
-            await placeCompoundCamp(x, y);
+            await placeCampfire(x, y);
             const fireIsLit = this._fireLevel && this._fireLevel !== "unlit";
-            await CampfireTokenLinker.setLightState(fireIsLit);
+            await CampfireTokenLinker.setLightState(
+                fireIsLit,
+                fireIsLit ? (this._fireLevel ?? "campfire") : null
+            );
             this.render();
+            return;
+        }
+
+        if (data?.type === "ionrift-camp-station") {
+            const { stationKey, actorId } = data;
+            if (!stationKey) return;
+            const preStation = validateStationEquipmentDrop(x, y, stationKey);
+            if (!preStation.ok) {
+                ui.notifications.warn(preStation.reason);
+                return;
+            }
+            if (game.user.isGM) {
+                const placed = await placeStation(x, y, stationKey);
+                if (placed) {
+                    game.socket.emit(`module.${MODULE_ID}`, { type: "campStationPlaced" });
+                }
+                this.render();
+            } else {
+                game.socket.emit(`module.${MODULE_ID}`, {
+                    type: "campStationPlace",
+                    stationKey,
+                    actorId,
+                    x,
+                    y,
+                    userId: game.user.id
+                });
+            }
             return;
         }
 
         if (data?.type === "ionrift-player-gear") {
             const { gearType, actorId } = data;
+            const preGear = validatePlayerGearDrop(x, y, gearType);
+            if (!preGear.ok) {
+                ui.notifications.warn(preGear.reason);
+                return;
+            }
             if (game.user.isGM) {
                 await placePlayerGear(x, y, gearType, actorId);
                 this.render();
