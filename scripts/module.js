@@ -23,6 +23,12 @@ import { ItemClassifier } from "./services/ItemClassifier.js";
 import { DietConfigApp } from "./apps/DietConfigApp.js";
 import { ButcherResolver } from "./services/ButcherResolver.js";
 import { MealPhaseHandler } from "./services/MealPhaseHandler.js";
+import {
+    setDetectMagicInventoryGlowAdapter,
+    getDetectMagicInventoryGlowAdapter,
+    notifyDetectMagicScanApplied,
+    notifyDetectMagicScanCleared
+} from "./services/DetectMagicInventoryGlowBridge.js";
 
 const MODULE_ID = "ionrift-respite";
 const MODULE_LABEL = "Respite";
@@ -256,6 +262,12 @@ Hooks.once("init", async () => {
         },
         /** Debug: Add supplies to all party actors. Usage: game.ionrift.respite.addSupplies(50) */
         addSupplies: (qty = 50) => RestSetupApp._debugAddSupplies(qty),
+        /**
+         * Plug in a module that replaces the built-in school-colored inventory glow after Detect Magic.
+         * Pass null to restore the default sheet highlights. See scripts/services/DetectMagicInventoryGlowBridge.js.
+         */
+        setDetectMagicInventoryGlowAdapter,
+        getDetectMagicInventoryGlowAdapter,
         /** Check which terrain packs are currently linked (accessible). */
         packStatus: async () => {
             if (!game.user.isGM) return;
@@ -1183,14 +1195,19 @@ Hooks.once("ready", async () => {
     // Register socket handler
     game.socket.on(`module.${MODULE_ID}`, _onSocketMessage);
 
-    // Player: request current rest state in case a rest is already active
+    // Player: request current rest state in case a rest is already active (GM may still be resuming after F5)
     if (!game.user.isGM) {
-        setTimeout(() => {
-            console.log(`${MODULE_ID} | Player requesting rest state...`);
+        const requestRestAndShortRestState = (label) => {
+            console.log(`${MODULE_ID} | Player requesting rest state (${label})...`);
             game.socket.emit(`module.${MODULE_ID}`, { type: "requestRestState", userId: game.user.id });
-            // Also check for active short rest
             game.socket.emit(`module.${MODULE_ID}`, { type: "requestShortRestState", userId: game.user.id });
-        }, 1000);
+        };
+        setTimeout(() => requestRestAndShortRestState("initial"), 1000);
+        setTimeout(() => {
+            if (!_playerRestActive && !activeShortRestApp) {
+                requestRestAndShortRestState("retry");
+            }
+        }, 4500);
 
         // Auto-resync when player returns from minimize/tab switch (debounced)
         let _lastResyncTime = 0;
@@ -1329,7 +1346,11 @@ Hooks.once("ready", async () => {
                     };
                     setActiveRestData(restPayload);
 
-                    app.render({ force: true });
+                    if (app._phase === "activity") {
+                        await app.applyRestoredPhaseUi();
+                    } else {
+                        app.render({ force: true });
+                    }
                     ui.notifications.info("Interrupted rest resumed.");
                     Logger.log?.(MODULE_LABEL, "Restored interrupted rest from world flags.");
 
@@ -1613,6 +1634,19 @@ function _onSocketMessage(data) {
             _handleActivityChoice(data);
             break;
 
+        // Player -> GM: light campfire and consume firewood (GM-only item updates)
+        case "campLightFireRequest":
+            if (!game.user.isGM) return;
+            if (activeRestSetupApp?._runLightCampfireForGm) {
+                void activeRestSetupApp._runLightCampfireForGm(data.userId ?? null).catch(err => {
+                    console.error(`${MODULE_ID} | campLightFireRequest:`, err);
+                    ui.notifications.error("Could not light the fire. Check the console.");
+                });
+            } else {
+                ui.notifications.warn("Cannot light the fire: open the rest session on the GM client first.");
+            }
+            break;
+
         // Player -> GM: meal choices submitted
         case "mealChoice":
             if (!game.user.isGM) return;
@@ -1659,6 +1693,38 @@ function _onSocketMessage(data) {
             }
             break;
 
+        // Any client -> all: Detect Magic scan results (inventory glow + Identify tab)
+        case "detectMagicScanBroadcast": {
+            const results = data.results ?? [];
+            const partyActorIds = data.partyActorIds ?? [];
+            const dmApp = activeRestSetupApp ?? activePlayerRestApp;
+            if (dmApp) {
+                dmApp._magicScanResults = results;
+                dmApp._magicScanComplete = !!data.magicScanComplete;
+                if (dmApp.rendered) void dmApp.render(false);
+            }
+            notifyDetectMagicScanApplied(
+                { _magicScanResults: results, _magicScanComplete: !!data.magicScanComplete },
+                partyActorIds
+            );
+            break;
+        }
+
+        // GM -> all: clear Detect Magic session (glow + embedded scan state)
+        case "detectMagicScanCleared": {
+            const clrApp = activeRestSetupApp ?? activePlayerRestApp;
+            if (clrApp) {
+                clrApp._magicScanResults = null;
+                clrApp._magicScanComplete = false;
+                clrApp._workbenchIdentifyStaging?.clear();
+                clrApp._workbenchIdentifyAcknowledge?.clear();
+                if (clrApp.rendered) void clrApp.render(false);
+            }
+            Hooks.callAll(`${MODULE_ID}.workbenchIdentifyStagingTouched`);
+            notifyDetectMagicScanCleared();
+            break;
+        }
+
         // GM -> Players: rest resolved, close your picker
         case "restResolved":
             if (game.user.isGM) return;
@@ -1677,7 +1743,9 @@ function _onSocketMessage(data) {
             if (game.user.isGM) return;
             console.log(`${MODULE_ID} | phaseChanged handler: phase=${data.phase}, hasApp=${!!activePlayerRestApp}, hasMethod=${!!activePlayerRestApp?.receivePhaseChange}`);
             if (activePlayerRestApp?.receivePhaseChange) {
-                activePlayerRestApp.receivePhaseChange(data.phase, data.phaseData ?? {});
+                void activePlayerRestApp.receivePhaseChange(data.phase, data.phaseData ?? {}).catch(err => {
+                    console.error(`${MODULE_ID} | receivePhaseChange failed`, err);
+                });
             } else {
                 console.warn(`${MODULE_ID} | phaseChanged: no activePlayerRestApp or missing receivePhaseChange`);
             }
@@ -2038,6 +2106,7 @@ function _onSocketMessage(data) {
             if (campApp2) campApp2.render();
             break;
         }
+
     }
 }
 
@@ -2119,6 +2188,7 @@ function _handleRestStarted(data) {
     try {
         _playerRestActive = true;
         _removeRejoinNotification();
+        _removeGmRestIndicator();
 
         // If an old rest window exists, close it gracefully before opening the new one
         if (activePlayerRestApp) {
@@ -2142,13 +2212,21 @@ function _handleRestStarted(data) {
         }
 
         activePlayerRestApp = new RestSetupApp({}, data.restData);
-        // Hook into the close to show rejoin notification
+        // Hook into the close to show rejoin notification and clear the global ref.
+        // retainPlayerApp: window hides but the instance stays registered (activity phase canvas UI).
         const origClose = activePlayerRestApp.close.bind(activePlayerRestApp);
-        activePlayerRestApp.close = (options = {}) => {
-            origClose(options);
-            activePlayerRestApp = null;
-            if (_playerRestActive && !options.skipRejoin) {
-                _showRejoinNotification();
+        activePlayerRestApp.close = async (options = {}) => {
+            try {
+                await origClose(options);
+            } finally {
+                if (options.retainPlayerApp) {
+                    console.log(`${MODULE_ID} | Player rest window closed; app ref retained for canvas phase`);
+                    return;
+                }
+                activePlayerRestApp = null;
+                if (_playerRestActive && !options.skipRejoin) {
+                    _showRejoinNotification();
+                }
             }
         };
         console.log(`${MODULE_ID} | RestSetupApp created in player mode, rendering...`);
@@ -2188,6 +2266,8 @@ function _handleActivityChoice(data) {
 function _handleRestResolved(data) {
     _playerRestActive = false;
     _removeRejoinNotification();
+    _removeGmRestIndicator();
+    notifyDetectMagicScanCleared();
     if (activePlayerRestApp) {
         activePlayerRestApp.close({ skipRejoin: true });
         activePlayerRestApp = null;
@@ -2325,20 +2405,29 @@ function _removePrepNotification() {
  * @param {RestSetupApp} app - The active RestSetupApp instance.
  */
 export function _showGmRestIndicator(app) {
+    if (!game.user?.isGM) return;
     _removeGmRestIndicator();
     const el = document.createElement("div");
     el.id = "respite-gm-rest-bar";
     const awaitingCombat = app?._awaitingCombat;
     const phaseLabel = awaitingCombat ? "Awaiting combat resolution" : `Phase: ${app?._phase ?? "active"}`;
+    const isActivity = app?._phase === "activity";
+    const total = isActivity ? getPartyActors().length : 0;
+    const resolved = isActivity ? (app?._characterChoices?.size ?? 0) : 0;
+    const progressHtml = isActivity
+        ? `<span class="respite-bar-progress">${resolved} of ${total} activities chosen</span>`
+        : "";
     el.innerHTML = `
         <i class="fas fa-campground"></i>
         <span>Rest in progress (${phaseLabel})</span>
+        ${progressHtml}
         <button type="button" id="respite-gm-resume-btn">${awaitingCombat ? "View" : "Resume"}</button>
     `;
     el.querySelector("#respite-gm-resume-btn").addEventListener("click", () => {
         _removeGmRestIndicator();
-        if (app && !app.rendered) {
-            app.render({ force: true });
+        if (app) {
+            app._canvasFocusedStationId = null;
+            if (!app.rendered) app.render({ force: true });
         }
     });
     document.body.appendChild(el);
@@ -2356,6 +2445,7 @@ export function _removeGmRestIndicator() {
  * The Resume button reconstructs ShortRestApp from the world setting.
  */
 export function _showGmShortRestIndicator() {
+    if (!game.user?.isGM) return;
     _removeGmShortRestIndicator();
     const el = document.createElement("div");
     el.id = "respite-gm-short-rest-bar";
@@ -2411,7 +2501,9 @@ function _rejoinRest() {
  */
 function _handlePhaseChanged(data) {
     if (!activePlayerRestApp) return;
-    activePlayerRestApp.receivePhaseChange(data.phase, data.phaseData);
+    void activePlayerRestApp.receivePhaseChange(data.phase, data.phaseData).catch(err => {
+        console.error(`${MODULE_ID} | receivePhaseChange (_handlePhaseChanged)`, err);
+    });
 }
 
 /**

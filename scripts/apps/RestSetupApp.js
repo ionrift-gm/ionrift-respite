@@ -24,6 +24,10 @@ import {
     isGearDeployed,
     resetCampSession
 } from "../services/CompoundCampPlacer.js";
+import {
+    notifyDetectMagicScanApplied,
+    notifyDetectMagicScanCleared
+} from "../services/DetectMagicInventoryGlowBridge.js";
 import { ImageResolver } from "../util/ImageResolver.js";
 import { CraftingPickerApp } from "./CraftingPickerApp.js";
 import { CampfireEmbed } from "./CampfireEmbed.js";
@@ -32,7 +36,24 @@ import { MealDelegate } from "./delegates/MealDelegate.js";
 import { CopySpellDelegate } from "./delegates/CopySpellDelegate.js";
 import { SoundDelegate } from "./delegates/SoundDelegate.js";
 import { TravelResolutionDelegate } from "./delegates/TravelResolutionDelegate.js";
-import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, getActivityAdvisory, buildPartyState } from "./RestConstants.js";
+import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, CAMP_STATIONS, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, DETECT_MAGIC_BTN_LABEL_PLAYER, DETECT_MAGIC_BTN_LABEL_GM, DETECT_MAGIC_BTN_TITLE_GM } from "./RestConstants.js";
+import {
+    activateStationLayer,
+    deactivateStationLayer,
+    isStationLayerActive,
+    refreshStationEmptyNoticeFade,
+    refreshStationMealPortraits,
+    refreshStationPortraitsFromChoices,
+    resetStationOverlaysLocal,
+    setStationPlayerState
+} from "../services/StationInteractionLayer.js";
+import {
+    closeStationDialogIfDifferentActor,
+    notifyStationMealChoicesUpdated,
+    notifyWorkbenchIdentifyStagingTouched,
+    StationActivityDialog
+} from "./StationActivityDialog.js";
+
 import { STUB_RECIPES, STUB_POOLS, STUB_HUNT_YIELDS } from "../data/stub-content.js";
 import { ShortRestApp } from "./ShortRestApp.js";
 import { registerActiveRestApp, clearActiveRestApp, setActiveRestData, registerCampfireApp, clearCampfireApp, _showGmRestIndicator, _removeGmRestIndicator, getPartyActors } from "../module.js";
@@ -40,8 +61,154 @@ import { registerActiveRestApp, clearActiveRestApp, setActiveRestData, registerC
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
+/**
+ * Whether an actor can cast a named spell from their sheet (dnd5e: cantrips, prepared, always, innate).
+ * @param {Actor} actor
+ * @param {string} spellNameLower
+ * @returns {boolean}
+ */
+function actorHasNamedSpellAccess(actor, spellNameLower) {
+    if (!actor?.items) return false;
+    for (const i of actor.items) {
+        if (i.type !== "spell") continue;
+        if (i.name?.toLowerCase() !== spellNameLower) continue;
+        const prep = i.system?.preparation;
+        const mode = prep?.mode;
+        const level = i.system?.level ?? 0;
+        if (level === 0) return true;
+        if (mode === "innate") return true;
+        if (mode === "always") return true;
+        if (prep?.prepared === true) return true;
+    }
+    return false;
+}
 
+/**
+ * Party unidentified items plus ritual Identify vs Detect Magic casters (rest UI and workbench station).
+ * @param {Actor[]} partyActors
+ * @param {{ restrictUnidentifiedToActorId?: string|null }} [options]
+ * @returns {{
+ *   unidentifiedItems: object[],
+ *   identifyCasters: { id: string, name: string }[],
+ *   detectMagicCasters: { id: string, name: string }[]
+ * }}
+ */
+function collectPartyIdentifyEmbedData(partyActors, options = {}) {
+    const restrictUnidentifiedActorId = options.restrictUnidentifiedToActorId ?? null;
+    const unidentifiedItems = [];
+    const identifyCasters = [];
+    const detectMagicCasters = [];
+    for (const a of partyActors) {
+        if (!restrictUnidentifiedActorId || a.id === restrictUnidentifiedActorId) {
+            for (const item of a.items ?? []) {
+                if (item.system?.identified === false) {
+                    const hasUnidentifiedData = !!(item.system?.unidentified?.name || item.system?.unidentified?.description);
+                    const isPotion = item.type === "consumable" && item.system?.type?.value === "potion";
+                    const rawRarity = (item.system?.rarity ?? "common").replace(/\s+(\w)/g, (_, c) => c.toUpperCase());
+                    unidentifiedItems.push({
+                        itemId: item.id,
+                        actorId: a.id,
+                        actorName: a.name,
+                        name: item.system?.unidentified?.name || item.name || "Unknown Item",
+                        img: item.img || "icons/svg/mystery-man.svg",
+                        rarity: rawRarity,
+                        rarityLabel: rawRarity.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase()).trim(),
+                        type: item.type,
+                        isPotion,
+                        hasUnidentifiedData,
+                        requiresAttunement: !!item.system?.attunement,
+                        identified: false
+                    });
+                }
+            }
+        }
+        if (actorHasNamedSpellAccess(a, "identify")) {
+            identifyCasters.push({ id: a.id, name: a.name });
+        }
+        if (actorHasNamedSpellAccess(a, "detect magic")) {
+            detectMagicCasters.push({ id: a.id, name: a.name });
+        }
+    }
+    return { unidentifiedItems, identifyCasters, detectMagicCasters };
+}
 
+function itemIsNativeUnidentified(item) {
+    return item?.system?.identified === false;
+}
+
+function itemIsDnD5ePotionType(item) {
+    return item?.type === "consumable" && item.system?.type?.value === "potion";
+}
+
+/** Matches DetectMagicScanner / workbench: native unidentified or Quartermaster-masked gear. */
+function itemIsWorkbenchUnidentified(actor, item) {
+    if (!item || !actor?.items?.has(item.id)) return false;
+    const validTypes = new Set(["weapon", "equipment", "consumable", "tool", "loot", "container"]);
+    if (!validTypes.has(item.type)) return false;
+    const raw = item.toObject?.()?.system ?? {};
+    const identifiedLive = item.system?.identified;
+    const identifiedRaw = raw.identified;
+    const summarise = game.ionrift?.workshop?.getLatentSummary ?? null;
+    const quartermasterLatent = summarise?.(item);
+    const isQmMasked = !!quartermasterLatent && quartermasterLatent.kind !== "mundane";
+    const isNativeUnidentified = identifiedLive === false || identifiedRaw === false;
+    return isQmMasked || isNativeUnidentified;
+}
+
+/**
+ * Resolve an Item from a browser drop event (character sheet, sidebar, etc.).
+ * @param {DragEvent} event
+ * @returns {Promise<Item|null>}
+ */
+async function resolveItemFromDropEvent(event) {
+    const TE = globalThis.foundry?.applications?.ux?.TextEditor ?? globalThis.TextEditor;
+    let data = null;
+    if (typeof TE?.getDragEventData === "function") {
+        data = TE.getDragEventData(event);
+    } else if (TE?.implementation && typeof TE.implementation.getDragEventData === "function") {
+        data = TE.implementation.getDragEventData(event);
+    }
+    if (!data?.type) {
+        try {
+            data = JSON.parse(event.dataTransfer?.getData("text/plain") || "{}");
+        } catch {
+            data = null;
+        }
+    }
+    if (!data?.type || data.type !== "Item") return null;
+    if (data.uuid) {
+        const doc = fromUuidSync(data.uuid);
+        return doc instanceof Item ? doc : null;
+    }
+    if (typeof Item.implementation?.fromDropData === "function") {
+        try {
+            const doc = await Item.implementation.fromDropData(data);
+            return doc instanceof Item ? doc : null;
+        } catch {
+            return null;
+        }
+    }
+    return null;
+}
+
+/**
+ * Scan is a party-wide benefit once cast; only the GM or a player who owns a Detect Magic caster may trigger the UI.
+ * @param {Actor[]} partyActors
+ * @returns {boolean}
+ */
+function computeCanTriggerDetectMagicScan(partyActors) {
+    const { detectMagicCasters } = collectPartyIdentifyEmbedData(partyActors);
+    if (!detectMagicCasters.length) return false;
+    if (game.user?.isGM) return true;
+    const ids = new Set(detectMagicCasters.map(c => c.id));
+    return partyActors.some(a => ids.has(a.id) && a.isOwner);
+}
+
+/** Toolbar visibility: GM always; players only when a controllable caster exists. */
+function computeCanShowDetectMagicScanButton(partyActors) {
+    if (game.user?.isGM) return true;
+    return computeCanTriggerDetectMagicScan(partyActors);
+}
 
 /**
  * RestSetupApp (v2)
@@ -138,7 +305,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             lightCampfire: RestSetupApp.#onLightCampfire,
             proceedFromCamp: RestSetupApp.#onProceedFromCamp,
             clearAllCampScene: RestSetupApp.#onClearAllCampScene,
-            clearMyCampGear: RestSetupApp.#onClearMyCampGear
+            clearMyCampGear: RestSetupApp.#onClearMyCampGear,
+            exitStationChoiceReview: RestSetupApp.#onExitStationChoiceReview
         }
     };
 
@@ -177,6 +345,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._campfireSnapshot = null;
         this._selectedCharacterId = null;
         this._activitySubTab = "identify"; // identify | activity | meal
+        /** When set, activity-phase station grid highlights this station (canvas interaction). */
+        this._canvasFocusedStationId = null;
+        /** controlToken hook: GM roster sync; all users station overlay refresh in activity phase. */
+        this._gmControlTokenHook = null;
+        /** Activity phase: character ids whose station rations were submitted (persists in activeRest). */
+        this._activityMealRationsSubmitted = new Set();
+        /** Workbench Identify: actorId -> { gearItemId: string|null, potionItemIds: string[] } before submit. */
+        this._workbenchIdentifyStaging = new Map();
+        /** actorId -> { items: { itemId, name, img, requiresAttunement }[], revealAt: number } post-submit ritual */
+        this._workbenchIdentifyAcknowledge = new Map();
+        /** Player: main window reopened after picking from a station; Back minimises again. */
+        this._postStationChoiceReview = false;
+        /** Actor id for revert on Back after a station pick. */
+        this._stationReviewCharacterId = null;
         this._deployedGear = new Map();
         this._boundCampCanvasDrop = this._onCampCanvasDrop.bind(this);
 
@@ -194,6 +376,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Dual-track: GM overrides and player submissions
         this._characterChoices = new Map();
+        /** Activity phase: character id -> canvas station id after a station pick (player multi-PC dim sync). */
+        this._stationCanvasIdByCharacter = new Map();
         this._earlyResults = new Map();
         this._playerSubmissions = new Map();
         this._gmOverrides = new Map();
@@ -885,6 +1069,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             gmCopySpellProposal: this._gmCopySpellProposal?.charged ? this._gmCopySpellProposal : null,
             mealChoices: this._mealChoices ? Array.from(this._mealChoices.entries()) : [],
             mealSubmissions: this._mealSubmissions ? Array.from(this._mealSubmissions.entries()) : [],
+            activityMealRationsSubmitted: [...(this._activityMealRationsSubmitted ?? [])],
             daysSinceLastRest: this._daysSinceLastRest ?? 1,
             campfireSnapshot: this._campfireApp ? {
                 lit: this._campfireApp._lit ?? false,
@@ -896,6 +1081,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 lastFireLevel: this._campfireApp._lastFireLevel ?? "unlit"
             } : (this._campfireSnapshot ?? null),
             travelState: this._travel?.serialize() ?? null,
+            magicScanComplete: this._magicScanComplete ?? false,
+            magicScanResults: this._magicScanResults ?? null,
             timestamp: Date.now()
         };
         await game.settings.set(MODULE_ID, "activeRest", state);
@@ -931,11 +1118,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._gmCopySpellProposal = state.gmCopySpellProposal ?? null;
         this._mealChoices = new Map(state.mealChoices ?? []);
         this._mealSubmissions = new Map(state.mealSubmissions ?? []);
+        this._activityMealRationsSubmitted = new Set(state.activityMealRationsSubmitted ?? []);
         this._daysSinceLastRest = state.daysSinceLastRest ?? 1;
         this._campfireSnapshot = state.campfireSnapshot ?? null;
         if (state.travelState) {
             this._travel.deserialize(state.travelState);
         }
+
+        this._magicScanResults = state.magicScanResults ?? null;
+        this._magicScanComplete = state.magicScanComplete ?? false;
 
         // Ensure _loadData has finished so resolvers and _activities are available
         if (this._dataReady) await this._dataReady;
@@ -945,7 +1136,89 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         console.log(`[Respite:State] Restored — characterChoices=${this._characterChoices.size}, playerSubmissions=${this._playerSubmissions.size}, gmOverrides=${this._gmOverrides.size}`);
 
+        if (this._magicScanComplete) {
+            notifyDetectMagicScanApplied(this, getPartyActors().map(a => a.id));
+        }
+
         return true;
+    }
+
+    /**
+     * After world-flag restore while in activity phase: match a live session (station
+     * overlays, rest bar, window minimised like Proceed to Activities).
+     */
+    async applyRestoredPhaseUi() {
+        if (this._phase !== "activity") return;
+        await this.render({ force: true });
+        this._attachActivityPhaseCanvasChrome();
+        await this.close({});
+    }
+
+    /**
+     * Station overlays plus bottom rest bar (shared by phase change, snapshot resync, restore).
+     */
+    _attachActivityPhaseCanvasChrome() {
+        const runActivate = () => {
+            try {
+                this._activateCanvasStationLayer();
+            } catch (err) {
+                console.error(`${MODULE_ID} | _activateCanvasStationLayer failed`, err);
+            }
+        };
+        if (canvas?.ready) runActivate();
+        else Hooks.once("canvasReady", runActivate);
+        if (this._isGM) {
+            _showGmRestIndicator(this);
+        }
+        this._updateRestBarProgress();
+    }
+
+    /**
+     * Removes station overlays only. GM {@link #_installGmStationTokenSyncHook} is tied to
+     * roster phases and removed in {@link #_onRender} when leaving camp/travel/activity/meal.
+     */
+    _tearDownStationLayerCanvas() {
+        deactivateStationLayer();
+        this._stationCanvasIdByCharacter?.clear();
+    }
+
+    _removeGmStationTokenSyncHook() {
+        if (this._gmControlTokenHook) {
+            Hooks.off("controlToken", this._gmControlTokenHook);
+            this._gmControlTokenHook = null;
+        }
+    }
+
+    /**
+     * GM: roster selection tracks the controlled party token.
+     * Players: same hook refreshes station overlay dimming when switching owned characters.
+     */
+    _installGmStationTokenSyncHook() {
+        if (this._gmControlTokenHook) return;
+        const rosterPhases = new Set(["camp", "travel", "activity", "meal"]);
+        this._gmControlTokenHook = (token, controlled) => {
+            if (!controlled || !rosterPhases.has(this._phase)) return;
+            const actor = token?.actor;
+            if (!actor || actor.type !== "character") return;
+            const partyActors = getPartyActors();
+            if (!partyActors.some(a => a.id === actor.id)) return;
+            if (this._isGM) {
+                if (this._selectedCharacterId === actor.id) return;
+                this._selectedCharacterId = actor.id;
+            }
+            if (this._phase === "activity") {
+                closeStationDialogIfDifferentActor(actor.id);
+                if (isStationLayerActive()) {
+                    if (!this._isGM) this._refreshStationOverlayForFocusChange();
+                    else {
+                        refreshStationEmptyNoticeFade(this);
+                        this._refreshStationOverlayMeals();
+                    }
+                }
+            }
+            if (this._isGM) this.render();
+        };
+        Hooks.on("controlToken", this._gmControlTokenHook);
     }
 
     /**
@@ -1134,53 +1407,26 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     game.socket.emit(`module.${MODULE_ID}`, { type: "restResolved" });
                     clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
                     resetCampSession();
+                    this._clearDetectMagicScanSession();
                     await super.close(options);
                 }
                 return;
             }
 
-            // If rest is unresolved (not in resolve phase), offer discard or minimize
+            // Mid-rest (camp, activity, events, etc.): X minimizes to the status bar. No modal.
+            // Setup and resolve: no indicator; resolve uses the discard confirm branch above.
             const restActive = this._phase && this._phase !== "resolve" && this._phase !== "setup";
             if (restActive && !options.resolved) {
-                const choice = await new Promise(resolve => {
-                    const overlay = document.createElement("div");
-                    overlay.classList.add("ionrift-armor-modal-overlay");
-                    overlay.innerHTML = `
-                        <div class="ionrift-armor-modal">
-                            <h3><i class="fas fa-campground"></i> Rest in Progress</h3>
-                            <p>The rest is still active. Discard it (cleans up camp tokens) or minimize to the status bar?</p>
-                            <div class="ionrift-armor-modal-buttons">
-                                <button class="btn-armor-confirm"><i class="fas fa-times"></i> Discard</button>
-                                <button class="btn-armor-minimize"><i class="fas fa-window-minimize"></i> Minimize</button>
-                                <button class="btn-armor-cancel"><i class="fas fa-arrow-left"></i> Go Back</button>
-                            </div>
-                        </div>`;
-                    document.body.appendChild(overlay);
-                    overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => { overlay.remove(); resolve("discard"); });
-                    overlay.querySelector(".btn-armor-minimize").addEventListener("click", () => { overlay.remove(); resolve("minimize"); });
-                    overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => { overlay.remove(); resolve("cancel"); });
-                });
-
-                if (choice === "discard") {
-                    await game.settings.set(MODULE_ID, "activeRest", {});
-                    game.socket.emit(`module.${MODULE_ID}`, { type: "restAbandoned" });
-                    clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
-                    resetCampSession();
-                    clearActiveRestApp();
-                    _removeGmRestIndicator();
-                    await super.close(options);
-                    return;
-                } else if (choice === "minimize") {
-                    _showGmRestIndicator(this);
-                }
-                return;
+                _showGmRestIndicator(this);
             } else {
-                // Notify players to close their rest windows
                 if (options.resolved) {
                     game.socket.emit(`module.${MODULE_ID}`, { type: "restResolved" });
                     clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
                     resetCampSession();
                 }
+                this._tearDownStationLayerCanvas();
+                this._removeGmStationTokenSyncHook();
+                if (!options.abandoned) this._clearDetectMagicScanSession();
                 clearActiveRestApp();
                 _removeGmRestIndicator();
             }
@@ -1300,12 +1546,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Activity icon mapping
 
         // Pre-compute party state for contextual advisories
-        const _bd = this._engine?._encounterBreakdown ?? {};
-        const _baseDC = this._eventResolver?.tables?.get(this._engine?.terrainTag)?.noEventThreshold ?? 15;
-        const _mods = (_bd.shelter ?? 0) + (_bd.weather ?? 0) + (_bd.scouting ?? 0) + (this._engine?.fireRollModifier ?? 0);
-        const _defenses = _bd.defenses ?? 0;
-        const _currentDC = Math.max(1, _baseDC - _mods + (this._engine?.gmEncounterAdj ?? 0) - _defenses);
-        const partyState = buildPartyState(partyActors, this._pendingSelections, _currentDC);
+        const partyState = this.getPartyStateForAdvisory();
         const characterStatuses = partyActors.map(a => {
             const gmOverride = this._gmOverrides.get(a.id);
             const playerChoice = this._getPlayerChoiceForCharacter(a.id);
@@ -1517,6 +1758,25 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ...fadedTiles.filter(t => t.isCrafting)
             ];
 
+            // Station-grouped activity cards
+            const allAvailableIds = new Set(allTiles.map(t => t.id));
+            const stationCards = CAMP_STATIONS
+                .map(station => {
+                    const stationTiles = station.activities
+                        .filter(id => allAvailableIds.has(id))
+                        .map(id => allTiles.find(t => t.id === id))
+                        .filter(Boolean);
+                    if (!stationTiles.length) return null;
+                    return {
+                        id: station.id,
+                        label: station.label,
+                        icon: station.icon,
+                        furnitureKey: station.furnitureKey,
+                        tiles: stationTiles
+                    };
+                })
+                .filter(Boolean);
+
             // Comfort gear badges
             const actorItems = a.items?.map(i => i.name?.toLowerCase()) ?? [];
             const gearBadges = [
@@ -1534,6 +1794,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 source,
                 professionBadges,
                 tileCategories,
+                stationCards,
                 professionTiles,
                 armorWarning,
                 gearBadges,
@@ -1594,6 +1855,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             && heroCharacters.some(c => c.id === this._selectedCharacterId);
         if (!selectedStillValid && heroCharacters.length > 0) {
             this._selectedCharacterId = heroCharacters[0].id;
+            closeStationDialogIfDifferentActor(this._selectedCharacterId);
         }
         const roster = characterStatuses.map(c => {
             // Check event roll status for this character
@@ -1833,46 +2095,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             gmCopySpellProposal: this._gmCopySpellProposal ?? null,
             copySpellRollPrompt: this._copySpellRollPrompt ?? null,
             phase: this._phase,
+            postStationChoiceReview: !this._isGM && this._phase === "activity" && !!this._postStationChoiceReview,
             activitySubTab: (() => {
                 if (this._phase !== "activity") return null;
-                // Build unidentified items list
-                const unidentifiedItems = [];
-                const identifyCasters = [];
-                for (const a of partyActors) {
-                    // Scan for unidentified items
-                    for (const item of a.items ?? []) {
-                        if (item.system?.identified === false) {
-                            // Check if the item has unidentified text (magic items do)
-                            const hasUnidentifiedData = !!(item.system?.unidentified?.name || item.system?.unidentified?.description);
-                            const isPotion = item.type === "consumable" && item.system?.type?.value === "potion";
-                            const rawRarity = (item.system?.rarity ?? "common").replace(/\s+(\w)/g, (_, c) => c.toUpperCase());
-                            unidentifiedItems.push({
-                                itemId: item.id,
-                                actorId: a.id,
-                                actorName: a.name,
-                                name: item.system?.unidentified?.name || item.name || "Unknown Item",
-                                img: item.img || "icons/svg/mystery-man.svg",
-                                rarity: rawRarity,
-                                rarityLabel: rawRarity.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase()).trim(),
-                                type: item.type,
-                                isPotion,
-                                hasUnidentifiedData,
-                                requiresAttunement: !!item.system?.attunement,
-                                identified: false
-                            });
-                        }
-                    }
-                    // Check for Identify spell capability
-                    const hasIdentify = [...(a.items ?? [])].some(i =>
-                        i.type === "spell" && (
-                            i.name?.toLowerCase() === "identify" ||
-                            i.name?.toLowerCase() === "detect magic"
-                        ) && (i.system?.preparation?.prepared || i.system?.preparation?.mode === "always" || i.system?.preparation?.mode === "innate")
-                    );
-                    if (hasIdentify) {
-                        identifyCasters.push({ id: a.id, name: a.name });
-                    }
-                }
+                const { unidentifiedItems, identifyCasters, detectMagicCasters } = collectPartyIdentifyEmbedData(partyActors);
                 // Track already-identified items from this rest
                 const identifiedThisRest = this._identifiedItems ?? [];
                 const hasUnidentified = unidentifiedItems.length > 0;
@@ -1966,6 +2192,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     hasUnidentified: hasUnidentified || unidentifiedItems.length > 0,
                     unidentifiedItems,
                     identifyCasters,
+                    detectMagicCasters,
+                    canShowDetectMagicScanButton: computeCanShowDetectMagicScanButton(partyActors),
                     identifiedThisRest,
                     canIdentifyByRest: true,
                     itemCount: unidentifiedItems.length,
@@ -2185,6 +2413,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             selfAfkId: game.user.isGM
                 ? "gm"
                 : (roster.find(r => r.isOwner)?.id ?? ""),
+            canvasFocusedStationId: this._canvasFocusedStationId ?? null,
             selectedCharacter,
             partyCharacters,
             totalCharacters,
@@ -2390,6 +2619,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             })() : null,
             magicScanResults: this._magicScanResults ?? null,
             magicScanComplete: this._magicScanComplete ?? false,
+            canShowDetectMagicScanButton: this._phase === "activity"
+                ? computeCanShowDetectMagicScanButton(partyActors)
+                : false,
+            detectMagicScanButtonLabel: this._phase === "activity"
+                ? (game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER)
+                : DETECT_MAGIC_BTN_LABEL_PLAYER,
+            detectMagicScanButtonTitle: this._phase === "activity" && game.user?.isGM
+                ? DETECT_MAGIC_BTN_TITLE_GM
+                : "",
 
             // Meal phase context
             mealCards: (() => {
@@ -2503,9 +2741,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     _buildActivityDetailContext(selectedCharacter) {
         if (!this._activityDetailId || !selectedCharacter) return null;
 
-        // Find the tile from the selected character's tiles
+        // Find the tile from the selected character's tiles (search both flat and station views)
         const allTiles = [
             ...(selectedCharacter.tileCategories?.flatMap(c => c.tiles) ?? []),
+            ...(selectedCharacter.stationCards?.flatMap(s => s.tiles) ?? []),
             ...(selectedCharacter.professionTiles ?? [])
         ];
         const tile = allTiles.find(t => t.id === this._activityDetailId);
@@ -2935,29 +3174,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Bind identify item buttons
         for (const btn of this.element.querySelectorAll("[data-action='identifyItem']")) {
             btn.addEventListener("click", async (e) => {
-                const { itemId, actorId, method } = e.currentTarget.dataset;
+                const { itemId, actorId } = e.currentTarget.dataset;
                 if (!itemId || !actorId) return;
-                const actor = game.actors.get(actorId);
-                const item = actor?.items?.get(itemId);
-                if (!item) return;
-
-                // Mark as identified via the DnD5e system
-                try {
-                    await item.update({ "system.identified": true });
-                    if (!this._identifiedItems) this._identifiedItems = [];
-                    this._identifiedItems.push({
-                        itemId, actorId,
-                        name: item.name,
-                        img: item.img,
-                        actorName: actor.name,
-                        requiresAttunement: !!item.system?.attunement
-                    });
-                    ui.notifications.info(`${item.name} identified by ${actor.name}.`);
-                    this.render();
-                } catch (err) {
-                    console.error(`[Respite] Failed to identify item:`, err);
-                    ui.notifications.error("Failed to identify item.");
-                }
+                await this.identifyItemFromWorkbenchStation(actorId, itemId);
             });
         }
 
@@ -3074,6 +3293,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
                 const actName = activity?.name ?? activityId;
                 ui.notifications.info(`${game.actors.get(characterId)?.name ?? "Character"} will ${actName}.`);
+                if (this._phase === "activity" && isStationLayerActive()) {
+                    refreshStationEmptyNoticeFade(this);
+                    refreshStationPortraitsFromChoices(this._characterChoices, this._stationCanvasIdByCharacter);
+                    this._refreshStationOverlayMeals();
+                }
                 this.render();
             });
         }
@@ -3086,8 +3310,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const charId = chip.dataset.rosterId;
                 if (!charId || charId === this._selectedCharacterId) return;
                 this._selectedCharacterId = charId;
+                closeStationDialogIfDifferentActor(charId);
+                this._canvasFocusedStationId = null;
                 this._activityDetailId = null;
                 this._craftingDrawerOpen = false;
+                if (isStationLayerActive()) {
+                    if (!this._isGM) this._refreshStationOverlayForFocusChange();
+                    else {
+                        refreshStationEmptyNoticeFade(this);
+                        this._refreshStationOverlayMeals();
+                    }
+                }
                 this.render();
             });
         }
@@ -3894,6 +4127,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         super._onRender?.(context, options);
         this._onRenderBindings(context, options);
 
+        {
+            const rosterPhases = new Set(["camp", "travel", "activity", "meal"]);
+            if (rosterPhases.has(this._phase)) this._installGmStationTokenSyncHook();
+            else this._removeGmStationTokenSyncHook();
+        }
+
         // Roll mode selects: update state + broadcast without re-rendering (preserves scroll).
         if (game.user.isGM) {
             for (const sel of this.element.querySelectorAll(".select-roll-mode")) {
@@ -4186,6 +4425,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._earlyResults = new Map();
         this._disasterChoice = null;
         this._activeTreeState = null;
+        this._clearDetectMagicScanSession();
         await this._saveRestState();
 
         // Campfire opens after render (see _onRender)
@@ -4207,6 +4447,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         this._rebuildCharacterChoices();
         this._saveRestState();
+        if (this._phase === "activity" && isStationLayerActive()) {
+            refreshStationEmptyNoticeFade(this);
+            refreshStationPortraitsFromChoices(this._characterChoices, this._stationCanvasIdByCharacter);
+            this._refreshStationOverlayMeals();
+        }
         this.render();
 
         // Broadcast updated submission status to players
@@ -4382,9 +4627,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 userId: game.user.id,
                 choices: Object.fromEntries(this._characterChoices)
             });
+            this._saveRestState();
         }
 
         this._activityDetailId = null;
+        if (this._phase === "activity" && isStationLayerActive()) {
+            refreshStationEmptyNoticeFade(this);
+            refreshStationPortraitsFromChoices(this._characterChoices, this._stationCanvasIdByCharacter);
+            this._refreshStationOverlayMeals();
+        }
         this.render();
     }
 
@@ -4401,6 +4652,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Event roll is deferred until GM clicks 'Roll for Events'.
      */
     static async #onSubmitActivities(event, target) {
+        this._tearDownStationLayerCanvas();
         for (const [characterId, activityId] of this._characterChoices) {
             const followUpValue = this._gmFollowUps?.get(characterId) ?? this._getFollowUpForCharacter(characterId);
             this._engine.registerChoice(characterId, activityId, { followUpValue });
@@ -4564,6 +4816,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!el) return;
         if (this._mealSubmitted) return; // Lock UI after submission
 
+        const stationEmbed = el?.closest?.(".station-meal-embed");
+        if (stationEmbed) {
+            const cid = stationEmbed.querySelector(".meal-drop-zone[data-character-id]")?.dataset?.characterId
+                ?? stationEmbed.querySelector("[data-character-id]")?.dataset?.characterId;
+            if (cid && this._activityMealRationsSubmitted?.has(cid)) return;
+        }
+
         // Clear any stuck drag classes from previous render cycles or cancelled drags
         el.querySelectorAll(".dragging").forEach(n => n.classList.remove("dragging"));
         el.querySelectorAll(".drop-hover").forEach(n => n.classList.remove("drop-hover"));
@@ -4601,7 +4860,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
             }
             this._mealChoices.set(charId, { ...existing, [slot]: arr });
-            this.render();
+            notifyStationMealChoicesUpdated();
+            this._refreshStationOverlayMeals();
+            if (this.rendered) this.render();
         };
 
         // Draggable + clickable inventory items
@@ -4659,9 +4920,136 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (slotIndex !== undefined && arr[slotIndex] && arr[slotIndex] !== "skip") {
                     arr[slotIndex] = "skip";
                     this._mealChoices.set(charId, { ...existing, [slot]: arr });
-                    this.render();
+                    notifyStationMealChoicesUpdated();
+                    this._refreshStationOverlayMeals();
+                    if (this.rendered) this.render();
                 }
             });
+        }
+    }
+
+    /**
+     * Workbench Identify: drag unidentified items onto focus vs potion circles (station dialog).
+     */
+    _bindWorkbenchIdentifyDragDrop(el) {
+        if (!el) return;
+        const embed = el.querySelector(".station-workbench-identify-embed[data-workbench-actor-id]");
+        if (!embed) return;
+        if (embed.querySelector(".wb-ident-ack-overlay")) return;
+        const actorId = embed.dataset.workbenchActorId;
+        if (!actorId) return;
+
+        embed.querySelectorAll(".dragging").forEach(n => n.classList.remove("dragging"));
+        embed.querySelectorAll(".drop-hover").forEach(n => n.classList.remove("drop-hover"));
+
+        const bump = () => {
+            notifyWorkbenchIdentifyStagingTouched();
+            if (this.rendered) this.render();
+        };
+
+        const validateDrop = (itemId, zone) => {
+            const actor = game.actors.get(actorId);
+            if (!actor?.isOwner && !game.user.isGM) {
+                return { ok: false, msg: "You can only arrange choices for characters you control." };
+            }
+            const item = actor.items.get(itemId);
+            if (!item) return { ok: false, msg: "Item not found." };
+            if (!itemIsWorkbenchUnidentified(actor, item)) {
+                return { ok: false, msg: "That item is already identified or cannot be focused here." };
+            }
+            const isPotion = itemIsDnD5ePotionType(item);
+            if (zone === "gear" && isPotion) {
+                return { ok: false, msg: "Drop potions onto the potion circle." };
+            }
+            if (zone === "potion" && !isPotion) {
+                return { ok: false, msg: "Drop that item onto the focus circle." };
+            }
+            return { ok: true };
+        };
+
+        const assignGear = itemId => {
+            const v = validateDrop(itemId, "gear");
+            if (!v.ok) {
+                ui.notifications.warn(v.msg);
+                return;
+            }
+            const st = this._getWorkbenchIdentifyStaging(actorId);
+            this._setWorkbenchIdentifyStaging(actorId, { gearItemId: itemId, potionItemIds: st.potionItemIds });
+            bump();
+        };
+
+        const appendPotion = itemId => {
+            const v = validateDrop(itemId, "potion");
+            if (!v.ok) {
+                ui.notifications.warn(v.msg);
+                return;
+            }
+            const st = this._getWorkbenchIdentifyStaging(actorId);
+            if (st.potionItemIds.includes(itemId)) {
+                ui.notifications.info("That potion is already in the taste list.");
+                return;
+            }
+            this._setWorkbenchIdentifyStaging(actorId, {
+                gearItemId: st.gearItemId,
+                potionItemIds: [...st.potionItemIds, itemId]
+            });
+            bump();
+        };
+
+        const zones = embed.querySelectorAll(".wb-ident-drop-zone");
+        for (const zone of zones) {
+            if (zone._wbIdentBound) continue;
+            zone._wbIdentBound = true;
+            const zoneType = zone.dataset.wbZone;
+            if (!zoneType) continue;
+
+            zone.addEventListener("dragover", e => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "copy";
+                zone.classList.add("drop-hover");
+            });
+            zone.addEventListener("dragleave", () => zone.classList.remove("drop-hover"));
+            zone.addEventListener("drop", async e => {
+                e.preventDefault();
+                zone.classList.remove("drop-hover");
+                const raw = e.dataTransfer?.getData("text/plain") ?? "";
+                if (raw.startsWith("wbident:")) {
+                    const parts = raw.split(":");
+                    if (parts.length < 4) return;
+                    const dragSlot = parts[1];
+                    const itemId = parts[2];
+                    const dragActorId = parts[3];
+                    if (dragActorId !== actorId) return;
+                    if (dragSlot === "potion" && zoneType === "potion") appendPotion(itemId);
+                    else if (dragSlot === "gear" && zoneType === "gear") assignGear(itemId);
+                    else if (dragSlot === "potion" && zoneType === "gear") {
+                        ui.notifications.warn("Drop potions onto the potion circle.");
+                    } else if (dragSlot === "gear" && zoneType === "potion") {
+                        ui.notifications.warn("Drop that item onto the focus circle.");
+                    }
+                    return;
+                }
+                const item = await resolveItemFromDropEvent(e);
+                if (!item) {
+                    ui.notifications.warn("Could not read that drop. Drag from this character's inventory on the sheet.");
+                    return;
+                }
+                if (item.parent?.id !== actorId) {
+                    ui.notifications.warn("Drop an item that belongs to this character's sheet.");
+                    return;
+                }
+                if (zoneType === "gear") assignGear(item.id);
+                else appendPotion(item.id);
+            });
+
+            if (zoneType === "gear") {
+                zone.addEventListener("click", () => {
+                    const st = this._getWorkbenchIdentifyStaging(actorId);
+                    if (!st.gearItemId) return;
+                    this._setWorkbenchIdentifyStaging(actorId, { gearItemId: null, potionItemIds: st.potionItemIds });
+                    bump();
+                });
+            }
         }
     }
 
@@ -4686,7 +5074,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * GM receives meal choices from a player via socket.
      * Merges into _mealChoices and tracks submission status.
      */
-    receiveMealChoices(userId, choices) { this._meals.receiveMealChoices(userId, choices); }
+    receiveMealChoices(userId, choices) {
+        void this._meals.receiveMealChoices(userId, choices).catch(err => {
+            console.warn(`${MODULE_ID} | receiveMealChoices`, err);
+        });
+    }
 
     async receiveMealDayConsumed(userId, clientChoices) { await this._meals.receiveMealDayConsumed(userId, clientChoices); }
 
@@ -4977,62 +5369,33 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Player: leave post-station review, revert that activity pick, hide the window again.
+     */
+    static async #onExitStationChoiceReview(event, target) {
+        event?.preventDefault?.();
+        if (!this._postStationChoiceReview) return;
+        const charId = this._stationReviewCharacterId;
+        this._postStationChoiceReview = false;
+        this._stationReviewCharacterId = null;
+        if (charId) this._revertStationActivityChoice(charId);
+        await this.close({ retainPlayerApp: true, skipRejoin: true });
+    }
+
+    /**
      * Detect Magic: scan party inventories for unidentified magical items.
      */
     static async #onDetectMagicScan(event, target) {
-
-        const { DetectMagicScanner } = await import("../services/DetectMagicScanner.js");
-
-        // Get party actors directly (same source as _prepareContext, not engine.roster)
-        const actorIds = getPartyActors()
-            .map(a => a.id);
-        console.log(`[Respite:Scan] Scanning ${actorIds.length} actors:`, actorIds);
-        const results = DetectMagicScanner.scanParty(actorIds);
-
-        this._magicScanResults = results;
-        this._magicScanComplete = true;
-
-        if (results.length === 0) {
-            ui.notifications.info("No unidentified magical items detected among the party's gear.");
-        }
-
-        this.render();
+        await this.runDetectMagicScan();
     }
 
     /**
      * Identify a specific scanned item via ritual casting.
      */
     static async #onIdentifyScannedItem(event, target) {
-        if (!game.user.isGM) return;
-
         const actorId = target.dataset.actorId;
         const itemId = target.dataset.itemId;
         if (!actorId || !itemId) return;
-
-        try {
-            const { DetectMagicScanner } = await import("../services/DetectMagicScanner.js");
-            const result = await DetectMagicScanner.identifyItem(actorId, itemId);
-
-            // Mark as identified in local scan results
-            if (this._magicScanResults) {
-                for (const actorResult of this._magicScanResults) {
-                    if (actorResult.actorId === actorId) {
-                        const item = actorResult.items.find(i => i.itemId === itemId);
-                        if (item) {
-                            item.identified = true;
-                            item.trueName = result.trueName;
-                            item.requiresAttunement = result.requiresAttunement;
-                        }
-                    }
-                }
-            }
-
-            ui.notifications.info(`Identified: ${result.trueName} (${DetectMagicScanner.schoolLabel(result.school)})`);
-            this.render();
-        } catch (e) {
-            console.error(`[Respite] Failed to identify item:`, e);
-            ui.notifications.error(`Failed to identify item: ${e.message}`);
-        }
+        await this.identifyScannedMagicItem(actorId, itemId);
     }
 
     /**
@@ -5069,19 +5432,24 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Clear persisted rest state
         await game.settings.set(MODULE_ID, "activeRest", {});
 
+        // Detect Magic + workbench staging (skip save: activeRest already cleared)
+        this._clearDetectMagicScanSession({ skipSave: true });
+
         // Broadcast to players so they close their windows
         game.socket.emit(`module.${MODULE_ID}`, { type: "restAbandoned" });
 
         // Clean up camp tokens from the scene
         clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
         resetCampSession();
+        this._tearDownStationLayerCanvas();
+        this._removeGmStationTokenSyncHook();
 
         // Clear module-level references
         const { clearActiveRestApp } = await import("../module.js");
         clearActiveRestApp();
 
         ui.notifications.info("Rest abandoned.");
-        this.close({ resolved: true });
+        this.close({ resolved: true, abandoned: true });
     }
 
     /**
@@ -6164,7 +6532,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         this._rebuildCharacterChoices();
+        this._pruneEarlyResultsWithoutChoice();
         this._saveRestState();
+
+        if (this._phase === "activity" && isStationLayerActive()) {
+            refreshStationEmptyNoticeFade(this);
+            refreshStationPortraitsFromChoices(this._characterChoices, this._stationCanvasIdByCharacter);
+            this._refreshStationOverlayMeals();
+        }
         this.render();
 
         // Broadcast submission status to all players
@@ -6183,6 +6558,442 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         });
     }
 
+    /**
+     * Updates the activity-phase rest bar progress line when the main window is minimised.
+     */
+    _updateRestBarProgress() {
+        const bar = document.getElementById("respite-gm-rest-bar");
+        if (!bar) return;
+        const span = bar.querySelector(".respite-bar-progress");
+        if (!span) return;
+        const total = getPartyActors().length;
+        const resolved = this._characterChoices.size;
+        span.textContent = `${resolved} of ${total} activities chosen`;
+    }
+
+    _pruneEarlyResultsWithoutChoice() {
+        if (!this._earlyResults?.size) return;
+        for (const charId of [...this._earlyResults.keys()]) {
+            if (!this._characterChoices.has(charId)) this._earlyResults.delete(charId);
+        }
+    }
+
+    /**
+     * Player: undo a station-submitted activity for one character and sync sockets.
+     * @param {string} characterId
+     */
+    _revertStationActivityChoice(characterId) {
+        if (!characterId || this._isGM) return;
+
+        this._characterChoices.delete(characterId);
+        this._lockedCharacters.delete(characterId);
+        this._earlyResults.delete(characterId);
+        this._stationCanvasIdByCharacter?.delete(characterId);
+
+        const mySub = this._playerSubmissions.get(game.user.id);
+        if (mySub?.choices) {
+            delete mySub.choices[characterId];
+            this._playerSubmissions.set(game.user.id, mySub);
+        }
+
+        this._rebuildCharacterChoices();
+        this._pruneEarlyResultsWithoutChoice();
+
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "activityChoice",
+            userId: game.user.id,
+            choices: Object.fromEntries(this._characterChoices)
+        });
+
+        resetStationOverlaysLocal();
+        if (isStationLayerActive()) {
+            if (!this._isGM) this._refreshStationOverlayForFocusChange();
+            else {
+                refreshStationEmptyNoticeFade(this);
+                this._refreshStationOverlayMeals();
+            }
+        }
+        this._updateRestBarProgress();
+    }
+
+    /**
+     * Confirms an activity chosen from the canvas station dialog (same path as the panel Confirm button).
+     * @param {string} characterId
+     * @param {string} activityId
+     * @param {string|null} canvasStationId - station id for overlay dimming
+     */
+    async finalizeActivityChoiceFromStation(characterId, activityId, canvasStationId = null, options = {}) {
+        if (!characterId || !activityId) return null;
+        if (this._craftingInProgress?.has(characterId)) return null;
+
+        const activity = this._activities?.find(a => a.id === activityId);
+        if (activity?.crafting?.enabled) {
+            const syntheticTarget = { dataset: { characterId, profession: activity.crafting.profession } };
+            RestSetupApp.#onOpenCrafting.call(this, null, syntheticTarget);
+            return { source: "activity", activityId, result: "crafting_redirect" };
+        }
+
+        this._characterChoices.set(characterId, activityId);
+        this._lockedCharacters.add(characterId);
+        this._pendingSelections?.delete(characterId);
+
+        const actor = game.actors.get(characterId);
+        let activityResult = null;
+
+        if (activityId === "act_scribe" && actor) {
+            const followUpValue = options.followUpValue ?? this._gmFollowUps?.get(characterId) ?? this._getFollowUpForCharacter(characterId);
+            const spellLevel = parseInt(followUpValue, 10) || 1;
+            const cost = spellLevel * 50;
+            const dc = 10 + spellLevel;
+
+            if (game.user.isGM) {
+                CopySpellHandler.sendProposal(characterId, spellLevel);
+            } else {
+                game.socket.emit(`module.${MODULE_ID}`, {
+                    type: "copySpellProposal",
+                    actorId: characterId,
+                    actorName: actor.name,
+                    spellLevel,
+                    cost,
+                    dc,
+                    initiatedBy: game.user.name
+                });
+            }
+
+            activityResult = {
+                source: "activity",
+                activityId,
+                result: "pending_approval",
+                narrative: `Level ${spellLevel} spell (${cost}gp, DC ${dc}). Awaiting transaction.`
+            };
+            this._earlyResults.set(characterId, activityResult);
+            if (this.rendered) this.render();
+        } else if (actor && this._engine) {
+            const followUpValue = options.followUpValue ?? this._gmFollowUps?.get(characterId) ?? this._getFollowUpForCharacter(characterId);
+            activityResult = await this._activityResolver.resolve(
+                activityId, actor, this._engine.terrainTag, this._engine.comfort, { followUpValue }
+            );
+            this._earlyResults.set(characterId, activityResult);
+            const tier = activityResult.result === "exceptional" ? "Exceptional!"
+                : activityResult.result === "success" ? "Success"
+                : activityResult.result === "failure_complication" ? "Failed (complication)"
+                : activityResult.result === "failure" ? "Failed" : activityResult.result;
+            const actName = activity?.name ?? activityId;
+            ui.notifications.info(`${actor.name}: ${actName} - ${tier}`);
+            if (this.rendered) this.render();
+        }
+
+        let mySub = this._playerSubmissions.get(game.user.id) || { choices: {}, userName: game.user.name, timestamp: Date.now() };
+        mySub.choices[characterId] = activityId;
+        this._playerSubmissions.set(game.user.id, mySub);
+        this._saveRestState();
+
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "activityChoice",
+            userId: game.user.id,
+            choices: Object.fromEntries(this._characterChoices)
+        });
+
+        const actName = activity?.name ?? activityId;
+        ui.notifications.info(`${game.actors.get(characterId)?.name ?? "Character"} will ${actName}.`);
+
+        if (canvasStationId) {
+            this._stationCanvasIdByCharacter.set(characterId, canvasStationId);
+            setStationPlayerState(characterId, canvasStationId, this._characterChoices, this._stationCanvasIdByCharacter);
+        } else {
+            this._stationCanvasIdByCharacter.delete(characterId);
+        }
+
+        this._updateRestBarProgress();
+
+        // GM: advance focus to the next unchosen party member so overlays
+        // reflect who still needs to pick, not the character who just committed.
+        if (this._isGM && this._phase === "activity") {
+            const partyActors = getPartyActors();
+            const nextUnchosen = partyActors.find(a => !this._characterChoices.has(a.id));
+            if (nextUnchosen) {
+                this._selectedCharacterId = nextUnchosen.id;
+            }
+        }
+
+        // Reset all overlays to active, then reapply fade/portraits for the new context.
+        if (this._phase === "activity" && isStationLayerActive()) {
+            resetStationOverlaysLocal();
+            refreshStationEmptyNoticeFade(this);
+            refreshStationPortraitsFromChoices(this._characterChoices, this._stationCanvasIdByCharacter);
+            this._refreshStationOverlayMeals();
+        }
+
+        if (!this._isGM && this._phase === "activity") {
+            this._postStationChoiceReview = true;
+            this._stationReviewCharacterId = characterId;
+            this._activitySubTab = "activity";
+            this._activitySubTabUserSet = true;
+            this._selectedCharacterId = characterId;
+            this._activityDetailId = null;
+            await this.render({ force: true });
+        } else if (this.rendered) {
+            this.render();
+        }
+
+        return activityResult;
+    }
+
+    /**
+     * Canvas station id for post-pick overlay dimming when the activity was not chosen from a station.
+     */
+    static _inferCanvasStationForActivity(activityId, actorId = null) {
+        return inferCanvasStationForActivity(activityId, actorId);
+    }
+
+    /**
+     * Player: rebuild station dimming after token or roster focus changes (multi-PC).
+     */
+    _refreshStationOverlayForFocusChange() {
+        if (this._phase !== "activity" || !isStationLayerActive()) return;
+        const partyActors = getPartyActors();
+        const viewer = RestSetupApp._resolveStationActorForUser(partyActors, this);
+        const choices = this._characterChoices;
+        if (!(choices instanceof Map)) return;
+
+        resetStationOverlaysLocal();
+        refreshStationEmptyNoticeFade(this);
+        this._refreshStationOverlayMeals();
+
+        if (game.user.isGM) {
+            refreshStationPortraitsFromChoices(choices, this._stationCanvasIdByCharacter);
+            return;
+        }
+        const vid = viewer?.id;
+        if (vid && viewer.isOwner && choices.has(vid)) {
+            const actId = choices.get(vid);
+            const sid = this._stationCanvasIdByCharacter.get(vid)
+                ?? RestSetupApp._inferCanvasStationForActivity(actId, vid);
+            setStationPlayerState(vid, sid, choices, this._stationCanvasIdByCharacter);
+        } else {
+            refreshStationPortraitsFromChoices(choices, this._stationCanvasIdByCharacter);
+        }
+    }
+
+    /**
+     * Activity phase + track food: this actor still owes rations at a station dialog (meal tab).
+     * Matches {@link #_getPendingMealCanvasPlan} per-actor eligibility.
+     * @param {string} actorId
+     * @returns {boolean}
+     */
+    _actorOwesActivityPhaseMealRations(actorId) {
+        if (!actorId || !game.settings.get(MODULE_ID, "trackFood") || this._phase !== "activity" || !this._engine) {
+            return false;
+        }
+        const terrainTag = this._engine.terrainTag ?? this._selectedTerrain ?? "forest";
+        const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
+        const fp = terrainMealRules.foodPerDay ?? 0;
+        const wp = terrainMealRules.waterPerDay ?? 0;
+        const terrainFoodWater = fp > 0 || wp > 0;
+        const card = this.getStationMealCardForActor(actorId);
+        if (!card || card.playerSubmitted) return false;
+        if (!terrainFoodWater && !(card.needsEssence && card.essenceRequired > 0)) return false;
+        return true;
+    }
+
+    /**
+     * Per {@link StationActivityDialog.openForStation}, which stations have zero **available**
+     * (non-faded) activities for the current roster or controlled token.
+     * Cooking / campfire stay bright when the viewer still owes activity-phase rations (meal tab).
+     * Workbench stays bright when the party has unidentified gear (Identify tab on the station dialog),
+     * including after a major activity is already committed.
+     * @returns {Record<string, boolean>}
+     */
+    _buildStationEmptyNoticeMap() {
+        const map = {};
+        const partyActors = getPartyActors();
+
+        // GM context = the character tab selected in the main UI, not the canvas token.
+        // Players resolve via assigned character / owned token as before.
+        let actor;
+        if (game.user.isGM && this._selectedCharacterId) {
+            actor = partyActors.find(a => a.id === this._selectedCharacterId) ?? null;
+        }
+        if (!actor) {
+            actor = RestSetupApp._resolveStationActorForUser(partyActors, this);
+        }
+        if (!actor?.id || !this._activityResolver) return map;
+
+        const alreadyChosen = this._characterChoices?.has(actor.id);
+
+        const restType = this._engine?.restType ?? "long";
+        const isFireLit = !!(this._fireLevel && this._fireLevel !== "unlit");
+        const { available: allAvail } = alreadyChosen
+            ? { available: [] }
+            : this._activityResolver.getAvailableActivitiesWithFaded(actor, restType, { isFireLit });
+
+        const mealBright = this._actorOwesActivityPhaseMealRations(actor.id);
+        const identifyParty = collectPartyIdentifyEmbedData(partyActors);
+        const workbenchIdentifyBright = (identifyParty.unidentifiedItems?.length ?? 0) > 0;
+
+        for (const station of CAMP_STATIONS) {
+            if (!station.furnitureKey) continue;
+
+            const stationIds = new Set(station.activities ?? []);
+            if (station.id === "campfire" && actor.id && !isGearDeployed(actor.id, "bedroll")) {
+                const bedrollStation = CAMP_STATIONS.find(s => s.id === "bedroll");
+                for (const id of bedrollStation?.activities ?? []) stationIds.add(id);
+            }
+
+            const available = allAvail.filter(a => stationIds.has(a.id));
+            let empty = available.length === 0;
+            if (empty && mealBright && (station.id === "cooking_station" || station.id === "campfire")) {
+                empty = false;
+            }
+            if (empty && station.id === "workbench" && workbenchIdentifyBright) {
+                empty = false;
+            }
+            map[station.id] = empty;
+        }
+
+        const bedrollStation = CAMP_STATIONS.find(s => s.id === "bedroll");
+        if (bedrollStation) {
+            const stationIds = new Set(bedrollStation.activities ?? []);
+            const available = allAvail.filter(a => stationIds.has(a.id));
+            map.bedroll = available.length === 0;
+        }
+
+        return map;
+    }
+
+    _refreshStationOverlayMeals() {
+        if (isStationLayerActive()) refreshStationMealPortraits(this);
+    }
+
+    /**
+     * @returns {{ stationId: string|null, urls: string[] }}
+     */
+    _getPendingMealCanvasPlan() {
+        const empty = { stationId: null, urls: [] };
+        if (!game.settings.get(MODULE_ID, "trackFood") || this._phase !== "activity" || !this._engine) {
+            return empty;
+        }
+        const urls = [];
+        for (const actor of getPartyActors()) {
+            if (!this._actorOwesActivityPhaseMealRations(actor.id)) continue;
+            urls.push(actor.img ?? "icons/svg/mystery-man.svg");
+        }
+        if (!urls.length) return empty;
+
+        const hasCooking = canvas?.ready && canvas.tokens.placeables.some(t => {
+            const f = t.document.flags?.[MODULE_ID];
+            return f?.isCampFurniture && f?.furnitureKey === "cookingArea";
+        });
+        const stationId = hasCooking ? "cooking_station" : "campfire";
+        return { stationId, urls };
+    }
+
+    /**
+     * Attaches interactive overlays to campsite station tokens (GM and players).
+     */
+    _activateCanvasStationLayer() {
+        if (!canvas?.ready) return;
+
+        const partyActors = getPartyActors();
+        const actorMap = {};
+        for (const actor of partyActors) {
+            const items = actor.items?.map(i => i.name?.toLowerCase() ?? "") ?? [];
+            const hasBedroll = items.some(n => n.includes("bedroll"));
+            const sceneToken = canvas.tokens?.placeables.find(t => t.actor?.id === actor.id);
+            actorMap[actor.id] = {
+                hasBedroll,
+                assignedTokenId: sceneToken?.id ?? null
+            };
+        }
+
+        const restSession = {
+            fireLevel: this._fireLevel,
+            restType:  this._engine?.restType ?? "long"
+        };
+
+        const app = this;
+        const proximityOpts = this._isGM
+            ? {
+                getProximityActorId: () => {
+                    const roster = getPartyActors();
+                    const a = RestSetupApp._resolveStationActorForUser(roster, app);
+                    return a?.id ?? null;
+                }
+            }
+            : {};
+
+        const stationEmptyNoticeFade = this._buildStationEmptyNoticeMap();
+
+        activateStationLayer(actorMap, async (stationId, token) => {
+            const roster = getPartyActors();
+            const actor = RestSetupApp._resolveStationActorForUser(roster, app);
+            if (!actor) {
+                console.warn(`${MODULE_ID} | Station click: no party actor for this user (assign a character or fix roster)`, {
+                    userId: game.user.id,
+                    partyIds: roster.map(a => a.id)
+                });
+                ui.notifications.warn("No character assigned for you in this rest. Ask the GM to check the party roster.");
+                return;
+            }
+            const station = CAMP_STATIONS.find(s => s.id === stationId);
+            if (!station) return;
+            console.log(`${MODULE_ID} | Station overlay click`, { stationId, actorId: actor.id, tokenId: token?.id });
+            app._canvasFocusedStationId = stationId;
+            app._activitySubTab = "activity";
+            try {
+                await StationActivityDialog.openForStation(
+                    station, actor, app._activityResolver, restSession, token, app, stationId
+                );
+            } catch (e) {
+                console.warn(`${MODULE_ID} | Station activity dialog`, e);
+            }
+        }, { ...proximityOpts, stationEmptyNoticeFade });
+
+        this._installGmStationTokenSyncHook();
+        this._refreshStationOverlayMeals();
+
+        // On resume (or re-activate), apply portraits and empty-notice fade for
+        // characters that already committed before the layer was torn down.
+        if (this._characterChoices?.size) {
+            refreshStationPortraitsFromChoices(this._characterChoices, this._stationCanvasIdByCharacter);
+            refreshStationEmptyNoticeFade(this);
+        }
+    }
+
+    /**
+     * Party actor to use for canvas station activity (current user).
+     * @param {Actor[]} partyActors
+     * @param {RestSetupApp|null} [restApp] - GM: controlled party token wins over roster so canvas notices and clicks match the token on the board.
+     * @returns {Actor|null}
+     */
+    static _resolveStationActorForUser(partyActors, restApp = null) {
+        const inParty = (a) => a && partyActors.some(p => p.id === a.id);
+
+        if (game.user?.isGM && restApp) {
+            const fromTok = canvas.tokens?.controlled?.[0]?.actor;
+            if (fromTok?.type === "character" && inParty(fromTok)) return fromTok;
+            if (restApp._selectedCharacterId) {
+                const sel = game.actors.get(restApp._selectedCharacterId);
+                if (sel?.type === "character" && inParty(sel)) return sel;
+            }
+        }
+
+        const assigned = game.user?.character;
+        if (assigned && partyActors.some(a => a.id === assigned.id) && assigned.isOwner) {
+            return assigned;
+        }
+        const owned = partyActors.filter(a => a.isOwner);
+        if (owned.length === 1) return owned[0];
+        if (owned.length > 1) {
+            const fromToken = canvas.tokens?.controlled?.[0]?.actor;
+            if (fromToken && owned.some(a => a.id === fromToken.id)) return fromToken;
+            return owned[0];
+        }
+        const OBS = CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER;
+        const playable = partyActors.find(a => a.testUserPermission(game.user, OBS));
+        return playable ?? null;
+    }
+
     _rebuildCharacterChoices() {
         this._characterChoices.clear();
 
@@ -6195,6 +7006,397 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         for (const [charId, actId] of this._gmOverrides) {
             this._characterChoices.set(charId, actId);
         }
+    }
+
+    /**
+     * Encounter line + watch list for activity advisories (main panel and station dialog).
+     */
+    getPartyStateForAdvisory() {
+        const partyActors = getPartyActors();
+        const _bd = this._engine?._encounterBreakdown ?? {};
+        const _baseDC = this._eventResolver?.tables?.get(this._engine?.terrainTag)?.noEventThreshold ?? 15;
+        const _mods = (_bd.shelter ?? 0) + (_bd.weather ?? 0) + (_bd.scouting ?? 0) + (this._engine?.fireRollModifier ?? 0);
+        const _defenses = _bd.defenses ?? 0;
+        const _currentDC = Math.max(1, _baseDC - _mods + (this._engine?.gmEncounterAdj ?? 0) - _defenses);
+        return buildPartyState(partyActors, this._pendingSelections, _currentDC);
+    }
+
+    /**
+     * One meal card for the canvas station dialog (activity phase rations tab).
+     * @param {string} actorId
+     * @returns {object|null}
+     */
+    getStationMealCardForActor(actorId) {
+        if (!actorId || !game.settings.get(MODULE_ID, "trackFood")) return null;
+        if (!this._engine) return null;
+        const terrainTag = this._engine.terrainTag ?? this._selectedTerrain ?? "forest";
+        const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
+        const cards = MealPhaseHandler.buildMealContext(
+            [actorId],
+            terrainTag,
+            terrainMealRules,
+            this._daysSinceLastRest ?? 1,
+            this._mealChoices ?? new Map()
+        );
+        const card = cards[0] ?? null;
+        if (!card) return null;
+        if (this._activityMealRationsSubmitted?.has(actorId)) card.playerSubmitted = true;
+        if (!this._isGM && this._mealSubmitted && this._myCharacterIds?.has(actorId)) {
+            card.playerSubmitted = true;
+        }
+        return card;
+    }
+
+    /**
+     * Workbench station Identify tab: caster lists are party-wide; Taste/Focus rows
+     * are only for {@link options.restrictUnidentifiedToActorId} when set.
+     * @param {{ restrictUnidentifiedToActorId?: string|null }} [options]
+     * @returns {{
+     *   unidentifiedItems: object[],
+     *   identifyCasters: { id: string, name: string }[],
+     *   detectMagicCasters: { id: string, name: string }[]
+     * }}
+     */
+    getStationIdentifyEmbedContext(options = {}) {
+        return collectPartyIdentifyEmbedData(getPartyActors(), options);
+    }
+
+    /** Toolbar: GM always; players only when they control a party member with Detect Magic. */
+    canShowDetectMagicScanButtonFromParty() {
+        return computeCanShowDetectMagicScanButton(getPartyActors());
+    }
+
+    _getWorkbenchIdentifyStaging(actorId) {
+        const v = this._workbenchIdentifyStaging?.get(actorId);
+        return {
+            gearItemId: v?.gearItemId ?? null,
+            potionItemIds: Array.isArray(v?.potionItemIds) ? [...v.potionItemIds] : []
+        };
+    }
+
+    _setWorkbenchIdentifyStaging(actorId, partial) {
+        if (!this._workbenchIdentifyStaging) this._workbenchIdentifyStaging = new Map();
+        const prev = this._getWorkbenchIdentifyStaging(actorId);
+        const next = {
+            gearItemId: partial.gearItemId !== undefined ? partial.gearItemId : prev.gearItemId,
+            potionItemIds: partial.potionItemIds !== undefined ? [...partial.potionItemIds] : prev.potionItemIds
+        };
+        if (!next.gearItemId && next.potionItemIds.length === 0) {
+            this._workbenchIdentifyStaging.delete(actorId);
+        } else {
+            this._workbenchIdentifyStaging.set(actorId, next);
+        }
+    }
+
+    /**
+     * Station workbench: staged chips for Identify (items are dragged from the character sheet, not listed here).
+     * @param {string|null} actorId
+     */
+    getWorkbenchIdentifyDragContext(actorId) {
+        const empty = {
+            workbenchIdentifyActorId: null,
+            workbenchGearChip: null,
+            workbenchPotionChips: [],
+            workbenchNoUnidentifiedOnSheet: true,
+            workbenchSubmitLocked: true,
+            workbenchIdentifyAcknowledgement: null,
+            workbenchAckRevealReady: true
+        };
+        if (!actorId) return empty;
+        const actor = game.actors.get(actorId);
+        const embed = collectPartyIdentifyEmbedData(getPartyActors(), { restrictUnidentifiedToActorId: actorId });
+        const st = this._getWorkbenchIdentifyStaging(actorId);
+        const rawGear = embed.unidentifiedItems.filter(e => !e.isPotion);
+        const rawPotions = embed.unidentifiedItems.filter(e => e.isPotion);
+        const workbenchNoUnidentifiedOnSheet = rawGear.length === 0 && rawPotions.length === 0;
+        const resolveChip = itemId => {
+            const item = actor?.items.get(itemId);
+            if (!item || !itemIsWorkbenchUnidentified(actor, item)) return null;
+            return {
+                itemId,
+                img: item.img || "icons/svg/mystery-man.svg",
+                label: item.system?.unidentified?.name || item.name || "Item"
+            };
+        };
+        const workbenchGearChip = st.gearItemId ? resolveChip(st.gearItemId) : null;
+        const workbenchPotionChips = st.potionItemIds.map(resolveChip).filter(Boolean);
+        const workbenchSubmitLocked = !workbenchGearChip && workbenchPotionChips.length === 0;
+        const ack = this._workbenchIdentifyAcknowledge?.get(actorId) ?? null;
+        const workbenchIdentifyAcknowledgement = ack ? { items: ack.items } : null;
+        const workbenchAckRevealReady = !ack || Date.now() >= ack.revealAt;
+        return {
+            workbenchIdentifyActorId: actorId,
+            workbenchGearChip,
+            workbenchPotionChips,
+            workbenchNoUnidentifiedOnSheet,
+            workbenchSubmitLocked,
+            workbenchIdentifyAcknowledgement,
+            workbenchAckRevealReady
+        };
+    }
+
+    /** Player dismisses the post-identify ritual overlay on the workbench station. */
+    dismissWorkbenchIdentifyAcknowledgement(actorId) {
+        if (!actorId || !this._workbenchIdentifyAcknowledge?.has(actorId)) return;
+        this._workbenchIdentifyAcknowledge.delete(actorId);
+        notifyWorkbenchIdentifyStagingTouched();
+        if (this.rendered) this.render();
+    }
+
+    /**
+     * Clears Detect Magic scan state, workbench staging, and notifies the glow adapter.
+     * @param {{ skipSave?: boolean }} [opts] Pass skipSave when abandoning after activeRest was already wiped.
+     */
+    _clearDetectMagicScanSession(opts = {}) {
+        const skipSave = !!opts.skipSave;
+        this._magicScanResults = null;
+        this._magicScanComplete = false;
+        this._workbenchIdentifyStaging?.clear();
+        this._workbenchIdentifyAcknowledge?.clear();
+        notifyDetectMagicScanCleared();
+        if (game.user?.isGM) {
+            game.socket.emit(`module.${MODULE_ID}`, { type: "detectMagicScanCleared" });
+            if (this._engine && !skipSave) void this._saveRestState();
+        }
+    }
+
+    /**
+     * Pushes current Detect Magic results to all clients (inventory glow + Identify UI).
+     * Caller must already have set `_magicScanResults` / `_magicScanComplete`.
+     */
+    _broadcastDetectMagicPartyScan() {
+        if (!this._magicScanComplete) return;
+        const partyActorIds = getPartyActors().map(a => a.id);
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "detectMagicScanBroadcast",
+            results: this._magicScanResults ?? [],
+            partyActorIds,
+            magicScanComplete: true
+        });
+        notifyDetectMagicScanApplied(this, partyActorIds);
+        if (game.user.isGM) void this._saveRestState();
+    }
+
+    removeWorkbenchIdentifyPotionFromStation(actorId, itemId) {
+        const st = this._getWorkbenchIdentifyStaging(actorId);
+        if (!st.potionItemIds.includes(itemId)) return;
+        this._setWorkbenchIdentifyStaging(actorId, {
+            gearItemId: st.gearItemId,
+            potionItemIds: st.potionItemIds.filter(id => id !== itemId)
+        });
+        notifyWorkbenchIdentifyStagingTouched();
+        if (this.rendered) this.render();
+    }
+
+    async submitWorkbenchIdentifyFromStation(actorId) {
+        const actor = game.actors.get(actorId);
+        if (!actor) return;
+        if (!actor.isOwner && !game.user.isGM) {
+            ui.notifications.warn("You can only submit identify choices for characters you control.");
+            return;
+        }
+        const st = this._getWorkbenchIdentifyStaging(actorId);
+        if (!st.gearItemId && st.potionItemIds.length === 0) {
+            ui.notifications.warn("Drag at least one item onto the circles, then submit.");
+            return;
+        }
+        const order = [...st.potionItemIds];
+        if (st.gearItemId) order.push(st.gearItemId);
+        const revealed = [];
+        for (const itemId of order) {
+            const itemBefore = actor.items.get(itemId);
+            if (!itemBefore) continue;
+            const did = await this.identifyItemFromWorkbenchStation(actorId, itemId, { deferNotify: true, deferRender: true });
+            if (!did) continue;
+            const itemAfter = actor.items.get(itemId);
+            revealed.push({
+                itemId,
+                name: itemAfter?.name ?? itemBefore.name,
+                img: itemAfter?.img ?? itemBefore.img ?? "icons/svg/mystery-man.svg",
+                requiresAttunement: !!itemAfter?.system?.attunement
+            });
+        }
+        if (!revealed.length) return;
+        this._workbenchIdentifyStaging.delete(actorId);
+        this._workbenchIdentifyAcknowledge.set(actorId, {
+            items: revealed,
+            revealAt: Date.now() + 900
+        });
+        notifyWorkbenchIdentifyStagingTouched();
+        if (this.rendered) this.render();
+    }
+
+    /**
+     * Workbench station: taste or focus identify (same rules as main Identify tab).
+     * @param {string} actorId
+     * @param {string} itemId
+     * @param {{ deferNotify?: boolean, deferRender?: boolean }} [options]
+     * @returns {Promise<boolean>}
+     */
+    async identifyItemFromWorkbenchStation(actorId, itemId, options = {}) {
+        const { deferNotify = false, deferRender = false } = options;
+        const actor = game.actors.get(actorId);
+        const item = actor?.items?.get(itemId);
+        if (!item) return false;
+        try {
+            await item.update({ "system.identified": true });
+            if (!this._identifiedItems) this._identifiedItems = [];
+            this._identifiedItems.push({
+                itemId,
+                actorId,
+                name: item.name,
+                img: item.img,
+                actorName: actor.name,
+                requiresAttunement: !!item.system?.attunement
+            });
+            if (!deferNotify) ui.notifications.info(`${item.name} identified by ${actor.name}.`);
+            if (!deferRender) this.render();
+            return true;
+        } catch (err) {
+            console.error(`[Respite] Failed to identify item:`, err);
+            if (!deferNotify) ui.notifications.error("Failed to identify item.");
+            return false;
+        }
+    }
+
+    /** Detect Magic party scan (main UI and workbench station). */
+    async runDetectMagicScan() {
+        const party = getPartyActors();
+        if (!game.user?.isGM && !computeCanTriggerDetectMagicScan(party)) {
+            const { detectMagicCasters } = collectPartyIdentifyEmbedData(party);
+            ui.notifications.warn(
+                detectMagicCasters.length
+                    ? "You need a party member with Detect Magic who you control to run the scan."
+                    : "Nobody in the party has Detect Magic available to cast."
+            );
+            return;
+        }
+        const { DetectMagicScanner } = await import("../services/DetectMagicScanner.js");
+        const actorIds = party.map(a => a.id);
+        const results = DetectMagicScanner.scanParty(actorIds);
+        this._magicScanResults = results;
+        this._magicScanComplete = true;
+        if (results.length === 0) {
+            ui.notifications.info("No unidentified magical items detected among the party's gear.");
+        }
+        this.render();
+        this._broadcastDetectMagicPartyScan();
+    }
+
+    /**
+     * GM: ritual Identify on a scanned item (main UI and workbench station).
+     * @param {string} actorId
+     * @param {string} itemId
+     */
+    async identifyScannedMagicItem(actorId, itemId) {
+        if (!game.user.isGM) return;
+        try {
+            const { DetectMagicScanner } = await import("../services/DetectMagicScanner.js");
+            const result = await DetectMagicScanner.identifyItem(actorId, itemId);
+            if (this._magicScanResults) {
+                for (const actorResult of this._magicScanResults) {
+                    if (actorResult.actorId === actorId) {
+                        const item = actorResult.items.find(i => i.itemId === itemId);
+                        if (item) {
+                            item.identified = true;
+                            item.trueName = result.trueName;
+                            item.requiresAttunement = result.requiresAttunement;
+                        }
+                    }
+                }
+            }
+            ui.notifications.info(`Identified: ${result.trueName} (${DetectMagicScanner.schoolLabel(result.school)})`);
+            this.render();
+            this._broadcastDetectMagicPartyScan();
+        } catch (e) {
+            console.error(`[Respite] Failed to identify item:`, e);
+            ui.notifications.error(`Failed to identify item: ${e.message}`);
+        }
+    }
+
+    /**
+     * Activity phase: commit station rations for one character (GM records locally; player uses meal socket).
+     * @param {string} actorId
+     */
+    async submitActivityMealRationsFromStation(actorId) {
+        if (!actorId || !this._engine) return;
+        const actor = game.actors.get(actorId);
+        if (!actor) return;
+
+        if (this._isGM) {
+            if (this._activityMealRationsSubmitted?.has(actorId)) return;
+            const skippedSlots = [];
+            const choice = this._mealChoices?.get(actorId) ?? {};
+            const foodArr = Array.isArray(choice.food) ? choice.food : [];
+            const foodEmpty = foodArr.filter(v => !v || v === "skip").length;
+            if (foodArr.length === 0 || foodEmpty > 0) {
+                skippedSlots.push(
+                    foodArr.length === 0
+                        ? `${actor.name}: no food`
+                        : `${actor.name}: ${foodEmpty} food slot${foodEmpty > 1 ? "s" : ""} empty`
+                );
+            }
+            const waterArr = Array.isArray(choice.water) ? choice.water : [];
+            const waterEmpty = waterArr.filter(v => !v || v === "skip").length;
+            if (waterArr.length === 0 || waterEmpty > 0) {
+                skippedSlots.push(
+                    waterArr.length === 0
+                        ? `${actor.name}: no water`
+                        : `${actor.name}: ${waterEmpty} water slot${waterEmpty > 1 ? "s" : ""} empty`
+                );
+            }
+            if (skippedSlots.length > 0) {
+                const confirmed = await new Promise(resolve => {
+                    const overlay = document.createElement("div");
+                    overlay.classList.add("ionrift-armor-modal-overlay");
+                    overlay.innerHTML = `
+                    <div class="ionrift-armor-modal">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Skip Meals?</h3>
+                        <p>The following meals are empty:</p>
+                        <ul>${skippedSlots.map(s => `<li>${s}</li>`).join("")}</ul>
+                        <p>Skipping meals has consequences.</p>
+                        <div class="ionrift-armor-modal-buttons">
+                            <button class="btn-armor-confirm"><i class="fas fa-check"></i> Continue</button>
+                            <button class="btn-armor-cancel"><i class="fas fa-arrow-left"></i> Go Back</button>
+                        </div>
+                    </div>`;
+                    document.body.appendChild(overlay);
+                    overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => {
+                        overlay.remove();
+                        resolve(true);
+                    });
+                    overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => {
+                        overlay.remove();
+                        resolve(false);
+                    });
+                });
+                if (!confirmed) return;
+            }
+            if (!this._activityMealRationsSubmitted) this._activityMealRationsSubmitted = new Set();
+            this._activityMealRationsSubmitted.add(actorId);
+            await this._saveRestState();
+            const snapshot = this.getRestSnapshot();
+            if (snapshot) {
+                game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
+            }
+            notifyStationMealChoicesUpdated();
+            if (isStationLayerActive()) {
+                refreshStationEmptyNoticeFade(this);
+                this._refreshStationOverlayMeals();
+            }
+            if (this.rendered) this.render();
+            ui.notifications.info(`${actor.name}: rations recorded for this rest.`);
+            return;
+        }
+
+        if (!this._myCharacterIds?.has(actorId)) return;
+        await this._meals.onSubmitMealChoices(null, null);
+        notifyStationMealChoicesUpdated();
+        if (isStationLayerActive()) {
+            refreshStationEmptyNoticeFade(this);
+            this._refreshStationOverlayMeals();
+        }
+        if (this.rendered) this.render();
     }
 
     _getPlayerChoiceForCharacter(characterId) {
@@ -6275,13 +7477,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             } : null,
             mealChoices: this._mealChoices ? Object.fromEntries(this._mealChoices) : null,
             mealSubmitted: this._mealSubmitted ?? false,
+            activityMealRationsSubmitted: [...(this._activityMealRationsSubmitted ?? [])],
             dehydrationResults: (this._pendingDehydrationSaves ?? []).filter(s => s.resolved).map(s => ({
                 actorName: s.actorName,
                 total: s.total,
                 passed: s.passed,
                 dc: s.dc,
                 reason: s.reason ?? null
-            }))
+            })),
+            magicScanComplete: !!this._magicScanComplete,
+            magicScanResults: this._magicScanComplete ? (this._magicScanResults ?? []) : null
         };
     }
 
@@ -6290,7 +7495,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /**
      * Receives a phase change from the GM and re-renders.
      */
-    receivePhaseChange(phase, phaseData = {}) {
+    async receivePhaseChange(phase, phaseData = {}) {
+        const prevPhase = this._phase;
         this._phase = phase;
         if (phaseData.triggeredEvents) {
             this._triggeredEvents = this._isGM ? phaseData.triggeredEvents
@@ -6392,6 +7598,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._closeCampfire();
         }
 
+        // Activity phase: canvas station overlays for all clients; players minimise to the rest bar
+        if (phase === "activity") {
+            if (!this._isGM) {
+                _removeGmRestIndicator();
+            }
+            this._attachActivityPhaseCanvasChrome();
+            if (!this._isGM) {
+                console.log(`${MODULE_ID} | Activity phase (player): minimise rest window, retain app for station sockets`);
+                await this.close({ retainPlayerApp: true, skipRejoin: true });
+                return;
+            }
+        } else if (prevPhase === "activity" && phase !== "activity") {
+            this._tearDownStationLayerCanvas();
+        }
+
         this.render();
     }
 
@@ -6411,6 +7632,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             });
         }
         this._rebuildCharacterChoices();
+        this._updateRestBarProgress();
+        if (this._phase === "activity" && isStationLayerActive()) {
+            refreshStationPortraitsFromChoices(this._characterChoices, this._stationCanvasIdByCharacter);
+            refreshStationEmptyNoticeFade(this);
+            this._refreshStationOverlayMeals();
+        }
         this.render();
     }
 
@@ -6419,6 +7646,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Used for visibility resync and rejoin to avoid race conditions.
      */
     receiveRestSnapshot(snapshot) {
+        if (!this._isGM) {
+            _removeGmRestIndicator();
+        }
         // Apply submissions
         if (snapshot.submissions) {
             for (const [charId, info] of Object.entries(snapshot.submissions)) {
@@ -6521,6 +7751,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (snapshot.mealSubmitted) {
             this._mealSubmitted = true;
         }
+        if (Array.isArray(snapshot.activityMealRationsSubmitted)) {
+            this._activityMealRationsSubmitted = new Set(snapshot.activityMealRationsSubmitted);
+        }
         if (snapshot.daysSinceLastRest) {
             this._daysSinceLastRest = snapshot.daysSinceLastRest;
         }
@@ -6531,11 +7764,35 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._dehydrationResults = snapshot.dehydrationResults;
         }
 
+        if ("magicScanComplete" in snapshot) {
+            if (snapshot.magicScanComplete) {
+                this._magicScanResults = snapshot.magicScanResults ?? [];
+                this._magicScanComplete = true;
+                notifyDetectMagicScanApplied(this, getPartyActors().map(a => a.id));
+            } else {
+                const hadComplete = this._magicScanComplete;
+                this._magicScanResults = null;
+                this._magicScanComplete = false;
+                if (hadComplete) notifyDetectMagicScanCleared();
+            }
+        }
+
+        if (this._phase === "activity" && isStationLayerActive()) {
+            this._refreshStationOverlayMeals();
+        }
+
         // Campfire panel lifecycle on snapshot restore
         if (this._phase === "reflection") {
             this._openCampfire();
         } else {
             this._closeCampfire();
+        }
+
+        // Activity phase: same as receivePhaseChange (F5 rejoin after GM already advanced)
+        if (this._phase === "activity" && !this._isGM) {
+            this._attachActivityPhaseCanvasChrome();
+            void this.close({ retainPlayerApp: true, skipRejoin: true });
+            return;
         }
 
         // Single render with all state applied
@@ -7025,15 +8282,38 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /**
      * Player or GM lights the campfire during Make Camp.
-     * Consumes 1 firewood from the first holder and re-renders.
+     * Only the GM may change Item documents; players request via socket.
      */
     static async #onLightCampfire(event, target) {
-        const actors = getPartyActors();
+        if (!game.user.isGM) {
+            game.socket.emit(`module.${MODULE_ID}`, {
+                type:   "campLightFireRequest",
+                userId: game.user.id
+            });
+            ui.notifications.info("Request sent to the GM to light the fire and spend firewood.");
+            return;
+        }
+        await this._runLightCampfireForGm(null);
+    }
 
-        // Find the first actor with firewood
+    /**
+     * GM-only: consume one party firewood, set fire level, sync scene token and clients.
+     * @param {string|null} requestingUserId - optional; party actors owned by this user are checked first for firewood
+     */
+    async _runLightCampfireForGm(requestingUserId = null) {
+        const actors = getPartyActors();
+        const OWNER = CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
+        const sortedActors = requestingUserId
+            ? [...actors].sort((a, b) => {
+                const aOwn = (a.ownership?.[requestingUserId] ?? 0) >= OWNER ? 1 : 0;
+                const bOwn = (b.ownership?.[requestingUserId] ?? 0) >= OWNER ? 1 : 0;
+                return bOwn - aOwn;
+            })
+            : actors;
+
         let supplier = null;
         let firewoodItem = null;
-        for (const actor of actors) {
+        for (const actor of sortedActors) {
             firewoodItem = actor.items.find(i => {
                 const n = i.name?.toLowerCase() ?? "";
                 return n.includes("firewood") || n === "kindling";
@@ -7049,7 +8329,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
-        // Check tinderbox
         const hasTinderbox = actors.some(a => a.items.some(i => {
             const n = i.name?.toLowerCase() ?? "";
             return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
@@ -7059,7 +8338,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
-        // Consume 1 firewood
         const qty = firewoodItem.system?.quantity ?? 1;
         if (qty <= 1) {
             await firewoodItem.delete();
@@ -7070,15 +8348,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._fireLevel = "campfire";
         if (this._engine) {
             this._engine.fireLevel = "campfire";
-            // Recalculate fire roll modifier
             this._engine.fireRollModifier = 1;
         }
 
-        CampfireTokenLinker.setLightState(true);
+        await CampfireTokenLinker.setLightState(true);
 
         ui.notifications.info(`${supplier.name} lights the campfire using firewood.`);
 
-        // Broadcast fire state to players
         game.socket.emit(`module.${MODULE_ID}`, {
             type: "phaseChanged",
             phase: "camp",
@@ -7105,7 +8381,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         });
 
         await this._saveRestState();
-        this.render();
+
+        _showGmRestIndicator(this);
+        this._activateCanvasStationLayer();
+        await this.close({});
     }
 
     /**
@@ -7181,8 +8460,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             });
         }
 
-        // Player gear drag handles (bedroll, tent)
-        const gearHandles = html.querySelectorAll('.gear-drag-handle[draggable="true"]');
+        // Player gear drag handles (bedroll, tent, mess kit)
+        // draggable is now on the outer .camp-gear-placeable-wrap; fall back to inner .gear-drag-handle for legacy
+        const gearHandles = html.querySelectorAll('.camp-gear-placeable-wrap[draggable="true"], .gear-drag-handle[draggable="true"]:not(.camp-gear-placeable-wrap *)');
         for (const handle of gearHandles) {
             handle.addEventListener("dragstart", (e) => {
                 const gearType = handle.dataset.gearType;

@@ -6,6 +6,87 @@
 export class DetectMagicScanner {
 
     /**
+     * @param {string|null|undefined} school
+     * @returns {string} slug for CSS (abj, evo, unknown, …)
+     */
+    static normalizeSchoolForGlow(school) {
+        if (school == null || school === "") return "unknown";
+        if (typeof school !== "string") return "unknown";
+        const k = school.trim().toLowerCase();
+        const map = {
+            abj: "abj", abjuration: "abj",
+            con: "con", conjuration: "con",
+            div: "div", divination: "div",
+            enc: "enc", enchantment: "enc",
+            evo: "evo", evocation: "evo",
+            ill: "ill", illusion: "ill",
+            nec: "nec", necromancy: "nec",
+            trs: "trs", transmutation: "trs"
+        };
+        return map[k] ?? "unknown";
+    }
+
+    /**
+     * Same rules as scanParty, for one actor (live inventory).
+     * @param {Actor} actor
+     * @returns {object[]} items entries like scanParty `items` elements
+     */
+    static collectUnidentifiedMagicItems(actor) {
+        const unidentified = [];
+        const validTypes = new Set(["weapon", "equipment", "consumable", "tool", "loot", "container"]);
+        const summarise = game.ionrift?.workshop?.getLatentSummary ?? null;
+
+        for (const item of actor.items) {
+            if (!validTypes.has(item.type)) continue;
+
+            const raw = item.toObject?.()?.system ?? {};
+            const identifiedLive = item.system?.identified;
+            const identifiedRaw = raw.identified;
+
+            const quartermasterLatent = summarise?.(item);
+            const isQmMasked = !!quartermasterLatent
+                && quartermasterLatent.kind !== "mundane";
+            const isNativeUnidentified = identifiedLive === false || identifiedRaw === false;
+            if (!isQmMasked && !isNativeUnidentified) continue;
+
+            const unidName = item.system?.unidentified?.name ?? raw.unidentified?.name;
+
+            const trueName = quartermasterLatent?.originalName ?? item.name;
+            const displayName = isNativeUnidentified
+                ? (unidName || item.name)
+                : item.name;
+
+            unidentified.push({
+                itemId: item.id,
+                displayName,
+                trueName,
+                school: item.system?.school ?? null,
+                rarity: quartermasterLatent?.originalRarity ?? item.system?.rarity ?? null,
+                img: item.img ?? "icons/svg/mystery-man.svg",
+                requiresAttunement: !!item.system?.attunement,
+                identified: false
+            });
+        }
+
+        return unidentified;
+    }
+
+    /**
+     * Live map for inventory row glow (item id -> school slug). Matches scanParty logic.
+     * @param {string} actorId
+     * @returns {Map<string, string>}
+     */
+    static getLiveGlowItemSchoolMap(actorId) {
+        const map = new Map();
+        const actor = game.actors.get(actorId);
+        if (!actor) return map;
+        for (const it of DetectMagicScanner.collectUnidentifiedMagicItems(actor)) {
+            map.set(it.itemId, DetectMagicScanner.normalizeSchoolForGlow(it.school));
+        }
+        return map;
+    }
+
+    /**
      * Scan all party actors for unidentified magical items.
      * @param {string[]} actorIds - Actor IDs to scan
      * @returns {Object[]} Array of { actorId, actorName, items: [...] }
@@ -17,47 +98,7 @@ export class DetectMagicScanner {
             const actor = game.actors.get(actorId);
             if (!actor) continue;
 
-            const unidentified = [];
-            const validTypes = new Set(["weapon", "equipment", "consumable", "tool", "loot", "container"]);
-
-            const summarise = game.ionrift?.workshop?.getLatentSummary ?? null;
-
-            for (const item of actor.items) {
-                if (!validTypes.has(item.type)) continue;
-
-                const raw = item.toObject?.()?.system ?? {};
-                const identifiedLive = item.system?.identified;
-                const identifiedRaw = raw.identified;
-
-                // Two paths into "unidentified magic":
-                //   1. dnd5e native: system.identified === false
-                //   2. Quartermaster takeover: identified=true but latentMagic
-                //      or cursedMeta flag is present (the flag is the signal)
-                const quartermasterLatent = summarise?.(item);
-                const isQmMasked = !!quartermasterLatent
-                    && quartermasterLatent.kind !== "mundane";
-                const isNativeUnidentified = identifiedLive === false || identifiedRaw === false;
-                if (!isQmMasked && !isNativeUnidentified) continue;
-
-                const unidDesc = item.system?.unidentified?.description ?? raw.unidentified?.description;
-                const unidName = item.system?.unidentified?.name ?? raw.unidentified?.name;
-
-                const trueName = quartermasterLatent?.originalName ?? item.name;
-                const displayName = isNativeUnidentified
-                    ? (unidName || item.name)
-                    : item.name;
-
-                unidentified.push({
-                    itemId: item.id,
-                    displayName,
-                    trueName,
-                    school: item.system?.school ?? null,
-                    rarity: quartermasterLatent?.originalRarity ?? item.system?.rarity ?? null,
-                    img: item.img ?? "icons/svg/mystery-man.svg",
-                    requiresAttunement: !!item.system?.attunement,
-                    identified: false
-                });
-            }
+            const unidentified = DetectMagicScanner.collectUnidentifiedMagicItems(actor);
 
             if (unidentified.length > 0) {
                 results.push({
@@ -69,7 +110,6 @@ export class DetectMagicScanner {
             }
         }
 
-        console.log(`[Respite:Scan] Final results:`, results);
         return results;
     }
 
