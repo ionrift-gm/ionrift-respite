@@ -1556,6 +1556,14 @@
     font-size: 0.7rem;
 }
 
+.identify-detect-toolbar {
+    margin-bottom: 0.5rem;
+}
+
+.identify-tab .identify-magic-scan.magic-scan-results {
+    margin: 0 0 0.65rem;
+}
+
 .identify-item-card {
     display: flex;
     align-items: center;
@@ -1879,6 +1887,41 @@
     padding: 0.75rem;
     background: rgba(0, 0, 0, 0.2);
     border-left: 1px solid rgba(255, 255, 255, 0.05);
+}
+.camp-status-summary.camp-collapsed-bar {
+    width: 100%;
+    padding: 0.3rem 0.5rem;
+    border-left: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+}
+.camp-collapsed-chips {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.camp-collapsed-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    padding: 0.15rem 0.45rem;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.6);
+}
+.camp-collapsed-chip > i {
+    font-size: 0.6rem;
+    opacity: 0.7;
+}
+.camp-collapsed-chip.gear-present {
+    color: rgba(134, 239, 172, 0.7);
+    border-color: rgba(134, 239, 172, 0.15);
 }
 
 .camp-summary-header {
@@ -3556,6 +3599,30 @@
     width: 0.8rem;
     text-align: center;
     color: #e74c3c;
+}
+
+.station-choice-review-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding: 0.5rem 1rem;
+    margin: 0 0 0.35rem;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+}
+
+.station-choice-review-text {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.82);
+    line-height: 1.35;
+}
+
+.station-choice-review-text i {
+    margin-right: 0.35rem;
+    opacity: 0.85;
 }
 
 /* ---- Action Bar ---- */
@@ -5428,6 +5495,823 @@
 .respite-character-card.read-only .activity-grid {
     display: none;
 }
+
+/* ── Station-based activity layout ──────────────────────── */
+.station-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+    padding: 0 0.15rem;
+}
+
+.station-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    padding: 0.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.station-card.station-card-canvas-focus {
+    border-color: rgba(167, 139, 250, 0.55);
+    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.25), 0 0 12px rgba(139, 92, 246, 0.12);
+    background: rgba(139, 92, 246, 0.08);
+}
+
+.station-header {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.15rem 0.2rem;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 0.2rem;
+}
+.station-header > i {
+    font-size: 0.7rem;
+    width: 16px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.station-activities {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.station-activity {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.7rem;
+    border-radius: 4px;
+}
+.station-activity > i {
+    font-size: 0.75rem;
+    width: 16px;
+}
+.station-activity .card-name {
+    font-size: 0.7rem;
+}
+.station-activity .card-hint {
+    font-size: 0.55rem;
+}
+
+/* ── StationActivityDialog: match in-panel station-card + activity-card (ApplicationV2) ── */
+#ionrift-station-activity-dialog,
+.application.ionrift-station-dialog {
+    --color-shadow-primary: rgba(0, 0, 0, 0.45) !important;
+    --color-border-highlight-alt: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55) !important;
+    font-family: var(--ionrift-font-stack, "Signika", sans-serif);
+}
+
+#ionrift-station-activity-dialog .window-header,
+.application.ionrift-station-dialog .window-header {
+    min-height: 1.75rem;
+    padding: 0.3rem 0.4rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: transparent;
+}
+
+#ionrift-station-activity-dialog .window-title,
+.application.ionrift-station-dialog .window-title {
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.ionrift-station-dialog .window-content {
+    padding: 0;
+    font-family: var(--ionrift-font-stack, "Signika", sans-serif);
+}
+
+.ionrift-station-dialog .station-dialog-wrap.station-card {
+    margin: 0;
+    box-shadow: none;
+}
+
+.ionrift-station-dialog .station-dialog-wrap .station-header {
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+}
+
+.ionrift-station-dialog .station-header .station-dialog-actor {
+    margin-left: auto;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 0.62rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.4);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 42%;
+}
+
+.ionrift-station-dialog .station-sub-tabs {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.25rem 0.35rem 0.35rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ionrift-station-dialog .station-sub-tab {
+    flex: 1;
+    padding: 0.35rem 0.4rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.25);
+    color: rgba(255, 255, 255, 0.55);
+    cursor: pointer;
+}
+
+.ionrift-station-dialog .station-sub-tab:hover {
+    color: rgba(255, 255, 255, 0.85);
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+.ionrift-station-dialog .station-sub-tab.active {
+    color: rgba(255, 255, 255, 0.95);
+    border-color: rgba(196, 181, 253, 0.45);
+    background: rgba(99, 102, 241, 0.15);
+}
+
+.ionrift-station-dialog .station-meal-embed {
+    padding: 0.25rem 0.35rem 0.45rem;
+    max-height: 340px;
+    overflow-y: auto;
+}
+
+.ionrift-station-dialog .station-identify-embed {
+    padding: 0.2rem 0.25rem 0.35rem;
+}
+
+.ionrift-station-dialog .station-identify-toolbar {
+    margin-bottom: 0.35rem;
+}
+
+.ionrift-station-dialog .station-identify-scroll {
+    max-height: 280px;
+    overflow-y: auto;
+    padding-right: 0.15rem;
+}
+
+.ionrift-station-dialog .station-magic-scan {
+    margin-bottom: 0.45rem;
+    padding: 0.35rem;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ionrift-station-dialog .station-meal-embed .meal-drop-columns {
+    gap: 0.35rem;
+}
+
+.ionrift-station-dialog .station-meal-embed .meal-panel {
+    min-width: 0;
+}
+
+.ionrift-station-dialog .station-meal-embed .meal-inv-qty {
+    font-size: 0.55rem;
+}
+
+.ionrift-station-dialog .station-meal-submit-row {
+    margin-top: 0.45rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.ionrift-station-dialog .station-meal-submit-btn {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border: 1px solid rgba(196, 181, 253, 0.45);
+    border-radius: 4px;
+    background: rgba(99, 102, 241, 0.2);
+    color: rgba(255, 255, 255, 0.92);
+    cursor: pointer;
+}
+
+.ionrift-station-dialog .station-meal-submit-btn:hover {
+    background: rgba(99, 102, 241, 0.32);
+    border-color: rgba(196, 181, 253, 0.6);
+}
+
+.ionrift-station-dialog .station-workbench-identify-embed {
+    position: relative;
+}
+
+.ionrift-station-dialog .wb-ident-ack-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.35rem;
+    background: rgba(8, 10, 18, 0.72);
+    backdrop-filter: blur(4px);
+    border-radius: 6px;
+}
+
+.ionrift-station-dialog .wb-ident-ack-card {
+    position: relative;
+    width: 100%;
+    max-width: 280px;
+    padding: 0.55rem 0.6rem 0.5rem;
+    border-radius: 10px;
+    border: 1px solid rgba(196, 181, 253, 0.35);
+    background: linear-gradient(165deg, rgba(40, 36, 58, 0.95), rgba(18, 20, 32, 0.98));
+    box-shadow: 0 0 24px rgba(99, 102, 241, 0.15), inset 0 0 40px rgba(255, 255, 255, 0.03);
+    overflow: hidden;
+}
+
+.ionrift-station-dialog .wb-ident-ack-fx::before {
+    content: "";
+    position: absolute;
+    inset: -25%;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 18% 22%, rgba(180, 160, 255, 0.22) 0%, transparent 42%),
+        radial-gradient(circle at 82% 78%, rgba(120, 210, 190, 0.18) 0%, transparent 38%),
+        radial-gradient(circle at 50% 8%, rgba(255, 220, 160, 0.12) 0%, transparent 30%);
+    animation: wb-ident-ack-shimmer 1.4s ease-in-out infinite;
+    opacity: 0.85;
+}
+
+@keyframes wb-ident-ack-shimmer {
+    0%, 100% { transform: scale(0.98) rotate(0deg); opacity: 0.55; }
+    50% { transform: scale(1.02) rotate(1deg); opacity: 0.95; }
+}
+
+.ionrift-station-dialog .wb-ident-ack-title {
+    position: relative;
+    z-index: 1;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(230, 224, 255, 0.95);
+    margin: 0 0 0.2rem;
+}
+
+.ionrift-station-dialog .wb-ident-ack-title i {
+    margin-right: 0.35rem;
+    color: rgba(196, 181, 253, 0.9);
+}
+
+.ionrift-station-dialog .wb-ident-ack-lead {
+    position: relative;
+    z-index: 1;
+    font-size: 0.58rem;
+    color: rgba(255, 255, 255, 0.45);
+    margin: 0 0 0.4rem;
+    line-height: 1.35;
+}
+
+.ionrift-station-dialog .wb-ident-ack-row {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.25rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ionrift-station-dialog .wb-ident-ack-row:first-of-type {
+    border-top: none;
+}
+
+.ionrift-station-dialog .wb-ident-ack-img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    flex-shrink: 0;
+}
+
+.ionrift-station-dialog .wb-ident-ack-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+.ionrift-station-dialog .wb-ident-ack-name {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+    word-break: break-word;
+}
+
+.ionrift-station-dialog .wb-ident-ack-btn {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    margin-top: 0.45rem;
+}
+
+.ionrift-station-dialog .wb-ident-ack-btn:disabled {
+    opacity: 0.45;
+    cursor: wait;
+}
+
+.ionrift-station-dialog .station-workbench-identify-embed .wb-ident-advisory {
+    font-size: 0.6rem;
+    color: rgba(251, 191, 36, 0.88);
+    margin: 0 0 0.3rem;
+    padding: 0.25rem 0.35rem;
+    line-height: 1.35;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+.ionrift-station-dialog .station-workbench-identify-embed .wb-ident-advisory i {
+    margin-right: 0.25rem;
+    opacity: 0.85;
+}
+
+.ionrift-station-dialog .station-workbench-identify-embed .wb-ident-hint {
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.52);
+    margin: 0 0 0.35rem;
+    line-height: 1.35;
+}
+
+.ionrift-station-dialog .station-workbench-identify-embed .wb-ident-drop-columns {
+    gap: 0.35rem;
+}
+
+.ionrift-station-dialog .station-workbench-identify-embed .wb-ident-drop-columns .meal-panel {
+    min-width: 0;
+}
+
+.ionrift-station-dialog .station-workbench-identify-embed .wb-ident-gear-panel .panel-label {
+    color: rgba(196, 181, 253, 0.65);
+}
+
+.ionrift-station-dialog .station-workbench-identify-embed .wb-ident-potion-panel .panel-label {
+    color: rgba(130, 220, 160, 0.65);
+}
+
+.ionrift-station-dialog .wb-ident-gear-slot-wrap,
+.ionrift-station-dialog .wb-ident-potion-slot-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.15rem;
+}
+
+.ionrift-station-dialog .gear-focus-drop-zone {
+    width: 72px;
+    height: 72px;
+    border: 2px dashed rgba(196, 181, 253, 0.35);
+    background: rgba(196, 181, 253, 0.04);
+}
+
+.ionrift-station-dialog .gear-focus-drop-zone.filled {
+    border-style: solid;
+    border-color: rgba(196, 181, 253, 0.55);
+    background: rgba(196, 181, 253, 0.1);
+    box-shadow: 0 0 14px rgba(196, 181, 253, 0.18);
+}
+
+.ionrift-station-dialog .gear-focus-drop-zone.drop-hover {
+    border-color: rgba(196, 181, 253, 0.85);
+    background: rgba(196, 181, 253, 0.14);
+    transform: scale(1.06);
+}
+
+.ionrift-station-dialog .potion-taste-drop-zone {
+    width: 72px;
+    height: 72px;
+    border: 2px dashed rgba(100, 200, 150, 0.35);
+    background: rgba(100, 200, 150, 0.04);
+}
+
+.ionrift-station-dialog .potion-taste-drop-zone.filled {
+    border-style: solid;
+    border-color: rgba(100, 200, 150, 0.55);
+    background: rgba(100, 200, 150, 0.1);
+    box-shadow: 0 0 14px rgba(100, 200, 150, 0.18);
+}
+
+.ionrift-station-dialog .potion-taste-drop-zone.drop-hover {
+    border-color: rgba(130, 230, 170, 0.9);
+    background: rgba(100, 200, 150, 0.14);
+    transform: scale(1.06);
+}
+
+.ionrift-station-dialog .drop-zone-gear-sil {
+    font-size: 1.45rem;
+    color: rgba(196, 181, 253, 0.22);
+}
+
+.ionrift-station-dialog .drop-zone-potion-sil {
+    font-size: 1.45rem;
+    color: rgba(100, 200, 150, 0.22);
+}
+
+.ionrift-station-dialog .wb-ident-potion-count {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: rgba(150, 240, 190, 0.95);
+}
+
+.ionrift-station-dialog .wb-ident-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    justify-content: center;
+    margin: 0.15rem 0 0.25rem;
+    max-width: 100%;
+}
+
+.ionrift-station-dialog .wb-ident-chip-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.12rem 0.35rem 0.12rem 0.2rem;
+    border-radius: 8px;
+    font-size: 0.58rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.25);
+    color: rgba(255, 255, 255, 0.78);
+    cursor: pointer;
+}
+
+.ionrift-station-dialog .wb-ident-chip-btn:hover {
+    border-color: rgba(196, 181, 253, 0.35);
+    background: rgba(99, 102, 241, 0.12);
+}
+
+.ionrift-station-dialog .wb-ident-chip-img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    border-radius: 2px;
+}
+
+.ionrift-station-dialog .wb-ident-chip-x {
+    font-size: 0.55rem;
+    opacity: 0.55;
+    margin-left: 0.05rem;
+}
+
+.ionrift-station-dialog .station-workbench-identify-embed .wb-ident-scroll {
+    max-height: 320px;
+}
+
+.ionrift-station-dialog .wb-ident-submit-row {
+    margin-top: 0.35rem;
+    padding-top: 0.3rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ionrift-station-dialog .wb-ident-submit-row .station-meal-submit-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.ionrift-station-dialog .station-essence-hint {
+    font-size: 0.62rem;
+    color: rgba(251, 191, 36, 0.85);
+    margin: 0 0 0.35rem;
+    padding: 0.25rem 0.35rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+.ionrift-station-dialog ul.station-activities {
+    list-style: none;
+    margin: 0;
+    padding: 0 0.2rem 0.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.ionrift-station-dialog ul.station-activities > li {
+    margin: 0;
+    padding: 0;
+}
+
+/* Flat tiles: undo Foundry default <button> chrome (gradient, heavy border) */
+.ionrift-station-dialog button.activity-card,
+.ionrift-station-dialog div.activity-card.station-activity {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin: 0;
+    padding: 0.55rem 0.65rem;
+    min-height: 2.95rem;
+    gap: 0.5rem;
+    font-family: var(--ionrift-font-stack, "Signika", sans-serif);
+    font-size: inherit;
+    font-weight: 500;
+    line-height: inherit;
+    color: rgba(255, 255, 255, 0.75);
+    text-align: left;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-left: 2px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.035);
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    filter: none !important;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.ionrift-station-dialog button.activity-card:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.9);
+    box-shadow: none !important;
+}
+
+.ionrift-station-dialog button.activity-card:focus,
+.ionrift-station-dialog button.activity-card:focus-visible {
+    outline: none;
+    box-shadow: none !important;
+}
+
+.ionrift-station-dialog button.activity-card > i,
+.ionrift-station-dialog div.activity-card.station-activity > i {
+    font-size: 0.85rem;
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 0;
+}
+
+.ionrift-station-dialog button.activity-card:hover:not(:disabled) > i {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.ionrift-station-dialog .activity-card .card-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+    justify-content: center;
+}
+
+.ionrift-station-dialog .activity-card .card-name {
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+.ionrift-station-dialog .activity-card .card-hint {
+    font-size: 0.6rem;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.35);
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.3;
+}
+
+.ionrift-station-dialog .activity-card .card-hint.urgent {
+    color: #f9d77e;
+}
+
+.ionrift-station-dialog .activity-card.station-activity.faded {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.ionrift-station-dialog .activity-card.station-activity.faded > i {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.ionrift-station-dialog .card-hint.faded-hint {
+    color: rgba(252, 165, 165, 0.75);
+}
+
+.station-no-activities {
+    padding: 0.75rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+    margin: 0;
+}
+
+/* ---- Station Dialog: Detail + Result panels ---- */
+
+.ionrift-station-dialog .station-detail-panel {
+    padding: 0.35rem;
+}
+
+.ionrift-station-dialog .station-detail-panel .activity-detail-header {
+    padding: 0.2rem 0.3rem;
+    margin-bottom: 0.4rem;
+}
+
+.ionrift-station-dialog .station-detail-panel .activity-detail-body {
+    padding: 0 0.2rem;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.ionrift-station-dialog .station-detail-panel .activity-detail-footer {
+    padding: 0.3rem 0.2rem 0.1rem;
+}
+
+.ionrift-station-dialog .station-detail-panel .followup-gold-hint {
+    font-size: 0.7rem;
+    color: rgba(255, 200, 100, 0.8);
+    margin-bottom: 4px;
+}
+
+.ionrift-station-dialog .station-detail-panel .attunement-slots {
+    font-size: 0.7rem;
+    opacity: 0.8;
+    margin-bottom: 4px;
+}
+
+.ionrift-station-dialog .station-detail-panel .followup-select {
+    width: 100%;
+    font-size: 0.72rem;
+    padding: 0.25rem 0.35rem;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.ionrift-station-dialog .station-detail-panel .followup-radios {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.ionrift-station-dialog .station-detail-panel .followup-radio-label {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    cursor: pointer;
+}
+
+.ionrift-station-dialog .station-detail-panel .activity-followup-panel {
+    margin-bottom: 0.5rem;
+}
+
+.ionrift-station-dialog .station-detail-panel .followup-label {
+    display: block;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 0.25rem;
+}
+
+.ionrift-station-dialog .station-detail-panel .armor-hint {
+    font-size: 0.65rem;
+    padding: 0.3rem 0.4rem;
+    border-radius: 4px;
+    margin-bottom: 0.4rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+}
+
+.ionrift-station-dialog .station-detail-panel .armor-hint-positive {
+    color: rgba(34, 197, 94, 0.85);
+    background: rgba(34, 197, 94, 0.08);
+}
+
+.ionrift-station-dialog .station-detail-panel .armor-hint-warning {
+    color: rgba(245, 158, 11, 0.85);
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.ionrift-station-dialog .station-detail-panel .combat-readiness-hint {
+    font-size: 0.65rem;
+    color: rgba(126, 184, 218, 0.8);
+    margin-bottom: 0.4rem;
+}
+
+.ionrift-station-dialog .station-result-panel {
+    padding: 0.5rem;
+    text-align: center;
+}
+
+.ionrift-station-dialog .result-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.ionrift-station-dialog .result-header .result-icon {
+    color: var(--ionrift-accent, #9b59b6);
+    font-size: 1rem;
+}
+
+.ionrift-station-dialog .result-header .result-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.ionrift-station-dialog .result-tier {
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+    display: inline-block;
+    margin-bottom: 0.5rem;
+}
+
+.ionrift-station-dialog .result-tier-exceptional {
+    color: #ffd700;
+    background: rgba(255, 215, 0, 0.12);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.ionrift-station-dialog .result-tier-success {
+    color: #7eb8da;
+    background: rgba(126, 184, 218, 0.12);
+    border: 1px solid rgba(126, 184, 218, 0.3);
+}
+
+.ionrift-station-dialog .result-tier-failure {
+    color: #e88;
+    background: rgba(238, 136, 136, 0.12);
+    border: 1px solid rgba(238, 136, 136, 0.3);
+}
+
+.ionrift-station-dialog .result-tier-pending {
+    color: rgba(245, 158, 11, 0.85);
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.ionrift-station-dialog .result-tier-confirmed {
+    color: rgba(196, 181, 253, 0.9);
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.ionrift-station-dialog .result-narrative {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.4;
+    margin: 0 0 0.5rem;
+}
+
+.ionrift-station-dialog .result-footer {
+    padding-top: 0.25rem;
+}
+
+.ionrift-station-dialog .btn-result-dismiss {
+    width: 100%;
+    padding: 0.4rem;
+    border-radius: 4px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(99, 102, 241, 0.12));
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ionrift-station-dialog .btn-result-dismiss:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(99, 102, 241, 0.2));
+}
+
+/* ─────────────────────────────────────────────────────────── */
 
 .respite-waiting-message {
     text-align: center;
@@ -13198,6 +14082,91 @@
     min-width: 0;
 }
 
+/* One card: in-pack placeables use violet fill (like legacy drag handle) */
+.camp-gear-placeable-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.2rem;
+    flex: 1;
+    min-width: 0;
+    padding: 0.35rem 0.4rem;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background: rgba(139, 92, 246, 0.16);
+    transition: background 0.15s ease, border-color 0.15s ease;
+    cursor: grab;
+}
+
+.camp-gear-placeable-wrap:not(.deployed):hover {
+    background: rgba(139, 92, 246, 0.28);
+    border-color: rgba(196, 181, 253, 0.5);
+}
+
+.camp-gear-placeable-wrap.deployed {
+    border-style: solid;
+    border-color: rgba(74, 222, 128, 0.4);
+    background: rgba(74, 222, 128, 0.08);
+    cursor: default;
+}
+
+.camp-gear-placeable-wrap > .camp-gear-mechanic-note {
+    padding: 0 0.05rem;
+    text-align: left;
+}
+
+/* Contrast on violet: benefit line slightly brighter than old green-on-black */
+.camp-gear-placeable-wrap:not(.deployed) > .camp-gear-mechanic-note.benefit {
+    color: #d1fae5;
+}
+
+.camp-gear-placeable-wrap:not(.deployed) > .camp-gear-mechanic-note:not(.benefit) {
+    color: #fde68a;
+}
+
+.camp-gear-placeable-wrap:not(.deployed) > .gear-drag-handle.gear-drag-handle-scene {
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.camp-gear-placeable-wrap:not(.deployed) .gear-drag-scene-pill {
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.camp-gear-placeable-wrap:not(.deployed) > .gear-drag-handle > i {
+    color: rgba(221, 214, 254, 0.95);
+}
+
+/* Deployed state: bright mint on dark-green background */
+.camp-gear-placeable-wrap.deployed > .camp-gear-mechanic-note.benefit {
+    color: #86efac;
+}
+
+.camp-gear-placeable-wrap.deployed > .camp-gear-mechanic-note:not(.benefit) {
+    color: #fde68a;
+}
+
+.camp-gear-placeable-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin: 0;
+    padding: 0.05rem 0.05rem 0;
+    font-size: 0.52rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(237, 233, 254, 0.82);
+}
+
+.camp-gear-placeable-hint > i {
+    font-size: 0.5rem;
+    opacity: 0.85;
+}
+
+.camp-gear-placeable-wrap.deployed > .camp-gear-placeable-hint {
+    display: none;
+}
+
 .camp-gear-scene-placeholder {
     flex: 1;
     min-height: 0;
@@ -13322,4 +14291,267 @@
     min-height: 2.75rem;
     padding-top: 0.2rem;
     padding-bottom: 0.2rem;
+}
+
+/* Inner handle: single outer dashed card; override scene/mess min-heights */
+.camp-gear-placeable-wrap > .gear-drag-handle.gear-drag-handle-scene {
+    border: none;
+    background: transparent;
+    min-height: auto;
+    padding: 0.12rem 0;
+    flex: 0 0 auto;
+    align-self: stretch;
+}
+
+.camp-gear-placeable-wrap > .gear-drag-handle.gear-drag-handle-scene.deployed {
+    border: none;
+    background: transparent;
+}
+
+/* Detect Magic: inventory rows. Run classes (ionrift-dm-run-*) come from JS: dnd5e rows are
+   not always adjacent siblings, so CSS + / :has(+) cannot merge outlines reliably. */
+@keyframes ionrift-dm-glow-pulse {
+    0%,
+    100% {
+        opacity: 0.62;
+    }
+    50% {
+        opacity: 0.96;
+    }
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow {
+    --ionrift-dm-glow-c: rgba(186, 104, 255, 0.88);
+    --ionrift-dm-glow-soft: color-mix(in srgb, var(--ionrift-dm-glow-c) 52%, transparent);
+    --ionrift-dm-glow-fill: color-mix(in srgb, var(--ionrift-dm-glow-c) 16%, transparent);
+    position: relative;
+    z-index: 0;
+    isolation: isolate;
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    border: none;
+    border-radius: 0;
+    box-shadow:
+        inset 0 0 28px 0 var(--ionrift-dm-glow-fill),
+        inset 0 0 12px 0 color-mix(in srgb, var(--ionrift-dm-glow-c) 10%, transparent),
+        0 0 18px 3px var(--ionrift-dm-glow-soft),
+        0 0 36px 8px color-mix(in srgb, var(--ionrift-dm-glow-c) 28%, transparent);
+    animation: ionrift-dm-glow-pulse 2.75s ease-in-out infinite;
+}
+
+/* Item portrait: extra read at a glance */
+.sheet [data-item-id].ionrift-detect-magic-glow .item-image img,
+.sheet [data-item-id].ionrift-detect-magic-glow .item .item-image img,
+.sheet [data-item-id].ionrift-detect-magic-glow figure img {
+    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ionrift-dm-glow-c) 65%, transparent))
+        drop-shadow(0 0 10px color-mix(in srgb, var(--ionrift-dm-glow-c) 35%, transparent));
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-run-only::after {
+    border: 1px solid var(--ionrift-dm-glow-c);
+    border-radius: 6px;
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-run-start::after {
+    border-top: 1px solid var(--ionrift-dm-glow-c);
+    border-left: 1px solid var(--ionrift-dm-glow-c);
+    border-right: 1px solid var(--ionrift-dm-glow-c);
+    border-bottom: 1px solid var(--ionrift-dm-glow-c);
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-run-mid::after {
+    border-left: 1px solid var(--ionrift-dm-glow-c);
+    border-right: 1px solid var(--ionrift-dm-glow-c);
+    border-bottom: 1px solid var(--ionrift-dm-glow-c);
+    border-top: none;
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-run-end::after {
+    border-left: 1px solid var(--ionrift-dm-glow-c);
+    border-right: 1px solid var(--ionrift-dm-glow-c);
+    border-bottom: 1px solid var(--ionrift-dm-glow-c);
+    border-top: none;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sheet [data-item-id].ionrift-detect-magic-glow::after {
+        animation: none;
+        opacity: 0.85;
+    }
+
+    .sheet [data-item-id].ionrift-detect-magic-glow .item-image img,
+    .sheet [data-item-id].ionrift-detect-magic-glow .item .item-image img,
+    .sheet [data-item-id].ionrift-detect-magic-glow figure img {
+        filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ionrift-dm-glow-c) 50%, transparent));
+    }
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-abj {
+    --ionrift-dm-glow-c: rgba(200, 210, 255, 0.95);
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-con {
+    --ionrift-dm-glow-c: rgba(255, 165, 70, 0.9);
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-div {
+    --ionrift-dm-glow-c: rgba(120, 200, 255, 0.9);
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-enc {
+    --ionrift-dm-glow-c: rgba(255, 120, 200, 0.88);
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-evo {
+    --ionrift-dm-glow-c: rgba(255, 100, 60, 0.92);
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-ill {
+    --ionrift-dm-glow-c: rgba(180, 140, 255, 0.9);
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-nec {
+    --ionrift-dm-glow-c: rgba(80, 200, 120, 0.88);
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-trs {
+    --ionrift-dm-glow-c: rgba(255, 210, 80, 0.9);
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-unknown {
+    --ionrift-dm-glow-c: rgba(186, 104, 255, 0.88);
+}
+
+/* Detect Magic: inventory tab (dnd5e nav.tabs). In-tab CSS only, no overlay nodes. */
+@keyframes ionrift-dm-inv-tab-attn {
+    0%,
+    100% {
+        opacity: 0.28;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+@keyframes ionrift-dm-inv-tab-ring {
+    0%,
+    100% {
+        box-shadow:
+            inset 0 0 0 1px color-mix(in srgb, var(--ionrift-dm-tab-c) 44%, transparent),
+            inset 0 0 10px color-mix(in srgb, var(--ionrift-dm-tab-c) 10%, transparent);
+    }
+    50% {
+        box-shadow:
+            inset 0 0 0 1px color-mix(in srgb, var(--ionrift-dm-tab-c) 78%, transparent),
+            inset 0 0 22px color-mix(in srgb, var(--ionrift-dm-tab-c) 26%, transparent);
+    }
+}
+
+@keyframes ionrift-dm-inv-tab-icon {
+    0%,
+    100% {
+        filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ionrift-dm-tab-c) 45%, transparent));
+    }
+    50% {
+        filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ionrift-dm-tab-c) 82%, transparent));
+    }
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow {
+    position: relative;
+    z-index: 1;
+    --ionrift-dm-tab-c: rgba(186, 104, 255, 0.88);
+    box-shadow:
+        inset 0 0 0 1px color-mix(in srgb, var(--ionrift-dm-tab-c) 58%, transparent),
+        inset 0 0 14px color-mix(in srgb, var(--ionrift-dm-tab-c) 16%, transparent);
+    animation: ionrift-dm-inv-tab-ring 2.05s ease-in-out infinite;
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow::after {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(
+        circle at 50% 50%,
+        color-mix(in srgb, var(--ionrift-dm-tab-c) 38%, transparent) 0%,
+        transparent 72%
+    );
+    animation: ionrift-dm-inv-tab-attn 2.05s ease-in-out infinite;
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow dnd5e-icon {
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 0 3px color-mix(in srgb, var(--ionrift-dm-tab-c) 65%, transparent));
+    animation: ionrift-dm-inv-tab-icon 2.05s ease-in-out infinite;
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="abj"] {
+    --ionrift-dm-tab-c: rgba(200, 210, 255, 0.95);
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="con"] {
+    --ionrift-dm-tab-c: rgba(255, 165, 70, 0.9);
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="div"] {
+    --ionrift-dm-tab-c: rgba(120, 200, 255, 0.9);
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="enc"] {
+    --ionrift-dm-tab-c: rgba(255, 120, 200, 0.88);
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="evo"] {
+    --ionrift-dm-tab-c: rgba(255, 100, 60, 0.92);
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="ill"] {
+    --ionrift-dm-tab-c: rgba(180, 140, 255, 0.9);
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="nec"] {
+    --ionrift-dm-tab-c: rgba(80, 200, 120, 0.88);
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="trs"] {
+    --ionrift-dm-tab-c: rgba(255, 210, 80, 0.9);
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="unknown"] {
+    --ionrift-dm-tab-c: rgba(186, 104, 255, 0.88);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sheet nav.tabs a.ionrift-dm-inventory-tab-glow {
+        animation: none;
+        box-shadow:
+            inset 0 0 0 1px color-mix(in srgb, var(--ionrift-dm-tab-c) 58%, transparent),
+            inset 0 0 14px color-mix(in srgb, var(--ionrift-dm-tab-c) 16%, transparent);
+    }
+
+    .sheet nav.tabs a.ionrift-dm-inventory-tab-glow::after {
+        animation: none;
+        opacity: 0.78;
+    }
+
+    .sheet nav.tabs a.ionrift-dm-inventory-tab-glow dnd5e-icon {
+        animation: none;
+        filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ionrift-dm-tab-c) 55%, transparent));
+    }
 }
