@@ -2314,13 +2314,19 @@ function _onSocketMessage(data) {
         // GM -> All: camp gear placed confirmation
         case "campGearPlaced": {
             const campApp = activeRestSetupApp ?? activePlayerRestApp;
-            if (campApp) campApp.render();
+            if (campApp) {
+                void campApp.render();
+                campApp.refreshCanvasStationOverlaysIfActivity?.();
+            }
             break;
         }
 
         case "campStationPlaced": {
             const campAppStation = activeRestSetupApp ?? activePlayerRestApp;
-            if (campAppStation) campAppStation.render();
+            if (campAppStation) {
+                void campAppStation.render();
+                campAppStation.refreshCanvasStationOverlaysIfActivity?.();
+            }
             break;
         }
 
@@ -2822,7 +2828,10 @@ async function _handleCampGearPlace(data) {
             actorId,
             gearType
         });
-        if (activeRestSetupApp) activeRestSetupApp.render();
+        if (activeRestSetupApp) {
+            void activeRestSetupApp.render();
+            activeRestSetupApp.refreshCanvasStationOverlaysIfActivity?.();
+        }
     }
 }
 
@@ -2849,8 +2858,11 @@ async function _handleCampStationPlace(data) {
     const placed = await placeStation(x, y, stationKey);
     if (placed) {
         game.socket.emit(`module.${MODULE_ID}`, { type: "campStationPlaced" });
-        activeRestSetupApp?.render();
-        activePlayerRestApp?.render();
+        if (activeRestSetupApp) {
+            void activeRestSetupApp.render();
+            activeRestSetupApp.refreshCanvasStationOverlaysIfActivity?.();
+        }
+        void activePlayerRestApp?.render();
     }
 }
 
