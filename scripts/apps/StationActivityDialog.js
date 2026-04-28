@@ -41,6 +41,11 @@ export function closeStationDialogIfDifferentActor(contextActorId) {
     void _openDialog.close();
 }
 
+/** Re-build context after GM changes fire (or any shared rest data) from socket. */
+export function refreshOpenStationDialog() {
+    if (_openDialog) void _openDialog.render(true);
+}
+
 export const COOK_ACTIVITY_IDS = new Set(["act_cook", "act_brew"]);
 
 const DIALOG_WIDTH = 320;
@@ -73,6 +78,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             backToList: StationActivityDialog.#onBackToList,
             dismissResult: StationActivityDialog.#onDismissResult,
             switchStationPanelTab: StationActivityDialog.#onSwitchStationPanelTab,
+            setFireLevel: StationActivityDialog.#onSetFireLevel,
             submitStationRations: StationActivityDialog.#onSubmitStationRations,
             stationDetectMagicScan: StationActivityDialog.#onStationDetectMagicScan,
             stationIdentifyScannedItem: StationActivityDialog.#onStationIdentifyScannedItem,
@@ -225,6 +231,12 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         } else if (hubEligible && this._station.id === "workbench") {
             if (hasAnyGeneral) stationTabs.push({ id: "activity", label: "Activities" });
             if (game.user?.isGM) stationTabs.push({ id: "identify", label: "Identify" });
+        } else if (hubEligible && this._station.id === "campfire") {
+            const fireTabCtx = this._restApp?.getFireTabContextForStationDialog?.() ?? null;
+            if (fireTabCtx) {
+                stationTabs.push({ id: "camp", label: "Camp" });
+                stationTabs.push({ id: "fire", label: "Fire" });
+            }
         }
 
         const tabIds = new Set(stationTabs.map(t => t.id));
@@ -233,6 +245,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             this._stationPanelTab = stationTabs.find(t => !t.disabled)?.id
                 ?? stationTabs[0]?.id
                 ?? "activity";
+        }
+        if (this._station.id === "campfire" && stationTabs.length > 0 && this._stationPanelTab === "activity") {
+            this._stationPanelTab = "camp";
         }
 
         const showStationTabs = stationTabs.length > 0;
@@ -246,6 +261,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             : null;
         const campPersonalCard = (this._station?.id === "campfire" && this._restApp?.getCampPersonalCardForActor && this._actor?.id)
             ? this._restApp.getCampPersonalCardForActor(this._actor.id)
+            : null;
+        const fireTabContext = (this._station?.id === "campfire" && this._restApp?.getFireTabContextForStationDialog)
+            ? this._restApp.getFireTabContextForStationDialog()
             : null;
 
         const identifyEmbed = (this._station?.id === "workbench" && this._restApp?.getStationIdentifyEmbedContext)
@@ -285,6 +303,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             campGearAtFire,
             campComfortAtFire,
             campPersonalCard,
+            fireTabContext,
             hideNoActivitiesMessage: this._station?.id === "campfire",
             isGmUser:           !!game.user?.isGM,
             canShowDetectMagicScanButton: !!this._restApp?.canShowDetectMagicScanButtonFromParty?.(),
@@ -567,6 +586,18 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         if (target.disabled || target.getAttribute("aria-disabled") === "true") return;
         this._stationPanelTab = tab;
         this.render();
+    }
+
+    static async #onSetFireLevel(event, target) {
+        if (!this._restApp?.changeFireLevelDuringActivity) return;
+        const level = target?.dataset?.fireLevel
+            ?? target?.closest?.("[data-fire-level]")?.dataset?.fireLevel;
+        if (!level || !["embers", "campfire", "bonfire"].includes(level)) return;
+        if (target.disabled) return;
+        const result = await this._restApp.changeFireLevelDuringActivity(level);
+        if (result?.ok) {
+            void this.render(true);
+        }
     }
 
     static async #onSubmitStationRations() {
@@ -871,7 +902,10 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         const trackFood = game.settings.get(MODULE_ID, "trackFood");
         const workbenchHub = station.id === "workbench";
-        const showStationTabs = ((station.id === "cooking_station" && trackFood) || workbenchHub);
+        const campfireHub = station.id === "campfire"
+            && restType === "long"
+            && !!restApp?.getFireTabContextForStationDialog?.();
+        const showStationTabs = ((station.id === "cooking_station" && trackFood) || workbenchHub || campfireHub);
         const actorHasCookingUtensils = station.id === "cooking_station" && actor
             ? canPlaceStation(actor, "cookingArea")
             : false;
@@ -885,6 +919,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         if (workbenchHub && generalAvailable.length === 0) {
             initialStationTab = game.user?.isGM ? "identify" : "activity";
         }
+        if (campfireHub) initialStationTab = "camp";
 
         let dialogWidth = DIALOG_WIDTH;
         if (showStationTabs && station.id === "cooking_station") {
