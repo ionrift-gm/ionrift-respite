@@ -7754,6 +7754,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Rebuild station overlays when new map tokens appear (bedroll, tent, shared furniture).
+     * The layer is built at activity start; it does not auto-update until this runs.
+     */
+    refreshCanvasStationOverlaysIfActivity() {
+        if (this._phase !== "activity") return;
+        if (canvas?.ready) {
+            this._activateCanvasStationLayer();
+        } else {
+            Hooks.once("canvasReady", () => {
+                if (this._phase === "activity") this._activateCanvasStationLayer();
+            });
+        }
+    }
+
+    /**
      * Party actor to use for canvas station activity (current user).
      * @param {Actor[]} partyActors
      * @param {RestSetupApp|null} [restApp] - GM: controlled party token wins over roster so canvas notices and clicks match the token on the board.
@@ -10144,6 +10159,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     game.socket.emit(`module.${MODULE_ID}`, { type: "campStationPlaced" });
                 }
                 this.render();
+                this.refreshCanvasStationOverlaysIfActivity();
             } else {
                 game.socket.emit(`module.${MODULE_ID}`, {
                     type: "campStationPlace",
@@ -10167,6 +10183,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (game.user.isGM) {
                 await placePlayerGear(x, y, gearType, actorId);
                 this.render();
+                this.refreshCanvasStationOverlaysIfActivity();
             } else {
                 game.socket.emit(`module.${MODULE_ID}`, {
                     type: "campGearPlace",
