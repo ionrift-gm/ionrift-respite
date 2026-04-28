@@ -99,7 +99,7 @@ export class CampfireEmbed {
             this._heat = 45;
             this._peakHeat = 45;
             // Sync the on-scene campfire token so it matches the hearth state
-            CampfireTokenLinker.setLightState(true);
+            CampfireTokenLinker.setLightState(true, this.fireLevel);
         }
 
         const ctx = this._prepareContext();
@@ -553,7 +553,7 @@ export class CampfireEmbed {
         this.render();
 
         // Sync campfire token light on the canvas
-        CampfireTokenLinker.setLightState(true);
+        CampfireTokenLinker.setLightState(true, this.fireLevel);
 
         if (this._litNotifyTimer) clearTimeout(this._litNotifyTimer);
         this._litNotifyTimer = setTimeout(() => {
@@ -825,6 +825,9 @@ export class CampfireEmbed {
         if (current !== this._lastFireLevel) {
             this._lastFireLevel = current;
             if (this._onFireLevelChange) this._onFireLevelChange(current);
+            if (this._lit && current !== "unlit" && game.user.isGM) {
+                void CampfireTokenLinker.setLightState(true, current);
+            }
         }
     }
 

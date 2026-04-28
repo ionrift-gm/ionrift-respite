@@ -86,9 +86,13 @@ export class RestFlowEngine {
         this._phase = "events";
 
         // All modifiers adjust the THRESHOLD (DC), not the roll.
-        // Positive shelter/weather/scouting/fire/defenses reduce DC (easier to avoid events).
-        // Positive gmEncounterAdj raises DC (harder to avoid events).
-        const campMods = (this.fireRollModifier ?? 0) + (this.shelterEncounterMod ?? 0) + (this._encounterBreakdown?.defenses ?? 0);
+        // Positive shelter+weather (shelterEncounterMod), scouting, fire, and defenses each
+        // increase campMods so effectiveDC drops (easier quiet night). Positive gmEncounterAdj
+        // raises effectiveDC (harder quiet night). Must match RestSetupApp encounter bar total.
+        const campMods = (this.fireRollModifier ?? 0)
+            + (this.shelterEncounterMod ?? 0)
+            + (this._encounterBreakdown?.scouting ?? 0)
+            + (this._encounterBreakdown?.defenses ?? 0);
         const baseDC = this._baseDC ?? 15; // Set during setup from terrain table
         const effectiveDC = Math.max(1, baseDC - campMods + (this.gmEncounterAdj ?? 0));
         console.log(`[Respite:Engine] resolveEvents — baseDC=${baseDC}, shelterEncounterMod=${this.shelterEncounterMod ?? 0}, fireRollModifier=${this.fireRollModifier ?? 0}, breakdownDefenses=${this._encounterBreakdown?.defenses ?? 0}, campMods=${campMods}, gmAdj=${this.gmEncounterAdj ?? 0} → effectiveDC=${effectiveDC}, scoutTier=${scoutTier}`);

@@ -4,6 +4,8 @@
  * to reduce file size and improve maintainability.
  */
 
+import { isGearDeployed } from "../services/CompoundCampPlacer.js";
+
 /**
  * Weather master table. Each entry defines comfort penalty, encounter DC modifier,
  * and tent interaction. `tentReduces` means tent lowers penalty by 1 (partial help).
@@ -191,6 +193,99 @@ function _countAmmo(actor) {
     return found ? total : null;
 }
 
+/**
+ * Camp station definitions. Each station groups activities by the campsite
+ * furniture they are performed at. Order determines display order.
+ * `furnitureKey` ties back to CompoundCampPlacer token flags.
+ */
+export const CAMP_STATIONS = [
+    {
+        id: "workbench",
+        label: "Workbench",
+        icon: "fas fa-tools",
+        furnitureKey: "table",
+        tagline: "Identify, attune, study, scribe",
+        activities: ["act_identify", "act_attune", "act_study", "act_scribe"]
+    },
+    {
+        id: "weapon_rack",
+        label: "Weapon Rack",
+        icon: "fas fa-shield-alt",
+        furnitureKey: "weaponRack",
+        tagline: "Fletch, defences, scout, watch, other",
+        activities: ["act_fletch", "act_defenses", "act_scout", "act_keep_watch", "act_other"]
+    },
+    {
+        id: "medical_bed",
+        label: "Medical Bed",
+        icon: "fas fa-hand-holding-medical",
+        furnitureKey: "medicalBed",
+        tagline: "Tend wounds, rest fully",
+        activities: ["act_tend_wounds", "act_rest_fully"]
+    },
+    {
+        id: "bedroll",
+        label: "Your Bedroll",
+        icon: "fas fa-bed",
+        furnitureKey: null,
+        tagline: "Rest, pray, train, tales, craft, tailor",
+        activities: ["act_rest_fully", "act_pray", "act_train", "act_tell_tales", "act_craft", "act_tailor"]
+    },
+    {
+        id: "campfire",
+        label: "Campfire",
+        icon: "fas fa-fire",
+        furnitureKey: "campfire",
+        tagline: "Fire state, comfort, personal camp",
+        activities: []
+    },
+    {
+        id: "cooking_station",
+        label: "Cooking Station",
+        icon: "fas fa-utensils",
+        furnitureKey: "cookingArea",
+        tagline: "Cook, brew",
+        activities: ["act_cook", "act_brew"]
+    }
+];
+
+/**
+ * One canvas station id for a chosen activity (used for overlay portraits).
+ * When an activity appears on both bedroll and campfire, picks from deployed bedroll gear;
+ * otherwise the first matching station in {@link CAMP_STATIONS} order.
+ * @param {string} activityId
+ * @param {string|null} [actorId]
+ * @returns {string}
+ */
+export function inferCanvasStationForActivity(activityId, actorId = null) {
+    if (!activityId) return "campfire";
+    const hits = CAMP_STATIONS.filter(s => (s.activities ?? []).includes(activityId));
+    if (!hits.length) return "campfire";
+    if (hits.length === 1) return hits[0].id;
+    const hasBed = hits.some(h => h.id === "bedroll");
+    const hasFire = hits.some(h => h.id === "campfire");
+    if (hasBed && hasFire && actorId) {
+        return isGearDeployed(actorId, "bedroll") ? "bedroll" : "campfire";
+    }
+    return hits[0].id;
+}
+
+/** Maximum distance (grid squares) a player token may be from a station to interact with it. */
+export const STATION_RANGE_SQUARES = 3;
+
+/**
+ * Camp station placeholder (build site) before the fire is lit. Swapped in-place when promoted.
+ * World Data path (same root as FURNITURE draft art in CompoundCampPlacer).
+ * @type {{ name: string, path: string, width: number, height: number }}
+ */
+export const PLACEHOLDER_CAMP_STATION = {
+    name: "Build site",
+    path: "ionrift-brand/Assets/Drafts/campsite_tokens/camp_stub_b2.png",
+    /** Same 1x1 grid as final station tokens so promote swaps art only (no size pop). */
+    width: 1,
+    height: 1
+};
+
 /** Shelter spell definitions. Used in setup phase for shelter detection. */
 export const SHELTER_SPELLS = [
     { id: "tiny_hut", name: "Tiny Hut", altNames: ["leomund's tiny hut", "tiny hut", "cozy cabin"], icon: "fas fa-igloo", comfortFloor: "sheltered", encounterMod: 5, restTypes: ["long"], blocksFire: true,
@@ -211,3 +306,8 @@ export const COMFORT_TIPS = {
     sheltered: "Sheltered: full HP, full HD recovery",
     safe: "Safe: full HP, full HD recovery, no encounter risk"
 };
+
+/** Identify tab: Detect Magic toolbar label and GM-only tooltip. */
+export const DETECT_MAGIC_BTN_LABEL_PLAYER = "Cast Detect Magic";
+export const DETECT_MAGIC_BTN_LABEL_GM = "Cast Detect Magic (GM only)";
+export const DETECT_MAGIC_BTN_TITLE_GM = "Runs the aura pass for the whole party as host. Use when you are granting Detect Magic at the table. Skip if a player should trigger it from a character they control.";

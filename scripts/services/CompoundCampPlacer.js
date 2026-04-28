@@ -1,31 +1,53 @@
 /**
  * CompoundCampPlacer
- * Places a compound camp layout on the active scene: a central campfire
- * surrounded by four furniture tokens at cardinal offsets. Also handles
- * player gear (bedroll, tent) placement with deployed-state tracking.
+ * Places the campfire pit (base + flame tokens) on the active scene. Shared
+ * camp stations (workbench, weapon rack, medical bed, cooking area) are
+ * placed separately via drag from the Make Camp UI. Player gear (bedroll,
+ * tent, mess kit) uses deployed-state tracking on items.
  *
  * All placed tokens are flagged with isCampFurniture and a shared
  * campSessionId so they can be cleaned up when the rest resolves.
  */
+
+import { getPartyActors } from "./partyActors.js";
+import { PLACEHOLDER_CAMP_STATION } from "../apps/RestConstants.js";
 
 const MODULE_ID = "ionrift-respite";
 
 /** Draft campsite art under world Data (replace with shipped module assets later). */
 const DRAFT_CAMPSITE_TOKENS = "ionrift-brand/Assets/Drafts/campsite_tokens";
 
-// Compound layout furniture (draft PNGs where available)
+/** Shared camp furniture (not the campfire pit). Keys match CAMP_STATIONS furnitureKey. */
 const FURNITURE = {
-    table:       { name: "Makeshift Table",  icon: `${DRAFT_CAMPSITE_TOKENS}/makeshift_table.png`, fallback: "icons/svg/barrel.svg", textureScale: 1.6 },
-    medicalBed:  { name: "Medical Bedding",  icon: `${DRAFT_CAMPSITE_TOKENS}/triage_bed.png`,     fallback: "icons/svg/sleep.svg", textureScale: 1.6 },
-    weaponRack:  { name: "Weapon Rack",      icon: `${DRAFT_CAMPSITE_TOKENS}/weapons_rack.png`,   fallback: "icons/svg/sword.svg", textureScale: 1.6 },
-    cookingArea: { name: "Cooking Station",  icon: `${DRAFT_CAMPSITE_TOKENS}/cooking_station.png`, fallback: "icons/tools/cooking/cauldron.webp" }
+    table:       { name: "Makeshift Table",  width: 1, height: 1, icon: `${DRAFT_CAMPSITE_TOKENS}/makeshift_table.png`, fallback: "icons/svg/barrel.svg", textureScale: 1.6 },
+    medicalBed:  { name: "Medical Bedding",  width: 1, height: 1, icon: `${DRAFT_CAMPSITE_TOKENS}/triage_bed.png`,     fallback: "icons/svg/sleep.svg", textureScale: 1.6 },
+    weaponRack:  { name: "Weapon Rack",      width: 1, height: 1, icon: `${DRAFT_CAMPSITE_TOKENS}/weapons_rack.png`,   fallback: "icons/svg/sword.svg", textureScale: 1.6 },
+    cookingArea: {
+        name: "Cooking Station",
+        basicName: "Mess table",
+        width: 1, height: 1,
+        icon: `${DRAFT_CAMPSITE_TOKENS}/cooking_station.png`,
+        fallback: "icons/tools/cooking/cauldron.webp"
+    }
 };
+
+/** Furniture keys that can be placed from the Camp Stations panel (order = UI order). */
+export const CAMP_STATION_PLACEMENT_KEYS = ["weaponRack", "table", "medicalBed", "cookingArea"];
+
+/** Code-only feature flag: auto-place stations when entering step 2. */
+const AUTO_PLACE_STATIONS = true;
 
 const PLAYER_GEAR = {
     bedroll: { name: "Bedroll",  icon: `${DRAFT_CAMPSITE_TOKENS}/bedroll.png`, fallback: "icons/svg/sleep.svg",  width: 1,   height: 1 },
-    tent:    { name: "Tent",     icon: "icons/environment/wilderness/tent.webp",    fallback: "icons/svg/house.svg",  width: 1,   height: 1 },
+    tent:    { name: "Tent",     icon: `${DRAFT_CAMPSITE_TOKENS}/tent_a.png`,         fallback: "icons/svg/house.svg",  width: 2,   height: 2 },
     /** Small map token: dining gear (half-grid footprint). */
-    messkit: { name: "Mess Kit", icon: "icons/tools/cooking/cutlery-steel.webp", fallback: "icons/tools/cooking/cauldron.webp", width: 0.5, height: 0.5 }
+    messkit: {
+        name:     "Mess Kit",
+        icon:     `${DRAFT_CAMPSITE_TOKENS}/messkit_c.png`,
+        fallback: "icons/tools/cooking/cutlery-steel.webp",
+        width:    0.5,
+        height:   0.5
+    }
 };
 
 /**
@@ -46,18 +68,174 @@ function findPlayerGearItem(actor, gearType) {
     return undefined;
 }
 
-// Cardinal offsets in grid squares from center
-const CAMP_OFFSETS = {
-    cookingArea: { dx:  0, dy: -2 },  // North
-    table:       { dx:  0, dy:  2 },  // South
-    medicalBed:  { dx: -2, dy:  0 },  // West
-    weaponRack:  { dx:  2, dy:  0 }   // East
-};
-
 let _campSessionId = null;
+
+/**
+ * Pit token (logs) for the current respite camp on the active scene.
+ * @returns {TokenDocument|null}
+ */
+function getPitTokenOnScene() {
+    const scene = canvas?.scene;
+    if (!scene) return null;
+    return scene.tokens.find(t => {
+        const f = t.flags?.[MODULE_ID];
+        return f?.isCampFurniture && f?.furnitureKey === "campfire";
+    }) ?? null;
+}
+
+/**
+ * Sync local campSessionId from the pit token so all clients (including
+ * players) match the GM after tokens sync from the database.
+ * @returns {string|null} campSessionId from scene, if any
+ */
+export function hydrateCampSessionFromScene() {
+    const pit = getPitTokenOnScene();
+    const sid = pit?.flags?.[MODULE_ID]?.campSessionId ?? null;
+    if (sid) _campSessionId = sid;
+    return sid;
+}
 
 function gridSize() {
     return canvas.grid?.size ?? canvas.dimensions?.size ?? 100;
+}
+
+/**
+ * @param {string|null|undefined} sceneId - from requesting client (socket); optional
+ */
+function resolveSceneForCampOp(sceneId) {
+    if (sceneId && game.scenes?.get) {
+        const s = game.scenes.get(sceneId);
+        if (s) return s;
+    }
+    return canvas?.scene ?? null;
+}
+
+/** Same notion as station reach: N grid units from pit center (uses scene grid distance). */
+export const CAMP_PLACEMENT_RANGE_SQUARES = 3;
+
+function pitCenterWorld() {
+    const pit = getPitTokenOnScene();
+    if (!pit) return null;
+    const gs = gridSize();
+    const placeable = canvas.tokens?.get(pit.id);
+    if (placeable?.center) return { x: placeable.center.x, y: placeable.center.y };
+    return {
+        x: pit.x + (pit.width * gs) / 2,
+        y: pit.y + (pit.height * gs) / 2
+    };
+}
+
+function snappedCenterWorld(worldX, worldY) {
+    if (!canvas?.grid) return { sx: worldX, sy: worldY };
+    const snapped = canvas.grid.getSnappedPoint({ x: worldX, y: worldY }, { mode: CONST.GRID_SNAPPING_MODES.CENTER });
+    return { sx: snapped.x ?? worldX, sy: snapped.y ?? worldY };
+}
+
+function sceneGridDistanceFeet() {
+    return canvas?.scene?.grid?.distance ?? canvas?.grid?.distance ?? 5;
+}
+
+function tokenFootprintRect(doc, gs) {
+    return {
+        left: doc.x,
+        top: doc.y,
+        right: doc.x + doc.width * gs,
+        bottom: doc.y + doc.height * gs
+    };
+}
+
+function rectsOverlap2D(a, b) {
+    return a.right > b.left && a.left < b.right && a.bottom > b.top && a.top < b.bottom;
+}
+
+/**
+ * @param {number} tx - top-left world px
+ * @param {number} ty
+ * @param {number} gridW
+ * @param {number} gridH
+ * @param {*} scene
+ * @returns {boolean}
+ */
+function placementOverlapsAnyToken(tx, ty, gridW, gridH, scene, excludeId = null) {
+    const gs = gridSize();
+    const next = {
+        left: tx,
+        top: ty,
+        right: tx + gridW * gs,
+        bottom: ty + gridH * gs
+    };
+    for (const doc of scene.tokens) {
+        if (excludeId && doc.id === excludeId) continue;
+        const other = tokenFootprintRect(doc, gs);
+        if (rectsOverlap2D(next, other)) return true;
+    }
+    return false;
+}
+
+/**
+ * Validate camp gear or shared station drop (range + overlap). Uses same snap as placement.
+ * @param {number} worldX
+ * @param {number} worldY
+ * @param {number} gridW
+ * @param {number} gridH
+ * @param {{ x: number, y: number }|null} [pitCenterOverride] - When set (e.g. pit preview), use instead of the scene pit token
+ * @param {string|null} [excludeTokenId] - Skip overlap with this document (e.g. in-place promote)
+ * @returns {{ ok: boolean, reason?: string, tx?: number, ty?: number, sx?: number, sy?: number }}
+ */
+export function validateCampEquipmentDrop(worldX, worldY, gridW, gridH, pitCenterOverride = null, excludeTokenId = null) {
+    const scene = canvas?.scene;
+    if (!scene || !canvas?.grid) return { ok: false, reason: "No active scene." };
+
+    hydrateCampSessionFromScene();
+    const pitCenter = pitCenterOverride ?? pitCenterWorld();
+    if (!pitCenter) {
+        return { ok: false, reason: "Place the campfire on the map first." };
+    }
+
+    const { sx, sy } = snappedCenterWorld(worldX, worldY);
+    const dist = canvas.grid.measureDistance(pitCenter, { x: sx, y: sy });
+    const maxDist = CAMP_PLACEMENT_RANGE_SQUARES * sceneGridDistanceFeet();
+    if (dist > maxDist + 0.01) {
+        return {
+            ok: false,
+            reason: `Camp equipment must be within ${CAMP_PLACEMENT_RANGE_SQUARES} squares of the campfire.`
+        };
+    }
+
+    const gs = gridSize();
+    const tx = sx - (gs * gridW) / 2;
+    const ty = sy - (gs * gridH) / 2;
+
+    if (placementOverlapsAnyToken(tx, ty, gridW, gridH, scene, excludeTokenId)) {
+        return { ok: false, reason: "That spot overlaps another token." };
+    }
+
+    return { ok: true, tx, ty, sx, sy };
+}
+
+/**
+ * @param {number} worldX
+ * @param {number} worldY
+ * @param {string} gearType
+ * @returns {{ ok: boolean, reason?: string, tx?: number, ty?: number }}
+ */
+export function validatePlayerGearDrop(worldX, worldY, gearType) {
+    const def = PLAYER_GEAR[gearType];
+    if (!def) return { ok: false, reason: "Unknown gear type." };
+    return validateCampEquipmentDrop(worldX, worldY, def.width ?? 1, def.height ?? 1);
+}
+
+/**
+ * @param {number} worldX
+ * @param {number} worldY
+ * @param {string} stationKey
+ * @param {{ x: number, y: number }|null} [pitCenterOverride]
+ * @returns {{ ok: boolean, reason?: string, tx?: number, ty?: number, sx?: number, sy?: number }}
+ */
+export function validateStationEquipmentDrop(worldX, worldY, stationKey, pitCenterOverride = null) {
+    const def = FURNITURE[stationKey];
+    if (!def) return { ok: false, reason: "Unknown station." };
+    return validateCampEquipmentDrop(worldX, worldY, def.width ?? 1, def.height ?? 1, pitCenterOverride);
 }
 
 function getCampSessionId() {
@@ -90,7 +268,7 @@ function buildFurnitureToken(key, x, y, def, extraFlags = {}) {
     const w = def.width ?? 1;
     const h = def.height ?? 1;
     const texScale = def.textureScale ?? 1;
-    return {
+    const data = {
         name: def.name,
         texture: {
             src: resolveIcon(def.icon, def.fallback),
@@ -116,17 +294,20 @@ function buildFurnitureToken(key, x, y, def, extraFlags = {}) {
             }
         }
     };
+    /** Shared stations: draw under player tokens; players cannot drag on canvas. */
+    if (extraFlags.isSharedStation) {
+        data.locked = true;
+        data.sort = CAMP_STATION_FLOOR_SORT;
+        if (key === "cookingArea") {
+            data.flags[MODULE_ID].partyHasCookingUtensils = partyHasCookingUtensils();
+        }
+    }
+    return data;
 }
 
-// Campfire base/flame assets (same as CampPropPlacer, used for direct placement)
-const CAMPFIRE_BASES = [
-    `modules/${MODULE_ID}/assets/tokens/campfire-bases/campfire_base_01.png`,
-    `modules/${MODULE_ID}/assets/tokens/campfire-bases/campfire_base_02.png`,
-    `modules/${MODULE_ID}/assets/tokens/campfire-bases/campfire_base_03.png`,
-    `modules/${MODULE_ID}/assets/tokens/campfire-bases/campfire_base_04.png`,
-    `modules/${MODULE_ID}/assets/tokens/campfire-bases/campfire_base_05.png`,
-    `modules/${MODULE_ID}/assets/tokens/campfire-bases/campfire_base_06.png`,
-];
+// Campfire base (cold pit, always visible) and flame overlay (lit; template actor may override texture)
+const CAMPFIRE_BASE_PIT = `modules/${MODULE_ID}/assets/tokens/campfire_dead_a.png`;
+const CAMPFIRE_BASES = [CAMPFIRE_BASE_PIT];
 const CAMPFIRE_FLAME = `modules/${MODULE_ID}/assets/tokens/campfire_topdown_128x128.webm`;
 
 /**
@@ -135,9 +316,20 @@ const CAMPFIRE_FLAME = `modules/${MODULE_ID}/assets/tokens/campfire_topdown_128x
  */
 const CAMPFIRE_BASE_SORT = 100;
 const CAMPFIRE_FLAME_SORT = 101;
+/** Shared stations and placeholders: below default PC tokens (0), above deep background. Pit/flame use 100+. */
+const CAMP_STATION_FLOOR_SORT = -20;
 
 function randomCampfireBase() {
     return CAMPFIRE_BASES[Math.floor(Math.random() * CAMPFIRE_BASES.length)];
+}
+
+/**
+ * Picks the pit log texture for one placement. Use the same value for
+ * live preview and {@link placeCampfire} so the token matches the ghost.
+ * @returns {string}
+ */
+export function pickCampfirePitBaseTexture() {
+    return randomCampfireBase();
 }
 
 function findCampfireActor() {
@@ -146,19 +338,74 @@ function findCampfireActor() {
 }
 
 /**
- * Place a compound camp layout at a given world position.
- * Creates: campfire (base + flame) at center, plus four furniture tokens
- * at cardinal offsets of 2 grid squares.
- *
+ * True if any party member has cook's utensils (unlocks full cooking; not the mess kit).
+ * @returns {boolean}
+ */
+export function partyHasCookingUtensils() {
+    for (const a of getPartyActors()) {
+        if (canPlaceStation(a, "cookingArea")) return true;
+    }
+    return false;
+}
+
+/**
+ * Whether an actor may place a shared station (not GM bypass).
+ * @param {Actor|null} actor
+ * @param {string} stationKey - key in FURNITURE
+ * @returns {boolean}
+ */
+export function canPlaceStation(actor, stationKey) {
+    if (!actor) return false;
+    if (stationKey === "weaponRack" || stationKey === "table") return true;
+    if (stationKey === "medicalBed") {
+        const classes = (actor.items ?? []).filter(i => i.type === "class");
+        const isHealerClass = classes.some(c => {
+            const n = c.name?.toLowerCase() ?? "";
+            return /\bcleric\b|\bdruid\b|\bpaladin\b/i.test(n);
+        });
+        const hasMedicFeat = (actor.items ?? []).some(i =>
+            i.type === "feat" && /\bmedic\b/i.test(i.name ?? "")
+        );
+        return isHealerClass || hasMedicFeat;
+    }
+    if (stationKey === "cookingArea") {
+        return (actor.items ?? []).some(i => {
+            const n = i.name?.toLowerCase() ?? "";
+            if (n.includes("mess kit")) return false;
+            return n.includes("cook's utensils") || n.includes("cooks utensils")
+                || n.includes("cooking utensils");
+        });
+    }
+    return false;
+}
+
+/**
+ * Human-readable requirement line when {@link canPlaceStation} is false.
+ * @param {string} stationKey
+ * @returns {string}
+ */
+export function stationPlacementRequirementHint(stationKey) {
+    if (stationKey === "medicalBed") {
+        return "Cleric, Druid, or Paladin class, or the Medic feat.";
+    }
+    if (stationKey === "cookingArea") {
+        return "Cook's utensils or cooking utensils in inventory.";
+    }
+    return "";
+}
+
+/**
+ * Place campfire base + flame only (no shared furniture).
  * GM only.
  *
- * @param {number} worldX - Canvas world X (center of the camp)
- * @param {number} worldY - Canvas world Y (center of the camp)
- * @returns {Promise<{sessionId: string, center: {x: number, y: number}}>}
+ * @param {number} worldX - Canvas world X (center of the pit)
+ * @param {number} worldY - Canvas world Y (center of the pit)
+ * @param {{ pitBaseTextureSrc?: string }} [options] - If set, base token uses this art (must match preview pick)
+ * @returns {Promise<{sessionId: string, center: {x: number, y: number}}|null>}
  */
-export async function placeCompoundCamp(worldX, worldY) {
+export async function placeCampfire(worldX, worldY, options = {}) {
     if (!game.user.isGM) {
-        ui.notifications.warn("Only the GM can place a camp layout.");
+        ui.notifications.warn("Only the GM can place the campfire.");
         return null;
     }
 
@@ -173,13 +420,16 @@ export async function placeCompoundCamp(worldX, worldY) {
     const sessionId = getCampSessionId();
     const linkId = foundry.utils.randomID(8);
 
-    // Campfire base token (top-left position)
     const tx = cx - (gs / 2);
     const ty = cy - (gs / 2);
 
+    const baseSrc = typeof options.pitBaseTextureSrc === "string" && options.pitBaseTextureSrc.length
+        ? options.pitBaseTextureSrc
+        : randomCampfireBase();
+
     const baseData = {
         name: "Campfire Base",
-        texture: { src: randomCampfireBase() },
+        texture: { src: baseSrc },
         width: 1, height: 1,
         sort: CAMPFIRE_BASE_SORT,
         x: tx, y: ty,
@@ -200,7 +450,6 @@ export async function placeCompoundCamp(worldX, worldY) {
         }
     };
 
-    // Campfire flame overlay
     const campfireActor = findCampfireActor();
     const protoLight = campfireActor?.prototypeToken?.light;
     const lightConfig = (protoLight && (protoLight.bright > 0 || protoLight.dim > 0))
@@ -238,21 +487,95 @@ export async function placeCompoundCamp(worldX, worldY) {
         }
     };
 
-    // Furniture tokens at cardinal offsets
-    const furnitureTokens = Object.entries(CAMP_OFFSETS).map(([key, offset]) => {
-        const fx = cx + (offset.dx * gs) - (gs / 2);
-        const fy = cy + (offset.dy * gs) - (gs / 2);
-        return buildFurnitureToken(key, fx, fy, FURNITURE[key]);
-    });
+    await scene.createEmbeddedDocuments("Token", [baseData, flameData]);
 
-    // Batch create all tokens
-    const allTokens = [baseData, flameData, ...furnitureTokens];
-    await scene.createEmbeddedDocuments("Token", allTokens);
-
-    console.log(`${MODULE_ID} | CompoundCampPlacer: placed camp layout at (${cx}, ${cy}), session: ${sessionId}`);
-    ui.notifications.info("Camp placed on scene.");
+    console.log(`${MODULE_ID} | CompoundCampPlacer: placed campfire at (${cx}, ${cy}), session: ${sessionId}`);
+    ui.notifications.info("Campfire placed on scene.");
 
     return { sessionId, center: { x: cx, y: cy } };
+}
+
+/**
+ * Backward-compatible alias: places only the campfire pit (no furniture ring).
+ * @param {number} worldX
+ * @param {number} worldY
+ * @returns {Promise<{sessionId: string, center: {x: number, y: number}}|null>}
+ */
+export async function placeCompoundCamp(worldX, worldY) {
+    return placeCampfire(worldX, worldY);
+}
+
+/**
+ * Place one shared camp station token. GM only. One token per station key per session.
+ *
+ * @param {number} worldX
+ * @param {number} worldY
+ * @param {string} stationKey - FURNITURE key (weaponRack, table, medicalBed, cookingArea)
+ * @returns {Promise<boolean>}
+ */
+export async function placeStation(worldX, worldY, stationKey) {
+    if (!game.user.isGM) return false;
+
+    hydrateCampSessionFromScene();
+
+    const rawDef = FURNITURE[stationKey];
+    if (!rawDef) {
+        ui.notifications.warn("Unknown camp station.");
+        return false;
+    }
+
+    if (isStationDeployed(stationKey)) {
+        ui.notifications.warn("That station is already on the map.");
+        return false;
+    }
+
+    const scene = canvas.scene;
+    if (!scene) return false;
+
+    const def = stationKey === "cookingArea"
+        ? { ...rawDef, name: partyHasCookingUtensils() ? rawDef.name : (rawDef.basicName ?? rawDef.name) }
+        : rawDef;
+
+    const w = def.width ?? 1;
+    const h = def.height ?? 1;
+    const v = validateStationEquipmentDrop(worldX, worldY, stationKey);
+    if (!v.ok) {
+        ui.notifications.warn(v.reason);
+        return false;
+    }
+    const { tx, ty } = v;
+
+    const tokenData = buildFurnitureToken(stationKey, tx, ty, def, {
+        isSharedStation: true
+    });
+
+    await scene.createEmbeddedDocuments("Token", [tokenData]);
+    console.log(`${MODULE_ID} | CompoundCampPlacer: placed station ${stationKey} at (${tx}, ${ty})`);
+    return true;
+}
+
+/**
+ * Remove the shared camp station token for this furniture key (one per scene session).
+ *
+ * @param {string} stationKey - weaponRack | table | medicalBed | cookingArea
+ * @returns {Promise<number>} number of tokens removed (0 or 1)
+ */
+export async function clearSharedCampStation(stationKey) {
+    if (!game.user.isGM) return 0;
+    if (!CAMP_STATION_PLACEMENT_KEYS.includes(stationKey)) return 0;
+
+    const scene = canvas.scene;
+    if (!scene) return 0;
+
+    const matches = scene.tokens.filter(t => {
+        const flags = t.flags?.[MODULE_ID];
+        return flags?.isCampFurniture && flags?.isSharedStation && flags?.furnitureKey === stationKey;
+    });
+    if (!matches.length) return 0;
+
+    await scene.deleteEmbeddedDocuments("Token", matches.map(t => t.id));
+    console.log(`${MODULE_ID} | CompoundCampPlacer: cleared station ${stationKey} (${matches.length} token(s))`);
+    return matches.length;
 }
 
 /**
@@ -279,14 +602,19 @@ export async function placePlayerGear(worldX, worldY, gearType, actorId) {
     const actor = game.actors.get(actorId);
     if (!actor) return false;
 
-    const gs = gridSize();
+    if (isGearDeployed(actorId, gearType)) {
+        ui.notifications.warn("That gear is already on the map.");
+        return false;
+    }
+
     const w = def.width ?? 1;
     const h = def.height ?? 1;
-    const snapped = canvas.grid.getSnappedPoint({ x: worldX, y: worldY }, { mode: CONST.GRID_SNAPPING_MODES.CENTER });
-    const sx = snapped.x ?? worldX;
-    const sy = snapped.y ?? worldY;
-    const tx = sx - ((gs * w) / 2);
-    const ty = sy - ((gs * h) / 2);
+    const v = validatePlayerGearDrop(worldX, worldY, gearType);
+    if (!v.ok) {
+        ui.notifications.warn(v.reason);
+        return false;
+    }
+    const { tx, ty } = v;
 
     const tokenData = buildFurnitureToken(gearType, tx, ty, {
         name: `${actor.name}'s ${def.name}`,
@@ -306,14 +634,56 @@ export async function placePlayerGear(worldX, worldY, gearType, actorId) {
         await item.setFlag(MODULE_ID, "deployedInCamp", true);
     }
 
-    console.log(`${MODULE_ID} | CompoundCampPlacer: placed ${gearType} for ${actor.name} at (${sx}, ${sy})`);
+    console.log(`${MODULE_ID} | CompoundCampPlacer: placed ${gearType} for ${actor.name} at (${tx}, ${ty})`);
     return true;
 }
 
 /**
- * Remove all camp furniture tokens from the active scene.
- * Matches tokens flagged with the current campSessionId,
- * or all isCampFurniture tokens if no session is active.
+ * Remove one player gear type (tent, bedroll, or mess kit) for an actor.
+ * Does not remove shared stations or the pit.
+ *
+ * @param {string} actorId
+ * @param {string} gearType - "bedroll" | "tent" | "messkit"
+ * @param {string|null} [sceneId] - scene the player saw when requesting pickup (GM may be on another tab)
+ * @returns {Promise<number>} Count of removed tokens (0 or 1)
+ */
+export async function clearPlayerCampGearType(actorId, gearType, sceneId = null) {
+    if (!game.user.isGM) return 0;
+
+    const scene = resolveSceneForCampOp(sceneId);
+    if (!scene || !actorId) return 0;
+    if (gearType !== "bedroll" && gearType !== "tent" && gearType !== "messkit") return 0;
+
+    const mine = scene.tokens.filter(t => {
+        const flags = t.flags?.[MODULE_ID];
+        return flags?.isCampFurniture &&
+            flags?.isPlayerGear &&
+            flags?.ownerActorId === actorId &&
+            flags?.furnitureKey === gearType;
+    });
+
+    if (!mine.length) return 0;
+
+    const actor = game.actors.get(actorId);
+    if (actor) {
+        const item = findPlayerGearItem(actor, gearType);
+        if (item) {
+            try { await item.unsetFlag(MODULE_ID, "deployedInCamp"); } catch { /* ignore */ }
+        }
+    }
+
+    await scene.deleteEmbeddedDocuments("Token", mine.map(t => t.id));
+    console.log(`${MODULE_ID} | CompoundCampPlacer: cleared ${mine.length} ${gearType} token(s) for actor ${actorId}`);
+    return mine.length;
+}
+
+/**
+ * Remove all camp-related tokens from the active scene: Respite furniture
+ * (pit, stations, deployed gear), Camp Prop perimeter torches, and console-placed
+ * campfire pairs (isCampfireBase / isCampfireToken without isCampFurniture).
+ *
+ * Furniture matches the current campSessionId when set; otherwise all flagged
+ * furniture. Prop-placed pit and torches always match.
  *
  * @returns {Promise<number>} Count of removed tokens
  */
@@ -323,15 +693,24 @@ export async function clearCampTokens() {
     const scene = canvas.scene;
     if (!scene) return 0;
 
+    hydrateCampSessionFromScene();
     const sessionId = _campSessionId;
     const campTokens = scene.tokens.filter(t => {
         const flags = t.flags?.[MODULE_ID];
-        if (!flags?.isCampFurniture) return false;
-        if (sessionId) return flags.campSessionId === sessionId;
-        return true;
+        if (!flags) return false;
+        if (flags.isTorchStake || flags.isPerimeterTorch) return true;
+        if (flags.isCampFurniture) {
+            if (sessionId) return flags.campSessionId === sessionId;
+            return true;
+        }
+        if (flags.isCampfireBase || flags.isCampfireToken) return true;
+        return false;
     });
 
-    if (!campTokens.length) return 0;
+    if (!campTokens.length) {
+        _campSessionId = null;
+        return 0;
+    }
 
     // Unflag deployed items before removing tokens
     for (const t of campTokens) {
@@ -364,12 +743,13 @@ export async function clearCampTokens() {
  * Does not remove compound layout or shared furniture. Does not reset session id.
  *
  * @param {string} actorId
+ * @param {string|null} [sceneId] - scene the player saw when requesting clear (optional)
  * @returns {Promise<number>} Count of removed tokens
  */
-export async function clearPlayerCampGear(actorId) {
+export async function clearPlayerCampGear(actorId, sceneId = null) {
     if (!game.user.isGM) return 0;
 
-    const scene = canvas.scene;
+    const scene = resolveSceneForCampOp(sceneId);
     if (!scene || !actorId) return 0;
 
     const mine = scene.tokens.filter(t => {
@@ -403,18 +783,52 @@ export async function clearPlayerCampGear(actorId) {
 }
 
 /**
+ * Check whether the campfire pit has been placed in the current session.
+ * @returns {boolean}
+ */
+export function hasCampfirePlaced() {
+    const scene = canvas?.scene;
+    if (!scene) return false;
+    const placed = scene.tokens.some(t => {
+        const f = t.flags?.[MODULE_ID];
+        return f?.isCampFurniture && f?.furnitureKey === "campfire";
+    });
+    if (placed) hydrateCampSessionFromScene();
+    return placed;
+}
+
+/**
  * Check whether a compound camp has been placed in the current session.
+ * Same as {@link hasCampfirePlaced} (campfire pit marks the session).
  * @returns {boolean}
  */
 export function hasCampPlaced() {
-    if (!_campSessionId) return false;
+    return hasCampfirePlaced();
+}
+
+/**
+ * Whether a shared station token for this key exists on the scene for the current session.
+ * @param {string} stationKey - FURNITURE key
+ * @returns {boolean}
+ */
+export function isStationDeployed(stationKey) {
     const scene = canvas?.scene;
-    if (!scene) return false;
-    return scene.tokens.some(t =>
-        t.flags?.[MODULE_ID]?.isCampFurniture &&
-        t.flags?.[MODULE_ID]?.campSessionId === _campSessionId &&
-        t.flags?.[MODULE_ID]?.furnitureKey === "campfire"
-    );
+    if (!scene || !stationKey) return false;
+    const pit = getPitTokenOnScene();
+    const sid = pit?.flags?.[MODULE_ID]?.campSessionId ?? _campSessionId;
+    return scene.tokens.some(t => {
+        const flags = t.flags?.[MODULE_ID];
+        if (!flags?.isCampFurniture) return false;
+        if (flags.furnitureKey === stationKey) {
+            if (sid) return flags.campSessionId === sid;
+            return true;
+        }
+        if (flags.isPlaceholder && flags.targetStationKey === stationKey) {
+            if (sid) return flags.campSessionId === sid;
+            return true;
+        }
+        return false;
+    });
 }
 
 /**
@@ -440,4 +854,301 @@ export function isGearDeployed(actorId, gearType) {
  */
 export function resetCampSession() {
     _campSessionId = null;
+}
+
+/**
+ * Auto-place eligible camp stations around the campfire when entering step 2.
+ * Controlled by AUTO_PLACE_STATIONS flag.
+ *
+ * Layout (2 squares from campfire center):
+ *   - table (Workbench): west
+ *   - weaponRack: east
+ *   - cookingArea: north (token name reflects party cook's utensils or mess table)
+ *   - medicalBed: south (only if any party member qualifies as healer)
+ *
+ * @returns {Promise<string[]>} keys of stations placed
+ */
+export async function autoPlaceStations() {
+    if (!AUTO_PLACE_STATIONS) {
+        console.log(`${MODULE_ID} | autoPlaceStations: feature flag disabled`);
+        return [];
+    }
+    if (!game.user.isGM) return [];
+
+    hydrateCampSessionFromScene();
+    const center = pitCenterWorld();
+    if (!center) {
+        console.log(`${MODULE_ID} | autoPlaceStations: no campfire center found`);
+        return [];
+    }
+
+    const scene = canvas?.scene;
+    if (!scene) return [];
+
+    const gs = gridSize();
+    const offset = 2 * gs;
+
+    const partyActors = getPartyActors();
+
+    const partyHasHealer = partyActors.some(a => {
+        const classes = (a.items ?? []).filter(i => i.type === "class");
+        const isHealerClass = classes.some(c =>
+            /\bcleric\b|\bdruid\b|\bpaladin\b/i.test(c.name ?? "")
+        );
+        const hasMedicFeat = (a.items ?? []).some(i =>
+            i.type === "feat" && /\bmedic\b/i.test(i.name ?? "")
+        );
+        return isHealerClass || hasMedicFeat;
+    });
+
+    const layout = [
+        { key: "table",       dx: -offset, dy: 0 },
+        { key: "weaponRack",  dx:  offset, dy: 0 },
+        { key: "cookingArea", dx: 0,       dy: -offset },
+        { key: "medicalBed",  dx: 0,       dy:  offset, condition: partyHasHealer }
+    ];
+
+    const placed = [];
+    for (const slot of layout) {
+        if (slot.condition === false) continue;
+        if (isStationDeployed(slot.key)) continue;
+
+        const rawDef = FURNITURE[slot.key];
+        if (!rawDef) continue;
+
+        const def = slot.key === "cookingArea"
+            ? { ...rawDef, name: partyHasCookingUtensils() ? rawDef.name : (rawDef.basicName ?? rawDef.name) }
+            : rawDef;
+
+        const worldX = center.x + slot.dx;
+        const worldY = center.y + slot.dy;
+
+        const v = validateStationEquipmentDrop(worldX, worldY, slot.key);
+        if (!v.ok) {
+            console.log(`${MODULE_ID} | autoPlaceStations: skipping ${slot.key}, validation failed: ${v.reason}`);
+            continue;
+        }
+
+        const tokenData = buildFurnitureToken(slot.key, v.tx, v.ty, def, {
+            isSharedStation: true
+        });
+        await scene.createEmbeddedDocuments("Token", [tokenData]);
+        placed.push(slot.key);
+    }
+
+    console.log(`${MODULE_ID} | autoPlaceStations: placed ${placed.length}/${layout.length} stations: [${placed.join(", ")}]`);
+    return placed;
+}
+
+/**
+ * Build token data for a reserved station spot (supplies pile) before the fire is lit.
+ * @param {string} targetKey - FURNITURE key (table, weaponRack, etc.)
+ * @param {number} x - top-left
+ * @param {number} y
+ * @returns {Object}
+ */
+function buildPlaceholderToken(targetKey, x, y) {
+    const def = PLACEHOLDER_CAMP_STATION;
+    return {
+        name: `${def.name} (${targetKey})`,
+        texture: { src: def.path, scaleX: 1, scaleY: 1 },
+        width: def.width ?? 1,
+        height: def.height ?? 1,
+        sort: CAMP_STATION_FLOOR_SORT,
+        x,
+        y,
+        hidden: false,
+        lockRotation: true,
+        rotation: Math.floor(Math.random() * 12) - 6,
+        disposition: -2,
+        light: { bright: 0, dim: 0 },
+        sight: { enabled: false },
+        locked: true,
+        flags: {
+            [MODULE_ID]: {
+                isCampFurniture: true,
+                isPlaceholder: true,
+                targetStationKey: targetKey,
+                campSessionId: getCampSessionId()
+            }
+        }
+    };
+}
+
+/**
+ * Build site stub positions for a hypothetical pit center (cursor preview before the pit exists).
+ * Same layout and rules as {@link placeStationPlaceholders} with
+ * {@link PLACEHOLDER_CAMP_STATION} footprint. `valid: false` uses grid snap so the
+ * ghost can still be drawn if range or overlap fails.
+ *
+ * @param {number} pitCenterX
+ * @param {number} pitCenterY
+ * @returns {{ key: string, tx: number, ty: number, gridW: number, gridH: number, textureSrc: string, valid: boolean }[]}
+ */
+export function getStationPlaceholderPreviewsForPitCenter(pitCenterX, pitCenterY) {
+    if (!canvas?.scene || !canvas?.grid) return [];
+
+    const partyActors = getPartyActors();
+    const partyHasHealer = partyActors.some(a => canPlaceStation(a, "medicalBed"));
+    const gs = gridSize();
+    const offset = 2 * gs;
+    const pitCenter = { x: pitCenterX, y: pitCenterY };
+    const layout = [
+        { key: "table",       dx: -offset, dy: 0 },
+        { key: "weaponRack",  dx:  offset, dy: 0 },
+        { key: "cookingArea", dx: 0,       dy: -offset },
+        { key: "medicalBed",  dx: 0,       dy:  offset, condition: partyHasHealer }
+    ];
+    const gridW = PLACEHOLDER_CAMP_STATION.width ?? 1;
+    const gridH = PLACEHOLDER_CAMP_STATION.height ?? 1;
+    const textureSrc = PLACEHOLDER_CAMP_STATION.path;
+    const out = [];
+    for (const slot of layout) {
+        if (slot.condition === false) continue;
+        if (isStationDeployed(slot.key)) continue;
+        if (!FURNITURE[slot.key]) continue;
+        const worldX = pitCenterX + slot.dx;
+        const worldY = pitCenterY + slot.dy;
+        const v = validateCampEquipmentDrop(worldX, worldY, gridW, gridH, pitCenter);
+        if (v.ok) {
+            out.push({ key: slot.key, tx: v.tx, ty: v.ty, gridW, gridH, textureSrc, valid: true });
+            continue;
+        }
+        const { sx, sy } = snappedCenterWorld(worldX, worldY);
+        const tx = sx - (gs * gridW) / 2;
+        const ty = sy - (gs * gridH) / 2;
+        out.push({ key: slot.key, tx, ty, gridW, gridH, textureSrc, valid: false });
+    }
+    return out;
+}
+
+/**
+ * After the pit is placed, drop placeholder tokens at the same auto-layout
+ * used by autoPlaceStations. GM only.
+ * @returns {Promise<string[]>} target keys for which a placeholder was created
+ */
+export async function placeStationPlaceholders() {
+    if (!game.user.isGM) return [];
+    hydrateCampSessionFromScene();
+    const center = pitCenterWorld();
+    if (!center) {
+        console.log(`${MODULE_ID} | placeStationPlaceholders: no pit center`);
+        return [];
+    }
+
+    const scene = canvas?.scene;
+    if (!scene) return [];
+
+    const partyActors = getPartyActors();
+    const partyHasHealer = partyActors.some(a => canPlaceStation(a, "medicalBed"));
+
+    const gs = gridSize();
+    const offset = 2 * gs;
+    const layout = [
+        { key: "table",       dx: -offset, dy: 0 },
+        { key: "weaponRack",  dx:  offset, dy: 0 },
+        { key: "cookingArea", dx: 0,       dy: -offset },
+        { key: "medicalBed",  dx: 0,       dy:  offset, condition: partyHasHealer }
+    ];
+    const phW = PLACEHOLDER_CAMP_STATION.width ?? 1;
+    const phH = PLACEHOLDER_CAMP_STATION.height ?? 1;
+
+    const placed = [];
+    for (const slot of layout) {
+        if (slot.condition === false) continue;
+        if (isStationDeployed(slot.key)) continue;
+
+        if (!FURNITURE[slot.key]) continue;
+
+        const worldX = center.x + slot.dx;
+        const worldY = center.y + slot.dy;
+        const v = validateCampEquipmentDrop(worldX, worldY, phW, phH);
+        if (!v.ok) {
+            console.log(`${MODULE_ID} | placeStationPlaceholders: skip ${slot.key} (${v.reason})`);
+            continue;
+        }
+        const tokenData = buildPlaceholderToken(slot.key, v.tx, v.ty);
+        await scene.createEmbeddedDocuments("Token", [tokenData]);
+        placed.push(slot.key);
+    }
+    console.log(`${MODULE_ID} | placeStationPlaceholders: [${placed.join(", ")}]`);
+    return placed;
+}
+
+/**
+ * After the fire is lit, replace placeholder art with real station tokens (same position).
+ * GM only. Batch-updates to reduce token flash.
+ * @returns {Promise<string[]>} promoted target keys
+ */
+export async function promoteAllPlaceholders() {
+    if (!game.user.isGM) return [];
+
+    const scene = canvas?.scene;
+    if (!scene) return [];
+
+    hydrateCampSessionFromScene();
+    const pit = getPitTokenOnScene();
+    const sid = pit?.flags?.[MODULE_ID]?.campSessionId ?? _campSessionId;
+    if (!sid) return [];
+
+    const toPromote = scene.tokens.filter(t => {
+        const f = t.flags?.[MODULE_ID];
+        return f?.isCampFurniture && f.isPlaceholder && f.campSessionId === sid && f.targetStationKey;
+    });
+    if (!toPromote.length) return [];
+
+    const gs = gridSize();
+    const updates = [];
+    for (const doc of toPromote) {
+        const key = doc.flags?.[MODULE_ID]?.targetStationKey;
+        const def = FURNITURE[key];
+        if (!def) continue;
+        const texScale = def.textureScale ?? 1;
+        const w = def.width ?? 1;
+        const h = def.height ?? 1;
+        const prev = doc.flags?.[MODULE_ID] ? foundry.utils.deepClone(doc.flags[MODULE_ID]) : {};
+        delete prev.isPlaceholder;
+        delete prev.targetStationKey;
+        prev.furnitureKey = key;
+        prev.isSharedStation = true;
+        if (key === "cookingArea") {
+            prev.partyHasCookingUtensils = partyHasCookingUtensils();
+        }
+
+        const sameFootprint = doc.width === w && doc.height === h;
+        const cx = doc.x + (doc.width * gs) / 2;
+        const cy = doc.y + (doc.height * gs) / 2;
+        const placement = validateCampEquipmentDrop(cx, cy, w, h, null, doc.id);
+
+        const displayName = key === "cookingArea"
+            ? (partyHasCookingUtensils() ? def.name : (def.basicName ?? def.name))
+            : def.name;
+
+        const u = {
+            _id: doc.id,
+            name: displayName,
+            texture: {
+                src: resolveIcon(def.icon, def.fallback),
+                scaleX: texScale,
+                scaleY: texScale
+            },
+            sort: CAMP_STATION_FLOOR_SORT,
+            flags: { [MODULE_ID]: prev }
+        };
+        if (!sameFootprint) {
+            u.width = w;
+            u.height = h;
+        }
+        if (placement?.ok) {
+            u.x = placement.tx;
+            u.y = placement.ty;
+        }
+
+        updates.push(u);
+    }
+    if (updates.length) {
+        await scene.updateEmbeddedDocuments("Token", updates);
+        console.log(`${MODULE_ID} | promoteAllPlaceholders: ${updates.length} token(s) updated`);
+    }
+    return toPromote.map(t => t.flags?.[MODULE_ID]?.targetStationKey).filter(Boolean);
 }

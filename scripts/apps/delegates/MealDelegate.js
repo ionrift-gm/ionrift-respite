@@ -567,7 +567,7 @@ export class MealDelegate {
     /**
      * GM receives meal choices from a player via socket.
      */
-    receiveMealChoices(userId, choices) {
+    async receiveMealChoices(userId, choices) {
         const app = this._app;
         if (!app._mealChoices) app._mealChoices = new Map();
         if (!app._mealSubmissions) app._mealSubmissions = new Map();
@@ -581,8 +581,19 @@ export class MealDelegate {
             characterIds: Object.keys(choices)
         });
 
+        if (!app._activityMealRationsSubmitted) app._activityMealRationsSubmitted = new Set();
+        for (const charId of Object.keys(choices)) {
+            app._activityMealRationsSubmitted.add(charId);
+        }
+
         console.log(`[Respite:Meal] Received meal choices from user ${userId}:`, choices);
+        await app._saveRestState();
+        const snapshot = app.getRestSnapshot?.();
+        if (snapshot) {
+            game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
+        }
         app.render();
+        if (typeof app._refreshStationOverlayMeals === "function") app._refreshStationOverlayMeals();
     }
 
     /**

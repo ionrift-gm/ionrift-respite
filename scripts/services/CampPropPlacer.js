@@ -26,15 +26,9 @@ const TORCH_STAKES = [
     `modules/${MODULE_ID}/assets/tokens/torches/torch_stake_04.png`,
 ];
 
-// Campfire base images (always-visible log/wood prop)
-const CAMPFIRE_BASES = [
-    `modules/${MODULE_ID}/assets/tokens/campfire-bases/campfire_base_01.png`,
-    `modules/${MODULE_ID}/assets/tokens/campfire-bases/campfire_base_02.png`,
-    `modules/${MODULE_ID}/assets/tokens/campfire-bases/campfire_base_03.png`,
-    `modules/${MODULE_ID}/assets/tokens/campfire-bases/campfire_base_04.png`,
-    `modules/${MODULE_ID}/assets/tokens/campfire-bases/campfire_base_05.png`,
-    `modules/${MODULE_ID}/assets/tokens/campfire-bases/campfire_base_06.png`,
-];
+// Campfire base (cold pit, always visible; matches ionrift-brand draft art, shipped in module assets)
+const CAMPFIRE_BASE_PIT = `modules/${MODULE_ID}/assets/tokens/campfire_dead_a.png`;
+const CAMPFIRE_BASES = [CAMPFIRE_BASE_PIT];
 
 // Campfire fire overlay
 const CAMPFIRE_FLAME = `modules/${MODULE_ID}/assets/tokens/campfire_topdown_128x128.webm`;

@@ -10,7 +10,7 @@
             ],
             "weight": 1,
             "watchTarget": "all",
-            "gmGuidance": "Fires on a nat 1 encounter roll. The party has limited time to act — play urgency, not panic.\n\nMove to High Ground is the fast option. Low DC but everything left behind is gone. Reward decisive action with a cleaner outcome.\n\nDig In and Weather the Flood is the high-risk hold. Higher DC — failure cascades into a second choice under worse conditions.\n\nStall penalty: if players are debating or fishing for a third option that doesn't exist, apply it. The water doesn't wait.",
+            "gmGuidance": "Fires on a nat 1 encounter roll. The party has limited time to act. Play urgency, not panic.\n\nMove to High Ground is the fast option. Low DC but everything left behind is gone. Reward decisive action with a cleaner outcome.\n\nDig In and Weather the Flood is the high-risk hold. Higher DC, and failure cascades into a second choice under worse conditions.\n\nStall penalty: if players are debating or fishing for a third option that doesn't exist, apply it. The water doesn't wait.",
             "description": "A wall of brown water surges through the campsite. The river has burst its banks.",
             "mechanical": {
                 "type": "decision_tree",

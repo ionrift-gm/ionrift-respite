@@ -25,30 +25,19 @@
     {{!-- Banner header --}}
     <div class="sr-banner"><img src="{{banner}}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.src='{{bannerFallback}}'"></div>
 
-    {{!-- Roster strip: AFK toggle | player chips (with readiness) | GM chip --}}
+    {{!-- Roster strip: readiness; .afk + fa-mug-hot badge (same language as TABLE panel) --}}
     {{#if roster.length}}
     <div class="roster-strip sr-roster-strip">
-        <div class="roster-afk-btn {{#if selfAfk}}active{{/if}}" data-action="toggleSrAfk" data-roster-id="{{selfAfkId}}"
-            title="{{#if selfAfk}}Mark yourself present{{else}}Step away from the table{{/if}}" role="button" tabindex="0">
-            <i class="fas fa-mug-hot"></i>
-            <span>AFK</span>
-        </div>
-
-        <div class="roster-divider"></div>
-
         <div class="roster-players">
             {{#each roster}}
             <div class="roster-chip {{#if isAfk}}afk{{/if}} {{#if isFinished}}sr-finished{{/if}}" data-roster-id="{{id}}" title="{{fullName}}">
-                {{#if isAfk}}
-                <span class="roster-afk-portrait"><i class="fas fa-mug-hot"></i></span>
-                {{else}}
-                <img class="roster-portrait" src="{{img}}" alt="{{name}}">
-                {{/if}}
+                <span class="roster-portrait-wrap">
+                    <img class="roster-portrait" src="{{img}}" alt="{{name}}">
+                    {{#if isAfk}}<span class="roster-afk-mug" aria-hidden="true"><i class="fas fa-mug-hot"></i></span>{{/if}}
+                </span>
                 <span class="roster-name">{{name}}</span>
                 <span class="roster-status">
-                    {{#if isAfk}}
-                    <i class="fas fa-mug-hot" title="AFK"></i>
-                    {{else if isFinished}}
+                    {{#if isFinished}}
                     <i class="fas fa-check-circle" title="Finished"></i>
                     {{else}}
                     <i class="fas fa-hourglass-half" title="Resting"></i>
@@ -56,15 +45,6 @@
                 </span>
             </div>
             {{/each}}
-        </div>
-
-        <div class="roster-chip gm-chip {{#if gmRosterChip.isAfk}}afk{{/if}}" data-roster-id="gm" title="{{gmRosterChip.fullName}}">
-            {{#if gmRosterChip.isAfk}}
-            <span class="roster-afk-portrait"><i class="fas fa-mug-hot"></i></span>
-            {{else}}
-            <span class="roster-gm-icon"><i class="fas fa-dice-d20"></i></span>
-            {{/if}}
-            <span class="roster-name">{{gmRosterChip.name}}</span>
         </div>
     </div>
     {{/if}}

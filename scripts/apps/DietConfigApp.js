@@ -35,9 +35,9 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
     };
 
     static FOOD_TAG_TIPS = {
-        meat: "Animal protein — Fresh Meat, Fish, Eggs, Jerky",
-        plant: "Foraged vegetation — Berries, Mushrooms, Herbs, Roots",
-        prepared: "Processed food — Rations, Porridge, and cooked meals"
+        meat: "Animal protein: Fresh Meat, Fish, Eggs, Jerky",
+        plant: "Foraged vegetation: Berries, Mushrooms, Herbs, Roots",
+        prepared: "Processed food: Rations, Porridge, and cooked meals"
     };
 
     static DRINK_LABELS = {
@@ -488,7 +488,7 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
                     <div class="diet-balance-warning">
                         <p><i class="fas fa-exclamation-triangle"></i>
                         <strong>${names.join(", ")}</strong> ${names.length === 1 ? "has" : "have"} sustenance set to <strong>None</strong>
-                        — while other characters still need food, water, or essence.</p>
+                        , while other characters still need food, water, or essence.</p>
                         <p>This may create an imbalance. Consider switching to <strong>Essence</strong>
                         so non-biological characters still face resource pressure.</p>
                     </div>`,

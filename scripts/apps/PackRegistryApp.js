@@ -521,7 +521,7 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
         }
 
         new Dialog({
-            title: `${pack.label} — Content Browser`,
+            title: `${pack.label}: Content Browser`,
             content: `<div style="max-height: 500px; overflow-y: auto; padding: 0.5em;">${body}</div>`,
             buttons: { close: { label: "Close", icon: "fas fa-times" } },
             default: "close"

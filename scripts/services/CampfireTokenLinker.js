@@ -6,6 +6,8 @@
  * Light config source (in priority order):
  *   1. A world Actor whose name matches the setting -- reads prototypeToken.light
  *   2. Built-in defaults (warm campfire glow)
+ *   3. Make Camp fire tier (embers / campfire / bonfire) overrides bright, dim,
+ *      colour, and token footprint so the canvas matches the committed level.
  *
  * Token name is configurable via the `campfireTokenName` module setting
  * (default: "Campfire"). Matching is case-insensitive.
@@ -13,10 +15,12 @@
  * Only the GM may update tokens. Players emit a socket request and the
  * GM-side handler calls these methods.
  */
+import { CampGearScanner } from "./CampGearScanner.js";
+
 const MODULE_ID = "ionrift-respite";
 
-/** Path to the shipped campfire token sprite. */
-export const CAMPFIRE_TOKEN_IMG = `modules/${MODULE_ID}/assets/tokens/campfire_topdown_128x128.webm`;
+/** Default pit art for the cold campfire base token (placed campfires). Lit overlay uses flame asset or template actor. */
+export const CAMPFIRE_TOKEN_IMG = `modules/${MODULE_ID}/assets/tokens/campfire_dead_a.png`;
 
 /** Sensible fallback if no template actor exists. */
 const DEFAULT_LIGHT = {
@@ -54,13 +58,16 @@ export class CampfireTokenLinker {
     }
 
     /**
-     * Find the first token on the active scene whose name matches the setting.
+     * Find the respite flame token (light source) on the active scene.
+     * Prefers module flags from CompoundCampPlacer; falls back to name match.
      * @returns {TokenDocument|null}
      */
     static findCampfireToken() {
-        const targetName = CampfireTokenLinker.getTokenName().toLowerCase();
         const scene = canvas?.scene;
         if (!scene) return null;
+        const byFlag = scene.tokens.find(t => t.flags?.[MODULE_ID]?.isCampfireToken === true);
+        if (byFlag) return byFlag;
+        const targetName = CampfireTokenLinker.getTokenName().toLowerCase();
         return scene.tokens.find(t => t.name?.toLowerCase() === targetName) ?? null;
     }
 
@@ -73,6 +80,7 @@ export class CampfireTokenLinker {
     static findTemplateActor() {
         const targetName = CampfireTokenLinker.getTokenName().toLowerCase();
         const matches = game.actors?.filter(a => a.name?.toLowerCase() === targetName) ?? [];
+
         if (matches.length === 0) return null;
 
         // Prefer actor in an Ionrift folder
@@ -103,17 +111,62 @@ export class CampfireTokenLinker {
     }
 
     /**
+     * Merge template (or default) light with tier-specific bright/dim/colour.
+     * @param {string} fireLevel - embers | campfire | bonfire
+     * @returns {Object}
+     */
+    static getLightDataForFireLevel(fireLevel = "campfire") {
+        const base = CampfireTokenLinker.getTemplateLightData();
+        const tierKey = ["embers", "campfire", "bonfire"].includes(fireLevel) ? fireLevel : "campfire";
+        const tier = CampGearScanner.FIRE_TOKEN_VISUAL_BY_LEVEL[tierKey];
+        if (!tier?.light) return base;
+        return foundry.utils.mergeObject(base, tier.light, { inplace: false, overwrite: true });
+    }
+
+    /**
+     * @param {string} fireLevel
+     * @returns {{ width: number, height: number, textureScale: number }}
+     */
+    static getVisualSizingForFireLevel(fireLevel = "campfire") {
+        const tierKey = ["embers", "campfire", "bonfire"].includes(fireLevel) ? fireLevel : "campfire";
+        return CampGearScanner.FIRE_TOKEN_VISUAL_BY_LEVEL[tierKey]
+            ?? CampGearScanner.FIRE_TOKEN_VISUAL_BY_LEVEL.campfire;
+    }
+
+    static #gridSize() {
+        return canvas?.dimensions?.size ?? 100;
+    }
+
+    /**
+     * Shift top-left so the token center stays fixed when width/height change.
+     * @param {TokenDocument} token
+     * @param {number} newW
+     * @param {number} newH
+     * @returns {{ x: number, y: number, width: number, height: number }}
+     */
+    static #patchCenterPreserving(token, newW, newH) {
+        const gs = CampfireTokenLinker.#gridSize();
+        const oldW = token.width ?? 1;
+        const oldH = token.height ?? 1;
+        const dx = ((oldW - newW) * gs) / 2;
+        const dy = ((oldH - newH) * gs) / 2;
+        return { x: token.x + dx, y: token.y + dy, width: newW, height: newH };
+    }
+
+    /**
      * Toggle the campfire token's light on or off.
-     * When lit, applies the template actor's light config (or defaults).
-     * When unlit, zeroes out bright and dim.
+     * When lit, applies template light merged with the given fire tier (size, tint, radii).
+     * When unlit, zeroes light and resets footprint to 1x1.
      * Only the GM should call this directly; players route through socket.
      * @param {boolean} lit - true to turn light on, false to turn off
+     * @param {string|null} [fireLevel] - embers | campfire | bonfire when lit; defaults to campfire if omitted
      */
-    static async setLightState(lit) {
+    static async setLightState(lit, fireLevel = null) {
         if (!game.user.isGM) {
             game.socket.emit(`module.${MODULE_ID}`, {
                 type: "campfireTokenSync",
-                lit
+                lit,
+                fireLevel: lit ? (fireLevel ?? "campfire") : null
             });
             return;
         }
@@ -125,12 +178,38 @@ export class CampfireTokenLinker {
         }
 
         if (lit) {
-            const lightData = CampfireTokenLinker.getTemplateLightData();
-            await token.update({ hidden: false, light: lightData });
-            console.log(`${MODULE_ID} | CampfireTokenLinker: light ON, token visible`);
+            const tierKey = fireLevel && ["embers", "campfire", "bonfire"].includes(fireLevel)
+                ? fireLevel
+                : "campfire";
+            const lightData = CampfireTokenLinker.getLightDataForFireLevel(tierKey);
+            const vis = CampfireTokenLinker.getVisualSizingForFireLevel(tierKey);
+            const { x, y, width, height } = CampfireTokenLinker.#patchCenterPreserving(
+                token,
+                vis.width ?? 1,
+                vis.height ?? 1
+            );
+            const scale = vis.textureScale ?? 1;
+            await token.update({
+                hidden: false,
+                x,
+                y,
+                width,
+                height,
+                light: lightData,
+                "texture.scaleX": scale,
+                "texture.scaleY": scale
+            });
+            console.log(`${MODULE_ID} | CampfireTokenLinker: light ON (${tierKey}), token visible`);
         } else {
+            const { x, y, width, height } = CampfireTokenLinker.#patchCenterPreserving(token, 1, 1);
             await token.update({
                 hidden: true,
+                x,
+                y,
+                width,
+                height,
+                "texture.scaleX": 1,
+                "texture.scaleY": 1,
                 "light.bright": 0,
                 "light.dim": 0
             });

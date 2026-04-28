@@ -845,6 +845,26 @@
 
 /* ---- Make Camp Phase ---- */
 
+/* Camp shell is a direct child of .respite-form (flex column). Without this,
+   flex:1 on .respite-make-camp never resolves and core button styles can
+   collapse tier cards to a single line (~28px). */
+.ionrift-respite-app .respite-form > .camp-phase-shell {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.ionrift-respite-app .camp-phase-shell > .phase-banner,
+.ionrift-respite-app .camp-phase-shell > .roster-strip {
+    flex-shrink: 0;
+}
+
+.ionrift-respite-app .camp-phase-shell > .respite-action-bar {
+    flex-shrink: 0;
+}
+
 .respite-make-camp {
     padding: 0.5rem 0.75rem;
     display: flex;
@@ -853,19 +873,735 @@
     overflow-y: auto;
     flex: 1;
     min-height: 0;
+    text-transform: none;
+}
+
+.respite-make-camp p,
+.respite-make-camp span,
+.respite-make-camp .camp-gear-mechanic-note,
+.respite-make-camp .placeholder-body,
+.respite-make-camp .camp-gear-scene-locked,
+.respite-make-camp .camp-comfort-reason {
+    text-transform: none;
+}
+
+.ionrift-respite-app .camp-phase-shell > .respite-make-camp {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .camp-layout {
     display: grid;
-    grid-template-columns: 1fr 220px;
+    grid-template-columns: 1fr 240px;
     gap: 0.5rem;
     align-items: start;
+    min-width: 0;
 }
 
 .camp-main {
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
+    min-width: 0;
+}
+
+.camp-right-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.camp-layout-player-step1 {
+    grid-template-columns: 1fr;
+}
+
+.camp-layout-gm-step1 {
+    grid-template-columns: 1fr 280px;
+}
+
+.camp-scene-setup-section {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 0.45rem 0.55rem;
+}
+
+.camp-layout-gm-step1 .camp-scene-setup-section {
+    background: rgba(255, 140, 30, 0.06);
+    border-color: rgba(255, 140, 30, 0.3);
+    box-shadow: 0 0 0 1px rgba(255, 140, 30, 0.12) inset;
+}
+
+.camp-scene-setup-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.camp-layout-gm-step1 .camp-scene-setup-header {
+    font-size: 0.8rem;
+    color: rgba(255, 160, 60, 0.9);
+}
+
+.camp-fire-step1 {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    flex-shrink: 0;
+    min-height: min-content;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 0.45rem 0.55rem 0.5rem;
+}
+
+.camp-fire-step1-header,
+.camp-fire-unlit-header {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+/* ── GM compact fire status (step 1 unlit) ───────────── */
+
+.camp-fire-step1-gm {
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    padding: 0.4rem 0.5rem;
+    gap: 0.3rem;
+}
+
+.camp-fire-gm-status {
+    margin: 0;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1.4;
+}
+
+.camp-fire-gm-status i {
+    opacity: 0.5;
+    margin-right: 0.25rem;
+}
+
+/* ── Unlit state ─────────────────────────────────────── */
+
+.camp-fire-lighter-list {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.camp-light-fire-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.55rem 1rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 180, 60, 0.35);
+    background: rgba(255, 140, 20, 0.1);
+    color: rgba(255, 200, 100, 0.95);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s, border-color 0.12s;
+    min-width: 0;
+}
+
+.camp-light-fire-btn:hover {
+    background: rgba(255, 140, 20, 0.22);
+    border-color: rgba(255, 180, 60, 0.6);
+}
+
+.camp-light-fire-flame {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    color: rgba(255, 160, 40, 0.9);
+}
+
+.light-fire-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.light-fire-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.light-fire-method {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
+    color: rgba(255, 200, 120, 0.75);
+    white-space: nowrap;
+}
+
+.light-fire-method i {
+    font-size: 0.6rem;
+    opacity: 0.8;
+}
+
+/* Spell lighters: slightly cooler tint to distinguish from item lighters */
+.camp-light-fire-btn--spell {
+    border-color: rgba(167, 139, 250, 0.35);
+    background: rgba(139, 92, 246, 0.08);
+}
+
+.camp-light-fire-btn--spell:hover {
+    background: rgba(139, 92, 246, 0.18);
+    border-color: rgba(167, 139, 250, 0.55);
+}
+
+.camp-light-fire-btn--spell .camp-light-fire-flame {
+    color: rgba(196, 181, 253, 0.85);
+}
+
+.camp-light-fire-btn--spell .light-fire-method {
+    color: rgba(196, 181, 253, 0.7);
+}
+
+.camp-fire-no-lighter {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.68rem;
+    color: rgba(255, 160, 60, 0.8);
+    padding: 0.3rem 0;
+}
+
+/* ── Lit state ───────────────────────────────────────── */
+
+.camp-fire-lit-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: rgba(255, 200, 100, 0.92);
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid rgba(255, 180, 60, 0.2);
+}
+
+.camp-fire-lit-banner i {
+    color: rgba(255, 160, 40, 0.9);
+    font-size: 0.85rem;
+}
+
+/* Read-only tier strip (shows active tier highlighted) */
+.camp-fire-tier-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem;
+}
+
+.camp-fire-tier-strip .camp-fire-tier-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.18);
+    padding: 0.35rem 0.4rem;
+    opacity: 0.55;
+    transition: opacity 0.15s;
+    cursor: default;
+    pointer-events: none;
+}
+
+.camp-fire-tier-strip .camp-fire-tier-card.active {
+    border-color: rgba(255, 160, 40, 0.5);
+    background: rgba(255, 140, 20, 0.12);
+    opacity: 1;
+}
+
+.camp-fire-tier-strip .camp-fire-tier-card.active .camp-fire-tier-watermark i {
+    color: rgba(255, 110, 40, 0.38);
+    text-shadow: 0 0 18px rgba(255, 80, 20, 0.45);
+}
+
+/* Pledge summary */
+.camp-firewood-pledge-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.camp-firewood-pledge-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.65rem;
+    color: rgba(134, 239, 172, 0.85);
+}
+
+.camp-firewood-pledge-row i {
+    font-size: 0.6rem;
+}
+
+/* Add / Take Back buttons */
+.camp-fuel-controls {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.25rem;
+}
+
+.camp-pledge-btn,
+.camp-reclaim-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.4rem 1rem;
+    flex: 1;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.camp-pledge-btn {
+    border: 1px solid rgba(134, 239, 172, 0.45);
+    background: rgba(134, 239, 172, 0.08);
+    color: rgba(134, 239, 172, 0.95);
+}
+
+.camp-pledge-btn:hover {
+    background: rgba(134, 239, 172, 0.18);
+    border-color: rgba(134, 239, 172, 0.65);
+}
+
+.camp-reclaim-btn {
+    border: 1px solid rgba(255, 200, 100, 0.35);
+    background: rgba(255, 180, 60, 0.08);
+    color: rgba(255, 200, 100, 0.85);
+}
+
+.camp-reclaim-btn:hover {
+    background: rgba(255, 180, 60, 0.16);
+    border-color: rgba(255, 200, 100, 0.55);
+}
+
+.camp-pledge-btn:disabled,
+.camp-reclaim-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.camp-fire-flavor {
+    margin: 0.3rem 0 0;
+    font-size: 0.6rem;
+    font-style: italic;
+    line-height: 1.35;
+    color: rgba(255, 220, 180, 0.45);
+    text-align: center;
+}
+
+.camp-fire-encounter-hint {
+    margin: 0;
+    padding-top: 0.35rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    font-size: 0.65rem;
+    line-height: 1.35;
+    color: rgba(253, 230, 138, 0.88);
+    position: relative;
+    z-index: 1;
+}
+
+.camp-fire-tier-picker {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: auto;
+    align-items: stretch;
+    gap: 0.35rem;
+    margin: 0 0 0.2rem;
+}
+
+/* Core Foundry / proton button rules use inline-flex + nowrap; tier cards must stay column layout. */
+.ionrift-respite-app .camp-fire-tier-picker {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-auto-rows: auto !important;
+    align-items: stretch !important;
+    height: auto !important;
+    min-height: min-content;
+}
+
+@media (max-width: 680px) {
+    .camp-fire-tier-picker {
+        grid-template-columns: 1fr;
+    }
+
+    .ionrift-respite-app .camp-fire-tier-picker {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+.camp-fire-tier-card {
+    box-sizing: border-box;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    align-self: stretch;
+    text-align: left;
+    padding: 0.45rem 0.5rem 0.55rem;
+    border-radius: 8px;
+    border: 1px solid rgba(200, 110, 60, 0.42);
+    background: linear-gradient(155deg, rgba(48, 32, 28, 0.95) 0%, rgba(72, 42, 32, 0.9) 55%, rgba(52, 30, 24, 0.92) 100%);
+    color: rgba(255, 252, 248, 0.95);
+    cursor: pointer;
+    font: inherit;
+    white-space: normal;
+    height: auto;
+    min-height: min-content;
+    overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(255, 190, 120, 0.1);
+    transition:
+        border-color 0.18s ease,
+        box-shadow 0.18s ease,
+        transform 0.15s ease,
+        filter 0.15s ease;
+}
+
+.camp-fire-tier-card[data-fire-level="embers"] {
+    border-color: rgba(160, 110, 85, 0.45);
+    background: linear-gradient(160deg, rgba(38, 32, 34, 0.96) 0%, rgba(58, 42, 38, 0.92) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 150, 100, 0.07);
+}
+
+.camp-fire-tier-card[data-fire-level="campfire"] {
+    border-color: rgba(210, 120, 55, 0.5);
+    background: linear-gradient(155deg, rgba(52, 34, 26, 0.97) 0%, rgba(88, 48, 30, 0.93) 50%, rgba(62, 36, 26, 0.95) 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 185, 100, 0.12),
+        0 0 22px rgba(255, 90, 30, 0.07);
+}
+
+.camp-fire-tier-card[data-fire-level="bonfire"] {
+    border-color: rgba(255, 95, 55, 0.52);
+    background: linear-gradient(150deg, rgba(58, 26, 20, 0.98) 0%, rgba(105, 38, 22, 0.94) 45%, rgba(72, 28, 18, 0.96) 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 210, 140, 0.14),
+        0 0 26px rgba(255, 70, 25, 0.11);
+}
+
+.camp-fire-tier-watermark {
+    position: absolute;
+    right: -0.2rem;
+    bottom: -0.45rem;
+    z-index: 0;
+    pointer-events: none;
+    line-height: 1;
+}
+
+.camp-fire-tier-watermark i {
+    display: block;
+    color: rgba(255, 110, 40, 0.18);
+    text-shadow: 0 0 18px rgba(255, 80, 20, 0.25);
+}
+
+.camp-fire-tier-card[data-fire-level="embers"] .camp-fire-tier-watermark i {
+    font-size: 2.15rem;
+    opacity: 0.95;
+    transform: scale(0.88);
+    color: rgba(255, 140, 90, 0.16);
+}
+
+.camp-fire-tier-card[data-fire-level="campfire"] .camp-fire-tier-watermark i {
+    font-size: 3.35rem;
+    opacity: 0.95;
+    color: rgba(255, 95, 35, 0.2);
+}
+
+.camp-fire-tier-card[data-fire-level="bonfire"] .camp-fire-tier-watermark i {
+    font-size: 4.25rem;
+    opacity: 0.95;
+    color: rgba(255, 55, 25, 0.22);
+    text-shadow: 0 0 28px rgba(255, 60, 20, 0.35);
+}
+
+.ionrift-respite-app button.camp-fire-tier-card {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    white-space: normal !important;
+    text-align: left !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: min-content !important;
+    overflow: hidden !important;
+    width: 100%;
+    line-height: 1.35;
+}
+
+.camp-fire-tier-card:hover:not(.is-disabled):not(:disabled) {
+    border-color: rgba(255, 170, 90, 0.55);
+    filter: brightness(1.06);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 210, 150, 0.14),
+        0 0 20px rgba(255, 120, 40, 0.12);
+    transform: translateY(-1px);
+}
+
+.camp-fire-tier-card[data-fire-level="embers"]:hover:not(.is-disabled):not(:disabled) {
+    box-shadow: inset 0 1px 0 rgba(255, 170, 120, 0.12);
+}
+
+.camp-fire-tier-card.selected {
+    border-color: rgba(110, 220, 140, 0.65);
+    box-shadow:
+        0 0 0 2px rgba(74, 222, 128, 0.35),
+        0 0 24px rgba(74, 222, 128, 0.18),
+        inset 0 1px 0 rgba(255, 220, 160, 0.1);
+    filter: brightness(1.04);
+}
+
+.camp-fire-tier-card.is-disabled,
+.camp-fire-tier-card:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    filter: grayscale(0.35) brightness(0.92);
+}
+
+.camp-fire-tier-card.is-disabled .camp-fire-tier-watermark i,
+.camp-fire-tier-card:disabled .camp-fire-tier-watermark i {
+    text-shadow: none;
+}
+
+.camp-fire-tier-card:focus-visible {
+    outline: 2px solid rgba(255, 175, 95, 0.65);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .camp-fire-tier-card {
+        transition: none;
+    }
+
+    .camp-fire-tier-card:hover:not(.is-disabled):not(:disabled) {
+        transform: none;
+    }
+}
+
+.camp-fire-tier-label {
+    position: relative;
+    z-index: 1;
+    font-weight: 600;
+    font-size: 0.74rem;
+    letter-spacing: 0.02em;
+    color: rgba(255, 248, 240, 0.98);
+}
+
+.camp-fire-tier-cost {
+    position: relative;
+    z-index: 1;
+    font-size: 0.62rem;
+    color: rgba(255, 195, 150, 0.72);
+}
+
+.camp-fire-tier-body {
+    position: relative;
+    z-index: 1;
+    display: block;
+    margin: 0.28rem 0 0;
+    font-size: 0.59rem;
+    line-height: 1.4;
+    color: rgba(255, 230, 210, 0.82);
+    overflow-wrap: anywhere;
+}
+
+.camp-fire-tier-comfort {
+    position: relative;
+    z-index: 1;
+    display: block;
+    margin: 0.22rem 0 0;
+    font-size: 0.58rem;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.38);
+}
+
+.camp-fire-tier-comfort.comfort-changed {
+    color: rgba(160, 220, 140, 0.75);
+}
+
+.camp-fire-wait-pit {
+    margin: 0.35rem 0 0;
+    font-size: 0.65rem;
+    line-height: 1.35;
+    color: rgba(250, 204, 21, 0.88);
+}
+
+.camp-fire-gate-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 0.62rem;
+}
+
+.camp-fire-gate {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.camp-fire-gate.gate-done {
+    color: rgba(134, 239, 172, 0.95);
+}
+
+.camp-fire-gate.gate-pending {
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.camp-fire-gate.gate-fire-pending {
+    color: rgba(251, 191, 36, 0.85);
+    font-weight: 600;
+}
+
+/* GM override button row: two compact muted buttons side by side */
+.camp-gm-override-row {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.camp-gm-light-override,
+.camp-gm-cold-override {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.28rem 0.65rem;
+    font-size: 0.67rem;
+    font-weight: 500;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+
+.camp-gm-light-override {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.camp-gm-light-override:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.6);
+    border-color: rgba(255, 255, 255, 0.22);
+}
+
+.camp-gm-cold-override {
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    background: rgba(148, 163, 184, 0.04);
+    color: rgba(148, 163, 184, 0.35);
+}
+
+.camp-gm-cold-override:hover {
+    background: rgba(148, 163, 184, 0.1);
+    color: rgba(148, 163, 184, 0.65);
+    border-color: rgba(148, 163, 184, 0.28);
+}
+
+/* Cold camp confirmed gate indicator */
+.camp-fire-gate.gate-cold-camp {
+    color: rgba(148, 163, 184, 0.65);
+}
+
+/* Cold camp decided banner */
+.camp-fire-step1-cold {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.camp-fire-cold-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: rgba(148, 163, 184, 0.75);
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.camp-firewood-list-step1,
+.camp-firewood-empty-step1,
+.camp-fire-lighters-step1 {
+    margin: 0;
+}
+
+.camp-phase-shell-fire-setup .roster-strip {
+    opacity: 0.58;
+    transition: opacity 0.2s ease;
+}
+
+.camp-fire-setup-parallel-hint {
+    margin: 0 0 0.15rem;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.68rem;
+    line-height: 1.4;
+    color: rgba(200, 210, 230, 0.88);
+    background: rgba(0, 0, 0, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+}
+
+.respite-action-bar .btn-primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(0.25);
+}
+
+.respite-action-bar .btn-primary.btn-dimmed {
+    opacity: 0.7;
+    filter: saturate(0.6);
+}
+
+.campfire-static-status {
+    padding: 0.6rem 0.75rem;
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.campfire-static-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+}
+
+.campfire-static-title {
+    text-transform: capitalize;
+}
+
+.campfire-static-hint {
+    margin: 0.35rem 0 0;
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.55);
 }
 
 /* Campfire Section */
@@ -898,6 +1634,277 @@
     color: rgba(240, 160, 40, 0.9);
 }
 
+.camp-gm-campfire-advisory {
+    margin: 0 0 0.4rem;
+    padding: 0 0.1rem;
+    font-size: 0.68rem;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+/* Camp Stations panel (Make Camp) */
+.camp-stations-panel {
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.camp-stations-panel-disabled {
+    opacity: 0.82;
+}
+
+.camp-stations-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.68);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.camp-stations-gm-advisory {
+    margin: 0;
+    padding: 0.2rem 0.55rem 0.35rem;
+    font-size: 0.65rem;
+    line-height: 1.35;
+    color: rgba(200, 195, 255, 0.55);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.camp-stations-lock-banner {
+    margin: 0;
+    padding: 0.35rem 0.55rem;
+    font-size: 0.68rem;
+    color: rgba(255, 200, 120, 0.85);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.camp-stations-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem;
+    padding: 0.45rem 0.45rem 0.5rem;
+    align-items: stretch;
+}
+
+.camp-station-card {
+    border-radius: 6px;
+    border: 1px solid rgba(139, 92, 246, 0.15);
+    background: rgba(139, 92, 246, 0.05);
+    min-height: 4.2rem;
+    overflow: hidden;
+}
+
+.camp-station-card.camp-station-deployed {
+    border-color: rgba(80, 200, 120, 0.25);
+    background: rgba(80, 200, 120, 0.06);
+}
+
+.camp-station-card.camp-station-locked {
+    opacity: 0.9;
+}
+
+.camp-station-placeable {
+    padding: 0.35rem 0.4rem;
+    cursor: grab;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.camp-station-placeable:active {
+    cursor: grabbing;
+}
+
+.camp-station-placeable.dragging {
+    opacity: 0.6;
+}
+
+.camp-station-card-inner {
+    padding: 0.35rem 0.4rem;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.camp-station-card-top {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.camp-station-card-top i:first-child {
+    color: rgba(180, 160, 255, 0.9);
+    width: 1em;
+    text-align: center;
+}
+
+.camp-station-label {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.2;
+}
+
+.camp-station-drag-hint {
+    margin: 0.25rem 0 0;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.camp-station-status-msg {
+    margin: 0.25rem 0 0;
+    font-size: 0.58rem;
+    line-height: 1.3;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.camp-station-status-msg.camp-station-req {
+    color: rgba(255, 180, 120, 0.85);
+}
+
+button.camp-station-reclaim-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.28rem;
+    width: 100%;
+    margin: 0.22rem 0 0;
+    padding: 0.42rem 0.48rem 0.48rem;
+    box-sizing: border-box;
+    border: none;
+    border-radius: 5px;
+    background: rgba(60, 140, 90, 0.16);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
+}
+
+button.camp-station-reclaim-btn:hover {
+    background: rgba(60, 160, 100, 0.24);
+}
+
+button.camp-station-reclaim-btn:focus-visible {
+    outline: 2px solid rgba(139, 92, 246, 0.75);
+    outline-offset: 2px;
+}
+
+button.camp-station-reclaim-btn .camp-station-status-inline {
+    margin: 0;
+    font-size: 0.58rem;
+    line-height: 1.35;
+    color: rgba(170, 235, 195, 0.95);
+    font-weight: 600;
+}
+
+button.camp-station-reclaim-btn .camp-station-recall-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.32rem;
+    margin: 0;
+    font-size: 0.55rem;
+    line-height: 1.35;
+    color: rgba(160, 220, 180, 0.9);
+}
+
+.camp-station-deployed-readonly {
+    margin: 0.28rem 0 0;
+    padding: 0.12rem 0.08rem 0;
+}
+
+.camp-stations-placement-hint {
+    margin: 0;
+    padding: 0.25rem 0.55rem 0.4rem;
+    font-size: 0.62rem;
+    line-height: 1.3;
+    color: rgba(200, 210, 255, 0.65);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.camp-placement-rule-hint {
+    margin: 0.35rem 0 0;
+    font-size: 0.62rem;
+    line-height: 1.35;
+    color: rgba(200, 210, 255, 0.65);
+}
+
+button.camp-gear-reclaim-btn.camp-gear-placeable-wrap.deployed {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.2rem;
+    flex: 1;
+    width: 100%;
+    margin: 0;
+    padding: 0.35rem 0.4rem;
+    border: 2px solid rgba(74, 222, 128, 0.42);
+    background: rgba(74, 222, 128, 0.14);
+    border-radius: 6px;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+button.camp-gear-reclaim-btn:hover .gear-drag-handle-scene.deployed {
+    filter: brightness(1.08);
+}
+
+button.camp-gear-reclaim-btn:focus-visible {
+    outline: 2px solid rgba(139, 92, 246, 0.7);
+    outline-offset: 2px;
+}
+
+button.camp-gear-reclaim-btn > .gear-drag-handle.gear-drag-handle-scene.deployed {
+    flex: 0 0 auto;
+    min-height: 0;
+    padding: 0.12rem 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+button.camp-gear-reclaim-btn .gear-drag-scene-pill {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-right: 0.28rem;
+}
+
+button.camp-gear-reclaim-btn .deployed-check {
+    margin-left: auto;
+    padding: 0;
+}
+
+button.camp-gear-reclaim-btn > .camp-gear-mechanic-note {
+    padding: 0 0.05rem;
+    line-height: 1.35;
+}
+
+.camp-gear-reclaim-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0.28rem 0.2rem 0.1rem;
+    font-size: 0.6rem;
+    line-height: 1.35;
+    color: rgba(160, 220, 180, 0.92);
+}
+
+button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
+    margin-top: auto;
+    margin-bottom: 0;
+    padding: 0.2rem 0.05rem 0;
+}
+
 .camp-fire-body {
     padding: 0.35rem 0.6rem 0.5rem;
 }
@@ -906,7 +1913,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.3rem 0.6rem;
-    margin-bottom: 0.25rem;
+    margin: 0.25rem 0 0.25rem;
 }
 
 .fire-benefit {
@@ -922,17 +1929,9 @@
     font-size: 0.65rem;
 }
 
-.camp-fire-hint {
-    font-size: 0.65rem;
-    color: rgba(255, 255, 255, 0.35);
-    font-style: italic;
-    line-height: 1.3;
-    margin-bottom: 0.3rem;
-}
-
 .camp-firewood-list,
 .camp-firewood-empty {
-    margin-bottom: 0.2rem;
+    margin-bottom: 0.25rem;
 }
 
 .camp-firewood-holder {
@@ -951,10 +1950,31 @@
 
 .camp-firewood-empty {
     display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+    padding: 0.25rem 0 0.15rem;
+    font-size: 0.72rem;
+    color: rgba(230, 150, 50, 0.78);
+}
+
+.camp-firewood-empty-row {
+    display: flex;
     align-items: center;
     gap: 0.35rem;
-    font-size: 0.72rem;
-    color: rgba(230, 150, 50, 0.7);
+}
+
+.camp-firewood-empty-title {
+    font-weight: 600;
+}
+
+.camp-firewood-empty-detail {
+    margin: 0 0 0 1.35rem;
+    padding: 0;
+    font-size: 0.62rem;
+    line-height: 1.35;
+    font-weight: 400;
+    color: rgba(255, 200, 140, 0.72);
 }
 
 .camp-fire-lighters {
@@ -2116,6 +3136,89 @@
     max-height: 60vh;
 }
 
+.activity-phase-layout > .activity-phase-player-overview-wrap {
+    overflow-y: visible;
+    max-height: none;
+    flex: 0 1 auto;
+    padding: 0.65rem 0.85rem 1rem;
+}
+
+.activity-phase-player-overview-wrap .player-overview-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 0.45rem;
+}
+
+.activity-phase-player-overview-wrap .player-overview-heading > i {
+    color: rgba(167, 139, 250, 0.75);
+}
+
+.activity-phase-player-overview-wrap .player-overview-lead {
+    font-size: 0.68rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.45);
+    margin: 0 0 0.75rem;
+}
+
+.activity-phase-player-overview-wrap .player-overview-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.65rem;
+}
+
+.activity-phase-player-overview-wrap .player-overview-label {
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.activity-phase-player-overview-wrap .player-overview-value {
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+    font-variant-numeric: tabular-nums;
+}
+
+.activity-phase-player-overview-wrap .player-overview-progress-track {
+    height: 6px;
+    margin-top: 0.25rem;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+}
+
+.activity-phase-player-overview-wrap .player-overview-progress-track--meal {
+    margin-bottom: 0.15rem;
+}
+
+.activity-phase-player-overview-wrap .player-overview-progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, rgba(139, 92, 246, 0.55), rgba(167, 139, 250, 0.85));
+    min-width: 0;
+    transition: width 0.2s ease;
+}
+
+.activity-phase-player-overview-wrap .player-overview-progress-track--meal .player-overview-progress-fill {
+    background: linear-gradient(90deg, rgba(52, 152, 219, 0.45), rgba(93, 173, 226, 0.8));
+}
+
+.activity-phase-player-overview-wrap .player-overview-note {
+    font-size: 0.65rem;
+    color: rgba(255, 200, 120, 0.75);
+    margin: 0.75rem 0 0;
+    line-height: 1.4;
+}
+
 /* Identify tab: overflow moves to inner .identify-scroll-area
    so the footer stays pinned below the scroll area */
 .activity-phase-layout > .identify-tab {
@@ -2144,6 +3247,7 @@
     cursor: pointer;
     transition: all 0.15s;
     min-width: 56px;
+    position: relative;
 }
 
 .roster-chip:hover {
@@ -2160,7 +3264,6 @@
 .roster-chip.player .roster-status i.fa-check-circle { color: #4ade80; }
 .roster-chip.gm .roster-status i.fa-crown { color: #fbbf24; }
 .roster-chip .roster-status i.fa-clock { color: rgba(255, 255, 255, 0.3); }
-.roster-chip .roster-status i.fa-mug-hot { color: #f59e0b; }
 .roster-chip .roster-status i.fa-skull { color: #ef4444; }
 
 .roster-roll-pending {
@@ -2182,101 +3285,366 @@
     border-color: rgba(255, 255, 255, 0.08);
 }
 
-/* GM roster chip */
-.roster-chip.gm-chip {
-    background: rgba(147, 51, 234, 0.08);
-    border-color: rgba(147, 51, 234, 0.2);
-    margin-left: auto;
-}
-.roster-chip.gm-chip:hover {
-    background: rgba(147, 51, 234, 0.15);
-    border-color: rgba(147, 51, 234, 0.35);
-}
-.roster-gm-icon {
-    width: 38px; height: 38px;
-    border-radius: 50%;
-    background: rgba(147, 51, 234, 0.15);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1rem; color: rgba(147, 51, 234, 0.8);
-}
-
-/* Roster divider */
-.roster-divider {
-    width: 1px;
-    align-self: stretch;
-    background: rgba(255, 255, 255, 0.1);
-    margin: 0 0.25rem;
-}
-
-/* AFK portrait replacement: coffee cup instead of avatar */
-.roster-afk-portrait {
-    width: 28px; height: 28px;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 4px;
-    background: rgba(245, 158, 11, 0.18);
-    color: #f59e0b;
-    font-size: 0.9rem;
-}
-.roster-chip { position: relative; }
+/* AFK in roster strip: .afk chip tint (legacy class), mug badge + portrait ring (TABLE panel language) */
 .roster-chip.afk {
     opacity: 0.92;
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.07);
+    box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.12);
 }
-.roster-chip.afk:hover { opacity: 1; }
-.roster-chip.gm-chip.afk {
-    opacity: 0.92;
+.roster-chip.afk:hover {
+    opacity: 1;
+    border-color: rgba(245, 158, 11, 0.5);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.roster-portrait-wrap {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+}
+
+.roster-chip .roster-portrait-wrap .roster-portrait {
+    display: block;
+}
+
+.roster-chip.afk .roster-portrait {
+    border-color: rgba(245, 158, 11, 0.55);
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.35);
+}
+
+.roster-afk-mug {
+    position: absolute;
+    right: -5px;
+    bottom: -5px;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #1c1917 0%, #292524 100%);
+    border: 2px solid #f59e0b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.5rem;
+    color: #fbbf24;
+    box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.35),
+        0 1px 6px rgba(0, 0, 0, 0.45),
+        0 0 10px rgba(245, 158, 11, 0.45);
+    pointer-events: none;
+}
+
+.roster-chip.afk .roster-name {
+    color: #fcd34d;
+    font-weight: 600;
 }
 
 /* Roster strip layout */
 .roster-players { display: flex; gap: 0.3rem; flex-wrap: wrap; }
 
-/* AFK button toggle: tall card style */
-.roster-afk-btn {
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 0.15rem;
-    padding: 0.3rem 0.5rem;
-    border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(255, 255, 255, 0.025);
-    color: rgba(255, 255, 255, 0.3);
-    cursor: pointer;
-    transition: all 0.2s;
-    min-width: 36px;
-    align-self: stretch;
+/* ---- Persistent AFK panel (long / short rest) ---- */
+.application#ionrift-respite-afk-panel.ionrift-afk-panel-app,
+#ionrift-respite-afk-panel.ionrift-afk-panel-app {
+    position: fixed !important;
+    z-index: 1001;
+    pointer-events: auto;
+    width: fit-content !important;
+    max-width: 220px;
+    height: auto !important;
+    min-width: 0;
+    margin: 0 !important;
+    transform: none !important;
+}
+
+/* AFK panel position: inline left/top from AfkPanelApp (locked = pinned, not draggable). */
+
+.ionrift-afk-panel-app .window-header {
+    display: none;
+}
+
+.ionrift-afk-panel-app .window-content {
+    padding: 0;
+    overflow: visible;
+    background: transparent;
+    width: fit-content;
+    max-width: 220px;
+    min-width: 0;
+}
+
+.ionrift-afk-panel {
     box-sizing: border-box;
+    width: fit-content;
+    max-width: 220px;
+    min-width: 0;
+    padding: 0.45rem 0.55rem;
+    border-radius: 10px;
+    border-style: solid;
+    border-width: 1px;
 }
-.roster-afk-btn i { font-size: 0.85rem; }
-.roster-afk-btn span { font-size: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
-.roster-afk-btn:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: rgba(255, 255, 255, 0.5);
+
+/* No one AFK: stay out of the way */
+.ionrift-afk-panel.ionrift-afk-panel--idle {
+    background: rgba(18, 20, 28, 0.38);
+    border-color: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(5px);
+}
+
+.ionrift-afk-panel.ionrift-afk-panel--idle .ionrift-afk-panel-lock-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.ionrift-afk-panel.ionrift-afk-panel--idle .ionrift-afk-panel-self-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Anyone AFK: same glass weight as before */
+.ionrift-afk-panel.ionrift-afk-panel--present {
+    background: rgba(18, 20, 28, 0.88);
     border-color: rgba(255, 255, 255, 0.1);
-}
-.roster-afk-btn.active {
-    background: rgba(245, 158, 11, 0.08);
-    color: rgba(245, 158, 11, 0.75);
-    border-color: rgba(245, 158, 11, 0.18);
-}
-.roster-afk-btn.active:hover {
-    background: rgba(245, 158, 11, 0.12);
-    color: #f59e0b;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(8px);
 }
 
-/* Vertical divider between AFK toggle and player chips */
-.roster-divider {
-    width: 1px;
+.ionrift-afk-panel.ionrift-afk-panel--idle .ionrift-afk-panel-portrait {
+    opacity: 0.52;
+    filter: saturate(0.7);
+}
+
+.ionrift-afk-panel.ionrift-afk-panel--idle .ionrift-afk-panel-name {
+    opacity: 0.55;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.ionrift-afk-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    margin: 0 0 0.35rem;
+    padding: 0 0.05rem;
+    user-select: none;
+    width: 100%;
+    min-width: 0;
+}
+
+.ionrift-afk-panel-header--draggable {
+    cursor: grab;
+    min-height: 28px;
+}
+
+.ionrift-afk-panel-header--draggable:active {
+    cursor: grabbing;
+}
+
+.ionrift-afk-panel-lock-btn {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.65);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+        opacity 0.18s ease,
+        background 0.15s,
+        color 0.15s,
+        border-color 0.15s;
+}
+
+.ionrift-afk-panel:hover .ionrift-afk-panel-lock-btn,
+.ionrift-afk-panel-lock-btn:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+@media (hover: none) {
+    .ionrift-afk-panel-lock-btn {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+
+.ionrift-afk-panel-lock-btn:hover {
     background: rgba(255, 255, 255, 0.1);
-    margin: 0 0.1rem;
+    color: rgba(255, 255, 255, 0.9);
+    border-color: rgba(255, 255, 255, 0.18);
 }
 
-/* GM chip: pushed right */
-.roster-chip.gm-chip {
-    margin-left: auto;
-    background: rgba(147, 51, 234, 0.12);
-    border-color: rgba(147, 51, 234, 0.25);
+.ionrift-afk-panel-lock-btn i {
+    font-size: 0.7rem;
+    pointer-events: none;
 }
-.roster-chip.gm-chip:hover {
-    background: rgba(147, 51, 234, 0.18);
+
+.ionrift-afk-panel-list {
+    list-style: none;
+    margin: 0 0 0.4rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    width: 100%;
+    min-width: 0;
+}
+
+.ionrift-afk-panel-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.15rem 0;
+    border-radius: 6px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.ionrift-afk-panel-row.is-gm-toggle {
+    cursor: pointer;
+}
+.ionrift-afk-panel-row.is-gm-toggle:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.ionrift-afk-panel-row.is-afk {
+    margin: 0 -0.15rem;
+    padding: 0.22rem 0.35rem 0.22rem 0.42rem;
+    background: linear-gradient(
+        90deg,
+        rgba(245, 158, 11, 0.22) 0%,
+        rgba(245, 158, 11, 0.06) 55%,
+        transparent 100%
+    );
+    border-left: 3px solid #f59e0b;
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.2);
+}
+
+.ionrift-afk-panel-row.is-afk .ionrift-afk-panel-name {
+    color: #fcd34d;
+    font-weight: 600;
+    text-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
+}
+
+.ionrift-afk-panel-portrait-wrap {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.ionrift-afk-panel-portrait {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    display: block;
+    transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+.ionrift-afk-panel-row.is-afk .ionrift-afk-panel-portrait {
+    border-color: rgba(245, 158, 11, 0.75);
+    box-shadow:
+        0 0 0 2px rgba(245, 158, 11, 0.45),
+        0 0 10px rgba(245, 158, 11, 0.35);
+}
+
+.ionrift-afk-panel-mug {
+    position: absolute;
+    right: -6px;
+    bottom: -6px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #1c1917 0%, #292524 100%);
+    border: 2px solid #f59e0b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.62rem;
+    color: #fbbf24;
+    box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.4),
+        0 2px 8px rgba(0, 0, 0, 0.5),
+        0 0 14px rgba(245, 158, 11, 0.55);
+    animation: ionrift-afk-mug-pulse 2.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ionrift-afk-panel-mug {
+        animation: none;
+    }
+}
+
+@keyframes ionrift-afk-mug-pulse {
+    0%,
+    100% {
+        transform: scale(1);
+        box-shadow:
+            0 0 0 1px rgba(0, 0, 0, 0.4),
+            0 2px 8px rgba(0, 0, 0, 0.5),
+            0 0 14px rgba(245, 158, 11, 0.55);
+    }
+    50% {
+        transform: scale(1.06);
+        box-shadow:
+            0 0 0 1px rgba(0, 0, 0, 0.4),
+            0 2px 10px rgba(0, 0, 0, 0.55),
+            0 0 22px rgba(245, 158, 11, 0.75);
+    }
+}
+
+.ionrift-afk-panel-name {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.88);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.ionrift-afk-panel-self-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.4rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.65rem;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.ionrift-afk-panel-self-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.16);
+}
+
+.ionrift-afk-panel-self-btn.is-afk {
+    background: rgba(245, 158, 11, 0.18);
+    border: 2px solid rgba(245, 158, 11, 0.55);
+    color: #fcd34d;
+    font-weight: 600;
+    box-shadow: 0 0 14px rgba(245, 158, 11, 0.25);
+}
+
+.ionrift-afk-panel-self-btn i {
+    font-size: 0.75rem;
 }
 
 /* Camp roll result colors */
@@ -5497,12 +6865,26 @@
 }
 
 /* ── Station-based activity layout ──────────────────────── */
+/* Two columns of stacked cards: avoids grid row height = max(both columns). */
 .station-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
     gap: 0.5rem;
     margin-top: 0.35rem;
     padding: 0 0.15rem;
+}
+
+.station-grid-column {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.station-grid-column > .station-card {
+    width: 100%;
 }
 
 .station-card {
@@ -5513,6 +6895,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    min-height: 0;
 }
 
 .station-card.station-card-canvas-focus {
@@ -5570,6 +6953,9 @@
     border-color: rgba(255, 255, 255, 0.08) !important;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55) !important;
     font-family: var(--ionrift-font-stack, "Signika", sans-serif);
+    min-width: 0 !important;
+    max-width: min(400px, calc(100vw - 20px)) !important;
+    box-sizing: border-box;
 }
 
 #ionrift-station-activity-dialog .window-header,
@@ -5592,11 +6978,16 @@
 .ionrift-station-dialog .window-content {
     padding: 0;
     font-family: var(--ionrift-font-stack, "Signika", sans-serif);
+    overflow-x: hidden;
+    max-width: 100%;
 }
 
 .ionrift-station-dialog .station-dialog-wrap.station-card {
     margin: 0;
     box-shadow: none;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .ionrift-station-dialog .station-dialog-wrap .station-header {
@@ -5615,6 +7006,210 @@
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 42%;
+}
+
+.ionrift-station-dialog .station-camp-comfort {
+    margin: 0.35rem 0 0.5rem;
+    padding: 0.35rem 0.5rem 0.4rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.22);
+}
+.ionrift-station-dialog .station-camp-comfort-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.2rem;
+}
+.ionrift-station-dialog .station-camp-comfort-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.5);
+}
+.ionrift-station-dialog .station-camp-comfort-line {
+    margin: 0;
+    font-size: 0.68rem;
+    line-height: 1.4;
+    color: rgba(220, 215, 235, 0.9);
+}
+
+.ionrift-station-dialog .station-personal-card {
+    margin: 0.35rem 0 0.5rem;
+    padding: 0.4rem 0.5rem 0.45rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.22);
+}
+.ionrift-station-dialog .station-personal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+.ionrift-station-dialog .station-personal-comfort-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex: 1;
+}
+.ionrift-station-dialog .station-personal-gear-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin: 0 0 0.4rem;
+}
+.ionrift-station-dialog .station-personal-gear-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.6rem;
+    font-weight: 500;
+    padding: 0.2rem 0.35rem;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.2);
+    color: rgba(220, 215, 235, 0.9);
+}
+.ionrift-station-dialog .station-personal-gear-chip i {
+    font-size: 0.6rem;
+    opacity: 0.85;
+}
+.ionrift-station-dialog .station-personal-recovery {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.64rem;
+    line-height: 1.4;
+    color: rgba(220, 215, 235, 0.9);
+}
+.ionrift-station-dialog .station-personal-recovery .recovery-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+}
+.ionrift-station-dialog .station-personal-recovery .recovery-line i {
+    margin-top: 0.08rem;
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+.ionrift-station-dialog .station-personal-recovery .recovery-line.warning {
+    color: rgba(251, 191, 36, 0.95);
+}
+.ionrift-station-dialog .station-missing-gear-hint {
+    margin: 0.35rem 0 0;
+    font-size: 0.6rem;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.45);
+}
+.ionrift-station-dialog .station-missing-gear-hint i {
+    margin-right: 0.2rem;
+    opacity: 0.75;
+}
+
+.ionrift-station-dialog .station-personal-gear-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.4rem;
+    margin: 0 0 0.3rem;
+}
+.ionrift-station-dialog .station-personal-gear-slot {
+    min-width: 0;
+    padding: 0.32rem 0.35rem 0.4rem;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+.ionrift-station-dialog .station-personal-gear-slot-head {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 1.1rem;
+}
+.ionrift-station-dialog .station-personal-gear-slot-head i {
+    font-size: 0.65rem;
+    color: rgba(200, 200, 220, 0.85);
+    width: 0.9rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+.ionrift-station-dialog .station-personal-gear-slot-title {
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.2;
+}
+.ionrift-station-dialog .station-personal-gear-slot-line {
+    margin: 0;
+    font-size: 0.55rem;
+    line-height: 1.3;
+    flex: 1;
+}
+.ionrift-station-dialog .station-personal-gear-slot-missing {
+    color: rgba(180, 180, 200, 0.5);
+    font-size: 0.54rem;
+}
+.ionrift-station-dialog .station-personal-gear-slot-benefit {
+    color: rgba(220, 215, 240, 0.85);
+    font-size: 0.54rem;
+}
+.ionrift-station-dialog .station-personal-gear-slot--missing {
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.12);
+    opacity: 0.95;
+}
+.ionrift-station-dialog .station-personal-gear-slot--ready {
+    border: 2px solid rgba(45, 200, 180, 0.5);
+    background: rgba(12, 40, 36, 0.4);
+    box-shadow: 0 0 0 1px rgba(45, 200, 180, 0.12);
+}
+.ionrift-station-dialog .station-personal-gear-slot--placed {
+    border: 1px solid rgba(74, 222, 128, 0.35);
+    background: rgba(0, 0, 0, 0.22);
+}
+.ionrift-station-dialog .station-personal-gear-slot--readonly {
+    border: 1px dashed rgba(255, 255, 255, 0.14);
+    background: rgba(0, 0, 0, 0.18);
+}
+.ionrift-station-dialog .station-personal-gear-slot-placed,
+.ionrift-station-dialog .station-personal-gear-slot-readonly {
+    margin: 0;
+    font-size: 0.52rem;
+    line-height: 1.25;
+    color: rgba(150, 220, 160, 0.85);
+}
+.ionrift-station-dialog .station-personal-gear-slot-readonly {
+    color: rgba(200, 200, 220, 0.5);
+    font-style: normal;
+}
+.ionrift-station-dialog .station-personal-gear-grid .camp-gear-placeable-wrap {
+    margin-top: 0.1rem;
+}
+.ionrift-station-dialog .station-personal-gear-grid .gear-drag-handle.gear-drag-handle-scene {
+    font-size: 0.52rem;
+    padding: 0.2rem 0.3rem;
+    min-height: 0;
+    width: 100%;
+    justify-content: center;
+}
+.ionrift-station-dialog .station-personal-footnote {
+    margin: 0 0 0.4rem;
+    font-size: 0.55rem;
+    line-height: 1.3;
+    color: rgba(255, 255, 255, 0.4);
+    font-style: italic;
 }
 
 .ionrift-station-dialog .station-sub-tabs {
@@ -5647,6 +7242,13 @@
     color: rgba(255, 255, 255, 0.95);
     border-color: rgba(196, 181, 253, 0.45);
     background: rgba(99, 102, 241, 0.15);
+}
+
+.ionrift-station-dialog .station-sub-tab:disabled,
+.ionrift-station-dialog .station-sub-tab.station-sub-tab-disabled:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+    color: rgba(255, 255, 255, 0.32);
 }
 
 .ionrift-station-dialog .station-meal-embed {
@@ -14013,6 +15615,28 @@
     font-size: 0.65rem;
 }
 
+.camp-layout-gm-step1 .camp-drag-handle-compact {
+    padding: 0.55rem 0.65rem;
+    border-color: rgba(255, 140, 30, 0.4);
+    background: rgba(255, 140, 30, 0.07);
+}
+
+.camp-layout-gm-step1 .camp-drag-handle-compact:hover {
+    background: rgba(255, 140, 30, 0.14);
+    border-color: rgba(255, 140, 30, 0.6);
+}
+
+.camp-layout-gm-step1 .camp-drag-handle-compact .camp-drag-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 1.2rem;
+    color: rgba(255, 140, 30, 0.9);
+}
+
+.camp-layout-gm-step1 .camp-drag-handle-compact .camp-drag-title {
+    font-size: 0.85rem;
+}
+
 .camp-personal-grid-single {
     grid-template-columns: 1fr;
     max-width: 100%;
@@ -14082,7 +15706,6 @@
     min-width: 0;
 }
 
-/* One card: in-pack placeables use violet fill (like legacy drag handle) */
 .camp-gear-placeable-wrap {
     display: flex;
     flex-direction: column;
@@ -14092,21 +15715,21 @@
     min-width: 0;
     padding: 0.35rem 0.4rem;
     border-radius: 6px;
-    border: 2px solid transparent;
-    background: rgba(139, 92, 246, 0.16);
+    border: 2px solid rgba(74, 222, 128, 0.22);
+    background: rgba(74, 222, 128, 0.1);
     transition: background 0.15s ease, border-color 0.15s ease;
     cursor: grab;
 }
 
 .camp-gear-placeable-wrap:not(.deployed):hover {
-    background: rgba(139, 92, 246, 0.28);
-    border-color: rgba(196, 181, 253, 0.5);
+    background: rgba(74, 222, 128, 0.16);
+    border-color: rgba(110, 231, 160, 0.45);
 }
 
 .camp-gear-placeable-wrap.deployed {
     border-style: solid;
-    border-color: rgba(74, 222, 128, 0.4);
-    background: rgba(74, 222, 128, 0.08);
+    border-color: rgba(74, 222, 128, 0.42);
+    background: rgba(74, 222, 128, 0.14);
     cursor: default;
 }
 
@@ -14158,6 +15781,11 @@
     color: rgba(237, 233, 254, 0.82);
 }
 
+.camp-gear-placeable-wrap > .camp-gear-placeable-hint {
+    margin-top: auto;
+    padding: 0.2rem 0.05rem 0;
+}
+
 .camp-gear-placeable-hint > i {
     font-size: 0.5rem;
     opacity: 0.85;
@@ -14169,7 +15797,6 @@
 
 .camp-gear-scene-placeholder {
     flex: 1;
-    min-height: 0;
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -14210,8 +15837,12 @@
     width: 100%;
 }
 
+.camp-gear-scene-placeholder .placeholder-body.camp-gear-shared-note {
+    color: rgba(134, 239, 172, 0.7);
+    font-style: italic;
+}
+
 .camp-gear-scene-locked {
-    min-height: 3.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -14554,4 +16185,215 @@
         animation: none;
         filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ionrift-dm-tab-c) 55%, transparent));
     }
+}
+
+/* Make Camp: minimal shell (campfire-first) */
+.ionrift-respite-app .camp-minimal-shell {
+    max-width: 32rem;
+    margin: 0 auto;
+    padding: 0 0.5rem 0.5rem;
+}
+.ionrift-respite-app.ionrift-camp-dock {
+    min-width: 15rem;
+    max-width: 22rem;
+}
+.ionrift-respite-app.ionrift-camp-dock .camp-minimal-shell {
+    max-width: none;
+    margin: 0;
+    padding: 0 0.35rem 0.4rem;
+}
+.ionrift-respite-app.ionrift-camp-dock .respite-phase-header {
+    padding: 0.35rem 0.45rem 0.4rem;
+    gap: 0.35rem;
+}
+.ionrift-respite-app.ionrift-camp-dock .phase-dot {
+    width: 6px;
+    height: 6px;
+}
+.ionrift-respite-app.ionrift-camp-dock .phase-label {
+    font-size: 0.72rem;
+}
+.ionrift-respite-app .camp-minimal-lead {
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: rgba(232, 228, 240, 0.9);
+    margin: 0.5rem 0 0.75rem;
+}
+.ionrift-respite-app.ionrift-camp-dock .camp-minimal-lead {
+    font-size: 0.8rem;
+    margin: 0.35rem 0 0.5rem;
+}
+.ionrift-respite-app.ionrift-camp-dock .camp-minimal-lead kbd {
+    display: inline-block;
+    padding: 0.05rem 0.3rem;
+    font-size: 0.7rem;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.ionrift-respite-app .camp-pit-retry {
+    border-radius: 8px;
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid rgba(196, 181, 253, 0.25);
+}
+.ionrift-respite-app .camp-comfort-compact {
+    margin-top: 0.35rem;
+    margin-bottom: 0.5rem;
+}
+.ionrift-respite-app .campfire-canvas-drawer {
+    border-radius: 10px;
+    border: 1px solid rgba(196, 181, 253, 0.3);
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.6rem 0.65rem;
+}
+.ionrift-respite-app .campfire-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.4rem;
+}
+.ionrift-respite-app .btn-icon-dim {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    padding: 0.2rem 0.35rem;
+    border-radius: 4px;
+}
+.ionrift-respite-app .btn-icon-dim:hover {
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.06);
+}
+.ionrift-respite-app .camp-minimal-action {
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    justify-content: center;
+}
+.ionrift-respite-app.ionrift-camp-dock .camp-minimal-action {
+    margin-top: 0.35rem;
+    padding: 0.3rem 0.35rem;
+    font-size: 0.75rem;
+}
+
+/* Station dialog: personal camp gear at campfire */
+.ionrift-station-dialog .station-camp-gear {
+    border-radius: 8px;
+    border: 1px solid rgba(196, 181, 253, 0.22);
+    padding: 0.45rem 0.5rem 0.55rem;
+    margin: 0.4rem 0 0.5rem;
+}
+.ionrift-station-dialog .station-camp-gear-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.88);
+    margin-bottom: 0.2rem;
+}
+.ionrift-station-dialog .station-camp-gear-hint {
+    font-size: 0.7rem;
+    color: rgba(200, 200, 220, 0.75);
+    margin: 0 0 0.35rem;
+}
+.ionrift-station-dialog .station-camp-gear-slots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+.ionrift-station-dialog .station-camp-gear-slots .camp-gear-placeable-wrap {
+    min-width: 4.5rem;
+}
+
+/* Map-anchored Campfire dialog (ApplicationV2; not inside .ionrift-respite-app) */
+.application.ionrift-campfire-map-dialog .window-content {
+    padding: 0.7rem 0.85rem 0.8rem;
+}
+.application.ionrift-campfire-map-dialog .campfire-canvas-drawer {
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+}
+.campfire-map-dialog .campfire-canvas-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+.campfire-map-comfort {
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.22);
+    overflow: hidden;
+}
+.campfire-map-comfort-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0.55rem 0.3rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.camp-comfort-header-inline {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.55);
+}
+.campfire-map-comfort .campfire-map-comfort-line,
+.campfire-map-comfort .camp-comfort-reason.campfire-map-comfort-line {
+    margin: 0;
+    padding: 0.35rem 0.55rem 0.45rem;
+    font-style: normal;
+    color: rgba(220, 215, 235, 0.88);
+    font-size: 0.68rem;
+    line-height: 1.4;
+}
+.campfire-map-section-title {
+    margin: 0 0 0.35rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(200, 195, 220, 0.85);
+}
+.campfire-map-tier-footnote {
+    margin: 0.4rem 0 0;
+    font-size: 0.6rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.38);
+}
+.campfire-map-encounter-preview {
+    margin: 0;
+}
+.campfire-map-pledges {
+    margin: 0.2rem 0 0.15rem;
+}
+.campfire-map-dialog .camp-fire-flavor {
+    margin: 0.15rem 0 0.25rem;
+    font-size: 0.62rem;
+    line-height: 1.4;
+    color: rgba(230, 150, 50, 0.55);
+}
+.application.ionrift-campfire-map-dialog .camp-fuel-controls {
+    margin-top: 0.15rem;
+    padding-bottom: 0.1rem;
+}
+.application.ionrift-campfire-map-dialog .camp-fire-step1-lit {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+.application.ionrift-campfire-map-dialog .camp-fire-tier-label {
+    font-size: 0.66rem;
+}
+.application.ionrift-campfire-map-dialog .camp-fire-tier-body {
+    font-size: 0.56rem;
+}
+.application.ionrift-campfire-map-dialog .camp-fire-tier-comfort {
+    font-size: 0.54rem;
+}
+.application.ionrift-campfire-map-dialog .camp-fire-tier-cost {
+    font-size: 0.58rem;
 }
