@@ -3619,10 +3619,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const costNew = F[id] ?? 0;
             const costCur = (curLevel === "unlit") ? 0 : (F[curLevel] ?? 0);
             const isGm = !!game.user?.isGM;
-            let setDisabled = true;
-            if (isGm && !coldCamp && !isActive) {
+            let tierChangeBlocked = true;
+            if (!coldCamp && !isActive) {
                 if (costNew < costCur) {
-                    setDisabled = false;
+                    tierChangeBlocked = false;
                 } else {
                     const need = costNew - costCur;
                     const actors = getPartyActors();
@@ -3633,7 +3633,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         });
                         return sum + (it?.system?.quantity ?? 0);
                     }, 0);
-                    setDisabled = need > 0 && totalFirewood < need;
+                    tierChangeBlocked = need > 0 && totalFirewood < need;
                 }
             }
             return {
@@ -3644,7 +3644,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 comfortHint,
                 comfortChanged: delta !== 0,
                 active: isActive,
-                setDisabled: isActive ? false : setDisabled
+                actionBlocked: isActive ? false : tierChangeBlocked,
+                setDisabled: isActive ? false : (isGm ? tierChangeBlocked : true),
+                requestDisabled: tierChangeBlocked
             };
         });
 

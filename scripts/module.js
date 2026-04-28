@@ -1805,6 +1805,17 @@ function _onSocketMessage(data) {
             }
             break;
 
+        case "activityFireLevelRequest":
+            if (!game.user.isGM) return;
+            if (activeRestSetupApp?.changeFireLevelDuringActivity) {
+                void activeRestSetupApp.changeFireLevelDuringActivity(data.fireLevel).catch(err => {
+                    console.error(`${MODULE_ID} | activityFireLevelRequest:`, err);
+                });
+            } else {
+                ui.notifications.warn("Open the rest session on the GM client first.");
+            }
+            break;
+
         case "campLightFire":
             if (!game.user.isGM) return;
             if (activeRestSetupApp?._lightFire) {
