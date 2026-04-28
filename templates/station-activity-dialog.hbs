@@ -165,21 +165,21 @@
             <h4 class="station-fire-tier-heading">Fire levels</h4>
             <div class="camp-fire-tier-strip station-campfire-tier-strip" role="list" aria-label="Fire intensity tiers">
                 {{#each fireTabContext.campFireTierCards}}
-                <div class="camp-fire-tier-card{{#if active}} active{{/if}}{{#if setDisabled}} camp-fire-tier-card--set-disabled{{/if}}" data-fire-level="{{id}}" role="listitem">
+                <div class="camp-fire-tier-card{{#if active}} active{{/if}}{{#if actionBlocked}} camp-fire-tier-card--set-disabled{{/if}}" data-fire-level="{{id}}" role="listitem">
                     <span class="camp-fire-tier-watermark" aria-hidden="true"><i class="fas fa-fire"></i></span>
                     <span class="camp-fire-tier-label">{{label}}</span>
                     <span class="camp-fire-tier-cost">({{costLabel}})</span>
                     <span class="camp-fire-tier-body">{{body}}</span>
                     <span class="camp-fire-tier-comfort{{#if comfortChanged}} comfort-changed{{/if}}">{{comfortHint}}</span>
-                    {{#if @root.isGmUser}}
                     <div class="station-fire-set-row">
                         {{#if active}}
                         <span class="station-fire-current-label">Current</span>
-                        {{else}}
+                        {{else if @root.isGmUser}}
                         <button type="button" class="station-fire-set-btn" data-action="setFireLevel" data-fire-level="{{id}}" {{#if setDisabled}}disabled title="Not enough firewood"{{/if}}>Set</button>
+                        {{else}}
+                        <button type="button" class="station-fire-set-btn" data-action="requestFireLevel" data-fire-level="{{id}}" {{#if requestDisabled}}disabled title="Not enough party firewood"{{/if}}>Request</button>
                         {{/if}}
                     </div>
-                    {{/if}}
                 </div>
                 {{/each}}
             </div>

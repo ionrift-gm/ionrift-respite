@@ -79,6 +79,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             dismissResult: StationActivityDialog.#onDismissResult,
             switchStationPanelTab: StationActivityDialog.#onSwitchStationPanelTab,
             setFireLevel: StationActivityDialog.#onSetFireLevel,
+            requestFireLevel: StationActivityDialog.#onRequestFireLevel,
             submitStationRations: StationActivityDialog.#onSubmitStationRations,
             stationDetectMagicScan: StationActivityDialog.#onStationDetectMagicScan,
             stationIdentifyScannedItem: StationActivityDialog.#onStationIdentifyScannedItem,
@@ -589,6 +590,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
     }
 
     static async #onSetFireLevel(event, target) {
+        if (!game.user.isGM) return;
         if (!this._restApp?.changeFireLevelDuringActivity) return;
         const level = target?.dataset?.fireLevel
             ?? target?.closest?.("[data-fire-level]")?.dataset?.fireLevel;
@@ -604,6 +606,20 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         } catch (e) {
             console.warn(`${MODULE_ID} | setFireLevel`, e);
         }
+    }
+
+    static #onRequestFireLevel(event, target) {
+        if (game.user.isGM) return;
+        const level = target?.dataset?.fireLevel
+            ?? target?.closest?.("[data-fire-level]")?.dataset?.fireLevel;
+        if (!level || !["embers", "campfire", "bonfire"].includes(level)) return;
+        if (target.disabled) return;
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "activityFireLevelRequest",
+            userId: game.user.id,
+            fireLevel: level
+        });
+        ui.notifications.info("Fire change sent to the GM.");
     }
 
     static async #onSubmitStationRations() {
