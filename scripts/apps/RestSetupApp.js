@@ -7679,6 +7679,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     _activateCanvasStationLayer() {
         if (!canvas?.ready) return;
+        // Make Camp pit dialog is camp-phase only; close any stray instance before activity station UI.
+        CampfireMakeCampDialog.closeIfOpen();
 
         const partyActors = getPartyActors();
         const actorMap = {};
@@ -9259,6 +9261,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     async _advanceCampToActivity() {
         if (!game.user.isGM) return;
         if (this._phase !== "camp" || this._campToActivityDone) return;
+
+        CampfireMakeCampDialog.closeIfOpen();
 
         this._campToActivityDone = true;
         this._campStep2Entered = true;
