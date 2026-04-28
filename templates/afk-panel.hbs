@@ -1,0 +1,26 @@
+<aside class="ionrift-afk-panel ionrift-window {{#if hasAnyoneAfk}}ionrift-afk-panel--present{{else}}ionrift-afk-panel--idle{{/if}}" aria-label="Rest presence">
+    <header class="ionrift-afk-panel-header {{#unless panelLocked}}ionrift-afk-panel-header--draggable{{/unless}}">
+        <button type="button" class="ionrift-afk-panel-lock-btn" data-action="afkPanelToggleLock"
+            title="{{#if panelLocked}}Unlock to drag this panel{{else}}Lock to pin at this spot{{/if}}"
+            aria-pressed="{{#if panelLocked}}true{{else}}false{{/if}}">
+            {{#if panelLocked}}<i class="fas fa-lock" aria-hidden="true"></i>{{else}}<i class="fas fa-unlock" aria-hidden="true"></i>{{/if}}
+        </button>
+    </header>
+    <ul class="ionrift-afk-panel-list">
+        {{#each rows}}
+        <li class="ionrift-afk-panel-row {{#if isAfk}}is-afk{{/if}} {{#if gmClickable}}is-gm-toggle{{/if}}"
+            {{#if gmClickable}}data-action="afkGmToggleRow" data-character-id="{{id}}" role="button" tabindex="0" title="Toggle AFK for {{name}}"{{else}}title="{{name}}"{{/if}}>
+            <span class="ionrift-afk-panel-portrait-wrap">
+                <img class="ionrift-afk-panel-portrait" src="{{img}}" alt="">
+                {{#if isAfk}}<span class="ionrift-afk-panel-mug" aria-hidden="true"><i class="fas fa-mug-hot"></i></span>{{/if}}
+            </span>
+            <span class="ionrift-afk-panel-name">{{name}}</span>
+        </li>
+        {{/each}}
+    </ul>
+    <button type="button" class="ionrift-afk-panel-self-btn {{#if selfAfk}}is-afk{{/if}}" data-action="afkSelfToggle"
+        title="{{#if selfAfk}}Mark yourself present{{else}}Step away from the session{{/if}}">
+        <i class="fas fa-mug-hot"></i>
+        <span>{{#if selfAfk}}I'm back{{else}}Step away{{/if}}</span>
+    </button>
+</aside>

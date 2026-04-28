@@ -594,7 +594,7 @@ export class CampfireApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this.render();
 
         // Sync campfire token light on the canvas
-        CampfireTokenLinker.setLightState(true);
+        CampfireTokenLinker.setLightState(true, this.fireLevel);
         SoundDelegate.startCampfire("embers");
 
         if (this._litNotifyTimer) clearTimeout(this._litNotifyTimer);
@@ -820,6 +820,9 @@ export class CampfireApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._lastFireLevel = current;
             if (this._onFireLevelChange) this._onFireLevelChange(current);
             SoundDelegate.updateCampfireLevel(current);
+            if (this._lit && current !== "unlit" && game.user.isGM) {
+                void CampfireTokenLinker.setLightState(true, current);
+            }
         }
     }
 

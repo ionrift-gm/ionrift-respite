@@ -594,9 +594,9 @@ export class TravelResolutionDelegate {
         const isNat1 = this.#scoutingResult === "nat1";
 
         const TIER_LABELS = {
-            nat1: "Nat 1 — Hidden Complication",
+            nat1: "Nat 1: Hidden Complication",
             poor: "Poor", average: "Average", good: "Good",
-            nat20: "Nat 20 — Perfect Campsite"
+            nat20: "Nat 20: Perfect Campsite"
         };
 
         // Build per-scout narratives from the flavor pool

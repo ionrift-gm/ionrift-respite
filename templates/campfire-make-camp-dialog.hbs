@@ -1,0 +1,63 @@
+{{!-- Make Camp: anchored at pit token; window title is "Campfire" --}}
+<div class="campfire-canvas-drawer campfire-map-dialog glass-ui" data-campfire-map-dialog="1">
+    <div class="campfire-canvas-body">
+        {{#if campScanData}}
+        <div class="campfire-map-comfort">
+            <div class="campfire-map-comfort-header">
+                <span class="camp-comfort-header-inline">Camp comfort</span>
+                <span class="comfort-tier {{mapComfortTierClass}}">{{mapComfortLabel}}</span>
+            </div>
+            <p class="camp-comfort-reason campfire-map-comfort-line">{{mapComfortLine}}</p>
+        </div>
+        {{/if}}
+        {{#if campFireTierCards.length}}
+        <div class="campfire-map-fire-levels">
+            <h4 class="campfire-map-section-title">Fire levels</h4>
+            <div class="camp-fire-tier-strip" role="list" aria-label="Fire intensity tiers">
+                {{#each campFireTierCards}}
+                <div class="camp-fire-tier-card{{#if active}} active{{/if}}" data-fire-level="{{id}}" role="listitem">
+                    <span class="camp-fire-tier-watermark" aria-hidden="true"><i class="fas fa-fire"></i></span>
+                    <span class="camp-fire-tier-label">{{label}}</span>
+                    <span class="camp-fire-tier-cost">({{costLabel}})</span>
+                    <span class="camp-fire-tier-body">{{body}}</span>
+                    <span class="camp-fire-tier-comfort{{#if comfortChanged}} comfort-changed{{/if}}">{{comfortHint}}</span>
+                </div>
+                {{/each}}
+            </div>
+            <p class="campfire-map-tier-footnote">Larger fires add encounter risk on the table. Bonfire can move camp comfort up one step when the scene allows it.</p>
+        </div>
+        {{/if}}
+        {{#if campFireIsLit}}
+        <div class="camp-fire-step1 camp-fire-step1-lit">
+            <div class="camp-fire-lit-banner"><i class="fas fa-fire"></i> {{#if campFireLitBy}}<span>{{campFireLitBy.actorName}} lit the fire ({{campFireLitBy.method}}).</span>{{else}}<span>The fire is lit.</span>{{/if}}</div>
+            <p class="camp-fire-encounter-hint"><i class="fas fa-eye"></i> {{campFireEncounterHint}}</p>
+            <p class="camp-fire-flavor">Bright fire helps the camp, and it is easier to notice from a distance.</p>
+            {{#if campFirewoodPledgeList.length}}
+            <div class="camp-firewood-pledge-list campfire-map-pledges">
+            {{#each campFirewoodPledgeList}}<div class="camp-firewood-pledge-row"><i class="fas fa-check"></i> <span>{{actorName}}: {{count}} firewood</span></div>{{/each}}
+            </div>
+            {{/if}}
+            <div class="camp-fuel-controls">
+                <button type="button" class="camp-pledge-btn" data-action="campPledgeFirewoodMap" data-actor-id="{{campMyFirewoodActorId}}" {{#unless campCanAddFirewood}}disabled{{/unless}}><i class="fas fa-plus"></i> Add Firewood</button>
+                <button type="button" class="camp-reclaim-btn" data-action="campReclaimFirewoodMap" {{#unless campMyPledge}}disabled{{/unless}}><i class="fas fa-undo"></i> Take Back</button>
+            </div>
+        </div>
+        {{else}}
+        {{#if campColdCampDecided}}
+        <p class="camp-fire-cold-banner glass-ui"><i class="fas fa-moon"></i> Cold camp</p>
+        {{else}}
+        <p class="camp-fire-encounter-hint campfire-map-encounter-preview"><i class="fas fa-eye"></i> {{campFireEncounterHint}}</p>
+        {{#if isGM}}
+        <div class="camp-gm-override-row">
+            {{#if campFireLighters.length}}<button type="button" class="camp-gm-light-override" data-action="campLightFireMap" data-actor-id="{{campFireLighters.[0].actorId}}" data-method="{{campFireLighters.[0].method}}"><i class="fas fa-fire-alt"></i> Light it for them</button>{{/if}}
+            <button type="button" class="camp-gm-cold-override" data-action="campColdCampMap"><i class="fas fa-moon"></i> Cold camp</button>
+        </div>
+        {{else}}
+        <div class="camp-fire-lighter-list">
+        {{#each campFireLighters}}<button type="button" class="camp-light-fire-btn" data-action="campLightFireMap" data-actor-id="{{actorId}}" data-method="{{method}}"><i class="fas fa-fire"></i> {{actorName}}, {{method}}</button>{{/each}}
+        </div>
+        {{/if}}
+        {{/if}}
+        {{/if}}
+    </div>
+</div>

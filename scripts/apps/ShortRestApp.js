@@ -11,7 +11,17 @@ import { SpellSlotRecovery } from "../services/SpellSlotRecovery.js";
  * Calls actor.shortRest() on completion for class feature recovery.
  */
 
-import { registerActiveShortRestApp, clearActiveShortRestApp, getPartyActors, _showGmShortRestIndicator, _removeGmShortRestIndicator, notifyShortRestActive } from "../module.js";
+import {
+    registerActiveShortRestApp,
+    clearActiveShortRestApp,
+    getPartyActors,
+    _showGmShortRestIndicator,
+    _removeGmShortRestIndicator,
+    notifyShortRestActive,
+    showAfkPanel,
+    hideAfkPanelAfterRest
+} from "../module.js";
+import * as RestAfkState from "../services/RestAfkState.js";
 
 const MODULE_ID = "ionrift-respite";
 /** World setting: when Song of Rest HP is applied. */
@@ -64,7 +74,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             confirmRecovery:      ShortRestApp.#onConfirmRecovery,
             editRecovery:         ShortRestApp.#onEditRecovery,
             volunteerSong:             ShortRestApp.#onVolunteerSong,
-            toggleSrAfk:               ShortRestApp.#onToggleSrAfk,
             toggleShortRestFinished:   ShortRestApp.#onToggleShortRestFinished,
         },
     };
@@ -107,9 +116,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
          * @type {{ actorId: string, bardName: string, bardLevel: number, songDie: string }|null} */
         this._songVolunteer = null;
 
-        /** Character IDs marked AFK for this short rest (synced). */
-        this._afkCharacters = new Set();
-
         /** User IDs who signalled they are done with short rest actions (synced). */
         this._finishedUsers = new Set();
 
@@ -118,6 +124,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
          * False when the window is merely being dismissed (preserves state).
          */
         this._isTerminating = false;
+        RestAfkState.clear();
     }
 
     // ── Lifecycle ──────────────────────────────────────────────
@@ -130,7 +137,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 type: "shortRestStarted",
                 rolls: this._serializeRolls(),
                 songBonuses: this._serializeSongBonuses(),
-                afkCharacterIds: [...this._afkCharacters],
+                afkCharacterIds: RestAfkState.getAfkCharacterIds(),
                 finishedUserIds: [...this._finishedUsers],
                 activeShelter: this._activeShelter,
                 rpPrompt: this._rpPrompt,
@@ -151,7 +158,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (partyHas(item.actor)) this.render();
             });
         }
-        return super.render(options);
+        const out = await super.render(options);
+        showAfkPanel();
+        return out;
     }
 
     async close(options = {}) {
@@ -172,8 +181,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._spellRecovery.clear();
             this._songBonusByActor.clear();
             this._songVolunteer = null;
-            this._afkCharacters.clear();
             this._finishedUsers.clear();
+            hideAfkPanelAfterRest();
         } else if (this._isGM) {
             // GM dismissed the window but the rest persists.
             // State already saved on last render. Show resume bar.
@@ -298,7 +307,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 noHdLeft: hdData.remaining <= 0,
                 isOwner: this._isGM || a.isOwner,
                 conMod: a.system?.abilities?.con?.mod ?? 0,
-                isAfk: this._afkCharacters.has(a.id),
+                isAfk: RestAfkState.isAfk(a.id),
                 isSelfCard,
                 rollsCompressed,
                 rollsToShow,
@@ -442,7 +451,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Roster strip: avatar chips with AFK + readiness state
         const roster = partyActors.map(a => {
-            const isAfk = this._afkCharacters.has(a.id);
+            const isAfk = RestAfkState.isAfk(a.id);
             const ownerUser = game.users.find(u => !u.isGM && u.active && a.testUserPermission(u, "OWNER"));
             const isFinished = ownerUser ? this._finishedUsers.has(ownerUser.id) : false;
             return {
@@ -456,21 +465,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             };
         });
 
-        const gmAfk = this._afkCharacters.has("gm");
-        const gmRosterChip = {
-            id: "gm",
-            name: "GM",
-            fullName: game.users.find(u => u.isGM)?.name ?? "Game Master",
-            isAfk: gmAfk,
-        };
-
-        const selfAfk = this._isGM
-            ? gmAfk
-            : roster.some(r => r.isOwner && r.isAfk);
-        const selfAfkId = this._isGM
-            ? "gm"
-            : (roster.find(r => r.isOwner)?.id ?? "");
-
         return {
             isGM: this._isGM,
             characters,
@@ -479,9 +473,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             shelterBadge,
             rpPrompt: this._rpPrompt,
             roster,
-            gmRosterChip,
-            selfAfk,
-            selfAfkId,
             shortRestFooter: {
                 myFinished: this._finishedUsers.has(game.user.id),
             },
@@ -652,39 +643,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!this._isGM && !actor.isOwner) return;
 
         this._confirmedRecovery.delete(actorId);
-        this.render();
-    }
-
-    /**
-     * Unified AFK toggle (bulk per-player, matching long rest behavior).
-     * GM toggles "gm"; players toggle all owned characters at once.
-     */
-    static #onToggleSrAfk(event, target) {
-        event.preventDefault?.();
-
-        if (this._isGM) {
-            const next = !this._afkCharacters.has("gm");
-            if (next) this._afkCharacters.add("gm");
-            else this._afkCharacters.delete("gm");
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "shortRestAfkUpdate",
-                characterId: "gm",
-                isAfk: next,
-            });
-        } else {
-            const owned = getPartyActors().filter(a => a.testUserPermission(game.user, "OWNER"));
-            const anyAfk = owned.some(a => this._afkCharacters.has(a.id));
-            const next = !anyAfk;
-            for (const a of owned) {
-                if (next) this._afkCharacters.add(a.id);
-                else this._afkCharacters.delete(a.id);
-                game.socket.emit(`module.${MODULE_ID}`, {
-                    type: "shortRestAfkUpdate",
-                    characterId: a.id,
-                    isAfk: next,
-                });
-            }
-        }
         this.render();
     }
 
@@ -884,9 +842,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const partyActorsPreCheck = getPartyActors();
         const afkCharNames = partyActorsPreCheck
-            .filter(a => this._afkCharacters.has(a.id))
+            .filter(a => RestAfkState.isAfk(a.id))
             .map(a => a.name);
-        const gmIsAfk = this._afkCharacters.has("gm");
+        const gmIsAfk = RestAfkState.isAfk("gm");
         if (afkCharNames.length > 0 || gmIsAfk) {
             const afkList = [...afkCharNames];
             if (gmIsAfk) afkList.unshift("GM");
@@ -1078,7 +1036,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._songBonusByActor = this._deserializeSongBonuses(data.songBonuses);
         }
         if (data.afkCharacterIds !== undefined) {
-            this._afkCharacters = new Set(data.afkCharacterIds);
+            RestAfkState.replaceAll(data.afkCharacterIds);
         }
         if (data.finishedUserIds !== undefined) {
             this._finishedUsers = new Set(data.finishedUserIds);
@@ -1087,17 +1045,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (data.rpPrompt) this._rpPrompt = data.rpPrompt;
         if (data.songVolunteer !== undefined) this._songVolunteer = data.songVolunteer ?? null;
         this.render({ force: true });
-    }
-
-    /**
-     * @param {string} characterId
-     * @param {boolean} isAfk
-     */
-    receiveShortRestAfk(characterId, isAfk) {
-        if (!characterId) return;
-        if (isAfk) this._afkCharacters.add(characterId);
-        else this._afkCharacters.delete(characterId);
-        this.render();
     }
 
     /**
@@ -1166,7 +1113,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const state = {
             rolls: this._serializeRolls(),
             songBonuses: this._serializeSongBonuses(),
-            afkCharacterIds: [...this._afkCharacters],
+            afkCharacterIds: RestAfkState.getAfkCharacterIds(),
             finishedUserIds: [...this._finishedUsers],
             activeShelter: this._activeShelter,
             rpPrompt: this._rpPrompt,
@@ -1191,7 +1138,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         if (state.rolls) this._rolls = this._deserializeRolls(state.rolls);
         if (state.songBonuses) this._songBonusByActor = this._deserializeSongBonuses(state.songBonuses);
-        if (state.afkCharacterIds) this._afkCharacters = new Set(state.afkCharacterIds);
+        if (state.afkCharacterIds) RestAfkState.replaceAll(state.afkCharacterIds);
         if (state.finishedUserIds) this._finishedUsers = new Set(state.finishedUserIds);
         if (state.activeShelter) this._activeShelter = state.activeShelter;
         if (state.rpPrompt) this._rpPrompt = state.rpPrompt;

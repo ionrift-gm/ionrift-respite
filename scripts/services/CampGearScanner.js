@@ -13,6 +13,74 @@ import { getPartyActors } from "../module.js";
  */
 export class CampGearScanner {
 
+    /** Firewood spent when the party commits this fire level during Make Camp. */
+    static FIREWOOD_COST_BY_LEVEL = Object.freeze({
+        embers: 0,
+        campfire: 1,
+        bonfire: 2
+    });
+
+    /** Encounter DC modifier from fire size (subtracted from baseDC, so negative = displayed DC rises). */
+    static FIRE_ENCOUNTER_MOD_BY_LEVEL = Object.freeze({
+        unlit: 0,
+        embers: 0,
+        campfire: -1,
+        bonfire: -2
+    });
+
+    /**
+     * Canvas flame token: footprint, art scale, and light (bright/dim in scene distance units, usually feet).
+     * Merged over template actor light when the fire is lit. Tuned so embers read as a small deep-red glow,
+     * campfire as classic warm orange, bonfire as broad yellow-white.
+     */
+    static FIRE_TOKEN_VISUAL_BY_LEVEL = Object.freeze({
+        embers: {
+            width: 0.82,
+            height: 0.82,
+            textureScale: 0.86,
+            light: {
+                bright: 8,
+                dim: 20,
+                color: "#6e1418",
+                alpha: 0.48,
+                luminosity: 0.3,
+                saturation: 0.12,
+                coloration: 1,
+                animation: { type: "torch", speed: 2, intensity: 2, reverse: false }
+            }
+        },
+        campfire: {
+            width: 0.95,
+            height: 0.95,
+            textureScale: 0.96,
+            light: {
+                bright: 12,
+                dim: 26,
+                color: "#ff9329",
+                alpha: 0.42,
+                luminosity: 0.48,
+                saturation: 0.02,
+                coloration: 1,
+                animation: { type: "torch", speed: 3, intensity: 4, reverse: false }
+            }
+        },
+        bonfire: {
+            width: 1.12,
+            height: 1.12,
+            textureScale: 1.06,
+            light: {
+                bright: 20,
+                dim: 30,
+                color: "#fff2a6",
+                alpha: 0.52,
+                luminosity: 0.72,
+                saturation: 0.08,
+                coloration: 1,
+                animation: { type: "torch", speed: 4, intensity: 6, reverse: false }
+            }
+        }
+    });
+
     /** Comfort tier names in ascending order. */
     static COMFORT_TIERS = ["hostile", "rough", "comfortable", "sheltered", "safe"];
 
@@ -101,6 +169,8 @@ export class CampGearScanner {
             }
         }
 
+        const campComfortPreFire = tiers[campTierIndex];
+
         // Fire comfort matches resolution engine (FIRE_COMFORT_MOD):
         // unlit: -1 | embers: 0 | campfire: 0 | bonfire: +1
         const FIRE_COMFORT = { unlit: -1, embers: 0, campfire: 0, bonfire: 1 };
@@ -108,12 +178,12 @@ export class CampGearScanner {
         const fireIsLit = fireLevel !== "unlit";
 
         if (fireLevel === "unlit") {
-            campBreakdown.push({ label: "No fire", value: "-1 step", delta: 0 });
+            campBreakdown.push({ label: "No fire", value: "-1 comfort", delta: 0 });
             campTierIndex = Math.max(0, campTierIndex - 1);
         } else if (fireLevel === "embers") {
             campBreakdown.push({ label: "Embers", value: "fire active", delta: 0 });
         } else if (fireLevel === "campfire") {
-            campBreakdown.push({ label: "Campfire", value: "aids watchkeeping", delta: 0 });
+            campBreakdown.push({ label: "Campfire", value: "fire active", delta: 0 });
         } else if (fireLevel === "bonfire") {
             campBreakdown.push({ label: "Bonfire", value: "+1", delta: 1 });
             campTierIndex = Math.min(campTierIndex + 1, tiers.length - 1);
@@ -121,6 +191,13 @@ export class CampGearScanner {
 
         const campComfort = tiers[campTierIndex];
         const campComfortLabel = this.TIER_RULES[campComfort]?.label ?? campComfort;
+        const _tr = this.TIER_RULES[campComfort] ?? this.TIER_RULES.rough;
+        const _tipParts = [];
+        _tipParts.push(_tr.hpFraction < 1 ? `${Math.round(_tr.hpFraction * 100)}% HP recovery` : "Full HP recovery");
+        if (_tr.hdPenalty > 0) _tipParts.push(`-${_tr.hdPenalty} HD`);
+        if (_tr.exhaustionDC) _tipParts.push(`CON save DC ${_tr.exhaustionDC} or gain exhaustion`);
+        else _tipParts.push("No exhaustion risk");
+        const comfortTooltip = _tipParts.join(", ");
 
         // ── Per-PC Personal Comfort ────────────────────────────
         const personalCards = members.map(m => {
@@ -153,9 +230,14 @@ export class CampGearScanner {
                 recovery: {
                     hpFull: rules.hpFraction >= 1.0,
                     hpLabel: rules.hpFraction >= 1.0 ? "Regain all HP" : `Regain ${Math.round(rules.hpFraction * 100)}% of max HP`,
-                    hdLabel: rules.hdPenalty > 0
-                        ? `Hit Dice recovery −${rules.hdPenalty} (${exitHd}/${totalHd})`
-                        : `Recover ${hdRecovered} Hit Dice (${exitHd}/${totalHd})`,
+                    hdLabel: (() => {
+                        const singPlur = hdRecovered === 1 ? "Hit Die" : "Hit Dice";
+                        const pool = `will be ${exitHd}/${totalHd} after rest`;
+                        if (rules.hdPenalty > 0) {
+                            return `Recover ${hdRecovered} ${singPlur}, ${pool} (comfort −${rules.hdPenalty})`;
+                        }
+                        return `Recover ${hdRecovered} ${singPlur}, ${pool}`;
+                    })(),
                     hdRecovered,
                     totalHd,
                     exhaustionDC: rules.exhaustionDC,
@@ -176,14 +258,31 @@ export class CampGearScanner {
         // ── Who can light the fire ─────────────────────────────
         const fireLighters = members
             .filter(m => m.hasTinderbox)
-            .map(m => m.actorName);
+            .map(m => ({
+                actorId: m.actorId,
+                actorName: m.actorName,
+                method: "Tinderbox"
+            }));
 
         // ── Firewood availability ──────────────────────────────
         const firewoodHolders = members
             .filter(m => m.firewoodCount > 0)
-            .map(m => ({ name: m.actorName, count: m.firewoodCount }));
+            .map(m => ({ actorId: m.actorId, name: m.actorName, count: m.firewoodCount }));
 
         const totalFirewood = firewoodHolders.reduce((sum, h) => sum + h.count, 0);
+
+        const costEmbers = this.FIREWOOD_COST_BY_LEVEL.embers ?? 0;
+        const costCampfire = this.FIREWOOD_COST_BY_LEVEL.campfire ?? 1;
+        const costBonfire = this.FIREWOOD_COST_BY_LEVEL.bonfire ?? 2;
+        const canTinder = fireLighters.length > 0;
+        const fireSelection = {
+            canPickEmbers: true,  // embers just needs any fire starter; disabled state handled by UI
+            canPickCampfire: canTinder && totalFirewood >= costCampfire,
+            canPickBonfire: canTinder && totalFirewood >= costBonfire,
+            costEmbers,
+            costCampfire,
+            costBonfire
+        };
 
         // ── "Without fire" preview ─────────────────────────────
         // Undo the current fire delta and apply the unlit penalty (-1)
@@ -193,7 +292,9 @@ export class CampGearScanner {
 
         return {
             campComfort,
+            campComfortPreFire,
             campComfortLabel,
+            comfortTooltip,
             campBreakdown,
             comfortReason,
             terrainLabel,
@@ -203,7 +304,8 @@ export class CampGearScanner {
             fireLighters,
             firewoodHolders,
             totalFirewood,
-            canLightFire: fireLighters.length > 0 && totalFirewood > 0,
+            canLightFire: fireLighters.length > 0,
+            fireSelection,
             fireIsLit,
             fireLevel,
             shelterSpell,

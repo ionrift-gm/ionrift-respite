@@ -12,7 +12,16 @@ import { ShortRestApp } from "./apps/ShortRestApp.js";
 import { CampfireTokenLinker } from "./services/CampfireTokenLinker.js";
 import { TorchTokenLinker } from "./services/TorchTokenLinker.js";
 import { placeTorch, placePerimeter, clearTorches, toggleTorches, placeCampfire, placeCamp } from "./services/CampPropPlacer.js";
-import { placePlayerGear, clearCampTokens, clearPlayerCampGear, resetCampSession } from "./services/CompoundCampPlacer.js";
+import {
+    placePlayerGear,
+    placeStation,
+    canPlaceStation,
+    clearCampTokens,
+    clearPlayerCampGear,
+    clearPlayerCampGearType,
+    clearSharedCampStation,
+    resetCampSession
+} from "./services/CompoundCampPlacer.js";
 
 import { createAdapter } from "./adapters/adapterFactory.js";
 import { PackRegistryApp } from "./apps/PackRegistryApp.js";
@@ -22,6 +31,14 @@ import { ImageResolver } from "./util/ImageResolver.js";
 import { ItemClassifier } from "./services/ItemClassifier.js";
 import { DietConfigApp } from "./apps/DietConfigApp.js";
 import { ButcherResolver } from "./services/ButcherResolver.js";
+import { AfkPanelApp } from "./apps/AfkPanelApp.js";
+import * as RestAfkState from "./services/RestAfkState.js";
+import { getPartyActors as getPartyActorsFromSetting } from "./services/partyActors.js";
+import {
+    setRestSessionAfkEmitter,
+    setAfkUiRefresh,
+    refreshAfterAfkChange
+} from "./services/restSessionAfkEmit.js";
 import { MealPhaseHandler } from "./services/MealPhaseHandler.js";
 import {
     setDetectMagicInventoryGlowAdapter,
@@ -91,6 +108,7 @@ export function clearActiveRestApp() {
     activeRestData = null;
     respiteFlowActive = false;
     _removeGmRestIndicator();
+    hideAfkPanelAfterRest();
 }
 
 /**
@@ -118,22 +136,81 @@ export function notifyShortRestActive() {
 
 /**
  * Returns the GM-approved party actors from the world setting.
- * Falls back to all player-owned characters if the roster is empty (first use).
- * Exported so RestSetupApp, EventResolver, and other services can use it.
+ * Re-exported from partyActors.js (single source for AFK panel and module).
  * @returns {Actor[]} Array of approved party actors.
  */
 export function getPartyActors() {
-    // BACKLOG: This is the canonical party roster implementation for Respite.
-    // ionrift-quartermaster's Progression Registry uses an identical naive stub
-    // (_resolvePartyMembers in SignatureLedger.js). Both should eventually
-    // delegate to game.ionrift?.library?.party?.getMembers?.() when ionrift-lib
-    // ships a PartyRoster service. The settings-backed roster here is the right
-    // design; the lib service should lift this exact pattern.
-    const roster = game.settings.get(MODULE_ID, "partyRoster");
-    if (!roster?.length) {
-        return game.actors.filter(a => a.hasPlayerOwner && a.type === "character");
+    return getPartyActorsFromSetting();
+}
+
+/** @type {AfkPanelApp|null} */
+let activeAfkPanel = null;
+
+/**
+ * Shows the persistent AFK panel during an active rest (long or short).
+ */
+export function showAfkPanel() {
+    if (activeAfkPanel?.rendered) {
+        activeAfkPanel.render({ force: true });
+        return;
     }
-    return roster.map(id => game.actors.get(id)).filter(Boolean);
+    activeAfkPanel = new AfkPanelApp();
+    void activeAfkPanel.render({ force: true });
+}
+
+/**
+ * Hides the AFK panel and clears shared AFK state.
+ */
+export function hideAfkPanel() {
+    if (activeAfkPanel) {
+        activeAfkPanel.close();
+        activeAfkPanel = null;
+    }
+    RestAfkState.clear();
+}
+
+/**
+ * Refreshes the AFK panel after socket updates (no-op if not shown).
+ */
+export function refreshAfkPanel() {
+    if (activeAfkPanel?.rendered) {
+        activeAfkPanel.render({ force: true });
+    }
+}
+
+/**
+ * Emits AFK sync using the correct socket type for the active rest (long vs short).
+ * @param {string} characterId
+ * @param {boolean} isAfk
+ */
+export function emitAfkSocket(characterId, isAfk) {
+    const longRest = !!(activeRestSetupApp ?? activePlayerRestApp);
+    const shortOnly = !!activeShortRestApp && !longRest;
+    const type = shortOnly ? "shortRestAfkUpdate" : "afkUpdate";
+    game.socket.emit(`module.${MODULE_ID}`, { type, characterId, isAfk });
+}
+
+/**
+ * @returns {boolean}
+ */
+function _ambientAfkHudWorldEnabled() {
+    try {
+        return !!game.settings.get(MODULE_ID, "ambientAfkHud");
+    } catch {
+        return false;
+    }
+}
+
+/** After a rest ends: clear AFK state and panel, then show ambient HUD if the world allows it. */
+export function hideAfkPanelAfterRest() {
+    hideAfkPanel();
+    if (_ambientAfkHudWorldEnabled()) void showAfkPanel();
+}
+
+function _maybeShowAmbientAfkPanelAtReady() {
+    if (!_ambientAfkHudWorldEnabled()) return;
+    if (respiteFlowActive) return;
+    void showAfkPanel();
 }
 
 /**
@@ -300,13 +377,24 @@ Hooks.once("init", async () => {
             await FP.upload("data", "ionrift_debug", file, { notify: false });
             ui.notifications.info("UNLINK_PACKS command sent. Waiting for DevTools to execute...");
         },
-        /** GM escape hatch: clears stale rest state and reloads. Usage: game.ionrift.respite.resetFlowState() */
+        /** GM escape hatch: clears stale rest state, removes camp tokens on the scene, reloads. Usage: game.ionrift.respite.resetFlowState() */
         resetFlowState: async () => {
             if (!game.user.isGM) { console.warn(`${MODULE_ID} | resetFlowState is GM-only.`); return; }
             respiteFlowActive = false;
             activeRestSetupApp = null;
             activeRestData = null;
             activeShortRestApp = null;
+            hideAfkPanel();
+            try {
+                const removed = await clearCampTokens();
+                if (removed > 0) {
+                    console.log(`${MODULE_ID} | resetFlowState removed ${removed} camp or torch token(s) from the active scene.`);
+                }
+            } catch (e) {
+                console.warn(`${MODULE_ID} | resetFlowState camp cleanup failed:`, e);
+            } finally {
+                resetCampSession();
+            }
             await game.settings.set(MODULE_ID, "activeRest", {});
             await game.settings.set(MODULE_ID, "activeShortRest", {});
             await game.settings.set(MODULE_ID, "lastRestDate", "");
@@ -612,6 +700,29 @@ Hooks.once("init", async () => {
     const SettingsLayout = game.ionrift?.library?.SettingsLayout;
     SettingsLayout?.registerFooter(MODULE_ID);
 
+    // World: show AFK HUD outside camp / rest (party roster still from party setting)
+    game.settings.register(MODULE_ID, "ambientAfkHud", {
+        name: "Ambient AFK HUD",
+        hint: "Keeps the party AFK strip on screen when not at camp or in a rest flow. Toggle off to show it only during long or short rest.",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: false,
+        onChange: (value) => {
+            if (value) void showAfkPanel();
+            else if (!respiteFlowActive) hideAfkPanel();
+        }
+    });
+
+    // Client: AFK HUD position (dock vs free-drag)
+    game.settings.register(MODULE_ID, "afkPanelLayout", {
+        name: "AFK panel layout",
+        scope: "client",
+        config: false,
+        type: Object,
+        default: { locked: true, left: 12, top: 120 }
+    });
+
     // Debug (registers last so it renders at the bottom)
     game.settings.register(MODULE_ID, "debug", {
         name: "Debug Mode",
@@ -626,7 +737,7 @@ Hooks.once("init", async () => {
     game.settings.registerMenu(MODULE_ID, "clearRestState", {
         name: "Reset Rest State",
         label: "Reset Rest State",
-        hint: "Clears all rest state including flow locks, active rest data, and the daily rest cooldown. Use when resting won't start or a previous rest didn't clean up.",
+        hint: "Clears rest state, flow locks, active rest data, and the daily rest cooldown. Also removes Respite camp tokens and Camp Prop torches on the active scene. Use when resting will not start or a rest did not clean up.",
         icon: "fas fa-broom",
         type: class ClearRestStateApp extends FormApplication {
             async _updateObject() {
@@ -635,7 +746,7 @@ Hooks.once("init", async () => {
             async render() {
                 const proceed = await Dialog.confirm({
                     title: "Reset Rest State",
-                    content: "<p>This will discard any in-progress rest, clear the daily rest cooldown, and reload all connected clients.</p><p>Only use this if resting is stuck or blocked.</p>",
+                    content: "<p>This will discard any in-progress rest, clear the daily rest cooldown, remove Respite camp and perimeter torch tokens on the <strong>active scene</strong>, and reload all connected clients.</p><p>Only use this if resting is stuck or blocked.</p>",
                     yes: () => true,
                     no: () => false,
                     defaultYes: false
@@ -1195,6 +1306,28 @@ Hooks.once("ready", async () => {
     // Register socket handler
     game.socket.on(`module.${MODULE_ID}`, _onSocketMessage);
 
+    /** Block non-GM canvas drags for shared station tokens (belt-and-suspenders with TokenDocument#locked). */
+    Hooks.on("preUpdateToken", (document, updateData, _options, userId) => {
+        try {
+            const f = document.flags?.[MODULE_ID];
+            if (!f?.isSharedStation) return;
+            if (!("x" in updateData) && !("y" in updateData)) return;
+            const user = game.users.get(userId);
+            if (user?.isGM) return;
+            return false;
+        } catch {
+            /* ignore */
+        }
+    });
+
+    setRestSessionAfkEmitter(emitAfkSocket);
+    setAfkUiRefresh(() => {
+        void activeRestSetupApp?.render?.({ force: true });
+        void activePlayerRestApp?.render?.({ force: true });
+        void activeShortRestApp?.render?.({ force: true });
+        void activeAfkPanel?.render?.({ force: true });
+    });
+
     // Player: request current rest state in case a rest is already active (GM may still be resuming after F5)
     if (!game.user.isGM) {
         const requestRestAndShortRestState = (label) => {
@@ -1226,6 +1359,7 @@ Hooks.once("ready", async () => {
                 }
             }
         });
+        _maybeShowAmbientAfkPanelAtReady();
         return;
     }
 
@@ -1332,9 +1466,6 @@ Hooks.once("ready", async () => {
                 const app = new RestSetupApp();
                 const restored = await app._loadRestState();
                 if (restored) {
-                    registerActiveRestApp(app);
-                    respiteFlowActive = true;
-
                     const restPayload = {
                         terrainTag: app._engine?.terrainTag,
                         comfort: app._engine?.comfort,
@@ -1346,29 +1477,42 @@ Hooks.once("ready", async () => {
                     };
                     setActiveRestData(restPayload);
 
-                    if (app._phase === "activity") {
-                        await app.applyRestoredPhaseUi();
-                    } else {
-                        app.render({ force: true });
-                    }
-                    ui.notifications.info("Interrupted rest resumed.");
-                    Logger.log?.(MODULE_LABEL, "Restored interrupted rest from world flags.");
-
-                    setTimeout(() => {
-                        game.socket.emit(`module.${MODULE_ID}`, {
-                            type: "restStarted",
-                            restData: restPayload
-                        });
-                        const snapshot = app.getRestSnapshot?.();
-                        if (snapshot) {
-                            setTimeout(() => {
-                                game.socket.emit(`module.${MODULE_ID}`, {
-                                    type: "restSnapshot",
-                                    snapshot
-                                });
-                            }, 200);
+                    let resumeUiOk = true;
+                    try {
+                        if (app._phase === "activity") {
+                            await app.applyRestoredPhaseUi();
+                        } else {
+                            await Promise.resolve(app.render({ force: true }));
                         }
-                    }, 500);
+                    } catch (e) {
+                        clearActiveRestApp();
+                        console.error(`${MODULE_ID} | Failed to open restored rest UI:`, e);
+                        ui.notifications.warn(
+                            "Could not open the rest window. Saved rest is still in world settings. Reload after updating the module, or discard Active Rest in module settings if you must start over."
+                        );
+                        resumeUiOk = false;
+                    }
+
+                    if (resumeUiOk) {
+                        ui.notifications.info("Interrupted rest resumed.");
+                        Logger.log?.(MODULE_LABEL, "Restored interrupted rest from world flags.");
+
+                        setTimeout(() => {
+                            game.socket.emit(`module.${MODULE_ID}`, {
+                                type: "restStarted",
+                                restData: restPayload
+                            });
+                            const snapshot = app.getRestSnapshot?.();
+                            if (snapshot) {
+                                setTimeout(() => {
+                                    game.socket.emit(`module.${MODULE_ID}`, {
+                                        type: "restSnapshot",
+                                        snapshot
+                                    });
+                                }, 200);
+                            }
+                        }, 500);
+                    }
                 } else {
                     respiteFlowActive = false;
                     ui.notifications.warn("Could not restore rest state. Starting fresh.");
@@ -1538,6 +1682,8 @@ Hooks.once("ready", async () => {
         });
     });
 
+    _maybeShowAmbientAfkPanelAtReady();
+
     console.log(`${MODULE_ID} | Boot complete.`);
 });
 
@@ -1637,13 +1783,58 @@ function _onSocketMessage(data) {
         // Player -> GM: light campfire and consume firewood (GM-only item updates)
         case "campLightFireRequest":
             if (!game.user.isGM) return;
-            if (activeRestSetupApp?._runLightCampfireForGm) {
-                void activeRestSetupApp._runLightCampfireForGm(data.userId ?? null).catch(err => {
+            if (activeRestSetupApp?._runSetCampFireLevelForGm) {
+                void activeRestSetupApp._runSetCampFireLevelForGm("campfire", data.userId ?? null).catch(err => {
                     console.error(`${MODULE_ID} | campLightFireRequest:`, err);
-                    ui.notifications.error("Could not light the fire. Check the console.");
+                    ui.notifications.error("Could not set fire level. Check the console.");
                 });
             } else {
-                ui.notifications.warn("Cannot light the fire: open the rest session on the GM client first.");
+                ui.notifications.warn("Open the rest session on the GM client first.");
+            }
+            break;
+
+        case "campFireLevelRequest":
+            if (!game.user.isGM) return;
+            if (activeRestSetupApp?._runSetCampFireLevelForGm) {
+                void activeRestSetupApp._runSetCampFireLevelForGm(data.fireLevel, data.userId ?? null).catch(err => {
+                    console.error(`${MODULE_ID} | campFireLevelRequest:`, err);
+                    ui.notifications.error("Could not set fire level. Check the console.");
+                });
+            } else {
+                ui.notifications.warn("Open the rest session on the GM client first.");
+            }
+            break;
+
+        case "campLightFire":
+            if (!game.user.isGM) return;
+            if (activeRestSetupApp?._lightFire) {
+                void activeRestSetupApp._lightFire(data.userId, data.actorId, data.method ?? "Tinderbox").catch(err => {
+                    console.error(`${MODULE_ID} | campLightFire:`, err);
+                });
+            } else {
+                ui.notifications.warn("Open the rest session on the GM client first.");
+            }
+            break;
+
+        case "campFirewoodPledge":
+            if (!game.user.isGM) return;
+            if (activeRestSetupApp?._addFirewoodPledge) {
+                void activeRestSetupApp._addFirewoodPledge(data.userId, data.actorId).catch(err => {
+                    console.error(`${MODULE_ID} | campFirewoodPledge:`, err);
+                });
+            } else {
+                ui.notifications.warn("Open the rest session on the GM client first.");
+            }
+            break;
+
+        case "campFirewoodReclaim":
+            if (!game.user.isGM) return;
+            if (activeRestSetupApp?._removeFirewoodPledge) {
+                void activeRestSetupApp._removeFirewoodPledge(data.userId).catch(err => {
+                    console.error(`${MODULE_ID} | campFirewoodReclaim:`, err);
+                });
+            } else {
+                ui.notifications.warn("Open the rest session on the GM client first.");
             }
             break;
 
@@ -1987,7 +2178,7 @@ function _onSocketMessage(data) {
         // Player -> GM: toggle campfire token light on canvas
         case "campfireTokenSync":
             if (!game.user.isGM) return;
-            CampfireTokenLinker.setLightState(data.lit);
+            CampfireTokenLinker.setLightState(data.lit, data.fireLevel ?? null);
             break;
 
         // Player -> GM: toggle perimeter torch tokens on canvas
@@ -2010,9 +2201,8 @@ function _onSocketMessage(data) {
             break;
 
         case "shortRestAfkUpdate":
-            if (activeShortRestApp?.receiveShortRestAfk) {
-                activeShortRestApp.receiveShortRestAfk(data.characterId, data.isAfk);
-            }
+            RestAfkState.applyUpdate(data.characterId, data.isAfk);
+            refreshAfterAfkChange();
             break;
 
         case "shortRestPlayerFinished":
@@ -2044,6 +2234,7 @@ function _onSocketMessage(data) {
                 activeShortRestApp = null;
             }
             _removeShortRestRejoinNotification();
+            hideAfkPanelAfterRest();
             break;
 
         // Short Rest: abandoned by GM
@@ -2056,6 +2247,7 @@ function _onSocketMessage(data) {
                 activeShortRestApp = null;
             }
             _removeShortRestRejoinNotification();
+            hideAfkPanelAfterRest();
             break;
 
         // Short Rest: GM dismissed window (rest still active, players close)
@@ -2087,10 +2279,25 @@ function _onSocketMessage(data) {
             _handleCampGearPlace(data);
             break;
 
+        case "campStationPlace":
+            if (!game.user.isGM) return;
+            _handleCampStationPlace(data);
+            break;
+
         // Player -> GM: remove own placed camp gear only
         case "campGearClearPlayer":
             if (!game.user.isGM) return;
             _handleCampGearClearPlayer(data);
+            break;
+
+        case "campGearReclaim":
+            if (!game.user.isGM) return;
+            _handleCampGearReclaim(data);
+            break;
+
+        case "campStationReclaim":
+            if (!game.user.isGM) return;
+            _handleCampStationReclaim(data);
             break;
 
         // GM -> All: camp gear placed confirmation
@@ -2100,9 +2307,23 @@ function _onSocketMessage(data) {
             break;
         }
 
+        case "campStationPlaced": {
+            const campAppStation = activeRestSetupApp ?? activePlayerRestApp;
+            if (campAppStation) campAppStation.render();
+            break;
+        }
+
         // GM -> All: camp tokens were removed from the scene
         case "campSceneCleared": {
             const campApp2 = activeRestSetupApp ?? activePlayerRestApp;
+            if (data.resetFireLevel && campApp2) {
+                campApp2._fireLevel = "unlit";
+                campApp2._campFirePreviewLevel = null;
+                if (campApp2._engine) {
+                    campApp2._engine.fireLevel = "unlit";
+                    campApp2._engine.fireRollModifier = 0;
+                }
+            }
             if (campApp2) campApp2.render();
             break;
         }
@@ -2171,6 +2392,7 @@ function _handleShortRestStarted(data) {
     activeShortRestApp = new ShortRestApp();
     activeShortRestApp.receiveStarted(data);
     activeShortRestApp.render({ force: true });
+    showAfkPanel();
 }
 
 /**
@@ -2202,6 +2424,7 @@ function _handleRestStarted(data) {
                 } else {
                     activePlayerRestApp.render({ force: true });
                 }
+                showAfkPanel();
                 return;
             }
             // New rest: close old window and create fresh
@@ -2231,6 +2454,7 @@ function _handleRestStarted(data) {
         };
         console.log(`${MODULE_ID} | RestSetupApp created in player mode, rendering...`);
         activePlayerRestApp.render({ force: true });
+        showAfkPanel();
 
         // Apply embedded snapshot immediately (phase-correct from first render)
         if (data.snapshot && activePlayerRestApp.receiveRestSnapshot) {
@@ -2272,6 +2496,7 @@ function _handleRestResolved(data) {
         activePlayerRestApp.close({ skipRejoin: true });
         activePlayerRestApp = null;
     }
+    hideAfkPanelAfterRest();
 }
 
 /**
@@ -2356,7 +2581,7 @@ function _handleRequestShortRestState(data) {
             targetUserId: data.userId ?? null,
             rolls: app._serializeRolls(),
             songBonuses: app._serializeSongBonuses(),
-            afkCharacterIds: [...app._afkCharacters],
+            afkCharacterIds: RestAfkState.getAfkCharacterIds(),
             finishedUserIds: [...app._finishedUsers],
             activeShelter: app._activeShelter,
             rpPrompt: app._rpPrompt,
@@ -2371,7 +2596,7 @@ function _handleRequestShortRestState(data) {
         targetUserId: data.userId ?? null,
         rolls: activeShortRestApp._serializeRolls(),
         songBonuses: activeShortRestApp._serializeSongBonuses(),
-        afkCharacterIds: [...activeShortRestApp._afkCharacters],
+        afkCharacterIds: RestAfkState.getAfkCharacterIds(),
         finishedUserIds: [...activeShortRestApp._finishedUsers],
         activeShelter: activeShortRestApp._activeShelter,
         rpPrompt: activeShortRestApp._rpPrompt,
@@ -2515,14 +2740,11 @@ function _handleSubmissionUpdate(data) {
 }
 
 /**
- * Bidirectional: AFK status changed. Update whichever rest app is active.
+ * Bidirectional: AFK status changed. Update whichever long-rest app is active.
  */
 function _handleAfkUpdate(data) {
-    // Route to the active rest app (GM or player)
-    const app = game.user.isGM ? activeRestSetupApp : activePlayerRestApp;
-    if (app) {
-        app.receiveAfkUpdate(data.characterId, data.isAfk);
-    }
+    RestAfkState.applyUpdate(data.characterId, data.isAfk);
+    refreshAfterAfkChange();
 }
 
 /**
@@ -2594,10 +2816,96 @@ async function _handleCampGearPlace(data) {
 }
 
 /**
+ * GM handler: a player requested placement of a shared camp station.
+ */
+async function _handleCampStationPlace(data) {
+    const { actorId, stationKey, x, y, userId } = data;
+    if (!actorId || !stationKey || x == null || y == null || !userId) return;
+
+    const actor = game.actors.get(actorId);
+    const user = game.users.get(userId);
+    if (!actor || !user) return;
+
+    if (!actor.testUserPermission(user, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)) {
+        console.warn(`${MODULE_ID} | campStationPlace rejected (not owner)`);
+        return;
+    }
+    if (!canPlaceStation(actor, stationKey)) {
+        ui.notifications.warn("That character cannot place this station.");
+        return;
+    }
+
+    const placed = await placeStation(x, y, stationKey);
+    if (placed) {
+        game.socket.emit(`module.${MODULE_ID}`, { type: "campStationPlaced" });
+        activeRestSetupApp?.render();
+        activePlayerRestApp?.render();
+    }
+}
+
+/**
+ * GM handler: a player asked to pick up one deployed camp gear token.
+ */
+async function _handleCampGearReclaim(data) {
+    const { actorId, gearType, userId, sceneId } = data;
+    if (!actorId || !gearType || !userId) return;
+
+    const actor = game.actors.get(actorId);
+    const user = game.users.get(userId);
+    if (!actor || !user) return;
+
+    if (!actor.testUserPermission(user, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)) {
+        console.warn(`${MODULE_ID} | campGearReclaim rejected (not owner)`);
+        return;
+    }
+
+    const n = await clearPlayerCampGearType(actorId, gearType, sceneId ?? null);
+    if (n > 0) {
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "campGearPlaced",
+            actorId,
+            gearType
+        });
+    }
+    activeRestSetupApp?.render();
+    activePlayerRestApp?.render();
+}
+
+/**
+ * GM handler: a player asked to remove a shared camp station from the scene.
+ */
+async function _handleCampStationReclaim(data) {
+    const { actorId, stationKey, userId } = data;
+    if (!actorId || !stationKey || !userId) return;
+
+    const actor = game.actors.get(actorId);
+    const user = game.users.get(userId);
+    if (!actor || !user) return;
+
+    if (!actor.testUserPermission(user, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)) {
+        console.warn(`${MODULE_ID} | campStationReclaim rejected (not owner)`);
+        return;
+    }
+    if (!canPlaceStation(actor, stationKey)) {
+        ui.notifications.warn("That character cannot pick up this station.");
+        return;
+    }
+
+    const n = await clearSharedCampStation(stationKey);
+    if (n > 0) {
+        game.socket.emit(`module.${MODULE_ID}`, { type: "campStationPlaced" });
+    } else {
+        ui.notifications.info("Nothing to pick up on the scene for that station.");
+    }
+    activeRestSetupApp?.render();
+    activePlayerRestApp?.render();
+}
+
+/**
  * GM: player asked to remove their own tent, bedroll, and mess kit tokens.
  */
 async function _handleCampGearClearPlayer(data) {
-    const { actorId, userId } = data;
+    const { actorId, userId, sceneId } = data;
     if (!actorId || !userId) return;
 
     const actor = game.actors.get(actorId);
@@ -2609,7 +2917,7 @@ async function _handleCampGearClearPlayer(data) {
         return;
     }
 
-    const n = await clearPlayerCampGear(actorId);
+    const n = await clearPlayerCampGear(actorId, sceneId ?? null);
     if (n > 0) {
         game.socket.emit(`module.${MODULE_ID}`, { type: "campSceneCleared", actorId });
     }

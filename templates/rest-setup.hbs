@@ -49,10 +49,9 @@
     {{!-- Camp Status Bar: persistent across all phases post-setup --}}
     {{#if campStatus}}
     {{#unless (eq phase 'activity')}}
+    {{#unless (eq phase 'camp')}}
     <div class="camp-status-bar">
-        <span class="camp-status-chip comfort-{{campStatus.comfort}}" title="{{campStatus.comfortTooltip}}">
-            <i class="fas fa-bed"></i> {{campStatus.comfort}}
-        </span>
+        {{!-- Comfort badge removed: the Camp Comfort section below covers this --}}
         {{#if campStatus.weather}}
         {{#unless (eq campStatus.weather "clear")}}
         <span class="camp-status-chip weather-chip" title="{{campStatus.weatherTooltip}}">
@@ -70,10 +69,9 @@
             <i class="fas fa-campground"></i> Tent
         </span>
         {{/unless}}
-        <span class="camp-status-chip fire-chip fire-{{campStatus.fireLevel}}" title="{{campStatus.fireTooltip}}">
-            <i class="fas fa-fire"></i> <span class="fire-level-text">{{campStatus.fireLevel}}</span>
-        </span>
+        {{!-- Fire badge removed: the fire section below covers this --}}
     </div>
+    {{/unless}}
     {{/unless}}
     {{/if}}
 
@@ -238,7 +236,7 @@
         {{#if isGM}}
         <div class="travel-header">
             <i class="fas fa-hiking"></i>
-            <span>Travel Resolution — {{travelContext.terrainLabel}}</span>
+            <span>Travel Resolution: {{travelContext.terrainLabel}}</span>
         </div>
         {{/if}}
 
@@ -298,7 +296,7 @@
             {{#each travelContext.days}}
             <button type="button" class="travel-day-tab {{#if isActive}}active{{/if}} {{#if resolved}}resolved{{/if}}" data-action="switchTravelDay" data-day="{{day}}">
                 {{#if resolved}}<i class="fas fa-check"></i>{{/if}}
-                Day {{day}}{{#if isFinalDay}} <i class="fas fa-campground" title="Arrival day — scouting available"></i>{{/if}}
+                Day {{day}}{{#if isFinalDay}} <i class="fas fa-campground" title="Arrival day, scouting available"></i>{{/if}}
             </button>
             {{/each}}
         </div>
@@ -312,7 +310,7 @@
             {{#if isFinalDay}}
             {{#if ../travelContext.canScout}}
             <div class="travel-scout-notice">
-                <i class="fas fa-binoculars"></i> Arrival day — characters can scout for a campsite.
+                <i class="fas fa-binoculars"></i> Arrival day. Characters can scout for a campsite.
             </div>
             {{/if}}
             {{/if}}
@@ -540,7 +538,7 @@
                 {{#if isOwner}}
                 <div class="travel-roll-prompt {{#if rolled}}rolled{{/if}}">
                     <div class="travel-roll-info">
-                        <strong>{{actorName}} — {{activityLabel}}</strong>
+                        <strong>{{actorName}}: {{activityLabel}}</strong>
                         <span class="travel-roll-skill">{{skillName}}{{#if dc}} DC {{dc}}{{/if}}</span>
                     </div>
                     {{#if rolled}}
@@ -562,14 +560,14 @@
 
             <div class="travel-player-info">
                 <i class="fas fa-hiking"></i>
-                <span>{{travelContext.terrainLabel}} — {{#if travelContext.isMultiDay}}{{travelContext.totalDays}} days of travel{{else}}What did you do while travelling?{{/if}}</span>
+                <span>{{travelContext.terrainLabel}}: {{#if travelContext.isMultiDay}}{{travelContext.totalDays}} days of travel{{else}}What did you do while travelling?{{/if}}</span>
             </div>
 
             {{#each travelContext.days}}
             {{#if isActive}}
             <div class="travel-day-section" data-day="{{day}}">
                 {{#if ../travelContext.isMultiDay}}
-                <div class="travel-day-label">Day {{day}}{{#if isFinalDay}} — Arrival{{/if}}</div>
+                <div class="travel-day-label">Day {{day}}{{#if isFinalDay}}, Arrival{{/if}}</div>
                 {{/if}}
 
                 {{!-- Owned characters: hero cards --}}
@@ -608,7 +606,7 @@
                 <div class="travel-party-grid">
                     {{#each characters}}
                     {{#unless isOwner}}
-                    <div class="travel-grid-card {{#if confirmed}}confirmed{{/if}}" title="{{name}}{{#if confirmed}} — locked in{{/if}}">
+                    <div class="travel-grid-card {{#if confirmed}}confirmed{{/if}}" title="{{name}}{{#if confirmed}}, locked in{{/if}}">
                         <img class="travel-grid-portrait" src="{{img}}" alt="{{name}}" />
                         <span class="travel-grid-name">{{name}}</span>
                         <span class="travel-grid-activity {{#unless declarationIcon}}idle{{/unless}}">
@@ -648,7 +646,7 @@
                 <div class="travel-char-info">
                     <span class="travel-char-name">{{name}}</span>
                 </div>
-                <span class="travel-activity-disabled">—</span>
+                <span class="travel-activity-disabled">-</span>
             </div>
             {{/each}}
         </div>
@@ -671,296 +669,25 @@
 
     {{!-- =============== MAKE CAMP PHASE =============== --}}
     {{#if (eq phase 'camp')}}
-    <div class="phase-banner">
-        <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
-    </div>
-    {{> rosterStrip}}
-    <div class="respite-make-camp">
-
-        <div class="camp-layout">
-            {{!-- LEFT COLUMN: Comfort + Personal Rest --}}
-            <div class="camp-main">
-                {{!-- Camp Comfort Breakdown --}}
-                <div class="camp-comfort-section">
-                    <div class="camp-comfort-header">
-                        <i class="fas fa-campground"></i>
-                        <span>Camp Comfort</span>
-                        <span class="camp-comfort-tier comfort-tier comfort-{{campScan.campComfort}}">{{campScan.campComfortLabel}}</span>
-                    </div>
-                    {{#if campScan.comfortReason}}
-                    <div class="camp-comfort-reason">{{campScan.terrainLabel}} — {{campScan.comfortReason}}</div>
-                    {{/if}}
-                    {{#if campScan.hasModifiers}}
-                    <div class="camp-comfort-breakdown">
-                        {{#each campScan.campBreakdown}}
-                        <div class="comfort-breakdown-row">
-                            <span class="breakdown-label">{{label}}</span>
-                            <span class="breakdown-value {{#if delta}}bonus{{/if}}">
-                                {{#if delta}}+{{delta}}{{else}}{{value}}{{/if}}
-                            </span>
-                        </div>
-                        {{/each}}
-                    </div>
-                    {{/if}}
-                </div>
-
-                {{!-- Personal comfort: roster-selected character only --}}
-                <div class="camp-personal-section camp-personal-section-tight">
-                    {{#if campPersonalSelected}}
-                    <div class="camp-personal-grid camp-personal-grid-single">
-                        <div class="camp-personal-card">
-                            <div class="personal-card-header">
-                                <img src="{{campPersonalSelected.actorImg}}" alt="{{campPersonalSelected.actorName}}" class="personal-portrait">
-                                <i class="fas fa-bed personal-name-icon" aria-hidden="true"></i>
-                                <span class="personal-name">{{campPersonalSelected.actorName}}</span>
-                                <span class="personal-comfort-label personal-comfort-inline comfort-{{campPersonalSelected.personalComfort}}">
-                                    {{campPersonalSelected.personalComfortLabel}}
-                                </span>
-                            </div>
-
-                            {{#if campGearForSelected}}
-                            <div class="camp-gear-scene-row camp-gear-scene-row-tight">
-                                <div class="camp-gear-scene-slots">
-                                    {{!-- Tent --}}
-                                    <div class="camp-gear-scene-slot">
-                                        {{#if campGearForSelected.hasTent}}
-                                            {{#if campGearForSelected.canDrag}}
-                                            <div class="gear-drag-handle gear-drag-handle-scene {{#if campGearForSelected.tentDeployed}}deployed{{/if}}"
-                                                 draggable="{{#unless campGearForSelected.tentDeployed}}true{{else}}false{{/unless}}"
-                                                 data-drag-type="player-gear" data-gear-type="tent" data-actor-id="{{campGearForSelected.actorId}}"
-                                                 title="{{#if campGearForSelected.tentDeployed}}Tent on map.{{else}}In pack: weather shield, encounter DC +2. Drag to mark.{{/if}}">
-                                                <i class="fas fa-campground"></i>
-                                                <span class="gear-drag-scene-pill">{{#if campGearForSelected.tentDeployed}}Tent placed{{else}}Tent{{/if}}</span>
-                                                {{#if campGearForSelected.tentDeployed}}<i class="fas fa-check deployed-check"></i>{{/if}}
-                                            </div>
-                                            <p class="camp-gear-mechanic-note benefit">Weather shield, encounter DC +2.</p>
-                                            {{else}}
-                                            <div class="camp-gear-scene-locked" title="Only owner or GM can place">Tent: owner places.</div>
-                                            {{/if}}
-                                        {{else}}
-                                        <div class="camp-gear-scene-placeholder">
-                                            <div class="placeholder-head"><i class="fas fa-campground" aria-hidden="true"></i><span>Tent</span></div>
-                                            <p class="placeholder-body">No tent. No weather shield.</p>
-                                        </div>
-                                        {{/if}}
-                                    </div>
-                                    {{!-- Bedroll --}}
-                                    <div class="camp-gear-scene-slot">
-                                        {{#if campGearForSelected.hasBedroll}}
-                                            {{#if campGearForSelected.canDrag}}
-                                            <div class="gear-drag-handle gear-drag-handle-scene {{#if campGearForSelected.bedrollDeployed}}deployed{{/if}}"
-                                                 draggable="{{#unless campGearForSelected.bedrollDeployed}}true{{else}}false{{/unless}}"
-                                                 data-drag-type="player-gear" data-gear-type="bedroll" data-actor-id="{{campGearForSelected.actorId}}"
-                                                 title="{{#if campGearForSelected.bedrollDeployed}}Bedroll on map.{{else}}In pack: +1 personal comfort, +1 Hit Dice. Drag to mark.{{/if}}">
-                                                <i class="fas fa-bed"></i>
-                                                <span class="gear-drag-scene-pill">{{#if campGearForSelected.bedrollDeployed}}Bedroll placed{{else}}Bedroll{{/if}}</span>
-                                                {{#if campGearForSelected.bedrollDeployed}}<i class="fas fa-check deployed-check"></i>{{/if}}
-                                            </div>
-                                            <p class="camp-gear-mechanic-note benefit">+1 personal comfort, +1 Hit Dice.</p>
-                                            {{else}}
-                                            <div class="camp-gear-scene-locked" title="Only owner or GM can place">Bedroll: owner places.</div>
-                                            {{/if}}
-                                        {{else}}
-                                        <div class="camp-gear-scene-placeholder">
-                                            <div class="placeholder-head"><i class="fas fa-bed" aria-hidden="true"></i><span>Bedroll</span></div>
-                                            <p class="placeholder-body">No bedroll. Lose +1 comfort, +1 HD.</p>
-                                        </div>
-                                        {{/if}}
-                                    </div>
-                                    {{!-- Mess kit: small map token; mechanics need fire for exhaustion advantage --}}
-                                    <div class="camp-gear-scene-slot">
-                                        {{#if campGearForSelected.hasMessKit}}
-                                            {{#if campGearForSelected.canDrag}}
-                                            <div class="camp-gear-mess-scene {{#if campGearForSelected.messAdvantageOff}}has-fire-note{{/if}}">
-                                            <div class="gear-drag-handle gear-drag-handle-scene gear-drag-scene-mess {{#if campGearForSelected.messKitDeployed}}deployed{{/if}}"
-                                                 draggable="{{#unless campGearForSelected.messKitDeployed}}true{{else}}false{{/unless}}"
-                                                 data-drag-type="player-gear" data-gear-type="messkit" data-actor-id="{{campGearForSelected.actorId}}"
-                                                 title="{{#if campGearForSelected.messKitDeployed}}Mess kit on map.{{else}}In pack: advantage on exhaustion CON if fire is lit. Small token.{{/if}}">
-                                                <i class="fas fa-utensils"></i>
-                                                <span class="gear-drag-scene-pill">{{#if campGearForSelected.messKitDeployed}}Mess placed{{else}}Mess kit{{/if}}</span>
-                                                {{#if campGearForSelected.messKitDeployed}}<i class="fas fa-check deployed-check"></i>{{/if}}
-                                            </div>
-                                            {{#if campGearForSelected.messAdvantageOff}}
-                                            <p class="camp-gear-mechanic-note" title="Advantage on the exhaustion save only applies with a lit fire.">Light fire for save advantage.</p>
-                                            {{else}}
-                                            <p class="camp-gear-mechanic-note benefit">Advantage on exhaustion CON save.</p>
-                                            {{/if}}
-                                            </div>
-                                            {{else}}
-                                            <div class="camp-gear-scene-locked" title="Only owner or GM can place">Mess: owner places.</div>
-                                            {{/if}}
-                                        {{else}}
-                                        <div class="camp-gear-scene-placeholder">
-                                            <div class="placeholder-head"><i class="fas fa-utensils" aria-hidden="true"></i><span>Mess kit</span></div>
-                                            <p class="placeholder-body">No mess kit. Lose exhaustion-save advantage.</p>
-                                        </div>
-                                        {{/if}}
-                                    </div>
-                                </div>
-                                {{#if campGearForSelected.showClearOwnGear}}
-                                <div class="camp-clear-own-row">
-                                    <button type="button" class="btn-camp-clear-own" data-action="clearMyCampGear" data-actor-id="{{campGearForSelected.actorId}}" title="Removes only this character's tent, bedroll, and mess kit from the map.">
-                                        <i class="fas fa-broom"></i> Clear my camp tokens
-                                    </button>
-                                </div>
-                                {{/if}}
-                            </div>
-                            {{/if}}
-
-                            <div class="personal-recovery">
-                                <div class="recovery-row recovery-hp {{#if campPersonalSelected.recovery.hpFull}}positive{{/if}}">
-                                    <i class="fas fa-heart"></i>
-                                    <span>{{campPersonalSelected.recovery.hpLabel}}</span>
-                                </div>
-                                <div class="recovery-row recovery-hd">
-                                    <i class="fas fa-dice-d20"></i>
-                                    <span>{{campPersonalSelected.recovery.hdLabel}}</span>
-                                </div>
-                                <div class="recovery-row recovery-exhaustion {{campPersonalSelected.recovery.exhaustionSeverity}}">
-                                    <i class="fas {{#if campPersonalSelected.recovery.exhaustionDC}}fa-exclamation-triangle{{else}}fa-check-circle{{/if}}"></i>
-                                    <span>{{campPersonalSelected.recovery.exhaustionLabel}}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {{else}}
-                    <div class="camp-personal-pick-hint">
-                        <i class="fas fa-user"></i>
-                        <span>Select a character in the roster above.</span>
-                    </div>
-                    {{/if}}
-                </div>
-            </div>
-
-            {{!-- RIGHT COLUMN: Campfire Sidebar --}}
-            <div class="camp-fire-section {{#if campScan.fireIsLit}}fire-lit{{/if}}">
-                <div class="camp-fire-header">
-                    <i class="fas fa-fire"></i>
-                    <span>Campfire</span>
-                </div>
-
-                {{#if isGM}}
-                <div class="camp-fire-scene-block">
-                    <div class="camp-fire-scene-label">
-                        <i class="fas fa-map-pin"></i>
-                        <span>Scene</span>
-                    </div>
-                    {{#unless campPlaced}}
-                    <div class="camp-drag-handle camp-drag-handle-compact" draggable="true" data-drag-type="compound-camp" title="Drag onto the map to place the camp token layout (fire, tables, station)">
-                        <div class="camp-drag-icon">
-                            <i class="fas fa-fire"></i>
-                        </div>
-                        <div class="camp-drag-label">
-                            <span class="camp-drag-title">Camp layout</span>
-                            <span class="camp-drag-hint">Drag to scene</span>
-                        </div>
-                    </div>
-                    {{else}}
-                    <div class="camp-placed-indicator">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Camp on scene</span>
-                    </div>
-                    {{/unless}}
-                    <button type="button" class="btn-camp-clear-all" data-action="clearAllCampScene" title="Removes the camp layout and every placed tent, bedroll, and mess kit on this scene.">
-                        <i class="fas fa-trash-alt"></i> Clear scene camp
-                    </button>
-                </div>
-                {{/if}}
-
-                {{#unless campScan.fireIsLit}}
-                <div class="camp-fire-body">
-                    <div class="camp-fire-benefits">
-                        <span class="fire-benefit"><i class="fas fa-utensils"></i> Cooking</span>
-                        <span class="fire-benefit"><i class="fas fa-temperature-high"></i> Warmth</span>
-                        <span class="fire-benefit"><i class="fas fa-heart"></i> Morale</span>
-                    </div>
-                    <div class="camp-fire-hint">
-                        Consumes 1 firewood. Improves camp comfort by one tier.
-                    </div>
-                    <div class="camp-fire-tradeoff">
-                        <i class="fas fa-eye"></i> Light attracts attention (+{{campScan.fireEncounterMod}} encounter DC)
-                    </div>
-
-                    {{#if campScan.firewoodHolders.length}}
-                    <div class="camp-firewood-list">
-                        {{#each campScan.firewoodHolders}}
-                        <div class="camp-firewood-holder">
-                            <i class="fas fa-tree"></i>
-                            <span>{{name}} has {{count}} firewood</span>
-                        </div>
-                        {{/each}}
-                    </div>
-                    {{else}}
-                    <div class="camp-firewood-empty">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <span>No one has firewood</span>
-                    </div>
-                    {{/if}}
-
-                    {{#if campScan.fireLighters.length}}
-                    <div class="camp-fire-lighters">
-                        <i class="fas fa-fire-alt"></i>
-                        <span>Can light: {{#each campScan.fireLighters}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}</span>
-                    </div>
-                    {{else}}
-                    <div class="camp-fire-lighters no-lighter">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <span>No one has a tinderbox or flint &amp; steel</span>
-                    </div>
-                    {{/if}}
-
-                    {{#if campScan.canLightFire}}
-                    <button type="button" class="btn-light-fire" data-action="lightCampfire">
-                        <i class="fas fa-fire"></i> Light the Fire
-                    </button>
-                    {{else}}
-                    <button type="button" class="btn-light-fire" disabled>
-                        <i class="fas fa-fire"></i> Cannot Light Fire
-                    </button>
-                    {{/if}}
-                </div>
-                {{else}}
-                <div class="camp-fire-body fire-active">
-                    <div class="camp-fire-lit-display">
-                        <i class="fas fa-fire fa-2x camp-fire-icon-lit"></i>
-                        <span>Fire is burning</span>
-                    </div>
-                </div>
-                {{/unless}}
-
-                {{!-- Shelter Spell Toggle --}}
-                {{#if campScan.shelterSpellAvailable}}
-                <div class="camp-shelter-spell">
-                    <div class="shelter-spell-info">
-                        <i class="fas fa-home"></i>
-                        <span>{{campScan.shelterSpellName}} ({{campScan.shelterSpellCaster}})</span>
-                    </div>
-                    <div class="shelter-spell-warning">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        Replaces campfire. No cooking, no fire bonuses. Full weather protection.
-                    </div>
-                    <button type="button" class="btn-shelter-spell" data-action="toggleShelterSpell">
-                        <i class="fas fa-magic"></i>
-                        {{#if campScan.shelterSpell}}Dismiss{{else}}Cast{{/if}}
-                    </button>
-                </div>
-                {{/if}}
-            </div>
-        </div>
-
-    </div>
-
-    {{!-- Action Bar --}}
-    {{#if isGM}}
-    <div class="respite-action-bar">
-        <button type="button" class="btn-primary" data-action="proceedFromCamp">
-            <i class="fas fa-arrow-right"></i> Proceed to Activities
-        </button>
-    </div>
+    <div class="camp-minimal-shell camp-phase-shell">
+    {{#if campfirePlaced}}
+    <p class="camp-minimal-lead glass-ui">Use the <strong>campfire</strong> on the map: light the fire, cold camp, or add fuel. Supply tokens show where stations appear after the fire is going.</p>
     {{else}}
-    <div class="respite-action-bar">
-        <span class="phase-waiting-label"><i class="fas fa-campground"></i> Setting up camp...</span>
+    <p class="camp-minimal-lead glass-ui">
+        {{#if isGM}}A preview follows the pointer. Click the map to drop the pit, or right-click / <kbd>Esc</kbd> to cancel.{{else}}The GM is placing the campfire.{{/if}}
+    </p>
+    {{/if}}
+    {{#if isGM}}
+    {{#if campPitPlacementCancelled}}
+    <div class="camp-pit-retry glass-ui">
+        <p>Placement was cancelled. Place the pit when ready.</p>
+        <button type="button" class="btn-primary" data-action="retryCampPitPlacement"><i class="fas fa-map-pin"></i> Place campfire pit</button>
     </div>
+    {{/if}}
+    {{/if}}
+    </div>
+    {{#if isGM}}<div class="respite-action-bar camp-minimal-action"><span class="phase-waiting-label"><i class="fas fa-compass"></i> Map first</span></div>
+    {{else}}<div class="respite-action-bar camp-minimal-action"><span class="phase-waiting-label"><i class="fas fa-campground"></i> Check the map</span></div>
     {{/if}}
     {{/if}}
 
@@ -971,7 +698,20 @@
     </div>
     {{> rosterStrip}}
 
-    {{!-- Sub-tab bar --}}
+    {{#if postStationChoiceReview}}
+    <div class="station-choice-review-bar">
+        <span class="station-choice-review-text">
+            <i class="fas fa-map-marker-alt" aria-hidden="true"></i>
+            Activity saved from the map. Review here or return to the canvas.
+        </span>
+        <button type="button" class="btn-secondary" data-action="exitStationChoiceReview">
+            <i class="fas fa-arrow-left" aria-hidden="true"></i> Back to map
+        </button>
+    </div>
+    {{/if}}
+
+    {{!-- Sub-tab bar (GM only; players navigate tabs via workstations) --}}
+    {{#if isGM}}
     {{#if activitySubTab}}
     <div class="activity-sub-tabs">
         <button type="button" class="sub-tab {{#if activitySubTab.isIdentify}}active{{/if}} {{#unless activitySubTab.hasUnidentified}}faded{{/unless}}"
@@ -1000,6 +740,7 @@
         {{/if}}
     </div>
     {{/if}}
+    {{/if}}
 
     {{!-- ── IDENTIFY SUB-TAB ── --}}
     {{#if activitySubTab.isIdentify}}
@@ -1010,8 +751,63 @@
         <div class="identify-caster-advisory">
             <i class="fas fa-hat-wizard"></i>
             {{#each activitySubTab.identifyCasters}}{{#unless @first}}, {{/unless}}{{name}}{{/each}}
-            can cast Identify (ritual – free)
+            can cast Identify (ritual, free)
         </div>
+        {{/if}}
+        {{#if activitySubTab.detectMagicCasters.length}}
+        <div class="identify-caster-advisory detect-magic-advisory">
+            <i class="fas fa-eye"></i>
+            {{#each activitySubTab.detectMagicCasters}}{{#unless @first}}, {{/unless}}{{name}}{{/each}}
+            can cast Detect Magic (30 ft.; everyone benefits while the spell is up)
+        </div>
+        {{/if}}
+
+        {{#if canShowDetectMagicScanButton}}
+        <div class="identify-detect-toolbar">
+            <button type="button" class="btn-detect-magic" data-action="detectMagicScan"
+                {{#if detectMagicScanButtonTitle}}title="{{detectMagicScanButtonTitle}}"{{/if}}>
+                <i class="fas fa-eye"></i> {{detectMagicScanButtonLabel}}
+            </button>
+        </div>
+        {{/if}}
+
+        {{#if magicScanComplete}}
+        {{#if @root.isGM}}
+        <div class="magic-scan-results identify-magic-scan">
+            {{#if magicScanResults.length}}
+            <div class="magic-scan-header"><i class="fas fa-hat-wizard"></i> Magical Auras Detected</div>
+            {{#each magicScanResults}}
+            <div class="magic-scan-actor">
+                <span class="magic-scan-actor-name">{{actorName}}'s gear:</span>
+                {{#each items}}
+                <div class="magic-scan-item {{#if identified}}identified{{/if}}">
+                    <img src="{{img}}" class="magic-scan-item-img" alt="">
+                    {{#if identified}}
+                    <i class="fas fa-check-circle magic-identified-icon"></i>
+                    <span class="magic-scan-item-name">{{trueName}}</span>
+                    {{#if requiresAttunement}}<span class="magic-attune-hint">Requires attunement</span>{{/if}}
+                    {{else}}
+                    <i class="fas fa-magic magic-aura-icon"></i>
+                    <span class="magic-scan-item-name">{{displayName}}</span>
+                    {{#if school}}<span class="magic-school-tag">{{school}}</span>{{/if}}
+                    <button type="button" class="btn-identify-item" data-action="identifyScannedItem"
+                        data-actor-id="{{../actorId}}" data-item-id="{{itemId}}">
+                        <i class="fas fa-scroll"></i> Identify
+                    </button>
+                    {{/if}}
+                </div>
+                {{/each}}
+            </div>
+            {{/each}}
+            {{else}}
+            <div class="magic-scan-none"><i class="fas fa-check"></i> No unidentified magical items found.</div>
+            {{/if}}
+        </div>
+        {{else}}
+        <div class="magic-scan-results identify-magic-scan wb-ident-player-scan-note">
+            <p class="wb-ident-player-scan-hint"><i class="fas fa-eye"></i> A magical aura pass has been run. Open character sheets and use Focus or Taste on unidentified items there, or use the workbench station circles.</p>
+        </div>
+        {{/if}}
         {{/if}}
 
         {{#each activitySubTab.unidentifiedItems}}
@@ -1036,7 +832,7 @@
                 {{else}}
                 <button type="button" class="btn-identify" data-action="identifyItem"
                     data-item-id="{{itemId}}" data-actor-id="{{actorId}}" data-method="rest"
-                    title="Focus during rest (1 item per character)">
+                    title="Focus during rest to identify">
                     <i class="fas fa-hand-holding"></i> Focus
                 </button>
                 {{/if}}
@@ -1045,21 +841,24 @@
         {{/each}}
 
         {{#unless activitySubTab.unidentifiedItems.length}}
+        {{#unless magicScanComplete}}
         <div class="identify-empty">
             <div class="identify-empty-content">
                 <i class="fas fa-check-circle"></i>
                 <span class="identify-empty-title">Nothing to identify</span>
                 <span class="identify-empty-hint">
                     Unidentified magic items would appear here. Items can be identified
-                    by focusing during a rest (1 per character) or via the Identify spell (ritual, free).
+                    by focusing during a rest or via the Identify spell (ritual, free).
                     Potions can be tasted to identify instantly.
+                    Use Cast Detect Magic above. GMs can run it anytime; players need a party member they control who knows the spell.
                 </span>
             </div>
         </div>
         {{/unless}}
+        {{/unless}}
         </div>{{!-- /identify-scroll-area --}}
 
-        {{#if activitySubTab.unidentifiedItems.length}}
+        {{#if (or activitySubTab.unidentifiedItems.length magicScanComplete)}}
         <div class="identify-footer">
             <button type="button" class="btn-primary" data-action="switchActivityTab" data-tab="activity">
                 <i class="fas fa-arrow-right"></i> Proceed to Activities
@@ -1138,6 +937,26 @@
 
     {{else}}
     {{!-- ── ACTIVITY SUB-TAB (existing content) ── --}}
+    {{!-- Collapsed Camp Summary --}}
+    <div class="camp-status-summary camp-collapsed-bar">
+        <div class="camp-collapsed-chips">
+            <span class="camp-collapsed-chip comfort-tier comfort-{{campStatus.comfort}}" title="{{campStatus.comfortTooltip}}">
+                <i class="fas fa-campground"></i> {{campStatus.comfort}}
+            </span>
+            <span class="camp-collapsed-chip fire-status fire-{{campStatus.fireLevel}}" title="{{campStatus.fireTooltip}}">
+                <i class="fas fa-fire"></i> {{campStatus.fireLevel}}
+            </span>
+            {{#if encounterBar}}
+            <span class="camp-collapsed-chip" title="Encounter DC">
+                <i class="fas fa-shield-alt"></i> DC {{encounterBar.effectiveDC}}
+            </span>
+            {{/if}}
+            {{#if campStatus.hasTent}}
+            <span class="camp-collapsed-chip gear-present" title="Tent pitched"><i class="fas fa-campground"></i></span>
+            {{/if}}
+        </div>
+    </div>
+    {{#if isGM}}
     <div class="activity-phase-layout">
     <div class="respite-activities">
 
@@ -1195,11 +1014,6 @@
             <div class="minor-activity-advisory" title="{{description}}">
                 <i class="{{icon}}"></i>
                 <span>{{name}}: {{description}}</span>
-                {{#if (eq id "act_identify")}}
-                <button type="button" class="btn-detect-magic" data-action="detectMagicScan">
-                    <i class="fas fa-eye"></i> Scan
-                </button>
-                {{/if}}
             </div>
             {{/each}}
             {{!-- Faded minor advisories (known but not prepared) --}}
@@ -1209,42 +1023,6 @@
                 <span>{{name}}: {{fadedHint}}</span>
             </div>
             {{/each}}
-
-            {{!-- Detect Magic scan results --}}
-            {{#if magicScanComplete}}
-            <div class="magic-scan-results">
-                {{#if magicScanResults.length}}
-                <div class="magic-scan-header"><i class="fas fa-hat-wizard"></i> Magical Auras Detected</div>
-                {{#each magicScanResults}}
-                <div class="magic-scan-actor">
-                    <span class="magic-scan-actor-name">{{actorName}}'s gear:</span>
-                    {{#each items}}
-                    <div class="magic-scan-item {{#if identified}}identified{{/if}}">
-                        <img src="{{img}}" class="magic-scan-item-img" alt="">
-                        {{#if identified}}
-                        <i class="fas fa-check-circle magic-identified-icon"></i>
-                        <span class="magic-scan-item-name">{{trueName}}</span>
-                        {{#if requiresAttunement}}<span class="magic-attune-hint">Requires attunement</span>{{/if}}
-                        {{else}}
-                        <i class="fas fa-magic magic-aura-icon"></i>
-                        <span class="magic-scan-item-name">{{displayName}}</span>
-                        {{#if school}}<span class="magic-school-tag">{{school}}</span>{{/if}}
-                        {{#if @root.isGM}}
-                        <button type="button" class="btn-identify-item" data-action="identifyScannedItem"
-                            data-actor-id="{{../actorId}}" data-item-id="{{itemId}}">
-                            <i class="fas fa-scroll"></i> Identify
-                        </button>
-                        {{/if}}
-                        {{/if}}
-                    </div>
-                    {{/each}}
-                </div>
-                {{/each}}
-                {{else}}
-                <div class="magic-scan-none"><i class="fas fa-check"></i> No unidentified magical items found.</div>
-                {{/if}}
-            </div>
-            {{/if}}
 
             {{!-- Activity tile grid --}}
             {{#if craftingDrawer}}
@@ -1527,86 +1305,85 @@
                 {{/unless}}{{/unless}}
             </div>
             {{else}}
-            {{!-- Standard activity categories --}}
-            {{#each selectedCharacter.tileCategories}}
-            <div class="tile-section">
-                <span class="tile-section-label">{{label}}</span>
-                <div class="activity-grid" data-character-id="{{../selectedCharacter.id}}">
-                    {{#each tiles}}
-                    <div
-                        class="activity-card {{typeTag}} {{#if isSelected}}selected{{/if}} {{#if isDisabled}}disabled{{/if}} {{#if isFaded}}faded{{/if}} {{#if hasAttuneable}}has-attuneable{{/if}}"
-                        data-activity-id="{{id}}"
-                        data-is-crafting="false"
-                        title="{{tooltip}}"
-                        role="button"
-                        tabindex="0">
-                        <i class="{{icon}}"></i>
-                        <div class="card-body">
-                            <span class="card-name">{{name}}</span>
-                            {{#if hint}}<span class="card-hint {{#if hintUrgent}}urgent{{/if}}">{{hint}}</span>{{/if}}
+            {{!-- Station-based activity layout: two flex columns (masonry-style) so row height is not shared across columns --}}
+            <div class="station-grid">
+                {{#each selectedCharacter.stationCardColumns}}
+                <div class="station-grid-column">
+                    {{#each this}}
+                    <div class="station-card{{#if (eq id @root.canvasFocusedStationId)}} station-card-canvas-focus{{/if}}" data-station="{{id}}">
+                        <div class="station-header">
+                            <i class="{{icon}}"></i>
+                            <span class="station-label">{{label}}</span>
+                        </div>
+                        <div class="station-activities" data-character-id="{{@root.selectedCharacter.id}}">
+                            {{#each tiles}}
+                            <div
+                                class="activity-card station-activity {{typeTag}} {{#if isSelected}}selected{{/if}} {{#if isDisabled}}disabled{{/if}} {{#if isFaded}}faded{{/if}}"
+                                data-activity-id="{{id}}"
+                                data-is-crafting="false"
+                                title="{{tooltip}}"
+                                role="button"
+                                tabindex="0">
+                                <i class="{{icon}}"></i>
+                                <div class="card-body">
+                                    <span class="card-name">{{name}}</span>
+                                    {{#if hint}}<span class="card-hint {{#if hintUrgent}}urgent{{/if}}">{{hint}}</span>{{/if}}
+                                </div>
+                            </div>
+                            {{/each}}
                         </div>
                     </div>
                     {{/each}}
                 </div>
+                {{/each}}
             </div>
-            {{/each}}
-            {{!-- DESCOPED: Professions system cut from v1. Uncomment for Phase 2.
-            <div class="tile-section profession-section">
-                <span class="tile-section-label">Professions</span>
-                {{#if selectedCharacter.hasProfessionTiles}}
-                <div class="activity-grid" data-character-id="{{selectedCharacter.id}}">
-                    {{#each selectedCharacter.professionTiles}}
-                    <button type="button"
-                        class="activity-tile {{#if isSelected}}selected{{/if}} {{#if isFaded}}faded{{/if}}"
-                        data-activity-id="{{id}}"
-                        data-is-crafting="true"
-                        data-profession="{{profession}}"
-                        title="{{tooltip}}"
-                        {{#if isDisabled}}disabled{{/if}}>
-                        <i class="{{icon}}"></i>
-                        <span class="tile-name">{{name}}</span>
-                        {{#if fadedHint}}
-                        <span class="tile-hint">{{fadedHint}}</span>
-                        {{else}}
-                        <span class="tile-type Craft">Craft</span>
-                        {{/if}}
-                    </button>
-                    {{/each}}
-                </div>
-                {{else}}
-                <span class="no-professions-hint">No professions or kits available</span>
-                {{/if}}
-            </div>
-            --}}
             {{/if}}
         </div>
         {{/if}}
 
     </div>
-    {{!-- Camp Status Summary (carry-forward from Make Camp) --}}
-    <div class="camp-status-summary">
-        <div class="camp-summary-header"><i class="fas fa-campground"></i> Camp Status</div>
-        <div class="camp-summary-row">
-            <span class="summary-label">Comfort</span>
-            <span class="summary-value comfort-tier comfort-{{campStatus.comfort}}">{{campStatus.comfort}}</span>
-        </div>
-        <div class="camp-summary-row">
-            <span class="summary-label">Fire</span>
-            <span class="summary-value fire-status fire-{{campStatus.fireLevel}}">
-                <i class="fas fa-fire"></i> {{campStatus.fireLevel}}
-            </span>
-        </div>
-        {{#if encounterBar}}
-        <div class="camp-summary-row">
-            <span class="summary-label">Encounter DC</span>
-            <span class="summary-value">{{encounterBar.effectiveDC}}</span>
-        </div>
-        {{/if}}
-    </div>
     </div>{{!-- /activity-phase-layout --}}
+    {{else}}
+    {{#if activityPhasePlayerOverview}}
+    <div class="activity-phase-layout">
+        <div class="respite-activities activity-phase-player-overview-wrap">
+            <div class="player-overview-heading">
+                <i class="fas fa-users" aria-hidden="true"></i>
+                <span>Party progress</span>
+            </div>
+            <p class="player-overview-lead">Use camp map stations to choose activities{{#if activityPhasePlayerOverview.trackFood}} and meal rations{{/if}}. This panel only summarizes the party.</p>
+            <div class="player-overview-stat">
+                <span class="player-overview-label">Activities committed</span>
+                <span class="player-overview-value">{{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}}</span>
+            </div>
+            <div class="player-overview-progress-track" role="progressbar"
+                aria-valuenow="{{activityPhasePlayerOverview.resolvedCount}}"
+                aria-valuemin="0"
+                aria-valuemax="{{activityPhasePlayerOverview.totalCharacters}}">
+                <div class="player-overview-progress-fill" style="width: {{activityPhasePlayerOverview.activityProgressPercent}}%;"></div>
+            </div>
+            {{#if activityPhasePlayerOverview.trackFood}}
+            <div class="player-overview-stat">
+                <span class="player-overview-label">Meal cards submitted</span>
+                <span class="player-overview-value">{{activityPhasePlayerOverview.mealRationsSubmitted}} / {{activityPhasePlayerOverview.totalCharacters}}</span>
+            </div>
+            <div class="player-overview-progress-track player-overview-progress-track--meal" role="progressbar"
+                aria-valuenow="{{activityPhasePlayerOverview.mealRationsSubmitted}}"
+                aria-valuemin="0"
+                aria-valuemax="{{activityPhasePlayerOverview.totalCharacters}}">
+                <div class="player-overview-progress-fill" style="width: {{activityPhasePlayerOverview.mealRationsProgressPercent}}%;"></div>
+            </div>
+            {{/if}}
+            {{#if activityPhasePlayerOverview.allResolved}}
+            <p class="player-overview-note"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Everyone has an activity. Waiting on the GM to advance.</p>
+            {{/if}}
+        </div>
+    </div>
+    {{/if}}
+    {{/if}}
     {{/if}}{{!-- /activitySubTab.isIdentify else --}}
-    {{!-- Action bar: hidden during Identify sub-tab (progressive disclosure —
-         don't show a CTA for a step two hops away) --}}
+    {{!-- Action bar: hidden during Identify sub-tab. Progressive disclosure,
+         don't show a CTA for a step two hops away. --}}
     {{#if activitySubTab.isActivity}}
     <div class="respite-action-bar">
         <span class="submission-counter">
@@ -2173,7 +1950,7 @@
                 <span class="stall-hint-text">Third option bid &middot; negotiating between choices &middot; repeating answered questions</span>
                 {{#if activeTreeState.stallCount}}
                 <span class="stall-applied-count">
-                    <i class="fas fa-exclamation-triangle"></i> Applied {{activeTreeState.stallCount}}x — DCs +{{activeTreeState.totalStallBump}}, supplies lost
+                    <i class="fas fa-exclamation-triangle"></i> Applied {{activeTreeState.stallCount}}x. DCs +{{activeTreeState.totalStallBump}}, supplies lost
                 </span>
                 {{/if}}
             </div>
@@ -2185,19 +1962,19 @@
             {{#if isGM}}
             <div class="tree-awaiting-rolls">
                 {{#if activeTreeState.rollRequestSent}}
-                {{!-- === PHASE 2: Request sent — awaiting results === --}}
+                {{!-- === PHASE 2: Request sent, awaiting results === --}}
                 <div class="tree-roll-header">
                     <i class="fas fa-dice-d20"></i>
-                    Awaiting Player Rolls — {{activeTreeState.pendingSkillName}} DC {{activeTreeState.pendingDC}}
+                    Awaiting Player Rolls: {{activeTreeState.pendingSkillName}} DC {{activeTreeState.pendingDC}}
                 </div>
                 <div class="tree-roll-dispatched-note">
-                    <i class="fas fa-paper-plane"></i> Roll request dispatched — players will see their roll button now.
+                    <i class="fas fa-paper-plane"></i> Roll request dispatched. Players will see their roll button now.
                 </div>
                 {{else}}
                 {{!-- === PHASE 1: Configure modifiers before sending === --}}
                 <div class="tree-roll-header tree-roll-header--configure">
                     <i class="fas fa-sliders-h"></i>
-                    Configure Roll Modifiers — {{activeTreeState.pendingSkillName}} DC {{activeTreeState.pendingDC}}
+                    Configure Roll Modifiers: {{activeTreeState.pendingSkillName}} DC {{activeTreeState.pendingDC}}
                 </div>
                 <div class="tree-roll-configure-note">
                     <i class="fas fa-info-circle"></i> Set modifiers per character, then send the roll request to players.
@@ -2225,7 +2002,7 @@
                         <select class="select-roll-mode roll-mode--{{rollMode}}"
                             data-character-id="{{id}}"
                             title="Set roll modifier for this player">
-                            <option value="normal"       {{#if (eq rollMode "normal")}}selected{{/if}}>— Normal</option>
+                            <option value="normal"       {{#if (eq rollMode "normal")}}selected{{/if}}>Normal</option>
                             <option value="advantage"    {{#if (eq rollMode "advantage")}}selected{{/if}}>↑ Adv</option>
                             <option value="disadvantage" {{#if (eq rollMode "disadvantage")}}selected{{/if}}>↓ Dis</option>
                             <option value="force-pass"   {{#if (eq rollMode "force-pass")}}selected{{/if}}>✓ Pass</option>
@@ -2257,7 +2034,7 @@
             <div class="tree-player-roll-area">
                 <div class="tree-roll-header">
                     <i class="fas fa-dice-d20"></i>
-                    {{@root.pendingTreeRoll.eventName}} — {{@root.pendingTreeRoll.skillName}} Check
+                    {{@root.pendingTreeRoll.eventName}}: {{@root.pendingTreeRoll.skillName}} Check
                 </div>
                 {{#each @root.pendingTreeRoll.ownedTargets}}
                 <div class="tree-roll-character">
@@ -3313,7 +3090,7 @@
     {{!-- Encounter Status Bar: persistent footer --}}
     {{#if encounterBar}}
     <div class="encounter-bar">
-        <span class="encounter-bar-label" title="A hidden d20 is rolled against this DC. Events only trigger if the roll stays BELOW this number. Lower DC = safer camp. Shelter, scouting, and fire reduce the DC.">
+        <span class="encounter-bar-label" title="A hidden d20 is rolled for the night check. Meet or beat this number for a quiet night (no event from this roll). Rolling below it pulls a camp event; a natural 1 forces a disaster choice instead. Lower number here = easier quiet night. Shelter, weather, scouting, fire, and defenses move this number.">
             <i class="fas fa-dice-d20"></i>
             {{encounterBar.totalLabel}}
         </span>

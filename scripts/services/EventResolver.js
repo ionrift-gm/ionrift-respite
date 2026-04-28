@@ -103,7 +103,7 @@ export class EventResolver {
         if (rawDie === 1) {
             await roll.toMessage({
                 speaker: { alias: "Night Watch" },
-                flavor: `<strong>Event Roll</strong> (${terrainTag}) DC ${effectiveDC}<br><em style="color:#e74c3c;">Natural 1 - Disaster!</em>`,
+                flavor: `<strong>Night check</strong> (${terrainTag}) threshold ${effectiveDC}<br><em style="color:#e74c3c;">Natural 1. Worst possible night check. Disaster fork (GM choice).</em>`,
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
             if (game.modules.get("dice-so-nice")?.active) {
@@ -176,7 +176,7 @@ export class EventResolver {
         if (rawDie >= effectiveDC) {
             await roll.toMessage({
                 speaker: { alias: "Night Watch" },
-                flavor: `<strong>Event Roll</strong> (${terrainTag}) DC ${effectiveDC}<br>The night passes without incident.`,
+                flavor: `<strong>Night check</strong> (${terrainTag}) threshold ${effectiveDC}<br>${rawDie} meets or beats the threshold. The night passes without incident from this roll.`,
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
             if (game.modules.get("dice-so-nice")?.active) {
@@ -188,7 +188,7 @@ export class EventResolver {
             return results;
         }
 
-        // ── Roll below DC: pick a normal-tier event from the pool ──
+        // ── Roll below threshold (and not nat 1): pick a normal-tier event from the pool ──
         const existingIds = results.map(r => r.id).filter(Boolean);
         const event = this._pickFromPool(terrainTag, {
             tier: "normal",
@@ -201,7 +201,7 @@ export class EventResolver {
             console.warn(`[Respite:EventResolver] No events available for terrain "${terrainTag}". Check Content Packs settings.`);
             await roll.toMessage({
                 speaker: { alias: "Night Watch" },
-                flavor: `<strong>Event Roll</strong> (${terrainTag}) DC ${effectiveDC}<br><em>Roll would trigger an event, but no events are available for this terrain. Check <strong>Content Packs</strong> in module settings.</em>`,
+                flavor: `<strong>Night check</strong> (${terrainTag}) threshold ${effectiveDC}<br><em>Roll is below threshold, but no events are available for this terrain. Check <strong>Content Packs</strong> in module settings.</em>`,
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
             if (game.modules.get("dice-so-nice")?.active) {
@@ -216,7 +216,7 @@ export class EventResolver {
         // Post event roll to chat (GM only)
         await roll.toMessage({
             speaker: { alias: "Night Watch" },
-            flavor: `<strong>Event Roll</strong> (${terrainTag}) DC ${effectiveDC}<br><em>${event.name}</em> triggered!`,
+            flavor: `<strong>Night check</strong> (${terrainTag}) threshold ${effectiveDC}<br><em>${event.name}</em> triggered (roll below threshold).`,
             whisper: game.users.filter(u => u.isGM).map(u => u.id)
         });
         if (game.modules.get("dice-so-nice")?.active) {
