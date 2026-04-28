@@ -3520,29 +3520,44 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Activity phase: camp comfort line for the campfire station dialog (matches Make Camp advisory).
-     * @returns {{ mapComfortLabel: string, mapComfortLine: string, mapComfortTierClass: string }|null}
+     * CampGearScanner result for activity-phase station dialogs. Player clients often have no
+     * RestFlowEngine; comfort and fire rows use terrain + snapshot fields only.
+     * @returns {object|null}
      */
-    getCampComfortAdvisoryForStationDialog() {
-        if (this._phase !== "activity" || !this._engine) return null;
+    _getCampScanDataForActivityStationDialog() {
+        if (this._phase !== "activity") return null;
+        const restType = this._engine?.restType
+            ?? this._selectedRestType
+            ?? this._restData?.restType
+            ?? "long";
+        if (restType === "short") return null;
         const terrainTagCamp = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
         const terrainCamp = TerrainRegistry.get(terrainTagCamp);
-        const shelterSpellCamp = (this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")
-            ? SHELTER_SPELLS[(this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")]?.label ?? null
+        const shelterKey = (this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none");
+        const shelterSpellCamp = shelterKey
+            ? (SHELTER_SPELLS[shelterKey]?.label ?? null)
             : null;
         const effectiveScanLevel = this._fireLevel ?? "unlit";
         const encMod = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[effectiveScanLevel] ?? 0;
         const baseTerrainComfort = this._engine?.comfort
             ?? TerrainRegistry.getDefaults(terrainTagCamp).comfort
             ?? "rough";
-        const campScanData = CampGearScanner.scan(
+        return CampGearScanner.scan(
             baseTerrainComfort,
             effectiveScanLevel,
             shelterSpellCamp,
             terrainCamp?.comfortReason ?? "",
             terrainCamp?.label ?? terrainTagCamp,
             encMod
-        );
+        ) ?? null;
+    }
+
+    /**
+     * Activity phase: camp comfort line for the campfire station dialog (matches Make Camp advisory).
+     * @returns {{ mapComfortLabel: string, mapComfortLine: string, mapComfortTierClass: string }|null}
+     */
+    getCampComfortAdvisoryForStationDialog() {
+        const campScanData = this._getCampScanDataForActivityStationDialog();
         if (!campScanData) return null;
         const mapComfortLabel = campScanData.campComfortLabel ?? "";
         const mapComfortLine = campScanData.comfortReason
@@ -3561,29 +3576,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @returns {object|null}
      */
     getFireTabContextForStationDialog() {
-        if (this._phase !== "activity" || !this._engine) return null;
-        if (this._engine.restType === "short") return null;
+        const campScanData = this._getCampScanDataForActivityStationDialog();
+        if (!campScanData) return null;
 
         const coldCamp = !!this._coldCampDecided;
-        const terrainTagCamp = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
-        const terrainCamp = TerrainRegistry.get(terrainTagCamp);
-        const shelterSpellCamp = (this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")
-            ? SHELTER_SPELLS[(this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")]?.label ?? null
-            : null;
         const effectiveScanLevel = this._fireLevel ?? "unlit";
-        const encMod = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[effectiveScanLevel] ?? 0;
-        const baseTerrainComfort = this._engine?.comfort
-            ?? TerrainRegistry.getDefaults(terrainTagCamp).comfort
-            ?? "rough";
-        const campScanData = CampGearScanner.scan(
-            baseTerrainComfort,
-            effectiveScanLevel,
-            shelterSpellCamp,
-            terrainCamp?.comfortReason ?? "",
-            terrainCamp?.label ?? terrainTagCamp,
-            encMod
-        );
-        if (!campScanData) return null;
 
         let campFireEncounterHint = "";
         if (effectiveScanLevel === "unlit") {
@@ -3685,27 +3682,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * }|null}
      */
     getCampPersonalCardForActor(actorId) {
-        if (this._phase !== "activity" || !this._engine || !actorId) return null;
+        if (this._phase !== "activity" || !actorId) return null;
         const gearCtx = this.getCampGearContextForActor(actorId);
         if (!gearCtx) return null;
-        const terrainTagCamp = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
-        const terrainCamp = TerrainRegistry.get(terrainTagCamp);
-        const shelterSpellCamp = (this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")
-            ? SHELTER_SPELLS[(this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")]?.label ?? null
-            : null;
-        const effectiveScanLevel = this._fireLevel ?? "unlit";
-        const encMod = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[effectiveScanLevel] ?? 0;
-        const baseTerrainComfort = this._engine?.comfort
-            ?? TerrainRegistry.getDefaults(terrainTagCamp).comfort
-            ?? "rough";
-        const campScanData = CampGearScanner.scan(
-            baseTerrainComfort,
-            effectiveScanLevel,
-            shelterSpellCamp,
-            terrainCamp?.comfortReason ?? "",
-            terrainCamp?.label ?? terrainTagCamp,
-            encMod
-        );
+        const campScanData = this._getCampScanDataForActivityStationDialog();
         if (!campScanData?.personalCards?.length) return null;
         const card = campScanData.personalCards.find(p => p.actorId === actorId);
         if (!card) return null;
@@ -7714,7 +7694,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const restSession = {
             fireLevel: this._fireLevel,
-            restType:  this._engine?.restType ?? "long"
+            restType:  this._engine?.restType
+                ?? this._selectedRestType
+                ?? this._restData?.restType
+                ?? "long"
         };
 
         const app = this;
@@ -9692,8 +9675,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     async changeFireLevelDuringActivity(level) {
         if (!game.user.isGM) return { ok: false, error: "GM only" };
-        if (this._phase !== "activity" || !this._engine) return { ok: false, error: "Wrong phase" };
-        if (this._engine.restType === "short") return { ok: false, error: "Short rest" };
+        if (this._phase !== "activity") return { ok: false, error: "Wrong phase" };
+        const restType = this._engine?.restType
+            ?? this._selectedRestType
+            ?? this._restData?.restType
+            ?? "long";
+        if (restType === "short") return { ok: false, error: "Short rest" };
         if (!["embers", "campfire", "bonfire"].includes(level)) return { ok: false, error: "Invalid level" };
         if (this._coldCampDecided) {
             ui.notifications.warn("Cold camp is set. End the rest or adjust from setup if the table allows it.");

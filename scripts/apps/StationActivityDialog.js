@@ -594,9 +594,15 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             ?? target?.closest?.("[data-fire-level]")?.dataset?.fireLevel;
         if (!level || !["embers", "campfire", "bonfire"].includes(level)) return;
         if (target.disabled) return;
-        const result = await this._restApp.changeFireLevelDuringActivity(level);
-        if (result?.ok) {
-            void this.render(true);
+        try {
+            const result = await this._restApp.changeFireLevelDuringActivity(level);
+            if (result?.ok) {
+                void this.render(true);
+            } else if (result?.error && !result?.cancelled) {
+                console.warn(`${MODULE_ID} | setFireLevel`, result.error);
+            }
+        } catch (e) {
+            console.warn(`${MODULE_ID} | setFireLevel`, e);
         }
     }
 
@@ -902,9 +908,10 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         const trackFood = game.settings.get(MODULE_ID, "trackFood");
         const workbenchHub = station.id === "workbench";
+        const longRest = (restSession?.restType ?? "long") !== "short";
         const campfireHub = station.id === "campfire"
-            && restType === "long"
-            && !!restApp?.getFireTabContextForStationDialog?.();
+            && longRest
+            && restApp?._phase === "activity";
         const showStationTabs = ((station.id === "cooking_station" && trackFood) || workbenchHub || campfireHub);
         const actorHasCookingUtensils = station.id === "cooking_station" && actor
             ? canPlaceStation(actor, "cookingArea")
