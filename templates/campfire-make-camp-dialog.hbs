@@ -1,4 +1,7 @@
 {{!-- Make Camp: anchored at pit token; window title is "Campfire" --}}
+{{#if dialogClosing}}
+{{!-- Closing; avoid one-frame unlit + Cold camp fallback after phase leaves camp --}}
+{{else}}
 <div class="campfire-canvas-drawer campfire-map-dialog glass-ui" data-campfire-map-dialog="1">
     <div class="campfire-canvas-body">
         {{#if campScanData}}
@@ -61,3 +64,4 @@
         {{/if}}
     </div>
 </div>
+{{/if}}

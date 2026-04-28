@@ -58,13 +58,14 @@ export class CampfireMakeCampDialog extends HandlebarsApplicationMixin(Applicati
     async _prepareContext() {
         const ctx = this._restApp?.buildCampfireDrawerContextForMapDialog?.() ?? null;
         if (!ctx) {
-            return {
-                campFireIsLit: false,
-                campFireLighters: [],
-                campFireTierCards: [],
-                mapComfortTierClass: "comfort-rough",
-                isGM: !!game.user?.isGM
-            };
+            // buildCamp returns null when rest left Make Camp (e.g. activity phase). A stale
+            // dialog would otherwise re-render the unlit + Cold camp fallback; close instead.
+            if (_openMapCampfire === this) {
+                queueMicrotask(() => {
+                    void this.close();
+                });
+            }
+            return { dialogClosing: true, isGM: !!game.user?.isGM };
         }
         return { ...ctx, isGM: !!game.user?.isGM };
     }
@@ -226,6 +227,11 @@ export class CampfireMakeCampDialog extends HandlebarsApplicationMixin(Applicati
      */
     static refreshIfOpen(restApp) {
         if (!_openMapCampfire || _openMapCampfire._restApp !== restApp) return;
+        const ctx = restApp.buildCampfireDrawerContextForMapDialog?.() ?? null;
+        if (!ctx) {
+            void _openMapCampfire.close();
+            return;
+        }
         void _openMapCampfire.render({ force: true });
     }
 }
