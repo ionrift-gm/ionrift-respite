@@ -1487,7 +1487,14 @@
     max-width: 100%;
 }
 
-.ionrift-station-dialog .station-campfire-tier-strip .camp-fire-tier-card {
+/* Fire tab uses the same camp-fire-tier-strip as the read-only Make Camp preview, but that
+   rule sets pointer-events: none on cards (clicks pass through). Restore interaction for
+   Set / Request and hover on those buttons. */
+.ionrift-station-dialog .station-campfire-tier-strip .camp-fire-tier-card,
+.ionrift-station-dialog .camp-fire-tier-strip .camp-fire-tier-card {
+    pointer-events: auto;
+    opacity: 1;
+    cursor: default;
     min-width: 0;
     max-width: none;
 }
