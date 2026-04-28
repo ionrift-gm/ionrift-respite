@@ -62,6 +62,7 @@ import {
 } from "../services/StationInteractionLayer.js";
 import {
     closeStationDialogIfDifferentActor,
+    refreshOpenStationDialog,
     notifyStationMealChoicesUpdated,
     notifyWorkbenchIdentifyStagingTouched,
     StationActivityDialog
@@ -3553,6 +3554,115 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             ? `comfort-${campScanData.campComfort}`
             : "comfort-rough";
         return { mapComfortLabel, mapComfortLine, mapComfortTierClass };
+    }
+
+    /**
+     * Activity phase: Fire tab on the campfire station (tier strip, encounter hint, GM set flags).
+     * @returns {object|null}
+     */
+    getFireTabContextForStationDialog() {
+        if (this._phase !== "activity" || !this._engine) return null;
+        if (this._engine.restType === "short") return null;
+
+        const coldCamp = !!this._coldCampDecided;
+        const terrainTagCamp = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
+        const terrainCamp = TerrainRegistry.get(terrainTagCamp);
+        const shelterSpellCamp = (this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")
+            ? SHELTER_SPELLS[(this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")]?.label ?? null
+            : null;
+        const effectiveScanLevel = this._fireLevel ?? "unlit";
+        const encMod = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[effectiveScanLevel] ?? 0;
+        const baseTerrainComfort = this._engine?.comfort
+            ?? TerrainRegistry.getDefaults(terrainTagCamp).comfort
+            ?? "rough";
+        const campScanData = CampGearScanner.scan(
+            baseTerrainComfort,
+            effectiveScanLevel,
+            shelterSpellCamp,
+            terrainCamp?.comfortReason ?? "",
+            terrainCamp?.label ?? terrainTagCamp,
+            encMod
+        );
+        if (!campScanData) return null;
+
+        let campFireEncounterHint = "";
+        if (effectiveScanLevel === "unlit") {
+            campFireEncounterHint = "No fire is lit. The tier row shows what each level would do.";
+        } else if (effectiveScanLevel === "embers") {
+            campFireEncounterHint = "Embers: no change to encounter DC.";
+        } else if (effectiveScanLevel === "campfire") {
+            campFireEncounterHint = "Campfire: +1 encounter DC.";
+        } else if (effectiveScanLevel === "bonfire") {
+            campFireEncounterHint = "Bonfire: +2 encounter DC.";
+        }
+
+        const TIER_BODIES = {
+            embers: "No cooking. No comfort change.",
+            campfire: "Cooking and warmth. +1 encounter DC.",
+            bonfire: "+1 camp comfort, full cooking. +2 encounter DC."
+        };
+        const COMFORT_TIERS = CampGearScanner.COMFORT_TIERS;
+        const TIER_LABELS = Object.fromEntries(
+            Object.entries(CampGearScanner.TIER_RULES).map(([k, v]) => [k, v.label])
+        );
+        const baseComfort = campScanData.campComfortPreFire ?? campScanData.campComfort ?? "rough";
+        const baseIdx = COMFORT_TIERS.indexOf(baseComfort);
+        const COMFORT_DELTA = { embers: 0, campfire: 0, bonfire: 1 };
+        const curLevel = this._fireLevel ?? "unlit";
+        const campFireTierCards = ["embers", "campfire", "bonfire"].map(id => {
+            const delta = COMFORT_DELTA[id] ?? 0;
+            const resultIdx = Math.min(baseIdx + delta, COMFORT_TIERS.length - 1);
+            const resultComfort = COMFORT_TIERS[resultIdx] ?? baseComfort;
+            const resultLabel = TIER_LABELS[resultComfort] ?? resultComfort;
+            const comfortHint = delta !== 0
+                ? `${TIER_LABELS[baseComfort] ?? baseComfort} to ${resultLabel}`
+                : resultLabel;
+            const isActive = curLevel === id;
+            const F = CampGearScanner.FIREWOOD_COST_BY_LEVEL;
+            const costNew = F[id] ?? 0;
+            const costCur = (curLevel === "unlit") ? 0 : (F[curLevel] ?? 0);
+            const isGm = !!game.user?.isGM;
+            let setDisabled = true;
+            if (isGm && !coldCamp && !isActive) {
+                if (costNew < costCur) {
+                    setDisabled = false;
+                } else {
+                    const need = costNew - costCur;
+                    const actors = getPartyActors();
+                    const totalFirewood = actors.reduce((sum, a) => {
+                        const it = a.items.find(i => {
+                            const n = i.name?.toLowerCase() ?? "";
+                            return n.includes("firewood") || n === "kindling";
+                        });
+                        return sum + (it?.system?.quantity ?? 0);
+                    }, 0);
+                    setDisabled = need > 0 && totalFirewood < need;
+                }
+            }
+            return {
+                id,
+                label: id.charAt(0).toUpperCase() + id.slice(1),
+                costLabel: id === "embers" ? "0 firewood" : id === "campfire" ? "1 firewood" : "2 firewood",
+                body: TIER_BODIES[id],
+                comfortHint,
+                comfortChanged: delta !== 0,
+                active: isActive,
+                setDisabled: isActive ? false : setDisabled
+            };
+        });
+
+        const campFirewoodPledgeList = Array.from(this._firewoodPledges.values())
+            .filter(p => p.count > 0)
+            .map(p => ({ actorName: p.actorName, count: p.count }));
+
+        return {
+            campFireTierCards,
+            campFireEncounterHint,
+            campFirewoodPledgeList,
+            campFireIsLit: (this._fireLevel ?? "unlit") !== "unlit",
+            campFireTabColdCamp: coldCamp,
+            campFireTabGm: !!game.user?.isGM
+        };
     }
 
     /**
@@ -8204,6 +8314,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const enc = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[phaseData.fireLevel] ?? 0;
                 this._engine.fireRollModifier = enc;
             }
+            if (!game.user.isGM) {
+                const fl = phaseData.fireLevel;
+                void CampfireTokenLinker.setLightState(
+                    fl !== "unlit",
+                    fl && fl !== "unlit" ? fl : null
+                );
+            }
+            void refreshOpenStationDialog();
         }
         if (phaseData.fireLitBy !== undefined) this._fireLitBy = phaseData.fireLitBy ?? null;
         if (phaseData.firewoodPledges !== undefined) this._firewoodPledges = new Map(phaseData.firewoodPledges ?? []);
@@ -9565,6 +9683,105 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (this._phase === "camp" && !this._campToActivityDone && (this._fireLevel ?? "unlit") !== "unlit") {
             await this._advanceCampToActivity();
         }
+    }
+
+    /**
+     * Activity phase only: GM changes fire tier with immediate firewood spend on increase; no refund on decrease.
+     * @param {string} level - embers | campfire | bonfire
+     * @returns {Promise<{ ok: boolean, error?: string, cancelled?: boolean }>}
+     */
+    async changeFireLevelDuringActivity(level) {
+        if (!game.user.isGM) return { ok: false, error: "GM only" };
+        if (this._phase !== "activity" || !this._engine) return { ok: false, error: "Wrong phase" };
+        if (this._engine.restType === "short") return { ok: false, error: "Short rest" };
+        if (!["embers", "campfire", "bonfire"].includes(level)) return { ok: false, error: "Invalid level" };
+        if (this._coldCampDecided) {
+            ui.notifications.warn("Cold camp is set. End the rest or adjust from setup if the table allows it.");
+            return { ok: false, error: "Cold camp" };
+        }
+
+        const cur = this._fireLevel ?? "unlit";
+        if (level === cur) return { ok: true };
+
+        const F = CampGearScanner.FIREWOOD_COST_BY_LEVEL;
+        const costOf = (l) => (l === "unlit" ? 0 : (F[l] ?? 0));
+        const curCost = costOf(cur);
+        const newCost = costOf(level);
+
+        const actors = getPartyActors();
+        const hasTinderbox = actors.some(a => a.items.some(i => {
+            const n = i.name?.toLowerCase() ?? "";
+            return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
+        }));
+
+        if (newCost < curCost) {
+            const confirmed = await Dialog.confirm({
+                title: "Lower the fire",
+                content: "<p>Reducing the fire discards spent firewood. There is no refund. Continue?</p>",
+                yes: () => true,
+                no: () => false,
+                defaultYes: false
+            });
+            if (!confirmed) return { ok: false, cancelled: true };
+        } else if (newCost > curCost) {
+            const need = newCost - curCost;
+            if (cur === "unlit" && !hasTinderbox) {
+                ui.notifications.warn("No one has a tinderbox or flint and steel to start a fire.");
+                return { ok: false, error: "No tinderbox" };
+            }
+            const totalFirewood = actors.reduce((sum, a) => {
+                const it = a.items.find(i => {
+                    const n = i.name?.toLowerCase() ?? "";
+                    return n.includes("firewood") || n === "kindling";
+                });
+                return sum + (it?.system?.quantity ?? 0);
+            }, 0);
+            if (need > 0 && totalFirewood < need) {
+                ui.notifications.warn("Not enough firewood in the party for that fire size.");
+                return { ok: false, error: "Not enough wood" };
+            }
+            if (need > 0) {
+                const spend = await this._spendPartyFirewoodForMakeCamp(need, null);
+                if (!spend.ok) {
+                    ui.notifications.warn(spend.error ?? "Could not spend firewood.");
+                    return { ok: false, error: spend.error };
+                }
+            }
+        }
+
+        this._fireLevel = level;
+        this._campFirePreviewLevel = null;
+        const FIRE_ENCOUNTER_MOD = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL;
+        if (this._engine) {
+            this._engine.fireLevel = level;
+            this._engine.fireRollModifier = FIRE_ENCOUNTER_MOD[level] ?? 0;
+        }
+
+        await CampfireTokenLinker.setLightState(true, level);
+
+        const label = level.charAt(0).toUpperCase() + level.slice(1);
+        if (newCost > curCost && (newCost - curCost) > 0) {
+            ui.notifications.info(`${label} set. ${newCost - curCost} firewood spent from party stock.`);
+        } else if (newCost < curCost) {
+            ui.notifications.info(`${label} set.`);
+        } else {
+            ui.notifications.info(`${label} set.`);
+        }
+
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "phaseChanged",
+            phase: "activity",
+            phaseData: {
+                fireLevel: level,
+                fireLitBy: this._fireLitBy ?? null,
+                firewoodPledges: Array.from(this._firewoodPledges?.entries() ?? []),
+                selectedTerrain: this._selectedTerrain ?? null
+            }
+        });
+
+        await this._saveRestState();
+        this.render();
+        return { ok: true };
     }
 
     /**

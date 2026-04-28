@@ -15,96 +15,6 @@
     </div>
     {{/if}}
 
-    {{#if campGearAtFire}}
-    {{#if campGearAtFire.sceneHasDroppables}}
-    {{#unless campPersonalCard}}
-    <div class="station-camp-gear glass-ui" data-camp-gear-row="1">
-        <div class="station-camp-gear-title"><i class="fas fa-suitcase"></i> Personal camp</div>
-        <p class="station-camp-gear-hint">Drag onto the map within 3 squares of the fire.</p>
-        <div class="station-camp-gear-slots">
-            {{#if campGearAtFire.hasTent}}
-            {{#if campGearAtFire.canDragTent}}
-            <div class="camp-gear-placeable-wrap" draggable="true" data-drag-type="player-gear" data-gear-type="tent" data-actor-id="{{campGearAtFire.actorId}}">
-                <div class="gear-drag-handle gear-drag-handle-scene"><i class="fas fa-campground"></i> Tent</div>
-            </div>
-            {{/if}}
-            {{/if}}
-            {{#if campGearAtFire.hasBedroll}}
-            {{#if campGearAtFire.canDragBedroll}}
-            <div class="camp-gear-placeable-wrap" draggable="true" data-drag-type="player-gear" data-gear-type="bedroll" data-actor-id="{{campGearAtFire.actorId}}">
-                <div class="gear-drag-handle gear-drag-handle-scene"><i class="fas fa-bed"></i> Bedroll</div>
-            </div>
-            {{/if}}
-            {{/if}}
-            {{#if campGearAtFire.hasMessKit}}
-            {{#if campGearAtFire.canDragMessKit}}
-            <div class="camp-gear-mess-scene camp-gear-placeable-wrap" draggable="true" data-drag-type="player-gear" data-gear-type="messkit" data-actor-id="{{campGearAtFire.actorId}}">
-                <div class="gear-drag-handle gear-drag-handle-scene gear-drag-scene-mess"><i class="fas fa-utensils"></i> Mess kit</div>
-            </div>
-            {{/if}}
-            {{/if}}
-        </div>
-    </div>
-    {{/unless}}
-    {{/if}}
-    {{/if}}
-
-    {{#if campPersonalCard}}
-    <div class="station-personal-card glass-ui">
-        <div class="station-personal-header">
-            <span class="station-personal-comfort-label">{{actorName}}</span>
-            <span class="comfort-tier comfort-{{campPersonalCard.personalComfort}}">
-                {{campPersonalCard.personalComfortLabel}}
-            </span>
-        </div>
-        {{#if campPersonalCard.gearSlots.length}}
-        <div class="station-personal-gear-grid" data-camp-gear-row="1" data-station-personal-gear="1">
-            {{#each campPersonalCard.gearSlots}}
-            <div class="station-personal-gear-slot{{#if isMissing}} station-personal-gear-slot--missing{{/if}}{{#if canDrag}} station-personal-gear-slot--ready{{/if}}{{#if isPlaced}} station-personal-gear-slot--placed{{/if}}{{#if isReadonlyOwned}} station-personal-gear-slot--readonly{{/if}}">
-                <div class="station-personal-gear-slot-head">
-                    <i class="{{icon}}" aria-hidden="true"></i>
-                    <span class="station-personal-gear-slot-title">{{title}}</span>
-                </div>
-                {{#if isMissing}}
-                <p class="station-personal-gear-slot-line station-personal-gear-slot-missing">{{missingLine}}</p>
-                {{else}}
-                <p class="station-personal-gear-slot-line station-personal-gear-slot-benefit">{{benefitLine}}</p>
-                {{#if canDrag}}
-                <div class="camp-gear-placeable-wrap" draggable="true" data-drag-type="player-gear" data-gear-type="{{gearType}}" data-actor-id="{{actorId}}">
-                    <div class="gear-drag-handle gear-drag-handle-scene">
-                        <i class="fas fa-hand-paper"></i> Drag to map
-                    </div>
-                </div>
-                {{/if}}
-                {{#if isPlaced}}
-                <p class="station-personal-gear-slot-placed"><i class="fas fa-check"></i> Placed on map</p>
-                {{/if}}
-                {{#if isReadonlyOwned}}
-                <p class="station-personal-gear-slot-readonly">This character places their own gear</p>
-                {{/if}}
-                {{/if}}
-            </div>
-            {{/each}}
-        </div>
-        <p class="station-personal-footnote">Place within 3 squares of the campfire. Tokens cannot overlap.</p>
-        {{/if}}
-        <div class="station-personal-recovery">
-            <div class="recovery-line recovery-hp">
-                <i class="fas fa-heart"></i> {{campPersonalCard.recovery.hpLabel}}
-            </div>
-            <div class="recovery-line recovery-hd">
-                <i class="fas fa-dice-d6"></i> {{campPersonalCard.recovery.hdLabel}}
-            </div>
-            {{#if campPersonalCard.recovery.exhaustionDC}}
-            <div class="recovery-line recovery-exhaustion warning">
-                <i class="fas fa-exclamation-triangle"></i>
-                {{campPersonalCard.recovery.exhaustionLabel}}
-            </div>
-            {{/if}}
-        </div>
-    </div>
-    {{/if}}
-
     {{!-- ═══════════════════════════════════════════ DETAIL VIEW ═══════════════════════════════════════════ --}}
     {{#if (eq dialogState "detail")}}
     {{#if activityDetail}}
@@ -239,6 +149,142 @@
         </button>
         {{/each}}
     </div>
+    {{/if}}
+
+    {{#if (eq station.id "campfire")}}
+    {{#if (and showTabBar (eq stationPanelTab "fire") fireTabContext)}}
+    <div class="station-fire-tab glass-ui" data-station-fire-tab="1">
+        {{#if fireTabContext.campFireTabColdCamp}}
+        <p class="station-fire-cold-hint glass-ui"><i class="fas fa-moon"></i> Cold camp. The table chose no fire; change that from the main rest flow if the scene allows it.</p>
+        {{else}}
+        {{#if fireTabContext.campFireEncounterHint}}
+        <p class="station-fire-encounter-hint"><i class="fas fa-eye"></i> {{fireTabContext.campFireEncounterHint}}</p>
+        {{/if}}
+        {{#if fireTabContext.campFireTierCards.length}}
+        <div class="station-fire-tier-section">
+            <h4 class="station-fire-tier-heading">Fire levels</h4>
+            <div class="camp-fire-tier-strip station-campfire-tier-strip" role="list" aria-label="Fire intensity tiers">
+                {{#each fireTabContext.campFireTierCards}}
+                <div class="camp-fire-tier-card{{#if active}} active{{/if}}{{#if setDisabled}} camp-fire-tier-card--set-disabled{{/if}}" data-fire-level="{{id}}" role="listitem">
+                    <span class="camp-fire-tier-watermark" aria-hidden="true"><i class="fas fa-fire"></i></span>
+                    <span class="camp-fire-tier-label">{{label}}</span>
+                    <span class="camp-fire-tier-cost">({{costLabel}})</span>
+                    <span class="camp-fire-tier-body">{{body}}</span>
+                    <span class="camp-fire-tier-comfort{{#if comfortChanged}} comfort-changed{{/if}}">{{comfortHint}}</span>
+                    {{#if @root.isGmUser}}
+                    <div class="station-fire-set-row">
+                        {{#if active}}
+                        <span class="station-fire-current-label">Current</span>
+                        {{else}}
+                        <button type="button" class="station-fire-set-btn" data-action="setFireLevel" data-fire-level="{{id}}" {{#if setDisabled}}disabled title="Not enough firewood"{{/if}}>Set</button>
+                        {{/if}}
+                    </div>
+                    {{/if}}
+                </div>
+                {{/each}}
+            </div>
+            <p class="station-fire-tier-footnote">Larger fires add encounter risk. Bonfire can move camp comfort up one step when the scene allows it.</p>
+        </div>
+        {{/if}}
+        {{#if fireTabContext.campFirewoodPledgeList.length}}
+        <div class="station-fire-pledge-block">
+            <div class="station-fire-pledge-title">Wood pledged (Make Camp)</div>
+            {{#each fireTabContext.campFirewoodPledgeList}}<div class="camp-firewood-pledge-row"><i class="fas fa-check"></i> <span>{{actorName}}: {{count}} firewood</span></div>{{/each}}
+        </div>
+        {{/if}}
+        {{/if}}
+    </div>
+    {{else}}
+    {{#if campGearAtFire}}
+    {{#if campGearAtFire.sceneHasDroppables}}
+    {{#unless campPersonalCard}}
+    <div class="station-camp-gear glass-ui" data-camp-gear-row="1">
+        <div class="station-camp-gear-title"><i class="fas fa-suitcase"></i> Personal camp</div>
+        <p class="station-camp-gear-hint">Drag onto the map within 3 squares of the fire.</p>
+        <div class="station-camp-gear-slots">
+            {{#if campGearAtFire.hasTent}}
+            {{#if campGearAtFire.canDragTent}}
+            <div class="camp-gear-placeable-wrap" draggable="true" data-drag-type="player-gear" data-gear-type="tent" data-actor-id="{{campGearAtFire.actorId}}">
+                <div class="gear-drag-handle gear-drag-handle-scene"><i class="fas fa-campground"></i> Tent</div>
+            </div>
+            {{/if}}
+            {{/if}}
+            {{#if campGearAtFire.hasBedroll}}
+            {{#if campGearAtFire.canDragBedroll}}
+            <div class="camp-gear-placeable-wrap" draggable="true" data-drag-type="player-gear" data-gear-type="bedroll" data-actor-id="{{campGearAtFire.actorId}}">
+                <div class="gear-drag-handle gear-drag-handle-scene"><i class="fas fa-bed"></i> Bedroll</div>
+            </div>
+            {{/if}}
+            {{/if}}
+            {{#if campGearAtFire.hasMessKit}}
+            {{#if campGearAtFire.canDragMessKit}}
+            <div class="camp-gear-mess-scene camp-gear-placeable-wrap" draggable="true" data-drag-type="player-gear" data-gear-type="messkit" data-actor-id="{{campGearAtFire.actorId}}">
+                <div class="gear-drag-handle gear-drag-handle-scene gear-drag-scene-mess"><i class="fas fa-utensils"></i> Mess kit</div>
+            </div>
+            {{/if}}
+            {{/if}}
+        </div>
+    </div>
+    {{/unless}}
+    {{/if}}
+    {{/if}}
+
+    {{#if campPersonalCard}}
+    <div class="station-personal-card glass-ui">
+        <div class="station-personal-header">
+            <span class="station-personal-comfort-label">{{actorName}}</span>
+            <span class="comfort-tier comfort-{{campPersonalCard.personalComfort}}">
+                {{campPersonalCard.personalComfortLabel}}
+            </span>
+        </div>
+        {{#if campPersonalCard.gearSlots.length}}
+        <div class="station-personal-gear-grid" data-camp-gear-row="1" data-station-personal-gear="1">
+            {{#each campPersonalCard.gearSlots}}
+            <div class="station-personal-gear-slot{{#if isMissing}} station-personal-gear-slot--missing{{/if}}{{#if canDrag}} station-personal-gear-slot--ready{{/if}}{{#if isPlaced}} station-personal-gear-slot--placed{{/if}}{{#if isReadonlyOwned}} station-personal-gear-slot--readonly{{/if}}">
+                <div class="station-personal-gear-slot-head">
+                    <i class="{{icon}}" aria-hidden="true"></i>
+                    <span class="station-personal-gear-slot-title">{{title}}</span>
+                </div>
+                {{#if isMissing}}
+                <p class="station-personal-gear-slot-line station-personal-gear-slot-missing">{{missingLine}}</p>
+                {{else}}
+                <p class="station-personal-gear-slot-line station-personal-gear-slot-benefit">{{benefitLine}}</p>
+                {{#if canDrag}}
+                <div class="camp-gear-placeable-wrap" draggable="true" data-drag-type="player-gear" data-gear-type="{{gearType}}" data-actor-id="{{actorId}}">
+                    <div class="gear-drag-handle gear-drag-handle-scene">
+                        <i class="fas fa-hand-paper"></i> Drag to map
+                    </div>
+                </div>
+                {{/if}}
+                {{#if isPlaced}}
+                <p class="station-personal-gear-slot-placed"><i class="fas fa-check"></i> Placed on map</p>
+                {{/if}}
+                {{#if isReadonlyOwned}}
+                <p class="station-personal-gear-slot-readonly">This character places their own gear</p>
+                {{/if}}
+                {{/if}}
+            </div>
+            {{/each}}
+        </div>
+        <p class="station-personal-footnote">Place within 3 squares of the campfire. Tokens cannot overlap.</p>
+        {{/if}}
+        <div class="station-personal-recovery">
+            <div class="recovery-line recovery-hp">
+                <i class="fas fa-heart"></i> {{campPersonalCard.recovery.hpLabel}}
+            </div>
+            <div class="recovery-line recovery-hd">
+                <i class="fas fa-dice-d6"></i> {{campPersonalCard.recovery.hdLabel}}
+            </div>
+            {{#if campPersonalCard.recovery.exhaustionDC}}
+            <div class="recovery-line recovery-exhaustion warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                {{campPersonalCard.recovery.exhaustionLabel}}
+            </div>
+            {{/if}}
+        </div>
+    </div>
+    {{/if}}
+    {{/if}}
     {{/if}}
 
     {{!-- Single-list stations (no meal hub tabs) --}}

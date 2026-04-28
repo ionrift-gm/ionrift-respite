@@ -1447,6 +1447,112 @@
     color: rgba(160, 220, 140, 0.75);
 }
 
+/* Campfire station dialog: Fire tab (mid-rest tier review, GM Set) */
+.ionrift-station-dialog .station-fire-tab {
+    margin-top: 0.35rem;
+}
+
+.ionrift-station-dialog .station-fire-encounter-hint {
+    margin: 0 0 0.4rem;
+    font-size: 0.7rem;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.ionrift-station-dialog .station-fire-cold-hint {
+    margin: 0;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    color: rgba(200, 210, 255, 0.85);
+}
+
+.ionrift-station-dialog .station-fire-tier-section {
+    margin: 0 0 0.4rem;
+}
+
+.ionrift-station-dialog .station-fire-tier-heading {
+    margin: 0 0 0.35rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+}
+
+.ionrift-station-dialog .station-campfire-tier-strip {
+    gap: 0.35rem;
+    flex-direction: column;
+    align-items: stretch;
+    max-width: 100%;
+}
+
+.ionrift-station-dialog .station-campfire-tier-strip .camp-fire-tier-card {
+    min-width: 0;
+    max-width: none;
+}
+
+.ionrift-station-dialog .station-fire-set-row {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.3rem;
+}
+
+.ionrift-station-dialog .station-fire-set-btn {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.45rem;
+    border: 1px solid rgba(251, 191, 36, 0.45);
+    background: rgba(0, 0, 0, 0.35);
+    color: rgba(254, 243, 199, 0.95);
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+.ionrift-station-dialog .station-fire-set-btn:hover:not(:disabled) {
+    background: rgba(251, 191, 36, 0.15);
+}
+
+.ionrift-station-dialog .station-fire-set-btn:disabled,
+.ionrift-station-dialog .camp-fire-tier-card--set-disabled .station-fire-set-btn {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.ionrift-station-dialog .station-fire-current-label {
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: rgba(134, 239, 172, 0.9);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.ionrift-station-dialog .station-fire-tier-footnote {
+    margin: 0.35rem 0 0;
+    font-size: 0.58rem;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.38);
+}
+
+.ionrift-station-dialog .station-fire-pledge-block {
+    margin-top: 0.45rem;
+    padding: 0.35rem 0.4rem;
+    font-size: 0.64rem;
+    line-height: 1.3;
+    color: rgba(255, 255, 255, 0.5);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ionrift-station-dialog .station-fire-pledge-title {
+    font-weight: 600;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.42);
+    margin-bottom: 0.25rem;
+}
+
 .camp-fire-wait-pit {
     margin: 0.35rem 0 0;
     font-size: 0.65rem;
