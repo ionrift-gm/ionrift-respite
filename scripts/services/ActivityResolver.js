@@ -142,9 +142,43 @@ export class ActivityResolver {
             modifier = skillData?.total ?? skillData?.mod ?? 0;
             rollLabel = chosenSkillKey.toUpperCase();
         }
-        const roll = await new Roll(`1d20 + ${modifier}`).evaluate();
+        // Resolve advantageIf conditions from the activity check definition
+        let rollAdvantage = false;
+        if (activity.check.advantageIf?.length) {
+            for (const cond of activity.check.advantageIf) {
+                if (cond === "healer_kit") {
+                    const kit = actor.items?.find(i => i.name?.toLowerCase().includes("healer") && i.name?.toLowerCase().includes("kit"));
+                    if (kit && (kit.system?.quantity ?? kit.system?.uses?.value ?? 1) > 0) rollAdvantage = true;
+                }
+            }
+        }
+
+        const travelPenalty = typeof actor.getFlag === "function"
+            ? (actor.getFlag("ionrift-respite", "travelMishapPenalty") ?? null)
+            : null;
+
+        let rollFormula;
+        if (rollAdvantage && travelPenalty === "activity_disadvantage") {
+            rollFormula = `1d20 + ${modifier}`;
+        } else if (travelPenalty === "activity_disadvantage") {
+            rollFormula = `2d20kl + ${modifier}`;
+        } else if (rollAdvantage) {
+            rollFormula = `2d20kh + ${modifier}`;
+        } else {
+            rollFormula = `1d20 + ${modifier}`;
+        }
+
+        const hadTravelDis = travelPenalty === "activity_disadvantage";
+        const roll = await new Roll(rollFormula).evaluate();
+
+        if (hadTravelDis && activity.check) {
+            await actor.unsetFlag("ionrift-respite", "travelMishapPenalty");
+        }
 
         const total = roll.total;
+        const rollModNote = hadTravelDis
+            ? " (disadvantage)"
+            : (rollAdvantage ? " (advantage)" : "");
 
         // Determine outcome tier
         let resultTier;
@@ -157,11 +191,10 @@ export class ActivityResolver {
 
             // Hostile comfort: failure triggers complication
             if (comfort === "hostile" || comfort === "rough") {
-                // Whisper failure to player
                 const ownerIds = game.users.filter(u => actor.testUserPermission(u, "OWNER")).map(u => u.id);
                 await roll.toMessage({
                     speaker: ChatMessage.getSpeaker({ actor }),
-                    flavor: `<strong>${activity.name}</strong> (${rollLabel}) - DC ${adjustedDc}<br><em style="color:#e88;">Failed.</em> ${activity.outcomes.failure?.narrative ?? "The attempt fails."}`,
+                    flavor: `<strong>${activity.name}</strong> (${rollLabel}${rollModNote}) - DC ${adjustedDc}<br><em style="color:#e88;">Failed.</em> ${activity.outcomes.failure?.narrative ?? "The attempt fails."}`,
                     whisper: ownerIds
                 });
 
@@ -187,9 +220,103 @@ export class ActivityResolver {
         const ownerIds = game.users.filter(u => actor.testUserPermission(u, "OWNER") || u.isGM).map(u => u.id);
         await roll.toMessage({
             speaker: ChatMessage.getSpeaker({ actor }),
-            flavor: `<strong>${activity.name}</strong> (${rollLabel}) - DC ${adjustedDc}<br><em style="color:${tierColor};">${tierLabel}.</em> ${outcome.narrative ?? ""}`,
+            flavor: `<strong>${activity.name}</strong> (${rollLabel}${rollModNote}) - DC ${adjustedDc}<br><em style="color:${tierColor};">${tierLabel}.</em> ${outcome.narrative ?? ""}`,
             whisper: ownerIds
         });
+
+        // Tend Wounds: apply immediate HP to the target before encounters
+        if (activityId === "act_tend_wounds" && options.followUpValue) {
+            const target = game.actors.get(options.followUpValue);
+            if (target) {
+                const hp = target.system?.attributes?.hp;
+                const maxHp = hp?.max ?? 0;
+                const currentHp = hp?.value ?? 0;
+                const missing = maxHp - currentHp;
+
+                // Detect Healer's Kit and Healer feat on the tender
+                const healerKit = actor.items?.find(i =>
+                    i.name?.toLowerCase().includes("healer") && i.name?.toLowerCase().includes("kit")
+                );
+                const kitCharges = healerKit
+                    ? (healerKit.system?.uses?.value ?? healerKit.system?.quantity ?? 0)
+                    : 0;
+                const hasKit = !!healerKit && kitCharges > 0;
+                const hasHealerFeat = actor.items?.some(i =>
+                    i.type === "feat" && i.name?.toLowerCase() === "healer"
+                );
+
+                if (missing > 0) {
+                    let healed = 0;
+                    let healLabel = "";
+                    const chatParts = [];
+
+                    if (resultTier === "success" || resultTier === "exceptional") {
+                        if (hasHealerFeat && hasKit) {
+                            // Healer feat formula: 1d6 + 4 + target's total HD
+                            const targetLevel = target.system?.details?.level ?? target.system?.attributes?.hd?.max ?? 1;
+                            const healRoll = await new Roll(`1d6 + 4 + ${targetLevel}`).evaluate();
+                            healed = Math.min(Math.max(healRoll.total, 1), missing);
+                            healLabel = `1d6+4+${targetLevel} = ${healRoll.total}`;
+                            chatParts.push("Healer feat");
+                        } else {
+                            // Standard: target's largest HD + target's CON mod
+                            const classes = target.items.filter(i => i.type === "class");
+                            const bestClass = classes.sort((a, b) => {
+                                const aSize = parseInt((b.system?.hd?.denomination ?? b.system?.hitDice ?? "d8").replace("d", "")) || 8;
+                                const bSize = parseInt((a.system?.hd?.denomination ?? a.system?.hitDice ?? "d8").replace("d", "")) || 8;
+                                return aSize - bSize;
+                            })[0];
+                            const die = bestClass
+                                ? (bestClass.system?.hd?.denomination ?? bestClass.system?.hitDice ?? "d8")
+                                : "d8";
+                            const conMod = target.system?.abilities?.con?.mod ?? 0;
+
+                            if (hasKit) {
+                                // Kit bonus: roll an extra d4 on top
+                                const healRoll = await new Roll(`${die} + ${conMod} + 1d4`).evaluate();
+                                healed = Math.min(Math.max(healRoll.total, 1), missing);
+                                healLabel = `${die}+${conMod}+1d4 = ${healRoll.total}`;
+                                chatParts.push("Healer's Kit");
+                            } else {
+                                const healRoll = await new Roll(`${die} + ${conMod}`).evaluate();
+                                healed = Math.min(Math.max(healRoll.total, 1), missing);
+                                healLabel = `${die}+${conMod} = ${healRoll.total}`;
+                            }
+                        }
+                    } else {
+                        // Failure: tender's WIS mod (min 1), kit adds +2
+                        const wisMod = Math.max(1, actor.system?.abilities?.wis?.mod ?? 1);
+                        const kitBonus = hasKit ? 2 : 0;
+                        healed = Math.min(wisMod + kitBonus, missing);
+                        healLabel = hasKit ? `WIS ${wisMod} + kit 2` : `WIS mod (${wisMod})`;
+                        if (hasKit) chatParts.push("Healer's Kit");
+                    }
+
+                    // Spend one kit charge on any outcome (success or failure)
+                    if (hasKit && healerKit) {
+                        if (healerKit.system?.uses?.value != null) {
+                            await healerKit.update({ "system.uses.value": Math.max(0, kitCharges - 1) });
+                        } else if (healerKit.system?.quantity != null) {
+                            const newQty = Math.max(0, (healerKit.system.quantity ?? 1) - 1);
+                            if (newQty <= 0) await healerKit.delete();
+                            else await healerKit.update({ "system.quantity": newQty });
+                        }
+                        chatParts.push(`${kitCharges - 1} charges remaining`);
+                    }
+
+                    if (healed > 0) {
+                        await target.update({ "system.attributes.hp.value": currentHp + healed });
+                        const suffix = chatParts.length ? ` (${chatParts.join(", ")})` : "";
+                        const chatWhisper = game.users.filter(u => u.isGM || target.testUserPermission(u, "OWNER")).map(u => u.id);
+                        await ChatMessage.create({
+                            speaker: ChatMessage.getSpeaker({ actor }),
+                            content: `<div class="respite-recovery-chat"><strong>${actor.name}</strong> tends to <strong>${target.name}</strong>.<br>Immediate healing: <strong>${healed} HP</strong> (${healLabel})${suffix}.</div>`,
+                            whisper: chatWhisper
+                        });
+                    }
+                }
+            }
+        }
 
         // Resolve terrain-templated pool references and evaluate quantities
         const items = [];

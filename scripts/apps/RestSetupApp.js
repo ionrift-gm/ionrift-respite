@@ -337,7 +337,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             adjustGlobalDC: RestSetupApp.#onAdjustGlobalDC,
             requestTravelRolls: RestSetupApp.#onRequestTravelRolls,
             requestOtherRoll: RestSetupApp.#onRequestOtherRoll,
+            confirmTravelForPlayer: RestSetupApp.#onConfirmTravelForPlayer,
             rollTravelCheck: RestSetupApp.#onRollTravelCheck,
+            selfRollTravelCheck: RestSetupApp.#onSelfRollTravelCheck,
             rollTravelForPlayer: RestSetupApp.#onRollTravelForPlayer,
             lightCampfire: RestSetupApp.#onLightCampfire,
             campLightFire: RestSetupApp.#onCampLightFire,
@@ -526,6 +528,28 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             Hooks.on("deleteItem", this._inventoryHookHandler),
             Hooks.on("updateItem", this._inventoryHookHandler)
         ];
+    }
+
+    /**
+     * Rest flow engine (travel mishap encounter mods, recovery, etc.).
+     * @returns {import("../services/RestFlowEngine.js").RestFlowEngine|null}
+     */
+    getRestFlowEngine() {
+        return this._engine ?? null;
+    }
+
+    /**
+     * Forces "Other" camp activity for characters who lost their slot to a travel mishap.
+     */
+    _applyLoseActivityTravelLocks() {
+        if (this._phase !== "activity") return;
+        for (const actor of getPartyActors()) {
+            try {
+                if (actor.getFlag(MODULE_ID, "travelMishapPenalty") === "lose_activity") {
+                    this._characterChoices.set(actor.id, "act_other");
+                }
+            } catch { /* noop */ }
+        }
     }
 
     /**
@@ -1526,6 +1550,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             } else {
                 this._gmMinimizedToFooter = false;
                 if (options.resolved) {
+                    await this._clearRestState();
                     game.socket.emit(`module.${MODULE_ID}`, { type: "restResolved" });
                     clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
                     resetCampSession();
@@ -1785,6 +1810,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!this._expandedCards) this._expandedCards = new Set();
         if (!this._craftingInProgress) this._craftingInProgress = new Set();
         if (!this._shelterOverrides) this._shelterOverrides = {};
+
+        if (this._phase === "activity") {
+            this._applyLoseActivityTravelLocks();
+        }
 
         const partyActors = getPartyActors();
         const emptyParty = partyActors.length === 0;
@@ -2186,6 +2215,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 activityLabel = act?.name ?? null;
             }
 
+            const isBeddedDown = this._phase === "reflection"
+                && !this._nightWatchActorIds().has(c.id);
             return {
                 id: c.id,
                 name: c.name.split(" ")[0],  // First name only
@@ -2198,7 +2229,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 exhaustion: c.exhaustion,
                 pendingRoll,
                 rolledResult,
-                activityLabel
+                activityLabel,
+                isBeddedDown
             };
         });
 
@@ -2643,13 +2675,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         const confirmed = a.isOwner
                             ? !!(this._playerTravelConfirmed?.[day]?.[a.id])
                             : !!(syncedDecl[day]?._confirmed?.[a.id] ?? daySynced._confirmed?.[a.id]);
+                        const rolled = a.isOwner
+                            ? !!(this._playerTravelRolled?.[day]?.[a.id])
+                            : false;
+                        const forageDC = this._travelForageDC ?? 12;
+                        const huntDC = this._travelHuntDC ?? 14;
                         return {
                             id: a.id,
                             name: a.name,
                             img: a.img ?? "icons/svg/mystery-man.svg",
                             isOwner: a.isOwner,
                             confirmed,
+                            rolled,
                             lastActivity: lastLabel,
+                            showLastHint: !!(lastLabel && lastAct !== decl),
                             survivalMod: (() => {
                                 const sur = a.system?.skills?.sur?.total ?? 0;
                                 const nat = a.system?.skills?.nat?.total ?? 0;
@@ -2662,7 +2701,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                                 : decl === "scout" ? "fa-binoculars" : null,
                             declarationLabel: decl === "forage" ? "Forage"
                                 : decl === "hunt" ? "Hunt"
-                                : decl === "scout" ? "Scout" : null
+                                : decl === "scout" ? "Scout" : null,
+                            activityFlavor: decl === "forage"
+                                ? `Search for edible plants and fungi along the route. A strong roll yields exceptional finds. Survival, DC ${forageDC}.`
+                                : decl === "hunt"
+                                ? `Track and bring down game while travelling. Harder than foraging, but a good result means more food for the party. Survival, DC ${huntDC}.`
+                                : decl === "scout"
+                                ? `Survey the terrain on arrival to find a good campsite. Better scouting improves camp comfort and reduces the chance of a night encounter.`
+                                : `Travel without a specific task. Tend wounds, keep watch, or handle personal business. Let the GM know what you're up to.`
                         };
                     });
                     chars.sort((a, b) => (b.isOwner ? 1 : 0) - (a.isOwner ? 1 : 0));
@@ -2692,7 +2738,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     disabledReason,
                     terrainTag,
                     terrainLabel: terrain?.label ?? terrainTag,
-                    hasOwnedCharacters: partyActors.some(a => a.isOwner)
+                    hasOwnedCharacters: partyActors.some(a => a.isOwner),
+                    forageDC: this._travelForageDC ?? 12,
+                    huntDC: this._travelHuntDC ?? 14
                 };
             })(),
             pendingTravelRoll: this._pendingTravelRoll ? (() => {
@@ -3858,11 +3906,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         if (!this._playerTravelDeclarations[day]) this._playerTravelDeclarations[day] = {};
                         this._playerTravelDeclarations[day][actorId] = sel.value;
 
-                        // Unconfirm on change so player must re-confirm
+                        game.socket.emit(`module.${MODULE_ID}`, {
+                            type: "travelDeclaration",
+                            declarations: { [actorId]: sel.value },
+                            confirmed: false,
+                            day,
+                            userId: game.user.id
+                        });
+
                         if (this._playerTravelConfirmed?.[day]?.[actorId]) {
                             this._playerTravelConfirmed[day][actorId] = false;
-                            this.render();
                         }
+                        this.render();
                     });
                 });
 
@@ -5453,35 +5508,67 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Apply Incapacitated to party members not on Keep Watch, signalling
-     * the camp has bedded down. Uses party actors (not scene token scan) so
-     * effects apply reliably and sync to all clients.
+     * Status ids applied when the camp beds down for the night.
+     * Incapacitated is the overlay; prone adds the visual "down" posture.
+     */
+    _beddingStatusIds() {
+        const all = CONFIG.statusEffects ?? [];
+        const has = (id) => all.some(e => e.id === id);
+        const incap = has("incapacitated") ? "incapacitated" : (has("unconscious") ? "unconscious" : "incapacitated");
+        const statusIds = [incap];
+        if (has("prone")) statusIds.push("prone");
+        return statusIds;
+    }
+
+    /**
+     * Apply Incapacitated + Prone to party members not on Keep Watch,
+     * signalling the camp has bedded down for the night.
      */
     async _applyBeddingDown() {
         if (!game.user?.isGM) return;
-        const statusId = this._beddingStatusEffectId();
         const keepWatchIds = this._nightWatchActorIds();
+        const [primaryId, ...rest] = this._beddingStatusIds();
+        const scene = game.scenes?.active;
         for (const actor of getPartyActors()) {
             if (keepWatchIds.has(actor.id)) continue;
             try {
-                await actor.toggleStatusEffect(statusId, { active: true, overlay: true });
+                await actor.toggleStatusEffect(primaryId, { active: true, overlay: true });
+                for (const id of rest) {
+                    await actor.toggleStatusEffect(id, { active: true });
+                }
             } catch (err) {
-                console.warn(`[Respite] Could not apply ${statusId} to ${actor.name}:`, err);
+                console.warn(`[Respite] Could not apply sleep effects to ${actor.name}:`, err);
+            }
+            // Mark tokens on the active scene so the Zzz hook can render.
+            if (scene) {
+                const tokens = scene.tokens.filter(t => t.actor?.id === actor.id);
+                for (const td of tokens) {
+                    await td.setFlag(MODULE_ID, "beddingDown", true).catch(() => {});
+                }
             }
         }
     }
 
     /**
-     * Clear bedding-down status from the whole party before events.
+     * Clear Incapacitated + Prone from the whole party before events.
      */
     async _removeBeddingDown() {
         if (!game.user?.isGM) return;
-        const statusId = this._beddingStatusEffectId();
+        const statusIds = this._beddingStatusIds();
+        const scene = game.scenes?.active;
         for (const actor of getPartyActors()) {
-            try {
-                await actor.toggleStatusEffect(statusId, { active: false });
-            } catch (err) {
-                console.warn(`[Respite] Could not remove ${statusId} from ${actor.name}:`, err);
+            for (const id of statusIds) {
+                try {
+                    await actor.toggleStatusEffect(id, { active: false });
+                } catch (err) {
+                    console.warn(`[Respite] Could not remove ${id} from ${actor.name}:`, err);
+                }
+            }
+            if (scene) {
+                const tokens = scene.tokens.filter(t => t.actor?.id === actor.id);
+                for (const td of tokens) {
+                    await td.unsetFlag(MODULE_ID, "beddingDown").catch(() => {});
+                }
             }
         }
     }
@@ -5640,6 +5727,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         for (const [characterId, activityId] of this._characterChoices) {
             const followUpValue = this._gmFollowUps?.get(characterId) ?? this._getFollowUpForCharacter(characterId);
             this._engine.registerChoice(characterId, activityId, { followUpValue });
+            const actor = game.actors.get(characterId);
+            if (actor) {
+                try {
+                    const pen = actor.getFlag(MODULE_ID, "travelMishapPenalty");
+                    if (pen === "lose_activity") {
+                        await actor.unsetFlag(MODULE_ID, "travelMishapPenalty");
+                    } else if (pen === "activity_disadvantage" && activityId === "act_other") {
+                        await actor.unsetFlag(MODULE_ID, "travelMishapPenalty");
+                    }
+                } catch { /* noop */ }
+            }
         }
 
         // Short rest: skip reflection and events entirely
@@ -6056,6 +6154,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #onProceedToEvents(event, target) {
         await this._removeBeddingDown();
+
+        // Restore default window size and center on screen so the full events
+        // header is visible regardless of how the user moved the window.
+        const defaultWidth = RestSetupApp.DEFAULT_OPTIONS.position?.width ?? 720;
+        this.setPosition({
+            width: defaultWidth,
+            left: Math.max(8, Math.round((window.innerWidth - defaultWidth) / 2))
+        });
 
         // Apply fire level comfort modifications
         // Unlit: -1 comfort step | Embers: 0 | Campfire: 0 | Bonfire: +1 camp comfort
@@ -7228,7 +7334,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         SoundDelegate.stopAll();
         this._phase = "resolve";
-        this._clearRestState();
+        await this._clearRestState();
 
         // Auto re-equip doffed armor if no encounter occurred
         const reequippedArmor = new Map();
@@ -8943,6 +9049,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * GM marks a character's "Other" choice as confirmed (absent player, voice at table).
+     */
+    static #onConfirmTravelForPlayer(event, target) {
+        event.preventDefault?.();
+        if (!game.user.isGM) return;
+        const actorId = target.dataset.actorId;
+        const day = parseInt(target.dataset.day) || this._travel?.activeDay;
+        if (!actorId) return;
+        this._travel.setConfirmed(actorId, day, true);
+        this._broadcastTravelDeclarations();
+        this._saveRestState();
+        this.render();
+    }
+
+    /**
      * Player rolls their own travel check.
      */
     static async #onRollTravelCheck(event, target) {
@@ -9014,6 +9135,86 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Player self-initiates a travel roll without waiting for a GM request.
+     * Declaration is confirmed and roll result sent in one action.
+     */
+    static async #onSelfRollTravelCheck(event, target) {
+        event.preventDefault?.();
+        const actorId = target.dataset.actorId;
+        const day = parseInt(target.dataset.day) || (this._travelActiveDay ?? 1);
+        const activity = target.dataset.activity;
+        const dc = parseInt(target.dataset.dc) || 0;
+        if (!actorId || !activity) return;
+
+        const actor = game.actors.get(actorId);
+        if (!actor || !actor.isOwner) return;
+
+        if (this._playerTravelRolled?.[day]?.[actorId]) return;
+
+        // Confirm the declaration to the GM first
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "travelDeclaration",
+            declarations: { [actorId]: activity },
+            confirmed: true,
+            day,
+            userId: game.user.id
+        });
+
+        if (!this._playerTravelConfirmed) this._playerTravelConfirmed = {};
+        if (!this._playerTravelConfirmed[day]) this._playerTravelConfirmed[day] = {};
+        this._playerTravelConfirmed[day][actorId] = true;
+
+        let modifier, flavor;
+        if (activity === "scout") {
+            const prc = actor.system?.skills?.prc?.total ?? 0;
+            const sur = actor.system?.skills?.sur?.total ?? 0;
+            modifier = Math.max(prc, sur);
+            const skillLabel = prc >= sur ? "Perception" : "Survival";
+            flavor = `<strong>${actor.name}</strong> - Scout (${skillLabel})`;
+        } else {
+            const sur = actor.system?.skills?.sur?.total ?? 0;
+            const nat = actor.system?.skills?.nat?.total ?? 0;
+            modifier = Math.max(sur, nat);
+            const actLabel = activity === "forage" ? "Forage" : "Hunt";
+            flavor = `<strong>${actor.name}</strong> - ${actLabel} (Survival)${dc ? ` DC ${dc}` : ""}`;
+        }
+
+        target.disabled = true;
+        target.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
+
+        const roll = await new Roll(`1d20 + ${modifier}`).evaluate();
+        await roll.toMessage({
+            speaker: ChatMessage.getSpeaker({ actor }),
+            flavor
+        });
+
+        if (game.modules.get("dice-so-nice")?.active) {
+            await new Promise(resolve => {
+                const timeout = setTimeout(resolve, 5000);
+                Hooks.once("diceSoNiceRollComplete", () => {
+                    clearTimeout(timeout);
+                    resolve();
+                });
+            });
+        }
+
+        if (!this._playerTravelRolled) this._playerTravelRolled = {};
+        if (!this._playerTravelRolled[day]) this._playerTravelRolled[day] = {};
+        this._playerTravelRolled[day][actorId] = true;
+
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "travelRollResult",
+            actorId,
+            actorName: actor.name,
+            total: roll.total,
+            day
+        });
+
+        ui.notifications.info(`${actor.name} rolled ${roll.total}.`);
+        this.render();
+    }
+
+    /**
      * GM rolls a travel check on behalf of an absent player.
      */
     static async #onRollTravelForPlayer(event, target) {
@@ -9025,14 +9226,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const entry = this._travel._getEntry(day, actorId);
         if (!entry) return;
         if (entry.status !== "idle" && entry.status !== "requested") return;
-
-        // Auto-set custom DC from inline input for "Other" activities
-        if (entry.activity === "nothing" && !entry.customDC) {
-            const row = target.closest(".travel-other-inline");
-            const dcInput = row?.querySelector(".travel-other-dc-input");
-            const dc = parseInt(dcInput?.value) || 12;
-            this._travel.setOtherCustomDC(actorId, dc, "sur", day);
-        }
 
         if (entry.activity === "nothing" && !entry.customDC) return;
 
@@ -9081,8 +9274,32 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         });
 
-        this._saveRestState();
-        this.render();
+        const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
+        void (async () => {
+            try {
+                const row = await this._travel.resolveIndividualResult(data.actorId, day, terrainTag);
+                if (row) {
+                    const actor = game.actors.get(data.actorId);
+                    if (actor) {
+                        const ownerIds = Object.entries(actor.ownership ?? {})
+                            .filter(([id, level]) => id !== "default" && level >= 3)
+                            .map(([id]) => id);
+                        for (const uid of ownerIds) {
+                            game.socket.emit(`module.${MODULE_ID}`, {
+                                type: "travelIndividualDebrief",
+                                targetUserId: uid,
+                                result: row
+                            });
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("[Respite] resolveIndividualResult", e);
+            } finally {
+                await this._saveRestState();
+                this.render();
+            }
+        })();
     }
 
     /**
@@ -9112,14 +9329,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._applyScoutingFromTravel();
         }
 
-        // Build per-player private debrief data
+        // Build per-player private debrief data (excludes entries already sent via travelIndividualDebrief)
         const perPlayerResults = {};
+        const allTravelPlayerUserIds = new Set();
         for (const actor of partyActors) {
             const ownerIds = Object.entries(actor.ownership ?? {})
                 .filter(([id, level]) => level >= 3 && id !== "default")
                 .map(([id]) => id);
+            for (const uid of ownerIds) {
+                allTravelPlayerUserIds.add(uid);
+            }
             const debrief = this._travel.getPlayerDebrief(actor.id);
-            if (!debrief.length) continue;
             for (const uid of ownerIds) {
                 if (!perPlayerResults[uid]) perPlayerResults[uid] = [];
                 perPlayerResults[uid].push(...debrief);
@@ -9129,12 +9349,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const scoutingDebrief = this._travel.getScoutingDebrief(terrainTag);
         this._scoutingDebrief = scoutingDebrief;
 
-        // Send debrief to each player privately
-        for (const [userId, results] of Object.entries(perPlayerResults)) {
+        // Send debrief to each player with a character in the party (include empty `results` so flags still apply)
+        for (const userId of allTravelPlayerUserIds) {
             game.socket.emit(`module.${MODULE_ID}`, {
                 type: "travelDebrief",
                 targetUserId: userId,
-                results,
+                results: perPlayerResults[userId] ?? [],
                 scoutingDone: !!scoutingDebrief,
                 fullyResolved: this._travel.isFullyResolved()
             });
@@ -9250,7 +9470,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             declarations: allDayDeclarations,
             activeDay: this._travel.activeDay,
             totalDays: this._travel.totalDays,
-            scoutingAllowed: this._travel.scoutingAllowed
+            scoutingAllowed: this._travel.scoutingAllowed,
+            forageDC: this._travel.forageDC,
+            huntDC: this._travel.huntDC
         });
     }
 
@@ -9269,8 +9491,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 .map(([id]) => id);
             if (!owners.includes(data.userId)) continue;
             this._travel.setDeclaration(actorId, activity, day);
-            if (data.confirmed) {
+            if (data.confirmed === true) {
                 this._travel.setConfirmed(actorId, day, true);
+            } else if (data.confirmed === false) {
+                this._travel.setConfirmed(actorId, day, false);
             }
         }
 
@@ -9521,6 +9745,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._campFireWoodSpendUserId = null;
 
         this._phase = "activity";
+        this._applyLoseActivityTravelLocks();
         _logGmRestSheet("_advanceCampToActivity", "phase -> activity, closing window");
 
         await this.close({});

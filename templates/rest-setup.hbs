@@ -306,21 +306,28 @@
             {{#if isFinalDay}}
             {{#if ../travelContext.canScout}}
             <div class="travel-scout-notice">
-                <i class="fas fa-binoculars"></i> Arrival day. Characters can scout for a campsite.
+                <i class="fas fa-campground"></i> Arrival at this site. Scouting, rest, foraging, and making camp are all in play. Resolve the day below to see who did what.
             </div>
             {{/if}}
             {{/if}}
 
             <div class="travel-character-list">
                 {{#each characters}}
-                <div class="travel-character-row {{#if (eq status 'resolved')}}resolved{{/if}} {{#if confirmed}}player-confirmed{{/if}}">
+                <div class="travel-character-row {{#if (eq status 'resolved')}}resolved{{/if}} {{#if confirmed}}player-confirmed{{/if}} {{#if awaitingPlayerResponse}}row-awaiting{{/if}}">
                     <img class="travel-portrait" src="{{img}}" alt="{{name}}" />
                     <div class="travel-char-info">
-                        <span class="travel-char-name">{{name}}{{#if lastActivity}} <span class="travel-last-hint">[{{lastActivity}}]</span>{{/if}}{{#if confirmed}} <i class="fas fa-check travel-confirmed-icon" title="Player locked in"></i>{{/if}}</span>
+                        <span class="travel-char-name">{{name}}{{#if confirmed}}<span class="travel-confirmed-pick">{{#if (eq activity 'forage')}}<i class="fas fa-seedling"></i> Forage
+                        {{else if (eq activity 'hunt')}}<i class="fas fa-crosshairs"></i> Hunt
+                        {{else if (eq activity 'scout')}}<i class="fas fa-binoculars"></i> Scout
+                        {{else}}<span class="travel-other-emoji" aria-hidden="true">&#127969;</span> Other{{/if}} <i class="fas fa-check travel-confirmed-icon" title="Player locked in"></i></span>{{else}}<span class="travel-pending-pick" title="Not confirmed yet">{{#if (eq activity 'forage')}}<i class="fas fa-seedling"></i> Forage
+                        {{else if (eq activity 'hunt')}}<i class="fas fa-crosshairs"></i> Hunt
+                        {{else if (eq activity 'scout')}}<i class="fas fa-binoculars"></i> Scout
+                        {{else}}<span class="travel-other-emoji" aria-hidden="true">&#127969;</span> Other{{/if}}</span>{{/if}}</span>
                         <span class="travel-char-mod">Survival {{survivalMod}}</span>
                     </div>
 
                     {{#if result}}
+                    <div class="travel-gm-result-cell">
                     <div class="travel-result {{#if (eq result.activity 'other')}}other{{else if result.nat20}}nat20{{else if result.nat1}}nat1{{else if result.success}}success{{else if (eq result.activity 'scout')}}scout{{else}}failure{{/if}}">
                         {{#if (eq result.activity 'other')}}<i class="fas fa-dice-d20"></i> {{result.total}} vs DC {{result.dc}} {{#if result.success}}✓{{else}}✗{{/if}}
                         {{else if (eq result.activity 'scout')}}<i class="fas fa-binoculars"></i> Scouted ({{result.total}})
@@ -331,84 +338,103 @@
                         {{else}}<i class="fas fa-times"></i> Failed{{/if}}
                         {{#unless (eq result.activity 'scout')}}{{#unless (eq result.activity 'other')}}<span class="travel-roll-total">({{result.total}})</span>{{/unless}}{{/unless}}
                     </div>
+                    {{#if (eq result.activity 'forage')}}
+                    {{#if result.items.length}}
+                    <div class="travel-gm-yield-badges" aria-label="Foraged">
+                        {{#each result.items}}
+                        <span class="travel-item-badge travel-item-badge--forage"><i class="fas fa-leaf"></i> {{quantity}}x {{#if itemData.name}}{{itemData.name}}{{else}}{{itemRef}}{{/if}}</span>
+                        {{/each}}
+                    </div>
+                    {{else}}
+                    {{#unless result.success}}
+                    <div class="travel-gm-yield-nothing">Nothing found.</div>
+                    {{/unless}}
+                    {{/if}}
+                    {{/if}}
+                    {{#if (eq result.activity 'hunt')}}
+                    {{#if result.items.length}}
+                    <div class="travel-gm-yield-badges" aria-label="Hunted">
+                        {{#each result.items}}
+                        <span class="travel-item-badge travel-item-badge--hunt"><i class="fas fa-drumstick-bite"></i> {{quantity}}x {{#if itemData.name}}{{itemData.name}}{{else}}{{itemRef}}{{/if}}</span>
+                        {{/each}}
+                    </div>
+                    {{else}}
+                    {{#unless result.success}}
+                    <div class="travel-gm-yield-nothing">Nothing found.</div>
+                    {{/unless}}
+                    {{/if}}
+                    {{/if}}
+                    {{#if result.mishap}}
+                    <div class="travel-mishap--in-cell">
+                        <i class="fas fa-exclamation-triangle"></i> {{result.mishap.description}}
+                        {{#if result.mishap.appliedSummaries.length}}
+                        <div class="travel-mishap-effect-badges" aria-label="Applied effects">
+                            {{#each result.mishap.appliedSummaries}}
+                            <span class="travel-mishap-effect-badge">{{this}}</span>
+                            {{/each}}
+                        </div>
+                        {{/if}}
+                    </div>
+                    {{/if}}
+                    </div>
 
                     {{else if (eq status 'rolled')}}
                     <span class="travel-result success"><i class="fas fa-check"></i> Rolled {{total}}</span>
 
                     {{else if requested}}
+                    <div class="travel-gm-activity-pick">
                     <span class="travel-pending-label"><i class="fas fa-paper-plane"></i> Sent</span>
+                    {{#if awaitingPlayerResponse}}<span class="travel-player-await" title="Waiting for a roll"><i class="fas fa-circle-notch fa-spin"></i></span>{{/if}}
                     <button type="button" class="btn-roll-for-player travel-fallback" data-action="rollTravelForPlayer" data-actor-id="{{id}}" data-day="{{../day}}" title="Roll on their behalf">
                         <i class="fas fa-dice"></i>
                     </button>
+                    </div>
+
+                    {{else if otherLockedIn}}
+                    <div class="travel-gm-activity-pick travel-gm-other-locked">
+                        <span class="travel-gm-other-locked-label" title="Other, confirmed for this day"><span class="travel-other-emoji" aria-hidden="true">&#127969;</span> Other</span>
+                        <span class="travel-gm-confirmed-badge" title="Locked in as Other"><i class="fas fa-check"></i></span>
+                    </div>
 
                     {{else}}
-                    {{#if ../locked}}
-                    {{!-- Locked: show fixed label --}}
-                    <span class="travel-locked-label">
-                        {{#if (eq activity 'forage')}}<i class="fas fa-seedling"></i> Forage
-                        {{else if (eq activity 'hunt')}}<i class="fas fa-crosshairs"></i> Hunt
-                        {{else if (eq activity 'scout')}}<i class="fas fa-binoculars"></i> Scout
-                        {{else}}🏕️ Other{{/if}}
-                    </span>
-                    {{#if (eq activity 'nothing')}}
-                    <span class="travel-other-inline" data-actor-id="{{id}}" data-day="{{../day}}">
-                        {{#if hasCustomRoll}}
-                        <span class="travel-other-dc-badge">DC {{customDC}}</span>
-                        <button type="button" class="btn-roll-for-player travel-fallback" data-action="rollTravelForPlayer" data-actor-id="{{id}}" data-day="{{../day}}" title="Roll on their behalf">
-                            <i class="fas fa-dice"></i>
-                        </button>
-                        {{else}}
-                        <input type="number" class="travel-other-dc-input" value="12" min="1" max="30" title="Custom DC" />
-                        <button type="button" class="travel-other-send-btn" data-action="requestOtherRoll" data-actor-id="{{id}}" data-day="{{../day}}" title="Send roll request to player">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                        <button type="button" class="btn-roll-for-player travel-other-roll-btn" data-action="rollTravelForPlayer" data-actor-id="{{id}}" data-day="{{../day}}" title="Set DC and roll on their behalf">
-                            <i class="fas fa-dice"></i>
-                        </button>
-                        {{/if}}
-                    </span>
-                    {{/if}}
-                    {{else}}
+                    {{!-- Uncommitted: GM can change activities. Plain Other: Confirm until locked (see otherLockedIn). --}}
+                    <div class="travel-gm-activity-pick">
                     <select class="travel-activity-select" data-actor-id="{{id}}" data-day="{{../day}}">
                         <option value="nothing" {{#if (eq activity 'nothing')}}selected{{/if}}>🏕️ Other</option>
                         {{#if ../../travelContext.canForage}}<option value="forage" {{#if (eq activity 'forage')}}selected{{/if}}>🌿 Forage</option>{{/if}}
                         {{#if ../../travelContext.canHunt}}<option value="hunt" {{#if (eq activity 'hunt')}}selected{{/if}}>🎯 Hunt</option>{{/if}}
                         {{#if ../canScout}}<option value="scout" {{#if (eq activity 'scout')}}selected{{/if}}>🔭 Scout</option>{{/if}}
                     </select>
+                    {{#if awaitingPlayerResponse}}<span class="travel-player-await" title="Waiting for this character"><i class="fas fa-circle-notch fa-spin"></i></span>{{/if}}
+                    {{#if (eq activity 'nothing')}}
+                    <button type="button" class="travel-gm-confirm-for-btn" data-action="confirmTravelForPlayer" data-actor-id="{{id}}" data-day="{{../day}}" title="Confirm Other on their behalf (absent player)">
+                        <i class="fas fa-check"></i> Confirm
+                    </button>
+                    {{else}}
+                    <button type="button" class="btn-roll-for-player travel-gm-direct-roll" data-action="rollTravelForPlayer" data-actor-id="{{id}}" data-day="{{../day}}" title="Roll on their behalf (absent player)">
+                        <i class="fas fa-dice"></i>
+                    </button>
                     {{/if}}
+                    </div>
                     {{/if}}
                 </div>
-
-                {{#if result.items.length}}
-                <div class="travel-items-gained">
-                    {{#each result.items}}
-                    <span class="travel-item-badge"><i class="fas fa-leaf"></i> {{quantity}}x {{itemData.name}}</span>
-                    {{/each}}
-                </div>
-                {{/if}}
-
-                {{#if result.mishap}}
-                <div class="travel-mishap">
-                    <i class="fas fa-exclamation-triangle"></i> {{result.mishap.description}}
-                </div>
-                {{/if}}
                 {{/each}}
             </div>
 
-            {{!-- Day action bar --}}
-            <div class="respite-action-bar">
+            {{!-- Day action bar: Resolve always shown when day open; disabled until allRollsIn --}}
+            <div class="respite-action-bar travel-day-resolve-bar">
                 {{#if resolved}}
                 <span class="travel-day-resolved-label"><i class="fas fa-check"></i> Day {{day}} resolved</span>
-                {{else if allRollsIn}}
-                <button type="button" class="btn-primary" data-action="resolveTravelDay" data-day="{{day}}">
+                {{else}}
+                <div class="travel-resolve-day-wrap">
+                <button type="button" class="btn-primary travel-resolve-day-btn" data-action="resolveTravelDay" data-day="{{day}}"
+                    {{#unless allRollsIn}}disabled title="Unlocks when every party member has rolled or confirmed."{{/unless}}>
                     <i class="fas fa-check"></i> Resolve Day {{day}}
                 </button>
-                {{else if anyRequested}}
-                <span class="travel-waiting-label"><i class="fas fa-hourglass-half"></i> Waiting for rolls...</span>
-                {{else if hasDeclarations}}
-                <button type="button" class="btn-primary" data-action="requestTravelRolls" data-day="{{day}}">
-                    <i class="fas fa-dice-d20"></i> Send Roll Requests ({{declarationCount}})
-                </button>
+                {{#unless allRollsIn}}
+                <span class="travel-waiting-label travel-resolve-pending-hint"><i class="fas fa-hourglass-half"></i> Still pending</span>
+                {{/unless}}
+                </div>
                 {{/if}}
             </div>
         </div>
@@ -424,6 +450,7 @@
                 {{#if scoutingDebrief.comfortBonus}}<span class="scouting-effect">Comfort +{{scoutingDebrief.comfortBonus}}</span>{{/if}}
                 {{#if scoutingDebrief.encounterDC}}<span class="scouting-effect">Encounter DC +{{scoutingDebrief.encounterDC}}</span>{{/if}}
             </div>
+            <p class="travel-scouting-gm-advisory">Scouting results are for your eyes only. Describe the campsite to the table; do not reveal the tier or totals.</p>
 
             {{!-- Scout roster --}}
             <div class="travel-scout-roster {{#if scoutingDebrief.multipleScouts}}multi{{/if}}">
@@ -512,7 +539,7 @@
             {{#if travelScoutingDone}}
             <div class="travel-player-scout-summary">
                 <i class="fas fa-binoculars"></i>
-                <span>Scouts have found a campsite. The GM will describe what you see.</span>
+                <span>Your scouts have surveyed the area. The GM will describe the campsite before the party settles in.</span>
             </div>
             {{/if}}
 
@@ -569,13 +596,23 @@
                 {{!-- Owned characters: hero cards --}}
                 {{#each characters}}
                 {{#if isOwner}}
-                <div class="travel-hero-card {{#if confirmed}}confirmed{{/if}}">
+                <div class="travel-hero-card {{#if confirmed}}confirmed{{/if}} {{#if rolled}}rolled{{/if}}">
                     <img class="travel-hero-portrait" src="{{img}}" alt="{{name}}" />
                     <div class="travel-hero-info">
-                        <span class="travel-hero-name">{{name}}{{#if lastActivity}} <span class="travel-last-hint">[{{lastActivity}}]</span>{{/if}}</span>
-                        <span class="travel-char-mod">Survival {{survivalMod}}</span>
+                        <span class="travel-hero-name">{{name}}</span>
+                        <span class="travel-hero-meta">
+                            <span class="travel-hero-mod">{{survivalMod}} Survival</span>{{#if showLastHint}}<span class="travel-last-hint">Last: {{lastActivity}}</span>{{/if}}
+                        </span>
+                        {{#unless rolled}}{{#unless confirmed}}
+                        <span class="travel-activity-desc">{{activityFlavor}}</span>
+                        {{/unless}}{{/unless}}
                     </div>
-                    {{#if confirmed}}
+                    {{#if rolled}}
+                    <span class="travel-rolled-badge">
+                        <i class="fas fa-dice-d20"></i>
+                        {{#if (eq declaration 'forage')}}Foraging{{else if (eq declaration 'hunt')}}Hunting{{else if (eq declaration 'scout')}}Scouting{{else}}Other{{/if}}
+                    </span>
+                    {{else if confirmed}}
                     <span class="travel-confirmed-label">
                         {{#if (eq declaration 'forage')}}🌿 Forage
                         {{else if (eq declaration 'hunt')}}🎯 Hunt
@@ -590,9 +627,15 @@
                         {{#if ../../travelContext.canHunt}}<option value="hunt" {{#if (eq declaration 'hunt')}}selected{{/if}}>🎯 Hunt</option>{{/if}}
                         {{#if ../canScout}}<option value="scout" {{#if (eq declaration 'scout')}}selected{{/if}}>🔭 Scout</option>{{/if}}
                     </select>
+                    {{#if (eq declaration 'nothing')}}
                     <button type="button" class="travel-confirm-btn" data-actor-id="{{id}}" data-day="{{../day}}" title="Lock in choice">
                         <i class="fas fa-check"></i>
                     </button>
+                    {{else}}
+                    <button type="button" class="travel-self-roll-btn btn-primary" data-action="selfRollTravelCheck" data-actor-id="{{id}}" data-day="{{../day}}" data-activity="{{declaration}}" data-dc="{{#if (eq declaration 'hunt')}}{{../../travelContext.huntDC}}{{else if (eq declaration 'scout')}}0{{else}}{{../../travelContext.forageDC}}{{/if}}">
+                        <i class="fas fa-dice-d20"></i> Roll
+                    </button>
+                    {{/if}}
                     {{/if}}
                 </div>
                 {{/if}}
@@ -602,13 +645,20 @@
                 <div class="travel-party-grid">
                     {{#each characters}}
                     {{#unless isOwner}}
-                    <div class="travel-grid-card {{#if confirmed}}confirmed{{/if}}" title="{{name}}{{#if confirmed}}, locked in{{/if}}">
-                        <img class="travel-grid-portrait" src="{{img}}" alt="{{name}}" />
+                    <div class="travel-grid-card {{#if confirmed}}confirmed{{/if}} {{#if declarationIcon}}active{{/if}} {{#if (eq declaration 'nothing')}}active-other{{/if}}" title="{{name}}{{#if confirmed}}, locked in{{/if}}">
+                        <div class="travel-grid-portrait-wrap">
+                            <img class="travel-grid-portrait" src="{{img}}" alt="{{name}}" />
+                            {{#if confirmed}}<i class="fas fa-check travel-grid-confirmed-badge"></i>{{/if}}
+                        </div>
                         <span class="travel-grid-name">{{name}}</span>
-                        <span class="travel-grid-activity {{#unless declarationIcon}}idle{{/unless}}">
-                            {{#if confirmed}}<i class="fas fa-check travel-grid-confirmed-icon"></i>{{/if}}
-                            {{#if declarationIcon}}<i class="fas {{declarationIcon}}"></i>{{else}}🏕️{{/if}}
+                        <span class="travel-grid-activity{{#unless declarationIcon}}{{#if (eq declaration 'nothing')}} travel-activity-other{{else}} idle{{/if}}{{/unless}}">
+                            {{#if declarationIcon}}<i class="fas {{declarationIcon}}"></i>{{else}}<i class="fas fa-campground" title="Other"></i>{{/if}}
                         </span>
+                        {{#if declarationLabel}}
+                        <span class="travel-grid-label">{{declarationLabel}}</span>
+                        {{else}}
+                        <span class="travel-grid-label">Other</span>
+                        {{/if}}
                     </div>
                     {{/unless}}
                     {{/each}}
@@ -2444,7 +2494,7 @@
                 {{encounterBar.totalLabel}}
             </span>
             <div class="encounter-bar-tooltip" role="tooltip">
-                A d20 is rolled for the night check. Meet or beat this value for a quiet night (no event from this gate). Under that value, a camp event is drawn. A natural 1 is always the disaster fork. A higher value here means you need a higher d20, so a quiet night is harder to achieve. Shelter, weather, scouting, fire, and defenses shift this value.
+                Roll a d20. Meet or beat this value for a quiet night; fall short and a camp event is drawn. Natural 1 always triggers the disaster fork. Higher DC means a harder night. Shelter, fire, defenses, and scouting all shift this number.
             </div>
         </span>
         {{#if encounterBar.chips.length}}

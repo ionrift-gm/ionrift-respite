@@ -3252,8 +3252,16 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 .activity-phase-layout > .activity-phase-player-overview-wrap {
     overflow-y: visible;
     max-height: none;
-    flex: 0 1 auto;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
     padding: 0.65rem 0.85rem 1rem;
+}
+
+.activity-phase-player-overview-wrap .respite-action-bar {
+    margin-top: auto;
+    display: flex;
+    justify-content: flex-end;
 }
 
 .activity-phase-player-overview-wrap .player-overview-heading {
@@ -3451,6 +3459,22 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 .roster-chip.afk .roster-name {
     color: #fcd34d;
     font-weight: 600;
+}
+
+.roster-zzz {
+    position: absolute;
+    right: -6px;
+    top: -6px;
+    font-size: 0.6rem;
+    font-style: italic;
+    font-weight: 700;
+    color: #add8ff;
+    text-shadow:
+        0 0 6px rgba(100, 180, 255, 0.8),
+        0 1px 3px rgba(0, 0, 20, 0.9);
+    pointer-events: none;
+    line-height: 1;
+    letter-spacing: -0.02em;
 }
 
 /* Roster strip layout */
@@ -5079,7 +5103,7 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     margin-right: 0.25rem;
     width: 0.8rem;
     text-align: center;
-    color: #e74c3c;
+    color: rgba(255, 255, 255, 0.35);
 }
 
 .station-choice-review-bar {
@@ -7931,6 +7955,23 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 .ionrift-station-dialog .card-hint.faded-hint {
     color: rgba(252, 165, 165, 0.75);
+}
+
+.ionrift-station-dialog .activity-card.station-activity.non-viable {
+    opacity: 0.45;
+    cursor: default;
+    filter: grayscale(0.6);
+    border-style: dashed;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.ionrift-station-dialog .activity-card.station-activity.non-viable > i {
+    color: rgba(255, 255, 255, 0.25);
+}
+
+.ionrift-station-dialog .card-hint.non-viable-hint {
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
 }
 
 .station-no-activities {
@@ -14224,6 +14265,15 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     color: rgba(255, 80, 80, 0.7);
 }
 
+.travel-scouting-gm-advisory {
+    margin: 0.35rem 0 0.45rem;
+    padding: 0;
+    font-size: 0.62rem;
+    line-height: 1.35;
+    font-style: italic;
+    color: rgba(200, 205, 220, 0.45);
+}
+
 .scouting-effect {
     font-size: 0.6rem;
     padding: 0.1rem 0.3rem;
@@ -14361,13 +14411,17 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 .travel-hero-card {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.5rem;
     padding: 0.5rem;
     margin-bottom: 0.3rem;
     background: rgba(155, 89, 182, 0.06);
     border: 1px solid rgba(155, 89, 182, 0.12);
     border-radius: 6px;
+}
+
+.travel-hero-card .travel-hero-portrait {
+    margin-top: 0.1rem;
 }
 
 .travel-hero-portrait {
@@ -14394,13 +14448,39 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 .travel-hero-name {
     font-size: 0.76rem;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.85);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
+.travel-hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: nowrap;
+}
+
+.travel-hero-mod {
+    font-size: 0.64rem;
+    font-weight: 600;
+    color: rgba(170, 200, 240, 0.75);
+    white-space: nowrap;
+}
+
+.travel-activity-desc {
+    font-size: 0.6rem;
+    line-height: 1.4;
+    color: rgba(200, 200, 220, 0.5);
+    margin-top: 0.1rem;
+    white-space: normal;
+}
+
 /* ── Confirm button & confirmed label ── */
+
+.travel-confirm-btn, .travel-hero-card .travel-confirm-btn {
+    align-self: flex-start;
+}
 
 .travel-confirm-btn {
     flex-shrink: 0;
@@ -14441,20 +14521,83 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     font-size: 0.55rem;
 }
 
+.travel-rolled-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: rgba(180, 230, 255, 0.85);
+    background: rgba(80, 160, 220, 0.1);
+    border: 1px solid rgba(80, 160, 220, 0.25);
+    white-space: nowrap;
+}
+
+.travel-rolled-badge i {
+    font-size: 0.7rem;
+    color: rgba(120, 190, 255, 0.8);
+}
+
+.travel-hero-card.rolled {
+    border-left: 2px solid rgba(80, 160, 220, 0.4);
+    opacity: 0.85;
+}
+
+.travel-self-roll-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.7rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    align-self: flex-start;
+}
+
 .travel-confirmed-icon {
     color: rgba(100, 200, 100, 0.5);
     font-size: 0.5rem;
     margin-left: 0.2rem;
 }
 
-.travel-grid-confirmed-icon {
-    color: rgba(100, 200, 100, 0.5);
-    font-size: 0.45rem;
-    margin-right: 0.1rem;
+.travel-confirmed-pick {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: 0.25rem;
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: rgba(100, 200, 100, 0.95);
+}
+
+.travel-confirmed-pick .travel-confirmed-icon {
+    color: rgba(100, 200, 100, 0.9);
+    font-size: 0.58rem;
+    margin-left: 0;
+}
+
+.travel-pending-pick {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    margin-left: 0.25rem;
+    font-size: 0.58rem;
+    font-weight: 500;
+    color: rgba(220, 200, 160, 0.6);
+    font-style: italic;
+}
+
+.travel-other-emoji {
+    display: inline-block;
+    font-style: normal;
 }
 
 .travel-grid-card.confirmed {
-    border-color: rgba(100, 200, 100, 0.1);
+    border-color: rgba(100, 200, 100, 0.32);
+    box-shadow: 0 0 0 1px rgba(100, 200, 100, 0.1);
 }
 
 .travel-character-row.player-confirmed {
@@ -14465,57 +14608,140 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 .travel-party-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-    gap: 0.25rem;
-    margin-top: 0.3rem;
+    grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+    gap: 0.35rem;
+    margin-top: 0.45rem;
 }
 
 .travel-grid-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.15rem;
-    padding: 0.3rem 0.2rem;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    border-radius: 4px;
-    transition: border-color 0.15s;
+    gap: 0.2rem;
+    min-width: 5rem;
+    padding: 0.45rem 0.35rem 0.4rem;
+    background: rgba(20, 22, 28, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 2px solid rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .travel-grid-card:hover {
-    border-color: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.travel-grid-card.active {
+    border-left-color: rgba(160, 150, 220, 0.5);
+    background: rgba(150, 120, 200, 0.06);
+}
+
+.travel-grid-card.active-other {
+    border-left-color: rgba(200, 170, 120, 0.4);
+    background: rgba(200, 160, 100, 0.05);
+}
+
+.travel-grid-portrait-wrap {
+    position: relative;
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+.travel-grid-card.active .travel-grid-portrait {
+    box-shadow: 0 0 0 2px rgba(150, 130, 200, 0.35);
+}
+
+.travel-grid-card.active-other .travel-grid-portrait {
+    box-shadow: 0 0 0 2px rgba(200, 150, 90, 0.4);
 }
 
 .travel-grid-portrait {
-    width: 28px;
-    height: 28px;
+    width: 2.5rem;
+    height: 2.5rem;
     border-radius: 50%;
     object-fit: cover;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    display: block;
+}
+
+.travel-grid-confirmed-badge {
+    position: absolute;
+    right: -0.1rem;
+    bottom: -0.1rem;
+    width: 0.9rem;
+    height: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.5rem;
+    color: #fff;
+    background: rgba(50, 140, 80, 0.95);
+    border: 1.5px solid rgba(0, 0, 0, 0.35);
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
 }
 
 .travel-grid-name {
-    font-size: 0.55rem;
-    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.62);
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 80px;
+    max-width: 5.2rem;
 }
 
 .travel-grid-activity {
-    font-size: 0.55rem;
-    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.95rem;
+    line-height: 1.1;
+    min-height: 1.1rem;
+    color: rgba(255, 255, 255, 0.65);
 }
 
 .travel-grid-activity.idle {
-    opacity: 0.3;
+    opacity: 0.35;
 }
 
-.travel-grid-activity i.fa-seedling { color: rgba(100, 200, 100, 0.6); }
-.travel-grid-activity i.fa-crosshairs { color: rgba(255, 150, 50, 0.6); }
-.travel-grid-activity i.fa-binoculars { color: rgba(100, 180, 255, 0.6); }
+.travel-grid-activity.travel-activity-other i.fa-campground {
+    color: rgba(200, 170, 120, 0.9);
+    opacity: 1;
+}
+
+.travel-grid-activity i {
+    display: block;
+    text-align: center;
+}
+
+.travel-grid-activity i.fa-seedling { color: rgba(100, 220, 120, 0.95); }
+.travel-grid-activity i.fa-crosshairs { color: rgba(255, 150, 60, 0.95); }
+.travel-grid-activity i.fa-binoculars { color: rgba(100, 190, 255, 0.95); }
+
+.travel-grid-label {
+    display: block;
+    font-size: 0.58rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: center;
+    color: rgba(200, 210, 220, 0.7);
+    max-width: 5.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.travel-grid-label.idle {
+    text-transform: none;
+    font-weight: 500;
+    letter-spacing: normal;
+    color: rgba(150, 160, 175, 0.5);
+    font-size: 0.55rem;
+    font-style: italic;
+}
 
 /* ── Scout Roster in GM Debrief ── */
 
@@ -14614,10 +14840,13 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 }
 
 .travel-last-hint {
-    font-size: 0.6rem;
+    font-size: 0.56rem;
     font-weight: 400;
-    color: rgba(255, 255, 255, 0.25);
+    color: rgba(255, 255, 255, 0.28);
     font-style: italic;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    padding-left: 0.4rem;
+    white-space: nowrap;
 }
 
 .travel-dc-chip > i:first-child {
@@ -14656,6 +14885,44 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 .travel-character-row.resolved {
     border-color: rgba(155, 89, 182, 0.2);
+}
+
+.travel-character-row.row-awaiting {
+    border-left: 2px solid rgba(150, 120, 200, 0.3);
+}
+
+.travel-gm-activity-pick,
+.travel-locked-pick {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.travel-gm-other-locked {
+    min-height: 1.5rem;
+}
+
+.travel-gm-other-locked-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.75);
+    white-space: nowrap;
+}
+
+.travel-player-await {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.1rem;
+    height: 1.1rem;
+    color: rgba(180, 160, 230, 0.9);
+    font-size: 0.78rem;
+    flex-shrink: 0;
 }
 
 .travel-portrait {
@@ -14765,6 +15032,62 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 .travel-item-badge i {
     font-size: 0.55rem;
+}
+
+.travel-gm-result-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.3rem;
+    max-width: min(18rem, 100%);
+    flex-shrink: 0;
+}
+
+.travel-gm-yield-badges {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.25rem;
+}
+
+.travel-gm-yield-nothing {
+    font-size: 0.65rem;
+    color: rgba(200, 205, 220, 0.45);
+    font-style: italic;
+    text-align: right;
+}
+
+.travel-mishap--in-cell {
+    margin: 0;
+    padding: 0.2rem 0;
+    text-align: right;
+    max-width: 16rem;
+    font-size: 0.64rem;
+    color: rgba(244, 67, 54, 0.85);
+    font-style: italic;
+}
+
+.travel-mishap--in-cell i {
+    margin-right: 0.2rem;
+}
+
+.travel-mishap-effect-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    justify-content: flex-end;
+    margin-top: 0.25rem;
+}
+
+.travel-mishap-effect-badge {
+    display: inline-block;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.58rem;
+    font-style: normal;
+    color: rgba(230, 232, 240, 0.9);
+    background: rgba(155, 89, 182, 0.2);
+    border: 1px solid rgba(155, 89, 182, 0.35);
 }
 
 .travel-mishap {
@@ -14943,11 +15266,126 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     color: rgba(255, 255, 255, 0.8);
 }
 
+.travel-gm-direct-roll {
+    min-width: 1.9rem;
+    min-height: 1.5rem;
+    box-sizing: border-box;
+    padding: 0.18rem 0.35rem;
+    font-size: 0.65rem;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.12s, color 0.12s, background 0.12s, opacity 0.12s;
+}
+
+.travel-gm-direct-roll:hover {
+    border-color: rgba(155, 89, 182, 0.5);
+    color: rgba(200, 180, 255, 0.95);
+    background: rgba(155, 89, 182, 0.12);
+}
+
+.travel-gm-direct-roll:disabled,
+.travel-gm-direct-roll[disabled] {
+    opacity: 0.32;
+    cursor: not-allowed;
+    border-color: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.02);
+    color: rgba(255, 255, 255, 0.2);
+}
+
+.travel-gm-direct-roll:disabled:hover,
+.travel-gm-direct-roll[disabled]:hover {
+    border-color: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.02);
+    color: rgba(255, 255, 255, 0.2);
+}
+
+.travel-gm-confirm-for-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    min-width: 4.2rem;
+    min-height: 1.5rem;
+    box-sizing: border-box;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.6rem;
+    font-weight: 600;
+    border-radius: 3px;
+    border: 1px solid rgba(100, 200, 120, 0.35);
+    background: rgba(80, 160, 100, 0.12);
+    color: rgba(160, 230, 180, 0.9);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.12s, background 0.12s, color 0.12s;
+    white-space: nowrap;
+}
+
+.travel-gm-confirm-for-btn:hover {
+    border-color: rgba(120, 220, 150, 0.55);
+    background: rgba(80, 180, 110, 0.2);
+    color: rgba(200, 255, 220, 0.95);
+}
+
+.travel-gm-confirmed-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.5rem;
+    min-height: 1.5rem;
+    box-sizing: border-box;
+    border-radius: 3px;
+    border: 1px solid rgba(100, 200, 120, 0.3);
+    background: rgba(80, 160, 100, 0.1);
+    color: rgba(140, 220, 160, 0.85);
+    font-size: 0.7rem;
+    flex-shrink: 0;
+}
+
 /* GM: waiting label in action bar */
 .travel-waiting-label {
     font-size: 0.72rem;
     color: rgba(155, 89, 182, 0.6);
     font-style: italic;
+}
+
+.travel-day-resolve-bar {
+    align-items: center;
+}
+
+.travel-resolve-day-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.travel-resolve-pending-hint {
+    max-width: 12rem;
+    line-height: 1.3;
+    font-style: normal;
+    color: rgba(200, 205, 220, 0.5);
+}
+
+.respite-action-bar.travel-day-resolve-bar .travel-resolve-day-btn:disabled,
+.travel-day-resolve-bar .travel-resolve-day-btn:disabled {
+    pointer-events: none;
+    opacity: 0.42;
+    cursor: not-allowed;
+    filter: saturate(0.4) brightness(0.9);
+    transform: none;
+    box-shadow: none;
+}
+
+.respite-action-bar.travel-day-resolve-bar .travel-resolve-day-btn:disabled:hover,
+.travel-day-resolve-bar .travel-resolve-day-btn:disabled:hover {
+    background: var(--ionrift-accent, #9b59b6);
+    transform: none;
 }
 
 /* Player view */
@@ -15019,8 +15457,9 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 }
 
 .travel-player-select {
-    width: 110px;
+    width: 120px;
     flex-shrink: 0;
+    align-self: flex-start;
     padding: 0.25rem 0.4rem;
     font-size: 0.72rem;
     border-radius: 4px;
