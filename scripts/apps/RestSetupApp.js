@@ -82,7 +82,23 @@ import {
     showAfkPanel
 } from "../module.js";
 import * as RestAfkState from "../services/RestAfkState.js";
-import { emitRestStarted, emitRestSnapshot, emitPhaseChanged, emitRestPreparing, emitRestResolved, emitRestAbandoned, emitSubmissionUpdate, emitDetectMagicScanCleared, emitCampSceneCleared, emitCampGearPlaced, emitCampStationPlaced } from "../services/SocketController.js";
+import {
+    emitRestStarted, emitRestSnapshot, emitRestPreparing, emitRestResolved,
+    emitRestAbandoned, emitPhaseChanged, emitSubmissionUpdate,
+    emitActivityChoice, emitArmorToggle,
+    emitCampLightFire, emitCampFireLevelRequest,
+    emitCampFirewoodPledge, emitCampFirewoodReclaim,
+    emitCampGearPlace, emitCampGearPlaced, emitCampGearClearPlayer,
+    emitCampGearReclaim, emitCampStationPlace, emitCampStationPlaced,
+    emitCampStationReclaim, emitCampSceneCleared, emitCampRollResult,
+    emitDetectMagicScanBroadcast, emitDetectMagicScanCleared,
+    emitEventRollRequest, emitEventRollResult,
+    emitTreeRollRequest, emitTreeRollResult,
+    emitTravelDeclaration, emitTravelDeclarationsSync,
+    emitTravelRollRequest, emitTravelRollResult,
+    emitTravelDebrief, emitTravelIndividualDebrief,
+    emitCopySpellProposal
+} from "../services/SocketController.js";
 
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -3302,8 +3318,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     this._doffedArmor.set(actorId, itemId);
                 }
 
-                game.socket.emit(`module.${MODULE_ID}`, {
-                    type: "armorToggle",
+                emitArmorToggle({
                     actorId,
                     itemId,
                     isDoffed: !isDoffed
@@ -3893,13 +3908,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         if (!this._playerTravelDeclarations[day]) this._playerTravelDeclarations[day] = {};
                         this._playerTravelDeclarations[day][actorId] = sel.value;
 
-                        game.socket.emit(`module.${MODULE_ID}`, {
-                            type: "travelDeclaration",
-                            declarations: { [actorId]: sel.value },
-                            confirmed: false,
-                            day,
-                            userId: game.user.id
-                        });
+                        emitTravelDeclaration({
+                    declarations: { [actorId]: sel.value },
+                    confirmed: false,
+                    day,
+                    userId: game.user.id
+                });
 
                         if (this._playerTravelConfirmed?.[day]?.[actorId]) {
                             this._playerTravelConfirmed[day][actorId] = false;
@@ -3918,13 +3932,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         this._playerTravelConfirmed[day][actorId] = true;
 
                         const activity = this._playerTravelDeclarations?.[day]?.[actorId] ?? "nothing";
-                        game.socket.emit(`module.${MODULE_ID}`, {
-                            type: "travelDeclaration",
-                            declarations: { [actorId]: activity },
-                            confirmed: true,
-                            day,
-                            userId: game.user.id
-                        });
+                        emitTravelDeclaration({
+                    declarations: { [actorId]: activity },
+                    confirmed: true,
+                    day,
+                    userId: game.user.id
+                });
                         this.render();
                     });
                 });
@@ -4162,15 +4175,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         CopySpellHandler.sendProposal(characterId, spellLevel);
                     } else {
                         // Player initiated: notify GM
-                        game.socket.emit(`module.${MODULE_ID}`, {
-                            type: "copySpellProposal",
-                            actorId: characterId,
-                            actorName: actor.name,
-                            spellLevel,
-                            cost,
-                            dc,
-                            initiatedBy: game.user.name
-                        });
+                        emitCopySpellProposal({
+                    actorId: characterId,
+                    actorName: actor.name,
+                    spellLevel,
+                    cost,
+                    dc,
+                    initiatedBy: game.user.name
+                });
                     }
 
                     this._earlyResults.set(characterId, {
@@ -4201,8 +4213,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 mySub.choices[characterId] = activityId;
                 this._playerSubmissions.set(game.user.id, mySub);
 
-                game.socket.emit(`module.${MODULE_ID}`, {
-                    type: "activityChoice",
+                emitActivityChoice({
                     userId: game.user.id,
                     choices: Object.fromEntries(this._characterChoices)
                 });
@@ -4400,13 +4411,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         pending.rolledCharacters.add(characterId);
 
         // Send result to GM
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "campRollResult",
-            characterId,
-            characterName: actor.name,
-            activityId: activityEntry.activityId,
-            total
-        });
+        emitCampRollResult({
+                    characterId,
+                    characterName: actor.name,
+                    activityId: activityEntry.activityId,
+                    total
+                });
 
         ui.notifications.info(`${actor.name} rolled ${total} for ${activityEntry.activityName}.`);
         this.render();
@@ -4448,10 +4458,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Mark as requested so controls disable and snapshot only sends released entries
         entry.requested = true;
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "events",
-            phaseData: {
+        emitPhaseChanged("events", {
                 eventsRolled: this._eventsRolled ?? false,
                 fireLevel: this._fireLevel,
                 campStatus: this._campStatus,
@@ -4467,8 +4474,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         total: entry.total
                     }]
                 }
-            }
-        });
+            });
 
         ui.notifications.info(`Roll request sent to ${entry.characterName} for ${entry.activityName}.`);
         this.render();
@@ -4521,10 +4527,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const allDone = this._pendingCampRolls.every(p => p.status !== "pending");
 
         // Broadcast updated state to players
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "events",
-            phaseData: {
+        emitPhaseChanged("events", {
                 eventsRolled: this._eventsRolled ?? false,
                 fireLevel: this._fireLevel,
                 campStatus: this._campStatus,
@@ -4536,8 +4539,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     narrative: p.narrative ?? "",
                     effectDescriptions: p.effectDescriptions ?? []
                 }))
-            }
-        });
+            });
 
         this.render();
     }
@@ -4586,27 +4588,22 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const skillName = RestSetupApp.SKILL_NAMES[skill] ?? skill;
 
             // Broadcast roll request to players
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "eventRollRequest",
-                eventIndex,
-                skill: skillKey,
-                skillName,
-                dc,
-                targets: pendingRolls,
-                eventTitle: triggeredEvent.title ?? "Event"
-            });
+            emitEventRollRequest({
+                    eventIndex,
+                    skill: skillKey,
+                    skillName,
+                    dc,
+                    targets: pendingRolls,
+                    eventTitle: triggeredEvent.title ?? "Event"
+                });
 
             // Also broadcast the updated event state so players see the pending UI
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "phaseChanged",
-                phase: "events",
-                phaseData: {
+            emitPhaseChanged("events", {
                     triggeredEvents: this._triggeredEvents,
                     activeTreeState: this._activeTreeState,
                     eventsRolled: true,
                     campStatus: this._campStatus
-                }
-            });
+                });
 
             await this._saveRestState();
             this.render();
@@ -4617,16 +4614,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         triggeredEvent.resolvedOutcome = outcome;
 
         // Broadcast to players
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "events",
-            phaseData: {
+        emitPhaseChanged("events", {
                 triggeredEvents: this._triggeredEvents,
                 activeTreeState: this._activeTreeState,
                 eventsRolled: true,
                 campStatus: this._campStatus
-            }
-        });
+            });
 
         await this._saveRestState();
         this.render();
@@ -4708,16 +4701,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Broadcast updated state to all players (partial or complete)
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "events",
-            phaseData: {
+        emitPhaseChanged("events", {
                 triggeredEvents: this._triggeredEvents,
                 activeTreeState: this._activeTreeState,
                 eventsRolled: true,
                 campStatus: this._campStatus
-            }
-        });
+            });
 
         this._saveRestState();
         this.render();
@@ -4790,12 +4779,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             pending.rolledCharacters.add(characterId);
             if (!pending.rolledResults) pending.rolledResults = new Map();
             pending.rolledResults.set(characterId, { total, passed: rollMode === "force-pass" });
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "treeRollResult",
-                characterId,
-                characterName: actor.name,
-                total
-            });
+            emitTreeRollResult({
+                    characterId,
+                    characterName: actor.name,
+                    total
+                });
             ui.notifications.info(`${actor.name}: ${rollMode === "force-pass" ? "Auto-success" : "Auto-fail"} applied.`);
             this.render();
             return;
@@ -4813,12 +4801,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         pending.rolledResults.set(characterId, { total, passed: total >= dc });
 
         // Send result to GM
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "treeRollResult",
-            characterId,
-            characterName: actor.name,
-            total
-        });
+        emitTreeRollResult({
+                    characterId,
+                    characterName: actor.name,
+                    total
+                });
 
         ui.notifications.info(`${actor.name} rolled ${total} for ${pending.skillName}.`);
         this.render();
@@ -4970,16 +4957,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     sel.className = sel.className.replace(/roll-mode--\S+/, "") + ` roll-mode--${mode}`;
 
                     // Broadcast updated rollModes to players
-                    game.socket.emit(`module.${MODULE_ID}`, {
-                        type: "phaseChanged",
-                        phase: "events",
-                        phaseData: {
+                    emitPhaseChanged("events", {
                             triggeredEvents: this._triggeredEvents,
                             activeTreeState: this._activeTreeState,
                             eventsRolled: true,
                             campStatus: this._campStatus
-                        }
-                    });
+                        });
                 });
             }
         }
@@ -5038,13 +5021,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         pending.rolledCharacters.add(characterId);
 
         // Send result to GM
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "eventRollResult",
-            eventIndex: pending.eventIndex,
-            characterId,
-            characterName: actor.name,
-            total
-        });
+        emitEventRollResult({
+                    eventIndex: pending.eventIndex,
+                    characterId,
+                    characterName: actor.name,
+                    total
+                });
 
         ui.notifications.info(`${actor.name} rolled ${total} for ${pending.skillName}.`);
         this.render();
@@ -5209,10 +5191,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         setActiveRestData(restPayload);
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "restStarted",
-            restData: restPayload
-        });
+        emitRestStarted({
+                    restData: restPayload
+                });
 
         ui.notifications.info("Rest phase started. Activity pickers sent to all players.");
 
@@ -5224,15 +5205,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._travel.scoutingAllowed = this._scoutingAllowed ?? true;
 
             setTimeout(() => {
-                game.socket.emit(`module.${MODULE_ID}`, {
-                    type: "phaseChanged",
-                    phase: "travel",
-                    phaseData: {
+                emitPhaseChanged("travel", {
                         selectedTerrain: this._selectedTerrain ?? "forest",
                         travelDays: this._travel.totalDays,
                         scoutingAllowed: this._travel.scoutingAllowed
-                    }
-                });
+                    });
                 this._broadcastTravelDeclarations();
             }, 200);
         } else {
@@ -5284,10 +5261,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const act = this._activities?.find(a => a.id === actId);
             submissions[charId] = { activityId: actId, activityName: act?.name ?? actId, source: this._gmOverrides.has(charId) ? "gm" : "player" };
         }
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "submissionUpdate",
-            submissions
-        });
+        emitSubmissionUpdate({
+                    submissions
+                });
     }
 
     /**
@@ -5404,7 +5380,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     source: this._gmOverrides.has(charId) ? "gm" : "player"
                 };
             }
-            game.socket.emit(`module.${MODULE_ID}`, { type: "submissionUpdate", submissions });
+            emitSubmissionUpdate(submissions);
         } else {
             // Player: submit + lock
             this._characterChoices.set(characterId, activityId);
@@ -5421,8 +5397,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const cost = spellLevel * 50;
                 const dc = 10 + spellLevel;
 
-                game.socket.emit(`module.${MODULE_ID}`, {
-                    type: "copySpellProposal",
+                emitCopySpellProposal({
                     actorId: characterId,
                     actorName: actor?.name ?? "Unknown",
                     spellLevel,
@@ -5446,11 +5421,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (actor) ui.notifications.info(`${actor.name}'s activity submitted.`);
             }
 
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "activityChoice",
-                userId: game.user.id,
-                choices: Object.fromEntries(this._characterChoices)
-            });
+            emitActivityChoice({
+                    userId: game.user.id,
+                    choices: Object.fromEntries(this._characterChoices)
+                });
             this._saveRestState();
         }
 
@@ -5748,15 +5722,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Broadcast phase change to players
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: this._phase,
-            phaseData: {
+        emitPhaseChanged(this._phase, {
                 campStatus: this._campStatus,
                 daysSinceLastRest: this._daysSinceLastRest ?? 1,
                 selectedTerrain: this._selectedTerrain ?? "forest"
-            }
-        });
+            });
 
         await this._saveRestState();
         this.render();
@@ -5834,11 +5804,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Sync to players
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "reflection",
-            phaseData: { fireLevel: level }
-        });
+        emitPhaseChanged("reflection", { fireLevel: level });
 
         this.render();
     }
@@ -6240,15 +6206,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         await this._saveRestState();
 
         // Broadcast phase change (camp roll requests are sent individually via GM "request roll" button)
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "events",
-            phaseData: {
+        emitPhaseChanged("events", {
                 eventsRolled: false,
                 fireLevel: this._fireLevel,
                 campStatus: this._campStatus
-            }
-        });
+            });
 
         this.render();
     }
@@ -6335,15 +6297,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Broadcast results to players
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "events",
-            phaseData: {
+        emitPhaseChanged("events", {
                 triggeredEvents: this._triggeredEvents,
                 activeTreeState: this._activeTreeState,
                 eventsRolled: true
-            }
-        });
+            });
 
         await this._saveRestState();
         this.render();
@@ -6361,16 +6319,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         await this._saveRestState();
 
         // Broadcast to players
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "events",
-            phaseData: {
+        emitPhaseChanged("events", {
                 triggeredEvents: this._triggeredEvents,
                 activeTreeState: this._activeTreeState,
                 eventsRolled: true,
                 awaitingCombat: true
-            }
-        });
+            });
 
         ui.notifications.info("Set up and run the encounter. Reopen Respite and click 'Combat Complete' when done.");
 
@@ -6388,16 +6342,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         await this._saveRestState();
 
         // Broadcast to players
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "events",
-            phaseData: {
+        emitPhaseChanged("events", {
                 triggeredEvents: this._triggeredEvents,
                 activeTreeState: this._activeTreeState,
                 eventsRolled: true,
                 awaitingCombat: false
-            }
-        });
+            });
 
         this.render();
     }
@@ -6478,7 +6428,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._clearDetectMagicScanSession({ skipSave: true });
 
         // Broadcast to players so they close their windows
-        game.socket.emit(`module.${MODULE_ID}`, { type: "restAbandoned" });
+        emitRestAbandoned();
 
         // Clean up camp tokens from the scene
         clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
@@ -6562,15 +6512,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Broadcast results to players
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "events",
-            phaseData: {
+        emitPhaseChanged("events", {
                 triggeredEvents: this._triggeredEvents,
                 activeTreeState: this._activeTreeState,
                 eventsRolled: true
-            }
-        });
+            });
 
         await this._saveRestState();
         this.render();
@@ -6625,28 +6571,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._activeTreeState.rollRequestSent = true;
 
         // Broadcast roll request to players
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "treeRollRequest",
-            choiceId: this._activeTreeState.pendingChoice,
-            skills: this._activeTreeState.pendingCheck?.skills ?? [],
-            skillName: this._activeTreeState.pendingSkillName ?? "Skill",
-            dc: this._activeTreeState.pendingDC ?? 12,
-            targets: this._activeTreeState.pendingRolls ?? [],
-            eventName: this._activeTreeState.eventName,
-            rollModes: this._activeTreeState.pendingRollModes ?? {}
-        });
+        emitTreeRollRequest({
+                    choiceId: this._activeTreeState.pendingChoice,
+                    skills: this._activeTreeState.pendingCheck?.skills ?? [],
+                    skillName: this._activeTreeState.pendingSkillName ?? "Skill",
+                    dc: this._activeTreeState.pendingDC ?? 12,
+                    targets: this._activeTreeState.pendingRolls ?? [],
+                    eventName: this._activeTreeState.eventName,
+                    rollModes: this._activeTreeState.pendingRollModes ?? {}
+                });
 
         // Broadcast updated tree state so players see roll buttons
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "events",
-            phaseData: {
+        emitPhaseChanged("events", {
                 triggeredEvents: this._triggeredEvents,
                 activeTreeState: this._activeTreeState,
                 eventsRolled: true,
                 campStatus: this._campStatus
-            }
-        });
+            });
 
         await this._saveRestState();
         this.render();
@@ -6710,16 +6651,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Broadcast updated state to all players
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "events",
-            phaseData: {
+        emitPhaseChanged("events", {
                 triggeredEvents: this._triggeredEvents,
                 activeTreeState: this._activeTreeState,
                 eventsRolled: true,
                 campStatus: this._campStatus
-            }
-        });
+            });
 
         await this._saveRestState();
         this.render();
@@ -6769,16 +6706,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!game.user.isGM) return;
         if (!this._activeTreeState?.awaitingRolls) return;
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "treeRollRequest",
-            choiceId: this._activeTreeState.pendingChoice,
-            skills: this._activeTreeState.pendingCheck?.skills ?? [],
-            skillName: this._activeTreeState.pendingSkillName ?? "Skill",
-            dc: this._activeTreeState.pendingDC ?? 12,
-            targets: this._activeTreeState.pendingRolls ?? [],
-            eventName: this._activeTreeState.eventName,
-            rollModes: this._activeTreeState.pendingRollModes ?? {}
-        });
+        emitTreeRollRequest({
+                    choiceId: this._activeTreeState.pendingChoice,
+                    skills: this._activeTreeState.pendingCheck?.skills ?? [],
+                    skillName: this._activeTreeState.pendingSkillName ?? "Skill",
+                    dc: this._activeTreeState.pendingDC ?? 12,
+                    targets: this._activeTreeState.pendingRolls ?? [],
+                    eventName: this._activeTreeState.eventName,
+                    rollModes: this._activeTreeState.pendingRollModes ?? {}
+                });
 
         ui.notifications.info("Tree roll request re-sent to players.");
     }
@@ -6800,16 +6736,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._activeTreeState.pendingRollModes[characterId] = CYCLE[current] ?? "normal";
 
         // Push updated rollModes to players so their badge refreshes live
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "events",
-            phaseData: {
+        emitPhaseChanged("events", {
                 triggeredEvents: this._triggeredEvents,
                 activeTreeState: this._activeTreeState,
                 eventsRolled: true,
                 campStatus: this._campStatus
-            }
-        });
+            });
 
         this.render();
     }
@@ -7493,18 +7425,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         await CalendarHandler.recordRestDate();
 
         // Broadcast phase change to players with outcome data
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "resolve",
-            phaseData: {
+        emitPhaseChanged("resolve", {
                 outcomes: this._outcomes.map(o => ({
                     characterId: o.characterId,
                     characterName: o.characterName,
                     outcomes: o.outcomes,
                     recovery: o.recovery
                 }))
-            }
-        });
+            });
 
         // Mark rest as applied so close guard doesn't fire
         this._restApplied = true;
@@ -7599,10 +7527,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const act = this._activities?.find(a => a.id === actId);
             submissions[charId] = { activityId: actId, activityName: act?.name ?? actId, source: "gm" };
         }
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "submissionUpdate",
-            submissions
-        });
+        emitSubmissionUpdate({
+                    submissions
+                });
     }
 
     /**
@@ -7646,11 +7573,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._rebuildCharacterChoices();
         this._pruneEarlyResultsWithoutChoice();
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "activityChoice",
-            userId: game.user.id,
-            choices: Object.fromEntries(this._characterChoices)
-        });
+        emitActivityChoice({
+                    userId: game.user.id,
+                    choices: Object.fromEntries(this._characterChoices)
+                });
 
         resetStationOverlaysLocal();
         if (isStationLayerActive()) {
@@ -7696,8 +7622,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (game.user.isGM) {
                 CopySpellHandler.sendProposal(characterId, spellLevel);
             } else {
-                game.socket.emit(`module.${MODULE_ID}`, {
-                    type: "copySpellProposal",
+                emitCopySpellProposal({
                     actorId: characterId,
                     actorName: actor.name,
                     spellLevel,
@@ -7735,11 +7660,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._playerSubmissions.set(game.user.id, mySub);
         this._saveRestState();
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "activityChoice",
-            userId: game.user.id,
-            choices: Object.fromEntries(this._characterChoices)
-        });
+        emitActivityChoice({
+                    userId: game.user.id,
+                    choices: Object.fromEntries(this._characterChoices)
+                });
 
         const actName = activity?.name ?? activityId;
         ui.notifications.info(`${game.actors.get(characterId)?.name ?? "Character"} will ${actName}.`);
@@ -8243,7 +8167,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._workbenchIdentifyAcknowledge?.clear();
         notifyDetectMagicScanCleared();
         if (game.user?.isGM) {
-            game.socket.emit(`module.${MODULE_ID}`, { type: "detectMagicScanCleared" });
+            emitDetectMagicScanCleared();
             if (this._engine && !skipSave) void this._saveRestState();
         }
     }
@@ -8255,12 +8179,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     _broadcastDetectMagicPartyScan() {
         if (!this._magicScanComplete) return;
         const partyActorIds = getPartyActors().map(a => a.id);
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "detectMagicScanBroadcast",
-            results: this._magicScanResults ?? [],
-            partyActorIds,
-            magicScanComplete: true
-        });
+        emitDetectMagicScanBroadcast({
+                    results: this._magicScanResults ?? [],
+                    partyActorIds,
+                    magicScanComplete: true
+                });
         notifyDetectMagicScanApplied(this, partyActorIds);
         if (game.user.isGM) void this._saveRestState();
     }
@@ -8465,7 +8388,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             await this._saveRestState();
             const snapshot = this.getRestSnapshot();
             if (snapshot) {
-                game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
+                emitRestSnapshot(snapshot);
             }
             notifyStationMealChoicesUpdated();
             if (isStationLayerActive()) {
@@ -8978,19 +8901,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._travel.markRequested(p.actorId, day);
         }
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "travelRollRequest",
-            activities: payloads,
-            day
-        });
+        emitTravelRollRequest({
+                    activities: payloads,
+                    day
+                });
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "travel",
-            phaseData: {
+        emitPhaseChanged("travel", {
                 travelRollRequest: { activities: payloads, day }
-            }
-        });
+            });
 
         ui.notifications.info(`Day ${day} roll requests sent to ${payloads.length} character(s).`);
         this._saveRestState();
@@ -9016,19 +8934,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const payload = this._travel.getRollRequestPayload(actorId, day);
         if (!payload) return;
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "travelRollRequest",
-            activities: [payload],
-            day
-        });
+        emitTravelRollRequest({
+                    activities: [payload],
+                    day
+                });
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "travel",
-            phaseData: {
+        emitPhaseChanged("travel", {
                 travelRollRequest: { activities: [payload], day }
-            }
-        });
+            });
 
         ui.notifications.info(`Custom roll request (DC ${dc}) sent for ${game.actors.get(actorId)?.name ?? "character"}.`);
         this._saveRestState();
@@ -9109,13 +9022,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!pending.rolledCharacters) pending.rolledCharacters = new Set();
         pending.rolledCharacters.add(actorId);
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "travelRollResult",
-            actorId,
-            actorName: actor.name,
-            total: roll.total,
-            day
-        });
+        emitTravelRollResult({
+                    actorId,
+                    actorName: actor.name,
+                    total: roll.total,
+                    day
+                });
 
         ui.notifications.info(`${actor.name} rolled ${roll.total}.`);
         this.render();
@@ -9139,13 +9051,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (this._playerTravelRolled?.[day]?.[actorId]) return;
 
         // Confirm the declaration to the GM first
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "travelDeclaration",
-            declarations: { [actorId]: activity },
-            confirmed: true,
-            day,
-            userId: game.user.id
-        });
+        emitTravelDeclaration({
+                    declarations: { [actorId]: activity },
+                    confirmed: true,
+                    day,
+                    userId: game.user.id
+                });
 
         if (!this._playerTravelConfirmed) this._playerTravelConfirmed = {};
         if (!this._playerTravelConfirmed[day]) this._playerTravelConfirmed[day] = {};
@@ -9189,13 +9100,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!this._playerTravelRolled[day]) this._playerTravelRolled[day] = {};
         this._playerTravelRolled[day][actorId] = true;
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "travelRollResult",
-            actorId,
-            actorName: actor.name,
-            total: roll.total,
-            day
-        });
+        emitTravelRollResult({
+                    actorId,
+                    actorName: actor.name,
+                    total: roll.total,
+                    day
+                });
 
         ui.notifications.info(`${actor.name} rolled ${roll.total}.`);
         this.render();
@@ -9248,18 +9158,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const day = data.day ?? this._travel.activeDay;
         this._travel.receiveRollResult(data.actorId, data.total, day);
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "travel",
-            phaseData: {
+        emitPhaseChanged("travel", {
                 travelRollUpdate: {
                     actorId: data.actorId,
                     actorName: data.actorName,
                     total: data.total,
                     day
                 }
-            }
-        });
+            });
 
         const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
         void (async () => {
@@ -9272,11 +9178,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                             .filter(([id, level]) => id !== "default" && level >= 3)
                             .map(([id]) => id);
                         for (const uid of ownerIds) {
-                            game.socket.emit(`module.${MODULE_ID}`, {
-                                type: "travelIndividualDebrief",
-                                targetUserId: uid,
-                                result: row
-                            });
+                            emitTravelIndividualDebrief({
+                    targetUserId: uid,
+                    result: row
+                });
                         }
                     }
                 }
@@ -9338,24 +9243,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Send debrief to each player with a character in the party (include empty `results` so flags still apply)
         for (const userId of allTravelPlayerUserIds) {
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "travelDebrief",
-                targetUserId: userId,
-                results: perPlayerResults[userId] ?? [],
-                scoutingDone: !!scoutingDebrief,
-                fullyResolved: this._travel.isFullyResolved()
-            });
+            emitTravelDebrief({
+                    targetUserId: userId,
+                    results: perPlayerResults[userId] ?? [],
+                    scoutingDone: !!scoutingDebrief,
+                    fullyResolved: this._travel.isFullyResolved()
+                });
         }
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "travel",
-            phaseData: {
+        emitPhaseChanged("travel", {
                 activeDay: this._travel.activeDay,
                 fullyResolved: this._travel.isFullyResolved(),
                 scoutingDone: !!scoutingDebrief
-            }
-        });
+            });
 
         await this._saveRestState();
         this.render();
@@ -9374,11 +9274,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._phase = "camp";
         this._campStep2Entered = false;
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: this._phase,
-            phaseData: { travelResults: this._travel.serialize() }
-        });
+        emitPhaseChanged(this._phase, { travelResults: this._travel.serialize() });
 
         await this._saveRestState();
         this.render();
@@ -9417,11 +9313,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._phase = "camp";
         this._campStep2Entered = false;
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: this._phase,
-            phaseData: {}
-        });
+        emitPhaseChanged(this._phase, {});
 
         this._saveRestState();
         this.render();
@@ -9452,15 +9344,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             decl._confirmed = confirmed;
             allDayDeclarations[d] = decl;
         }
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "travelDeclarationsSync",
-            declarations: allDayDeclarations,
-            activeDay: this._travel.activeDay,
-            totalDays: this._travel.totalDays,
-            scoutingAllowed: this._travel.scoutingAllowed,
-            forageDC: this._travel.forageDC,
-            huntDC: this._travel.huntDC
-        });
+        emitTravelDeclarationsSync({
+                    declarations: allDayDeclarations,
+                    activeDay: this._travel.activeDay,
+                    totalDays: this._travel.totalDays,
+                    scoutingAllowed: this._travel.scoutingAllowed,
+                    forageDC: this._travel.forageDC,
+                    huntDC: this._travel.huntDC
+                });
     }
 
     /**
@@ -9538,12 +9429,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const method = root?.dataset?.method ?? "Tinderbox";
         if (!actorId) return;
         if (!game.user.isGM) {
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "campLightFire",
-                userId: game.user.id,
-                actorId,
-                method
-            });
+            emitCampLightFire({
+                    userId: game.user.id,
+                    actorId,
+                    method
+                });
             return;
         }
         await this._lightFire(game.user.id, actorId, method);
@@ -9555,11 +9445,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const actorId = root?.dataset?.actorId;
         if (!actorId) return;
         if (!game.user.isGM) {
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "campFirewoodPledge",
-                userId: game.user.id,
-                actorId
-            });
+            emitCampFirewoodPledge({
+                    userId: game.user.id,
+                    actorId
+                });
             return;
         }
         if (actorId === "__gm__") {
@@ -9572,10 +9461,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /** Player or GM takes back their pledged firewood. */
     static async #onCampReclaimFirewood(event, target) {
         if (!game.user.isGM) {
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "campFirewoodReclaim",
-                userId: game.user.id
-            });
+            emitCampFirewoodReclaim({
+                    userId: game.user.id
+                });
             return;
         }
         await this._removeFirewoodPledge(game.user.id);
@@ -9587,11 +9475,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!level || !["embers", "campfire", "bonfire"].includes(level)) return;
 
         if (!game.user.isGM) {
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "campFireLevelRequest",
-                userId: game.user.id,
-                fireLevel: level
-            });
+            emitCampFireLevelRequest({
+                    userId: game.user.id,
+                    fireLevel: level
+                });
             ui.notifications.info("Fire choice sent to the GM.");
             return;
         }
@@ -9671,16 +9558,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._engine.fireRollModifier = FIRE_MOD[level] ?? 0;
         }
         await CampfireTokenLinker.setLightState(level !== "unlit", level !== "unlit" ? level : undefined);
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "camp",
-            phaseData: {
+        emitPhaseChanged("camp", {
                 fireLevel: level,
                 fireLitBy: this._fireLitBy ?? null,
                 firewoodPledges: Array.from(this._firewoodPledges.entries()),
                 selectedTerrain: this._selectedTerrain ?? null
-            }
-        });
+            });
         await this._saveRestState();
         const willAdvance =
             this._phase === "camp" && !this._campToActivityDone && (this._fireLevel ?? "unlit") !== "unlit";
@@ -9737,14 +9620,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         await this.close({});
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: this._phase,
-            phaseData: {
+        emitPhaseChanged(this._phase, {
                 campStatus: this._campStatus,
                 fireLevel: this._fireLevel
-            }
-        });
+            });
         await this._saveRestState();
         this._activateCanvasStationLayer();
         _logGmRestSheet("_advanceCampToActivity", "advance complete", { rendered: this.rendered });
@@ -9913,11 +9792,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             await CampfireTokenLinker.setLightState(false, "unlit");
             await placeStationPlaceholders();
             await this._saveRestState();
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "phaseChanged",
-                phase: "camp",
-                phaseData: { campPitCursorDone: true }
-            });
+            emitPhaseChanged("camp", { campPitCursorDone: true });
             this.render({ force: true });
             await this._refreshCampPitNoticeLayer();
         } catch (e) {
@@ -10095,16 +9970,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             ui.notifications.info(`${label} selected.`);
         }
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "camp",
-            phaseData: {
+        emitPhaseChanged("camp", {
                 fireLevel: level,
                 fireLitBy: this._fireLitBy ?? null,
                 firewoodPledges: Array.from(this._firewoodPledges?.entries() ?? []),
                 selectedTerrain: this._selectedTerrain ?? null
-            }
-        });
+            });
 
         await this._saveRestState();
         const willAdvance =
@@ -10203,16 +10074,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             ui.notifications.info(`${label} set.`);
         }
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: "activity",
-            phaseData: {
+        emitPhaseChanged("activity", {
                 fireLevel: level,
                 fireLitBy: this._fireLitBy ?? null,
                 firewoodPledges: Array.from(this._firewoodPledges?.entries() ?? []),
                 selectedTerrain: this._selectedTerrain ?? null
-            }
-        });
+            });
 
         await this._saveRestState();
         this.render();
@@ -10228,11 +10095,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._coldCampDecided = true;
         this._fireLitBy = null;
         this._fireLevel = "unlit";
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: this._phase,
-            phaseData: { coldCampDecided: true, fireLevel: "unlit", fireLitBy: null }
-        });
+        emitPhaseChanged(this._phase, { coldCampDecided: true, fireLevel: "unlit", fireLitBy: null });
         await this._saveRestState();
         await this._advanceCampToActivity();
     }
@@ -10276,10 +10139,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         } else {
             ui.notifications.info("No camp tokens to remove on this scene.");
         }
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "campSceneCleared",
-            resetFireLevel: true
-        });
+        emitCampSceneCleared({
+                    resetFireLevel: true
+                });
         this._fireLevel = "unlit";
         this._campFirePreviewLevel = null;
         this._campFireWoodSpendUserId = null;
@@ -10315,7 +10177,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const n = await clearPlayerCampGear(actorId, sceneIdGm);
             if (n > 0) {
                 ui.notifications.info(`Removed ${n} camp token(s) for that character.`);
-                game.socket.emit(`module.${MODULE_ID}`, { type: "campSceneCleared", actorId });
+                emitCampSceneCleared({ actorId });
             } else {
                 ui.notifications.info("No camp tokens for that character on the scene.");
             }
@@ -10330,12 +10192,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         const sceneId = canvas?.scene?.id ?? null;
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "campGearClearPlayer",
-            actorId,
-            userId: game.user.id,
-            sceneId
-        });
+        emitCampGearClearPlayer({
+                    actorId,
+                    userId: game.user.id,
+                    sceneId
+                });
     }
 
     /**
@@ -10362,8 +10223,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const n = await clearPlayerCampGearType(actorId, gearType, sceneIdGm);
             if (n > 0) {
                 ui.notifications.info("Gear picked up from the scene.");
-                game.socket.emit(`module.${MODULE_ID}`, {
-                    type: "campGearPlaced",
+                emitCampGearPlaced({
                     actorId,
                     gearType
                 });
@@ -10381,13 +10241,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         const sceneId = canvas?.scene?.id ?? null;
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "campGearReclaim",
-            actorId,
-            gearType,
-            userId: game.user.id,
-            sceneId
-        });
+        emitCampGearReclaim({
+                    actorId,
+                    gearType,
+                    userId: game.user.id,
+                    sceneId
+                });
         ui.notifications.info("Pick-up sent to the GM.");
     }
 
@@ -10405,7 +10264,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const n = await clearSharedCampStation(stationKey);
             if (n > 0) {
                 ui.notifications.info("Station picked up from the scene.");
-                game.socket.emit(`module.${MODULE_ID}`, { type: "campStationPlaced" });
+                emitCampStationPlaced();
             } else {
                 ui.notifications.info("Nothing to pick up on the scene for that station.");
             }
@@ -10423,12 +10282,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "campStationReclaim",
-            actorId,
-            stationKey,
-            userId: game.user.id
-        });
+        emitCampStationReclaim({
+                    actorId,
+                    stationKey,
+                    userId: game.user.id
+                });
         ui.notifications.info("Pick-up sent to the GM.");
     }
 
@@ -10567,11 +10425,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             );
             if (this._phase === "camp") {
                 await placeStationPlaceholders();
-                game.socket.emit(`module.${MODULE_ID}`, {
-                    type: "phaseChanged",
-                    phase: "camp",
-                    phaseData: { campPitCursorDone: true }
-                });
+                emitPhaseChanged("camp", { campPitCursorDone: true });
                 await this._saveRestState();
                 void this._refreshCampPitNoticeLayer();
             }
@@ -10590,13 +10444,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (game.user.isGM) {
                 const placed = await placeStation(x, y, stationKey);
                 if (placed) {
-                    game.socket.emit(`module.${MODULE_ID}`, { type: "campStationPlaced" });
+                    emitCampStationPlaced();
                 }
                 this.render();
                 this.refreshCanvasStationOverlaysIfActivity();
             } else {
-                game.socket.emit(`module.${MODULE_ID}`, {
-                    type: "campStationPlace",
+                emitCampStationPlace({
                     stationKey,
                     actorId,
                     x,
@@ -10620,8 +10473,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this.refreshCanvasStationOverlaysIfActivity();
                 if (placed) this.refreshOpenStationDialogAfterCampGear();
             } else {
-                game.socket.emit(`module.${MODULE_ID}`, {
-                    type: "campGearPlace",
+                emitCampGearPlace({
                     actorId,
                     gearType,
                     x, y
