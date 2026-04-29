@@ -9,7 +9,8 @@
  * @module SocketRouter
  */
 
-import { SOCKET_TYPES, emitRequestRestState } from "./SocketController.js";
+import { SOCKET_TYPES, emitRequestRestState, emitWorkbenchIdentifyResult } from "./SocketController.js";
+import { WorkbenchDelegate } from "../apps/delegates/WorkbenchDelegate.js";
 import { CopySpellHandler } from "./CopySpellHandler.js";
 import { CampfireTokenLinker } from "./CampfireTokenLinker.js";
 import { TorchTokenLinker } from "./TorchTokenLinker.js";
@@ -28,6 +29,7 @@ import {
     handleSubmissionUpdate, handleRequestRestState,
     handleShortRestStarted, handleShortRestComplete, handleShortRestAbandoned,
     handleShortRestDismissed, handleRequestShortRestState,
+    handleShortRestWorkbenchStagingFromPlayer, handleShortRestWorkbenchSync,
     handleAfkUpdate, handleArmorToggle, handleConsumeFirewood,
     handleCampGearPlace, handleCampStationPlace,
     handleCampGearReclaim, handleCampStationReclaim, handleCampGearClearPlayer,
@@ -218,7 +220,7 @@ export function dispatch(data, ctx) {
         case SOCKET_TYPES.DETECT_MAGIC_SCAN_BROADCAST: {
             const results = data.results ?? [];
             const partyActorIds = data.partyActorIds ?? [];
-            const dmApp = ctx.activeRestSetupApp ?? ctx.activePlayerRestApp;
+            const dmApp = ctx.activeRestSetupApp ?? ctx.activePlayerRestApp ?? ctx.activeShortRestApp;
             if (dmApp) {
                 dmApp._magicScanResults = results;
                 dmApp._magicScanComplete = !!data.magicScanComplete;
@@ -232,7 +234,7 @@ export function dispatch(data, ctx) {
         }
 
         case SOCKET_TYPES.DETECT_MAGIC_SCAN_CLEARED: {
-            const clrApp = ctx.activeRestSetupApp ?? ctx.activePlayerRestApp;
+            const clrApp = ctx.activeRestSetupApp ?? ctx.activePlayerRestApp ?? ctx.activeShortRestApp;
             if (clrApp) {
                 clrApp._magicScanResults = null;
                 clrApp._magicScanComplete = false;
@@ -242,6 +244,62 @@ export function dispatch(data, ctx) {
             }
             Hooks.callAll(`${MODULE_ID}.workbenchIdentifyStagingTouched`);
             notifyDetectMagicScanCleared();
+            break;
+        }
+
+        case SOCKET_TYPES.WORKBENCH_IDENTIFY_REQUEST: {
+            if (!game.user.isGM) break;
+            const { actorId, itemId, requestId, targetUserId } = data;
+            console.log(`[Respite] WB-IDENTIFY GM received req=${requestId} actor=${actorId} item=${itemId} target=${targetUserId}`);
+            void (async () => {
+                const actor = game.actors.get(actorId);
+                const item = actor?.items?.get(itemId);
+                if (!item) {
+                    console.warn(`[Respite] WB-IDENTIFY GM: item not found — actor=${actorId} item=${itemId}`);
+                    emitWorkbenchIdentifyResult({ requestId, success: false, targetUserId });
+                    return;
+                }
+                const qmActive = game.modules?.get("ionrift-quartermaster")?.active;
+                console.log(`[Respite] WB-IDENTIFY GM: qmActive=${qmActive} item.name=${item.name} identified=${item.system?.identified}`);
+                const latentFlag = item.getFlag?.("ionrift-quartermaster", "latentMagic");
+                const cursedFlag = item.getFlag?.("ionrift-quartermaster", "cursedMeta");
+                console.log(`[Respite] WB-IDENTIFY GM: latentMagic=${!!latentFlag} cursedMeta=${!!cursedFlag}`);
+                let success = false;
+                if (qmActive) {
+                    try {
+                        const { IdentificationService } = await import(
+                            "/modules/ionrift-quartermaster/scripts/services/IdentificationService.js"
+                        );
+                        console.log(`[Respite] WB-IDENTIFY GM: calling IdentificationService.identify`);
+                        const result = await IdentificationService.identify(item, { silent: true });
+                        console.log(`[Respite] WB-IDENTIFY GM: QM result →`, result);
+                        success = result.identified;
+                    } catch (err) {
+                        console.error("[Respite] WB-IDENTIFY GM: QM import/identify failed", err);
+                    }
+                }
+                if (!success) {
+                    console.log(`[Respite] WB-IDENTIFY GM: QM did not identify — trying curseBypass update`);
+                    try {
+                        await item.update({ "system.identified": true }, { curseBypass: true });
+                        success = true;
+                        console.log(`[Respite] WB-IDENTIFY GM: curseBypass update succeeded`);
+                    } catch (err) {
+                        console.error("[Respite] WB-IDENTIFY GM: raw update failed", err);
+                    }
+                }
+                console.log(`[Respite] WB-IDENTIFY GM: emitting result success=${success} req=${requestId}`);
+                emitWorkbenchIdentifyResult({ requestId, success, targetUserId });
+            })();
+            break;
+        }
+
+        case SOCKET_TYPES.WORKBENCH_IDENTIFY_RESULT: {
+            if (data.targetUserId != null && data.targetUserId !== game.user.id) break;
+            const { requestId, success } = data;
+            const pendingCount = WorkbenchDelegate._pendingIdentifyRequests?.size ?? -1;
+            console.log(`[Respite] WB-IDENTIFY player: result received success=${success} req=${requestId} pendingMapSize=${pendingCount}`);
+            WorkbenchDelegate._resolveIdentifyRequest(requestId, success);
             break;
         }
 
@@ -423,6 +481,14 @@ export function dispatch(data, ctx) {
         case SOCKET_TYPES.REQUEST_SHORT_REST_STATE:
             if (!game.user.isGM) return;
             handleRequestShortRestState(data, ctx);
+            break;
+
+        case SOCKET_TYPES.SHORT_REST_WORKBENCH_STAGING:
+            handleShortRestWorkbenchStagingFromPlayer(data, ctx);
+            break;
+
+        case SOCKET_TYPES.SHORT_REST_WORKBENCH_SYNC:
+            handleShortRestWorkbenchSync(data, ctx);
             break;
 
         // ── Monster Cooking ──────────────────────────────────────────

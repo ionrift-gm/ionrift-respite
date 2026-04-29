@@ -20,12 +20,13 @@ import {
     notifyDetectMagicScanApplied,
     notifyDetectMagicScanCleared
 } from "./DetectMagicInventoryGlowBridge.js";
+import { deactivateStationLayer } from "./StationInteractionLayer.js";
 import {
     placePlayerGear, placeStation, canPlaceStation,
     clearPlayerCampGear, clearPlayerCampGearType, clearSharedCampStation
 } from "./CompoundCampPlacer.js";
 import {
-    emitShortRestStarted, emitRestStarted,
+    emitShortRestStarted, emitRestStarted, emitShortRestWorkbenchSync,
     emitCampGearPlaced, emitCampStationPlaced, emitCampSceneCleared
 } from "./SocketController.js";
 import {
@@ -35,6 +36,7 @@ import {
     removeGmRestIndicator
 } from "./RejoinManager.js";
 import { emitRequestRestState, emitRequestShortRestState } from "./SocketController.js";
+import { resolvePlayerCloseOptions } from "./playerClosePolicy.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -46,6 +48,8 @@ export function handleRestStarted(data, ctx) {
         ctx.setPlayerRestActive(true);
         removeRejoinNotification();
         removeGmRestIndicator();
+        // eslint-disable-next-line no-console
+        console.debug(`${MODULE_ID} | [REJOIN] handleRestStarted: targetUserId=${data.targetUserId ?? "all"}, hasExisting=${!!ctx.activePlayerRestApp}`);
 
         const existing = ctx.activePlayerRestApp;
         if (existing) {
@@ -79,11 +83,16 @@ export function handleRestStarted(data, ctx) {
         const app = new RestSetupApp({}, data.restData);
         const origClose = app.close.bind(app);
         app.close = async (options = {}) => {
+            // Activity-phase closes (X-button) are auto-promoted to retainPlayerApp so
+            // the canvas station layer stays wired and choices aren't lost.
+            // See: scripts/services/playerClosePolicy.js for the rule + unit tests.
+            options = resolvePlayerCloseOptions(options, app._phase);
+            // eslint-disable-next-line no-console
+            console.debug(`${MODULE_ID} | [REJOIN] playerRSA.close: retain=${options.retainPlayerApp ?? false}, phase=${app._phase}, rendered=${app.rendered}`);
             try {
                 await origClose(options);
             } finally {
                 if (options.retainPlayerApp) {
-                    console.log(`${MODULE_ID} | Player rest window closed; app ref retained for canvas phase`);
                     if (ctx.playerRestActive && !options.skipRejoin) {
                         showRejoinNotification(ctx.activePlayerRestApp, () => {
                             removeRejoinNotification();
@@ -120,6 +129,7 @@ export function handleRestStarted(data, ctx) {
     }
 }
 
+
 export function handleActivityChoice(data, ctx) {
     if (!ctx.activeRestSetupApp) return;
     ctx.activeRestSetupApp.receivePlayerChoices(data.userId, data.choices, data.craftingResults ?? null, data.followUps ?? null);
@@ -130,6 +140,9 @@ export function handleRestResolved(data, ctx) {
     removeRejoinNotification();
     removeGmRestIndicator();
     notifyDetectMagicScanCleared();
+    try {
+        deactivateStationLayer();
+    } catch { /* canvas may not be ready */ }
     const app = ctx.activePlayerRestApp;
     if (app) {
         app.close({ skipRejoin: true });
@@ -202,6 +215,11 @@ export function handleShortRestDismissed(data, ctx) {
     });
 }
 
+function _workbenchStateFromApp(app) {
+    if (!app?._serializeWorkbenchStateForNet) return undefined;
+    return app._serializeWorkbenchStateForNet();
+}
+
 export function handleRequestShortRestState(data, ctx) {
     const app = ctx.activeShortRestApp;
     if (!app) {
@@ -220,6 +238,7 @@ export function handleRequestShortRestState(data, ctx) {
             activeShelter: newApp._activeShelter,
             rpPrompt: newApp._rpPrompt,
             songVolunteer: newApp._songVolunteer,
+            workbench: _workbenchStateFromApp(newApp),
         });
         return;
     }
@@ -232,7 +251,31 @@ export function handleRequestShortRestState(data, ctx) {
         activeShelter: app._activeShelter,
         rpPrompt: app._rpPrompt,
         songVolunteer: app._songVolunteer,
+        workbench: _workbenchStateFromApp(app),
     });
+}
+
+/**
+ * @param {object} data
+ * @param {import("./SocketRouter.js").SocketContext} ctx
+ */
+export function handleShortRestWorkbenchStagingFromPlayer(data, ctx) {
+    if (!game.user.isGM) return;
+    const app = ctx.activeShortRestApp;
+    if (!app?.applyWorkbenchStagingFromPlayer) return;
+    app.applyWorkbenchStagingFromPlayer(data, emitShortRestWorkbenchSync);
+}
+
+/**
+ * @param {object} data
+ * @param {import("./SocketRouter.js").SocketContext} ctx
+ */
+export function handleShortRestWorkbenchSync(data, ctx) {
+    if (game.user.isGM) return;
+    const app = ctx.activeShortRestApp;
+    if (!app?.applyWorkbenchStateFromHost) return;
+    app.applyWorkbenchStateFromHost(data);
+    if (app.rendered) void app.render();
 }
 
 // ── AFK / Armor ─────────────────────────────────────────────────────────────

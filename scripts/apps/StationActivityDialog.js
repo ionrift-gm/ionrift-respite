@@ -9,13 +9,11 @@
 import {
     ACTIVITY_ICONS,
     buildPartyState,
-    getActivityAdvisory,
-    DETECT_MAGIC_BTN_LABEL_PLAYER,
-    DETECT_MAGIC_BTN_LABEL_GM,
-    DETECT_MAGIC_BTN_TITLE_GM
+    getActivityAdvisory
 } from "./RestConstants.js";
 import { canPlaceStation } from "../services/CompoundCampPlacer.js";
 import { getPartyActors } from "../services/partyActors.js";
+import { getAttuneableItemOptions } from "../util/attuneableItems.js";
 
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -277,20 +275,24 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             ? this._restApp.getStationIdentifyEmbedContext({
                 restrictUnidentifiedToActorId: this._actor?.id ?? null
             })
-            : { unidentifiedItems: [], identifyCasters: [], detectMagicCasters: [] };
+            : { unidentifiedItems: [] };
 
         const wbWorkbenchDefaults = {
             workbenchIdentifyActorId: null,
             workbenchGearChip: null,
             workbenchPotionChips: [],
-            workbenchNoUnidentifiedOnSheet: true,
             workbenchSubmitLocked: true,
             workbenchIdentifyAcknowledgement: null,
-            workbenchAckRevealReady: true
+            workbenchAckRevealReady: true,
+            workbenchFocusExhausted: false
         };
-        const wbCtx = (this._station?.id === "workbench" && this._restApp?.getWorkbenchIdentifyDragContext)
+        const wbCtxRaw = (this._station?.id === "workbench" && this._restApp?.getWorkbenchIdentifyDragContext)
             ? this._restApp.getWorkbenchIdentifyDragContext(this._actor?.id ?? null)
             : wbWorkbenchDefaults;
+        const { workbenchNoUnidentifiedOnSheet: _omitWbUnidentified, ...wbCtx } = wbCtxRaw;
+        const attuneableItems = (this._station?.id === "workbench" && this._actor)
+            ? getAttuneableItemOptions(this._actor)
+            : [];
 
         return {
             activities:       [...activityItems, ...fadedItems],
@@ -304,8 +306,6 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             mealCard,
             mealCardNeedsEssence: !!(mealCard?.needsEssence),
             stationIdentifyHub: this._station?.id === "workbench",
-            identifyCasters:    identifyEmbed.identifyCasters ?? [],
-            detectMagicCasters: identifyEmbed.detectMagicCasters ?? [],
             unidentifiedItems: identifyEmbed.unidentifiedItems ?? [],
             campGearAtFire,
             campComfortAtFire,
@@ -313,12 +313,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             fireTabContext,
             hideNoActivitiesMessage: this._station?.id === "campfire",
             isGmUser:           !!game.user?.isGM,
-            canShowDetectMagicScanButton: !!this._restApp?.canShowDetectMagicScanButtonFromParty?.(),
-            detectMagicScanButtonLabel: game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER,
-            detectMagicScanButtonTitle: game.user?.isGM ? DETECT_MAGIC_BTN_TITLE_GM : "",
-            magicScanComplete:  !!this._restApp?._magicScanComplete,
-            magicScanResults:   this._restApp?._magicScanResults ?? [],
-            ...wbCtx
+            attuneableItems,
+            ...wbCtx,
+            workbenchFocusExhausted: wbCtx.workbenchFocusExhausted ?? false
         };
     }
 
@@ -666,6 +663,20 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const actorId = this._actor?.id;
         if (!actorId || !this._restApp?.submitWorkbenchIdentifyFromStation) return;
         await this._restApp.submitWorkbenchIdentifyFromStation(actorId);
+        await this.render(true);
+    }
+
+    static async #onWorkbenchAttune(event, target) {
+        const actorId = target?.dataset?.workbenchActorId;
+        if (!actorId || !this._restApp?.attuneWorkbenchItemForActor) return;
+        const row = target.closest?.(".sr-workbench-attune");
+        const sel = row?.querySelector?.(".sr-attune-select");
+        const itemId = sel?.value;
+        if (!itemId) {
+            ui.notifications.warn("Pick an item to attune.");
+            return;
+        }
+        await this._restApp.attuneWorkbenchItemForActor(actorId, itemId);
         await this.render(true);
     }
 

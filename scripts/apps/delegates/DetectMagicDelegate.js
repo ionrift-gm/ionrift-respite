@@ -159,7 +159,13 @@ export class DetectMagicDelegate {
         notifyDetectMagicScanCleared();
         if (game.user?.isGM) {
             emitDetectMagicScanCleared();
-            if (this._app._engine && !skipSave) void this._app._saveRestState();
+            if (!skipSave) {
+                if (this._app._engine && typeof this._app._saveRestState === "function") {
+                    void this._app._saveRestState();
+                } else if (typeof this._app._saveShortRestState === "function") {
+                    void this._app._saveShortRestState();
+                }
+            }
         }
     }
 
@@ -179,7 +185,13 @@ export class DetectMagicDelegate {
             magicScanComplete: true
         });
         notifyDetectMagicScanApplied(this._app, partyActorIds);
-        if (game.user.isGM) void this._app._saveRestState();
+        if (game.user.isGM) {
+            if (this._app._engine && typeof this._app._saveRestState === "function") {
+                void this._app._saveRestState();
+            } else if (typeof this._app._saveShortRestState === "function") {
+                void this._app._saveShortRestState();
+            }
+        }
     }
 
     // ── Scan ─────────────────────────────────────────────────────────────

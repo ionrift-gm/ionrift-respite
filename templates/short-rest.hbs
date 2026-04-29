@@ -49,6 +49,18 @@
     </div>
     {{/if}}
 
+    <div class="sr-tab-bar" role="tablist" aria-label="Short rest sections">
+        <button type="button" role="tab" class="sr-tab {{#if (eq activeTab "recovery")}}active{{/if}}"
+            data-action="switchShortRestTab" data-tab="recovery" {{#if (eq activeTab "recovery")}}aria-selected="true"{{else}}aria-selected="false"{{/if}}>
+            <i class="fas fa-heart"></i> Recovery
+        </button>
+        <button type="button" role="tab" class="sr-tab {{#if (eq activeTab "workbench")}}active{{/if}}"
+            data-action="switchShortRestTab" data-tab="workbench" {{#if (eq activeTab "workbench")}}aria-selected="true"{{else}}aria-selected="false"{{/if}}>
+            <i class="fas fa-hammer"></i> Workbench
+        </button>
+    </div>
+
+    {{#if (eq activeTab "recovery")}}
     {{!-- Scrollable body: character cards --}}
     <div class="sr-scroll-body">
 
@@ -210,6 +222,14 @@
             </div>
             {{/if}}
             {{/if}}
+
+            {{#if srRechargeBadges.length}}
+            <div class="sr-recharge-badges" title="These class features and items often recharge on a short rest.">
+                {{#each srRechargeBadges}}
+                <span class="sr-recharge-pill">{{this}}</span>
+                {{/each}}
+            </div>
+            {{/if}}
         </div>
         {{/each}}
     </div>
@@ -246,6 +266,22 @@
     {{/if}}
 
     </div>{{!-- /sr-scroll-body --}}
+    {{else}}
+    <div class="sr-scroll-body sr-workbench-body">
+        <p class="sr-wb-hint">Pick who is using the workbench, then use focus, potion tastes, or Detect Magic. Same rules as the long rest workbench. To attune an item, use the Activities tab at the workbench station.</p>
+        <div class="sr-wb-actor-pick">
+            <label for="sr-wb-actor">Character</label>
+            <select id="sr-wb-actor" class="sr-wb-actor-select" data-action="setWorkbenchFocusActor">
+                {{#each workbenchParty}}
+                <option value="{{id}}" {{#if (eq id ../workbenchFocusActorId)}}selected{{/if}}>{{name}}</option>
+                {{/each}}
+            </select>
+        </div>
+        {{#with workbenchEmbed}}
+        {{> workbenchIdentifyEmbed}}
+        {{/with}}
+    </div>
+    {{/if}}
 
     {{!-- Sticky footer --}}
     <div class="sr-footer">

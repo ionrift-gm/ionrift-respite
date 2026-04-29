@@ -53,7 +53,7 @@ import { CampCeremonyDelegate } from "./delegates/CampCeremonyDelegate.js";
 import { EventsPhaseDelegate } from "./delegates/EventsPhaseDelegate.js";
 import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
 import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan } from "./delegates/DetectMagicDelegate.js";
-import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, CAMP_STATIONS, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, DETECT_MAGIC_BTN_LABEL_PLAYER, DETECT_MAGIC_BTN_LABEL_GM, DETECT_MAGIC_BTN_TITLE_GM } from "./RestConstants.js";
+import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, CAMP_STATIONS, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState } from "./RestConstants.js";
 import {
     activateStationLayer,
     deactivateStationLayer,
@@ -373,6 +373,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._workbenchIdentifyStaging = new Map();
         /** actorId -> { items: { itemId, name, img, requiresAttunement }[], revealAt: number } post-submit ritual */
         this._workbenchIdentifyAcknowledge = new Map();
+        /** actorIds that have used the Workbench Focus identify slot this rest */
+        this._workbenchFocusUsed = new Set();
         /** GM: main window closed while rest is active; ignore non-forced render until Resume. */
         this._gmMinimizedToFooter = false;
         /** Player: main window reopened after picking from a station; Back minimises again. */
@@ -3009,15 +3011,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             })() : null,
             magicScanResults: this._magicScanResults ?? null,
             magicScanComplete: this._magicScanComplete ?? false,
-            canShowDetectMagicScanButton: this._phase === "activity"
-                ? computeCanShowDetectMagicScanButton(partyActors)
-                : false,
-            detectMagicScanButtonLabel: this._phase === "activity"
-                ? (game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER)
-                : DETECT_MAGIC_BTN_LABEL_PLAYER,
-            detectMagicScanButtonTitle: this._phase === "activity" && game.user?.isGM
-                ? DETECT_MAGIC_BTN_TITLE_GM
-                : "",
 
             // Meal phase context
             mealCards: (() => {
@@ -7251,6 +7244,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return { source: "activity", activityId, result: "crafting_redirect" };
         }
 
+        // Block act_attune if already at max attunement slots
+        if (activityId === "act_attune") {
+            const actor = game.actors.get(characterId);
+            const attuneSlots = actor?.system?.attributes?.attunement;
+            if (attuneSlots) {
+                const current = attuneSlots.value ?? 0;
+                const max = attuneSlots.max ?? 3;
+                if (current >= max) {
+                    ui.notifications.warn(`${actor.name} is already attuned to the maximum number of items (${max}).`);
+                    return null;
+                }
+            }
+        }
+
         this._characterChoices.set(characterId, activityId);
         this._lockedCharacters.add(characterId);
         this._pendingSelections?.delete(characterId);
@@ -7347,7 +7354,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._activitySubTabUserSet = true;
             this._selectedCharacterId = characterId;
             this._activityDetailId = null;
-            await this.render({ force: true });
+            // Do NOT force-open the window — the player chose from the canvas and
+            // should stay there. State is staged so the review panel shows when
+            // they voluntarily resume via the footer bar.
+            if (this.rendered) this.render();
         } else if (this.rendered) {
             this.render();
         }
@@ -7418,7 +7428,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * (non-faded) major activities for anyone in the party who has not yet committed a pick.
      * (Single-actor or "already chosen" shortcuts were wrong for GM: the next unchosen character
      * could still have a heal spell and kept the medical bed bright for everyone.)
+     * When the resolved station actor ({@link #_resolveStationActorForUser}) has committed
+     * an activity, the map is built for that character only. That matches
+     * {@link StationActivityDialog.openForStation}, which clears all station activity lists for
+     * an actor who already has a major pick (the resolver can still list activities, but they
+     * get no further activity cards). Faded here means no meaningful station action is left, except
+     * workbench Identify (when the party has unidentified items) and meal rations on the
+     * cooking or campfire station when that actor still owes rations. Campfire notice stays
+     * non-faded during the activity phase.
      * Cooking station stays bright while any unchosen party member owes activity-phase rations (meal tab).
+     * In single-character mode, meal stations stay bright while that actor still owes rations.
      * Workbench stays bright when the party has unidentified gear (Identify tab on the station dialog),
      * including after a major activity is already committed.
      * @returns {Record<string, boolean>}
@@ -7444,13 +7463,34 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const workbenchIdentifyBright = (identifyParty.unidentifiedItems?.length ?? 0) > 0;
         const mealBrightParty = unchosen.some(a => this._actorOwesActivityPhaseMealRations(a.id));
 
-
         const hasAvailableAtStation = (actor, stationIdSet) => {
             const { available: allAvail } = this._activityResolver.getAvailableActivitiesWithFaded(
                 actor, restType, { isFireLit }
             );
             return allAvail.some(a => stationIdSet.has(a.id));
         };
+
+        const viewer = RestSetupApp._resolveStationActorForUser(partyActors, this);
+        if (viewer && this._characterChoices.has(viewer.id)) {
+            for (const station of CAMP_STATIONS) {
+                if (!station.furnitureKey) continue;
+                if (station.id === "workbench" && workbenchIdentifyBright) {
+                    map[station.id] = false;
+                    continue;
+                }
+                if ((station.id === "cooking_station" || station.id === "campfire")
+                    && this._actorOwesActivityPhaseMealRations(viewer.id)) {
+                    map[station.id] = false;
+                    continue;
+                }
+                // One major activity per rest: the station dialog offers no further picks for
+                // this actor (lists cleared), even when the raw resolver would still return some.
+                map[station.id] = true;
+            }
+            map.bedroll = true;
+            if (this._phase === "activity") map.campfire = false;
+            return map;
+        }
 
         for (const station of CAMP_STATIONS) {
             if (!station.furnitureKey) continue;
@@ -7674,6 +7714,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._characterChoices.clear();
 
         for (const [userId, submission] of this._playerSubmissions) {
+            if (!submission?.choices || typeof submission.choices !== "object") continue;
             for (const [charId, actId] of Object.entries(submission.choices)) {
                 this._characterChoices.set(charId, actId);
             }
@@ -7799,6 +7840,42 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /** @deprecated Use this._detectMagic.identifyScannedItem() */
     async identifyScannedMagicItem(actorId, itemId) {
         await this._detectMagic.identifyScannedItem(actorId, itemId, getPartyActors);
+    }
+
+    /**
+     * Workbench: attune a prepared item to the given actor (SR or long rest station).
+     * @param {string} actorId
+     * @param {string} itemId
+     */
+    async attuneWorkbenchItemForActor(actorId, itemId) {
+        const actor = game.actors.get(actorId);
+        if (!actor) return;
+        if (!actor.isOwner && !game.user.isGM) return;
+        const item = actor.items.get(itemId);
+        if (!item) return;
+        const att = item.system?.attunement;
+        if ((att !== "required" && att !== 1) || item.system?.attuned) {
+            ui.notifications.warn("That item cannot be attuned here.");
+            return;
+        }
+        const attuneSlots = actor.system?.attributes?.attunement;
+        if (attuneSlots) {
+            const current = attuneSlots.value ?? 0;
+            const max = attuneSlots.max ?? 3;
+            if (current >= max) {
+                ui.notifications.warn(`${actor.name} is already attuned to the maximum number of items (${max}).`);
+                return;
+            }
+        }
+        try {
+            await item.update({ "system.attuned": true });
+            ui.notifications.info(`${actor.name} attunes to ${item.name}.`);
+        } catch (e) {
+            console.warn(`${MODULE_ID} | attuneWorkbenchItemForActor:`, e);
+            ui.notifications.error("Could not attune that item.");
+            return;
+        }
+        if (this.rendered) this.render();
     }
 
     /**
@@ -8174,6 +8251,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!this._isGM) {
             _removeGmRestIndicator();
         }
+        // eslint-disable-next-line no-console
+        console.debug(`${MODULE_ID} | [REJOIN] receiveRestSnapshot: phase=${snapshot.phase}, submissionKeys=${Object.keys(snapshot.submissions ?? {}).join(",") || "none"}, choices=${this._characterChoices?.size ?? 0}`);
         // Apply submissions
         if (snapshot.submissions) {
             for (const [charId, info] of Object.entries(snapshot.submissions)) {
@@ -8184,6 +8263,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 });
             }
             this._rebuildCharacterChoices();
+            // eslint-disable-next-line no-console
+            console.debug(`${MODULE_ID} | [REJOIN] receiveRestSnapshot: choices after apply=${this._characterChoices?.size ?? 0}`);
         }
 
         if (snapshot.afkCharacters !== undefined) {
@@ -8336,6 +8417,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Activity phase: same as receivePhaseChange (F5 rejoin after GM already advanced)
         if (this._phase === "activity" && !this._isGM) {
+            // eslint-disable-next-line no-console
+            console.debug(`${MODULE_ID} | [REJOIN] receiveRestSnapshot: activity phase → retain close, choices=${this._characterChoices?.size ?? 0}`);
             this._attachActivityPhaseCanvasChrome();
             void this.close({ retainPlayerApp: true });
             return;
