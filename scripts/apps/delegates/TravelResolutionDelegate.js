@@ -1,4 +1,5 @@
 import { TravelResolver } from "../../services/TravelResolver.js";
+import { TravelMishapHandler } from "../../services/TravelMishapHandler.js";
 import { TerrainRegistry } from "../../services/TerrainRegistry.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -91,6 +92,28 @@ export class TravelResolutionDelegate {
             if (!this.isDayResolved(d)) return false;
         }
         return true;
+    }
+
+    /**
+     * All party members are ready to resolve: rolls in where required, or confirmed for plain Other.
+     * @param {number} day
+     * @param {Actor[]} partyActors
+     */
+    isDayReadyToResolve(day, partyActors) {
+        if (!partyActors?.length) return false;
+        return partyActors.every(actor => {
+            const entry = this._getEntry(day, actor.id);
+            const activity = entry?.activity ?? "nothing";
+            const status = entry?.status ?? "idle";
+            const hasCustomRoll = !!(entry?.customDC && entry?.activity === "nothing");
+            if (activity === "nothing") {
+                if (hasCustomRoll) {
+                    return status === "rolled" || status === "resolved";
+                }
+                return this.isConfirmed(actor.id, day);
+            }
+            return status === "rolled" || status === "resolved";
+        });
     }
 
     // ── DC management ──
@@ -189,6 +212,14 @@ export class TravelResolutionDelegate {
 
     setDeclaration(actorId, activity, day = null) {
         const d = day ?? this.#activeDay;
+        const existing = this._getEntry(d, actorId);
+        if (existing
+            && existing.activity === "nothing"
+            && !existing.customDC
+            && this.isConfirmed(actorId, d)) {
+            if (activity === "nothing") return;
+            return;
+        }
         const dc = activity === "hunt" ? this.huntDC
             : activity === "scout" ? 0
             : activity === "nothing" ? 0
@@ -304,6 +335,53 @@ export class TravelResolutionDelegate {
         entry.status = "rolled";
     }
 
+    /**
+     * Resolve forage or hunt for one character as soon as the roll is received.
+     * Scout and Other still resolve in resolveDay. Skips if already resolved.
+     * @returns {Promise<{ day: number, activity: string, result: object }|null>} debrief row, or null
+     */
+    async resolveIndividualResult(actorId, day, terrainTag) {
+        if (!this.#poolsLoaded) {
+            console.warn("[Respite:TravelDelegate] No resource pools loaded from content packs. Foraging will produce no results.");
+        }
+        const entry = this._getEntry(day, actorId);
+        if (!entry) return null;
+        if (entry.status === "resolved") return null;
+        if (entry.status !== "rolled") return null;
+        if (entry.activity !== "forage" && entry.activity !== "hunt") return null;
+
+        const actor = game.actors.get(actorId);
+        if (!actor) return null;
+
+        let result;
+        if (entry.activity === "forage") {
+            result = await this.#resolver.resolveForageFromTotal(actor, terrainTag, entry.total, entry.dc);
+        } else {
+            result = await this.#resolver.resolveHuntFromTotal(actor, terrainTag, entry.total, entry.dc);
+        }
+
+        if (result.success && result.items?.length) {
+            await this.#resolver.grantItems(actor, result.items);
+        }
+
+        if (result.mishap) {
+            const engine = this.#app.getRestFlowEngine?.() ?? null;
+            await TravelMishapHandler.applyMishapEffects(actor, result.mishap, engine, { mutateTarget: result.mishap });
+        }
+
+        await this.#resolver.whisperResult(result);
+        entry.result = result;
+        entry.status = "resolved";
+        entry.individualDebriefEmitted = true;
+        try { await actor.setFlag(MODULE_ID, "lastTravelActivity", entry.activity); } catch { /* noop */ }
+
+        return {
+            day,
+            activity: entry.activity,
+            result
+        };
+    }
+
     // ── Context building ──
 
     buildContext(partyActors, terrainTag) {
@@ -343,6 +421,7 @@ export class TravelResolutionDelegate {
                     : lastActivity === "hunt" ? "Hunt"
                     : lastActivity === "scout" ? "Scout" : null;
 
+                const hasCustomRoll = !!(entry?.customDC && entry?.activity === "nothing");
                 const charCtx = {
                     id: actor.id,
                     name: actor.name,
@@ -360,7 +439,8 @@ export class TravelResolutionDelegate {
                     result: entry?.result ?? null,
                     customDC: entry?.customDC ?? null,
                     customSkill: entry?.customSkill ?? null,
-                    hasCustomRoll: !!(entry?.customDC && entry?.activity === "nothing")
+                    hasCustomRoll,
+                    otherLockedIn: activity === "nothing" && !hasCustomRoll && this.isConfirmed(actor.id, d)
                 };
 
                 if (dayCanScout) {
@@ -369,14 +449,23 @@ export class TravelResolutionDelegate {
                     charCtx.scoutSkill = scoutInfo.skill;
                 }
 
+                if (!dayResolved) {
+                    if (activity === "nothing") {
+                        charCtx.awaitingPlayerResponse = !charCtx.confirmed;
+                    } else {
+                        charCtx.awaitingPlayerResponse = status !== "rolled" && status !== "resolved";
+                    }
+                } else {
+                    charCtx.awaitingPlayerResponse = false;
+                }
+
                 return charCtx;
             });
 
             const activeDeclarations = characters.filter(c =>
                 c.activity !== "nothing" || c.hasCustomRoll
             );
-            const allRollsIn = activeDeclarations.length > 0 &&
-                activeDeclarations.every(c => c.status === "rolled" || c.status === "resolved");
+            const allRollsIn = this.isDayReadyToResolve(d, partyActors);
             const anyRequested = characters.some(c => c.requested && c.status !== "rolled" && c.status !== "resolved");
             const hasDeclarations = activeDeclarations.length > 0;
             const locked = anyRequested || allRollsIn || dayResolved ||
@@ -432,6 +521,10 @@ export class TravelResolutionDelegate {
      * For scouting (final day), determines the best scout tier.
      */
     async resolveDay(day, partyActors, terrainTag) {
+        if (!this.isDayReadyToResolve(day, partyActors)) {
+            try { ui.notifications?.warn("Not everyone has rolled or confirmed for this day yet."); } catch { /* noop */ }
+            return;
+        }
         if (!this.#poolsLoaded) {
             console.warn("[Respite:TravelDelegate] No resource pools loaded from content packs. Foraging will produce no results.");
         }
@@ -440,7 +533,8 @@ export class TravelResolutionDelegate {
 
         for (const actor of partyActors) {
             const entry = this._getEntry(day, actor.id);
-            if (!entry || entry.status !== "rolled") continue;
+            if (!entry || entry.status === "resolved") continue;
+            if (entry.status !== "rolled") continue;
             if (entry.activity === "nothing" && !entry.customDC) continue;
 
             // "Other" with custom DC: just mark resolved with the total, no pool draws
@@ -462,17 +556,24 @@ export class TravelResolutionDelegate {
                 continue;
             }
 
+            if (entry.activity !== "forage" && entry.activity !== "hunt") {
+                continue;
+            }
+
             let result;
             if (entry.activity === "forage") {
                 result = await this.#resolver.resolveForageFromTotal(actor, terrainTag, entry.total, entry.dc);
-            } else if (entry.activity === "hunt") {
-                result = await this.#resolver.resolveHuntFromTotal(actor, terrainTag, entry.total, entry.dc);
             } else {
-                continue;
+                result = await this.#resolver.resolveHuntFromTotal(actor, terrainTag, entry.total, entry.dc);
             }
 
             if (result.success && result.items?.length) {
                 await this.#resolver.grantItems(actor, result.items);
+            }
+
+            if (result.mishap && !result.mishap.effectsApplied) {
+                const engine = this.#app.getRestFlowEngine?.() ?? null;
+                await TravelMishapHandler.applyMishapEffects(actor, result.mishap, engine, { mutateTarget: result.mishap });
             }
 
             await this.#resolver.whisperResult(result);
@@ -503,6 +604,14 @@ export class TravelResolutionDelegate {
                 whisper: ChatMessage.getWhisperRecipients("GM").map(u => u.id),
                 speaker: { alias: "Respite" }
             });
+        }
+
+        for (const actor of partyActors) {
+            const entry = this._getEntry(day, actor.id);
+            if (!entry) continue;
+            if (entry.activity === "nothing" && !entry.customDC && this.isConfirmed(actor.id, day)) {
+                entry.status = "resolved";
+            }
         }
 
         this.#dayResolved.set(day, true);
@@ -574,6 +683,7 @@ export class TravelResolutionDelegate {
             const entry = this._getEntry(d, actorId);
             if (!entry || entry.status !== "resolved" || !entry.result) continue;
             if (entry.activity === "scout") continue; // scouting is blind
+            if (entry.individualDebriefEmitted) continue; // already sent via travelIndividualDebrief
             results.push({
                 day: d,
                 activity: entry.activity,
@@ -649,6 +759,7 @@ export class TravelResolutionDelegate {
                     total: e.total,
                     customDC: e.customDC ?? null,
                     customSkill: e.customSkill ?? null,
+                    individualDebriefEmitted: !!e.individualDebriefEmitted,
                     result: e.result ? {
                         activity: e.result.activity,
                         actorId: e.result.actorId,
@@ -661,6 +772,14 @@ export class TravelResolutionDelegate {
                         dc: e.result.dc,
                         items: e.result.items,
                         mishap: e.result.mishap
+                            ? {
+                                type: e.result.mishap.type,
+                                description: e.result.mishap.description,
+                                effects: e.result.mishap.effects,
+                                effectsApplied: e.result.mishap.effectsApplied,
+                                appliedSummaries: e.result.mishap.appliedSummaries
+                            }
+                            : null
                     } : null
                 }])
             ),

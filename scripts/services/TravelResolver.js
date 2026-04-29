@@ -411,34 +411,114 @@ export class TravelResolver {
     _rollForageMishap(terrainTag) {
         const tables = {
             forest: [
-                { type: "condition", description: "Touched something toxic. Poisoned until end of rest (Con save DC 12 to shrug it off early).", effect: "poisoned" },
-                { type: "economy", description: "A waterskin punctured on thorns. Lost 1 waterskin.", effect: "lose_water" },
-                { type: "rest_penalty", description: "Got turned around in the brush. Disadvantage on rest activity check.", effect: "activity_disadvantage" },
-                { type: "escalation", description: "Disturbed a nest. Something followed the forager back to camp.", effect: "escalate_encounter" }
+                {
+                    type: "condition",
+                    description: "Touched something toxic. Poisoned until end of rest (Con save DC 12 to shrug it off early).",
+                    effects: [{ type: "condition", condition: "poisoned", duration: "next_rest" }]
+                },
+                {
+                    type: "economy",
+                    description: "A waterskin punctured on thorns. Lost 1 waterskin.",
+                    effects: [{ type: "consume_resource", resource: "water", amount: 1 }]
+                },
+                {
+                    type: "rest_penalty",
+                    description: "Got turned around in the brush. Disadvantage on rest activity check.",
+                    effects: [{ type: "travel_penalty", penalty: "activity_disadvantage" }]
+                },
+                {
+                    type: "escalation",
+                    description: "Disturbed a nest. Something followed the forager back to camp.",
+                    effects: [{ type: "encounter_mod", encounterDCDelta: -2 }]
+                }
             ],
             swamp: [
-                { type: "condition", description: "Waded through something foul. Diseased (persists beyond rest, requires Lesser Restoration).", effect: "diseased" },
-                { type: "economy", description: "Rations fell in the muck. Lost 1 rations.", effect: "lose_food" },
-                { type: "rest_penalty", description: "Sank waist-deep in a bog. Reduced rest recovery for this character.", effect: "reduced_recovery" },
-                { type: "slot_loss", description: "Spent hours finding a way back. No rest activity for this character.", effect: "lose_activity" }
+                {
+                    type: "condition",
+                    description: "Waded through something foul. Diseased (persists beyond rest, requires Lesser Restoration).",
+                    effects: [{ type: "condition", condition: "diseased", duration: "permanent" }]
+                },
+                {
+                    type: "economy",
+                    description: "Rations fell in the muck. Lost 1 rations.",
+                    effects: [{ type: "consume_resource", resource: "rations", amount: 1 }]
+                },
+                {
+                    type: "rest_penalty",
+                    description: "Sank waist-deep in a bog. Reduced rest recovery for this character.",
+                    effects: [{ type: "recovery_penalty", hpMultiplier: 0.5 }]
+                },
+                {
+                    type: "slot_loss",
+                    description: "Spent hours finding a way back. No rest activity for this character.",
+                    effects: [{ type: "travel_penalty", penalty: "lose_activity" }]
+                }
             ],
             desert: [
-                { type: "condition", description: "Heat exhaustion from wandering too far. +1 exhaustion level.", effect: "exhaustion" },
-                { type: "economy", description: "A waterskin cracked in the heat. Lost 1 waterskin.", effect: "lose_water" },
-                { type: "escalation", description: "Stumbled into a sand viper's territory. Something stirs near camp.", effect: "escalate_encounter" },
-                { type: "rest_penalty", description: "Sunstroke. Reduced rest recovery for this character.", effect: "reduced_recovery" }
+                {
+                    type: "condition",
+                    description: "Heat exhaustion from wandering too far. +1 exhaustion level.",
+                    effects: [{ type: "exhaustion_delta", levels: 1 }]
+                },
+                {
+                    type: "economy",
+                    description: "A waterskin cracked in the heat. Lost 1 waterskin.",
+                    effects: [{ type: "consume_resource", resource: "water", amount: 1 }]
+                },
+                {
+                    type: "escalation",
+                    description: "Stumbled into a sand viper's territory. Something stirs near camp.",
+                    effects: [{ type: "encounter_mod", encounterDCDelta: -2 }]
+                },
+                {
+                    type: "rest_penalty",
+                    description: "Sunstroke. Reduced rest recovery for this character.",
+                    effects: [{ type: "recovery_penalty", hpMultiplier: 0.5 }]
+                }
             ],
             mountain: [
-                { type: "condition", description: "Twisted an ankle on loose scree. Disadvantage on rest activity check.", effect: "activity_disadvantage" },
-                { type: "economy", description: "Pack tore on a rock face. Lost 1 random supply item.", effect: "lose_supply" },
-                { type: "escalation", description: "Dislodged rocks drew attention. Something watches from above.", effect: "escalate_encounter" },
-                { type: "rest_penalty", description: "Altitude sickness. Reduced rest recovery for this character.", effect: "reduced_recovery" }
+                {
+                    type: "rest_penalty",
+                    description: "Twisted an ankle on loose scree. Disadvantage on rest activity check.",
+                    effects: [{ type: "travel_penalty", penalty: "activity_disadvantage" }]
+                },
+                {
+                    type: "economy",
+                    description: "Pack tore on a rock face. Lost 1 random supply item.",
+                    effects: [{ type: "supply_loss", amount: 1 }]
+                },
+                {
+                    type: "escalation",
+                    description: "Dislodged rocks drew attention. Something watches from above.",
+                    effects: [{ type: "encounter_mod", encounterDCDelta: -2 }]
+                },
+                {
+                    type: "rest_penalty",
+                    description: "Altitude sickness. Reduced rest recovery for this character.",
+                    effects: [{ type: "recovery_penalty", hpMultiplier: 0.5 }]
+                }
             ],
             arctic: [
-                { type: "condition", description: "Frostbite setting in. +1 exhaustion level.", effect: "exhaustion" },
-                { type: "economy", description: "Supplies exposed to wind. Lost 1 rations.", effect: "lose_food" },
-                { type: "rest_penalty", description: "Hypothermia risk. Reduced rest recovery for this character.", effect: "reduced_recovery" },
-                { type: "slot_loss", description: "Whiteout conditions. Returned too late for rest activities.", effect: "lose_activity" }
+                {
+                    type: "condition",
+                    description: "Frostbite setting in. +1 exhaustion level.",
+                    effects: [{ type: "exhaustion_delta", levels: 1 }]
+                },
+                {
+                    type: "economy",
+                    description: "Supplies exposed to wind. Lost 1 rations.",
+                    effects: [{ type: "consume_resource", resource: "rations", amount: 1 }]
+                },
+                {
+                    type: "rest_penalty",
+                    description: "Hypothermia risk. Reduced rest recovery for this character.",
+                    effects: [{ type: "recovery_penalty", hpMultiplier: 0.5 }]
+                },
+                {
+                    type: "slot_loss",
+                    description: "Whiteout conditions. Returned too late for rest activities.",
+                    effects: [{ type: "travel_penalty", penalty: "lose_activity" }]
+                }
             ]
         };
 
@@ -449,34 +529,129 @@ export class TravelResolver {
     _rollHuntMishap(terrainTag) {
         const tables = {
             forest: [
-                { type: "escalation", description: "The prey escaped and drew attention. Something follows.", effect: "escalate_encounter" },
-                { type: "economy", description: "Bowstring snapped. Weapon imposes disadvantage until repaired.", effect: "weapon_damaged" },
-                { type: "slot_loss", description: "The chase led too far afield. No rest activity for this character.", effect: "lose_activity" },
-                { type: "condition", description: "Gored by a cornered animal. Poisoned until end of rest.", effect: "poisoned" }
+                {
+                    type: "escalation",
+                    description: "The prey escaped and drew attention. Something follows.",
+                    effects: [{ type: "encounter_mod", encounterDCDelta: -2 }]
+                },
+                {
+                    type: "economy",
+                    description: "Bowstring snapped. Disadvantage on the next attack roll (repair the weapon in fiction when it fits).",
+                    effects: [{
+                        type: "condition",
+                        condition: "disadvantage_attack",
+                        duration: "1_attack",
+                        label: "Disadvantage on next attack"
+                    }]
+                },
+                {
+                    type: "slot_loss",
+                    description: "The chase led too far afield. No rest activity for this character.",
+                    effects: [{ type: "travel_penalty", penalty: "lose_activity" }]
+                },
+                {
+                    type: "condition",
+                    description: "Gored by a cornered animal. Poisoned until end of rest.",
+                    effects: [{ type: "condition", condition: "poisoned", duration: "next_rest" }]
+                }
             ],
             swamp: [
-                { type: "escalation", description: "Disturbed something large in the water. Encounter risk increased.", effect: "escalate_encounter" },
-                { type: "condition", description: "Bitten by something venomous. Poisoned until end of rest.", effect: "poisoned" },
-                { type: "rest_penalty", description: "Wading through muck for hours. Reduced rest recovery.", effect: "reduced_recovery" },
-                { type: "slot_loss", description: "Lost in fog. Returned too late for rest activities.", effect: "lose_activity" }
+                {
+                    type: "escalation",
+                    description: "Disturbed something large in the water. Encounter risk increased.",
+                    effects: [{ type: "encounter_mod", encounterDCDelta: -2 }]
+                },
+                {
+                    type: "condition",
+                    description: "Bitten by something venomous. Poisoned until end of rest.",
+                    effects: [{ type: "condition", condition: "poisoned", duration: "next_rest" }]
+                },
+                {
+                    type: "rest_penalty",
+                    description: "Wading through muck for hours. Reduced rest recovery.",
+                    effects: [{ type: "recovery_penalty", hpMultiplier: 0.5 }]
+                },
+                {
+                    type: "slot_loss",
+                    description: "Lost in fog. Returned too late for rest activities.",
+                    effects: [{ type: "travel_penalty", penalty: "lose_activity" }]
+                }
             ],
             desert: [
-                { type: "escalation", description: "The prey's death cry echoed across the dunes. Something heard it.", effect: "escalate_encounter" },
-                { type: "condition", description: "Heatstroke from extended pursuit. +1 exhaustion level.", effect: "exhaustion" },
-                { type: "economy", description: "Spear shaft cracked on stone. Weapon imposes disadvantage until repaired.", effect: "weapon_damaged" },
-                { type: "rest_penalty", description: "Dehydrated from the chase. Reduced rest recovery.", effect: "reduced_recovery" }
+                {
+                    type: "escalation",
+                    description: "The prey's death cry echoed across the dunes. Something heard it.",
+                    effects: [{ type: "encounter_mod", encounterDCDelta: -2 }]
+                },
+                {
+                    type: "condition",
+                    description: "Heatstroke from extended pursuit. +1 exhaustion level.",
+                    effects: [{ type: "exhaustion_delta", levels: 1 }]
+                },
+                {
+                    type: "economy",
+                    description: "Spear shaft cracked on stone. Disadvantage on the next attack roll (repair the weapon in fiction when it fits).",
+                    effects: [{
+                        type: "condition",
+                        condition: "disadvantage_attack",
+                        duration: "1_attack",
+                        label: "Disadvantage on next attack"
+                    }]
+                },
+                {
+                    type: "rest_penalty",
+                    description: "Dehydrated from the chase. Reduced rest recovery.",
+                    effects: [{ type: "recovery_penalty", hpMultiplier: 0.5 }]
+                }
             ],
             mountain: [
-                { type: "escalation", description: "A rockslide drew a predator's attention. Encounter risk increased.", effect: "escalate_encounter" },
-                { type: "condition", description: "Slipped on a ledge. Disadvantage on rest activity check.", effect: "activity_disadvantage" },
-                { type: "economy", description: "Equipment lost over a cliff edge. Weapon imposes disadvantage until repaired.", effect: "weapon_damaged" },
-                { type: "slot_loss", description: "The trail led up a dead-end ridge. No rest activity for this character.", effect: "lose_activity" }
+                {
+                    type: "escalation",
+                    description: "A rockslide drew a predator's attention. Encounter risk increased.",
+                    effects: [{ type: "encounter_mod", encounterDCDelta: -2 }]
+                },
+                {
+                    type: "rest_penalty",
+                    description: "Slipped on a ledge. Disadvantage on rest activity check.",
+                    effects: [{ type: "travel_penalty", penalty: "activity_disadvantage" }]
+                },
+                {
+                    type: "economy",
+                    description: "Equipment lost over a cliff edge. Disadvantage on the next attack roll (replace gear in fiction when it fits).",
+                    effects: [{
+                        type: "condition",
+                        condition: "disadvantage_attack",
+                        duration: "1_attack",
+                        label: "Disadvantage on next attack"
+                    }]
+                },
+                {
+                    type: "slot_loss",
+                    description: "The trail led up a dead-end ridge. No rest activity for this character.",
+                    effects: [{ type: "travel_penalty", penalty: "lose_activity" }]
+                }
             ],
             arctic: [
-                { type: "escalation", description: "Blood on the snow. Predators are circling.", effect: "escalate_encounter" },
-                { type: "condition", description: "Frostbite from extended exposure. +1 exhaustion level.", effect: "exhaustion" },
-                { type: "rest_penalty", description: "Hypothermia risk after falling through thin ice. Reduced rest recovery.", effect: "reduced_recovery" },
-                { type: "slot_loss", description: "Blizzard rolled in. Returned too late for rest activities.", effect: "lose_activity" }
+                {
+                    type: "escalation",
+                    description: "Blood on the snow. Predators are circling.",
+                    effects: [{ type: "encounter_mod", encounterDCDelta: -2 }]
+                },
+                {
+                    type: "condition",
+                    description: "Frostbite from extended exposure. +1 exhaustion level.",
+                    effects: [{ type: "exhaustion_delta", levels: 1 }]
+                },
+                {
+                    type: "rest_penalty",
+                    description: "Hypothermia risk after falling through thin ice. Reduced rest recovery.",
+                    effects: [{ type: "recovery_penalty", hpMultiplier: 0.5 }]
+                },
+                {
+                    type: "slot_loss",
+                    description: "Blizzard rolled in. Returned too late for rest activities.",
+                    effects: [{ type: "travel_penalty", penalty: "lose_activity" }]
+                }
             ]
         };
 
