@@ -320,8 +320,8 @@ export function emitDehydrationResultsBroadcast(results) {
  * @param {string[]} partyActorIds
  * @param {boolean} magicScanComplete
  */
-export function emitDetectMagicScanBroadcast(results, partyActorIds, magicScanComplete) {
-    _emit(SOCKET_TYPES.DETECT_MAGIC_SCAN_BROADCAST, { results, partyActorIds, magicScanComplete });
+export function emitDetectMagicScanBroadcast(data) {
+    _emit(SOCKET_TYPES.DETECT_MAGIC_SCAN_BROADCAST, data);
 }
 
 /**

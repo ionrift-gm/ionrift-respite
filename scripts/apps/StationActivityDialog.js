@@ -235,7 +235,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             });
         } else if (hubEligible && this._station.id === "workbench") {
             if (hasAnyGeneral) stationTabs.push({ id: "activity", label: "Activities" });
-            if (game.user?.isGM) stationTabs.push({ id: "identify", label: "Identify" });
+            // Identify tab (Focus + Potion tasting) is available to all players — no spell required.
+            // The "Cast Detect Magic" button inside it is separately gated to GM.
+            stationTabs.push({ id: "identify", label: "Identify" });
         } else if (hubEligible && this._station.id === "campfire") {
             const fireTabCtx = this._restApp?.getFireTabContextForStationDialog?.() ?? null;
             if (fireTabCtx) {
@@ -992,7 +994,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         let initialStationTab = "activity";
         if (showStationTabs && station.id === "cooking_station") initialStationTab = "meal";
         if (workbenchHub && generalAvailable.length === 0) {
-            initialStationTab = game.user?.isGM ? "identify" : "activity";
+            initialStationTab = "identify";
         }
         if (campfireHub) initialStationTab = "camp";
 
@@ -1000,7 +1002,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         if (showStationTabs && station.id === "cooking_station") {
             dialogWidth = 380;
         } else if (workbenchHub) {
-            dialogWidth = game.user?.isGM ? 350 : 300;
+            dialogWidth = 350;
         } else if (station.id === "campfire") {
             dialogWidth = CAMPFIRE_DIALOG_WIDTH;
         }
