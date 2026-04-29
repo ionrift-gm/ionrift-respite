@@ -7,7 +7,7 @@
 
 import { MealPhaseHandler } from "../../services/MealPhaseHandler.js";
 import { TerrainRegistry } from "../../services/TerrainRegistry.js";
-import { getPartyActors } from "../../module.js";
+import { getPartyActors } from "../../services/partyActors.js";
 
 const MODULE_ID = "ionrift-respite";
 

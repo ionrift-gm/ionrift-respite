@@ -1,4 +1,5 @@
-import { getPartyActors } from "../module.js";
+import { getPartyActors } from "./partyActors.js";
+import { boostComfort, getHdPenalty, getExhaustionDC, HP_FRACTION } from "./ComfortCalculator.js";
 
 /**
  * RestFlowEngine
@@ -214,32 +215,24 @@ export class RestFlowEngine {
         const rawHdRecovery = Math.max(1, Math.floor(totalHd / 2));
 
         // Effective comfort: start with camp comfort, boost if activity has comfort_boost
-        const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
         let effectiveComfort = this.comfort;
         const hasComfortBoost = activitySchema?.outcomes?.success?.effects?.some(e => e.type === "comfort_boost");
         if (hasComfortBoost) {
-            const idx = COMFORT_TIERS.indexOf(this.comfort);
-            if (idx >= 0 && idx < COMFORT_TIERS.length - 1) {
-                effectiveComfort = COMFORT_TIERS[idx + 1];
-            }
+            effectiveComfort = boostComfort(effectiveComfort, 1);
         }
 
         // Tend Wounds: if someone successfully tended this character, boost their comfort too
         const hasTendBoost = this._isTendWoundsTarget(actor.id);
         if (hasTendBoost) {
-            const idx = COMFORT_TIERS.indexOf(effectiveComfort);
-            if (idx >= 0 && idx < COMFORT_TIERS.length - 1) {
-                effectiveComfort = COMFORT_TIERS[idx + 1];
-            }
+            effectiveComfort = boostComfort(effectiveComfort, 1);
         }
 
         // Comfort tier penalties (using effective comfort)
-        const HD_PENALTY = { safe: 0, sheltered: 0, rough: 1, hostile: 2 };
-        const hdPenalty = HD_PENALTY[effectiveComfort] ?? 0;
+        const hdPenalty = getHdPenalty(effectiveComfort);
         let baseHdRecovered = Math.max(0, rawHdRecovery - hdPenalty);
 
         const isHostile = effectiveComfort === "hostile";
-        const maxHpRestorable = isHostile ? Math.floor(maxHp * 0.75) : maxHp;
+        const maxHpRestorable = isHostile ? Math.floor(maxHp * (HP_FRACTION.hostile)) : maxHp;
         let baseHpRestored = maxHpRestorable;
 
         // hpMultiplier automation (from event effects)
@@ -266,9 +259,7 @@ export class RestFlowEngine {
         }
 
         // Exhaustion risk at Rough/Hostile (using effective comfort)
-        let exhaustionDC = effectiveComfort === "hostile" ? 15
-            : effectiveComfort === "rough" ? 10
-            : null;
+        let exhaustionDC = getExhaustionDC(effectiveComfort);
 
         // ── Xanathar's Armor Sleep Penalty (gated by setting) ──
         // Sleeping in medium/heavy armor: recover only 1/4 HD, exhaustion not reduced

@@ -14,13 +14,13 @@ import { SpellSlotRecovery } from "../services/SpellSlotRecovery.js";
 import {
     registerActiveShortRestApp,
     clearActiveShortRestApp,
-    getPartyActors,
     _showGmShortRestIndicator,
     _removeGmShortRestIndicator,
     notifyShortRestActive,
     showAfkPanel,
     hideAfkPanelAfterRest
 } from "../module.js";
+import { getPartyActors } from "../services/partyActors.js";
 import * as RestAfkState from "../services/RestAfkState.js";
 
 const MODULE_ID = "ionrift-respite";

@@ -25,7 +25,7 @@ const FP = (typeof ForgeVTT !== "undefined" && ForgeVTT.usingTheForge)
  * Forge VTT uses "forgevtt" (S3-backed Assets Library);
  * self-hosted Foundry uses "data".
  */
-function _fileSource() {
+export function _fileSource() {
     return (typeof ForgeVTT !== "undefined" && ForgeVTT.usingTheForge)
         ? "forgevtt" : "data";
 }

@@ -1,4 +1,11 @@
-import { getPartyActors } from "../module.js";
+import { getPartyActors } from "./partyActors.js";
+import {
+    COMFORT_TIERS,
+    boostComfort,
+    getHdPenalty,
+    getHpFraction,
+    getExhaustionDC
+} from "./ComfortCalculator.js";
 
 /**
  * CampGearScanner
@@ -12,6 +19,15 @@ import { getPartyActors } from "../module.js";
  * phase can show players the mechanical impact of their gear and fire state.
  */
 export class CampGearScanner {
+
+    static getRules(tier) {
+        return {
+            hpFraction: getHpFraction(tier),
+            hdPenalty: getHdPenalty(tier),
+            exhaustionDC: getExhaustionDC(tier),
+            label: tier.charAt(0).toUpperCase() + tier.slice(1)
+        };
+    }
 
     /** Firewood spent when the party commits this fire level during Make Camp. */
     static FIREWOOD_COST_BY_LEVEL = Object.freeze({
@@ -81,20 +97,7 @@ export class CampGearScanner {
         }
     });
 
-    /** Comfort tier names in ascending order. */
-    static COMFORT_TIERS = ["hostile", "rough", "comfortable", "sheltered", "safe"];
 
-    /** Aliases for legacy tier names used elsewhere in the codebase. */
-    static #TIER_ALIAS = { sheltered: "sheltered", comfortable: "sheltered" };
-
-    /** Recovery rules per comfort tier. */
-    static TIER_RULES = {
-        safe:        { hpFraction: 1.0, hdPenalty: 0, exhaustionDC: null,  label: "Safe" },
-        sheltered:   { hpFraction: 1.0, hdPenalty: 0, exhaustionDC: null,  label: "Sheltered" },
-        comfortable: { hpFraction: 1.0, hdPenalty: 0, exhaustionDC: null,  label: "Comfortable" },
-        rough:       { hpFraction: 1.0, hdPenalty: 1, exhaustionDC: 10,    label: "Rough" },
-        hostile:     { hpFraction: 0.75, hdPenalty: 2, exhaustionDC: 15,   label: "Hostile" }
-    };
 
     /**
      * Scans a single actor's inventory for camp gear.
@@ -152,24 +155,21 @@ export class CampGearScanner {
         const members = actors.map(a => this.scanActor(a));
 
         // ── Camp Comfort (shared) ──────────────────────────────
-        const tiers = this.COMFORT_TIERS;
-        let campTierIndex = tiers.indexOf(terrainComfort);
-        if (campTierIndex < 0) campTierIndex = 1; // default to rough
+        let campComfort = COMFORT_TIERS.includes(terrainComfort) ? terrainComfort : "rough";
 
         const campBreakdown = [
-            { label: terrainLabel || `Base (terrain)`, value: tiers[campTierIndex], delta: 0 }
+            { label: terrainLabel || `Base (terrain)`, value: campComfort, delta: 0 }
         ];
 
         // Shelter spell overrides to sheltered minimum
         if (shelterSpell) {
-            const shelterIdx = tiers.indexOf("sheltered");
-            if (campTierIndex < shelterIdx) {
-                campBreakdown.push({ label: shelterSpell, value: "sheltered", delta: shelterIdx - campTierIndex });
-                campTierIndex = shelterIdx;
+            if (campComfort === "hostile" || campComfort === "rough") {
+                campBreakdown.push({ label: shelterSpell, value: "sheltered", delta: campComfort === "hostile" ? 2 : 1 });
+                campComfort = "sheltered";
             }
         }
 
-        const campComfortPreFire = tiers[campTierIndex];
+        const campComfortPreFire = campComfort;
 
         // Fire comfort matches resolution engine (FIRE_COMFORT_MOD):
         // unlit: -1 | embers: 0 | campfire: 0 | bonfire: +1
@@ -179,19 +179,18 @@ export class CampGearScanner {
 
         if (fireLevel === "unlit") {
             campBreakdown.push({ label: "No fire", value: "-1 comfort", delta: 0 });
-            campTierIndex = Math.max(0, campTierIndex - 1);
+            campComfort = boostComfort(campComfort, -1);
         } else if (fireLevel === "embers") {
             campBreakdown.push({ label: "Embers", value: "fire active", delta: 0 });
         } else if (fireLevel === "campfire") {
             campBreakdown.push({ label: "Campfire", value: "fire active", delta: 0 });
         } else if (fireLevel === "bonfire") {
             campBreakdown.push({ label: "Bonfire", value: "+1", delta: 1 });
-            campTierIndex = Math.min(campTierIndex + 1, tiers.length - 1);
+            campComfort = boostComfort(campComfort, 1);
         }
 
-        const campComfort = tiers[campTierIndex];
-        const campComfortLabel = this.TIER_RULES[campComfort]?.label ?? campComfort;
-        const _tr = this.TIER_RULES[campComfort] ?? this.TIER_RULES.rough;
+        const campComfortLabel = this.getRules(campComfort).label;
+        const _tr = this.getRules(campComfort);
         const _tipParts = [];
         _tipParts.push(_tr.hpFraction < 1 ? `${Math.round(_tr.hpFraction * 100)}% HP recovery` : "Full HP recovery");
         if (_tr.hdPenalty > 0) _tipParts.push(`-${_tr.hdPenalty} HD`);
@@ -201,17 +200,16 @@ export class CampGearScanner {
 
         // ── Per-PC Personal Comfort ────────────────────────────
         const personalCards = members.map(m => {
-            let personalIndex = campTierIndex;
+            let personalComfort = campComfort;
             const breakdown = [];
 
             if (m.hasBedroll) {
                 breakdown.push({ label: "Bedroll", icon: "fas fa-bed", delta: 1 });
-                personalIndex = Math.min(personalIndex + 1, tiers.length - 1);
+                personalComfort = boostComfort(personalComfort, 1);
             }
             // Tent: weather shield and encounter DC bump only. No personal comfort.
 
-            const personalComfort = tiers[personalIndex];
-            const rules = this.TIER_RULES[personalComfort] ?? this.TIER_RULES.rough;
+            const rules = this.getRules(personalComfort);
 
             // Recovery preview (approximate — final numbers come from RestFlowEngine)
             const actor = actors.find(a => a.id === m.actorId);
@@ -294,9 +292,8 @@ export class CampGearScanner {
 
         // ── "Without fire" preview ─────────────────────────────
         // Undo the current fire delta and apply the unlit penalty (-1)
-        const noFireTierIndex = Math.max(0, campTierIndex - fireComfortDelta + FIRE_COMFORT.unlit);
-        const noFireComfort = tiers[noFireTierIndex];
-        const noFireRules = this.TIER_RULES[noFireComfort] ?? this.TIER_RULES.rough;
+        const noFireComfort = boostComfort(campComfortPreFire, FIRE_COMFORT.unlit);
+        const noFireRules = this.getRules(noFireComfort);
 
         return {
             campComfort,

@@ -7,7 +7,6 @@ import { CalendarHandler } from "./services/CalendarHandler.js";
 import { TerrainRegistry } from "./services/TerrainRegistry.js";
 import { RestSetupApp } from "./apps/RestSetupApp.js";
 import { ActivityPickerApp } from "./apps/ActivityPickerApp.js";
-import { CampfireApp } from "./apps/CampfireApp.js";
 import { ShortRestApp } from "./apps/ShortRestApp.js";
 import { CampfireTokenLinker } from "./services/CampfireTokenLinker.js";
 import { TorchTokenLinker } from "./services/TorchTokenLinker.js";
@@ -94,9 +93,6 @@ let activeRestSetupApp = null;
 // Cached rest data payload so late-joining players can retrieve it.
 let activeRestData = null;
 
-// Active campfire panel reference for socket routing.
-let activeCampfireApp = null;
-
 // Active short rest app reference for socket routing.
 let activeShortRestApp = null;
 
@@ -105,20 +101,6 @@ let activePlayerRestApp = null;
 
 // Tracks whether a player-side rest flow is currently active.
 let _playerRestActive = false;
-
-/**
- * Registers the active CampfireApp so socket events route to it.
- */
-export function registerCampfireApp(app) {
-    activeCampfireApp = app;
-}
-
-/**
- * Clears the active CampfireApp reference.
- */
-export function clearCampfireApp() {
-    activeCampfireApp = null;
-}
 
 /**
  * Registers the active RestSetupApp so the socket handler can route to it.
@@ -171,14 +153,7 @@ export function notifyShortRestActive() {
     _showShortRestRejoinNotification();
 }
 
-/**
- * Returns the GM-approved party actors from the world setting.
- * Re-exported from partyActors.js (single source for AFK panel and module).
- * @returns {Actor[]} Array of approved party actors.
- */
-export function getPartyActors() {
-    return getPartyActorsFromSetting();
-}
+
 
 /** @type {AfkPanelApp|null} */
 let activeAfkPanel = null;
@@ -766,7 +741,6 @@ Hooks.once("ready", async () => {
         get activeRestSetupApp() { return activeRestSetupApp; },
         get activePlayerRestApp() { return activePlayerRestApp; },
         get activeShortRestApp() { return activeShortRestApp; },
-        get activeCampfireApp() { return activeCampfireApp; },
         get playerRestActive() { return _playerRestActive; },
         get activeRestData() { return activeRestData; },
         setActivePlayerRestApp(v) { activePlayerRestApp = v; },
@@ -1100,7 +1074,7 @@ Hooks.once("ready", async () => {
             return;
         }
 
-        const partyActors = getPartyActors();
+        const partyActors = getPartyActorsFromSetting();
         const holders = ButcherResolver.findCookbookHolders(partyActors);
         if (!holders.length) return;
 

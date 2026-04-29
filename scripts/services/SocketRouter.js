@@ -41,7 +41,6 @@ const MODULE_ID = "ionrift-respite";
  * @property {object|null} activeRestSetupApp
  * @property {object|null} activePlayerRestApp
  * @property {object|null} activeShortRestApp
- * @property {object|null} activeCampfireApp
  * @property {boolean} playerRestActive
  * @property {object|null} activeRestData
  * @property {function} setActivePlayerRestApp
@@ -318,43 +317,6 @@ export function dispatch(data, ctx) {
 
         case SOCKET_TYPES.ARMOR_TOGGLE:
             handleArmorToggle(data, ctx);
-            break;
-
-        // ── Campfire Mini-App ────────────────────────────────────────
-        case SOCKET_TYPES.CAMPFIRE_STRIKE:
-            ctx.activeCampfireApp?.receiveStrike?.(data);
-            break;
-
-        case SOCKET_TYPES.CAMPFIRE_STICK:
-            ctx.activeCampfireApp?.receiveStick?.(data);
-            break;
-
-        case SOCKET_TYPES.CAMPFIRE_POKE:
-            ctx.activeCampfireApp?.receivePoke?.(data);
-            break;
-
-        case SOCKET_TYPES.CAMPFIRE_TRINKET:
-            ctx.activeCampfireApp?.receiveTrinket?.(data);
-            break;
-
-        case SOCKET_TYPES.CAMPFIRE_EMOTE:
-            ctx.activeCampfireApp?.receiveEmote?.(data);
-            break;
-
-        case SOCKET_TYPES.CAMPFIRE_WHITTLE:
-            ctx.activeCampfireApp?.receiveWhittle?.(data);
-            break;
-
-        case SOCKET_TYPES.CAMPFIRE_WHITTLE_DROP:
-            ctx.activeCampfireApp?.receiveWhittleDrop?.(data);
-            break;
-
-        case SOCKET_TYPES.CAMPFIRE_PILE_IGNITE:
-            ctx.activeCampfireApp?.receivePileIgnite?.(data);
-            break;
-
-        case SOCKET_TYPES.CAMPFIRE_WHITTLE_SETTLE:
-            ctx.activeCampfireApp?.receiveWhittleSettle?.(data);
             break;
 
         // ── Copy Spell ───────────────────────────────────────────────

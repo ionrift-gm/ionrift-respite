@@ -15,7 +15,7 @@ import {
     DETECT_MAGIC_BTN_TITLE_GM
 } from "./RestConstants.js";
 import { canPlaceStation } from "../services/CompoundCampPlacer.js";
-import { getPartyActors } from "../module.js";
+import { getPartyActors } from "../services/partyActors.js";
 
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;

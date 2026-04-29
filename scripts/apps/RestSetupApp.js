@@ -79,12 +79,11 @@ import {
     registerActiveRestApp,
     clearActiveRestApp,
     setActiveRestData,
-    clearCampfireApp,
     _showGmRestIndicator,
     _removeGmRestIndicator,
-    getPartyActors,
     showAfkPanel
 } from "../module.js";
+import { getPartyActors } from "../services/partyActors.js";
 import * as RestAfkState from "../services/RestAfkState.js";
 import {
     emitRestStarted, emitRestSnapshot, emitRestPreparing, emitRestResolved,
@@ -314,15 +313,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
 
-
-    /** DnD5e skill abbreviation -> readable name */
-    static SKILL_NAMES = SKILL_NAMES;
-
-    /** Comfort tier ranking for comparison and arithmetic */
-    static COMFORT_RANK = COMFORT_RANK;
-
-    /** Comfort tiers indexed by rank value */
-    static RANK_TO_KEY = RANK_TO_KEY;
 
     constructor(options = {}, restData = null) {
         super(options);
@@ -1806,7 +1796,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const isTavern = (this._selectedTerrain ?? "forest") === "tavern";
         const shelterChosen = isTavern || !!activeShelterId;
         const activeShelter = activeShelterId ? shelterOptions.find(s => s.id === activeShelterId) : null;
-        const COMFORT_RANK = RestSetupApp.COMFORT_RANK;
+        const COMFORT_RANK = window.COMFORT_RANK || COMFORT_RANK; // fallback if needed, but imported directly
         const shelterEffect = activeShelter ? {
             name: activeShelter.name,
             comfortFloor: activeShelter.comfortFloor,
@@ -1815,7 +1805,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             casterNames: activeShelter.casterNames ?? null
         } : null;
 
-        const SKILL_NAMES = RestSetupApp.SKILL_NAMES;
+        const SKILL_NAMES = window.SKILL_NAMES || SKILL_NAMES; // fallback if needed, but imported directly
 
         // Activity icon mapping
 
@@ -2776,7 +2766,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const targetNames = (e.targets ?? [])
                     .map(id => game.actors.get(id)?.name)
                     .filter(Boolean);
-                const SKILL_NAMES = RestSetupApp.SKILL_NAMES;
+                const SKILL_NAMES = window.SKILL_NAMES || SKILL_NAMES;
                 const skillName = e.mechanical?.skill
                     ? (SKILL_NAMES[e.mechanical.skill] ?? e.mechanical.skill)
                     : null;
@@ -4495,7 +4485,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             triggeredEvent.pendingRolls = [...pendingRolls];
             triggeredEvent.resolvedRolls = [];
 
-            const skillName = RestSetupApp.SKILL_NAMES[skill] ?? skill;
+            const skillName = SKILL_NAMES[skill] ?? skill;
 
             // Broadcast roll request to players
             emitEventRollRequest({
@@ -4924,7 +4914,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             rope_trick: { comfortFloor: null, encounterMod: 5 },
             magnificent_mansion: { comfortFloor: "safe", encounterMod: 99 }
         };
-        const COMFORT_RANK = RestSetupApp.COMFORT_RANK;
+        const comfortRank = COMFORT_RANK;
         for (const id of activeShelters) {
             const effect = SHELTER_EFFECTS[id];
             if (!effect) continue;
@@ -4967,7 +4957,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (weatherPenalty > 0) {
             let rank = COMFORT_RANK[effectiveComfort] ?? 2;
             rank = Math.max(0, rank - weatherPenalty);
-            effectiveComfort = RestSetupApp.RANK_TO_KEY[rank];
+            effectiveComfort = RANK_TO_KEY[rank];
         }
 
         // Add weather encounter DC modifier
@@ -5585,15 +5575,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (drawer) drawer.classList.add("open");
     }
 
-    /**
-     * Closes the campfire drawer.
-     */
     _closeCampfire() {
         const hadLegacyEmbed = !!this._campfireApp;
         if (this._campfireApp) {
             this._campfireApp.destroy();
             this._campfireApp = null;
-            clearCampfireApp();
         }
         const drawerContent = this.element?.querySelector(".campfire-drawer-content");
         if (drawerContent) drawerContent.innerHTML = "";
@@ -5819,10 +5805,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const FIRE_COMFORT_MOD = { unlit: -1, embers: 0, campfire: 0, bonfire: 1 };
         const fireComfortMod = FIRE_COMFORT_MOD[this._fireLevel] ?? 0;
         if (fireComfortMod !== 0 && this._engine) {
-            const COMFORT_RANK = RestSetupApp.COMFORT_RANK;
+            const comfortRank = COMFORT_RANK;
             let rank = COMFORT_RANK[this._engine.comfort] ?? 1;
             rank = Math.max(0, Math.min(3, rank + fireComfortMod));
-            this._engine.comfort = RestSetupApp.RANK_TO_KEY[rank];
+            this._engine.comfort = RANK_TO_KEY[rank];
         }
 
         if (this._engine) {
@@ -5882,7 +5868,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const alt = actor.system?.skills?.[activity.check.altSkill]?.total ?? 0;
                 if (alt > primary) skillKey = activity.check.altSkill;
             }
-            const skillName = RestSetupApp.SKILL_NAMES[skillKey] ?? skillKey;
+            const skillName = SKILL_NAMES[skillKey] ?? skillKey;
 
             this._pendingCampRolls.push({
                 characterId: actor.id,
