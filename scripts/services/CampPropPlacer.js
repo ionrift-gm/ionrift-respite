@@ -16,6 +16,8 @@
  *   game.ionrift.respite.toggleTorches()      — toggle all torch lights on/off
  */
 
+import { CAMPFIRE_FLAME_FLOOR_SORT, CAMPFIRE_PIT_SORT } from "./CompoundCampPlacer.js";
+
 const MODULE_ID = "ionrift-respite";
 
 // Asset paths
@@ -205,7 +207,7 @@ async function createCampfirePair(x, y) {
         texture: { src: randomCampfireBase() },
         width: 1,
         height: 1,
-        sort: PROP_PAIR_BASE_SORT,
+        sort: CAMPFIRE_PIT_SORT,
         x: tx,
         y: ty,
         hidden: false,
@@ -248,7 +250,7 @@ async function createCampfirePair(x, y) {
         texture: { src: flameSrc, scaleX: 1, scaleY: 1 },
         width: 1,
         height: 1,
-        sort: PROP_PAIR_OVERLAY_SORT,
+        sort: CAMPFIRE_FLAME_FLOOR_SORT,
         x: tx,
         y: ty,
         hidden: true,

@@ -57,7 +57,7 @@
         </div>
         {{else}}
         <div class="camp-fire-lighter-list">
-        {{#each campFireLighters}}<button type="button" class="camp-light-fire-btn" data-action="campLightFireMap" data-actor-id="{{actorId}}" data-method="{{method}}"><i class="fas fa-fire"></i> {{actorName}}, {{method}}</button>{{/each}}
+        {{#each campFireLighters}}{{#if isViewerActor}}<button type="button" class="camp-light-fire-btn" data-action="campLightFireMap" data-actor-id="{{actorId}}" data-method="{{method}}"><i class="fas fa-fire"></i> {{method}}</button>{{/if}}{{/each}}
         </div>
         {{/if}}
         {{/if}}

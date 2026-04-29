@@ -36,6 +36,7 @@ import { ButcherResolver } from "./services/ButcherResolver.js";
 import { AfkPanelApp } from "./apps/AfkPanelApp.js";
 import * as RestAfkState from "./services/RestAfkState.js";
 import { getPartyActors as getPartyActorsFromSetting } from "./services/partyActors.js";
+import { MONSTER_COOKING_FEATURE_LIVE, isMonsterCookingUnlocked } from "./FeatureFlags.mjs";
 import {
     setRestSessionAfkEmitter,
     setAfkUiRefresh,
@@ -568,7 +569,7 @@ Hooks.once("init", async () => {
         name: "Campfire Token Name",
         hint: "Name of the token on the scene to link with the campfire. When the campfire is lit, the token's light turns on. Case-insensitive.",
         scope: "world",
-        config: true,
+        config: false,
         type: String,
         default: "Campfire",
         restricted: true
@@ -578,7 +579,7 @@ Hooks.once("init", async () => {
         name: "Perimeter Torch Token Name",
         hint: "Name of the tokens on the scene used as perimeter torches. All matching tokens toggle together. Case-insensitive.",
         scope: "world",
-        config: true,
+        config: false,
         type: String,
         default: "Perimeter Torch",
         restricted: true
@@ -588,7 +589,7 @@ Hooks.once("init", async () => {
         name: "Auto-Link Torches to Campfire",
         hint: "When enabled, perimeter torches automatically light and extinguish with the campfire.",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: true,
         restricted: true
@@ -598,7 +599,7 @@ Hooks.once("init", async () => {
         name: "Custom Food Items",
         hint: "Comma-separated list of additional item names to recognise as food in the meal phase. Case-insensitive. Example: scrap metal, goodberries, dried fish",
         scope: "world",
-        config: true,
+        config: false,
         type: String,
         default: "",
         restricted: true
@@ -608,7 +609,7 @@ Hooks.once("init", async () => {
         name: "Custom Water Items",
         hint: "Comma-separated list of additional item names to recognise as water in the meal phase. Case-insensitive. Example: oil, wine, ale, milk",
         scope: "world",
-        config: true,
+        config: false,
         type: String,
         default: "",
         restricted: true
@@ -618,7 +619,7 @@ Hooks.once("init", async () => {
         name: "Monster Cooking",
         hint: "After combat with notable creatures, characters carrying the Dungeon Gourmand's Handbook can butcher carcasses for exotic cooking ingredients. Requires a content pack with monster recipes and a butcher registry.",
         scope: "world",
-        config: true,
+        config: MONSTER_COOKING_FEATURE_LIVE,
         type: Boolean,
         default: false,
         restricted: true
@@ -1151,6 +1152,7 @@ for (const hookName of [
 // ── Monster Cooking: Chat Card Button Wiring ─────────────────
 // Wires "Butcher" and "Pass" buttons on the butcher prompt chat cards.
 Hooks.on("renderChatMessage", (message, html) => {
+    if (!isMonsterCookingUnlocked()) return;
     const card = html[0]?.querySelector?.(".respite-butcher-card")
         ?? html.find?.(".respite-butcher-card")?.[0];
     if (!card) return;
@@ -1243,6 +1245,43 @@ Hooks.on("renderChatMessage", (message, html) => {
 // Item Enrichment hooks are now wired by ionrift-library (ItemEnrichmentEngine).
 // Respite enrichment data is registered in the init hook below via registerBatch().
 
+const ZZZ_CHILD_NAME = "ionrift-respite-zzz";
+
+/**
+ * Add or remove the Zzz PIXI text overlay on a token based on its beddingDown flag.
+ * Called from the refreshToken hook so it runs for every client on each token draw/update.
+ * @param {Token} token
+ */
+function _refreshZzzOverlay(token) {
+    const isSleeping = !!(token.document?.getFlag?.(MODULE_ID, "beddingDown"));
+    let child = token.getChildByName?.(ZZZ_CHILD_NAME) ?? null;
+
+    if (isSleeping) {
+        if (!child) {
+            child = new PIXI.Text("Zzz", {
+                fontFamily: "Signika, Arial, sans-serif",
+                fontSize: Math.max(12, (token.w ?? 50) * 0.28),
+                fontStyle: "italic",
+                fill: 0xadd8ff,
+                dropShadow: true,
+                dropShadowColor: 0x000033,
+                dropShadowDistance: 2,
+                dropShadowBlur: 4,
+                dropShadowAlpha: 0.8
+            });
+            child.name = ZZZ_CHILD_NAME;
+            child.alpha = 0.9;
+            token.addChild(child);
+        }
+        const tw = token.w ?? 50;
+        const th = token.h ?? 50;
+        child.position.set(tw * 0.55, th * 0.04);
+    } else if (child) {
+        token.removeChild(child);
+        child.destroy();
+    }
+}
+
 Hooks.once("ready", async () => {
     console.log(`${MODULE_ID} | Ready hook firing...`);
     Logger.log?.(MODULE_LABEL, "Ready.");
@@ -1268,8 +1307,7 @@ Hooks.once("ready", async () => {
     // Load butcher registry for monster cooking (from imported packs or dev fallback)
     if (game.user.isGM) {
         try {
-            const enabled = game.settings.get(MODULE_ID, "enableMonsterCooking");
-            if (enabled) {
+            if (isMonsterCookingUnlocked()) {
                 let loaded = false;
 
                 // 1. Try imported content packs
@@ -1309,6 +1347,15 @@ Hooks.once("ready", async () => {
     game.socket.on(`module.${MODULE_ID}`, _onSocketMessage);
 
     registerCampFurnitureZOrderGuards();
+
+    // Zzz overlay on tokens for characters bedded down during reflection.
+    Hooks.on("refreshToken", (token) => {
+        try {
+            _refreshZzzOverlay(token);
+        } catch {
+            /* ignore */
+        }
+    });
 
     /** Block non-GM canvas drags for shared station tokens (belt-and-suspenders with TokenDocument#locked). */
     Hooks.on("preUpdateToken", (document, updateData, _options, userId) => {
@@ -1620,11 +1667,7 @@ Hooks.once("ready", async () => {
     // Posts a butcher prompt card to chat when a notable creature is killed.
     Hooks.on("deleteCombat", async (combat, options, userId) => {
         if (!game.user.isGM) return;
-
-        try {
-            const enabled = game.settings.get(MODULE_ID, "enableMonsterCooking");
-            if (!enabled) return;
-        } catch { return; }
+        if (!isMonsterCookingUnlocked()) return;
 
         if (!ButcherResolver.hasRegistry) {
             Logger.log?.(MODULE_LABEL, "Monster cooking enabled but no butcher registry loaded. Skipping.");
@@ -1990,6 +2033,8 @@ function _onSocketMessage(data) {
                 if (data.activeDay != null) activePlayerRestApp._travelActiveDay = data.activeDay;
                 if (data.totalDays != null) activePlayerRestApp._travelTotalDays = data.totalDays;
                 if (data.scoutingAllowed != null) activePlayerRestApp._travelScoutingAllowed = data.scoutingAllowed;
+                if (data.forageDC != null) activePlayerRestApp._travelForageDC = data.forageDC;
+                if (data.huntDC != null) activePlayerRestApp._travelHuntDC = data.huntDC;
                 activePlayerRestApp.render();
             }
             break;
@@ -2019,6 +2064,19 @@ function _onSocketMessage(data) {
                 activePlayerRestApp._travelDebrief.push(...(data.results ?? []));
                 activePlayerRestApp._travelFullyResolved = !!data.fullyResolved;
                 activePlayerRestApp._travelScoutingDone = !!data.scoutingDone;
+                activePlayerRestApp.render();
+            }
+            break;
+
+        // GM -> specific Player: one forage/hunt result as soon as the roll is resolved
+        case "travelIndividualDebrief":
+            if (game.user.isGM) return;
+            if (data.targetUserId !== game.user.id) return;
+            if (activePlayerRestApp) {
+                if (!activePlayerRestApp._travelDebrief) activePlayerRestApp._travelDebrief = [];
+                if (data.result) {
+                    activePlayerRestApp._travelDebrief.push(data.result);
+                }
                 activePlayerRestApp.render();
             }
             break;
@@ -2290,6 +2348,7 @@ function _onSocketMessage(data) {
         // GM -> Players: butcher opportunity popup
         case "butcherPromptPopup":
             if (game.user.isGM) return;
+            if (!isMonsterCookingUnlocked()) return;
             _showButcherPopup(data);
             break;
 
@@ -2363,6 +2422,7 @@ function _onSocketMessage(data) {
  * Only displays if the current user owns one of the cookbook-holding characters.
  */
 function _showButcherPopup(data) {
+    if (!isMonsterCookingUnlocked()) return;
     const holderIds = data.holderIds ?? [];
 
     // Only show to users who own a cookbook holder (or GM)

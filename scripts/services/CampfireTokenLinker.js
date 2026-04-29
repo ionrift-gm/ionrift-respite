@@ -9,7 +9,7 @@
  *   3. Make Camp fire tier (embers / campfire / bonfire) overrides bright, dim,
  *      colour, and token footprint so the canvas matches the committed level.
  *
- * Token name is configurable via the `campfireTokenName` module setting
+ * Token name comes from the world `campfireTokenName` setting (no module UI; default "Campfire").
  * (default: "Campfire"). Matching is case-insensitive.
  *
  * Only the GM may update tokens. Players emit a socket request and the
