@@ -137,6 +137,15 @@ function _emit(type, payload = {}) {
  * @param {object} [opts] - Optional overrides (targetUserId, snapshot).
  */
 export function emitRestStarted(restData, opts = {}) {
+    // Guard: detect the double-wrap anti-pattern emitRestStarted({ restData: payload }).
+    // The signature expects the payload directly; wrapping adds a spurious nesting layer
+    // that strips activities from what players receive, causing all stations to render faded.
+    if (restData && typeof restData === "object" && "restData" in restData && !("activities" in restData)) {
+        console.error(
+            `${MODULE_ID} | emitRestStarted called with double-wrapped payload { restData: ... }. ` +
+            `Pass the payload directly: emitRestStarted(payload). Station resolver will be empty on player clients.`
+        );
+    }
     _emit(SOCKET_TYPES.REST_STARTED, { restData, ...opts });
 }
 

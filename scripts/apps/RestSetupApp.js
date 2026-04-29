@@ -78,6 +78,7 @@ import { ShortRestApp } from "./ShortRestApp.js";
 import {
     registerActiveRestApp,
     clearActiveRestApp,
+    retainGmRestAppFooter,
     setActiveRestData,
     _showGmRestIndicator,
     _removeGmRestIndicator,
@@ -184,6 +185,20 @@ async function resolveItemFromDropEvent(event) {
         }
     }
     return null;
+}
+
+/**
+ * Dev-mode guard for methods that previously bailed on !this._engine but now
+ * run engine-free on player clients. Fires console.debug so the pattern is
+ * visible in verbose DevTools without polluting production logs.
+ *
+ * @param {string} methodName
+ * @param {{ _engine: any, _isGM: boolean }} app
+ */
+function _noteEngineFreePath(methodName, app) {
+    if (app._engine) return;
+    // eslint-disable-next-line no-console
+    console.debug(`ionrift-respite | [engine-free] ${methodName} — no engine (player client, OK)`);
 }
 
 /**
@@ -1447,7 +1462,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // Mid-rest (camp, activity, events, etc.): X minimizes to the status bar. No modal.
             // Setup and resolve: no indicator; resolve uses the discard confirm branch above.
             const restActive = this._phase && this._phase !== "resolve" && this._phase !== "setup";
-            if (restActive && !options.resolved) {
+            if (options?.retainGmRestApp) {
+                this._gmMinimizedToFooter = true;
+                retainGmRestAppFooter();
+                _showGmRestIndicator(this);
+            } else if (restActive && !options.resolved) {
                 this._gmMinimizedToFooter = true;
                 _showGmRestIndicator(this);
             } else {
@@ -1461,7 +1480,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this._tearDownStationLayerCanvas();
                 this._removeGmStationTokenSyncHook();
                 if (!options.abandoned) this._clearDetectMagicScanSession();
-                clearActiveRestApp();
+                if (!options?.retainGmRestApp) {
+                    clearActiveRestApp();
+                } else {
+                    retainGmRestAppFooter();
+                }
                 _removeGmRestIndicator();
             }
         }
@@ -4996,9 +5019,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         setActiveRestData(restPayload);
 
-        emitRestStarted({
-                    restData: restPayload
-                });
+        emitRestStarted(restPayload);
 
         ui.notifications.info("Rest phase started. Activity pickers sent to all players.");
 
@@ -7377,10 +7398,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @returns {boolean}
      */
     _actorOwesActivityPhaseMealRations(actorId) {
-        if (!actorId || !game.settings.get(MODULE_ID, "trackFood") || this._phase !== "activity" || !this._engine) {
+        _noteEngineFreePath("_actorOwesActivityPhaseMealRations", this);
+        if (!actorId || !game.settings.get(MODULE_ID, "trackFood") || this._phase !== "activity") {
             return false;
         }
-        const terrainTag = this._engine.terrainTag ?? this._selectedTerrain ?? "forest";
+        const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? this._restData?.terrainTag ?? "forest";
         const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
         const fp = terrainMealRules.foodPerDay ?? 0;
         const wp = terrainMealRules.waterPerDay ?? 0;
@@ -7410,6 +7432,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const isFireLit = !!(this._fireLevel && this._fireLevel !== "unlit");
         const choices = this._characterChoices;
         const unchosen = partyActors.filter(a => a?.id && !choices?.has(a.id));
+        // eslint-disable-next-line no-console
+        console.debug(`${MODULE_ID} | [SYNC-BISECT] _buildStationEmptyNoticeMap: resolverSize=${this._activityResolver?.activities?.size ?? 0}, partyCount=${partyActors.length}, unchosenCount=${unchosen.length}, choicesSize=${choices?.size ?? 0}, restType=${restType}, isFireLit=${isFireLit}, isGM=${this._isGM}`);
 
         let identifyParty = { unidentifiedItems: [], identifyCasters: [], detectMagicCasters: [] };
         try {
@@ -7464,8 +7488,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @returns {{ stationId: string|null, urls: string[] }}
      */
     _getPendingMealCanvasPlan() {
+        _noteEngineFreePath("_getPendingMealCanvasPlan", this);
         const empty = { stationId: null, urls: [] };
-        if (!game.settings.get(MODULE_ID, "trackFood") || this._phase !== "activity" || !this._engine) {
+        if (!game.settings.get(MODULE_ID, "trackFood") || this._phase !== "activity") {
             return empty;
         }
         const urls = [];
@@ -7490,6 +7515,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!canvas?.ready) return;
         // Make Camp pit dialog is camp-phase only; close any stray instance before activity station UI.
         CampfireMakeCampDialog.closeIfOpen();
+        // eslint-disable-next-line no-console
+        console.debug(`${MODULE_ID} | [SYNC-BISECT] _activateCanvasStationLayer: resolverSize=${this._activityResolver?.activities?.size ?? 0}, phase=${this._phase}, isGM=${this._isGM}`);
 
         const partyActors = getPartyActors();
         const actorMap = {};
@@ -7779,7 +7806,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {string} actorId
      */
     async submitActivityMealRationsFromStation(actorId) {
-        if (!actorId || !this._engine) return;
+        if (!actorId) return;
+        _noteEngineFreePath("submitActivityMealRationsFromStation", this);
         const actor = game.actors.get(actorId);
         if (!actor) return;
 
@@ -8106,7 +8134,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             _showGmRestIndicator(this);
             if (this.rendered) {
                 _logGmRestSheet("receivePhaseChange", "GM close (socket not used for GM in module; local call only)", { phase, prevPhase });
-                await this.close({});
+                await this.close({ retainGmRestApp: true });
             }
             return;
         }
@@ -8279,13 +8307,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Reload activity resolver from snapshot if it arrives without one.
         // This covers late-joining players who missed the initial emitRestStarted.
+        const _resolverSizeBefore = this._activityResolver?.activities?.size ?? 0;
+        // eslint-disable-next-line no-console
+        console.debug(`${MODULE_ID} | [SYNC-BISECT] receiveRestSnapshot: resolverSize=${_resolverSizeBefore}, snapshotActivities=${snapshot.activities?.length ?? 0}, phase=${this._phase}, isGM=${this._isGM}`);
         if (Array.isArray(snapshot.activities) && snapshot.activities.length > 0
             && !(this._activityResolver?.activities?.size)) {
             this._activities = snapshot.activities;
             this._activityResolver.load(this._activities);
+            // eslint-disable-next-line no-console
+            console.debug(`${MODULE_ID} | [SYNC-BISECT] receiveRestSnapshot: resolver hydrated from snapshot (${this._activityResolver.activities.size} activities)`);
+        } else {
+            // eslint-disable-next-line no-console
+            console.debug(`${MODULE_ID} | [SYNC-BISECT] receiveRestSnapshot: resolver NOT hydrated — resolverSize=${_resolverSizeBefore}, snapshotActivities=${snapshot.activities?.length ?? 0}`);
         }
 
         if (this._phase === "activity" && isStationLayerActive()) {
+            refreshStationPortraitsFromChoices(this._characterChoices, this._stationCanvasIdByCharacter);
+            refreshStationEmptyNoticeFade(this);
             this._refreshStationOverlayMeals();
         }
 
