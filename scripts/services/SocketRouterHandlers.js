@@ -50,7 +50,18 @@ export function handleRestStarted(data, ctx) {
         const existing = ctx.activePlayerRestApp;
         if (existing) {
             const isNewRest = !data.restData?.restId || existing._restId !== data.restData.restId;
+            // eslint-disable-next-line no-console
+            console.debug(`${MODULE_ID} | [SYNC-BISECT] handleRestStarted: isNewRest=${isNewRest}, existingResolverSize=${existing._activityResolver?.activities?.size ?? 0}, incomingActivities=${data.restData?.activities?.length ?? 0}`);
             if (!isNewRest) {
+                // Re-hydrate resolver if GM is advancing the same rest (e.g. to activity phase)
+                // but the existing player RSA has an empty resolver (built before activities arrived).
+                if (Array.isArray(data.restData?.activities) && data.restData.activities.length > 0
+                    && !(existing._activityResolver?.activities?.size)) {
+                    existing._activities = data.restData.activities;
+                    existing._activityResolver.load(existing._activities);
+                    // eslint-disable-next-line no-console
+                    console.debug(`${MODULE_ID} | [SYNC-BISECT] handleRestStarted: hydrated existing resolver from restData (${existing._activityResolver.activities.size} activities)`);
+                }
                 if (data.snapshot && existing.receiveRestSnapshot) {
                     existing.receiveRestSnapshot(data.snapshot);
                 } else {
@@ -96,7 +107,7 @@ export function handleRestStarted(data, ctx) {
         ctx.showAfkPanel();
 
         if (data.snapshot && app.receiveRestSnapshot) {
-            setTimeout(() => { app.receiveRestSnapshot(data.snapshot); }, 300);
+            Promise.resolve().then(() => { app.receiveRestSnapshot(data.snapshot); });
         }
         setTimeout(() => {
             if (ctx.activePlayerRestApp?._openCampfire) {

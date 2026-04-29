@@ -131,6 +131,20 @@ export function clearActiveRestApp() {
 }
 
 /**
+ * Keeps the GM RestSetupApp ref alive when the app closes to the footer indicator
+ * during the activity phase. The rest is still active — the ref is needed for
+ * handleRequestRestState to build snapshots for late-joining players.
+ *
+ * Does not clear activeRestData or activeRestSetupApp.
+ * Only called from RestSetupApp.close({ retainGmRestApp: true }).
+ */
+export function retainGmRestAppFooter() {
+    // respiteFlowActive stays true — rest is still running.
+    // activeRestSetupApp and activeRestData are intentionally left intact.
+    _removeGmRestIndicator();
+}
+
+/**
  * Registers the active ShortRestApp so socket messages route to it.
  */
 export function registerActiveShortRestApp(app) {
