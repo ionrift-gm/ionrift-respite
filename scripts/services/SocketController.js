@@ -91,16 +91,6 @@ export const SOCKET_TYPES = Object.freeze({
     // ── Armor ──
     ARMOR_TOGGLE:          "armorToggle",
 
-    // ── Campfire mini-app ──
-    CAMPFIRE_STRIKE:       "campfireStrike",
-    CAMPFIRE_STICK:        "campfireStick",
-    CAMPFIRE_POKE:         "campfirePoke",
-    CAMPFIRE_TRINKET:      "campfireTrinket",
-    CAMPFIRE_EMOTE:        "campfireEmote",
-    CAMPFIRE_WHITTLE:      "campfireWhittle",
-    CAMPFIRE_WHITTLE_DROP:    "campfireWhittleDrop",
-    CAMPFIRE_PILE_IGNITE:     "campfirePileIgnite",
-    CAMPFIRE_WHITTLE_SETTLE:  "campfireWhittleSettle",
     CONSUME_FIREWOOD:      "consumeFirewood",
     CAMPFIRE_TOKEN_SYNC:   "campfireTokenSync",
     TORCH_TOKEN_SYNC:      "torchTokenSync",
@@ -521,6 +511,56 @@ export function emitAfkUpdate(characterId, isAfk) {
  */
 export function emitArmorToggle(data) {
     _emit(SOCKET_TYPES.ARMOR_TOGGLE, data);
+}
+
+// ── Copy Spell Emitters ─────────────────────────────────────────────────────
+
+/**
+ * Player → GM: Propose a spell to copy.
+ * @param {object} data
+ */
+export function emitCopySpellProposal(data) {
+    _emit(SOCKET_TYPES.COPY_SPELL_PROPOSAL, data);
+}
+
+/**
+ * GM → Player: Approve spell copy proposal.
+ * @param {object} data
+ */
+export function emitCopySpellApproved(data) {
+    _emit(SOCKET_TYPES.COPY_SPELL_APPROVED, data);
+}
+
+/**
+ * GM → Player: Decline spell copy proposal.
+ * @param {object} data
+ */
+export function emitCopySpellDeclined(data) {
+    _emit(SOCKET_TYPES.COPY_SPELL_DECLINED, data);
+}
+
+/**
+ * GM → Player: Prompt for the spell copy skill roll.
+ * @param {object} data
+ */
+export function emitCopySpellRollPrompt(data) {
+    _emit(SOCKET_TYPES.COPY_SPELL_ROLL_PROMPT, data);
+}
+
+/**
+ * Player → GM: The result of the copy spell roll.
+ * @param {object} data
+ */
+export function emitCopySpellResult(data) {
+    _emit(SOCKET_TYPES.COPY_SPELL_RESULT, data);
+}
+
+/**
+ * GM → Player: Reject proposal because GM is busy copying another spell.
+ * @param {object} data
+ */
+export function emitCopySpellBusy(data) {
+    _emit(SOCKET_TYPES.COPY_SPELL_BUSY, data);
 }
 
 // ── Short Rest Emitters ─────────────────────────────────────────────────────

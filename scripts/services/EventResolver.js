@@ -1,4 +1,4 @@
-import { getPartyActors } from "../module.js";
+import { getPartyActors } from "./partyActors.js";
 
 /**
  * EventResolver

@@ -5,6 +5,7 @@
  */
 
 import { isGearDeployed } from "../services/CompoundCampPlacer.js";
+import { HD_PENALTY, boostComfort } from "../services/ComfortCalculator.js";
 
 /**
  * Weather master table. Each entry defines comfort penalty, encounter DC modifier,
@@ -135,10 +136,8 @@ export function getActivityAdvisory(activityId, actor, partyState) {
             const adapter = game.ionrift?.respite?.adapter;
             const exhaustion = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
 
-            const HD_PENALTY = { hostile: 2, rough: 1, sheltered: 0, safe: 0 };
-            const BOOST_TO = { hostile: "rough", rough: "sheltered", sheltered: "safe", safe: "safe" };
             const basePenalty = HD_PENALTY[comfortTier] ?? 0;
-            const boostedPenalty = HD_PENALTY[BOOST_TO[comfortTier]] ?? 0;
+            const boostedPenalty = HD_PENALTY[boostComfort(comfortTier, 1)] ?? 0;
             const rawHdRecovery = Math.max(1, Math.floor(hdMax / 2));
             const hdWithout = Math.max(0, rawHdRecovery - basePenalty);
             const hdWith = Math.max(0, rawHdRecovery - boostedPenalty) + 1;
