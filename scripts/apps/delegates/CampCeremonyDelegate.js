@@ -106,11 +106,14 @@ export class CampCeremonyDelegate {
      * @param {string} method - Item or cantrip name used (display string).
      */
     async lightFire(userId, actorId, method) {
-        if (!game.user.isGM) return;
+        console.log(`ionrift-respite | [DBG] lightFire called`, { userId, actorId, method, isGM: game.user.isGM });
+        if (!game.user.isGM) { console.warn(`ionrift-respite | [DBG] lightFire: not GM, returning`); return; }
         const actor = game.actors.get(actorId);
-        if (!actor) return;
+        if (!actor) { console.warn(`ionrift-respite | [DBG] lightFire: actor not found`, { actorId }); return; }
+        console.log(`ionrift-respite | [DBG] lightFire: setting fireLitBy and syncing pledges`);
         this.fireLitBy = { userId, actorId, actorName: actor.name, method };
         await this._syncFireLevelFromPledges();
+        console.log(`ionrift-respite | [DBG] lightFire: complete. level=${this.fireLevel}`);
     }
 
     /**

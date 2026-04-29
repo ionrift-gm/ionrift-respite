@@ -9,7 +9,7 @@
  * @module SocketRouter
  */
 
-import { SOCKET_TYPES } from "./SocketController.js";
+import { SOCKET_TYPES, emitRequestRestState } from "./SocketController.js";
 import { CopySpellHandler } from "./CopySpellHandler.js";
 import { CampfireTokenLinker } from "./CampfireTokenLinker.js";
 import { TorchTokenLinker } from "./TorchTokenLinker.js";
@@ -95,6 +95,11 @@ export function dispatch(data, ctx) {
                 void ctx.activePlayerRestApp.receivePhaseChange(data.phase, data.phaseData ?? {}).catch(err => {
                     console.error(`${MODULE_ID} | receivePhaseChange failed`, err);
                 });
+            } else if (ctx.playerRestActive) {
+                // Client is in a rest but has no app open (canvas-only phase, or dismissed sheet).
+                // Re-request the full rest state so we stay in sync.
+                console.log(`${MODULE_ID} | PHASE_CHANGED received but no player app — requesting state resync`);
+                emitRequestRestState(game.user.id);
             }
             break;
 
@@ -145,6 +150,13 @@ export function dispatch(data, ctx) {
 
         case SOCKET_TYPES.CAMP_LIGHT_FIRE:
             if (!game.user.isGM) return;
+            console.log(`${MODULE_ID} | [DBG] campLightFire handler`, {
+                hasApp: !!ctx.activeRestSetupApp,
+                hasCeremony: !!ctx.activeRestSetupApp?._campCeremony,
+                userId: data.userId,
+                actorId: data.actorId,
+                method: data.method
+            });
             if (ctx.activeRestSetupApp?._campCeremony) {
                 void ctx.activeRestSetupApp._campCeremony.lightFire(data.userId, data.actorId, data.method ?? "Tinderbox").catch(err => {
                     console.error(`${MODULE_ID} | campLightFire:`, err);

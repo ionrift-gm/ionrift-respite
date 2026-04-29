@@ -30,16 +30,30 @@ function actorHasNamedSpellAccess(actor, spellNameLower) {
     for (const i of actor.items) {
         if (i.type !== "spell") continue;
         if (i.name?.toLowerCase() !== spellNameLower) continue;
-        const prep = i.system?.preparation;
-        const mode = prep?.mode;
         const level = i.system?.level ?? 0;
         if (level === 0) return true;
-        if (mode === "innate") return true;
-        if (mode === "always") return true;
-        if (prep?.prepared === true) return true;
+
+        // dnd5e 5.1+ renamed preparation.mode → system.method
+        //                      preparation.prepared → system.prepared
+        // Check for the new API first so we never touch the deprecated getter.
+        let mode, isPrepared;
+        if (i.system != null && "method" in i.system) {
+            mode = i.system.method;       // dnd5e 5.1+
+            isPrepared = i.system.prepared; // dnd5e 5.1+
+        } else {
+            const prep = i.system?.preparation; // legacy dnd5e
+            mode = prep?.mode;
+            isPrepared = prep?.prepared;
+        }
+
+        if (mode === "innate" || mode === "always") return true;
+        if (isPrepared === true) return true;
     }
     return false;
 }
+
+
+
 
 /**
  * Party unidentified items plus ritual Identify vs Detect Magic casters.

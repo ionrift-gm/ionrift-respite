@@ -1624,9 +1624,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 campfire: "Cooking and warmth. +1 encounter DC.",
                 bonfire: "+1 camp comfort, full cooking. +2 encounter DC."
             };
-            const COMFORT_TIERS = CampGearScanner.COMFORT_TIERS;
+            const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
             const TIER_LABELS = Object.fromEntries(
-                Object.entries(CampGearScanner.TIER_RULES).map(([k, v]) => [k, v.label])
+                COMFORT_TIERS.map(k => [k, CampGearScanner.getRules(k).label])
             );
             const baseComfort = campScanData.campComfortPreFire ?? campScanData.campComfort ?? "rough";
             const baseIdx = COMFORT_TIERS.indexOf(baseComfort);
@@ -1796,7 +1796,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const isTavern = (this._selectedTerrain ?? "forest") === "tavern";
         const shelterChosen = isTavern || !!activeShelterId;
         const activeShelter = activeShelterId ? shelterOptions.find(s => s.id === activeShelterId) : null;
-        const COMFORT_RANK = window.COMFORT_RANK || COMFORT_RANK; // fallback if needed, but imported directly
+
         const shelterEffect = activeShelter ? {
             name: activeShelter.name,
             comfortFloor: activeShelter.comfortFloor,
@@ -1805,7 +1805,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             casterNames: activeShelter.casterNames ?? null
         } : null;
 
-        const SKILL_NAMES = window.SKILL_NAMES || SKILL_NAMES; // fallback if needed, but imported directly
+
 
         // Activity icon mapping
 
@@ -2395,9 +2395,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     campfire: "Cooking and warmth. +1 encounter DC.",
                     bonfire: "+1 camp comfort, full cooking. +2 encounter DC."
                 };
-                const COMFORT_TIERS = CampGearScanner.COMFORT_TIERS;
+                const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
                 const TIER_LABELS = Object.fromEntries(
-                    Object.entries(CampGearScanner.TIER_RULES).map(([k, v]) => [k, v.label])
+                    COMFORT_TIERS.map(k => [k, CampGearScanner.getRules(k).label])
                 );
                 const baseComfort = campScanData.campComfortPreFire ?? campScanData.campComfort ?? "rough";
                 const baseIdx = COMFORT_TIERS.indexOf(baseComfort);
@@ -3526,9 +3526,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campfire: "Cooking and warmth. +1 encounter DC.",
             bonfire: "+1 camp comfort, full cooking. +2 encounter DC."
         };
-        const COMFORT_TIERS = CampGearScanner.COMFORT_TIERS;
+        const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
         const TIER_LABELS = Object.fromEntries(
-            Object.entries(CampGearScanner.TIER_RULES).map(([k, v]) => [k, v.label])
+            COMFORT_TIERS.map(k => [k, CampGearScanner.getRules(k).label])
         );
         const baseComfort = campScanData.campComfortPreFire ?? campScanData.campComfort ?? "rough";
         const baseIdx = COMFORT_TIERS.indexOf(baseComfort);
@@ -7411,9 +7411,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const choices = this._characterChoices;
         const unchosen = partyActors.filter(a => a?.id && !choices?.has(a.id));
 
-        const identifyParty = collectPartyIdentifyEmbedData(partyActors);
+        let identifyParty = { unidentifiedItems: [], identifyCasters: [], detectMagicCasters: [] };
+        try {
+            identifyParty = collectPartyIdentifyEmbedData(partyActors);
+        } catch (err) {
+            console.warn(`${MODULE_ID} | _buildStationEmptyNoticeMap: collectPartyIdentifyEmbedData failed`, err);
+        }
         const workbenchIdentifyBright = (identifyParty.unidentifiedItems?.length ?? 0) > 0;
         const mealBrightParty = unchosen.some(a => this._actorOwesActivityPhaseMealRations(a.id));
+
 
         const hasAvailableAtStation = (actor, stationIdSet) => {
             const { available: allAvail } = this._activityResolver.getAvailableActivitiesWithFaded(
@@ -7554,6 +7560,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 : station;
 
             try {
+                const restType = restSession.restType ?? "long";
+                const isFireLit = !!(this._fireLevel && this._fireLevel !== "unlit");
+                const resolverLoaded = !!(app._activityResolver?.activities?.size);
+                const resolvedAvail = resolverLoaded
+                    ? app._activityResolver.getAvailableActivitiesWithFaded(actor, restType, { isFireLit })
+                    : { available: [], faded: [] };
+                const stationActIds = new Set(station.activities ?? []);
                 await StationActivityDialog.openForStation(
                     dialogStation, actor, app._activityResolver, restSession, token, app, stationId
                 );
@@ -7664,8 +7677,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     getStationMealCardForActor(actorId) {
         if (!actorId || !game.settings.get(MODULE_ID, "trackFood")) return null;
-        if (!this._engine) return null;
-        const terrainTag = this._engine.terrainTag ?? this._selectedTerrain ?? "forest";
+        // Players don't have a RestFlowEngine — derive terrainTag from snapshot state instead.
+        const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
         const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
         const cards = MealPhaseHandler.buildMealContext(
             [actorId],
@@ -7929,7 +7942,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             magicScanComplete: !!this._magicScanComplete,
             magicScanResults: this._magicScanComplete ? (this._magicScanResults ?? []) : null,
             coldCampDecided: this._coldCampDecided ?? false,
-            campStep2Entered: this._campStep2Entered ?? false
+            campStep2Entered: this._campStep2Entered ?? false,
+            // Include the activity list so late-joining players can load their resolver.
+            activities: this._activities ?? []
         };
     }
 
@@ -8260,6 +8275,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this._magicScanComplete = false;
                 if (hadComplete) notifyDetectMagicScanCleared();
             }
+        }
+
+        // Reload activity resolver from snapshot if it arrives without one.
+        // This covers late-joining players who missed the initial emitRestStarted.
+        if (Array.isArray(snapshot.activities) && snapshot.activities.length > 0
+            && !(this._activityResolver?.activities?.size)) {
+            this._activities = snapshot.activities;
+            this._activityResolver.load(this._activities);
         }
 
         if (this._phase === "activity" && isStationLayerActive()) {
@@ -8865,11 +8888,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const method = root?.dataset?.method ?? "Tinderbox";
         if (!actorId) return;
         if (!game.user.isGM) {
-            emitCampLightFire({
-                    userId: game.user.id,
-                    actorId,
-                    method
-                });
+            emitCampLightFire(game.user.id, actorId, method);
             return;
         }
         await this._campCeremony.lightFire(game.user.id, actorId, method);
@@ -8881,10 +8900,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const actorId = root?.dataset?.actorId;
         if (!actorId) return;
         if (!game.user.isGM) {
-            emitCampFirewoodPledge({
-                    userId: game.user.id,
-                    actorId
-                });
+            emitCampFirewoodPledge(game.user.id, actorId);
             return;
         }
         if (actorId === "__gm__") {
@@ -8897,9 +8913,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /** Player or GM takes back their pledged firewood. */
     static async #onCampReclaimFirewood(event, target) {
         if (!game.user.isGM) {
-            emitCampFirewoodReclaim({
-                    userId: game.user.id
-                });
+            emitCampFirewoodReclaim(game.user.id);
             return;
         }
         await this._campCeremony.removeFirewoodPledge(game.user.id);
