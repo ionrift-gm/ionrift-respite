@@ -10,6 +10,7 @@
 import {
     notifyWorkbenchIdentifyStagingTouched
 } from "../StationActivityDialog.js";
+import { emitWorkbenchIdentifyRequest } from "../../services/SocketController.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -31,7 +32,12 @@ function itemIsWorkbenchUnidentified(actor, item) {
     const identifiedRaw = raw.identified;
     const summarise = game.ionrift?.workshop?.getLatentSummary ?? null;
     const quartermasterLatent = summarise?.(item);
-    const isQmMasked = !!quartermasterLatent && quartermasterLatent.kind !== "mundane";
+    // Only treat as QM-masked if QM says it is NOT yet identified.
+    // Cursed items that have already had their lure promoted (system.identified=true)
+    // must not appear as workbench candidates — QM has nothing left to reveal.
+    const isQmMasked = !!quartermasterLatent
+        && !quartermasterLatent.identified
+        && quartermasterLatent.kind !== "mundane";
     const isNativeUnidentified = identifiedLive === false || identifiedRaw === false;
     return isQmMasked || isNativeUnidentified;
 }
@@ -39,6 +45,21 @@ function itemIsWorkbenchUnidentified(actor, item) {
 /** @param {Item} item @returns {boolean} */
 function itemIsDnD5ePotionType(item) {
     return item?.type === "consumable" && item.system?.type?.value === "potion";
+}
+
+/**
+ * True display name after identify (fresh actor item + Quartermaster latent if any).
+ * @param {Actor} actor
+ * @param {string} itemId
+ * @param {string} fallbackName
+ * @returns {string}
+ */
+function resolveTrueName(actor, itemId, fallbackName) {
+    const fresh = actor.items.get(itemId);
+    if (!fresh) return fallbackName;
+    const qmSummary = game.ionrift?.workshop?.getLatentSummary?.(fresh);
+    if (qmSummary?.trueName) return qmSummary.trueName;
+    return fresh.name || fallbackName;
 }
 
 /**
@@ -93,6 +114,12 @@ export class WorkbenchDelegate {
     /** @returns {Map<string, {items: object[], revealAt: number}>} */
     get acknowledge() { return this._app._workbenchIdentifyAcknowledge; }
 
+    /** @returns {Set<string>} actorIds who have used their Focus slot this rest */
+    get focusUsed() {
+        if (!this._app._workbenchFocusUsed) this._app._workbenchFocusUsed = new Set();
+        return this._app._workbenchFocusUsed;
+    }
+
     // ── Staging Read/Write ──────────────────────────────────────────────
 
     /**
@@ -116,8 +143,10 @@ export class WorkbenchDelegate {
     setStaging(actorId, partial) {
         if (!this._app._workbenchIdentifyStaging) this._app._workbenchIdentifyStaging = new Map();
         const prev = this.getStaging(actorId);
+        const nextGear = partial.gearItemId !== undefined ? partial.gearItemId : prev.gearItemId;
+        const resolvedGear = (nextGear && this.focusUsed.has(actorId)) ? prev.gearItemId : nextGear;
         const next = {
-            gearItemId: partial.gearItemId !== undefined ? partial.gearItemId : prev.gearItemId,
+            gearItemId: resolvedGear,
             potionItemIds: partial.potionItemIds !== undefined ? [...partial.potionItemIds] : prev.potionItemIds
         };
         if (!next.gearItemId && next.potionItemIds.length === 0) {
@@ -144,7 +173,8 @@ export class WorkbenchDelegate {
             workbenchNoUnidentifiedOnSheet: true,
             workbenchSubmitLocked: true,
             workbenchIdentifyAcknowledgement: null,
-            workbenchAckRevealReady: true
+            workbenchAckRevealReady: true,
+            workbenchFocusExhausted: false
         };
         if (!actorId) return empty;
         const actor = game.actors.get(actorId);
@@ -168,6 +198,7 @@ export class WorkbenchDelegate {
         const ack = this.acknowledge?.get(actorId) ?? null;
         const workbenchIdentifyAcknowledgement = ack ? { items: ack.items } : null;
         const workbenchAckRevealReady = !ack || Date.now() >= ack.revealAt;
+        const workbenchFocusExhausted = this.focusUsed.has(actorId);
         return {
             workbenchIdentifyActorId: actorId,
             workbenchGearChip,
@@ -175,7 +206,8 @@ export class WorkbenchDelegate {
             workbenchNoUnidentifiedOnSheet,
             workbenchSubmitLocked,
             workbenchIdentifyAcknowledgement,
-            workbenchAckRevealReady
+            workbenchAckRevealReady,
+            workbenchFocusExhausted
         };
     }
 
@@ -236,7 +268,7 @@ export class WorkbenchDelegate {
             const itemAfter = actor.items.get(itemId);
             revealed.push({
                 itemId,
-                name: itemAfter?.name ?? itemBefore.name,
+                name: resolveTrueName(actor, itemId, itemBefore.name),
                 img: itemAfter?.img ?? itemBefore.img ?? "icons/svg/mystery-man.svg",
                 requiresAttunement: !!itemAfter?.system?.attunement
             });
@@ -247,6 +279,9 @@ export class WorkbenchDelegate {
             items: revealed,
             revealAt: Date.now() + 900
         });
+        if (st.gearItemId) {
+            this.focusUsed.add(actorId);
+        }
         notifyWorkbenchIdentifyStagingTouched();
         if (this._app.rendered) this._app.render();
     }
@@ -263,25 +298,105 @@ export class WorkbenchDelegate {
         const actor = game.actors.get(actorId);
         const item = actor?.items?.get(itemId);
         if (!item) return false;
-        try {
-            await item.update({ "system.identified": true });
-            if (!this._app._identifiedItems) this._app._identifiedItems = [];
-            this._app._identifiedItems.push({
-                itemId,
-                actorId,
-                name: item.name,
-                img: item.img,
-                actorName: actor.name,
-                requiresAttunement: !!item.system?.attunement
-            });
-            if (!deferNotify) ui.notifications.info(`${item.name} identified by ${actor.name}.`);
-            if (!deferRender) this._app.render();
-            return true;
-        } catch (err) {
-            console.error(`[Respite] Failed to identify item:`, err);
+
+        let identified = false;
+
+        if (game.user.isGM) {
+            const qmActive = game.modules?.get("ionrift-quartermaster")?.active;
+            if (qmActive) {
+                try {
+                    const { IdentificationService } = await import(
+                        "/modules/ionrift-quartermaster/scripts/services/IdentificationService.js"
+                    );
+                    const result = await IdentificationService.identify(item, { silent: true });
+                    identified = result.identified;
+                    console.log(`[Respite] WorkbenchDelegate GM identify: QM result →`, result);
+                } catch (err) {
+                    console.error("[Respite] WorkbenchDelegate: QM import/identify failed", err);
+                    // fall through to raw update
+                }
+            }
+            if (!identified) {
+                try {
+                    if (game.modules?.get("ionrift-quartermaster")?.active) {
+                        await item.update({ "system.identified": true }, { curseBypass: true });
+                    } else {
+                        await item.update({ "system.identified": true });
+                    }
+                    identified = true;
+                } catch (err) {
+                    console.error(`[Respite] Failed to identify item:`, err);
+                    if (!deferNotify) ui.notifications.error("Failed to identify item.");
+                    return false;
+                }
+            }
+        } else {
+            const hasQmPayload = !!(
+                item.getFlag?.("ionrift-quartermaster", "latentMagic")
+                || item.getFlag?.("ionrift-quartermaster", "cursedMeta")
+            );
+            const qmActive = game.modules?.get("ionrift-quartermaster")?.active;
+            if (hasQmPayload || qmActive) {
+                // Route through GM via socket — QM's guardIdentify blocks player
+                // writes on managed items. GM runs IdentificationService directly.
+                const requestId = foundry.utils.randomID();
+                const targetUserId = game.user.id;
+                identified = await new Promise((resolve) => {
+                    WorkbenchDelegate._pendingIdentifyRequests.set(requestId, resolve);
+                    emitWorkbenchIdentifyRequest({ actorId, itemId, requestId, targetUserId });
+                    setTimeout(() => {
+                        if (WorkbenchDelegate._pendingIdentifyRequests.has(requestId)) {
+                            WorkbenchDelegate._pendingIdentifyRequests.delete(requestId);
+                            resolve(false);
+                        }
+                    }, 10000);
+                });
+                if (identified) {
+                    // The GM's item.update() propagates to the player via a separate
+                    // Foundry websocket message. Wait for updateItem to confirm the
+                    // actor collection is up-to-date before reading trueName/img.
+                    await new Promise(resolve => {
+                        const hookId = Hooks.once("updateItem", (updatedItem) => {
+                            if (updatedItem.id === itemId) resolve();
+                        });
+                        setTimeout(() => {
+                            Hooks.off("updateItem", hookId);
+                            console.warn(`[Respite] Workbench: updateItem sync timed out for item=${itemId}, proceeding anyway`);
+                            resolve();
+                        }, 3000);
+                    });
+                }
+            } else {
+                try {
+                    await item.update({ "system.identified": true });
+                    identified = true;
+                } catch (err) {
+                    console.error(`[Respite] Failed to identify item:`, err);
+                    if (!deferNotify) ui.notifications.error("Failed to identify item.");
+                    return false;
+                }
+            }
+        }
+
+        if (!identified) {
             if (!deferNotify) ui.notifications.error("Failed to identify item.");
             return false;
         }
+
+        const trueName = resolveTrueName(actor, itemId, item.name);
+        const fresh = actor.items.get(itemId);
+        if (!this._app._identifiedItems) this._app._identifiedItems = [];
+        this._app._identifiedItems.push({
+            itemId,
+            actorId,
+            name: trueName,
+            img: fresh?.img ?? item.img,
+            actorName: actor.name,
+            requiresAttunement: !!fresh?.system?.attunement
+        });
+        if (!deferNotify) ui.notifications.info(`${trueName} identified by ${actor.name}.`);
+        if (!deferRender) this._app.render();
+        return true;
     }
 
     /**
@@ -290,6 +405,7 @@ export class WorkbenchDelegate {
     clearAll() {
         this.staging?.clear();
         this.acknowledge?.clear();
+        this.focusUsed.clear();
     }
 
     // ── Drag-Drop Binding ───────────────────────────────────────────────
@@ -336,6 +452,10 @@ export class WorkbenchDelegate {
         };
 
         const assignGear = itemId => {
+            if (this.focusUsed.has(actorId)) {
+                ui.notifications.info("Focus identify already used this rest for this character.");
+                return;
+            }
             const v = validateDrop(itemId, "gear");
             if (!v.ok) {
                 ui.notifications.warn(v.msg);
@@ -430,7 +550,8 @@ export class WorkbenchDelegate {
     serialize() {
         return {
             staging: Array.from(this.staging?.entries?.() ?? []),
-            acknowledge: Array.from(this.acknowledge?.entries?.() ?? [])
+            acknowledge: Array.from(this.acknowledge?.entries?.() ?? []),
+            focusUsed: Array.from(this.focusUsed)
         };
     }
 
@@ -442,5 +563,18 @@ export class WorkbenchDelegate {
         if (!state) return;
         this._app._workbenchIdentifyStaging = new Map(state.staging ?? []);
         this._app._workbenchIdentifyAcknowledge = new Map(state.acknowledge ?? []);
+        this._app._workbenchFocusUsed = new Set(state.focusUsed ?? []);
     }
 }
+
+/** @type {Map<string, (success: boolean) => void>} */
+WorkbenchDelegate._pendingIdentifyRequests = new Map();
+
+/** Called by SocketRouter when the GM workbench identify result arrives. */
+WorkbenchDelegate._resolveIdentifyRequest = function resolveIdentifyRequest(requestId, success) {
+    const resolve = WorkbenchDelegate._pendingIdentifyRequests.get(requestId);
+    if (resolve) {
+        WorkbenchDelegate._pendingIdentifyRequests.delete(requestId);
+        resolve(success);
+    }
+};

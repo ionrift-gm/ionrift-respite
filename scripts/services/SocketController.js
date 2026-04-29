@@ -66,6 +66,10 @@ export const SOCKET_TYPES = Object.freeze({
     DETECT_MAGIC_SCAN_BROADCAST: "detectMagicScanBroadcast",
     DETECT_MAGIC_SCAN_CLEARED:   "detectMagicScanCleared",
 
+    // ── Workbench Identify ──
+    WORKBENCH_IDENTIFY_REQUEST: "workbenchIdentifyRequest",
+    WORKBENCH_IDENTIFY_RESULT:  "workbenchIdentifyResult",
+
     // ── Event rolls ──
     EVENT_ROLL_REQUEST:    "eventRollRequest",
     EVENT_ROLL_RESULT:     "eventRollResult",
@@ -113,6 +117,8 @@ export const SOCKET_TYPES = Object.freeze({
     SHORT_REST_ABANDONED:  "shortRestAbandoned",
     SHORT_REST_DISMISSED:  "shortRestDismissed",
     REQUEST_SHORT_REST_STATE: "requestShortRestState",
+    SHORT_REST_WORKBENCH_STAGING: "shortRestWorkbenchStaging",
+    SHORT_REST_WORKBENCH_SYNC: "shortRestWorkbenchSync",
 
     // ── Monster cooking ──
     BUTCHER_PROMPT_POPUP:  "butcherPromptPopup",
@@ -590,6 +596,20 @@ export function emitShortRestComplete() {
 }
 
 /**
+ * @param {object} payload
+ */
+export function emitShortRestWorkbenchSync(payload) {
+    _emit(SOCKET_TYPES.SHORT_REST_WORKBENCH_SYNC, payload);
+}
+
+/**
+ * @param {object} payload
+ */
+export function emitShortRestWorkbenchStagingFromPlayer(payload) {
+    _emit(SOCKET_TYPES.SHORT_REST_WORKBENCH_STAGING, payload);
+}
+
+/**
  * Short rest abandoned notification.
  */
 export function emitShortRestAbandoned() {
@@ -628,4 +648,23 @@ export function emitShortRestAfkUpdate(characterId, isAfk) {
  */
 export function emitButcherPromptPopup(data) {
     _emit(SOCKET_TYPES.BUTCHER_PROMPT_POPUP, data);
+}
+
+// ── Workbench Identify (player → GM) ──
+
+/**
+ * Player to GM: request GM-side identification of a workbench item.
+ * Used when Quartermaster is active or the item carries QM flags.
+ * @param {{ actorId: string, itemId: string, requestId: string, targetUserId: string }} data
+ */
+export function emitWorkbenchIdentifyRequest(data) {
+    _emit(SOCKET_TYPES.WORKBENCH_IDENTIFY_REQUEST, data);
+}
+
+/**
+ * GM to requesting client: result of a workbench identify request.
+ * @param {{ requestId: string, success: boolean, targetUserId: string }} data
+ */
+export function emitWorkbenchIdentifyResult(data) {
+    _emit(SOCKET_TYPES.WORKBENCH_IDENTIFY_RESULT, data);
 }

@@ -29,6 +29,24 @@ const SONG_TIMING_KEY = "songOfRestTiming";
 /** Actor flag: pending Arcane/Natural Recovery selections for GM apply on rest complete. */
 const SPELL_RECOVERY_FLAG = "spellRecoveryPending";
 import { ImageResolver } from "../util/ImageResolver.js";
+import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
+import {
+    collectPartyIdentifyEmbedData,
+    computeCanShowDetectMagicScanButton,
+    DetectMagicDelegate
+} from "./delegates/DetectMagicDelegate.js";
+import {
+    DETECT_MAGIC_BTN_LABEL_GM,
+    DETECT_MAGIC_BTN_LABEL_PLAYER,
+    DETECT_MAGIC_BTN_TITLE_GM
+} from "./RestConstants.js";
+import { getAttuneableItemOptions } from "../util/attuneableItems.js";
+import { getShortRestRechargeLabels } from "../services/ShortRestRecharge.js";
+import { setNativeShortRestUnsuppressed } from "../services/NativeRestPass.js";
+import {
+    emitShortRestWorkbenchSync,
+    emitShortRestWorkbenchStagingFromPlayer
+} from "../services/SocketController.js";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 /** RP prompts -- one picked at random per rest. */
@@ -62,8 +80,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             resizable: true,
         },
         position: {
-            width: 720,
-            height: 680,
+            width: 760,
+            height: 700,
         },
         actions: {
             spendHitDie:            ShortRestApp.#onSpendHitDie,
@@ -75,6 +93,13 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             editRecovery:         ShortRestApp.#onEditRecovery,
             volunteerSong:             ShortRestApp.#onVolunteerSong,
             toggleShortRestFinished:   ShortRestApp.#onToggleShortRestFinished,
+            switchShortRestTab:        ShortRestApp.#onSwitchTab,
+            setWorkbenchFocusActor:    ShortRestApp.#onSetWorkbenchFocusActor,
+            stationDetectMagicScan:    ShortRestApp.#onStationDetectMagicScan,
+            stationIdentifyScannedItem:  ShortRestApp.#onStationIdentifyScannedItem,
+            submitWorkbenchIdentify:   ShortRestApp.#onSubmitWorkbenchIdentify,
+            workbenchIdentifyRemovePotion: ShortRestApp.#onWorkbenchIdentifyRemovePotion,
+            dismissWorkbenchIdentifyAck:   ShortRestApp.#onDismissWorkbenchIdentifyAck,
         },
     };
 
@@ -125,6 +150,24 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
          */
         this._isTerminating = false;
         RestAfkState.clear();
+
+        /** @type {"recovery"|"workbench"} */
+        this._activeTab = "recovery";
+        /** @type {string|null} */
+        this._workbenchFocusActorId = null;
+
+        this._workbenchIdentifyStaging = new Map();
+        this._workbenchIdentifyAcknowledge = new Map();
+        this._workbenchFocusUsed = new Set();
+        this._magicScanResults = null;
+        this._magicScanComplete = false;
+        this._identifiedItems = [];
+
+        this._workbench = new WorkbenchDelegate(this);
+        this._detectMagic = new DetectMagicDelegate(this);
+
+        /** @type {number|null} */
+        this._workbenchHookId = null;
     }
 
     // ── Lifecycle ──────────────────────────────────────────────
@@ -142,6 +185,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 activeShelter: this._activeShelter,
                 rpPrompt: this._rpPrompt,
                 songVolunteer: this._songVolunteer,
+                workbench: this._serializeWorkbenchStateForNet(),
             });
             // Persist to world setting for session recovery
             this._saveShortRestState();
@@ -159,6 +203,17 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             });
         }
         const out = await super.render(options);
+        if (this._isGM && !this._workbenchHookId) {
+            this._workbenchHookId = Hooks.on(
+                `${MODULE_ID}.workbenchIdentifyStagingTouched`,
+                () => this._onWorkbenchStagingTouchedFromHook()
+            );
+        }
+        queueMicrotask(() => {
+            if (this._activeTab === "workbench" && this._workbench && this.element) {
+                this._workbench.bindDragDrop(this.element);
+            }
+        });
         showAfkPanel();
         return out;
     }
@@ -173,6 +228,10 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             Hooks.off("updateItem", this._itemHookId);
             this._itemHookId = null;
         }
+        if (this._workbenchHookId) {
+            Hooks.off(`${MODULE_ID}.workbenchIdentifyStagingTouched`, this._workbenchHookId);
+            this._workbenchHookId = null;
+        }
 
         if (this._isTerminating) {
             // Rest is ending (complete or abandon): wipe all state
@@ -182,6 +241,13 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._songBonusByActor.clear();
             this._songVolunteer = null;
             this._finishedUsers.clear();
+            this._workbenchIdentifyStaging?.clear();
+            this._workbenchIdentifyAcknowledge?.clear();
+            this._workbenchFocusUsed?.clear();
+            this._magicScanResults = null;
+            this._magicScanComplete = false;
+            this._activeTab = "recovery";
+            this._workbenchFocusActorId = null;
             hideAfkPanelAfterRest();
         } else if (this._isGM) {
             // GM dismissed the window but the rest persists.
@@ -195,6 +261,179 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         return super.close(options);
+    }
+
+    // ── Workbench (short rest) ───────────────────────────────────
+
+    _onWorkbenchStagingTouchedFromHook() {
+        if (game.user.isGM) {
+            void this._saveShortRestState();
+            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+            return;
+        }
+        emitShortRestWorkbenchStagingFromPlayer({
+            userId: game.user.id,
+            staging: Array.from(this._workbenchIdentifyStaging?.entries() ?? []),
+        });
+    }
+
+    _serializeWorkbenchStateForNet() {
+        return {
+            workbenchStaging: Array.from(this._workbenchIdentifyStaging?.entries() ?? []),
+            workbenchAck: Array.from(this._workbenchIdentifyAcknowledge?.entries() ?? []),
+            magicScanResults: this._magicScanResults,
+            magicScanComplete: !!this._magicScanComplete,
+            workbenchFocusActorId: this._workbenchFocusActorId,
+            activeTab: this._activeTab,
+        };
+    }
+
+    /**
+     * @param {object} data
+     * @param {function} emitSync
+     */
+    applyWorkbenchStagingFromPlayer(data, emitSync) {
+        const uid = data.userId;
+        const user = game.users.get(uid);
+        if (!user) return;
+        for (const [actorId, st] of (data.staging ?? [])) {
+            const a = game.actors.get(actorId);
+            if (!a) continue;
+            if (!a.testUserPermission(user, "OWNER")) continue;
+            this._workbench.setStaging(actorId, {
+                gearItemId: st?.gearItemId ?? null,
+                potionItemIds: Array.isArray(st?.potionItemIds) ? st.potionItemIds : [],
+            });
+        }
+        if (data.activeTab === "recovery" || data.activeTab === "workbench") {
+            this._activeTab = data.activeTab;
+        }
+        if (data.workbenchFocusActorId) {
+            this._workbenchFocusActorId = data.workbenchFocusActorId;
+        }
+        void this._saveShortRestState();
+        emitSync(this._serializeWorkbenchStateForNet());
+        if (this.rendered) void this.render();
+    }
+
+    /**
+     * @param {object} data
+     */
+    applyWorkbenchStateFromHost(data) {
+        this._workbenchIdentifyStaging = new Map(data.workbenchStaging ?? []);
+        this._workbenchIdentifyAcknowledge = new Map(data.workbenchAck ?? []);
+        this._magicScanResults = data.magicScanResults ?? null;
+        this._magicScanComplete = !!data.magicScanComplete;
+        if (data.workbenchFocusActorId !== undefined) {
+            this._workbenchFocusActorId = data.workbenchFocusActorId;
+        }
+        if (data.activeTab === "recovery" || data.activeTab === "workbench") {
+            this._activeTab = data.activeTab;
+        }
+    }
+
+    getStationIdentifyEmbedContext(options = {}) {
+        return collectPartyIdentifyEmbedData(getPartyActors(), options);
+    }
+
+    canShowDetectMagicScanButtonFromParty() {
+        return computeCanShowDetectMagicScanButton(getPartyActors());
+    }
+
+    getWorkbenchIdentifyDragContext(actorId) {
+        return this._workbench.getDragContext(actorId, collectPartyIdentifyEmbedData, getPartyActors);
+    }
+
+    dismissWorkbenchIdentifyAcknowledgement(actorId) {
+        this._workbench.dismissAcknowledgement(actorId);
+    }
+
+    removeWorkbenchIdentifyPotionFromStation(actorId, itemId) {
+        this._workbench.removePotionFromStation(actorId, itemId);
+    }
+
+    async submitWorkbenchIdentifyFromStation(actorId) {
+        await this._workbench.submitFromStation(actorId);
+    }
+
+    async attuneWorkbenchItemForActor(actorId, itemId) {
+        const actor = game.actors.get(actorId);
+        if (!actor) return;
+        if (!actor.isOwner && !game.user.isGM) return;
+        const item = actor.items.get(itemId);
+        if (!item) return;
+        const att = item.system?.attunement;
+        if ((att !== "required" && att !== 1) || item.system?.attuned) {
+            ui.notifications.warn("That item cannot be attuned here.");
+            return;
+        }
+        const attuneSlots = actor.system?.attributes?.attunement;
+        if (attuneSlots) {
+            const current = attuneSlots.value ?? 0;
+            const max = attuneSlots.max ?? 3;
+            if (current >= max) {
+                ui.notifications.warn(`${actor.name} is already attuned to the maximum number of items (${max}).`);
+                return;
+            }
+        }
+        try {
+            await item.update({ "system.attuned": true });
+            ui.notifications.info(`${actor.name} attunes to ${item.name}.`);
+        } catch (e) {
+            Logger.warn(`${MODULE_ID} | attuneWorkbenchItemForActor:`, e);
+            ui.notifications.error("Could not attune that item.");
+            return;
+        }
+        if (game.user.isGM) {
+            void this._saveShortRestState();
+            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+        }
+        if (this.rendered) void this.render();
+    }
+
+    _getWorkbenchEmbedContext() {
+        const party = getPartyActors();
+        const focus = this._workbenchFocusActorId && party.some((a) => a.id === this._workbenchFocusActorId)
+            ? this._workbenchFocusActorId
+            : (party[0]?.id ?? null);
+        if (focus && this._workbenchFocusActorId !== focus) {
+            this._workbenchFocusActorId = focus;
+        }
+        if (!focus) {
+            return {
+                identifyCasters: [],
+                detectMagicCasters: [],
+                isGmUser: !!game.user?.isGM,
+                canShowDetectMagicScanButton: false,
+                detectMagicScanButtonLabel: DETECT_MAGIC_BTN_LABEL_PLAYER,
+                detectMagicScanButtonTitle: "",
+                magicScanResults: [],
+                magicScanComplete: false,
+                workbenchIdentifyActorId: null,
+                workbenchGearChip: null,
+                workbenchPotionChips: [],
+                workbenchNoUnidentifiedOnSheet: true,
+                workbenchSubmitLocked: true,
+                workbenchIdentifyAcknowledgement: null,
+                workbenchAckRevealReady: true,
+                workbenchFocusExhausted: false,
+                attuneableItems: [],
+            };
+        }
+        const emb = this.getStationIdentifyEmbedContext({ restrictUnidentifiedToActorId: focus });
+        const wb = this.getWorkbenchIdentifyDragContext(focus);
+        const attuneableItems = getAttuneableItemOptions(game.actors.get(focus));
+        return {
+            ...emb,
+            ...wb,
+            attuneableItems,
+            isGmUser: !!game.user?.isGM,
+            canShowDetectMagicScanButton: this.canShowDetectMagicScanButtonFromParty(),
+            detectMagicScanButtonLabel: game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER,
+            detectMagicScanButtonTitle: game.user?.isGM ? DETECT_MAGIC_BTN_TITLE_GM : "",
+            magicScanResults: this._magicScanResults ?? [],
+            magicScanComplete: !!this._magicScanComplete,
+        };
     }
 
     // ── Context ────────────────────────────────────────────────
@@ -422,9 +661,12 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
             }
 
+            const srRechargeBadges = getShortRestRechargeLabels(a);
+
             return {
                 ...baseCharacter,
                 spellRecovery,
+                srRechargeBadges,
             };
         });
 
@@ -473,6 +715,14 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             shelterBadge,
             rpPrompt: this._rpPrompt,
             roster,
+            activeTab: this._activeTab,
+            workbenchParty: partyActors.map((a) => ({
+                id: a.id,
+                name: a.name,
+                img: a.img || "icons/svg/mystery-man.svg",
+            })),
+            workbenchFocusActorId: this._workbenchFocusActorId,
+            workbenchEmbed: this._getWorkbenchEmbedContext(),
             shortRestFooter: {
                 myFinished: this._finishedUsers.has(game.user.id),
             },
@@ -693,6 +943,20 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * @param {Actor[]} partyActors
+     * @returns {Actor|null}
+     */
+    static #findChefActor(partyActors) {
+        for (const a of partyActors) {
+            for (const i of a.items ?? []) {
+                if (i.type !== "feat" && i.type !== "background") continue;
+                if (String(i.name ?? "").toLowerCase().includes("chef")) return a;
+            }
+        }
+        return null;
+    }
+
+    /**
      * @param {string} bardName
      * @param {string} recipientName
      * @param {string} formula
@@ -715,6 +979,109 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             `<li><strong>${ShortRestApp.#escapeChat(e.name)}</strong>: ${ShortRestApp.#escapeChat(e.formula)}, <strong>+${e.total} HP</strong></li>`
         ).join("");
         return `<div class="respite-song-of-rest respite-song-of-rest-summary respite-chat-parchment"><div class="respite-song-title"><i class="fas fa-music"></i> Song of Rest: ${b}</div><p class="respite-song-lead">Each ally who spent at least one Hit Die during this short rest gains extra healing (one die each):</p><ul class="respite-song-list">${rows}</ul></div>`;
+    }
+
+    static #onSwitchTab(event, target) {
+        const tab = target?.dataset?.tab;
+        if (tab !== "recovery" && tab !== "workbench") return;
+        this._activeTab = tab;
+        if (this._isGM) {
+            void this._saveShortRestState();
+            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+        } else {
+            emitShortRestWorkbenchStagingFromPlayer({
+                userId: game.user.id,
+                staging: Array.from(this._workbenchIdentifyStaging?.entries() ?? []),
+                activeTab: this._activeTab,
+            });
+        }
+        this.render();
+    }
+
+    static #onSetWorkbenchFocusActor(event, target) {
+        const id = target?.value;
+        if (!id) return;
+        this._workbenchFocusActorId = id;
+        if (this._isGM) {
+            void this._saveShortRestState();
+            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+        } else {
+            emitShortRestWorkbenchStagingFromPlayer({
+                userId: game.user.id,
+                staging: Array.from(this._workbenchIdentifyStaging?.entries() ?? []),
+                workbenchFocusActorId: this._workbenchFocusActorId,
+            });
+        }
+        this.render();
+    }
+
+    static async #onStationDetectMagicScan() {
+        if (!this._detectMagic) return;
+        await this._detectMagic.runScan(getPartyActors);
+        if (this._isGM) {
+            void this._saveShortRestState();
+            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+        }
+    }
+
+    static async #onStationIdentifyScannedItem(event, target) {
+        const actorId = target?.dataset?.actorId;
+        const itemId = target?.dataset?.itemId;
+        if (!actorId || !itemId) return;
+        await this._detectMagic.identifyScannedItem(actorId, itemId, getPartyActors);
+        if (this._isGM) {
+            void this._saveShortRestState();
+            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+        }
+    }
+
+    static async #onSubmitWorkbenchIdentify() {
+        const el = this.element?.querySelector?.(".station-workbench-identify-embed[data-workbench-actor-id]");
+        const actorId = el?.dataset?.workbenchActorId;
+        if (!actorId) return;
+        await this._workbench.submitFromStation(actorId);
+        if (this._isGM) {
+            void this._saveShortRestState();
+            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+        }
+    }
+
+    static #onWorkbenchIdentifyRemovePotion(event, target) {
+        const itemId = target?.closest?.("[data-item-id]")?.dataset?.itemId ?? target?.dataset?.itemId;
+        const el = this.element?.querySelector?.(".station-workbench-identify-embed[data-workbench-actor-id]");
+        const actorId = el?.dataset?.workbenchActorId;
+        if (!itemId || !actorId) return;
+        this._workbench.removePotionFromStation(actorId, itemId);
+        if (this._isGM) {
+            void this._saveShortRestState();
+            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+        }
+    }
+
+    static async #onDismissWorkbenchIdentifyAck() {
+        const el = this.element?.querySelector?.(".station-workbench-identify-embed[data-workbench-actor-id]");
+        const actorId = el?.dataset?.workbenchActorId;
+        if (!actorId) return;
+        const ack = this._workbenchIdentifyAcknowledge?.get(actorId);
+        if (!ack || Date.now() < ack.revealAt) return;
+        this._workbench.dismissAcknowledgement(actorId);
+        if (this._isGM) {
+            void this._saveShortRestState();
+            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+        }
+    }
+
+    static async #onWorkbenchAttune(event, target) {
+        const actorId = target?.dataset?.workbenchActorId;
+        if (!actorId) return;
+        const row = target.closest?.(".sr-workbench-attune");
+        const sel = row?.querySelector?.(".sr-attune-select");
+        const itemId = sel?.value;
+        if (!itemId) {
+            ui.notifications.warn("Pick an item to attune.");
+            return;
+        }
+        await this.attuneWorkbenchItemForActor(actorId, itemId);
     }
 
     /**
@@ -966,11 +1333,86 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._spellRecovery.delete(actor.id);
         }
 
-        for (const actor of partyActors) {
+        const summaryLines = [];
+        for (const a of partyActors) {
+            const rolls = this._rolls.get(a.id) ?? [];
+            const healed = rolls.reduce((sum, r) => sum + (Number(r.total) || 0), 0);
+            const song = this._songBonusByActor.get(a.id)?.total ?? 0;
+            const badges = getShortRestRechargeLabels(a);
+            const parts = [];
+            if (healed) parts.push(`+${healed} HP from Hit Dice`);
+            if (song) parts.push(`+${song} HP from Song of Rest (tracked above)`);
+            if (badges.length) parts.push(`Typical recharges: ${badges.join(", ")}`);
+            const line = parts.length
+                ? parts.join(". ") + "."
+                : "No HD healing from this window.";
+            summaryLines.push({ name: a.name, line });
+        }
+
+        const htmlSummary = summaryLines
+            .map(
+                (l) =>
+                    `<p><strong>${ShortRestApp.#escapeChat(l.name)}</strong><br/>${ShortRestApp.#escapeChat(l.line)}</p>`
+            )
+            .join("");
+
+        try {
+            await new Promise((resolve) => {
+                const d = new Dialog(
+                    {
+                        title: "Short rest summary",
+                        content: `<div class="ionrift-sr-summary" style="padding:4px 0">${htmlSummary}` +
+                            `<p style="opacity:.85;font-size:.9em">Closing applies native short rest recovery ` +
+                            `(class features, item uses, wild shape uses, and similar).</p></div>`,
+                        buttons: {
+                            continue: { label: "Continue", callback: () => resolve() },
+                        },
+                        default: "continue",
+                    },
+                    { width: 440, classes: ["ionrift-window"] }
+                );
+                d.render(true);
+            });
+        } catch (e) {
+            Logger.warn(`${MODULE_ID} | Rest summary dialog failed:`, e);
+        }
+
+        setNativeShortRestUnsuppressed(true);
+        try {
+            for (const actor of partyActors) {
+                try {
+                    if (game.system.id === "dnd5e") {
+                        await actor.shortRest({ dialog: false, chat: true });
+                    }
+                } catch (e) {
+                    Logger.warn(`Failed shortRest for ${actor.name}:`, e);
+                }
+            }
+        } finally {
+            setNativeShortRestUnsuppressed(false);
+        }
+
+        const chef = ShortRestApp.#findChefActor(partyActors);
+        if (chef && game.system.id === "dnd5e") {
+            const pb = Number(chef.system?.attributes?.prof) || 2;
+            const targets = partyActors.slice(0, 4);
+            for (const t of targets) {
+                try {
+                    await t.update({ "system.attributes.hp.temp": pb });
+                } catch (e) {
+                    Logger.warn(`${MODULE_ID} | Chef temp HP:`, e);
+                }
+            }
             try {
-                await actor.shortRest({ dialog: false, chat: true });
+                await ChatMessage.create({
+                    content:
+                        `<div class="respite-chat-parchment"><i class="fas fa-utensils"></i> ` +
+                        `Chef treats: <strong>up to four party members</strong> gain <strong>${pb} temporary ` +
+                        `HP</strong> (feat: ${ShortRestApp.#escapeChat(chef.name)}).</div>`,
+                    speaker: ChatMessage.getSpeaker({ actor: chef }),
+                });
             } catch (e) {
-                Logger.warn(`Failed shortRest for ${actor.name}:`, e);
+                Logger.warn(`${MODULE_ID} | Chef chat:`, e);
             }
         }
 
@@ -1044,6 +1486,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (data.activeShelter) this._activeShelter = data.activeShelter;
         if (data.rpPrompt) this._rpPrompt = data.rpPrompt;
         if (data.songVolunteer !== undefined) this._songVolunteer = data.songVolunteer ?? null;
+        if (data.workbench) {
+            this.applyWorkbenchStateFromHost(data.workbench);
+        }
         this.render({ force: true });
     }
 
@@ -1119,6 +1564,12 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             rpPrompt: this._rpPrompt,
             songVolunteer: this._songVolunteer,
             confirmedRecovery: [...this._confirmedRecovery],
+            activeTab: this._activeTab,
+            workbenchFocusActorId: this._workbenchFocusActorId,
+            magicScanResults: this._magicScanResults,
+            magicScanComplete: this._magicScanComplete,
+            workbenchStaging: Array.from(this._workbenchIdentifyStaging?.entries() ?? []),
+            workbenchAck: Array.from(this._workbenchIdentifyAcknowledge?.entries() ?? []),
             timestamp: Date.now(),
         };
         try {
@@ -1144,6 +1595,12 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (state.rpPrompt) this._rpPrompt = state.rpPrompt;
         if (state.songVolunteer !== undefined) this._songVolunteer = state.songVolunteer ?? null;
         if (state.confirmedRecovery) this._confirmedRecovery = new Set(state.confirmedRecovery);
+        if (state.activeTab === "recovery" || state.activeTab === "workbench") this._activeTab = state.activeTab;
+        if (state.workbenchFocusActorId !== undefined) this._workbenchFocusActorId = state.workbenchFocusActorId;
+        this._magicScanResults = state.magicScanResults ?? null;
+        this._magicScanComplete = !!state.magicScanComplete;
+        this._workbenchIdentifyStaging = new Map(state.workbenchStaging ?? []);
+        this._workbenchIdentifyAcknowledge = new Map(state.workbenchAck ?? []);
 
         return true;
     }

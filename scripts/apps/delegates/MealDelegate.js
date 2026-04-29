@@ -8,6 +8,7 @@
 import { MealPhaseHandler } from "../../services/MealPhaseHandler.js";
 import { TerrainRegistry } from "../../services/TerrainRegistry.js";
 import { getPartyActors } from "../../services/partyActors.js";
+import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../../services/StationInteractionLayer.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -182,6 +183,9 @@ export class MealDelegate {
         });
 
         app._mealSubmitted = true;
+        if (isStationLayerActive()) {
+            refreshStationEmptyNoticeFade(app);
+        }
         app.render();
         ui.notifications.info("Meal choices submitted.");
     }

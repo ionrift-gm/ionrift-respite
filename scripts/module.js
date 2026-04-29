@@ -76,6 +76,7 @@ import {
 } from "./services/RejoinManager.js";
 import { dispatch as socketDispatch } from "./services/SocketRouter.js";
 import { showButcherPopup } from "./services/SocketRouterHandlers.js";
+import { isNativeShortRestUnsuppressed } from "./services/NativeRestPass.js";
 
 const MODULE_ID = "ionrift-respite";
 const MODULE_LABEL = "Respite";
@@ -86,6 +87,7 @@ let Logger;
 // Tracks whether a Respite rest flow is currently active.
 // When true, the dnd5e.preRestCompleted hook will suppress default HP/HD recovery.
 let respiteFlowActive = false;
+
 
 // Active GM app reference, used by socket handler to push incoming choices.
 let activeRestSetupApp = null;
@@ -294,6 +296,12 @@ Hooks.once("init", async () => {
         .then(r => r.text())
         .then(t => Handlebars.registerPartial("rosterStrip", t))
         .catch(e => console.warn(`${MODULE_ID} | Failed to load roster-strip partial:`, e));
+
+    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/workbench-identify-embed.hbs"]);
+    fetch("modules/ionrift-respite/templates/partials/workbench-identify-embed.hbs")
+        .then(r => r.text())
+        .then(t => Handlebars.registerPartial("workbenchIdentifyEmbed", t))
+        .catch(e => console.warn(`${MODULE_ID} | Failed to load workbench identify partial:`, e));
 
     // Expose API
     const adapter = createAdapter();
@@ -1178,6 +1186,7 @@ Hooks.on("dnd5e.preLongRest", _blockPlayerRest);
  */
 Hooks.on("dnd5e.preRestCompleted", (actor, result, config) => {
     if (!respiteFlowActive) return true;
+    if (isNativeShortRestUnsuppressed()) return true;
 
     // Suppress HP recovery: system would set hp to max, we zero the delta and strip the payload
     if (result.dhp !== undefined) result.dhp = 0;
