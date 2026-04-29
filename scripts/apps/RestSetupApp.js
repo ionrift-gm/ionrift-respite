@@ -82,6 +82,7 @@ import {
     showAfkPanel
 } from "../module.js";
 import * as RestAfkState from "../services/RestAfkState.js";
+import { emitRestStarted, emitRestSnapshot, emitPhaseChanged, emitRestPreparing, emitRestResolved, emitRestAbandoned, emitSubmissionUpdate, emitDetectMagicScanCleared, emitCampSceneCleared, emitCampGearPlaced, emitCampStationPlaced } from "../services/SocketController.js";
 
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -660,14 +661,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
         };
         setActiveRestData(restPayload);
-        game.socket.emit(`module.${MODULE_ID}`, { type: "restStarted", restData: restPayload });
+        emitRestStarted(restPayload);
 
         setTimeout(() => {
             const snapshot = this.getRestSnapshot?.();
-            if (snapshot) game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "phaseChanged", phase: "resolve", phaseData: { outcomes: this._outcomes }
-            });
+            if (snapshot) emitRestSnapshot(snapshot);
+            emitPhaseChanged("resolve", { outcomes: this._outcomes });
         }, 200);
 
         this.render(true);
@@ -728,15 +727,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
         };
         setActiveRestData(restPayload);
-        game.socket.emit(`module.${MODULE_ID}`, { type: "restStarted", restData: restPayload });
+        emitRestStarted(restPayload);
 
         setTimeout(() => {
             const snapshot = this.getRestSnapshot?.();
-            if (snapshot) game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "phaseChanged", phase: "events",
-                phaseData: { triggeredEvents: this._triggeredEvents, eventsRolled: true }
-            });
+            if (snapshot) emitRestSnapshot(snapshot);
+            emitPhaseChanged("events", { triggeredEvents: this._triggeredEvents, eventsRolled: true });
         }, 200);
 
         this.render(true);
@@ -796,18 +792,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
         };
         setActiveRestData(restPayload);
-        game.socket.emit(`module.${MODULE_ID}`, { type: "restStarted", restData: restPayload });
+        emitRestStarted(restPayload);
 
         setTimeout(() => {
             const snapshot = this.getRestSnapshot?.();
-            if (snapshot) game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "phaseChanged", phase: "events",
-                phaseData: {
-                    triggeredEvents: this._triggeredEvents,
-                    activeTreeState: this._activeTreeState,
-                    eventsRolled: true
-                }
+            if (snapshot) emitRestSnapshot(snapshot);
+            emitPhaseChanged("events", {
+                triggeredEvents: this._triggeredEvents,
+                activeTreeState: this._activeTreeState,
+                eventsRolled: true
             });
         }, 200);
 
@@ -891,14 +884,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
         };
         setActiveRestData(restPayload);
-        game.socket.emit(`module.${MODULE_ID}`, { type: "restStarted", restData: restPayload });
+        emitRestStarted(restPayload);
 
         setTimeout(() => {
             const snapshot = this.getRestSnapshot?.();
-            if (snapshot) game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "phaseChanged", phase: "resolve", phaseData: { outcomes: this._outcomes }
-            });
+            if (snapshot) emitRestSnapshot(snapshot);
+            emitPhaseChanged("resolve", { outcomes: this._outcomes });
         }, 200);
 
         this.render(true);
@@ -1005,14 +996,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
         };
         setActiveRestData(restPayload);
-        game.socket.emit(`module.${MODULE_ID}`, { type: "restStarted", restData: restPayload });
+        emitRestStarted(restPayload);
 
         setTimeout(() => {
             const snapshot = this.getRestSnapshot?.();
-            if (snapshot) game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "phaseChanged", phase: "resolve", phaseData: { outcomes: this._outcomes }
-            });
+            if (snapshot) emitRestSnapshot(snapshot);
+            emitPhaseChanged("resolve", { outcomes: this._outcomes });
         }, 200);
 
         this.render(true);
@@ -1093,14 +1082,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
         };
         setActiveRestData(restPayload);
-        game.socket.emit(`module.${MODULE_ID}`, { type: "restStarted", restData: restPayload });
+        emitRestStarted(restPayload);
 
         setTimeout(() => {
             const snapshot = this.getRestSnapshot?.();
-            if (snapshot) game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "phaseChanged", phase: "resolve", phaseData: { outcomes: this._outcomes }
-            });
+            if (snapshot) emitRestSnapshot(snapshot);
+            emitPhaseChanged("resolve", { outcomes: this._outcomes });
         }, 200);
 
         this.render(true);
@@ -1476,7 +1463,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             registerActiveRestApp(this);
             if (!this._prepBroadcast) {
                 this._prepBroadcast = true;
-                game.socket.emit(`module.${MODULE_ID}`, { type: "restPreparing" });
+                emitRestPreparing();
             }
         }
         try {
@@ -1532,7 +1519,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 });
 
                 if (confirmed) {
-                    game.socket.emit(`module.${MODULE_ID}`, { type: "restResolved" });
+                    emitRestResolved();
                     clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
                     resetCampSession();
                     this._clearDetectMagicScanSession();
@@ -1551,7 +1538,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this._gmMinimizedToFooter = false;
                 if (options.resolved) {
                     await this._clearRestState();
-                    game.socket.emit(`module.${MODULE_ID}`, { type: "restResolved" });
+                    emitRestResolved();
                     clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
                     resetCampSession();
                 }
