@@ -561,3 +561,22 @@ export function emitShortRestDismissed() {
 export function emitRequestShortRestState(userId) {
     _emit(SOCKET_TYPES.REQUEST_SHORT_REST_STATE, { userId });
 }
+
+/**
+ * Bidirectional: short rest AFK status update.
+ * @param {string} characterId
+ * @param {boolean} isAfk
+ */
+export function emitShortRestAfkUpdate(characterId, isAfk) {
+    _emit(SOCKET_TYPES.SHORT_REST_AFK_UPDATE, { characterId, isAfk });
+}
+
+// ── Monster Cooking Emitter ─────────────────────────────────────────────────
+
+/**
+ * GM → Players: butcher opportunity popup after combat.
+ * @param {object} data - Creature info, tier, DC, holder IDs, etc.
+ */
+export function emitButcherPromptPopup(data) {
+    _emit(SOCKET_TYPES.BUTCHER_PROMPT_POPUP, data);
+}
