@@ -20,7 +20,9 @@ import {
     clearPlayerCampGear,
     clearPlayerCampGearType,
     clearSharedCampStation,
-    resetCampSession
+    resetCampSession,
+    registerCampFurnitureZOrderGuards,
+    clampCampFloorTokenInPreUpdate
 } from "./services/CompoundCampPlacer.js";
 
 import { createAdapter } from "./adapters/adapterFactory.js";
@@ -524,11 +526,11 @@ Hooks.once("init", async () => {
 
     game.settings.register(MODULE_ID, "enableStudy", {
         name: "Study Activity",
-        hint: "Allow the Study activity during rests. Requires Arcana or Investigation proficiency.",
+        hint: "Enables the Study workbench activity (check and follow-up UI). Off by default. When on, requires Arcana or Investigation proficiency.",
         scope: "world",
         config: true,
         type: Boolean,
-        default: true,
+        default: false,
         restricted: true
     });
 
@@ -821,7 +823,7 @@ Hooks.once("init", async () => {
 
         // ── Healer's Kit ───────────────────────────────────────────────
         "healer's kit": {
-            html: `<hr><p><strong>Respite:</strong> Used during the <strong>Tend Wounds</strong> activity. A character with a Healer's Kit can spend charges to provide additional HP recovery to injured party members beyond the standard rest recovery.</p>`,
+            html: `<hr><p><strong>Respite:</strong> Used during the <strong>Tend Wounds</strong> activity. Grants advantage on the Medicine check and adds 1d4 to the healing roll (1 charge spent). Characters with the <strong>Healer</strong> feat use the feat formula (1d6 + 4 + target level) instead.</p>`,
             tags: ["Tend Wounds Activity"]
         },
 
@@ -1306,8 +1308,15 @@ Hooks.once("ready", async () => {
     // Register socket handler
     game.socket.on(`module.${MODULE_ID}`, _onSocketMessage);
 
+    registerCampFurnitureZOrderGuards();
+
     /** Block non-GM canvas drags for shared station tokens (belt-and-suspenders with TokenDocument#locked). */
     Hooks.on("preUpdateToken", (document, updateData, _options, userId) => {
+        try {
+            clampCampFloorTokenInPreUpdate(document, updateData);
+        } catch {
+            /* ignore */
+        }
         try {
             const f = document.flags?.[MODULE_ID];
             if (!f?.isSharedStation) return;
@@ -1322,7 +1331,7 @@ Hooks.once("ready", async () => {
 
     setRestSessionAfkEmitter(emitAfkSocket);
     setAfkUiRefresh(() => {
-        void activeRestSetupApp?.render?.({ force: true });
+        void activeRestSetupApp?.render?.();
         void activePlayerRestApp?.render?.({ force: true });
         void activeShortRestApp?.render?.({ force: true });
         void activeAfkPanel?.render?.({ force: true });
@@ -2317,6 +2326,7 @@ function _onSocketMessage(data) {
             if (campApp) {
                 void campApp.render();
                 campApp.refreshCanvasStationOverlaysIfActivity?.();
+                campApp.refreshOpenStationDialogAfterCampGear?.();
             }
             break;
         }
@@ -2461,6 +2471,9 @@ function _handleRestStarted(data) {
             } finally {
                 if (options.retainPlayerApp) {
                     console.log(`${MODULE_ID} | Player rest window closed; app ref retained for canvas phase`);
+                    if (_playerRestActive && !options.skipRejoin) {
+                        _showRejoinNotification(activePlayerRestApp);
+                    }
                     return;
                 }
                 activePlayerRestApp = null;
@@ -2518,18 +2531,36 @@ function _handleRestResolved(data) {
 
 /**
  * Shows a persistent rejoin notification when the player closes the rest window.
+ * @param {RestSetupApp} [app] - Active player rest app for phase/progress info.
  */
-function _showRejoinNotification() {
+function _showRejoinNotification(app) {
     _removeRejoinNotification();
     const el = document.createElement("div");
     el.id = "respite-rejoin-bar";
+    const phaseLabel = app?._phase ? `Phase: ${app._phase}` : "active";
+    const isActivity = app?._phase === "activity";
+    const partySize = isActivity ? (getPartyActors().length || 0) : 0;
+    const activitiesResolved = isActivity ? (app?._characterChoices?.size ?? 0) : 0;
+    const trackFood = isActivity && game.settings.get("ionrift-respite", "trackFood");
+    const rationsResolved = trackFood ? (app?._activityMealRationsSubmitted?.size ?? 0) : 0;
+    const totalTasks = partySize + (trackFood ? partySize : 0);
+    const resolvedTasks = activitiesResolved + rationsResolved;
+    const progressHtml = isActivity
+        ? `<span class="respite-bar-progress">${resolvedTasks} / ${totalTasks} tasks to complete</span>`
+        : "";
     el.innerHTML = `
         <i class="fas fa-campground"></i>
-        <span>A rest is in progress.</span>
-        <button type="button" id="respite-rejoin-btn">Rejoin</button>
+        <span>Rest in progress (${phaseLabel})</span>
+        ${progressHtml}
+        <button type="button" id="respite-rejoin-btn">Resume</button>
     `;
     el.querySelector("#respite-rejoin-btn").addEventListener("click", () => {
-        _rejoinRest();
+        _removeRejoinNotification();
+        if (app && !app.rendered) {
+            app.render({ force: true });
+        } else {
+            _rejoinRest();
+        }
     });
     document.body.appendChild(el);
 }
@@ -2654,10 +2685,14 @@ export function _showGmRestIndicator(app) {
     const awaitingCombat = app?._awaitingCombat;
     const phaseLabel = awaitingCombat ? "Awaiting combat resolution" : `Phase: ${app?._phase ?? "active"}`;
     const isActivity = app?._phase === "activity";
-    const total = isActivity ? getPartyActors().length : 0;
-    const resolved = isActivity ? (app?._characterChoices?.size ?? 0) : 0;
+    const partySize = isActivity ? getPartyActors().length : 0;
+    const activitiesResolved = isActivity ? (app?._characterChoices?.size ?? 0) : 0;
+    const trackFood = isActivity && game.settings.get("ionrift-respite", "trackFood");
+    const rationsResolved = trackFood ? (app?._activityMealRationsSubmitted?.size ?? 0) : 0;
+    const totalTasks = partySize + (trackFood ? partySize : 0);
+    const resolvedTasks = activitiesResolved + rationsResolved;
     const progressHtml = isActivity
-        ? `<span class="respite-bar-progress">${resolved} of ${total} activities chosen</span>`
+        ? `<span class="respite-bar-progress">${resolvedTasks} / ${totalTasks} tasks to complete</span>`
         : "";
     el.innerHTML = `
         <i class="fas fa-campground"></i>

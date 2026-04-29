@@ -87,6 +87,19 @@ const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 /**
+ * F12: globalThis.DEBUG_IONRIFT_RESITE_SHEET = true
+ * to log GM rest sheet render / close / activity advance (filter console: "respite GM sheet")
+ */
+function _logGmRestSheet(phase, msg, extra = null) {
+    try {
+        if (typeof globalThis !== "undefined" && globalThis.DEBUG_IONRIFT_RESITE_SHEET) {
+            // eslint-disable-next-line no-console
+            console.log(`${MODULE_ID} | respite GM sheet [${phase}]`, msg, extra ?? "");
+        }
+    } catch { /* ignore */ }
+}
+
+/**
  * Whether an actor can cast a named spell from their sheet (dnd5e: cantrips, prepared, always, innate).
  * @param {Actor} actor
  * @param {string} spellNameLower
@@ -424,6 +437,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._workbenchIdentifyStaging = new Map();
         /** actorId -> { items: { itemId, name, img, requiresAttunement }[], revealAt: number } post-submit ritual */
         this._workbenchIdentifyAcknowledge = new Map();
+        /** GM: main window closed while rest is active; ignore non-forced render until Resume. */
+        this._gmMinimizedToFooter = false;
         /** Player: main window reopened after picking from a station; Back minimises again. */
         this._postStationChoiceReview = false;
         /** Actor id for revert on Back after a station pick. */
@@ -1428,8 +1443,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     render(options = {}) {
         if (this._isGM) {
+            if (options.force) {
+                this._gmMinimizedToFooter = false;
+            } else if (this._gmMinimizedToFooter) {
+                _logGmRestSheet("render", "skip (minimized, no force)", { phase: this._phase });
+                return;
+            }
             registerActiveRestApp(this);
-            // Broadcast "preparing" to players on first open
             if (!this._prepBroadcast) {
                 this._prepBroadcast = true;
                 game.socket.emit(`module.${MODULE_ID}`, { type: "restPreparing" });
@@ -1501,8 +1521,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // Setup and resolve: no indicator; resolve uses the discard confirm branch above.
             const restActive = this._phase && this._phase !== "resolve" && this._phase !== "setup";
             if (restActive && !options.resolved) {
+                this._gmMinimizedToFooter = true;
                 _showGmRestIndicator(this);
             } else {
+                this._gmMinimizedToFooter = false;
                 if (options.resolved) {
                     game.socket.emit(`module.${MODULE_ID}`, { type: "restResolved" });
                     clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
@@ -1894,72 +1916,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
             }
 
-            // Armor don/doff advisory (Xanathar's optional rule)
-            let armorWarning = null;
-            try {
-                const armorDoffEnabled = game.settings.get(MODULE_ID, "armorDoffRule");
-                if (armorDoffEnabled) {
-                    if (!this._doffedArmor) this._doffedArmor = new Map();
-                    const doffedItemId = this._doffedArmor.get(a.id);
-
-                    // Check for currently equipped medium/heavy armor
-                    const equippedArmor = a.itemTypes?.equipment?.find(i =>
-                        i.system?.equipped && i.system?.type?.value === "heavy"
-                    ) ?? a.itemTypes?.equipment?.find(i =>
-                        i.system?.equipped && i.system?.type?.value === "medium"
-                    );
-
-                    if (equippedArmor) {
-                        const armorType = equippedArmor.system?.type?.value;
-                        const donTime = armorType === "heavy" ? "10 min" : "5 min";
-                        armorWarning = {
-                            type: armorType,
-                            name: equippedArmor.name,
-                            itemId: equippedArmor.id,
-                            actorId: a.id,
-                            isDoffed: false,
-                            donTime,
-                            hint: `${equippedArmor.name} (${armorType}) equipped. Don time: ${donTime}.`
-                        };
-                    } else if (doffedItemId) {
-                        // Character doffed armor this rest - show re-equip option
-                        const doffedItem = a.items.get(doffedItemId);
-                        if (doffedItem) {
-                            const armorType = doffedItem.system?.type?.value ?? "medium";
-                            const donTime = armorType === "heavy" ? "10 min" : "5 min";
-                            armorWarning = {
-                                type: armorType,
-                                name: doffedItem.name,
-                                itemId: doffedItemId,
-                                actorId: a.id,
-                                isDoffed: true,
-                                donTime,
-                                hint: `${doffedItem.name} removed for rest. Better recovery, but vulnerable if attacked. Don time: ${donTime}.`
-                            };
-                        }
-                    } else {
-                        // Check inventory for unequipped medium/heavy armor (offer best available)
-                        const inventoryArmor = a.itemTypes?.equipment?.find(i =>
-                            !i.system?.equipped && i.system?.type?.value === "heavy"
-                        ) ?? a.itemTypes?.equipment?.find(i =>
-                            !i.system?.equipped && i.system?.type?.value === "medium"
-                        );
-                        if (inventoryArmor) {
-                            const armorType = inventoryArmor.system?.type?.value;
-                            const donTime = armorType === "heavy" ? "10 min" : "5 min";
-                            armorWarning = {
-                                type: armorType,
-                                name: inventoryArmor.name,
-                                itemId: inventoryArmor.id,
-                                actorId: a.id,
-                                isDoffed: true,
-                                donTime,
-                                hint: `${inventoryArmor.name} available in inventory. Don time: ${donTime}.`
-                            };
-                        }
-                    }
-                }
-            } catch (e) { /* setting may not exist yet */ }
+            // Armor don/doff advisory (Xanathar's optional rule; full UI on activity detail)
+            const armorWarning = this._buildArmorWarningForActor(a);
 
             // Build unified tile list with tooltips
             const pendingId = this._pendingSelections.get(a.id);
@@ -2248,10 +2206,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const totalCharacters = partyActors.length;
         const resolvedCount = characterStatuses.filter(c => c.source !== "pending").length;
-        const allResolved = resolvedCount === totalCharacters && !this._gmCopySpellProposal;
         const trackFoodSetting = game.settings.get(MODULE_ID, "trackFood");
+        const allRationsSubmitted = !trackFoodSetting
+            || (this._activityMealRationsSubmitted?.size ?? 0) >= totalCharacters;
+        const allResolved = resolvedCount === totalCharacters
+            && !this._gmCopySpellProposal
+            && allRationsSubmitted;
         const activityPhasePlayerOverview =
-            this._phase === "activity" && !this._isGM
+            this._phase === "activity"
                 ? {
                       resolvedCount,
                       totalCharacters,
@@ -2634,123 +2596,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             copySpellRollPrompt: this._copySpellRollPrompt ?? null,
             phase: this._phase,
             postStationChoiceReview: !this._isGM && this._phase === "activity" && !!this._postStationChoiceReview,
-            activitySubTab: (() => {
-                if (this._phase !== "activity") return null;
-                /** Players use map stations for Identify / Meal; main sheet shows activity overview only. */
-                const renderSubTab = this._isGM ? this._activitySubTab : "activity";
-                const { unidentifiedItems, identifyCasters, detectMagicCasters } = collectPartyIdentifyEmbedData(partyActors);
-                // Track already-identified items from this rest
-                const identifiedThisRest = this._identifiedItems ?? [];
-                const preDummyUnidentifiedCount = unidentifiedItems.length;
-                const hasUnidentified = preDummyUnidentifiedCount > 0;
-
-                // Default to Activity tab on arrival, but keep Identify inspectable
-                if (!this._activitySubTabUserSet && !hasUnidentified) {
-                    this._activitySubTab = "activity";
-                }
-
-                // ── DEBUG: inject dummy items for UI review ──
-                // Remove this block after UI review is complete
-                if (this._isGM && this._activitySubTab === "identify") {
-                    const dummyActor = partyActors[0];
-                    if (dummyActor) {
-                        unidentifiedItems.push(
-                            {
-                                itemId: "demo_potion", actorId: dummyActor.id, actorName: dummyActor.name,
-                                name: "Shimmering Potion", img: "icons/svg/potion.svg",
-                                rarity: "uncommon", rarityLabel: "Uncommon",
-                                type: "consumable", isPotion: true,
-                                hasUnidentifiedData: true, requiresAttunement: false, identified: false
-                            },
-                            {
-                                itemId: "demo_ring", actorId: dummyActor.id, actorName: dummyActor.name,
-                                name: "Engraved Silver Ring", img: "icons/svg/aura.svg",
-                                rarity: "rare", rarityLabel: "Rare",
-                                type: "equipment", isPotion: false,
-                                hasUnidentifiedData: true, requiresAttunement: true, identified: false
-                            },
-                            {
-                                itemId: "demo_sword", actorId: (partyActors[1] ?? dummyActor).id,
-                                actorName: (partyActors[1] ?? dummyActor).name,
-                                name: "Rune-Etched Longsword", img: "icons/svg/sword.svg",
-                                rarity: "veryRare", rarityLabel: "Very Rare",
-                                type: "weapon", isPotion: false,
-                                hasUnidentifiedData: true, requiresAttunement: true, identified: false
-                            },
-                            {
-                                itemId: "demo_scroll", actorId: (partyActors[2] ?? dummyActor).id,
-                                actorName: (partyActors[2] ?? dummyActor).name,
-                                name: "Sealed Scroll", img: "icons/svg/book.svg",
-                                rarity: "uncommon", rarityLabel: "Uncommon",
-                                type: "consumable", isPotion: false,
-                                hasUnidentifiedData: false, requiresAttunement: false, identified: false
-                            }
-                        );
-                    }
-                }
-                // ── END DEBUG ──
-
-                const hidePartyIdentifyListFromPlayerAfterScan =
-                    !this._isGM && !!this._magicScanComplete;
-                const unidentifiedItemsForUi = hidePartyIdentifyListFromPlayerAfterScan
-                    ? []
-                    : unidentifiedItems;
-
-                // Build compact meal summary for the Meal sub-tab
-                const trackFood = trackFoodSetting;
-                let mealSummary = null;
-                if (trackFood) {
-                    const charIds = partyActors.map(a => a.id);
-                    const terrainTag = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
-                    const terrainDefaults = TerrainRegistry.getDefaults(terrainTag);
-                    const terrainMealRules = terrainDefaults.mealRules ?? {};
-                    const daysSinceLastRest = this._engine?.daysSinceLastRest ?? 1;
-                    const mealCards = MealPhaseHandler.buildMealContext(
-                        charIds, terrainTag, terrainMealRules, daysSinceLastRest,
-                        this._mealChoices ?? new Map()
-                    );
-                    const allSufficient = mealCards.every(c => c.foodSufficient && c.waterSufficient);
-                    const anyWarning = mealCards.some(c => !c.foodSufficient || !c.waterSufficient);
-                    mealSummary = {
-                        characters: mealCards.map(c => ({
-                            id: c.characterId,
-                            name: c.actorName,
-                            img: c.actorImg,
-                            foodCount: c.foodOptions.reduce((sum, o) => sum + o.available, 0),
-                            waterCount: c.waterOptions.reduce((sum, o) => sum + o.available, 0),
-                            hasFood: c.hasFood,
-                            hasWater: c.hasWater,
-                            foodSufficient: c.foodSufficient,
-                            waterSufficient: c.waterSufficient,
-                            advisories: c.advisories.filter(a => a.level === "danger" || a.level === "warning")
-                        })),
-                        allSufficient,
-                        anyWarning,
-                        daysSinceLastRest,
-                        autoConsume: this._mealAutoConsume ?? true
-                    };
-                }
-
-                return {
-                    current: renderSubTab,
-                    isIdentify: renderSubTab === "identify",
-                    isActivity: renderSubTab === "activity",
-                    isMeal: renderSubTab === "meal",
-                    hasUnidentified:
-                        preDummyUnidentifiedCount > 0
-                        || unidentifiedItems.length > 0
-                        || !!this._magicScanComplete,
-                    unidentifiedItems: unidentifiedItemsForUi,
-                    identifyCasters,
-                    detectMagicCasters,
-                    canShowDetectMagicScanButton: computeCanShowDetectMagicScanButton(partyActors),
-                    identifiedThisRest,
-                    canIdentifyByRest: true,
-                    itemCount: unidentifiedItemsForUi.length,
-                    trackFood,
-                    mealSummary
-                };
-            })(),
+            activitySubTab: null,
             travelContext: (() => {
                 if (this._phase !== "travel") return null;
                 const terrainTag = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
@@ -3306,6 +3152,134 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Xanathar optional rule: payload for don/doff controls. Uses _doffedArmor map.
+     * @param {Actor|null} a
+     * @returns {object|null}
+     */
+    _buildArmorWarningForActor(a) {
+        if (!a) return null;
+        try {
+            const armorDoffEnabled = game.settings.get(MODULE_ID, "armorDoffRule");
+            if (!armorDoffEnabled) return null;
+            if (!this._doffedArmor) this._doffedArmor = new Map();
+            const doffedItemId = this._doffedArmor.get(a.id);
+
+            const equippedArmor = a.itemTypes?.equipment?.find(i =>
+                i.system?.equipped && i.system?.type?.value === "heavy"
+            ) ?? a.itemTypes?.equipment?.find(i =>
+                i.system?.equipped && i.system?.type?.value === "medium"
+            );
+
+            if (equippedArmor) {
+                const armorType = equippedArmor.system?.type?.value;
+                const donTime = armorType === "heavy" ? "10 min" : "5 min";
+                return {
+                    type: armorType,
+                    name: equippedArmor.name,
+                    itemId: equippedArmor.id,
+                    actorId: a.id,
+                    isDoffed: false,
+                    donTime,
+                    hint: `${equippedArmor.name} (${armorType}) equipped. Don time: ${donTime}.`
+                };
+            }
+            if (doffedItemId) {
+                const doffedItem = a.items.get(doffedItemId);
+                if (doffedItem) {
+                    const armorType = doffedItem.system?.type?.value ?? "medium";
+                    const donTime = armorType === "heavy" ? "10 min" : "5 min";
+                    return {
+                        type: armorType,
+                        name: doffedItem.name,
+                        itemId: doffedItemId,
+                        actorId: a.id,
+                        isDoffed: true,
+                        donTime,
+                        hint: `${doffedItem.name} removed for rest. Better recovery, but vulnerable if attacked. Don time: ${donTime}.`
+                    };
+                }
+            }
+            const inventoryArmor = a.itemTypes?.equipment?.find(i =>
+                !i.system?.equipped && i.system?.type?.value === "heavy"
+            ) ?? a.itemTypes?.equipment?.find(i =>
+                !i.system?.equipped && i.system?.type?.value === "medium"
+            );
+            if (inventoryArmor) {
+                const armorType = inventoryArmor.system?.type?.value;
+                const donTime = armorType === "heavy" ? "10 min" : "5 min";
+                return {
+                    type: armorType,
+                    name: inventoryArmor.name,
+                    itemId: inventoryArmor.id,
+                    actorId: a.id,
+                    isDoffed: true,
+                    donTime,
+                    hint: `${inventoryArmor.name} available in inventory. Don time: ${donTime}.`
+                };
+            }
+        } catch (e) { /* setting may not exist yet */ }
+        return null;
+    }
+
+    /**
+     * Don/doff block for an activity that interacts with sleep penalties (e.g. Rest Fully).
+     * Waiver activities (e.g. watch) omit the block unless doff/inv armor needs a Don path.
+     * @param {Actor|null} actor
+     * @param {object} tile  Activity definition with armorSleepWaiver
+     * @returns {object|null}
+     */
+    getArmorWarningForActivityDetail(actor, tile) {
+        const aw = this._buildArmorWarningForActor(actor);
+        if (!aw || !tile) return null;
+        if (aw.isDoffed) return aw;
+        if (!tile.armorSleepWaiver) return aw;
+        return null;
+    }
+
+    /**
+     * Binds .btn-armor-toggle inside a subtree. Defaults to re-rendering this app.
+     * @param {HTMLElement} element
+     * @param {() => void} [onAfter]
+     */
+    _bindArmorToggleHandlers(element, onAfter) {
+        if (!element) return;
+        const done = onAfter ?? (() => this.render());
+        const armorToggles = element.querySelectorAll(".btn-armor-toggle");
+        for (const btn of armorToggles) {
+            btn.addEventListener("click", async (ev) => {
+                ev.stopPropagation();
+                const actorId = btn.dataset.actorId;
+                const itemId = btn.dataset.itemId;
+                const isDoffed = btn.dataset.isDoffed === "true";
+                if (!actorId || !itemId) return;
+
+                const actor = game.actors.get(actorId);
+                const item = actor?.items.get(itemId);
+                if (!item) return;
+
+                if (!this._doffedArmor) this._doffedArmor = new Map();
+
+                if (isDoffed) {
+                    await item.update({ "system.equipped": true });
+                    this._doffedArmor.delete(actorId);
+                } else {
+                    await item.update({ "system.equipped": false });
+                    this._doffedArmor.set(actorId, itemId);
+                }
+
+                game.socket.emit(`module.${MODULE_ID}`, {
+                    type: "armorToggle",
+                    actorId,
+                    itemId,
+                    isDoffed: !isDoffed
+                });
+
+                done();
+            });
+        }
+    }
+
+    /**
      * Builds context data for the activity detail preview panel.
      */
     _buildActivityDetailContext(selectedCharacter) {
@@ -3428,6 +3402,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         } catch (e) { /* setting may not exist yet */ }
 
+        const actor = game.actors.get(selectedCharacter.id);
+        const armorWarning = this.getArmorWarningForActivityDetail(actor, tile);
+
         return {
             id: tile.id,
             name: tile.name,
@@ -3441,6 +3418,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             combatModifiers: tile.combatModifiers ?? null,
             followUpData,
             armorHint,
+            armorWarning,
             characterId: selectedCharacter.id
         };
     }
@@ -3670,8 +3648,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @returns {{
      *   personalComfort: string,
      *   personalComfortLabel: string,
+     *   personalMatchesCamp: boolean,
      *   gearBreakdown: Array<{ label: string, icon: string, delta: number }>,
-     *   recovery: { hpLabel: string, hdLabel: string, exhaustionDC: number|null, exhaustionLabel: string },
+     *   recovery: { hpLabel: string, hpSeverity: string, hdLabel: string, hdSeverity: string, exhaustionDC: number|null, exhaustionLabel: string, exhaustionSeverity: string|null },
+     *   mitigationHints: string[],
+     *   hasMitigationHints: boolean,
      *   hasBedroll: boolean,
      *   hasTent: boolean,
      *   hasMessKit: boolean,
@@ -3738,21 +3719,54 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 owned: g.hasMessKit,
                 deployed: g.messKitDeployed,
                 canDrag: g.canDragMessKit,
-                benefitLine: "Advantage on exhaustion saves when the fire is lit (placed on map).",
+                benefitLine: "Advantage on exhaustion saves when the fire is lit.",
                 missingLine: "No mess kit. No camp-gear advantage on exhaustion saves."
             })
         ];
 
+        const rec = card.recovery ?? {};
+        const hpSev = rec.hpSeverity ?? "";
+        const hdSev = rec.hdSeverity ?? "";
+        const exSev = rec.exhaustionSeverity ?? null;
+        const hasSuboptimalLine =
+            hpSev === "danger" || hpSev === "warning" ||
+            hdSev === "danger" || hdSev === "warning" ||
+            exSev === "danger" || exSev === "warning";
+
+        const mitigationHints = [];
+        if (hasSuboptimalLine) {
+            if (!g.hasBedroll) {
+                mitigationHints.push("Carry a bedroll in inventory to raise personal comfort by one tier.");
+            } else {
+                mitigationHints.push("Bedroll is in inventory: it already applies to this preview.");
+            }
+            if (!campScanData.fireIsLit) {
+                mitigationHints.push("Light a fire (embers or higher) to remove the no-fire comfort step.");
+            } else {
+                const fl = campScanData.fireLevel;
+                if (fl && fl !== "unlit" && fl !== "bonfire") {
+                    mitigationHints.push("A bonfire can add one camp comfort step (Fire tab).");
+                }
+            }
+            mitigationHints.push("Choose Rest Fully for +1 comfort tier.");
+        }
+
         return {
             personalComfort: card.personalComfort,
             personalComfortLabel: card.personalComfortLabel,
+            personalMatchesCamp: !!card.personalMatchesCamp,
             gearBreakdown: card.gearBreakdown ?? [],
             recovery: {
-                hpLabel: card.recovery?.hpLabel ?? "",
-                hdLabel: card.recovery?.hdLabel ?? "",
-                exhaustionDC: card.recovery?.exhaustionDC ?? null,
-                exhaustionLabel: card.recovery?.exhaustionLabel ?? ""
+                hpLabel: rec.hpLabel ?? "",
+                hpSeverity: hpSev,
+                hdLabel: rec.hdLabel ?? "",
+                hdSeverity: hdSev,
+                exhaustionDC: rec.exhaustionDC ?? null,
+                exhaustionLabel: rec.exhaustionLabel ?? "",
+                exhaustionSeverity: exSev
             },
+            mitigationHints,
+            hasMitigationHints: mitigationHints.length > 0,
             hasBedroll: !!card.hasBedroll,
             hasTent: !!card.hasTent,
             hasMessKit: !!card.hasMessKit,
@@ -4025,26 +4039,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Initial computation
         updatePreview();
 
-        // Bind sub-tab switching (Identify / Activity / Meal)
-        for (const btn of this.element.querySelectorAll("[data-action='switchActivityTab']")) {
-            btn.addEventListener("click", (e) => {
-                const tab = e.currentTarget.dataset.tab;
-                if (tab && tab !== this._activitySubTab) {
-                    this._activitySubTab = tab;
-                    this._activitySubTabUserSet = true;
-                    this.render();
-                }
-            });
-        }
-
-        // Bind meal auto-consume toggle
-        const autoConsumeToggle = this.element.querySelector("[data-action='toggleMealAutoConsume']");
-        if (autoConsumeToggle) {
-            autoConsumeToggle.addEventListener("change", (e) => {
-                this._mealAutoConsume = e.currentTarget.checked;
-                this.render();
-            });
-        }
+        // (Sub-tab and meal auto-consume bindings removed: activity phase uses unified progress panel)
 
         // Bind identify item buttons
         for (const btn of this.element.querySelectorAll("[data-action='identifyItem']")) {
@@ -4205,43 +4200,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // AFK checkboxes (both GM and player)
-        // Armor doff/don toggles
-        const armorToggles = this.element.querySelectorAll(".btn-armor-toggle");
-        for (const btn of armorToggles) {
-            btn.addEventListener("click", async (ev) => {
-                ev.stopPropagation();
-                const actorId = btn.dataset.actorId;
-                const itemId = btn.dataset.itemId;
-                const isDoffed = btn.dataset.isDoffed === "true";
-                if (!actorId || !itemId) return;
-
-                const actor = game.actors.get(actorId);
-                const item = actor?.items.get(itemId);
-                if (!item) return;
-
-                if (!this._doffedArmor) this._doffedArmor = new Map();
-
-                if (isDoffed) {
-                    // Don: re-equip
-                    await item.update({ "system.equipped": true });
-                    this._doffedArmor.delete(actorId);
-                } else {
-                    // Doff: unequip
-                    await item.update({ "system.equipped": false });
-                    this._doffedArmor.set(actorId, itemId);
-                }
-
-                // Broadcast armor toggle to all clients
-                game.socket.emit(`module.${MODULE_ID}`, {
-                    type: "armorToggle",
-                    actorId,
-                    itemId,
-                    isDoffed: !isDoffed
-                });
-
-                this.render();
-            });
-        }
+        this._bindArmorToggleHandlers(this.element);
 
     }
 
@@ -5471,6 +5430,208 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Status id for “asleep for the night” (Foundry / system CONFIG).
+     * watchRoster also includes act_defenses and act_scout; only Keep Watch
+     * should stay alert for this beat.
+     */
+    _beddingStatusEffectId() {
+        const fromConfig = CONFIG.statusEffects?.find?.(e => e.id === "incapacitated");
+        if (fromConfig) return "incapacitated";
+        if ( CONFIG.statusEffects?.find?.(e => e.id === "unconscious") ) return "unconscious";
+        return "incapacitated";
+    }
+
+    /**
+     * Actor ids on literal night watch (Keep Watch), not the full alert roster.
+     */
+    _nightWatchActorIds() {
+        const ids = new Set();
+        for (const [characterId, entry] of this._engine?.characterChoices ?? []) {
+            if (entry?.activityId === "act_keep_watch") ids.add(characterId);
+        }
+        return ids;
+    }
+
+    /**
+     * Apply Incapacitated to party members not on Keep Watch, signalling
+     * the camp has bedded down. Uses party actors (not scene token scan) so
+     * effects apply reliably and sync to all clients.
+     */
+    async _applyBeddingDown() {
+        if (!game.user?.isGM) return;
+        const statusId = this._beddingStatusEffectId();
+        const keepWatchIds = this._nightWatchActorIds();
+        for (const actor of getPartyActors()) {
+            if (keepWatchIds.has(actor.id)) continue;
+            try {
+                await actor.toggleStatusEffect(statusId, { active: true, overlay: true });
+            } catch (err) {
+                console.warn(`[Respite] Could not apply ${statusId} to ${actor.name}:`, err);
+            }
+        }
+    }
+
+    /**
+     * Clear bedding-down status from the whole party before events.
+     */
+    async _removeBeddingDown() {
+        if (!game.user?.isGM) return;
+        const statusId = this._beddingStatusEffectId();
+        for (const actor of getPartyActors()) {
+            try {
+                await actor.toggleStatusEffect(statusId, { active: false });
+            } catch (err) {
+                console.warn(`[Respite] Could not remove ${statusId} from ${actor.name}:`, err);
+            }
+        }
+    }
+
+    /**
+     * Auto-process rations inline (spoilage, consumption, starvation,
+     * dehydration) so the old Meal phase UI can be skipped entirely.
+     * Choices come from station submissions stored in _mealChoices.
+     * Dehydration saves are GM-auto-rolled; interactive flow deferred.
+     */
+    async _autoProcessRations() {
+        const rosterIds = new Set(getPartyActors().map(a => a.id));
+        const characterIds = this._engine?.characterChoices
+            ? Array.from(this._engine.characterChoices.keys()).filter(id => rosterIds.has(id))
+            : [];
+
+        if (!this._mealChoices) this._mealChoices = new Map();
+
+        const terrainTag = this._engine?.terrainTag ?? "forest";
+        const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
+        const totalDays = this._daysSinceLastRest ?? 1;
+
+        for (const charId of characterIds) {
+            if (!this._mealChoices.has(charId)) {
+                const cards = MealPhaseHandler.buildMealContext(
+                    [charId], terrainTag, terrainMealRules,
+                    totalDays, this._mealChoices
+                );
+                if (cards.length > 0) {
+                    this._mealChoices.set(charId, {
+                        food: cards[0].selectedFood,
+                        water: cards[0].selectedWater
+                    });
+                }
+            }
+        }
+
+        if (!this._spoilageProcessed) {
+            this._spoilageProcessed = true;
+            try {
+                await MealPhaseHandler.resolveSpoilage(characterIds, totalDays);
+            } catch (err) {
+                console.error(`[Respite:Meal] Auto-process spoilage error:`, err);
+            }
+        }
+
+        let mealResults = [];
+        if (!this._mealProcessed) {
+            this._mealProcessed = true;
+            try {
+                const outcome = await MealPhaseHandler.processAndApply(this._mealChoices, totalDays, terrainMealRules);
+                mealResults = outcome.results;
+                console.log(`[Respite:Meal] Auto-process consumption results:`, mealResults);
+            } catch (err) {
+                console.error(`[Respite:Meal] Auto-process consumption error:`, err);
+            }
+
+            for (const r of mealResults) {
+                if (r.starvationExhaustion > 0) {
+                    const actor = game.actors.get(r.characterId);
+                    if (!actor) continue;
+                    const adapter = game.ionrift?.respite?.adapter;
+                    if (adapter) {
+                        await adapter.applyExhaustionDelta(actor, r.starvationExhaustion);
+                    } else {
+                        const current = actor.system?.attributes?.exhaustion ?? 0;
+                        const newLevel = Math.min(6, current + r.starvationExhaustion);
+                        if (newLevel > current) {
+                            await actor.update({ "system.attributes.exhaustion": newLevel });
+                        }
+                    }
+                    await ChatMessage.create({
+                        content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.starvationExhaustion}</strong> level${r.starvationExhaustion > 1 ? "s" : ""} of exhaustion from starvation.</div>`,
+                        speaker: ChatMessage.getSpeaker({ actor })
+                    });
+                }
+                if ((r.essenceExhaustion ?? 0) > 0) {
+                    const actor = game.actors.get(r.characterId);
+                    if (!actor) continue;
+                    const adapter = game.ionrift?.respite?.adapter;
+                    if (adapter) {
+                        await adapter.applyExhaustionDelta(actor, r.essenceExhaustion);
+                    } else {
+                        const current = actor.system?.attributes?.exhaustion ?? 0;
+                        const newLevel = Math.min(6, current + r.essenceExhaustion);
+                        if (newLevel > current) {
+                            await actor.update({ "system.attributes.exhaustion": newLevel });
+                        }
+                    }
+                    await ChatMessage.create({
+                        content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.essenceExhaustion}</strong> level${r.essenceExhaustion > 1 ? "s" : ""} of exhaustion from essence depletion.</div>`,
+                        speaker: ChatMessage.getSpeaker({ actor })
+                    });
+                }
+
+                if (r.dehydrationAutoFail) {
+                    const actor = game.actors.get(r.characterId);
+                    if (!actor) continue;
+                    const adapter = game.ionrift?.respite?.adapter;
+                    if (adapter) {
+                        await adapter.applyExhaustionDelta(actor, 1);
+                    } else {
+                        const current = actor.system?.attributes?.exhaustion ?? 0;
+                        const newLevel = Math.min(6, current + 1);
+                        if (newLevel > current) {
+                            await actor.update({ "system.attributes.exhaustion": newLevel });
+                        }
+                    }
+                    const restsSinceWater = actor.getFlag("ionrift-respite", "restsSinceWater") ?? 0;
+                    await ChatMessage.create({
+                        content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains 1 level of exhaustion from severe dehydration (auto-fail, ${restsSinceWater} rests without water).</div>`,
+                        speaker: ChatMessage.getSpeaker({ actor })
+                    });
+                } else if (r.dehydrationSaveDC > 0) {
+                    const actor = game.actors.get(r.characterId);
+                    if (!actor) continue;
+                    const conMod = actor.system?.abilities?.con?.mod ?? 0;
+                    const profBonus = actor.system?.abilities?.con?.save
+                        ? (actor.system?.attributes?.prof ?? 0) : 0;
+                    const roll = await new Roll(`1d20 + ${conMod} + ${profBonus}`).evaluate();
+                    if (game.dice3d) {
+                        await game.dice3d.showForRoll(roll, game.user, true);
+                    }
+                    if (roll.total < r.dehydrationSaveDC) {
+                        const adapter = game.ionrift?.respite?.adapter;
+                        if (adapter) {
+                            await adapter.applyExhaustionDelta(actor, 1);
+                        } else {
+                            const current = actor.system?.attributes?.exhaustion ?? 0;
+                            const newLevel = Math.min(6, current + 1);
+                            if (newLevel > current) {
+                                await actor.update({ "system.attributes.exhaustion": newLevel });
+                            }
+                        }
+                        await ChatMessage.create({
+                            content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> fails the CON save (${roll.total} vs DC ${r.dehydrationSaveDC}) and gains 1 level of exhaustion from dehydration.</div>`,
+                            speaker: ChatMessage.getSpeaker({ actor })
+                        });
+                    } else {
+                        await ChatMessage.create({
+                            content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> passes the CON save (${roll.total} vs DC ${r.dehydrationSaveDC}) and fights off dehydration.</div>`,
+                            speaker: ChatMessage.getSpeaker({ actor })
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Phase 2 -> 3: Lock in all choices, transition to events phase.
      * Event roll is deferred until GM clicks 'Roll for Events'.
      */
@@ -5488,20 +5649,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             SoundDelegate.stopAll();
             this._phase = "resolve";
         } else {
-            // Long rest: check if food tracking is enabled
             const trackFood = game.settings.get(MODULE_ID, "trackFood");
             const terrainTag = this._engine?.terrainTag ?? "forest";
             const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
 
-            // Skip meal phase if tracking is off or tavern provides food
-            if (!trackFood || (terrainMealRules.waterPerDay === 0 && terrainMealRules.foodPerDay === 0)) {
-                this._phase = "reflection";
-            } else {
-                // Initialize meal state
+            if (trackFood && (terrainMealRules.waterPerDay > 0 || terrainMealRules.foodPerDay > 0)) {
                 this._mealChoices = this._mealChoices ?? new Map();
                 this._daysSinceLastRest = this._daysSinceLastRest ?? 1;
-                this._phase = "meal";
+                await this._autoProcessRations();
             }
+            this._phase = "reflection";
+            await this._applyBeddingDown();
         }
 
         // Broadcast phase change to players
@@ -5897,6 +6055,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Applies fire level comfort modifications before events.
      */
     static async #onProceedToEvents(event, target) {
+        await this._removeBeddingDown();
+
         // Apply fire level comfort modifications
         // Unlit: -1 comfort step | Embers: 0 | Campfire: 0 | Bonfire: +1 camp comfort
         const FIRE_COMFORT_MOD = { unlit: -1, embers: 0, campfire: 0, bonfire: 1 };
@@ -5943,6 +6103,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     effects: activity.outcomes?.success?.effects ?? [],
                     narrative: activity.outcomes?.success?.narrative ?? activity.description
                 });
+                continue;
+            }
+
+            const existingResult = this._earlyResults?.get(actor.id);
+            if (existingResult && existingResult.activityId === activityId
+                && existingResult.result !== "pending_approval") {
                 continue;
             }
 
@@ -7586,8 +7752,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /**
      * Per {@link StationActivityDialog.openForStation}, which stations have zero **available**
-     * (non-faded) activities for the current roster or controlled token.
-     * Cooking station stays bright when the viewer still owes activity-phase rations (meal tab).
+     * (non-faded) major activities for anyone in the party who has not yet committed a pick.
+     * (Single-actor or "already chosen" shortcuts were wrong for GM: the next unchosen character
+     * could still have a heal spell and kept the medical bed bright for everyone.)
+     * Cooking station stays bright while any unchosen party member owes activity-phase rations (meal tab).
      * Workbench stays bright when the party has unidentified gear (Identify tab on the station dialog),
      * including after a major activity is already committed.
      * @returns {Record<string, boolean>}
@@ -7595,38 +7763,31 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     _buildStationEmptyNoticeMap() {
         const map = {};
         const partyActors = getPartyActors();
-
-        // GM context = the character tab selected in the main UI, not the canvas token.
-        // Players resolve via assigned character / owned token as before.
-        let actor;
-        if (game.user.isGM && this._selectedCharacterId) {
-            actor = partyActors.find(a => a.id === this._selectedCharacterId) ?? null;
-        }
-        if (!actor) {
-            actor = RestSetupApp._resolveStationActorForUser(partyActors, this);
-        }
-        if (!actor?.id || !this._activityResolver) return map;
-
-        const alreadyChosen = this._characterChoices?.has(actor.id);
+        if (!this._activityResolver) return map;
 
         const restType = this._engine?.restType ?? "long";
         const isFireLit = !!(this._fireLevel && this._fireLevel !== "unlit");
-        const { available: allAvail } = alreadyChosen
-            ? { available: [] }
-            : this._activityResolver.getAvailableActivitiesWithFaded(actor, restType, { isFireLit });
+        const choices = this._characterChoices;
+        const unchosen = partyActors.filter(a => a?.id && !choices?.has(a.id));
 
-        const mealBright = this._actorOwesActivityPhaseMealRations(actor.id);
         const identifyParty = collectPartyIdentifyEmbedData(partyActors);
         const workbenchIdentifyBright = (identifyParty.unidentifiedItems?.length ?? 0) > 0;
+        const mealBrightParty = unchosen.some(a => this._actorOwesActivityPhaseMealRations(a.id));
+
+        const hasAvailableAtStation = (actor, stationIdSet) => {
+            const { available: allAvail } = this._activityResolver.getAvailableActivitiesWithFaded(
+                actor, restType, { isFireLit }
+            );
+            return allAvail.some(a => stationIdSet.has(a.id));
+        };
 
         for (const station of CAMP_STATIONS) {
             if (!station.furnitureKey) continue;
-
             const stationIds = new Set(station.activities ?? []);
 
-            const available = allAvail.filter(a => stationIds.has(a.id));
-            let empty = available.length === 0;
-            if (empty && mealBright && station.id === "cooking_station") {
+            const hasAny = unchosen.some(a => hasAvailableAtStation(a, stationIds));
+            let empty = !hasAny;
+            if (empty && mealBrightParty && station.id === "cooking_station") {
                 empty = false;
             }
             if (empty && station.id === "workbench" && workbenchIdentifyBright) {
@@ -7638,8 +7799,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const bedrollStation = CAMP_STATIONS.find(s => s.id === "bedroll");
         if (bedrollStation) {
             const stationIds = new Set(bedrollStation.activities ?? []);
-            const available = allAvail.filter(a => stationIds.has(a.id));
-            map.bedroll = available.length === 0;
+            map.bedroll = !unchosen.some(a => hasAvailableAtStation(a, stationIds));
         }
 
         if (this._phase === "activity") {
@@ -7730,12 +7890,31 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
             const station = CAMP_STATIONS.find(s => s.id === stationId);
             if (!station) return;
+
+            if (stationId === "bedroll") {
+                const bedrollOwnerActorId = token?.document?.flags?.[MODULE_ID]?.ownerActorId;
+                if (bedrollOwnerActorId !== actor.id) {
+                    if (!game.user.isGM) {
+                        const ownerName = bedrollOwnerActorId
+                            ? (game.actors.get(bedrollOwnerActorId)?.name ?? "someone else")
+                            : "someone else";
+                        ui.notifications.warn(`That bedroll belongs to ${ownerName}.`);
+                    }
+                    return;
+                }
+            }
+
             console.log(`${MODULE_ID} | Station overlay click`, { stationId, actorId: actor.id, tokenId: token?.id });
             app._canvasFocusedStationId = stationId;
             app._activitySubTab = "activity";
+
+            const dialogStation = stationId === "bedroll"
+                ? { ...station, label: `${actor.name}'s Bedroll` }
+                : station;
+
             try {
                 await StationActivityDialog.openForStation(
-                    station, actor, app._activityResolver, restSession, token, app, stationId
+                    dialogStation, actor, app._activityResolver, restSession, token, app, stationId
                 );
             } catch (e) {
                 console.warn(`${MODULE_ID} | Station activity dialog`, e);
@@ -7766,6 +7945,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (this._phase === "activity") this._activateCanvasStationLayer();
             });
         }
+    }
+
+    /**
+     * Camp gear tokens changed on the scene; re-bind {@link StationActivityDialog} so drag / pick-up state matches.
+     * (Rest window `render` does not re-render the separate station picker.)
+     */
+    refreshOpenStationDialogAfterCampGear() {
+        void refreshOpenStationDialog();
     }
 
     /**
@@ -7826,7 +8013,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const _mods = (_bd.shelter ?? 0) + (_bd.weather ?? 0) + (_bd.scouting ?? 0) + (this._engine?.fireRollModifier ?? 0);
         const _defenses = _bd.defenses ?? 0;
         const _currentDC = Math.max(1, _baseDC - _mods + (this._engine?.gmEncounterAdj ?? 0) - _defenses);
-        return buildPartyState(partyActors, this._pendingSelections, _currentDC);
+        return buildPartyState(partyActors, this._pendingSelections, _currentDC, this._engine?.comfort);
     }
 
     /**
@@ -8430,7 +8617,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._attachActivityPhaseCanvasChrome();
             if (!this._isGM) {
                 console.log(`${MODULE_ID} | Activity phase (player): minimise rest window, retain app for station sockets`);
-                await this.close({ retainPlayerApp: true, skipRejoin: true });
+                await this.close({ retainPlayerApp: true });
                 return;
             }
         } else if (prevPhase === "activity" && phase !== "activity") {
@@ -8443,6 +8630,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             });
         }
 
+        if (this._isGM && phase === "activity") {
+            if (this._gmMinimizedToFooter) {
+                _logGmRestSheet("receivePhaseChange", "GM early return (already minimized)", { phase, prevPhase });
+                return;
+            }
+            this._gmMinimizedToFooter = true;
+            _showGmRestIndicator(this);
+            if (this.rendered) {
+                _logGmRestSheet("receivePhaseChange", "GM close (socket not used for GM in module; local call only)", { phase, prevPhase });
+                await this.close({});
+            }
+            return;
+        }
         this.render();
     }
 
@@ -8624,7 +8824,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Activity phase: same as receivePhaseChange (F5 rejoin after GM already advanced)
         if (this._phase === "activity" && !this._isGM) {
             this._attachActivityPhaseCanvasChrome();
-            void this.close({ retainPlayerApp: true, skipRejoin: true });
+            void this.close({ retainPlayerApp: true });
+            return;
+        }
+        if (this._phase === "activity" && this._isGM) {
+            this._attachActivityPhaseCanvasChrome();
+            this._gmMinimizedToFooter = true;
+            _showGmRestIndicator(this);
+            if (this.rendered) {
+                void this.close({});
+            }
             return;
         }
 
@@ -9262,12 +9471,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         });
         await this._saveRestState();
-        this.render();
-        if (this._phase === "camp" && !this._campToActivityDone) {
-            const fl = this._fireLevel ?? "unlit";
-            if (fl !== "unlit") {
-                await this._advanceCampToActivity();
-            }
+        const willAdvance =
+            this._phase === "camp" && !this._campToActivityDone && (this._fireLevel ?? "unlit") !== "unlit";
+        if (willAdvance) {
+            await this._advanceCampToActivity();
+        } else if (!this._campToActivityDone) {
+            this.render();
         }
     }
 
@@ -9280,9 +9489,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (this._phase !== "camp" || this._campToActivityDone) return;
 
         CampfireMakeCampDialog.closeIfOpen();
-
         this._campToActivityDone = true;
         this._campStep2Entered = true;
+
         await promoteAllPlaceholders();
 
         const pledges = Array.from(this._firewoodPledges.entries());
@@ -9312,6 +9521,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._campFireWoodSpendUserId = null;
 
         this._phase = "activity";
+        _logGmRestSheet("_advanceCampToActivity", "phase -> activity, closing window");
+
+        await this.close({});
+
         game.socket.emit(`module.${MODULE_ID}`, {
             type: "phaseChanged",
             phase: this._phase,
@@ -9321,9 +9534,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         });
         await this._saveRestState();
-        _showGmRestIndicator(this);
         this._activateCanvasStationLayer();
-        await this.close({});
+        _logGmRestSheet("_advanceCampToActivity", "advance complete", { rendered: this.rendered });
     }
 
     /**
@@ -9683,9 +9895,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         });
 
         await this._saveRestState();
-        this.render();
-        if (this._phase === "camp" && !this._campToActivityDone && (this._fireLevel ?? "unlit") !== "unlit") {
+        const willAdvance =
+            this._phase === "camp" && !this._campToActivityDone && (this._fireLevel ?? "unlit") !== "unlit";
+        if (willAdvance) {
             await this._advanceCampToActivity();
+        } else if (!this._campToActivityDone) {
+            this.render();
         }
     }
 
@@ -9807,7 +10022,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             phaseData: { coldCampDecided: true, fireLevel: "unlit", fireLitBy: null }
         });
         await this._saveRestState();
-        this.render();
         await this._advanceCampToActivity();
     }
 
@@ -9910,6 +10124,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             userId: game.user.id,
             sceneId
         });
+    }
+
+    /**
+     * Bridge for StationActivityDialog: run reclaim with the rest app as `this`.
+     * @param {RestSetupApp} restApp
+     */
+    static async reclaimCampGearFromDialog(restApp, event, target) {
+        return RestSetupApp.#onReclaimCampGear.call(restApp, event, target);
     }
 
     /**
@@ -10181,9 +10403,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 return;
             }
             if (game.user.isGM) {
-                await placePlayerGear(x, y, gearType, actorId);
+                const placed = await placePlayerGear(x, y, gearType, actorId);
                 this.render();
                 this.refreshCanvasStationOverlaysIfActivity();
+                if (placed) this.refreshOpenStationDialogAfterCampGear();
             } else {
                 game.socket.emit(`module.${MODULE_ID}`, {
                     type: "campGearPlace",

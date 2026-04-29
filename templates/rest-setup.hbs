@@ -7,19 +7,16 @@
     <div class="respite-phase-header">
         <div class="phase-indicator">
             <div
-                class="phase-dot {{#if (eq phase 'setup')}}active{{/if}} {{#if (or (eq phase 'travel') (eq phase 'camp') (eq phase 'activity') (eq phase 'meal') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+                class="phase-dot {{#if (eq phase 'setup')}}active{{/if}} {{#if (or (eq phase 'travel') (eq phase 'camp') (eq phase 'activity') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
             </div>
             <div
-                class="phase-dot {{#if (eq phase 'travel')}}active{{/if}} {{#if (or (eq phase 'camp') (eq phase 'activity') (eq phase 'meal') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+                class="phase-dot {{#if (eq phase 'travel')}}active{{/if}} {{#if (or (eq phase 'camp') (eq phase 'activity') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
             </div>
             <div
-                class="phase-dot {{#if (eq phase 'camp')}}active{{/if}} {{#if (or (eq phase 'activity') (eq phase 'meal') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+                class="phase-dot {{#if (eq phase 'camp')}}active{{/if}} {{#if (or (eq phase 'activity') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
             </div>
             <div
-                class="phase-dot {{#if (eq phase 'activity')}}active{{/if}} {{#if (or (eq phase 'meal') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
-            </div>
-            <div
-                class="phase-dot {{#if (eq phase 'meal')}}active{{/if}} {{#if (or (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+                class="phase-dot {{#if (eq phase 'activity')}}active{{/if}} {{#if (or (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
             </div>
             <div
                 class="phase-dot {{#if (eq phase 'reflection')}}active{{/if}} {{#if (or (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
@@ -33,7 +30,6 @@
             {{#if (eq phase 'travel')}}Travel{{/if}}
             {{#if (eq phase 'camp')}}Make Camp{{/if}}
             {{#if (eq phase 'activity')}}Activities{{/if}}
-            {{#if (eq phase 'meal')}}Rations{{/if}}
             {{#if (eq phase 'reflection')}}Campfire{{/if}}
             {{#if (eq phase 'events')}}Events{{/if}}
             {{#if (eq phase 'resolve')}}Resolution{{/if}}
@@ -710,242 +706,10 @@
     </div>
     {{/if}}
 
-    {{!-- Sub-tab bar (GM only; players navigate tabs via workstations) --}}
-    {{#if isGM}}
-    {{#if activitySubTab}}
-    <div class="activity-sub-tabs">
-        <button type="button" class="sub-tab {{#if activitySubTab.isIdentify}}active{{/if}} {{#unless activitySubTab.hasUnidentified}}faded{{/unless}}"
-            data-action="switchActivityTab" data-tab="identify">
-            <i class="fas fa-search"></i> Identify
-            {{#if activitySubTab.hasUnidentified}}
-            <span class="tab-badge">{{activitySubTab.itemCount}}</span>
-            {{/if}}
-        </button>
-        <button type="button" class="sub-tab {{#if activitySubTab.isActivity}}active{{/if}}"
-            data-action="switchActivityTab" data-tab="activity">
-            <i class="fas fa-campground"></i> Activity
-        </button>
-        {{#if activitySubTab.trackFood}}
-        <button type="button" class="sub-tab {{#if activitySubTab.isMeal}}active{{/if}}"
-            data-action="switchActivityTab" data-tab="meal">
-            <i class="fas fa-drumstick-bite"></i> Meal
-            {{#if activitySubTab.mealSummary}}
-                {{#if activitySubTab.mealSummary.anyWarning}}
-                <span class="tab-badge warning"><i class="fas fa-exclamation"></i></span>
-                {{else}}
-                <span class="tab-badge ok"><i class="fas fa-check"></i></span>
-                {{/if}}
-            {{/if}}
-        </button>
-        {{/if}}
-    </div>
-    {{/if}}
-    {{/if}}
-
-    {{!-- ── IDENTIFY SUB-TAB ── --}}
-    {{#if activitySubTab.isIdentify}}
-    <div class="activity-phase-layout">
-    <div class="respite-activities identify-tab">
-        <div class="identify-scroll-area">
-        {{#if activitySubTab.identifyCasters.length}}
-        <div class="identify-caster-advisory">
-            <i class="fas fa-hat-wizard"></i>
-            {{#each activitySubTab.identifyCasters}}{{#unless @first}}, {{/unless}}{{name}}{{/each}}
-            can cast Identify (ritual, free)
-        </div>
-        {{/if}}
-        {{#if activitySubTab.detectMagicCasters.length}}
-        <div class="identify-caster-advisory detect-magic-advisory">
-            <i class="fas fa-eye"></i>
-            {{#each activitySubTab.detectMagicCasters}}{{#unless @first}}, {{/unless}}{{name}}{{/each}}
-            can cast Detect Magic (30 ft.; everyone benefits while the spell is up)
-        </div>
-        {{/if}}
-
-        {{#if canShowDetectMagicScanButton}}
-        <div class="identify-detect-toolbar">
-            <button type="button" class="btn-detect-magic" data-action="detectMagicScan"
-                {{#if detectMagicScanButtonTitle}}title="{{detectMagicScanButtonTitle}}"{{/if}}>
-                <i class="fas fa-eye"></i> {{detectMagicScanButtonLabel}}
-            </button>
-        </div>
-        {{/if}}
-
-        {{#if magicScanComplete}}
-        {{#if @root.isGM}}
-        <div class="magic-scan-results identify-magic-scan">
-            {{#if magicScanResults.length}}
-            <div class="magic-scan-header"><i class="fas fa-hat-wizard"></i> Magical Auras Detected</div>
-            {{#each magicScanResults}}
-            <div class="magic-scan-actor">
-                <span class="magic-scan-actor-name">{{actorName}}'s gear:</span>
-                {{#each items}}
-                <div class="magic-scan-item {{#if identified}}identified{{/if}}">
-                    <img src="{{img}}" class="magic-scan-item-img" alt="">
-                    {{#if identified}}
-                    <i class="fas fa-check-circle magic-identified-icon"></i>
-                    <span class="magic-scan-item-name">{{trueName}}</span>
-                    {{#if requiresAttunement}}<span class="magic-attune-hint">Requires attunement</span>{{/if}}
-                    {{else}}
-                    <i class="fas fa-magic magic-aura-icon"></i>
-                    <span class="magic-scan-item-name">{{displayName}}</span>
-                    {{#if school}}<span class="magic-school-tag">{{school}}</span>{{/if}}
-                    <button type="button" class="btn-identify-item" data-action="identifyScannedItem"
-                        data-actor-id="{{../actorId}}" data-item-id="{{itemId}}">
-                        <i class="fas fa-scroll"></i> Identify
-                    </button>
-                    {{/if}}
-                </div>
-                {{/each}}
-            </div>
-            {{/each}}
-            {{else}}
-            <div class="magic-scan-none"><i class="fas fa-check"></i> No unidentified magical items found.</div>
-            {{/if}}
-        </div>
-        {{else}}
-        <div class="magic-scan-results identify-magic-scan wb-ident-player-scan-note">
-            <p class="wb-ident-player-scan-hint"><i class="fas fa-eye"></i> A magical aura pass has been run. Open character sheets and use Focus or Taste on unidentified items there, or use the workbench station circles.</p>
-        </div>
-        {{/if}}
-        {{/if}}
-
-        {{#each activitySubTab.unidentifiedItems}}
-        <div class="identify-item-card" data-item-id="{{itemId}}" data-actor-id="{{actorId}}">
-            <img src="{{img}}" class="identify-item-img" alt="" onerror="this.src='icons/svg/mystery-man.svg'">
-            <div class="identify-item-body">
-                <span class="identify-item-name">{{name}}</span>
-                <span class="identify-item-meta">
-                    Held by {{actorName}}
-                    <span class="rarity-badge rarity-{{rarity}}">{{rarityLabel}}</span>
-                    {{#if isPotion}} · <i class="fas fa-flask"></i> Potion{{/if}}
-                    {{#if requiresAttunement}} · <i class="fas fa-gem"></i> Attunement{{/if}}
-                </span>
-            </div>
-            <div class="identify-item-actions">
-                {{#if isPotion}}
-                <button type="button" class="btn-identify" data-action="identifyItem"
-                    data-item-id="{{itemId}}" data-actor-id="{{actorId}}" data-method="taste"
-                    title="Taste to identify">
-                    <i class="fas fa-flask"></i> Taste
-                </button>
-                {{else}}
-                <button type="button" class="btn-identify" data-action="identifyItem"
-                    data-item-id="{{itemId}}" data-actor-id="{{actorId}}" data-method="rest"
-                    title="Focus during rest to identify">
-                    <i class="fas fa-hand-holding"></i> Focus
-                </button>
-                {{/if}}
-            </div>
-        </div>
-        {{/each}}
-
-        {{#unless activitySubTab.unidentifiedItems.length}}
-        {{#unless magicScanComplete}}
-        <div class="identify-empty">
-            <div class="identify-empty-content">
-                <i class="fas fa-check-circle"></i>
-                <span class="identify-empty-title">Nothing to identify</span>
-                <span class="identify-empty-hint">
-                    Unidentified magic items would appear here. Items can be identified
-                    by focusing during a rest or via the Identify spell (ritual, free).
-                    Potions can be tasted to identify instantly.
-                    Use Cast Detect Magic above. GMs can run it anytime; players need a party member they control who knows the spell.
-                </span>
-            </div>
-        </div>
-        {{/unless}}
-        {{/unless}}
-        </div>{{!-- /identify-scroll-area --}}
-
-        {{#if (or activitySubTab.unidentifiedItems.length magicScanComplete)}}
-        <div class="identify-footer">
-            <button type="button" class="btn-primary" data-action="switchActivityTab" data-tab="activity">
-                <i class="fas fa-arrow-right"></i> Proceed to Activities
-            </button>
-        </div>
-        {{/if}}
-    </div>
-    </div>{{!-- /activity-phase-layout --}}
-
-    {{else if activitySubTab.isMeal}}
-    {{!-- ── MEAL SUB-TAB ── --}}
-    <div class="activity-phase-layout">
-    <div class="respite-activities meal-tab">
-        <div class="meal-compact">
-            {{#if activitySubTab.mealSummary}}
-            <div class="meal-compact-header">
-                <span class="meal-compact-title"><i class="fas fa-drumstick-bite"></i> Rations</span>
-                <label class="meal-auto-toggle">
-                    <input type="checkbox" data-action="toggleMealAutoConsume"
-                        {{#if activitySubTab.mealSummary.autoConsume}}checked{{/if}}>
-                    Auto-consume
-                </label>
-            </div>
-
-            {{#if activitySubTab.mealSummary.autoConsume}}
-            <div class="meal-character-rows">
-                {{#each activitySubTab.mealSummary.characters}}
-                <div class="meal-character-row {{#unless foodSufficient}}warn-food{{/unless}} {{#unless waterSufficient}}warn-water{{/unless}}">
-                    <img src="{{img}}" alt="" class="meal-char-portrait" onerror="this.src='icons/svg/mystery-man.svg'">
-                    <span class="meal-char-name">{{name}}</span>
-                    <span class="meal-char-supply {{#if hasFood}}ok{{else}}empty{{/if}}">
-                        <i class="fas fa-drumstick-bite"></i> {{foodCount}} rations
-                    </span>
-                    <span class="meal-char-supply {{#if hasWater}}ok{{else}}empty{{/if}}">
-                        <i class="fas fa-tint"></i> {{#if hasWater}}Waterskin{{else}}No water{{/if}}
-                    </span>
-                    <span class="meal-char-status">
-                        {{#if foodSufficient}}{{#if waterSufficient}}
-                        <i class="fas fa-check-circle meal-ok"></i>
-                        {{else}}
-                        <i class="fas fa-exclamation-triangle meal-warn"></i>
-                        {{/if}}{{else}}
-                        <i class="fas fa-exclamation-triangle meal-warn"></i>
-                        {{/if}}
-                    </span>
-                </div>
-                {{#each advisories}}
-                <div class="meal-advisory-inline {{level}}">
-                    <i class="{{icon}}"></i> {{message}}
-                </div>
-                {{/each}}
-                {{/each}}
-            </div>
-
-            <div class="meal-compact-note">
-                <i class="fas fa-info-circle"></i>
-                {{activitySubTab.mealSummary.daysSinceLastRest}} day{{#unless (eq activitySubTab.mealSummary.daysSinceLastRest 1)}}s{{/unless}} since last rest.
-                1 ration + 1 water per character will be consumed.
-            </div>
-            {{else}}
-            <div class="meal-compact-note">
-                <i class="fas fa-info-circle"></i>
-                Auto-consume is off. Rations will be managed manually during the Meal phase.
-            </div>
-            {{/if}}
-
-            {{else}}
-            <div class="meal-compact-note">
-                <i class="fas fa-check-circle"></i>
-                Food tracking is disabled. No rations will be consumed.
-            </div>
-            {{/if}}
-        </div>
-    </div>
-    </div>{{!-- /activity-phase-layout --}}
-
-    {{else}}
-    {{!-- ── ACTIVITY SUB-TAB (existing content) ── --}}
-    {{!-- Collapsed Camp Summary --}}
+    {{!-- Collapsed camp summary: no comfort or fire here (banner and map; chips often disagreed). Encounter DC and tent when relevant. --}}
+    {{#if (or encounterBar campStatus.hasTent)}}
     <div class="camp-status-summary camp-collapsed-bar">
         <div class="camp-collapsed-chips">
-            <span class="camp-collapsed-chip comfort-tier comfort-{{campStatus.comfort}}" title="{{campStatus.comfortTooltip}}">
-                <i class="fas fa-campground"></i> {{campStatus.comfort}}
-            </span>
-            <span class="camp-collapsed-chip fire-status fire-{{campStatus.fireLevel}}" title="{{campStatus.fireTooltip}}">
-                <i class="fas fa-fire"></i> {{campStatus.fireLevel}}
-            </span>
             {{#if encounterBar}}
             <span class="camp-collapsed-chip" title="Encounter DC">
                 <i class="fas fa-shield-alt"></i> DC {{encounterBar.effectiveDC}}
@@ -956,394 +720,8 @@
             {{/if}}
         </div>
     </div>
-    {{#if isGM}}
-    <div class="activity-phase-layout">
-    <div class="respite-activities">
+    {{/if}}
 
-        {{!-- ── Detail View: selected character ── --}}
-        {{#if selectedCharacter}}
-        <div class="character-detail" data-character-id="{{selectedCharacter.id}}">
-            <div class="detail-header">
-                <div class="detail-header-info">
-                    <span class="character-name">{{selectedCharacter.name}}</span>
-                    {{!-- Gear badges removed: resolved in setup phase, not relevant to activities --}}
-                    {{#if (eq selectedCharacter.source 'player')}}
-                    <span class="respite-activity-badge default">
-                        <i class="fas fa-check-circle"></i> {{selectedCharacter.activityName}}
-                    </span>
-                    {{else if (eq selectedCharacter.source 'gm')}}
-                    <span class="respite-activity-badge watch">
-                        <i class="fas fa-crown"></i> {{selectedCharacter.activityName}} (GM)
-                    </span>
-                    {{else}}
-                    <span class="respite-activity-badge pending-badge">
-                        <i class="fas fa-clock"></i> Choose an activity
-                    </span>
-                    {{/if}}
-            </div>
-            </div>
-
-            {{!-- Armor don/doff: deferred to individual activity dialogs where relevant
-            {{#if selectedCharacter.armorWarning}}
-            <div class="armor-advisory {{#if selectedCharacter.armorWarning.isDoffed}}doffed{{/if}}" title="{{selectedCharacter.armorWarning.hint}}">
-                <i class="fas fa-shield-alt"></i>
-                <span class="armor-advisory-text">
-                    {{#if selectedCharacter.armorWarning.isDoffed}}
-                    {{selectedCharacter.armorWarning.name}} removed for rest
-                    {{else}}
-                    {{selectedCharacter.armorWarning.name}} ({{selectedCharacter.armorWarning.type}}) - don time: {{selectedCharacter.armorWarning.donTime}}
-                    {{/if}}
-                </span>
-                <button type="button" class="btn-armor-toggle"
-                    data-actor-id="{{selectedCharacter.armorWarning.actorId}}"
-                    data-item-id="{{selectedCharacter.armorWarning.itemId}}"
-                    data-is-doffed="{{selectedCharacter.armorWarning.isDoffed}}"
-                    title="{{#if selectedCharacter.armorWarning.isDoffed}}Re-equip armor{{else}}Remove armor for rest{{/if}}">
-                    {{#if selectedCharacter.armorWarning.isDoffed}}
-                    <i class="fas fa-shield-alt"></i> Don
-                    {{else}}
-                    <i class="fas fa-bed"></i> Doff
-                    {{/if}}
-                </button>
-            </div>
-            {{/if}}
-            --}}
-
-            {{!-- Minor activity advisories --}}
-            {{#each selectedCharacter.minorActivities}}
-            <div class="minor-activity-advisory" title="{{description}}">
-                <i class="{{icon}}"></i>
-                <span>{{name}}: {{description}}</span>
-            </div>
-            {{/each}}
-            {{!-- Faded minor advisories (known but not prepared) --}}
-            {{#each selectedCharacter.fadedMinorActivities}}
-            <div class="minor-activity-advisory faded" title="{{fadedHint}}">
-                <i class="{{icon}}"></i>
-                <span>{{name}}: {{fadedHint}}</span>
-            </div>
-            {{/each}}
-
-            {{!-- Activity tile grid --}}
-            {{#if craftingDrawer}}
-            {{!-- Inline crafting drawer (replaces activity tiles) --}}
-            <div class="crafting-drawer-inline">
-                <div class="crafting-drawer-header">
-                    <button type="button" class="btn-detail-back" data-action="craftDrawerClose">
-                        <i class="fas fa-arrow-left"></i>
-                    </button>
-                    <i class="fas fa-hammer detail-icon"></i>
-                    <span class="detail-name">{{craftingDrawer.profession}}</span>
-                </div>
-
-                {{#if craftingDrawer.hasCrafted}}
-                {{!-- Crafting result --}}
-                <div class="crafting-result-inline {{#if craftingDrawer.craftingResult.success}}result-success{{else}}result-failure{{/if}}">
-                    <h4>
-                        {{#if craftingDrawer.craftingResult.success}}
-                        <i class="fas fa-check-circle"></i> Success
-                        {{else}}
-                        <i class="fas fa-times-circle"></i> Failed
-                        {{/if}}
-                    </h4>
-                    <div class="result-roll">
-                        Rolled <strong>{{craftingDrawer.craftingResult.roll}}</strong> vs DC <strong>{{craftingDrawer.craftingResult.dc}}</strong>
-                        <span class="risk-tag risk-{{craftingDrawer.craftingResult.riskTier}}">{{craftingDrawer.craftingResult.riskTier}}</span>
-                    </div>
-                    <div class="result-narrative">{{craftingDrawer.craftingResult.narrative}}</div>
-                    {{#if craftingDrawer.craftingResult.success}}
-                    <div class="result-output">
-                        <i class="fas fa-plus-circle"></i> Created: <strong>{{craftingDrawer.craftingResult.output.name}}</strong>
-                        {{#if craftingDrawer.craftingResult.output.quantity}}(x{{craftingDrawer.craftingResult.output.quantity}}){{/if}}
-                    </div>
-                    {{/if}}
-                    {{#if craftingDrawer.craftingResult.ingredientsConsumed}}
-                    <div class="result-consumed"><i class="fas fa-fire"></i> Ingredients consumed</div>
-                    {{else}}
-                    <div class="result-preserved"><i class="fas fa-shield-alt"></i> Ingredients preserved</div>
-                    {{/if}}
-                </div>
-                <div class="crafting-done-bar">
-                    <button type="button" class="btn-crafting-done" data-action="craftDrawerClose">
-                        <i class="fas fa-check"></i> Done
-                    </button>
-                </div>
-
-                {{else}}
-                {{!-- Step 1: Choose Recipe --}}
-                <div class="crafting-step-inline">
-                    <div class="step-label"><span class="step-num">1</span> Choose a Recipe</div>
-                    {{#if craftingDrawer.available.length}}
-                    <div class="recipe-list-inline">
-                        {{#each craftingDrawer.available}}
-                        <div class="recipe-card-inline {{#if isSelected}}selected{{/if}}" data-action="craftDrawerSelectRecipe"
-                            data-recipe-id="{{id}}">
-                            <img src="{{outputImg}}" alt="{{name}}" class="recipe-icon-inline">
-                            <div class="recipe-info-inline">
-                                <div class="recipe-name-inline">{{name}}</div>
-                                <div class="recipe-brief-inline">
-                                    {{#each ingredientList}}
-                                    <span class="ingredient-pill met">{{required}}x {{name}}</span>
-                                    {{/each}}
-                                </div>
-                            </div>
-                            <div class="recipe-select-ind">
-                                {{#if isSelected}}<i class="fas fa-check-circle"></i>{{else}}<i class="far fa-circle"></i>{{/if}}
-                            </div>
-                        </div>
-                        {{/each}}
-                    </div>
-                    {{else}}
-                    <div class="crafting-empty-inline">No recipes available with current ingredients.</div>
-                    {{/if}}
-                </div>
-
-                {{!-- Step 2: Choose Risk --}}
-                <div class="crafting-step-inline">
-                    <div class="step-label"><span class="step-num">2</span> Choose Risk Level</div>
-                    <div class="risk-selector-inline">
-                        {{#each craftingDrawer.riskTiers}}
-                        <button type="button" class="btn-risk-inline {{#if selected}}selected{{/if}}" data-action="craftDrawerSelectRisk"
-                            data-risk="{{id}}">
-                            <div class="risk-label">{{label}}</div>
-                            <div class="risk-hint">{{hint}}</div>
-                        </button>
-                        {{/each}}
-                    </div>
-                </div>
-
-                {{!-- Commitment Summary --}}
-                {{#if craftingDrawer.commitSummary}}
-                <div class="craft-commit-inline">
-                    <div class="commit-header-inline">Ready to Craft</div>
-                    <div class="commit-body-inline">
-                        <div class="commit-row"><span class="commit-label">Recipe</span><span class="commit-value">{{craftingDrawer.commitSummary.recipeName}}</span></div>
-                        <div class="commit-row"><span class="commit-label">Check</span><span class="commit-value">{{craftingDrawer.commitSummary.skill}} vs DC {{craftingDrawer.commitSummary.dc}}</span></div>
-                        <div class="commit-row"><span class="commit-label">Risk</span><span class="commit-value risk-tag risk-{{craftingDrawer.commitSummary.risk}}">{{craftingDrawer.commitSummary.riskLabel}}</span></div>
-                        <div class="commit-row"><span class="commit-label">Uses</span><span class="commit-value">{{craftingDrawer.commitSummary.ingredientCost}}</span></div>
-                        <div class="commit-row"><span class="commit-label">Produces</span><span class="commit-value output-highlight">{{craftingDrawer.commitSummary.outputName}}</span></div>
-                        <div class="commit-row commit-warning"><span class="commit-label">On Failure</span><span class="commit-value">{{craftingDrawer.commitSummary.failConsequence}}</span></div>
-                    </div>
-                    <button type="button" class="btn-hero-craft-inline" data-action="craftDrawerCraft">
-                        <i class="fas fa-hammer"></i> Craft
-                    </button>
-                </div>
-                {{else}}
-                <div class="craft-commit-inline empty">
-                    <div class="commit-placeholder"><i class="fas fa-hand-pointer"></i> Select a recipe to see your crafting plan</div>
-                </div>
-                {{/if}}
-
-                {{!-- Missing Recipes Toggle --}}
-                {{#if craftingDrawer.partial.length}}
-                <div class="missing-toggle-inline" data-action="craftDrawerToggleMissing">
-                    <i class="fas fa-caret-{{#if craftingDrawer.showMissing}}down{{else}}right{{/if}}"></i>
-                    Missing Ingredients ({{craftingDrawer.partial.length}} recipes)
-                </div>
-                {{#if craftingDrawer.showMissing}}
-                <div class="missing-recipes-inline">
-                    {{#each craftingDrawer.partial}}
-                    <div class="recipe-card-inline partial">
-                        <img src="{{outputImg}}" alt="{{name}}" class="recipe-icon-inline">
-                        <div class="recipe-info-inline">
-                            <div class="recipe-name-inline">{{name}} <span class="recipe-dc-sm">DC {{dcDisplay}}</span></div>
-                            <div class="recipe-brief-inline">
-                                {{#each ingredientList}}
-                                <span class="ingredient-pill {{#if met}}met{{else}}unmet{{/if}}">{{required}}x {{name}} {{#unless met}}(need {{required}}){{/unless}}</span>
-                                {{/each}}
-                            </div>
-                        </div>
-                    </div>
-                    {{/each}}
-                </div>
-                {{/if}}
-                {{/if}}
-                {{/if}}
-            </div>
-
-            {{else if activityDetail}}
-            {{!-- Activity detail preview panel --}}
-            <div class="activity-detail-panel">
-                <div class="activity-detail-header">
-                    <button type="button" class="btn-detail-back" data-action="activityDetailBack">
-                        <i class="fas fa-arrow-left"></i>
-                    </button>
-                    <i class="{{activityDetail.icon}} detail-icon"></i>
-                    <span class="detail-name">{{activityDetail.name}}</span>
-                    <span class="tile-type {{activityDetail.typeTag}}">{{activityDetail.typeTag}}</span>
-                </div>
-                <div class="activity-detail-body">
-                    <p class="detail-description">{{activityDetail.description}}</p>
-                    {{#if activityDetail.check}}
-                    <div class="detail-check">
-                        <i class="fas fa-dice-d20"></i>
-                        <span>{{activityDetail.check}}</span>
-                    </div>
-                    {{/if}}
-                    {{#if activityDetail.outcomeHints.length}}
-                    <div class="detail-outcomes">
-                        {{#each activityDetail.outcomeHints}}
-                        <div class="outcome-hint outcome-{{type}}">
-                            <i class="fas fa-chevron-right"></i>
-                            <span>{{text}}</span>
-                        </div>
-                        {{/each}}
-                    </div>
-                    {{/if}}
-                    {{#if activityDetail.followUpData}}
-                    <div class="activity-followup-panel gm-followup" data-character-id="{{activityDetail.characterId}}">
-                        <label class="followup-label">{{activityDetail.followUpData.label}}</label>
-                        {{#if (eq activityDetail.followUpData.type "partyMember")}}
-                        <select class="followup-select gm-followup-input" data-followup-type="partyMember">
-                            {{#each activityDetail.followUpData.options}}
-                            <option value="{{value}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
-                            {{/each}}
-                        </select>
-                        {{else if (eq activityDetail.followUpData.type "radio")}}
-                        <div class="followup-radios">
-                            {{#each activityDetail.followUpData.options}}
-                            <label class="followup-radio-label">
-                                <input type="radio" name="gm-followup-{{../../activityDetail.characterId}}" value="{{value}}"
-                                    class="gm-followup-input"
-                                    {{#if isSelected}}checked{{/if}}>
-                                {{label}}
-                            </label>
-                            {{/each}}
-                        </div>
-                        {{else if (eq activityDetail.followUpData.type "select")}}
-                        {{#if activityDetail.followUpData.goldInfo}}
-                        <div class="followup-gold-hint" style="font-size:0.7rem;color:rgba(255,200,100,0.8);margin-bottom:4px;">
-                            <i class="fas fa-coins"></i> {{activityDetail.followUpData.goldInfo}}
-                        </div>
-                        {{/if}}
-                        <select class="followup-select gm-followup-input" data-followup-type="select">
-                            {{#each activityDetail.followUpData.options}}
-                            <option value="{{value}}" {{#if isSelected}}selected{{/if}} {{#if isDisabled}}disabled{{/if}}>{{label}}</option>
-                            {{/each}}
-                        </select>
-                        {{else if (eq activityDetail.followUpData.type "actorItem")}}
-                        {{#if activityDetail.followUpData.slotInfo}}
-                        <div class="attunement-slots" style="font-size:0.75rem;opacity:0.8;margin-bottom:4px;">
-                            <i class="fas fa-gem"></i> Attunement slots: {{activityDetail.followUpData.slotInfo}}
-                        </div>
-                        {{/if}}
-                        <select class="followup-select gm-followup-input" data-followup-type="actorItem">
-                            {{#each activityDetail.followUpData.options}}
-                            <option value="{{value}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
-                            {{/each}}
-                        </select>
-                        {{/if}}
-                    </div>
-                    {{/if}}
-                    {{#if activityDetail.armorHint}}
-                    <div class="armor-hint armor-hint-{{activityDetail.armorHint.type}}">
-                        <i class="fas {{#if (eq activityDetail.armorHint.type "positive")}}fa-shield-alt{{else}}fa-exclamation-triangle{{/if}}"></i>
-                        {{activityDetail.armorHint.text}}
-                    </div>
-                    {{/if}}
-                    {{#if activityDetail.combatModifiers.description}}
-                    <div class="combat-readiness-hint" style="display: block;">
-                        <i class="fas fa-shield-alt"></i> <em>If combat occurs:</em> {{activityDetail.combatModifiers.description}}
-                    </div>
-                    {{/if}}
-                </div>
-                <div class="activity-detail-footer">
-                    <button type="button" class="btn-detail-confirm" data-action="activityDetailConfirm">
-                        <i class="fas fa-check"></i> Confirm Activity
-                    </button>
-                </div>
-            </div>
-
-            {{else if selectedCharacter.isCraftingInProgress}}
-            <div class="crafting-in-progress">
-                <i class="fas fa-hammer fa-spin"></i>
-                <span>Crafting in progress...</span>
-            </div>
-            {{else if selectedCharacter.isLocked}}
-            {{!-- Locked state: show committed activity --}}
-            <div class="activity-locked-display">
-                <i class="fas fa-lock"></i>
-                <span>{{selectedCharacter.activityName}}</span>
-                {{#if selectedCharacter.earlyResult}}
-                <div class="early-result {{#if selectedCharacter.earlyResult.isSuccess}}success{{/if}}{{#if selectedCharacter.earlyResult.isFailure}}failure{{/if}}{{#if selectedCharacter.earlyResult.isPending}}pending{{/if}}">
-                    <span class="result-badge">{{selectedCharacter.earlyResult.tier}}</span>
-                    <span class="result-narrative">{{selectedCharacter.earlyResult.narrative}}</span>
-                </div>
-                {{/if}}
-                {{#if selectedCharacter.copySpellProposal}}
-                <div class="copy-spell-approval" style="background: rgba(80,60,140,0.15); border: 1px solid rgba(160,120,220,0.3); border-radius: 6px; padding: 0.5rem 0.75rem; margin-top: 0.4rem;">
-                    <div style="font-weight: 600; color: rgba(180,140,240,0.9); font-size: 0.85rem; margin-bottom: 0.3rem;">
-                        <i class="fas fa-scroll"></i> Copy Spell Transaction
-                    </div>
-                    <div style="font-size: 0.8rem; color: #ccc; margin-bottom: 0.4rem;">
-                        Level {{selectedCharacter.copySpellProposal.spellLevel}} spell - <strong>{{selectedCharacter.copySpellProposal.cost}}gp</strong> in inks and materials.
-                        Arcana check DC {{selectedCharacter.copySpellProposal.dc}}.
-                    </div>
-                    <div style="display: flex; gap: 0.4rem;">
-                        <button type="button" data-action="approveCopySpell" data-actor-id="{{selectedCharacter.copySpellProposal.actorId}}"
-                            style="background: rgba(60,120,80,0.6); color: #ccc; border: 1px solid rgba(100,180,120,0.4); border-radius: 4px; padding: 0.25rem 0.6rem; cursor: pointer; font-size: 0.8rem;">
-                            <i class="fas fa-check"></i> Approve &amp; Pay {{selectedCharacter.copySpellProposal.cost}}gp
-                        </button>
-                        <button type="button" data-action="declineCopySpell" data-actor-id="{{selectedCharacter.copySpellProposal.actorId}}"
-                            style="background: rgba(140,50,50,0.4); color: #ccc; border: 1px solid rgba(200,80,80,0.3); border-radius: 4px; padding: 0.25rem 0.6rem; cursor: pointer; font-size: 0.8rem;">
-                            <i class="fas fa-times"></i> Decline
-                        </button>
-                    </div>
-                </div>
-                {{/if}}
-                {{#if selectedCharacter.copySpellResult}}
-                <div style="background: rgba(30,35,50,0.85); border: 1px solid rgba(120,180,220,0.3); border-radius: 6px; padding: 0.4rem 0.6rem; margin-top: 0.4rem; font-size: 0.8rem;">
-                    {{#if selectedCharacter.copySpellResult.success}}
-                    <span style="color: #7eb8da;"><i class="fas fa-check-circle"></i> Spell transcribed. {{selectedCharacter.copySpellResult.cost}}gp spent.</span>
-                    {{else}}
-                    <span style="color: #e88;"><i class="fas fa-times-circle"></i> Copy failed. {{selectedCharacter.copySpellResult.cost}}gp spent.</span>
-                    {{/if}}
-                </div>
-                {{/if}}
-                {{#unless selectedCharacter.earlyResult}}{{#unless selectedCharacter.copySpellProposal}}
-                <div class="locked-hint">Activity confirmed</div>
-                {{/unless}}{{/unless}}
-            </div>
-            {{else}}
-            {{!-- Station-based activity layout: two flex columns (masonry-style) so row height is not shared across columns --}}
-            <div class="station-grid">
-                {{#each selectedCharacter.stationCardColumns}}
-                <div class="station-grid-column">
-                    {{#each this}}
-                    <div class="station-card{{#if (eq id @root.canvasFocusedStationId)}} station-card-canvas-focus{{/if}}" data-station="{{id}}">
-                        <div class="station-header">
-                            <i class="{{icon}}"></i>
-                            <span class="station-label">{{label}}</span>
-                        </div>
-                        <div class="station-activities" data-character-id="{{@root.selectedCharacter.id}}">
-                            {{#each tiles}}
-                            <div
-                                class="activity-card station-activity {{typeTag}} {{#if isSelected}}selected{{/if}} {{#if isDisabled}}disabled{{/if}} {{#if isFaded}}faded{{/if}}"
-                                data-activity-id="{{id}}"
-                                data-is-crafting="false"
-                                title="{{tooltip}}"
-                                role="button"
-                                tabindex="0">
-                                <i class="{{icon}}"></i>
-                                <div class="card-body">
-                                    <span class="card-name">{{name}}</span>
-                                    {{#if hint}}<span class="card-hint {{#if hintUrgent}}urgent{{/if}}">{{hint}}</span>{{/if}}
-                                </div>
-                            </div>
-                            {{/each}}
-                        </div>
-                    </div>
-                    {{/each}}
-                </div>
-                {{/each}}
-            </div>
-            {{/if}}
-        </div>
-        {{/if}}
-
-    </div>
-    </div>{{!-- /activity-phase-layout --}}
-    {{else}}
     {{#if activityPhasePlayerOverview}}
     <div class="activity-phase-layout">
         <div class="respite-activities activity-phase-player-overview-wrap">
@@ -1351,9 +729,9 @@
                 <i class="fas fa-users" aria-hidden="true"></i>
                 <span>Party progress</span>
             </div>
-            <p class="player-overview-lead">Use camp map stations to choose activities{{#if activityPhasePlayerOverview.trackFood}} and meal rations{{/if}}. This panel only summarizes the party.</p>
+            <p class="player-overview-lead">Use camp map stations to choose activities{{#if activityPhasePlayerOverview.trackFood}} and meal rations{{/if}}.</p>
             <div class="player-overview-stat">
-                <span class="player-overview-label">Activities committed</span>
+                <span class="player-overview-label">Party members with an activity</span>
                 <span class="player-overview-value">{{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}}</span>
             </div>
             <div class="player-overview-progress-track" role="progressbar"
@@ -1364,7 +742,7 @@
             </div>
             {{#if activityPhasePlayerOverview.trackFood}}
             <div class="player-overview-stat">
-                <span class="player-overview-label">Meal cards submitted</span>
+                <span class="player-overview-label">Party members with rations</span>
                 <span class="player-overview-value">{{activityPhasePlayerOverview.mealRationsSubmitted}} / {{activityPhasePlayerOverview.totalCharacters}}</span>
             </div>
             <div class="player-overview-progress-track player-overview-progress-track--meal" role="progressbar"
@@ -1375,47 +753,17 @@
             </div>
             {{/if}}
             {{#if activityPhasePlayerOverview.allResolved}}
+            {{#if isGM}}
+            <div class="respite-action-bar">
+                <button type="button" class="btn-primary" data-action="submitActivities">
+                    <i class="fas fa-arrow-right"></i> Settle In
+                </button>
+            </div>
+            {{else}}
             <p class="player-overview-note"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Everyone has an activity. Waiting on the GM to advance.</p>
             {{/if}}
+            {{/if}}
         </div>
-    </div>
-    {{/if}}
-    {{/if}}
-    {{/if}}{{!-- /activitySubTab.isIdentify else --}}
-    {{!-- Action bar: hidden during Identify sub-tab. Progressive disclosure,
-         don't show a CTA for a step two hops away. --}}
-    {{#if activitySubTab.isActivity}}
-    <div class="respite-action-bar">
-        <span class="submission-counter">
-            {{resolvedCount}} of {{totalCharacters}} resolved
-        </span>
-        {{#if isGM}}
-        <button type="button" class="btn-primary" data-action="submitActivities" {{#unless
-            allResolved}}disabled{{/unless}}>
-            <i class="fas fa-arrow-right"></i> {{#if trackFood}}Proceed to Rations{{else}}Proceed to Events{{/if}}
-        </button>
-        {{else}}
-        {{#if allResolved}}
-        <span class="phase-waiting-label"><i class="fas fa-hourglass-half"></i> Waiting for the GM to progress...</span>
-        {{/if}}
-        {{/if}}
-    </div>
-    {{/if}}
-    {{#if activitySubTab.isMeal}}
-    <div class="respite-action-bar">
-        <span class="submission-counter">
-            {{resolvedCount}} of {{totalCharacters}} resolved
-        </span>
-        {{#if isGM}}
-        <button type="button" class="btn-primary" data-action="submitActivities" {{#unless
-            allResolved}}disabled{{/unless}}>
-            <i class="fas fa-arrow-right"></i> Proceed to Events
-        </button>
-        {{else}}
-        {{#if allResolved}}
-        <span class="phase-waiting-label"><i class="fas fa-hourglass-half"></i> Waiting for the GM to progress...</span>
-        {{/if}}
-        {{/if}}
     </div>
     {{/if}}
     {{/if}}
@@ -3090,9 +2438,14 @@
     {{!-- Encounter Status Bar: persistent footer --}}
     {{#if encounterBar}}
     <div class="encounter-bar">
-        <span class="encounter-bar-label" title="A hidden d20 is rolled for the night check. Meet or beat this number for a quiet night (no event from this roll). Rolling below it pulls a camp event; a natural 1 forces a disaster choice instead. Lower number here = easier quiet night. Shelter, weather, scouting, fire, and defenses move this number.">
-            <i class="fas fa-dice-d20"></i>
-            {{encounterBar.totalLabel}}
+        <span class="encounter-bar-label-wrap">
+            <span class="encounter-bar-label">
+                <i class="fas fa-dice-d20"></i>
+                {{encounterBar.totalLabel}}
+            </span>
+            <div class="encounter-bar-tooltip" role="tooltip">
+                A d20 is rolled for the night check. Meet or beat this value for a quiet night (no event from this gate). Under that value, a camp event is drawn. A natural 1 is always the disaster fork. A higher value here means you need a higher d20, so a quiet night is harder to achieve. Shelter, weather, scouting, fire, and defenses shift this value.
+            </div>
         </span>
         {{#if encounterBar.chips.length}}
         <span class="encounter-bar-chips">
