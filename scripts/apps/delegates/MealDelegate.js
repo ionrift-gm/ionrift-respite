@@ -497,6 +497,7 @@ export class MealDelegate {
 
         // Transition to reflection
         app._phase = "reflection";
+        await app._applyBeddingDown();
         console.log(`[Respite:Meal] Transitioning to reflection, emitting phaseChanged`);
 
         game.socket.emit(`module.${MODULE_ID}`, {
