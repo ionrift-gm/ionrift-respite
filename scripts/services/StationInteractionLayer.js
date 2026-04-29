@@ -12,7 +12,8 @@
  */
 
 import { CAMP_STATIONS, STATION_RANGE_SQUARES, inferCanvasStationForActivity } from "../apps/RestConstants.js";
-import { isGearDeployed } from "./CompoundCampPlacer.js";
+import { isGearDeployed, measureWorldDistanceFeet } from "./CompoundCampPlacer.js";
+import { getPartyActors } from "./partyActors.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -149,15 +150,9 @@ function _textureFromStationIcon(station, fillColor, pixelSize) {
     return tex;
 }
 
-// Token notice badge (see ionrift-brand/Assets/Drafts/ui_concepts/token_notices/notice_d.png)
+// V2: circular icon badge with floating portrait bubbles
 const OV = {
-    WIDTH:         158,
-    HEIGHT:        40,
-    RADIUS:        12,
-    ROW1_CY:       12,
-    ICON_CX:       15,
-    TITLE_X:       28,
-    PAD_X:         6,
+    BADGE_R:       18,
     ICON_RING_PAD: 3,
     SHADOW_OFFSET: 2,
     SHADOW_ALPHA:  0.34,
@@ -171,33 +166,25 @@ const OV = {
     OUTLINE_HOVER: 0.24,
     OUTLINE_MEAL:  0.42,
     OUTLINE_FAR:   0.55,
-    FONT_TITLE:    { fontFamily: UI_FONT_STACK, fontSize: 11, fill: 0xffffff, fontWeight: "bold" },
-    FONT_TAGLINE:  { fontFamily: UI_FONT_STACK, fontSize: 7, fill: 0x9ca3af, wordWrap: true },
+    FONT_TOOLTIP:  { fontFamily: UI_FONT_STACK, fontSize: 9, fill: 0xffffff, fontWeight: "bold" },
     FONT_FAR:      { fontFamily: UI_FONT_STACK, fontSize: 8, fill: 0xfca5a5 },
     ICON_TEX_PX:   16,
     PULSE_SPEED:   0.0015,
     PULSE_MIN:     0.9,
     PULSE_MAX:     1.0,
-    /** When the roster actor has no available activities at this station (dialog would be empty). */
     EMPTY_PULSE_MIN: 0.4,
     EMPTY_PULSE_MAX: 0.58,
-    EMPTY_TITLE_FILL:  0x9ca3af,
-    EMPTY_TAGLINE_FILL: 0x6b7280,
     DIM_ALPHA:     0.22,
-    /** Meal-station body tint (portrait stays on top at full alpha). */
     MEAL_BODY_ALPHA: 0.92,
     PORTRAIT_R:    13,
-    PORTRAIT_PAD:  6,
-    /** Horizontal overlap between stacked portraits (setup roster-indicator style). */
-    PORTRAIT_STACK_OVERLAP: 4,
-    /** Max faces before +N (keep notice readable). */
+    PORTRAIT_GAP:  2,
+    PORTRAIT_STACK_OVERLAP: 9,
     PORTRAIT_STACK_MAX:    4,
-    /** Second row: characters still owing activity-phase rations (separate from activity portraits). */
-    MEAL_ROW_H:          13,
-    MEAL_ROW_RADIUS:     8,
+    MEAL_GAP:      2,
     MEAL_PORTRAIT_R:     7,
-    MEAL_PORTRAIT_STEP:  3,
-    MEAL_PORTRAIT_STACK_MAX: 5
+    MEAL_PORTRAIT_STEP:  6,
+    MEAL_PORTRAIT_STACK_MAX: 5,
+    LABEL_GAP:     4
 };
 
 /**
@@ -235,7 +222,7 @@ class StationOverlay {
      * @param {Function} onClickFn - (stationId, token, overlay) callback
      * @param {Object} [overlayOpts]
      * @param {boolean} [overlayOpts.emptyNoticeFade] - Muted notice when this station has no available activities
-     * @param {{ title?: string, tagline?: string }} [overlayOpts.displayOverride] - Title/tagline (camp pit notice)
+     * @param {{ title?: string, tagline?: string }} [overlayOpts.displayOverride] - Title for hover tooltip (camp pit notice)
      * @param {boolean} [overlayOpts.skipProximity] - If true, do not require token range (Make Camp pit)
      */
     constructor(token, station, actorMap, onClickFn, overlayOpts = {}) {
@@ -252,20 +239,17 @@ class StationOverlay {
         this._bg         = null;
         this._iconRing   = null;
         this._iconSprite = null;
-        this._title      = null;
-        this._tagline    = null;
+        this._hoverLabel = null;
         this._farText    = null;
-        this._pulseT     = Math.random() * Math.PI * 2; // phase offset per token
+        this._pulseT     = Math.random() * Math.PI * 2;
         this._dimmed     = false;
         this._mealOnly   = false;
+        this._permanentlyDimmed = false;
         this._farTimeout = null;
         this._hoverHighlight = false;
-        /** Notice body (dims independently of {@link #_portraitRoot}). */
         this._bodyRoot = null;
-        /** Actor portrait after activity lock; always full alpha. */
         this._portraitRoot = null;
         this._portraitLoadToken = null;
-        /** Pending activity-phase rations (amber mini-portraits; not activity picks). */
         this._mealRowRoot = null;
         this._mealPortraitLoadToken = null;
 
@@ -279,15 +263,12 @@ class StationOverlay {
         }
     }
 
+    /**
+     * Builds the V2 circular icon badge with portrait/meal bubble slots.
+     * Local coordinate origin (0,0) = badge center.
+     */
     _build() {
-        const W = OV.WIDTH, H = OV.HEIGHT;
-        const gs = canvas.grid?.size ?? 100;
-        const tW = (this.token.document.width  ?? 1) * gs;
-        const tH = (this.token.document.height ?? 1) * gs;
-        const titleX = OV.TITLE_X;
-        const titleW = W - titleX - OV.PAD_X;
-        const bodyW  = W - titleX - OV.PAD_X;
-        const row1Y  = OV.ROW1_CY;
+        const R = OV.BADGE_R;
 
         const container = new PIXI.Container();
         container.cursor = "pointer";
@@ -297,14 +278,22 @@ class StationOverlay {
             container.interactive = true;
         }
 
+        const portraitRoot = new PIXI.Container();
+        portraitRoot.visible = false;
+        portraitRoot.sortableChildren = true;
+        portraitRoot.y = 0;
+        if ("eventMode" in portraitRoot) portraitRoot.eventMode = "none";
+        else portraitRoot.interactive = false;
+        container.addChild(portraitRoot);
+        this._portraitRoot = portraitRoot;
+
         const bodyRoot = new PIXI.Container();
         this._bodyRoot = bodyRoot;
         container.addChild(bodyRoot);
 
-        const R = OV.RADIUS;
         const shadow = new PIXI.Graphics();
         shadow.beginFill(0x000000, OV.SHADOW_ALPHA);
-        shadow.drawRoundedRect(OV.SHADOW_OFFSET, OV.SHADOW_OFFSET + 1, W, H, R);
+        shadow.drawCircle(OV.SHADOW_OFFSET, OV.SHADOW_OFFSET + 1, R);
         shadow.endFill();
         if ("eventMode" in shadow) shadow.eventMode = "none";
         bodyRoot.addChild(shadow);
@@ -316,7 +305,7 @@ class StationOverlay {
         this._bg = bg;
 
         const iconRing = new PIXI.Graphics();
-        this._drawIconRing(iconRing, OV.ICON_CX, row1Y, "idle");
+        this._drawIconRing(iconRing, 0, 0, "idle");
         if ("eventMode" in iconRing) iconRing.eventMode = "none";
         bodyRoot.addChild(iconRing);
         this._iconRing = iconRing;
@@ -325,8 +314,8 @@ class StationOverlay {
         if (tex) {
             const spr = new PIXI.Sprite(tex);
             spr.anchor.set(0.5, 0.5);
-            spr.x = OV.ICON_CX;
-            spr.y = row1Y;
+            spr.x = 0;
+            spr.y = 0;
             const maxD = 20;
             const sc = Math.min(maxD / spr.texture.width, maxD / spr.texture.height, 1.2);
             spr.scale.set(sc);
@@ -338,31 +327,19 @@ class StationOverlay {
         }
 
         const labelText = this._displayOverride?.title ?? this.station.label;
-        const title = new PIXI.Text(labelText, {
-            ...OV.FONT_TITLE,
-            wordWrap:      true,
-            wordWrapWidth: titleW
-        });
-        title.x = titleX;
-        title.y = row1Y - title.height / 2;
-        if ("eventMode" in title) title.eventMode = "none";
-        bodyRoot.addChild(title);
-        this._title = title;
-
-        const servicesText = (this._displayOverride?.tagline ?? this.station.tagline ?? "").replace(/,/g, " · ");
-        const tagline = new PIXI.Text(servicesText, {
-            ...OV.FONT_TAGLINE,
-            wordWrapWidth: bodyW
-        });
-        tagline.x = titleX;
-        tagline.y = 21;
-        if ("eventMode" in tagline) tagline.eventMode = "none";
-        bodyRoot.addChild(tagline);
-        this._tagline = tagline;
+        const hoverLabel = new PIXI.Text(labelText, OV.FONT_TOOLTIP);
+        hoverLabel.anchor.set(0.5, 0);
+        hoverLabel.x = 0;
+        hoverLabel.y = R + OV.LABEL_GAP;
+        hoverLabel.visible = false;
+        if ("eventMode" in hoverLabel) hoverLabel.eventMode = "none";
+        bodyRoot.addChild(hoverLabel);
+        this._hoverLabel = hoverLabel;
 
         const farText = new PIXI.Text("", OV.FONT_FAR);
-        farText.x = titleX;
-        farText.y = 24;
+        farText.anchor.set(0.5, 0);
+        farText.x = 0;
+        farText.y = R + OV.LABEL_GAP;
         farText.visible = false;
         if ("eventMode" in farText) farText.eventMode = "none";
         bodyRoot.addChild(farText);
@@ -371,17 +348,10 @@ class StationOverlay {
         const mealRowRoot = new PIXI.Container();
         mealRowRoot.visible = false;
         mealRowRoot.sortableChildren = true;
+        mealRowRoot.y = 0;
         if ("eventMode" in mealRowRoot) mealRowRoot.eventMode = "none";
         container.addChild(mealRowRoot);
         this._mealRowRoot = mealRowRoot;
-
-        const portraitRoot = new PIXI.Container();
-        portraitRoot.visible = false;
-        portraitRoot.sortableChildren = true;
-        if ("eventMode" in portraitRoot) portraitRoot.eventMode = "none";
-        else portraitRoot.interactive = false;
-        container.addChild(portraitRoot);
-        this._portraitRoot = portraitRoot;
 
         container.on("pointerover", () => this._onHover(true));
         container.on("pointerout",  () => this._onHover(false));
@@ -398,27 +368,44 @@ class StationOverlay {
             this.token.addChild(container);
         }
         this._container = container;
+
+        const hitPad = 8;
+        const halfSide = Math.ceil(OV.PORTRAIT_STACK_MAX / 2);
+        const sideExtent = R + OV.PORTRAIT_GAP + OV.PORTRAIT_R
+            + halfSide * (2 * OV.PORTRAIT_R - OV.PORTRAIT_STACK_OVERLAP) + hitPad;
+        const hitVert = Math.max(OV.PORTRAIT_R, OV.MEAL_PORTRAIT_R) + hitPad;
+        container.hitArea = new PIXI.Rectangle(-sideExtent, -(R + hitPad), sideExtent * 2, (R + hitPad) + hitVert + R);
+
         this._syncNoticeLayout();
     }
 
     /**
-     * Repositions the notice for token size and optional meal row height.
+     * Repositions the badge for token size. Badge center sits above the token top edge.
+     * Also adjusts right-side bubble rows so portraits and meals don't overlap.
      */
     _syncNoticeLayout() {
         if (!this._container || !this.token?.document) return;
+        if (!_stationTokenStillOnScene(this.token)) return;
         const gs = canvas.grid?.size ?? 100;
         const tW = (this.token.document.width ?? 1) * gs;
         const tH = (this.token.document.height ?? 1) * gs;
-        const W = OV.WIDTH;
-        const bodyH = OV.HEIGHT;
-        const mealH = this._mealRowRoot?.visible ? OV.MEAL_ROW_H : 0;
-        const fullH = bodyH + mealH;
-        this._container.hitArea = new PIXI.Rectangle(0, 0, W, fullH);
-        const topOverlap = Math.min(16, Math.max(6, Math.floor(tH * 0.13)));
-        this._container.x = this.token.document.x + (tW - W) / 2;
-        this._container.y = this.token.document.y - fullH + topOverlap;
-        if (this._mealRowRoot) this._mealRowRoot.y = bodyH;
+        const R = OV.BADGE_R;
+        const topGap = R - Math.min(8, Math.max(3, Math.floor(tH * 0.08)));
+        this._container.x = this.token.x + tW / 2;
+        this._container.y = this.token.y - topGap;
+
+        const pVis = this._portraitRoot?.visible;
+        const mVis = this._mealRowRoot?.visible;
+        if (pVis && mVis) {
+            this._portraitRoot.y = -(OV.MEAL_PORTRAIT_R + 1);
+            this._mealRowRoot.y = OV.PORTRAIT_R + 1;
+        } else {
+            if (this._portraitRoot) this._portraitRoot.y = 0;
+            if (this._mealRowRoot)  this._mealRowRoot.y = 0;
+        }
+
         this._syncMealRowAlpha();
+        this._syncPortraitRowAlpha();
     }
 
     _syncMealRowAlpha() {
@@ -428,13 +415,14 @@ class StationOverlay {
         this._mealRowRoot.alpha = a;
     }
 
+    _syncPortraitRowAlpha() {
+        if (!this._portraitRoot?.visible) return;
+        const a = this._bodyRoot?.alpha;
+        if (a == null) return;
+        this._portraitRoot.alpha = a;
+    }
+
     _applyEmptyNoticePalette() {
-        if (this._title) {
-            this._title.style.fill = OV.EMPTY_TITLE_FILL;
-        }
-        if (this._tagline) {
-            this._tagline.style.fill = OV.EMPTY_TAGLINE_FILL;
-        }
         if (this._iconSprite) {
             this._iconSprite.tint = 0xa8a8b8;
         }
@@ -444,12 +432,6 @@ class StationOverlay {
     }
 
     _applyDefaultNoticePalette() {
-        if (this._title) {
-            this._title.style.fill = OV.FONT_TITLE.fill;
-        }
-        if (this._tagline) {
-            this._tagline.style.fill = OV.FONT_TAGLINE.fill;
-        }
         if (this._iconSprite) {
             this._iconSprite.tint = 0xffffff;
         }
@@ -463,34 +445,41 @@ class StationOverlay {
         const next = !!enabled;
         if (this._emptyNoticeFade === next) return;
         this._emptyNoticeFade = next;
-        if (this._dimmed || this._mealOnly) return;
+        if (this._mealOnly) {
+            this._syncMealRowAlpha();
+            return;
+        }
         if (next) {
             this._applyEmptyNoticePalette();
             if (this._bodyRoot) {
-                this._bodyRoot.alpha = (OV.EMPTY_PULSE_MIN + OV.EMPTY_PULSE_MAX) / 2;
+                this._bodyRoot.alpha = this._dimmed
+                    ? OV.DIM_ALPHA
+                    : (OV.EMPTY_PULSE_MIN + OV.EMPTY_PULSE_MAX) / 2;
             }
-            this._drawIconRing(this._iconRing, OV.ICON_CX, OV.ROW1_CY, "idle");
+            this._drawIconRing(this._iconRing, 0, 0, "idle");
         } else {
             this._applyDefaultNoticePalette();
             const lineColor = this._hoverHighlight ? OV.BORDER_HOVER : OV.BORDER_GLASS;
             const outline = this._hoverHighlight ? OV.OUTLINE_HOVER : OV.OUTLINE_IDLE;
             this._drawBg(this._bg, lineColor, OV.BG_ALPHA, outline);
             if (this._bodyRoot) {
-                this._bodyRoot.alpha = this._hoverHighlight
-                    ? 1.0
-                    : OV.PULSE_MIN + (OV.PULSE_MAX - OV.PULSE_MIN) * 0.5;
+                this._bodyRoot.alpha = this._dimmed
+                    ? OV.DIM_ALPHA
+                    : (this._hoverHighlight
+                        ? 1.0
+                        : OV.PULSE_MIN + (OV.PULSE_MAX - OV.PULSE_MIN) * 0.5);
             }
-            this._drawIconRing(this._iconRing, OV.ICON_CX, OV.ROW1_CY, this._hoverHighlight ? "hover" : "idle");
+            this._drawIconRing(this._iconRing, 0, 0, this._hoverHighlight ? "hover" : "idle");
         }
         this._syncMealRowAlpha();
     }
 
     _drawBg(g, borderColor, bgAlpha, outlineAlpha = 0) {
-        const W = OV.WIDTH, H = OV.HEIGHT, R = OV.RADIUS;
+        const R = OV.BADGE_R;
         g.clear();
         g.beginFill(OV.BG_COLOR, bgAlpha);
         if (outlineAlpha > 0.01) g.lineStyle(1, borderColor, outlineAlpha);
-        g.drawRoundedRect(0, 0, W, H, R);
+        g.drawCircle(0, 0, R);
         g.endFill();
     }
 
@@ -525,7 +514,10 @@ class StationOverlay {
             : outline;
         this._drawBg(this._bg, lineColor, OV.BG_ALPHA, outlineUse);
         const ringMode = this._mealOnly ? "meal" : over ? "hover" : "idle";
-        this._drawIconRing(this._iconRing, OV.ICON_CX, OV.ROW1_CY, ringMode);
+        this._drawIconRing(this._iconRing, 0, 0, ringMode);
+        if (this._hoverLabel) {
+            this._hoverLabel.visible = over && !this._farText?.visible;
+        }
         if (this._bodyRoot) {
             if (this._emptyNoticeFade && !this._mealOnly) {
                 this._bodyRoot.alpha = over
@@ -540,6 +532,7 @@ class StationOverlay {
 
     _onClick() {
         if (this._dimmed) return;
+        if (!_stationTokenStillOnScene(this.token)) return;
         console.log(`${MODULE_ID} | Station overlay _onClick`, { stationId: this.station.id, dimmed: this._dimmed });
         if (this._skipProximity) {
             this.onClickFn(this.station.id, this.token, this);
@@ -568,7 +561,7 @@ class StationOverlay {
                 ?? canvas.tokens.placeables.find(t => t.actor?.id === playerActorId);
 
             if (playerToken) {
-                const dist = canvas.grid.measureDistance(
+                const dist = measureWorldDistanceFeet(
                     playerToken.center,
                     this.token.center
                 );
@@ -592,9 +585,9 @@ class StationOverlay {
 
     _showFarWarning(distFt) {
         this._drawBg(this._bg, OV.BORDER_FAR, OV.BG_ALPHA, OV.OUTLINE_FAR);
-        this._drawIconRing(this._iconRing, OV.ICON_CX, OV.ROW1_CY, "far");
-        this._tagline.visible = false;
-        this._farText.text    = `${distFt}ft away; move closer`;
+        this._drawIconRing(this._iconRing, 0, 0, "far");
+        if (this._hoverLabel) this._hoverLabel.visible = false;
+        this._farText.text    = `${distFt}ft away`;
         this._farText.visible = true;
 
         clearTimeout(this._farTimeout);
@@ -609,12 +602,10 @@ class StationOverlay {
                 }
                 this._drawIconRing(
                     this._iconRing,
-                    OV.ICON_CX,
-                    OV.ROW1_CY,
+                    0, 0,
                     this._mealOnly ? "meal" : "idle"
                 );
             }
-            this._tagline.visible = true;
             this._farText.visible = false;
         }, 2500);
     }
@@ -646,26 +637,30 @@ class StationOverlay {
             else this._container.interactive = true;
             if (this._bodyRoot) this._bodyRoot.alpha = OV.MEAL_BODY_ALPHA;
             this._drawBg(this._bg, OV.BORDER_MEAL, OV.BG_ALPHA, OV.OUTLINE_MEAL);
-            this._drawIconRing(this._iconRing, OV.ICON_CX, OV.ROW1_CY, "meal");
+            this._drawIconRing(this._iconRing, 0, 0, "meal");
         } else {
             this._dimmed = true;
             this._hoverHighlight = false;
             if ("eventMode" in this._container) this._container.eventMode = "none";
             else this._container.interactive = false;
+            if (this._emptyNoticeFade) {
+                this._applyEmptyNoticePalette();
+            }
             if (this._bodyRoot) this._bodyRoot.alpha = OV.DIM_ALPHA;
         }
         this._syncMealRowAlpha();
     }
 
     setActive() {
+        if (this._permanentlyDimmed) return;
         this.clearChosenPortrait();
         this._dimmed   = false;
         this._mealOnly = false;
         this._hoverHighlight = false;
         if ("eventMode" in this._container) this._container.eventMode = "static";
         else this._container.interactive = true;
-        this._tagline.visible = true;
         this._farText.visible = false;
+        if (this._hoverLabel) this._hoverLabel.visible = false;
         if (this._emptyNoticeFade) {
             this._applyEmptyNoticePalette();
             if (this._bodyRoot) {
@@ -676,7 +671,7 @@ class StationOverlay {
             if (this._bodyRoot) this._bodyRoot.alpha = OV.PULSE_MAX;
             this._drawBg(this._bg, OV.BORDER_GLASS, OV.BG_ALPHA, OV.OUTLINE_IDLE);
         }
-        this._drawIconRing(this._iconRing, OV.ICON_CX, OV.ROW1_CY, "idle");
+        this._drawIconRing(this._iconRing, 0, 0, "idle");
         this._syncMealRowAlpha();
     }
 
@@ -688,10 +683,11 @@ class StationOverlay {
         }
         this._portraitRoot.removeChildren();
         this._portraitRoot.visible = false;
+        this._syncNoticeLayout();
     }
 
     /**
-     * Shows one or more stacked circular portraits (black disc + border, roster-indicator style).
+     * Shows stacked circular portraits balanced left and right of the badge.
      * @param {string|string[]} imgSrcs
      */
     setChosenPortraits(imgSrcs) {
@@ -699,15 +695,17 @@ class StationOverlay {
         const list = (Array.isArray(imgSrcs) ? imgSrcs : [imgSrcs]).filter(Boolean);
         if (!list.length || !this._portraitRoot) return;
 
-        const W  = OV.WIDTH;
-        const cy = OV.ROW1_CY;
         const r  = OV.PORTRAIT_R;
+        const cy = 0;
         const step = Math.max(1, 2 * r - OV.PORTRAIT_STACK_OVERLAP);
         const maxShow = OV.PORTRAIT_STACK_MAX;
         const show = list.slice(0, maxShow);
         const overflow = list.length - show.length;
+        const edgeGap = OV.BADGE_R + OV.PORTRAIT_GAP + r;
 
-        const rightEdge = W - OV.PORTRAIT_PAD - r;
+        const rightCount = Math.ceil(show.length / 2);
+        const leftCount  = show.length - rightCount;
+
         const loadId = foundry.utils.randomID();
         this._portraitLoadToken = loadId;
 
@@ -759,13 +757,17 @@ class StationOverlay {
             }
         };
 
-        for (let i = 0; i < show.length; i++) {
-            const cx = rightEdge - (show.length - 1 - i) * step;
+        for (let i = 0; i < rightCount; i++) {
+            const cx = edgeGap + i * step;
             addOne(show[i], cx, i * 10);
+        }
+        for (let i = 0; i < leftCount; i++) {
+            const cx = -(edgeGap + i * step);
+            addOne(show[rightCount + i], cx, (rightCount + i) * 10);
         }
 
         if (overflow > 0) {
-            const cx = rightEdge - show.length * step - r * 0.35;
+            const cx = edgeGap + rightCount * step;
             const bg = new PIXI.Graphics();
             bg.lineStyle(1, 0xffffff, 0.12);
             bg.beginFill(0x000000, 0.92);
@@ -791,6 +793,7 @@ class StationOverlay {
         }
 
         this._portraitRoot.visible = true;
+        this._syncNoticeLayout();
     }
 
     /**
@@ -816,7 +819,7 @@ class StationOverlay {
     }
 
     /**
-     * Shows characters still owing activity-phase rations (distinct from activity choice portraits).
+     * Shows characters still owing activity-phase rations as floating amber bubbles balanced around the badge.
      * @param {string[]} imgSrcs
      */
     setMealPortraits(imgSrcs) {
@@ -827,40 +830,20 @@ class StationOverlay {
             return;
         }
 
-        const W = OV.WIDTH;
-        const Hr = OV.MEAL_ROW_H;
-        const cy = Hr / 2;
         const r = OV.MEAL_PORTRAIT_R;
+        const cy = 0;
         const step = Math.max(1, 2 * r - OV.MEAL_PORTRAIT_STEP);
         const maxShow = OV.MEAL_PORTRAIT_STACK_MAX;
         const show = list.slice(0, maxShow);
         const overflow = list.length - show.length;
         const mealBorder = 0xf59e0b;
+        const edgeGap = OV.BADGE_R + OV.MEAL_GAP + r;
 
-        const strip = new PIXI.Graphics();
-        strip.zIndex = 0;
-        strip.lineStyle(1, OV.BORDER_MEAL, 0.42);
-        strip.beginFill(OV.BG_COLOR, 0.93);
-        strip.drawRoundedRect(0.5, 0.5, W - 1, Hr - 1, OV.MEAL_ROW_RADIUS);
-        strip.endFill();
-        if ("eventMode" in strip) strip.eventMode = "none";
-        this._mealRowRoot.addChild(strip);
-
-        // Do not use Font Awesome in PIXI.Text here: WebGL text often misses FA webfonts, which
-        // reads as an empty box. The header already rasterizes the station icon. This row is only
-        // the rations queue, so a slim marker avoids doubling the fork/knife on cooking_station.
-        const markCx = 8;
-        const queueMark = new PIXI.Graphics();
-        queueMark.beginFill(mealBorder, 0.55);
-        queueMark.drawRoundedRect(markCx - 1, cy - 4, 2, 8, 1);
-        queueMark.endFill();
-        queueMark.zIndex = 1;
-        if ("eventMode" in queueMark) queueMark.eventMode = "none";
-        this._mealRowRoot.addChild(queueMark);
+        const rightCount = Math.ceil(show.length / 2);
+        const leftCount  = show.length - rightCount;
 
         const loadId = foundry.utils.randomID();
         this._mealPortraitLoadToken = loadId;
-        const x0 = markCx + 5;
 
         const addOneMeal = (imgSrc, cx, zBase) => {
             const backing = new PIXI.Graphics();
@@ -910,13 +893,17 @@ class StationOverlay {
             }
         };
 
-        for (let i = 0; i < show.length; i++) {
-            const cx = x0 + r + i * step;
+        for (let i = 0; i < rightCount; i++) {
+            const cx = edgeGap + i * step;
             addOneMeal(show[i], cx, 20 + i * 10);
+        }
+        for (let i = 0; i < leftCount; i++) {
+            const cx = -(edgeGap + i * step);
+            addOneMeal(show[rightCount + i], cx, 20 + (rightCount + i) * 10);
         }
 
         if (overflow > 0) {
-            const cx = x0 + r + show.length * step + 2;
+            const cx = edgeGap + rightCount * step;
             const bg = new PIXI.Graphics();
             bg.lineStyle(1, mealBorder, 0.35);
             bg.beginFill(0x000000, 0.9);
@@ -947,6 +934,7 @@ class StationOverlay {
 
     destroy() {
         clearTimeout(this._farTimeout);
+        this.token = null;
         this.clearChosenPortrait();
         this.clearMealPortraits({ skipLayout: true });
         if (this._container) {
@@ -972,6 +960,24 @@ let _domHoverHandler   = null;     // pointermove on #board for cursor + highlig
 let _prevHoveredOv     = null;     // last overlay that was hovered
 /** GM: returns actor id in party for station distance checks (roster or controlled token). */
 let _getProximityActorId = null;
+let _tokenUpdateHook     = null;
+
+/**
+ * True when the overlay's station token is still the live placeable for this id on
+ * the canvas. Stale references remain after a bedroll (or other gear) is picked up;
+ * using them in layout or getBounds() can throw in PIXI (null transform / position).
+ * @param {Token|null|undefined} token
+ * @returns {boolean}
+ */
+function _stationTokenStillOnScene(token) {
+    if (!token?.document) return false;
+    if (!canvas?.ready) return true;
+    try {
+        return canvas.tokens?.get?.(token.id) === token;
+    } catch {
+        return false;
+    }
+}
 
 function _clientToCanvasXY(clientX, clientY) {
     const view = canvas.app?.view;
@@ -996,11 +1002,61 @@ function _hitTestOverlayScreen(ov, clientX, clientY) {
     if (ov._dimmed && !ov._mealOnly) return false;
     const p = _clientToCanvasXY(clientX, clientY);
     if (!p) return false;
-    const notice = ov._container?.getBounds();
+    let notice = null;
+    try {
+        notice = ov._container?.getBounds();
+    } catch {
+        return false;
+    }
     if (_pointInGlobalBounds(p.x, p.y, notice)) return true;
-    const tokenB = ov.token?.getBounds?.();
+    if (!_stationTokenStillOnScene(ov.token)) return false;
+    let tokenB = null;
+    try {
+        tokenB = ov.token?.getBounds?.();
+    } catch {
+        return false;
+    }
     if (_pointInGlobalBounds(p.x, p.y, tokenB)) return true;
     return false;
+}
+
+/**
+ * Party actor id for the current client (station UI / bedroll ownership). Matches RestSetupApp._resolveStationActorForUser for non-GM.
+ * @returns {string|null}
+ */
+function _currentUserPartyActorId() {
+    if (game.user?.isGM) return null;
+    const partyActors = getPartyActors();
+    const inParty = a => a && partyActors.some(p => p.id === a.id);
+    const assigned = game.user?.character;
+    if (assigned && inParty(assigned) && assigned.isOwner) return assigned.id;
+    const owned = partyActors.filter(a => a.isOwner);
+    if (owned.length === 1) return owned[0].id;
+    if (owned.length > 1) {
+        const fromToken = canvas.tokens?.controlled?.[0]?.actor;
+        if (fromToken && owned.some(a => a.id === fromToken.id)) return fromToken.id;
+        return owned[0].id;
+    }
+    const OBS = CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER;
+    const playable = partyActors.find(a => a.testUserPermission(game.user, OBS));
+    return playable?.id ?? null;
+}
+
+/**
+ * Reposition any overlay whose token refreshed (fires continuously during drag animation).
+ * @param {Token} token - Foundry Token placeable
+ */
+function _onRefreshTokenForOverlays(token) {
+    const f = token.document?.flags?.[MODULE_ID];
+    if (!f?.isCampFurniture && !f?.isPlayerGear) return;
+    if (!_stationTokenStillOnScene(token)) return;
+    const id = token.id;
+    for (const ov of _overlays) {
+        if (ov.token?.id === id) {
+            ov._syncNoticeLayout();
+            break;
+        }
+    }
 }
 
 /**
@@ -1100,7 +1156,7 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
         if (campPitModeOnly) break;
     }
 
-    // Player bedroll tokens (station "Your Bedroll")
+    // Player bedroll tokens (named per owner)
     const bedrollStation = CAMP_STATIONS.find(s => s.id === "bedroll");
     if (bedrollStation && !campPitModeOnly) {
         for (const actorId of Object.keys(_actorMap)) {
@@ -1110,14 +1166,30 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
                 return f?.isPlayerGear && f?.furnitureKey === "bedroll" && f?.ownerActorId === actorId;
             });
             if (!token) continue;
-            _overlays.push(new StationOverlay(
+            const ownerActor = game.actors.get(actorId);
+            const ownerName = ownerActor?.name ?? "Bedroll";
+            const overlay = new StationOverlay(
                 token,
                 bedrollStation,
                 _actorMap,
                 _clickCallback,
-                { emptyNoticeFade: !!emptyFadeMap.bedroll }
-            ));
+                {
+                    emptyNoticeFade: !!emptyFadeMap.bedroll,
+                    displayOverride: { title: `${ownerName}'s Bedroll` }
+                }
+            );
+            _overlays.push(overlay);
+            const me = _currentUserPartyActorId();
+            if (me != null && actorId !== me) {
+                overlay._permanentlyDimmed = true;
+                overlay.setDimmed();
+            }
         }
+    }
+
+    if (!_tokenUpdateHook) {
+        _tokenUpdateHook = _onRefreshTokenForOverlays;
+        Hooks.on("refreshToken", _tokenUpdateHook);
     }
 
     // Ticker for pulse animation
@@ -1171,6 +1243,10 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
  * Remove all overlays and stop the ticker.
  */
 export function deactivateStationLayer() {
+    if (_tokenUpdateHook) {
+        Hooks.off("refreshToken", _tokenUpdateHook);
+        _tokenUpdateHook = null;
+    }
     if (_tickerFn) {
         canvas.app?.ticker.remove(_tickerFn);
         _tickerFn = null;

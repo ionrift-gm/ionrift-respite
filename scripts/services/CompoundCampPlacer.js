@@ -19,7 +19,7 @@ const DRAFT_CAMPSITE_TOKENS = "ionrift-brand/Assets/Drafts/campsite_tokens";
 
 /** Shared camp furniture (not the campfire pit). Keys match CAMP_STATIONS furnitureKey. */
 const FURNITURE = {
-    table:       { name: "Makeshift Table",  width: 1, height: 1, icon: `${DRAFT_CAMPSITE_TOKENS}/makeshift_table.png`, fallback: "icons/svg/barrel.svg", textureScale: 1.6 },
+    table:       { name: "Arcane Workbench", width: 1, height: 1, icon: "ionrift-brand/Assets/Approved/campsite_tokens/arcane_workbench.png", fallback: "icons/svg/barrel.svg", textureScale: 1.6 },
     medicalBed:  { name: "Medical Bedding",  width: 1, height: 1, icon: `${DRAFT_CAMPSITE_TOKENS}/triage_bed.png`,     fallback: "icons/svg/sleep.svg", textureScale: 1.6 },
     weaponRack:  { name: "Weapon Rack",      width: 1, height: 1, icon: `${DRAFT_CAMPSITE_TOKENS}/weapons_rack.png`,   fallback: "icons/svg/sword.svg", textureScale: 1.6 },
     cookingArea: {
@@ -135,6 +135,22 @@ function sceneGridDistanceFeet() {
     return canvas?.scene?.grid?.distance ?? canvas?.grid?.distance ?? 5;
 }
 
+/**
+ * World-space distance in scene units (feet for typical 5e scenes). Replaces deprecated
+ * {@link BaseGrid#measureDistance} / {@link canvas.grid.measureDistance} (Foundry 12+).
+ * @param {{ x: number, y: number }} a
+ * @param {{ x: number, y: number }} b
+ * @returns {number}
+ */
+export function measureWorldDistanceFeet(a, b) {
+    const g = canvas?.grid;
+    if (!g || !a || !b) return 0;
+    if (typeof g.measurePath === "function") {
+        return g.measurePath([a, b], { gridSpaces: false }).distance;
+    }
+    return g.measureDistance(a, b);
+}
+
 function tokenFootprintRect(doc, gs) {
     return {
         left: doc.x,
@@ -193,7 +209,7 @@ export function validateCampEquipmentDrop(worldX, worldY, gridW, gridH, pitCente
     }
 
     const { sx, sy } = snappedCenterWorld(worldX, worldY);
-    const dist = canvas.grid.measureDistance(pitCenter, { x: sx, y: sy });
+    const dist = measureWorldDistanceFeet(pitCenter, { x: sx, y: sy });
     const maxDist = CAMP_PLACEMENT_RANGE_SQUARES * sceneGridDistanceFeet();
     if (dist > maxDist + 0.01) {
         return {
@@ -294,13 +310,17 @@ function buildFurnitureToken(key, x, y, def, extraFlags = {}) {
             }
         }
     };
-    /** Shared stations: draw under player tokens; players cannot drag on canvas. */
+    /**
+     * Shared stations and player gear: {@link CAMP_FLOOR_FURNITURE_SORT}.
+     * Campfire pit and flame are handled in {@link placeCampfire} via {@link CAMPFIRE_PIT_SORT} / {@link CAMPFIRE_FLAME_FLOOR_SORT}.
+     */
     if (extraFlags.isSharedStation) {
-        data.locked = true;
-        data.sort = CAMP_STATION_FLOOR_SORT;
+        data.sort = CAMP_FLOOR_FURNITURE_SORT;
         if (key === "cookingArea") {
             data.flags[MODULE_ID].partyHasCookingUtensils = partyHasCookingUtensils();
         }
+    } else if (extraFlags.isPlayerGear) {
+        data.sort = CAMP_FLOOR_FURNITURE_SORT;
     }
     return data;
 }
@@ -311,13 +331,17 @@ const CAMPFIRE_BASES = [CAMPFIRE_BASE_PIT];
 const CAMPFIRE_FLAME = `modules/${MODULE_ID}/assets/tokens/campfire_topdown_128x128.webm`;
 
 /**
- * Token `sort`: draw order among tokens at the same elevation (HUD bring-to-front / send-to-back).
- * Higher draws on top. Not elevation (flight).
+ * Token `sort` among siblings at the same elevation (HUD bring-to-front / send-to-back).
+ * Higher draws on top. Not flight elevation.
+ *
+ * Floor camp tokens share a very low range so they sit under normal map tokens. Pit, flame,
+ * and workstations use that band. Flame is pit +1 so the fire still draws above the cold logs.
  */
-const CAMPFIRE_BASE_SORT = 100;
-const CAMPFIRE_FLAME_SORT = 101;
-/** Shared stations and placeholders: below default PC tokens (0), above deep background. Pit/flame use 100+. */
-const CAMP_STATION_FLOOR_SORT = -20;
+export const CAMP_FLOOR_FURNITURE_SORT = -50_000;
+/** Pit logs: same floor layer as workstations. */
+export const CAMPFIRE_PIT_SORT = CAMP_FLOOR_FURNITURE_SORT;
+/** Lit fire overlay: directly above pit so light and animation stay on the logs. */
+export const CAMPFIRE_FLAME_FLOOR_SORT = CAMP_FLOOR_FURNITURE_SORT + 1;
 
 function randomCampfireBase() {
     return CAMPFIRE_BASES[Math.floor(Math.random() * CAMPFIRE_BASES.length)];
@@ -356,18 +380,7 @@ export function partyHasCookingUtensils() {
  */
 export function canPlaceStation(actor, stationKey) {
     if (!actor) return false;
-    if (stationKey === "weaponRack" || stationKey === "table") return true;
-    if (stationKey === "medicalBed") {
-        const classes = (actor.items ?? []).filter(i => i.type === "class");
-        const isHealerClass = classes.some(c => {
-            const n = c.name?.toLowerCase() ?? "";
-            return /\bcleric\b|\bdruid\b|\bpaladin\b/i.test(n);
-        });
-        const hasMedicFeat = (actor.items ?? []).some(i =>
-            i.type === "feat" && /\bmedic\b/i.test(i.name ?? "")
-        );
-        return isHealerClass || hasMedicFeat;
-    }
+    if (stationKey === "weaponRack" || stationKey === "table" || stationKey === "medicalBed") return true;
     if (stationKey === "cookingArea") {
         return (actor.items ?? []).some(i => {
             const n = i.name?.toLowerCase() ?? "";
@@ -385,9 +398,6 @@ export function canPlaceStation(actor, stationKey) {
  * @returns {string}
  */
 export function stationPlacementRequirementHint(stationKey) {
-    if (stationKey === "medicalBed") {
-        return "Cleric, Druid, or Paladin class, or the Medic feat.";
-    }
     if (stationKey === "cookingArea") {
         return "Cook's utensils or cooking utensils in inventory.";
     }
@@ -431,7 +441,7 @@ export async function placeCampfire(worldX, worldY, options = {}) {
         name: "Campfire Base",
         texture: { src: baseSrc },
         width: 1, height: 1,
-        sort: CAMPFIRE_BASE_SORT,
+        sort: CAMPFIRE_PIT_SORT,
         x: tx, y: ty,
         hidden: false,
         lockRotation: true,
@@ -468,7 +478,7 @@ export async function placeCampfire(worldX, worldY, options = {}) {
         name: campfireName,
         texture: { src: flameSrc, scaleX: 1, scaleY: 1 },
         width: 1, height: 1,
-        sort: CAMPFIRE_FLAME_SORT,
+        sort: CAMPFIRE_FLAME_FLOOR_SORT,
         x: tx, y: ty,
         hidden: true,
         lockRotation: true,
@@ -864,7 +874,7 @@ export function resetCampSession() {
  *   - table (Workbench): west
  *   - weaponRack: east
  *   - cookingArea: north (token name reflects party cook's utensils or mess table)
- *   - medicalBed: south (only if any party member qualifies as healer)
+ *   - medicalBed: south
  *
  * @returns {Promise<string[]>} keys of stations placed
  */
@@ -890,22 +900,11 @@ export async function autoPlaceStations() {
 
     const partyActors = getPartyActors();
 
-    const partyHasHealer = partyActors.some(a => {
-        const classes = (a.items ?? []).filter(i => i.type === "class");
-        const isHealerClass = classes.some(c =>
-            /\bcleric\b|\bdruid\b|\bpaladin\b/i.test(c.name ?? "")
-        );
-        const hasMedicFeat = (a.items ?? []).some(i =>
-            i.type === "feat" && /\bmedic\b/i.test(i.name ?? "")
-        );
-        return isHealerClass || hasMedicFeat;
-    });
-
     const layout = [
         { key: "table",       dx: -offset, dy: 0 },
         { key: "weaponRack",  dx:  offset, dy: 0 },
         { key: "cookingArea", dx: 0,       dy: -offset },
-        { key: "medicalBed",  dx: 0,       dy:  offset, condition: partyHasHealer }
+        { key: "medicalBed",  dx: 0,       dy:  offset }
     ];
 
     const placed = [];
@@ -954,7 +953,7 @@ function buildPlaceholderToken(targetKey, x, y) {
         texture: { src: def.path, scaleX: 1, scaleY: 1 },
         width: def.width ?? 1,
         height: def.height ?? 1,
-        sort: CAMP_STATION_FLOOR_SORT,
+        sort: CAMP_FLOOR_FURNITURE_SORT,
         x,
         y,
         hidden: false,
@@ -988,8 +987,6 @@ function buildPlaceholderToken(targetKey, x, y) {
 export function getStationPlaceholderPreviewsForPitCenter(pitCenterX, pitCenterY) {
     if (!canvas?.scene || !canvas?.grid) return [];
 
-    const partyActors = getPartyActors();
-    const partyHasHealer = partyActors.some(a => canPlaceStation(a, "medicalBed"));
     const gs = gridSize();
     const offset = 2 * gs;
     const pitCenter = { x: pitCenterX, y: pitCenterY };
@@ -997,7 +994,7 @@ export function getStationPlaceholderPreviewsForPitCenter(pitCenterX, pitCenterY
         { key: "table",       dx: -offset, dy: 0 },
         { key: "weaponRack",  dx:  offset, dy: 0 },
         { key: "cookingArea", dx: 0,       dy: -offset },
-        { key: "medicalBed",  dx: 0,       dy:  offset, condition: partyHasHealer }
+        { key: "medicalBed",  dx: 0,       dy:  offset }
     ];
     const gridW = PLACEHOLDER_CAMP_STATION.width ?? 1;
     const gridH = PLACEHOLDER_CAMP_STATION.height ?? 1;
@@ -1039,16 +1036,13 @@ export async function placeStationPlaceholders() {
     const scene = canvas?.scene;
     if (!scene) return [];
 
-    const partyActors = getPartyActors();
-    const partyHasHealer = partyActors.some(a => canPlaceStation(a, "medicalBed"));
-
     const gs = gridSize();
     const offset = 2 * gs;
     const layout = [
         { key: "table",       dx: -offset, dy: 0 },
         { key: "weaponRack",  dx:  offset, dy: 0 },
         { key: "cookingArea", dx: 0,       dy: -offset },
-        { key: "medicalBed",  dx: 0,       dy:  offset, condition: partyHasHealer }
+        { key: "medicalBed",  dx: 0,       dy:  offset }
     ];
     const phW = PLACEHOLDER_CAMP_STATION.width ?? 1;
     const phH = PLACEHOLDER_CAMP_STATION.height ?? 1;
@@ -1132,7 +1126,7 @@ export async function promoteAllPlaceholders() {
                 scaleX: texScale,
                 scaleY: texScale
             },
-            sort: CAMP_STATION_FLOOR_SORT,
+            sort: CAMP_FLOOR_FURNITURE_SORT,
             flags: { [MODULE_ID]: prev }
         };
         if (!sameFootprint) {
@@ -1151,4 +1145,89 @@ export async function promoteAllPlaceholders() {
         console.log(`${MODULE_ID} | promoteAllPlaceholders: ${updates.length} token(s) updated`);
     }
     return toPromote.map(t => t.flags?.[MODULE_ID]?.targetStationKey).filter(Boolean);
+}
+
+/**
+ * @param {object|undefined} f - `flags[MODULE_ID]` (or data.flags fragment)
+ * @returns {number|null} Target `sort` for z-order guards, or null if not Respite-controlled.
+ */
+export function getTargetSortForModuleCampFlags(f) {
+    if (!f) return null;
+    if (f.isCampfireBase) return CAMPFIRE_PIT_SORT;
+    if (f.isCampfireToken) return CAMPFIRE_FLAME_FLOOR_SORT;
+    if (!f.isCampFurniture) return null;
+    if (f.isSharedStation || f.isPlaceholder || f.isPlayerGear) {
+        return CAMP_FLOOR_FURNITURE_SORT;
+    }
+    return null;
+}
+
+/**
+ * @param {TokenDocument|ClientDocument} document
+ * @returns {boolean}
+ */
+export function isCampFloorStackToken(document) {
+    return getTargetSortForModuleCampFlags(document.flags?.[MODULE_ID]) != null;
+}
+
+/**
+ * @param {object} data - TokenData passed to token creation
+ */
+export function applyCampFloorSortToPreCreateData(data) {
+    const t = getTargetSortForModuleCampFlags(data?.flags?.[MODULE_ID]);
+    if (t != null) data.sort = t;
+}
+
+/**
+ * Keeps Respite camp tokens under normal map tokens when `sort` changes
+ * (bring to front, paste, or max-sort for new tokens).
+ * @param {TokenDocument|ClientDocument} document
+ * @param {object} updateData
+ */
+export function clampCampFloorTokenInPreUpdate(document, updateData) {
+    if (!("sort" in updateData)) return;
+    const target = getTargetSortForModuleCampFlags(document.flags?.[MODULE_ID]);
+    if (target == null) return;
+    updateData.sort = target;
+}
+
+/**
+ * Batches z-order migration for the viewed scene. GM only.
+ * @param {Scene|null} scene
+ * @returns {Promise<void>}
+ */
+export async function enforceCampFloorFurnitureSortOnSceneIfGm(scene) {
+    if (!game.user.isGM || !scene?.tokens) return;
+    const updates = [];
+    for (const t of scene.tokens) {
+        const target = getTargetSortForModuleCampFlags(t.flags?.[MODULE_ID]);
+        if (target == null) continue;
+        if (t.sort !== target) {
+            updates.push({ _id: t.id, sort: target });
+        }
+    }
+    if (updates.length) {
+        await scene.updateEmbeddedDocuments("Token", updates);
+    }
+}
+
+/**
+ * Binds preCreate and canvasReady. Pair with `clampCampFloorTokenInPreUpdate` on the module `preUpdateToken` hook.
+ */
+export function registerCampFurnitureZOrderGuards() {
+    Hooks.on("preCreateToken", (_doc, data) => {
+        try {
+            applyCampFloorSortToPreCreateData(data);
+        } catch {
+            /* ignore */
+        }
+    });
+    Hooks.on("canvasReady", () => {
+        try {
+            const scene = canvas?.scene;
+            if (scene) void enforceCampFloorFurnitureSortOnSceneIfGm(scene);
+        } catch {
+            /* ignore */
+        }
+    });
 }

@@ -51,6 +51,11 @@
                     {
                         "type": "comfort_boost",
                         "description": "Effective comfort level increased by one tier for personal recovery."
+                    },
+                    {
+                        "type": "bonus_hd",
+                        "value": 1,
+                        "description": "Recover one additional Hit Die from deep, uninterrupted sleep."
                     }
                 ]
             }
@@ -357,7 +362,7 @@
         "id": "act_tend_wounds",
         "name": "Tend Wounds",
         "professions": [],
-        "description": "Care for an injured companion. Clean wounds, set bones, change dressings.",
+        "description": "Patch up an injured companion. Immediate healing before encounters, and boosts the target's recovery tier for the rest.",
         "restTypes": [
             "long",
             "short"
@@ -376,22 +381,26 @@
         },
         "outcomes": {
             "success": {
-                "narrative": "Your steady hands ease the pain. Your companion rests easier.",
+                "narrative": "Your steady hands ease the pain. Your companion rests easier tonight.",
                 "items": [],
                 "effects": [
                     {
-                        "type": "heal_bonus",
-                        "description": "Target character recovers an additional hit die worth of HP."
+                        "type": "immediate_heal",
+                        "description": "Target recovers one Hit Die worth of HP now, before encounters."
+                    },
+                    {
+                        "type": "target_comfort_boost",
+                        "description": "Target's effective comfort increased by one tier for rest recovery."
                     }
                 ]
             },
             "failure": {
-                "narrative": "You do your best, but the wounds are stubborn.",
+                "narrative": "You do your best, but the wounds are stubborn. A little help is better than none.",
                 "items": [],
                 "effects": [
                     {
-                        "type": "heal_partial",
-                        "description": "Target recovers a small amount of HP. Not a wasted effort."
+                        "type": "immediate_heal_partial",
+                        "description": "Target recovers a small amount of HP (your Wisdom modifier)."
                     }
                 ]
             }
@@ -408,9 +417,10 @@
     },
     {
         "id": "act_scout",
+        "disabled": true,
         "name": "Scout Perimeter",
         "professions": [],
-        "description": "Move through the surrounding area. Map escape routes, identify approaches, spot threats before they arrive.",
+        "description": "Move through the surrounding area. Identify approaches and spot threats before they arrive.",
         "restTypes": [
             "long"
         ],
@@ -434,7 +444,7 @@
                 "effects": [
                     {
                         "type": "early_warning",
-                        "description": "Escape routes mapped, blind spots covered."
+                        "description": "Approaches identified, blind spots covered."
                     }
                 ]
             },
@@ -804,7 +814,7 @@
         "name": "Training",
         "professions": [],
         "category": "active",
-        "description": "Drill, study, or practice during a rest. Make an ability check (using your highest score) against DC 15. Consecutive rests training yield diminishing returns. Ineffective beyond level 5.",
+        "description": "Drill, study, or practice during a rest. Make an ability check (using your highest score) against DC 13. Consecutive rests training yield diminishing returns. Ineffective beyond level 5.",
         "restTypes": [
             "long"
         ],
@@ -813,7 +823,7 @@
         },
         "check": {
             "ability": "best",
-            "dc": 15,
+            "dc": 13,
             "advantageIf": []
         },
         "outcomes": {

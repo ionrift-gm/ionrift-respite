@@ -28,6 +28,11 @@
         </div>
         <div class="activity-detail-body">
             <p class="detail-description">{{activityDetail.description}}</p>
+            {{#if activityDetail.advisory}}
+            <div class="detail-advisory {{#if activityDetail.advisoryUrgent}}urgent{{/if}}">
+                <i class="fas fa-info-circle"></i> {{activityDetail.advisory}}
+            </div>
+            {{/if}}
             {{#if activityDetail.check}}
             <div class="detail-check">
                 <i class="fas fa-dice-d20"></i>
@@ -95,6 +100,29 @@
                 {{activityDetail.armorHint.text}}
             </div>
             {{/if}}
+            {{#if activityDetail.armorWarning}}
+            <div class="armor-advisory {{#if activityDetail.armorWarning.isDoffed}}doffed{{/if}}" title="{{activityDetail.armorWarning.hint}}">
+                <i class="fas fa-shield-alt"></i>
+                <span class="armor-advisory-text">
+                    {{#if activityDetail.armorWarning.isDoffed}}
+                    {{activityDetail.armorWarning.name}} removed for rest
+                    {{else}}
+                    {{activityDetail.armorWarning.name}} ({{activityDetail.armorWarning.type}}) - don time: {{activityDetail.armorWarning.donTime}}
+                    {{/if}}
+                </span>
+                <button type="button" class="btn-armor-toggle"
+                    data-actor-id="{{activityDetail.armorWarning.actorId}}"
+                    data-item-id="{{activityDetail.armorWarning.itemId}}"
+                    data-is-doffed="{{activityDetail.armorWarning.isDoffed}}"
+                    title="{{#if activityDetail.armorWarning.isDoffed}}Re-equip armor{{else}}Remove armor for rest{{/if}}">
+                    {{#if activityDetail.armorWarning.isDoffed}}
+                    <i class="fas fa-shield-alt"></i> Don
+                    {{else}}
+                    <i class="fas fa-bed"></i> Doff
+                    {{/if}}
+                </button>
+            </div>
+            {{/if}}
             {{#if activityDetail.combatModifiers.description}}
             <div class="combat-readiness-hint">
                 <i class="fas fa-shield-alt"></i> <em>If combat occurs:</em> {{activityDetail.combatModifiers.description}}
@@ -155,7 +183,7 @@
     {{#if (and showTabBar (eq stationPanelTab "fire") fireTabContext)}}
     <div class="station-fire-tab glass-ui" data-station-fire-tab="1">
         {{#if fireTabContext.campFireTabColdCamp}}
-        <p class="station-fire-cold-hint glass-ui"><i class="fas fa-moon"></i> Cold camp. The table chose no fire; change that from the main rest flow if the scene allows it.</p>
+        <p class="station-fire-cold-hint glass-ui"><i class="fas fa-moon"></i> Cold camp. The table chose no fire.</p>
         {{else}}
         {{#if fireTabContext.campFireEncounterHint}}
         <p class="station-fire-encounter-hint"><i class="fas fa-eye"></i> {{fireTabContext.campFireEncounterHint}}</p>
@@ -233,9 +261,13 @@
     <div class="station-personal-card glass-ui">
         <div class="station-personal-header">
             <span class="station-personal-comfort-label">{{actorName}}</span>
+            {{#if campPersonalCard.personalMatchesCamp}}
+            <span class="station-personal-comfort-same" title="Personal rest tier matches the camp baseline above.">(same as camp)</span>
+            {{else}}
             <span class="comfort-tier comfort-{{campPersonalCard.personalComfort}}">
                 {{campPersonalCard.personalComfortLabel}}
             </span>
+            {{/if}}
         </div>
         {{#if campPersonalCard.gearSlots.length}}
         <div class="station-personal-gear-grid" data-camp-gear-row="1" data-station-personal-gear="1">
@@ -257,7 +289,9 @@
                 </div>
                 {{/if}}
                 {{#if isPlaced}}
-                <p class="station-personal-gear-slot-placed"><i class="fas fa-check"></i> Placed on map</p>
+                <button type="button" class="camp-gear-reclaim-btn" data-action="reclaimCampGear" data-actor-id="{{actorId}}" data-gear-type="{{gearType}}">
+                    <i class="fas fa-check" aria-hidden="true"></i> Pick up
+                </button>
                 {{/if}}
                 {{#if isReadonlyOwned}}
                 <p class="station-personal-gear-slot-readonly">This character places their own gear</p>
@@ -269,19 +303,26 @@
         <p class="station-personal-footnote">Place within 3 squares of the campfire. Tokens cannot overlap.</p>
         {{/if}}
         <div class="station-personal-recovery">
-            <div class="recovery-line recovery-hp">
+            <div class="recovery-line recovery-hp{{#if campPersonalCard.recovery.hpSeverity}} {{campPersonalCard.recovery.hpSeverity}}{{/if}}">
                 <i class="fas fa-heart"></i> {{campPersonalCard.recovery.hpLabel}}
             </div>
-            <div class="recovery-line recovery-hd">
+            <div class="recovery-line recovery-hd{{#if campPersonalCard.recovery.hdSeverity}} {{campPersonalCard.recovery.hdSeverity}}{{/if}}">
                 <i class="fas fa-dice-d6"></i> {{campPersonalCard.recovery.hdLabel}}
             </div>
             {{#if campPersonalCard.recovery.exhaustionDC}}
-            <div class="recovery-line recovery-exhaustion warning">
+            <div class="recovery-line recovery-exhaustion{{#if campPersonalCard.recovery.exhaustionSeverity}} {{campPersonalCard.recovery.exhaustionSeverity}}{{/if}}">
                 <i class="fas fa-exclamation-triangle"></i>
                 {{campPersonalCard.recovery.exhaustionLabel}}
             </div>
             {{/if}}
         </div>
+        {{#if campPersonalCard.hasMitigationHints}}
+        <div class="station-recovery-hints" aria-label="Ways to improve this rest">
+            {{#each campPersonalCard.mitigationHints}}
+            <p class="station-recovery-hint-line">{{this}}</p>
+            {{/each}}
+        </div>
+        {{/if}}
     </div>
     {{/if}}
     {{/if}}
@@ -304,6 +345,14 @@
                     {{#if this.hint}}<span class="card-hint {{#if this.hintUrgent}}urgent{{/if}}">{{this.hint}}</span>{{/if}}
                 </div>
             </button>
+            {{else if this.nonViable}}
+            <div class="activity-card station-activity non-viable" title="{{this.fadedHint}}">
+                <i class="{{this.icon}}" aria-hidden="true"></i>
+                <div class="card-body">
+                    <span class="card-name">{{this.name}}</span>
+                    {{#if this.hint}}<span class="card-hint non-viable-hint">{{this.hint}}</span>{{/if}}
+                </div>
+            </div>
             {{else}}
             <div class="activity-card station-activity faded" title="{{this.fadedHint}}">
                 <i class="{{this.icon}}" aria-hidden="true"></i>
@@ -341,6 +390,14 @@
                     {{#if this.hint}}<span class="card-hint {{#if this.hintUrgent}}urgent{{/if}}">{{this.hint}}</span>{{/if}}
                 </div>
             </button>
+            {{else if this.nonViable}}
+            <div class="activity-card station-activity non-viable" title="{{this.fadedHint}}">
+                <i class="{{this.icon}}" aria-hidden="true"></i>
+                <div class="card-body">
+                    <span class="card-name">{{this.name}}</span>
+                    {{#if this.hint}}<span class="card-hint non-viable-hint">{{this.hint}}</span>{{/if}}
+                </div>
+            </div>
             {{else}}
             <div class="activity-card station-activity faded" title="{{this.fadedHint}}">
                 <i class="{{this.icon}}" aria-hidden="true"></i>
@@ -500,6 +557,14 @@
                     {{#if this.hint}}<span class="card-hint {{#if this.hintUrgent}}urgent{{/if}}">{{this.hint}}</span>{{/if}}
                 </div>
             </button>
+            {{else if this.nonViable}}
+            <div class="activity-card station-activity non-viable" title="{{this.fadedHint}}">
+                <i class="{{this.icon}}" aria-hidden="true"></i>
+                <div class="card-body">
+                    <span class="card-name">{{this.name}}</span>
+                    {{#if this.hint}}<span class="card-hint non-viable-hint">{{this.hint}}</span>{{/if}}
+                </div>
+            </div>
             {{else}}
             <div class="activity-card station-activity faded" title="{{this.fadedHint}}">
                 <i class="{{this.icon}}" aria-hidden="true"></i>

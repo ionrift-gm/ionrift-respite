@@ -8,8 +8,8 @@
  *   1. A world Actor whose name matches the setting — reads prototypeToken.light
  *   2. Built-in defaults (warm torch glow, smaller than campfire)
  *
- * Token name is configurable via the `torchTokenName` module setting
- * (default: "Perimeter Torch"). Matching is case-insensitive.
+ * Token name comes from the world `torchTokenName` setting (no module UI; default "Perimeter Torch").
+ * Matching is case-insensitive.
  *
  * Only the GM may update tokens. Players emit a socket request and the
  * GM-side handler calls these methods.

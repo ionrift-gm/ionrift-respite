@@ -85,7 +85,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             stationIdentifyScannedItem: StationActivityDialog.#onStationIdentifyScannedItem,
             submitWorkbenchIdentify: StationActivityDialog.#onSubmitWorkbenchIdentify,
             workbenchIdentifyRemovePotion: StationActivityDialog.#onWorkbenchIdentifyRemovePotion,
-            dismissWorkbenchIdentifyAck: StationActivityDialog.#onDismissWorkbenchIdentifyAck
+            dismissWorkbenchIdentifyAck: StationActivityDialog.#onDismissWorkbenchIdentifyAck,
+            reclaimCampGear: StationActivityDialog.#onReclaimCampGearFromDialog
         }
     };
 
@@ -180,14 +181,16 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 const advRaw = advisory.text != null ? String(advisory.text).trim() : "";
                 const hasAdvisory = advRaw.length > 0;
                 const hintText = hasAdvisory ? advRaw : (act.description ?? "").trim() || "";
+                const nv = !!advisory.nonViable;
                 return {
                     id:          act.id,
                     name:        act.name,
                     hint:        hintText,
                     hintUrgent:  hasAdvisory && !!advisory.urgent,
                     icon:        ACTIVITY_ICONS[act.id] ?? act.icon ?? "fas fa-circle",
-                    available:   true,
-                    fadedHint:   null
+                    available:   !nv,
+                    nonViable:   nv,
+                    fadedHint:   nv ? hintText : null
                 };
             }
             return {
@@ -197,6 +200,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 hintUrgent:  false,
                 icon:        ACTIVITY_ICONS[act.id] ?? act.icon ?? "fas fa-circle",
                 available:   false,
+                nonViable:   false,
                 fadedHint:   act.fadedHint ?? "Not available."
             };
         };
@@ -337,10 +341,25 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         let checkLabel = null;
         if (activity.check) {
             const comfortDcMod = { safe: 0, sheltered: 0, rough: 2, hostile: 5 };
-            const baseDc = activity.check.dc ?? 12;
-            const adjustedDc = baseDc + (comfortDcMod[comfort] ?? 0);
+            const comfortMod = comfortDcMod[comfort] ?? 0;
 
-            let skillPart = "";
+            const followUpCurrent =
+                this._followUpValue
+                ?? this._restApp?._gmFollowUps?.get(actor?.id)
+                ?? this._restApp?._getFollowUpForCharacter?.(actor?.id)
+                ?? null;
+
+            let baseDc = activity.check.dc ?? 12;
+            if (activity.check.dynamicDc === "copySpell") {
+                const spellLevel = Math.min(
+                    9,
+                    Math.max(1, parseInt(followUpCurrent || activity.followUp?.default || "1", 10) || 1)
+                );
+                baseDc = 10 + spellLevel;
+            }
+
+            /** Short skill/ability label only (no modifier; players use their own sheet). */
+            let checkKind = "";
             if (activity.check.skill) {
                 let chosenSkill = activity.check.skill;
                 if (activity.check.altSkill && actor) {
@@ -348,10 +367,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                     const alt = actor.system?.skills?.[activity.check.altSkill]?.total ?? 0;
                     if (alt > primary) chosenSkill = activity.check.altSkill;
                 }
-                const skillData = actor?.system?.skills?.[chosenSkill];
-                const mod = skillData?.total ?? skillData?.mod ?? 0;
-                const sign = mod >= 0 ? "+" : "";
-                skillPart = `${chosenSkill.charAt(0).toUpperCase() + chosenSkill.slice(1)} (${sign}${mod})`;
+                checkKind = chosenSkill.charAt(0).toUpperCase() + chosenSkill.slice(1);
             } else if (activity.check.ability) {
                 let abilityKey = activity.check.ability;
                 if (abilityKey === "best" && actor?.system?.abilities) {
@@ -361,11 +377,17 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                     }
                     abilityKey = bestKey;
                 }
-                const mod = actor?.system?.abilities?.[abilityKey]?.mod ?? 0;
-                const sign = mod >= 0 ? "+" : "";
-                skillPart = `${abilityKey.toUpperCase()} (${sign}${mod})`;
+                checkKind = abilityKey.toUpperCase();
             }
-            checkLabel = `${skillPart} DC ${adjustedDc}`;
+
+            if (activity.check.dynamicDc === "copySpell") {
+                checkLabel = `${checkKind} check, DC ${baseDc}`;
+            } else if (comfortMod > 0) {
+                const totalDc = baseDc + comfortMod;
+                checkLabel = `${checkKind} check, DC ${totalDc} (${baseDc} activity, +${comfortMod} from ${comfort} terrain)`;
+            } else {
+                checkLabel = `${checkKind} check, DC ${baseDc}`;
+            }
         }
 
         let followUpData = null;
@@ -453,6 +475,11 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         } catch (e) { /* setting may not exist */ }
 
         const isCrafting = !!activity.crafting?.enabled;
+        const armorWarning = this._restApp?.getArmorWarningForActivityDetail?.(actor, activity) ?? null;
+
+        const ps = this._partyState ?? buildPartyState([], new Map(), 14);
+        const advisory = actor ? getActivityAdvisory(activityId, actor, ps) : null;
+        const advText = advisory?.text != null ? String(advisory.text).trim() : "";
 
         return {
             activityDetail: {
@@ -464,6 +491,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 outcomeHints,
                 followUpData,
                 armorHint,
+                armorWarning,
+                advisory: advText || null,
+                advisoryUrgent: !!advisory?.urgent,
                 combatModifiers: activity.combatModifiers ?? null,
                 isCrafting,
                 characterId: actor?.id
@@ -654,6 +684,17 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         await this.render(true);
     }
 
+    static async #onReclaimCampGearFromDialog(event, target) {
+        const app = this._restApp;
+        if (!app) return;
+        const { RestSetupApp } = await import("./RestSetupApp.js");
+        await RestSetupApp.reclaimCampGearFromDialog(app, event, target);
+        if (app._phase === "activity" && typeof app.refreshCanvasStationOverlaysIfActivity === "function") {
+            app.refreshCanvasStationOverlaysIfActivity();
+        }
+        await this.render(true);
+    }
+
     static async #onStationDetectMagicScan() {
         if (!this._restApp?.runDetectMagicScan) return;
         await this._restApp.runDetectMagicScan();
@@ -676,6 +717,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         queueMicrotask(() => this._scheduleWorkbenchAckRevealIfNeeded());
         queueMicrotask(() => this._bindFollowUpSelect());
         queueMicrotask(() => this._bindCampGearIfNeeded());
+        queueMicrotask(() => this._bindStationArmorTogglesIfNeeded());
     }
 
     _bindCampGearIfNeeded() {
@@ -683,6 +725,16 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         if (this._station?.id !== "campfire" || !this._restApp?._bindCampDragHandlers) return;
         if (!this.element.querySelector("[data-camp-gear-row]")) return;
         this._restApp._bindCampDragHandlers(this.element);
+    }
+
+    _bindStationArmorTogglesIfNeeded() {
+        if (!this.rendered || !this.element || this._dialogState !== "detail") return;
+        if (!this.element.querySelector(".btn-armor-toggle")) return;
+        if (!this._restApp?._bindArmorToggleHandlers) return;
+        this._restApp._bindArmorToggleHandlers(this.element, () => {
+            this._restApp.render();
+            void this.render(true);
+        });
     }
 
     _bindFollowUpSelect() {

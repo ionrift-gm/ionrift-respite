@@ -69,17 +69,18 @@ export const ACTIVITY_ICONS = {
 
 /** Static fallback hints for activities without dynamic advisories */
 const ACTIVITY_HINTS_STATIC = {
-    act_study: "Ask the GM about a clue or detail",
-    act_tell_tales: "Performance check, may grant Inspiration",
+    act_study: "Skill check DC 12. On success, GM may share a clue or detail",
+    act_tell_tales: "Performance DC 10. Inspiration for one ally, all on exceptional",
     act_cook: "Prepare a meal from ingredients",
     act_brew: "Brew a potion or salve",
     act_tailor: "Stitch materials into gear",
     act_craft: "Work raw materials into items",
-    act_other: "Roleplay, journal, socialise"
+    act_other: "No check, no mechanical effect"
 };
 
 /**
  * Generate a contextual advisory for an activity card.
+ * Advisory text is player-visible. Never include encounter DC or GM-only data.
  * @param {string} activityId - The activity ID
  * @param {Actor5e} actor - The actor considering this activity
  * @param {object} partyState - Pre-computed party state from buildPartyState()
@@ -95,62 +96,114 @@ export function getActivityAdvisory(activityId, actor, partyState) {
 
     switch (activityId) {
         case "act_keep_watch": {
+            const watchers = partyState.watcherCount ?? 0;
             if (!partyState.hasWatcher)
-                return { text: "No one is watching – party vulnerable", urgent: true };
-            return { text: "Can't be surprised, +3 initiative", urgent: false };
+                return { text: "No one on watch. Watcher: +3 initiative, surprise immune, +1 party initiative", urgent: true };
+            if (watchers >= 2)
+                return { text: `${watchers} watchers already assigned. Consider another activity`, urgent: false };
+            return { text: "On watch: +3 initiative, surprise immune, +1 party initiative", urgent: false };
         }
         case "act_tend_wounds": {
             const injured = partyState.injuredMembers.filter(m => m.id !== actor.id);
-            if (injured.length) {
-                const worst = injured[0];
-                return { text: `${worst.name} is at ${worst.hpPct}% HP`, urgent: worst.hpPct < 50 };
-            }
-            return { text: "Medicine check, heals a companion", urgent: false };
+            const hasKit = actor.items?.some(i =>
+                i.name?.toLowerCase().includes("healer") && i.name?.toLowerCase().includes("kit")
+                && ((i.system?.uses?.value ?? i.system?.quantity ?? 0) > 0)
+            );
+            const hasFeat = actor.items?.some(i => i.type === "feat" && i.name?.toLowerCase() === "healer");
+            const gearNote = hasFeat && hasKit ? " (Healer feat + kit)" : hasKit ? " (kit: advantage)" : "";
+            if (!injured.length)
+                return { text: "No one is injured", urgent: false, nonViable: true };
+            const worst = injured[0];
+            if (worst.hpPct < 50)
+                return { text: `${worst.name} at ${worst.hpPct}% HP. Heals now + boosts their recovery tier${gearNote}`, urgent: true };
+            return { text: `${worst.name} at ${worst.hpPct}% HP. Heals now + boosts their recovery tier${gearNote}`, urgent: false };
         }
         case "act_defenses": {
-            const dc = partyState.encounterDC ?? 14;
-            if (dc <= 10)
-                return { text: `Encounter DC is ${dc} – defenses would help`, urgent: true };
-            return { text: "Lowers encounter risk for the party", urgent: false };
+            if (partyState.hasDefenses)
+                return { text: "Someone is already setting defenses. Consider another activity", urgent: false };
+            return { text: "On success, lowers encounter chance by 2 and grants +1 party initiative", urgent: false };
         }
         case "act_scout": {
-            const dc = partyState.encounterDC ?? 14;
-            if (dc <= 10)
-                return { text: "High encounter risk – scout escape routes", urgent: true };
-            return { text: "Stealth/Perception check, maps escape routes", urgent: false };
+            if (partyState.hasScout)
+                return { text: "Someone is already scouting. Consider another activity", urgent: false };
+            return { text: "On success, advantage on initiative and surprise", urgent: false };
         }
         case "act_rest_fully": {
-            if (hdDeficit >= 2)
-                return { text: `Missing ${hdDeficit} Hit Dice – rest to recover`, urgent: true };
-            if (hpPct < 50)
-                return { text: `At ${hpPct}% HP – full rest maximises recovery`, urgent: true };
-            return { text: "Best recovery, but vulnerable if attacked", urgent: false };
+            const comfortTier = partyState.comfort ?? "sheltered";
+            const isHostile = comfortTier === "hostile";
+            const isRough = comfortTier === "rough";
+            const adapter = game.ionrift?.respite?.adapter;
+            const exhaustion = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+
+            const HD_PENALTY = { hostile: 2, rough: 1, sheltered: 0, safe: 0 };
+            const BOOST_TO = { hostile: "rough", rough: "sheltered", sheltered: "safe", safe: "safe" };
+            const basePenalty = HD_PENALTY[comfortTier] ?? 0;
+            const boostedPenalty = HD_PENALTY[BOOST_TO[comfortTier]] ?? 0;
+            const rawHdRecovery = Math.max(1, Math.floor(hdMax / 2));
+            const hdWithout = Math.max(0, rawHdRecovery - basePenalty);
+            const hdWith = Math.max(0, rawHdRecovery - boostedPenalty) + 1;
+            const effectiveGain = Math.max(0, Math.min(hdWith, hdDeficit) - Math.min(hdWithout, hdDeficit));
+
+            if (isHostile) {
+                if (hdDeficit >= 1)
+                    return { text: `Hostile camp. Rest Fully recovers ${effectiveGain || 1} extra HD, removes HP cap`, urgent: true };
+                if (hpPct < 100)
+                    return { text: "Hostile camp. Rest Fully removes the 75% HP cap", urgent: true };
+                return { text: "All HD and HP full. No recovery benefit", urgent: false, nonViable: true };
+            }
+            if (isRough) {
+                if (effectiveGain > 0) {
+                    const exNote = exhaustion >= 1 ? ", clears exhaustion DC" : "";
+                    return { text: `Rough camp. Rest Fully recovers ${effectiveGain} extra HD${exNote}`, urgent: true };
+                }
+                if (exhaustion >= 1)
+                    return { text: `Rough camp + ${exhaustion} exhaustion. Rest Fully clears exhaustion DC`, urgent: true };
+                if (hdDeficit >= 1)
+                    return { text: "Recovery at this comfort covers all missing HD", urgent: false, nonViable: true };
+                return { text: "No recovery benefit at this comfort", urgent: false, nonViable: true };
+            }
+            if (effectiveGain > 0)
+                return { text: `Missing ${hdDeficit} HD. Rest Fully recovers +${effectiveGain} extra HD`, urgent: false };
+            if (hdDeficit >= 1)
+                return { text: "Recovery at this comfort covers all missing HD", urgent: false, nonViable: true };
+            return { text: "All HD and HP full. No recovery benefit", urgent: false, nonViable: true };
         }
         case "act_pray": {
-            const tempHP = hp.temp ?? 0;
-            if (tempHP === 0 && hpPct < 100)
-                return { text: "No temp HP – meditation could help", urgent: false };
-            return { text: "Temp HP on success", urgent: false };
+            const prof = actor.system?.attributes?.prof ?? 2;
+            return { text: `On success, ${prof} temp HP (proficiency bonus)`, urgent: false };
         }
         case "act_fletch": {
             const ammo = _countAmmo(actor);
+            const prof = actor.system?.attributes?.prof ?? 2;
             if (ammo !== null && ammo < 10)
-                return { text: `Low ammo: ${ammo} remaining`, urgent: true };
-            return { text: "Craft arrows or bolts", urgent: false };
+                return { text: `Low ammo: ${ammo} remaining. Yields 1d4+${prof} on success`, urgent: true };
+            return { text: `Craft arrows or bolts. Yields 1d4+${prof} on success`, urgent: false };
         }
         case "act_train": {
+            const level = actor.system?.details?.level ?? 1;
+            if (level > 5)
+                return { text: "Training has no effect above level 5", urgent: false, nonViable: true };
             const xp = actor.system?.details?.xp ?? {};
-            if (xp.max && xp.value != null) {
-                const gap = xp.max - xp.value;
-                if (gap > 0 && gap <= 100)
-                    return { text: `${gap} XP to next level`, urgent: true };
-            }
-            return { text: "Gain XP (levels 1–5 only)", urgent: false };
+            const gap = (xp.max && xp.value != null) ? (xp.max - xp.value) : null;
+            const streak = actor.getFlag?.("ionrift-respite", "trainingStreak") ?? 0;
+            const baseXP = 45;
+            const reduction = streak * 5;
+            const effectiveXP = Math.max(baseXP - reduction, 0);
+            const effectiveFailXP = Math.max(15 - reduction, 0);
+            if (effectiveXP <= 0)
+                return { text: "Diminishing returns: no XP gain this rest. Try something else", urgent: false, nonViable: true };
+            if (gap !== null && gap > 0 && gap <= effectiveXP)
+                return { text: `${gap} XP to level up. Training can close that gap this rest`, urgent: true };
+            if (streak >= 2)
+                return { text: `Training streak (${streak}): XP reduced to ${effectiveXP} success / ${effectiveFailXP} fail`, urgent: false };
+            if (gap !== null && gap > 0)
+                return { text: `${gap} XP to next level. ${effectiveXP} XP on success, ${effectiveFailXP} on fail`, urgent: false };
+            return { text: `${effectiveXP} XP on success (DC 13 ability check)`, urgent: false };
         }
         case "act_attune":
-            return { text: "Bond with a magical item", urgent: false };
+            return { text: "No check. Attune to one magical item during rest", urgent: false };
         case "act_scribe":
-            return { text: "Transcribe a spell (costs gold)", urgent: false };
+            return { text: "Arcana check (DC 10 + spell level), 50gp per level. Scroll consumed regardless", urgent: false };
         default:
             return { text: ACTIVITY_HINTS_STATIC[activityId] ?? null, urgent: false };
     }
@@ -164,8 +217,14 @@ export function getActivityAdvisory(activityId, actor, partyState) {
  * @param {number} encounterDC - Current effective encounter DC
  * @returns {object}
  */
-export function buildPartyState(partyActors, pendingSelections, encounterDC) {
-    const hasWatcher = [...(pendingSelections?.values() ?? [])].includes("act_keep_watch");
+export function buildPartyState(partyActors, pendingSelections, encounterDC, comfort) {
+    const picks = [...(pendingSelections?.values() ?? [])];
+    const watcherCount = picks.filter(id => id === "act_keep_watch").length;
+    const hasWatcher = watcherCount > 0;
+    const hasScout = picks.includes("act_scout");
+    const hasDefenses = picks.includes("act_defenses");
+    const partySize = partyActors.length;
+
     const injuredMembers = partyActors
         .map(a => {
             const hp = a.system?.attributes?.hp ?? {};
@@ -175,7 +234,13 @@ export function buildPartyState(partyActors, pendingSelections, encounterDC) {
         .filter(m => m.hpPct < 100)
         .sort((a, b) => a.hpPct - b.hpPct);
 
-    return { hasWatcher, injuredMembers, encounterDC: encounterDC ?? 14 };
+    return {
+        hasWatcher, watcherCount, hasScout, hasDefenses,
+        partySize,
+        injuredMembers,
+        encounterDC: encounterDC ?? 14,
+        comfort: comfort ?? "sheltered"
+    };
 }
 
 /** Count ammunition (arrows, bolts, darts) in an actor's inventory */
@@ -212,8 +277,8 @@ export const CAMP_STATIONS = [
         label: "Weapon Rack",
         icon: "fas fa-shield-alt",
         furnitureKey: "weaponRack",
-        tagline: "Fletch, defences, scout, watch, other",
-        activities: ["act_fletch", "act_defenses", "act_scout", "act_keep_watch", "act_other"]
+        tagline: "Fletch, defences, watch, other",
+        activities: ["act_fletch", "act_defenses", "act_keep_watch", "act_other"]
     },
     {
         id: "medical_bed",
@@ -228,8 +293,8 @@ export const CAMP_STATIONS = [
         label: "Your Bedroll",
         icon: "fas fa-bed",
         furnitureKey: null,
-        tagline: "Rest, pray, train, tales, craft, tailor",
-        activities: ["act_rest_fully", "act_pray", "act_train", "act_tell_tales", "act_craft", "act_tailor"]
+        tagline: "Rest, pray, train, tales, craft, tailor, other",
+        activities: ["act_rest_fully", "act_pray", "act_train", "act_tell_tales", "act_craft", "act_tailor", "act_other"]
     },
     {
         id: "campfire",

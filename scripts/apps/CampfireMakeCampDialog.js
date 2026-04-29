@@ -152,7 +152,9 @@ export class CampfireMakeCampDialog extends HandlebarsApplicationMixin(Applicati
 
     async _afterRestAction() {
         try {
-            await this._restApp?.render?.({ force: true });
+            if (!this._restApp?._gmMinimizedToFooter) {
+                await this._restApp?.render?.({ force: true });
+            }
         } catch { /* ignore */ }
         try {
             await this.render({ force: true });

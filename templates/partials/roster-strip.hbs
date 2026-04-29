@@ -8,6 +8,7 @@
             <span class="roster-portrait-wrap">
                 <img class="roster-portrait" src="{{img}}" alt="{{name}}">
                 {{#if isAfk}}<span class="roster-afk-mug" aria-hidden="true"><i class="fas fa-mug-hot"></i></span>{{/if}}
+                {{#if isBeddedDown}}<span class="roster-zzz" aria-hidden="true">Zzz</span>{{/if}}
             </span>
             <span class="roster-name">{{name}}</span>
             {{#if activityLabel}}<span class="roster-activity-label" title="{{activityLabel}}">{{activityLabel}}</span>{{/if}}

@@ -222,14 +222,21 @@ export class CampGearScanner {
             const currentHd = actor?.system?.attributes?.hd?.value ?? totalHd;
             const exitHd = Math.min(totalHd, currentHd + hdRecovered);
 
+            const hpSeverity = rules.hpFraction < 1.0 ? "danger" : "";
+            let hdSeverity = "";
+            if (hdRecovered === 0) hdSeverity = "danger";
+            else if (rules.hdPenalty > 0) hdSeverity = "warning";
+
             return {
                 ...m,
                 personalComfort,
                 personalComfortLabel: rules.label,
+                personalMatchesCamp: personalComfort === campComfort,
                 gearBreakdown: breakdown,
                 recovery: {
                     hpFull: rules.hpFraction >= 1.0,
                     hpLabel: rules.hpFraction >= 1.0 ? "Regain all HP" : `Regain ${Math.round(rules.hpFraction * 100)}% of max HP`,
+                    hpSeverity,
                     hdLabel: (() => {
                         const singPlur = hdRecovered === 1 ? "Hit Die" : "Hit Dice";
                         const pool = `will be ${exitHd}/${totalHd} after rest`;
@@ -238,6 +245,7 @@ export class CampGearScanner {
                         }
                         return `Recover ${hdRecovered} ${singPlur}, ${pool}`;
                     })(),
+                    hdSeverity,
                     hdRecovered,
                     totalHd,
                     exhaustionDC: rules.exhaustionDC,
