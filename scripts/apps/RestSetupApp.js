@@ -85,6 +85,7 @@ import {
     _removeGmRestIndicator,
     _refreshGmRestIndicator,
     _refreshRejoinBar,
+    _ensureRejoinBar,
     showAfkPanel
 } from "../module.js";
 import { getPartyActors } from "../services/partyActors.js";
@@ -7206,13 +7207,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Updates the activity-phase rest bar progress line when the main window is minimised.
      */
     _updateRestBarProgress() {
-        const bar = document.getElementById("respite-gm-rest-bar");
-        if (!bar) return;
-        const span = bar.querySelector(".respite-bar-progress");
-        if (!span) return;
-        const total = getPartyActors().length;
-        const resolved = this._characterChoices.size;
-        span.textContent = `${resolved} of ${total} activities chosen`;
+        _refreshGmRestIndicator(this);
     }
 
     _pruneEarlyResultsWithoutChoice() {
@@ -8271,6 +8266,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
         this.render();
+
+        // Safety net: if the player RSA is not rendered after the phase transition
+        // (e.g., the app was retained-but-closed during activity phase and render()
+        // didn't produce a visible window), ensure the rejoin bar is visible so the
+        // player can see the current phase and resume the rest UI.
+        if (!this._isGM) {
+            // Use requestAnimationFrame so Foundry's render pipeline has a chance
+            // to complete before we check .rendered.
+            requestAnimationFrame(() => {
+                if (!this.rendered) {
+                    console.log(`${MODULE_ID} | Phase ${phase}: player RSA not rendered after phase change — ensuring rejoin bar`);
+                    _ensureRejoinBar(this);
+                }
+            });
+        }
     }
 
     /**
@@ -8496,6 +8506,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Single render with all state applied
         this.render();
+
+        // Safety net: ensure rejoin bar if player RSA fails to render
+        if (!this._isGM) {
+            requestAnimationFrame(() => {
+                if (!this.rendered) {
+                    console.log(`${MODULE_ID} | receiveRestSnapshot: player RSA not rendered — ensuring rejoin bar`);
+                    _ensureRejoinBar(this);
+                }
+            });
+        }
     }
 
     /**
