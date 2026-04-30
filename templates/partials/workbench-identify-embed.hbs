@@ -25,45 +25,6 @@
     </div>
     {{/if}}
 
-    {{#if magicScanComplete}}
-    {{#if isGmUser}}
-    <div class="magic-scan-results station-magic-scan">
-        {{#if magicScanResults.length}}
-        <div class="magic-scan-header"><i class="fas fa-hat-wizard"></i> Magical auras</div>
-        {{#each magicScanResults}}
-        <div class="magic-scan-actor">
-            <span class="magic-scan-actor-name">{{actorName}}'s gear:</span>
-            {{#each items}}
-            <div class="magic-scan-item {{#if identified}}identified{{/if}}">
-                <img src="{{img}}" class="magic-scan-item-img" alt="">
-                {{#if identified}}
-                <i class="fas fa-check-circle magic-identified-icon"></i>
-                <span class="magic-scan-item-name">{{trueName}}</span>
-                {{#if requiresAttunement}}<span class="magic-attune-hint">Requires attunement</span>{{/if}}
-                {{else}}
-                <i class="fas fa-magic magic-aura-icon"></i>
-                <span class="magic-scan-item-name">{{displayName}}</span>
-                {{#if school}}<span class="magic-school-tag">{{school}}</span>{{/if}}
-                <button type="button" class="btn-identify-item" data-action="stationIdentifyScannedItem"
-                    data-actor-id="{{../actorId}}" data-item-id="{{itemId}}">
-                    <i class="fas fa-scroll"></i> Identify
-                </button>
-                {{/if}}
-            </div>
-            {{/each}}
-        </div>
-        {{/each}}
-        {{else}}
-        <div class="magic-scan-none"><i class="fas fa-check"></i> No unidentified magical items found.</div>
-        {{/if}}
-    </div>
-    {{else}}
-    <div class="magic-scan-results station-magic-scan wb-ident-player-scan-note">
-        <p class="wb-ident-player-scan-hint"><i class="fas fa-eye"></i> Scan done. Drag unidentified items from the sheet onto the circles below.</p>
-    </div>
-    {{/if}}
-    {{/if}}
-
     {{#if isShortRestWorkbench}}
     <p class="wb-ident-hint">From the open character sheet, drag unidentified items to Focus (one non-potion) or Potions. Submit applies all staged changes. GM: roster strip picks whose bench is active.</p>
     {{else}}
