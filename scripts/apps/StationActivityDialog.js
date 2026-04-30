@@ -569,6 +569,33 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const resolver = this._restApp._activityResolver;
         const activity = resolver?.activities?.get(activityId);
 
+        // Armor penalty gate: warn before locking an activity that penalises sleeping in armor.
+        if (!activity?.armorSleepWaiver) {
+            try {
+                const armorRuleEnabled = game.settings.get("ionrift-respite", "armorDoffRule");
+                if (armorRuleEnabled) {
+                    const equippedArmor = this._actor?.items?.find(i =>
+                        i.type === "equipment"
+                        && i.system?.equipped
+                        && ["medium", "heavy"].includes(i.system?.type?.value ?? i.system?.armor?.type)
+                    );
+                    if (equippedArmor) {
+                        const confirmFn = game.ionrift?.library?.confirm ?? Dialog.confirm.bind(Dialog);
+                        const proceed = await confirmFn({
+                            title: "Sleeping in Armor",
+                            content: `<p><strong>${equippedArmor.name}</strong> is equipped. Sleeping in medium or heavy armor limits recovery to 1/4 Hit Dice and prevents exhaustion reduction (Xanathar's rules).</p><p>Doff the armor before confirming, or proceed and accept the penalty.</p>`,
+                            yesLabel: "Confirm Anyway",
+                            noLabel: "Cancel",
+                            yesIcon: "fas fa-check",
+                            noIcon: "fas fa-times",
+                            defaultYes: false,
+                        });
+                        if (!proceed) return;
+                    }
+                }
+            } catch (e) { /* setting may not be registered */ }
+        }
+
         if (activity?.crafting?.enabled) {
             await this._restApp.finalizeActivityChoiceFromStation(
                 this._actor?.id, activityId, this._canvasStationId
