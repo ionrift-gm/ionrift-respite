@@ -432,12 +432,12 @@ export class WorkbenchDelegate {
             }
             const item = actor.items.get(itemId);
             if (!item) return { ok: false, msg: "Item not found." };
-            if (!itemIsWorkbenchUnidentified(actor, item)) {
-                return { ok: false, msg: "That item is already identified or cannot be focused here." };
-            }
             const isPotion = itemIsDnD5ePotionType(item);
-            if (zone === "gear" && isPotion) {
-                return { ok: false, msg: "Drop potions onto the potion circle." };
+            if (zone === "gear") {
+                if (isPotion) return { ok: false, msg: "Drop potions onto the potion circle." };
+                if (!itemIsWorkbenchUnidentified(actor, item)) {
+                    return { ok: false, msg: "That item is already identified." };
+                }
             }
             if (zone === "potion" && !isPotion) {
                 return { ok: false, msg: "Drop that item onto the focus circle." };
