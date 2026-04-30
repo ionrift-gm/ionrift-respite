@@ -4,7 +4,10 @@
  * Centralizes image path resolution for Respite with a two-tier model:
  *
  *   - Art pack imported (via Zip Importer): resolve from ionrift-data/respite/art/
- *   - Art pack absent: return the universal fallback banner directly
+ *   - Art pack raw folder: resolve from ionrift-respite-art/
+ *   - Art pack absent: return the universal fallback (banner or core SVG)
+ *
+ * Handles both terrain banners and camp station tokens.
  *
  * When hand-drawn per-terrain art ships in the base module, add the
  * filenames to KNOWN_BASE_IMAGES so they resolve without probing.
@@ -12,6 +15,41 @@
 
 const MODULE_ID = "ionrift-respite";
 const FALLBACK_BANNER = `modules/${MODULE_ID}/assets/placeholder-banner.webp`;
+
+/** Raw art pack folder (Patreon zip dropped directly into Data). */
+const RAW_ART_FOLDER = "ionrift-respite-art";
+
+/**
+ * Station token filename map.
+ * Keys match CompoundCampPlacer FURNITURE / PLAYER_GEAR keys.
+ * Values are the webp filename inside assets/tokens/.
+ */
+const STATION_TOKEN_FILES = {
+    table:       "workbench.webp",
+    weaponRack:  "weapon_rack.webp",
+    medicalBed:  "medical_bed.webp",
+    cookingArea: "cooking_utensils.webp",
+    cookingBasic:"cooking_basic.webp",
+    bedroll:     "bedroll.webp",
+    tent:        "tent.webp",
+    messkit:     "messkit.webp",
+    campfire:    "campfire_pit.webp",
+    buildSite:   "build_site.webp"
+};
+
+/** Foundry core SVG fallbacks (used when art pack is absent). */
+const STATION_CORE_FALLBACKS = {
+    table:       "icons/svg/chest.svg",
+    weaponRack:  "icons/svg/sword.svg",
+    medicalBed:  "icons/svg/heal.svg",
+    cookingArea: "icons/svg/fire.svg",
+    cookingBasic:"icons/svg/fire.svg",
+    bedroll:     "icons/svg/sleep.svg",
+    tent:        "icons/svg/house.svg",
+    messkit:     "icons/svg/tankard.svg",
+    campfire:    "icons/svg/fire.svg",
+    buildSite:   "icons/svg/circle.svg"
+};
 
 // Forge VTT monkey-patches the global FilePicker but NOT the v13
 // namespaced version. Use the global on Forge so browse("forgevtt")
@@ -51,6 +89,15 @@ export class ImageResolver {
     /** Number of art files detected. */
     static #artFileCount = 0;
 
+    /** Whether station tokens were found in the art pack. */
+    static #hasStationTokens = false;
+
+    /** Set of discovered station token filenames (basenames). */
+    static #stationTokenFiles = new Set();
+
+    /** Base path for station token resolution (may differ from #basePath if tokens live in a different location). */
+    static #stationTokenBasePath = null;
+
     /** Terrain directory names found in the art pack. */
     static #artTerrains = [];
 
@@ -65,6 +112,9 @@ export class ImageResolver {
         this.#importedArtPath = null;
         this.#artFileCount = 0;
         this.#artTerrains = [];
+        this.#hasStationTokens = false;
+        this.#stationTokenFiles = new Set();
+        this.#stationTokenBasePath = null;
         this.#basePath = `modules/${MODULE_ID}`;
 
         // Check for GM disable flag
@@ -82,45 +132,88 @@ export class ImageResolver {
                 this.#importedArtPath = cache.path;
                 this.#basePath = cache.path;
                 this.#artTerrains = cache.terrains ?? [];
+                this.#hasStationTokens = cache.hasStationTokens ?? false;
+                this.#stationTokenFiles = new Set(cache.stationTokenFiles ?? []);
+                this.#stationTokenBasePath = cache.stationTokenBasePath ?? cache.path;
             }
-            console.log(`${MODULE_ID} | ImageResolver (player): artPack=${this.#artPackActive}${this.#artPackActive ? ` (${this.#importedArtPath}, ${this.#artTerrains.length} terrains)` : ""}`);
+            console.log(`${MODULE_ID} | ImageResolver (player): artPack=${this.#artPackActive}${this.#artPackActive ? ` (${this.#importedArtPath}, ${this.#artTerrains.length} terrains, tokens=${this.#hasStationTokens})` : ""}`);
             return;
         }
 
-        // GM: probe the filesystem
+        // GM: probe the filesystem — check zip-imported path first, then raw folder
         const importedPath = game.ionrift?.library?.getZipTargetDir?.("respite", "art");
-        if (importedPath) {
+        const candidatePaths = [importedPath, RAW_ART_FOLDER].filter(Boolean);
+
+        for (const candidatePath of candidatePaths) {
+            if (this.#artPackActive) break;
             try {
                 const source = _fileSource();
-                const browse = await FP.browse(source, importedPath);
+                const browse = await FP.browse(source, candidatePath);
                 if (browse.dirs?.length > 0 || browse.files?.length > 0) {
                     this.#artPackActive = true;
-                    this.#importedArtPath = importedPath;
-                    this.#basePath = importedPath;
+                    this.#importedArtPath = candidatePath;
+                    this.#basePath = candidatePath;
 
                     let fileCount = 0;
                     const terrains = [];
+                    const tokenFiles = [];
 
                     const walk = async (path, depth = 0) => {
                         try {
                             const result = await FP.browse(source, path);
                             fileCount += result.files?.length ?? 0;
+                            const dirName = path.split("/").pop();
                             for (const subDir of (result.dirs ?? [])) {
-                                const dirName = subDir.split("/").pop();
+                                const childDirName = subDir.split("/").pop();
                                 const parentName = path.split("/").pop();
-                                if (parentName === "terrains" && dirName) {
-                                    terrains.push(dirName);
+                                if (parentName === "terrains" && childDirName) {
+                                    terrains.push(childDirName);
                                 }
                                 await walk(subDir, depth + 1);
                             }
+                            // Detect token files in assets/tokens/
+                            if (dirName === "tokens") {
+                                for (const f of (result.files ?? [])) {
+                                    const basename = f.split("/").pop();
+                                    if (basename) tokenFiles.push(basename);
+                                }
+                            }
                         } catch { /* skip inaccessible dirs */ }
                     };
-                    await walk(importedPath);
+                    await walk(candidatePath);
                     this.#artFileCount = fileCount;
                     this.#artTerrains = terrains.sort();
+                    if (tokenFiles.length > 0) {
+                        this.#hasStationTokens = true;
+                        this.#stationTokenFiles = new Set(tokenFiles);
+                        this.#stationTokenBasePath = candidatePath;
+                    }
                 }
             } catch {
-                // Directory doesn't exist yet, no art imported
+                // Directory doesn't exist, try next candidate
+            }
+        }
+
+        // Secondary probe: if the primary art pack has no tokens, check
+        // remaining candidate paths specifically for an assets/tokens/ dir.
+        // This handles the case where terrains are zip-imported but station
+        // tokens live in the raw Patreon folder.
+        if (this.#artPackActive && !this.#hasStationTokens) {
+            const source = _fileSource();
+            const remaining = candidatePaths.filter(p => p !== this.#importedArtPath);
+            for (const probePath of remaining) {
+                try {
+                    const tokenDir = `${probePath}/assets/tokens`;
+                    const result = await FP.browse(source, tokenDir);
+                    const files = (result.files ?? []).map(f => f.split("/").pop()).filter(Boolean);
+                    if (files.length > 0) {
+                        this.#hasStationTokens = true;
+                        this.#stationTokenFiles = new Set(files);
+                        this.#stationTokenBasePath = probePath;
+                        console.log(`${MODULE_ID} | ImageResolver: found station tokens in secondary path: ${probePath}`);
+                        break;
+                    }
+                } catch { /* skip */ }
             }
         }
 
@@ -129,13 +222,19 @@ export class ImageResolver {
             await game.settings.set(MODULE_ID, "artPackCache", {
                 active: this.#artPackActive,
                 path: this.#importedArtPath,
-                terrains: this.#artTerrains
+                terrains: this.#artTerrains,
+                hasStationTokens: this.#hasStationTokens,
+                stationTokenFiles: [...this.#stationTokenFiles],
+                stationTokenBasePath: this.#stationTokenBasePath
             });
         } catch (e) {
             console.warn(`${MODULE_ID} | ImageResolver: failed to persist art pack cache:`, e);
         }
 
-        console.log(`${MODULE_ID} | ImageResolver: artPack=${this.#artPackActive}${this.#artPackActive ? ` (${this.#importedArtPath})` : ""}`);
+        console.log(`${MODULE_ID} | ImageResolver: artPack=${this.#artPackActive}${this.#artPackActive ? ` (${this.#importedArtPath}, tokens=${this.#hasStationTokens}${this.#stationTokenBasePath && this.#stationTokenBasePath !== this.#importedArtPath ? ` via ${this.#stationTokenBasePath}` : ""})` : ""}`);
+        if (this.#hasStationTokens) {
+            console.log(`${MODULE_ID} | ImageResolver: station tokens: [${[...this.#stationTokenFiles].join(", ")}]`);
+        }
     }
 
     /**
@@ -159,6 +258,40 @@ export class ImageResolver {
     }
 
     /**
+     * Resolve a camp station token path.
+     *
+     * Art pack active + token file exists: returns the premium token path.
+     * Otherwise: returns the Foundry core SVG fallback.
+     *
+     * For the cooking station, pass `hasCookingUtensils` to select the
+     * correct variant (full utensils vs basic cooking area).
+     *
+     * @param {string} stationKey - FURNITURE/PLAYER_GEAR key (e.g. "table", "weaponRack")
+     * @param {{ hasCookingUtensils?: boolean }} [options]
+     * @returns {string} Resolved image path
+     */
+    static resolveStationToken(stationKey, options = {}) {
+        // Resolve the cooking variant key
+        let resolvedKey = stationKey;
+        if (stationKey === "cookingArea") {
+            resolvedKey = options.hasCookingUtensils ? "cookingArea" : "cookingBasic";
+        }
+
+        const filename = STATION_TOKEN_FILES[resolvedKey];
+        if (!filename) {
+            return STATION_CORE_FALLBACKS[resolvedKey] ?? STATION_CORE_FALLBACKS[stationKey] ?? "icons/svg/circle.svg";
+        }
+
+        // Art pack present and this token exists in the pack
+        if (this.#hasStationTokens && this.#stationTokenFiles.has(filename)) {
+            const tokenBase = this.#stationTokenBasePath ?? this.#basePath;
+            return `${tokenBase}/assets/tokens/${filename}`;
+        }
+
+        return STATION_CORE_FALLBACKS[resolvedKey] ?? STATION_CORE_FALLBACKS[stationKey] ?? "icons/svg/circle.svg";
+    }
+
+    /**
      * Resolve an image path relative to the active base (imported art or module).
      */
     static resolve(relativePath) {
@@ -173,6 +306,11 @@ export class ImageResolver {
     /** Whether an art pack is currently active. */
     static get hasArtPack() {
         return this.#artPackActive;
+    }
+
+    /** Whether station tokens were found in the art pack. */
+    static get hasStationTokens() {
+        return this.#hasStationTokens;
     }
 
     /** The resolved art pack path, or null if none imported. */

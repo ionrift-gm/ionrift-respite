@@ -11,23 +11,19 @@
 
 import { getPartyActors } from "./partyActors.js";
 import { PLACEHOLDER_CAMP_STATION } from "../apps/RestConstants.js";
+import { ImageResolver } from "../util/ImageResolver.js";
 
 const MODULE_ID = "ionrift-respite";
 
-/** Draft campsite art under world Data (replace with shipped module assets later). */
-const DRAFT_CAMPSITE_TOKENS = "ionrift-brand/Assets/Drafts/campsite_tokens";
-
 /** Shared camp furniture (not the campfire pit). Keys match CAMP_STATIONS furnitureKey. */
 const FURNITURE = {
-    table:       { name: "Arcane Workbench", width: 1, height: 1, icon: "ionrift-brand/Assets/Approved/campsite_tokens/arcane_workbench.png", fallback: "icons/svg/barrel.svg", textureScale: 1.6 },
-    medicalBed:  { name: "Medical Bedding",  width: 1, height: 1, icon: `${DRAFT_CAMPSITE_TOKENS}/triage_bed.png`,     fallback: "icons/svg/sleep.svg", textureScale: 1.6 },
-    weaponRack:  { name: "Weapon Rack",      width: 1, height: 1, icon: `${DRAFT_CAMPSITE_TOKENS}/weapons_rack.png`,   fallback: "icons/svg/sword.svg", textureScale: 1.6 },
+    table:       { name: "Arcane Workbench", width: 1, height: 1 },
+    medicalBed:  { name: "Medical Bedding",  width: 1, height: 1 },
+    weaponRack:  { name: "Weapon Rack",      width: 1, height: 1 },
     cookingArea: {
         name: "Cooking Station",
         basicName: "Mess table",
-        width: 1, height: 1,
-        icon: `${DRAFT_CAMPSITE_TOKENS}/cooking_station.png`,
-        fallback: "icons/tools/cooking/cauldron.webp"
+        width: 1, height: 1
     }
 };
 
@@ -38,17 +34,26 @@ export const CAMP_STATION_PLACEMENT_KEYS = ["weaponRack", "table", "medicalBed",
 const AUTO_PLACE_STATIONS = true;
 
 const PLAYER_GEAR = {
-    bedroll: { name: "Bedroll",  icon: `${DRAFT_CAMPSITE_TOKENS}/bedroll.png`, fallback: "icons/svg/sleep.svg",  width: 1,   height: 1 },
-    tent:    { name: "Tent",     icon: `${DRAFT_CAMPSITE_TOKENS}/tent_a.png`,         fallback: "icons/svg/house.svg",  width: 2,   height: 2 },
+    bedroll: { name: "Bedroll",  width: 1,   height: 1 },
+    tent:    { name: "Tent",     width: 2,   height: 2 },
     /** Small map token: dining gear (half-grid footprint). */
     messkit: {
         name:     "Mess Kit",
-        icon:     `${DRAFT_CAMPSITE_TOKENS}/messkit_c.png`,
-        fallback: "icons/tools/cooking/cutlery-steel.webp",
         width:    0.5,
         height:   0.5
     }
 };
+
+/**
+ * Resolve the icon path for a furniture or player gear key.
+ * Uses ImageResolver for art pack tokens; falls back to core SVG.
+ * @param {string} key - FURNITURE or PLAYER_GEAR key
+ * @param {{ hasCookingUtensils?: boolean }} [options]
+ * @returns {string}
+ */
+function resolveStationIcon(key, options = {}) {
+    return ImageResolver.resolveStationToken(key, options);
+}
 
 /**
  * @param {Actor} actor
@@ -284,17 +289,6 @@ function getCampSessionId() {
     return _campSessionId;
 }
 
-/**
- * Resolve an icon path, falling back if the primary does not exist.
- * Foundry built-in icons should always be present, but this guards
- * against version differences.
- * @param {string} primary
- * @param {string} fallback
- * @returns {string}
- */
-function resolveIcon(primary, fallback) {
-    return primary || fallback;
-}
 
 /**
  * Build token data for a camp furniture piece.
@@ -312,7 +306,7 @@ function buildFurnitureToken(key, x, y, def, extraFlags = {}) {
     const data = {
         name: def.name,
         texture: {
-            src: resolveIcon(def.icon, def.fallback),
+            src: resolveStationIcon(key, { hasCookingUtensils: key === "cookingArea" ? partyHasCookingUtensils() : undefined }),
             scaleX: texScale,
             scaleY: texScale
         },
@@ -351,8 +345,9 @@ function buildFurnitureToken(key, x, y, def, extraFlags = {}) {
 }
 
 // Campfire base (cold pit, always visible) and flame overlay (lit; template actor may override texture)
-const CAMPFIRE_BASE_PIT = `modules/${MODULE_ID}/assets/tokens/campfire_dead_a.png`;
-const CAMPFIRE_BASES = [CAMPFIRE_BASE_PIT];
+function getCampfireBasePitTexture() {
+    return ImageResolver.resolveStationToken("campfire");
+}
 const CAMPFIRE_FLAME = `modules/${MODULE_ID}/assets/tokens/campfire_topdown_128x128.webm`;
 
 /**
@@ -369,7 +364,7 @@ export const CAMPFIRE_PIT_SORT = CAMP_FLOOR_FURNITURE_SORT;
 export const CAMPFIRE_FLAME_FLOOR_SORT = CAMP_FLOOR_FURNITURE_SORT + 1;
 
 function randomCampfireBase() {
-    return CAMPFIRE_BASES[Math.floor(Math.random() * CAMPFIRE_BASES.length)];
+    return getCampfireBasePitTexture();
 }
 
 /**
@@ -378,7 +373,7 @@ function randomCampfireBase() {
  * @returns {string}
  */
 export function pickCampfirePitBaseTexture() {
-    return randomCampfireBase();
+    return getCampfireBasePitTexture();
 }
 
 function findCampfireActor() {
@@ -653,8 +648,6 @@ export async function placePlayerGear(worldX, worldY, gearType, actorId) {
 
     const tokenData = buildFurnitureToken(gearType, tx, ty, {
         name: `${actor.name}'s ${def.name}`,
-        icon: def.icon,
-        fallback: def.fallback,
         width: w,
         height: h
     }, {
@@ -975,7 +968,7 @@ function buildPlaceholderToken(targetKey, x, y) {
     const def = PLACEHOLDER_CAMP_STATION;
     return {
         name: `${def.name} (${targetKey})`,
-        texture: { src: def.path, scaleX: 1, scaleY: 1 },
+        texture: { src: resolveStationIcon("buildSite"), scaleX: 1, scaleY: 1 },
         width: def.width ?? 1,
         height: def.height ?? 1,
         sort: CAMP_FLOOR_FURNITURE_SORT,
@@ -1023,7 +1016,7 @@ export function getStationPlaceholderPreviewsForPitCenter(pitCenterX, pitCenterY
     ];
     const gridW = PLACEHOLDER_CAMP_STATION.width ?? 1;
     const gridH = PLACEHOLDER_CAMP_STATION.height ?? 1;
-    const textureSrc = PLACEHOLDER_CAMP_STATION.path;
+    const textureSrc = resolveStationIcon("buildSite");
     const out = [];
     for (const slot of layout) {
         if (slot.condition === false) continue;
@@ -1241,7 +1234,9 @@ export async function promoteAllPlaceholders() {
             _id: doc.id,
             name: displayName,
             texture: {
-                src: resolveIcon(def.icon, def.fallback),
+                src: resolveStationIcon(key, {
+                    hasCookingUtensils: key === "cookingArea" ? partyHasCookingUtensils() : undefined
+                }),
                 scaleX: texScale,
                 scaleY: texScale
             },
