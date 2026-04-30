@@ -55,7 +55,7 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
 
     /** @override */
     async _prepareContext() {
-        const partyRoster = game.settings.get(MODULE_ID, "partyRoster") ?? [];
+        const partyRoster = game.ionrift?.library?.party?.getRosterIds() ?? [];
         let actors;
         if (this.#focusActorId) {
             const a = game.actors.get(this.#focusActorId);
@@ -463,7 +463,7 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
     }
 
     _getAllDiets() {
-        const partyRoster = game.settings.get(MODULE_ID, "partyRoster") ?? [];
+        const partyRoster = game.ionrift?.library?.party?.getRosterIds() ?? [];
         let actors;
         if (this.#focusActorId) {
             const a = game.actors.get(this.#focusActorId);

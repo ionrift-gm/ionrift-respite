@@ -68,8 +68,14 @@ export function injectSpoilageBadges(app, html) {
     if (!actor || actor.type !== "character") return;
 
     try {
-        const roster = game.settings.get(MODULE_ID, "partyRoster") ?? [];
-        if (roster.length && !roster.includes(actor.id)) return;
+        const libParty = game.ionrift?.library?.party;
+        if (libParty) {
+            const rosterIds = libParty.getRosterIds();
+            if (rosterIds.length && !libParty.isRostered(actor.id)) return;
+        } else {
+            const roster = game.settings.get(MODULE_ID, "partyRoster") ?? [];
+            if (roster.length && !roster.includes(actor.id)) return;
+        }
     } catch { /* setting not yet registered */ }
 
     const el = html instanceof HTMLElement ? html

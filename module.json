@@ -60,7 +60,10 @@
         "requires": [
             {
                 "id": "ionrift-library",
-                "type": "module"
+                "type": "module",
+                "compatibility": {
+                    "minimum": "2.0.0"
+                }
             }
         ]
     },
