@@ -33,6 +33,13 @@ function actorHasNamedSpellAccess(actor, spellNameLower) {
         const level = i.system?.level ?? 0;
         if (level === 0) return true;
 
+        // Ritual spells can be cast from the spellbook without preparation.
+        // Modern dnd5e: system.properties is a Set; legacy: system.components.ritual.
+        const isRitual = (i.system?.properties instanceof Set && i.system.properties.has("ritual"))
+            || i.system?.properties?.ritual === true
+            || i.system?.components?.ritual === true;
+        if (isRitual) return true;
+
         // dnd5e 5.1+ renamed preparation.mode → system.method
         //                      preparation.prepared → system.prepared
         // Check for the new API first so we never touch the deprecated getter.
