@@ -11,7 +11,7 @@ const SCOUTING_EFFECTS = {
     poor:    { comfortBonus: 0, encounterDC: 0, complication: false, tier: "poor" },
     average: { comfortBonus: 1, encounterDC: 0, complication: false, tier: "average" },
     good:    { comfortBonus: 1, encounterDC: 1, complication: false, tier: "good" },
-    nat20:   { comfortBonus: 2, encounterDC: 0, complication: false, tier: "nat20" }
+    nat20:   { comfortBonus: 1, encounterDC: 0, complication: false, tier: "nat20" }
 };
 
 /**
