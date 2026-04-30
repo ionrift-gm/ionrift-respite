@@ -113,6 +113,8 @@ export const SOCKET_TYPES = Object.freeze({
     SHORT_REST_PLAYER_FINISHED: "shortRestPlayerFinished",
     SHORT_REST_SONG_VOLUNTEER:  "shortRestSongVolunteer",
     SHORT_REST_HD_SPENT:   "shortRestHdSpent",
+    /** GM → players: in-window summary before native shortRest() runs */
+    SHORT_REST_COMPLETION_SUMMARY: "shortRestCompletionSummary",
     SHORT_REST_COMPLETE:   "shortRestComplete",
     SHORT_REST_ABANDONED:  "shortRestAbandoned",
     SHORT_REST_DISMISSED:  "shortRestDismissed",
@@ -195,10 +197,17 @@ export function emitPhaseChanged(phase, phaseData = {}) {
 
 /**
  * GM → Players: submission status update (activity progress).
- * @param {object} status - Submission status map.
+ * @param {object} submissions - Map of charId → { activityId, activityName, source }.
+ *                              Must be a plain object; null/undefined is silently dropped.
  */
-export function emitSubmissionUpdate(status) {
-    _emit(SOCKET_TYPES.SUBMISSION_UPDATE, { status });
+export function emitSubmissionUpdate(submissions) {
+    if (!submissions || typeof submissions !== "object") {
+        console.warn(`${MODULE_ID} | emitSubmissionUpdate called with invalid submissions payload — dropped.`);
+        return;
+    }
+    // eslint-disable-next-line no-console
+    console.debug(`${MODULE_ID} | [SYNC] emitSubmissionUpdate: keys=${Object.keys(submissions).join(",") || "none"}, sample=`, Object.values(submissions)[0] ?? "(empty)");
+    _emit(SOCKET_TYPES.SUBMISSION_UPDATE, { submissions });
 }
 
 /**
@@ -593,6 +602,14 @@ export function emitShortRestStarted(data) {
  */
 export function emitShortRestComplete() {
     _emit(SOCKET_TYPES.SHORT_REST_COMPLETE);
+}
+
+/**
+ * GM → players: show pre-native summary in ShortRestApp (filtered per client).
+ * @param {{ lines: Array<{ actorId: string, name: string, line: string }> }} data
+ */
+export function emitShortRestCompletionSummary(data) {
+    _emit(SOCKET_TYPES.SHORT_REST_COMPLETION_SUMMARY, data);
 }
 
 /**

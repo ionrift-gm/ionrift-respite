@@ -4,37 +4,47 @@
 /* ── Purple Scrollbar Override ──────────────────────────────────────
    The library's .ionrift-window scrollbar rules lose to Foundry's
    default styling due to CSS load order. This nuclear override uses
-   the module-specific class to guarantee purple scrollbars.
-   Values match ionrift-library/styles/ionrift.css lines 744-787.
-   See: 00_Foundation/UI/IONRIFT_UI_HANDBOOK.md                     */
+   module-specific app classes (.ionrift-respite-app, .short-rest-app)
+   to guarantee purple scrollbars (see IONRIFT_UI_HANDBOOK.md).
+   Values match ionrift-library/styles/ionrift.css lines 744-787.   */
 .ionrift-respite-app,
-.ionrift-respite-app * {
+.ionrift-respite-app *,
+.short-rest-app,
+.short-rest-app * {
     scrollbar-color: #6d28d9 rgba(0, 0, 0, 0.4) !important;
     scrollbar-width: thin !important;
 }
 
 .ionrift-respite-app ::-webkit-scrollbar,
-.ionrift-respite-app *::-webkit-scrollbar {
+.ionrift-respite-app *::-webkit-scrollbar,
+.short-rest-app ::-webkit-scrollbar,
+.short-rest-app *::-webkit-scrollbar {
     width: 6px !important;
     height: 6px !important;
     background: rgba(0, 0, 0, 0.4) !important;
 }
 
 .ionrift-respite-app ::-webkit-scrollbar-track,
-.ionrift-respite-app *::-webkit-scrollbar-track {
+.ionrift-respite-app *::-webkit-scrollbar-track,
+.short-rest-app ::-webkit-scrollbar-track,
+.short-rest-app *::-webkit-scrollbar-track {
     background: rgba(0, 0, 0, 0.4) !important;
     border-radius: 4px;
 }
 
 .ionrift-respite-app ::-webkit-scrollbar-thumb,
-.ionrift-respite-app *::-webkit-scrollbar-thumb {
+.ionrift-respite-app *::-webkit-scrollbar-thumb,
+.short-rest-app ::-webkit-scrollbar-thumb,
+.short-rest-app *::-webkit-scrollbar-thumb {
     background: #6d28d9 !important;
     border-radius: 4px;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .ionrift-respite-app ::-webkit-scrollbar-thumb:hover,
-.ionrift-respite-app *::-webkit-scrollbar-thumb:hover {
+.ionrift-respite-app *::-webkit-scrollbar-thumb:hover,
+.short-rest-app ::-webkit-scrollbar-thumb:hover,
+.short-rest-app *::-webkit-scrollbar-thumb:hover {
     background: #8b5cf6 !important;
 }
 
@@ -2623,6 +2633,25 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     color: #c9a0dc !important;
     background: rgba(139, 92, 246, 0.15) !important;
     border-color: rgba(139, 92, 246, 0.35) !important;
+}
+
+.ionrift-respite-app .activity-sub-tabs .sub-tab:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.ionrift-respite-app .activity-sub-tabs .sub-tab.active:focus {
+    box-shadow: none !important;
+}
+
+.ionrift-respite-app .activity-sub-tabs .sub-tab:focus-visible {
+    outline: 2px solid rgba(139, 92, 246, 0.9) !important;
+    outline-offset: 2px !important;
+    box-shadow: none !important;
+}
+
+.ionrift-respite-app .activity-sub-tabs .sub-tab.active:focus-visible {
+    box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.25) !important;
 }
 
 .activity-sub-tabs .sub-tab:disabled {
@@ -6007,18 +6036,51 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     border-left-color: rgba(100, 160, 255, 0.15);
 }
 
-/* Detect Magic scan button */
+/* Detect Magic: toolbar row right-aligned; GM label uses \n before "(" (see RestConstants). */
+.station-identify-toolbar {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: flex-start;
+    width: 100%;
+    margin-bottom: 0.55rem;
+}
+
 .btn-detect-magic {
-    margin-left: auto;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    box-sizing: border-box;
+    width: auto;
+    max-width: 11.5rem;
+    height: auto !important;
+    min-height: 0;
     background: rgba(160, 120, 220, 0.15);
     border: 1px solid rgba(160, 120, 220, 0.3);
     border-radius: 4px;
     color: rgba(180, 140, 240, 0.9);
-    font-size: 0.6rem;
-    padding: 0.1rem 0.4rem;
+    font-size: 0.62rem;
+    line-height: 1.35;
+    padding: 0.45rem 0.5rem 0.5rem;
+    text-align: left;
     cursor: pointer;
-    transition: all 0.2s ease;
+    overflow: visible;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
+
+.btn-detect-magic > .fas {
+    flex-shrink: 0;
+    margin-top: 0.08rem;
+    line-height: 1;
+}
+
+.btn-detect-magic-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
 .btn-detect-magic:hover {
     background: rgba(160, 120, 220, 0.25);
     color: #c8a8f0;
@@ -7452,36 +7514,81 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     font-style: italic;
 }
 
+/* Station hub tabs (Camp/Fire, Rations/Cooking, Activities/Identify): match Short Rest
+   .sr-tab strip. Scope without relying on .application so Foundry button:focus cannot
+   paint the default warm ring after theme CSS order. */
 .ionrift-station-dialog .station-sub-tabs {
     display: flex;
     gap: 0.25rem;
-    padding: 0.25rem 0.35rem 0.35rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0.25rem 0.5rem 0.35rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.ionrift-station-dialog .station-sub-tab {
-    flex: 1;
-    padding: 0.35rem 0.4rem;
-    font-size: 0.65rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-    background: rgba(0, 0, 0, 0.25);
-    color: rgba(255, 255, 255, 0.55);
-    cursor: pointer;
+.application .ionrift-station-dialog .station-sub-tab,
+.ionrift-station-dialog.ionrift-window .station-sub-tab {
+    all: unset !important;
 }
 
-.ionrift-station-dialog .station-sub-tab:hover {
-    color: rgba(255, 255, 255, 0.85);
-    border-color: rgba(255, 255, 255, 0.18);
+.application .ionrift-station-dialog .station-sub-tab,
+.ionrift-station-dialog.ionrift-window .station-sub-tab {
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0.35rem 0.5rem !important;
+    font-family: inherit !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    text-align: center !important;
+    line-height: 1.2 !important;
+    color: rgba(200, 210, 255, 0.55) !important;
+    background: rgba(0, 0, 0, 0.15) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 5px 5px 0 0 !important;
+    cursor: pointer !important;
+    outline: none !important;
+    box-shadow: none !important;
+    transition: color 0.2s, background 0.2s, border-color 0.2s !important;
 }
 
-.ionrift-station-dialog .station-sub-tab.active {
-    color: rgba(255, 255, 255, 0.95);
-    border-color: rgba(196, 181, 253, 0.45);
-    background: rgba(99, 102, 241, 0.15);
+.application .ionrift-station-dialog .station-sub-tab:hover,
+.ionrift-station-dialog.ionrift-window .station-sub-tab:hover {
+    color: rgba(220, 230, 255, 0.85) !important;
+}
+
+.application .ionrift-station-dialog .station-sub-tab.active,
+.ionrift-station-dialog.ionrift-window .station-sub-tab.active {
+    color: rgba(220, 230, 255, 0.95) !important;
+    background: rgba(100, 140, 200, 0.12) !important;
+    border-color: rgba(167, 139, 250, 0.4) !important;
+    border-bottom-color: transparent !important;
+    box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.22) !important;
+}
+
+.application .ionrift-station-dialog .station-sub-tab:focus,
+.ionrift-station-dialog.ionrift-window .station-sub-tab:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.application .ionrift-station-dialog .station-sub-tab.active:focus,
+.ionrift-station-dialog.ionrift-window .station-sub-tab.active:focus {
+    box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.22) !important;
+}
+
+.application .ionrift-station-dialog .station-sub-tab:focus-visible,
+.ionrift-station-dialog.ionrift-window .station-sub-tab:focus-visible {
+    outline: 2px solid rgba(139, 92, 246, 0.9) !important;
+    outline-offset: 2px !important;
+    box-shadow: none !important;
+}
+
+.application .ionrift-station-dialog .station-sub-tab.active:focus-visible,
+.ionrift-station-dialog.ionrift-window .station-sub-tab.active:focus-visible {
+    box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.28) !important;
 }
 
 .ionrift-station-dialog .station-sub-tab:disabled,
@@ -7499,10 +7606,6 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 .ionrift-station-dialog .station-identify-embed {
     padding: 0.2rem 0.25rem 0.35rem;
-}
-
-.ionrift-station-dialog .station-identify-toolbar {
-    margin-bottom: 0.35rem;
 }
 
 .ionrift-station-dialog .station-identify-scroll {
@@ -7676,22 +7779,6 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 .ionrift-station-dialog .wb-ident-ack-btn:disabled {
     opacity: 0.45;
     cursor: wait;
-}
-
-.ionrift-station-dialog .station-workbench-identify-embed .wb-ident-advisory {
-    font-size: 0.6rem;
-    color: rgba(251, 191, 36, 0.88);
-    margin: 0 0 0.3rem;
-    padding: 0.25rem 0.35rem;
-    line-height: 1.35;
-    border-radius: 4px;
-    background: rgba(0, 0, 0, 0.22);
-    border: 1px solid rgba(251, 191, 36, 0.2);
-}
-
-.ionrift-station-dialog .station-workbench-identify-embed .wb-ident-advisory i {
-    margin-right: 0.25rem;
-    opacity: 0.85;
 }
 
 .ionrift-station-dialog .station-workbench-identify-embed .wb-ident-hint {
@@ -11661,6 +11748,14 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 }
 .sr-spend-btn.faded:hover { background: rgba(255, 255, 255, 0.08) !important; border-color: rgba(255, 255, 255, 0.18) !important; box-shadow: none; }
 
+.short-rest-app .short-rest-container .sr-spend-btn:focus {
+    outline: none !important;
+}
+.short-rest-app .short-rest-container .sr-spend-btn:focus-visible {
+    outline: 2px solid rgba(139, 92, 246, 0.9) !important;
+    outline-offset: 2px !important;
+}
+
 /* ---- Roll Log: Compression Badge ---- */
 .sr-roll-hidden-badge {
     display: inline-flex;
@@ -11719,6 +11814,59 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     color: rgba(255, 255, 255, 0.3);
 }
 .sr-volunteer-locked i { font-size: 0.55rem; }
+
+/* ---- Short rest completion (in-window, replaces tabs) ---- */
+.short-rest-container .sr-completion-body {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0.5rem 0.75rem 0.65rem;
+}
+.short-rest-container .sr-completion-heading {
+    margin: 0 0 0.45rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(210, 200, 255, 0.92);
+}
+.short-rest-container .sr-completion-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    margin-bottom: 0.5rem;
+}
+.short-rest-container .sr-completion-card {
+    padding: 0.4rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.22);
+}
+.short-rest-container .sr-completion-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: rgba(200, 190, 255, 0.95);
+    margin-bottom: 0.15rem;
+}
+.short-rest-container .sr-completion-line {
+    margin: 0;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: rgba(220, 225, 245, 0.78);
+}
+.short-rest-container .sr-completion-empty {
+    margin: 0;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: rgba(255, 200, 120, 0.85);
+    font-style: italic;
+}
+.short-rest-container .sr-completion-lead {
+    margin: 0;
+    font-size: 0.68rem;
+    line-height: 1.35;
+    color: rgba(180, 190, 220, 0.55);
+}
 
 /* ---- Sticky Footer ---- */
 .sr-footer {
@@ -11787,31 +11935,77 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 .sr-spell-recovery-static.exhausted .sr-spell-static-msg { color: rgba(255, 210, 210, 0.85); }
 .sr-spell-budget-muted { opacity: 0.65; }
 
-.short-rest-container .sr-tab-bar {
+/* Short rest tabs: Foundry .application button:focus styles load after module CSS
+   and draw a warm/red ring. Nuclear reset + module app scope (see IONRIFT_UI_HANDBOOK §3). */
+.short-rest-app .short-rest-container .sr-tab-bar {
     display: flex;
     gap: 0.25rem;
     padding: 0.25rem 0.5rem 0.35rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
-.short-rest-container .sr-tab {
-    flex: 1;
-    text-align: center;
-    padding: 0.35rem 0.5rem;
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: rgba(200, 210, 255, 0.55);
-    background: rgba(0, 0, 0, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 5px 5px 0 0;
-    cursor: pointer;
-    margin: 0;
+
+.short-rest-app .short-rest-container .sr-tab {
+    all: unset !important;
 }
-.short-rest-container .sr-tab i { margin-right: 0.2rem; opacity: 0.85; }
-.short-rest-container .sr-tab:hover { color: rgba(220, 230, 255, 0.85); }
-.short-rest-container .sr-tab.active {
-    color: rgba(220, 230, 255, 0.95);
-    background: rgba(100, 140, 200, 0.12);
-    border-bottom-color: transparent;
+
+.short-rest-app .short-rest-container .sr-tab {
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0.35rem 0.5rem !important;
+    font-family: inherit !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    text-align: center !important;
+    line-height: 1.2 !important;
+    color: rgba(200, 210, 255, 0.55) !important;
+    background: rgba(0, 0, 0, 0.15) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 5px 5px 0 0 !important;
+    cursor: pointer !important;
+    outline: none !important;
+    box-shadow: none !important;
+    transition: color 0.2s, background 0.2s, border-color 0.2s !important;
+}
+
+.short-rest-app .short-rest-container .sr-tab i {
+    margin-right: 0.2rem;
+    opacity: 0.85;
+}
+
+.short-rest-app .short-rest-container .sr-tab:hover {
+    color: rgba(220, 230, 255, 0.85) !important;
+}
+
+.short-rest-app .short-rest-container .sr-tab.active {
+    color: rgba(220, 230, 255, 0.95) !important;
+    background: rgba(100, 140, 200, 0.12) !important;
+    border-color: rgba(167, 139, 250, 0.4) !important;
+    border-bottom-color: transparent !important;
+    box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.22) !important;
+}
+
+.short-rest-app .short-rest-container .sr-tab:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.short-rest-app .short-rest-container .sr-tab.active:focus {
+    box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.22) !important;
+}
+
+.short-rest-app .short-rest-container .sr-tab:focus-visible {
+    outline: 2px solid rgba(139, 92, 246, 0.9) !important;
+    outline-offset: 2px !important;
+    box-shadow: none !important;
+}
+
+.short-rest-app .short-rest-container .sr-tab.active:focus-visible {
+    box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.28) !important;
 }
 
 .sr-recharge-badges {
@@ -11839,38 +12033,295 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 .sr-workbench-body { padding: 0.35rem 0.4rem; }
 .sr-wb-hint { font-size: 0.72rem; line-height: 1.4; color: rgba(200, 210, 255, 0.65); margin: 0 0 0.5rem; }
-.sr-wb-actor-pick {
+
+.short-rest-container .sr-roster-strip .roster-chip.sr-wb-roster-pickable {
+    cursor: pointer;
+}
+.short-rest-container .sr-roster-strip .roster-chip.sr-wb-roster-pickable:hover {
+    filter: brightness(1.06);
+}
+.short-rest-container .sr-roster-strip .roster-chip.sr-wb-roster-focus {
+    box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.85), 0 0 12px rgba(99, 102, 241, 0.35);
+    border-radius: 10px;
+}
+
+/* Short rest workbench: match station dialog identify embed (circles, ack, chips) */
+.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed {
+    position: relative;
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-ack-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.35rem;
+    background: rgba(8, 10, 18, 0.72);
+    backdrop-filter: blur(4px);
+    border-radius: 6px;
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-ack-card {
+    position: relative;
+    width: 100%;
+    max-width: 280px;
+    padding: 0.55rem 0.6rem 0.5rem;
+    border-radius: 10px;
+    border: 1px solid rgba(196, 181, 253, 0.35);
+    background: linear-gradient(165deg, rgba(40, 36, 58, 0.95), rgba(18, 20, 32, 0.98));
+    box-shadow: 0 0 24px rgba(99, 102, 241, 0.15), inset 0 0 40px rgba(255, 255, 255, 0.03);
+    overflow: hidden;
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-ack-fx::before {
+    content: "";
+    position: absolute;
+    inset: -25%;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 18% 22%, rgba(180, 160, 255, 0.22) 0%, transparent 42%),
+        radial-gradient(circle at 82% 78%, rgba(120, 210, 190, 0.18) 0%, transparent 38%),
+        radial-gradient(circle at 50% 8%, rgba(255, 220, 160, 0.12) 0%, transparent 30%);
+    animation: wb-ident-ack-shimmer 1.4s ease-in-out infinite;
+    opacity: 0.85;
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-ack-title {
+    position: relative;
+    z-index: 1;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(230, 224, 255, 0.95);
+    margin: 0 0 0.2rem;
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-ack-title i {
+    margin-right: 0.35rem;
+    color: rgba(196, 181, 253, 0.9);
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-ack-lead {
+    position: relative;
+    z-index: 1;
+    font-size: 0.58rem;
+    color: rgba(255, 255, 255, 0.45);
+    margin: 0 0 0.4rem;
+    line-height: 1.35;
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-ack-row {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.25rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-ack-row:first-of-type {
+    border-top: none;
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-ack-img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    flex-shrink: 0;
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-ack-meta {
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
-    margin-bottom: 0.5rem;
+    gap: 0.1rem;
+    min-width: 0;
 }
-.sr-wb-actor-pick label { font-size: 0.7rem; color: rgba(180, 200, 255, 0.5); }
-.sr-wb-actor-select {
-    max-width: 18rem;
-    background: rgba(0, 0, 0, 0.25);
-    color: #e0e0f0;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-    padding: 0.2rem 0.35rem;
-    font-size: 0.78rem;
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-ack-name {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+    word-break: break-word;
 }
-.sr-workbench-attune {
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-ack-btn {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    margin-top: 0.45rem;
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-ack-btn:disabled {
+    opacity: 0.45;
+    cursor: wait;
+}
+
+.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-hint {
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.52);
+    margin: 0 0 0.35rem;
+    line-height: 1.35;
+}
+
+.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-drop-columns {
+    gap: 0.35rem;
+}
+
+.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-drop-columns .meal-panel {
+    min-width: 0;
+    padding-bottom: 0.65rem;
+}
+
+.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-gear-panel .panel-label {
+    color: rgba(196, 181, 253, 0.65);
+}
+
+.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-exhausted {
+    opacity: 0.45;
+    pointer-events: none;
+    filter: grayscale(60%);
+}
+
+.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-used-badge {
+    font-size: 0.65em;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--color-text-dark-secondary, #888);
+    margin-left: 0.4rem;
+    text-transform: uppercase;
+}
+
+.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-zone-blocked {
+    cursor: not-allowed;
+}
+
+.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-potion-panel .panel-label {
+    color: rgba(130, 220, 160, 0.65);
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-gear-slot-wrap,
+.short-rest-container .sr-workbench-identify-host .wb-ident-potion-slot-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.35rem;
+    padding-bottom: 0.15rem;
+}
+
+.short-rest-container .sr-workbench-identify-host .gear-focus-drop-zone {
+    width: 72px;
+    height: 72px;
+    border: 2px dashed rgba(196, 181, 253, 0.35);
+    background: rgba(196, 181, 253, 0.04);
+}
+
+.short-rest-container .sr-workbench-identify-host .gear-focus-drop-zone.filled {
+    border-style: solid;
+    border-color: rgba(196, 181, 253, 0.55);
+    background: rgba(196, 181, 253, 0.1);
+    box-shadow: 0 0 14px rgba(196, 181, 253, 0.18);
+}
+
+.short-rest-container .sr-workbench-identify-host .gear-focus-drop-zone.drop-hover {
+    border-color: rgba(196, 181, 253, 0.85);
+    background: rgba(196, 181, 253, 0.14);
+    transform: scale(1.06);
+}
+
+.short-rest-container .sr-workbench-identify-host .potion-taste-drop-zone {
+    width: 72px;
+    height: 72px;
+    border: 2px dashed rgba(100, 200, 150, 0.35);
+    background: rgba(100, 200, 150, 0.04);
+}
+
+.short-rest-container .sr-workbench-identify-host .potion-taste-drop-zone.filled {
+    border-style: solid;
+    border-color: rgba(100, 200, 150, 0.55);
+    background: rgba(100, 200, 150, 0.1);
+    box-shadow: 0 0 14px rgba(100, 200, 150, 0.18);
+}
+
+.short-rest-container .sr-workbench-identify-host .potion-taste-drop-zone.drop-hover {
+    border-color: rgba(130, 230, 170, 0.9);
+    background: rgba(100, 200, 150, 0.14);
+    transform: scale(1.06);
+}
+
+.short-rest-container .sr-workbench-identify-host .drop-zone-gear-sil {
+    font-size: 1.45rem;
+    color: rgba(196, 181, 253, 0.22);
+}
+
+.short-rest-container .sr-workbench-identify-host .drop-zone-potion-sil {
+    font-size: 1.45rem;
+    color: rgba(100, 200, 150, 0.22);
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-potion-count {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: rgba(150, 240, 190, 0.95);
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-chip-row {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: 0.35rem;
-    margin: 0.4rem 0 0.25rem;
-    font-size: 0.75rem;
+    gap: 0.25rem;
+    justify-content: center;
+    margin: 0.15rem 0 0.25rem;
+    max-width: 100%;
 }
-.sr-workbench-body .btn-attune-confirm {
-    padding: 0.2rem 0.45rem;
-    font-size: 0.72rem;
-    border-radius: 4px;
-    border: 1px solid rgba(200, 180, 100, 0.35);
-    background: rgba(200, 160, 60, 0.12);
-    color: rgba(255, 230, 150, 0.95);
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-chip-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.12rem 0.35rem 0.12rem 0.2rem;
+    border-radius: 8px;
+    font-size: 0.58rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.25);
+    color: rgba(255, 255, 255, 0.78);
     cursor: pointer;
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-chip-btn:hover {
+    border-color: rgba(196, 181, 253, 0.35);
+    background: rgba(99, 102, 241, 0.12);
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-chip-img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    border-radius: 2px;
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-chip-x {
+    font-size: 0.55rem;
+    opacity: 0.55;
+    margin-left: 0.05rem;
+}
+
+.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-scroll {
+    max-height: 320px;
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-submit-row {
+    margin-top: 0.35rem;
+    padding-top: 0.3rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.short-rest-container .sr-workbench-identify-host .wb-ident-submit-row .station-meal-submit-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
 }
 
 /* ---- Rest Type Toggle Buttons ---- */

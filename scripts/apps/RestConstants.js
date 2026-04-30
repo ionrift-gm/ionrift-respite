@@ -373,5 +373,6 @@ export const COMFORT_TIPS = {
 
 /** Identify tab: Detect Magic toolbar label and GM-only tooltip. */
 export const DETECT_MAGIC_BTN_LABEL_PLAYER = "Cast Detect Magic";
-export const DETECT_MAGIC_BTN_LABEL_GM = "Cast Detect Magic (GM only)";
+/** Line break before "(" so the label stacks cleanly in the workbench button. */
+export const DETECT_MAGIC_BTN_LABEL_GM = "Cast detect magic\n(GM cast it for them)";
 export const DETECT_MAGIC_BTN_TITLE_GM = "Runs the aura pass for the whole party as host. Use when you are granting Detect Magic at the table. Skip if a player should trigger it from a character they control.";

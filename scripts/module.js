@@ -71,7 +71,8 @@ import {
     showRejoinNotification, removeRejoinNotification,
     showShortRestRejoinNotification, removeShortRestRejoinNotification,
     showPrepNotification, removePrepNotification,
-    showGmRestIndicator, removeGmRestIndicator,
+    showGmRestIndicator, removeGmRestIndicator, refreshGmRestIndicator,
+    refreshRejoinBar,
     showGmShortRestIndicator, removeGmShortRestIndicator
 } from "./services/RejoinManager.js";
 import { dispatch as socketDispatch } from "./services/SocketRouter.js";
@@ -1283,6 +1284,22 @@ export function _showGmRestIndicator(app) {
 /** Re-exported for external consumers. */
 export function _removeGmRestIndicator() {
     removeGmRestIndicator();
+}
+
+/**
+ * Refreshes the task-count span in the existing GM rest bar in-place.
+ * Call whenever _characterChoices changes while the bar is visible.
+ */
+export function _refreshGmRestIndicator(app) {
+    refreshGmRestIndicator(app);
+}
+
+/**
+ * Refreshes the task-count span in the existing player rejoin bar in-place.
+ * Call whenever _characterChoices changes while the bar is visible.
+ */
+export function _refreshRejoinBar(app) {
+    refreshRejoinBar(app);
 }
 
 /**

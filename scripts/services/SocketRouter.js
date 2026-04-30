@@ -27,7 +27,7 @@ import {
 import {
     handleRestStarted, handleActivityChoice, handleRestResolved,
     handleSubmissionUpdate, handleRequestRestState,
-    handleShortRestStarted, handleShortRestComplete, handleShortRestAbandoned,
+    handleShortRestStarted, handleShortRestCompletionSummary, handleShortRestComplete, handleShortRestAbandoned,
     handleShortRestDismissed, handleRequestShortRestState,
     handleShortRestWorkbenchStagingFromPlayer, handleShortRestWorkbenchSync,
     handleAfkUpdate, handleArmorToggle, handleConsumeFirewood,
@@ -461,6 +461,11 @@ export function dispatch(data, ctx) {
 
         case SOCKET_TYPES.SHORT_REST_HD_SPENT:
             ctx.activeShortRestApp?.receiveHdSpent?.(data);
+            break;
+
+        case SOCKET_TYPES.SHORT_REST_COMPLETION_SUMMARY:
+            if (game.user.isGM) return;
+            handleShortRestCompletionSummary(data, ctx);
             break;
 
         case SOCKET_TYPES.SHORT_REST_COMPLETE:

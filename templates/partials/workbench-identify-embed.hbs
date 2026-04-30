@@ -1,9 +1,74 @@
-{{!-- Workbench identify: focus/taste, submit, acknowledgement (shared: station dialog + short rest) --}}
+{{!-- Workbench identify: Detect Magic, casters, scan, focus/taste, submit, acknowledgement (station dialog + short rest) --}}
 <div class="station-workbench-identify-embed station-identify-embed identify-tab"
      data-workbench-actor-id="{{workbenchIdentifyActorId}}">
+    <div class="station-identify-toolbar">
+        {{#if canShowDetectMagicScanButton}}
+        <button type="button" class="btn-detect-magic" data-action="stationDetectMagicScan"
+            {{#if detectMagicScanButtonTitle}}title="{{detectMagicScanButtonTitle}}"{{/if}}>
+            <i class="fas fa-eye" aria-hidden="true"></i>
+            <span class="btn-detect-magic-text">{{detectMagicScanButtonLabel}}</span>
+        </button>
+        {{/if}}
+    </div>
+    {{#if identifyCasters.length}}
+    <div class="identify-caster-advisory">
+        <i class="fas fa-hat-wizard"></i>
+        {{#each identifyCasters}}{{#unless @first}}, {{/unless}}{{name}}{{/each}}
+        can cast Identify (ritual, free)
+    </div>
+    {{/if}}
+    {{#if detectMagicCasters.length}}
+    <div class="identify-caster-advisory detect-magic-advisory">
+        <i class="fas fa-eye"></i>
+        {{#each detectMagicCasters}}{{#unless @first}}, {{/unless}}{{name}}{{/each}}
+        can cast Detect Magic for the group aura pass
+    </div>
+    {{/if}}
 
+    {{#if magicScanComplete}}
+    {{#if isGmUser}}
+    <div class="magic-scan-results station-magic-scan">
+        {{#if magicScanResults.length}}
+        <div class="magic-scan-header"><i class="fas fa-hat-wizard"></i> Magical auras</div>
+        {{#each magicScanResults}}
+        <div class="magic-scan-actor">
+            <span class="magic-scan-actor-name">{{actorName}}'s gear:</span>
+            {{#each items}}
+            <div class="magic-scan-item {{#if identified}}identified{{/if}}">
+                <img src="{{img}}" class="magic-scan-item-img" alt="">
+                {{#if identified}}
+                <i class="fas fa-check-circle magic-identified-icon"></i>
+                <span class="magic-scan-item-name">{{trueName}}</span>
+                {{#if requiresAttunement}}<span class="magic-attune-hint">Requires attunement</span>{{/if}}
+                {{else}}
+                <i class="fas fa-magic magic-aura-icon"></i>
+                <span class="magic-scan-item-name">{{displayName}}</span>
+                {{#if school}}<span class="magic-school-tag">{{school}}</span>{{/if}}
+                <button type="button" class="btn-identify-item" data-action="stationIdentifyScannedItem"
+                    data-actor-id="{{../actorId}}" data-item-id="{{itemId}}">
+                    <i class="fas fa-scroll"></i> Identify
+                </button>
+                {{/if}}
+            </div>
+            {{/each}}
+        </div>
+        {{/each}}
+        {{else}}
+        <div class="magic-scan-none"><i class="fas fa-check"></i> No unidentified magical items found.</div>
+        {{/if}}
+    </div>
+    {{else}}
+    <div class="magic-scan-results station-magic-scan wb-ident-player-scan-note">
+        <p class="wb-ident-player-scan-hint"><i class="fas fa-eye"></i> Scan done. Drag unidentified items from the sheet onto the circles below.</p>
+    </div>
+    {{/if}}
+    {{/if}}
 
-    <p class="wb-ident-hint">Open this character's sheet and drag items from the inventory onto the circles. One non-potion item in the focus circle at a time; add as many potion tastes as you need. Submit applies everything at once.</p>
+    {{#if isShortRestWorkbench}}
+    <p class="wb-ident-hint">From the open character sheet, drag unidentified items to Focus (one non-potion) or Potions. Submit applies all staged changes. GM: roster strip picks whose bench is active.</p>
+    {{else}}
+    <p class="wb-ident-hint">From this sheet's inventory, drag to Focus (one non-potion) or Potions. Submit applies all staged changes.</p>
+    {{/if}}
     <div class="identify-scroll-area station-identify-scroll wb-ident-scroll">
     <div class="meal-drop-columns wb-ident-drop-columns">
         <div class="meal-panel wb-ident-gear-panel{{#if workbenchFocusExhausted}} wb-ident-exhausted{{/if}}">
@@ -11,8 +76,7 @@
                 {{#if workbenchFocusExhausted}}<span class="wb-ident-used-badge">Used</span>{{/if}}
             </span>
             <div class="wb-ident-gear-slot-wrap">
-                <div class="meal-drop-zone wb-ident-drop-zone gear-focus-drop-zone
-                    {{#if workbenchGearChip}}filled{{/if}}
+                <div class="meal-drop-zone wb-ident-drop-zone gear-focus-drop-zone {{#if workbenchGearChip}}filled{{/if}}
                     {{#if workbenchFocusExhausted}}wb-ident-zone-blocked{{/if}}"
                     data-wb-zone="gear"
                     title="{{#if workbenchFocusExhausted}}Focus identify already used this rest{{else}}Drop one non-potion item from the character sheet here. Click the circle to clear.{{/if}}">
@@ -59,6 +123,7 @@
             {{#if workbenchSubmitLocked}}disabled{{/if}}>Submit identify</button>
     </div>
     </div>
+
     {{#if workbenchIdentifyAcknowledgement}}
     <div class="wb-ident-ack-overlay" role="dialog" aria-modal="true">
         <div class="wb-ident-ack-card wb-ident-ack-fx">
