@@ -1084,7 +1084,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Called on every phase transition and before combat blocking.
      */
     async _saveRestState() {
-        if (!game.user.isGM || !this._engine) return;
+        if (!game.user.isGM || !this._engine || this._restApplied) return;
         const state = {
             engine: this._engine.serialize(),
             phase: this._phase,
@@ -2813,7 +2813,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const targetNames = (e.targets ?? [])
                     .map(id => game.actors.get(id)?.name)
                     .filter(Boolean);
-                const SKILL_NAMES = window.SKILL_NAMES || SKILL_NAMES;
                 const skillName = e.mechanical?.skill
                     ? (SKILL_NAMES[e.mechanical.skill] ?? e.mechanical.skill)
                     : null;
@@ -4924,6 +4923,70 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Auto-grants party discovery items (event loot) to watch roster members.
+     * Single watcher → all items. Multiple watchers → round-robin random distribution.
+     * Falls back to full party if nobody is on watch.
+     */
+    async _autoGrantPartyDiscoveries() {
+        if (!this._outcomes?.length) return;
+
+        // Collect ungranted discovery items
+        const discoveries = [];
+        const seenEvents = new Set();
+        for (const o of this._outcomes) {
+            for (const sub of (o.outcomes ?? [])) {
+                if (sub.source === "event" && sub.items?.length && !seenEvents.has(sub.eventId)) {
+                    seenEvents.add(sub.eventId);
+                    for (const item of sub.items) {
+                        const grantKey = `${sub.eventId}:${item.itemRef ?? item.name}`;
+                        if (!this._grantedDiscoveries.has(grantKey)) {
+                            discoveries.push({
+                                grantKey,
+                                itemRef: item.itemRef ?? item.name,
+                                quantity: item.quantity ?? 1
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        if (discoveries.length === 0) return;
+
+        // Build eligible recipient pool: watch roster first, fall back to all party
+        let recipientIds = (this._engine?.watchRoster ?? []).map(w => w.characterId);
+        if (recipientIds.length === 0) {
+            recipientIds = getPartyActors().map(a => a.id);
+        }
+        // Validate actors exist
+        recipientIds = recipientIds.filter(id => game.actors.get(id));
+        if (recipientIds.length === 0) return;
+
+        // Shuffle recipients for fair round-robin distribution
+        const shuffled = [...recipientIds];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
+        const { ItemOutcomeHandler } = await import("../services/ItemOutcomeHandler.js");
+
+        for (let i = 0; i < discoveries.length; i++) {
+            const disc = discoveries[i];
+            const actorId = shuffled.length === 1
+                ? shuffled[0]
+                : shuffled[i % shuffled.length];
+
+            try {
+                const result = await ItemOutcomeHandler.grantToActor(actorId, disc.itemRef, disc.quantity);
+                this._grantedDiscoveries.set(disc.grantKey, result);
+                console.log(`${MODULE_ID} | Auto-granted ${result.rolled}x ${result.itemName} to ${result.actorName}`);
+            } catch (e) {
+                console.warn(`${MODULE_ID} | Auto-grant failed for ${disc.itemRef}:`, e);
+            }
+        }
+    }
+
+    /**
      * Begin Short Rest: reads selected shelter and launches ShortRestApp.
      * Called from the short-rest shelter step (step 2).
      */
@@ -4953,7 +5016,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
-        const terrainTag = this._selectedTerrain ?? formData.terrain ?? "forest";
+        const terrainTag = formData.terrain ?? this._selectedTerrain ?? "forest";
+        this._selectedTerrain = terrainTag;
+        game.settings.set(MODULE_ID, "lastTerrain", terrainTag);
         await this._loadTerrainEvents(terrainTag);
 
         // Determine shelter effects from active overrides
@@ -7019,6 +7084,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             ui.notifications.info("Rest complete.");
         }
 
+        // Auto-grant party discoveries (event loot) to watch roster members
+        try {
+            await this._autoGrantPartyDiscoveries();
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Auto-grant party discoveries failed:`, e);
+        }
+
         // Post condition advisory for any unhandled condition/temp_hp effects
         try {
             await ConditionAdvisory.processAll(this._outcomes);
@@ -8330,14 +8402,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // didn't produce a visible window), ensure the rejoin bar is visible so the
         // player can see the current phase and resume the rest UI.
         if (!this._isGM) {
-            // Use requestAnimationFrame so Foundry's render pipeline has a chance
-            // to complete before we check .rendered.
-            requestAnimationFrame(() => {
+            setTimeout(() => {
                 if (!this.rendered) {
-                    console.log(`${MODULE_ID} | Phase ${phase}: player RSA not rendered after phase change — ensuring rejoin bar`);
+                    console.log(`${MODULE_ID} | Phase ${phase}: player RSA not rendered after 300ms — ensuring rejoin bar`);
                     _ensureRejoinBar(this);
                 }
-            });
+            }, 300);
         }
     }
 
@@ -8565,14 +8635,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Single render with all state applied
         this.render();
 
-        // Safety net: ensure rejoin bar if player RSA fails to render
+        // Safety net: ensure rejoin bar if player RSA fails to render.
+        // ApplicationV2 render is async, so use a 300ms timeout instead of rAF
+        // to give the pipeline time to finish.
         if (!this._isGM) {
-            requestAnimationFrame(() => {
+            setTimeout(() => {
                 if (!this.rendered) {
-                    console.log(`${MODULE_ID} | receiveRestSnapshot: player RSA not rendered — ensuring rejoin bar`);
+                    console.log(`${MODULE_ID} | receiveRestSnapshot: player RSA not rendered after 300ms — ensuring rejoin bar`);
                     _ensureRejoinBar(this);
                 }
-            });
+            }, 300);
         }
     }
 
