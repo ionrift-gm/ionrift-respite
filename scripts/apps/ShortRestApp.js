@@ -153,6 +153,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._isTerminating = false;
         RestAfkState.clear();
 
+        /** Local mirror of RestAfkState for serialization and test inspection. */
+        this._afkCharacters = new Set();
+
         /** @type {"recovery"|"workbench"} */
         this._activeTab = "recovery";
         /** @type {string|null} */
@@ -1575,10 +1578,12 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     async _saveShortRestState() {
         if (!game.user.isGM) return;
+        // Keep local mirror in sync with the module-scoped singleton before saving.
+        this._afkCharacters = new Set(RestAfkState.getAfkCharacterIds());
         const state = {
             rolls: this._serializeRolls(),
             songBonuses: this._serializeSongBonuses(),
-            afkCharacterIds: RestAfkState.getAfkCharacterIds(),
+            afkCharacterIds: [...this._afkCharacters],
             finishedUserIds: [...this._finishedUsers],
             activeShelter: this._activeShelter,
             rpPrompt: this._rpPrompt,
@@ -1608,7 +1613,10 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         if (state.rolls) this._rolls = this._deserializeRolls(state.rolls);
         if (state.songBonuses) this._songBonusByActor = this._deserializeSongBonuses(state.songBonuses);
-        if (state.afkCharacterIds) RestAfkState.replaceAll(state.afkCharacterIds);
+        if (state.afkCharacterIds) {
+            RestAfkState.replaceAll(state.afkCharacterIds);
+            this._afkCharacters = new Set(state.afkCharacterIds);
+        }
         if (state.finishedUserIds) this._finishedUsers = new Set(state.finishedUserIds);
         if (state.activeShelter) this._activeShelter = state.activeShelter;
         if (state.rpPrompt) this._rpPrompt = state.rpPrompt;
