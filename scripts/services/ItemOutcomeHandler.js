@@ -93,14 +93,16 @@ export class ItemOutcomeHandler {
                         CalendarHandler.getCurrentDate() ?? String(game.time.worldTime);
                 }
 
-                // Create new item with correct quantity
+                // Create new item with correct quantity.
+                // Spread system first, then override quantity so the rolled
+                // count always wins over any quantity baked into itemData.
                 const itemData = this._normalize([{
                     name: grant.name,
                     type: grant.type ?? "loot",
                     img: grant.img ?? "icons/svg/item-bag.svg",
                     system: {
+                        ...(grant.system ?? {}),
                         quantity: qty,
-                        ...(grant.system ?? {})
                     },
                     flags: grant.flags ?? {}
                 }]);

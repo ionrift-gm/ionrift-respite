@@ -602,10 +602,10 @@
                             "arrows": "Arrow",
                             "bolts": "Crossbow Bolt"
                         },
-                        "itemDataMap": {
-                            "arrows": { "name": "Arrow", "type": "consumable", "img": "icons/weapons/ammunition/arrow-head-war-flight.webp", "system": { "quantity": 1 } },
-                            "bolts": { "name": "Crossbow Bolt", "type": "consumable", "img": "icons/weapons/ammunition/bolt-tip-engraved.webp", "system": { "quantity": 1 } }
-                        },
+                            "itemDataMap": {
+                                "arrows": { "name": "Arrow", "type": "consumable", "img": "icons/weapons/ammunition/arrow-head-war-flight.webp", "system": { "type": { "value": "ammo" } } },
+                                "bolts": { "name": "Crossbow Bolt", "type": "consumable", "img": "icons/weapons/ammunition/bolt-tip-engraved.webp", "system": { "type": { "value": "ammo" } } }
+                            },
                         "quantity": "1d4+prof"
                     }
                 ],
