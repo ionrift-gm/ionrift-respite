@@ -1246,8 +1246,11 @@ function _showRejoinNotification(app) {
     showRejoinNotification(app, _rejoinRest);
 }
 
-/** @deprecated Use removeRejoinNotification() directly. */
-function _removeRejoinNotification() {
+/**
+ * Removes the player rejoin bar. Re-exported for RestSetupApp to use
+ * when auto-opening the player window on post-activity phase transitions.
+ */
+export function _removeRejoinBar() {
     removeRejoinNotification();
 }
 
@@ -1300,6 +1303,25 @@ export function _refreshGmRestIndicator(app) {
  */
 export function _refreshRejoinBar(app) {
     refreshRejoinBar(app);
+}
+
+/**
+ * Ensures the player rejoin bar is visible. If it already exists, refreshes it.
+ * If it doesn't exist, creates it. Call this after phase transitions where the
+ * player RSA may not be rendered but the rest is still active.
+ * @param {object} app - The active player RestSetupApp instance.
+ */
+export function _ensureRejoinBar(app) {
+    const existing = document.getElementById("respite-rejoin-bar");
+    if (existing) {
+        // Bar exists — update the phase label and progress
+        const phaseSpan = existing.querySelector("span:not(.respite-bar-progress)");
+        if (phaseSpan) phaseSpan.textContent = `Rest in progress (Phase: ${app?._phase ?? "active"})`;
+        refreshRejoinBar(app);
+        return;
+    }
+    // Bar doesn't exist — create it
+    showRejoinNotification(app, _rejoinRest);
 }
 
 /**

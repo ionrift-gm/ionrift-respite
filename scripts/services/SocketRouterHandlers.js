@@ -132,7 +132,7 @@ export function handleRestStarted(data, ctx) {
 
 export function handleActivityChoice(data, ctx) {
     if (!ctx.activeRestSetupApp) return;
-    ctx.activeRestSetupApp.receivePlayerChoices(data.userId, data.choices, data.craftingResults ?? null, data.followUps ?? null);
+    ctx.activeRestSetupApp.receivePlayerChoices(data.userId, data.choices, data.craftingResults ?? null, data.followUps ?? null, data.earlyResults ?? null);
 }
 
 export function handleRestResolved(data, ctx) {

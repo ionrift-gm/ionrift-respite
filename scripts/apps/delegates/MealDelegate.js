@@ -598,6 +598,8 @@ export class MealDelegate {
             game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
         }
         app.render();
+        // Refresh GM footer bar so ration count is reflected
+        if (typeof app._updateRestBarProgress === "function") app._updateRestBarProgress();
         if (typeof app._refreshStationOverlayMeals === "function") app._refreshStationOverlayMeals();
     }
 

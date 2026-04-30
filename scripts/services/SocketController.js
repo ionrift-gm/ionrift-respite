@@ -234,8 +234,8 @@ export function emitForceReload() {
  * @param {object|null} [craftingResults=null]
  * @param {object|null} [followUps=null]
  */
-export function emitActivityChoice(userId, choices, craftingResults = null, followUps = null) {
-    _emit(SOCKET_TYPES.ACTIVITY_CHOICE, { userId, choices, craftingResults, followUps });
+export function emitActivityChoice(userId, choices, craftingResults = null, followUps = null, earlyResults = null) {
+    _emit(SOCKET_TYPES.ACTIVITY_CHOICE, { userId, choices, craftingResults, followUps, earlyResults });
 }
 
 // ── Camp Fire Emitters ──────────────────────────────────────────────────────
