@@ -159,6 +159,45 @@ export function removeGmRestIndicator() {
     document.getElementById("respite-gm-rest-bar")?.remove();
 }
 
+/**
+ * Updates the task-count span in the existing GM rest indicator bar.
+ * Call whenever _characterChoices or _activityMealRationsSubmitted changes.
+ * Safe to call even if the bar isn't visible — no-ops cleanly.
+ * @param {object} app - The active RestSetupApp instance.
+ */
+export function refreshGmRestIndicator(app) {
+    const bar = document.getElementById("respite-gm-rest-bar");
+    if (!bar || app?._phase !== "activity") return;
+    const span = bar.querySelector(".respite-bar-progress");
+    if (!span) return;
+    const partySize = getPartyActors().length;
+    const activitiesResolved = app._characterChoices?.size ?? 0;
+    const trackFood = game.settings.get(MODULE_ID, "trackFood");
+    const rationsResolved = trackFood ? (app._activityMealRationsSubmitted?.size ?? 0) : 0;
+    const totalTasks = partySize + (trackFood ? partySize : 0);
+    const resolvedTasks = activitiesResolved + rationsResolved;
+    span.textContent = `${resolvedTasks} / ${totalTasks} tasks to complete`;
+}
+
+/**
+ * Updates the task-count span in the existing player rejoin bar.
+ * Call whenever _characterChoices changes on the player RSA.
+ * @param {object} app - The active player RestSetupApp instance.
+ */
+export function refreshRejoinBar(app) {
+    const bar = document.getElementById("respite-rejoin-bar");
+    if (!bar || app?._phase !== "activity") return;
+    const span = bar.querySelector(".respite-bar-progress");
+    if (!span) return;
+    const partySize = getPartyActors().length;
+    const activitiesResolved = app._characterChoices?.size ?? 0;
+    const trackFood = game.settings.get(MODULE_ID, "trackFood");
+    const rationsResolved = trackFood ? (app._activityMealRationsSubmitted?.size ?? 0) : 0;
+    const totalTasks = partySize + (trackFood ? partySize : 0);
+    const resolvedTasks = activitiesResolved + rationsResolved;
+    span.textContent = `${resolvedTasks} / ${totalTasks} tasks to complete`;
+}
+
 // ── GM: Short Rest Indicator Bar ─────────────────────────────
 
 /**

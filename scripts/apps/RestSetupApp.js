@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 import { RestFlowEngine } from "../services/RestFlowEngine.js";
 import { executePlayerRoll, rollForPlayer, pickBestSkill, SKILL_DISPLAY_NAMES, waitForDiceSoNice } from "../services/RollRequestManager.js";
 import { TerrainRegistry } from "../services/TerrainRegistry.js";
@@ -82,6 +83,8 @@ import {
     setActiveRestData,
     _showGmRestIndicator,
     _removeGmRestIndicator,
+    _refreshGmRestIndicator,
+    _refreshRejoinBar,
     showAfkPanel
 } from "../module.js";
 import { getPartyActors } from "../services/partyActors.js";
@@ -1113,6 +1116,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             timestamp: Date.now()
         };
         await game.settings.set(MODULE_ID, "activeRest", state);
+        Logger.log(`[SYNC] _saveRestState: playerSubmissions=${state.playerSubmissions.length}, characterChoices=${state.characterChoices.length}, phase=${state.phase}`);
     }
 
     /**
@@ -1140,6 +1144,22 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._earlyResults = new Map(state.earlyResults ?? []);
         this._gmOverrides = new Map(state.gmOverrides ?? []);
         this._playerSubmissions = new Map(state.playerSubmissions ?? []);
+
+        // Prune stale charId-keyed entries that may have been written by a prior
+        // bug in receiveSubmissionUpdate / receiveRestSnapshot. Those methods
+        // incorrectly used charId as the map key; the schema requires userId.
+        // Any key that is not a recognised Foundry userId is garbage and must be
+        // dropped so _rebuildCharacterChoices can correctly derive _characterChoices.
+        let pruned = 0;
+        for (const key of this._playerSubmissions.keys()) {
+            if (!game.users.get(key)) {
+                this._playerSubmissions.delete(key);
+                pruned++;
+            }
+        }
+        if (pruned > 0) {
+            Logger.warn(`[state-restore] Pruned ${pruned} invalid (non-userId) entries from _playerSubmissions. This indicates a prior schema corruption that has now been fixed.`);
+        }
         this._lockedCharacters = new Set(state.lockedCharacters ?? []);
         this._gmFollowUps = new Map(state.gmFollowUps ?? []);
         this._craftingResults = new Map(state.craftingResults ?? []);
@@ -1163,7 +1183,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Rebuild _characterChoices from the restored submissions and overrides
         this._rebuildCharacterChoices();
 
-        console.log(`[Respite:State] Restored — characterChoices=${this._characterChoices.size}, playerSubmissions=${this._playerSubmissions.size}, gmOverrides=${this._gmOverrides.size}`);
+        Logger.log(`[SYNC] _loadRestState restored: characterChoices=${this._characterChoices.size}, playerSubmissions=${this._playerSubmissions.size}, gmOverrides=${this._gmOverrides.size}, submissionKeys=[${[...this._playerSubmissions.keys()].join(",")}], choiceKeys=[${[...this._characterChoices.keys()].join(",")}]`);
 
         if (this._magicScanComplete) {
             notifyDetectMagicScanApplied(this, getPartyActors().map(a => a.id));
@@ -3915,9 +3935,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (terrainHint && !terrainHint.dataset.longHint) {
                 terrainHint.dataset.longHint = terrainHint.textContent;
             }
-            const _applyRestType = (value) => {
+            const _applyRestType = (value, rerender) => {
                 const isShort = value === "short";
                 restTypeInput.value = value;
+                this._selectedRestType = value;
                 restTypeButtons.forEach(btn => {
                     btn.classList.toggle("active", btn.dataset.restType === value);
                 });
@@ -3935,12 +3956,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (wxBlock) wxBlock.style.display = isShort ? "none" : "";
                 const advBlock = this.element.querySelector(".scene-advanced-drawer");
                 if (advBlock) advBlock.style.display = isShort ? "none" : "";
+                if (rerender) this.render();
             };
             restTypeButtons.forEach(btn => {
-                btn.addEventListener("click", () => _applyRestType(btn.dataset.restType));
+                btn.addEventListener("click", () => _applyRestType(btn.dataset.restType, true));
             });
-            // Apply initial state from hidden input value
-            _applyRestType(restTypeInput.value ?? "long");
+            // Apply initial state from hidden input value (no rerender: avoids binding recursion)
+            _applyRestType(restTypeInput.value ?? "long", false);
         }
 
         // Comfort hint: update on dropdown change
@@ -4129,10 +4151,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 mySub.choices[characterId] = activityId;
                 this._playerSubmissions.set(game.user.id, mySub);
 
-                emitActivityChoice({
-                    userId: game.user.id,
-                    choices: Object.fromEntries(this._characterChoices)
-                });
+                emitActivityChoice(
+                    game.user.id,
+                    Object.fromEntries(this._characterChoices)
+                );
 
                 const actName = activity?.name ?? activityId;
                 ui.notifications.info(`${game.actors.get(characterId)?.name ?? "Character"} will ${actName}.`);
@@ -4901,7 +4923,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Called from the short-rest shelter step (step 2).
      */
     static async #onBeginShortRest(event, target) {
-        // Find the active shelter from overrides (the one marked active)
+        RestSetupApp.#launchShortRestFromSetup.call(this);
+    }
+
+    /**
+     * Shared path: close setup and open the short rest panel (no long-rest engine or camp phase).
+     */
+    static #launchShortRestFromSetup() {
         const activeShelter = Object.entries(this._shelterOverrides ?? {})
             .find(([, v]) => v)?.[0] ?? "none";
         this.close();
@@ -4914,6 +4942,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onBeginRest(event, target) {
         const form = this.element.querySelector("form");
         const formData = Object.fromEntries(new FormData(form));
+
+        if ((formData.restType ?? "long") === "short") {
+            RestSetupApp.#launchShortRestFromSetup.call(this);
+            return;
+        }
 
         const terrainTag = this._selectedTerrain ?? formData.terrain ?? "forest";
         await this._loadTerrainEvents(terrainTag);
@@ -5080,9 +5113,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const act = this._activities?.find(a => a.id === actId);
             submissions[charId] = { activityId: actId, activityName: act?.name ?? actId, source: this._gmOverrides.has(charId) ? "gm" : "player" };
         }
-        emitSubmissionUpdate({
-                    submissions
-                });
+        emitSubmissionUpdate(submissions);
     }
 
     /**
@@ -5240,10 +5271,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (actor) ui.notifications.info(`${actor.name}'s activity submitted.`);
             }
 
-            emitActivityChoice({
-                    userId: game.user.id,
-                    choices: Object.fromEntries(this._characterChoices)
-                });
+            emitActivityChoice(
+                    game.user.id,
+                    Object.fromEntries(this._characterChoices)
+                );
             this._saveRestState();
         }
 
@@ -7129,6 +7160,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Receives player-submitted choices from the socket handler.
      */
     receivePlayerChoices(userId, choices, craftingResults = null, followUps = null) {
+        Logger.log(`[SYNC] receivePlayerChoices: userId=${userId}, choiceKeys=${Object.keys(choices ?? {}).join(",") || "none"}`, choices);
         const user = game.users.get(userId);
         this._playerSubmissions.set(userId, {
             choices,
@@ -7154,6 +7186,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._refreshStationOverlayMeals();
         }
         this.render();
+        // Refresh the GM footer bar in-place (it bakes the count at creation time).
+        _refreshGmRestIndicator(this);
 
         // Broadcast submission status to all players
         const submissions = {};
@@ -7165,9 +7199,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const act = this._activities?.find(a => a.id === actId);
             submissions[charId] = { activityId: actId, activityName: act?.name ?? actId, source: "gm" };
         }
-        emitSubmissionUpdate({
-                    submissions
-                });
+        emitSubmissionUpdate(submissions);
     }
 
     /**
@@ -7211,10 +7243,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._rebuildCharacterChoices();
         this._pruneEarlyResultsWithoutChoice();
 
-        emitActivityChoice({
-                    userId: game.user.id,
-                    choices: Object.fromEntries(this._characterChoices)
-                });
+        emitActivityChoice(
+                    game.user.id,
+                    Object.fromEntries(this._characterChoices)
+                );
 
         resetStationOverlaysLocal();
         if (isStationLayerActive()) {
@@ -7312,10 +7344,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._playerSubmissions.set(game.user.id, mySub);
         this._saveRestState();
 
-        emitActivityChoice({
-                    userId: game.user.id,
-                    choices: Object.fromEntries(this._characterChoices)
-                });
+        emitActivityChoice(
+                    game.user.id,
+                    Object.fromEntries(this._characterChoices)
+                );
 
         const actName = activity?.name ?? activityId;
         ui.notifications.info(`${game.actors.get(characterId)?.name ?? "Character"} will ${actName}.`);
@@ -7461,7 +7493,28 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             console.warn(`${MODULE_ID} | _buildStationEmptyNoticeMap: collectPartyIdentifyEmbedData failed`, err);
         }
         const workbenchIdentifyBright = (identifyParty.unidentifiedItems?.length ?? 0) > 0;
-        const mealBrightParty = unchosen.some(a => this._actorOwesActivityPhaseMealRations(a.id));
+
+        // For GM: any unchosen party member who owes rations keeps the cooking station bright.
+        // For players: only the viewer's own actor matters — other players' ration debts are
+        // opaque to this client and must not hold the station bright after the viewer has eaten.
+        // Bug history: before this fix, mealBrightParty evaluated ALL unchosen actors,
+        // keeping the cooking station bright on the submitting player's client because the
+        // other players hadn't submitted yet — even when this player had no remaining ration debt.
+        const viewer = RestSetupApp._resolveStationActorForUser(partyActors, this);
+        let mealBrightParty;
+        if (this._isGM) {
+            mealBrightParty = unchosen.some(a => this._actorOwesActivityPhaseMealRations(a.id));
+        } else {
+            mealBrightParty = !!viewer
+                && unchosen.some(a => a.id === viewer.id)
+                && this._actorOwesActivityPhaseMealRations(viewer.id);
+        }
+        Logger.log(
+            `[station-fade] mealBrightParty=${mealBrightParty}`,
+            `viewer=${viewer?.name ?? "none"}`,
+            `isGM=${this._isGM}`,
+            `unchosenCount=${unchosen.length}`
+        );
 
         const hasAvailableAtStation = (actor, stationIdSet) => {
             const { available: allAvail } = this._activityResolver.getAvailableActivitiesWithFaded(
@@ -7470,7 +7523,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return allAvail.some(a => stationIdSet.has(a.id));
         };
 
-        const viewer = RestSetupApp._resolveStationActorForUser(partyActors, this);
         if (viewer && this._characterChoices.has(viewer.id)) {
             for (const station of CAMP_STATIONS) {
                 if (!station.furnitureKey) continue;
@@ -7966,6 +8018,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     _getPlayerChoiceForCharacter(characterId) {
         for (const [userId, submission] of this._playerSubmissions) {
+            // Guard: choices may be missing on malformed/legacy entries.
+            if (!submission?.choices || typeof submission.choices !== "object") continue;
             if (submission.choices[characterId]) {
                 return {
                     activityId: submission.choices[characterId],
@@ -7994,8 +8048,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const submissions = {};
         for (const [charId, actId] of this._characterChoices) {
             const act = this._activities?.find(a => a.id === actId);
-            submissions[charId] = { activityName: act?.name ?? actId, source: "snapshot" };
+            submissions[charId] = { activityId: actId, activityName: act?.name ?? actId, source: "snapshot" };
         }
+        Logger.log(`[SYNC] getRestSnapshot: characterChoices=${this._characterChoices.size}, submissionKeys=${Object.keys(submissions).join(",") || "none"}`, Object.values(submissions)[0] ?? "(empty)");
 
         return {
             phase: this._phase,
@@ -8222,19 +8277,26 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Receives updated submission statuses from the GM.
      */
     receiveSubmissionUpdate(submissions) {
-        // Store submission status for display (non-owned characters)
+        if (!submissions || typeof submissions !== "object") {
+            Logger.warn("[receiveSubmissionUpdate] received null/undefined submissions — ignored.");
+            return;
+        }
+        Logger.log(`[SYNC] receiveSubmissionUpdate: keys=${Object.keys(submissions).join(",") || "none"}`, Object.values(submissions)[0] ?? "(empty)");
+        // Store submission status for display (non-owned characters).
         this._submissionStatus = submissions;
 
-        // Update character choices from the GM's canonical state
+        // Apply the GM's canonical choices directly to _characterChoices.
+        // Do NOT write into _playerSubmissions — that map is keyed by userId,
+        // and writing charId-keyed entries here corrupts the schema and crashes
+        // _getPlayerChoiceForCharacter when it accesses submission.choices.
         for (const [charId, info] of Object.entries(submissions)) {
-            this._playerSubmissions.set(charId, {
-                choices: { [charId]: info.activityId },
-                userName: info.source === "gm" ? "GM" : "Player",
-                timestamp: Date.now()
-            });
+            if (info?.activityId) {
+                this._characterChoices.set(charId, info.activityId);
+            }
         }
-        this._rebuildCharacterChoices();
         this._updateRestBarProgress();
+        // Refresh the player rejoin bar in-place (it bakes the count at creation time).
+        _refreshRejoinBar(this);
         if (this._phase === "activity" && isStationLayerActive()) {
             refreshStationPortraitsFromChoices(this._characterChoices, this._stationCanvasIdByCharacter);
             refreshStationEmptyNoticeFade(this);
@@ -8255,14 +8317,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         console.debug(`${MODULE_ID} | [REJOIN] receiveRestSnapshot: phase=${snapshot.phase}, submissionKeys=${Object.keys(snapshot.submissions ?? {}).join(",") || "none"}, choices=${this._characterChoices?.size ?? 0}`);
         // Apply submissions
         if (snapshot.submissions) {
+            // Apply canonical choices directly to _characterChoices.
+            // Do NOT write into _playerSubmissions — that map is keyed by userId.
+            // Writing charId-keyed entries here corrupts the schema and crashes render.
             for (const [charId, info] of Object.entries(snapshot.submissions)) {
-                this._playerSubmissions.set(charId, {
-                    choices: { [charId]: info.activityName },
-                    userName: info.source === "gm" ? "GM" : "Player",
-                    timestamp: Date.now()
-                });
+                const actId = info?.activityId ?? info?.activityName;
+                if (actId) this._characterChoices.set(charId, actId);
             }
-            this._rebuildCharacterChoices();
             // eslint-disable-next-line no-console
             console.debug(`${MODULE_ID} | [REJOIN] receiveRestSnapshot: choices after apply=${this._characterChoices?.size ?? 0}`);
         }

@@ -40,12 +40,13 @@ import {
     DETECT_MAGIC_BTN_LABEL_PLAYER,
     DETECT_MAGIC_BTN_TITLE_GM
 } from "./RestConstants.js";
-import { getAttuneableItemOptions } from "../util/attuneableItems.js";
 import { getShortRestRechargeLabels } from "../services/ShortRestRecharge.js";
 import { setNativeShortRestUnsuppressed } from "../services/NativeRestPass.js";
 import {
     emitShortRestWorkbenchSync,
-    emitShortRestWorkbenchStagingFromPlayer
+    emitShortRestWorkbenchStagingFromPlayer,
+    emitShortRestCompletionSummary,
+    emitShortRestComplete
 } from "../services/SocketController.js";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -80,7 +81,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             resizable: true,
         },
         position: {
-            width: 760,
+            width: 700,
             height: 700,
         },
         actions: {
@@ -94,12 +95,13 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             volunteerSong:             ShortRestApp.#onVolunteerSong,
             toggleShortRestFinished:   ShortRestApp.#onToggleShortRestFinished,
             switchShortRestTab:        ShortRestApp.#onSwitchTab,
-            setWorkbenchFocusActor:    ShortRestApp.#onSetWorkbenchFocusActor,
+            selectWorkbenchRosterActor: ShortRestApp.#onSelectWorkbenchRosterActor,
             stationDetectMagicScan:    ShortRestApp.#onStationDetectMagicScan,
             stationIdentifyScannedItem:  ShortRestApp.#onStationIdentifyScannedItem,
             submitWorkbenchIdentify:   ShortRestApp.#onSubmitWorkbenchIdentify,
             workbenchIdentifyRemovePotion: ShortRestApp.#onWorkbenchIdentifyRemovePotion,
             dismissWorkbenchIdentifyAck:   ShortRestApp.#onDismissWorkbenchIdentifyAck,
+            finalizeShortRestRecovery: ShortRestApp.#onFinalizeShortRestRecovery,
         },
     };
 
@@ -168,6 +170,13 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         /** @type {number|null} */
         this._workbenchHookId = null;
+
+        /** True after GM confirms complete: summary shown, native shortRest not yet run. */
+        this._completionPhase = false;
+        /** @type {Array<{ actorId: string, name: string, line: string }>|null} */
+        this._completionSummaryLines = null;
+        /** Prevents double-submit on Apply native recovery. */
+        this._finalizeShortRestBusy = false;
     }
 
     // ── Lifecycle ──────────────────────────────────────────────
@@ -175,20 +184,20 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     async render(options = {}) {
         if (this._isGM) {
             registerActiveShortRestApp(this);
-            // Broadcast state to players so anyone already connected gets it
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "shortRestStarted",
-                rolls: this._serializeRolls(),
-                songBonuses: this._serializeSongBonuses(),
-                afkCharacterIds: RestAfkState.getAfkCharacterIds(),
-                finishedUserIds: [...this._finishedUsers],
-                activeShelter: this._activeShelter,
-                rpPrompt: this._rpPrompt,
-                songVolunteer: this._songVolunteer,
-                workbench: this._serializeWorkbenchStateForNet(),
-            });
-            // Persist to world setting for session recovery
-            this._saveShortRestState();
+            if (!this._completionPhase) {
+                game.socket.emit(`module.${MODULE_ID}`, {
+                    type: "shortRestStarted",
+                    rolls: this._serializeRolls(),
+                    songBonuses: this._serializeSongBonuses(),
+                    afkCharacterIds: RestAfkState.getAfkCharacterIds(),
+                    finishedUserIds: [...this._finishedUsers],
+                    activeShelter: this._activeShelter,
+                    rpPrompt: this._rpPrompt,
+                    songVolunteer: this._songVolunteer,
+                    workbench: this._serializeWorkbenchStateForNet(),
+                });
+                void this._saveShortRestState();
+            }
         }
         // Live sync: party roster actors (not only hasPlayerOwner) so GM-owned roster PCs
         // and spell slot changes still refresh Arcane Recovery / Natural Recovery.
@@ -284,7 +293,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             magicScanResults: this._magicScanResults,
             magicScanComplete: !!this._magicScanComplete,
             workbenchFocusActorId: this._workbenchFocusActorId,
-            activeTab: this._activeTab,
         };
     }
 
@@ -305,9 +313,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 potionItemIds: Array.isArray(st?.potionItemIds) ? st.potionItemIds : [],
             });
         }
-        if (data.activeTab === "recovery" || data.activeTab === "workbench") {
-            this._activeTab = data.activeTab;
-        }
         if (data.workbenchFocusActorId) {
             this._workbenchFocusActorId = data.workbenchFocusActorId;
         }
@@ -326,9 +331,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._magicScanComplete = !!data.magicScanComplete;
         if (data.workbenchFocusActorId !== undefined) {
             this._workbenchFocusActorId = data.workbenchFocusActorId;
-        }
-        if (data.activeTab === "recovery" || data.activeTab === "workbench") {
-            this._activeTab = data.activeTab;
         }
     }
 
@@ -356,49 +358,31 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         await this._workbench.submitFromStation(actorId);
     }
 
-    async attuneWorkbenchItemForActor(actorId, itemId) {
-        const actor = game.actors.get(actorId);
-        if (!actor) return;
-        if (!actor.isOwner && !game.user.isGM) return;
-        const item = actor.items.get(itemId);
-        if (!item) return;
-        const att = item.system?.attunement;
-        if ((att !== "required" && att !== 1) || item.system?.attuned) {
-            ui.notifications.warn("That item cannot be attuned here.");
-            return;
+    /**
+     * Actor whose workbench identify UI and staging apply for the current user.
+     * GM uses roster focus; players use linked character or first owned party actor.
+     * @returns {string|null}
+     */
+    _resolveWorkbenchActorIdForEmbed() {
+        const party = getPartyActors();
+        if (!party.length) return null;
+        if (game.user?.isGM) {
+            const id = this._workbenchFocusActorId;
+            if (id && party.some((a) => a.id === id)) return id;
+            return party[0].id;
         }
-        const attuneSlots = actor.system?.attributes?.attunement;
-        if (attuneSlots) {
-            const current = attuneSlots.value ?? 0;
-            const max = attuneSlots.max ?? 3;
-            if (current >= max) {
-                ui.notifications.warn(`${actor.name} is already attuned to the maximum number of items (${max}).`);
-                return;
-            }
+        const linkedId = game.user?.character?.id ?? null;
+        if (linkedId) {
+            const linked = party.find((a) => a.id === linkedId);
+            if (linked?.isOwner) return linked.id;
         }
-        try {
-            await item.update({ "system.attuned": true });
-            ui.notifications.info(`${actor.name} attunes to ${item.name}.`);
-        } catch (e) {
-            Logger.warn(`${MODULE_ID} | attuneWorkbenchItemForActor:`, e);
-            ui.notifications.error("Could not attune that item.");
-            return;
-        }
-        if (game.user.isGM) {
-            void this._saveShortRestState();
-            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
-        }
-        if (this.rendered) void this.render();
+        const owned = party.find((a) => a.isOwner);
+        if (owned) return owned.id;
+        return party[0].id;
     }
 
     _getWorkbenchEmbedContext() {
-        const party = getPartyActors();
-        const focus = this._workbenchFocusActorId && party.some((a) => a.id === this._workbenchFocusActorId)
-            ? this._workbenchFocusActorId
-            : (party[0]?.id ?? null);
-        if (focus && this._workbenchFocusActorId !== focus) {
-            this._workbenchFocusActorId = focus;
-        }
+        const focus = this._resolveWorkbenchActorIdForEmbed();
         if (!focus) {
             return {
                 identifyCasters: [],
@@ -412,27 +396,25 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 workbenchIdentifyActorId: null,
                 workbenchGearChip: null,
                 workbenchPotionChips: [],
-                workbenchNoUnidentifiedOnSheet: true,
                 workbenchSubmitLocked: true,
                 workbenchIdentifyAcknowledgement: null,
                 workbenchAckRevealReady: true,
                 workbenchFocusExhausted: false,
-                attuneableItems: [],
+                isShortRestWorkbench: true,
             };
         }
         const emb = this.getStationIdentifyEmbedContext({ restrictUnidentifiedToActorId: focus });
         const wb = this.getWorkbenchIdentifyDragContext(focus);
-        const attuneableItems = getAttuneableItemOptions(game.actors.get(focus));
         return {
             ...emb,
             ...wb,
-            attuneableItems,
             isGmUser: !!game.user?.isGM,
             canShowDetectMagicScanButton: this.canShowDetectMagicScanButtonFromParty(),
             detectMagicScanButtonLabel: game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER,
             detectMagicScanButtonTitle: game.user?.isGM ? DETECT_MAGIC_BTN_TITLE_GM : "",
             magicScanResults: this._magicScanResults ?? [],
             magicScanComplete: !!this._magicScanComplete,
+            isShortRestWorkbench: true,
         };
     }
 
@@ -440,6 +422,14 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     async _prepareContext(options) {
         const partyActors = getPartyActors();
+
+        if (this._isGM && partyActors.length) {
+            const valid = this._workbenchFocusActorId
+                && partyActors.some((a) => a.id === this._workbenchFocusActorId);
+            if (!valid) {
+                this._workbenchFocusActorId = partyActors[0].id;
+            }
+        }
 
         // Detect which shelter spells anyone in the party has prepared
         const preparedShelterIds = new Set(["none"]);
@@ -692,6 +682,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         };
 
         // Roster strip: avatar chips with AFK + readiness state
+        const gmWorkbenchRosterPick = this._isGM && this._activeTab === "workbench";
         const roster = partyActors.map(a => {
             const isAfk = RestAfkState.isAfk(a.id);
             const ownerUser = game.users.find(u => !u.isGM && u.active && a.testUserPermission(u, "OWNER"));
@@ -704,8 +695,16 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 isAfk,
                 isFinished,
                 isOwner: this._isGM || a.isOwner,
+                isWorkbenchFocus: gmWorkbenchRosterPick && this._workbenchFocusActorId === a.id,
             };
         });
+
+        const rawCompletionLines = this._completionSummaryLines ?? [];
+        const completionPhase = !!this._completionPhase;
+        const completionSummaryForUser = completionPhase
+            ? ShortRestApp.#completionRowsForUser(this._isGM, rawCompletionLines)
+            : [];
+        const completionSummaryEmpty = completionPhase && !this._isGM && completionSummaryForUser.length === 0;
 
         return {
             isGM: this._isGM,
@@ -716,12 +715,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             rpPrompt: this._rpPrompt,
             roster,
             activeTab: this._activeTab,
-            workbenchParty: partyActors.map((a) => ({
-                id: a.id,
-                name: a.name,
-                img: a.img || "icons/svg/mystery-man.svg",
-            })),
-            workbenchFocusActorId: this._workbenchFocusActorId,
+            gmWorkbenchRosterPick,
             workbenchEmbed: this._getWorkbenchEmbedContext(),
             shortRestFooter: {
                 myFinished: this._finishedUsers.has(game.user.id),
@@ -739,6 +733,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ? ImageResolver.terrainBanner("short-rest", "rope_trick.png")
                 : ImageResolver.terrainBanner("short-rest", "banner.png"),
             bannerFallback: ImageResolver.fallbackBanner,
+            completionPhase,
+            completionSummaryForUser,
+            completionSummaryEmpty,
         };
     }
 
@@ -828,6 +825,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static async #onAddSpellSlot(event, target) {
+        if (this._completionPhase) return;
         const actorId = target.dataset.actorId;
         const actor = game.actors.get(actorId);
         if (!actor) return;
@@ -851,6 +849,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static async #onRemoveSpellSlot(event, target) {
+        if (this._completionPhase) return;
         const actorId = target.dataset.actorId;
         const actor = game.actors.get(actorId);
         if (!actor) return;
@@ -874,6 +873,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Player confirms their spell recovery selections; locks the controls.
      */
     static async #onConfirmRecovery(event, target) {
+        if (this._completionPhase) return;
         const actorId = target.dataset.actorId;
         const actor = game.actors.get(actorId);
         if (!actor) return;
@@ -887,6 +887,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Player un-confirms their spell recovery selections; unlocks the controls.
      */
     static async #onEditRecovery(event, target) {
+        if (this._completionPhase) return;
         const actorId = target.dataset.actorId;
         const actor = game.actors.get(actorId);
         if (!actor) return;
@@ -897,6 +898,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static #onToggleShortRestFinished(event, target) {
+        if (this._completionPhase) return;
         event.preventDefault?.();
         const uid = game.user.id;
         const next = !this._finishedUsers.has(uid);
@@ -912,6 +914,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static async #onVolunteerSong(event, target) {
+        if (this._completionPhase) return;
         const actorId = target.dataset.actorId;
         const actor = game.actors.get(actorId);
         if (!actor) return;
@@ -957,6 +960,25 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * @param {boolean} isGm
+     * @param {Array<{ actorId: string, name: string, line: string }>} lines
+     */
+    static #completionRowsForUser(isGm, lines) {
+        if (!lines?.length) return [];
+        if (isGm) {
+            return lines.map(({ actorId, name, line }) => ({ actorId, name, line }));
+        }
+        const linkedId = game.user?.character?.id ?? null;
+        return lines
+            .filter((row) => {
+                if (linkedId && row.actorId === linkedId) return true;
+                const actor = game.actors.get(row.actorId);
+                return !!actor?.isOwner;
+            })
+            .map(({ actorId, name, line }) => ({ actorId, name, line }));
+    }
+
+    /**
      * @param {string} bardName
      * @param {string} recipientName
      * @param {string} formula
@@ -982,6 +1004,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static #onSwitchTab(event, target) {
+        if (this._completionPhase) return;
         const tab = target?.dataset?.tab;
         if (tab !== "recovery" && tab !== "workbench") return;
         this._activeTab = tab;
@@ -992,30 +1015,27 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             emitShortRestWorkbenchStagingFromPlayer({
                 userId: game.user.id,
                 staging: Array.from(this._workbenchIdentifyStaging?.entries() ?? []),
-                activeTab: this._activeTab,
             });
         }
         this.render();
     }
 
-    static #onSetWorkbenchFocusActor(event, target) {
-        const id = target?.value;
+    static #onSelectWorkbenchRosterActor(event, target) {
+        if (this._completionPhase) return;
+        if (!this._isGM || this._activeTab !== "workbench") return;
+        const chip = target?.closest?.("[data-roster-id]");
+        const id = chip?.dataset?.rosterId;
         if (!id) return;
+        const party = getPartyActors();
+        if (!party.some((a) => a.id === id)) return;
         this._workbenchFocusActorId = id;
-        if (this._isGM) {
-            void this._saveShortRestState();
-            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
-        } else {
-            emitShortRestWorkbenchStagingFromPlayer({
-                userId: game.user.id,
-                staging: Array.from(this._workbenchIdentifyStaging?.entries() ?? []),
-                workbenchFocusActorId: this._workbenchFocusActorId,
-            });
-        }
+        void this._saveShortRestState();
+        emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
         this.render();
     }
 
     static async #onStationDetectMagicScan() {
+        if (this._completionPhase) return;
         if (!this._detectMagic) return;
         await this._detectMagic.runScan(getPartyActors);
         if (this._isGM) {
@@ -1025,6 +1045,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static async #onStationIdentifyScannedItem(event, target) {
+        if (this._completionPhase) return;
         const actorId = target?.dataset?.actorId;
         const itemId = target?.dataset?.itemId;
         if (!actorId || !itemId) return;
@@ -1036,6 +1057,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static async #onSubmitWorkbenchIdentify() {
+        if (this._completionPhase) return;
         const el = this.element?.querySelector?.(".station-workbench-identify-embed[data-workbench-actor-id]");
         const actorId = el?.dataset?.workbenchActorId;
         if (!actorId) return;
@@ -1047,6 +1069,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static #onWorkbenchIdentifyRemovePotion(event, target) {
+        if (this._completionPhase) return;
         const itemId = target?.closest?.("[data-item-id]")?.dataset?.itemId ?? target?.dataset?.itemId;
         const el = this.element?.querySelector?.(".station-workbench-identify-embed[data-workbench-actor-id]");
         const actorId = el?.dataset?.workbenchActorId;
@@ -1059,6 +1082,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static async #onDismissWorkbenchIdentifyAck() {
+        if (this._completionPhase) return;
         const el = this.element?.querySelector?.(".station-workbench-identify-embed[data-workbench-actor-id]");
         const actorId = el?.dataset?.workbenchActorId;
         if (!actorId) return;
@@ -1071,23 +1095,11 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
     }
 
-    static async #onWorkbenchAttune(event, target) {
-        const actorId = target?.dataset?.workbenchActorId;
-        if (!actorId) return;
-        const row = target.closest?.(".sr-workbench-attune");
-        const sel = row?.querySelector?.(".sr-attune-select");
-        const itemId = sel?.value;
-        if (!itemId) {
-            ui.notifications.warn("Pick an item to attune.");
-            return;
-        }
-        await this.attuneWorkbenchItemForActor(actorId, itemId);
-    }
-
     /**
      * Player spends 1 Hit Die. Uses Foundry's native rollHitDie().
      */
     static async #onSpendHitDie(event, target) {
+        if (this._completionPhase) return;
         const actorId = target.dataset.actorId;
         const actor = game.actors.get(actorId);
         if (!actor) return;
@@ -1206,6 +1218,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #onCompleteShortRest(event, target) {
         if (!this._isGM) return;
+        if (this._completionPhase) return;
 
         const partyActorsPreCheck = getPartyActors();
         const afkCharNames = partyActorsPreCheck
@@ -1346,81 +1359,76 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const line = parts.length
                 ? parts.join(". ") + "."
                 : "No HD healing from this window.";
-            summaryLines.push({ name: a.name, line });
+            summaryLines.push({ actorId: a.id, name: a.name, line });
         }
 
-        const htmlSummary = summaryLines
-            .map(
-                (l) =>
-                    `<p><strong>${ShortRestApp.#escapeChat(l.name)}</strong><br/>${ShortRestApp.#escapeChat(l.line)}</p>`
-            )
-            .join("");
+        this._completionSummaryLines = summaryLines;
+        this._completionPhase = true;
+        emitShortRestCompletionSummary({ lines: summaryLines });
+        await this.render(true);
+    }
+
+    /**
+     * GM second step: run native shortRest(), Chef temp HP, then close for everyone.
+     */
+    static async #onFinalizeShortRestRecovery() {
+        if (!this._isGM) return;
+        if (!this._completionPhase) return;
+        if (this._finalizeShortRestBusy) return;
+        this._finalizeShortRestBusy = true;
+
+        const partyActors = getPartyActors();
 
         try {
-            await new Promise((resolve) => {
-                const d = new Dialog(
-                    {
-                        title: "Short rest summary",
-                        content: `<div class="ionrift-sr-summary" style="padding:4px 0">${htmlSummary}` +
-                            `<p style="opacity:.85;font-size:.9em">Closing applies native short rest recovery ` +
-                            `(class features, item uses, wild shape uses, and similar).</p></div>`,
-                        buttons: {
-                            continue: { label: "Continue", callback: () => resolve() },
-                        },
-                        default: "continue",
-                    },
-                    { width: 440, classes: ["ionrift-window"] }
-                );
-                d.render(true);
-            });
-        } catch (e) {
-            Logger.warn(`${MODULE_ID} | Rest summary dialog failed:`, e);
-        }
-
-        setNativeShortRestUnsuppressed(true);
-        try {
-            for (const actor of partyActors) {
-                try {
-                    if (game.system.id === "dnd5e") {
-                        await actor.shortRest({ dialog: false, chat: true });
-                    }
-                } catch (e) {
-                    Logger.warn(`Failed shortRest for ${actor.name}:`, e);
-                }
-            }
-        } finally {
-            setNativeShortRestUnsuppressed(false);
-        }
-
-        const chef = ShortRestApp.#findChefActor(partyActors);
-        if (chef && game.system.id === "dnd5e") {
-            const pb = Number(chef.system?.attributes?.prof) || 2;
-            const targets = partyActors.slice(0, 4);
-            for (const t of targets) {
-                try {
-                    await t.update({ "system.attributes.hp.temp": pb });
-                } catch (e) {
-                    Logger.warn(`${MODULE_ID} | Chef temp HP:`, e);
-                }
-            }
+            setNativeShortRestUnsuppressed(true);
             try {
-                await ChatMessage.create({
-                    content:
-                        `<div class="respite-chat-parchment"><i class="fas fa-utensils"></i> ` +
-                        `Chef treats: <strong>up to four party members</strong> gain <strong>${pb} temporary ` +
-                        `HP</strong> (feat: ${ShortRestApp.#escapeChat(chef.name)}).</div>`,
-                    speaker: ChatMessage.getSpeaker({ actor: chef }),
-                });
-            } catch (e) {
-                Logger.warn(`${MODULE_ID} | Chef chat:`, e);
+                for (const actor of partyActors) {
+                    try {
+                        if (game.system.id === "dnd5e") {
+                            await actor.shortRest({ dialog: false, chat: true });
+                        }
+                    } catch (e) {
+                        Logger.warn(`Failed shortRest for ${actor.name}:`, e);
+                    }
+                }
+            } finally {
+                setNativeShortRestUnsuppressed(false);
             }
-        }
 
-        await this._clearShortRestState();
-        game.socket.emit(`module.${MODULE_ID}`, { type: "shortRestComplete" });
-        ui.notifications.info("Short rest complete. Class features recovered.");
-        this._isTerminating = true;
-        this.close();
+            const chef = ShortRestApp.#findChefActor(partyActors);
+            if (chef && game.system.id === "dnd5e") {
+                const pb = Number(chef.system?.attributes?.prof) || 2;
+                const targets = partyActors.slice(0, 4);
+                for (const t of targets) {
+                    try {
+                        await t.update({ "system.attributes.hp.temp": pb });
+                    } catch (e) {
+                        Logger.warn(`${MODULE_ID} | Chef temp HP:`, e);
+                    }
+                }
+                try {
+                    await ChatMessage.create({
+                        content:
+                            `<div class="respite-chat-parchment"><i class="fas fa-utensils"></i> ` +
+                            `Chef treats: <strong>up to four party members</strong> gain <strong>${pb} temporary ` +
+                            `HP</strong> (feat: ${ShortRestApp.#escapeChat(chef.name)}).</div>`,
+                        speaker: ChatMessage.getSpeaker({ actor: chef }),
+                    });
+                } catch (e) {
+                    Logger.warn(`${MODULE_ID} | Chef chat:`, e);
+                }
+            }
+
+            await this._clearShortRestState();
+            emitShortRestComplete();
+            ui.notifications.info("Short rest complete. Class features recovered.");
+            this._completionPhase = false;
+            this._completionSummaryLines = null;
+            this._isTerminating = true;
+            this.close();
+        } finally {
+            this._finalizeShortRestBusy = false;
+        }
     }
 
     /**
@@ -1441,6 +1449,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         });
         if (!proceed) return;
 
+        this._completionPhase = false;
+        this._completionSummaryLines = null;
+
         await this._clearShortRestState();
         game.socket.emit(`module.${MODULE_ID}`, { type: "shortRestAbandoned" });
         ui.notifications.info("Short rest abandoned.");
@@ -1453,7 +1464,15 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /**
      * Called on GM side when a player spends a hit die.
      */
+    receiveCompletionSummary(data) {
+        const lines = Array.isArray(data?.lines) ? data.lines : [];
+        this._completionSummaryLines = lines;
+        this._completionPhase = true;
+        void this.render(true);
+    }
+
     receiveHdSpent(data) {
+        if (this._completionPhase) return;
         const { actorId, rollTotal, die, conMod, annotations, songBonusUpdate } = data;
         if (!this._rolls.has(actorId)) this._rolls.set(actorId, []);
         const entry = { total: rollTotal, die, conMod };
@@ -1496,6 +1515,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {{ songVolunteer: object|null }} data
      */
     receiveSongVolunteer(data) {
+        if (this._completionPhase) return;
         this._songVolunteer = data.songVolunteer ?? null;
         this.render();
     }
@@ -1504,6 +1524,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {{ userId?: string, finished?: boolean }} data
      */
     receivePlayerFinished(data) {
+        if (this._completionPhase) return;
         if (!data?.userId) return;
         if (data.finished) this._finishedUsers.add(data.userId);
         else this._finishedUsers.delete(data.userId);
@@ -1564,7 +1585,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             rpPrompt: this._rpPrompt,
             songVolunteer: this._songVolunteer,
             confirmedRecovery: [...this._confirmedRecovery],
-            activeTab: this._activeTab,
             workbenchFocusActorId: this._workbenchFocusActorId,
             magicScanResults: this._magicScanResults,
             magicScanComplete: this._magicScanComplete,
@@ -1595,7 +1615,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (state.rpPrompt) this._rpPrompt = state.rpPrompt;
         if (state.songVolunteer !== undefined) this._songVolunteer = state.songVolunteer ?? null;
         if (state.confirmedRecovery) this._confirmedRecovery = new Set(state.confirmedRecovery);
-        if (state.activeTab === "recovery" || state.activeTab === "workbench") this._activeTab = state.activeTab;
         if (state.workbenchFocusActorId !== undefined) this._workbenchFocusActorId = state.workbenchFocusActorId;
         this._magicScanResults = state.magicScanResults ?? null;
         this._magicScanComplete = !!state.magicScanComplete;

@@ -152,6 +152,8 @@ export function handleRestResolved(data, ctx) {
 }
 
 export function handleSubmissionUpdate(data, ctx) {
+    // eslint-disable-next-line no-console
+    console.debug(`${MODULE_ID} | [SYNC] handleSubmissionUpdate: hasApp=${!!ctx.activePlayerRestApp}, keys=${Object.keys(data.submissions ?? {}).join(",") || "none"}`);
     ctx.activePlayerRestApp?.receiveSubmissionUpdate?.(data.submissions);
 }
 
@@ -167,15 +169,34 @@ export function handleShortRestStarted(data, ctx) {
     removeShortRestRejoinNotification();
     removePrepNotification();
     const existing = ctx.activeShortRestApp;
+    // GM re-renders emit shortRestStarted often (rolls, hooks). Replacing the app
+    // recreated ShortRestApp and reset each client's tab to recovery. Merge into
+    // an already-open window when it is still on screen.
+    const reuseExisting = !!(
+        existing
+        && existing.rendered === true
+        && !existing._isTerminating
+        && typeof existing.receiveStarted === "function"
+    );
+    if (reuseExisting) {
+        existing.receiveStarted(data);
+        ctx.showAfkPanel();
+        void existing.render({ force: true });
+        return;
+    }
     if (existing) {
         existing._isTerminating = true;
-        existing.close();
+        void existing.close();
     }
     const app = new ShortRestApp();
     app.receiveStarted(data);
     ctx.setActiveShortRestApp(app);
-    app.render({ force: true });
+    void app.render({ force: true });
     ctx.showAfkPanel();
+}
+
+export function handleShortRestCompletionSummary(data, ctx) {
+    ctx.activeShortRestApp?.receiveCompletionSummary?.(data);
 }
 
 export function handleShortRestComplete(data, ctx) {

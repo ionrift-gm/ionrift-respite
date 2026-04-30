@@ -170,7 +170,6 @@ export class WorkbenchDelegate {
             workbenchIdentifyActorId: null,
             workbenchGearChip: null,
             workbenchPotionChips: [],
-            workbenchNoUnidentifiedOnSheet: true,
             workbenchSubmitLocked: true,
             workbenchIdentifyAcknowledgement: null,
             workbenchAckRevealReady: true,
@@ -178,11 +177,7 @@ export class WorkbenchDelegate {
         };
         if (!actorId) return empty;
         const actor = game.actors.get(actorId);
-        const embed = collectPartyIdentifyEmbedData(getPartyActors(), { restrictUnidentifiedToActorId: actorId });
         const st = this.getStaging(actorId);
-        const rawGear = embed.unidentifiedItems.filter(e => !e.isPotion);
-        const rawPotions = embed.unidentifiedItems.filter(e => e.isPotion);
-        const workbenchNoUnidentifiedOnSheet = rawGear.length === 0 && rawPotions.length === 0;
         const resolveChip = itemId => {
             const item = actor?.items.get(itemId);
             if (!item || !itemIsWorkbenchUnidentified(actor, item)) return null;
@@ -203,7 +198,6 @@ export class WorkbenchDelegate {
             workbenchIdentifyActorId: actorId,
             workbenchGearChip,
             workbenchPotionChips,
-            workbenchNoUnidentifiedOnSheet,
             workbenchSubmitLocked,
             workbenchIdentifyAcknowledgement,
             workbenchAckRevealReady,
