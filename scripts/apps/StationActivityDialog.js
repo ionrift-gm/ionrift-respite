@@ -9,8 +9,12 @@
 import {
     ACTIVITY_ICONS,
     buildPartyState,
-    getActivityAdvisory
+    getActivityAdvisory,
+    DETECT_MAGIC_BTN_LABEL_GM,
+    DETECT_MAGIC_BTN_LABEL_PLAYER,
+    DETECT_MAGIC_BTN_TITLE_GM
 } from "./RestConstants.js";
+import { computeCanShowDetectMagicScanButton } from "./delegates/DetectMagicDelegate.js";
 import { canPlaceStation } from "../services/CompoundCampPlacer.js";
 import { getPartyActors } from "../services/partyActors.js";
 
@@ -279,7 +283,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const wbWorkbenchDefaults = {
             workbenchIdentifyActorId: null,
             workbenchGearChip: null,
-            workbenchPotionChips: [],
+            workbenchPotionChip: null,
             workbenchSubmitLocked: true,
             workbenchIdentifyAcknowledgement: null,
             workbenchAckRevealReady: true,
@@ -308,6 +312,11 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             fireTabContext,
             hideNoActivitiesMessage: this._station?.id === "campfire",
             isGmUser:           !!game.user?.isGM,
+            canShowDetectMagicScanButton: computeCanShowDetectMagicScanButton(getPartyActors()),
+            detectMagicScanButtonLabel: game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER,
+            detectMagicScanButtonTitle: game.user?.isGM ? DETECT_MAGIC_BTN_TITLE_GM : "",
+            magicScanResults: this._restApp?._magicScanResults ?? [],
+            magicScanComplete: !!this._restApp?._magicScanComplete,
             ...wbCtx,
             workbenchFocusExhausted: wbCtx.workbenchFocusExhausted ?? false
         };
@@ -688,10 +697,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
     }
 
     static async #onWorkbenchIdentifyRemovePotion(event, target) {
-        const itemId = target?.closest?.("[data-item-id]")?.dataset?.itemId ?? target?.dataset?.itemId;
         const actorId = this._actor?.id;
-        if (!itemId || !actorId || !this._restApp?.removeWorkbenchIdentifyPotionFromStation) return;
-        this._restApp.removeWorkbenchIdentifyPotionFromStation(actorId, itemId);
+        if (!actorId || !this._restApp?.removeWorkbenchIdentifyPotionFromStation) return;
+        this._restApp.removeWorkbenchIdentifyPotionFromStation(actorId);
         await this.render(true);
     }
 

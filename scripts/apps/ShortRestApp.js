@@ -310,7 +310,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (!a.testUserPermission(user, "OWNER")) continue;
             this._workbench.setStaging(actorId, {
                 gearItemId: st?.gearItemId ?? null,
-                potionItemIds: Array.isArray(st?.potionItemIds) ? st.potionItemIds : [],
+                potionItemId: st?.potionItemId ?? null,
             });
         }
         if (data.workbenchFocusActorId) {
@@ -395,7 +395,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 magicScanComplete: false,
                 workbenchIdentifyActorId: null,
                 workbenchGearChip: null,
-                workbenchPotionChips: [],
+                workbenchPotionChip: null,
                 workbenchSubmitLocked: true,
                 workbenchIdentifyAcknowledgement: null,
                 workbenchAckRevealReady: true,
@@ -1070,11 +1070,10 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     static #onWorkbenchIdentifyRemovePotion(event, target) {
         if (this._completionPhase) return;
-        const itemId = target?.closest?.("[data-item-id]")?.dataset?.itemId ?? target?.dataset?.itemId;
         const el = this.element?.querySelector?.(".station-workbench-identify-embed[data-workbench-actor-id]");
         const actorId = el?.dataset?.workbenchActorId;
-        if (!itemId || !actorId) return;
-        this._workbench.removePotionFromStation(actorId, itemId);
+        if (!actorId) return;
+        this._workbench.removePotionFromStation(actorId);
         if (this._isGM) {
             void this._saveShortRestState();
             emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
