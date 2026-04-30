@@ -32,6 +32,7 @@ export function showRejoinNotification(app, rejoinFn) {
     const rationsResolved = trackFood ? (app?._activityMealRationsSubmitted?.size ?? 0) : 0;
     const totalTasks = partySize + (trackFood ? partySize : 0);
     const resolvedTasks = activitiesResolved + rationsResolved;
+    const allDone = isActivity && totalTasks > 0 && resolvedTasks >= totalTasks;
     const progressHtml = isActivity
         ? `<span class="respite-bar-progress">${resolvedTasks} / ${totalTasks} tasks to complete</span>`
         : "";
@@ -39,7 +40,7 @@ export function showRejoinNotification(app, rejoinFn) {
         <i class="fas fa-campground"></i>
         <span>Rest in progress (${phaseLabel})</span>
         ${progressHtml}
-        <button type="button" id="respite-rejoin-btn">Resume</button>
+        <button type="button" id="respite-rejoin-btn"${allDone ? ' class="respite-resume-ready"' : ""}>Resume</button>
     `;
     el.querySelector("#respite-rejoin-btn").addEventListener("click", () => {
         // eslint-disable-next-line no-console
@@ -133,6 +134,7 @@ export function showGmRestIndicator(app) {
     const rationsResolved = trackFood ? (app?._activityMealRationsSubmitted?.size ?? 0) : 0;
     const totalTasks = partySize + (trackFood ? partySize : 0);
     const resolvedTasks = activitiesResolved + rationsResolved;
+    const allDone = isActivity && totalTasks > 0 && resolvedTasks >= totalTasks;
     const progressHtml = isActivity
         ? `<span class="respite-bar-progress">${resolvedTasks} / ${totalTasks} tasks to complete</span>`
         : "";
@@ -140,7 +142,7 @@ export function showGmRestIndicator(app) {
         <i class="fas fa-campground"></i>
         <span>Rest in progress (${phaseLabel})</span>
         ${progressHtml}
-        <button type="button" id="respite-gm-resume-btn">${awaitingCombat ? "View" : "Resume"}</button>
+        <button type="button" id="respite-gm-resume-btn"${allDone ? ' class="respite-resume-ready"' : ""}>${awaitingCombat ? "View" : "Resume"}</button>
     `;
     el.querySelector("#respite-gm-resume-btn").addEventListener("click", () => {
         removeGmRestIndicator();
@@ -177,6 +179,8 @@ export function refreshGmRestIndicator(app) {
     const totalTasks = partySize + (trackFood ? partySize : 0);
     const resolvedTasks = activitiesResolved + rationsResolved;
     span.textContent = `${resolvedTasks} / ${totalTasks} tasks to complete`;
+    const btn = bar.querySelector("#respite-gm-resume-btn");
+    if (btn) btn.classList.toggle("respite-resume-ready", totalTasks > 0 && resolvedTasks >= totalTasks);
 }
 
 /**
@@ -196,6 +200,8 @@ export function refreshRejoinBar(app) {
     const totalTasks = partySize + (trackFood ? partySize : 0);
     const resolvedTasks = activitiesResolved + rationsResolved;
     span.textContent = `${resolvedTasks} / ${totalTasks} tasks to complete`;
+    const btn = bar.querySelector("#respite-rejoin-btn");
+    if (btn) btn.classList.toggle("respite-resume-ready", totalTasks > 0 && resolvedTasks >= totalTasks);
 }
 
 // ── GM: Short Rest Indicator Bar ─────────────────────────────
