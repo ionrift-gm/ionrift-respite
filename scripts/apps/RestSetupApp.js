@@ -86,6 +86,7 @@ import {
     _refreshGmRestIndicator,
     _refreshRejoinBar,
     _ensureRejoinBar,
+    _removeRejoinBar,
     showAfkPanel
 } from "../module.js";
 import { getPartyActors } from "../services/partyActors.js";
@@ -4154,7 +4155,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
                 emitActivityChoice(
                     game.user.id,
-                    Object.fromEntries(this._characterChoices)
+                    Object.fromEntries(this._characterChoices),
+                    null,
+                    null,
+                    this._earlyResults?.size ? Object.fromEntries(this._earlyResults) : null
                 );
 
                 const actName = activity?.name ?? activityId;
@@ -5274,7 +5278,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
             emitActivityChoice(
                     game.user.id,
-                    Object.fromEntries(this._characterChoices)
+                    Object.fromEntries(this._characterChoices),
+                    null,
+                    null,
+                    this._earlyResults?.size ? Object.fromEntries(this._earlyResults) : null
                 );
             this._saveRestState();
         }
@@ -7160,7 +7167,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /**
      * Receives player-submitted choices from the socket handler.
      */
-    receivePlayerChoices(userId, choices, craftingResults = null, followUps = null) {
+    receivePlayerChoices(userId, choices, craftingResults = null, followUps = null, earlyResults = null) {
         Logger.log(`[SYNC] receivePlayerChoices: userId=${userId}, choiceKeys=${Object.keys(choices ?? {}).join(",") || "none"}`, choices);
         const user = game.users.get(userId);
         this._playerSubmissions.set(userId, {
@@ -7174,6 +7181,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (craftingResults) {
             for (const [charId, result] of Object.entries(craftingResults)) {
                 if (result) this._craftingResults.set(charId, result);
+            }
+        }
+
+        // Merge early results from the player (resolved camp rolls, crafting outcomes, etc.)
+        // so the GM doesn't re-prompt rolls the player already completed.
+        if (earlyResults) {
+            if (!this._earlyResults) this._earlyResults = new Map();
+            for (const [charId, result] of Object.entries(earlyResults)) {
+                if (result && result.result !== "pending_approval") {
+                    this._earlyResults.set(charId, result);
+                }
             }
         }
 
@@ -7240,7 +7258,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         emitActivityChoice(
                     game.user.id,
-                    Object.fromEntries(this._characterChoices)
+                    Object.fromEntries(this._characterChoices),
+                    null,
+                    null,
+                    this._earlyResults?.size ? Object.fromEntries(this._earlyResults) : null
                 );
 
         resetStationOverlaysLocal();
@@ -7339,9 +7360,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._playerSubmissions.set(game.user.id, mySub);
         this._saveRestState();
 
+        // Build follow-ups to send to GM (arrows vs bolts, tend target, etc.)
+        const followUps = {};
+        for (const [cid] of this._characterChoices) {
+            const fu = this._gmFollowUps?.get(cid);
+            if (fu != null) followUps[cid] = fu;
+        }
         emitActivityChoice(
                     game.user.id,
-                    Object.fromEntries(this._characterChoices)
+                    Object.fromEntries(this._characterChoices),
+                    null,
+                    Object.keys(followUps).length ? followUps : null,
+                    this._earlyResults?.size ? Object.fromEntries(this._earlyResults) : null
                 );
 
         const actName = activity?.name ?? activityId;
@@ -7782,7 +7812,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const _mods = (_bd.shelter ?? 0) + (_bd.weather ?? 0) + (_bd.scouting ?? 0) + (this._engine?.fireRollModifier ?? 0);
         const _defenses = _bd.defenses ?? 0;
         const _currentDC = Math.max(1, _baseDC - _mods + (this._engine?.gmEncounterAdj ?? 0) - _defenses);
-        return buildPartyState(partyActors, this._pendingSelections, _currentDC, this._engine?.comfort);
+        // Merge confirmed choices, GM overrides, and pending selections into one view.
+        // Pending wins over confirmed (latest player intent); GM overrides win over both.
+        const allSelections = new Map([
+            ...(this._characterChoices ?? []),
+            ...(this._pendingSelections ?? []),
+            ...(this._gmOverrides ?? []),
+        ]);
+        return buildPartyState(partyActors, allSelections, _currentDC, this._engine?.comfort);
     }
 
     /**
@@ -7997,18 +8034,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this._refreshStationOverlayMeals();
             }
             if (this.rendered) this.render();
+            _refreshGmRestIndicator(this);
             ui.notifications.info(`${actor.name}: rations recorded for this rest.`);
             return;
         }
 
         if (!this._myCharacterIds?.has(actorId)) return;
         await this._meals.onSubmitMealChoices(null, null);
+        // Track ration submission locally so the rejoin bar updates immediately
+        if (!this._activityMealRationsSubmitted) this._activityMealRationsSubmitted = new Set();
+        this._activityMealRationsSubmitted.add(actorId);
         notifyStationMealChoicesUpdated();
         if (isStationLayerActive()) {
             refreshStationEmptyNoticeFade(this);
             this._refreshStationOverlayMeals();
         }
         if (this.rendered) this.render();
+        _refreshRejoinBar(this);
     }
 
     _getPlayerChoiceForCharacter(characterId) {
@@ -8244,6 +8286,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         } else if (prevPhase === "activity" && phase !== "activity") {
             this._tearDownStationLayerCanvas();
+            // Player was minimised during activity phase — auto-open the RSA so they
+            // see the current rest phase (events, meal, reflection, etc.)
+            if (!this._isGM) {
+                _removeRejoinBar();
+                console.log(`${MODULE_ID} | Phase ${prevPhase}→${phase} (player): removing rejoin bar, auto-opening RSA`);
+            }
         }
 
         if (phaseData.campPitCursorDone && phase === "camp") {
@@ -8265,7 +8313,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
             return;
         }
-        this.render();
+        // Reset position when re-opening from a retained-but-closed state
+        // so the window appears centered at its natural width, not thin/off-right.
+        if (!this._isGM && prevPhase === "activity") {
+            const defaultWidth = 720;
+            this.setPosition({
+                width: defaultWidth,
+                left: Math.max(0, (window.innerWidth - defaultWidth) / 2),
+                top: Math.max(0, (window.innerHeight - 600) / 2)
+            });
+        }
+        this.render({ force: true });
 
         // Safety net: if the player RSA is not rendered after the phase transition
         // (e.g., the app was retained-but-closed during activity phase and render()
