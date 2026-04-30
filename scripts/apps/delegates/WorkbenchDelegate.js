@@ -108,7 +108,7 @@ export class WorkbenchDelegate {
 
     // ── State Accessors ─────────────────────────────────────────────────
 
-    /** @returns {Map<string, {gearItemId: string|null, potionItemIds: string[]}>} */
+    /** @returns {Map<string, {gearItemId: string|null, potionItemId: string|null}>} */
     get staging() { return this._app._workbenchIdentifyStaging; }
 
     /** @returns {Map<string, {items: object[], revealAt: number}>} */
@@ -125,20 +125,20 @@ export class WorkbenchDelegate {
     /**
      * Read the current staging state for an actor.
      * @param {string} actorId
-     * @returns {{ gearItemId: string|null, potionItemIds: string[] }}
+     * @returns {{ gearItemId: string|null, potionItemId: string|null }}
      */
     getStaging(actorId) {
         const v = this.staging?.get(actorId);
         return {
             gearItemId: v?.gearItemId ?? null,
-            potionItemIds: Array.isArray(v?.potionItemIds) ? [...v.potionItemIds] : []
+            potionItemId: v?.potionItemId ?? null
         };
     }
 
     /**
      * Merge a partial staging update for an actor.
      * @param {string} actorId
-     * @param {{ gearItemId?: string|null, potionItemIds?: string[] }} partial
+     * @param {{ gearItemId?: string|null, potionItemId?: string|null }} partial
      */
     setStaging(actorId, partial) {
         if (!this._app._workbenchIdentifyStaging) this._app._workbenchIdentifyStaging = new Map();
@@ -147,9 +147,9 @@ export class WorkbenchDelegate {
         const resolvedGear = (nextGear && this.focusUsed.has(actorId)) ? prev.gearItemId : nextGear;
         const next = {
             gearItemId: resolvedGear,
-            potionItemIds: partial.potionItemIds !== undefined ? [...partial.potionItemIds] : prev.potionItemIds
+            potionItemId: partial.potionItemId !== undefined ? partial.potionItemId : prev.potionItemId
         };
-        if (!next.gearItemId && next.potionItemIds.length === 0) {
+        if (!next.gearItemId && !next.potionItemId) {
             this._app._workbenchIdentifyStaging.delete(actorId);
         } else {
             this._app._workbenchIdentifyStaging.set(actorId, next);
@@ -169,7 +169,7 @@ export class WorkbenchDelegate {
         const empty = {
             workbenchIdentifyActorId: null,
             workbenchGearChip: null,
-            workbenchPotionChips: [],
+            workbenchPotionChip: null,
             workbenchSubmitLocked: true,
             workbenchIdentifyAcknowledgement: null,
             workbenchAckRevealReady: true,
@@ -178,7 +178,7 @@ export class WorkbenchDelegate {
         if (!actorId) return empty;
         const actor = game.actors.get(actorId);
         const st = this.getStaging(actorId);
-        const resolveChip = itemId => {
+        const resolveGearChip = itemId => {
             const item = actor?.items.get(itemId);
             if (!item || !itemIsWorkbenchUnidentified(actor, item)) return null;
             return {
@@ -187,9 +187,18 @@ export class WorkbenchDelegate {
                 label: item.system?.unidentified?.name || item.name || "Item"
             };
         };
-        const workbenchGearChip = st.gearItemId ? resolveChip(st.gearItemId) : null;
-        const workbenchPotionChips = st.potionItemIds.map(resolveChip).filter(Boolean);
-        const workbenchSubmitLocked = !workbenchGearChip && workbenchPotionChips.length === 0;
+        const resolvePotionChip = itemId => {
+            const item = actor?.items.get(itemId);
+            if (!item || !itemIsDnD5ePotionType(item)) return null;
+            return {
+                itemId,
+                img: item.img || "icons/svg/mystery-man.svg",
+                label: item.name || "Potion"
+            };
+        };
+        const workbenchGearChip = st.gearItemId ? resolveGearChip(st.gearItemId) : null;
+        const workbenchPotionChip = st.potionItemId ? resolvePotionChip(st.potionItemId) : null;
+        const workbenchSubmitLocked = !workbenchGearChip && !workbenchPotionChip;
         const ack = this.acknowledge?.get(actorId) ?? null;
         const workbenchIdentifyAcknowledgement = ack ? { items: ack.items } : null;
         const workbenchAckRevealReady = !ack || Date.now() >= ack.revealAt;
@@ -197,7 +206,7 @@ export class WorkbenchDelegate {
         return {
             workbenchIdentifyActorId: actorId,
             workbenchGearChip,
-            workbenchPotionChips,
+            workbenchPotionChip,
             workbenchSubmitLocked,
             workbenchIdentifyAcknowledgement,
             workbenchAckRevealReady,
@@ -219,17 +228,13 @@ export class WorkbenchDelegate {
     }
 
     /**
-     * Remove a potion from the staging list.
+     * Clear the staged potion slot.
      * @param {string} actorId
-     * @param {string} itemId
      */
-    removePotionFromStation(actorId, itemId) {
+    removePotionFromStation(actorId) {
         const st = this.getStaging(actorId);
-        if (!st.potionItemIds.includes(itemId)) return;
-        this.setStaging(actorId, {
-            gearItemId: st.gearItemId,
-            potionItemIds: st.potionItemIds.filter(id => id !== itemId)
-        });
+        if (!st.potionItemId) return;
+        this.setStaging(actorId, { gearItemId: st.gearItemId, potionItemId: null });
         notifyWorkbenchIdentifyStagingTouched();
         if (this._app.rendered) this._app.render();
     }
@@ -247,11 +252,12 @@ export class WorkbenchDelegate {
             return;
         }
         const st = this.getStaging(actorId);
-        if (!st.gearItemId && st.potionItemIds.length === 0) {
+        if (!st.gearItemId && !st.potionItemId) {
             ui.notifications.warn("Drag at least one item onto the circles, then submit.");
             return;
         }
-        const order = [...st.potionItemIds];
+        const order = [];
+        if (st.potionItemId) order.push(st.potionItemId);
         if (st.gearItemId) order.push(st.gearItemId);
         const revealed = [];
         for (const itemId of order) {
@@ -456,25 +462,18 @@ export class WorkbenchDelegate {
                 return;
             }
             const st = this.getStaging(actorId);
-            this.setStaging(actorId, { gearItemId: itemId, potionItemIds: st.potionItemIds });
+            this.setStaging(actorId, { gearItemId: itemId, potionItemId: st.potionItemId });
             bump();
         };
 
-        const appendPotion = itemId => {
+        const setPotion = itemId => {
             const v = validateDrop(itemId, "potion");
             if (!v.ok) {
                 ui.notifications.warn(v.msg);
                 return;
             }
             const st = this.getStaging(actorId);
-            if (st.potionItemIds.includes(itemId)) {
-                ui.notifications.info("That potion is already in the taste list.");
-                return;
-            }
-            this.setStaging(actorId, {
-                gearItemId: st.gearItemId,
-                potionItemIds: [...st.potionItemIds, itemId]
-            });
+            this.setStaging(actorId, { gearItemId: st.gearItemId, potionItemId: itemId });
             bump();
         };
 
@@ -502,7 +501,7 @@ export class WorkbenchDelegate {
                     const itemId = parts[2];
                     const dragActorId = parts[3];
                     if (dragActorId !== actorId) return;
-                    if (dragSlot === "potion" && zoneType === "potion") appendPotion(itemId);
+                    if (dragSlot === "potion" && zoneType === "potion") setPotion(itemId);
                     else if (dragSlot === "gear" && zoneType === "gear") assignGear(itemId);
                     else if (dragSlot === "potion" && zoneType === "gear") {
                         ui.notifications.warn("Drop potions onto the potion circle.");
@@ -521,14 +520,22 @@ export class WorkbenchDelegate {
                     return;
                 }
                 if (zoneType === "gear") assignGear(item.id);
-                else appendPotion(item.id);
+                else setPotion(item.id);
             });
 
             if (zoneType === "gear") {
                 zone.addEventListener("click", () => {
                     const st = this.getStaging(actorId);
                     if (!st.gearItemId) return;
-                    this.setStaging(actorId, { gearItemId: null, potionItemIds: st.potionItemIds });
+                    this.setStaging(actorId, { gearItemId: null, potionItemId: st.potionItemId });
+                    bump();
+                });
+            }
+            if (zoneType === "potion") {
+                zone.addEventListener("click", () => {
+                    const st = this.getStaging(actorId);
+                    if (!st.potionItemId) return;
+                    this.setStaging(actorId, { gearItemId: st.gearItemId, potionItemId: null });
                     bump();
                 });
             }

@@ -52,30 +52,19 @@
             </div>
         </div>
         <div class="meal-panel wb-ident-potion-panel">
-            <span class="panel-label">Potions</span>
+            <span class="panel-label">Potion</span>
             <div class="wb-ident-potion-slot-wrap">
-                <div class="meal-drop-zone wb-ident-drop-zone potion-taste-drop-zone {{#if workbenchPotionChips.length}}filled{{/if}}"
-                     data-wb-zone="potion" title="Drop potions from the character sheet here to add tastes.">
+                <div class="meal-drop-zone wb-ident-drop-zone potion-taste-drop-zone {{#if workbenchPotionChip}}filled{{/if}}"
+                     data-wb-zone="potion" title="Drop one potion from the character sheet. Click to clear.">
                     <div class="drop-zone-silhouette">
-                        {{#if workbenchPotionChips.length}}
-                        <span class="wb-ident-potion-count">{{workbenchPotionChips.length}}</span>
+                        {{#if workbenchPotionChip}}
+                        <img src="{{workbenchPotionChip.img}}" alt="" class="drop-zone-item-icon" onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
                         {{else}}
                         <i class="fas fa-flask drop-zone-potion-sil"></i>
                         {{/if}}
                     </div>
                 </div>
             </div>
-            {{#if workbenchPotionChips.length}}
-            <div class="wb-ident-chip-row">
-                {{#each workbenchPotionChips}}
-                <button type="button" class="wb-ident-chip-btn" data-action="workbenchIdentifyRemovePotion" data-item-id="{{itemId}}" title="Remove from list">
-                    <img src="{{img}}" alt="" class="wb-ident-chip-img" onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
-                    <span>{{label}}</span>
-                    <i class="fas fa-times wb-ident-chip-x" aria-hidden="true"></i>
-                </button>
-                {{/each}}
-            </div>
-            {{/if}}
         </div>
     </div>
     <div class="station-meal-submit-row wb-ident-submit-row">

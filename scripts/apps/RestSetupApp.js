@@ -374,7 +374,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._gmControlTokenHook = null;
         /** Activity phase: character ids whose station rations were submitted (persists in activeRest). */
         this._activityMealRationsSubmitted = new Set();
-        /** Workbench Identify: actorId -> { gearItemId: string|null, potionItemIds: string[] } before submit. */
+        /** Workbench Identify: actorId -> { gearItemId: string|null, potionItemId: string|null } before submit. */
         this._workbenchIdentifyStaging = new Map();
         /** actorId -> { items: { itemId, name, img, requiresAttunement }[], revealAt: number } post-submit ritual */
         this._workbenchIdentifyAcknowledge = new Map();
