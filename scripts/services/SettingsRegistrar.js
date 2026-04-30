@@ -308,6 +308,31 @@ export function registerAllSettings({ PackRegistryApp, PartyRosterApp, DietConfi
         default: false
     });
 
+    // ── Reset Rest Date (lightweight cooldown clear) ─────────────────
+    game.settings.registerMenu(MODULE_ID, "resetRestDate", {
+        name: "Reset Daily Rest Cooldown",
+        label: "Reset Rest Date",
+        hint: "Clears the 'already rested today' flag so the party can rest again on the same in-game day.",
+        icon: "fas fa-calendar-minus",
+        type: class ResetRestDateApp extends FormApplication {
+            async _updateObject() {
+                await game.settings.set(MODULE_ID, "lastRestDate", "");
+                ui.notifications.info("Daily rest cooldown cleared.");
+            }
+            async render() {
+                const proceed = await Dialog.confirm({
+                    title: "Reset Daily Rest Cooldown",
+                    content: "<p>This clears the 'already rested today' flag. The party will be able to start a new rest on the current in-game day.</p><p>No rest data is lost and no reload is needed.</p>",
+                    yes: () => true,
+                    no: () => false,
+                    defaultYes: true
+                });
+                if (proceed) await this._updateObject();
+            }
+        },
+        restricted: true
+    });
+
     // ── Clear Rest State Menu (GM escape hatch) ──────────────────────
     game.settings.registerMenu(MODULE_ID, "clearRestState", {
         name: "Reset Rest State",
@@ -516,6 +541,7 @@ export const SETTING_KEYS = [
 export const MENU_KEYS = [
     "partyRosterMenu",
     "dietConfigMenu",
+    "resetRestDate",
     "clearRestState"
 ];
 
