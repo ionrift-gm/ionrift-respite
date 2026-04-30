@@ -55,11 +55,11 @@ export class CampGearScanner {
             height: 0.82,
             textureScale: 0.86,
             light: {
-                bright: 8,
-                dim: 20,
+                bright: 6,
+                dim: 16,
                 color: "#6e1418",
-                alpha: 0.48,
-                luminosity: 0.3,
+                alpha: 0.44,
+                luminosity: 0.28,
                 saturation: 0.12,
                 coloration: 1,
                 animation: { type: "torch", speed: 2, intensity: 2, reverse: false }
@@ -70,11 +70,11 @@ export class CampGearScanner {
             height: 0.95,
             textureScale: 0.96,
             light: {
-                bright: 12,
-                dim: 26,
+                bright: 10,
+                dim: 22,
                 color: "#ff9329",
-                alpha: 0.42,
-                luminosity: 0.48,
+                alpha: 0.40,
+                luminosity: 0.44,
                 saturation: 0.02,
                 coloration: 1,
                 animation: { type: "torch", speed: 3, intensity: 4, reverse: false }
@@ -85,11 +85,11 @@ export class CampGearScanner {
             height: 1.12,
             textureScale: 1.06,
             light: {
-                bright: 20,
-                dim: 30,
-                color: "#fff2a6",
-                alpha: 0.52,
-                luminosity: 0.72,
+                bright: 15,
+                dim: 26,
+                color: "#ffb833",
+                alpha: 0.44,
+                luminosity: 0.50,
                 saturation: 0.08,
                 coloration: 1,
                 animation: { type: "torch", speed: 4, intensity: 6, reverse: false }
