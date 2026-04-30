@@ -8516,6 +8516,23 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     background: rgba(240, 192, 64, 0.3);
 }
 
+/* Resume button: all activity tasks complete */
+@keyframes respite-resume-ready-pulse {
+    0%, 100% {
+        box-shadow: 0 0 4px rgba(240, 192, 64, 0.25);
+        border-color: rgba(240, 192, 64, 0.45);
+    }
+    50% {
+        box-shadow: 0 0 14px rgba(240, 192, 64, 0.7), 0 0 5px rgba(240, 192, 64, 0.35);
+        border-color: rgba(240, 192, 64, 0.95);
+        background: rgba(240, 192, 64, 0.28);
+    }
+}
+
+.respite-resume-ready {
+    animation: respite-resume-ready-pulse 1.6s ease-in-out infinite;
+}
+
 /* GM short rest indicator bar (short rest window closed, rest still active) */
 #respite-gm-short-rest-bar {
     position: fixed;
