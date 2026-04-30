@@ -189,6 +189,31 @@ function placementOverlapsAnyToken(tx, ty, gridW, gridH, scene, excludeId = null
 }
 
 /**
+ * Return all token documents whose footprint overlaps the given placement rect.
+ * @param {number} tx - top-left world px
+ * @param {number} ty
+ * @param {number} gridW
+ * @param {number} gridH
+ * @param {*} scene
+ * @param {string|null} [excludeId]
+ * @returns {TokenDocument[]}
+ */
+function getBlockingTokens(tx, ty, gridW, gridH, scene, excludeId = null) {
+    const gs = gridSize();
+    const rect = { left: tx, top: ty, right: tx + gridW * gs, bottom: ty + gridH * gs };
+    const blockers = [];
+    for (const doc of scene.tokens) {
+        if (excludeId && doc.id === excludeId) continue;
+        if (rectsOverlap2D(rect, tokenFootprintRect(doc, gs))) blockers.push(doc);
+    }
+    return blockers;
+}
+
+function isCampFurnitureToken(doc) {
+    return !!doc.flags?.[MODULE_ID]?.isCampFurniture;
+}
+
+/**
  * Validate camp gear or shared station drop (range + overlap). Uses same snap as placement.
  * @param {number} worldX
  * @param {number} worldY
@@ -223,7 +248,7 @@ export function validateCampEquipmentDrop(worldX, worldY, gridW, gridH, pitCente
     const ty = sy - (gs * gridH) / 2;
 
     if (placementOverlapsAnyToken(tx, ty, gridW, gridH, scene, excludeTokenId)) {
-        return { ok: false, reason: "That spot overlaps another token." };
+        return { ok: false, reason: "That spot overlaps another token.", tx, ty };
     }
 
     return { ok: true, tx, ty, sx, sy };
@@ -1024,6 +1049,82 @@ export function getStationPlaceholderPreviewsForPitCenter(pitCenterX, pitCenterY
  * used by autoPlaceStations. GM only.
  * @returns {Promise<string[]>} target keys for which a placeholder was created
  */
+/**
+ * Attempt to move a token to the nearest free grid cell toward the camp center.
+ * Used when a station needs to place under an existing (non-furniture) token.
+ * Returns true if the token was successfully relocated, false if no free cell was found.
+ * @param {TokenDocument} doc
+ * @param {{ x: number, y: number }} pitCenter - world-space pit center
+ * @param {*} scene
+ * @returns {Promise<boolean>}
+ */
+async function nudgeTokenTowardCenter(doc, pitCenter, scene) {
+    const gs = gridSize();
+    const w = doc.width ?? 1;
+    const h = doc.height ?? 1;
+    const cx = doc.x + (w * gs) / 2;
+    const cy = doc.y + (h * gs) / 2;
+
+    const dx = pitCenter.x - cx;
+    const dy = pitCenter.y - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    const candidates = [];
+
+    if (dist > 0) {
+        const nx = dx / dist;
+        const ny = dy / dist;
+        for (let steps = 1; steps <= 4; steps++) {
+            const wx = cx + nx * gs * steps;
+            const wy = cy + ny * gs * steps;
+            const snapped = canvas.grid.getSnappedPoint(
+                { x: wx, y: wy },
+                { mode: CONST.GRID_SNAPPING_MODES.CENTER }
+            );
+            candidates.push({
+                x: snapped.x - (w * gs) / 2,
+                y: snapped.y - (h * gs) / 2,
+                cx: snapped.x,
+                cy: snapped.y
+            });
+        }
+    }
+
+    for (const [ox, oy] of [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        const snapped = canvas.grid.getSnappedPoint(
+            { x: cx + ox * gs, y: cy + oy * gs },
+            { mode: CONST.GRID_SNAPPING_MODES.CENTER }
+        );
+        candidates.push({
+            x: snapped.x - (w * gs) / 2,
+            y: snapped.y - (h * gs) / 2,
+            cx: snapped.x,
+            cy: snapped.y
+        });
+    }
+
+    const seen = new Set();
+    const unique = candidates.filter(c => {
+        const key = `${Math.round(c.x)},${Math.round(c.y)}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+
+    unique.sort((a, b) =>
+        Math.hypot(a.cx - pitCenter.x, a.cy - pitCenter.y) -
+        Math.hypot(b.cx - pitCenter.x, b.cy - pitCenter.y)
+    );
+
+    for (const cand of unique) {
+        if (!placementOverlapsAnyToken(cand.x, cand.y, w, h, scene, doc.id)) {
+            await scene.updateEmbeddedDocuments("Token", [{ _id: doc.id, x: cand.x, y: cand.y }]);
+            return true;
+        }
+    }
+    return false;
+}
+
 export async function placeStationPlaceholders() {
     if (!game.user.isGM) return [];
     hydrateCampSessionFromScene();
@@ -1058,6 +1159,24 @@ export async function placeStationPlaceholders() {
         const worldY = center.y + slot.dy;
         const v = validateCampEquipmentDrop(worldX, worldY, phW, phH);
         if (!v.ok) {
+            // When only non-furniture tokens (player tokens) are blocking, place the station
+            // anyway. Stations sort to -50000, so they render under player tokens. Then try
+            // to nudge each blocker toward the camp center; leave them if no free cell exists.
+            if (v.tx != null) {
+                const blockers = getBlockingTokens(v.tx, v.ty, phW, phH, scene);
+                if (blockers.length && blockers.every(b => !isCampFurnitureToken(b))) {
+                    const tokenData = buildPlaceholderToken(slot.key, v.tx, v.ty);
+                    await scene.createEmbeddedDocuments("Token", [tokenData]);
+                    placed.push(slot.key);
+                    for (const blocker of blockers) {
+                        const moved = await nudgeTokenTowardCenter(blocker, center, scene);
+                        if (!moved) {
+                            console.log(`${MODULE_ID} | placeStationPlaceholders: could not nudge ${blocker.id} off ${slot.key} slot`);
+                        }
+                    }
+                    continue;
+                }
+            }
             console.log(`${MODULE_ID} | placeStationPlaceholders: skip ${slot.key} (${v.reason})`);
             continue;
         }
