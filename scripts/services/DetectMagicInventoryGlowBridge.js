@@ -125,7 +125,6 @@ function ingestScanResults(results) {
         if (!aid) continue;
         const inner = new Map();
         for (const it of block.items ?? []) {
-            if (it?.identified) continue;
             const iid = it.itemId;
             if (!iid) continue;
             inner.set(iid, normalizeSchoolSlug(it.school));

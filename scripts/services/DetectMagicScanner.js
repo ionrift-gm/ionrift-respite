@@ -27,12 +27,14 @@ export class DetectMagicScanner {
     }
 
     /**
-     * Same rules as scanParty, for one actor (live inventory).
+     * Collect all magic items for one actor: unidentified, QM-masked, and identified
+     * items with a non-common rarity, school, or attunement requirement.
+     * Used for inventory glow (highlight everything detect magic would sense).
      * @param {Actor} actor
-     * @returns {object[]} items entries like scanParty `items` elements
+     * @returns {object[]} items entries compatible with scanParty `items` elements
      */
-    static collectUnidentifiedMagicItems(actor) {
-        const unidentified = [];
+    static collectAllMagicItems(actor) {
+        const items = [];
         const validTypes = new Set(["weapon", "equipment", "consumable", "tool", "loot", "container"]);
         const summarise = game.ionrift?.workshop?.getLatentSummary ?? null;
 
@@ -44,35 +46,53 @@ export class DetectMagicScanner {
             const identifiedRaw = raw.identified;
 
             const quartermasterLatent = summarise?.(item);
-            const isQmMasked = !!quartermasterLatent
-                && quartermasterLatent.kind !== "mundane";
+            const isQmMasked = !!quartermasterLatent && quartermasterLatent.kind !== "mundane";
             const isNativeUnidentified = identifiedLive === false || identifiedRaw === false;
-            if (!isQmMasked && !isNativeUnidentified) continue;
+
+            const rarity = item.system?.rarity ?? "";
+            const school = item.system?.school ?? null;
+            const attunement = item.system?.attunement;
+            const hasAttunement = !!attunement && attunement !== 0 && attunement !== "none" && attunement !== "";
+
+            const isIdentifiedMagic = !isNativeUnidentified && !isQmMasked
+                && ((rarity && rarity !== "common") || school || hasAttunement);
+
+            if (!isQmMasked && !isNativeUnidentified && !isIdentifiedMagic) continue;
 
             const unidName = item.system?.unidentified?.name ?? raw.unidentified?.name;
-
             const trueName = quartermasterLatent?.originalName ?? item.name;
-            const displayName = isNativeUnidentified
-                ? (unidName || item.name)
-                : item.name;
+            const displayName = isNativeUnidentified ? (unidName || item.name) : item.name;
+            const identified = !isNativeUnidentified && !isQmMasked;
 
-            unidentified.push({
+            items.push({
                 itemId: item.id,
                 displayName,
                 trueName,
-                school: item.system?.school ?? null,
-                rarity: quartermasterLatent?.originalRarity ?? item.system?.rarity ?? null,
+                school,
+                rarity: quartermasterLatent?.originalRarity ?? rarity ?? null,
                 img: item.img ?? "icons/svg/mystery-man.svg",
-                requiresAttunement: !!item.system?.attunement,
-                identified: false
+                requiresAttunement: hasAttunement,
+                identified
             });
         }
 
-        return unidentified;
+        return items;
     }
 
     /**
-     * Live map for inventory row glow (item id -> school slug). Matches scanParty logic.
+     * Collect only unidentified / QM-masked items for one actor.
+     * Used by the workbench identify workflow (only items needing identification).
+     * @param {Actor} actor
+     * @returns {object[]}
+     */
+    static collectUnidentifiedMagicItems(actor) {
+        return DetectMagicScanner.collectAllMagicItems(actor).filter(it => !it.identified);
+    }
+
+    /**
+     * Live map for inventory row glow (item id -> school slug).
+     * Covers all magic items, identified or not, so the glow matches what
+     * Detect Magic would reveal.
      * @param {string} actorId
      * @returns {Map<string, string>}
      */
@@ -80,14 +100,14 @@ export class DetectMagicScanner {
         const map = new Map();
         const actor = game.actors.get(actorId);
         if (!actor) return map;
-        for (const it of DetectMagicScanner.collectUnidentifiedMagicItems(actor)) {
+        for (const it of DetectMagicScanner.collectAllMagicItems(actor)) {
             map.set(it.itemId, DetectMagicScanner.normalizeSchoolForGlow(it.school));
         }
         return map;
     }
 
     /**
-     * Scan all party actors for unidentified magical items.
+     * Scan all party actors for magical items.
      * @param {string[]} actorIds - Actor IDs to scan
      * @returns {Object[]} Array of { actorId, actorName, items: [...] }
      */
@@ -98,14 +118,14 @@ export class DetectMagicScanner {
             const actor = game.actors.get(actorId);
             if (!actor) continue;
 
-            const unidentified = DetectMagicScanner.collectUnidentifiedMagicItems(actor);
+            const magic = DetectMagicScanner.collectAllMagicItems(actor);
 
-            if (unidentified.length > 0) {
+            if (magic.length > 0) {
                 results.push({
                     actorId,
                     actorName: actor.name,
                     actorImg: actor.img,
-                    items: unidentified
+                    items: magic
                 });
             }
         }
