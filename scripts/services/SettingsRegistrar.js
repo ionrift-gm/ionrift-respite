@@ -16,11 +16,10 @@ const MODULE_ID = "ionrift-respite";
  *
  * @param {object} opts
  * @param {typeof import("../apps/PackRegistryApp.js").PackRegistryApp} opts.PackRegistryApp
- * @param {typeof import("../apps/PartyRosterApp.js").PartyRosterApp} opts.PartyRosterApp
  * @param {typeof import("../apps/DietConfigApp.js").DietConfigApp} opts.DietConfigApp
  * @param {function} opts.onAmbientAfkChange - Callback when ambientAfkHud setting changes.
  */
-export function registerAllSettings({ PackRegistryApp, PartyRosterApp, DietConfigApp, onAmbientAfkChange }) {
+export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientAfkChange }) {
 
     // ── Content Packs button (via kernel) ────────────────────────────
     const SettingsLayoutForPack = game.ionrift?.library?.SettingsLayout;
@@ -28,16 +27,9 @@ export function registerAllSettings({ PackRegistryApp, PartyRosterApp, DietConfi
         hint: "Enable or disable event content packs. Shows event counts per terrain."
     });
 
-    // ── Menu: Party Roster ───────────────────────────────────────────
-    game.settings.registerMenu(MODULE_ID, "partyRosterMenu", {
-        name: "Party Roster",
-        label: "Edit Roster",
-        hint: "Choose which characters participate in Respite rests. Excludes summons, familiars, and companion sheets.",
-        icon: "fas fa-users",
-        type: PartyRosterApp,
-        restricted: true
-    });
-
+    // ── Party Roster (migration-only) ────────────────────────────────
+    // Menu removed: roster UI now lives in ionrift-library (game.ionrift.library.party).
+    // Setting kept so the library migration hook can seed from existing Respite data.
     game.settings.register(MODULE_ID, "partyRoster", {
         scope: "world",
         config: false,
@@ -539,7 +531,6 @@ export const SETTING_KEYS = [
  * All menu keys registered by this module.
  */
 export const MENU_KEYS = [
-    "partyRosterMenu",
     "dietConfigMenu",
     "resetRestDate",
     "clearRestState"

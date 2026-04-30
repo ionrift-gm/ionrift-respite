@@ -26,7 +26,6 @@ import {
 
 import { createAdapter } from "./adapters/adapterFactory.js";
 import { PackRegistryApp } from "./apps/PackRegistryApp.js";
-import { PartyRosterApp } from "./apps/PartyRosterApp.js";
 import { CopySpellHandler } from "./services/CopySpellHandler.js";
 import { ImageResolver } from "./util/ImageResolver.js";
 import { ItemClassifier } from "./services/ItemClassifier.js";
@@ -485,7 +484,6 @@ Hooks.once("init", async () => {
     // Register settings (extracted to SettingsRegistrar.js â€” Phase 2.1)
     registerAllSettings({
         PackRegistryApp,
-        PartyRosterApp,
         DietConfigApp,
         onAmbientAfkChange: (value) => {
             if (value) void showAfkPanel();
@@ -565,8 +563,7 @@ registerUiHooks();
     async function _runCalendarSpoilage() {
         _spoilageDebounce = null;
         try {
-            const roster = game.settings.get(MODULE_ID, "partyRoster") ?? [];
-            const actors = roster.map(id => game.actors.get(id)).filter(Boolean);
+            const actors = game.ionrift?.library?.party?.getMembers() ?? [];
             if (!actors.length) return;
 
             const report = await MealPhaseHandler.resolveCalendarSpoilage(actors);
