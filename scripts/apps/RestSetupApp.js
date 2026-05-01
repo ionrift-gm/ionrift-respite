@@ -1,6 +1,8 @@
 import { Logger } from "../lib/Logger.js";
 import { RestFlowEngine } from "../services/RestFlowEngine.js";
-import { executePlayerRoll, rollForPlayer, pickBestSkill, SKILL_DISPLAY_NAMES, waitForDiceSoNice } from "../services/RollRequestManager.js";
+import {
+    executePlayerRoll, rollForPlayer, pickBestSkill, SKILL_DISPLAY_NAMES, waitForDiceSoNice, getNatD20FromRoll
+} from "../services/RollRequestManager.js";
 import { TerrainRegistry } from "../services/TerrainRegistry.js";
 import { ActivityResolver } from "../services/ActivityResolver.js";
 import { EventResolver } from "../services/EventResolver.js";
@@ -2935,7 +2937,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const wx = WEATHER_TABLE[weatherKey] ?? WEATHER_TABLE.clear;
                 const weatherParts = [];
                 if (wx.comfortPenalty > 0) weatherParts.push(`Comfort -${wx.comfortPenalty} step`);
-                if (wx.encounterDC > 0) weatherParts.push(`Encounter DC +${wx.encounterDC}`);
+                if (wx.encounterDC > 0) weatherParts.push(`Night check mod +${wx.encounterDC}`);
                 if (wx.tentCancels) weatherParts.push("Tent cancels");
                 else if (wx.tentReduces) weatherParts.push("Tent reduces by 1");
                 const SHELTER_TOOLTIPS = {
@@ -5202,20 +5204,67 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
-        // Open inline crafting drawer
-        this._craftingDrawerOpen = true;
-        this._craftingDrawerProfession = profession;
-        this._craftingDrawerRecipeId = null;
-        this._craftingDrawerRisk = "standard";
-        this._craftingDrawerResult = null;
-        this._craftingDrawerHasCrafted = false;
-        this._craftingDrawerShowMissing = false;
+        const actor = game.actors.get(characterId);
+        if (!actor) return;
 
         // Mark crafting as in progress
         if (!this._craftingInProgress) this._craftingInProgress = new Set();
         this._craftingInProgress.add(characterId);
         this._pendingSelections?.delete(characterId);
-        this.render();
+
+        const terrainTag = this._engine?.terrainTag ?? this._restData?.terrainTag ?? null;
+        const app = this;
+
+        // Open the standalone crafting picker window
+        const picker = new CraftingPickerApp(
+            actor, profession, this._craftingEngine,
+            (result) => {
+                // Completion callback — commit the crafting result
+                app._craftingInProgress?.delete(characterId);
+                if (!result) {
+                    // Crafting cancelled or no result — re-enable selection
+                    if (app.rendered) app.render();
+                    return;
+                }
+                app._craftingResults.set(characterId, result);
+
+                // Find the matching crafting activity to record the choice
+                const resolver = app._activityResolver;
+                const craftAct = resolver?.activities ? [...resolver.activities.values()].find(
+                    a => a.crafting?.profession === profession
+                ) : null;
+                const activityId = craftAct?.id ?? `act_cook`;
+
+                if (app._isGM) {
+                    app._gmOverrides.set(characterId, activityId);
+                    app._rebuildCharacterChoices?.();
+                    const submissions = {};
+                    for (const [charId, actId] of app._characterChoices) {
+                        const act = resolver?.activities?.get(actId);
+                        submissions[charId] = {
+                            activityId: actId,
+                            activityName: act?.name ?? actId,
+                            source: app._gmOverrides.has(charId) ? "gm" : "player"
+                        };
+                    }
+                    game.socket.emit(`module.ionrift-respite`, { type: "submissionUpdate", submissions });
+                } else {
+                    app._characterChoices.set(characterId, activityId);
+                    app._lockedCharacters = app._lockedCharacters ?? new Set();
+                    app._lockedCharacters.add(characterId);
+                    game.socket.emit(`module.ionrift-respite`, {
+                        type: "activityChoice",
+                        userId: game.user.id,
+                        choices: Object.fromEntries(app._characterChoices),
+                        craftingResults: { [characterId]: result }
+                    });
+                    ui.notifications.info(`${actor.name}'s activity submitted.`);
+                }
+                if (app.rendered) app.render();
+            },
+            terrainTag
+        );
+        picker.render({ force: true });
     }
 
     /**
@@ -5885,6 +5934,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         });
     }
 
+    receiveMealDayConsumeRequest(userId, consumeByCharacter) {
+        return this._meals.receiveMealDayConsumeRequest(userId, consumeByCharacter);
+    }
+
     async receiveMealDayConsumed(userId, clientChoices) { await this._meals.receiveMealDayConsumed(userId, clientChoices); }
 
     async receiveDehydrationPrompt(characterId, actorName, dc) { await this._meals.receiveDehydrationPrompt(characterId, actorName, dc); }
@@ -6176,10 +6229,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Detect Magic: scan party inventories for unidentified magical items.
+     * Detect Magic: scan party inventories, or dismiss an active scan on second click.
      */
     static async #onDetectMagicScan(event, target) {
-        await this.runDetectMagicScan();
+        const btn = event?.currentTarget ?? null;
+        btn?.classList.add("is-casting");
+        if (this._magicScanComplete) {
+            this._clearDetectMagicScanSession();
+            this.render();
+        } else {
+            await this.runDetectMagicScan();
+        }
     }
 
     /**
@@ -7357,9 +7417,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!characterId || !activityId) return null;
         if (this._craftingInProgress?.has(characterId)) return null;
 
-        const activity = this._activities?.find(a => a.id === activityId);
-        if (activity?.crafting?.enabled) {
-            const syntheticTarget = { dataset: { characterId, profession: activity.crafting.profession } };
+        // Look up activity from the resolver, then fall back to known crafting IDs
+        const CRAFTING_PROFESSIONS = { act_cook: "cooking", act_brew: "alchemy" };
+        const activity = this._activityResolver?.activities?.get(activityId);
+        const craftingProfession = activity?.crafting?.profession ?? CRAFTING_PROFESSIONS[activityId];
+        if (activity?.crafting?.enabled || craftingProfession) {
+            const syntheticTarget = { dataset: { characterId, profession: craftingProfession } };
             RestSetupApp.#onOpenCrafting.call(this, null, syntheticTarget);
             return { source: "activity", activityId, result: "crafting_redirect" };
         }
@@ -8817,6 +8880,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     actorId,
                     actorName: actor.name,
                     total: roll.total,
+                    natD20: getNatD20FromRoll(roll),
                     day
                 });
 
@@ -8895,6 +8959,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     actorId,
                     actorName: actor.name,
                     total: roll.total,
+                    natD20: getNatD20FromRoll(roll),
                     day
                 });
 
@@ -8938,6 +9003,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             actorId,
             actorName: actor.name,
             total: result.total,
+            natD20: result.natD20,
             day
         });
     }
@@ -8947,7 +9013,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     receiveTravelRollResult(data) {
         const day = data.day ?? this._travel.activeDay;
-        this._travel.receiveRollResult(data.actorId, data.total, day);
+        this._travel.receiveRollResult(data.actorId, data.total, day, data.natD20 ?? null);
 
         emitPhaseChanged("travel", {
                 travelRollUpdate: {
