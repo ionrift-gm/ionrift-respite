@@ -22,7 +22,7 @@ const FURNITURE = {
     weaponRack:  { name: "Weapon Rack",      width: 1, height: 1 },
     cookingArea: {
         name: "Cooking Station",
-        basicName: "Mess table",
+        basicName: "Food Station",
         width: 1, height: 1
     }
 };

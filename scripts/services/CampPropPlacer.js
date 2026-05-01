@@ -20,16 +20,13 @@ import { CAMPFIRE_FLAME_FLOOR_SORT, CAMPFIRE_PIT_SORT } from "./CompoundCampPlac
 
 const MODULE_ID = "ionrift-respite";
 
-// Asset paths
+// Asset paths — Foundry core icons (premium art overridden via ImageResolver when art pack present)
 const TORCH_STAKES = [
-    `modules/${MODULE_ID}/assets/tokens/torches/torch_stake_01.png`,
-    `modules/${MODULE_ID}/assets/tokens/torches/torch_stake_02.png`,
-    `modules/${MODULE_ID}/assets/tokens/torches/torch_stake_03.png`,
-    `modules/${MODULE_ID}/assets/tokens/torches/torch_stake_04.png`,
+    "icons/svg/light.svg",
 ];
 
-// Campfire base (cold pit, always visible; matches ionrift-brand draft art, shipped in module assets)
-const CAMPFIRE_BASE_PIT = `modules/${MODULE_ID}/assets/tokens/campfire_dead_a.png`;
+// Campfire base (cold pit, always visible)
+const CAMPFIRE_BASE_PIT = "icons/svg/fire.svg";
 const CAMPFIRE_BASES = [CAMPFIRE_BASE_PIT];
 
 // Campfire fire overlay
