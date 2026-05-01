@@ -6,7 +6,6 @@
  * Call {@link registerAllSettings} from the `Hooks.once("init", ...)` block.
  */
 
-import { MONSTER_COOKING_FEATURE_LIVE } from "../FeatureFlags.mjs";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -185,15 +184,6 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         restricted: true
     });
 
-    game.settings.register(MODULE_ID, "enableMonsterCooking", {
-        name: "Monster Cooking",
-        hint: "After combat with notable creatures, characters carrying the Dungeon Gourmand's Handbook can butcher carcasses for exotic cooking ingredients. Requires a content pack with monster recipes and a butcher registry.",
-        scope: "world",
-        config: MONSTER_COOKING_FEATURE_LIVE,
-        type: Boolean,
-        default: false,
-        restricted: true
-    });
 
     game.settings.register(MODULE_ID, "restRecoveryDetected", {
         scope: "world",
@@ -432,11 +422,6 @@ export function registerItemEnrichments() {
             tags: ["Tinkering Profession"]
         },
 
-        // ── Dungeon Gourmand's Handbook ──────────────────────────────
-        "dungeon gourmand's handbook": {
-            html: `<hr><p><strong>Respite:</strong> After combat with notable creatures (<strong>CR 2+</strong>), characters carrying this book are offered the chance to <strong>butcher the carcass</strong> for exotic cooking ingredients. The quality of the yield depends on a Survival check. The resulting ingredients unlock special <strong>monster recipes</strong> during the next rest.</p>`,
-            tags: ["Monster Cooking", "Butchering"]
-        },
 
         // ── Tinderbox ─────────────────────────────────────────────────
         "tinderbox": {
@@ -511,7 +496,6 @@ export const SETTING_KEYS = [
     "torchAutoLink",
     "customFoodNames",
     "customWaterNames",
-    "enableMonsterCooking",
     "restRecoveryDetected",
     "lastRestDate",
     "lastTerrain",
@@ -554,7 +538,6 @@ export const ENRICHMENT_KEYS = [
     "healer's kit",
     "alchemist's supplies",
     "tinker's tools",
-    "dungeon gourmand's handbook",
     "tinderbox",
     "fresh meat",
     "fresh fish",

@@ -122,8 +122,6 @@ export const SOCKET_TYPES = Object.freeze({
     SHORT_REST_WORKBENCH_STAGING: "shortRestWorkbenchStaging",
     SHORT_REST_WORKBENCH_SYNC: "shortRestWorkbenchSync",
 
-    // ── Monster cooking ──
-    BUTCHER_PROMPT_POPUP:  "butcherPromptPopup",
 });
 
 // ── Internal emit helper ────────────────────────────────────────────────────
@@ -659,13 +657,8 @@ export function emitShortRestAfkUpdate(characterId, isAfk) {
 
 // ── Monster Cooking Emitter ─────────────────────────────────────────────────
 
-/**
- * GM → Players: butcher opportunity popup after combat.
- * @param {object} data - Creature info, tier, DC, holder IDs, etc.
- */
-export function emitButcherPromptPopup(data) {
-    _emit(SOCKET_TYPES.BUTCHER_PROMPT_POPUP, data);
-}
+
+
 
 // ── Workbench Identify (player → GM) ──
 
