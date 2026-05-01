@@ -20,7 +20,7 @@ import { CampGearScanner } from "./CampGearScanner.js";
 const MODULE_ID = "ionrift-respite";
 
 /** Default pit art for the cold campfire base token (placed campfires). Lit overlay uses flame asset or template actor. */
-export const CAMPFIRE_TOKEN_IMG = `modules/${MODULE_ID}/assets/tokens/campfire_dead_a.png`;
+export const CAMPFIRE_TOKEN_IMG = "icons/svg/fire.svg";
 
 /** Sensible fallback if no template actor exists. */
 const DEFAULT_LIGHT = {

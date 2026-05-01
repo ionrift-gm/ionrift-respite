@@ -132,7 +132,7 @@ export class ContentPackCompiler {
                                 rarity: recipe.ambitiousOutput.rarity ?? "uncommon",
                                 ...(recipe.ambitiousOutput.system ?? {})
                             },
-                            flags: recipe.outputFlags ?? {}
+                            flags: recipe.ambitiousOutputFlags ?? recipe.outputFlags ?? {}
                         }, recipe.monsterRecipe ? "Monster Recipes" : "Cooking Outputs");
                     }
                 }
