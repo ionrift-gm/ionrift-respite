@@ -42,6 +42,33 @@ export class CraftingEngine {
     }
 
     /**
+     * @param {Actor} actor
+     * @returns {boolean}
+     */
+    static _hasChefFeat(actor) {
+        return actor?.items?.some(i =>
+            i.type === "feat" && i.name?.toLowerCase() === "chef"
+        ) ?? false;
+    }
+
+    /**
+     * DC used for the crafting check and UI (risk tier, terrain, Chef feat -2).
+     * @param {Actor} actor
+     * @param {Object} recipe
+     * @param {string} [riskTier]
+     * @param {string|null} [terrainTag]
+     * @returns {number}
+     */
+    getAdjustedCraftingDc(actor, recipe, riskTier = "standard", terrainTag = null) {
+        const riskMods = { safe: -3, standard: 0, ambitious: 5 };
+        const baseDc = recipe.dc ?? 12;
+        const terrainDcMod = (terrainTag && recipe.terrainDcModifier?.[terrainTag]) ?? 0;
+        let dc = baseDc + (riskMods[riskTier] ?? 0) + terrainDcMod;
+        if (CraftingEngine._hasChefFeat(actor)) dc -= 2;
+        return dc;
+    }
+
+    /**
      * Scans an actor's inventory and returns available recipes for a profession,
      * categorized by what can be crafted now vs what's missing ingredients.
      * @param {Actor} actor
@@ -108,17 +135,20 @@ export class CraftingEngine {
             return { success: false, error: "Missing ingredients.", ingredientStatus };
         }
 
-        // Calculate DC with risk modifier and terrain modifier
-        const riskMods = { safe: -3, standard: 0, ambitious: 5 };
-        const baseDc = recipe.dc ?? 12;
-        const terrainDcMod = (terrainTag && recipe.terrainDcModifier?.[terrainTag]) ?? 0;
-        const adjustedDc = baseDc + (riskMods[riskTier] ?? 0) + terrainDcMod;
+        const adjustedDc = this.getAdjustedCraftingDc(actor, recipe, riskTier, terrainTag);
 
         // Roll the skill check
         const skill = recipe.skill ?? "sur";
         const skillData = actor.system?.skills?.[skill];
         const modifier = skillData?.total ?? skillData?.mod ?? 0;
         const roll = await new Roll(`1d20 + ${modifier}`).evaluate();
+
+        const naturalRoll = roll.dice[0]?.results?.[0]?.result;
+        const useAmbitiousOutput = Boolean(
+            recipe.ambitiousOutput
+            && (riskTier === "ambitious"
+                || (CraftingEngine._hasChefFeat(actor) && naturalRoll === 20))
+        );
 
         await roll.toMessage({
             speaker: ChatMessage.getSpeaker({ actor }),
@@ -134,22 +164,26 @@ export class CraftingEngine {
         }
 
         if (success) {
-            // Determine output based on risk tier, then check terrain variants
-            let output = riskTier === "ambitious" && recipe.ambitiousOutput
+            // Output tier: chosen ambitious, or Chef feat natural 20 upgrade
+            let output = useAmbitiousOutput
                 ? recipe.ambitiousOutput
                 : recipe.output;
 
             // Apply terrain variant if one exists for this terrain + tier
             if (terrainTag && recipe.terrainVariants?.[terrainTag]) {
                 const variant = recipe.terrainVariants[terrainTag];
-                const variantOutput = riskTier === "ambitious" && variant.ambitiousOutput
+                const variantOutput = useAmbitiousOutput && variant.ambitiousOutput
                     ? variant.ambitiousOutput
                     : variant.output;
                 if (variantOutput) output = variantOutput;
             }
 
+            const outputFlags = useAmbitiousOutput
+                ? (recipe.ambitiousOutputFlags ?? recipe.outputFlags)
+                : recipe.outputFlags;
+
             // Create the output item on the actor
-            const createdItems = await this._createOutputItems(actor, output);
+            const createdItems = await this._createOutputItems(actor, output, outputFlags);
 
             return {
                 success: true,
@@ -273,9 +307,10 @@ export class CraftingEngine {
      * Creates output items on the actor.
      * @param {Actor} actor
      * @param {Object} output - { name, type, img, quantity, system }
+     * @param {Object} [outputFlags] - Optional Foundry flags object (e.g. recipe.outputFlags)
      * @returns {Item[]} Created items.
      */
-    async _createOutputItems(actor, output) {
+    async _createOutputItems(actor, output, outputFlags) {
         if (!output) return [];
 
         const { ItemOutcomeHandler } = await import("./ItemOutcomeHandler.js");
@@ -288,7 +323,8 @@ export class CraftingEngine {
                 description: { value: output.description ?? "" },
                 rarity: output.rarity ?? "common",
                 ...(output.system ?? {})
-            }
+            },
+            flags: outputFlags ?? {}
         }]);
 
         return grantSummary;

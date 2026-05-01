@@ -19,7 +19,10 @@ export const STUB_RECIPES = {
             toolRequired: "cook",
             skill: "sur",
             dc: 8,
-            ingredients: [{ name: "Rations", quantity: 1 }],
+            ingredients: [
+                { name: "Rations", quantity: 1 },
+                { name: "Waterskin", quantity: 1 }
+            ],
             output: {
                 name: "Camp Porridge",
                 type: "consumable",
@@ -37,6 +40,21 @@ export const STUB_RECIPES = {
                 description: "<p>Sweet, thick porridge enriched with foraged honey.</p>",
                 rarity: "uncommon",
                 system: { type: { value: "food", subtype: "" } }
+            },
+            outputFlags: {
+                "ionrift-respite": {
+                    foodTag: "cooked_meal",
+                    spoilsAfter: 3,
+                    partyMeal: false,
+                    wellFed: true,
+                    satiates: ["food", "water"],
+                    buff: {
+                        type: "exhaustion_save",
+                        formula: "15",
+                        duration: "immediate",
+                        target: "self"
+                    }
+                }
             }
         },
         {
@@ -65,6 +83,31 @@ export const STUB_RECIPES = {
                 description: "<p>Thick, concentrated berry preserves with a deep flavour.</p>",
                 rarity: "uncommon",
                 system: { type: { value: "food", subtype: "" } }
+            },
+            outputFlags: {
+                "ionrift-respite": {
+                    foodTag: "preserved",
+                    spoilsAfter: null,
+                    partyMeal: false,
+                    wellFed: false,
+                    satiates: ["food"],
+                    buff: null
+                }
+            },
+            ambitiousOutputFlags: {
+                "ionrift-respite": {
+                    foodTag: "preserved",
+                    spoilsAfter: null,
+                    partyMeal: false,
+                    wellFed: true,
+                    satiates: ["food"],
+                    buff: {
+                        type: "temp_hp",
+                        formula: "@prof",
+                        duration: "untilLongRest",
+                        target: "self"
+                    }
+                }
             }
         },
         {
@@ -93,6 +136,21 @@ export const STUB_RECIPES = {
                 description: "<p>A mix of wild mushrooms, seared with herbs.</p>",
                 rarity: "uncommon",
                 system: { type: { value: "food", subtype: "" } }
+            },
+            outputFlags: {
+                "ionrift-respite": {
+                    foodTag: "cooked_meal",
+                    spoilsAfter: 3,
+                    partyMeal: false,
+                    wellFed: true,
+                    satiates: ["food"],
+                    buff: {
+                        type: "advantage",
+                        formula: "con",
+                        duration: "nextSave",
+                        target: "self"
+                    }
+                }
             }
         },
         {
@@ -124,6 +182,21 @@ export const STUB_RECIPES = {
                 description: "<p>Rations elevated with a generous herb blend.</p>",
                 rarity: "uncommon",
                 system: { type: { value: "food", subtype: "" } }
+            },
+            outputFlags: {
+                "ionrift-respite": {
+                    foodTag: "cooked_meal",
+                    spoilsAfter: null,
+                    partyMeal: false,
+                    wellFed: true,
+                    satiates: ["food"],
+                    buff: {
+                        type: "temp_hp",
+                        formula: "@prof + 1d4",
+                        duration: "untilLongRest",
+                        target: "self"
+                    }
+                }
             }
         },
         {
@@ -152,6 +225,31 @@ export const STUB_RECIPES = {
                 description: "<p>Perfectly smoked fish with a rich, savoury finish.</p>",
                 rarity: "uncommon",
                 system: { type: { value: "food", subtype: "" } }
+            },
+            outputFlags: {
+                "ionrift-respite": {
+                    foodTag: "preserved",
+                    spoilsAfter: null,
+                    partyMeal: false,
+                    wellFed: false,
+                    satiates: ["food"],
+                    buff: null
+                }
+            },
+            ambitiousOutputFlags: {
+                "ionrift-respite": {
+                    foodTag: "preserved",
+                    spoilsAfter: null,
+                    partyMeal: false,
+                    wellFed: true,
+                    satiates: ["food"],
+                    buff: {
+                        type: "advantage",
+                        save: { ability: "con" },
+                        duration: "nextSave",
+                        target: "self"
+                    }
+                }
             }
         },
         {
@@ -164,7 +262,8 @@ export const STUB_RECIPES = {
             dc: 12,
             ingredients: [
                 { name: "Rations", quantity: 1 },
-                { name: "Fresh Meat", quantity: 1 }
+                { name: "Fresh Meat", quantity: 1 },
+                { name: "Waterskin", quantity: 1 }
             ],
             output: {
                 name: "Hearty Stew",
@@ -183,6 +282,21 @@ export const STUB_RECIPES = {
                 description: "<p>A rich, aromatic stew slow-cooked with care. Restores 3 hit points when consumed during a rest.</p>",
                 rarity: "uncommon",
                 system: { type: { value: "food", subtype: "" } }
+            },
+            outputFlags: {
+                "ionrift-respite": {
+                    foodTag: "cooked_meal",
+                    spoilsAfter: 3,
+                    partyMeal: true,
+                    wellFed: true,
+                    satiates: ["food", "water"],
+                    buff: {
+                        type: "temp_hp",
+                        formula: "@prof",
+                        duration: "untilLongRest",
+                        target: "party"
+                    }
+                }
             }
         }
     ]

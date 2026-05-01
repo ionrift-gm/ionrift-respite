@@ -344,10 +344,10 @@ export const STATION_RANGE_SQUARES = 3;
  */
 export const PLACEHOLDER_CAMP_STATION = {
     name: "Build site",
-    path: "ionrift-brand/Assets/Drafts/campsite_tokens/camp_stub_b2.png",
-    /** Same 1x1 grid as final station tokens so promote swaps art only (no size pop). */
-    width: 1,
-    height: 1
+    path: "icons/svg/circle.svg",
+    /** Half-grid footprint — small supply bundle, not a full station. */
+    width: 0.5,
+    height: 0.5
 };
 
 /** Shelter spell definitions. Used in setup phase for shelter detection. */

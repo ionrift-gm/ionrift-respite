@@ -67,8 +67,9 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         const selectedRecipe = available.find(r => r.id === this._selectedRecipeId);
         let commitSummary = null;
         if (selectedRecipe && !this._hasCrafted) {
-            const riskMods = { safe: -3, standard: 0, ambitious: 5 };
-            const adjustedDc = (selectedRecipe.dc ?? 12) + (riskMods[this._selectedRisk] ?? 0);
+            const adjustedDc = this._engine.getAdjustedCraftingDc(
+                this._actor, selectedRecipe, this._selectedRisk, this._terrainTag
+            );
 
             // Determine which output to show based on risk
             const outputForRisk = this._selectedRisk === "ambitious" && selectedRecipe.ambitiousOutput
@@ -113,8 +114,9 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
     }
 
     _enrichRecipe(recipe) {
-        const riskMods = { safe: -3, standard: 0, ambitious: 5 };
-        const adjustedDc = (recipe.dc ?? 12) + (riskMods[this._selectedRisk] ?? 0);
+        const adjustedDc = this._engine.getAdjustedCraftingDc(
+            this._actor, recipe, this._selectedRisk, this._terrainTag
+        );
         return {
             ...recipe,
             dcDisplay: adjustedDc,

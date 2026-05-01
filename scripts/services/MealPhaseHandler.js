@@ -460,6 +460,39 @@ export class MealPhaseHandler {
     static async applyMealChoices(mealChoices, daysSinceLastRest = 1, terrainMealRules = {}) {
         const rules = { ...MEAL_DEFAULTS, ...terrainMealRules };
         const results = [];
+        const partyIds = [...mealChoices.keys()];
+        const extraWaterByChar = new Map();
+        const extraFoodByChar = new Map();
+
+        /** @type {Map<string, { foodUsage: Map<string, number>, snapMap: Map<string, object> }>} */
+        const mealSnapshotsByChar = new Map();
+
+        for (const [charId, choice] of mealChoices) {
+            const actor = game.actors.get(charId);
+            if (!actor) continue;
+
+            const foodUsage = new Map();
+            for (const day of (choice.consumedDays ?? [])) {
+                for (const id of (day.food ?? [])) {
+                    if (id && id !== "skip") foodUsage.set(id, (foodUsage.get(id) ?? 0) + 1);
+                }
+            }
+            const snapMap = new Map();
+            for (const itemId of foodUsage.keys()) {
+                const it = actor.items.get(itemId);
+                if (it) snapMap.set(itemId, it.toObject(false));
+            }
+            mealSnapshotsByChar.set(charId, { foodUsage, snapMap });
+
+            for (const [itemId, amount] of foodUsage) {
+                const snap = snapMap.get(itemId);
+                if (snap) {
+                    MealPhaseHandler._accumulateMealSatiation(
+                        snap, amount, charId, partyIds, extraWaterByChar, extraFoodByChar
+                    );
+                }
+            }
+        }
 
         for (const [charId, choice] of mealChoices) {
             const actor = game.actors.get(charId);
@@ -494,34 +527,41 @@ export class MealPhaseHandler {
                 totalWaterFilled += (day.water ?? []).filter(id => id && id !== "skip").length;
             }
 
-            // Days that were skipped (not consumed at all)
-            const skippedDays = totalDays - consumedDays.length;
-
             const foodNeeded = totalDays * rules.foodPerDay;
             const waterNeeded = totalDays * rules.waterPerDay;
 
-            result.foodConsumed = totalFoodFilled;
-            result.waterConsumed = totalWaterFilled;
-            result.ate = totalFoodFilled > 0;
-            result.drank = totalWaterFilled > 0;
-            result.foodShortfall = Math.max(0, foodNeeded - totalFoodFilled);
-            result.waterShortfall = Math.max(0, waterNeeded - totalWaterFilled);
+            const effectiveFood = totalFoodFilled + (extraFoodByChar.get(charId) ?? 0);
+            const effectiveWater = totalWaterFilled + (extraWaterByChar.get(charId) ?? 0);
+
+            result.foodConsumed = effectiveFood;
+            result.waterConsumed = effectiveWater;
+            result.ate = effectiveFood > 0;
+            result.drank = effectiveWater > 0;
+            result.foodShortfall = Math.max(0, foodNeeded - effectiveFood);
+            result.waterShortfall = Math.max(0, waterNeeded - effectiveWater);
 
             // --- Actually consume items from inventory ---
-            // Tally how many times each item ID was used across all consumed days
-            const foodUsage = new Map();
+            const foodUsage = mealSnapshotsByChar.get(charId)?.foodUsage ?? new Map();
+            const snapMap = mealSnapshotsByChar.get(charId)?.snapMap ?? new Map();
             const waterUsage = new Map();
             for (const day of consumedDays) {
-                for (const id of (day.food ?? [])) {
-                    if (id && id !== "skip") foodUsage.set(id, (foodUsage.get(id) ?? 0) + 1);
-                }
                 for (const id of (day.water ?? [])) {
                     if (id && id !== "skip") waterUsage.set(id, (waterUsage.get(id) ?? 0) + 1);
                 }
             }
             for (const [itemId, amount] of foodUsage) {
+                const snapshot = snapMap.get(itemId);
                 const consumed = await this._consumeItem(actor, itemId, amount);
                 console.log(`[Respite:Meal] Consumed ${consumed}x food item ${itemId} from ${actor.name}`);
+                if (snapshot && consumed > 0) {
+                    for (let u = 0; u < consumed; u++) {
+                        await MealPhaseHandler._dispatchWellFedMealServing({
+                            consumerActor: actor,
+                            itemSnapshot: snapshot,
+                            partyIds
+                        });
+                    }
+                }
             }
             for (const [itemId, amount] of waterUsage) {
                 const consumed = await this._consumeItem(actor, itemId, amount);
@@ -648,6 +688,310 @@ export class MealPhaseHandler {
 
         const results = await MealPhaseHandler.applyMealChoices(mealChoices, totalDays, terrainMealRules);
         return { mealChoices, results };
+    }
+
+    /**
+     * Wet meals and party meals credit water (and party meals credit food for allies
+     * who did not spend a food slot on the shared dish).
+     */
+    static _accumulateMealSatiation(snapshot, amount, consumerCharId, partyIds, extraWaterByChar, extraFoodByChar) {
+        const rf = snapshot.flags?.[MODULE_ID] ?? {};
+        const targets = rf.partyMeal ? [...partyIds] : [consumerCharId];
+        for (let u = 0; u < amount; u++) {
+            for (const tid of targets) {
+                if (rf.satiates?.includes("water")) {
+                    extraWaterByChar.set(tid, (extraWaterByChar.get(tid) ?? 0) + 1);
+                }
+                if (rf.partyMeal && rf.satiates?.includes("food")) {
+                    if (tid === consumerCharId) continue;
+                    extraFoodByChar.set(tid, (extraFoodByChar.get(tid) ?? 0) + 1);
+                }
+            }
+        }
+    }
+
+    /**
+     * Apply Well Fed + optional chat after one serving is removed from inventory.
+     */
+    static async _dispatchWellFedMealServing({ consumerActor, itemSnapshot, partyIds }) {
+        const rf = itemSnapshot.flags?.[MODULE_ID] ?? {};
+        const itemName = itemSnapshot.name ?? "Meal";
+        if (rf.partyMeal) {
+            const summaries = [];
+            for (const pid of partyIds) {
+                const member = game.actors.get(pid);
+                if (!member) continue;
+                const part = await MealPhaseHandler._applyWellFedEffect(member, itemSnapshot);
+                if (part?.length) summaries.push(`<strong>${member.name}</strong>: ${part.join("; ")}`);
+            }
+            if (summaries.length) {
+                await ChatMessage.create({
+                    content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>${consumerActor.name}</strong>'s <strong>${itemName}</strong> feeds the whole party.</p><p>${summaries.join("<br>")}</p></div>`,
+                    speaker: ChatMessage.getSpeaker({ actor: consumerActor })
+                });
+            }
+        } else {
+            const lines = await MealPhaseHandler._applyWellFedEffect(consumerActor, itemSnapshot);
+            if (lines?.length) {
+                await ChatMessage.create({
+                    content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>${consumerActor.name}</strong> eats <strong>${itemName}</strong>. Well Fed: ${lines.join("; ")}</p></div>`,
+                    speaker: ChatMessage.getSpeaker({ actor: consumerActor })
+                });
+            }
+        }
+    }
+
+    /**
+     * Well Fed exclusive slot: remove prior AE, resolve buffs, create replacement AE when needed.
+     * @param {Actor} actor
+     * @param {Item|object} item - Item document or plain item data (e.g. toObject snapshot)
+     * @returns {Promise<string[]>} Chat lines for buff summaries (empty if skipped)
+     */
+    static async _applyWellFedEffect(actor, item) {
+        const flags = item?.flags?.[MODULE_ID] ?? {};
+        if (flags.wellFed !== true) return [];
+        const buffRaw = flags.buff;
+        if (buffRaw == null) return [];
+
+        const buffs = Array.isArray(buffRaw) ? buffRaw : [buffRaw];
+        await MealPhaseHandler._removeWellFedEffects(actor);
+
+        const immediateLines = [];
+        const deferredBuffs = [];
+        for (const buff of buffs) {
+            if (!buff?.type) continue;
+            const duration = buff.duration ?? "untilLongRest";
+            const forceImmediate = buff.type === "heal";
+            if (duration === "immediate" || forceImmediate) {
+                const line = await MealPhaseHandler._resolveBuff(actor, buff, { chatDetail: true });
+                if (line) immediateLines.push(line);
+            } else {
+                deferredBuffs.push(buff);
+            }
+        }
+
+        const aeChanges = [];
+        const aeDescriptions = [];
+        for (const buff of deferredBuffs) {
+            const built = await MealPhaseHandler._buffToActiveEffectPartsAsync(actor, buff);
+            if (built.changes?.length) aeChanges.push(...built.changes);
+            if (built.description) aeDescriptions.push(built.description);
+        }
+
+        const itemName = item.name ?? "Meal";
+        if (deferredBuffs.length && (aeChanges.length || aeDescriptions.length)) {
+            const durationTag = deferredBuffs[0]?.duration ?? "untilLongRest";
+            const dndFlags = MealPhaseHandler._wellFedDnd5eDurationFlags(durationTag);
+            const desc = [aeDescriptions.filter(Boolean).join(" "), dndFlags.manualNote].filter(Boolean).join("\n");
+            await actor.createEmbeddedDocuments("ActiveEffect", [{
+                name: `Well Fed: ${itemName}`,
+                img: item.img ?? "icons/consumables/food/bowl-stew-brown.webp",
+                origin: actor.uuid,
+                transfer: false,
+                disabled: false,
+                duration: dndFlags.duration ?? {},
+                changes: aeChanges,
+                description: desc || undefined,
+                flags: {
+                    [MODULE_ID]: { wellFed: true },
+                    core: { overlay: false },
+                    ...dndFlags.effectFlags
+                }
+            }]);
+        }
+
+        const deferredSummaries = deferredBuffs.map(b => MealPhaseHandler._buffSummaryLabel(b)).filter(Boolean);
+        return [...immediateLines, ...deferredSummaries];
+    }
+
+    static async _removeWellFedEffects(actor) {
+        const toDelete = actor.effects?.filter(e => e.flags?.[MODULE_ID]?.wellFed === true) ?? [];
+        if (toDelete.length) {
+            await actor.deleteEmbeddedDocuments("ActiveEffect", toDelete.map(e => e.id));
+        }
+    }
+
+    /**
+     * @returns {Promise<string|null>}
+     */
+    static async _resolveBuff(actor, buff, { chatDetail = false } = {}) {
+        if (!buff?.type) return null;
+
+        switch (buff.type) {
+            case "temp_hp": {
+                const total = await MealPhaseHandler._rollBuffFormula(actor, buff.formula);
+                if (total <= 0) return null;
+                if (game.system.id === "dnd5e") {
+                    const cur = foundry.utils.getProperty(actor, "system.attributes.hp.temp") ?? 0;
+                    const next = Math.max(cur, total);
+                    await actor.update({ "system.attributes.hp.temp": next });
+                }
+                return chatDetail ? `temp HP +${total}` : `temp HP +${total}`;
+            }
+            case "heal": {
+                const heal = await MealPhaseHandler._rollBuffFormula(actor, buff.formula);
+                if (heal <= 0) return null;
+                if (game.system.id === "dnd5e") {
+                    const hp = foundry.utils.getProperty(actor, "system.attributes.hp.value") ?? 0;
+                    const max = foundry.utils.getProperty(actor, "system.attributes.hp.effectivemax")
+                        ?? foundry.utils.getProperty(actor, "system.attributes.hp.max") ?? hp;
+                    await actor.update({ "system.attributes.hp.value": Math.min(max, hp + heal) });
+                }
+                return chatDetail ? `healing +${heal}` : `healing +${heal}`;
+            }
+            case "exhaustion_save": {
+                const dc = Number(buff.save?.dc ?? buff.formula ?? 15);
+                const roll = await new Roll(`1d20 + @abilities.con.save`, actor.getRollData?.() ?? {}).evaluate();
+                const total = roll.total;
+                const pass = total >= dc;
+                if (pass && game.system.id === "dnd5e") {
+                    const ex = foundry.utils.getProperty(actor, "system.attributes.exhaustion") ?? 0;
+                    if (ex > 0) await actor.update({ "system.attributes.exhaustion": ex - 1 });
+                }
+                const detail = `${roll.formula} = ${total} vs DC ${dc} (${pass ? "pass" : "fail"})`;
+                await ChatMessage.create({
+                    content: `<div class="respite-recovery-chat"><p><i class="fas fa-dice-d20"></i> <strong>${actor.name}</strong> ${detail}. ${pass ? "Removes 1 exhaustion." : "No exhaustion removed."}</p></div>`,
+                    speaker: ChatMessage.getSpeaker({ actor })
+                });
+                return chatDetail ? `exhaustion save (${detail})` : `exhaustion save (${pass ? "pass" : "fail"})`;
+            }
+            case "hit_die": {
+                const raw = buff.formula ?? "1";
+                let n = parseInt(raw, 10);
+                if (Number.isNaN(n) || n <= 0) {
+                    const r = await new Roll(String(raw), actor.getRollData()).evaluate();
+                    n = Math.max(0, Math.floor(Number(r.total) || 0));
+                }
+                const restored = await MealPhaseHandler._restoreHitDice(actor, n);
+                if (restored > 0) {
+                    await ChatMessage.create({
+                        content: `<div class="respite-recovery-chat"><p><i class="fas fa-heart"></i> <strong>${actor.name}</strong> restores <strong>${restored}</strong> hit die.</p></div>`,
+                        speaker: ChatMessage.getSpeaker({ actor })
+                    });
+                }
+                return chatDetail ? `hit die +${restored}` : `hit die +${restored}`;
+            }
+            case "advantage":
+            case "resistance":
+                return null;
+            default:
+                return null;
+        }
+    }
+
+    static _buffSummaryLabel(buff) {
+        if (!buff?.type) return "";
+        if (buff.type === "temp_hp") return `temp HP (${buff.formula ?? "?"})`;
+        if (buff.type === "heal") return `healing (${buff.formula ?? "?"})`;
+        if (buff.type === "advantage") {
+            const ab = buff.save?.ability ?? "con";
+            return `advantage on ${String(ab).toUpperCase()} saves (${buff.duration ?? "nextSave"})`;
+        }
+        if (buff.type === "resistance") {
+            const dt = buff.damageType ?? buff.formula ?? "?";
+            return `resistance (${dt}, ${buff.duration ?? "untilLongRest"})`;
+        }
+        return buff.type;
+    }
+
+    static async _rollBuffFormula(actor, formula) {
+        if (!formula) return 0;
+        try {
+            const roll = await new Roll(String(formula), actor.getRollData?.() ?? {}).evaluate();
+            return Math.floor(Number(roll.total) || 0);
+        } catch {
+            return 0;
+        }
+    }
+
+    static async _restoreHitDice(actor, amount) {
+        if (amount <= 0 || game.system.id !== "dnd5e") return 0;
+        let remaining = amount;
+        const classes = actor.items.filter(i => i.type === "class");
+        classes.sort((a, b) => (b.system?.levels ?? 0) - (a.system?.levels ?? 0));
+        let restored = 0;
+        for (const cls of classes) {
+            if (remaining <= 0) break;
+            const used = cls.system?.hitDiceUsed ?? 0;
+            if (used <= 0) continue;
+            const delta = Math.min(used, remaining);
+            await cls.update({ "system.hitDiceUsed": used - delta });
+            remaining -= delta;
+            restored += delta;
+        }
+        return restored;
+    }
+
+    /**
+     * Map duration tag to dnd5e ActiveEffect hints (best-effort across system versions).
+     */
+    static _wellFedDnd5eDurationFlags(durationTag) {
+        const out = { duration: {}, effectFlags: {}, manualNote: "" };
+        if (game.system.id !== "dnd5e") {
+            out.manualNote = "Remove this Well Fed effect when the listed rest ends (or replace with another meal).";
+            return out;
+        }
+        if (durationTag === "untilLongRest") {
+            foundry.utils.mergeObject(out.effectFlags, {
+                dnd5e: { duration: { type: "none" }, specialDuration: ["longRest"] }
+            });
+            return out;
+        }
+        if (durationTag === "untilShortRest") {
+            foundry.utils.mergeObject(out.effectFlags, {
+                dnd5e: { duration: { type: "none" }, specialDuration: ["shortRest"] }
+            });
+            return out;
+        }
+        if (durationTag === "nextSave" || durationTag === "nextCheck") {
+            out.manualNote = "Expires after the next qualifying save (remove manually if needed).";
+            return out;
+        }
+        out.manualNote = "Remove when the buff would end per the recipe.";
+        return out;
+    }
+
+    /**
+     * Build ActiveEffect change list for deferred (non-immediate) buffs.
+     */
+    static async _buffToActiveEffectPartsAsync(actor, buff) {
+        const changes = [];
+        const descriptions = [];
+        if (!buff?.type) return { changes, description: "" };
+
+        if (buff.type === "temp_hp") {
+            const total = await MealPhaseHandler._rollBuffFormula(actor, buff.formula);
+            if (total <= 0) return { changes, description: "" };
+            if (game.system.id === "dnd5e") {
+                changes.push({
+                    key: "system.attributes.hp.temp",
+                    mode: CONST.ACTIVE_EFFECT_MODES.OVERRIDE,
+                    value: String(total),
+                    priority: 20
+                });
+                descriptions.push(`Temporary hit points: ${total}.`);
+            }
+            return { changes, description: descriptions.join(" ") };
+        }
+
+        if (buff.type === "advantage") {
+            const ab = (buff.save?.ability ?? "con").toLowerCase();
+            descriptions.push(
+                `Advantage on ${ab.toUpperCase()} saving throws (${buff.duration ?? "nextSave"}). `
+                + "Add the bonus via Convenient Effects or a manual modifier if the sheet does not pick this up."
+            );
+            return { changes, description: descriptions.join(" ") };
+        }
+
+        if (buff.type === "resistance") {
+            const dtype = String(buff.damageType ?? buff.formula ?? "poison").toLowerCase();
+            descriptions.push(
+                `Damage resistance (${dtype}). Apply via Convenient Effects or manual resistance if needed.`
+            );
+            return { changes, description: descriptions.join(" ") };
+        }
+
+        return { changes, description: "" };
     }
 
     // ── Internal Helpers ─────────────────────────────────────────
