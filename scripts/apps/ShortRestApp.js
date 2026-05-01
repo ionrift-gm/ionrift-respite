@@ -38,6 +38,7 @@ import {
 import {
     DETECT_MAGIC_BTN_LABEL_GM,
     DETECT_MAGIC_BTN_LABEL_PLAYER,
+    DETECT_MAGIC_BTN_LABEL_DISMISS,
     DETECT_MAGIC_BTN_TITLE_GM
 } from "./RestConstants.js";
 import { getShortRestRechargeLabels } from "../services/ShortRestRecharge.js";
@@ -396,6 +397,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 detectMagicScanButtonTitle: "",
                 magicScanResults: [],
                 magicScanComplete: false,
+                magicScanActive: false,
                 workbenchIdentifyActorId: null,
                 workbenchGearChip: null,
                 workbenchPotionChip: null,
@@ -413,10 +415,13 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             ...wb,
             isGmUser: !!game.user?.isGM,
             canShowDetectMagicScanButton: this.canShowDetectMagicScanButtonFromParty(),
-            detectMagicScanButtonLabel: game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER,
+            detectMagicScanButtonLabel: this._magicScanComplete
+                ? DETECT_MAGIC_BTN_LABEL_DISMISS
+                : (game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER),
             detectMagicScanButtonTitle: game.user?.isGM ? DETECT_MAGIC_BTN_TITLE_GM : "",
             magicScanResults: this._magicScanResults ?? [],
             magicScanComplete: !!this._magicScanComplete,
+            magicScanActive: !!this._magicScanComplete,
             isShortRestWorkbench: true,
         };
     }
@@ -1037,13 +1042,19 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this.render();
     }
 
-    static async #onStationDetectMagicScan() {
+    static async #onStationDetectMagicScan(event) {
         if (this._completionPhase) return;
         if (!this._detectMagic) return;
-        await this._detectMagic.runScan(getPartyActors);
-        if (this._isGM) {
-            void this._saveShortRestState();
-            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+        const btn = event?.currentTarget ?? null;
+        btn?.classList.add("is-casting");
+        if (this._magicScanComplete) {
+            this._detectMagic.clearScanSession();
+        } else {
+            await this._detectMagic.runScan(getPartyActors);
+            if (this._isGM) {
+                void this._saveShortRestState();
+                emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+            }
         }
     }
 

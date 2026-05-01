@@ -5463,6 +5463,532 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     overflow-y: auto;
 }
 
+/* ---- Station-embedded Crafting Overrides ---- */
+
+.station-crafting-panel {
+    max-height: 65vh;
+    overflow-y: auto;
+    padding: 0.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(126, 184, 218, 0.25) transparent;
+}
+
+/* ---- Split Panel Layout ---- */
+
+.crafting-split .crafting-split-body {
+    display: flex;
+    gap: 0.75rem;
+    min-height: 280px;
+    overflow: hidden;
+}
+
+.crafting-split .crafting-list-panel {
+    flex: 0 0 240px;
+    max-width: 240px;
+    width: 240px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 55vh;
+    padding-right: 0.6rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(126, 184, 218, 0.2) transparent;
+}
+
+.crafting-split .crafting-list-panel::-webkit-scrollbar { width: 4px; }
+.crafting-split .crafting-list-panel::-webkit-scrollbar-thumb {
+    background: rgba(126, 184, 218, 0.2);
+    border-radius: 2px;
+}
+
+.crafting-split .crafting-list-heading {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.4);
+    padding: 0 0 0.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 0.15rem;
+}
+
+.crafting-split .crafting-list-heading i {
+    margin-right: 0.25rem;
+    opacity: 0.6;
+}
+
+.crafting-split .crafting-detail-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 55vh;
+    padding-right: 0.25rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(126, 184, 218, 0.2) transparent;
+}
+
+.crafting-split .recipe-list-compact {
+    width: 100%;
+}
+
+/* ---- Compact Recipe Cards (Left Panel) ---- */
+
+.recipe-card-compact {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.35rem;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.02);
+    cursor: pointer;
+    transition: all 0.15s;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.recipe-card-compact .recipe-info {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.recipe-card-compact .recipe-brief {
+    flex-wrap: wrap;
+    overflow: hidden;
+}
+
+.recipe-card-compact:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.recipe-card-compact.selected {
+    border-color: var(--ionrift-accent, #7eb8da);
+    background: rgba(126, 184, 218, 0.08);
+    box-shadow: 0 0 6px rgba(126, 184, 218, 0.12);
+}
+
+.recipe-card-compact.partial {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.recipe-icon-compact {
+    width: 24px;
+    height: 24px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.crafting-split .crafting-list-panel .recipe-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.crafting-split .crafting-list-panel .recipe-brief {
+    gap: 0.15rem;
+}
+
+.crafting-split .crafting-list-panel .ingredient-pill {
+    font-size: 0.58rem;
+    padding: 0.02rem 0.25rem;
+}
+
+.crafting-split .crafting-list-panel .missing-toggle {
+    font-size: 0.7rem;
+    padding: 0.2rem 0;
+}
+
+.crafting-split .crafting-list-panel .missing-recipes {
+    padding-left: 0.35rem;
+    border-left-width: 1px;
+    margin-bottom: 0.25rem;
+}
+
+/* ---- Recipe Hero Card (Right Panel) ---- */
+
+.recipe-hero {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 0.65rem;
+    transition: all 0.2s ease;
+}
+
+.recipe-hero:not(.recipe-hero-empty) {
+    border-color: rgba(126, 184, 218, 0.15);
+    background: rgba(126, 184, 218, 0.03);
+}
+
+.recipe-hero-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    margin-bottom: 0.4rem;
+}
+
+.recipe-hero-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    border: 2px solid rgba(126, 184, 218, 0.2);
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 0 10px rgba(126, 184, 218, 0.08);
+}
+
+.recipe-hero-titles {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.recipe-hero-name {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ionrift-text, #e0e0e0);
+    line-height: 1.2;
+    word-break: break-word;
+}
+
+.recipe-hero-dc {
+    font-size: 0.75rem;
+    color: var(--ionrift-accent, #7eb8da);
+}
+
+.recipe-hero-dc i {
+    margin-right: 0.2rem;
+    opacity: 0.7;
+}
+
+.recipe-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.65rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-weight: 600;
+    width: fit-content;
+}
+
+.badge-party-meal {
+    background: rgba(255, 183, 77, 0.15);
+    color: #ffb74d;
+    border: 1px solid rgba(255, 183, 77, 0.25);
+}
+
+.recipe-hero-description {
+    margin: 0 0 0.4rem;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+    line-height: 1.4;
+}
+
+/* ---- Hero Ingredients ---- */
+
+.recipe-hero-ingredients {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.4rem;
+}
+
+.hero-ingredient-token {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.4rem 0.2rem 0.2rem;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: border-color 0.15s;
+}
+
+.hero-ingredient-token.met {
+    border-color: rgba(129, 199, 132, 0.25);
+    background: rgba(76, 175, 80, 0.06);
+}
+
+.hero-ingredient-token.unmet {
+    border-color: rgba(239, 154, 154, 0.25);
+    background: rgba(244, 67, 54, 0.06);
+}
+
+.hero-ingredient-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 3px;
+    object-fit: cover;
+}
+
+.hero-ingredient-qty {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+    min-width: 14px;
+    text-align: center;
+}
+
+.hero-ingredient-name {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* ---- Hero Buff Preview ---- */
+
+.recipe-hero-buff {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.3rem;
+}
+
+.hero-buff-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    background: rgba(155, 89, 182, 0.12);
+    color: #c39bd3;
+    border: 1px solid rgba(155, 89, 182, 0.2);
+    font-weight: 500;
+}
+
+.hero-buff-pill i {
+    font-size: 0.6rem;
+    opacity: 0.8;
+}
+
+.hero-buff-duration {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.35);
+    font-style: italic;
+}
+
+.hero-buff-target {
+    font-size: 0.65rem;
+    color: #ffb74d;
+}
+
+.hero-buff-target i {
+    margin-right: 0.1rem;
+}
+
+/* ---- Hero Satiation Badges ---- */
+
+.recipe-hero-satiates {
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.3rem;
+}
+
+.hero-satiate-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.6rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 2px;
+    font-weight: 500;
+}
+
+.satiate-food {
+    background: rgba(139, 195, 74, 0.1);
+    color: #aed581;
+}
+
+.satiate-water {
+    background: rgba(66, 165, 245, 0.1);
+    color: #90caf9;
+}
+
+.satiate-wellfed {
+    background: rgba(244, 143, 177, 0.1);
+    color: #f48fb1;
+}
+
+/* ---- Hero Ambitious Teaser ---- */
+
+.recipe-hero-ambitious {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    color: #ffb74d;
+    padding: 0.3rem 0.5rem;
+    background: rgba(255, 152, 0, 0.06);
+    border: 1px solid rgba(255, 152, 0, 0.15);
+    border-radius: 4px;
+    margin-top: 0.15rem;
+}
+
+.recipe-hero-ambitious i {
+    font-size: 0.7rem;
+    opacity: 0.8;
+}
+
+/* ---- Hero Empty State ---- */
+
+.recipe-hero-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 160px;
+}
+
+.recipe-hero-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255, 255, 255, 0.2);
+}
+
+.recipe-hero-placeholder i {
+    font-size: 2rem;
+    opacity: 0.5;
+}
+
+.recipe-hero-placeholder span {
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+/* ---- Split Panel: Approach & Commit adjustments ---- */
+
+.crafting-split .crafting-step-approach {
+    padding-top: 0.25rem;
+    flex-shrink: 0;
+}
+
+.crafting-split .crafting-step-approach .step-label {
+    font-size: 0.65rem;
+    margin-bottom: 0.2rem;
+}
+
+.crafting-split .risk-selector {
+    gap: 0.25rem;
+}
+
+.crafting-split .btn-risk {
+    padding: 0.3rem 0.25rem;
+    min-width: 0;
+}
+
+.crafting-split .risk-label {
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.crafting-split .risk-hint {
+    font-size: 0.55rem;
+    line-height: 1.15;
+    color: rgba(255, 255, 255, 0.3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.crafting-split .craft-commit-panel {
+    margin-top: 0.25rem;
+    flex-shrink: 0;
+}
+
+.crafting-split .btn-hero-craft {
+    position: sticky;
+    bottom: 0;
+}
+
+.station-crafting-panel::-webkit-scrollbar {
+    width: 5px;
+}
+
+.station-crafting-panel::-webkit-scrollbar-thumb {
+    background: rgba(126, 184, 218, 0.25);
+    border-radius: 3px;
+}
+
+.station-crafting-panel .recipe-card:not(.recipe-card-compact) {
+    padding: 0.35rem 0.4rem;
+}
+
+.station-crafting-panel .recipe-icon {
+    width: 28px;
+    height: 28px;
+}
+
+.station-crafting-panel .recipe-name {
+    font-size: 0.8rem;
+}
+
+.station-crafting-panel .risk-selector {
+    gap: 0.25rem;
+}
+
+.station-crafting-panel .btn-risk {
+    padding: 0.35rem 0.3rem;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.station-crafting-panel .risk-label {
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.station-crafting-panel .risk-hint {
+    font-size: 0.6rem;
+    line-height: 1.2;
+    color: rgba(255, 255, 255, 0.35);
+    margin-top: 0.15rem;
+    word-break: break-word;
+    hyphens: auto;
+}
+
+.station-crafting-panel .crafting-footer {
+    padding: 0.5rem 0 0.25rem;
+    display: flex;
+    justify-content: center;
+}
+
+.station-crafting-panel .crafting-footer .btn-secondary {
+    padding: 0.35rem 1.2rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.station-crafting-panel .crafting-footer .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.85);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
 .crafting-picker {
     padding: 0.75rem;
     display: flex;
@@ -5725,6 +6251,113 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     padding: 0.35rem 0.6rem;
     background: rgba(126, 184, 218, 0.06);
     border-bottom: 1px solid rgba(126, 184, 218, 0.1);
+}
+
+/* ---- Visual Ingredient → Output Flow ---- */
+
+.commit-visual-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.5rem;
+}
+
+.commit-inputs {
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.commit-item-token {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+}
+
+.commit-item-token img {
+    width: 100%;
+    height: 100%;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    object-fit: cover;
+}
+
+.commit-item-qty {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    font-size: 0.55rem;
+    font-weight: 700;
+    background: rgba(0, 0, 0, 0.75);
+    color: rgba(255, 255, 255, 0.85);
+    padding: 0 0.2rem;
+    border-radius: 2px;
+    line-height: 1.3;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.commit-flow-arrow {
+    color: rgba(255, 255, 255, 0.25);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    padding: 0 0.15rem;
+}
+
+.commit-output-token {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    flex-shrink: 0;
+}
+
+.commit-output-token img {
+    width: 44px;
+    height: 44px;
+    border-radius: 5px;
+    border: 2px solid rgba(129, 199, 132, 0.35);
+    object-fit: cover;
+    box-shadow: 0 0 6px rgba(129, 199, 132, 0.15);
+}
+
+.commit-output-name {
+    font-size: 0.65rem;
+    color: #81c784;
+    font-weight: 600;
+    text-align: center;
+    max-width: 80px;
+    line-height: 1.15;
+}
+
+/* ---- Supporting Details ---- */
+
+.commit-details {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.6rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    flex-wrap: wrap;
+}
+
+.commit-detail {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.commit-detail i {
+    margin-right: 0.15rem;
+    opacity: 0.7;
+}
+
+.commit-consequence {
+    font-size: 0.6rem;
+    color: rgba(239, 154, 154, 0.6);
+    font-style: italic;
 }
 
 .commit-body {
@@ -6081,9 +6714,41 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     overflow-wrap: anywhere;
 }
 
+@keyframes dm-scan-breathe {
+    0%, 100% { box-shadow: 0 0 4px rgba(160, 120, 220, 0.35); }
+    50%       { box-shadow: 0 0 14px rgba(160, 120, 220, 0.8), 0 0 28px rgba(140, 100, 210, 0.2); }
+}
+
+@keyframes dm-cast-burst {
+    0%   { transform: scale(1);    box-shadow: 0 0 0 rgba(210, 170, 255, 0); }
+    45%  { transform: scale(1.07); box-shadow: 0 0 18px rgba(210, 170, 255, 0.85); }
+    100% { transform: scale(1);    box-shadow: 0 0 6px rgba(160, 120, 220, 0.5); }
+}
+
 .btn-detect-magic:hover {
     background: rgba(160, 120, 220, 0.25);
     color: #c8a8f0;
+}
+
+.btn-detect-magic.is-active {
+    background: rgba(160, 120, 220, 0.28);
+    border-color: rgba(180, 140, 240, 0.65);
+    color: #d4b0ff;
+    animation: dm-scan-breathe 3.5s ease-in-out infinite;
+}
+
+.btn-detect-magic.is-active:hover {
+    background: rgba(160, 120, 220, 0.38);
+    color: #e0c8ff;
+}
+
+.btn-detect-magic.is-casting {
+    animation: dm-cast-burst 0.22s ease-out forwards;
+    pointer-events: none;
+}
+
+.btn-detect-magic.is-active.is-casting {
+    animation: dm-cast-burst 0.22s ease-out forwards;
 }
 
 /* Scan results panel */
@@ -7211,7 +7876,7 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55) !important;
     font-family: var(--ionrift-font-stack, "Signika", sans-serif);
     min-width: 0 !important;
-    max-width: min(400px, calc(100vw - 20px)) !important;
+    max-width: min(calc(100vw - 20px), 900px) !important;
     box-sizing: border-box;
 }
 
@@ -7596,6 +8261,37 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     opacity: 0.42;
     cursor: not-allowed;
     color: rgba(255, 255, 255, 0.32);
+}
+
+.ionrift-station-dialog .station-sub-tab.station-sub-tab-hint {
+    opacity: 0.55;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.ionrift-station-dialog .station-sub-tab.station-sub-tab-hint:hover {
+    opacity: 0.75;
+}
+
+.station-cooking-gate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 1.5rem 1rem;
+    text-align: center;
+}
+
+.station-cooking-gate-icon {
+    font-size: 1.8rem;
+    color: rgba(255, 255, 255, 0.15);
+}
+
+.station-cooking-gate-text {
+    margin: 0;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.45;
+    max-width: 280px;
 }
 
 .ionrift-station-dialog .station-meal-embed {

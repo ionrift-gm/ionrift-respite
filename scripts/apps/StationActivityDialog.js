@@ -12,6 +12,7 @@ import {
     getActivityAdvisory,
     DETECT_MAGIC_BTN_LABEL_GM,
     DETECT_MAGIC_BTN_LABEL_PLAYER,
+    DETECT_MAGIC_BTN_LABEL_DISMISS,
     DETECT_MAGIC_BTN_TITLE_GM
 } from "./RestConstants.js";
 import { computeCanShowDetectMagicScanButton } from "./delegates/DetectMagicDelegate.js";
@@ -52,6 +53,8 @@ export const COOK_ACTIVITY_IDS = new Set(["act_cook", "act_brew"]);
 const DIALOG_WIDTH = 320;
 /** Campfire dialog: comfort + 3-column gear grid; wider than default. */
 const CAMPFIRE_DIALOG_WIDTH = 400;
+/** Crafting split panel needs a wider dialog to fit the master-detail layout. */
+const CRAFT_SPLIT_WIDTH = 760;
 const ANCHOR_ABOVE_PX = 40;
 const EST_HEIGHT = 260;
 const VIS_CLOSE_RATIO = 0.12;
@@ -87,7 +90,12 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             submitWorkbenchIdentify: StationActivityDialog.#onSubmitWorkbenchIdentify,
             workbenchIdentifyRemovePotion: StationActivityDialog.#onWorkbenchIdentifyRemovePotion,
             dismissWorkbenchIdentifyAck: StationActivityDialog.#onDismissWorkbenchIdentifyAck,
-            reclaimCampGear: StationActivityDialog.#onReclaimCampGearFromDialog
+            reclaimCampGear: StationActivityDialog.#onReclaimCampGearFromDialog,
+            craftSelectRecipe: StationActivityDialog.#onCraftSelectRecipe,
+            craftSelectRisk: StationActivityDialog.#onCraftSelectRisk,
+            craftCommit: StationActivityDialog.#onCraftCommit,
+            craftToggleMissing: StationActivityDialog.#onCraftToggleMissing,
+            craftClose: StationActivityDialog.#onCraftClose
         }
     };
 
@@ -156,14 +164,25 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         this._mealHookBound    = null;
         this._trackStarted     = false;
 
-        /** @type {"list"|"detail"|"result"} */
+        /** @type {"list"|"detail"|"result"|"crafting"} */
         this._dialogState      = "list";
         this._selectedActivityId = null;
         this._activityResult   = null;
         this._followUpValue    = null;
+
+        // Inline crafting state
+        this._craftProfession  = null;
+        this._craftRecipeId    = null;
+        this._craftRisk        = "standard";
+        this._craftResult      = null;
+        this._craftHasCrafted  = false;
+        this._craftShowMissing = false;
+        /** Width before entering crafting, restored on close. */
+        this._preCraftWidth    = null;
     }
 
     async _prepareContext(options) {
+        console.log(`ionrift-respite | _prepareContext`, { state: this._dialogState, width: this.position?.width, actor: this._actor?.name });
         const base = {
             station:    this._station,
             actorName:  this._actor?.name ?? "Unknown",
@@ -172,6 +191,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         if (this._dialogState === "detail") return { ...base, ...this._buildDetailContext() };
         if (this._dialogState === "result") return { ...base, ...this._buildResultContext() };
+        if (this._dialogState === "crafting") return { ...base, ...this._buildCraftingContext() };
         return { ...base, ...this._buildListContext() };
     }
 
@@ -233,10 +253,10 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 stationTabs.push({
                     id: "cooking",
                     label: "Cooking",
-                    disabled: !this._actorHasCookingUtensils,
+                    hintClass: this._actorHasCookingUtensils ? "" : "station-sub-tab-hint",
                     title: this._actorHasCookingUtensils
                         ? ""
-                        : "Requires cook's utensils in this character's inventory"
+                        : "Requires cook's utensils"
                 });
             }
         } else if (hubEligible && this._station.id === "workbench") {
@@ -253,11 +273,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         }
 
         const tabIds = new Set(stationTabs.map(t => t.id));
-        if (!tabIds.has(this._stationPanelTab)
-            || (this._stationPanelTab === "cooking" && !this._actorHasCookingUtensils)) {
-            this._stationPanelTab = stationTabs.find(t => !t.disabled)?.id
-                ?? stationTabs[0]?.id
-                ?? "activity";
+        if (!tabIds.has(this._stationPanelTab)) {
+            this._stationPanelTab = stationTabs[0]?.id ?? "activity";
         }
         if (this._station.id === "campfire" && stationTabs.length > 0 && this._stationPanelTab === "activity") {
             this._stationPanelTab = "camp";
@@ -265,6 +282,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         const showStationTabs = stationTabs.length > 0;
         const showTabBar = stationTabs.length > 1;
+        console.log(`ionrift-respite | _buildListContext tabs`, { stationTabs: stationTabs.map(t => ({ id: t.id, disabled: !!t.disabled })), stationPanelTab: this._stationPanelTab, actorHasCookingUtensils: this._actorHasCookingUtensils, stationHasCooking: this._stationHasCooking });
 
         const campGearAtFire = (this._station?.id === "campfire" && this._restApp?.getCampGearContextForActor)
             ? this._restApp.getCampGearContextForActor(this._actor?.id)
@@ -303,6 +321,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             hasAny:           activityItems.length > 0,
             cookingActivities: [...cookActItems, ...cookFaded],
             hasCookingAny:    cookActItems.length > 0,
+            actorHasCookingUtensils: this._actorHasCookingUtensils,
             showStationTabs,
             showTabBar,
             stationTabs,
@@ -318,10 +337,13 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             hideNoActivitiesMessage: this._station?.id === "campfire",
             isGmUser:           !!game.user?.isGM,
             canShowDetectMagicScanButton: computeCanShowDetectMagicScanButton(getPartyActors()),
-            detectMagicScanButtonLabel: game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER,
+            detectMagicScanButtonLabel: this._restApp?._magicScanComplete
+                ? DETECT_MAGIC_BTN_LABEL_DISMISS
+                : (game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER),
             detectMagicScanButtonTitle: game.user?.isGM ? DETECT_MAGIC_BTN_TITLE_GM : "",
             magicScanResults: this._restApp?._magicScanResults ?? [],
             magicScanComplete: !!this._restApp?._magicScanComplete,
+            magicScanActive: !!this._restApp?._magicScanComplete,
             ...wbCtx,
             workbenchFocusExhausted: wbCtx.workbenchFocusExhausted ?? false
         };
@@ -551,6 +573,138 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
     }
 
     /**
+     * Format a recipe buff definition into a display-ready preview object.
+     * @param {object|null} buff - The buff definition from outputFlags
+     * @returns {object|null}
+     */
+    _formatBuffPreview(buff) {
+        if (!buff) return null;
+        const labels = {
+            temp_hp: "Temp HP",
+            advantage: "Advantage",
+            exhaustion_save: "Exhaustion Save"
+        };
+        const durationLabels = {
+            immediate: "Immediate",
+            untilLongRest: "Until long rest",
+            nextSave: "Next save"
+        };
+        return {
+            label: labels[buff.type] ?? buff.type,
+            formula: buff.formula ?? "",
+            duration: durationLabels[buff.duration] ?? buff.duration ?? "",
+            target: buff.target ?? "self"
+        };
+    }
+
+    _buildCraftingContext() {
+        const actor = this._actor;
+        const engine = this._restApp?._craftingEngine;
+        console.log(`ionrift-respite | _buildCraftingContext`, { hasActor: !!actor, hasEngine: !!engine, profession: this._craftProfession });
+        if (!actor || !engine) return { crafting: null };
+
+        const professionId = this._craftProfession;
+        const professionLabels = {
+            cooking: "Cooking", alchemy: "Alchemy",
+            smithing: "Smithing", leatherworking: "Leatherworking",
+            brewing: "Brewing", tailoring: "Tailoring"
+        };
+
+        const terrainTag = this._restApp?._engine?.terrainTag ?? this._restApp?._restData?.terrainTag ?? null;
+        const status = engine.getRecipeStatus(actor, professionId, terrainTag);
+
+        const enrichRecipe = (recipe) => {
+            const adjustedDc = engine.getAdjustedCraftingDc(actor, recipe, this._craftRisk, terrainTag);
+            const flags = recipe.outputFlags?.["ionrift-respite"];
+            return {
+                ...recipe,
+                dcDisplay: adjustedDc,
+                outputName: recipe.output?.name ?? "Unknown",
+                outputImg: recipe.output?.img ?? "icons/svg/mystery-man.svg",
+                ambitiousOutput: recipe.ambitiousOutput,
+                isSelected: recipe.id === this._craftRecipeId,
+                description: recipe.description ?? "",
+                buffPreview: this._formatBuffPreview(flags?.buff),
+                isPartyMeal: !!flags?.partyMeal,
+                isWellFed: !!flags?.wellFed,
+                satiates: flags?.satiates ?? [],
+                ambitiousName: recipe.ambitiousOutput?.name ?? null,
+                ambitiousBuffPreview: this._formatBuffPreview(
+                    recipe.ambitiousOutputFlags?.["ionrift-respite"]?.buff ?? flags?.buff
+                ),
+                ingredientList: (recipe.ingredients ?? []).map(ing => {
+                    const detail = recipe.ingredientStatus?.details?.find(d => d.name === ing.name);
+                    const invKey = ing.name.toLowerCase().trim();
+                    const invEntry = actor.items?.find(i => i.name.toLowerCase().trim() === invKey);
+                    return {
+                        name: ing.name,
+                        required: ing.quantity ?? 1,
+                        available: detail?.available ?? 0,
+                        met: detail?.met ?? false,
+                        img: invEntry?.img ?? "icons/svg/mystery-man.svg"
+                    };
+                })
+            };
+        };
+
+        const available = status.available.map(r => enrichRecipe(r));
+        const partial = status.partial.map(r => enrichRecipe(r));
+        const selectedRecipe = available.find(r => r.id === this._craftRecipeId);
+
+        let commitSummary = null;
+        if (selectedRecipe && !this._craftHasCrafted) {
+            const adjustedDc = engine.getAdjustedCraftingDc(actor, selectedRecipe, this._craftRisk, terrainTag);
+            const outputForRisk = this._craftRisk === "ambitious" && selectedRecipe.ambitiousOutput
+                ? selectedRecipe.ambitiousOutput : selectedRecipe.output;
+            commitSummary = {
+                recipeName: selectedRecipe.name,
+                dc: adjustedDc,
+                risk: this._craftRisk,
+                riskLabel: { safe: "Safe", standard: "Standard", ambitious: "Ambitious" }[this._craftRisk],
+                outputName: outputForRisk?.name ?? selectedRecipe.outputName,
+                outputImg: outputForRisk?.img ?? selectedRecipe.outputImg ?? "icons/svg/mystery-man.svg",
+                outputQuantity: outputForRisk?.quantity ?? 1,
+                ingredients: (selectedRecipe.ingredients ?? []).map(ing => {
+                    const invKey = ing.name.toLowerCase().trim();
+                    const invEntry = actor.items?.find(i => i.name.toLowerCase().trim() === invKey);
+                    return {
+                        name: ing.name,
+                        quantity: ing.quantity ?? 1,
+                        img: invEntry?.img ?? "icons/svg/mystery-man.svg"
+                    };
+                }),
+                ingredientCost: (selectedRecipe.ingredients ?? []).map(i => `${i.quantity ?? 1}x ${i.name}`).join(", "),
+                failConsequence: this._craftRisk === "safe" ? "Ingredients kept if unsuccessful" : "Ingredients consumed on failure",
+                skill: (selectedRecipe.skill ?? "sur").toUpperCase()
+            };
+        }
+
+        return {
+            crafting: {
+                profession: professionLabels[professionId] ?? professionId,
+                professionId,
+                actorName: actor.name,
+                actorImg: actor.img,
+                selectedRisk: this._craftRisk,
+                selectedRecipeId: this._craftRecipeId,
+                hasCrafted: this._craftHasCrafted,
+                showMissing: this._craftShowMissing,
+                riskTiers: [
+                    { id: "safe", label: "Safe", hint: "DC −3 · Ingredients kept", selected: this._craftRisk === "safe" },
+                    { id: "standard", label: "Standard", hint: "Base DC · Ingredients used", selected: this._craftRisk === "standard" },
+                    { id: "ambitious", label: "Ambitious", hint: "DC +5 · Better yield", selected: this._craftRisk === "ambitious" }
+                ],
+                available,
+                partial,
+                selectedRecipe: selectedRecipe ?? null,
+                isAmbitiousSelected: this._craftRisk === "ambitious",
+                commitSummary,
+                craftingResult: this._craftResult
+            }
+        };
+    }
+
+    /**
      * After rations submit or meal UI refresh: close when this hub has no station tabs left
      * and no general activities (only the empty placeholder would remain).
      */
@@ -569,19 +723,45 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
     static #onSelectActivity(event, target) {
         const activityId = target.dataset.activityId;
+        console.log(`ionrift-respite | #onSelectActivity`, { activityId, target: target?.outerHTML?.slice(0,120) });
         if (!activityId) return;
         this._selectedActivityId = activityId;
         this._followUpValue = null;
+
+        // Cooking activities skip the detail/confirm step — go straight to crafting
+        if (COOK_ACTIVITY_IDS.has(activityId)) {
+            const resolver = this._restApp?._activityResolver;
+            const activity = resolver?.activities?.get(activityId)
+                ?? this._cookingAvailable?.find(a => a.id === activityId);
+            this._craftProfession  = activity?.crafting?.profession ?? (activityId === "act_cook" ? "cooking" : activityId === "act_brew" ? "brewing" : "cooking");
+            this._craftRecipeId    = null;
+            this._craftRisk        = "standard";
+            this._craftResult      = null;
+            this._craftHasCrafted  = false;
+            this._craftShowMissing = false;
+            this._dialogState      = "crafting";
+            this._preCraftWidth    = this.position?.width ?? DIALOG_WIDTH;
+            console.log(`ionrift-respite | cooking shortcut → crafting state`, { profession: this._craftProfession, width: this.position?.width });
+            this.render();
+            return;
+        }
+
         this._dialogState = "detail";
         this.render();
     }
 
     static async #onConfirm() {
+        try {
         const activityId = this._selectedActivityId;
         if (!activityId || !this._restApp?.finalizeActivityChoiceFromStation) return;
 
+        console.log(`ionrift-respite | #onConfirm`, { activityId, hasRestApp: !!this._restApp?.finalizeActivityChoiceFromStation });
         const resolver = this._restApp._activityResolver;
-        const activity = resolver?.activities?.get(activityId);
+        const activity = resolver?.activities?.get(activityId)
+            // Cooking activities live in _cookingAvailable, not the resolver
+            ?? this._cookingAvailable?.find(a => a.id === activityId)
+            ?? this._available?.find(a => a.id === activityId);
+        console.log(`ionrift-respite | #onConfirm activity`, { activity: activity?.id, isCrafting: !!activity?.crafting?.enabled, isCookId: !!COOK_ACTIVITY_IDS.has(activityId) });
 
         // Armor penalty gate: warn before locking an activity that penalises sleeping in armor.
         if (!activity?.armorSleepWaiver) {
@@ -610,11 +790,20 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             } catch (e) { /* setting may not be registered */ }
         }
 
-        if (activity?.crafting?.enabled) {
-            await this._restApp.finalizeActivityChoiceFromStation(
-                this._actor?.id, activityId, this._canvasStationId
-            );
-            this.close();
+        // Crafting activities: transition to inline crafting picker
+        if (activity?.crafting?.enabled || COOK_ACTIVITY_IDS.has(activityId)) {
+            this._craftProfession  = activity?.crafting?.profession ?? (activityId === "act_cook" ? "cooking" : activityId === "act_brew" ? "brewing" : "cooking");
+            this._craftRecipeId    = null;
+            this._craftRisk        = "standard";
+            this._craftResult      = null;
+            this._craftHasCrafted  = false;
+            this._craftShowMissing = false;
+            this._dialogState      = "crafting";
+            // Widen for the split-panel crafting layout
+            this._preCraftWidth = this.position?.width ?? DIALOG_WIDTH;
+            console.log(`ionrift-respite | entering crafting state`, { profession: this._craftProfession, preCraftWidth: this._preCraftWidth, newWidth: CRAFT_SPLIT_WIDTH });
+            this.setPosition({ width: CRAFT_SPLIT_WIDTH });
+            this.render();
             return;
         }
 
@@ -632,6 +821,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         } else {
             this.close();
         }
+        } catch (err) {
+            console.error(`ionrift-respite | #onConfirm error`, err);
+        }
     }
 
     static #onBackToList() {
@@ -645,8 +837,94 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         this.close();
     }
 
+    // ── Inline Crafting Handlers ──────────────────────────────────────
+
+    static #onCraftSelectRecipe(event, target) {
+        if (this._craftHasCrafted) return;
+        this._craftRecipeId = target.dataset.recipeId;
+        this.render();
+    }
+
+    static #onCraftSelectRisk(event, target) {
+        if (this._craftHasCrafted) return;
+        this._craftRisk = target.dataset.risk;
+        this.render();
+    }
+
+    static async #onCraftCommit() {
+        if (this._craftHasCrafted || !this._craftRecipeId) return;
+        const engine = this._restApp?._craftingEngine;
+        const actor = this._actor;
+        if (!engine || !actor) return;
+
+        const terrainTag = this._restApp?._engine?.terrainTag ?? this._restApp?._restData?.terrainTag ?? null;
+        this._craftResult = await engine.resolve(
+            actor, this._craftRecipeId, this._craftProfession, this._craftRisk, terrainTag
+        );
+        this._craftHasCrafted = true;
+        this.render();
+    }
+
+    static #onCraftToggleMissing() {
+        this._craftShowMissing = !this._craftShowMissing;
+        this.render();
+    }
+
+    static async #onCraftClose() {
+        const characterId = this._actor?.id;
+        const profession = this._craftProfession;
+        const result = this._craftResult;
+        const restApp = this._restApp;
+
+        // Commit the crafting result to RestSetupApp
+        if (restApp && characterId && this._craftHasCrafted && result) {
+            restApp._craftingResults?.set(characterId, result);
+
+            const resolver = restApp._activityResolver;
+            const craftAct = resolver?.activities ? [...resolver.activities.values()].find(
+                a => a.crafting?.profession === profession
+            ) : null;
+            const activityId = craftAct?.id ?? this._selectedActivityId;
+
+            if (restApp._isGM) {
+                restApp._gmOverrides?.set(characterId, activityId);
+                restApp._rebuildCharacterChoices?.();
+                const submissions = {};
+                for (const [charId, actId] of restApp._characterChoices) {
+                    const act = resolver?.activities?.get(actId);
+                    submissions[charId] = {
+                        activityId: actId,
+                        activityName: act?.name ?? actId,
+                        source: restApp._gmOverrides?.has(charId) ? "gm" : "player"
+                    };
+                }
+                game.socket.emit(`module.ionrift-respite`, { type: "submissionUpdate", submissions });
+            } else {
+                restApp._characterChoices?.set(characterId, activityId);
+                restApp._lockedCharacters = restApp._lockedCharacters ?? new Set();
+                restApp._lockedCharacters.add(characterId);
+                game.socket.emit(`module.ionrift-respite`, {
+                    type: "activityChoice",
+                    userId: game.user.id,
+                    choices: Object.fromEntries(restApp._characterChoices),
+                    craftingResults: { [characterId]: result }
+                });
+                ui.notifications.info(`${this._actor?.name}'s activity submitted.`);
+            }
+            if (restApp.rendered) restApp.render();
+        }
+
+        // Restore pre-craft dialog width
+        if (this._preCraftWidth) {
+            this.setPosition({ width: this._preCraftWidth });
+            this._preCraftWidth = null;
+        }
+        this.close();
+    }
+
     static #onSwitchStationPanelTab(event, target) {
         const tab = target?.dataset?.tab;
+        console.log(`ionrift-respite | #onSwitchStationPanelTab`, { tab, disabled: target.disabled, ariaDisabled: target.getAttribute("aria-disabled") });
         if (!tab) return;
         if (target.disabled || target.getAttribute("aria-disabled") === "true") return;
         this._stationPanelTab = tab;
@@ -728,9 +1006,16 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         await this.render(true);
     }
 
-    static async #onStationDetectMagicScan() {
-        if (!this._restApp?.runDetectMagicScan) return;
-        await this._restApp.runDetectMagicScan();
+    static async #onStationDetectMagicScan(event) {
+        if (!this._restApp) return;
+        const btn = event?.currentTarget ?? null;
+        btn?.classList.add("is-casting");
+        if (this._restApp._magicScanComplete) {
+            this._restApp._clearDetectMagicScanSession();
+        } else {
+            if (!this._restApp.runDetectMagicScan) return;
+            await this._restApp.runDetectMagicScan();
+        }
         await this.render(true);
     }
 
@@ -745,12 +1030,31 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
     _onRender(context, options) {
         super._onRender?.(context, options);
         this._attachTrackers();
+        // Force width on DOM — Foundry's setPosition doesn't reliably expand beyond content width
+        if (this._station?.id === "cooking_station" && this._stationHasCooking) {
+            const el = this.element;
+            if (el) {
+                el.style.width = `${CRAFT_SPLIT_WIDTH}px`;
+                el.style.maxWidth = `${CRAFT_SPLIT_WIDTH}px`;
+                console.log(`ionrift-respite | _onRender forced DOM width`, { width: CRAFT_SPLIT_WIDTH, actual: el.offsetWidth });
+            }
+        }
         queueMicrotask(() => this._bindStationMealIfNeeded());
         queueMicrotask(() => this._bindStationWorkbenchIdentifyIfNeeded());
         queueMicrotask(() => this._scheduleWorkbenchAckRevealIfNeeded());
         queueMicrotask(() => this._bindFollowUpSelect());
         queueMicrotask(() => this._bindCampGearIfNeeded());
         queueMicrotask(() => this._bindStationArmorTogglesIfNeeded());
+        // Debug: raw click on tab bar
+        queueMicrotask(() => {
+            const tabBar = this.element?.querySelector?.('.station-sub-tabs');
+            if (tabBar) {
+                tabBar.addEventListener('click', (e) => {
+                    const btn = e.target.closest('button');
+                    console.log(`ionrift-respite | [DEBUG] tab bar raw click`, { tab: btn?.dataset?.tab, disabled: btn?.disabled, ariaDisabled: btn?.getAttribute('aria-disabled') });
+                });
+            }
+        });
     }
 
     _bindCampGearIfNeeded() {
@@ -843,6 +1147,30 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             Hooks.on(`${MODULE_ID}.stationMealChoicesTouched`, this._mealHookBound);
             Hooks.on(`${MODULE_ID}.workbenchIdentifyStagingTouched`, this._mealHookBound);
         }
+
+        // GM: when a different party token is selected, re-resolve the dialog's actor
+        if (game.user?.isGM && !this._controlTokenHookBound) {
+            this._controlTokenHookBound = (_token, controlled) => {
+                if (!controlled || !this.rendered) return;
+                const newActor = _token?.actor;
+                if (!newActor || newActor.type !== "character") return;
+                if (newActor.id === this._actor?.id) return;
+                // Only swap if this actor is in the party
+                const partyIds = new Set(getPartyActors().map(a => a.id));
+                if (!partyIds.has(newActor.id)) return;
+                console.log(`ionrift-respite | Station dialog: GM token switch ${this._actor?.name} → ${newActor.name}`);
+                this._actor = newActor;
+                // Rebuild utensil state for the new actor
+                this._actorHasCookingUtensils = this._stationHasCooking && this._station?.id === "cooking_station"
+                    ? canPlaceStation(newActor, "cookingArea")
+                    : false;
+                // Reset to list state so they start fresh
+                this._dialogState = "list";
+                this._selectedActivityId = null;
+                this.render();
+            };
+            Hooks.on("controlToken", this._controlTokenHookBound);
+        }
     }
 
     _stopTokenTracking() {
@@ -860,6 +1188,10 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             Hooks.off(`${MODULE_ID}.stationMealChoicesTouched`, this._mealHookBound);
             Hooks.off(`${MODULE_ID}.workbenchIdentifyStagingTouched`, this._mealHookBound);
             this._mealHookBound = null;
+        }
+        if (this._controlTokenHookBound) {
+            Hooks.off("controlToken", this._controlTokenHookBound);
+            this._controlTokenHookBound = null;
         }
     }
 
@@ -902,7 +1234,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         if (!anchor) return null;
 
         const rawLeft = anchor.x - width / 2;
-        const rawTop  = anchor.y - height - ANCHOR_ABOVE_PX;
+        const rawTop  = anchor.y - height / 2;
         const pad = 8;
         const left = Math.max(pad, Math.min(window.innerWidth - width - pad, rawLeft));
         const top  = Math.max(pad, Math.min(window.innerHeight - height - pad, rawTop));
@@ -1034,7 +1366,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         let dialogWidth = DIALOG_WIDTH;
         if (showStationTabs && station.id === "cooking_station") {
-            dialogWidth = 380;
+            dialogWidth = CRAFT_SPLIT_WIDTH;
         } else if (workbenchHub) {
             dialogWidth = 350;
         } else if (station.id === "campfire") {
@@ -1091,7 +1423,13 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             }
         );
         _openDialog = dialog;
+        console.log(`ionrift-respite | openForStation width`, { requested: dialogWidth, defaultWidth: DIALOG_WIDTH });
         await dialog.render(true);
+        // Force width — ApplicationV2 DEFAULT_OPTIONS may cap the constructor-passed position
+        if (dialogWidth !== DIALOG_WIDTH) {
+            dialog.setPosition({ width: dialogWidth });
+            console.log(`ionrift-respite | openForStation setPosition forced`, { width: dialogWidth, actual: dialog.position?.width });
+        }
         dialog._attachTrackers();
         dialog._syncTrackPosition();
         return dialog;

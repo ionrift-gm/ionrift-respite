@@ -218,6 +218,24 @@ export class DetectMagicDelegate {
             );
             return;
         }
+
+        // Players: invoke the spell on their character so animations and SFX fire normally.
+        if (!game.user?.isGM) {
+            const caster = party.find(a => a.isOwner && actorHasNamedSpellAccess(a, "detect magic"));
+            if (caster) {
+                const spellItem = caster.items.find(
+                    i => i.type === "spell" && i.name?.toLowerCase() === "detect magic"
+                );
+                if (spellItem && typeof spellItem.use === "function") {
+                    try {
+                        await spellItem.use({ configureDialog: false });
+                    } catch {
+                        // Non-fatal: proceed to scan even if the item use flow fails.
+                    }
+                }
+            }
+        }
+
         const { DetectMagicScanner } = await import("../../services/DetectMagicScanner.js");
         const actorIds = party.map(a => a.id);
         const results = DetectMagicScanner.scanParty(actorIds);
