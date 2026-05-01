@@ -127,7 +127,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         initialStationTab = "activity",
         cookingAvailable = [],
         cookingFaded = [],
-        actorHasCookingUtensils = false
+        actorHasCookingUtensils = false,
+        stationHasCooking = true
     } = {}, appOptions = {}) {
         super(appOptions);
         this._station          = station;
@@ -136,6 +137,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         this._faded            = faded ?? [];
         this._cookingAvailable = cookingAvailable ?? [];
         this._cookingFaded     = cookingFaded ?? [];
+        /** Station-level: was this token placed with cook's utensils? Hides the Cooking tab if false. */
+        this._stationHasCooking = !!stationHasCooking;
         /** Per-actor: cook's utensils unlock the Cooking tab at the cooking station. */
         this._actorHasCookingUtensils = !!actorHasCookingUtensils;
         this._showStationTabs  = !!showStationTabs;
@@ -226,14 +229,16 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             if (!rationDone && mealCard) {
                 stationTabs.push({ id: "meal", label: "Rations" });
             }
-            stationTabs.push({
-                id: "cooking",
-                label: "Cooking",
-                disabled: !this._actorHasCookingUtensils,
-                title: this._actorHasCookingUtensils
-                    ? ""
-                    : "Requires cook's utensils in this character's inventory"
-            });
+            if (this._stationHasCooking) {
+                stationTabs.push({
+                    id: "cooking",
+                    label: "Cooking",
+                    disabled: !this._actorHasCookingUtensils,
+                    title: this._actorHasCookingUtensils
+                        ? ""
+                        : "Requires cook's utensils in this character's inventory"
+                });
+            }
         } else if (hubEligible && this._station.id === "workbench") {
             if (hasAnyGeneral) stationTabs.push({ id: "activity", label: "Activities" });
             // Identify tab (Focus + Potion tasting) is available to all players — no spell required.
@@ -1009,7 +1014,10 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             && longRest
             && restApp?._phase === "activity";
         const showStationTabs = ((station.id === "cooking_station" && trackFood) || workbenchHub || campfireHub);
-        const actorHasCookingUtensils = station.id === "cooking_station" && actor
+        const stationHasCooking = station.id === "cooking_station"
+            ? !!(stationToken?.document?.flags?.[MODULE_ID]?.partyHasCookingUtensils)
+            : true;
+        const actorHasCookingUtensils = stationHasCooking && station.id === "cooking_station" && actor
             ? canPlaceStation(actor, "cookingArea")
             : false;
         const cookingAvailable = available.filter(a => COOK_ACTIVITY_IDS.has(a.id));
@@ -1070,6 +1078,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 showStationTabs,
                 initialStationTab,
                 actorHasCookingUtensils,
+                stationHasCooking,
                 restSession,
                 restApp,
                 canvasStationId: sid,

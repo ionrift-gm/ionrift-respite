@@ -35,9 +35,10 @@ export class CraftingDelegate {
         const terrainTag = app._engine?.terrainTag ?? app._restData?.terrainTag ?? null;
         const status = app._craftingEngine.getRecipeStatus(actor, professionId, terrainTag);
 
-        const riskMods = { safe: -3, standard: 0, ambitious: 5 };
         const enrichRecipe = (recipe) => {
-            const adjustedDc = (recipe.dc ?? 12) + (riskMods[app._craftingDrawerRisk] ?? 0);
+            const adjustedDc = app._craftingEngine.getAdjustedCraftingDc(
+                actor, recipe, app._craftingDrawerRisk, terrainTag
+            );
             return {
                 ...recipe,
                 dcDisplay: adjustedDc,
@@ -63,7 +64,9 @@ export class CraftingDelegate {
 
         let commitSummary = null;
         if (selectedRecipe && !app._craftingDrawerHasCrafted) {
-            const adjustedDc = (selectedRecipe.dc ?? 12) + (riskMods[app._craftingDrawerRisk] ?? 0);
+            const adjustedDc = app._craftingEngine.getAdjustedCraftingDc(
+                actor, selectedRecipe, app._craftingDrawerRisk, terrainTag
+            );
             const outputForRisk = app._craftingDrawerRisk === "ambitious" && selectedRecipe.ambitiousOutput
                 ? selectedRecipe.ambitiousOutput
                 : selectedRecipe.output;
