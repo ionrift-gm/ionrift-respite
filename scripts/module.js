@@ -30,11 +30,9 @@ import { CopySpellHandler } from "./services/CopySpellHandler.js";
 import { ImageResolver } from "./util/ImageResolver.js";
 import { ItemClassifier } from "./services/ItemClassifier.js";
 import { DietConfigApp } from "./apps/DietConfigApp.js";
-import { ButcherResolver } from "./services/ButcherResolver.js";
 import { AfkPanelApp } from "./apps/AfkPanelApp.js";
 import * as RestAfkState from "./services/RestAfkState.js";
 import { getPartyActors as getPartyActorsFromSetting } from "./services/partyActors.js";
-import { isMonsterCookingUnlocked } from "./FeatureFlags.mjs";
 import {
     setRestSessionAfkEmitter,
     setAfkUiRefresh,
@@ -62,7 +60,6 @@ import {
     emitCampStationPlaced,
     emitCampSceneCleared,
     emitAfkUpdate,
-    emitButcherPromptPopup,
 } from "./services/SocketController.js";
 import { registerAllSettings, registerItemEnrichments } from "./services/SettingsRegistrar.js";
 import { registerUiHooks, refreshZzzOverlay } from "./services/UiInjections.js";
@@ -75,7 +72,6 @@ import {
     showGmShortRestIndicator, removeGmShortRestIndicator
 } from "./services/RejoinManager.js";
 import { dispatch as socketDispatch } from "./services/SocketRouter.js";
-import { showButcherPopup } from "./services/SocketRouterHandlers.js";
 import { isNativeShortRestUnsuppressed } from "./services/NativeRestPass.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -445,8 +441,6 @@ Hooks.once("init", async () => {
         getEnrichmentNames: () => game.ionrift?.library?.enrichment?.getRegisteredNames() ?? [],
         /** Item classification: unified food/water/fuel classification. */
         ItemClassifier,
-        /** Monster butchering: graduated outcome resolution. */
-        ButcherResolver,
         /** Diet configuration UI. Usage: game.ionrift.respite.openDietConfig() or game.ionrift.respite.openDietConfig(actorId) */
         DietConfigApp,
         openDietConfig: (actorId) => {
@@ -597,97 +591,11 @@ registerUiHooks();
 }
 
 // â”€â”€ Monster Cooking: Chat Card Button Wiring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Wires "Butcher" and "Pass" buttons on the butcher prompt chat cards.
-Hooks.on("renderChatMessage", (message, html) => {
-    if (!isMonsterCookingUnlocked()) return;
-    const card = html[0]?.querySelector?.(".respite-butcher-card")
-        ?? html.find?.(".respite-butcher-card")?.[0];
-    if (!card) return;
+// [CARVED OUT — WS-6] Monster Cooking chat card wiring removed for v2.0.
+// Archived: ionrift-brand/Assets/Archived/butcher_system/REINTEGRATION.md
+// [CARVED OUT - WS-6] Monster Cooking chat card wiring removed for v2.0.
+// See: ionrift-brand/Assets/Archived/butcher_system/REINTEGRATION.md
 
-    const butcherBtn = card.querySelector(".btn-butcher");
-    const passBtn = card.querySelector(".btn-butcher-pass");
-
-    if (butcherBtn) {
-        butcherBtn.addEventListener("click", async (ev) => {
-            ev.preventDefault();
-            ev.currentTarget.disabled = true;
-
-            const flags = message.flags?.[MODULE_ID];
-            if (!flags?.butcherPrompt) return;
-
-            const holderIds = flags.holderIds ?? [];
-            const userActors = game.actors.filter(a =>
-                a.hasPlayerOwner && holderIds.includes(a.id) &&
-                a.ownership?.[game.user.id] >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
-            );
-
-            let actor;
-            if (game.user.isGM) {
-                actor = game.actors.get(holderIds[0]);
-            } else if (userActors.length === 1) {
-                actor = userActors[0];
-            } else if (userActors.length > 1) {
-                actor = userActors[0];
-            } else {
-                ui.notifications.warn("None of the characters carrying the Handbook belong to this player.");
-                ev.currentTarget.disabled = false;
-                return;
-            }
-
-            if (!actor) {
-                ui.notifications.warn("Could not find the butchering character.");
-                ev.currentTarget.disabled = false;
-                return;
-            }
-
-            const target = {
-                combatant: { id: flags.combatantId },
-                actor: game.actors.get(flags.creatureId) ?? { id: flags.creatureId },
-                actorName: flags.creatureName,
-                actorImg: flags.creatureImg,
-                classifierResult: { id: flags.classifierId },
-                registryEntry: ButcherResolver.lookup(flags.classifierId, flags.cr),
-                cr: flags.cr
-            };
-
-            if (!target.registryEntry) {
-                ui.notifications.warn("Butcher registry entry not found for this creature.");
-                ev.currentTarget.disabled = false;
-                return;
-            }
-
-            const result = await ButcherResolver.resolve(actor, target);
-            const resultContent = ButcherResolver.buildResultCard(result, actor.name);
-
-            await ChatMessage.create({
-                content: resultContent,
-                speaker: { alias: "Respite" },
-                flags: {
-                    [MODULE_ID]: {
-                        butcherResult: true,
-                        outcome: result.outcome,
-                        tier: result.tier
-                    }
-                }
-            });
-
-            butcherBtn.style.display = "none";
-            if (passBtn) passBtn.style.display = "none";
-        });
-    }
-
-    if (passBtn) {
-        passBtn.addEventListener("click", (ev) => {
-            ev.preventDefault();
-            if (butcherBtn) butcherBtn.style.display = "none";
-            passBtn.style.display = "none";
-            const actionsDiv = card.querySelector(".butcher-card-actions");
-            if (actionsDiv) {
-                actionsDiv.innerHTML = `<span class="butcher-passed"><i class="fas fa-times"></i> Passed</span>`;
-            }
-        });
-    }
-});
 
 // Item Enrichment hooks are now wired by ionrift-library (ItemEnrichmentEngine).
 // Respite enrichment data is registered in the init hook below via registerBatch().
@@ -717,44 +625,7 @@ Hooks.once("ready", async () => {
     // Initialize terrain registry early so data is available before first rest
     await TerrainRegistry.init();
 
-    // Load butcher registry for monster cooking (from imported packs or dev fallback)
-    if (game.user.isGM) {
-        try {
-            if (isMonsterCookingUnlocked()) {
-                let loaded = false;
 
-                // 1. Try imported content packs
-                const importedPacks = game.settings.get(MODULE_ID, "importedPacks") ?? {};
-                for (const [, packData] of Object.entries(importedPacks)) {
-                    if (packData.butcherRegistry) {
-                        ButcherResolver.load(packData.butcherRegistry);
-                        loaded = true;
-                        break;
-                    }
-                }
-
-                // 2. Dev fallback: load from workshop pack on disk
-                if (!loaded) {
-                    try {
-                        const resp = await fetch("ionrift-pack-workshop/packs/respite/content/cooking/butcher_registry.json");
-                        if (resp.ok) {
-                            const data = await resp.json();
-                            ButcherResolver.load(data);
-                            loaded = true;
-                        }
-                    } catch { /* no workshop pack on disk, that's fine */ }
-                }
-
-                if (loaded) {
-                    console.log(`${MODULE_ID} | Butcher registry loaded (${Object.keys(ButcherResolver._registry ?? {}).length} entries)`);
-                } else {
-                    console.log(`${MODULE_ID} | Monster cooking enabled but no butcher registry found.`);
-                }
-            }
-        } catch (e) {
-            console.warn(`${MODULE_ID} | Failed to load butcher registry:`, e);
-        }
-    }
 
     // Register socket handler (dispatch extracted to SocketRouter.js â€” Phase 2.2)
     const socketContext = {
@@ -1083,77 +954,11 @@ Hooks.once("ready", async () => {
     });
 
     // â”€â”€ Monster Cooking: Butcher Prompt after Combat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // Double gate: setting enabled + cookbook holder + registry loaded.
-    // Posts a butcher prompt card to chat when a notable creature is killed.
-    Hooks.on("deleteCombat", async (combat, options, userId) => {
-        if (!game.user.isGM) return;
-        if (!isMonsterCookingUnlocked()) return;
 
-        if (!ButcherResolver.hasRegistry) {
-            Logger.log?.(MODULE_LABEL, "Monster cooking enabled but no butcher registry loaded. Skipping.");
-            return;
-        }
 
-        const partyActors = getPartyActorsFromSetting();
-        const holders = ButcherResolver.findCookbookHolders(partyActors);
-        if (!holders.length) return;
-
-        const targets = ButcherResolver.findButcherTargets(combat);
-        if (!targets.length) return;
-
-        const bestTarget = targets[0];
-        Logger.log?.(MODULE_LABEL,
-            `Butcher opportunity: ${bestTarget.actorName} (CR ${bestTarget.cr}, ${bestTarget.registryEntry.tier})`
-        );
-
-        const promptFlags = {
-            butcherPrompt: true,
-            creatureId: bestTarget.actor?.id ?? null,
-            combatantId: bestTarget.combatant?.id ?? null,
-            creatureName: bestTarget.actorName,
-            creatureImg: bestTarget.actorImg,
-            classifierId: bestTarget.classifierResult?.id,
-            cr: bestTarget.cr,
-            tier: bestTarget.registryEntry.tier,
-            holderIds: holders.map(a => a.id)
-        };
-
-        const content = ButcherResolver.buildPromptCard(bestTarget, holders);
-        await ChatMessage.create({
-            content,
-            speaker: { alias: "Respite" },
-            flags: { [MODULE_ID]: promptFlags }
-        });
-
-        // Send popup to owning players (and GM for solo testing)
-        const dc = ButcherResolver.calculateDC(bestTarget.cr);
-        emitButcherPromptPopup({
-            creatureName: bestTarget.actorName,
-            creatureImg: bestTarget.actorImg,
-            tier: bestTarget.registryEntry.tier ?? "common",
-            flavour: bestTarget.registryEntry.flavour ?? "",
-            cr: bestTarget.cr,
-            dc,
-            holderIds: holders.map(a => a.id),
-            holderNames: holders.map(a => a.name).join(", "),
-            flags: promptFlags
-        });
-
-        // Also show on GM client immediately
-        showButcherPopup({
-            creatureName: bestTarget.actorName,
-            creatureImg: bestTarget.actorImg,
-            tier: bestTarget.registryEntry.tier ?? "common",
-            flavour: bestTarget.registryEntry.flavour ?? "",
-            cr: bestTarget.cr,
-            dc,
-            holderIds: holders.map(a => a.id),
-            holderNames: holders.map(a => a.name).join(", "),
-            flags: promptFlags
-        });
-    });
 
     _maybeShowAmbientAfkPanelAtReady();
+
 
     console.log(`${MODULE_ID} | Boot complete.`);
 });

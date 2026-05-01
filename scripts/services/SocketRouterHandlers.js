@@ -15,7 +15,6 @@ import { refreshAfterAfkChange } from "./restSessionAfkEmit.js";
 import { CopySpellHandler } from "./CopySpellHandler.js";
 import { CampfireTokenLinker } from "./CampfireTokenLinker.js";
 import { TorchTokenLinker } from "./TorchTokenLinker.js";
-import { isMonsterCookingUnlocked } from "../FeatureFlags.mjs";
 import {
     notifyDetectMagicScanApplied,
     notifyDetectMagicScanCleared
@@ -417,46 +416,6 @@ export async function handleCampGearClearPlayer(data, ctx) {
     ctx.activePlayerRestApp?.render();
 }
 
-// ── Butcher Popup ───────────────────────────────────────────────────────────
-
-export function showButcherPopup(data) {
-    if (!isMonsterCookingUnlocked()) return;
-    const holderIds = data.holderIds ?? [];
-    if (!game.user.isGM) {
-        const ownsHolder = holderIds.some(id => {
-            const actor = game.actors.get(id);
-            return actor?.ownership?.[game.user.id] >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
-        });
-        if (!ownsHolder) return;
-    }
-    const tierColors = { common: "#8b8b8b", uncommon: "#1a9c3a", rare: "#4a6de5", legendary: "#c44ade" };
-    const tierColor = tierColors[data.tier] ?? tierColors.common;
-    const overlay = document.createElement("div");
-    overlay.classList.add("ionrift-armor-modal-overlay");
-    overlay.style.zIndex = "10001";
-    overlay.innerHTML = `
-        <div class="ionrift-armor-modal" style="max-width: 420px;">
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
-                <img src="${data.creatureImg}" alt="${data.creatureName}"
-                     style="width: 64px; height: 64px; border-radius: 8px; border: 2px solid ${tierColor}; object-fit: cover;" />
-                <div>
-                    <h3 style="margin: 0;"><i class="fas fa-drumstick-bite"></i> Butcher Opportunity</h3>
-                    <p style="margin: 2px 0; font-size: 1.1em; font-weight: bold;">${data.creatureName}</p>
-                    <span style="background: ${tierColor}; color: #fff; padding: 1px 8px; border-radius: 3px; font-size: 0.8em; text-transform: uppercase;">${data.tier}</span>
-                </div>
-            </div>
-            <p style="font-style: italic; margin: 6px 0; color: #ccc;">${data.flavour}</p>
-            <p style="margin: 6px 0;"><strong>Survival DC:</strong> ${data.dc} &nbsp; <strong>CR:</strong> ${data.cr}</p>
-            <p style="margin: 6px 0;"><i class="fas fa-book"></i> ${data.holderNames} can butcher this creature.</p>
-            <p style="margin: 8px 0; font-size: 0.9em; color: #aaa;">Use the <strong>Butcher</strong> button in chat to attempt the harvest.</p>
-            <div class="ionrift-armor-modal-buttons">
-                <button class="btn-armor-confirm"><i class="fas fa-check"></i> Got it</button>
-            </div>
-        </div>`;
-    document.body.appendChild(overlay);
-    overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => overlay.remove());
-    setTimeout(() => { if (overlay.parentNode) overlay.remove(); }, 30000);
-}
 
 // ── Copy Spell Routing ──────────────────────────────────────────────────────
 

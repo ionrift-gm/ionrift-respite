@@ -14,7 +14,6 @@ import { WorkbenchDelegate } from "../apps/delegates/WorkbenchDelegate.js";
 import { CopySpellHandler } from "./CopySpellHandler.js";
 import { CampfireTokenLinker } from "./CampfireTokenLinker.js";
 import { TorchTokenLinker } from "./TorchTokenLinker.js";
-import { isMonsterCookingUnlocked } from "../FeatureFlags.mjs";
 import * as RestAfkState from "./RestAfkState.js";
 import { refreshAfterAfkChange } from "./restSessionAfkEmit.js";
 import {
@@ -33,7 +32,7 @@ import {
     handleAfkUpdate, handleArmorToggle, handleConsumeFirewood,
     handleCampGearPlace, handleCampStationPlace,
     handleCampGearReclaim, handleCampStationReclaim, handleCampGearClearPlayer,
-    showButcherPopup, handleCopySpellProposal, handleCopySpellBusy
+    handleCopySpellProposal, handleCopySpellBusy
 } from "./SocketRouterHandlers.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -496,12 +495,6 @@ export function dispatch(data, ctx) {
             handleShortRestWorkbenchSync(data, ctx);
             break;
 
-        // ── Monster Cooking ──────────────────────────────────────────
-        case SOCKET_TYPES.BUTCHER_PROMPT_POPUP:
-            if (game.user.isGM) return;
-            if (!isMonsterCookingUnlocked()) return;
-            showButcherPopup(data);
-            break;
 
         // ── Camp Gear / Stations ─────────────────────────────────────
         case SOCKET_TYPES.CAMP_GEAR_PLACE:
