@@ -189,6 +189,14 @@ export function dispatch(data, ctx) {
             ctx.activeRestSetupApp?.receiveMealChoices?.(data.userId, data.choices);
             break;
 
+        case SOCKET_TYPES.MEAL_DAY_CONSUME_REQUEST:
+            if (!game.user.isGM) return;
+            void ctx.activeRestSetupApp?.receiveMealDayConsumeRequest?.(data.userId, data.consumeByCharacter)
+                .catch(err => {
+                    console.error(`${MODULE_ID} | mealDayConsumeRequest`, err);
+                });
+            break;
+
         case SOCKET_TYPES.MEAL_DAY_CONSUMED:
             if (!game.user.isGM) return;
             ctx.activeRestSetupApp?.receiveMealDayConsumed?.(data.userId, data.mealChoices);

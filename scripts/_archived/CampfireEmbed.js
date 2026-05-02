@@ -65,6 +65,17 @@ export class CampfireEmbed {
         this._lastFireLevel = "unlit";
         this._pendingKindlingBanner = null;
         this._templatePath = `modules/${MODULE_ID}/templates/campfire.hbs`;
+        /** @type {ReturnType<typeof setTimeout>|null} */
+        this._campfireStickEmitTimer = null;
+    }
+
+    /** Debounced emit so rapid drops do not flood the socket. */
+    _emitCampfireStickDebounced(payload) {
+        if (this._campfireStickEmitTimer) clearTimeout(this._campfireStickEmitTimer);
+        this._campfireStickEmitTimer = setTimeout(() => {
+            this._campfireStickEmitTimer = null;
+            game.socket.emit(`module.${MODULE_ID}`, payload);
+        }, 200);
     }
 
     // ──────── Element accessor (mirrors CampfireApp.element) ────────
@@ -742,7 +753,7 @@ export class CampfireEmbed {
                     this.render();
                 }
 
-                game.socket.emit(`module.${MODULE_ID}`, {
+                this._emitCampfireStickDebounced({
                     type: "campfireStick", userName: game.user.name,
                     actorName: this._getPlayerActor()?.name ?? game.user.name,
                     x, y, preLit: !this._lit

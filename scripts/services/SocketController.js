@@ -57,6 +57,8 @@ export const SOCKET_TYPES = Object.freeze({
 
     // ── Meal ──
     MEAL_CHOICE:           "mealChoice",
+    /** Player → GM: apply meal-day consumption (inventory) on host */
+    MEAL_DAY_CONSUME_REQUEST: "mealDayConsumeRequest",
     MEAL_DAY_CONSUMED:     "mealDayConsumed",
     DEHYDRATION_SAVE_REQUEST:    "dehydrationSaveRequest",
     DEHYDRATION_SAVE_RESULT:     "dehydrationSaveResult",
@@ -302,7 +304,16 @@ export function emitMealChoice(userId, choices) {
 }
 
 /**
- * Player → GM: consumed a meal day (multi-day flow).
+ * Player → GM: request host to apply meal-day inventory consumption.
+ * @param {string} userId
+ * @param {object} consumeByCharacter
+ */
+export function emitMealDayConsumeRequest(userId, consumeByCharacter) {
+    _emit(SOCKET_TYPES.MEAL_DAY_CONSUME_REQUEST, { userId, consumeByCharacter });
+}
+
+/**
+ * GM → clients: meal choice map sync after a meal day is consumed.
  * @param {string} userId
  * @param {object} mealChoices
  */

@@ -371,10 +371,11 @@ export const COMFORT_TIPS = {
     safe: "Safe: full HP, full HD recovery, no encounter risk"
 };
 
-/** Identify tab: Detect Magic toolbar label and GM-only tooltip. */
-export const DETECT_MAGIC_BTN_LABEL_PLAYER = "Cast Detect Magic";
-/** Line break before "(" so the label stacks cleanly in the workbench button. */
-export const DETECT_MAGIC_BTN_LABEL_GM = "Cast detect magic\n(GM cast it for them)";
+/** Identify tab: Detect Magic toolbar label. */
+export const DETECT_MAGIC_BTN_LABEL_PLAYER = "Detect Magic";
+export const DETECT_MAGIC_BTN_LABEL_GM = "Detect Magic";
 /** Shown when a scan is already active; clicking again dismisses it. */
-export const DETECT_MAGIC_BTN_LABEL_DISMISS = "Scan active\n(dismiss)";
-export const DETECT_MAGIC_BTN_TITLE_GM = "Runs the aura pass for the whole party as host. Use when you are granting Detect Magic at the table. Skip if a player should trigger it from a character they control.";
+export const DETECT_MAGIC_BTN_LABEL_DISMISS = "Dismiss";
+export const DETECT_MAGIC_BTN_TITLE_GM = "Cast Detect Magic for the party. Use when you are granting the spell at the table; skip if a player should trigger it from their own character.";
+export const DETECT_MAGIC_BTN_TITLE_PLAYER = "Cast Detect Magic";
+export const DETECT_MAGIC_BTN_TITLE_NONE = "No Detect Magic available in the party";

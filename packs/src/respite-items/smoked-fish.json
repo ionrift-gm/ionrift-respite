@@ -6,7 +6,7 @@
     "img": "icons/consumables/food/fish-fillet-steak-brown.webp",
     "system": {
         "description": {
-            "value": "<p>Fish fillets dried and smoked over a low fire. Keeps well on the road. Restores 1 hit point when consumed during a rest.</p>"
+            "value": "<p>Fish fillets dried and smoked over a low fire. Keeps well on the road.</p>"
         },
         "rarity": "common",
         "weight": 0.5,

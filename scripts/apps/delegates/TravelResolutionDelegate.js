@@ -327,11 +327,12 @@ export class TravelResolutionDelegate {
 
     // ── Receive roll results ──
 
-    receiveRollResult(actorId, total, day = null) {
+    receiveRollResult(actorId, total, day = null, natD20 = null) {
         const d = day ?? this.#activeDay;
         const entry = this._getEntry(d, actorId);
         if (!entry) return;
         entry.total = total;
+        if (natD20 != null) entry.natD20 = natD20;
         entry.status = "rolled";
     }
 
@@ -549,9 +550,20 @@ export class TravelResolutionDelegate {
             }
 
             if (entry.activity === "scout") {
-                scoutTotals.push({ actorId: actor.id, total: entry.total, actorName: actor.name });
+                scoutTotals.push({
+                    actorId: actor.id,
+                    total: entry.total,
+                    actorName: actor.name,
+                    natD20: entry.natD20 ?? null
+                });
                 entry.status = "resolved";
-                entry.result = { activity: "scout", actorId: actor.id, actorName: actor.name, total: entry.total };
+                entry.result = {
+                    activity: "scout",
+                    actorId: actor.id,
+                    actorName: actor.name,
+                    total: entry.total,
+                    natD20: entry.natD20 ?? null
+                };
                 try { await actor.setFlag(MODULE_ID, "lastTravelActivity", "scout"); } catch { /* noop */ }
                 continue;
             }
@@ -586,11 +598,11 @@ export class TravelResolutionDelegate {
         // Scouting: take highest total and map to tier
         if (scoutTotals.length > 0) {
             const best = scoutTotals.reduce((a, b) => b.total > a.total ? b : a);
-            const tier = this._totalToScoutTier(best.total);
+            const tier = this._totalToScoutTier(best.total, best.natD20 ?? null);
             this.#scoutingResult = tier;
             this.#scoutRolls = scoutTotals.map(s => ({
                 ...s,
-                tier: this._totalToScoutTier(s.total),
+                tier: this._totalToScoutTier(s.total, s.natD20 ?? null),
                 isBest: s.actorId === best.actorId
             }));
 
@@ -626,12 +638,16 @@ export class TravelResolutionDelegate {
      * Map a raw d20 + modifier total to a scouting tier.
      * Uses the same breakpoints as the old setup dropdown.
      */
-    _totalToScoutTier(total) {
+    /**
+     * @param {number} total - d20 + modifier total
+     * @param {number|null} natD20 - face of the d20 (from roll.terms[0].results[0].result); required for nat-20 tier
+     */
+    _totalToScoutTier(total, natD20 = null) {
         if (total <= 1) return "nat1";
         if (total < 10) return "poor";
         if (total < 15) return "average";
-        if (total < 20) return "good";
-        return "nat20";
+        if (natD20 === 20) return "nat20";
+        return "good";
     }
 
     // ── Backward compat: resolveAll resolves all unresolved days ──
@@ -711,7 +727,7 @@ export class TravelResolutionDelegate {
 
         // Build per-scout narratives from the flavor pool
         const scouts = (this.#scoutRolls ?? []).map(s => {
-            const sTier = s.tier ?? this._totalToScoutTier(s.total);
+            const sTier = s.tier ?? this._totalToScoutTier(s.total, s.natD20 ?? null);
             const pool = terrain?.scoutFlavor?.[sTier];
             const narrative = pool ? pool[Math.floor(Math.random() * pool.length)] : null;
             return {
@@ -738,6 +754,11 @@ export class TravelResolutionDelegate {
             isNat1,
             comfortBonus: effects.comfortBonus,
             encounterDC: effects.encounterDC,
+            encounterCampModLabel: (() => {
+                const v = effects.encounterDC;
+                if (!v) return null;
+                return v > 0 ? `+${v}` : `${v}`;
+            })(),
             complication: effects.complication,
             gmHint: isNat1
                 ? "Describe the site as if it were good. The complication will be revealed during events."
@@ -757,6 +778,7 @@ export class TravelResolutionDelegate {
                     status: e.status,
                     requested: e.requested,
                     total: e.total,
+                    natD20: e.natD20 ?? null,
                     customDC: e.customDC ?? null,
                     customSkill: e.customSkill ?? null,
                     individualDebriefEmitted: !!e.individualDebriefEmitted,

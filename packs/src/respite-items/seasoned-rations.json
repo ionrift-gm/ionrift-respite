@@ -6,7 +6,7 @@
     "img": "icons/consumables/food/dried-meat-jerky-fish-red.webp",
     "system": {
         "description": {
-            "value": "<p>Trail rations improved with fresh wild herbs. The flavour makes a long march more bearable. Restores 1 hit point when consumed during a rest.</p>"
+            "value": "<p>Trail rations improved with fresh wild herbs. The flavour makes a long march more bearable.</p>"
         },
         "rarity": "common",
         "weight": 0.5,

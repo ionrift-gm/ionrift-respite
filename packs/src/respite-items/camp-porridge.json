@@ -6,7 +6,7 @@
     "img": "icons/consumables/food/bowl-stew-tofu-potato-brown.webp",
     "system": {
         "description": {
-            "value": "<p>A warm bowl of simple grain porridge. Filling, if not exciting. Restores 1 hit point when consumed during a rest.</p>"
+            "value": "<p>A warm bowl of simple grain porridge. Filling, if not exciting.</p>"
         },
         "rarity": "common",
         "weight": 0.5,

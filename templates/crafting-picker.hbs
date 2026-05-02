@@ -75,7 +75,7 @@
 
     {{!-- Step 2: Choose Risk --}}
     <div class="crafting-step">
-        <div class="step-label"><span class="step-num">2</span> Choose Risk Level</div>
+        <div class="step-label"><span class="step-num">2</span> Choose Your Approach</div>
         <div class="risk-selector">
             {{#each riskTiers}}
             <button type="button" class="btn-risk {{#if selected}}selected{{/if}}" data-action="selectRisk"
@@ -101,7 +101,7 @@
                 <span class="commit-value">{{commitSummary.skill}} vs DC {{commitSummary.dc}}</span>
             </div>
             <div class="commit-row">
-                <span class="commit-label">Risk</span>
+                <span class="commit-label">Approach</span>
                 <span class="commit-value risk-tag risk-{{commitSummary.risk}}">{{commitSummary.riskLabel}}</span>
             </div>
             <div class="commit-row">
@@ -113,7 +113,7 @@
                 <span class="commit-value output-highlight">{{commitSummary.outputName}}</span>
             </div>
             <div class="commit-row commit-warning">
-                <span class="commit-label">On Failure</span>
+                <span class="commit-label">If Unsuccessful</span>
                 <span class="commit-value">{{commitSummary.failConsequence}}</span>
             </div>
         </div>

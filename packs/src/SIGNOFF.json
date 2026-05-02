@@ -3,72 +3,100 @@
   "version": "1",
   "items": {
     "alpine-herbs.json": {
-      "status": "draft",
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-01",
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/consumables/plants/herb-tied-bundle-green.webp"
     },
     "berry-preserves.json": {
-      "status": "draft",
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-01",
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/consumables/food/preserves-jam-jelly-jar-brown-red.webp"
     },
     "camp-porridge.json": {
-      "status": "draft",
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-01",
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/consumables/food/bowl-stew-tofu-potato-brown.webp"
     },
     "edible-mushrooms.json": {
-      "status": "draft",
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-01",
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/consumables/mushrooms/bell-shiitake-brown.webp"
     },
     "fresh-fish.json": {
-      "status": "draft",
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-01",
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/consumables/meat/fish-whole-blue.webp"
     },
     "fresh-meat.json": {
-      "status": "draft",
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-01",
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/consumables/meat/steak-raw-red-pink.webp"
     },
     "hearty-stew.json": {
-      "status": "draft",
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-01",
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/consumables/food/bowl-stew-brown.webp"
     },
     "kindling.json": {
-      "status": "draft",
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-01",
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/commodities/wood/kindling-sticks-brown.webp"
     },
     "prickly-pear.json": {
-      "status": "draft",
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-01",
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/consumables/fruit/pickly-pear-cactus-red-yellow.webp"
     },
     "roasted-mushrooms.json": {
-      "status": "draft",
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-01",
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/consumables/food/plate-chicken-grilled-mushroom-brown.webp"
     },
     "seasoned-rations.json": {
-      "status": "draft",
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-01",
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/consumables/food/dried-meat-jerky-fish-red.webp"
     },
     "smoked-fish.json": {
-      "status": "draft",
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-01",
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/consumables/food/fish-fillet-steak-brown.webp"
     },
     "wild-berries.json": {
-      "status": "draft",
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-01",
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/consumables/food/berries-ration-round-red.webp"
     },
     "wild-herbs.json": {
-      "status": "draft",
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-01",
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/consumables/plants/leaf-herb-green.webp"
     }

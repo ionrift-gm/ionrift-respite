@@ -6,7 +6,7 @@
     "img": "icons/consumables/food/preserves-jam-jelly-jar-brown-red.webp",
     "system": {
         "description": {
-            "value": "<p>Wild berries boiled down into a sweet, sticky preserve. Stores well and tastes better than it looks. Restores 1 hit point when consumed during a rest.</p>"
+            "value": "<p>Wild berries boiled down into a sweet, sticky preserve. Stores well and tastes better than it looks.</p>"
         },
         "rarity": "common",
         "weight": 0.5,

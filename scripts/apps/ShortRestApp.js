@@ -33,6 +33,7 @@ import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
 import {
     collectPartyIdentifyEmbedData,
     computeCanShowDetectMagicScanButton,
+    computeCanTriggerDetectMagicScan,
     DetectMagicDelegate,
     spawnDetectMagicCastRipple
 } from "./delegates/DetectMagicDelegate.js";
@@ -394,6 +395,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 detectMagicCasters: [],
                 isGmUser: !!game.user?.isGM,
                 canShowDetectMagicScanButton: false,
+                canTriggerDetectMagicScan: false,
                 detectMagicScanButtonLabel: DETECT_MAGIC_BTN_LABEL_PLAYER,
                 detectMagicScanButtonTitle: "",
                 magicScanResults: [],
@@ -416,6 +418,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             ...wb,
             isGmUser: !!game.user?.isGM,
             canShowDetectMagicScanButton: this.canShowDetectMagicScanButtonFromParty(),
+            canTriggerDetectMagicScan: computeCanTriggerDetectMagicScan(getPartyActors()),
             detectMagicScanButtonLabel: this._magicScanComplete
                 ? DETECT_MAGIC_BTN_LABEL_DISMISS
                 : (game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER),
