@@ -268,6 +268,20 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         default: { active: false, path: null, terrains: [] }
     });
 
+    game.settings.register(MODULE_ID, "artNudgeSnoozedUntil", {
+        scope: "world",
+        config: false,
+        type: String,
+        default: ""
+    });
+
+    game.settings.register(MODULE_ID, "artNudgeSuppressed", {
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false
+    });
+
     // PF2e early-support advisory (one-time)
     game.settings.register(MODULE_ID, "pf2eAdvisoryShown", {
         scope: "world",
@@ -527,6 +541,8 @@ export const SETTING_KEYS = [
     "importedPacks",
     "artPackDisabled",
     "artPackCache",
+    "artNudgeSnoozedUntil",
+    "artNudgeSuppressed",
     "pf2eAdvisoryShown",
     "ambientAfkHud",
     "afkPanelLayout",

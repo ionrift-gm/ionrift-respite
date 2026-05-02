@@ -801,6 +801,8 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
             if (!confirmed) return;
 
             await game.settings.set("ionrift-respite", "artPackDisabled", true);
+            await game.settings.set("ionrift-respite", "artNudgeSnoozedUntil", "");
+            await game.settings.set("ionrift-respite", "artNudgeSuppressed", false);
             await ImageResolver.init();
             ui.notifications.info("Art pack disabled. Placeholder banners will be used.");
             this.render({ force: true });

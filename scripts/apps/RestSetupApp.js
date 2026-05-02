@@ -316,7 +316,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             reclaimCampStation: RestSetupApp.#onReclaimCampStation,
             exitStationChoiceReview: RestSetupApp.#onExitStationChoiceReview,
             dismissCampfireCanvasPanel: RestSetupApp.#onDismissCampfireCanvasPanel,
-            retryCampPitPlacement: RestSetupApp.#onRetryCampPitPlacement
+            retryCampPitPlacement: RestSetupApp.#onRetryCampPitPlacement,
+            dismissArtNudge: RestSetupApp.#onDismissArtNudge,
+            openArtPackPatreon: RestSetupApp.#onOpenArtPackPatreon,
+            openArtPackImport: RestSetupApp.#onOpenArtPackImport
         }
     };
 
@@ -1408,6 +1411,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             resourcePoolsFromPack: this._travel?.resourcePoolsFromPack ?? false,
             resourcePoolRoller: this._travel?.getResourcePoolRoller?.() ?? null
         };
+    }
+
+    /** GM-only advisory when no terrain art pack is active (Make Camp phase). */
+    _shouldShowArtNudge() {
+        if (!game.user.isGM) return false;
+        if (ImageResolver.hasArtPack) return false;
+        if (game.settings.get(MODULE_ID, "artNudgeSuppressed")) return false;
+        const snoozedUntil = game.settings.get(MODULE_ID, "artNudgeSnoozedUntil");
+        if (snoozedUntil) {
+            const snoozeDate = new Date(snoozedUntil);
+            if (!isNaN(snoozeDate.getTime()) && snoozeDate > new Date()) return false;
+        }
+        return true;
     }
 
     /**
@@ -3014,6 +3030,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             canContinueToCampLayout: false,
             canProceedFromCamp: false,
             campMinimalMode: this._phase === "camp",
+            showArtNudge: this._phase === "camp" && this._shouldShowArtNudge(),
             campPitPlacementCancelled: !!this._campPitPlacementCancelled,
             showCampfireCanvasPanel: !!this._showCampfireCanvasPanel,
             campMakeCampStep,
@@ -9831,6 +9848,33 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onRetryCampPitPlacement() {
         this._campPitPlacementCancelled = false;
         await this._startCampPitCursorFlow();
+    }
+
+    static async #onDismissArtNudge(event, target) {
+        const banner = this.element.querySelector(".art-nudge-banner");
+        const suppress = banner?.querySelector(".art-nudge-suppress-checkbox")?.checked ?? false;
+
+        if (suppress) {
+            await game.settings.set(MODULE_ID, "artNudgeSuppressed", true);
+        } else {
+            const snoozeUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+            await game.settings.set(MODULE_ID, "artNudgeSnoozedUntil", snoozeUntil);
+        }
+
+        banner?.remove();
+    }
+
+    static #onOpenArtPackPatreon(event, target) {
+        window.open("https://www.patreon.com/posts/154985310?collection=2079931", "_blank");
+    }
+
+    static async #onOpenArtPackImport(event, target) {
+        const { PackRegistryApp } = await import("./PackRegistryApp.js");
+        const app = new PackRegistryApp();
+        app.render(true);
+        setTimeout(() => {
+            app.element?.querySelector('.pack-tab[data-tab="art"]')?.click();
+        }, 200);
     }
 
     /** @deprecated Use this._campCeremony.lightFire() */

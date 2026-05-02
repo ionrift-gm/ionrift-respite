@@ -11904,6 +11904,115 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     box-shadow: 0 0 10px rgba(155, 89, 182, 0.15);
 }
 
+/* ---- Art Pack Nudge Banner ---- */
+.art-nudge-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    background: rgba(30, 30, 40, 0.7);
+    border: 1px solid rgba(180, 142, 173, 0.3);
+    border-radius: 6px;
+    backdrop-filter: blur(6px);
+    font-size: 0.85em;
+    color: #ccc;
+}
+
+.art-nudge-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1 1 auto;
+    min-width: 200px;
+}
+
+.art-nudge-icon {
+    font-size: 1.4em;
+    color: var(--ionrift-purple-light, #b48ead);
+    flex-shrink: 0;
+}
+
+.art-nudge-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.art-nudge-title {
+    font-weight: 600;
+    color: #e0e0e0;
+}
+
+.art-nudge-subtitle {
+    font-size: 0.9em;
+    color: #999;
+}
+
+.art-nudge-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.art-nudge-btn {
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid rgba(180, 142, 173, 0.4);
+    background: rgba(50, 50, 60, 0.6);
+    color: #ccc;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.art-nudge-btn:hover {
+    background: rgba(70, 70, 80, 0.8);
+    border-color: rgba(180, 142, 173, 0.6);
+}
+
+.art-nudge-btn.primary {
+    background: rgba(180, 142, 173, 0.2);
+    border-color: rgba(180, 142, 173, 0.5);
+    color: var(--ionrift-purple-light, #b48ead);
+}
+
+.art-nudge-btn.primary:hover {
+    background: rgba(180, 142, 173, 0.35);
+}
+
+.art-nudge-dismiss {
+    padding: 4px 6px;
+    border: none;
+    background: transparent;
+    color: #777;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: color 0.2s;
+}
+
+.art-nudge-dismiss:hover {
+    color: #bbb;
+}
+
+.art-nudge-suppress {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8em;
+    color: #777;
+    padding-top: 4px;
+    justify-content: flex-end;
+    cursor: pointer;
+}
+
+.art-nudge-suppress input[type="checkbox"] {
+    accent-color: var(--ionrift-purple-light, #b48ead);
+}
+
 /* ---- Art Pack Card Elements ---- */
 
 .art-pack-badge {
