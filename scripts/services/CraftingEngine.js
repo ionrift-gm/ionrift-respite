@@ -78,7 +78,7 @@ export class CraftingEngine {
      *        field are always available.
      * @returns {Object} { available: Recipe[], partial: Recipe[], locked: Recipe[] }
      */
-    getRecipeStatus(actor, professionId, terrainTag = null) {
+    getRecipeStatus(actor, professionId, terrainTag = null, partySize = 1) {
         const allRecipes = this.recipes.get(professionId) ?? [];
         const inventory = this._buildInventoryMap(actor);
 
@@ -99,7 +99,7 @@ export class CraftingEngine {
             }
 
             // Check ingredients
-            const ingredientStatus = this._checkIngredients(recipe.ingredients, inventory);
+            const ingredientStatus = this._checkIngredients(recipe.ingredients, inventory, partySize);
 
             if (ingredientStatus.canCraft) {
                 available.push({ ...recipe, ingredientStatus });
@@ -122,7 +122,7 @@ export class CraftingEngine {
      * @param {string} [terrainTag] - Current terrain for DC modifier and variant output
      * @returns {Object} Crafting result.
      */
-    async resolve(actor, recipeId, professionId, riskTier = "standard", terrainTag = null) {
+    async resolve(actor, recipeId, professionId, riskTier = "standard", terrainTag = null, partySize = 1) {
         const allRecipes = this.recipes.get(professionId) ?? [];
         const recipe = allRecipes.find(r => r.id === recipeId);
         if (!recipe) {
@@ -130,7 +130,7 @@ export class CraftingEngine {
         }
 
         const inventory = this._buildInventoryMap(actor);
-        const ingredientStatus = this._checkIngredients(recipe.ingredients, inventory);
+        const ingredientStatus = this._checkIngredients(recipe.ingredients, inventory, partySize);
         if (!ingredientStatus.canCraft) {
             return { success: false, error: "Missing ingredients.", ingredientStatus };
         }
@@ -160,7 +160,7 @@ export class CraftingEngine {
         // Consume ingredients (always consumed on standard/ambitious, not on safe failure)
         const consumeIngredients = success || riskTier !== "safe";
         if (consumeIngredients) {
-            await this._consumeIngredients(actor, recipe.ingredients);
+            await this._consumeIngredients(actor, recipe.ingredients, partySize);
         }
 
         if (success) {
@@ -238,11 +238,12 @@ export class CraftingEngine {
 
     /**
      * Checks if ingredients are available in the inventory.
-     * @param {Object[]} ingredients - [{ name, quantity }]
+     * @param {Object[]} ingredients - [{ name, quantity, perPartyMember? }]
      * @param {Map} inventory
+     * @param {number} [partySize] - Current party size for perPartyMember scaling (B5 offset: max(1, n-2))
      * @returns {Object} { canCraft, hasAny, details: [{ name, required, available, met }] }
      */
-    _checkIngredients(ingredients, inventory) {
+    _checkIngredients(ingredients, inventory, partySize = 1) {
         if (!ingredients?.length) return { canCraft: true, hasAny: true, details: [] };
 
         let canCraft = true;
@@ -253,14 +254,15 @@ export class CraftingEngine {
             const key = ing.name.toLowerCase().trim();
             const entry = inventory.get(key);
             const available = entry?.quantity ?? 0;
-            const met = available >= (ing.quantity ?? 1);
+            const effectiveQty = (ing.quantity ?? 1) * (ing.perPartyMember ? Math.max(1, partySize - 2) : 1);
+            const met = available >= effectiveQty;
 
             if (!met) canCraft = false;
             if (available > 0) hasAny = true;
 
             details.push({
                 name: ing.name,
-                required: ing.quantity ?? 1,
+                required: effectiveQty,
                 available,
                 met
             });
@@ -272,12 +274,13 @@ export class CraftingEngine {
     /**
      * Consumes ingredients from the actor's inventory.
      * @param {Actor} actor
-     * @param {Object[]} ingredients - [{ name, quantity }]
+     * @param {Object[]} ingredients - [{ name, quantity, perPartyMember? }]
+     * @param {number} [partySize] - Current party size for perPartyMember scaling
      */
-    async _consumeIngredients(actor, ingredients) {
+    async _consumeIngredients(actor, ingredients, partySize = 1) {
         for (const ing of ingredients) {
             const key = ing.name.toLowerCase().trim();
-            const required = ing.quantity ?? 1;
+            const required = (ing.quantity ?? 1) * (ing.perPartyMember ? Math.max(1, partySize - 2) : 1);
             let remaining = required;
 
             // Find matching items and reduce quantities
