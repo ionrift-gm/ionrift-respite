@@ -729,6 +729,32 @@
     {{!-- =============== MAKE CAMP PHASE =============== --}}
     {{#if (eq phase 'camp')}}
     <div class="camp-minimal-shell camp-phase-shell">
+    {{#if showArtNudge}}
+    <div class="art-nudge-banner">
+        <div class="art-nudge-content">
+            <i class="fas fa-palette art-nudge-icon"></i>
+            <div class="art-nudge-text">
+                <span class="art-nudge-title">Camp art is using placeholder icons.</span>
+                <span class="art-nudge-subtitle">Import the art pack for terrain and station art.</span>
+            </div>
+        </div>
+        <div class="art-nudge-actions">
+            <button type="button" data-action="openArtPackPatreon" class="art-nudge-btn">
+                <i class="fas fa-external-link-alt"></i> Get Art Pack
+            </button>
+            <button type="button" data-action="openArtPackImport" class="art-nudge-btn primary">
+                <i class="fas fa-file-import"></i> Import Art Pack
+            </button>
+            <button type="button" data-action="dismissArtNudge" class="art-nudge-dismiss" title="Dismiss">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <label class="art-nudge-suppress">
+            <input type="checkbox" class="art-nudge-suppress-checkbox" />
+            Don't show again
+        </label>
+    </div>
+    {{/if}}
     {{#if campfirePlaced}}
     <p class="camp-minimal-lead glass-ui">Use the <strong>campfire</strong> on the map: light the fire, cold camp, or add fuel. Supply tokens show where stations appear after the fire is going.</p>
     {{else}}

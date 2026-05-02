@@ -9,7 +9,7 @@
  *
  * Handles both terrain banners and camp station tokens.
  *
- * When hand-drawn per-terrain art ships in the base module, add the
+ * When per-terrain art ships in the base module, add the
  * filenames to KNOWN_BASE_IMAGES so they resolve without probing.
  */
 
@@ -68,7 +68,7 @@ export function _fileSource() {
         ? "forgevtt" : "data";
 }
 
-// Hand-drawn images known to exist in the base module's assets/terrains/ folders.
+// Images known to exist in the base module's assets/terrains/ folders.
 // Add entries here as bundled art is committed to the module.
 // Format: "terrain/filename" e.g. "forest/banner.png"
 const KNOWN_BASE_IMAGES = new Set([
