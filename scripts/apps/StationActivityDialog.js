@@ -193,7 +193,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             craftToggleMissing: StationActivityDialog.#onCraftToggleMissing,
             craftClose: StationActivityDialog.#onCraftClose,
             serveToParty: StationActivityDialog.#onServeToParty,
-            feastServeNow: StationActivityDialog.#onFeastServeNow
+            feastServeNow: StationActivityDialog.#onFeastServeNow,
+            identifyPoolItem: StationActivityDialog.#onIdentifyPoolItem
         }
     };
 
@@ -350,6 +351,28 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const hasAnyGeneral = activityItems.length > 0;
         const hasCookingAvail = cookActItems.length > 0;
 
+        // ── Shared pool gating (must be before tab building) ──────────────
+        // Determine early whether this viewer can see the party-wide Identify tab.
+        // GM and actors with the Identify spell prepared can see it.
+        const _identifyGateData = (hubEligible && this._station?.id === "workbench" && this._restApp?.getStationIdentifyEmbedContext)
+            ? this._restApp.getStationIdentifyEmbedContext({})
+            : { identifyCasters: [], unidentifiedItems: [] };
+        const isIdentifyCaster = _identifyGateData.identifyCasters?.some(c => c.id === this._actor?.id);
+        this._canSeeSharedPool = !!game.user?.isGM || !!isIdentifyCaster;
+        // Group ALL party unidentified gear (not potions) by owner for the Identify tab list
+        const _byOwner = new Map();
+        for (const item of (_identifyGateData.unidentifiedItems ?? []).filter(it => !it.isPotion)) {
+            if (!_byOwner.has(item.actorId)) {
+                _byOwner.set(item.actorId, {
+                    ownerName: item.actorName,
+                    ownerId: item.actorId,
+                    items: []
+                });
+            }
+            _byOwner.get(item.actorId).items.push(item);
+        }
+        const unidentifiedItemsByOwner = [..._byOwner.values()];
+
         const stationTabs = [];
         if (hubEligible && this._station.id === "cooking_station") {
             if (mealCard) {
@@ -367,9 +390,13 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             }
         } else if (hubEligible && this._station.id === "workbench") {
             if (hasAnyGeneral) stationTabs.push({ id: "activity", label: "Activities" });
-            // Identify tab (Focus + Potion tasting) is available to all players — no spell required.
-            // The "Cast Detect Magic" button inside it is separately gated to GM.
-            stationTabs.push({ id: "identify", label: "Identify" });
+            // Examine tab: Focus/Potion self-service — available to all players.
+            stationTabs.push({ id: "examine", label: "Examine" });
+            // Identify tab: click-to-identify party list — GM or Identify casters only.
+            // canSeeSharedPool is computed early so the tab can be conditionally added.
+            if (this._canSeeSharedPool) {
+                stationTabs.push({ id: "identify", label: "Identify" });
+            }
         } else if (hubEligible && this._station.id === "campfire") {
             const fireTabCtx = this._restApp?.getFireTabContextForStationDialog?.() ?? null;
             if (fireTabCtx) {
@@ -402,11 +429,14 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             ? this._restApp.getFireTabContextForStationDialog()
             : null;
 
-        const identifyEmbed = (this._station?.id === "workbench" && this._restApp?.getStationIdentifyEmbedContext)
+        // Identify embed context: Examine tab uses own-only; Identify tab uses party-wide.
+        // canSeeSharedPool was pre-computed at construction in _buildListContext preamble.
+        const identifyEmbedOwn = (this._station?.id === "workbench" && this._restApp?.getStationIdentifyEmbedContext)
             ? this._restApp.getStationIdentifyEmbedContext({
                 restrictUnidentifiedToActorId: this._actor?.id ?? null
             })
-            : { unidentifiedItems: [] };
+            : { unidentifiedItems: [], identifyCasters: [], detectMagicCasters: [] };
+        const identifyEmbed = identifyEmbedOwn;
 
         const wbWorkbenchDefaults = {
             workbenchIdentifyActorId: null,
@@ -436,8 +466,12 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             mealCardNeedsEssence: !!(mealCard?.needsEssence),
             stationIdentifyHub: this._station?.id === "workbench",
             unidentifiedItems: identifyEmbed.unidentifiedItems ?? [],
+            unidentifiedItemsByOwner,
+            canSeeSharedPool: this._canSeeSharedPool,
+            identifyCasters: _identifyGateData.identifyCasters ?? [],
             campGearAtFire,
             campComfortAtFire,
+            campComfortLine: campComfortAtFire?.mapComfortLine ?? null,
             campPersonalCard,
             fireTabContext,
             hideNoActivitiesMessage: this._station?.id === "campfire",
@@ -1356,6 +1390,49 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         } finally {
             this._feastServeInFlight = false;
         }
+    }
+
+    /**
+     * Click-to-identify from the Identify tab's party item list.
+     * Identifies the item on the owner's actor and whispers the owner.
+     */
+    static async #onIdentifyPoolItem(event, target) {
+        const itemActorId = target.closest("[data-item-actor-id]")?.dataset.itemActorId;
+        const itemId = target.closest("[data-item-id]")?.dataset.itemId;
+        if (!itemActorId || !itemId) return;
+        const caster = this._actor;
+        const ownerActor = game.actors.get(itemActorId);
+        if (!ownerActor) {
+            ui.notifications.warn("Item owner not found.");
+            return;
+        }
+        const itemBefore = ownerActor.items.get(itemId);
+        if (!itemBefore) {
+            ui.notifications.warn("Item not found.");
+            return;
+        }
+        // Use the WorkbenchDelegate's existing identify pipeline
+        const wb = this._restApp?._workbench;
+        if (!wb) return;
+        const did = await wb.identifyItem(itemActorId, itemId);
+        if (!did) return;
+        const itemAfter = ownerActor.items.get(itemId);
+        const trueName = itemAfter?.name ?? itemBefore.name;
+        ui.notifications.info(`Identified: ${trueName}`);
+        // Notify the item owner when a different caster identifies their item
+        if (caster && itemActorId !== caster.id) {
+            const ownerUsers = game.users.filter(
+                u => !u.isGM && ownerActor.testUserPermission(u, "OWNER")
+            );
+            if (ownerUsers.length > 0) {
+                ChatMessage.create({
+                    content: `<div class="ionrift-identify-reveal"><i class="fas fa-hat-wizard"></i> <strong>${caster.name}</strong> identified your <strong>${trueName}</strong>.</div>`,
+                    speaker: ChatMessage.getSpeaker({ alias: "Respite" }),
+                    whisper: ownerUsers.map(u => u.id)
+                });
+            }
+        }
+        if (this.rendered) this.render();
     }
 
     _onRender(context, options) {

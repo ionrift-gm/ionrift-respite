@@ -11,7 +11,9 @@
             <span class="station-camp-comfort-label">Camp comfort</span>
             <span class="comfort-tier {{campComfortAtFire.mapComfortTierClass}}">{{campComfortAtFire.mapComfortLabel}}</span>
         </div>
+        {{#unless (and campPersonalCard (eq stationPanelTab "camp"))}}
         <p class="station-camp-comfort-line">{{campComfortAtFire.mapComfortLine}}</p>
+        {{/unless}}
     </div>
     {{/if}}
 
@@ -571,86 +573,66 @@
         {{/if}}
     </div>
     {{else}}
-    {{#if campGearAtFire}}
-    {{#if campGearAtFire.sceneHasDroppables}}
-    {{#unless campPersonalCard}}
-    <div class="station-camp-gear glass-ui" data-camp-gear-row="1">
-        <div class="station-camp-gear-title"><i class="fas fa-suitcase"></i> Personal camp</div>
-        <p class="station-camp-gear-hint">Drag onto the map within 3 squares of the fire.</p>
-        <div class="station-camp-gear-slots">
-            {{#if campGearAtFire.hasTent}}
-            {{#if campGearAtFire.canDragTent}}
-            <div class="camp-gear-placeable-wrap" draggable="true" data-drag-type="player-gear" data-gear-type="tent" data-actor-id="{{campGearAtFire.actorId}}">
-                <div class="gear-drag-handle gear-drag-handle-scene"><i class="fas fa-campground"></i> Tent</div>
-            </div>
-            {{/if}}
-            {{/if}}
-            {{#if campGearAtFire.hasBedroll}}
-            {{#if campGearAtFire.canDragBedroll}}
-            <div class="camp-gear-placeable-wrap" draggable="true" data-drag-type="player-gear" data-gear-type="bedroll" data-actor-id="{{campGearAtFire.actorId}}">
-                <div class="gear-drag-handle gear-drag-handle-scene"><i class="fas fa-bed"></i> Bedroll</div>
-            </div>
-            {{/if}}
-            {{/if}}
-            {{#if campGearAtFire.hasMessKit}}
-            {{#if campGearAtFire.canDragMessKit}}
-            <div class="camp-gear-mess-scene camp-gear-placeable-wrap" draggable="true" data-drag-type="player-gear" data-gear-type="messkit" data-actor-id="{{campGearAtFire.actorId}}">
-                <div class="gear-drag-handle gear-drag-handle-scene gear-drag-scene-mess"><i class="fas fa-utensils"></i> Mess kit</div>
-            </div>
-            {{/if}}
-            {{/if}}
-        </div>
-    </div>
-    {{/unless}}
-    {{/if}}
-    {{/if}}
-
     {{#if campPersonalCard}}
-    <div class="station-personal-card glass-ui">
-        <div class="station-personal-header">
-            <span class="station-personal-comfort-label">{{actorName}}</span>
-            {{#if campPersonalCard.personalMatchesCamp}}
-            <span class="station-personal-comfort-same" title="Personal rest tier matches the camp baseline above.">(same as camp)</span>
-            {{else}}
-            <span class="comfort-tier comfort-{{campPersonalCard.personalComfort}}">
-                {{campPersonalCard.personalComfortLabel}}
+    <div class="comfort-hero tier-{{campPersonalCard.personalComfort}} glass-ui" data-camp-gear-row="1" data-station-personal-gear="1">
+        <div class="comfort-hero-row">
+            <span class="comfort-hero-label">Camp comfort</span>
+            <span class="comfort-hero-tier-wrap">
+                <span class="comfort-tier comfort-{{campPersonalCard.personalComfort}}" style="font-size:1.15rem;">
+                    {{campPersonalCard.personalComfortLabel}}
+                </span>
+                {{#if campPersonalCard.personalMatchesCamp}}
+                <span class="station-personal-comfort-same comfort-hero-match-hint" title="Personal rest tier matches the camp baseline above.">(same as camp)</span>
+                {{/if}}
             </span>
-            {{/if}}
         </div>
-        {{#if campPersonalCard.gearSlots.length}}
-        <div class="station-personal-gear-grid" data-camp-gear-row="1" data-station-personal-gear="1">
+        {{#if campComfortLine}}
+        <p class="comfort-hero-reason">{{campComfortLine}}</p>
+        {{/if}}
+        <div class="comfort-factors-divider"><span>Contributing Factors</span></div>
+        <div class="comfort-factor-list">
             {{#each campPersonalCard.gearSlots}}
-            <div class="station-personal-gear-slot{{#if isMissing}} station-personal-gear-slot--missing{{/if}}{{#if canDrag}} station-personal-gear-slot--ready{{/if}}{{#if isPlaced}} station-personal-gear-slot--placed{{/if}}{{#if isReadonlyOwned}} station-personal-gear-slot--readonly{{/if}}">
-                <div class="station-personal-gear-slot-head">
-                    <i class="{{icon}}" aria-hidden="true"></i>
-                    <span class="station-personal-gear-slot-title">{{title}}</span>
-                </div>
+            <div class="comfort-factor">
+                <span class="comfort-factor-icon"><i class="{{icon}}" aria-hidden="true"></i></span>
+                <span class="comfort-factor-name">{{title}}</span>
                 {{#if isMissing}}
-                <p class="station-personal-gear-slot-line station-personal-gear-slot-missing">{{missingLine}}</p>
+                <span class="comfort-factor-status">{{missingLine}}</span>
+                <span class="comfort-factor-badge missing"><i class="fas fa-times"></i> missing</span>
                 {{else}}
-                <p class="station-personal-gear-slot-line station-personal-gear-slot-benefit">{{benefitLine}}</p>
+                <span class="comfort-factor-status">{{benefitLine}}</span>
+                <span class="comfort-factor-badge placed"><i class="fas fa-check"></i> owned</span>
                 {{#if canDrag}}
-                <div class="camp-gear-placeable-wrap" draggable="true" data-drag-type="player-gear" data-gear-type="{{gearType}}" data-actor-id="{{actorId}}">
-                    <div class="gear-drag-handle gear-drag-handle-scene">
-                        <i class="fas fa-hand-paper"></i> Drag to map
-                    </div>
-                </div>
+                <span class="camp-gear-placeable-wrap comfort-factor-drag" draggable="true"
+                      data-drag-type="player-gear" data-gear-type="{{gearType}}" data-actor-id="{{actorId}}"
+                      title="Place on map for ambiance">
+                    <i class="fas fa-grip-vertical"></i> map
+                </span>
                 {{/if}}
                 {{#if isPlaced}}
-                <button type="button" class="camp-gear-reclaim-btn" data-action="reclaimCampGear" data-actor-id="{{actorId}}" data-gear-type="{{gearType}}">
-                    <i class="fas fa-check" aria-hidden="true"></i> Pick up
+                <button type="button" class="comfort-factor-drag" data-action="reclaimCampGear"
+                        data-actor-id="{{actorId}}" data-gear-type="{{gearType}}"
+                        title="Pick up from map">
+                    <i class="fas fa-check"></i> on map
                 </button>
                 {{/if}}
                 {{#if isReadonlyOwned}}
-                <p class="station-personal-gear-slot-readonly">This character places their own gear</p>
+                <span class="comfort-factor-readonly">This character places their own gear</span>
                 {{/if}}
                 {{/if}}
             </div>
             {{/each}}
+            {{#if campPersonalCard.fireFactorRow}}
+            <div class="comfort-factor">
+                <span class="comfort-factor-icon"><i class="fas fa-fire" aria-hidden="true"></i></span>
+                <span class="comfort-factor-name">Fire Level</span>
+                <span class="comfort-factor-status">{{campPersonalCard.fireFactorRow.statusLine}}</span>
+                <span class="comfort-factor-badge active">
+                    <i class="fas fa-fire"></i> {{campPersonalCard.fireFactorRow.tierLabel}}
+                </span>
+            </div>
+            {{/if}}
         </div>
-        <p class="station-personal-footnote">Place within 3 squares of the campfire. Tokens cannot overlap.</p>
-        {{/if}}
-        <div class="station-personal-recovery">
+        <div class="comfort-hero-recovery">
             <div class="recovery-line recovery-hp{{#if campPersonalCard.recovery.hpSeverity}} {{campPersonalCard.recovery.hpSeverity}}{{/if}}">
                 <i class="fas fa-heart"></i> {{campPersonalCard.recovery.hpLabel}}
             </div>
@@ -665,9 +647,9 @@
             {{/if}}
         </div>
         {{#if campPersonalCard.hasMitigationHints}}
-        <div class="station-recovery-hints" aria-label="Ways to improve this rest">
+        <div class="comfort-hero-hints" aria-label="Ways to improve this rest">
             {{#each campPersonalCard.mitigationHints}}
-            <p class="station-recovery-hint-line">{{this}}</p>
+            <p class="comfort-hero-hint-line">{{this}}</p>
             {{/each}}
         </div>
         {{/if}}
@@ -807,6 +789,7 @@
         {{else}}
         <div class="meal-drop-columns">
             <div class="meal-panel food-panel {{#unless hasFood}}panel-empty{{/unless}}">
+                <div class="meal-panel-heading"><i class="fas fa-drumstick-bite" aria-hidden="true"></i> Food</div>
                 {{#if hasFood}}
                 {{#each foodSlots}}
                 <div class="meal-drop-header-row">
@@ -838,6 +821,7 @@
                     </div>
                 </div>
                 {{/each}}
+                <div class="meal-panel-divider"></div>
                 <div class="meal-inventory-tray-scroll">
                     <div class="meal-inventory-grid food-tray">
                         {{#each foodOptions}}
@@ -862,6 +846,7 @@
                 {{/if}}
             </div>
             <div class="meal-panel water-panel {{#unless hasWater}}panel-empty{{/unless}}">
+                <div class="meal-panel-heading"><i class="fas fa-tint" aria-hidden="true"></i> Water</div>
                 {{#if hasWater}}
                 {{#each waterSlots}}
                 <div class="meal-drop-header-row">
@@ -893,6 +878,7 @@
                     </div>
                 </div>
                 {{/each}}
+                <div class="meal-panel-divider"></div>
                 <div class="meal-inventory-tray-scroll">
                     <div class="meal-inventory-grid water-tray">
                         {{#each waterOptions}}
@@ -987,11 +973,47 @@
     {{/if}}
     {{/if}}
 
-    {{!-- Workbench: Identify tab (main rest Identify tab, compact) --}}
+    {{!-- Workbench: Examine tab (Focus/Potion self-service, all players) --}}
     {{#if showStationTabs}}
     {{#if stationIdentifyHub}}
-    {{#if (eq stationPanelTab "identify")}}
+    {{#if (eq stationPanelTab "examine")}}
     {{> workbenchIdentifyEmbed}}
+    {{/if}}
+    {{/if}}
+    {{/if}}
+
+    {{!-- Workbench: Identify tab (click-to-identify party list, GM + Identify casters) --}}
+    {{#if showStationTabs}}
+    {{#if canSeeSharedPool}}
+    {{#if (eq stationPanelTab "identify")}}
+    <div class="station-identify-embed wb-ident-party-list-tab">
+        {{#if unidentifiedItemsByOwner.length}}
+        <div class="wb-ident-pool-heading">
+            <i class="fas fa-hat-wizard"></i> Cast Identify — select an item
+        </div>
+        {{#each unidentifiedItemsByOwner}}
+        <div class="wb-ident-owner-group">
+            <span class="wb-ident-owner-name">{{ownerName}}</span>
+            {{#each items}}
+            <button type="button" class="wb-ident-pool-row wb-ident-pool-btn"
+                 data-action="identifyPoolItem"
+                 data-item-actor-id="{{actorId}}" data-item-id="{{itemId}}"
+                 title="Identify {{name}} — owned by {{actorName}}">
+                <img src="{{img}}" alt="" class="wb-ident-pool-icon"
+                     onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
+                <span class="wb-ident-pool-name">{{name}}</span>
+                <span class="wb-ident-pool-rarity rarity-{{rarity}}">{{rarityLabel}}</span>
+                <i class="fas fa-hat-wizard wb-ident-cast-icon"></i>
+            </button>
+            {{/each}}
+        </div>
+        {{/each}}
+        {{else}}
+        <div class="wb-ident-pool-empty">
+            <i class="fas fa-check-circle"></i> No unidentified items in the party.
+        </div>
+        {{/if}}
+    </div>
     {{/if}}
     {{/if}}
     {{/if}}
