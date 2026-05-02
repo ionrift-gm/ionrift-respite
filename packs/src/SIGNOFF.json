@@ -16,6 +16,13 @@
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/consumables/food/preserves-jam-jelly-jar-brown-red.webp"
     },
+    "camp-cooks-primer.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-02",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/sundries/books/book-worn-brown.webp"
+    },
     "camp-porridge.json": {
       "status": "approved",
       "approvedBy": "geoff",
