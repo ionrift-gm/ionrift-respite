@@ -3645,6 +3645,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      *   recovery: { hpLabel: string, hpSeverity: string, hdLabel: string, hdSeverity: string, exhaustionDC: number|null, exhaustionLabel: string, exhaustionSeverity: string|null },
      *   mitigationHints: string[],
      *   hasMitigationHints: boolean,
+     *   fireFactorRow: { tierLabel: string, statusLine: string },
      *   hasBedroll: boolean,
      *   hasTent: boolean,
      *   hasMessKit: boolean,
@@ -3691,7 +3692,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 owned: g.hasBedroll,
                 deployed: g.bedrollDeployed,
                 canDrag: g.canDragBedroll,
-                benefitLine: "+1 personal comfort, +1 Hit Die recovery when placed.",
+                benefitLine: "+1 personal comfort tier and +1 Hit Die recovery from inventory.",
                 missingLine: "No bedroll. Comfort stays at camp level."
             }),
             slot({
@@ -3701,8 +3702,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 owned: g.hasTent,
                 deployed: g.tentDeployed,
                 canDrag: g.canDragTent,
-                benefitLine: "Weather shield and encounter protection when placed.",
-                missingLine: "No tent. No weather shield."
+                benefitLine: "Weather and encounter modifiers while a tent is owned.",
+                missingLine: "No tent. No tent modifiers."
             }),
             slot({
                 gearType: "messkit",
@@ -3743,10 +3744,29 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             mitigationHints.push("Choose Rest Fully for +1 comfort tier.");
         }
 
+        const fireLevelRaw = campScanData.fireLevel ?? "embers";
+        const fireTierLabels = {
+            unlit: "No fire",
+            embers: "Embers",
+            campfire: "Campfire",
+            bonfire: "Bonfire"
+        };
+        const fireStatusLines = {
+            unlit: "−1 camp comfort until a fire is lit",
+            embers: "No comfort change from fire size",
+            campfire: "Cooking and warmth",
+            bonfire: "+1 camp comfort"
+        };
+        const fireFactorRow = {
+            tierLabel: fireTierLabels[fireLevelRaw] ?? fireLevelRaw,
+            statusLine: fireStatusLines[fireLevelRaw] ?? ""
+        };
+
         return {
             personalComfort: card.personalComfort,
             personalComfortLabel: card.personalComfortLabel,
             personalMatchesCamp: !!card.personalMatchesCamp,
+            fireFactorRow,
             gearBreakdown: card.gearBreakdown ?? [],
             recovery: {
                 hpLabel: rec.hpLabel ?? "",

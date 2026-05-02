@@ -316,6 +316,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (!a.testUserPermission(user, "OWNER")) continue;
             this._workbench.setStaging(actorId, {
                 gearItemId: st?.gearItemId ?? null,
+                gearActorId: st?.gearActorId ?? null,
                 potionItemId: st?.potionItemId ?? null,
             });
         }
@@ -411,11 +412,28 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 isShortRestWorkbench: true,
             };
         }
-        const emb = this.getStationIdentifyEmbedContext({ restrictUnidentifiedToActorId: focus });
+        // ── Shared Pool gating (same logic as StationActivityDialog) ──
+        const embedFull = this.getStationIdentifyEmbedContext({});
+        const isIdentifyCaster = embedFull.identifyCasters?.some(c => c.id === focus);
+        const canSeeSharedPool = !!game.user?.isGM || !!isIdentifyCaster;
+        const poolItems = canSeeSharedPool
+            ? (embedFull.unidentifiedItems ?? [])
+            : (embedFull.unidentifiedItems ?? []).filter(it => it.actorId === focus);
+        // Group gear items (not potions) by owner
+        const _byOwner = new Map();
+        for (const item of poolItems.filter(it => !it.isPotion)) {
+            if (!_byOwner.has(item.actorId)) {
+                _byOwner.set(item.actorId, { ownerName: item.actorName, ownerId: item.actorId, items: [] });
+            }
+            _byOwner.get(item.actorId).items.push(item);
+        }
+        const emb = { ...embedFull, unidentifiedItems: poolItems };
         const wb = this.getWorkbenchIdentifyDragContext(focus);
         return {
             ...emb,
             ...wb,
+            unidentifiedItemsByOwner: [..._byOwner.values()],
+            canSeeSharedPool,
             isGmUser: !!game.user?.isGM,
             canShowDetectMagicScanButton: this.canShowDetectMagicScanButtonFromParty(),
             canTriggerDetectMagicScan: computeCanTriggerDetectMagicScan(getPartyActors()),

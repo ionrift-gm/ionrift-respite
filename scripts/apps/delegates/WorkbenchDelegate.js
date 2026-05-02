@@ -108,7 +108,7 @@ export class WorkbenchDelegate {
 
     // ── State Accessors ─────────────────────────────────────────────────
 
-    /** @returns {Map<string, {gearItemId: string|null, potionItemId: string|null}>} */
+    /** @returns {Map<string, {gearItemId: string|null, gearActorId: string|null, potionItemId: string|null}>} */
     get staging() { return this._app._workbenchIdentifyStaging; }
 
     /** @returns {Map<string, {items: object[], revealAt: number}>} */
@@ -123,30 +123,37 @@ export class WorkbenchDelegate {
     // ── Staging Read/Write ──────────────────────────────────────────────
 
     /**
-     * Read the current staging state for an actor.
-     * @param {string} actorId
-     * @returns {{ gearItemId: string|null, potionItemId: string|null }}
+     * Read the current staging state for an actor (the caster at the workbench).
+     * gearActorId tracks the owner of the item in the Focus slot (may differ
+     * from the caster when using the shared party pool).
+     * @param {string} actorId - The caster / workbench actor
+     * @returns {{ gearItemId: string|null, gearActorId: string|null, potionItemId: string|null }}
      */
     getStaging(actorId) {
         const v = this.staging?.get(actorId);
         return {
             gearItemId: v?.gearItemId ?? null,
+            gearActorId: v?.gearActorId ?? null,
             potionItemId: v?.potionItemId ?? null
         };
     }
 
     /**
      * Merge a partial staging update for an actor.
-     * @param {string} actorId
-     * @param {{ gearItemId?: string|null, potionItemId?: string|null }} partial
+     * @param {string} actorId - The caster / workbench actor
+     * @param {{ gearItemId?: string|null, gearActorId?: string|null, potionItemId?: string|null }} partial
      */
     setStaging(actorId, partial) {
         if (!this._app._workbenchIdentifyStaging) this._app._workbenchIdentifyStaging = new Map();
         const prev = this.getStaging(actorId);
         const nextGear = partial.gearItemId !== undefined ? partial.gearItemId : prev.gearItemId;
         const resolvedGear = (nextGear && this.focusUsed.has(actorId)) ? prev.gearItemId : nextGear;
+        const nextGearActorId = resolvedGear
+            ? (partial.gearActorId !== undefined ? partial.gearActorId : prev.gearActorId)
+            : null;
         const next = {
             gearItemId: resolvedGear,
+            gearActorId: nextGearActorId,
             potionItemId: partial.potionItemId !== undefined ? partial.potionItemId : prev.potionItemId
         };
         if (!next.gearItemId && !next.potionItemId) {
@@ -178,13 +185,17 @@ export class WorkbenchDelegate {
         if (!actorId) return empty;
         const actor = game.actors.get(actorId);
         const st = this.getStaging(actorId);
-        const resolveGearChip = itemId => {
-            const item = actor?.items.get(itemId);
-            if (!item || !itemIsWorkbenchUnidentified(actor, item)) return null;
+        // Gear chip may belong to a different actor (shared pool cross-identify)
+        const resolveGearChip = (itemId, gearActorId) => {
+            const owner = gearActorId ? game.actors.get(gearActorId) : actor;
+            const item = owner?.items.get(itemId);
+            if (!item || !itemIsWorkbenchUnidentified(owner, item)) return null;
             return {
                 itemId,
+                gearActorId: owner?.id ?? actorId,
                 img: item.img || "icons/svg/mystery-man.svg",
-                label: item.system?.unidentified?.name || item.name || "Item"
+                label: item.system?.unidentified?.name || item.name || "Item",
+                ownerName: owner?.name ?? ""
             };
         };
         const resolvePotionChip = itemId => {
@@ -196,7 +207,7 @@ export class WorkbenchDelegate {
                 label: item.name || "Potion"
             };
         };
-        const workbenchGearChip = st.gearItemId ? resolveGearChip(st.gearItemId) : null;
+        const workbenchGearChip = st.gearItemId ? resolveGearChip(st.gearItemId, st.gearActorId) : null;
         const workbenchPotionChip = st.potionItemId ? resolvePotionChip(st.potionItemId) : null;
         const workbenchSubmitLocked = !workbenchGearChip && !workbenchPotionChip;
         const ack = this.acknowledge?.get(actorId) ?? null;
@@ -256,22 +267,41 @@ export class WorkbenchDelegate {
             ui.notifications.warn("Drag at least one item onto the circles, then submit.");
             return;
         }
+        // Build identify order: potions first (always own actor), then gear
+        // (may belong to a different actor in shared pool mode)
         const order = [];
-        if (st.potionItemId) order.push(st.potionItemId);
-        if (st.gearItemId) order.push(st.gearItemId);
+        if (st.potionItemId) order.push({ itemId: st.potionItemId, ownerActorId: actorId });
+        if (st.gearItemId) order.push({ itemId: st.gearItemId, ownerActorId: st.gearActorId || actorId });
         const revealed = [];
-        for (const itemId of order) {
-            const itemBefore = actor.items.get(itemId);
+        for (const { itemId, ownerActorId } of order) {
+            const ownerActor = game.actors.get(ownerActorId);
+            if (!ownerActor) continue;
+            const itemBefore = ownerActor.items.get(itemId);
             if (!itemBefore) continue;
-            const did = await this.identifyItem(actorId, itemId, { deferNotify: true, deferRender: true });
+            const did = await this.identifyItem(ownerActorId, itemId, { deferNotify: true, deferRender: true });
             if (!did) continue;
-            const itemAfter = actor.items.get(itemId);
+            const itemAfter = ownerActor.items.get(itemId);
+            const trueName = resolveTrueName(ownerActor, itemId, itemBefore.name);
             revealed.push({
                 itemId,
-                name: resolveTrueName(actor, itemId, itemBefore.name),
+                ownerActorId,
+                name: trueName,
                 img: itemAfter?.img ?? itemBefore.img ?? "icons/svg/mystery-man.svg",
                 requiresAttunement: !!itemAfter?.system?.attunement
             });
+            // Notify the item owner when a different caster identifies their item
+            if (ownerActorId !== actorId) {
+                const ownerUsers = game.users.filter(
+                    u => !u.isGM && ownerActor.testUserPermission(u, "OWNER")
+                );
+                if (ownerUsers.length > 0) {
+                    ChatMessage.create({
+                        content: `<div class="ionrift-identify-reveal"><i class="fas fa-hat-wizard"></i> <strong>${actor.name}</strong> identified your <strong>${trueName}</strong>.</div>`,
+                        speaker: ChatMessage.getSpeaker({ alias: "Respite" }),
+                        whisper: ownerUsers.map(u => u.id)
+                    });
+                }
+            }
         }
         if (!revealed.length) return;
         this._app._workbenchIdentifyStaging.delete(actorId);
@@ -431,17 +461,30 @@ export class WorkbenchDelegate {
             if (this._app.rendered) this._app.render();
         };
 
-        const validateDrop = (itemId, zone) => {
-            const actor = game.actors.get(actorId);
-            if (!actor?.isOwner && !game.user.isGM) {
-                return { ok: false, msg: "You can only arrange choices for characters you control." };
+        /**
+         * Validate a drop onto Focus or Potion zone.
+         * @param {string} itemId
+         * @param {string} zone - "gear" or "potion"
+         * @param {string} [itemActorId] - Owner of the item (may differ from workbench actor for shared pool)
+         */
+        const validateDrop = (itemId, zone, itemActorId) => {
+            const itemOwner = itemActorId ? game.actors.get(itemActorId) : game.actors.get(actorId);
+            if (!itemOwner) return { ok: false, msg: "Item owner not found." };
+            // For own items, check ownership; for shared pool items, the caster
+            // identifies on behalf of the owner — no ownership gate needed.
+            const isOwnItem = !itemActorId || itemActorId === actorId;
+            if (isOwnItem) {
+                const casterActor = game.actors.get(actorId);
+                if (!casterActor?.isOwner && !game.user.isGM) {
+                    return { ok: false, msg: "You can only arrange choices for characters you control." };
+                }
             }
-            const item = actor.items.get(itemId);
+            const item = itemOwner.items.get(itemId);
             if (!item) return { ok: false, msg: "Item not found." };
             const isPotion = itemIsDnD5ePotionType(item);
             if (zone === "gear") {
                 if (isPotion) return { ok: false, msg: "Drop potions onto the potion circle." };
-                if (!itemIsWorkbenchUnidentified(actor, item)) {
+                if (!itemIsWorkbenchUnidentified(itemOwner, item)) {
                     return { ok: false, msg: "That item is already identified." };
                 }
             }
@@ -451,18 +494,27 @@ export class WorkbenchDelegate {
             return { ok: true };
         };
 
-        const assignGear = itemId => {
+        /**
+         * Stage a gear item for Focus identify.
+         * @param {string} itemId
+         * @param {string} [itemActorId] - Owner of the item (shared pool cross-actor)
+         */
+        const assignGear = (itemId, itemActorId) => {
             if (this.focusUsed.has(actorId)) {
                 ui.notifications.info("Focus identify already used this rest for this character.");
                 return;
             }
-            const v = validateDrop(itemId, "gear");
+            const v = validateDrop(itemId, "gear", itemActorId);
             if (!v.ok) {
                 ui.notifications.warn(v.msg);
                 return;
             }
             const st = this.getStaging(actorId);
-            this.setStaging(actorId, { gearItemId: itemId, potionItemId: st.potionItemId });
+            this.setStaging(actorId, {
+                gearItemId: itemId,
+                gearActorId: itemActorId || actorId,
+                potionItemId: st.potionItemId
+            });
             bump();
         };
 
@@ -494,6 +546,7 @@ export class WorkbenchDelegate {
                 e.preventDefault();
                 zone.classList.remove("drop-hover");
                 const raw = e.dataTransfer?.getData("text/plain") ?? "";
+
                 if (raw.startsWith("wbident:")) {
                     const parts = raw.split(":");
                     if (parts.length < 4) return;
