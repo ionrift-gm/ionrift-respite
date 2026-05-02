@@ -6,7 +6,7 @@
     "img": "icons/consumables/food/bowl-stew-brown.webp",
     "system": {
         "description": {
-            "value": "<p>A thick stew made with fresh game meat and field rations. Proper camp cooking. Restores 2 hit points when consumed during a rest.</p>"
+            "value": "<p>A thick stew made with fresh game meat and field rations. Proper camp cooking that feeds the whole party.</p>"
         },
         "rarity": "common",
         "weight": 1,

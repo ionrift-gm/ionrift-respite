@@ -382,12 +382,14 @@ function findCampfireActor() {
 }
 
 /**
- * True if any party member has cook's utensils (unlocks full cooking; not the mess kit).
+ * True if any party member has cook's utensils or brewing tools
+ * (unlocks the cooking station; not the mess kit).
  * @returns {boolean}
  */
 export function partyHasCookingUtensils() {
     for (const a of getPartyActors()) {
         if (canPlaceStation(a, "cookingArea")) return true;
+        if (actorHasBrewingTools(a)) return true;
     }
     return false;
 }
@@ -413,13 +415,29 @@ export function canPlaceStation(actor, stationKey) {
 }
 
 /**
+ * True if the actor has alchemist's supplies, brewer's supplies, or an herbalism kit.
+ * These unlock the brewing activities at the cooking station.
+ * @param {Actor|null} actor
+ * @returns {boolean}
+ */
+export function actorHasBrewingTools(actor) {
+    if (!actor) return false;
+    return (actor.items ?? []).some(i => {
+        const n = i.name?.toLowerCase() ?? "";
+        const baseItem = i.system?.type?.baseItem ?? "";
+        return n.includes("alchemist") || n.includes("brewer") || n.includes("herbalism")
+            || baseItem === "alchemist" || baseItem === "brewer" || baseItem === "herbalism";
+    });
+}
+
+/**
  * Human-readable requirement line when {@link canPlaceStation} is false.
  * @param {string} stationKey
  * @returns {string}
  */
 export function stationPlacementRequirementHint(stationKey) {
     if (stationKey === "cookingArea") {
-        return "Cook's utensils or cooking utensils in inventory.";
+        return "Cook's utensils, alchemist's supplies, brewer's supplies, or herbalism kit in inventory.";
     }
     return "";
 }

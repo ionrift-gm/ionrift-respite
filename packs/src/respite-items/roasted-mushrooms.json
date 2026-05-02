@@ -6,7 +6,7 @@
     "img": "icons/consumables/food/plate-chicken-grilled-mushroom-brown.webp",
     "system": {
         "description": {
-            "value": "<p>Mushrooms sliced and roasted over coals until golden. Simple, satisfying camp fare. Restores 1 hit point when consumed during a rest.</p>"
+            "value": "<p>Mushrooms sliced and roasted over coals until golden. Simple, satisfying camp fare.</p>"
         },
         "rarity": "common",
         "weight": 0.3,

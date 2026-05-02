@@ -63,6 +63,7 @@ import {
 } from "./services/SocketController.js";
 import { registerAllSettings, registerItemEnrichments } from "./services/SettingsRegistrar.js";
 import { registerUiHooks, refreshZzzOverlay } from "./services/UiInjections.js";
+import { registerInventoryContextMenu } from "./services/InventoryContextMenu.js";
 import {
     showRejoinNotification, removeRejoinNotification,
     showShortRestRejoinNotification, removeShortRestRejoinNotification,
@@ -532,6 +533,9 @@ Hooks.on("chatMessage", (log, message, chatData) => {
 
 // â”€â”€ Actor Sheet Injections (extracted to UiInjections.js â€” Phase 2.3) â”€â”€â”€â”€
 registerUiHooks();
+
+// ── Inventory Context Menu (Consume at Camp) ───────────────────────────
+registerInventoryContextMenu();
 
 // â”€â”€ Calendar-Driven Spoilage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // When in-game time advances (Simple Calendar or core worldTime), check all

@@ -79,9 +79,23 @@ export class ItemOutcomeHandler {
             );
 
             if (existing) {
-                // Stack onto existing: increment quantity
+                // Stack onto existing: increment quantity + merge flags
                 const currentQty = existing.system?.quantity ?? 1;
-                toUpdate.push({ _id: existing.id, "system.quantity": currentQty + qty });
+                const updateData = { _id: existing.id, "system.quantity": currentQty + qty };
+
+                // Merge module flags so crafting metadata (wellFed, buff, spoilage)
+                // is carried onto the existing stack rather than silently dropped.
+                const grantModFlags = grant.flags?.[MODULE_ID];
+                if (grantModFlags && Object.keys(grantModFlags).length) {
+                    const merged = foundry.utils.mergeObject(
+                        existing.flags?.[MODULE_ID] ?? {},
+                        grantModFlags,
+                        { inplace: false }
+                    );
+                    updateData[`flags.${MODULE_ID}`] = merged;
+                }
+
+                toUpdate.push(updateData);
                 summary.push({ name: grant.name, quantity: qty, stacked: true });
             } else {
                 // Stamp harvestedDate on perishable items for spoilage tracking

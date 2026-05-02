@@ -21,7 +21,7 @@ const MODULE_ID = "ionrift-respite";
 const SPOILED_FOOD_TEMPLATE = {
     name: "Spoiled Food",
     type: "consumable",
-    img: "icons/consumables/food/meat-raw-brown-green.webp",
+    img: "icons/consumables/food/berries-ration-round-red.webp",
     system: {
         description: { value: "Rotten, inedible remains. Might have been something good once." },
         quantity: 1,
@@ -793,8 +793,9 @@ export class MealPhaseHandler {
                 changes: aeChanges,
                 description: desc || undefined,
                 flags: {
-                    [MODULE_ID]: { wellFed: true },
+                    [MODULE_ID]: { wellFed: true, expiresAt: "nextRestStart" },
                     core: { overlay: false },
+                    "dfreds-convenient-effects": { isConvenient: true },
                     ...dndFlags.effectFlags
                 }
             }]);
@@ -809,6 +810,32 @@ export class MealPhaseHandler {
         if (toDelete.length) {
             await actor.deleteEmbeddedDocuments("ActiveEffect", toDelete.map(e => e.id));
         }
+    }
+
+    /**
+     * Strip all Well Fed effects from party actors at the start of a new rest.
+     * Called from RestSetupApp.#onBeginRest so the effect persists between
+     * sessions but is cleaned up when the next long rest begins.
+     * @param {Actor[]} actors - Party actors starting a new rest.
+     * @returns {Promise<number>} Count of effects removed.
+     */
+    static async cleanupWellFedEffects(actors) {
+        let removed = 0;
+        for (const actor of actors) {
+            const wellFedEffects = actor.effects?.filter(
+                e => e.flags?.[MODULE_ID]?.wellFed === true
+            ) ?? [];
+            if (wellFedEffects.length) {
+                await actor.deleteEmbeddedDocuments(
+                    "ActiveEffect", wellFedEffects.map(e => e.id)
+                );
+                removed += wellFedEffects.length;
+            }
+        }
+        if (removed > 0) {
+            console.log(`[Respite:Meal] Cleaned ${removed} Well Fed effect(s) at rest start`);
+        }
+        return removed;
     }
 
     /**
@@ -924,6 +951,12 @@ export class MealPhaseHandler {
 
     /**
      * Map duration tag to dnd5e ActiveEffect hints (best-effort across system versions).
+     *
+     * specialDuration is intentionally omitted here. Eating happens before native
+     * longRest()/shortRest() runs, so setting specialDuration at creation time would
+     * cause dnd5e to strip the AE the moment the rest fires — before recovery is
+     * visible to the player. stampWellFedDuration() adds the correct specialDuration
+     * after longRest() completes, so it only triggers on the NEXT rest.
      */
     static _wellFedDnd5eDurationFlags(durationTag) {
         const out = { duration: {}, effectFlags: {}, manualNote: "" };
@@ -931,15 +964,10 @@ export class MealPhaseHandler {
             out.manualNote = "Remove this Well Fed effect when the listed rest ends (or replace with another meal).";
             return out;
         }
-        if (durationTag === "untilLongRest") {
+        if (durationTag === "untilLongRest" || durationTag === "untilShortRest") {
+            // No specialDuration on creation. stampWellFedDuration() sets it post-rest.
             foundry.utils.mergeObject(out.effectFlags, {
-                dnd5e: { duration: { type: "none" }, specialDuration: ["longRest"] }
-            });
-            return out;
-        }
-        if (durationTag === "untilShortRest") {
-            foundry.utils.mergeObject(out.effectFlags, {
-                dnd5e: { duration: { type: "none" }, specialDuration: ["shortRest"] }
+                dnd5e: { duration: { type: "none" } }
             });
             return out;
         }
@@ -949,6 +977,27 @@ export class MealPhaseHandler {
         }
         out.manualNote = "Remove when the buff would end per the recipe.";
         return out;
+    }
+
+    /**
+     * Stamp specialDuration onto Well Fed AEs after longRest()/shortRest() has run.
+     * Called after the native rest loop in RestSetupApp so the duration flag only
+     * triggers on the NEXT rest rather than the one that just completed.
+     *
+     * @param {Actor[]} actors
+     */
+    static async stampWellFedDuration(actors) {
+        for (const actor of actors) {
+            const wellFedEffects = actor.effects?.filter(
+                e => e.flags?.[MODULE_ID]?.wellFed === true
+            ) ?? [];
+            for (const ae of wellFedEffects) {
+                const existing = ae.flags?.dnd5e?.specialDuration ?? [];
+                if (!existing.includes("longRest")) {
+                    await ae.update({ "flags.dnd5e.specialDuration": ["longRest"] });
+                }
+            }
+        }
     }
 
     /**
@@ -1012,24 +1061,18 @@ export class MealPhaseHandler {
             options.push({
                 value: item.id,
                 label: `${item.name} (\u00d7${qty})`,
+                name: item.name,
                 itemId: item.id,
                 available: qty,
-                icon: item.img ?? "icons/consumables/food/bread-loaf-round-white.webp"
+                icon: item.img ?? "icons/consumables/food/bread-loaf-round-white.webp",
+                partyMeal: item.flags?.[MODULE_ID]?.partyMeal ?? false
             });
         }
 
         return options;
     }
 
-    /**
-     * Check if an item qualifies as food for the meal phase.
-     * Thin wrapper around ItemClassifier for backward compatibility.
-     * @param {Item} item - Foundry Item document
-     * @returns {boolean}
-     */
-    static _isFoodItem(item) {
-        return ItemClassifier.isFood(item);
-    }
+
 
     /**
      * Build water options from actor inventory.
@@ -1049,6 +1092,7 @@ export class MealPhaseHandler {
             options.push({
                 value: item.id,
                 label: `${item.name} (\u00d7${avail})`,
+                name: item.name,
                 itemId: item.id,
                 available: avail,
                 icon: item.img ?? "icons/consumables/drinks/waterskin-leather-tan.webp"
@@ -1058,15 +1102,7 @@ export class MealPhaseHandler {
         return options;
     }
 
-    /**
-     * Check if an item qualifies as water/drink for the meal phase.
-     * Thin wrapper around ItemClassifier for backward compatibility.
-     * @param {Item} item - Foundry Item document
-     * @returns {boolean}
-     */
-    static _isWaterItem(item) {
-        return ItemClassifier.isWater(item);
-    }
+
 
     /**
      * Build advisory messages about current hunger/thirst status.

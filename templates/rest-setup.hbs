@@ -102,7 +102,7 @@
                 {{/if}}
             </div>
             <span class="roster-indicator-label">{{rosterInfo.count}} characters</span>
-            <button type="button" class="roster-indicator-edit" onclick="game.settings.menus.get('ionrift-respite.partyRosterMenu')?.type?.prototype?.constructor && new (game.settings.menus.get('ionrift-respite.partyRosterMenu').type)().render(true)" title="Edit Party Roster">
+            <button type="button" class="roster-indicator-edit" onclick="const App = game.ionrift?.library?.PartyRosterApp; if (App) new App().render(true); else ui.notifications.warn('Party Roster requires ionrift-library.');" title="Edit Party Roster">
                 <i class="fas fa-pencil-alt"></i>
             </button>
         </div>
@@ -448,7 +448,7 @@
                 <i class="fas fa-binoculars"></i>
                 <strong>Scouting: {{scoutingDebrief.tierLabel}}</strong>
                 {{#if scoutingDebrief.comfortBonus}}<span class="scouting-effect">Comfort +{{scoutingDebrief.comfortBonus}}</span>{{/if}}
-                {{#if scoutingDebrief.encounterDC}}<span class="scouting-effect">Encounter DC +{{scoutingDebrief.encounterDC}}</span>{{/if}}
+                {{#if scoutingDebrief.encounterCampModLabel}}<span class="scouting-effect">Night check mod {{scoutingDebrief.encounterCampModLabel}}</span>{{/if}}
             </div>
             <p class="travel-scouting-gm-advisory">Scouting roll is blind to the players. Describe what the scout found.</p>
 

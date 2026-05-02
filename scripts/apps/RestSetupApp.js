@@ -5151,6 +5151,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._disasterChoice = null;
         this._activeTreeState = null;
         this._clearDetectMagicScanSession();
+
+        // Strip Well Fed effects from the prior rest — the effect persists
+        // between sessions but expires when a new long rest begins.
+        await MealPhaseHandler.cleanupWellFedEffects(getPartyActors());
         await this._saveRestState();
 
         // Campfire opens after render (see _onRender)
@@ -5798,7 +5802,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         el.querySelectorAll(".dragging").forEach(n => n.classList.remove("dragging"));
         el.querySelectorAll(".drop-hover").forEach(n => n.classList.remove("drop-hover"));
 
-        const items = el.querySelectorAll(".meal-inv-item[draggable]");
+        const items = el.querySelectorAll(".meal-inv-item[draggable], .meal-inv-card[draggable]");
         const dropZones = el.querySelectorAll(".meal-drop-zone");
 
         // Helper: set choice for a slot (both food and water are arrays)
@@ -5808,7 +5812,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const arr = Array.isArray(existing[slot]) ? [...existing[slot]] : [];
 
             // Check available quantity -- prevent over-assignment
-            const trayItem = el.querySelector(`.meal-inv-item[data-item-id="${itemId}"][data-slot="${slot}"][data-character-id="${charId}"]`);
+            const trayItem = el.querySelector(
+                `.meal-inv-item[data-item-id="${itemId}"][data-slot="${slot}"][data-character-id="${charId}"],` +
+                `.meal-inv-card[data-item-id="${itemId}"][data-slot="${slot}"][data-character-id="${charId}"]`
+            );
             const available = trayItem ? parseInt(trayItem.dataset.available || "1") : 1;
             const alreadyAssigned = arr.filter(v => v === itemId).length;
 
@@ -5870,7 +5877,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 zone.classList.add("drop-hover");
             });
 
-            zone.addEventListener("dragleave", () => zone.classList.remove("drop-hover"));
+            zone.addEventListener("dragleave", (e) => {
+                if (zone.contains(e.relatedTarget)) return;
+                zone.classList.remove("drop-hover");
+            });
 
             zone.addEventListener("drop", (e) => {
                 e.preventDefault();
@@ -7131,6 +7141,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             console.log(`${MODULE_ID} | Skipping native rest call (system: ${game.system.id} — no longRest/shortRest API).`);
         }
 
+        // Stamp Well Fed AEs with longRest specialDuration now that native rest has run.
+        // Eating happens before recovery, so the flag is intentionally omitted at AE
+        // creation to prevent dnd5e from stripping the buff during longRest(). Adding
+        // it here means the AE will auto-expire at the START of the next rest instead.
+        try {
+            await MealPhaseHandler.stampWellFedDuration(getPartyActors());
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Well Fed duration stamp failed:`, e);
+        }
+
         // Create items from outcomes (forage, crafts, etc.)
         try {
             const itemSummary = await ItemOutcomeHandler.processAll(this._outcomes);
@@ -8001,6 +8021,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /** Toolbar: GM always; players only when they control a party member with Detect Magic. */
     canShowDetectMagicScanButtonFromParty() {
         return computeCanShowDetectMagicScanButton(getPartyActors());
+    }
+
+    /** True when a party member can actually trigger the Detect Magic scan (not just see the button). */
+    canTriggerDetectMagicScanFromParty() {
+        return computeCanTriggerDetectMagicScan(getPartyActors());
     }
 
     /** @deprecated Use this._workbench.getStaging() */

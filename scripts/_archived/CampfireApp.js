@@ -89,6 +89,17 @@ export class CampfireApp extends HandlebarsApplicationMixin(ApplicationV2) {
         /** @type {CampfirePhysics|null} */
         this._physics = null;
         this._emberInterval = null;
+        /** @type {ReturnType<typeof setTimeout>|null} */
+        this._campfireStickEmitTimer = null;
+    }
+
+    /** Debounced emit so rapid drops do not flood the socket. */
+    _emitCampfireStickDebounced(payload) {
+        if (this._campfireStickEmitTimer) clearTimeout(this._campfireStickEmitTimer);
+        this._campfireStickEmitTimer = setTimeout(() => {
+            this._campfireStickEmitTimer = null;
+            game.socket.emit(`module.${MODULE_ID}`, payload);
+        }, 200);
     }
 
     get fireLevel() {
@@ -724,7 +735,7 @@ export class CampfireApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     this.render();
                 }
 
-                game.socket.emit(`module.${MODULE_ID}`, {
+                this._emitCampfireStickDebounced({
                     type: "campfireStick",
                     userName: game.user.name,
                     actorName: this._getPlayerActor()?.name ?? game.user.name,

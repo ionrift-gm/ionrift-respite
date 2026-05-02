@@ -101,9 +101,9 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
             hasCrafted: this._hasCrafted,
             showMissing: this._showMissing,
             riskTiers: [
-                { id: "safe", label: "Safe", hint: "DC -3, ingredients preserved on failure", selected: this._selectedRisk === "safe" },
-                { id: "standard", label: "Standard", hint: "Base DC, ingredients consumed", selected: this._selectedRisk === "standard" },
-                { id: "ambitious", label: "Ambitious", hint: "DC +5, enhanced output on success", selected: this._selectedRisk === "ambitious" }
+                { id: "safe", label: "Safe", hint: "DC −3 · Ingredients kept", selected: this._selectedRisk === "safe" },
+                { id: "standard", label: "Standard", hint: "Base DC · Ingredients used", selected: this._selectedRisk === "standard" },
+                { id: "ambitious", label: "Ambitious", hint: "DC +5 · Better yield", selected: this._selectedRisk === "ambitious" }
             ],
             available,
             partial,
