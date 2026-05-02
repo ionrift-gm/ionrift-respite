@@ -60,12 +60,43 @@ export class CraftingEngine {
      * @returns {number}
      */
     getAdjustedCraftingDc(actor, recipe, riskTier = "standard", terrainTag = null) {
+        return this.getDcBreakdown(actor, recipe, riskTier, terrainTag).total;
+    }
+
+    /**
+     * Returns the contributing factors that make up the crafting DC.
+     * @param {Actor} actor
+     * @param {Object} recipe
+     * @param {string} [riskTier]
+     * @param {string|null} [terrainTag]
+     * @returns {{ base: number, total: number, hasModifiers: boolean, factors: { label: string, value: number, sign: "pos"|"neg" }[] }}
+     */
+    getDcBreakdown(actor, recipe, riskTier = "standard", terrainTag = null) {
         const riskMods = { safe: -3, standard: 0, ambitious: 5 };
-        const baseDc = recipe.dc ?? 12;
-        const terrainDcMod = (terrainTag && recipe.terrainDcModifier?.[terrainTag]) ?? 0;
-        let dc = baseDc + (riskMods[riskTier] ?? 0) + terrainDcMod;
-        if (CraftingEngine._hasChefFeat(actor)) dc -= 2;
-        return dc;
+        const base = recipe.dc ?? 12;
+        const riskMod = riskMods[riskTier] ?? 0;
+        const terrainMod = (terrainTag && recipe.terrainDcModifier?.[terrainTag]) ?? 0;
+        const chefMod = CraftingEngine._hasChefFeat(actor) ? -2 : 0;
+
+        const factors = [];
+        if (riskMod !== 0) {
+            const label = riskTier.charAt(0).toUpperCase() + riskTier.slice(1);
+            factors.push({ label: `${riskMod > 0 ? "+" : ""}${riskMod} ${label}`, value: riskMod, sign: riskMod > 0 ? "pos" : "neg" });
+        }
+        if (terrainMod !== 0) {
+            const tLabel = terrainTag ? terrainTag.charAt(0).toUpperCase() + terrainTag.slice(1) : "Terrain";
+            factors.push({ label: `${terrainMod > 0 ? "+" : ""}${terrainMod} ${tLabel}`, value: terrainMod, sign: terrainMod > 0 ? "pos" : "neg" });
+        }
+        if (chefMod !== 0) {
+            factors.push({ label: `${chefMod} Chef`, value: chefMod, sign: "neg" });
+        }
+
+        return {
+            base,
+            total: base + riskMod + terrainMod + chefMod,
+            hasModifiers: factors.length > 0,
+            factors
+        };
     }
 
     /**
@@ -317,20 +348,61 @@ export class CraftingEngine {
         if (!output) return [];
 
         const { ItemOutcomeHandler } = await import("./ItemOutcomeHandler.js");
-        const grantSummary = await ItemOutcomeHandler.grantItemsToActor(actor, [{
-            name: output.name,
-            type: output.type ?? "consumable",
-            img: output.img ?? "icons/consumables/food/bowl-stew-brown.webp",
-            quantity: output.quantity ?? 1,
-            system: {
-                description: { value: output.description ?? "" },
-                rarity: output.rarity ?? "common",
-                ...(output.system ?? {})
-            },
-            flags: outputFlags ?? {}
-        }]);
 
-        return grantSummary;
+        const itemRef = output.itemRef ?? outputFlags?.[MODULE_ID]?.itemRef;
+
+        const grantFromResolved = async (ref) => {
+            const resolved = await ItemOutcomeHandler._resolveItemRef({ itemRef: ref });
+            if (!resolved) return null;
+            const qty = output.quantity ?? 1;
+            const grant = {
+                name: output.name ?? resolved.name,
+                type: output.type ?? resolved.type,
+                img: output.img ?? resolved.img,
+                quantity: qty,
+                system: foundry.utils.mergeObject(
+                    foundry.utils.duplicate(resolved.system ?? {}),
+                    foundry.utils.mergeObject(
+                        output.system ?? {},
+                        { quantity: qty },
+                        { inplace: false }
+                    ),
+                    { inplace: false }
+                ),
+                flags: foundry.utils.mergeObject(
+                    foundry.utils.duplicate(resolved.flags ?? {}),
+                    outputFlags ?? {},
+                    { inplace: false }
+                )
+            };
+            return ItemOutcomeHandler.grantItemsToActor(actor, [grant]);
+        };
+
+        try {
+            if (itemRef) {
+                const fromRef = await grantFromResolved(itemRef);
+                if (fromRef?.length) return fromRef;
+            }
+
+            return await ItemOutcomeHandler.grantItemsToActor(actor, [{
+                name: output.name,
+                type: output.type ?? "consumable",
+                img: output.img ?? "icons/consumables/food/bowl-stew-brown.webp",
+                quantity: output.quantity ?? 1,
+                system: {
+                    description: { value: output.description ?? "" },
+                    rarity: output.rarity ?? "common",
+                    ...(output.system ?? {})
+                },
+                flags: outputFlags ?? {}
+            }]);
+        } catch (err) {
+            console.error(`${MODULE_ID} | CraftingEngine._createOutputItems`, err);
+            ui.notifications.error(
+                `Could not add ${output.name ?? "crafted item"} to inventory. Open the dev console (F12) for details.`
+            );
+            return [];
+        }
     }
 
     /**

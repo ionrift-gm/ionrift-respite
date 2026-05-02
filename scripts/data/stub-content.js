@@ -212,6 +212,7 @@ export const STUB_RECIPES = {
                 name: "Smoked Fish",
                 type: "consumable",
                 quantity: 1,
+                itemRef: "smoked_fish",
                 img: "icons/consumables/food/fish-fillet-steak-brown.webp",
                 description: "<p>Dried and smoked fish fillets. Keeps well on the road.</p>",
                 rarity: "common",
