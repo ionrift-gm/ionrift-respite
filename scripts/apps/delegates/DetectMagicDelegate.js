@@ -136,6 +136,26 @@ export function computeCanShowDetectMagicScanButton(partyActors) {
     return computeCanTriggerDetectMagicScan(partyActors);
 }
 
+/**
+ * Spawn 3 concentric expanding ring ripples centered on an element, appended to
+ * document.body so they survive an app re-render that replaces the source element.
+ * @param {HTMLElement|null} element
+ */
+export function spawnDetectMagicCastRipple(element) {
+    if (!element) return;
+    const rect = element.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    for (let i = 0; i < 3; i++) {
+        const ring = document.createElement("span");
+        ring.className = "dm-cast-ripple";
+        ring.style.left = `${cx}px`;
+        ring.style.top = `${cy}px`;
+        ring.style.animationDelay = `${i * 130}ms`;
+        document.body.appendChild(ring);
+        ring.addEventListener("animationend", () => ring.remove(), { once: true });
+    }
+}
 
 export class DetectMagicDelegate {
 

@@ -15,7 +15,7 @@ import {
     DETECT_MAGIC_BTN_LABEL_DISMISS,
     DETECT_MAGIC_BTN_TITLE_GM
 } from "./RestConstants.js";
-import { computeCanShowDetectMagicScanButton } from "./delegates/DetectMagicDelegate.js";
+import { computeCanShowDetectMagicScanButton, spawnDetectMagicCastRipple } from "./delegates/DetectMagicDelegate.js";
 import { canPlaceStation } from "../services/CompoundCampPlacer.js";
 import { getPartyActors } from "../services/partyActors.js";
 
@@ -597,6 +597,38 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         };
     }
 
+    /** Compute station tab definitions — shared by list and crafting contexts. */
+    _buildStationTabs() {
+        if (!this._showStationTabs) return [];
+        const stationTabs = [];
+        if (this._station.id === "cooking_station") {
+            const mealCard = this._restApp?.getStationMealCardForActor?.(this._actor?.id) ?? null;
+            const rationDone = !!(mealCard?.allDaysConsumed || mealCard?.playerSubmitted);
+            if (!rationDone && mealCard) {
+                stationTabs.push({ id: "meal", label: "Rations" });
+            }
+            if (this._stationHasCooking) {
+                stationTabs.push({
+                    id: "cooking",
+                    label: "Cooking",
+                    hintClass: this._actorHasCookingUtensils ? "" : "station-sub-tab-hint",
+                    title: this._actorHasCookingUtensils ? "" : "Requires cook's utensils"
+                });
+            }
+        } else if (this._station.id === "workbench") {
+            const hasGeneral = this._available.length > 0;
+            if (hasGeneral) stationTabs.push({ id: "activity", label: "Activities" });
+            stationTabs.push({ id: "identify", label: "Identify" });
+        } else if (this._station.id === "campfire") {
+            const fireTabCtx = this._restApp?.getFireTabContextForStationDialog?.() ?? null;
+            if (fireTabCtx) {
+                stationTabs.push({ id: "camp", label: "Camp" });
+                stationTabs.push({ id: "fire", label: "Fire" });
+            }
+        }
+        return stationTabs;
+    }
+
     _buildCraftingContext() {
         const actor = this._actor;
         const engine = this._restApp?._craftingEngine;
@@ -660,7 +692,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 recipeName: selectedRecipe.name,
                 dc: adjustedDc,
                 risk: this._craftRisk,
-                riskLabel: { safe: "Safe", standard: "Standard", ambitious: "Ambitious" }[this._craftRisk],
+                riskLabel: { standard: "Standard", ambitious: "Ambitious" }[this._craftRisk],
                 outputName: outputForRisk?.name ?? selectedRecipe.outputName,
                 outputImg: outputForRisk?.img ?? selectedRecipe.outputImg ?? "icons/svg/mystery-man.svg",
                 outputQuantity: outputForRisk?.quantity ?? 1,
@@ -674,12 +706,19 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                     };
                 }),
                 ingredientCost: (selectedRecipe.ingredients ?? []).map(i => `${i.quantity ?? 1}x ${i.name}`).join(", "),
-                failConsequence: this._craftRisk === "safe" ? "Ingredients kept if unsuccessful" : "Ingredients consumed on failure",
+                failConsequence: "Ingredients consumed on failure",
                 skill: (selectedRecipe.skill ?? "sur").toUpperCase()
             };
         }
 
+        // Include station tab bar so tabs persist during crafting
+        const stationTabs = this._buildStationTabs();
+        const showTabBar = stationTabs.length > 1;
+
         return {
+            showTabBar,
+            stationTabs,
+            stationPanelTab: this._stationPanelTab,
             crafting: {
                 profession: professionLabels[professionId] ?? professionId,
                 professionId,
@@ -690,7 +729,6 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 hasCrafted: this._craftHasCrafted,
                 showMissing: this._craftShowMissing,
                 riskTiers: [
-                    { id: "safe", label: "Safe", hint: "DC −3 · Ingredients kept", selected: this._craftRisk === "safe" },
                     { id: "standard", label: "Standard", hint: "Base DC · Ingredients used", selected: this._craftRisk === "standard" },
                     { id: "ambitious", label: "Ambitious", hint: "DC +5 · Better yield", selected: this._craftRisk === "ambitious" }
                 ],
@@ -928,6 +966,27 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         if (!tab) return;
         if (target.disabled || target.getAttribute("aria-disabled") === "true") return;
         this._stationPanelTab = tab;
+
+        // Cooking tab with utensils → auto-enter crafting split panel
+        if (tab === "cooking" && this._actorHasCookingUtensils) {
+            const cookId = "act_cook";
+            this._selectedActivityId = cookId;
+            this._followUpValue = null;
+            this._craftProfession  = "cooking";
+            this._craftRecipeId    = null;
+            this._craftRisk        = "standard";
+            this._craftResult      = null;
+            this._craftHasCrafted  = false;
+            this._craftShowMissing = false;
+            this._dialogState      = "crafting";
+            this._preCraftWidth    = this.position?.width ?? DIALOG_WIDTH;
+            console.log(`ionrift-respite | cooking tab auto-enter crafting`, { width: this.position?.width });
+        } else {
+            // Switching away from cooking → reset to list state
+            this._dialogState = "list";
+            this._selectedActivityId = null;
+        }
+
         this.render();
     }
 
@@ -1010,6 +1069,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         if (!this._restApp) return;
         const btn = event?.currentTarget ?? null;
         btn?.classList.add("is-casting");
+        spawnDetectMagicCastRipple(btn);
         if (this._restApp._magicScanComplete) {
             this._restApp._clearDetectMagicScanSession();
         } else {

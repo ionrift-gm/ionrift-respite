@@ -33,7 +33,8 @@ import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
 import {
     collectPartyIdentifyEmbedData,
     computeCanShowDetectMagicScanButton,
-    DetectMagicDelegate
+    DetectMagicDelegate,
+    spawnDetectMagicCastRipple
 } from "./delegates/DetectMagicDelegate.js";
 import {
     DETECT_MAGIC_BTN_LABEL_GM,
@@ -1047,6 +1048,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!this._detectMagic) return;
         const btn = event?.currentTarget ?? null;
         btn?.classList.add("is-casting");
+        spawnDetectMagicCastRipple(btn);
         if (this._magicScanComplete) {
             this._detectMagic.clearScanSession();
         } else {
