@@ -1,3 +1,5 @@
+import { ForageActivityValidator } from "./ForageActivityValidator.js";
+
 /**
  * ActivityResolver
  * Resolves a character's chosen rest activity against their proficiencies,
@@ -24,9 +26,10 @@ export class ActivityResolver {
      * Returns activities available to a given actor based on proficiencies and rest type.
      * @param {Actor} actor
      * @param {string} restType - "long" or "short"
+     * @param {Object} [options] - Forage gate: forageActivityGate, terrainTag, resourcePoolsFromPack, resourcePoolRoller.
      * @returns {Object[]} Filtered activity schemas.
      */
-    getAvailableActivities(actor, restType) {
+    getAvailableActivities(actor, restType, options = {}) {
         const available = [];
         for (const activity of this.activities.values()) {
             if (!activity.restTypes.includes(restType)) continue;
@@ -47,10 +50,32 @@ export class ActivityResolver {
             }
 
             if (this._meetsPrerequisites(actor, activity.prerequisites)) {
+                if (activity.id === "act_forage" && this._isCampForageBlocked(options)) {
+                    const key = options.forageActivityGate?.disabledReasonKey
+                        ?? "ionrift-respite.travel.forage.requires_pack";
+                    available.push({
+                        ...activity,
+                        activityDisabled: true,
+                        disabledTooltip: game.i18n.localize(key)
+                    });
+                    continue;
+                }
                 available.push(activity);
             }
         }
         return available;
+    }
+
+    /**
+     * @param {Object} options
+     * @returns {boolean}
+     */
+    _isCampForageBlocked(options) {
+        const terrainTag = options.terrainTag ?? "forest";
+        const gate = options.forageActivityGate;
+        if (gate) return !!gate.disabled;
+        return !options.resourcePoolsFromPack
+            || !ForageActivityValidator.hasValidPool(options.resourcePoolRoller, terrainTag);
     }
 
     /**
@@ -499,6 +524,15 @@ export class ActivityResolver {
             }
 
             if (this._meetsPrerequisites(actor, activity.prerequisites)) {
+                if (activity.id === "act_forage" && this._isCampForageBlocked(options)) {
+                    const key = options.forageActivityGate?.disabledReasonKey
+                        ?? "ionrift-respite.travel.forage.requires_pack";
+                    faded.push({
+                        ...activity,
+                        fadedHint: game.i18n.localize(key)
+                    });
+                    continue;
+                }
                 // requiresFire: cooking needs campfire or bonfire (embers counts as lit but not hot enough)
                 if (activity.requiresFire) {
                     if (!fireIsBurning) {

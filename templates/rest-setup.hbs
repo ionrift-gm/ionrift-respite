@@ -261,6 +261,11 @@
         {{#if isGM}}
         <div class="travel-dc-bar">
             {{#if travelContext.canForage}}
+            {{#if travelContext.forageDisabled}}
+            <span class="travel-dc-chip travel-dc-chip--muted" title="{{travelContext.forageDisabledTooltip}}">
+                <i class="fas fa-seedling"></i> Forage unavailable
+            </span>
+            {{else}}
             <span class="travel-dc-chip">
                 <i class="fas fa-seedling"></i> Forage DC {{travelContext.forageDC}}
                 {{#if travelContext.forageGMAdj}}
@@ -271,6 +276,7 @@
                     <button type="button" class="encounter-adj-btn" data-action="adjustGlobalDC" data-activity="forage" data-delta="1" title="Increase Forage DC">+</button>
                 </span>
             </span>
+            {{/if}}
             {{/if}}
             {{#if travelContext.canHunt}}
             <span class="travel-dc-chip">
@@ -346,9 +352,7 @@
                         {{/each}}
                     </div>
                     {{else}}
-                    {{#unless result.success}}
                     <div class="travel-gm-yield-nothing">Nothing found.</div>
-                    {{/unless}}
                     {{/if}}
                     {{/if}}
                     {{#if (eq result.activity 'hunt')}}
@@ -401,7 +405,7 @@
                     <div class="travel-gm-activity-pick">
                     <select class="travel-activity-select" data-actor-id="{{id}}" data-day="{{../day}}">
                         <option value="nothing" {{#if (eq activity 'nothing')}}selected{{/if}}>🏕️ Other</option>
-                        {{#if ../../travelContext.canForage}}<option value="forage" {{#if (eq activity 'forage')}}selected{{/if}}>🌿 Forage</option>{{/if}}
+                        {{#if ../../travelContext.canForage}}<option value="forage" {{#if ../../travelContext.forageDisabled}}disabled title="{{../../travelContext.forageDisabledTooltip}}" class="travel-option-disabled"{{/if}} {{#if (eq activity 'forage')}}selected{{/if}}>🌿 Forage</option>{{/if}}
                         {{#if ../../travelContext.canHunt}}<option value="hunt" {{#if (eq activity 'hunt')}}selected{{/if}}>🎯 Hunt</option>{{/if}}
                         {{#if ../canScout}}<option value="scout" {{#if (eq activity 'scout')}}selected{{/if}}>🔭 Scout</option>{{/if}}
                     </select>
@@ -516,7 +520,7 @@
                     {{#if result.items.length}}
                     <div class="travel-debrief-items">
                         {{#each result.items}}
-                        <span class="travel-item-badge"><i class="fas fa-leaf"></i> {{quantity}}x {{itemData.name}}</span>
+                        <span class="travel-item-badge"><i class="fas fa-leaf"></i> {{quantity}}x {{#if itemData.name}}{{itemData.name}}{{else}}{{itemRef}}{{/if}}</span>
                         {{/each}}
                     </div>
                     {{/if}}
@@ -526,12 +530,21 @@
                     </div>
                     {{/if}}
                     {{#unless result.success}}
-                    {{#unless result.items}}
+                    {{#unless result.items.length}}
                     <div class="travel-debrief-nothing">
                         <span>Nothing found.</span>
                     </div>
                     {{/unless}}
                     {{/unless}}
+                    {{#if result.success}}
+                    {{#if (eq activity 'forage')}}
+                    {{#unless result.items.length}}
+                    <div class="travel-debrief-nothing">
+                        <span>Nothing found.</span>
+                    </div>
+                    {{/unless}}
+                    {{/if}}
+                    {{/if}}
                 </div>
                 {{/each}}
             </div>
@@ -623,7 +636,7 @@
                     {{else}}
                     <select class="travel-player-select" data-actor-id="{{id}}" data-day="{{../day}}">
                         <option value="nothing" {{#if (eq declaration 'nothing')}}selected{{/if}}>🏕️ Other</option>
-                        {{#if ../../travelContext.canForage}}<option value="forage" {{#if (eq declaration 'forage')}}selected{{/if}}>🌿 Forage</option>{{/if}}
+                        {{#if ../../travelContext.canForage}}<option value="forage" {{#if ../../travelContext.forageDisabled}}disabled title="{{../../travelContext.forageDisabledTooltip}}" class="travel-option-disabled"{{/if}} {{#if (eq declaration 'forage')}}selected{{/if}}>🌿 Forage</option>{{/if}}
                         {{#if ../../travelContext.canHunt}}<option value="hunt" {{#if (eq declaration 'hunt')}}selected{{/if}}>🎯 Hunt</option>{{/if}}
                         {{#if ../canScout}}<option value="scout" {{#if (eq declaration 'scout')}}selected{{/if}}>🔭 Scout</option>{{/if}}
                     </select>

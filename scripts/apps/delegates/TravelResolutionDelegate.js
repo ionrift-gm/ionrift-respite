@@ -1,6 +1,7 @@
 import { TravelResolver } from "../../services/TravelResolver.js";
 import { TravelMishapHandler } from "../../services/TravelMishapHandler.js";
 import { TerrainRegistry } from "../../services/TerrainRegistry.js";
+import { ForageActivityValidator } from "../../services/ForageActivityValidator.js";
 
 const MODULE_ID = "ionrift-respite";
 const MAX_TRAVEL_DAYS = 3;
@@ -48,6 +49,9 @@ export class TravelResolutionDelegate {
 
     /** @type {boolean} Whether pools have been loaded. */
     #poolsLoaded = false;
+
+    /** True when resource pools came from an imported content pack (not a local stub). */
+    #resourcePoolsFromPack = false;
 
     /** GM-tweakable DC overrides (null = use default) */
     #forageDCOverride = null;
@@ -161,13 +165,49 @@ export class TravelResolutionDelegate {
     // ── Pool / yield loading ──
 
     /**
-     * Load resource pool data from a content pack.
-     * @param {Object[]} poolData - Array of resource pool definitions.
+     * Load resource pool definitions (merges into the shared roller).
+     * @param {Object[]} poolData
+     * @param {Object} [opts]
+     * @param {boolean} [opts.fromImportedPack=false] - Enables travel/camp forage when pools are drawable.
      */
-    loadPoolsFromData(poolData) {
+    loadPoolsFromData(poolData, { fromImportedPack = false } = {}) {
         if (!Array.isArray(poolData) || !poolData.length) return;
         this.#resolver.loadPools(poolData);
         this.#poolsLoaded = true;
+        if (fromImportedPack) this.#resourcePoolsFromPack = true;
+    }
+
+    /** @returns {boolean} */
+    get resourcePoolsFromPack() {
+        return this.#resourcePoolsFromPack;
+    }
+
+    /** @returns {import("../../services/ResourcePoolRoller.js").ResourcePoolRoller} */
+    getResourcePoolRoller() {
+        return this.#resolver.resourcePoolRoller;
+    }
+
+    /** Terrain tag for forage gating when not passed explicitly (matches RestSetupApp travel context). */
+    _terrainTagForForageGate() {
+        return this.#app?._engine?.terrainTag
+            ?? this.#app?._selectedTerrain
+            ?? "forest";
+    }
+
+    /**
+     * Travel / UI gate for picking Forage (requires imported pack pools and a drawable table).
+     * @param {string} terrainTag
+     * @returns {{ disabled: boolean, disabledReasonKey: string|null }}
+     */
+    getForageGate(terrainTag) {
+        const disabledReasonKey = "ionrift-respite.travel.forage.requires_pack";
+        if (!this.#resourcePoolsFromPack) {
+            return { disabled: true, disabledReasonKey };
+        }
+        if (!ForageActivityValidator.hasValidPool(this.#resolver.resourcePoolRoller, terrainTag)) {
+            return { disabled: true, disabledReasonKey };
+        }
+        return { disabled: false, disabledReasonKey: null };
     }
 
     /**
@@ -184,6 +224,7 @@ export class TravelResolutionDelegate {
      */
     resetPools() {
         this.#poolsLoaded = false;
+        this.#resourcePoolsFromPack = false;
     }
 
     /** @returns {boolean} true if pool data has been loaded. */
@@ -212,6 +253,9 @@ export class TravelResolutionDelegate {
 
     setDeclaration(actorId, activity, day = null) {
         const d = day ?? this.#activeDay;
+        if (activity === "forage" && this.getForageGate(this._terrainTagForForageGate()).disabled) {
+            return;
+        }
         const existing = this._getEntry(d, actorId);
         if (existing
             && existing.activity === "nothing"
@@ -301,6 +345,10 @@ export class TravelResolutionDelegate {
         }
 
         if (entry.activity === "nothing") return null;
+
+        if (entry.activity === "forage" && this.getForageGate(this._terrainTagForForageGate()).disabled) {
+            return null;
+        }
 
         return {
             actorId, day: d,
@@ -488,6 +536,10 @@ export class TravelResolutionDelegate {
             });
         }
 
+        const forageGate = this.getForageGate(terrainTag);
+        const forageDisabled = canForage && forageGate.disabled;
+        const forageDisabledReasonKey = forageDisabled ? forageGate.disabledReasonKey : null;
+
         return {
             days,
             totalDays: this.#totalDays,
@@ -506,6 +558,11 @@ export class TravelResolutionDelegate {
             scoutingResult: this.#scoutingResult,
             forageDC: this.forageDC,
             huntDC: this.huntDC,
+            forageDisabled,
+            forageDisabledReasonKey,
+            forageDisabledTooltip: forageDisabledReasonKey
+                ? game.i18n.localize(forageDisabledReasonKey)
+                : null,
             forageGMAdj: this.#forageDCOverride !== null
                 ? ((this.forageDC - TravelResolver.FORAGE_DC >= 0 ? "+" : "") + (this.forageDC - TravelResolver.FORAGE_DC))
                 : null,
@@ -793,6 +850,7 @@ export class TravelResolutionDelegate {
                         total: e.result.total,
                         dc: e.result.dc,
                         items: e.result.items,
+                        warningKey: e.result.warningKey ?? null,
                         mishap: e.result.mishap
                             ? {
                                 type: e.result.mishap.type,

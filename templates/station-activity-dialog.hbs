@@ -220,7 +220,7 @@
                 <div class="feast-roster-portraits">
                     {{#each crafting.craftingResult.partyRoster}}
                     <div class="feast-portrait {{#if alreadyWellFed}}already-fed{{else}}will-eat{{/if}}"
-                         title="{{name}}{{#if alreadyWellFed}} — already Well Fed, goes to inventory{{else}} — will eat now{{/if}}">
+                         title="{{name}}{{#if alreadyWellFed}}: already Well Fed, goes to inventory{{else}}: will eat now{{/if}}">
                         <img src="{{img}}" alt="{{name}}" class="feast-portrait-img">
                         <span class="feast-portrait-badge">
                             {{#if alreadyWellFed}}
@@ -989,7 +989,7 @@
     <div class="station-identify-embed wb-ident-party-list-tab">
         {{#if unidentifiedItemsByOwner.length}}
         <div class="wb-ident-pool-heading">
-            <i class="fas fa-hat-wizard"></i> Cast Identify — select an item
+            <i class="fas fa-hat-wizard"></i> Cast Identify: select an item
         </div>
         {{#each unidentifiedItemsByOwner}}
         <div class="wb-ident-owner-group">
@@ -998,7 +998,7 @@
             <button type="button" class="wb-ident-pool-row wb-ident-pool-btn"
                  data-action="identifyPoolItem"
                  data-item-actor-id="{{actorId}}" data-item-id="{{itemId}}"
-                 title="Identify {{name}} — owned by {{actorName}}">
+                 title="Identify {{name}}: owned by {{actorName}}">
                 <img src="{{img}}" alt="" class="wb-ident-pool-icon"
                      onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
                 <span class="wb-ident-pool-name">{{name}}</span>

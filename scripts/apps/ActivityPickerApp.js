@@ -74,6 +74,13 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
 
         const rawTag = this._restData.terrainTag ?? "unknown";
         const terrainLabel = rawTag.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" / ");
+        const terrainTag = this._restData.terrainTag ?? "forest";
+        const forageOpts = {
+            forageActivityGate: this._restData.forageActivityGate,
+            terrainTag,
+            resourcePoolsFromPack: false,
+            resourcePoolRoller: null
+        };
         return {
             terrain: terrainLabel,
             comfort: this._restData.comfort,
@@ -84,7 +91,7 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 id: a.id,
                 name: a.name,
                 img: a.img || "icons/svg/mystery-man.svg",
-                activities: resolver.getAvailableActivities(a, this._restData.restType).map(act => ({
+                activities: resolver.getAvailableActivities(a, this._restData.restType, forageOpts).map(act => ({
                     ...act,
                     isCrafting: act.crafting?.enabled ?? false,
                     craftingProfession: act.crafting?.profession ?? null
@@ -216,6 +223,13 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
             }
             // Validate follow-up is set for Tier 2 activities
             const activityId = this._choices.get(actor.id);
+            if (activityId === "act_forage" && this._restData.forageActivityGate?.disabled) {
+                ui.notifications.warn(game.i18n.localize(
+                    this._restData.forageActivityGate.disabledReasonKey
+                        ?? "ionrift-respite.travel.forage.requires_pack"
+                ));
+                return;
+            }
             const activity = this._restData.activities?.find(a => a.id === activityId);
             if (activity?.followUp && !this._followUps.get(actor.id)) {
                 ui.notifications.warn(`${actor.name}: ${activity.followUp.label}`);

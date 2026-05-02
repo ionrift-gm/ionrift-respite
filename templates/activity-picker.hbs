@@ -36,6 +36,7 @@
                     <option value="">Choose activity...</option>
                     {{#each activities}}
                     <option value="{{id}}" {{#if (eq id ../currentChoice)}}selected{{/if}}
+                        {{#if activityDisabled}}disabled title="{{disabledTooltip}}" class="activity-option-disabled"{{/if}}
                         data-crafting="{{isCrafting}}" data-profession="{{craftingProfession}}"
                         data-combat-hint="{{combatModifiers.description}}">
                         {{name}} {{#if isCrafting}}(recipes){{/if}}
