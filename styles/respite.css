@@ -6669,14 +6669,34 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     border-left-color: rgba(100, 160, 255, 0.15);
 }
 
-/* Detect Magic: toolbar row right-aligned; GM label uses \n before "(" (see RestConstants). */
-.station-identify-toolbar {
+/* Detect Magic: toolbar row (empty — button moved to footer toolbar). */
+.station-identify-toolbar { display: none; }
+
+/* ---- Identify Footer Toolbar ---- */
+.wb-ident-footer-toolbar {
     display: flex;
-    flex-direction: row;
-    justify-content: flex-end;
-    align-items: flex-start;
-    width: 100%;
-    margin-bottom: 0.55rem;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 0.4rem;
+}
+/* Two-class selector beats .ionrift-station-dialog .station-meal-submit-row (0,2,0) */
+.ionrift-station-dialog .wb-ident-submit-row.wb-ident-footer-toolbar,
+.short-rest-container .wb-ident-footer-toolbar {
+    justify-content: space-between;
+    align-items: center;
+}
+.wb-ident-footer-toolbar .btn-detect-magic {
+    align-items: center;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    max-width: none;
+}
+.wb-ident-footer-toolbar .btn-detect-magic:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    filter: grayscale(0.6);
 }
 
 .btn-detect-magic {
@@ -8813,6 +8833,28 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     color: rgba(255, 255, 255, 0.4);
     text-align: center;
     margin: 0;
+}
+
+.station-choice-locked {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.6rem 0.75rem;
+    margin: 0.35rem 0.2rem;
+    font-size: 0.72rem;
+    color: rgba(126, 184, 218, 0.85);
+    background: rgba(126, 184, 218, 0.06);
+    border: 1px solid rgba(126, 184, 218, 0.15);
+    border-radius: 4px;
+}
+
+.station-choice-locked i {
+    flex-shrink: 0;
+    color: rgba(126, 184, 218, 0.65);
+}
+
+.station-choice-locked strong {
+    color: rgba(255, 255, 255, 0.9);
 }
 
 /* ---- Station Dialog: Detail + Result panels ---- */
@@ -11846,6 +11888,7 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     display: flex; flex-direction: column; align-items: center; gap: 0.35rem;
     padding: 0.5rem 0.4rem 0.4rem; border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.02);
+    min-width: 0;
 }
 
 .food-panel { border-color: rgba(255, 200, 80, 0.12); }
@@ -11855,7 +11898,7 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 .food-panel .panel-label { color: rgba(255, 200, 80, 0.6); }
 .water-panel .panel-label { color: rgba(100, 180, 255, 0.6); }
 
-.meal-drop-zone { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.25s ease; position: relative; }
+.meal-drop-zone { width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.25s ease; position: relative; }
 .food-drop-zone { border: 2px dashed rgba(255, 200, 80, 0.2); background: rgba(255, 200, 80, 0.03); }
 .water-drop-zone { border: 2px dashed rgba(100, 180, 255, 0.2); background: rgba(100, 180, 255, 0.03); }
 
@@ -11868,6 +11911,7 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 /* ---- Rectangular Drop Zones (Station Dialog) ---- */
 .meal-drop-zone.meal-drop-zone-rect {
     width: 100%;
+    min-width: 0;
     height: auto;
     min-height: 56px;
     border-radius: 8px;
@@ -11880,6 +11924,8 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 .meal-drop-zone-rect .drop-zone-silhouette {
     flex-direction: row;
     gap: 0.5rem;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .meal-drop-zone-rect .drop-zone-add-icon {
@@ -11914,11 +11960,12 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     transform: scale(1.02);
 }
 
-/* ---- Plates/Goblets Row (Rectangle layout) ---- */
+/* ---- Plates/Goblets Row (Circle layout) ---- */
 .ionrift-station-dialog .food-plates-row,
 .ionrift-station-dialog .water-goblets-row {
-    flex-direction: column;
-    gap: 0.35rem;
+    flex-direction: row;
+    gap: 0.5rem;
+    justify-content: center;
 }
 
 .ionrift-station-dialog .food-plate-slot,
@@ -11934,12 +11981,59 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
     margin-top: 0.3rem;
+    padding-right: 0.35rem;
 }
+/* Themed scrollbars per panel */
+.food-panel .meal-inventory-tray-scroll {
+    scrollbar-color: rgba(255, 200, 80, 0.35) rgba(255, 200, 80, 0.05);
+}
+.food-panel .meal-inventory-tray-scroll::-webkit-scrollbar { width: 4px; }
+.food-panel .meal-inventory-tray-scroll::-webkit-scrollbar-track { background: rgba(255, 200, 80, 0.05); border-radius: 2px; }
+.food-panel .meal-inventory-tray-scroll::-webkit-scrollbar-thumb { background: rgba(255, 200, 80, 0.35); border-radius: 2px; }
+.food-panel .meal-inventory-tray-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 200, 80, 0.55); }
 
-.drop-zone-silhouette { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
-.drop-zone-plate { font-size: 1.4rem; color: rgba(255, 200, 80, 0.18); }
-.drop-zone-goblet { font-size: 1.4rem; color: rgba(100, 180, 255, 0.18); }
-.drop-zone-item-icon { width: 36px; height: 36px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(255, 220, 130, 0.4)); }
+.water-panel .meal-inventory-tray-scroll {
+    scrollbar-color: rgba(100, 180, 255, 0.35) rgba(100, 180, 255, 0.05);
+}
+.water-panel .meal-inventory-tray-scroll::-webkit-scrollbar { width: 4px; }
+.water-panel .meal-inventory-tray-scroll::-webkit-scrollbar-track { background: rgba(100, 180, 255, 0.05); border-radius: 2px; }
+.water-panel .meal-inventory-tray-scroll::-webkit-scrollbar-thumb { background: rgba(100, 180, 255, 0.35); border-radius: 2px; }
+.water-panel .meal-inventory-tray-scroll::-webkit-scrollbar-thumb:hover { background: rgba(100, 180, 255, 0.55); }
+
+.drop-zone-silhouette { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; pointer-events: none; }
+.drop-zone-plate { font-size: 2rem; color: rgba(255, 200, 80, 0.18); pointer-events: none; }
+.drop-zone-goblet { font-size: 2rem; color: rgba(100, 180, 255, 0.18); pointer-events: none; }
+.drop-zone-item-icon { pointer-events: none; }
+.drop-zone-item-label { pointer-events: none; }
+.drop-zone-add-icon { pointer-events: none; }
+.drop-zone-hint { pointer-events: none; }
+.drop-zone-item-icon { width: 48px; height: 48px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(255, 220, 130, 0.4)); }
+
+/* ---- Drop Zone Caption (right of circle when filled) ---- */
+.drop-zone-caption {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+    pointer-events: none;
+}
+.drop-zone-caption-name {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    text-align: left;
+    line-height: 1.2;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.food-plate-slot .drop-zone-caption-qty { color: rgba(255, 200, 80, 0.7); }
+.water-goblet-slot .drop-zone-caption-qty { color: rgba(100, 180, 255, 0.7); }
+.drop-zone-caption-qty {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.5);
+}
 
 .panel-item-name { font-size: 0.65rem; color: rgba(255, 255, 255, 0.6); text-align: center; min-height: 1em; line-height: 1.2; }
 .panel-empty-hint { color: rgba(255, 255, 255, 0.2); font-style: italic; }
@@ -11957,6 +12051,83 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 .meal-inv-item.dragging { opacity: 0.35; transform: scale(0.9); }
 .meal-inv-icon { width: 16px; height: 16px; object-fit: contain; }
 .meal-inv-qty { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 72px; }
+.serve-party-btn {
+    background: none; border: none; padding: 2px 3px; margin-left: 1px;
+    color: var(--ionrift-accent, #7ec8e3); cursor: pointer; font-size: 0.7rem;
+    opacity: 0.65; transition: opacity 0.15s, color 0.15s; line-height: 1;
+    flex-shrink: 0;
+}
+.serve-party-btn:hover { opacity: 1; color: var(--ionrift-accent-hover, #a5ddf5); }
+
+/* ---- Grid Card Inventory (Station Dialog) ---- */
+.meal-inventory-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem;
+    padding: 0.25rem 0;
+    width: 100%;
+}
+.meal-inv-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.4rem 0.3rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: grab;
+    transition: all 0.15s;
+    position: relative;
+    min-height: 60px;
+}
+.meal-inv-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.18);
+    transform: translateY(-1px);
+}
+.meal-inv-card.dragging { opacity: 0.35; transform: scale(0.9); }
+.meal-inv-card-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 4px rgba(255, 220, 130, 0.3));
+    pointer-events: none;
+    user-select: none;
+}
+.meal-inv-card-qty {
+    position: absolute;
+    top: 0.2rem;
+    right: 0.3rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.6);
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.05rem 0.25rem;
+    border-radius: 4px;
+    pointer-events: none;
+}
+.meal-inv-card-name {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+    line-height: 1.2;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    pointer-events: none;
+    user-select: none;
+}
+.meal-inv-card .serve-party-btn { position: absolute; bottom: 0.2rem; right: 0.2rem; }
+.food-tray .meal-inv-card { border-color: rgba(255, 200, 80, 0.1); }
+.food-tray .meal-inv-card:hover { border-color: rgba(255, 200, 80, 0.25); }
+.water-tray .meal-inv-card { border-color: rgba(100, 180, 255, 0.1); }
+.water-tray .meal-inv-card:hover { border-color: rgba(100, 180, 255, 0.25); }
+/* Center a lone card across both columns */
+.meal-inventory-grid .meal-inv-card:only-child { grid-column: 1 / -1; }
 
 /* ---- Advisory banners ---- */
 .meal-advisory { font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 4px; margin-top: 0.15rem; display: flex; align-items: center; gap: 0.35rem; }
@@ -12009,9 +12180,9 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 .panel-no-inventory span { font-size: 0.65rem; font-style: italic; }
 
 .water-goblets-row { display: flex; gap: 0.5rem; justify-content: center; align-items: center; }
-.water-goblet-slot { display: flex; flex-direction: column; align-items: center; }
+.water-goblet-slot { display: flex; flex-direction: row; align-items: center; gap: 0.5rem; }
 .food-plates-row { display: flex; gap: 0.5rem; justify-content: center; align-items: center; }
-.food-plate-slot { display: flex; flex-direction: column; align-items: center; }
+.food-plate-slot { display: flex; flex-direction: row; align-items: center; gap: 0.5rem; }
 
 .activity-phase-layout > .respite-meal-phase { flex: 1 1 auto; min-width: 0; overflow-y: auto; max-height: calc(100vh - 280px); }
 
@@ -17275,6 +17446,24 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     color: rgba(200, 180, 255, 1);
 }
 
+/* ---- Inventory Context Menu: Consume Entries ---- */
+
+.respite-context-icon {
+    color: var(--ionrift-accent, #b388ff) !important;
+}
+
+/* Well Fed summary in consume chat card */
+.respite-well-fed-summary {
+    font-size: 0.82rem;
+    color: rgba(212, 175, 55, 0.9);
+    margin-top: 0.25rem;
+}
+
+.respite-well-fed-summary i {
+    color: rgba(212, 175, 55, 0.8);
+    margin-right: 0.2rem;
+}
+
 /* ---- Ionrift-themed DialogV2 confirm overrides ---- */
 
 .ionrift-window.dialog .window-content {
@@ -18412,4 +18601,282 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 }
 .application.ionrift-campfire-map-dialog .camp-fire-tier-cost {
     font-size: 0.58rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CRAFTING RESULT HERO PANEL
+   ═══════════════════════════════════════════════════════════════════ */
+
+.crafting-result-hero {
+    padding: 1.2rem 1rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.3);
+    text-align: center;
+}
+
+.crafting-result-hero.result-success {
+    border-left: 3px solid rgba(74, 222, 128, 0.6);
+    background: linear-gradient(135deg, rgba(74, 222, 128, 0.04), rgba(0, 0, 0, 0.3));
+}
+
+.crafting-result-hero.result-failure {
+    border-left: 3px solid rgba(248, 113, 113, 0.6);
+    background: linear-gradient(135deg, rgba(248, 113, 113, 0.04), rgba(0, 0, 0, 0.3));
+}
+
+/* Hero Section */
+.craft-result-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 0.75rem;
+}
+
+.craft-result-icon-wrap {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.craft-result-icon-wrap.glow-success {
+    background: radial-gradient(circle, rgba(74, 222, 128, 0.15) 0%, transparent 70%);
+    box-shadow: 0 0 30px rgba(74, 222, 128, 0.2), 0 0 60px rgba(74, 222, 128, 0.06);
+}
+
+.craft-result-icon-wrap.glow-failure {
+    background: radial-gradient(circle, rgba(248, 113, 113, 0.12) 0%, transparent 70%);
+    box-shadow: 0 0 30px rgba(248, 113, 113, 0.15), 0 0 60px rgba(248, 113, 113, 0.05);
+}
+
+.craft-result-icon {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    border-radius: 6px;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+.craft-result-fail-icon {
+    font-size: 2rem;
+    color: rgba(248, 113, 113, 0.6);
+}
+
+.craft-result-item-name {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.92);
+    letter-spacing: 0.01em;
+}
+
+.craft-result-qty {
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.9rem;
+}
+
+/* Success / Failure Badge */
+.craft-result-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.craft-result-badge.badge-success {
+    background: rgba(74, 222, 128, 0.12);
+    border: 1px solid rgba(74, 222, 128, 0.35);
+    color: rgba(74, 222, 128, 0.95);
+    box-shadow: 0 0 12px rgba(74, 222, 128, 0.15);
+}
+
+.craft-result-badge.badge-failure {
+    background: rgba(248, 113, 113, 0.10);
+    border: 1px solid rgba(248, 113, 113, 0.30);
+    color: rgba(248, 113, 113, 0.90);
+    box-shadow: 0 0 12px rgba(248, 113, 113, 0.12);
+}
+
+/* Divider */
+.craft-result-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+    margin: 0.1rem 1rem;
+}
+
+/* Detail Rows */
+.craft-result-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.75rem 1rem 0.25rem;
+}
+
+.craft-result-detail-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.craft-result-detail-row i {
+    width: 1rem;
+    text-align: center;
+    font-size: 0.7rem;
+    opacity: 0.5;
+}
+
+.craft-result-detail-row strong {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.craft-result-detail-row.narrative {
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.craft-result-detail-row.consumed {
+    color: rgba(255, 180, 100, 0.7);
+}
+
+.craft-result-detail-row.consumed i {
+    color: rgba(255, 150, 50, 0.6);
+    opacity: 1;
+}
+
+.craft-result-detail-row.preserved {
+    color: rgba(100, 200, 150, 0.7);
+}
+
+.craft-result-detail-row.preserved i {
+    color: rgba(100, 200, 150, 0.6);
+    opacity: 1;
+}
+
+/* ---- Horizontal drop zone header (Rations tab) ---- */
+.meal-drop-header-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem;
+}
+.meal-drop-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+.meal-drop-item-name {
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+}
+.meal-drop-item-qty {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+.meal-drop-hint-text {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+}
+
+/* ---- Feast Success Screen ---- */
+.feast-roster-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0;
+}
+.feast-roster-portraits {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.feast-portrait {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: visible;
+}
+.feast-portrait-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid transparent;
+}
+.feast-portrait.will-eat .feast-portrait-img {
+    border-color: #FFC850;
+    box-shadow: 0 0 6px rgba(255, 200, 80, 0.4);
+}
+.feast-portrait.already-fed .feast-portrait-img {
+    border-color: rgba(100, 255, 150, 0.5);
+    filter: brightness(0.7);
+}
+.feast-portrait-badge {
+    position: absolute;
+    bottom: -3px;
+    right: -3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.5rem;
+}
+.feast-portrait.will-eat .feast-portrait-badge {
+    background: #FFC850;
+    color: #1a1a2e;
+}
+.feast-portrait.already-fed .feast-portrait-badge {
+    background: rgba(100, 255, 150, 0.6);
+    color: #1a1a2e;
+}
+.feast-roster-label {
+    font-size: 0.72rem;
+    color: #FFC850;
+    font-weight: 600;
+}
+
+/* ---- Feast footer actions ---- */
+.feast-footer-actions {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem 0.25rem;
+    justify-content: stretch;
+}
+.feast-keep-btn {
+    flex: 1;
+}
+.btn-feast-serve {
+    flex: 1;
+    background: linear-gradient(135deg, #FFC850 0%, #e6a830 100%);
+    color: #1a1a2e;
+    font-weight: 700;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: 0 0 12px rgba(255, 200, 80, 0.3);
+}
+.btn-feast-serve:hover {
+    background: linear-gradient(135deg, #FFD870 0%, #FFC850 100%);
+    box-shadow: 0 0 18px rgba(255, 200, 80, 0.5);
+    transform: translateY(-1px);
 }

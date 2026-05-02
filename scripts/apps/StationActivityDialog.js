@@ -15,9 +15,10 @@ import {
     DETECT_MAGIC_BTN_LABEL_DISMISS,
     DETECT_MAGIC_BTN_TITLE_GM
 } from "./RestConstants.js";
-import { computeCanShowDetectMagicScanButton, spawnDetectMagicCastRipple } from "./delegates/DetectMagicDelegate.js";
-import { canPlaceStation } from "../services/CompoundCampPlacer.js";
+import { computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple } from "./delegates/DetectMagicDelegate.js";
+import { canPlaceStation, actorHasBrewingTools } from "../services/CompoundCampPlacer.js";
 import { getPartyActors } from "../services/partyActors.js";
+import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
 
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -95,7 +96,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             craftSelectRisk: StationActivityDialog.#onCraftSelectRisk,
             craftCommit: StationActivityDialog.#onCraftCommit,
             craftToggleMissing: StationActivityDialog.#onCraftToggleMissing,
-            craftClose: StationActivityDialog.#onCraftClose
+            craftClose: StationActivityDialog.#onCraftClose,
+            serveToParty: StationActivityDialog.#onServeToParty,
+            feastServeNow: StationActivityDialog.#onFeastServeNow
         }
     };
 
@@ -136,7 +139,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         cookingAvailable = [],
         cookingFaded = [],
         actorHasCookingUtensils = false,
-        stationHasCooking = true
+        stationHasCooking = true,
+        actorChoiceLocked = null
     } = {}, appOptions = {}) {
         super(appOptions);
         this._station          = station;
@@ -149,6 +153,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         this._stationHasCooking = !!stationHasCooking;
         /** Per-actor: cook's utensils unlock the Cooking tab at the cooking station. */
         this._actorHasCookingUtensils = !!actorHasCookingUtensils;
+        this._actorChoiceLocked = actorChoiceLocked ?? null;
         this._showStationTabs  = !!showStationTabs;
         this._stationPanelTab  = initialStationTab || "activity";
         this._restSession      = restSession ?? {};
@@ -322,6 +327,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             cookingActivities: [...cookActItems, ...cookFaded],
             hasCookingAny:    cookActItems.length > 0,
             actorHasCookingUtensils: this._actorHasCookingUtensils,
+            actorChoiceLocked: this._actorChoiceLocked,
             showStationTabs,
             showTabBar,
             stationTabs,
@@ -337,6 +343,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             hideNoActivitiesMessage: this._station?.id === "campfire",
             isGmUser:           !!game.user?.isGM,
             canShowDetectMagicScanButton: computeCanShowDetectMagicScanButton(getPartyActors()),
+            canTriggerDetectMagicScan: computeCanTriggerDetectMagicScan(getPartyActors()),
             detectMagicScanButtonLabel: this._restApp?._magicScanComplete
                 ? DETECT_MAGIC_BTN_LABEL_DISMISS
                 : (game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER),
@@ -681,7 +688,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         const available = status.available.map(r => enrichRecipe(r));
         const partial = status.partial.map(r => enrichRecipe(r));
-        const selectedRecipe = available.find(r => r.id === this._craftRecipeId);
+        const selectedRecipe = available.find(r => r.id === this._craftRecipeId)
+            ?? partial.find(r => r.id === this._craftRecipeId);
 
         let commitSummary = null;
         if (selectedRecipe && !this._craftHasCrafted) {
@@ -737,7 +745,16 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 selectedRecipe: selectedRecipe ?? null,
                 isAmbitiousSelected: this._craftRisk === "ambitious",
                 commitSummary,
-                craftingResult: this._craftResult
+                craftingResult: this._craftResult ? {
+                    ...this._craftResult,
+                    isPartyMeal: !!(selectedRecipe?.isPartyMeal ?? false),
+                    partyRoster: getPartyActors().map(a => ({
+                        id: a.id,
+                        name: a.name,
+                        img: a.img || "icons/svg/mystery-man.svg",
+                        alreadyWellFed: a.effects?.some(e => e.flags?.[MODULE_ID]?.wellFed === true) ?? false
+                    }))
+                } : null
             }
         };
     }
@@ -1087,6 +1104,88 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         await this.render(true);
     }
 
+    static async #onServeToParty(event, target) {
+        const itemId = target.dataset.itemId;
+        const actorId = target.dataset.actorId;
+        if (!itemId || !actorId) return;
+
+        const cookActor = game.actors.get(actorId);
+        if (!cookActor) return;
+
+        if (!game.user.isGM && !cookActor.isOwner) {
+            ui.notifications.warn("Only the GM or the cook's player can serve party meals.");
+            return;
+        }
+
+        const sourceItem = cookActor.items.get(itemId);
+        if (!sourceItem) return;
+
+        const partyActors = getPartyActors().filter(a => a.id !== actorId);
+        if (!partyActors.length) {
+            ui.notifications.warn("No other party members to serve.");
+            return;
+        }
+
+        const qty = sourceItem.system?.quantity ?? 1;
+        const servings = Math.min(qty, partyActors.length);
+        const recipients = partyActors.slice(0, servings);
+
+        if (servings < partyActors.length) {
+            console.warn(`[Respite:Serve] Only ${servings} serving${servings !== 1 ? "s" : ""} available — not enough for the full party (${partyActors.length} members).`);
+            ui.notifications.warn(`Only ${servings} serving${servings !== 1 ? "s" : ""} available. Not enough for the full party.`);
+        }
+
+        const itemData = sourceItem.toObject();
+        itemData.system = { ...itemData.system, quantity: 1 };
+        delete itemData._id;
+
+        for (const recipient of recipients) {
+            await recipient.createEmbeddedDocuments("Item", [itemData]);
+        }
+
+        if (qty - servings > 0) {
+            await sourceItem.update({ "system.quantity": qty - servings });
+        } else {
+            await cookActor.deleteEmbeddedDocuments("Item", [itemId]);
+        }
+
+        await ChatMessage.create({
+            content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>${cookActor.name}</strong> serves <strong>${sourceItem.name}</strong> to the party.</p></div>`,
+            speaker: ChatMessage.getSpeaker({ actor: cookActor })
+        });
+
+        notifyStationMealChoicesUpdated();
+        await this.render(true);
+    }
+
+    static async #onFeastServeNow() {
+        const craftResult = this._craftResult;
+        if (!craftResult?.output) return;
+
+        const actor = game.actors.get(this._actor?.id);
+        if (!actor) return;
+
+        const item = actor.items?.find(i =>
+            i.name === craftResult.output?.name
+            && i.flags?.[MODULE_ID]?.partyMeal === true
+        );
+        if (!item) {
+            ui.notifications.warn("Could not find the feast item in inventory.");
+            return;
+        }
+
+        const partyIds = getPartyActors().map(a => a.id);
+        const snapshot = item.toObject(false);
+        await MealPhaseHandler._dispatchWellFedMealServing({
+            consumerActor: actor,
+            itemSnapshot: snapshot,
+            partyIds
+        });
+        await MealPhaseHandler._consumeItem(actor, item.id, 1);
+        ui.notifications.info(`${actor.name} serves ${craftResult.output.name} to the party!`);
+        this.render();
+    }
+
     _onRender(context, options) {
         super._onRender?.(context, options);
         this._attachTrackers();
@@ -1384,9 +1483,16 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         let available = allAvail.filter(a => stationIds.has(a.id));
         let faded     = allFaded.filter(a => stationIds.has(a.id));
 
-        // One rest activity per character. Resolver lists are non-minor only; once a choice
-        // exists, do not offer another major pick from this station (e.g. Other after Tales).
+        // One rest activity per character. When a choice already exists, blank the
+        // activity lists but record what was chosen so the template can show a
+        // helpful "already picked" message instead of a generic empty state.
+        // Rations and workbench Identify tabs remain accessible.
+        let actorChoiceLocked = null;
         if (actor?.id && restApp?._characterChoices?.has(actor.id)) {
+            const chosenId = restApp._characterChoices.get(actor.id);
+            const resolver = restApp._activityResolver;
+            const chosenAct = resolver?.activities?.get(chosenId);
+            actorChoiceLocked = chosenAct?.name ?? chosenId;
             available = [];
             faded = [];
         }
@@ -1410,7 +1516,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             ? !!(stationToken?.document?.flags?.[MODULE_ID]?.partyHasCookingUtensils)
             : true;
         const actorHasCookingUtensils = stationHasCooking && station.id === "cooking_station" && actor
-            ? canPlaceStation(actor, "cookingArea")
+            ? (canPlaceStation(actor, "cookingArea") || actorHasBrewingTools(actor))
             : false;
         const cookingAvailable = available.filter(a => COOK_ACTIVITY_IDS.has(a.id));
         const cookingFaded     = faded.filter(a => COOK_ACTIVITY_IDS.has(a.id));
@@ -1475,7 +1581,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 restApp,
                 canvasStationId: sid,
                 partyState,
-                stationToken
+                stationToken,
+                actorChoiceLocked
             },
             {
                 position: { left, top, width: dialogWidth },
