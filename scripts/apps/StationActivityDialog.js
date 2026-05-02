@@ -650,7 +650,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         };
 
         const terrainTag = this._restApp?._engine?.terrainTag ?? this._restApp?._restData?.terrainTag ?? null;
-        const status = engine.getRecipeStatus(actor, professionId, terrainTag);
+        const partySize = getPartyActors().length;
+        const status = engine.getRecipeStatus(actor, professionId, terrainTag, partySize);
 
         const enrichRecipe = (recipe) => {
             const adjustedDc = engine.getAdjustedCraftingDc(actor, recipe, this._craftRisk, terrainTag);
@@ -913,8 +914,13 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         if (!engine || !actor) return;
 
         const terrainTag = this._restApp?._engine?.terrainTag ?? this._restApp?._restData?.terrainTag ?? null;
+        const allRecipes = engine.recipes?.get(this._craftProfession) ?? [];
+        const craftRecipe = allRecipes.find(r => r.id === this._craftRecipeId);
+        const partySize = craftRecipe?.outputFlags?.["ionrift-respite"]?.partyMeal
+            ? getPartyActors().length
+            : 1;
         this._craftResult = await engine.resolve(
-            actor, this._craftRecipeId, this._craftProfession, this._craftRisk, terrainTag
+            actor, this._craftRecipeId, this._craftProfession, this._craftRisk, terrainTag, partySize
         );
         this._craftHasCrafted = true;
         this.render();

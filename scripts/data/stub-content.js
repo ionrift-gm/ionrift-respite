@@ -261,7 +261,7 @@ export const STUB_RECIPES = {
             skill: "sur",
             dc: 12,
             ingredients: [
-                { name: "Rations", quantity: 1 },
+                { name: "Rations", quantity: 1, perPartyMember: true },
                 { name: "Fresh Meat", quantity: 1 },
                 { name: "Waterskin", quantity: 1 }
             ],
@@ -270,7 +270,7 @@ export const STUB_RECIPES = {
                 type: "consumable",
                 quantity: 1,
                 img: "icons/consumables/food/bowl-stew-brown.webp",
-                description: "<p>A thick stew made with fresh game meat. Counts as a meal. Restores 2 hit points when consumed during a rest.</p>",
+                description: "<p>A thick stew made with fresh game meat. Counts as a meal that feeds the whole party.</p>",
                 rarity: "common",
                 system: { type: { value: "food", subtype: "" } }
             },
@@ -279,7 +279,7 @@ export const STUB_RECIPES = {
                 type: "consumable",
                 quantity: 1,
                 img: "icons/consumables/food/bowl-stew-brown.webp",
-                description: "<p>A rich, aromatic stew slow-cooked with care. Restores 3 hit points when consumed during a rest.</p>",
+                description: "<p>A rich, aromatic stew slow-cooked with care.</p>",
                 rarity: "uncommon",
                 system: { type: { value: "food", subtype: "" } }
             },
