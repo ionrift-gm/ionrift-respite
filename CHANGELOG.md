@@ -30,6 +30,8 @@
 - Dual rest-bar rendering on player clients is fixed.
 - Artificer class-name detection guard now handles edge cases correctly.
 - Characters not participating in the rest no longer receive meal or dehydration save prompts.
+- Perfect Campsite now triggers on a natural 20 only, not a modified total of 20.
+- Encounter DC modifier no longer shows contradictory values in the UI.
 
 ## [1.2.2] - 2026-04-20
 
