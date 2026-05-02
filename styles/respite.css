@@ -6684,6 +6684,7 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     align-items: flex-start;
     gap: 0.35rem;
     box-sizing: border-box;
+    position: relative;
     width: auto;
     max-width: 11.5rem;
     height: auto !important;
@@ -6714,15 +6715,18 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     overflow-wrap: anywhere;
 }
 
-@keyframes dm-scan-breathe {
-    0%, 100% { box-shadow: 0 0 4px rgba(160, 120, 220, 0.35); }
-    50%       { box-shadow: 0 0 14px rgba(160, 120, 220, 0.8), 0 0 28px rgba(140, 100, 210, 0.2); }
+/* Expanding ring emitted from button center, appended to document.body as .dm-cast-ripple */
+@keyframes dm-ripple-expand {
+    0%   { transform: translate(-50%, -50%) scale(1);  opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(20); opacity: 0; }
 }
 
-@keyframes dm-cast-burst {
-    0%   { transform: scale(1);    box-shadow: 0 0 0 rgba(210, 170, 255, 0); }
-    45%  { transform: scale(1.07); box-shadow: 0 0 18px rgba(210, 170, 255, 0.85); }
-    100% { transform: scale(1);    box-shadow: 0 0 6px rgba(160, 120, 220, 0.5); }
+/* Scan-sweep highlight that slides left-to-right across the active button */
+@keyframes dm-scan-sweep {
+    0%   { transform: translateX(-100%); opacity: 0; }
+    15%  { opacity: 1; }
+    85%  { opacity: 1; }
+    100% { transform: translateX(250%);  opacity: 0; }
 }
 
 .btn-detect-magic:hover {
@@ -6731,24 +6735,51 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 }
 
 .btn-detect-magic.is-active {
-    background: rgba(160, 120, 220, 0.28);
+    background: rgba(160, 120, 220, 0.25);
     border-color: rgba(180, 140, 240, 0.65);
     color: #d4b0ff;
-    animation: dm-scan-breathe 3.5s ease-in-out infinite;
+    overflow: hidden;
+}
+
+/* Slow scan-line sweep; overflow:hidden on parent clips it to the button bounds */
+.btn-detect-magic.is-active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(220, 180, 255, 0.4) 50%,
+        transparent 100%
+    );
+    pointer-events: none;
+    animation: dm-scan-sweep 3.5s ease-in-out infinite;
+    animation-delay: 0.5s;
 }
 
 .btn-detect-magic.is-active:hover {
-    background: rgba(160, 120, 220, 0.38);
+    background: rgba(160, 120, 220, 0.32);
     color: #e0c8ff;
 }
 
+/* Block double-clicks while the cast resolves; visual is the .dm-cast-ripple spans */
 .btn-detect-magic.is-casting {
-    animation: dm-cast-burst 0.22s ease-out forwards;
     pointer-events: none;
 }
 
-.btn-detect-magic.is-active.is-casting {
-    animation: dm-cast-burst 0.22s ease-out forwards;
+/* Fixed-position ring appended to body on cast so it survives the app re-render */
+.dm-cast-ripple {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(200, 160, 255, 0.85);
+    background: transparent;
+    pointer-events: none;
+    z-index: 9999;
+    animation: dm-ripple-expand 1s ease-out forwards;
 }
 
 /* Scan results panel */
@@ -11833,6 +11864,77 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 .food-drop-zone.drop-hover { border-color: rgba(255, 200, 80, 0.8); background: rgba(255, 200, 80, 0.12); box-shadow: 0 0 24px rgba(255, 200, 80, 0.35); transform: scale(1.1); }
 .water-drop-zone.drop-hover { border-color: rgba(100, 180, 255, 0.8); background: rgba(100, 180, 255, 0.12); box-shadow: 0 0 24px rgba(100, 180, 255, 0.35); transform: scale(1.1); }
+
+/* ---- Rectangular Drop Zones (Station Dialog) ---- */
+.meal-drop-zone.meal-drop-zone-rect {
+    width: 100%;
+    height: auto;
+    min-height: 56px;
+    border-radius: 8px;
+    flex-direction: row;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    box-sizing: border-box;
+}
+
+.meal-drop-zone-rect .drop-zone-silhouette {
+    flex-direction: row;
+    gap: 0.5rem;
+}
+
+.meal-drop-zone-rect .drop-zone-add-icon {
+    font-size: 1rem;
+    opacity: 0.3;
+}
+
+.food-drop-zone.meal-drop-zone-rect .drop-zone-add-icon { color: rgba(255, 200, 80, 0.5); }
+.water-drop-zone.meal-drop-zone-rect .drop-zone-add-icon { color: rgba(100, 180, 255, 0.5); }
+
+.meal-drop-zone-rect .drop-zone-hint {
+    font-size: 0.7rem;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.25);
+    white-space: nowrap;
+}
+
+.meal-drop-zone-rect .drop-zone-item-icon {
+    width: 28px;
+    height: 28px;
+}
+
+.meal-drop-zone-rect .drop-zone-item-label {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.meal-drop-zone-rect.drop-hover {
+    transform: scale(1.02);
+}
+
+/* ---- Plates/Goblets Row (Rectangle layout) ---- */
+.ionrift-station-dialog .food-plates-row,
+.ionrift-station-dialog .water-goblets-row {
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.ionrift-station-dialog .food-plate-slot,
+.ionrift-station-dialog .water-goblet-slot {
+    width: 100%;
+}
+
+/* ---- Scrollable Inventory Tray ---- */
+.meal-inventory-tray-scroll {
+    max-height: 160px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+    margin-top: 0.3rem;
+}
 
 .drop-zone-silhouette { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
 .drop-zone-plate { font-size: 1.4rem; color: rgba(255, 200, 80, 0.18); }

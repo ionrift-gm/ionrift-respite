@@ -55,7 +55,7 @@ import { TravelResolutionDelegate } from "./delegates/TravelResolutionDelegate.j
 import { CampCeremonyDelegate } from "./delegates/CampCeremonyDelegate.js";
 import { EventsPhaseDelegate } from "./delegates/EventsPhaseDelegate.js";
 import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
-import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan } from "./delegates/DetectMagicDelegate.js";
+import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple } from "./delegates/DetectMagicDelegate.js";
 import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, CAMP_STATIONS, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState } from "./RestConstants.js";
 import {
     activateStationLayer,
@@ -6234,6 +6234,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onDetectMagicScan(event, target) {
         const btn = event?.currentTarget ?? null;
         btn?.classList.add("is-casting");
+        spawnDetectMagicCastRipple(btn);
         if (this._magicScanComplete) {
             this._clearDetectMagicScanSession();
             this.render();
