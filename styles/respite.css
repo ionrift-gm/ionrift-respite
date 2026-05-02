@@ -8400,6 +8400,10 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     max-width: 280px;
 }
 
+.station-cooking-gate--activity-locked .station-cooking-gate-icon {
+    color: rgba(120, 200, 150, 0.5);
+}
+
 .ionrift-station-dialog .station-meal-embed {
     padding: 0.25rem 0.35rem 0.45rem;
     max-height: 340px;

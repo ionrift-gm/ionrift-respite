@@ -206,6 +206,7 @@
             </div>
 
             {{#if crafting.craftingResult.isPartyMeal}}
+            {{#if crafting.craftingResult.success}}
             <div class="feast-roster-section">
                 <div class="feast-roster-portraits">
                     {{#each crafting.craftingResult.partyRoster}}
@@ -225,9 +226,11 @@
                 <span class="feast-roster-label">Feeds {{crafting.craftingResult.partyRoster.length}} party members</span>
             </div>
             {{/if}}
+            {{/if}}
         </div>
 
         {{#if crafting.craftingResult.isPartyMeal}}
+        {{#if crafting.craftingResult.success}}
         <div class="feast-footer-actions">
             <button type="button" class="btn-secondary feast-keep-btn" data-action="craftClose">
                 <i class="fas fa-box"></i> Keep in inventory
@@ -236,6 +239,11 @@
                 <i class="fas fa-utensils"></i> Serve Now
             </button>
         </div>
+        {{else}}
+        <div class="crafting-done-message">
+            <i class="fas fa-moon"></i> Crafting complete for this rest.
+        </div>
+        {{/if}}
         {{else}}
         <div class="crafting-done-message">
             <i class="fas fa-moon"></i> Crafting complete for this rest.
@@ -308,7 +316,15 @@
                         <img src="{{crafting.selectedRecipe.outputImg}}" alt="{{crafting.selectedRecipe.name}}" class="recipe-hero-icon">
                         <div class="recipe-hero-titles">
                             <h3 class="recipe-hero-name">{{crafting.selectedRecipe.name}}</h3>
-                            <span class="recipe-hero-dc"><i class="fas fa-dice-d20"></i> DC {{crafting.selectedRecipe.dcDisplay}}</span>
+                            <div class="recipe-hero-dc-row">
+                                <span class="recipe-hero-dc"><i class="fas fa-dice-d20"></i> DC {{crafting.selectedRecipe.dcDisplay}}</span>
+                                {{#if crafting.selectedRecipe.dcBreakdown.hasModifiers}}
+                                <span class="dc-base-hint">{{crafting.selectedRecipe.dcBreakdown.base}} base</span>
+                                {{#each crafting.selectedRecipe.dcBreakdown.factors}}
+                                <span class="dc-factor-pill dc-factor-{{sign}}">{{label}}</span>
+                                {{/each}}
+                                {{/if}}
+                            </div>
                             {{#if crafting.selectedRecipe.isPartyMeal}}
                             <span class="recipe-hero-badge badge-party-meal"><i class="fas fa-users"></i> Feeds the Party</span>
                             {{/if}}
@@ -415,6 +431,14 @@
                     <div class="commit-details">
                         <span class="commit-detail">
                             <i class="fas fa-dice-d20"></i> {{crafting.commitSummary.skill}} vs DC {{crafting.commitSummary.dc}}
+                            {{#if crafting.commitSummary.dcBreakdown.hasModifiers}}
+                            <span class="commit-dc-factors">
+                                <span class="commit-dc-base">{{crafting.commitSummary.dcBreakdown.base}}</span>
+                                {{#each crafting.commitSummary.dcBreakdown.factors}}
+                                <span class="dc-factor-pill dc-factor-{{sign}}">{{label}}</span>
+                                {{/each}}
+                            </span>
+                            {{/if}}
                         </span>
                         <span class="commit-detail risk-tag risk-{{crafting.commitSummary.risk}}">
                             {{crafting.commitSummary.riskLabel}}
@@ -424,7 +448,7 @@
                         </span>
                     </div>
                     <button type="button" class="btn-hero-craft" data-action="craftCommit">
-                        <i class="fas fa-hammer"></i> Craft
+                        <i class="fas fa-hammer"></i><span>Craft</span>
                     </button>
                 </div>
                 {{else}}
@@ -890,6 +914,12 @@
     {{!-- Cooking station: cook / brew activities --}}
     {{#if showStationTabs}}
     {{#if (eq stationPanelTab "cooking")}}
+    {{#if actorChoiceLocked}}
+    <div class="station-cooking-gate station-cooking-gate--activity-locked">
+        <i class="fas fa-check-circle station-cooking-gate-icon" aria-hidden="true"></i>
+        <p class="station-cooking-gate-text">{{actorName}} already chose <strong>{{actorChoiceLocked}}</strong> for this rest. One activity per character.</p>
+    </div>
+    {{else}}
     {{#unless actorHasCookingUtensils}}
     <div class="station-cooking-gate">
         <i class="fas fa-utensils station-cooking-gate-icon"></i>
@@ -932,16 +962,10 @@
         {{/each}}
     </ul>
     {{else}}
-    {{#if actorChoiceLocked}}
-    <div class="station-choice-locked">
-        <i class="fas fa-check-circle" aria-hidden="true"></i>
-        <span>{{actorName}} is already set to <strong>{{actorChoiceLocked}}</strong> this rest.</span>
-    </div>
-    {{else}}
     <p class="station-no-activities">No cook or brew activities available for {{actorName}}.</p>
     {{/if}}
-    {{/if}}
     {{/unless}}
+    {{/if}}
     {{/if}}
     {{/if}}
 
