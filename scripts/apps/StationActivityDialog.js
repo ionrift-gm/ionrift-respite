@@ -182,6 +182,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         this._craftResult      = null;
         this._craftHasCrafted  = false;
         this._craftShowMissing = false;
+        /** Set after the crafting result has been committed to RestSetupApp. Prevents double-commit on X-close. */
+        this._craftCommitted   = false;
         /** Width before entering crafting, restored on close. */
         this._preCraftWidth    = null;
     }
@@ -254,7 +256,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             if (!rationDone && mealCard) {
                 stationTabs.push({ id: "meal", label: "Rations" });
             }
-            if (this._stationHasCooking) {
+            if (this._stationHasCooking && !this._actorChoiceLocked) {
                 stationTabs.push({
                     id: "cooking",
                     label: "Cooking",
@@ -614,7 +616,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             if (!rationDone && mealCard) {
                 stationTabs.push({ id: "meal", label: "Rations" });
             }
-            if (this._stationHasCooking) {
+            if (this._stationHasCooking && !this._actorChoiceLocked) {
                 stationTabs.push({
                     id: "cooking",
                     label: "Cooking",
@@ -654,11 +656,12 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const status = engine.getRecipeStatus(actor, professionId, terrainTag, partySize);
 
         const enrichRecipe = (recipe) => {
-            const adjustedDc = engine.getAdjustedCraftingDc(actor, recipe, this._craftRisk, terrainTag);
+            const dcBreakdown = engine.getDcBreakdown(actor, recipe, this._craftRisk, terrainTag);
             const flags = recipe.outputFlags?.["ionrift-respite"];
             return {
                 ...recipe,
-                dcDisplay: adjustedDc,
+                dcDisplay: dcBreakdown.total,
+                dcBreakdown,
                 outputName: recipe.output?.name ?? "Unknown",
                 outputImg: recipe.output?.img ?? "icons/svg/mystery-man.svg",
                 ambitiousOutput: recipe.ambitiousOutput,
@@ -694,12 +697,12 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         let commitSummary = null;
         if (selectedRecipe && !this._craftHasCrafted) {
-            const adjustedDc = engine.getAdjustedCraftingDc(actor, selectedRecipe, this._craftRisk, terrainTag);
             const outputForRisk = this._craftRisk === "ambitious" && selectedRecipe.ambitiousOutput
                 ? selectedRecipe.ambitiousOutput : selectedRecipe.output;
             commitSummary = {
                 recipeName: selectedRecipe.name,
-                dc: adjustedDc,
+                dc: selectedRecipe.dcBreakdown.total,
+                dcBreakdown: selectedRecipe.dcBreakdown,
                 risk: this._craftRisk,
                 riskLabel: { standard: "Standard", ambitious: "Ambitious" }[this._craftRisk],
                 outputName: outputForRisk?.name ?? selectedRecipe.outputName,
@@ -794,6 +797,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             this._craftRisk        = "standard";
             this._craftResult      = null;
             this._craftHasCrafted  = false;
+            this._craftCommitted   = false;
             this._craftShowMissing = false;
             this._dialogState      = "crafting";
             this._preCraftWidth    = this.position?.width ?? DIALOG_WIDTH;
@@ -853,6 +857,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             this._craftRisk        = "standard";
             this._craftResult      = null;
             this._craftHasCrafted  = false;
+            this._craftCommitted   = false;
             this._craftShowMissing = false;
             this._dialogState      = "crafting";
             // Widen for the split-panel crafting layout
@@ -931,49 +936,60 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         this.render();
     }
 
-    static async #onCraftClose() {
+    /**
+     * Commits the in-progress crafting result to RestSetupApp exactly once.
+     * Called from the explicit Close/Keep button and from close() as a safety net,
+     * so that closing via the window X still locks the actor's activity.
+     */
+    async _autoCommitCraftResult() {
+        if (this._craftCommitted) return;
+        if (!this._craftHasCrafted || !this._craftResult) return;
+        this._craftCommitted = true;
+
         const characterId = this._actor?.id;
-        const profession = this._craftProfession;
-        const result = this._craftResult;
-        const restApp = this._restApp;
+        const profession  = this._craftProfession;
+        const result      = this._craftResult;
+        const restApp     = this._restApp;
+        if (!restApp || !characterId) return;
 
-        // Commit the crafting result to RestSetupApp
-        if (restApp && characterId && this._craftHasCrafted && result) {
-            restApp._craftingResults?.set(characterId, result);
+        restApp._craftingResults?.set(characterId, result);
 
-            const resolver = restApp._activityResolver;
-            const craftAct = resolver?.activities ? [...resolver.activities.values()].find(
-                a => a.crafting?.profession === profession
-            ) : null;
-            const activityId = craftAct?.id ?? this._selectedActivityId;
+        const resolver  = restApp._activityResolver;
+        const craftAct  = resolver?.activities
+            ? [...resolver.activities.values()].find(a => a.crafting?.profession === profession)
+            : null;
+        const activityId = craftAct?.id ?? this._selectedActivityId;
 
-            if (restApp._isGM) {
-                restApp._gmOverrides?.set(characterId, activityId);
-                restApp._rebuildCharacterChoices?.();
-                const submissions = {};
-                for (const [charId, actId] of restApp._characterChoices) {
-                    const act = resolver?.activities?.get(actId);
-                    submissions[charId] = {
-                        activityId: actId,
-                        activityName: act?.name ?? actId,
-                        source: restApp._gmOverrides?.has(charId) ? "gm" : "player"
-                    };
-                }
-                game.socket.emit(`module.ionrift-respite`, { type: "submissionUpdate", submissions });
-            } else {
-                restApp._characterChoices?.set(characterId, activityId);
-                restApp._lockedCharacters = restApp._lockedCharacters ?? new Set();
-                restApp._lockedCharacters.add(characterId);
-                game.socket.emit(`module.ionrift-respite`, {
-                    type: "activityChoice",
-                    userId: game.user.id,
-                    choices: Object.fromEntries(restApp._characterChoices),
-                    craftingResults: { [characterId]: result }
-                });
-                ui.notifications.info(`${this._actor?.name}'s activity submitted.`);
+        if (restApp._isGM) {
+            restApp._gmOverrides?.set(characterId, activityId);
+            restApp._rebuildCharacterChoices?.();
+            const submissions = {};
+            for (const [charId, actId] of restApp._characterChoices) {
+                const act = resolver?.activities?.get(actId);
+                submissions[charId] = {
+                    activityId: actId,
+                    activityName: act?.name ?? actId,
+                    source: restApp._gmOverrides?.has(charId) ? "gm" : "player"
+                };
             }
-            if (restApp.rendered) restApp.render();
+            game.socket.emit(`module.${MODULE_ID}`, { type: "submissionUpdate", submissions });
+        } else {
+            restApp._characterChoices?.set(characterId, activityId);
+            restApp._lockedCharacters = restApp._lockedCharacters ?? new Set();
+            restApp._lockedCharacters.add(characterId);
+            game.socket.emit(`module.${MODULE_ID}`, {
+                type: "activityChoice",
+                userId: game.user.id,
+                choices: Object.fromEntries(restApp._characterChoices),
+                craftingResults: { [characterId]: result }
+            });
+            ui.notifications.info(`${this._actor?.name}'s activity submitted.`);
         }
+        if (restApp.rendered) restApp.render();
+    }
+
+    static async #onCraftClose() {
+        await this._autoCommitCraftResult();
 
         // Restore pre-craft dialog width
         if (this._preCraftWidth) {
@@ -991,7 +1007,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         this._stationPanelTab = tab;
 
         // Cooking tab with utensils → auto-enter crafting split panel
-        if (tab === "cooking" && this._actorHasCookingUtensils) {
+        if (tab === "cooking" && this._actorHasCookingUtensils && !this._actorChoiceLocked) {
             const cookId = "act_cook";
             this._selectedActivityId = cookId;
             this._followUpValue = null;
@@ -1000,6 +1016,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             this._craftRisk        = "standard";
             this._craftResult      = null;
             this._craftHasCrafted  = false;
+            this._craftCommitted   = false;
             this._craftShowMissing = false;
             this._dialogState      = "crafting";
             this._preCraftWidth    = this.position?.width ?? DIALOG_WIDTH;
@@ -1455,6 +1472,10 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
     }
 
     async close(options = {}) {
+        // Safety net: commit crafting result even when closed via the window X button.
+        if (this._craftHasCrafted && !this._craftCommitted) {
+            void this._autoCommitCraftResult();
+        }
         this._stopTokenTracking();
         _openDialog = null;
         return super.close(options);
