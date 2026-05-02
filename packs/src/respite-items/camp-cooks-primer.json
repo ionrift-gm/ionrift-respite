@@ -1,0 +1,41 @@
+{
+    "_key": "!items!c00kb00k00000001",
+    "_id": "c00kb00k00000001",
+    "name": "Campfire Cooking",
+    "type": "loot",
+    "img": "icons/sundries/books/book-worn-brown.webp",
+    "system": {
+        "description": {
+            "value": "<p>A slim, grease-stained booklet bound in oilcloth. The subtitle reads <em>\"Simple Meals for the Road — or, How Not to Poison Your Party.\"</em></p><p>Inside, a handful of practical recipes are written in plain language with margin notes from at least three previous owners. Anyone with a mess kit and a campfire can follow these.</p><hr /><table><caption>Recipes</caption><thead><tr><th>Dish</th><th>DC</th><th>Ingredients</th><th>Notes</th></tr></thead><tbody><tr><td><strong>Camp Porridge</strong></td><td>8</td><td>1 Rations, 1 Waterskin</td><td>Boil it down. Don't overthink it.</td></tr><tr><td><strong>Berry Preserves</strong></td><td>9</td><td>3 Wild Berries</td><td>Keeps well. Good for the road.</td></tr><tr><td><strong>Roasted Mushrooms</strong></td><td>9</td><td>2 Edible Mushrooms</td><td>Golden over coals. Smell the camp up right.</td></tr><tr><td><strong>Herb-Seasoned Rations</strong></td><td>10</td><td>1 Rations, 1 Wild Herbs</td><td>A little effort goes a long way.</td></tr><tr><td><strong>Smoked Fish</strong></td><td>10</td><td>2 Fresh Fish</td><td>Low fire, patience. Worth it.</td></tr><tr><td><strong>Hearty Stew</strong></td><td>12</td><td>1 Rations*, 1 Fresh Meat, 1 Waterskin</td><td>Feeds the whole party. The real thing.</td></tr></tbody></table><p><em>* Rations for Hearty Stew scale with party size.</em></p>"
+        },
+        "rarity": "common",
+        "weight": 0.5,
+        "price": {
+            "value": 2,
+            "denomination": "gp"
+        },
+        "type": {
+            "value": ""
+        }
+    },
+    "folder": "c00ked0000000001",
+    "flags": {
+        "ionrift-respite": {
+            "recipeBook": true,
+            "bookId": "core",
+            "recipeSources": [
+                "stub_camp_porridge",
+                "stub_berry_preserves",
+                "stub_roasted_mushrooms",
+                "stub_herb_rations",
+                "stub_smoked_fish",
+                "stub_hearty_stew"
+            ]
+        }
+    },
+    "effects": [],
+    "ownership": {
+        "default": 0
+    },
+    "sort": 100
+}
