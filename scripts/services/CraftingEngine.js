@@ -15,6 +15,9 @@
  *   ambitious:  DC +5, upgraded output on success, ingredient loss on failure
  */
 
+import { waitForDiceSoNice } from "./RollRequestManager.js";
+import { SpoilageClock } from "./SpoilageClock.js";
+
 const MODULE_ID = "ionrift-respite";
 
 export class CraftingEngine {
@@ -186,6 +189,8 @@ export class CraftingEngine {
             flavor: `${recipe.name} (${skill.toUpperCase()}) - DC ${adjustedDc} [${riskTier}]`
         });
 
+        await waitForDiceSoNice();
+
         const success = roll.total >= adjustedDc;
 
         // Consume ingredients (always consumed on standard/ambitious, not on safe failure)
@@ -314,8 +319,13 @@ export class CraftingEngine {
             const required = (ing.quantity ?? 1) * (ing.perPartyMember ? Math.max(1, partySize - 2) : 1);
             let remaining = required;
 
-            // Find matching items and reduce quantities
             const matches = actor.items.filter(i => i.name.toLowerCase().trim() === key);
+            matches.sort((a, b) => {
+                const ka = SpoilageClock.getConsumeSortKey(a);
+                const kb = SpoilageClock.getConsumeSortKey(b);
+                if (ka !== kb) return ka - kb;
+                return String(a.id).localeCompare(String(b.id));
+            });
             const updates = [];
             const deletes = [];
 

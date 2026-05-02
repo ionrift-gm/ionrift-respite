@@ -64,7 +64,7 @@ export const ACTIVITY_ICONS = {
     act_cook: "fas fa-utensils", act_brew: "fas fa-flask", act_tailor: "fas fa-cut",
     act_craft: "fas fa-tools", act_fletch: "fas fa-crosshairs",
     act_defenses: "fas fa-shield-alt", act_train: "fas fa-dumbbell",
-    act_identify: "fas fa-search", act_attune: "fas fa-gem", act_scribe: "fas fa-scroll",
+    act_identify: "fas fa-search", act_scribe: "fas fa-scroll",
     act_other: "fas fa-comments"
 };
 
@@ -199,8 +199,6 @@ export function getActivityAdvisory(activityId, actor, partyState) {
                 return { text: `${gap} XP to next level. ${effectiveXP} XP on success, ${effectiveFailXP} on fail`, urgent: false };
             return { text: `${effectiveXP} XP on success (DC 13 ability check)`, urgent: false };
         }
-        case "act_attune":
-            return { text: "No check. Attune to one magical item during rest", urgent: false };
         case "act_scribe":
             return { text: "Arcana check (DC 10 + spell level), 50gp per level. Scroll consumed regardless", urgent: false };
         default:
@@ -268,8 +266,8 @@ export const CAMP_STATIONS = [
         label: "Workbench",
         icon: "fas fa-tools",
         furnitureKey: "table",
-        tagline: "Identify, attune, study, scribe",
-        activities: ["act_identify", "act_attune", "act_study", "act_scribe"]
+        tagline: "Identify, study, scribe",
+        activities: ["act_identify", "act_study", "act_scribe"]
     },
     {
         id: "weapon_rack",

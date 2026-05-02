@@ -146,7 +146,7 @@ export const STUB_RECIPES = {
                     satiates: ["food"],
                     buff: {
                         type: "advantage",
-                        formula: "con",
+                        save: { ability: "con" },
                         duration: "nextSave",
                         target: "self"
                     }
@@ -313,7 +313,7 @@ export const STUB_POOLS = [
         name: "Wilderness Foraging",
         terrainTag: "wilderness",
         entries: [
-            { weight: 4, itemRef: "wild_herbs", quantity: "1d2", itemData: { name: "Wild Herbs", type: "loot", img: "icons/consumables/plants/leaf-herb-green.webp", system: { description: { value: "<p>Common wild herbs. Useful for cooking.</p>" }, rarity: "common" } } },
+            { weight: 4, itemRef: "wild_herbs", quantity: "1d2", itemData: { name: "Wild Herbs", type: "consumable", img: "icons/consumables/plants/leaf-herb-green.webp", system: { description: { value: "<p>Common wild herbs. Useful for cooking.</p>" }, rarity: "common", type: { value: "food", subtype: "" } } } },
             { weight: 3, itemRef: "wild_berries", quantity: "1d3", itemData: { name: "Wild Berries", type: "consumable", img: "icons/consumables/food/berries-ration-round-red.webp", system: { description: { value: "<p>Tart wild berries.</p>" }, rarity: "common" } } },
             { weight: 2, itemRef: "kindling", quantity: "1d4", itemData: { name: "Kindling", type: "loot", img: "icons/commodities/wood/kindling-sticks-brown.webp", system: { description: { value: "<p>Dry twigs and bark strips.</p>" }, rarity: "common" } } }
         ]
@@ -325,7 +325,7 @@ export const STUB_POOLS = [
         entries: [
             { weight: 4, itemRef: "wild_berries", quantity: "1d3", itemData: { name: "Wild Berries", type: "consumable", img: "icons/consumables/food/berries-ration-round-red.webp", system: { description: { value: "<p>Tart wild berries from the underbrush.</p>" }, rarity: "common" } } },
             { weight: 3, itemRef: "edible_mushrooms", quantity: "1d2", itemData: { name: "Edible Mushrooms", type: "consumable", img: "icons/consumables/mushrooms/bell-shiitake-brown.webp", system: { description: { value: "<p>Brown-capped mushrooms, safe to eat.</p>" }, rarity: "common" } } },
-            { weight: 3, itemRef: "wild_herbs", quantity: "1d2", itemData: { name: "Wild Herbs", type: "loot", img: "icons/consumables/plants/leaf-herb-green.webp", system: { description: { value: "<p>Fragrant herbs from the forest floor.</p>" }, rarity: "common" } } }
+            { weight: 3, itemRef: "wild_herbs", quantity: "1d2", itemData: { name: "Wild Herbs", type: "consumable", img: "icons/consumables/plants/leaf-herb-green.webp", system: { description: { value: "<p>Fragrant herbs from the forest floor.</p>" }, rarity: "common", type: { value: "food", subtype: "" } } } }
         ]
     },
     {
@@ -343,8 +343,8 @@ export const STUB_POOLS = [
         name: "Mountain Foraging",
         terrainTag: "mountain",
         entries: [
-            { weight: 4, itemRef: "alpine_herbs", quantity: "1d2", itemData: { name: "Alpine Herbs", type: "loot", img: "icons/consumables/plants/herb-tied-bundle-green.webp", system: { description: { value: "<p>Hardy herbs from above the treeline.</p>" }, rarity: "common" } } },
-            { weight: 3, itemRef: "wild_herbs", quantity: "1d2", itemData: { name: "Wild Herbs", type: "loot", img: "icons/consumables/plants/leaf-herb-green.webp", system: { description: { value: "<p>Mountain herbs clinging to rock crevices.</p>" }, rarity: "common" } } },
+            { weight: 4, itemRef: "alpine_herbs", quantity: "1d2", itemData: { name: "Alpine Herbs", type: "consumable", img: "icons/consumables/plants/herb-tied-bundle-green.webp", system: { description: { value: "<p>Hardy herbs from above the treeline.</p>" }, rarity: "common", type: { value: "food", subtype: "" } } } },
+            { weight: 3, itemRef: "wild_herbs", quantity: "1d2", itemData: { name: "Wild Herbs", type: "consumable", img: "icons/consumables/plants/leaf-herb-green.webp", system: { description: { value: "<p>Mountain herbs clinging to rock crevices.</p>" }, rarity: "common", type: { value: "food", subtype: "" } } } },
             { weight: 2, itemRef: "kindling", quantity: "1d3", itemData: { name: "Kindling", type: "loot", img: "icons/commodities/wood/kindling-sticks-brown.webp", system: { description: { value: "<p>Scrubby mountain wood, dry enough to burn.</p>" }, rarity: "common" } } }
         ]
     },
@@ -353,7 +353,7 @@ export const STUB_POOLS = [
         name: "Arctic Foraging",
         terrainTag: "arctic",
         entries: [
-            { weight: 4, itemRef: "alpine_herbs", quantity: "1d2", itemData: { name: "Alpine Herbs", type: "loot", img: "icons/consumables/plants/herb-tied-bundle-green.webp", system: { description: { value: "<p>Cold-resistant herbs scraped from frozen ground.</p>" }, rarity: "common" } } },
+            { weight: 4, itemRef: "alpine_herbs", quantity: "1d2", itemData: { name: "Alpine Herbs", type: "consumable", img: "icons/consumables/plants/herb-tied-bundle-green.webp", system: { description: { value: "<p>Cold-resistant herbs scraped from frozen ground.</p>" }, rarity: "common", type: { value: "food", subtype: "" } } } },
             { weight: 3, itemRef: "wild_berries", quantity: "1d2", itemData: { name: "Wild Berries", type: "consumable", img: "icons/consumables/food/berries-ration-round-red.webp", system: { description: { value: "<p>Frost-touched berries, bitter but edible.</p>" }, rarity: "common" } } },
             { weight: 2, itemRef: "kindling", quantity: "1d2", itemData: { name: "Kindling", type: "loot", img: "icons/commodities/wood/kindling-sticks-brown.webp", system: { description: { value: "<p>Scraps of driftwood and dried lichen.</p>" }, rarity: "common" } } }
         ]
@@ -365,7 +365,7 @@ export const STUB_POOLS = [
         entries: [
             { weight: 4, itemRef: "prickly_pear", quantity: "1d2", itemData: { name: "Prickly Pear", type: "consumable", img: "icons/consumables/fruit/pickly-pear-cactus-red-yellow.webp", system: { description: { value: "<p>Spiny desert fruit with sweet flesh.</p>" }, rarity: "common" } } },
             { weight: 2, itemRef: "kindling", quantity: "1d3", itemData: { name: "Kindling", type: "loot", img: "icons/commodities/wood/kindling-sticks-brown.webp", system: { description: { value: "<p>Sun-bleached scrub wood.</p>" }, rarity: "common" } } },
-            { weight: 3, itemRef: "wild_herbs", quantity: "1d2", itemData: { name: "Wild Herbs", type: "loot", img: "icons/consumables/plants/leaf-herb-green.webp", system: { description: { value: "<p>Desert sage and dry herbs.</p>" }, rarity: "common" } } }
+            { weight: 3, itemRef: "wild_herbs", quantity: "1d2", itemData: { name: "Wild Herbs", type: "consumable", img: "icons/consumables/plants/leaf-herb-green.webp", system: { description: { value: "<p>Desert sage and dry herbs.</p>" }, rarity: "common", type: { value: "food", subtype: "" } } } }
         ]
     }
 ];

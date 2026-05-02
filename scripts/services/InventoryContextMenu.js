@@ -115,7 +115,7 @@ async function _consumeFromInventory(actor, item, isFood) {
     });
 
     // ── Sync with active rest's meal tracking ──────────────────────────
-    await _syncWithRestMealState(actor, itemId, isFood);
+    await _syncWithRestMealState(actor, itemId, isFood, itemSnapshot);
 
     // Re-render the actor sheet to reflect updated quantity
     actor.sheet?.render(false);
@@ -132,8 +132,9 @@ async function _consumeFromInventory(actor, item, isFood) {
  * @param {Actor} actor - The consuming character
  * @param {string} itemId - ID of the consumed item
  * @param {boolean} isFood - true for food slot, false for water slot
+ * @param {object} [itemSnapshot] - Item data snapshot for satiates cross-crediting
  */
-async function _syncWithRestMealState(actor, itemId, isFood) {
+async function _syncWithRestMealState(actor, itemId, isFood, itemSnapshot) {
     const restApp = game.ionrift?.respite?.getActiveApp?.();
     if (!restApp) return;
 
@@ -148,19 +149,44 @@ async function _syncWithRestMealState(actor, itemId, isFood) {
 
     // Fill the first empty slot with this item
     const emptyIdx = arr.findIndex(v => !v || v === "skip");
+    let filledIdx;
     if (emptyIdx >= 0) {
         arr[emptyIdx] = itemId;
+        filledIdx = emptyIdx;
     } else {
+        filledIdx = arr.length;
         arr.push(itemId);
     }
 
-    restApp._mealChoices.set(charId, { ...existing, [slot]: arr });
+    // Mark this slot as locked — the item has already been consumed from
+    // inventory and cannot be removed or swapped in the rations UI.
+    const lockedKey = slot === "food" ? "foodLockedSlots" : "waterLockedSlots";
+    const lockedArr = Array.isArray(existing[lockedKey]) ? [...existing[lockedKey]] : [];
+    if (!lockedArr.includes(filledIdx)) lockedArr.push(filledIdx);
 
-    // Mark this character's rations as touched (submitted-equivalent)
-    if (!restApp._activityMealRationsSubmitted) {
-        restApp._activityMealRationsSubmitted = new Set();
+    restApp._mealChoices.set(charId, { ...existing, [slot]: arr, [lockedKey]: lockedArr });
+
+    // ── Satiates cross-credit: if the item satiates both food AND water,
+    //    fill + lock the OTHER slot too so the player doesn't need a separate item. ──
+    const flags = itemSnapshot?.flags?.[MODULE_ID] ?? {};
+    const satiates = Array.isArray(flags.satiates) ? flags.satiates : [];
+    const crossSlot = isFood ? "water" : "food";
+    if (satiates.includes(crossSlot)) {
+        const updated = restApp._mealChoices.get(charId) ?? {};
+        const crossArr = Array.isArray(updated[crossSlot]) ? [...updated[crossSlot]] : [];
+        const crossLockedKey = crossSlot === "food" ? "foodLockedSlots" : "waterLockedSlots";
+        const crossLocked = Array.isArray(updated[crossLockedKey]) ? [...updated[crossLockedKey]] : [];
+        const crossEmpty = crossArr.findIndex(v => !v || v === "skip");
+        const crossIdx = crossEmpty >= 0 ? crossEmpty : crossArr.length;
+        crossArr[crossIdx] = `__satiated_${crossSlot}`;
+        if (!crossLocked.includes(crossIdx)) crossLocked.push(crossIdx);
+        restApp._mealChoices.set(charId, { ...updated, [crossSlot]: crossArr, [crossLockedKey]: crossLocked });
     }
-    restApp._activityMealRationsSubmitted.add(charId);
+
+    // NOTE: Do NOT mark _activityMealRationsSubmitted here.
+    // Eating from inventory fills ONE slot (food or water) but does not
+    // constitute a full ration submission. The player still needs to
+    // complete the other slot and explicitly submit via the station UI.
 
     // Persist state and broadcast
     try {

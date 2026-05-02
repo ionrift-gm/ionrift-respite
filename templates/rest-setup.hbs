@@ -952,8 +952,8 @@
                         <div class="food-plates-row">
                         {{#each foodSlots}}
                         <div class="food-plate-slot">
-                            <div class="meal-drop-zone food-drop-zone {{#if filled}}filled{{/if}}"
-                                 data-character-id="{{../characterId}}" data-slot="food" data-slot-index="{{index}}">
+                            <div class="meal-drop-zone food-drop-zone {{#if filled}}filled{{/if}}{{#if locked}} locked{{/if}}"
+                                 data-character-id="{{../characterId}}" data-slot="food" data-slot-index="{{index}}"{{#if locked}} data-locked="true"{{/if}}>
                                 <div class="drop-zone-silhouette">
                                     {{#if filled}}
                                     {{#each ../foodOptions}}
@@ -1002,8 +1002,8 @@
                         <div class="water-goblets-row">
                         {{#each waterSlots}}
                         <div class="water-goblet-slot">
-                            <div class="meal-drop-zone water-drop-zone {{#if filled}}filled{{/if}}"
-                                 data-character-id="{{../characterId}}" data-slot="water" data-slot-index="{{index}}">
+                            <div class="meal-drop-zone water-drop-zone {{#if filled}}filled{{/if}}{{#if locked}} locked{{/if}}"
+                                 data-character-id="{{../characterId}}" data-slot="water" data-slot-index="{{index}}"{{#if locked}} data-locked="true"{{/if}}>
                                 <div class="drop-zone-silhouette">
                                     {{#if filled}}
                                     {{#each ../waterOptions}}

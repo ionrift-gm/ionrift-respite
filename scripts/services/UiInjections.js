@@ -5,10 +5,9 @@
  * and the Zzz PIXI overlay on sleeping tokens.
  */
 
-import { CalendarHandler } from "./CalendarHandler.js";
-import { ItemClassifier } from "./ItemClassifier.js";
-import { MealPhaseHandler } from "./MealPhaseHandler.js";
+import { SpoilageClock } from "./SpoilageClock.js";
 import { DietConfigApp } from "../apps/DietConfigApp.js";
+import { injectPlayerLockdownClasses } from "./PlayerLockdownService.js";
 
 const MODULE_ID = "ionrift-respite";
 const ZZZ_CHILD_NAME = "ionrift-respite-zzz";
@@ -84,9 +83,6 @@ export function injectSpoilageBadges(app, html) {
         ?? app.element;
     if (!el) return;
 
-    const now = CalendarHandler.getCurrentDate();
-    const nowEpoch = game.time.worldTime;
-
     const itemRows = el.querySelectorAll("[data-item-id]");
     for (const row of itemRows) {
         const itemId = row.dataset.itemId;
@@ -98,25 +94,10 @@ export function injectSpoilageBadges(app, html) {
         const flags = item.flags?.[MODULE_ID] ?? {};
         if (flags.spoiled) continue;
 
-        const spoilsAfter = ItemClassifier.getSpoilsAfter(item);
-        if (spoilsAfter == null || spoilsAfter <= 0) continue;
-
         if (row.querySelector(".respite-spoil-badge")) continue;
 
-        let daysLeft = spoilsAfter;
-        const harvested = flags.harvestedDate;
-        if (harvested) {
-            if (now && harvested.includes("-")) {
-                const daysPassed = MealPhaseHandler._dateDiffDays(harvested, now);
-                daysLeft = Math.max(0, spoilsAfter - daysPassed);
-            } else {
-                const harvestedEpoch = parseInt(harvested, 10);
-                if (!isNaN(harvestedEpoch)) {
-                    const daysPassed = Math.floor((nowEpoch - harvestedEpoch) / 86400);
-                    daysLeft = Math.max(0, spoilsAfter - daysPassed);
-                }
-            }
-        }
+        const daysLeft = SpoilageClock.getCalendarDaysRemaining(item);
+        if (daysLeft === null) continue;
 
         const badge = document.createElement("span");
         badge.className = "respite-spoil-badge";
@@ -144,8 +125,8 @@ export function injectSpoilageBadges(app, html) {
 }
 
 /**
- * Add or remove the Zzz PIXI text overlay on a token based on its beddingDown flag.
- * Called from the refreshToken hook.
+ * Add or remove the Zzz canvas text overlay on a token based on its beddingDown flag.
+ * Driven by refreshToken, updateToken, createToken, and canvasReady (see module.js).
  * @param {Token} token
  */
 export function refreshZzzOverlay(token) {
@@ -154,9 +135,10 @@ export function refreshZzzOverlay(token) {
 
     if (isSleeping) {
         if (!child) {
-            child = new PIXI.Text("Zzz", {
+            const fontSize = Math.max(12, (token.w ?? 50) * 0.28);
+            const textOpts = {
                 fontFamily: "Signika, Arial, sans-serif",
-                fontSize: Math.max(12, (token.w ?? 50) * 0.28),
+                fontSize,
                 fontStyle: "italic",
                 fill: 0xadd8ff,
                 dropShadow: true,
@@ -164,10 +146,26 @@ export function refreshZzzOverlay(token) {
                 dropShadowDistance: 2,
                 dropShadowBlur: 4,
                 dropShadowAlpha: 0.8
-            });
+            };
+            const PreciseText = globalThis.foundry?.canvas?.containers?.PreciseText;
+            if (PreciseText) {
+                const style = PreciseText.getTextStyle(textOpts);
+                child = new PreciseText("Zzz", style);
+                child.updateText?.(false);
+            } else {
+                child = new PIXI.Text("Zzz", textOpts);
+            }
             child.name = ZZZ_CHILD_NAME;
             child.alpha = 0.9;
             token.addChild(child);
+            requestAnimationFrame(() => {
+                try {
+                    if (child.destroyed || child.parent !== token) return;
+                    child.updateText?.(false);
+                } catch {
+                    /* ignore */
+                }
+            });
         }
         const tw = token.w ?? 50;
         const th = token.h ?? 50;
@@ -194,6 +192,7 @@ export function registerUiHooks() {
         Hooks.on(hookName, (app, html, context) => {
             injectDietButton(app, html);
             injectSpoilageBadges(app, html);
+            injectPlayerLockdownClasses(app, html);
         });
     }
 }

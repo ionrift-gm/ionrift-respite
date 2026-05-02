@@ -68,6 +68,7 @@ import {
     setStationPlayerState
 } from "../services/StationInteractionLayer.js";
 import {
+    closeOpenStationDialog,
     closeStationDialogIfDifferentActor,
     refreshOpenStationDialog,
     notifyStationMealChoicesUpdated,
@@ -1441,6 +1442,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     async close(options = {}) {
         CampfireMakeCampDialog.closeIfOpen();
+        await closeOpenStationDialog();
         if (this._isGM) {
             // If rest is in resolution phase but auto-apply hasn't completed, confirm
             if (this._phase === "resolve" && !this._restApplied && !options.resolved) {
@@ -1600,7 +1602,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     id: "bonfire",
                     label: "Bonfire",
                     costLabel: "2 firewood",
-                    body: "+1 camp comfort, full cooking. +2 encounter DC.",
+                    body: "+1 camp comfort. +2 encounter DC.",
                     disabled: !fs.canPickBonfire,
                     disabledReason: !fs.canPickBonfire
                         ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 2 firewood in the party.")
@@ -1671,7 +1673,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const TIER_BODIES = {
                 embers: "No cooking. No comfort change.",
                 campfire: "Cooking and warmth. +1 encounter DC.",
-                bonfire: "+1 camp comfort, full cooking. +2 encounter DC."
+                bonfire: "+1 camp comfort. +2 encounter DC."
             };
             const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
             const TIER_LABELS = Object.fromEntries(
@@ -1886,8 +1888,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 smithing: "fas fa-hammer", leatherworking: "fas fa-shield-alt",
                 brewing: "fas fa-flask", tailoring: "fas fa-cut"
             };
+            const fireLevel = this._fireLevel ?? "unlit";
             const isFireLit = !!(this._fireLevel && this._fireLevel !== "unlit");
-            const { available: avail, faded: fadedActivities, minor: minorActivities, fadedMinor: fadedMinorActivities } = this._activityResolver.getAvailableActivitiesWithFaded(a, this._engine?.restType ?? "long", { isFireLit });
+            const { available: avail, faded: fadedActivities, minor: minorActivities, fadedMinor: fadedMinorActivities } = this._activityResolver.getAvailableActivitiesWithFaded(a, this._engine?.restType ?? "long", { isFireLit, fireLevel });
             for (const act of avail) {
                 if (act.crafting?.enabled) {
                     professionBadges.push({
@@ -1955,7 +1958,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     combatModifiers: act.combatModifiers ?? null,
                     followUp: act.followUp ?? null,
                     armorSleepWaiver: act.armorSleepWaiver ?? false,
-                    hasAttuneable: act.id === "act_attune",
+
                     hint: advisory.text,
                     hintUrgent: advisory.urgent
                 };
@@ -2362,7 +2365,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     id: "bonfire",
                     label: "Bonfire",
                     costLabel: "2 firewood",
-                    body: "+1 camp comfort, full cooking. +2 encounter DC.",
+                    body: "+1 camp comfort. +2 encounter DC.",
                     disabled: !fs.canPickBonfire,
                     disabledReason: !fs.canPickBonfire
                         ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 2 firewood in the party.")
@@ -2442,7 +2445,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const TIER_BODIES = {
                     embers: "No cooking. No comfort change.",
                     campfire: "Cooking and warmth. +1 encounter DC.",
-                    bonfire: "+1 camp comfort, full cooking. +2 encounter DC."
+                    bonfire: "+1 camp comfort. +2 encounter DC."
                 };
                 const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
                 const TIER_LABELS = Object.fromEntries(
@@ -2950,7 +2953,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     unlit: "Unlit: -1 comfort step at resolution",
                     embers: "Embers: no change to encounter DC.",
                     campfire: "Campfire: +1 encounter DC.",
-                    bonfire: "Bonfire: +1 camp comfort, full cooking. +2 encounter DC."
+                    bonfire: "Bonfire: +1 camp comfort. +2 encounter DC."
                 };
                 return this._campStatus = {
                     comfort,
@@ -3563,7 +3566,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const TIER_BODIES = {
             embers: "No cooking. No comfort change.",
             campfire: "Cooking and warmth. +1 encounter DC.",
-            bonfire: "+1 camp comfort, full cooking. +2 encounter DC."
+            bonfire: "+1 camp comfort. +2 encounter DC."
         };
         const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
         const TIER_LABELS = Object.fromEntries(
@@ -5487,7 +5490,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Clear Incapacitated + Prone from the whole party before events.
+     * Clear Incapacitated + Prone and token Zzz flags for the party.
+     * Called when rest resolves, when an encounter pulls the table into combat,
+     * or when the rest is abandoned — not when leaving reflection for events.
      */
     async _removeBeddingDown() {
         if (!game.user?.isGM) return;
@@ -5660,6 +5665,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Event roll is deferred until GM clicks 'Roll for Events'.
      */
     static async #onSubmitActivities(event, target) {
+        await closeOpenStationDialog();
         this._tearDownStationLayerCanvas();
         for (const [characterId, activityId] of this._characterChoices) {
             const followUpValue = this._gmFollowUps?.get(characterId) ?? this._getFollowUpForCharacter(characterId);
@@ -5811,6 +5817,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const existing = this._mealChoices.get(charId) ?? {};
             const arr = Array.isArray(existing[slot]) ? [...existing[slot]] : [];
 
+            // Respect inventory-consumed locked slots
+            const lockedKey = slot === "food" ? "foodLockedSlots" : "waterLockedSlots";
+            const lockedSlots = Array.isArray(existing[lockedKey]) ? existing[lockedKey] : [];
+            if (slotIndex !== undefined && lockedSlots.includes(slotIndex)) return;
+
             // Check available quantity -- prevent over-assignment
             const trayItem = el.querySelector(
                 `.meal-inv-item[data-item-id="${itemId}"][data-slot="${slot}"][data-character-id="${charId}"],` +
@@ -5829,8 +5840,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (slotIndex !== undefined) {
                 arr[slotIndex] = itemId;
             } else {
-                // Fill first empty slot
-                const emptyIdx = arr.findIndex(v => !v || v === "skip");
+                // Fill first empty AND unlocked slot
+                const emptyIdx = arr.findIndex((v, i) => (!v || v === "skip") && !lockedSlots.includes(i));
                 if (emptyIdx >= 0) {
                     arr[emptyIdx] = itemId;
                 } else {
@@ -5867,6 +5878,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         for (const zone of dropZones) {
             if (zone._mealBound) continue;
             zone._mealBound = true;
+
+            // Slots consumed from inventory are locked — no interaction allowed
+            if (zone.dataset.locked === "true") continue;
+
             const slot = zone.dataset.slot;
             const charId = zone.dataset.characterId;
             const slotIndex = zone.dataset.slotIndex !== undefined ? parseInt(zone.dataset.slotIndex) : undefined;
@@ -5971,7 +5986,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Applies fire level comfort modifications before events.
      */
     static async #onProceedToEvents(event, target) {
-        await this._removeBeddingDown();
+        // Bedding / Zzz persist through events until resolve or encounter interrupt.
 
         // Restore default window size and center on screen so the full events
         // header is visible regardless of how the user moved the window.
@@ -6178,6 +6193,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * so the GM can set up the fight. The GM indicator bar will appear.
      */
     static async #onAcknowledgeEncounter(event, target) {
+        await this._removeBeddingDown();
         this._awaitingCombat = true;
         this._combatAcknowledged = false;
         this._combatBuffs = this._combatBuffs ?? null;
@@ -6293,6 +6309,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             });
         });
         if (!confirmed) return;
+
+        await this._removeBeddingDown();
 
         // Clear persisted rest state
         await game.settings.set(MODULE_ID, "activeRest", {});
@@ -7064,6 +7082,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
+        await this._removeBeddingDown();
+
         SoundDelegate.stopAll();
         this._phase = "resolve";
         await this._clearRestState();
@@ -7141,9 +7161,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             console.log(`${MODULE_ID} | Skipping native rest call (system: ${game.system.id} — no longRest/shortRest API).`);
         }
 
-        // Stamp Well Fed AEs with longRest specialDuration now that native rest has run.
+        // Stamp Well Fed AEs with DAE longRest specialDuration now that native rest has run.
         // Eating happens before recovery, so the flag is intentionally omitted at AE
-        // creation to prevent dnd5e from stripping the buff during longRest(). Adding
+        // creation to prevent DAE from stripping the buff during longRest(). Adding
         // it here means the AE will auto-expire at the START of the next rest instead.
         try {
             await MealPhaseHandler.stampWellFedDuration(getPartyActors());
@@ -7448,19 +7468,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return { source: "activity", activityId, result: "crafting_redirect" };
         }
 
-        // Block act_attune if already at max attunement slots
-        if (activityId === "act_attune") {
-            const actor = game.actors.get(characterId);
-            const attuneSlots = actor?.system?.attributes?.attunement;
-            if (attuneSlots) {
-                const current = attuneSlots.value ?? 0;
-                const max = attuneSlots.max ?? 3;
-                if (current >= max) {
-                    ui.notifications.warn(`${actor.name} is already attuned to the maximum number of items (${max}).`);
-                    return null;
-                }
-            }
-        }
 
         this._characterChoices.set(characterId, activityId);
         this._lockedCharacters.add(characterId);
@@ -7646,13 +7653,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * {@link StationActivityDialog.openForStation}, which clears all station activity lists for
      * an actor who already has a major pick (the resolver can still list activities, but they
      * get no further activity cards). Faded here means no meaningful station action is left, except
-     * workbench Identify (when the party has unidentified items) and meal rations on the
-     * cooking or campfire station when that actor still owes rations. Campfire notice stays
-     * non-faded during the activity phase.
+     * meal rations on the cooking or campfire station when that actor still owes rations. When the viewer has
+     * committed a major pick, campfire and cooking both follow that meal-debt rule (no extra
+     * blanket bright campfire).
      * Cooking station stays bright while any unchosen party member owes activity-phase rations (meal tab).
      * In single-character mode, meal stations stay bright while that actor still owes rations.
-     * Workbench stays bright when the party has unidentified gear (Identify tab on the station dialog),
-     * including after a major activity is already committed.
+     * Workbench never fades: Identify stays available for potions and gear even when the resolver
+     * lists no station activities or this actor already committed a major pick.
      * @returns {Record<string, boolean>}
      */
     _buildStationEmptyNoticeMap() {
@@ -7661,19 +7668,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!this._activityResolver) return map;
 
         const restType = this._engine?.restType ?? "long";
+        const fireLevel = this._fireLevel ?? "unlit";
         const isFireLit = !!(this._fireLevel && this._fireLevel !== "unlit");
         const choices = this._characterChoices;
         const unchosen = partyActors.filter(a => a?.id && !choices?.has(a.id));
         // eslint-disable-next-line no-console
-        console.debug(`${MODULE_ID} | [SYNC-BISECT] _buildStationEmptyNoticeMap: resolverSize=${this._activityResolver?.activities?.size ?? 0}, partyCount=${partyActors.length}, unchosenCount=${unchosen.length}, choicesSize=${choices?.size ?? 0}, restType=${restType}, isFireLit=${isFireLit}, isGM=${this._isGM}`);
-
-        let identifyParty = { unidentifiedItems: [], identifyCasters: [], detectMagicCasters: [] };
-        try {
-            identifyParty = collectPartyIdentifyEmbedData(partyActors);
-        } catch (err) {
-            console.warn(`${MODULE_ID} | _buildStationEmptyNoticeMap: collectPartyIdentifyEmbedData failed`, err);
-        }
-        const workbenchIdentifyBright = (identifyParty.unidentifiedItems?.length ?? 0) > 0;
+        console.debug(`${MODULE_ID} | [SYNC-BISECT] _buildStationEmptyNoticeMap: resolverSize=${this._activityResolver?.activities?.size ?? 0}, partyCount=${partyActors.length}, unchosenCount=${unchosen.length}, choicesSize=${choices?.size ?? 0}, restType=${restType}, isFireLit=${isFireLit}, fireLevel=${fireLevel}, isGM=${this._isGM}`);
 
         // For GM: any unchosen party member who owes rations keeps the cooking station bright.
         // For players: only the viewer's own actor matters — other players' ration debts are
@@ -7699,7 +7699,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const hasAvailableAtStation = (actor, stationIdSet) => {
             const { available: allAvail } = this._activityResolver.getAvailableActivitiesWithFaded(
-                actor, restType, { isFireLit }
+                actor, restType, { isFireLit, fireLevel }
             );
             return allAvail.some(a => stationIdSet.has(a.id));
         };
@@ -7707,7 +7707,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (viewer && this._characterChoices.has(viewer.id)) {
             for (const station of CAMP_STATIONS) {
                 if (!station.furnitureKey) continue;
-                if (station.id === "workbench" && workbenchIdentifyBright) {
+                if (station.id === "workbench") {
                     map[station.id] = false;
                     continue;
                 }
@@ -7721,7 +7721,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 map[station.id] = true;
             }
             map.bedroll = true;
-            if (this._phase === "activity") map.campfire = false;
             return map;
         }
 
@@ -7734,7 +7733,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (empty && mealBrightParty && station.id === "cooking_station") {
                 empty = false;
             }
-            if (empty && station.id === "workbench" && workbenchIdentifyBright) {
+            if (station.id === "workbench") {
                 empty = false;
             }
             map[station.id] = empty;
@@ -7810,6 +7809,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ?? this._restData?.restType
                 ?? "long"
         };
+        /* restSession.fireLevel is refreshed on each station click; the object is created once
+         * when the layer activates and would otherwise keep the tier from that moment only. */
 
         const app = this;
         const proximityOpts = this._isGM
@@ -7855,16 +7856,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             app._canvasFocusedStationId = stationId;
             app._activitySubTab = "activity";
 
+            restSession.fireLevel = app._fireLevel ?? "unlit";
+            restSession.restType = app._engine?.restType
+                ?? app._selectedRestType
+                ?? app._restData?.restType
+                ?? "long";
+
             const dialogStation = stationId === "bedroll"
                 ? { ...station, label: `${actor.name}'s Bedroll` }
                 : station;
 
             try {
                 const restType = restSession.restType ?? "long";
-                const isFireLit = !!(this._fireLevel && this._fireLevel !== "unlit");
+                const fireLevel = app._fireLevel ?? restSession.fireLevel ?? "unlit";
+                const isFireLit = !!(fireLevel && fireLevel !== "unlit");
                 const resolverLoaded = !!(app._activityResolver?.activities?.size);
                 const resolvedAvail = resolverLoaded
-                    ? app._activityResolver.getAvailableActivitiesWithFaded(actor, restType, { isFireLit })
+                    ? app._activityResolver.getAvailableActivitiesWithFaded(actor, restType, { isFireLit, fireLevel })
                     : { available: [], faded: [] };
                 const stationActIds = new Set(station.activities ?? []);
                 await StationActivityDialog.openForStation(
@@ -8182,6 +8190,66 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 });
                 if (!confirmed) return;
             }
+
+            // Consume items immediately and apply Well Fed buffs
+            // (matches inventory consumption path for parity)
+            const food = Array.isArray(choice.food) ? [...choice.food] : [];
+            const water = Array.isArray(choice.water) ? [...choice.water] : [];
+            const essence = Array.isArray(choice.essence) ? [...choice.essence] : [];
+
+            // Snapshot food items before consumption for Well Fed resolution
+            const foodSnapshots = new Map();
+            for (const itemId of food) {
+                if (itemId && itemId !== "skip") {
+                    const item = actor.items.get(itemId);
+                    if (item) foodSnapshots.set(itemId, item.toObject(false));
+                }
+            }
+
+            const partyIds = this._mealChoices ? [...this._mealChoices.keys()] : [actorId];
+            for (const itemId of food) {
+                if (itemId && itemId !== "skip" && !itemId.startsWith("__")) {
+                    const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                    const snapshot = foodSnapshots.get(itemId);
+                    if (snapshot && consumed > 0) {
+                        await MealPhaseHandler._dispatchWellFedMealServing({
+                            consumerActor: actor,
+                            itemSnapshot: snapshot,
+                            partyIds
+                        });
+                    }
+                }
+            }
+            for (const itemId of water) {
+                if (itemId && itemId !== "skip" && !itemId.startsWith("__")) {
+                    const item = actor.items.get(itemId);
+                    const drainAmount = item?.system?.uses?.value || 1;
+                    await MealPhaseHandler._consumeItem(actor, itemId, drainAmount);
+                }
+            }
+            for (const itemId of essence) {
+                if (itemId && itemId !== "skip") {
+                    await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                }
+            }
+
+            // Fold selections into consumedDays so processAndApply won't
+            // re-consume them during the meal phase resolution
+            const consumedDays = Array.isArray(choice.consumedDays) ? [...choice.consumedDays] : [];
+            consumedDays.push({ food, water, essence });
+            this._mealChoices.set(actorId, {
+                ...choice,
+                consumedDays,
+                currentDay: consumedDays.length,
+                food: [],
+                water: [],
+                essence: [],
+                itemsConsumed: true,
+                // Preserve locked slots for UI state
+                foodLockedSlots: choice.foodLockedSlots ?? [],
+                waterLockedSlots: choice.waterLockedSlots ?? []
+            });
+
             if (!this._activityMealRationsSubmitted) this._activityMealRationsSubmitted = new Set();
             this._activityMealRationsSubmitted.add(actorId);
             await this._saveRestState();
@@ -8446,6 +8514,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 return;
             }
         } else if (prevPhase === "activity" && phase !== "activity") {
+            await closeOpenStationDialog();
             this._tearDownStationLayerCanvas();
             // Player was minimised during activity phase — auto-open the RSA so they
             // see the current rest phase (events, meal, reflection, etc.)
@@ -9870,6 +9939,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         await this._saveRestState();
         this.render();
+        void refreshOpenStationDialog();
         return { ok: true };
     }
 
@@ -9939,6 +10009,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         void CampfireTokenLinker.setLightState(false);
         deactivateStationLayer();
+        await closeOpenStationDialog();
         await this._saveRestState();
         this.render();
     }

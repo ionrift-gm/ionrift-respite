@@ -453,18 +453,27 @@ export class ActivityResolver {
 
     /**
      * Returns available, faded, and minor activities for an actor.
-     * Faded = prereqs fail only because a spell is known but not prepared.
+     * Faded includes unprepared spells, missing fire, and fire below cooking tier (embers).
      * Minor = quick utility actions that don't consume the rest activity slot (e.g. Identify).
      * @param {Actor} actor
      * @param {string} restType
-     * @returns {{ available: Object[], faded: Object[], minor: Object[] }}
+     * @param {Object} [options]
+     * @param {boolean} [options.isFireLit] - Used only when fireLevel is omitted: false means unlit.
+     * @param {string} [options.fireLevel] - unlit | embers | campfire | bonfire. Drives requiresFire (cooking needs campfire+).
+     * @returns {{ available: Object[], faded: Object[], minor: Object[], fadedMinor: Object[] }}
      */
     getAvailableActivitiesWithFaded(actor, restType, options = {}) {
         const available = [];
         const faded = [];
         const minor = [];
         const fadedMinor = [];
-        const isFireLit = options.isFireLit ?? true;
+        const rawLevel = options.fireLevel;
+        const hasExplicitLevel = rawLevel !== undefined && rawLevel !== null && rawLevel !== "";
+        const resolvedFireLevel = hasExplicitLevel
+            ? String(rawLevel).trim().toLowerCase()
+            : ((options.isFireLit ?? true) ? "campfire" : "unlit");
+        const fireIsBurning = resolvedFireLevel !== "unlit";
+        const fireAllowsCooking = resolvedFireLevel === "campfire" || resolvedFireLevel === "bonfire";
 
         for (const activity of this.activities.values()) {
             if (activity.disabled) continue;
@@ -490,13 +499,22 @@ export class ActivityResolver {
             }
 
             if (this._meetsPrerequisites(actor, activity.prerequisites)) {
-                // Fire-gated activities show as faded when fire is unlit
-                if (activity.requiresFire && !isFireLit) {
-                    faded.push({
-                        ...activity,
-                        fadedHint: "Requires a lit fire."
-                    });
-                    continue;
+                // requiresFire: cooking needs campfire or bonfire (embers counts as lit but not hot enough)
+                if (activity.requiresFire) {
+                    if (!fireIsBurning) {
+                        faded.push({
+                            ...activity,
+                            fadedHint: "Requires a lit fire."
+                        });
+                        continue;
+                    }
+                    if (!fireAllowsCooking) {
+                        faded.push({
+                            ...activity,
+                            fadedHint: "Raise the fire to campfire or bonfire to cook."
+                        });
+                        continue;
+                    }
                 }
                 if (activity.minor) {
                     minor.push(activity);

@@ -63,7 +63,9 @@ import {
 } from "./services/SocketController.js";
 import { registerAllSettings, registerItemEnrichments } from "./services/SettingsRegistrar.js";
 import { registerUiHooks, refreshZzzOverlay } from "./services/UiInjections.js";
+import { registerSpoilageMergeGuard } from "./services/SpoilageMergeGuard.js";
 import { registerInventoryContextMenu } from "./services/InventoryContextMenu.js";
+import { registerLockdownHooks } from "./services/PlayerLockdownService.js";
 import {
     showRejoinNotification, removeRejoinNotification,
     showShortRestRejoinNotification, removeShortRestRejoinNotification,
@@ -473,7 +475,9 @@ Hooks.once("init", async () => {
         /** Toggle all perimeter torch lights on/off. GM only. */
         toggleTorches,
         /** TorchTokenLinker service reference. */
-        TorchTokenLinker
+        TorchTokenLinker,
+        /** Whether a Respite rest flow (long or short) is currently active. Used by PlayerLockdownService. */
+        get isRestActive() { return respiteFlowActive; }
     };
 
     // Register settings (extracted to SettingsRegistrar.js â€” Phase 2.1)
@@ -648,11 +652,43 @@ Hooks.once("ready", async () => {
     game.socket.on(`module.${MODULE_ID}`, (data) => socketDispatch(data, socketContext));
 
     registerCampFurnitureZOrderGuards();
+    registerLockdownHooks();
+    registerSpoilageMergeGuard();
 
     // Zzz overlay on tokens for characters bedded down during reflection.
     Hooks.on("refreshToken", (token) => {
         try {
             refreshZzzOverlay(token);
+        } catch {
+            /* ignore */
+        }
+    });
+    // Flag-only updates (e.g. beddingDown) do not always trigger a token refresh on
+    // all clients; sync the overlay when respite token flags change.
+    Hooks.on("updateToken", (tokenDoc, change, _options, _userId) => {
+        try {
+            if (!change.flags?.[MODULE_ID]) return;
+            const token = tokenDoc.object;
+            if (!token) return;
+            refreshZzzOverlay(token);
+        } catch {
+            /* ignore */
+        }
+    });
+    Hooks.on("createToken", (token) => {
+        try {
+            refreshZzzOverlay(token);
+        } catch {
+            /* ignore */
+        }
+    });
+    Hooks.on("canvasReady", () => {
+        try {
+            const placeables = canvas.tokens?.placeables;
+            if (!placeables?.length) return;
+            for (const token of placeables) {
+                refreshZzzOverlay(token);
+            }
         } catch {
             /* ignore */
         }
