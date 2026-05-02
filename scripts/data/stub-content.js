@@ -1,8 +1,7 @@
 /**
  * Built-in stub content for the Respite module.
- * Provides a minimal but functional set of recipes, forage pools, and hunt
- * yields so the cooking/foraging/hunting loop works out of the box without
- * any content packs installed. Content packs supersede this data entirely.
+ * Recipes and hunt yields load when no imported pack supplies them.
+ * Resource pools are not auto-loaded; travel and camp forage require pool data from an imported pack.
  */
 
 // ═══════════════════════════════════════════════════════════════
@@ -304,7 +303,7 @@ export const STUB_RECIPES = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  RESOURCE POOLS
+//  RESOURCE POOLS (reference only; not registered automatically)
 // ═══════════════════════════════════════════════════════════════
 
 export const STUB_POOLS = [

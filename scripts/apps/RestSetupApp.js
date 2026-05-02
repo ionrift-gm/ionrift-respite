@@ -77,7 +77,7 @@ import {
 } from "./StationActivityDialog.js";
 import { CampfireMakeCampDialog } from "./CampfireMakeCampDialog.js";
 
-import { STUB_RECIPES, STUB_POOLS, STUB_HUNT_YIELDS } from "../data/stub-content.js";
+import { STUB_RECIPES, STUB_HUNT_YIELDS } from "../data/stub-content.js";
 import { ShortRestApp } from "./ShortRestApp.js";
 import {
     registerActiveRestApp,
@@ -605,7 +605,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const restPayload = {
             restId: `rest_${Date.now()}`, terrainTag: this._engine.terrainTag, comfort: this._engine.comfort,
             restType: this._engine.restType, activities: this._activities ?? [],
-            recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
+            recipes: Object.fromEntries(this._craftingEngine?.recipes || []),
+            forageActivityGate: this._forageActivityGatePayload()
         };
         setActiveRestData(restPayload);
         emitRestStarted(restPayload);
@@ -671,7 +672,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const restPayload = {
             restId: `rest_${Date.now()}`, terrainTag: this._engine.terrainTag, comfort: this._engine.comfort,
             restType: this._engine.restType, activities: this._activities ?? [],
-            recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
+            recipes: Object.fromEntries(this._craftingEngine?.recipes || []),
+            forageActivityGate: this._forageActivityGatePayload()
         };
         setActiveRestData(restPayload);
         emitRestStarted(restPayload);
@@ -736,7 +738,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const restPayload = {
             restId: `rest_${Date.now()}`, terrainTag: this._engine.terrainTag, comfort: this._engine.comfort,
             restType: this._engine.restType, activities: this._activities ?? [],
-            recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
+            recipes: Object.fromEntries(this._craftingEngine?.recipes || []),
+            forageActivityGate: this._forageActivityGatePayload()
         };
         setActiveRestData(restPayload);
         emitRestStarted(restPayload);
@@ -828,7 +831,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const restPayload = {
             restId: `rest_${Date.now()}`, terrainTag: this._engine.terrainTag, comfort: this._engine.comfort,
             restType: this._engine.restType, activities: this._activities ?? [],
-            recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
+            recipes: Object.fromEntries(this._craftingEngine?.recipes || []),
+            forageActivityGate: this._forageActivityGatePayload()
         };
         setActiveRestData(restPayload);
         emitRestStarted(restPayload);
@@ -940,7 +944,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const restPayload = {
             restId: `rest_${Date.now()}`, terrainTag: this._engine.terrainTag, comfort: this._engine.comfort,
             restType: this._engine.restType, activities: this._activities ?? [],
-            recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
+            recipes: Object.fromEntries(this._craftingEngine?.recipes || []),
+            forageActivityGate: this._forageActivityGatePayload()
         };
         setActiveRestData(restPayload);
         emitRestStarted(restPayload);
@@ -1026,7 +1031,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const restPayload = {
             restId: `rest_${Date.now()}`, terrainTag: this._engine.terrainTag, comfort: this._engine.comfort,
             restType: this._engine.restType, activities: this._activities ?? [],
-            recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
+            recipes: Object.fromEntries(this._craftingEngine?.recipes || []),
+            forageActivityGate: this._forageActivityGatePayload()
         };
         setActiveRestData(restPayload);
         emitRestStarted(restPayload);
@@ -1349,7 +1355,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
                 // Resource Pools
                 if (Array.isArray(packData.resourcePools) && packData.resourcePools.length && this._travel) {
-                    this._travel.loadPoolsFromData(packData.resourcePools);
+                    this._travel.loadPoolsFromData(packData.resourcePools, { fromImportedPack: true });
                     totalPools += packData.resourcePools.length;
                     loaded.push(`${packData.resourcePools.length} pools`);
                 }
@@ -1377,14 +1383,31 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
             console.log(`${MODULE_ID} | Using built-in stub recipes`);
         }
-        if (totalPools === 0 && this._travel) {
-            this._travel.loadPoolsFromData(STUB_POOLS);
-            console.log(`${MODULE_ID} | Using built-in stub forage pools`);
-        }
         if (totalYieldTerrains === 0 && this._travel) {
             this._travel.loadHuntYieldsFromData(STUB_HUNT_YIELDS);
             console.log(`${MODULE_ID} | Using built-in stub hunt yields`);
         }
+    }
+
+    /**
+     * Forage gate snapshot for sockets and the activity picker (current rest terrain).
+     */
+    _forageActivityGatePayload() {
+        const tag = this._engine?.terrainTag ?? this._selectedTerrain ?? this._restData?.terrainTag ?? "forest";
+        return this._travel?.getForageGate?.(tag) ?? null;
+    }
+
+    /** @returns {Object} Merged into ActivityResolver travel/camp forage checks on this client. */
+    _forageResolverOpts() {
+        const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? this._restData?.terrainTag ?? "forest";
+        const gate = this._travel?.getForageGate?.(terrainTag)
+            ?? { disabled: true, disabledReasonKey: "ionrift-respite.travel.forage.requires_pack" };
+        return {
+            forageActivityGate: gate,
+            terrainTag,
+            resourcePoolsFromPack: this._travel?.resourcePoolsFromPack ?? false,
+            resourcePoolRoller: this._travel?.getResourcePoolRoller?.() ?? null
+        };
     }
 
     /**
@@ -1890,7 +1913,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             };
             const fireLevel = this._fireLevel ?? "unlit";
             const isFireLit = !!(this._fireLevel && this._fireLevel !== "unlit");
-            const { available: avail, faded: fadedActivities, minor: minorActivities, fadedMinor: fadedMinorActivities } = this._activityResolver.getAvailableActivitiesWithFaded(a, this._engine?.restType ?? "long", { isFireLit, fireLevel });
+            const { available: avail, faded: fadedActivities, minor: minorActivities, fadedMinor: fadedMinorActivities } = this._activityResolver.getAvailableActivitiesWithFaded(a, this._engine?.restType ?? "long", {
+                isFireLit,
+                fireLevel,
+                ...this._forageResolverOpts()
+            });
             for (const act of avail) {
                 if (act.crafting?.enabled) {
                     professionBadges.push({
@@ -2683,6 +2710,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     });
                 }
 
+                const forageGate = this._travel?.getForageGate?.(terrainTag)
+                    ?? { disabled: true, disabledReasonKey: "ionrift-respite.travel.forage.requires_pack" };
+                const forageDisabled = canForage && forageGate.disabled;
+                const forageDisabledReasonKey = forageDisabled ? forageGate.disabledReasonKey : null;
+
                 return {
                     days,
                     totalDays,
@@ -2695,7 +2727,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     terrainLabel: terrain?.label ?? terrainTag,
                     hasOwnedCharacters: partyActors.some(a => a.isOwner),
                     forageDC: this._travelForageDC ?? 12,
-                    huntDC: this._travelHuntDC ?? 14
+                    huntDC: this._travelHuntDC ?? 14,
+                    forageDisabled,
+                    forageDisabledReasonKey,
+                    forageDisabledTooltip: forageDisabledReasonKey
+                        ? game.i18n.localize(forageDisabledReasonKey)
+                        : null
                 };
             })(),
             pendingTravelRoll: this._pendingTravelRoll ? (() => {
@@ -5135,7 +5172,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             comfort: this._engine.comfort,
             restType: this._engine.restType,
             activities: this._activities ?? [],
-            recipes: Object.fromEntries(this._craftingEngine.recipes)
+            recipes: Object.fromEntries(this._craftingEngine.recipes),
+            forageActivityGate: this._travel?.getForageGate?.(this._engine.terrainTag) ?? null
         };
 
         setActiveRestData(restPayload);
@@ -7719,7 +7757,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const hasAvailableAtStation = (actor, stationIdSet) => {
             const { available: allAvail } = this._activityResolver.getAvailableActivitiesWithFaded(
-                actor, restType, { isFireLit, fireLevel }
+                actor, restType, { isFireLit, fireLevel, ...this._forageResolverOpts() }
             );
             return allAvail.some(a => stationIdSet.has(a.id));
         };
@@ -7892,7 +7930,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const isFireLit = !!(fireLevel && fireLevel !== "unlit");
                 const resolverLoaded = !!(app._activityResolver?.activities?.size);
                 const resolvedAvail = resolverLoaded
-                    ? app._activityResolver.getAvailableActivitiesWithFaded(actor, restType, { isFireLit, fireLevel })
+                    ? app._activityResolver.getAvailableActivitiesWithFaded(actor, restType, {
+                        isFireLit,
+                        fireLevel,
+                        ...(app._forageResolverOpts?.() ?? {})
+                    })
                     : { available: [], faded: [] };
                 const stationActIds = new Set(station.activities ?? []);
                 await StationActivityDialog.openForStation(
@@ -9019,6 +9061,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!actor || !actor.isOwner) return;
 
         if (this._playerTravelRolled?.[day]?.[actorId]) return;
+
+        if (activity === "forage") {
+            const terrainTag = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
+            const gate = this._travel?.getForageGate?.(terrainTag);
+            if (gate?.disabled) {
+                try {
+                    ui.notifications?.warn(game.i18n.localize(
+                        gate.disabledReasonKey ?? "ionrift-respite.travel.forage.requires_pack"
+                    ));
+                } catch { /* noop */ }
+                return;
+            }
+        }
 
         // Confirm the declaration to the GM first
         emitTravelDeclaration({

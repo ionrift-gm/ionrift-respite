@@ -16,7 +16,7 @@ function daggerheartItemIsIdentical(a, b) {
     const compendiumSource = a._stats.compendiumSource === b._stats.compendiumSource;
     const name = a.name === b.name;
     const description = a.system.description === b.system.description;
-    return compendiumSource && name & description;
+    return compendiumSource && name && description;
 }
 
 function getDHBaseActorSheet() {

@@ -47,6 +47,11 @@ export class TravelResolver {
         return this.#huntYields !== null && Object.keys(this.#huntYields).length > 0;
     }
 
+    /** @returns {ResourcePoolRoller} Shared roller (for {@link ForageActivityValidator}). */
+    get resourcePoolRoller() {
+        return this.#poolRoller;
+    }
+
     /**
      * Resolve a foraging attempt for a single character.
      * @param {Actor} actor
@@ -68,18 +73,14 @@ export class TravelResolver {
 
         let items = [];
         let mishap = null;
+        let warningKey = null;
 
         if (nat1) {
             mishap = this._rollForageMishap(terrainTag);
         } else if (success) {
-            const poolId = `resource_pool_${terrainTag}`;
-            items = await this.#poolRoller.roll(poolId, 1);
-
-            if (exceptional || nat20) {
-                const rarePoolId = `resource_pool_${terrainTag}_rare`;
-                const rareItems = await this.#poolRoller.roll(rarePoolId, 1);
-                items.push(...rareItems);
-            }
+            const rolled = await this._rollForageItems(terrainTag, exceptional, nat20);
+            items = rolled.items;
+            warningKey = rolled.warningKey ?? null;
         }
 
         return {
@@ -94,7 +95,8 @@ export class TravelResolver {
             dc,
             roll,
             items,
-            mishap
+            mishap,
+            warningKey
         };
     }
 
@@ -114,22 +116,19 @@ export class TravelResolver {
 
         let items = [];
         let mishap = null;
+        let warningKey = null;
 
         if (nat1) {
             mishap = this._rollForageMishap(terrainTag);
         } else if (success) {
-            const poolId = `resource_pool_${terrainTag}`;
-            items = await this.#poolRoller.roll(poolId, 1);
-            if (exceptional || nat20) {
-                const rarePoolId = `resource_pool_${terrainTag}_rare`;
-                const rareItems = await this.#poolRoller.roll(rarePoolId, 1);
-                items.push(...rareItems);
-            }
+            const rolled = await this._rollForageItems(terrainTag, exceptional, nat20);
+            items = rolled.items;
+            warningKey = rolled.warningKey ?? null;
         }
 
         return {
             activity: "forage", actorId: actor.id, actorName: actor.name,
-            success, nat20, nat1, exceptional, total, dc, items, mishap
+            success, nat20, nat1, exceptional, total, dc, items, mishap, warningKey
         };
     }
 
@@ -278,6 +277,8 @@ export class TravelResolver {
                 content += `<li>${item.quantity}x ${name}</li>`;
             }
             content += `</ul>`;
+        } else if (result.warningKey === "FORAGE_POOL_EMPTY" && result.success) {
+            content += `<p><em>Nothing found.</em></p>`;
         }
 
         if (result.mishap) {
@@ -296,6 +297,33 @@ export class TravelResolver {
     }
 
     // ── Internal Helpers ──────────────────────────────────────
+
+    /**
+     * Pool draws for forage (no synthetic loot). Empty grantable results log a warning.
+     * @returns {Promise<{ items: Object[], warningKey?: string }>}
+     */
+    async _rollForageItems(terrainTag, exceptional, nat20) {
+        const poolId = `resource_pool_${terrainTag}`;
+        const primaryRoll = await this.#poolRoller.roll(poolId, 1);
+        let rareRoll = [];
+        if (exceptional || nat20) {
+            rareRoll = await this.#poolRoller.roll(`${poolId}_rare`, 1);
+        }
+
+        const grantable = (arr) => arr.filter(e => e.itemData);
+        const items = [...grantable(primaryRoll), ...grantable(rareRoll)];
+
+        if (!items.length) {
+            console.warn(`${MODULE_ID} | Forage pools produced no grantable items`, {
+                terrainTag,
+                exceptional,
+                nat20,
+                warningKey: "FORAGE_POOL_EMPTY"
+            });
+            return { items: [], warningKey: "FORAGE_POOL_EMPTY" };
+        }
+        return { items };
+    }
 
     _getSurvivalMod(actor) {
         const sur = actor.system?.skills?.sur;
