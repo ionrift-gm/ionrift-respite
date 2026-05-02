@@ -256,7 +256,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             if (!rationDone && mealCard) {
                 stationTabs.push({ id: "meal", label: "Rations" });
             }
-            if (this._stationHasCooking && !this._actorChoiceLocked) {
+            if (this._stationHasCooking) {
                 stationTabs.push({
                     id: "cooking",
                     label: "Cooking",
@@ -616,7 +616,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             if (!rationDone && mealCard) {
                 stationTabs.push({ id: "meal", label: "Rations" });
             }
-            if (this._stationHasCooking && !this._actorChoiceLocked) {
+            if (this._stationHasCooking) {
                 stationTabs.push({
                     id: "cooking",
                     label: "Cooking",
