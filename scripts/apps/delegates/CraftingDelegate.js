@@ -4,6 +4,8 @@
  * Extracted from RestSetupApp to reduce God Class complexity.
  */
 
+import { isStationLayerActive } from "../../services/StationInteractionLayer.js";
+
 const MODULE_ID = "ionrift-respite";
 
 export class CraftingDelegate {
@@ -197,6 +199,9 @@ export class CraftingDelegate {
                     });
                     const actor = game.actors.get(characterId);
                     if (actor) ui.notifications.info(`${actor.name}'s activity submitted.`);
+                    if (app._phase === "activity" && isStationLayerActive()) {
+                        app._refreshStationOverlayForFocusChange?.();
+                    }
                 }
             }
         }

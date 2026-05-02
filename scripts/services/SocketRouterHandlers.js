@@ -19,6 +19,7 @@ import {
     notifyDetectMagicScanApplied,
     notifyDetectMagicScanCleared
 } from "./DetectMagicInventoryGlowBridge.js";
+import { closeOpenStationDialog } from "../apps/StationActivityDialog.js";
 import { deactivateStationLayer } from "./StationInteractionLayer.js";
 import {
     placePlayerGear, placeStation, canPlaceStation,
@@ -138,6 +139,7 @@ export function handleRestResolved(data, ctx) {
     ctx.setPlayerRestActive(false);
     removeRejoinNotification();
     removeGmRestIndicator();
+    void closeOpenStationDialog().catch(err => console.warn(`${MODULE_ID} | closeOpenStationDialog`, err));
     notifyDetectMagicScanCleared();
     try {
         deactivateStationLayer();
@@ -211,6 +213,7 @@ export function handleShortRestComplete(data, ctx) {
 }
 
 export function handleShortRestAbandoned(data, ctx) {
+    void closeOpenStationDialog().catch(err => console.warn(`${MODULE_ID} | closeOpenStationDialog`, err));
     const app = ctx.activeShortRestApp;
     if (app) {
         ui.notifications.info("The GM has abandoned the short rest.");

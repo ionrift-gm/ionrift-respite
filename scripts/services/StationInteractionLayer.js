@@ -181,10 +181,21 @@ const OV = {
     PORTRAIT_STACK_OVERLAP: 9,
     PORTRAIT_STACK_MAX:    4,
     MEAL_GAP:      2,
-    MEAL_PORTRAIT_R:     7,
+    /** Smaller than PORTRAIT_R: rations debt queue vs major-activity pick portraits. */
+    MEAL_PORTRAIT_R:     8,
     MEAL_PORTRAIT_STEP:  6,
     MEAL_PORTRAIT_STACK_MAX: 5,
-    LABEL_GAP:     4
+    LABEL_GAP:     4,
+    /** Ring for portraits meaning “major activity committed at this station.” */
+    PORTRAIT_ACTIVITY_BORDER:    0x7dd3fc,
+    PORTRAIT_ACTIVITY_BORDER_W:  2,
+    /** Corner chip on activity portraits (pinned pick). */
+    PORTRAIT_ACTIVITY_PIN:       0x34d399,
+    /** Meal-debt portraits: warm ring (also see BORDER_MEAL on badge). */
+    MEAL_PORTRAIT_BORDER:        0xf59e0b,
+    MEAL_PORTRAIT_BORDER_W:      2,
+    /** Corner marker on meal portraits (rations still owed this rest). */
+    MEAL_PORTRAIT_CORNER:        0xfbbf24
 };
 
 /**
@@ -397,8 +408,9 @@ class StationOverlay {
         const pVis = this._portraitRoot?.visible;
         const mVis = this._mealRowRoot?.visible;
         if (pVis && mVis) {
-            this._portraitRoot.y = -(OV.MEAL_PORTRAIT_R + 1);
-            this._mealRowRoot.y = OV.PORTRAIT_R + 1;
+            const gap = OV.PORTRAIT_GAP + 3;
+            this._portraitRoot.y = -(OV.MEAL_PORTRAIT_R + gap);
+            this._mealRowRoot.y = OV.PORTRAIT_R + gap;
         } else {
             if (this._portraitRoot) this._portraitRoot.y = 0;
             if (this._mealRowRoot)  this._mealRowRoot.y = 0;
@@ -711,7 +723,7 @@ class StationOverlay {
 
         const addOne = (imgSrc, cx, zBase) => {
             const backing = new PIXI.Graphics();
-            backing.lineStyle(1, 0xffffff, 0.15);
+            backing.lineStyle(OV.PORTRAIT_ACTIVITY_BORDER_W, OV.PORTRAIT_ACTIVITY_BORDER, 0.92);
             backing.beginFill(0x000000, 1);
             backing.drawCircle(cx, cy, r);
             backing.endFill();
@@ -720,7 +732,7 @@ class StationOverlay {
 
             const mask = new PIXI.Graphics();
             mask.beginFill(0xffffff);
-            mask.drawCircle(cx, cy, r * 0.98);
+            mask.drawCircle(cx, cy, r * 0.92);
             mask.endFill();
             mask.zIndex = zBase + 1;
             if ("eventMode" in mask) mask.eventMode = "none";
@@ -733,6 +745,14 @@ class StationOverlay {
             spr.zIndex = zBase + 2;
             if ("eventMode" in spr) spr.eventMode = "none";
 
+            const pin = new PIXI.Graphics();
+            pin.lineStyle(1, 0x0c0b10, 0.85);
+            pin.beginFill(OV.PORTRAIT_ACTIVITY_PIN, 1);
+            pin.drawCircle(cx + r * 0.52, cy + r * 0.52, 3);
+            pin.endFill();
+            pin.zIndex = zBase + 6;
+            if ("eventMode" in pin) pin.eventMode = "none";
+
             const place = () => {
                 if (this._portraitLoadToken !== loadId || !this._portraitRoot) return;
                 const tw = spr.texture?.width || 1;
@@ -742,6 +762,7 @@ class StationOverlay {
                 this._portraitRoot.addChild(backing);
                 this._portraitRoot.addChild(mask);
                 this._portraitRoot.addChild(spr);
+                this._portraitRoot.addChild(pin);
             };
 
             if (spr.texture?.valid) place();
@@ -836,7 +857,7 @@ class StationOverlay {
         const maxShow = OV.MEAL_PORTRAIT_STACK_MAX;
         const show = list.slice(0, maxShow);
         const overflow = list.length - show.length;
-        const mealBorder = 0xf59e0b;
+        const mealBorder = OV.MEAL_PORTRAIT_BORDER;
         const edgeGap = OV.BADGE_R + OV.MEAL_GAP + r;
 
         const rightCount = Math.ceil(show.length / 2);
@@ -847,8 +868,8 @@ class StationOverlay {
 
         const addOneMeal = (imgSrc, cx, zBase) => {
             const backing = new PIXI.Graphics();
-            backing.lineStyle(1, mealBorder, 0.65);
-            backing.beginFill(0x000000, 1);
+            backing.lineStyle(OV.MEAL_PORTRAIT_BORDER_W, mealBorder, 0.95);
+            backing.beginFill(0x1a1208, 1);
             backing.drawCircle(cx, cy, r);
             backing.endFill();
             backing.zIndex = zBase;
@@ -856,7 +877,7 @@ class StationOverlay {
 
             const mask = new PIXI.Graphics();
             mask.beginFill(0xffffff);
-            mask.drawCircle(cx, cy, r * 0.97);
+            mask.drawCircle(cx, cy, r * 0.9);
             mask.endFill();
             mask.zIndex = zBase + 1;
             if ("eventMode" in mask) mask.eventMode = "none";
@@ -869,6 +890,14 @@ class StationOverlay {
             spr.zIndex = zBase + 2;
             if ("eventMode" in spr) spr.eventMode = "none";
 
+            const corner = new PIXI.Graphics();
+            corner.lineStyle(1, 0x0c0b10, 0.8);
+            corner.beginFill(OV.MEAL_PORTRAIT_CORNER, 1);
+            corner.drawRoundedRect(cx + r * 0.35, cy + r * 0.35, 4, 4, 1);
+            corner.endFill();
+            corner.zIndex = zBase + 6;
+            if ("eventMode" in corner) corner.eventMode = "none";
+
             const place = () => {
                 if (this._mealPortraitLoadToken !== loadId || !this._mealRowRoot) return;
                 const tw = spr.texture?.width || 1;
@@ -878,6 +907,7 @@ class StationOverlay {
                 this._mealRowRoot.addChild(backing);
                 this._mealRowRoot.addChild(mask);
                 this._mealRowRoot.addChild(spr);
+                this._mealRowRoot.addChild(corner);
             };
 
             if (spr.texture?.valid) place();

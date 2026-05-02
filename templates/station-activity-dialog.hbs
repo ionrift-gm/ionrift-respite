@@ -147,7 +147,8 @@
         {{#each stationTabs}}
         <button type="button" role="tab" class="station-sub-tab {{#if (eq ../stationPanelTab id)}}active{{/if}}{{#if hintClass}} {{hintClass}}{{/if}}"
             data-action="switchStationPanelTab" data-tab="{{id}}"
-            {{#if title}}title="{{title}}"{{/if}}>
+            {{#if ../craftRollPending}}disabled aria-disabled="true" title="Wait for the roll to finish"
+            {{else}}{{#if title}}title="{{title}}"{{/if}}{{/if}}>
             {{label}}
         </button>
         {{/each}}
@@ -155,7 +156,13 @@
     {{/if}}
 
     {{#if crafting}}
-    <div class="crafting-picker station-crafting-panel crafting-split">
+    <div class="crafting-picker station-crafting-panel crafting-split{{#if crafting.rollPending}} station-crafting-panel--roll-pending{{/if}}">
+        {{#if crafting.rollPending}}
+        <div class="crafting-roll-blocking-overlay" role="status" aria-live="polite">
+            <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+            <span>Waiting for the roll to finish...</span>
+        </div>
+        {{/if}}
 
         {{!-- ═══════════ AFTER CRAFTING ═══════════ --}}
         {{#if crafting.hasCrafted}}
@@ -231,6 +238,7 @@
 
         {{#if crafting.craftingResult.isPartyMeal}}
         {{#if crafting.craftingResult.success}}
+        {{#unless crafting.craftingResult.partyMealDispositionDone}}
         <div class="feast-footer-actions">
             <button type="button" class="btn-secondary feast-keep-btn" data-action="craftClose">
                 <i class="fas fa-box"></i> Keep in inventory
@@ -239,6 +247,11 @@
                 <i class="fas fa-utensils"></i> Serve Now
             </button>
         </div>
+        {{else}}
+        <div class="crafting-done-message">
+            <i class="fas fa-utensils"></i> Serving complete. The shared dish is gone from the cook's inventory.
+        </div>
+        {{/unless}}
         {{else}}
         <div class="crafting-done-message">
             <i class="fas fa-moon"></i> Crafting complete for this rest.
@@ -465,7 +478,8 @@
 
         {{!-- Footer --}}
         <div class="crafting-footer">
-            <button type="button" class="btn-secondary" data-action="craftClose">
+            <button type="button" class="btn-secondary" data-action="craftClose"
+                {{#if crafting.rollPending}}disabled aria-disabled="true"{{/if}}>
                 {{#if crafting.hasCrafted}}Close{{else}}Cancel{{/if}}
             </button>
         </div>
@@ -766,7 +780,7 @@
     {{/if}}
     {{/if}}
 
-    {{!-- Rations tab (campfire + cooking station) --}}
+    {{!-- Rations tab (cooking station hub when meal card exists) --}}
     {{#if showStationTabs}}
     {{#if (eq stationPanelTab "meal")}}
     <div class="station-meal-embed">
@@ -776,6 +790,10 @@
         {{/if}}
         {{#with mealCard}}
         {{#if (or allDaysConsumed playerSubmitted)}}
+        <div class="station-meal-rations-done-lead" role="status">
+            <i class="fas fa-check-circle" aria-hidden="true"></i>
+            <p>Food and water for this rest are already submitted. The status below is read-only.</p>
+        </div>
         <div class="meal-summary-status">
             <span class="meal-summary-stat {{#if foodSufficient}}stat-ok{{else}}stat-warn{{/if}}">
                 <i class="fas {{#if foodSufficient}}fa-check-circle{{else}}fa-drumstick-bite{{/if}}"></i>
@@ -792,8 +810,8 @@
                 {{#if hasFood}}
                 {{#each foodSlots}}
                 <div class="meal-drop-header-row">
-                    <div class="meal-drop-zone food-drop-zone {{#if filled}}filled{{/if}}"
-                         data-character-id="{{../characterId}}" data-slot="food" data-slot-index="{{index}}">
+                    <div class="meal-drop-zone food-drop-zone {{#if filled}}filled{{/if}}{{#if locked}} locked{{/if}}"
+                         data-character-id="{{../characterId}}" data-slot="food" data-slot-index="{{index}}"{{#if locked}} data-locked="true"{{/if}}>
                         <div class="drop-zone-silhouette">
                             {{#if filled}}
                             {{#each ../foodOptions}}
@@ -847,8 +865,8 @@
                 {{#if hasWater}}
                 {{#each waterSlots}}
                 <div class="meal-drop-header-row">
-                    <div class="meal-drop-zone water-drop-zone {{#if filled}}filled{{/if}}"
-                         data-character-id="{{../characterId}}" data-slot="water" data-slot-index="{{index}}">
+                    <div class="meal-drop-zone water-drop-zone {{#if filled}}filled{{/if}}{{#if locked}} locked{{/if}}"
+                         data-character-id="{{../characterId}}" data-slot="water" data-slot-index="{{index}}"{{#if locked}} data-locked="true"{{/if}}>
                         <div class="drop-zone-silhouette">
                             {{#if filled}}
                             {{#each ../waterOptions}}

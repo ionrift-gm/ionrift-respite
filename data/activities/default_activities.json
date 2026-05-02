@@ -712,6 +712,7 @@
     },
     {
         "id": "act_attune",
+        "disabled": true,
         "name": "Attune Item",
         "professions": [],
         "description": "Focus on a magical item to form a bond with it. Requires concentration during a rest period.",

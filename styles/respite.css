@@ -5473,6 +5473,34 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     scrollbar-color: rgba(126, 184, 218, 0.25) transparent;
 }
 
+.station-crafting-panel.station-crafting-panel--roll-pending {
+    position: relative;
+}
+
+.ionrift-station-dialog .crafting-roll-blocking-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 25;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 1rem;
+    text-align: center;
+    background: rgba(12, 10, 18, 0.78);
+    border-radius: 6px;
+    pointer-events: auto;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.ionrift-station-dialog .crafting-roll-blocking-overlay .fa-spinner {
+    font-size: 1.35rem;
+    color: rgba(140, 190, 255, 0.9);
+}
+
 /* ---- Split Panel Layout ---- */
 
 .crafting-split .crafting-split-body {
@@ -8402,6 +8430,31 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 .station-cooking-gate--activity-locked .station-cooking-gate-icon {
     color: rgba(120, 200, 150, 0.5);
+}
+
+.ionrift-station-dialog .station-meal-rations-done-lead {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin: 0 0 0.5rem;
+    padding: 0.45rem 0.5rem;
+    background: rgba(100, 200, 140, 0.06);
+    border: 1px solid rgba(100, 200, 140, 0.18);
+    border-radius: 6px;
+}
+
+.ionrift-station-dialog .station-meal-rations-done-lead i {
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+    color: rgba(120, 200, 150, 0.75);
+    font-size: 0.75rem;
+}
+
+.ionrift-station-dialog .station-meal-rations-done-lead p {
+    margin: 0;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.55);
 }
 
 .ionrift-station-dialog .station-meal-embed {
@@ -11966,6 +12019,29 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 .food-drop-zone.drop-hover { border-color: rgba(255, 200, 80, 0.8); background: rgba(255, 200, 80, 0.12); box-shadow: 0 0 24px rgba(255, 200, 80, 0.35); transform: scale(1.1); }
 .water-drop-zone.drop-hover { border-color: rgba(100, 180, 255, 0.8); background: rgba(100, 180, 255, 0.12); box-shadow: 0 0 24px rgba(100, 180, 255, 0.35); transform: scale(1.1); }
+
+/* Locked slots: consumed from inventory, not interactive */
+.meal-drop-zone.locked { cursor: not-allowed; pointer-events: none; opacity: 0.7; }
+.meal-drop-zone.locked::after {
+    content: "\f023"; /* fa-lock */
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    font-size: 0.55rem;
+    color: rgba(255, 255, 255, 0.4);
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+.food-drop-zone.locked { border-color: rgba(255, 200, 80, 0.3); }
+.water-drop-zone.locked { border-color: rgba(100, 180, 255, 0.3); }
 
 /* ---- Rectangular Drop Zones (Station Dialog) ---- */
 .meal-drop-zone.meal-drop-zone-rect {
@@ -18939,4 +19015,50 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     background: linear-gradient(135deg, #FFD870 0%, #FFC850 100%);
     box-shadow: 0 0 18px rgba(255, 200, 80, 0.5);
     transform: translateY(-1px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PLAYER LOCKDOWN: Quantity & Attunement restrictions
+   Applied via .respite-lock-quantity / .respite-lock-attune classes
+   injected by PlayerLockdownService on actor sheet render.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Quantity Lock: dnd5e sheet ─────────────────────────────────── */
+/* Hide the +/- adjustment buttons entirely */
+.respite-lock-quantity .item-quantity .adjustment-button {
+    display: none !important;
+}
+/* Make the quantity input read-only in appearance */
+.respite-lock-quantity .item-quantity input[data-name="system.quantity"] {
+    pointer-events: none !important;
+    background: transparent;
+    border-color: transparent;
+    cursor: default;
+    opacity: 0.7;
+}
+
+/* ── Quantity Lock: tidy5e sheet ─────────────────────────────────── */
+.respite-lock-quantity .item-quantity input.item-count,
+.respite-lock-quantity input.item-count[data-path="data.quantity"] {
+    pointer-events: none !important;
+    background: transparent;
+    border-color: transparent;
+    cursor: default;
+    opacity: 0.7;
+}
+
+/* ── Attunement Lock: dnd5e sheet ───────────────────────────────── */
+.respite-lock-attune [data-action="attune"] {
+    pointer-events: none !important;
+    opacity: 0.3;
+    cursor: not-allowed;
+    filter: grayscale(0.6);
+}
+
+/* ── Attunement Lock: tidy5e sheet ──────────────────────────────── */
+.respite-lock-attune .item-attunement {
+    pointer-events: none !important;
+    opacity: 0.3;
+    cursor: not-allowed;
+    filter: grayscale(0.6);
 }

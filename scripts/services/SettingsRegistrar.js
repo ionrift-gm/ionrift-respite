@@ -132,6 +132,26 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         restricted: true
     });
 
+    game.settings.register(MODULE_ID, "lockPlayerQuantity", {
+        name: "Lock Player Quantity Controls",
+        hint: "Prevents players from adjusting item quantities on their character sheet. The GM can still modify quantities. Useful when tracking rations and consumables through the Respite rest flow.",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: false,
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "lockAttuneOutsideRest", {
+        name: "Lock Attunement to Rest",
+        hint: "Players can only attune or de-attune items during an active rest (long or short). Outside of rest, the attunement toggle is disabled. RAW: attunement requires a short rest.",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: true,
+        restricted: true
+    });
+
     // ── Hidden/Internal Settings ─────────────────────────────────────
 
     game.settings.register(MODULE_ID, "campfireTokenName", {
@@ -491,6 +511,8 @@ export const SETTING_KEYS = [
     "enableTraining",
     "trackFood",
     "partialSustenance",
+    "lockPlayerQuantity",
+    "lockAttuneOutsideRest",
     "campfireTokenName",
     "torchTokenName",
     "torchAutoLink",

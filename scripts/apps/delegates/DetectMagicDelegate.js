@@ -113,15 +113,15 @@ export function collectPartyIdentifyEmbedData(partyActors, options = {}) {
 }
 
 /**
- * Scan trigger check: GM always; players only when they own a party member
- * with Detect Magic prepared.
+ * Scan trigger check: GM always (party-wide narrative scan); players only when they
+ * own a party member with Detect Magic available (ritual, prepared, cantrip, etc.).
  * @param {Actor[]} partyActors
  * @returns {boolean}
  */
 export function computeCanTriggerDetectMagicScan(partyActors) {
+    if (game.user?.isGM) return true;
     const { detectMagicCasters } = collectPartyIdentifyEmbedData(partyActors);
     if (!detectMagicCasters.length) return false;
-    if (game.user?.isGM) return true;
     const ids = new Set(detectMagicCasters.map(c => c.id));
     return partyActors.some(a => ids.has(a.id) && a.isOwner);
 }

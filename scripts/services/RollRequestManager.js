@@ -84,7 +84,7 @@ export async function postRollToChat(actor, roll, flavor) {
  * @returns {Promise<void>}
  */
 export async function waitForDiceSoNice(timeoutMs = 5000) {
-    if (!game.modules.get("dice-so-nice")?.active) return;
+    if (!game.modules?.get?.("dice-so-nice")?.active) return;
     return new Promise(resolve => {
         const timeout = setTimeout(resolve, timeoutMs);
         Hooks.once("diceSoNiceRollComplete", () => {

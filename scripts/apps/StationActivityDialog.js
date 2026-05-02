@@ -19,6 +19,7 @@ import { computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, 
 import { canPlaceStation, actorHasBrewingTools } from "../services/CompoundCampPlacer.js";
 import { getPartyActors } from "../services/partyActors.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
+import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../services/StationInteractionLayer.js";
 
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -46,7 +47,101 @@ export function closeStationDialogIfDifferentActor(contextActorId) {
 
 /** Re-build context after GM changes fire (or any shared rest data) from socket. */
 export function refreshOpenStationDialog() {
-    if (_openDialog) void _openDialog.render(true);
+    if (_openDialog) {
+        _openDialog._resyncStationActivitiesFromRestApp();
+        void _openDialog.render(true);
+    }
+}
+
+/** Close any open canvas station dialog (rest abandoned, phase change, camp cleared, etc.). */
+export async function closeOpenStationDialog() {
+    const dlg = _openDialog;
+    if (!dlg) return;
+    await dlg.close();
+}
+
+/**
+ * Credit feast satiation in the active rest's meal state for all recipients.
+ * Fills + locks food/water slots based on the feast's satiates array, folds
+ * selections into consumedDays, and marks each character as rations-submitted.
+ *
+ * Called after a party meal is served via the "Feast: Serve Now" button.
+ *
+ * @param {object} restApp - The active RestSetupApp instance
+ * @param {string[]} partyIds - Actor IDs of all party members
+ * @param {string[]} satiates - Satiates array from the feast item flags (e.g. ["food", "water"])
+ */
+function _creditFeastMealState(restApp, partyIds, satiates) {
+    if (!restApp) return;
+    if (!restApp._mealChoices) restApp._mealChoices = new Map();
+    if (!restApp._activityMealRationsSubmitted) restApp._activityMealRationsSubmitted = new Set();
+
+    for (const pid of partyIds) {
+        // Skip characters already submitted — feast credit is additive, not overwriting
+        if (restApp._activityMealRationsSubmitted.has(pid)) continue;
+
+        const existing = restApp._mealChoices.get(pid) ?? {};
+
+        if (satiates.includes("food")) {
+            const foodArr = Array.isArray(existing.food) ? [...existing.food] : [];
+            const foodLocked = Array.isArray(existing.foodLockedSlots) ? [...existing.foodLockedSlots] : [];
+            const emptyIdx = foodArr.findIndex(v => !v || v === "skip");
+            const idx = emptyIdx >= 0 ? emptyIdx : foodArr.length;
+            foodArr[idx] = "__feast_food";
+            if (!foodLocked.includes(idx)) foodLocked.push(idx);
+            existing.food = foodArr;
+            existing.foodLockedSlots = foodLocked;
+        }
+
+        if (satiates.includes("water")) {
+            const waterArr = Array.isArray(existing.water) ? [...existing.water] : [];
+            const waterLocked = Array.isArray(existing.waterLockedSlots) ? [...existing.waterLockedSlots] : [];
+            const emptyIdx = waterArr.findIndex(v => !v || v === "skip");
+            const idx = emptyIdx >= 0 ? emptyIdx : waterArr.length;
+            waterArr[idx] = "__feast_water";
+            if (!waterLocked.includes(idx)) waterLocked.push(idx);
+            existing.water = waterArr;
+            existing.waterLockedSlots = waterLocked;
+        }
+
+        // Fold filled selections into consumedDays and mark submitted
+        const consumedDays = Array.isArray(existing.consumedDays) ? [...existing.consumedDays] : [];
+        consumedDays.push({
+            food: [...(existing.food ?? [])],
+            water: [...(existing.water ?? [])],
+            essence: [...(existing.essence ?? [])]
+        });
+
+        restApp._mealChoices.set(pid, {
+            ...existing,
+            consumedDays,
+            currentDay: consumedDays.length,
+            food: [],
+            water: [],
+            essence: existing.essence ?? [],
+            itemsConsumed: true,
+            foodLockedSlots: existing.foodLockedSlots ?? [],
+            waterLockedSlots: existing.waterLockedSlots ?? []
+        });
+
+        restApp._activityMealRationsSubmitted.add(pid);
+    }
+
+    // Persist and broadcast
+    try {
+        if (typeof restApp._saveRestState === "function") restApp._saveRestState();
+    } catch (e) { console.warn(`${MODULE_ID} | _creditFeastMealState: save failed`, e); }
+
+    try {
+        const snap = typeof restApp.getRestSnapshot === "function" ? restApp.getRestSnapshot() : null;
+        if (snap) game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot: snap });
+    } catch (e) { console.warn(`${MODULE_ID} | _creditFeastMealState: broadcast failed`, e); }
+
+    notifyStationMealChoicesUpdated();
+    if (restApp.rendered) restApp.render();
+    if (typeof restApp._refreshStationOverlayMeals === "function") restApp._refreshStationOverlayMeals();
+    if (isStationLayerActive()) refreshStationEmptyNoticeFade(restApp);
+    console.log(`${MODULE_ID} | _creditFeastMealState: credited ${partyIds.length} party members`, { satiates });
 }
 
 export const COOK_ACTIVITY_IDS = new Set(["act_cook", "act_brew"]);
@@ -184,8 +279,14 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         this._craftShowMissing = false;
         /** Set after the crafting result has been committed to RestSetupApp. Prevents double-commit on X-close. */
         this._craftCommitted   = false;
+        /** True while {@link CraftingEngine.resolve} runs (includes chat roll + Dice So Nice wait). */
+        this._craftRollPending = false;
         /** Width before entering crafting, restored on close. */
         this._preCraftWidth    = null;
+        /** Party feast: Serve Now finished successfully; hide repeat serve / keep actions. */
+        this._partyMealOutcomeResolved = false;
+        /** Prevents double-submit while feast serve awaits async work. */
+        this._feastServeInFlight = false;
     }
 
     async _prepareContext(options) {
@@ -246,14 +347,12 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const mealCard = (hubEligible && this._station.id !== "workbench" && this._restApp?.getStationMealCardForActor && this._actor?.id)
             ? this._restApp.getStationMealCardForActor(this._actor.id)
             : null;
-        const rationDone = !!(mealCard?.allDaysConsumed || mealCard?.playerSubmitted);
-
         const hasAnyGeneral = activityItems.length > 0;
         const hasCookingAvail = cookActItems.length > 0;
 
         const stationTabs = [];
         if (hubEligible && this._station.id === "cooking_station") {
-            if (!rationDone && mealCard) {
+            if (mealCard) {
                 stationTabs.push({ id: "meal", label: "Rations" });
             }
             if (this._stationHasCooking) {
@@ -289,7 +388,6 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         const showStationTabs = stationTabs.length > 0;
         const showTabBar = stationTabs.length > 1;
-        console.log(`ionrift-respite | _buildListContext tabs`, { stationTabs: stationTabs.map(t => ({ id: t.id, disabled: !!t.disabled })), stationPanelTab: this._stationPanelTab, actorHasCookingUtensils: this._actorHasCookingUtensils, stationHasCooking: this._stationHasCooking });
 
         const campGearAtFire = (this._station?.id === "campfire" && this._restApp?.getCampGearContextForActor)
             ? this._restApp.getCampGearContextForActor(this._actor?.id)
@@ -327,7 +425,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             activities:       [...activityItems, ...fadedItems],
             hasAny:           activityItems.length > 0,
             cookingActivities: [...cookActItems, ...cookFaded],
-            hasCookingAny:    cookActItems.length > 0,
+            hasCookingAny:    cookActItems.length > 0 || cookFaded.length > 0,
             actorHasCookingUtensils: this._actorHasCookingUtensils,
             actorChoiceLocked: this._actorChoiceLocked,
             showStationTabs,
@@ -612,8 +710,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const stationTabs = [];
         if (this._station.id === "cooking_station") {
             const mealCard = this._restApp?.getStationMealCardForActor?.(this._actor?.id) ?? null;
-            const rationDone = !!(mealCard?.allDaysConsumed || mealCard?.playerSubmitted);
-            if (!rationDone && mealCard) {
+            if (mealCard) {
                 stationTabs.push({ id: "meal", label: "Rations" });
             }
             if (this._stationHasCooking) {
@@ -731,6 +828,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             showTabBar,
             stationTabs,
             stationPanelTab: this._stationPanelTab,
+            craftRollPending: this._craftRollPending,
             crafting: {
                 profession: professionLabels[professionId] ?? professionId,
                 professionId,
@@ -739,6 +837,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 selectedRisk: this._craftRisk,
                 selectedRecipeId: this._craftRecipeId,
                 hasCrafted: this._craftHasCrafted,
+                rollPending: this._craftRollPending,
                 showMissing: this._craftShowMissing,
                 riskTiers: [
                     { id: "standard", label: "Standard", hint: "Base DC · Ingredients used", selected: this._craftRisk === "standard" },
@@ -752,6 +851,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 craftingResult: this._craftResult ? {
                     ...this._craftResult,
                     isPartyMeal: !!(selectedRecipe?.isPartyMeal ?? false),
+                    partyMealDispositionDone: this._partyMealOutcomeResolved,
                     partyRoster: getPartyActors().map(a => ({
                         id: a.id,
                         name: a.name,
@@ -798,7 +898,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             this._craftResult      = null;
             this._craftHasCrafted  = false;
             this._craftCommitted   = false;
+            this._craftRollPending = false;
             this._craftShowMissing = false;
+            this._partyMealOutcomeResolved = false;
             this._dialogState      = "crafting";
             this._preCraftWidth    = this.position?.width ?? DIALOG_WIDTH;
             console.log(`ionrift-respite | cooking shortcut → crafting state`, { profession: this._craftProfession, width: this.position?.width });
@@ -858,7 +960,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             this._craftResult      = null;
             this._craftHasCrafted  = false;
             this._craftCommitted   = false;
+            this._craftRollPending = false;
             this._craftShowMissing = false;
+            this._partyMealOutcomeResolved = false;
             this._dialogState      = "crafting";
             // Widen for the split-panel crafting layout
             this._preCraftWidth = this.position?.width ?? DIALOG_WIDTH;
@@ -901,22 +1005,24 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
     // ── Inline Crafting Handlers ──────────────────────────────────────
 
     static #onCraftSelectRecipe(event, target) {
-        if (this._craftHasCrafted) return;
+        if (this._craftRollPending || this._craftHasCrafted) return;
         this._craftRecipeId = target.dataset.recipeId;
         this.render();
     }
 
     static #onCraftSelectRisk(event, target) {
-        if (this._craftHasCrafted) return;
+        if (this._craftRollPending || this._craftHasCrafted) return;
         this._craftRisk = target.dataset.risk;
         this.render();
     }
 
     static async #onCraftCommit() {
-        if (this._craftHasCrafted || !this._craftRecipeId) return;
+        if (this._craftRollPending || this._craftHasCrafted || !this._craftRecipeId) return;
         const engine = this._restApp?._craftingEngine;
         const actor = this._actor;
         if (!engine || !actor) return;
+
+        this._partyMealOutcomeResolved = false;
 
         const terrainTag = this._restApp?._engine?.terrainTag ?? this._restApp?._restData?.terrainTag ?? null;
         const allRecipes = engine.recipes?.get(this._craftProfession) ?? [];
@@ -924,14 +1030,22 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const partySize = craftRecipe?.outputFlags?.["ionrift-respite"]?.partyMeal
             ? getPartyActors().length
             : 1;
-        this._craftResult = await engine.resolve(
-            actor, this._craftRecipeId, this._craftProfession, this._craftRisk, terrainTag, partySize
-        );
-        this._craftHasCrafted = true;
+
+        this._craftRollPending = true;
         this.render();
+        try {
+            this._craftResult = await engine.resolve(
+                actor, this._craftRecipeId, this._craftProfession, this._craftRisk, terrainTag, partySize
+            );
+            this._craftHasCrafted = true;
+        } finally {
+            this._craftRollPending = false;
+            this.render();
+        }
     }
 
     static #onCraftToggleMissing() {
+        if (this._craftRollPending) return;
         this._craftShowMissing = !this._craftShowMissing;
         this.render();
     }
@@ -944,13 +1058,14 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
     async _autoCommitCraftResult() {
         if (this._craftCommitted) return;
         if (!this._craftHasCrafted || !this._craftResult) return;
-        this._craftCommitted = true;
 
         const characterId = this._actor?.id;
         const profession  = this._craftProfession;
         const result      = this._craftResult;
         const restApp     = this._restApp;
         if (!restApp || !characterId) return;
+
+        this._craftCommitted = true;
 
         restApp._craftingResults?.set(characterId, result);
 
@@ -986,9 +1101,14 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             ui.notifications.info(`${this._actor?.name}'s activity submitted.`);
         }
         if (restApp.rendered) restApp.render();
+        // activityChoice socket is GM-only; refresh overlays locally so committed players see faded stations.
+        if (restApp._phase === "activity" && isStationLayerActive()) {
+            restApp._refreshStationOverlayForFocusChange?.();
+        }
     }
 
     static async #onCraftClose() {
+        if (this._craftRollPending || this._feastServeInFlight) return;
         await this._autoCommitCraftResult();
 
         // Restore pre-craft dialog width
@@ -1004,23 +1124,29 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         console.log(`ionrift-respite | #onSwitchStationPanelTab`, { tab, disabled: target.disabled, ariaDisabled: target.getAttribute("aria-disabled") });
         if (!tab) return;
         if (target.disabled || target.getAttribute("aria-disabled") === "true") return;
+        if (this._craftRollPending) return;
         this._stationPanelTab = tab;
 
-        // Cooking tab with utensils → auto-enter crafting split panel
-        if (tab === "cooking" && this._actorHasCookingUtensils && !this._actorChoiceLocked) {
-            const cookId = "act_cook";
-            this._selectedActivityId = cookId;
-            this._followUpValue = null;
-            this._craftProfession  = "cooking";
-            this._craftRecipeId    = null;
-            this._craftRisk        = "standard";
-            this._craftResult      = null;
-            this._craftHasCrafted  = false;
-            this._craftCommitted   = false;
-            this._craftShowMissing = false;
-            this._dialogState      = "crafting";
-            this._preCraftWidth    = this.position?.width ?? DIALOG_WIDTH;
-            console.log(`ionrift-respite | cooking tab auto-enter crafting`, { width: this.position?.width });
+        // Cooking tab with utensils → auto-enter crafting split panel (fresh session only).
+        // If a craft already resolved this session, keep result state so Rations ↔ Cooking
+        // tab switches do not wipe the finished craft before Close commits the activity.
+        const canEnterCookingCraft = (this._cookingAvailable?.length ?? 0) > 0;
+        if (tab === "cooking" && this._actorHasCookingUtensils && !this._actorChoiceLocked && canEnterCookingCraft) {
+            this._dialogState = "crafting";
+            if (!this._craftHasCrafted) {
+                const cookId = "act_cook";
+                this._selectedActivityId = cookId;
+                this._followUpValue = null;
+                this._craftProfession  = "cooking";
+                this._craftRecipeId    = null;
+                this._craftRisk        = "standard";
+                this._craftResult      = null;
+                this._craftCommitted   = false;
+                this._craftRollPending = false;
+                this._craftShowMissing = false;
+                this._partyMealOutcomeResolved = false;
+                this._preCraftWidth    = this.position?.width ?? DIALOG_WIDTH;
+            }
         } else {
             // Switching away from cooking → reset to list state
             this._dialogState = "list";
@@ -1182,6 +1308,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
     }
 
     static async #onFeastServeNow() {
+        if (this._partyMealOutcomeResolved || this._feastServeInFlight) return;
         const craftResult = this._craftResult;
         if (!craftResult?.output) return;
 
@@ -1197,16 +1324,38 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             return;
         }
 
-        const partyIds = getPartyActors().map(a => a.id);
-        const snapshot = item.toObject(false);
-        await MealPhaseHandler._dispatchWellFedMealServing({
-            consumerActor: actor,
-            itemSnapshot: snapshot,
-            partyIds
-        });
-        await MealPhaseHandler._consumeItem(actor, item.id, 1);
-        ui.notifications.info(`${actor.name} serves ${craftResult.output.name} to the party!`);
-        this.render();
+        this._feastServeInFlight = true;
+        try {
+            const partyIds = getPartyActors().map(a => a.id);
+            const snapshot = item.toObject(false);
+            await MealPhaseHandler._dispatchWellFedMealServing({
+                consumerActor: actor,
+                itemSnapshot: snapshot,
+                partyIds
+            });
+            const consumed = await MealPhaseHandler._consumeItem(actor, item.id, 1);
+            if (consumed < 1) {
+                ui.notifications.error("Serving finished but the feast item could not be removed from inventory.");
+                return;
+            }
+            ui.notifications.info(`${actor.name} serves ${craftResult.output.name} to the party!`);
+            await this._autoCommitCraftResult();
+            this._partyMealOutcomeResolved = true;
+
+            // ── Sync meal state: credit feast satiation for all recipients ──
+            const restApp = this._restApp;
+            if (restApp) {
+                const feastFlags = snapshot.flags?.[MODULE_ID] ?? {};
+                const satiates = Array.isArray(feastFlags.satiates) ? feastFlags.satiates : [];
+                if (satiates.length) {
+                    _creditFeastMealState(restApp, partyIds, satiates);
+                }
+            }
+
+            await this.render(true);
+        } finally {
+            this._feastServeInFlight = false;
+        }
     }
 
     _onRender(context, options) {
@@ -1472,13 +1621,97 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
     }
 
     async close(options = {}) {
+        if (this._craftRollPending) {
+            ui.notifications.info("Wait for the dice to finish.");
+            return;
+        }
         // Safety net: commit crafting result even when closed via the window X button.
         if (this._craftHasCrafted && !this._craftCommitted) {
-            void this._autoCommitCraftResult();
+            await this._autoCommitCraftResult();
         }
         this._stopTokenTracking();
         _openDialog = null;
         return super.close(options);
+    }
+
+    /**
+     * Re-query {@link ActivityResolver} using live {@link RestSetupApp#_fireLevel}.
+     * Canvas {@link restSession} snapshots fire at layer activation; fire tier changes during
+     * activity only update the rest app until this runs.
+     */
+    _resyncStationActivitiesFromRestApp() {
+        const resolver = this._restApp?._activityResolver;
+        if (!resolver || !this._actor) return;
+        const lists = StationActivityDialog._computeStationActivityLists(
+            this._station,
+            this._actor,
+            resolver,
+            this._restApp,
+            this._restSession
+        );
+        this._actorChoiceLocked = lists.actorChoiceLocked;
+        this._available = lists.generalAvailable;
+        this._faded = lists.generalFaded;
+        this._cookingAvailable = lists.cookingAvailable;
+        this._cookingFaded = lists.cookingFaded;
+        if (this._restSession && typeof this._restSession === "object") {
+            this._restSession.fireLevel = this._restApp?._fireLevel ?? this._restSession.fireLevel ?? "unlit";
+        }
+    }
+
+    /**
+     * @returns {{ generalAvailable: Object[], generalFaded: Object[], cookingAvailable: Object[], cookingFaded: Object[], actorChoiceLocked: string|null }}
+     */
+    static _computeStationActivityLists(station, actor, activityResolver, restApp, restSession) {
+        if (!activityResolver) {
+            return {
+                generalAvailable: [],
+                generalFaded: [],
+                cookingAvailable: [],
+                cookingFaded: [],
+                actorChoiceLocked: null
+            };
+        }
+        const restType = restSession?.restType ?? "long";
+        const fireLevel = restApp?._fireLevel ?? restSession?.fireLevel ?? "unlit";
+        const isFireLit = !!(fireLevel && fireLevel !== "unlit");
+        const { available: allAvail, faded: allFaded } = activityResolver
+            .getAvailableActivitiesWithFaded(actor, restType, { isFireLit, fireLevel });
+
+        const stationIds = new Set(station?.activities ?? []);
+        let available = allAvail.filter(a => stationIds.has(a.id));
+        let faded = allFaded.filter(a => stationIds.has(a.id));
+
+        let actorChoiceLocked = null;
+        if (actor?.id && restApp?._characterChoices?.has(actor.id)) {
+            const chosenId = restApp._characterChoices.get(actor.id);
+            const resolver = restApp._activityResolver;
+            const chosenAct = resolver?.activities?.get(chosenId);
+            actorChoiceLocked = chosenAct?.name ?? chosenId;
+            available = [];
+            faded = [];
+        }
+
+        const order = station?.activities ?? [];
+        const stationRank = (id) => {
+            const idx = order.indexOf(id);
+            return idx === -1 ? 999 : idx;
+        };
+        available.sort((a, b) => stationRank(a.id) - stationRank(b.id));
+        faded.sort((a, b) => stationRank(a.id) - stationRank(b.id));
+
+        const cookingAvailable = available.filter(a => COOK_ACTIVITY_IDS.has(a.id));
+        const cookingFaded = faded.filter(a => COOK_ACTIVITY_IDS.has(a.id));
+        const generalAvailable = available.filter(a => !COOK_ACTIVITY_IDS.has(a.id));
+        const generalFaded = faded.filter(a => !COOK_ACTIVITY_IDS.has(a.id));
+
+        return {
+            generalAvailable,
+            generalFaded,
+            cookingAvailable,
+            cookingFaded,
+            actorChoiceLocked
+        };
     }
 
     /**
@@ -1495,42 +1728,22 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
      */
     static async openForStation(station, actor, activityResolver, restSession, stationToken, restApp, canvasStationId = null) {
         if (_openDialog) {
-            _openDialog.close();
+            await _openDialog.close();
             _openDialog = null;
         }
 
-        const restType  = restSession?.restType ?? "long";
-        const isFireLit = !!(restSession?.fireLevel && restSession.fireLevel !== "unlit");
-
-        const { available: allAvail, faded: allFaded } = activityResolver
-            .getAvailableActivitiesWithFaded(actor, restType, { isFireLit });
-
-        const stationIds = new Set(station.activities ?? []);
-
-        let available = allAvail.filter(a => stationIds.has(a.id));
-        let faded     = allFaded.filter(a => stationIds.has(a.id));
-
-        // One rest activity per character. When a choice already exists, blank the
-        // activity lists but record what was chosen so the template can show a
-        // helpful "already picked" message instead of a generic empty state.
-        // Rations and workbench Identify tabs remain accessible.
-        let actorChoiceLocked = null;
-        if (actor?.id && restApp?._characterChoices?.has(actor.id)) {
-            const chosenId = restApp._characterChoices.get(actor.id);
-            const resolver = restApp._activityResolver;
-            const chosenAct = resolver?.activities?.get(chosenId);
-            actorChoiceLocked = chosenAct?.name ?? chosenId;
-            available = [];
-            faded = [];
-        }
-
-        const order       = station.activities ?? [];
-        const stationRank = (id) => {
-            const i = order.indexOf(id);
-            return i === -1 ? 999 : i;
-        };
-        available.sort((a, b) => stationRank(a.id) - stationRank(b.id));
-        faded.sort((a, b) => stationRank(a.id) - stationRank(b.id));
+        const lists = StationActivityDialog._computeStationActivityLists(
+            station,
+            actor,
+            activityResolver,
+            restApp,
+            restSession
+        );
+        const actorChoiceLocked = lists.actorChoiceLocked;
+        const generalAvailable = lists.generalAvailable;
+        const generalFaded = lists.generalFaded;
+        const cookingAvailable = lists.cookingAvailable;
+        const cookingFaded = lists.cookingFaded;
 
         const trackFood = game.settings.get(MODULE_ID, "trackFood");
         const workbenchHub = station.id === "workbench";
@@ -1545,13 +1758,13 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const actorHasCookingUtensils = stationHasCooking && station.id === "cooking_station" && actor
             ? (canPlaceStation(actor, "cookingArea") || actorHasBrewingTools(actor))
             : false;
-        const cookingAvailable = available.filter(a => COOK_ACTIVITY_IDS.has(a.id));
-        const cookingFaded     = faded.filter(a => COOK_ACTIVITY_IDS.has(a.id));
-        const generalAvailable = available.filter(a => !COOK_ACTIVITY_IDS.has(a.id));
-        const generalFaded     = faded.filter(a => !COOK_ACTIVITY_IDS.has(a.id));
 
         let initialStationTab = "activity";
-        if (showStationTabs && station.id === "cooking_station") initialStationTab = "meal";
+        if (showStationTabs && station.id === "cooking_station") {
+            const mealCardOpen = restApp?.getStationMealCardForActor?.(actor?.id);
+            const rationsDoneOpen = !!(mealCardOpen?.allDaysConsumed || mealCardOpen?.playerSubmitted);
+            initialStationTab = (rationsDoneOpen && stationHasCooking) ? "cooking" : "meal";
+        }
         if (workbenchHub && generalAvailable.length === 0) {
             initialStationTab = "identify";
         }

@@ -78,9 +78,30 @@ export class MealDelegate {
 
             const actor = game.actors.get(charId);
             if (actor) {
+                // Snapshot food items before consumption for Well Fed resolution
+                const foodSnapshots = new Map();
                 for (const itemId of food) {
                     if (itemId && itemId !== "skip") {
-                        await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                        const item = actor.items.get(itemId);
+                        if (item) foodSnapshots.set(itemId, item.toObject(false));
+                    }
+                }
+
+                for (const itemId of food) {
+                    if (itemId && itemId !== "skip") {
+                        const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                        // Apply Well Fed buff if the food item carried one
+                        const snapshot = foodSnapshots.get(itemId);
+                        if (snapshot && consumed > 0) {
+                            const partyIds = (app._myCharacterIds
+                                ? Array.from(app._myCharacterIds)
+                                : characterIds);
+                            await MealPhaseHandler._dispatchWellFedMealServing({
+                                consumerActor: actor,
+                                itemSnapshot: snapshot,
+                                partyIds
+                            });
+                        }
                     }
                 }
                 for (const itemId of water) {
@@ -665,9 +686,27 @@ export class MealDelegate {
             const food = Array.isArray(pack.food) ? [...pack.food] : [];
             const water = Array.isArray(pack.water) ? [...pack.water] : [];
 
+            // Snapshot food items before consumption for Well Fed resolution
+            const foodSnapshots = new Map();
             for (const itemId of food) {
                 if (itemId && itemId !== "skip") {
-                    await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                    const item = actor.items.get(itemId);
+                    if (item) foodSnapshots.set(itemId, item.toObject(false));
+                }
+            }
+
+            const partyIds = [...(app._mealChoices?.keys() ?? [])];
+            for (const itemId of food) {
+                if (itemId && itemId !== "skip") {
+                    const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                    const snapshot = foodSnapshots.get(itemId);
+                    if (snapshot && consumed > 0) {
+                        await MealPhaseHandler._dispatchWellFedMealServing({
+                            consumerActor: actor,
+                            itemSnapshot: snapshot,
+                            partyIds
+                        });
+                    }
                 }
             }
             for (const itemId of water) {
