@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.0.4] - 2026-05-03
+
+### Fixed
+- Construct (and other essence-based) characters now correctly see their custom essence items in the Rations picker. Items listed in the Essence Items field of the Diet Configuration were not appearing because the classifier wasn't checking the character's diet when scanning inventory — only the built-in essence name list. Scrap Metal, Iron Filings, and any other custom essence items now show up as expected.
+
 ## [2.0.3] - 2026-05-03
 
 ### Changed
