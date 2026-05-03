@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.0.1] - 2026-05-03
+
+### Fixed
+- Clicking a token while a rest was active could crash with "this._isFoodItem is not a function". The meal builder now routes through the shared item classifier correctly.
+
 ## [2.0.0] - 2026-05-02
 
 ### Added
