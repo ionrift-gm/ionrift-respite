@@ -19,6 +19,7 @@ import { computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, 
 import { canPlaceStation, actorHasBrewingTools } from "../services/CompoundCampPlacer.js";
 import { getPartyActors } from "../services/partyActors.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
+import { emitFeastServeRequest } from "../services/SocketController.js";
 import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../services/StationInteractionLayer.js";
 import { _refreshGmRestIndicator } from "../module.js";
 
@@ -1328,8 +1329,17 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         itemData.system = { ...itemData.system, quantity: 1 };
         delete itemData._id;
 
-        for (const recipient of recipients) {
-            await recipient.createEmbeddedDocuments("Item", [itemData]);
+        if (game.user.isGM) {
+            for (const recipient of recipients) {
+                await recipient.createEmbeddedDocuments("Item", [itemData]);
+            }
+        } else {
+            emitFeastServeRequest({
+                cookActorId: actorId,
+                itemSnapshot: itemData,
+                partyIds: recipients.map(a => a.id),
+                feastMode: "partyServe"
+            });
         }
 
         if (qty - servings > 0) {
@@ -1368,11 +1378,22 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         try {
             const partyIds = getPartyActors().map(a => a.id);
             const snapshot = item.toObject(false);
-            await MealPhaseHandler._dispatchWellFedMealServing({
-                consumerActor: actor,
-                itemSnapshot: snapshot,
-                partyIds
-            });
+
+            if (game.user.isGM) {
+                await MealPhaseHandler._dispatchWellFedMealServing({
+                    consumerActor: actor,
+                    itemSnapshot: snapshot,
+                    partyIds
+                });
+            } else {
+                emitFeastServeRequest({
+                    cookActorId: actor.id,
+                    itemSnapshot: snapshot,
+                    partyIds,
+                    feastMode: "feast"
+                });
+            }
+
             const consumed = await MealPhaseHandler._consumeItem(actor, item.id, 1);
             if (consumed < 1) {
                 ui.notifications.error("Serving finished but the feast item could not be removed from inventory.");

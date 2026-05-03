@@ -32,7 +32,8 @@ import {
     handleAfkUpdate, handleArmorToggle, handleConsumeFirewood,
     handleCampGearPlace, handleCampStationPlace,
     handleCampGearReclaim, handleCampStationReclaim, handleCampGearClearPlayer,
-    handleCopySpellProposal, handleCopySpellBusy
+    handleCopySpellProposal, handleCopySpellBusy,
+    handleFeastServeRequest
 } from "./SocketRouterHandlers.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -187,6 +188,11 @@ export function dispatch(data, ctx) {
         case SOCKET_TYPES.MEAL_CHOICE:
             if (!game.user.isGM) return;
             ctx.activeRestSetupApp?.receiveMealChoices?.(data.userId, data.choices);
+            break;
+
+        case SOCKET_TYPES.FEAST_SERVE_REQUEST:
+            if (!game.user.isGM) return;
+            handleFeastServeRequest(data, ctx);
             break;
 
         case SOCKET_TYPES.MEAL_DAY_CONSUME_REQUEST:
