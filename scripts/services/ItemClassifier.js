@@ -510,6 +510,23 @@ export class ItemClassifier {
         return false;
     }
 
+    /**
+     * Essence meal "food" tray: same as isEssence, but oil-drink items that already
+     * pass isWater (construct oil slot) are omitted so Oil / Oil Flask do not
+     * duplicate under Food and Water.
+     *
+     * @param {Item} item
+     * @param {Actor|null} actor
+     * @returns {boolean}
+     */
+    static isEssenceMealFoodOption(item, actor) {
+        if (!this.isEssence(item, actor)) return false;
+        if (!actor || !this.requiresEssence(actor)) return true;
+        const drink = this.getDrinkType(item);
+        if (drink === "oil" && this.isWater(item, actor)) return false;
+        return true;
+    }
+
     // ── Legacy Migration ─────────────────────────────────────────
 
     /**
