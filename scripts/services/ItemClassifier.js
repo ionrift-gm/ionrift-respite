@@ -301,7 +301,7 @@ export class ItemClassifier {
 
         // Explicit flag takes priority
         const explicit = item.flags?.[MODULE_ID]?.spoilsAfter;
-        if (explicit != null) return explicit > 0 ? explicit : null;
+        if (explicit !== null) return explicit > 0 ? explicit : null;
 
         // Infer from food tag
         const tag = this.getFoodTag(item);

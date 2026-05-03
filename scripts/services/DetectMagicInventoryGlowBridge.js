@@ -98,7 +98,7 @@ function getEffectiveGlowItemMap(actorId) {
  * @returns {string}
  */
 function normalizeSchoolSlug(school) {
-    if (school == null || school === "") return "unknown";
+    if (school === null || school === "") return "unknown";
     if (typeof school !== "string") return "unknown";
     const k = school.trim().toLowerCase();
     const map = {

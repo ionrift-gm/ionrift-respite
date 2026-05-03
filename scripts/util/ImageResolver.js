@@ -13,6 +13,8 @@
  * filenames to KNOWN_BASE_IMAGES so they resolve without probing.
  */
 
+/* global ForgeVTT, FilePicker */
+
 const MODULE_ID = "ionrift-respite";
 const FALLBACK_BANNER = `modules/${MODULE_ID}/assets/placeholder-banner.webp`;
 

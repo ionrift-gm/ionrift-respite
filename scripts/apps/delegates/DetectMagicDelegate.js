@@ -44,7 +44,7 @@ function actorHasNamedSpellAccess(actor, spellNameLower) {
         //                      preparation.prepared → system.prepared
         // Check for the new API first so we never touch the deprecated getter.
         let mode, isPrepared;
-        if (i.system != null && "method" in i.system) {
+        if (i.system !== null && "method" in i.system) {
             mode = i.system.method;       // dnd5e 5.1+
             isPrepared = i.system.prepared; // dnd5e 5.1+
         } else {

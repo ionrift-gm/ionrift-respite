@@ -375,7 +375,7 @@ export class TravelResolutionDelegate {
         const entry = this._getEntry(d, actorId);
         if (!entry) return;
         entry.total = total;
-        if (natD20 != null) entry.natD20 = natD20;
+        if (natD20 !== null) entry.natD20 = natD20;
         entry.status = "rolled";
     }
 
@@ -875,15 +875,15 @@ export class TravelResolutionDelegate {
         if (data.entries) {
             this.#entries = new Map(Object.entries(data.entries));
         }
-        if (data.totalDays != null) this.#totalDays = data.totalDays;
-        if (data.activeDay != null) this.#activeDay = data.activeDay;
+        if (data.totalDays !== null) this.#totalDays = data.totalDays;
+        if (data.activeDay !== null) this.#activeDay = data.activeDay;
         if (data.dayResolved) {
             this.#dayResolved = new Map(Object.entries(data.dayResolved).map(([k, v]) => [parseInt(k), v]));
         }
-        if (data.forageDCOverride != null) this.#forageDCOverride = data.forageDCOverride;
-        if (data.huntDCOverride != null) this.#huntDCOverride = data.huntDCOverride;
-        if (data.scoutingAllowed != null) this.#scoutingAllowed = data.scoutingAllowed;
-        if (data.scoutingResult != null) this.#scoutingResult = data.scoutingResult;
+        if (data.forageDCOverride !== null) this.#forageDCOverride = data.forageDCOverride;
+        if (data.huntDCOverride !== null) this.#huntDCOverride = data.huntDCOverride;
+        if (data.scoutingAllowed !== null) this.#scoutingAllowed = data.scoutingAllowed;
+        if (data.scoutingResult !== null) this.#scoutingResult = data.scoutingResult;
         if (data.scoutRolls) this.#scoutRolls = data.scoutRolls;
         if (data.confirmed) this.#confirmed = new Map(Object.entries(data.confirmed));
     }

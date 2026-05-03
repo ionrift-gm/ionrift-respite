@@ -2,6 +2,8 @@ import { CalendarHandler } from "./CalendarHandler.js";
 import { ItemClassifier } from "./ItemClassifier.js";
 import { SpoilageClock } from "./SpoilageClock.js";
 
+const MODULE_ID = "ionrift-respite";
+
 /**
  * ItemOutcomeHandler
  * Processes ItemOutcome payloads. Resolves item references and
@@ -96,7 +98,7 @@ export class ItemOutcomeHandler {
                         { inplace: false }
                     );
                     const existingHarvest = existing.flags?.[MODULE_ID]?.harvestedDate;
-                    if (existingHarvest != null && ItemClassifier.getSpoilsAfter(existing) != null) {
+                    if (existingHarvest !== null && ItemClassifier.getSpoilsAfter(existing) !== null) {
                         merged.harvestedDate = existingHarvest;
                     }
                     updateData[`flags.${MODULE_ID}`] = merged;
@@ -107,7 +109,7 @@ export class ItemOutcomeHandler {
             } else {
                 // Stamp harvestedDate on perishable items for spoilage tracking
                 const grantFlags = grant.flags?.[MODULE_ID] ?? {};
-                if (grantFlags.spoilsAfter != null && !grantFlags.harvestedDate) {
+                if (grantFlags.spoilsAfter !== null && !grantFlags.harvestedDate) {
                     grant.flags = grant.flags ?? {};
                     grant.flags[MODULE_ID] = grant.flags[MODULE_ID] ?? {};
                     grant.flags[MODULE_ID].harvestedDate =

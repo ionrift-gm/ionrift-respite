@@ -1332,6 +1332,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
 
             try {
+                const loaded = [];
                 const events = packData.events ?? [];
                 if (events.length) {
                     this._eventResolver.load(packData.tables ?? null, events);
