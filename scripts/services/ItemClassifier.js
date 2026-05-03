@@ -460,9 +460,10 @@ export class ItemClassifier {
      * Check if an item qualifies as an essence/recharge item.
      *
      * @param {Item} item - Foundry Item document
+     * @param {Actor} [actor=null] - When set, diet customFoodNames are honored for essence diets
      * @returns {boolean}
      */
-    static isEssence(item) {
+    static isEssence(item, actor = null) {
         if (!item) return false;
 
         const explicit = item.flags?.[MODULE_ID]?.resourceType;
@@ -478,6 +479,14 @@ export class ItemClassifier {
         // Fuel items can serve as essence for constructs
         const type = this.classify(item);
         if (type === "fuel") return true;
+
+        // Check actor's customFoodNames if diet is essence-based
+        if (actor) {
+            const diet = this.getDiet(actor);
+            if (diet.sustenanceType === "essence") {
+                if (name && diet.customFoodNames?.some(n => n.toLowerCase().trim() === name)) return true;
+            }
+        }
 
         return false;
     }
