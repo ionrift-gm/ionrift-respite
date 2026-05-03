@@ -736,16 +736,21 @@
         <div class="art-nudge-content">
             <i class="fas fa-palette art-nudge-icon"></i>
             <div class="art-nudge-text">
+                {{#if artNudgeIsUpdate}}
+                <span class="art-nudge-title">A newer art pack is available.</span>
+                <span class="art-nudge-subtitle">Update to get station token art for workstations and camp gear.</span>
+                {{else}}
                 <span class="art-nudge-title">Camp art is using placeholder icons.</span>
                 <span class="art-nudge-subtitle">Import the art pack for terrain and station art.</span>
+                {{/if}}
             </div>
         </div>
         <div class="art-nudge-actions">
             <button type="button" data-action="openArtPackPatreon" class="art-nudge-btn">
-                <i class="fas fa-external-link-alt"></i> Get Art Pack
+                <i class="fas fa-external-link-alt"></i> {{#if artNudgeIsUpdate}}Get Update{{else}}Get Art Pack{{/if}}
             </button>
             <button type="button" data-action="openArtPackImport" class="art-nudge-btn primary">
-                <i class="fas fa-file-import"></i> Import Art Pack
+                <i class="fas fa-file-import"></i> {{#if artNudgeIsUpdate}}Update Art Pack{{else}}Import Art Pack{{/if}}
             </button>
             <button type="button" data-action="dismissArtNudge" class="art-nudge-dismiss" title="Dismiss">
                 <i class="fas fa-times"></i>
