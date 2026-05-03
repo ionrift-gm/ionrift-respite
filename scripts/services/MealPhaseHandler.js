@@ -1177,7 +1177,7 @@ export class MealPhaseHandler {
                 label = `${item.name} (\u00d7${avail})`;
             } else if (rawMax <= 1) {
                 const rcRaw = isV5 ? (uses.max - (uses.spent ?? 0)) : uses.value;
-                const rc = rcRaw != null ? Math.max(0, rcRaw) : avail;
+                const rc = (rcRaw !== null && rcRaw !== undefined) ? Math.max(0, rcRaw) : avail;
                 totalPints = Math.min(avail, rc);
                 label = `${item.name} (${totalPints} pint${totalPints === 1 ? "" : "s"})`;
             } else {

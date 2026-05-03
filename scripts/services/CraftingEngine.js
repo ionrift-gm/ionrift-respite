@@ -337,7 +337,7 @@ export class CraftingEngine {
             } else if (rawMax === 1) {
                 const isV5 = ("spent" in uses);
                 const rcRaw = isV5 ? (uses.max - (uses.spent ?? 0)) : uses.value;
-                const rc = rcRaw != null ? Math.max(0, rcRaw) : qty;
+                const rc = (rcRaw !== null && rcRaw !== undefined) ? Math.max(0, rcRaw) : qty;
                 total += Math.min(qty, rc);
             } else {
                 total += qty;

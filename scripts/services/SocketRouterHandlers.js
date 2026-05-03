@@ -439,3 +439,51 @@ export function handleCopySpellBusy(data, ctx) {
         ctx.activePlayerRestApp.render();
     }
 }
+
+// ── Feast Serve (GM-side) ───────────────────────────────────────────────────
+
+/**
+ * GM-side handler for feast/party meal serving.
+ * Players cannot create ActiveEffects or Items on actors they do not own,
+ * so the entire serve + Well Fed dispatch runs here on the GM client.
+ *
+ * @param {object} data - { cookActorId, itemSnapshot, partyIds, feastMode }
+ * @param {SocketContext} ctx
+ */
+export async function handleFeastServeRequest(data, ctx) {
+    const { MealPhaseHandler } = await import("./MealPhaseHandler.js");
+
+    const { cookActorId, itemSnapshot, partyIds, feastMode } = data;
+    const cookActor = game.actors.get(cookActorId);
+    if (!cookActor) {
+        console.warn(`ionrift-respite | feastServeRequest: cook actor ${cookActorId} not found`);
+        return;
+    }
+
+    try {
+        if (feastMode === "partyServe") {
+            // Distribute individual portions to party members (non-feast craft output)
+            const itemData = foundry.utils.duplicate(itemSnapshot);
+            delete itemData._id;
+            itemData.system = { ...itemData.system, quantity: 1 };
+
+            const recipients = partyIds
+                .filter(id => id !== cookActorId)
+                .map(id => game.actors.get(id))
+                .filter(Boolean);
+
+            for (const recipient of recipients) {
+                await recipient.createEmbeddedDocuments("Item", [itemData]);
+            }
+        } else {
+            // Feast mode: dispatch Well Fed effects + item creation for the full party
+            await MealPhaseHandler._dispatchWellFedMealServing({
+                consumerActor: cookActor,
+                itemSnapshot,
+                partyIds
+            });
+        }
+    } catch (err) {
+        console.error("ionrift-respite | feastServeRequest handler error", err);
+    }
+}
