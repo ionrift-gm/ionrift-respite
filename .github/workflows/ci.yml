@@ -75,3 +75,18 @@ jobs:
 
       - name: Validate shipping manifest
         run: node tools/validate-shipping.mjs
+
+  fallback-parity:
+    name: GM/player fallback parity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check fallback parity
+        run: node tools/fallback_parity.mjs
