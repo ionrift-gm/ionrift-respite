@@ -40,30 +40,37 @@ export function registerInventoryContextMenu() {
             }
         } catch { /* setting not yet registered */ }
 
-        // Diet-aware classification
         const isEdible = ItemClassifier.isFood(item, actor);
         const isDrinkable = ItemClassifier.isWater(item, actor);
         if (!isEdible && !isDrinkable) return;
 
-        const label = isEdible ? "Eat" : "Drink";
-        const iconClass = isEdible ? "fa-utensils" : "fa-tint";
+        const hasStock = () => {
+            const qty = item.system?.quantity ?? 0;
+            const uses = item.system?.uses;
+            if (qty > 0) return true;
+            if (uses && (uses.value ?? (uses.max - (uses.spent ?? 0))) > 0) return true;
+            return false;
+        };
 
-        menuItems.push({
-            name: label,
-            icon: `<i class="fas ${iconClass} respite-context-icon"></i>`,
-            group: "action",
-            condition: () => {
-                const qty = item.system?.quantity ?? 0;
-                const uses = item.system?.uses;
-                // Has quantity, or has remaining charges
-                if (qty > 0) return true;
-                if (uses && (uses.value ?? (uses.max - (uses.spent ?? 0))) > 0) return true;
-                return false;
-            },
-            callback: async () => {
-                await _consumeFromInventory(actor, item, isEdible);
-            }
-        });
+        if (isDrinkable) {
+            menuItems.push({
+                name: "Drink",
+                icon: `<i class="fas fa-tint respite-context-icon"></i>`,
+                group: "action",
+                condition: hasStock,
+                callback: async () => _consumeFromInventory(actor, item, false)
+            });
+        }
+
+        if (isEdible && !isDrinkable) {
+            menuItems.push({
+                name: "Eat",
+                icon: `<i class="fas fa-utensils respite-context-icon"></i>`,
+                group: "action",
+                condition: hasStock,
+                callback: async () => _consumeFromInventory(actor, item, true)
+            });
+        }
     });
 }
 
