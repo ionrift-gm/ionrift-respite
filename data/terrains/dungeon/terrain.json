@@ -5,7 +5,7 @@
     "comfort": "hostile",
     "comfortReason": "Hostile by nature. No daylight, unknown threats, and no guarantee of safety.",
     "scoutingAvailable": false,
-    "mealRules": { "waterPerDay": 1, "foodPerDay": 1, "note": "Supplies are limited underground. Ration carefully." },
+    "mealRules": { "waterPerDay": 2, "foodPerDay": 1, "note": "Supplies are limited underground. Ration carefully." },
     "weather": ["dungeon_normal", "dungeon_damp", "extreme_cold"],
     "eventsFile": "core/events/dungeon_events.json",
     "travelActivities": []

@@ -92,7 +92,7 @@ async function _consumeFromInventory(actor, item, isFood) {
     const itemName = item.name;
     const itemId = item.id;
 
-    const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1);
+    const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1, { wholeUnit: !isFood });
     if (consumed <= 0) {
         ui.notifications.warn(`${itemName} could not be consumed.`);
         return;

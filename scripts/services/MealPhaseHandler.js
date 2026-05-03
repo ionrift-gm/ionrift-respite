@@ -50,7 +50,7 @@ const SPOILED_FOOD_TEMPLATE = {
 
 /** Default meal requirements (PHB RAW baseline). */
 const MEAL_DEFAULTS = {
-    waterPerDay: 1,
+    waterPerDay: 2,
     foodPerDay: 1,
     dehydrationDC: 15,
     foodGraceDays: null  // null = 3 + CON mod (calculated per character)
@@ -534,7 +534,7 @@ export class MealPhaseHandler {
                     }
                 }
                 for (const [itemId, amount] of waterUsage) {
-                    const consumed = await this._consumeItem(actor, itemId, amount);
+                    const consumed = await this._consumeItem(actor, itemId, amount, { wholeUnit: true });
                     console.log(`[Respite:Meal] Consumed ${consumed}x water item ${itemId} from ${actor.name}`);
                 }
             }
@@ -1116,14 +1116,12 @@ export class MealPhaseHandler {
 
         for (const item of actor.items) {
             const qty = item.system?.quantity ?? 1;
-            const uses = item.system?.uses;
-            if (qty <= 0 && (!uses || uses.value <= 0)) continue;
+            if (qty <= 0) continue;
 
             const isWater = ItemClassifier.isWater(item, actor);
             if (!isWater) continue;
 
-            // Per-waterskin: show quantity of skins, not internal pint charges
-            const avail = uses ? (uses.value > 0 ? qty : Math.max(0, qty - 1)) : qty;
+            const avail = qty;
             options.push({
                 value: item.id,
                 label: `${item.name} (\u00d7${avail})`,
@@ -1219,9 +1217,13 @@ export class MealPhaseHandler {
      * @param {Actor} actor
      * @param {string} itemId - Item ID to consume
      * @param {number} amount - Number of units to consume
+     * @param {object} [opts]
+     * @param {boolean} [opts.wholeUnit=false] - Skip charge tracking and
+     *   decrement quantity directly. Used for water/drink consumption where
+     *   1 slot = 1 whole container regardless of internal pint charges.
      * @returns {number} Units actually consumed
      */
-    static async _consumeItem(actor, itemId, amount = 1) {
+    static async _consumeItem(actor, itemId, amount = 1, { wholeUnit = false } = {}) {
         const item = actor.items.get(itemId);
         if (!item) return 0;
 
@@ -1229,7 +1231,17 @@ export class MealPhaseHandler {
         const qty = item.system?.quantity ?? 1;
         let consumed = 0;
 
-        // Items with charges (waterskin 4/4, rations 1/1)
+        if (wholeUnit) {
+            consumed = Math.min(amount, qty);
+            if (qty - consumed > 0) {
+                await item.update({ "system.quantity": qty - consumed });
+            } else {
+                await actor.deleteEmbeddedDocuments("Item", [item.id]);
+            }
+            return consumed;
+        }
+
+        // Items with charges (rations bundles, etc.)
         if (uses && uses.max > 0) {
             // DnD5e v5+: uses.spent exists, value = max - spent (read-only)
             // Legacy: uses.value is directly writable

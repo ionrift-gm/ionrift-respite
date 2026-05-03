@@ -13,7 +13,7 @@
         "good":    ["A concealed shelf behind a rock spur. Invisible from below.", "A dry cave mouth with clear approaches in both directions.", "A ridge saddle with natural wind barriers."],
         "nat20":   ["An abandoned shepherd's shelter, stone walls still standing.", "A hidden cave system, dry and warm from geothermal vents.", "A clifftop eyrie with 360-degree views and a natural windbreak."]
     },
-    "mealRules": { "waterPerDay": 1, "foodPerDay": 1 },
+    "mealRules": { "waterPerDay": 2, "foodPerDay": 1 },
     "weather": ["clear", "overcast", "wind", "rain", "snow", "storm"],
     "eventsFile": null
 }
