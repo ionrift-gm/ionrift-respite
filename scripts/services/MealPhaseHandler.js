@@ -1190,6 +1190,31 @@ export class MealPhaseHandler {
     }
 
     /**
+     * Build essence/recharge options from actor inventory.
+     * For non-biological characters that require essence.
+     */
+    static _buildEssenceOptions(actor) {
+        const options = [];
+
+        for (const item of actor.items) {
+            const qty = item.system?.quantity ?? 1;
+            if (qty <= 0) continue;
+
+            if (!ItemClassifier.isEssence(item, actor)) continue;
+
+            options.push({
+                value: item.id,
+                label: `${item.name} (\u00d7${qty})`,
+                itemId: item.id,
+                available: qty,
+                icon: item.img ?? "icons/commodities/gems/gem-rough-white-blue.webp"
+            });
+        }
+
+        return options;
+    }
+
+    /**
      * Consume up to `amount` units of an item (decrement quantity or uses).
      * Returns the number of units actually consumed (handles partial supply).
      *
