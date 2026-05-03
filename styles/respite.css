@@ -16424,6 +16424,36 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+/* ── Skip Travel: demoted escape-hatch link inside resolve bar ── */
+.respite-action-bar .travel-skip-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-left: auto;
+    font-size: 0.62rem;
+    font-weight: 500;
+    color: rgba(200, 205, 220, 0.4);
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 0.15rem 0;
+    cursor: pointer;
+    transition: color 0.15s;
+    box-shadow: none;
+}
+
+.respite-action-bar .travel-skip-link:hover {
+    color: rgba(200, 205, 220, 0.7);
+    text-decoration: underline;
+    background: none;
+    transform: none;
+    box-shadow: none;
+}
+
+.respite-action-bar .travel-skip-link i {
+    font-size: 0.52rem;
+}
+
 .travel-result.scout {
     color: rgba(100, 180, 255, 0.8);
 }

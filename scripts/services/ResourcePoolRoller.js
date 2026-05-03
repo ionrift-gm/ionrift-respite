@@ -21,6 +21,14 @@ export class ResourcePoolRoller {
     }
 
     /**
+     * @param {string} poolId
+     * @returns {boolean}
+     */
+    hasPool(poolId) {
+        return this.pools.has(poolId);
+    }
+
+    /**
      * Rolls against a named pool a given number of times.
      * @param {string} poolId - Resource pool ID.
      * @param {number} rolls - Number of rolls to make.

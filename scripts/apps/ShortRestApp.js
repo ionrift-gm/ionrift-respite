@@ -26,6 +26,8 @@ import * as RestAfkState from "../services/RestAfkState.js";
 const MODULE_ID = "ionrift-respite";
 /** World setting: when Song of Rest HP is applied. */
 const SONG_TIMING_KEY = "songOfRestTiming";
+/** World setting: homebrew max-face Hit Dice on short rests. */
+const MAX_VALUE_HD_KEY = "maxValueHitDice";
 /** Actor flag: pending Arcane/Natural Recovery selections for GM apply on rest complete. */
 const SPELL_RECOVERY_FLAG = "spellRecoveryPending";
 import { ImageResolver } from "../util/ImageResolver.js";
@@ -1022,6 +1024,29 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Chat card when Respite realigns Hit Die HP after the native roll (max die, Durable, Periapt, etc.).
+     * @param {string} actorName
+     * @param {number} rollTotal Total from the system roll card (before Respite rules)
+     * @param {number} adjustedTotal Final Hit Die healing for this spend
+     * @param {string[]} annotationLines Modifier labels (e.g. Max HD homebrew)
+     * @returns {string}
+     */
+    static #buildHitDieCorrectionChat(actorName, rollTotal, adjustedTotal, annotationLines) {
+        const n = ShortRestApp.#escapeChat(actorName);
+        const ann = (annotationLines ?? [])
+            .map((line) => ShortRestApp.#escapeChat(line))
+            .filter(Boolean)
+            .join(", ");
+        const meta = ann
+            ? `<p class="respite-song-meta">${ann}</p>`
+            : "";
+        return `<div class="respite-hit-die-correction respite-chat-parchment">` +
+            `<div class="respite-song-title"><i class="fas fa-heart-pulse"></i> Healing surge</div>` +
+            `<p><strong>${n}</strong> The system card showed <strong>+${rollTotal}</strong> HP from this Hit Die. ` +
+            `Respite aligned short rest healing to <strong>+${adjustedTotal}</strong> HP.</p>${meta}</div>`;
+    }
+
+    /**
      * @param {string} bardName
      * @param {Array<{ name: string, formula: string, total: number }>} entries
      */
@@ -1148,6 +1173,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
+        const hpSnapshot = actor.system?.attributes?.hp?.value ?? 0;
+        const hpMax = actor.system?.attributes?.hp?.max ?? 0;
+
         // DnD5e v4 signature: rollHitDie(denomination, options)
         // v3 signature: rollHitDie(options)
         // We try v4 first, fall back to no-arg if that fails.
@@ -1175,16 +1203,35 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const conMod = actor.system?.abilities?.con?.mod ?? 0;
 
         const modifiers = HitDieModifiers.scan(actor);
-        const rawDie = rollTotal - conMod;
+        let rawDie = rollTotal - conMod;
+        const maxHdEnabled = !!game.settings.get(MODULE_ID, MAX_VALUE_HD_KEY);
+        const maxOverride = HitDieModifiers.applyMaxValueOverride(maxHdEnabled, rawDie, hdData.die);
+        rawDie = maxOverride.rawDie;
         const { adjustedTotal, annotations } = HitDieModifiers.modifyRoll(rawDie, conMod, modifiers);
+        const mergedAnnotations = [...maxOverride.annotations, ...annotations];
 
-        // Apply HP correction if modifiers changed the total
+        // Apply HP: anchor to pre-roll snapshot to avoid stale-read race with rollHitDie's own update.
+        // When max-value override is active this is the only correct path.
+        // For non-override rolls it still applies correctly (adjustedTotal === rollTotal means native
+        // roll already did the right thing, but overwriting with the same value is harmless).
         if (adjustedTotal !== rollTotal) {
-            const hpDiff = adjustedTotal - rollTotal;
+            const targetHp = Math.min(hpSnapshot + adjustedTotal, hpMax);
             const hp = actor.system?.attributes?.hp;
-            if (hp) {
-                const newHp = Math.min((hp.value ?? 0) + hpDiff, hp.max ?? 0);
-                await actor.update({ "system.attributes.hp.value": newHp });
+            if (hp && targetHp !== (hp.value ?? 0)) {
+                await actor.update({ "system.attributes.hp.value": targetHp });
+            }
+            try {
+                await ChatMessage.create({
+                    content: ShortRestApp.#buildHitDieCorrectionChat(
+                        actor.name,
+                        rollTotal,
+                        adjustedTotal,
+                        mergedAnnotations
+                    ),
+                    speaker: ChatMessage.getSpeaker({ actor }),
+                });
+            } catch (err) {
+                Logger.warn(`${MODULE_ID} | Hit Die correction chat message failed:`, err);
             }
         }
 
@@ -1194,7 +1241,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             total: adjustedTotal,
             die: hdData.die,
             conMod,
-            annotations: [...annotations],
+            annotations: [...mergedAnnotations],
         });
 
         const songTiming = game.settings.get(MODULE_ID, SONG_TIMING_KEY) ?? "endOfRest";
@@ -1241,7 +1288,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             rollTotal: adjustedTotal,
             die: hdData.die,
             conMod,
-            annotations: [...annotations],
+            annotations: [...mergedAnnotations],
             ...(songBonusUpdate ? { songBonusUpdate } : {}),
         });
 

@@ -36,12 +36,17 @@ export class CampGearScanner {
         bonfire: 2
     });
 
-    /** Encounter DC modifier from fire size (subtracted from baseDC, so negative = displayed DC rises). */
+    /**
+     * Encounter modifier from fire size.
+     * Positive = raises campMods in RestFlowEngine → lowers effectiveDC → fewer encounters.
+     * A campfire draws attention but provides safety; bonfire more so.
+     * Sign convention matches shelter modifiers (positive = safer night).
+     */
     static FIRE_ENCOUNTER_MOD_BY_LEVEL = Object.freeze({
         unlit: 0,
         embers: 0,
-        campfire: -1,
-        bonfire: -2
+        campfire: 1,
+        bonfire: 2
     });
 
     /**

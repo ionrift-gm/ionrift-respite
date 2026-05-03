@@ -425,7 +425,7 @@
                 {{/each}}
             </div>
 
-            {{!-- Day action bar: Resolve always shown when day open; disabled until allRollsIn --}}
+            {{!-- Day action bar: single contextual button that morphs through the flow --}}
             <div class="respite-action-bar travel-day-resolve-bar">
                 {{#if resolved}}
                 <span class="travel-day-resolved-label"><i class="fas fa-check"></i> Day {{day}} resolved</span>
@@ -439,6 +439,11 @@
                 <span class="travel-waiting-label travel-resolve-pending-hint"><i class="fas fa-hourglass-half"></i> Still pending</span>
                 {{/unless}}
                 </div>
+                {{#unless allRollsIn}}
+                <button type="button" class="travel-skip-link" data-action="skipTravelPhase" title="Skip remaining travel and continue">
+                    <i class="fas fa-forward"></i> Skip Travel
+                </button>
+                {{/unless}}
                 {{/if}}
             </div>
         </div>
@@ -483,18 +488,16 @@
         </div>
         {{/if}}
 
-        {{!-- Global travel action bar --}}
+        {{!-- Global travel action bar: multi-day only, after all days resolved --}}
+        {{#if travelContext.fullyResolved}}
+        {{#if travelContext.isMultiDay}}
         <div class="respite-action-bar travel-global-actions">
-            {{#if travelContext.fullyResolved}}
             <button type="button" class="btn-primary" data-action="skipTravelPhase">
                 <i class="fas fa-arrow-right"></i> Continue to Activities
             </button>
-            {{else}}
-            <button type="button" data-action="skipTravelPhase">
-                <i class="fas fa-forward"></i> Skip Travel
-            </button>
-            {{/if}}
         </div>
+        {{/if}}
+        {{/if}}
 
         {{!-- ═══ PLAYER VIEW ═══ --}}
         {{else}}
