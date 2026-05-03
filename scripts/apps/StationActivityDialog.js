@@ -20,6 +20,7 @@ import { canPlaceStation, actorHasBrewingTools } from "../services/CompoundCampP
 import { getPartyActors } from "../services/partyActors.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
 import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../services/StationInteractionLayer.js";
+import { _refreshGmRestIndicator } from "../module.js";
 
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -139,6 +140,7 @@ function _creditFeastMealState(restApp, partyIds, satiates) {
 
     notifyStationMealChoicesUpdated();
     if (restApp.rendered) restApp.render();
+    _refreshGmRestIndicator(restApp);
     if (typeof restApp._refreshStationOverlayMeals === "function") restApp._refreshStationOverlayMeals();
     if (isStationLayerActive()) refreshStationEmptyNoticeFade(restApp);
     console.log(`${MODULE_ID} | _creditFeastMealState: credited ${partyIds.length} party members`, { satiates });
@@ -758,7 +760,12 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         } else if (this._station.id === "workbench") {
             const hasGeneral = this._available.length > 0;
             if (hasGeneral) stationTabs.push({ id: "activity", label: "Activities" });
-            stationTabs.push({ id: "identify", label: "Identify" });
+            // Examine tab: Focus/Potion self-service — available to all players.
+            stationTabs.push({ id: "examine", label: "Examine" });
+            // Identify tab: click-to-identify party list — GM or Identify casters only.
+            if (this._canSeeSharedPool) {
+                stationTabs.push({ id: "identify", label: "Identify" });
+            }
         } else if (this._station.id === "campfire") {
             const fireTabCtx = this._restApp?.getFireTabContextForStationDialog?.() ?? null;
             if (fireTabCtx) {
@@ -1155,7 +1162,6 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
     static #onSwitchStationPanelTab(event, target) {
         const tab = target?.dataset?.tab;
-        console.log(`ionrift-respite | #onSwitchStationPanelTab`, { tab, disabled: target.disabled, ariaDisabled: target.getAttribute("aria-disabled") });
         if (!tab) return;
         if (target.disabled || target.getAttribute("aria-disabled") === "true") return;
         if (this._craftRollPending) return;
@@ -1444,7 +1450,6 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             if (el) {
                 el.style.width = `${CRAFT_SPLIT_WIDTH}px`;
                 el.style.maxWidth = `${CRAFT_SPLIT_WIDTH}px`;
-                console.log(`ionrift-respite | _onRender forced DOM width`, { width: CRAFT_SPLIT_WIDTH, actual: el.offsetWidth });
             }
         }
         queueMicrotask(() => this._bindStationMealIfNeeded());
@@ -1453,16 +1458,6 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         queueMicrotask(() => this._bindFollowUpSelect());
         queueMicrotask(() => this._bindCampGearIfNeeded());
         queueMicrotask(() => this._bindStationArmorTogglesIfNeeded());
-        // Debug: raw click on tab bar
-        queueMicrotask(() => {
-            const tabBar = this.element?.querySelector?.('.station-sub-tabs');
-            if (tabBar) {
-                tabBar.addEventListener('click', (e) => {
-                    const btn = e.target.closest('button');
-                    console.log(`ionrift-respite | [DEBUG] tab bar raw click`, { tab: btn?.dataset?.tab, disabled: btn?.disabled, ariaDisabled: btn?.getAttribute('aria-disabled') });
-                });
-            }
-        });
     }
 
     _bindCampGearIfNeeded() {

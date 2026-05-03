@@ -368,34 +368,3 @@ export const STUB_POOLS = [
         ]
     }
 ];
-
-// ═══════════════════════════════════════════════════════════════
-//  HUNT YIELDS
-// ═══════════════════════════════════════════════════════════════
-
-export const STUB_HUNT_YIELDS = {
-    wilderness: {
-        standard: [{ type: "meat", qty: 1 }],
-        exceptional: [{ type: "meat", qty: 2 }]
-    },
-    forest: {
-        standard: [{ type: "meat", qty: 1 }],
-        exceptional: [{ type: "meat", qty: 2 }]
-    },
-    swamp: {
-        standard: [{ type: "fish", qty: 1 }],
-        exceptional: [{ type: "fish", qty: 2 }]
-    },
-    mountain: {
-        standard: [{ type: "meat", qty: 1 }],
-        exceptional: [{ type: "meat", qty: 2 }]
-    },
-    arctic: {
-        standard: [{ type: "meat", qty: 1 }],
-        exceptional: [{ type: "meat", qty: 2 }]
-    },
-    desert: {
-        standard: [{ type: "meat", qty: 1 }],
-        exceptional: [{ type: "meat", qty: 2 }]
-    }
-};

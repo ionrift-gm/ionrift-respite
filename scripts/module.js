@@ -633,7 +633,16 @@ Hooks.once("ready", async () => {
     // Initialize terrain registry early so data is available before first rest
     await TerrainRegistry.init();
 
-
+    try {
+        const respiteItemsPack = game.packs.get("ionrift-respite.respite-items");
+        if (respiteItemsPack && game.ionrift?.respite) {
+            game.ionrift.respite.travelBasePoolIndex = await respiteItemsPack.getIndex({
+                fields: ["flags", "name", "img", "type", "system"]
+            });
+        }
+    } catch (e) {
+        console.warn(`${MODULE_ID} | Failed to load respite-items index for travel pools:`, e);
+    }
 
     // Register socket handler (dispatch extracted to SocketRouter.js â€” Phase 2.2)
     const socketContext = {

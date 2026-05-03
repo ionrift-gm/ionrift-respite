@@ -92,6 +92,15 @@ const FOOD_TAG_NAMES = {
 };
 
 /**
+ * Items that are cooking/crafting ingredients — not edible raw rations.
+ * These classify as "ingredient" even though their DnD5e subtype is "food".
+ * Goodberries are intentionally excluded: they are edible as-is.
+ */
+const INGREDIENT_NAMES = new Set([
+    "wild herbs", "healing herbs", "alpine herbs"
+]);
+
+/**
  * Sustenance types — determines what a character needs to survive.
  *   "food"    — standard biological: needs food + water (default)
  *   "essence" — magical/construct: needs essence items (oil, crystals, etc.)
@@ -211,13 +220,17 @@ export class ItemClassifier {
         // 2. Check water first (DnD5e has no water subtype, so flag/name only)
         if (this._matchesWaterByName(item)) return "water";
 
-        // 3. DnD5e consumable subtype "food" (covers food AND drink in DnD5e)
+        // 3. Ingredient check: herbs and crafting inputs are not edible rations.
+        //    Must run before the DnD5e "food" subtype catch-all.
+        if (this._matchesIngredientByName(item)) return "ingredient";
+
+        // 4. DnD5e consumable subtype "food" (covers food AND drink in DnD5e)
         if (item.type === "consumable" && item.system?.type?.value === "food") return "food";
 
-        // 4. Name list fallback: food
+        // 5. Name list fallback: food
         if (this._matchesFoodByName(item)) return "food";
 
-        // 5. Name list fallback: fuel
+        // 6. Name list fallback: fuel
         if (this._matchesFuelByName(item)) return "fuel";
 
         return null;
@@ -541,6 +554,12 @@ export class ItemClassifier {
         return false;
     }
 
+    static _matchesIngredientByName(item) {
+        const name = item.name?.toLowerCase().trim();
+        if (!name) return false;
+        return INGREDIENT_NAMES.has(name);
+    }
+
     /**
      * Check if an item is excluded by the actor's diet profile.
      *
@@ -566,3 +585,4 @@ ItemClassifier.FOOD_NAMES = FOOD_NAMES;
 ItemClassifier.WATER_NAMES = WATER_NAMES;
 ItemClassifier.FUEL_NAMES = FUEL_NAMES;
 ItemClassifier.ESSENCE_NAMES = ESSENCE_NAMES;
+ItemClassifier.INGREDIENT_NAMES = INGREDIENT_NAMES;

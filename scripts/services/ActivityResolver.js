@@ -26,7 +26,7 @@ export class ActivityResolver {
      * Returns activities available to a given actor based on proficiencies and rest type.
      * @param {Actor} actor
      * @param {string} restType - "long" or "short"
-     * @param {Object} [options] - Forage gate: forageActivityGate, terrainTag, resourcePoolsFromPack, resourcePoolRoller.
+     * @param {Object} [options] - Forage gate: forageActivityGate, terrainTag, resourcePoolsFromPack, resourcePoolRoller, travelResolver.
      * @returns {Object[]} Filtered activity schemas.
      */
     getAvailableActivities(actor, restType, options = {}) {
@@ -74,6 +74,10 @@ export class ActivityResolver {
         const terrainTag = options.terrainTag ?? "forest";
         const gate = options.forageActivityGate;
         if (gate) return !!gate.disabled;
+        const resolver = options.travelResolver;
+        if (resolver && ForageActivityValidator.isForageAvailable(resolver, terrainTag)) {
+            return false;
+        }
         return !options.resourcePoolsFromPack
             || !ForageActivityValidator.hasValidPool(options.resourcePoolRoller, terrainTag);
     }

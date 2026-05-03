@@ -71,7 +71,6 @@ Missing meals trigger CON saves. Exhaustion stacks following the standard 5e var
 |---|---|---|
 | DnD 5e | Full | All activities, recovery, events, campfire, professions, short rest |
 | Pathfinder 2e | Early | Core rest flow, campfire, events, activity grid, HP/focus recovery. PF2e-specific activities (Treat Wounds, Refocus) and condition automation are coming. |
-| Daggerheart | Stub | Adapter exists but untested. Community feedback welcome. |
 - **Armor penalty** - Xanathar's sleeping-in-armor rule. Warns players before they commit.
 
 ## Short rest

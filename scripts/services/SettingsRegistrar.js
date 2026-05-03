@@ -92,6 +92,16 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         restricted: true,
     });
 
+    game.settings.register(MODULE_ID, "maxValueHitDice", {
+        name: "Short Rest: Max Hit Dice (Homebrew)",
+        hint: "During short rests only, each Hit Die heals for the die's maximum roll plus CON modifier (not a random roll). Native Hit Die spend and chat card still run; HP is corrected to match. Optional rule, not RAW.",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: false,
+        restricted: true,
+    });
+
     game.settings.register(MODULE_ID, "enableStudy", {
         name: "Study Activity",
         hint: "Enables the Study workbench activity (check and follow-up UI). Off by default. When on, requires Arcana or Investigation proficiency.",
@@ -521,6 +531,7 @@ export const SETTING_KEYS = [
     "armorDoffRule",
     "spellRecoveryMaxLevel",
     "songOfRestTiming",
+    "maxValueHitDice",
     "enableStudy",
     "enableTraining",
     "trackFood",

@@ -18,8 +18,8 @@ export class TravelResolver {
     /** @type {ResourcePoolRoller} */
     #poolRoller;
 
-    /** @type {Object|null} Loaded hunt yield data keyed by terrain. */
-    #huntYields = null;
+    /** @type {Record<string, Array<{ itemRef: string, _id: string, quantity: number }>>} */
+    #basePools = {};
 
     constructor() {
         this.#poolRoller = new ResourcePoolRoller();
@@ -34,17 +34,34 @@ export class TravelResolver {
     }
 
     /**
-     * Load hunt yield data from a content pack.
-     * @param {Object} yieldsData - Object keyed by terrain tag, each with standard/exceptional arrays.
+     * Build hunt/forage base pools from the respite-items compendium index (flags.ionrift-respite).
+     * @param {Iterable<{ _id: string, name?: string, flags?: Record<string, unknown> }>} indexEntries
      */
-    loadHuntYields(yieldsData) {
-        if (!yieldsData || typeof yieldsData !== "object") return;
-        this.#huntYields = { ...(this.#huntYields ?? {}), ...yieldsData };
+    loadBaseItems(indexEntries) {
+        if (!indexEntries) return;
+        for (const entry of indexEntries) {
+            const rf = entry.flags?.["ionrift-respite"];
+            if (!rf?.category || !rf.terrain) continue;
+
+            const terrains = rf.terrain === "any"
+                ? ["forest", "swamp", "desert", "mountain", "arctic", "wilderness"]
+                : String(rf.terrain).split(",").map(t => t.trim()).filter(Boolean);
+
+            for (const terrain of terrains) {
+                const key = `${terrain}_${rf.category}`;
+                this.#basePools[key] ??= [];
+                this.#basePools[key].push({
+                    itemRef: rf.itemRef ?? String(entry.name ?? "").toLowerCase().replace(/\s+/g, "_"),
+                    _id: entry._id,
+                    quantity: 1
+                });
+            }
+        }
     }
 
-    /** @returns {boolean} true if hunt yield data has been loaded from a pack. */
-    get hasHuntYields() {
-        return this.#huntYields !== null && Object.keys(this.#huntYields).length > 0;
+    /** @returns {string[]} Keys such as forest_forage for {@link ForageActivityValidator}. */
+    get basePoolCoverage() {
+        return Object.keys(this.#basePools);
     }
 
     /** @returns {ResourcePoolRoller} Shared roller (for {@link ForageActivityValidator}). */
@@ -152,7 +169,7 @@ export class TravelResolver {
         if (nat1) {
             mishap = this._rollHuntMishap(terrainTag);
         } else if (success) {
-            items.push(...this._getHuntYield(terrainTag, exceptional));
+            items.push(...await this._getHuntYield(terrainTag, exceptional));
             if (nat20) {
                 const rarePoolId = `resource_pool_${terrainTag}_rare`;
                 const rareItems = await this.#poolRoller.roll(rarePoolId, 1);
@@ -191,7 +208,7 @@ export class TravelResolver {
         if (nat1) {
             mishap = this._rollHuntMishap(terrainTag);
         } else if (success) {
-            items.push(...this._getHuntYield(terrainTag, exceptional));
+            items.push(...await this._getHuntYield(terrainTag, exceptional));
 
             if (nat20) {
                 const rarePoolId = `resource_pool_${terrainTag}_rare`;
@@ -311,7 +328,11 @@ export class TravelResolver {
         }
 
         const grantable = (arr) => arr.filter(e => e.itemData);
-        const items = [...grantable(primaryRoll), ...grantable(rareRoll)];
+        let items = [...grantable(primaryRoll), ...grantable(rareRoll)];
+
+        if (!items.length) {
+            items = await this._drawFromBasePool(terrainTag, "forage", exceptional ? 2 : 1);
+        }
 
         if (!items.length) {
             console.warn(`${MODULE_ID} | Forage pools produced no grantable items`, {
@@ -334,110 +355,41 @@ export class TravelResolver {
     }
 
     /**
-     * Terrain-specific hunt yield tables.
      * @param {string} terrainTag
-     * @param {boolean} exceptional - Beat DC by 5+
-     * @returns {Object[]} Array of item entries
+     * @param {string} category - "hunt" | "forage"
+     * @param {number} count
+     * @returns {Promise<Array<{ itemRef: string, quantity: number, itemData: object }>>}
      */
-    _getHuntYield(terrainTag, exceptional) {
-        const tier = exceptional ? "exceptional" : "standard";
-        const source = this.#huntYields ?? TravelResolver.HUNT_YIELDS;
-        const fallback = source.wilderness?.[tier] ?? [{ type: "meat", qty: 1 }];
-        const yields = source[terrainTag]?.[tier] ?? fallback;
-        return yields.map(entry => {
-            if (entry.type === "meat") return this._makeMeat(entry.qty ?? 1, entry.desc);
-            if (entry.type === "fish") return this._makeFish(entry.qty ?? 1, entry.desc);
-            if (entry.type === "choice_cut") return this._makeChoiceCut(entry.qty ?? 1);
-            if (entry.type === "animal_fat") return this._makeAnimalFat(entry.qty ?? 1);
-            if (entry.type === "venom_sac") return this._makeVenomSac(entry.qty ?? 1);
-            return this._makeMeat(entry.qty ?? 1);
-        });
+    async _drawFromBasePool(terrainTag, category, count = 1) {
+        const key = `${terrainTag}_${category}`;
+        const pool = this.#basePools[key] ?? this.#basePools[`wilderness_${category}`] ?? [];
+        if (!pool.length) return [];
+
+        const shuffled = [...pool].sort(() => Math.random() - 0.5);
+        const drawn = shuffled.slice(0, Math.min(count, shuffled.length));
+
+        const pack = game.packs.get("ionrift-respite.respite-items");
+        const results = [];
+        for (const entry of drawn) {
+            const doc = pack ? await pack.getDocument(entry._id) : null;
+            if (!doc) continue;
+            results.push({
+                itemRef: entry.itemRef,
+                quantity: entry.quantity,
+                itemData: doc.toObject()
+            });
+        }
+        return results;
     }
 
-    _makeMeat(quantity, description) {
-        return {
-            itemRef: "fresh_meat",
-            quantity,
-            itemData: {
-                name: "Fresh Meat",
-                type: "consumable",
-                img: "icons/consumables/food/meat-raw-red.webp",
-                system: {
-                    description: { value: description ?? "<p>Game meat from a successful hunt. Needs cooking.</p>" },
-                    rarity: "common",
-                    type: { value: "food", subtype: "" }
-                },
-                flags: { "ionrift-respite": { foodTag: "meat", spoilsAfter: 1 } }
-            }
-        };
-    }
-
-    _makeChoiceCut(quantity) {
-        return {
-            itemRef: "choice_cut",
-            quantity,
-            itemData: {
-                name: "Choice Cut",
-                type: "consumable",
-                img: "icons/consumables/food/meat-steak-red.webp",
-                system: {
-                    description: { value: "<p>A premium cut of game meat. Higher quality yields better cooking outcomes.</p>" },
-                    rarity: "uncommon",
-                    type: { value: "food", subtype: "" }
-                },
-                flags: { "ionrift-respite": { foodTag: "meat", spoilsAfter: 1 } }
-            }
-        };
-    }
-
-    _makeFish(quantity, description) {
-        return {
-            itemRef: "fresh_fish",
-            quantity,
-            itemData: {
-                name: "Fresh Fish",
-                type: "consumable",
-                img: "icons/consumables/food/fish-raw-blue.webp",
-                system: {
-                    description: { value: description ?? "<p>Freshwater catch. Needs cooking.</p>" },
-                    rarity: "common",
-                    type: { value: "food", subtype: "" }
-                },
-                flags: { "ionrift-respite": { foodTag: "meat", spoilsAfter: 1 } }
-            }
-        };
-    }
-
-    _makeAnimalFat(quantity) {
-        return {
-            itemRef: "animal_fat",
-            quantity,
-            itemData: {
-                name: "Animal Fat",
-                type: "loot",
-                img: "icons/commodities/biological/organ-heart-red.webp",
-                system: {
-                    description: { value: "<p>Rendered fat from a large arctic animal. Burns long and hot. Substitute for lamp oil.</p>" },
-                    rarity: "common"
-                }
-            }
-        };
-    }
-
-    _makeVenomSac(quantity) {
-        return {
-            itemRef: "venom_sac",
-            quantity,
-            itemData: {
-                name: "Venom Sac",
-                type: "loot",
-                img: "icons/commodities/biological/organ-sac-green.webp",
-                system: {
-                    description: { value: "<p>A gland from a venomous desert predator. Useful for antidotes or poisons.</p>" },
-                    rarity: "uncommon"
-                }
-            }
-        };
+    /**
+     * Hunt yields from compendium-backed base pools (and rare pools on nat 20 elsewhere).
+     * @param {string} terrainTag
+     * @param {boolean} exceptional
+     */
+    async _getHuntYield(terrainTag, exceptional) {
+        const count = exceptional ? 2 : 1;
+        return this._drawFromBasePool(terrainTag, "hunt", count);
     }
 
     _rollForageMishap(terrainTag) {
@@ -705,14 +657,3 @@ export class TravelResolver {
 
 TravelResolver.FORAGE_DC = FORAGE_DC;
 TravelResolver.HUNT_DC = HUNT_DC;
-
-/**
- * Minimal fallback yields when no content pack is loaded.
- * Full per-terrain data is provided by content packs via loadHuntYields().
- */
-TravelResolver.HUNT_YIELDS = {
-    wilderness: {
-        standard: [{ type: "meat", qty: 1 }],
-        exceptional: [{ type: "meat", qty: 1 }]
-    }
-};

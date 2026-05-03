@@ -72,6 +72,8 @@ export class TravelResolutionDelegate {
     constructor(app) {
         this.#app = app;
         this.#resolver = new TravelResolver();
+        const idx = game.ionrift?.respite?.travelBasePoolIndex;
+        if (idx) this.#resolver.loadBaseItems(idx);
     }
 
     // ── Day management ──
@@ -187,6 +189,11 @@ export class TravelResolutionDelegate {
         return this.#resolver.resourcePoolRoller;
     }
 
+    /** @returns {TravelResolver} */
+    getTravelResolver() {
+        return this.#resolver;
+    }
+
     /** Terrain tag for forage gating when not passed explicitly (matches RestSetupApp travel context). */
     _terrainTagForForageGate() {
         return this.#app?._engine?.terrainTag
@@ -201,22 +208,10 @@ export class TravelResolutionDelegate {
      */
     getForageGate(terrainTag) {
         const disabledReasonKey = "ionrift-respite.travel.forage.requires_pack";
-        if (!this.#resourcePoolsFromPack) {
-            return { disabled: true, disabledReasonKey };
-        }
-        if (!ForageActivityValidator.hasValidPool(this.#resolver.resourcePoolRoller, terrainTag)) {
+        if (!ForageActivityValidator.isForageAvailable(this.#resolver, terrainTag)) {
             return { disabled: true, disabledReasonKey };
         }
         return { disabled: false, disabledReasonKey: null };
-    }
-
-    /**
-     * Load hunt yield data from a content pack.
-     * @param {Object} yieldsData - Object keyed by terrain tag.
-     */
-    loadHuntYieldsFromData(yieldsData) {
-        if (!yieldsData || typeof yieldsData !== "object") return;
-        this.#resolver.loadHuntYields(yieldsData);
     }
 
     /**

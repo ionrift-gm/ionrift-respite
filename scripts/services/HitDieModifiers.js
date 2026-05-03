@@ -88,6 +88,22 @@ export class HitDieModifiers {
     }
 
     /**
+     * Homebrew: treat the Hit Die as having rolled its maximum face during short rests.
+     * Does not apply CON or item modifiers; callers pass the rolled die-only total and merge annotations.
+     *
+     * @param {boolean} enabled True when world setting maxValueHitDice is enabled
+     * @param {number} rawDie Rolled die total excluding CON (typically roll total minus CON mod)
+     * @param {number} dieMaxFace Maximum die face (e.g. 10 for a d10)
+     * @returns {{ rawDie: number, annotations: string[] }}
+     */
+    static applyMaxValueOverride(enabled, rawDie, dieMaxFace) {
+        if (!enabled) return { rawDie, annotations: [] };
+        const maxFace = Number(dieMaxFace);
+        if (!Number.isFinite(maxFace) || maxFace <= 0) return { rawDie, annotations: [] };
+        return { rawDie: maxFace, annotations: ["Max HD (homebrew)"] };
+    }
+
+    /**
      * @param {Actor[]} actors
      * @returns {{ hasBard: boolean, bardName: string, bardLevel: number, songDie: string|null }}
      */

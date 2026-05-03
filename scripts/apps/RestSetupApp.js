@@ -77,7 +77,7 @@ import {
 } from "./StationActivityDialog.js";
 import { CampfireMakeCampDialog } from "./CampfireMakeCampDialog.js";
 
-import { STUB_RECIPES, STUB_HUNT_YIELDS } from "../data/stub-content.js";
+import { STUB_RECIPES } from "../data/stub-content.js";
 import { ShortRestApp } from "./ShortRestApp.js";
 import {
     registerActiveRestApp,
@@ -1327,7 +1327,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const enabledPacks = game.settings.get(MODULE_ID, "enabledPacks") ?? {};
         const importedPacks = game.settings.get(MODULE_ID, "importedPacks") ?? {};
 
-        let totalRecipes = 0, totalPools = 0, totalYieldTerrains = 0;
+        let totalRecipes = 0, totalPools = 0;
 
         for (const [packId, packData] of Object.entries(importedPacks)) {
             if (enabledPacks[packId] === false) {
@@ -1363,14 +1363,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     loaded.push(`${packData.resourcePools.length} pools`);
                 }
 
-                // Hunt Yields
-                if (packData.huntYields && typeof packData.huntYields === "object" && this._travel) {
-                    this._travel.loadHuntYieldsFromData(packData.huntYields);
-                    const terrainCount = Object.keys(packData.huntYields).length;
-                    totalYieldTerrains += terrainCount;
-                    loaded.push(`${terrainCount} hunt terrains`);
-                }
-
                 if (loaded.length) {
                     console.log(`${MODULE_ID} | Pack ${packId}: loaded ${loaded.join(", ")}`);
                 }
@@ -1385,10 +1377,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this._craftingEngine.load(profId, recipeList);
             }
             console.log(`${MODULE_ID} | Using built-in stub recipes`);
-        }
-        if (totalYieldTerrains === 0 && this._travel) {
-            this._travel.loadHuntYieldsFromData(STUB_HUNT_YIELDS);
-            console.log(`${MODULE_ID} | Using built-in stub hunt yields`);
         }
     }
 
@@ -1409,7 +1397,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             forageActivityGate: gate,
             terrainTag,
             resourcePoolsFromPack: this._travel?.resourcePoolsFromPack ?? false,
-            resourcePoolRoller: this._travel?.getResourcePoolRoller?.() ?? null
+            resourcePoolRoller: this._travel?.getResourcePoolRoller?.() ?? null,
+            travelResolver: this._travel?.getTravelResolver?.() ?? null
         };
     }
 
@@ -1711,8 +1700,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
             const TIER_BODIES = {
                 embers: "No cooking. No comfort change.",
-                campfire: "Cooking and warmth. +1 encounter DC.",
-                bonfire: "+1 camp comfort. +2 encounter DC."
+                campfire: "Cooking and warmth. Encounter threshold −1.",
+                bonfire: "+1 camp comfort. Encounter threshold −2."
             };
             const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
             const TIER_LABELS = Object.fromEntries(
@@ -2357,16 +2346,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ? (this._fireLevel ?? "unlit")
                 : (this._campFirePreviewLevel ?? this._fireLevel ?? "unlit");
             const encMod = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[effectiveScanLevel] ?? 0;
-            // RestFlowEngine: effectiveDC = baseDC - (… + fireRollModifier + …). Positive fireRollModifier
-            // lowers the number shown as Encounter DC (fewer night events). Copy matches that display.
+            // RestFlowEngine: effectiveDC = baseDC - campMods. Positive fireRollModifier raises campMods,
+            // lowering effectiveDC (fewer night events). Sign convention matches shelter modifiers.
             if (effectiveScanLevel === "unlit") {
                 campFireEncounterHint = "No fire is lit yet. The tier row shows what each level would do.";
             } else if (effectiveScanLevel === "embers") {
-                campFireEncounterHint = "Embers: no change to encounter DC.";
+                campFireEncounterHint = "Embers: no change to encounter chance.";
             } else if (effectiveScanLevel === "campfire") {
-                campFireEncounterHint = "Campfire: +1 encounter DC.";
+                campFireEncounterHint = "Campfire: encounter threshold −1 (quieter night).";
             } else if (effectiveScanLevel === "bonfire") {
-                campFireEncounterHint = "Bonfire: +2 encounter DC.";
+                campFireEncounterHint = "Bonfire: encounter threshold −2 (quieter night).";
             } else {
                 campFireEncounterHint = "";
             }
@@ -2487,8 +2476,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (campFireIsLit) {
                 const TIER_BODIES = {
                     embers: "No cooking. No comfort change.",
-                    campfire: "Cooking and warmth. +1 encounter DC.",
-                    bonfire: "+1 camp comfort. +2 encounter DC."
+                    campfire: "Cooking and warmth. Encounter threshold −1.",
+                    bonfire: "+1 camp comfort. Encounter threshold −2."
                 };
                 const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
                 const TIER_LABELS = Object.fromEntries(
@@ -2997,16 +2986,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (wx.tentCancels) weatherParts.push("Tent cancels");
                 else if (wx.tentReduces) weatherParts.push("Tent reduces by 1");
                 const SHELTER_TOOLTIPS = {
-                    tent: "Tent: +2 encounter DC, cancels or reduces weather",
-                    tiny_hut: "Tiny Hut: comfort floor sheltered, +5 encounter DC",
+                    tent: "Tent: encounter threshold −2, cancels or reduces weather",
+                    tiny_hut: "Tiny Hut: comfort floor sheltered, encounter threshold −5",
                     rope_trick: "Rope Trick: extradimensional shelter, hidden from the outside",
                     magnificent_mansion: "Mansion: comfort floor safe, no encounters"
                 };
                 const FIRE_TIPS = {
-                    unlit: "Unlit: -1 comfort step at resolution",
-                    embers: "Embers: no change to encounter DC.",
-                    campfire: "Campfire: +1 encounter DC.",
-                    bonfire: "Bonfire: +1 camp comfort. +2 encounter DC."
+                    unlit: "Unlit: −1 comfort step at resolution",
+                    embers: "Embers: no change to encounter chance.",
+                    campfire: "Campfire: encounter threshold −1 (quieter night).",
+                    bonfire: "Bonfire: +1 camp comfort. Encounter threshold −2 (quieter night)."
                 };
                 return this._campStatus = {
                     comfort,
@@ -3075,8 +3064,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (shelter !== 0) chips.push({ label: "Shelter", value: fmt(shelter), icon: "fas fa-campground" });
                 if (scouting !== 0) chips.push({ label: `Scout: ${bd.scoutingResult ?? "?"}`, value: fmt(scouting), icon: "fas fa-binoculars" });
                 if (complication) chips.push({ label: "Complication", value: "", icon: "fas fa-exclamation-triangle", warn: true });
-                if (fire !== 0) chips.push({ label: this._fireLevel ?? "Fire", value: fmt(-fire), icon: "fas fa-fire" });
-                if (defenses !== 0) chips.push({ label: "Defenses", value: fmt(-defenses), icon: "fas fa-shield-alt" });
+                if (fire !== 0) chips.push({ label: this._fireLevel ?? "Fire", value: fmt(fire), icon: "fas fa-fire" });
+                if (defenses !== 0) chips.push({ label: "Defenses", value: fmt(defenses), icon: "fas fa-shield-alt" });
                 if (gmAdj !== 0) chips.push({ label: "GM", value: fmt(gmAdj), icon: "fas fa-gavel" });
                 return {
                     total,
@@ -3619,8 +3608,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const TIER_BODIES = {
             embers: "No cooking. No comfort change.",
-            campfire: "Cooking and warmth. +1 encounter DC.",
-            bonfire: "+1 camp comfort. +2 encounter DC."
+            campfire: "Cooking and warmth. Encounter threshold −1.",
+            bonfire: "+1 camp comfort. Encounter threshold −2."
         };
         const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
         const TIER_LABELS = Object.fromEntries(
@@ -9293,6 +9282,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     scoutingDone: !!scoutingDebrief,
                     fullyResolved: this._travel.isFullyResolved()
                 });
+        }
+
+        // Auto-advance to camp phase as soon as all days are resolved — no second click needed.
+        if (this._travel.isFullyResolved()) {
+            this._phase = "camp";
+            this._campStep2Entered = false;
+            emitPhaseChanged(this._phase, {});
+            await this._saveRestState();
+            this.render();
+            return;
         }
 
         emitPhaseChanged("travel", {
