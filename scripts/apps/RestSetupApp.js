@@ -56,7 +56,7 @@ import { CampCeremonyDelegate } from "./delegates/CampCeremonyDelegate.js";
 import { EventsPhaseDelegate } from "./delegates/EventsPhaseDelegate.js";
 import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
 import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple } from "./delegates/DetectMagicDelegate.js";
-import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, CAMP_STATIONS, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState } from "./RestConstants.js";
+import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, CAMP_STATIONS, getStationsForTerrain, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState } from "./RestConstants.js";
 import {
     activateStationLayer,
     deactivateStationLayer,
@@ -2035,9 +2035,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ...fadedTiles.filter(t => t.isCrafting)
             ];
 
-            // Station-grouped activity cards
+            // Station-grouped activity cards (terrain-filtered)
             const allAvailableIds = new Set(allTiles.map(t => t.id));
-            const stationCards = CAMP_STATIONS
+            const terrainStations = getStationsForTerrain(this._selectedTerrain ?? this._engine?.terrainTag ?? "forest");
+            const stationCards = terrainStations
                 .map(station => {
                     const stationTiles = station.activities
                         .filter(id => allAvailableIds.has(id))
@@ -5268,6 +5269,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         await MealPhaseHandler.cleanupWellFedEffects(getPartyActors());
         await this._saveRestState();
 
+        // Tavern: skip camp phase entirely (no campfire/furniture to place)
+        if (this._phase === "camp" && await this._skipCampForTavern()) return;
+
         // Campfire opens after render (see _onRender)
         this.render();
     }
@@ -7812,8 +7816,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return allAvail.some(a => stationIdSet.has(a.id));
         };
 
+        const terrainStationsForMap = getStationsForTerrain(this._selectedTerrain ?? this._engine?.terrainTag ?? "forest");
+
         if (viewer && this._characterChoices.has(viewer.id)) {
-            for (const station of CAMP_STATIONS) {
+            for (const station of terrainStationsForMap) {
                 if (!station.furnitureKey) continue;
                 if (station.id === "workbench") {
                     map[station.id] = false;
@@ -7832,7 +7838,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return map;
         }
 
-        for (const station of CAMP_STATIONS) {
+        for (const station of terrainStationsForMap) {
             if (!station.furnitureKey) continue;
             const stationIds = new Set(station.activities ?? []);
 
@@ -7847,7 +7853,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             map[station.id] = empty;
         }
 
-        const bedrollStation = CAMP_STATIONS.find(s => s.id === "bedroll");
+        const bedrollStation = terrainStationsForMap.find(s => s.id === "bedroll");
         if (bedrollStation) {
             const stationIds = new Set(bedrollStation.activities ?? []);
             map.bedroll = !unchosen.some(a => hasAvailableAtStation(a, stationIds));
@@ -7944,7 +7950,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ui.notifications.warn("No character assigned for you in this rest. Ask the GM to check the party roster.");
                 return;
             }
-            const station = CAMP_STATIONS.find(s => s.id === stationId);
+            const terrainTagForStation = app._selectedTerrain ?? app._engine?.terrainTag ?? "forest";
+            const effectiveStations = getStationsForTerrain(terrainTagForStation);
+            const station = effectiveStations.find(s => s.id === stationId);
             if (!station) return;
 
             if (stationId === "bedroll") {
@@ -7971,7 +7979,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ?? "long";
 
             const dialogStation = stationId === "bedroll"
-                ? { ...station, label: `${actor.name}'s Bedroll` }
+                ? { ...station, label: `${actor.name}'s ${station.label}` }
                 : station;
 
             try {
@@ -7993,7 +8001,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             } catch (e) {
                 console.warn(`${MODULE_ID} | Station activity dialog`, e);
             }
-        }, { ...proximityOpts, stationEmptyNoticeFade });
+        }, { ...proximityOpts, stationEmptyNoticeFade, terrainTag: this._selectedTerrain ?? this._engine?.terrainTag ?? "forest" });
 
         this._installGmStationTokenSyncHook();
         this._refreshStationOverlayMeals();
@@ -9311,6 +9319,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (this._travel.isFullyResolved()) {
             this._phase = "camp";
             this._campStep2Entered = false;
+            // Tavern: skip camp phase entirely
+            if (await this._skipCampForTavern()) return;
             emitPhaseChanged(this._phase, {});
             await this._saveRestState();
             this.render();
@@ -9339,6 +9349,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         this._phase = "camp";
         this._campStep2Entered = false;
+
+        // Tavern: skip camp phase entirely
+        if (await this._skipCampForTavern()) return;
 
         emitPhaseChanged(this._phase, { travelResults: this._travel.serialize() });
 
@@ -9378,6 +9391,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         this._phase = "camp";
         this._campStep2Entered = false;
+
+        // Tavern: skip camp phase entirely
+        if (await this._skipCampForTavern()) return;
 
         emitPhaseChanged(this._phase, {});
 
@@ -9600,6 +9616,76 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /** @deprecated Use this._campCeremony._syncFireLevelFromPledges() */
     async _syncFireLevelFromPledges() {
         return this._campCeremony._syncFireLevelFromPledges();
+    }
+
+    /**
+     * Tavern / safe-haven terrains skip camp and activity phases entirely.
+     * The inn provides shelter, fire, and board — no campfire ceremony, no
+     * station tokens, no activity selection needed.
+     *
+     * All characters are auto-assigned "Rest Fully" and meals are waived
+     * (the tavern feeds and waters you). Advances straight to reflection
+     * for long rests, or resolve for short rests.
+     *
+     * @returns {boolean} True if the phase was skipped (caller should not proceed to camp render).
+     */
+    async _skipCampForTavern() {
+        const terrain = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
+        if (terrain !== "tavern") return false;
+        if (!game.user.isGM) return false;
+
+        // Fire is implicitly "campfire" (the establishment's hearth).
+        this._fireLevel = "campfire";
+        this._coldCampDecided = false;
+        this._campToActivityDone = true;
+        this._campStep2Entered = true;
+
+        _logGmRestSheet("_skipCampForTavern", "tavern terrain — skipping camp + activity, auto-assigning rest");
+
+        // Auto-assign act_rest_fully to every party member and register with engine.
+        const partyActors = getPartyActors();
+        for (const actor of partyActors) {
+            this._characterChoices.set(actor.id, "act_rest_fully");
+            this._engine?.registerChoice(actor.id, "act_rest_fully", {});
+        }
+
+        // Waive meals — mark everyone as submitted so the gate is clear.
+        if (!this._activityMealRationsSubmitted) this._activityMealRationsSubmitted = new Set();
+        for (const actor of partyActors) {
+            this._activityMealRationsSubmitted.add(actor.id);
+        }
+
+        // Short rest: skip reflection and events entirely (same as #onSubmitActivities).
+        if (this._engine?.restType === "short") {
+            this._triggeredEvents = [];
+            this._eventsRolled = true;
+            SoundDelegate.stopAll();
+            this._phase = "resolve";
+        } else {
+            // Auto-process rations (tavern terrain mealRules may set food/water to 0,
+            // but run the normal path to be safe).
+            const trackFood = game.settings.get(MODULE_ID, "trackFood");
+            const terrainMealRules = TerrainRegistry.getDefaults(terrain)?.mealRules ?? {};
+            if (trackFood && (terrainMealRules.waterPerDay > 0 || terrainMealRules.foodPerDay > 0)) {
+                this._mealChoices = this._mealChoices ?? new Map();
+                this._daysSinceLastRest = this._daysSinceLastRest ?? 1;
+                await this._autoProcessRations();
+            }
+            this._phase = "reflection";
+            await this._applyBeddingDown();
+        }
+
+        // Broadcast phase change to players.
+        emitPhaseChanged(this._phase, {
+            campStatus: this._campStatus,
+            fireLevel: this._fireLevel,
+            daysSinceLastRest: this._daysSinceLastRest ?? 1,
+            selectedTerrain: terrain
+        });
+
+        await this._saveRestState();
+        this.render();
+        return true;
     }
 
     /**

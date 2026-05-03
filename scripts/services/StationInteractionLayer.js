@@ -11,7 +11,7 @@
  *   deactivate()         → remove all overlays, clean up ticker
  */
 
-import { CAMP_STATIONS, STATION_RANGE_SQUARES, inferCanvasStationForActivity } from "../apps/RestConstants.js";
+import { CAMP_STATIONS, getStationsForTerrain, STATION_RANGE_SQUARES, inferCanvasStationForActivity } from "../apps/RestConstants.js";
 import { isGearDeployed, measureWorldDistanceFeet } from "./CompoundCampPlacer.js";
 import { getPartyActors } from "./partyActors.js";
 
@@ -1099,6 +1099,7 @@ function _onRefreshTokenForOverlays(token) {
  * @param {Record<string, boolean>} [options.stationEmptyNoticeFade] - station id -> muted notice when no available activities
  * @param {boolean} [options.campPitModeOnly] - Only the campfire pit token, with Make Camp copy (all clients)
  * @param {boolean} [options.campPitUnlit] - "Light the fire" vs "Campfire" label
+ * @param {string}  [options.terrainTag] - Current terrain tag for station filtering (hides campfire/weapon rack in tavern, etc.)
  */
 export function activateStationLayer(actorMap, onStationClick, options = {}) {
     deactivateStationLayer();
@@ -1114,6 +1115,7 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
         : {};
     const campPitModeOnly = !!options.campPitModeOnly;
     const campPitUnlit    = options.campPitUnlit !== false;
+    const terrainTag      = options.terrainTag ?? null;
 
     // Parent to TokensLayer so notices draw above furniture tokens; high zIndex
     // keeps the whole tray above per-token elevation sorting.
@@ -1147,7 +1149,10 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
         actorMapKeys:    Object.keys(_actorMap)
     });
 
-    for (const station of CAMP_STATIONS) {
+    // Use terrain-filtered stations so hidden stations (e.g. campfire in tavern) don't get overlays.
+    const effectiveStations = terrainTag ? getStationsForTerrain(terrainTag) : CAMP_STATIONS;
+
+    for (const station of effectiveStations) {
         if (campPitModeOnly) {
             if (station.furnitureKey !== "campfire") continue;
         } else if (!station.furnitureKey) {
@@ -1187,7 +1192,7 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
     }
 
     // Player bedroll tokens (named per owner)
-    const bedrollStation = CAMP_STATIONS.find(s => s.id === "bedroll");
+    const bedrollStation = effectiveStations.find(s => s.id === "bedroll");
     if (bedrollStation && !campPitModeOnly) {
         for (const actorId of Object.keys(_actorMap)) {
             if (!isGearDeployed(actorId, "bedroll")) continue;
@@ -1205,7 +1210,7 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
                 _clickCallback,
                 {
                     emptyNoticeFade: !!emptyFadeMap.bedroll,
-                    displayOverride: { title: `${ownerName}'s Bedroll` }
+                    displayOverride: { title: `${ownerName}'s ${bedrollStation.label}` }
                 }
             );
             _overlays.push(overlay);

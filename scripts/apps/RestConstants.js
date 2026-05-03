@@ -275,7 +275,8 @@ export const CAMP_STATIONS = [
         icon: "fas fa-shield-alt",
         furnitureKey: "weaponRack",
         tagline: "Fletch, defences, watch, other",
-        activities: ["act_fletch", "act_defenses", "act_keep_watch", "act_other"]
+        activities: ["act_fletch", "act_defenses", "act_keep_watch", "act_other"],
+        terrainHide: ["tavern"]
     },
     {
         id: "medical_bed",
@@ -291,7 +292,8 @@ export const CAMP_STATIONS = [
         icon: "fas fa-bed",
         furnitureKey: null,
         tagline: "Rest, pray, train, tales, craft, tailor, other",
-        activities: ["act_rest_fully", "act_pray", "act_train", "act_tell_tales", "act_craft", "act_tailor", "act_other"]
+        activities: ["act_rest_fully", "act_pray", "act_train", "act_tell_tales", "act_craft", "act_tailor", "act_other"],
+        terrainLabel: { tavern: "Your Room" }
     },
     {
         id: "campfire",
@@ -299,7 +301,8 @@ export const CAMP_STATIONS = [
         icon: "fas fa-fire",
         furnitureKey: "campfire",
         tagline: "Fire state, comfort, personal camp",
-        activities: []
+        activities: [],
+        terrainHide: ["tavern"]
     },
     {
         id: "cooking_station",
@@ -307,9 +310,48 @@ export const CAMP_STATIONS = [
         icon: "fas fa-utensils",
         furnitureKey: "cookingArea",
         tagline: "Cook, brew",
-        activities: ["act_cook", "act_brew"]
+        activities: ["act_cook", "act_brew"],
+        terrainLabel: { tavern: "Hearth & Table" }
     }
 ];
+
+/**
+ * Returns CAMP_STATIONS filtered and adjusted for a given terrain.
+ * Hidden stations are removed; activities from hidden stations that should
+ * migrate are folded into fallback stations (e.g. Keep Watch → bedroll in taverns).
+ * Labels are overridden per terrainLabel where defined.
+ * @param {string} terrainTag
+ * @returns {Object[]}
+ */
+export function getStationsForTerrain(terrainTag) {
+    const hidden = new Set();
+    /** Activities orphaned by hidden stations that should migrate to bedroll. */
+    const MIGRATING_ACTIVITIES = new Set(["act_keep_watch", "act_other"]);
+    const orphanedActivities = [];
+
+    // First pass: collect hidden station ids and their migrating activities.
+    for (const station of CAMP_STATIONS) {
+        if (station.terrainHide?.includes(terrainTag)) {
+            hidden.add(station.id);
+            for (const actId of station.activities ?? []) {
+                if (MIGRATING_ACTIVITIES.has(actId)) orphanedActivities.push(actId);
+            }
+        }
+    }
+
+    // Second pass: build adjusted station list.
+    const result = [];
+    for (const station of CAMP_STATIONS) {
+        if (hidden.has(station.id)) continue;
+        const label = station.terrainLabel?.[terrainTag] ?? station.label;
+        const extra = station.id === "bedroll" ? orphanedActivities : [];
+        const activities = extra.length
+            ? [...station.activities, ...extra.filter(id => !station.activities.includes(id))]
+            : station.activities;
+        result.push({ ...station, label, activities });
+    }
+    return result;
+}
 
 /**
  * One canvas station id for a chosen activity (used for overlay portraits).
