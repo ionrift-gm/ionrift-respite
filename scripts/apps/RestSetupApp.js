@@ -8128,7 +8128,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const card = cards[0] ?? null;
         if (!card) return null;
         if (this._activityMealRationsSubmitted?.has(actorId)) card.playerSubmitted = true;
-        if (!this._isGM && this._mealSubmitted && this._myCharacterIds?.has(actorId)) {
+        if (!this._isGM && this._mealSubmitted && this._meals._mealObligatedOwnedCharacterIds(this).has(actorId)) {
             card.playerSubmitted = true;
         }
         return card;
@@ -8391,10 +8391,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         if (!this._myCharacterIds?.has(actorId)) return;
-        await this._meals.onSubmitMealChoices(null, null);
-        // Track ration submission locally so the rejoin bar updates immediately
-        if (!this._activityMealRationsSubmitted) this._activityMealRationsSubmitted = new Set();
-        this._activityMealRationsSubmitted.add(actorId);
+        await this._meals.onSubmitStationMealChoices(actorId);
         notifyStationMealChoicesUpdated();
         if (isStationLayerActive()) {
             refreshStationEmptyNoticeFade(this);
