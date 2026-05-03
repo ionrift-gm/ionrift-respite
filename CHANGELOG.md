@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.0.3] - 2026-05-03
+
+### Added
+- **Tavern resting.** Selecting a tavern terrain now skips campfire setup and station placement. All characters are automatically set to Rest Fully, meals are waived, and the flow advances straight to reflection or resolution.
+- Tavern stations are filtered to context-appropriate options - campfire and weapon rack are hidden, bedroll becomes "Your Room", and the cooking station becomes "Hearth & Table".
+
+### Fixed
+- Skip button on the camp placement phase no longer soft-locks the rest flow.
+- Activities and meals are now optional in tavern environments, preventing soft-locks when no workstations are placed.
+
 ## [2.0.2] - 2026-05-03
 
 ### Fixed
