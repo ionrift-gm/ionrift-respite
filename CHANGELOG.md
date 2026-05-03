@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.5] - 2026-05-03
+
+### Fixed
+- Construct characters using custom diet items (Scrap Metal, Oil, Iron Filings, etc.) now see those items in the correct meal tray lanes. Oil no longer duplicates across both food and water slots when the diet does not allow it.
+- Water classification no longer skips Oil when the item classifier returns null for a non-standard item.
+- Spoilage timers no longer error when a food item has no spoilsAfter flag set.
+- The art pack update nudge now appears for users who have an older art pack installed. Previously it only checked whether any art pack existed - so users with v1.0 terrain art were never prompted to update for station token support. The banner now shows "A newer art pack is available" with an "Update Art Pack" button when the installed pack is missing station tokens.
+
 ## [2.0.4] - 2026-05-03
 
 ### Fixed
