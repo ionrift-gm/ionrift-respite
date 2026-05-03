@@ -25,7 +25,8 @@ const FOOD_NAMES = new Set([
 /** Built-in water item names (lowercase). */
 const WATER_NAMES = new Set([
     "waterskin", "water flask", "canteen",
-    "water (pint)", "water, fresh (pint)", "water, salt (pint)"
+    "water (pint)", "water, fresh (pint)", "water, salt (pint)",
+    "holy water"
 ]);
 
 /** Built-in fuel item names (lowercase). */
@@ -248,14 +249,12 @@ export class ItemClassifier {
         const explicit = item.flags?.[MODULE_ID]?.drinkType;
         if (explicit && DRINK_TYPES.has(explicit)) return explicit;
 
-        // Infer from name for common cases
         const name = item.name?.toLowerCase().trim() ?? "";
         if (name.includes("oil")) return "oil";
         if (name.includes("ale") || name.includes("wine") || name.includes("beer")
             || name.includes("mead") || name.includes("whiskey") || name.includes("rum")
             || name.includes("brandy") || name.includes("spirits")) return "alcohol";
 
-        // Default to water for anything classified as water
         if (this.classify(item) === "water") return "water";
 
         return null;
@@ -319,21 +318,25 @@ export class ItemClassifier {
      * @returns {boolean}
      */
     static isFood(item, actor = null) {
+        if (!item) return false;
+
+        // Essence diets delegate to isEssence for their food classification
+        if (actor && this.getSustenanceType(actor) === "essence") {
+            return this.isEssence(item, actor);
+        }
+
         const type = this.classify(item);
         if (!type) return false;
 
         const diet = this.getDiet(actor);
 
-        // Check if the item's resource type is in the actor's canEat list
         if (!diet.canEat.includes(type)) return false;
 
-        // For food-type items, also check food sub-tags
         if (type === "food" && diet.canEatTags?.length) {
             const tag = this.getFoodTag(item);
             if (tag && !diet.canEatTags.includes(tag)) return false;
         }
 
-        // Check exclusions (legacy, still supported)
         if (this._isExcludedByDiet(item, diet)) return false;
 
         return true;
@@ -491,29 +494,38 @@ export class ItemClassifier {
         if (explicit === "essence") return true;
 
         const name = item.name?.toLowerCase().trim() ?? "";
-        if (ESSENCE_NAMES.has(name)) return true;
 
-        // Oil-type drinks also count as essence
-        const drinkType = this.getDrinkType(item);
-        if (drinkType === "oil") return true;
-
-        // Fuel items can serve as essence for constructs
-        const type = this.classify(item);
-        if (type === "fuel") return true;
-
-        // Check actor's customFoodNames if diet is essence-based (includes legacy requiresEssence)
-        if (actor && this.getSustenanceType(actor) === "essence") {
-            const diet = this.getDiet(actor);
-            if (name && diet.customFoodNames?.some(n => n.toLowerCase().trim() === name)) return true;
+        // Without an actor, fall back to the global heuristics (oil, fuel, built-in names).
+        if (!actor) {
+            if (ESSENCE_NAMES.has(name)) return true;
+            if (this.getDrinkType(item) === "oil") return true;
+            if (this.classify(item) === "fuel") return true;
+            return false;
         }
+
+        // With an actor whose diet is not essence, nothing qualifies.
+        if (this.getSustenanceType(actor) !== "essence") return false;
+
+        const diet = this.getDiet(actor);
+
+        // Per-diet custom food names (most common path for named essence items)
+        if (name && diet.customFoodNames?.some(n => n === name)) return true;
+
+        // Oil-type drinks count as essence when the diet includes oil or fuel
+        if (this.getDrinkType(item) === "oil") {
+            if (diet.canDrink.includes("oil") || diet.canEat.includes("fuel")) return true;
+        }
+
+        // Fuel items when the diet explicitly allows fuel
+        if (this.classify(item) === "fuel" && diet.canEat.includes("fuel")) return true;
 
         return false;
     }
 
     /**
-     * Essence meal "food" tray: same as isEssence, but oil-drink items that already
-     * pass isWater (construct oil slot) are omitted so Oil / Oil Flask do not
-     * duplicate under Food and Water.
+     * Essence meal "food" tray filter. Returns true when an item qualifies as
+     * essence food and should appear in the food tray. Items that also pass
+     * isWater for this actor are excluded so they appear only in the water tray.
      *
      * @param {Item} item
      * @param {Actor|null} actor
@@ -522,8 +534,7 @@ export class ItemClassifier {
     static isEssenceMealFoodOption(item, actor) {
         if (!this.isEssence(item, actor)) return false;
         if (!actor || !this.requiresEssence(actor)) return true;
-        const drink = this.getDrinkType(item);
-        if (drink === "oil" && this.isWater(item, actor)) return false;
+        if (this.isWater(item, actor)) return false;
         return true;
     }
 
