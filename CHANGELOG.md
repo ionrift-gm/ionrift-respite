@@ -1,15 +1,39 @@
 # Changelog
 
-## [1.2.4] - 2026-04-20
+## [2.0.0] - 2026-05-02
+
+### Added
+- **Camp scene placement.** Starting a long rest now deploys a camp directly onto the scene. A campfire, workbench, weapon rack, medical bedding, and cooking station appear around the party. Player gear (bedrolls, tents, mess kits) is placed automatically based on inventory. Station tokens use art pack assets when available, Foundry core icons otherwise.
+- **Campfire interaction.** The campfire is now a physical token on the map. Click it to open the Campfire Station - adjust the fire level mid-rest, spend firewood, and view fire tier effects. Players can request fire level changes through GM approval.
+- **Cooking profession.** Characters with Cook's Utensils can select "Cook a Meal" as their rest activity. The Workbench cooking tab shows available recipes, required ingredients, and a crafting interface. Completed meals go into the cook's inventory and can be served to the party.
+- **Feast distribution.** Cooked meals flagged as feasts can be served to the entire party from a dedicated success screen. Each party member either eats immediately or receives the meal in their inventory for later. Feast ingredient costs scale with party size using an offset formula.
+- **Well Fed buffs.** Certain cooked meals grant a "Well Fed" ActiveEffect when consumed. Buffs include mechanical benefits (advantage on Constitution saves, bonus temp HP) and persist until the next long rest. The effect is stamped with duration data after rest completion so it survives the rest cycle.
+- **Rations and hydration.** The Workbench meals tab shows food and water slots that characters fill by dragging consumables. Consuming rations from inventory automatically syncs with the rest state - no double counting. Locked slots prevent further changes once an item has been consumed.
+- **Identify sharing.** Characters with the Identify spell prepared can offer identification services to other party members through the Workbench. Unidentified items from the party are pooled into a shared view, and the caster can identify them on behalf of their owners.
+- **Detect Magic overhaul.** Casting Detect Magic at the Workbench now triggers a visual cast animation with expanding rings. All magic items in the caster's inventory glow, and the scan highlights both identified and unidentified magical items. A dismiss toggle lets the caster end the effect.
+- **Campfire Cooking recipe book.** A compendium item that serves as the starter reference for available recipes. Future terrain and content packs will include their own recipe books.
+- **AFK tracking.** Characters can now be marked as AFK at any time during the session. The rest flow recognises AFK characters and prompts the GM before including them. State persists through page refreshes.
+- **Travel mishap effects.** Travel events can now apply mechanical consequences (conditions, HP loss, resource depletion) in addition to narrative outcomes.
+- **Workbench hub.** The Activities phase now splits into three dedicated tabs - Identify, Activity, and Meals - each with a consistent card-based layout.
+- **Potion tasting.** Unidentified potions can be tasted at the Workbench to attempt identification. Limited to one potion at a time.
+- Activity confirmation is blocked when an armor penalty is active. The resume button animates when all tasks are complete.
 
 ### Changed
-- Platform logic (Forge detection, FilePicker resolution, directory creation) now delegates to the ionrift-library kernel instead of carrying local copies. No user-facing changes - this is a maintenance update that requires ionrift-library 1.9.0 or later.
-
-## [1.2.3] - 2026-04-20
+- Fletching activity now correctly uses the ammo item type and respects output quantity.
 
 ### Fixed
-- Art pack detection on The Forge when running Foundry v13. The Forge module patches the global FilePicker but not the v13 namespaced copy. Browse calls now use the correct class on each platform.
-- Reverted work-in-progress cooking, travel, and spoilage features that shipped prematurely in v1.2.1/v1.2.2. No user-facing functionality has changed from v1.2.0.
+- Host and player clients no longer desync on activity selection.
+- Rest bar no longer shows a stale activity count after returning from activities.
+- Watch advisory now correctly accounts for confirmed activity choices.
+- Terrain selection is saved when the rest begins, not after the step completes.
+- Detect Magic now recognises ritual casters.
+- Dual rest-bar rendering on player clients is fixed.
+- Artificer class-name detection guard now handles edge cases correctly.
+- Characters not participating in the rest no longer receive meal or dehydration save prompts.
+- Perfect Campsite now triggers on a natural 20 only, not a modified total of 20.
+- Encounter DC modifier no longer shows contradictory values in the UI.
+- Single-day travel now advances directly to camp after resolving - no redundant second button.
+- GM footer task count now updates immediately after serving a feast.
 
 ## [1.2.2] - 2026-04-20
 

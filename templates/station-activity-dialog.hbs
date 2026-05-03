@@ -1,0 +1,1022 @@
+<div class="station-dialog-wrap station-card">
+    <div class="station-header">
+        <i class="{{station.icon}}" aria-hidden="true"></i>
+        <span class="station-label">{{station.label}}</span>
+        <span class="station-dialog-actor">{{actorName}}</span>
+    </div>
+
+    {{#if campComfortAtFire}}
+    <div class="station-camp-comfort glass-ui" data-station-camp-comfort="1">
+        <div class="station-camp-comfort-row">
+            <span class="station-camp-comfort-label">Camp comfort</span>
+            <span class="comfort-tier {{campComfortAtFire.mapComfortTierClass}}">{{campComfortAtFire.mapComfortLabel}}</span>
+        </div>
+        {{#unless (and campPersonalCard (eq stationPanelTab "camp"))}}
+        <p class="station-camp-comfort-line">{{campComfortAtFire.mapComfortLine}}</p>
+        {{/unless}}
+    </div>
+    {{/if}}
+
+    {{!-- ═══════════════════════════════════════════ DETAIL VIEW ═══════════════════════════════════════════ --}}
+    {{#if (eq dialogState "detail")}}
+    {{#if activityDetail}}
+    <div class="activity-detail-panel station-detail-panel">
+        <div class="activity-detail-header">
+            <button type="button" class="btn-detail-back" data-action="backToList">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <i class="{{activityDetail.icon}} detail-icon"></i>
+            <span class="detail-name">{{activityDetail.name}}</span>
+        </div>
+        <div class="activity-detail-body">
+            <p class="detail-description">{{activityDetail.description}}</p>
+            {{#if activityDetail.advisory}}
+            <div class="detail-advisory {{#if activityDetail.advisoryUrgent}}urgent{{/if}}">
+                <i class="fas fa-info-circle"></i> {{activityDetail.advisory}}
+            </div>
+            {{/if}}
+            {{#if activityDetail.check}}
+            <div class="detail-check">
+                <i class="fas fa-dice-d20"></i>
+                <span>{{activityDetail.check}}</span>
+            </div>
+            {{/if}}
+            {{#if activityDetail.outcomeHints.length}}
+            <div class="detail-outcomes">
+                {{#each activityDetail.outcomeHints}}
+                <div class="outcome-hint outcome-{{type}}">
+                    <i class="fas fa-chevron-right"></i>
+                    <span>{{text}}</span>
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+            {{#if activityDetail.followUpData}}
+            <div class="activity-followup-panel" data-character-id="{{activityDetail.characterId}}">
+                <label class="followup-label">{{activityDetail.followUpData.label}}</label>
+                {{#if (eq activityDetail.followUpData.type "partyMember")}}
+                <select class="followup-select station-followup-input" data-followup-type="partyMember">
+                    {{#each activityDetail.followUpData.options}}
+                    <option value="{{value}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
+                    {{/each}}
+                </select>
+                {{else if (eq activityDetail.followUpData.type "radio")}}
+                <div class="followup-radios">
+                    {{#each activityDetail.followUpData.options}}
+                    <label class="followup-radio-label">
+                        <input type="radio" name="station-followup" value="{{value}}"
+                            class="station-followup-radio"
+                            {{#if isSelected}}checked{{/if}}>
+                        {{label}}
+                    </label>
+                    {{/each}}
+                </div>
+                {{else if (eq activityDetail.followUpData.type "select")}}
+                {{#if activityDetail.followUpData.goldInfo}}
+                <div class="followup-gold-hint">
+                    <i class="fas fa-coins"></i> {{activityDetail.followUpData.goldInfo}}
+                </div>
+                {{/if}}
+                <select class="followup-select station-followup-input" data-followup-type="select">
+                    {{#each activityDetail.followUpData.options}}
+                    <option value="{{value}}" {{#if isSelected}}selected{{/if}} {{#if isDisabled}}disabled{{/if}}>{{label}}</option>
+                    {{/each}}
+                </select>
+                {{else if (eq activityDetail.followUpData.type "actorItem")}}
+                {{#if activityDetail.followUpData.slotInfo}}
+                <div class="attunement-slots">
+                    <i class="fas fa-gem"></i> Attunement slots: {{activityDetail.followUpData.slotInfo}}
+                </div>
+                {{/if}}
+                <select class="followup-select station-followup-input" data-followup-type="actorItem">
+                    {{#each activityDetail.followUpData.options}}
+                    <option value="{{value}}" {{#if isSelected}}selected{{/if}}>{{label}}</option>
+                    {{/each}}
+                </select>
+                {{/if}}
+            </div>
+            {{/if}}
+            {{#if activityDetail.armorHint}}
+            <div class="armor-hint armor-hint-{{activityDetail.armorHint.type}}">
+                <i class="fas {{#if (eq activityDetail.armorHint.type "positive")}}fa-shield-alt{{else}}fa-exclamation-triangle{{/if}}"></i>
+                {{activityDetail.armorHint.text}}
+            </div>
+            {{/if}}
+            {{#if activityDetail.armorWarning}}
+            <div class="armor-advisory {{#if activityDetail.armorWarning.isDoffed}}doffed{{/if}}" title="{{activityDetail.armorWarning.hint}}">
+                <i class="fas fa-shield-alt"></i>
+                <span class="armor-advisory-text">
+                    {{#if activityDetail.armorWarning.isDoffed}}
+                    {{activityDetail.armorWarning.name}} removed for rest
+                    {{else}}
+                    {{activityDetail.armorWarning.name}} ({{activityDetail.armorWarning.type}}) - don time: {{activityDetail.armorWarning.donTime}}
+                    {{/if}}
+                </span>
+                <button type="button" class="btn-armor-toggle"
+                    data-actor-id="{{activityDetail.armorWarning.actorId}}"
+                    data-item-id="{{activityDetail.armorWarning.itemId}}"
+                    data-is-doffed="{{activityDetail.armorWarning.isDoffed}}"
+                    title="{{#if activityDetail.armorWarning.isDoffed}}Re-equip armor{{else}}Remove armor for rest{{/if}}">
+                    {{#if activityDetail.armorWarning.isDoffed}}
+                    <i class="fas fa-shield-alt"></i> Don
+                    {{else}}
+                    <i class="fas fa-bed"></i> Doff
+                    {{/if}}
+                </button>
+            </div>
+            {{/if}}
+            {{#if activityDetail.combatModifiers.description}}
+            <div class="combat-readiness-hint">
+                <i class="fas fa-shield-alt"></i> <em>If combat occurs:</em> {{activityDetail.combatModifiers.description}}
+            </div>
+            {{/if}}
+        </div>
+        <div class="activity-detail-footer">
+            <button type="button" class="btn-detail-confirm" data-action="confirmActivity">
+                <i class="fas fa-check"></i> Confirm Activity
+            </button>
+        </div>
+    </div>
+    {{/if}}
+    {{/if}}
+
+    {{!-- ═══════════════════════════════════════════ CRAFTING VIEW ═══════════════════════════════════════════ --}}
+    {{#if (eq dialogState "crafting")}}
+
+    {{!-- Station tabs persist above the crafting panel --}}
+    {{#if showTabBar}}
+    <div class="station-sub-tabs" role="tablist">
+        {{#each stationTabs}}
+        <button type="button" role="tab" class="station-sub-tab {{#if (eq ../stationPanelTab id)}}active{{/if}}{{#if hintClass}} {{hintClass}}{{/if}}"
+            data-action="switchStationPanelTab" data-tab="{{id}}"
+            {{#if ../craftRollPending}}disabled aria-disabled="true" title="Wait for the roll to finish"
+            {{else}}{{#if title}}title="{{title}}"{{/if}}{{/if}}>
+            {{label}}
+        </button>
+        {{/each}}
+    </div>
+    {{/if}}
+
+    {{#if crafting}}
+    <div class="crafting-picker station-crafting-panel crafting-split{{#if crafting.rollPending}} station-crafting-panel--roll-pending{{/if}}">
+        {{#if crafting.rollPending}}
+        <div class="crafting-roll-blocking-overlay" role="status" aria-live="polite">
+            <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+            <span>Waiting for the roll to finish...</span>
+        </div>
+        {{/if}}
+
+        {{!-- ═══════════ AFTER CRAFTING ═══════════ --}}
+        {{#if crafting.hasCrafted}}
+        <div class="crafting-section crafting-result crafting-result-hero {{#if crafting.craftingResult.success}}result-success{{else}}result-failure{{/if}}">
+            {{!-- Hero: Item icon + name + badge --}}
+            <div class="craft-result-hero">
+                <div class="craft-result-icon-wrap {{#if crafting.craftingResult.success}}glow-success{{else}}glow-failure{{/if}}">
+                    {{#if crafting.craftingResult.success}}
+                    <img src="{{crafting.craftingResult.output.img}}" alt="{{crafting.craftingResult.output.name}}" class="craft-result-icon">
+                    {{else}}
+                    <i class="fas fa-times craft-result-fail-icon"></i>
+                    {{/if}}
+                </div>
+                {{#if crafting.craftingResult.success}}
+                <div class="craft-result-item-name">{{crafting.craftingResult.output.name}}{{#if crafting.craftingResult.output.quantity}} <span class="craft-result-qty">(×{{crafting.craftingResult.output.quantity}})</span>{{/if}}</div>
+                <div class="craft-result-badge badge-success"><i class="fas fa-check"></i> Crafted Successfully</div>
+                {{else}}
+                <div class="craft-result-item-name">{{crafting.craftingResult.recipeName}}</div>
+                <div class="craft-result-badge badge-failure"><i class="fas fa-times"></i> Crafting Failed</div>
+                {{/if}}
+            </div>
+
+            {{!-- Divider --}}
+            <div class="craft-result-divider"></div>
+
+            {{!-- Details --}}
+            <div class="craft-result-details">
+                <div class="craft-result-detail-row">
+                    <i class="fas fa-dice-d20"></i>
+                    <span>Rolled <strong>{{crafting.craftingResult.roll}}</strong> vs DC <strong>{{crafting.craftingResult.dc}}</strong></span>
+                    <span class="risk-tag risk-{{crafting.craftingResult.riskTier}}">{{crafting.craftingResult.riskTier}}</span>
+                </div>
+                <div class="craft-result-detail-row narrative">
+                    <i class="fas fa-feather-alt"></i>
+                    <span>{{crafting.craftingResult.narrative}}</span>
+                </div>
+                {{#if crafting.craftingResult.ingredientsConsumed}}
+                <div class="craft-result-detail-row consumed">
+                    <i class="fas fa-fire"></i>
+                    <span>Ingredients consumed</span>
+                </div>
+                {{else}}
+                <div class="craft-result-detail-row preserved">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Ingredients preserved</span>
+                </div>
+                {{/if}}
+            </div>
+
+            {{#if crafting.craftingResult.isPartyMeal}}
+            {{#if crafting.craftingResult.success}}
+            <div class="feast-roster-section">
+                <div class="feast-roster-portraits">
+                    {{#each crafting.craftingResult.partyRoster}}
+                    <div class="feast-portrait {{#if alreadyWellFed}}already-fed{{else}}will-eat{{/if}}"
+                         title="{{name}}{{#if alreadyWellFed}}: already Well Fed, goes to inventory{{else}}: will eat now{{/if}}">
+                        <img src="{{img}}" alt="{{name}}" class="feast-portrait-img">
+                        <span class="feast-portrait-badge">
+                            {{#if alreadyWellFed}}
+                            <i class="fas fa-box-open"></i>
+                            {{else}}
+                            <i class="fas fa-check"></i>
+                            {{/if}}
+                        </span>
+                    </div>
+                    {{/each}}
+                </div>
+                <span class="feast-roster-label">Feeds {{crafting.craftingResult.partyRoster.length}} party members</span>
+            </div>
+            {{/if}}
+            {{/if}}
+        </div>
+
+        {{#if crafting.craftingResult.isPartyMeal}}
+        {{#if crafting.craftingResult.success}}
+        {{#unless crafting.craftingResult.partyMealDispositionDone}}
+        <div class="feast-footer-actions">
+            <button type="button" class="btn-secondary feast-keep-btn" data-action="craftClose">
+                <i class="fas fa-box"></i> Keep in inventory
+            </button>
+            <button type="button" class="btn-feast-serve" data-action="feastServeNow">
+                <i class="fas fa-utensils"></i> Serve Now
+            </button>
+        </div>
+        {{else}}
+        <div class="crafting-done-message">
+            <i class="fas fa-utensils"></i> Serving complete. The shared dish is gone from the cook's inventory.
+        </div>
+        {{/unless}}
+        {{else}}
+        <div class="crafting-done-message">
+            <i class="fas fa-moon"></i> Crafting complete for this rest.
+        </div>
+        {{/if}}
+        {{else}}
+        <div class="crafting-done-message">
+            <i class="fas fa-moon"></i> Crafting complete for this rest.
+        </div>
+        {{/if}}
+
+        {{else}}
+        {{!-- ═══════════ SPLIT PANEL LAYOUT ═══════════ --}}
+        <div class="crafting-split-body">
+
+            {{!-- ── LEFT PANEL: Recipe List ── --}}
+            <div class="crafting-list-panel">
+                <div class="crafting-list-heading">
+                    <i class="fas fa-scroll"></i> Recipes
+                </div>
+                {{#if crafting.available.length}}
+                <div class="recipe-list recipe-list-compact">
+                    {{#each crafting.available}}
+                    <div class="recipe-card recipe-card-compact {{#if isSelected}}selected{{/if}}" data-action="craftSelectRecipe"
+                        data-recipe-id="{{id}}">
+                        <img src="{{outputImg}}" alt="{{name}}" class="recipe-icon recipe-icon-compact">
+                        <div class="recipe-info">
+                            <div class="recipe-name">{{name}}</div>
+                            <div class="recipe-brief">
+                                {{#each ingredientList}}
+                                <span class="ingredient-pill met">{{required}}x {{name}}</span>
+                                {{/each}}
+                            </div>
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+                {{else}}
+                <div class="crafting-empty">No recipes available with current ingredients.</div>
+                {{/if}}
+
+                {{!-- Missing Recipes --}}
+                {{#if crafting.partial.length}}
+                <div class="missing-toggle" data-action="craftToggleMissing">
+                    <i class="fas fa-caret-{{#if crafting.showMissing}}down{{else}}right{{/if}}"></i>
+                    Missing ({{crafting.partial.length}})
+                </div>
+                {{#if crafting.showMissing}}
+                <div class="missing-recipes">
+                    {{#each crafting.partial}}
+                    <div class="recipe-card recipe-card-compact partial">
+                        <img src="{{outputImg}}" alt="{{name}}" class="recipe-icon-sm">
+                        <div class="recipe-info">
+                            <div class="recipe-name">{{name}}</div>
+                            <div class="recipe-brief">
+                                {{#each ingredientList}}
+                                <span class="ingredient-pill {{#if met}}met{{else}}unmet{{/if}}">{{required}}x {{name}}</span>
+                                {{/each}}
+                            </div>
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+                {{/if}}
+                {{/if}}
+            </div>
+
+            {{!-- ── RIGHT PANEL: Detail + Action ── --}}
+            <div class="crafting-detail-panel">
+
+                {{!-- Hero Card: Selected Recipe --}}
+                {{#if crafting.selectedRecipe}}
+                <div class="recipe-hero">
+                    <div class="recipe-hero-header">
+                        <img src="{{crafting.selectedRecipe.outputImg}}" alt="{{crafting.selectedRecipe.name}}" class="recipe-hero-icon">
+                        <div class="recipe-hero-titles">
+                            <h3 class="recipe-hero-name">{{crafting.selectedRecipe.name}}</h3>
+                            <div class="recipe-hero-dc-row">
+                                <span class="recipe-hero-dc"><i class="fas fa-dice-d20"></i> DC {{crafting.selectedRecipe.dcDisplay}}</span>
+                                {{#if crafting.selectedRecipe.dcBreakdown.hasModifiers}}
+                                <span class="dc-base-hint">{{crafting.selectedRecipe.dcBreakdown.base}} base</span>
+                                {{#each crafting.selectedRecipe.dcBreakdown.factors}}
+                                <span class="dc-factor-pill dc-factor-{{sign}}">{{label}}</span>
+                                {{/each}}
+                                {{/if}}
+                            </div>
+                            {{#if crafting.selectedRecipe.isPartyMeal}}
+                            <span class="recipe-hero-badge badge-party-meal"><i class="fas fa-users"></i> Feeds the Party</span>
+                            {{/if}}
+                        </div>
+                    </div>
+                    {{#if crafting.selectedRecipe.description}}
+                    <p class="recipe-hero-description">{{crafting.selectedRecipe.description}}</p>
+                    {{/if}}
+
+                    {{!-- Ingredient tokens --}}
+                    <div class="recipe-hero-ingredients">
+                        {{#each crafting.selectedRecipe.ingredientList}}
+                        <div class="hero-ingredient-token {{#if met}}met{{else}}unmet{{/if}}" title="{{required}}x {{name}} (have {{available}})">
+                            <img src="{{img}}" alt="{{name}}" class="hero-ingredient-icon">
+                            <span class="hero-ingredient-qty">{{required}}</span>
+                            <span class="hero-ingredient-name">{{name}}</span>
+                        </div>
+                        {{/each}}
+                    </div>
+
+                    {{!-- Buff preview --}}
+                    {{#if crafting.selectedRecipe.buffPreview}}
+                    <div class="recipe-hero-buff">
+                        <span class="hero-buff-pill">
+                            <i class="fas fa-magic"></i>
+                            {{crafting.selectedRecipe.buffPreview.label}}
+                            {{#if crafting.selectedRecipe.buffPreview.formula}}= {{crafting.selectedRecipe.buffPreview.formula}}{{/if}}
+                        </span>
+                        <span class="hero-buff-duration">{{crafting.selectedRecipe.buffPreview.duration}}</span>
+                        {{#if (eq crafting.selectedRecipe.buffPreview.target "party")}}
+                        <span class="hero-buff-target"><i class="fas fa-users"></i> Party</span>
+                        {{/if}}
+                    </div>
+                    {{/if}}
+
+                    {{!-- Satiation badges --}}
+                    {{#if crafting.selectedRecipe.satiates.length}}
+                    <div class="recipe-hero-satiates">
+                        {{#each crafting.selectedRecipe.satiates}}
+                        <span class="hero-satiate-badge satiate-{{this}}">
+                            {{#if (eq this "food")}}<i class="fas fa-drumstick-bite"></i> Food{{/if}}
+                            {{#if (eq this "water")}}<i class="fas fa-tint"></i> Water{{/if}}
+                        </span>
+                        {{/each}}
+                        {{#if crafting.selectedRecipe.isWellFed}}
+                        <span class="hero-satiate-badge satiate-wellfed"><i class="fas fa-heart"></i> Well Fed</span>
+                        {{/if}}
+                    </div>
+                    {{/if}}
+
+                    {{!-- Ambitious teaser (only when Ambitious approach selected) --}}
+                    {{#if crafting.isAmbitiousSelected}}
+                    {{#if crafting.selectedRecipe.ambitiousName}}
+                    <div class="recipe-hero-ambitious">
+                        <i class="fas fa-fire-alt"></i>
+                        <span>On success: <strong>{{crafting.selectedRecipe.ambitiousName}}</strong></span>
+                    </div>
+                    {{/if}}
+                    {{/if}}
+                </div>
+                {{else}}
+                {{!-- Empty state --}}
+                <div class="recipe-hero recipe-hero-empty">
+                    <div class="recipe-hero-placeholder">
+                        <i class="fas fa-utensils"></i>
+                        <span>Select a recipe to see details</span>
+                    </div>
+                </div>
+                {{/if}}
+
+                {{!-- Step 2: Choose Approach --}}
+                <div class="crafting-step crafting-step-approach">
+                    <div class="step-label"><span class="step-num">2</span> Choose Your Approach</div>
+                    <div class="risk-selector">
+                        {{#each crafting.riskTiers}}
+                        <button type="button" class="btn-risk {{#if selected}}selected{{/if}}" data-action="craftSelectRisk"
+                            data-risk="{{id}}">
+                            <div class="risk-label">{{label}}</div>
+                            <div class="risk-hint">{{hint}}</div>
+                        </button>
+                        {{/each}}
+                    </div>
+                </div>
+
+                {{!-- Commitment Summary + Craft Button --}}
+                {{#if crafting.commitSummary}}
+                <div class="craft-commit-panel">
+                    <div class="commit-header">Ready to Craft</div>
+                    <div class="commit-visual-flow">
+                        <div class="commit-inputs">
+                            {{#each crafting.commitSummary.ingredients}}
+                            <div class="commit-item-token" title="{{quantity}}x {{name}}">
+                                <img src="{{img}}" alt="{{name}}">
+                                <span class="commit-item-qty">{{quantity}}</span>
+                            </div>
+                            {{/each}}
+                        </div>
+                        <div class="commit-flow-arrow"><i class="fas fa-long-arrow-alt-right"></i></div>
+                        <div class="commit-output-token" title="{{crafting.commitSummary.outputName}}">
+                            <img src="{{crafting.commitSummary.outputImg}}" alt="{{crafting.commitSummary.outputName}}">
+                            <span class="commit-output-name">{{crafting.commitSummary.outputName}}</span>
+                        </div>
+                    </div>
+                    <div class="commit-details">
+                        <span class="commit-detail">
+                            <i class="fas fa-dice-d20"></i> {{crafting.commitSummary.skill}} vs DC {{crafting.commitSummary.dc}}
+                            {{#if crafting.commitSummary.dcBreakdown.hasModifiers}}
+                            <span class="commit-dc-factors">
+                                <span class="commit-dc-base">{{crafting.commitSummary.dcBreakdown.base}}</span>
+                                {{#each crafting.commitSummary.dcBreakdown.factors}}
+                                <span class="dc-factor-pill dc-factor-{{sign}}">{{label}}</span>
+                                {{/each}}
+                            </span>
+                            {{/if}}
+                        </span>
+                        <span class="commit-detail risk-tag risk-{{crafting.commitSummary.risk}}">
+                            {{crafting.commitSummary.riskLabel}}
+                        </span>
+                        <span class="commit-detail commit-consequence">
+                            {{crafting.commitSummary.failConsequence}}
+                        </span>
+                    </div>
+                    <button type="button" class="btn-hero-craft" data-action="craftCommit">
+                        <i class="fas fa-hammer"></i><span>Craft</span>
+                    </button>
+                </div>
+                {{else}}
+                <div class="craft-commit-panel empty">
+                    <div class="commit-placeholder">
+                        <i class="fas fa-hand-pointer"></i> Select a recipe to see your crafting plan
+                    </div>
+                </div>
+                {{/if}}
+            </div>
+        </div>
+
+        {{/if}}
+
+        {{!-- Footer --}}
+        <div class="crafting-footer">
+            <button type="button" class="btn-secondary" data-action="craftClose"
+                {{#if crafting.rollPending}}disabled aria-disabled="true"{{/if}}>
+                {{#if crafting.hasCrafted}}Close{{else}}Cancel{{/if}}
+            </button>
+        </div>
+    </div>
+    {{/if}}
+    {{/if}}
+
+    {{!-- ═══════════════════════════════════════════ RESULT VIEW ═══════════════════════════════════════════ --}}
+    {{#if (eq dialogState "result")}}
+    {{#if activityResult}}
+    <div class="activity-result-panel station-result-panel">
+        <div class="result-header">
+            <i class="{{activityResult.icon}} result-icon"></i>
+            <span class="result-name">{{activityResult.name}}</span>
+        </div>
+        <div class="result-body">
+            <div class="result-tier result-tier-{{activityResult.tierClass}}">
+                {{activityResult.tierLabel}}
+            </div>
+            {{#if activityResult.narrative}}
+            <p class="result-narrative">{{activityResult.narrative}}</p>
+            {{/if}}
+        </div>
+        <div class="result-footer">
+            <button type="button" class="btn-result-dismiss" data-action="dismissResult">
+                <i class="fas fa-check"></i> Done
+            </button>
+        </div>
+    </div>
+    {{/if}}
+    {{/if}}
+
+    {{!-- ═══════════════════════════════════════════ LIST VIEW ═══════════════════════════════════════════ --}}
+    {{#if (eq dialogState "list")}}
+
+    {{#if showTabBar}}
+    <div class="station-sub-tabs" role="tablist">
+        {{#each stationTabs}}
+        <button type="button" role="tab" class="station-sub-tab {{#if (eq ../stationPanelTab id)}}active{{/if}}{{#if hintClass}} {{hintClass}}{{/if}}"
+            data-action="switchStationPanelTab" data-tab="{{id}}"
+            {{#if title}}title="{{title}}"{{/if}}>
+            {{label}}
+        </button>
+        {{/each}}
+    </div>
+    {{/if}}
+
+    {{#if (eq station.id "campfire")}}
+    {{#if (and showTabBar (eq stationPanelTab "fire") fireTabContext)}}
+    <div class="station-fire-tab glass-ui" data-station-fire-tab="1">
+        {{#if fireTabContext.campFireTabColdCamp}}
+        <p class="station-fire-cold-hint glass-ui"><i class="fas fa-moon"></i> Cold camp. The table chose no fire.</p>
+        {{else}}
+        {{#if fireTabContext.campFireEncounterHint}}
+        <p class="station-fire-encounter-hint"><i class="fas fa-eye"></i> {{fireTabContext.campFireEncounterHint}}</p>
+        {{/if}}
+        {{#if fireTabContext.campFireTierCards.length}}
+        <div class="station-fire-tier-section">
+            <h4 class="station-fire-tier-heading">Fire levels</h4>
+            <div class="camp-fire-tier-strip station-campfire-tier-strip" role="list" aria-label="Fire intensity tiers">
+                {{#each fireTabContext.campFireTierCards}}
+                <div class="camp-fire-tier-card{{#if active}} active{{/if}}{{#if actionBlocked}} camp-fire-tier-card--set-disabled{{/if}}" data-fire-level="{{id}}" role="listitem">
+                    <span class="camp-fire-tier-watermark" aria-hidden="true"><i class="fas fa-fire"></i></span>
+                    <span class="camp-fire-tier-label">{{label}}</span>
+                    <span class="camp-fire-tier-cost">({{costLabel}})</span>
+                    <span class="camp-fire-tier-body">{{body}}</span>
+                    <span class="camp-fire-tier-comfort{{#if comfortChanged}} comfort-changed{{/if}}">{{comfortHint}}</span>
+                    <div class="station-fire-set-row">
+                        {{#if active}}
+                        <span class="station-fire-current-label">Current</span>
+                        {{else if @root.isGmUser}}
+                        <button type="button" class="station-fire-set-btn" data-action="setFireLevel" data-fire-level="{{id}}" {{#if setDisabled}}disabled title="Not enough firewood"{{/if}}>Set</button>
+                        {{else}}
+                        <button type="button" class="station-fire-set-btn" data-action="requestFireLevel" data-fire-level="{{id}}" {{#if requestDisabled}}disabled title="Not enough party firewood"{{/if}}>Request</button>
+                        {{/if}}
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+            <p class="station-fire-tier-footnote">Larger fires add encounter risk. Bonfire can move camp comfort up one step when the scene allows it.</p>
+        </div>
+        {{/if}}
+        {{#if fireTabContext.campFirewoodPledgeList.length}}
+        <div class="station-fire-pledge-block">
+            <div class="station-fire-pledge-title">Wood pledged (Make Camp)</div>
+            {{#each fireTabContext.campFirewoodPledgeList}}<div class="camp-firewood-pledge-row"><i class="fas fa-check"></i> <span>{{actorName}}: {{count}} firewood</span></div>{{/each}}
+        </div>
+        {{/if}}
+        {{/if}}
+    </div>
+    {{else}}
+    {{#if campPersonalCard}}
+    <div class="comfort-hero tier-{{campPersonalCard.personalComfort}} glass-ui" data-camp-gear-row="1" data-station-personal-gear="1">
+        <div class="comfort-hero-row">
+            <span class="comfort-hero-label">Camp comfort</span>
+            <span class="comfort-hero-tier-wrap">
+                <span class="comfort-tier comfort-{{campPersonalCard.personalComfort}}" style="font-size:1.15rem;">
+                    {{campPersonalCard.personalComfortLabel}}
+                </span>
+                {{#if campPersonalCard.personalMatchesCamp}}
+                <span class="station-personal-comfort-same comfort-hero-match-hint" title="Personal rest tier matches the camp baseline above.">(same as camp)</span>
+                {{/if}}
+            </span>
+        </div>
+        {{#if campComfortLine}}
+        <p class="comfort-hero-reason">{{campComfortLine}}</p>
+        {{/if}}
+        <div class="comfort-factors-divider"><span>Contributing Factors</span></div>
+        <div class="comfort-factor-list">
+            {{#each campPersonalCard.gearSlots}}
+            <div class="comfort-factor">
+                <span class="comfort-factor-icon"><i class="{{icon}}" aria-hidden="true"></i></span>
+                <span class="comfort-factor-name">{{title}}</span>
+                {{#if isMissing}}
+                <span class="comfort-factor-status">{{missingLine}}</span>
+                <span class="comfort-factor-badge missing"><i class="fas fa-times"></i> missing</span>
+                {{else}}
+                <span class="comfort-factor-status">{{benefitLine}}</span>
+                <span class="comfort-factor-badge placed"><i class="fas fa-check"></i> owned</span>
+                {{#if canDrag}}
+                <span class="camp-gear-placeable-wrap comfort-factor-drag" draggable="true"
+                      data-drag-type="player-gear" data-gear-type="{{gearType}}" data-actor-id="{{actorId}}"
+                      title="Place on map for ambiance">
+                    <i class="fas fa-grip-vertical"></i> map
+                </span>
+                {{/if}}
+                {{#if isPlaced}}
+                <button type="button" class="comfort-factor-drag" data-action="reclaimCampGear"
+                        data-actor-id="{{actorId}}" data-gear-type="{{gearType}}"
+                        title="Pick up from map">
+                    <i class="fas fa-check"></i> on map
+                </button>
+                {{/if}}
+                {{#if isReadonlyOwned}}
+                <span class="comfort-factor-readonly">This character places their own gear</span>
+                {{/if}}
+                {{/if}}
+            </div>
+            {{/each}}
+            {{#if campPersonalCard.fireFactorRow}}
+            <div class="comfort-factor">
+                <span class="comfort-factor-icon"><i class="fas fa-fire" aria-hidden="true"></i></span>
+                <span class="comfort-factor-name">Fire Level</span>
+                <span class="comfort-factor-status">{{campPersonalCard.fireFactorRow.statusLine}}</span>
+                <span class="comfort-factor-badge active">
+                    <i class="fas fa-fire"></i> {{campPersonalCard.fireFactorRow.tierLabel}}
+                </span>
+            </div>
+            {{/if}}
+        </div>
+        <div class="comfort-hero-recovery">
+            <div class="recovery-line recovery-hp{{#if campPersonalCard.recovery.hpSeverity}} {{campPersonalCard.recovery.hpSeverity}}{{/if}}">
+                <i class="fas fa-heart"></i> {{campPersonalCard.recovery.hpLabel}}
+            </div>
+            <div class="recovery-line recovery-hd{{#if campPersonalCard.recovery.hdSeverity}} {{campPersonalCard.recovery.hdSeverity}}{{/if}}">
+                <i class="fas fa-dice-d6"></i> {{campPersonalCard.recovery.hdLabel}}
+            </div>
+            {{#if campPersonalCard.recovery.exhaustionDC}}
+            <div class="recovery-line recovery-exhaustion{{#if campPersonalCard.recovery.exhaustionSeverity}} {{campPersonalCard.recovery.exhaustionSeverity}}{{/if}}">
+                <i class="fas fa-exclamation-triangle"></i>
+                {{campPersonalCard.recovery.exhaustionLabel}}
+            </div>
+            {{/if}}
+        </div>
+        {{#if campPersonalCard.hasMitigationHints}}
+        <div class="comfort-hero-hints" aria-label="Ways to improve this rest">
+            {{#each campPersonalCard.mitigationHints}}
+            <p class="comfort-hero-hint-line">{{this}}</p>
+            {{/each}}
+        </div>
+        {{/if}}
+    </div>
+    {{/if}}
+    {{/if}}
+    {{/if}}
+
+    {{!-- Single-list stations (no meal hub tabs) --}}
+    {{#unless showStationTabs}}
+    {{#if hasAny}}
+    <ul class="station-activities">
+        {{#each activities}}
+        <li>
+            {{#if this.available}}
+            <button type="button"
+                    class="activity-card station-activity"
+                    data-action="selectActivity"
+                    data-activity-id="{{this.id}}">
+                <i class="{{this.icon}}" aria-hidden="true"></i>
+                <div class="card-body">
+                    <span class="card-name">{{this.name}}</span>
+                    {{#if this.hint}}<span class="card-hint {{#if this.hintUrgent}}urgent{{/if}}">{{this.hint}}</span>{{/if}}
+                </div>
+            </button>
+            {{else if this.nonViable}}
+            <div class="activity-card station-activity non-viable" title="{{this.fadedHint}}">
+                <i class="{{this.icon}}" aria-hidden="true"></i>
+                <div class="card-body">
+                    <span class="card-name">{{this.name}}</span>
+                    {{#if this.hint}}<span class="card-hint non-viable-hint">{{this.hint}}</span>{{/if}}
+                </div>
+            </div>
+            {{else}}
+            <div class="activity-card station-activity faded" title="{{this.fadedHint}}">
+                <i class="{{this.icon}}" aria-hidden="true"></i>
+                <div class="card-body">
+                    <span class="card-name">{{this.name}}</span>
+                    {{#if this.hint}}<span class="card-hint faded-hint">{{this.hint}}</span>{{/if}}
+                </div>
+            </div>
+            {{/if}}
+        </li>
+        {{/each}}
+    </ul>
+    {{else}}
+    {{#unless hideNoActivitiesMessage}}
+    {{#if actorChoiceLocked}}
+    <div class="station-choice-locked">
+        <i class="fas fa-check-circle" aria-hidden="true"></i>
+        <span>{{actorName}} is already set to <strong>{{actorChoiceLocked}}</strong> this rest.</span>
+    </div>
+    {{else}}
+    <p class="station-no-activities">No activities available here for {{actorName}}.</p>
+    {{/if}}
+    {{/unless}}
+    {{/if}}
+    {{/unless}}
+
+    {{!-- Campfire: activities tab --}}
+    {{#if showStationTabs}}
+    {{#if (eq stationPanelTab "activity")}}
+    {{#if hasAny}}
+    <ul class="station-activities">
+        {{#each activities}}
+        <li>
+            {{#if this.available}}
+            <button type="button"
+                    class="activity-card station-activity"
+                    data-action="selectActivity"
+                    data-activity-id="{{this.id}}">
+                <i class="{{this.icon}}" aria-hidden="true"></i>
+                <div class="card-body">
+                    <span class="card-name">{{this.name}}</span>
+                    {{#if this.hint}}<span class="card-hint {{#if this.hintUrgent}}urgent{{/if}}">{{this.hint}}</span>{{/if}}
+                </div>
+            </button>
+            {{else if this.nonViable}}
+            <div class="activity-card station-activity non-viable" title="{{this.fadedHint}}">
+                <i class="{{this.icon}}" aria-hidden="true"></i>
+                <div class="card-body">
+                    <span class="card-name">{{this.name}}</span>
+                    {{#if this.hint}}<span class="card-hint non-viable-hint">{{this.hint}}</span>{{/if}}
+                </div>
+            </div>
+            {{else}}
+            <div class="activity-card station-activity faded" title="{{this.fadedHint}}">
+                <i class="{{this.icon}}" aria-hidden="true"></i>
+                <div class="card-body">
+                    <span class="card-name">{{this.name}}</span>
+                    {{#if this.hint}}<span class="card-hint faded-hint">{{this.hint}}</span>{{/if}}
+                </div>
+            </div>
+            {{/if}}
+        </li>
+        {{/each}}
+    </ul>
+    {{else}}
+    {{#unless hideNoActivitiesMessage}}
+    {{#if actorChoiceLocked}}
+    <div class="station-choice-locked">
+        <i class="fas fa-check-circle" aria-hidden="true"></i>
+        <span>{{actorName}} is already set to <strong>{{actorChoiceLocked}}</strong> this rest.</span>
+    </div>
+    {{else}}
+    <p class="station-no-activities">No activities available here for {{actorName}}.</p>
+    {{/if}}
+    {{/unless}}
+    {{/if}}
+    {{/if}}
+    {{/if}}
+
+    {{!-- Rations tab (cooking station hub when meal card exists) --}}
+    {{#if showStationTabs}}
+    {{#if (eq stationPanelTab "meal")}}
+    <div class="station-meal-embed">
+        {{#if mealCard}}
+        {{#if mealCardNeedsEssence}}
+        <p class="station-essence-hint"><i class="fas fa-bolt" aria-hidden="true"></i> Essence slots: use the main rest window if this character needs them.</p>
+        {{/if}}
+        {{#with mealCard}}
+        {{#if (or allDaysConsumed playerSubmitted)}}
+        <div class="station-meal-rations-done-lead" role="status">
+            <i class="fas fa-check-circle" aria-hidden="true"></i>
+            <p>Food and water for this rest are already submitted. The status below is read-only.</p>
+        </div>
+        <div class="meal-summary-status">
+            <span class="meal-summary-stat {{#if foodSufficient}}stat-ok{{else}}stat-warn{{/if}}">
+                <i class="fas {{#if foodSufficient}}fa-check-circle{{else}}fa-drumstick-bite{{/if}}"></i>
+                {{#if foodSufficient}}Fed{{else}}Hungry{{/if}}
+            </span>
+            <span class="meal-summary-stat {{#if waterSufficient}}stat-ok{{else}}stat-warn{{/if}}">
+                <i class="fas {{#if waterSufficient}}fa-check-circle{{else}}fa-tint-slash{{/if}}"></i>
+                {{#if waterSufficient}}Hydrated{{else}}Thirsty{{/if}}
+            </span>
+        </div>
+        {{else}}
+        <div class="meal-drop-columns">
+            <div class="meal-panel food-panel {{#unless hasFood}}panel-empty{{/unless}}">
+                <div class="meal-panel-heading"><i class="fas fa-drumstick-bite" aria-hidden="true"></i> Food</div>
+                {{#if hasFood}}
+                {{#each foodSlots}}
+                <div class="meal-drop-header-row">
+                    <div class="meal-drop-zone food-drop-zone {{#if filled}}filled{{/if}}{{#if locked}} locked{{/if}}"
+                         data-character-id="{{../characterId}}" data-slot="food" data-slot-index="{{index}}"{{#if locked}} data-locked="true"{{/if}}>
+                        <div class="drop-zone-silhouette">
+                            {{#if filled}}
+                            {{#each ../foodOptions}}
+                            {{#if (eq ../selected value)}}
+                            <img src="{{icon}}" alt="" class="drop-zone-item-icon">
+                            {{/if}}
+                            {{/each}}
+                            {{else}}
+                            <i class="fas fa-drumstick-bite drop-zone-plate"></i>
+                            {{/if}}
+                        </div>
+                    </div>
+                    <div class="meal-drop-label">
+                        {{#if filled}}
+                        {{#each ../foodOptions}}
+                        {{#if (eq ../selected value)}}
+                        <span class="meal-drop-item-name">{{name}}</span>
+                        <span class="meal-drop-item-qty">×{{available}}</span>
+                        {{/if}}
+                        {{/each}}
+                        {{else}}
+                        <span class="meal-drop-hint-text">drag from below</span>
+                        {{/if}}
+                    </div>
+                </div>
+                {{/each}}
+                <div class="meal-panel-divider"></div>
+                <div class="meal-inventory-tray-scroll">
+                    <div class="meal-inventory-grid food-tray">
+                        {{#each foodOptions}}
+                        <div class="meal-inv-card" draggable="true"
+                             data-item-id="{{value}}"
+                             data-slot="food"
+                             data-available="{{available}}"
+                             data-character-id="{{../characterId}}"
+                             title="{{label}}">
+                            <img src="{{icon}}" alt="{{label}}" class="meal-inv-card-icon" draggable="false">
+                            <span class="meal-inv-card-qty">×{{available}}</span>
+                            <span class="meal-inv-card-name">{{name}}</span>
+                        </div>
+                        {{/each}}
+                    </div>
+                </div>
+                {{else}}
+                <div class="panel-no-inventory">
+                    <i class="fas fa-drumstick-bite"></i>
+                    <span>No rations in inventory</span>
+                </div>
+                {{/if}}
+            </div>
+            <div class="meal-panel water-panel {{#unless hasWater}}panel-empty{{/unless}}">
+                <div class="meal-panel-heading"><i class="fas fa-tint" aria-hidden="true"></i> Water</div>
+                {{#if hasWater}}
+                {{#each waterSlots}}
+                <div class="meal-drop-header-row">
+                    <div class="meal-drop-zone water-drop-zone {{#if filled}}filled{{/if}}{{#if locked}} locked{{/if}}"
+                         data-character-id="{{../characterId}}" data-slot="water" data-slot-index="{{index}}"{{#if locked}} data-locked="true"{{/if}}>
+                        <div class="drop-zone-silhouette">
+                            {{#if filled}}
+                            {{#each ../waterOptions}}
+                            {{#if (eq ../selected value)}}
+                            <img src="{{icon}}" alt="" class="drop-zone-item-icon">
+                            {{/if}}
+                            {{/each}}
+                            {{else}}
+                            <i class="fas fa-tint drop-zone-goblet"></i>
+                            {{/if}}
+                        </div>
+                    </div>
+                    <div class="meal-drop-label">
+                        {{#if filled}}
+                        {{#each ../waterOptions}}
+                        {{#if (eq ../selected value)}}
+                        <span class="meal-drop-item-name">{{name}}</span>
+                        <span class="meal-drop-item-qty">×{{available}}</span>
+                        {{/if}}
+                        {{/each}}
+                        {{else}}
+                        <span class="meal-drop-hint-text">drag from below</span>
+                        {{/if}}
+                    </div>
+                </div>
+                {{/each}}
+                <div class="meal-panel-divider"></div>
+                <div class="meal-inventory-tray-scroll">
+                    <div class="meal-inventory-grid water-tray">
+                        {{#each waterOptions}}
+                        <div class="meal-inv-card" draggable="true"
+                             data-item-id="{{value}}"
+                             data-slot="water"
+                             data-available="{{available}}"
+                             data-character-id="{{../characterId}}"
+                             title="{{label}}">
+                            <img src="{{icon}}" alt="{{label}}" class="meal-inv-card-icon" draggable="false">
+                            <span class="meal-inv-card-qty">×{{available}}</span>
+                            <span class="meal-inv-card-name">{{name}}</span>
+                        </div>
+                        {{/each}}
+                    </div>
+                </div>
+                {{else}}
+                <div class="panel-no-inventory">
+                    <i class="fas fa-tint"></i>
+                    <span>No water in inventory</span>
+                </div>
+                {{/if}}
+            </div>
+        </div>
+        <div class="station-meal-submit-row">
+            <button type="button" class="station-meal-submit-btn" data-action="submitStationRations">Submit rations</button>
+        </div>
+        {{/if}}
+        {{/with}}
+        {{else}}
+        <p class="station-no-activities">Rations data is not ready yet. Reopen from the station or use the main rest panel.</p>
+        {{/if}}
+    </div>
+    {{/if}}
+    {{/if}}
+
+    {{!-- Cooking station: cook / brew activities --}}
+    {{#if showStationTabs}}
+    {{#if (eq stationPanelTab "cooking")}}
+    {{#if actorChoiceLocked}}
+    <div class="station-cooking-gate station-cooking-gate--activity-locked">
+        <i class="fas fa-check-circle station-cooking-gate-icon" aria-hidden="true"></i>
+        <p class="station-cooking-gate-text">{{actorName}} already chose <strong>{{actorChoiceLocked}}</strong> for this rest. One activity per character.</p>
+    </div>
+    {{else}}
+    {{#unless actorHasCookingUtensils}}
+    <div class="station-cooking-gate">
+        <i class="fas fa-utensils station-cooking-gate-icon"></i>
+        <p class="station-cooking-gate-text">{{actorName}} doesn't have the right tools. Add cook's utensils, alchemist's supplies, brewer's supplies, or an herbalism kit to unlock this station.</p>
+    </div>
+    {{else}}
+    {{#if hasCookingAny}}
+    <ul class="station-activities">
+        {{#each cookingActivities}}
+        <li>
+            {{#if this.available}}
+            <button type="button"
+                    class="activity-card station-activity"
+                    data-action="selectActivity"
+                    data-activity-id="{{this.id}}">
+                <i class="{{this.icon}}" aria-hidden="true"></i>
+                <div class="card-body">
+                    <span class="card-name">{{this.name}}</span>
+                    {{#if this.hint}}<span class="card-hint {{#if this.hintUrgent}}urgent{{/if}}">{{this.hint}}</span>{{/if}}
+                </div>
+            </button>
+            {{else if this.nonViable}}
+            <div class="activity-card station-activity non-viable" title="{{this.fadedHint}}">
+                <i class="{{this.icon}}" aria-hidden="true"></i>
+                <div class="card-body">
+                    <span class="card-name">{{this.name}}</span>
+                    {{#if this.hint}}<span class="card-hint non-viable-hint">{{this.hint}}</span>{{/if}}
+                </div>
+            </div>
+            {{else}}
+            <div class="activity-card station-activity faded" title="{{this.fadedHint}}">
+                <i class="{{this.icon}}" aria-hidden="true"></i>
+                <div class="card-body">
+                    <span class="card-name">{{this.name}}</span>
+                    {{#if this.hint}}<span class="card-hint faded-hint">{{this.hint}}</span>{{/if}}
+                </div>
+            </div>
+            {{/if}}
+        </li>
+        {{/each}}
+    </ul>
+    {{else}}
+    <p class="station-no-activities">No cook or brew activities available for {{actorName}}.</p>
+    {{/if}}
+    {{/unless}}
+    {{/if}}
+    {{/if}}
+    {{/if}}
+
+    {{!-- Workbench: Examine tab (Focus/Potion self-service, all players) --}}
+    {{#if showStationTabs}}
+    {{#if stationIdentifyHub}}
+    {{#if (eq stationPanelTab "examine")}}
+    {{> workbenchIdentifyEmbed}}
+    {{/if}}
+    {{/if}}
+    {{/if}}
+
+    {{!-- Workbench: Identify tab (click-to-identify party list, GM + Identify casters) --}}
+    {{#if showStationTabs}}
+    {{#if canSeeSharedPool}}
+    {{#if (eq stationPanelTab "identify")}}
+    <div class="station-identify-embed wb-ident-party-list-tab">
+        {{#if unidentifiedItemsByOwner.length}}
+        <div class="wb-ident-pool-heading">
+            <i class="fas fa-hat-wizard"></i> Cast Identify: select an item
+        </div>
+        {{#each unidentifiedItemsByOwner}}
+        <div class="wb-ident-owner-group">
+            <span class="wb-ident-owner-name">{{ownerName}}</span>
+            {{#each items}}
+            <button type="button" class="wb-ident-pool-row wb-ident-pool-btn"
+                 data-action="identifyPoolItem"
+                 data-item-actor-id="{{actorId}}" data-item-id="{{itemId}}"
+                 title="Identify {{name}}: owned by {{actorName}}">
+                <img src="{{img}}" alt="" class="wb-ident-pool-icon"
+                     onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
+                <span class="wb-ident-pool-name">{{name}}</span>
+                <span class="wb-ident-pool-rarity rarity-{{rarity}}">{{rarityLabel}}</span>
+                <i class="fas fa-hat-wizard wb-ident-cast-icon"></i>
+            </button>
+            {{/each}}
+        </div>
+        {{/each}}
+        {{else}}
+        <div class="wb-ident-pool-empty">
+            <i class="fas fa-check-circle"></i> No unidentified items in the party.
+        </div>
+        {{/if}}
+    </div>
+    {{/if}}
+    {{/if}}
+    {{/if}}
+
+    {{/if}}{{!-- end dialogState === "list" --}}
+</div>

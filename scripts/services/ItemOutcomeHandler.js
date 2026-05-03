@@ -1,10 +1,14 @@
+import { CalendarHandler } from "./CalendarHandler.js";
+import { ItemClassifier } from "./ItemClassifier.js";
+import { SpoilageClock } from "./SpoilageClock.js";
+
 /**
  * ItemOutcomeHandler
  * Processes ItemOutcome payloads. Resolves item references and
  * delegates creation to Workshop (if active) or falls back to raw Item.create().
  *
  * All item grants go through grantItemsToActor() which stacks onto existing
- * inventory entries by name match rather than creating duplicates.
+ * inventory rows when name, type, and calendar spoilage cohort match.
  */
 
 /**
@@ -68,27 +72,60 @@ export class ItemOutcomeHandler {
             const qty = grant.quantity ?? 1;
             if (qty <= 0) continue;
 
-            // Search for existing item by name (case-insensitive)
+            const grantType = grant.type ?? "loot";
+            const grantLike = { name: grant.name, flags: grant.flags ?? {} };
+
             const existing = actor.items.find(
                 i => i.name?.toLowerCase().trim() === grant.name?.toLowerCase().trim()
-                    && i.type === (grant.type ?? "loot")
+                    && i.type === grantType
+                    && SpoilageClock.areStacksCompatible(i, grantLike)
             );
 
             if (existing) {
-                // Stack onto existing: increment quantity
+                // Stack onto existing: increment quantity + merge flags
                 const currentQty = existing.system?.quantity ?? 1;
-                toUpdate.push({ _id: existing.id, "system.quantity": currentQty + qty });
+                const updateData = { _id: existing.id, "system.quantity": currentQty + qty };
+
+                // Merge module flags so crafting metadata (wellFed, buff, spoilage)
+                // is carried onto the existing stack rather than silently dropped.
+                const grantModFlags = grant.flags?.[MODULE_ID];
+                if (grantModFlags && Object.keys(grantModFlags).length) {
+                    const merged = foundry.utils.mergeObject(
+                        existing.flags?.[MODULE_ID] ?? {},
+                        grantModFlags,
+                        { inplace: false }
+                    );
+                    const existingHarvest = existing.flags?.[MODULE_ID]?.harvestedDate;
+                    if (existingHarvest != null && ItemClassifier.getSpoilsAfter(existing) != null) {
+                        merged.harvestedDate = existingHarvest;
+                    }
+                    updateData[`flags.${MODULE_ID}`] = merged;
+                }
+
+                toUpdate.push(updateData);
                 summary.push({ name: grant.name, quantity: qty, stacked: true });
             } else {
-                // Create new item with correct quantity
+                // Stamp harvestedDate on perishable items for spoilage tracking
+                const grantFlags = grant.flags?.[MODULE_ID] ?? {};
+                if (grantFlags.spoilsAfter != null && !grantFlags.harvestedDate) {
+                    grant.flags = grant.flags ?? {};
+                    grant.flags[MODULE_ID] = grant.flags[MODULE_ID] ?? {};
+                    grant.flags[MODULE_ID].harvestedDate =
+                        CalendarHandler.getCurrentDate() ?? String(game.time.worldTime);
+                }
+
+                // Create new item with correct quantity.
+                // Spread system first, then override quantity so the rolled
+                // count always wins over any quantity baked into itemData.
                 const itemData = this._normalize([{
                     name: grant.name,
                     type: grant.type ?? "loot",
                     img: grant.img ?? "icons/svg/item-bag.svg",
                     system: {
+                        ...(grant.system ?? {}),
                         quantity: qty,
-                        ...(grant.system ?? {})
-                    }
+                    },
+                    flags: grant.flags ?? {}
                 }]);
                 toCreate.push(...itemData);
                 summary.push({ name: grant.name, quantity: qty, stacked: false });
@@ -137,7 +174,8 @@ export class ItemOutcomeHandler {
                         type: resolved.type,
                         img: resolved.img,
                         quantity: itemEntry.quantity ?? 1,
-                        system: resolved.system ?? {}
+                        system: resolved.system ?? {},
+                        flags: resolved.flags ?? {}
                     });
                 }
             }
@@ -198,7 +236,8 @@ export class ItemOutcomeHandler {
             type: resolved.type,
             img: resolved.img,
             quantity: rolledQty,
-            system: resolved.system ?? {}
+            system: resolved.system ?? {},
+            flags: resolved.flags ?? {}
         }]);
 
         return {
@@ -220,7 +259,13 @@ export class ItemOutcomeHandler {
         for (const g of grants) {
             const key = `${g.name?.toLowerCase().trim()}::${g.type ?? "loot"}`;
             if (map.has(key)) {
-                map.get(key).quantity += (g.quantity ?? 1);
+                const cur = map.get(key);
+                cur.quantity += (g.quantity ?? 1);
+                cur.flags = foundry.utils.mergeObject(
+                    cur.flags ?? {},
+                    g.flags ?? {},
+                    { inplace: false }
+                );
             } else {
                 map.set(key, { ...g });
             }

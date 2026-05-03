@@ -7,7 +7,8 @@
 
 import { MealPhaseHandler } from "../../services/MealPhaseHandler.js";
 import { TerrainRegistry } from "../../services/TerrainRegistry.js";
-import { getPartyActors } from "../../module.js";
+import { getPartyActors } from "../../services/partyActors.js";
+import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../../services/StationInteractionLayer.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -61,6 +62,8 @@ export class MealDelegate {
             ? [app._selectedCharacterId].filter(Boolean)
             : (app._myCharacterIds ? Array.from(app._myCharacterIds) : []);
 
+        const consumeByCharacter = {};
+
         for (const charId of characterIds) {
             const choice = app._mealChoices.get(charId) ?? { food: [], water: [], consumedDays: [], currentDay: 0 };
             const consumedDays = choice.consumedDays ?? [];
@@ -68,11 +71,37 @@ export class MealDelegate {
             const food = Array.isArray(choice.food) ? [...choice.food] : [];
             const water = Array.isArray(choice.water) ? [...choice.water] : [];
 
+            if (!app._isGM) {
+                consumeByCharacter[charId] = { food, water, consumedDays, currentDay };
+                continue;
+            }
+
             const actor = game.actors.get(charId);
             if (actor) {
+                // Snapshot food items before consumption for Well Fed resolution
+                const foodSnapshots = new Map();
                 for (const itemId of food) {
                     if (itemId && itemId !== "skip") {
-                        await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                        const item = actor.items.get(itemId);
+                        if (item) foodSnapshots.set(itemId, item.toObject(false));
+                    }
+                }
+
+                for (const itemId of food) {
+                    if (itemId && itemId !== "skip") {
+                        const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                        // Apply Well Fed buff if the food item carried one
+                        const snapshot = foodSnapshots.get(itemId);
+                        if (snapshot && consumed > 0) {
+                            const partyIds = (app._myCharacterIds
+                                ? Array.from(app._myCharacterIds)
+                                : characterIds);
+                            await MealPhaseHandler._dispatchWellFedMealServing({
+                                consumerActor: actor,
+                                itemSnapshot: snapshot,
+                                partyIds
+                            });
+                        }
                     }
                 }
                 for (const itemId of water) {
@@ -91,6 +120,32 @@ export class MealDelegate {
                 consumedDays,
                 currentDay: currentDay + 1
             });
+        }
+
+        if (!app._isGM) {
+            if (!Object.keys(consumeByCharacter).length) {
+                app.render();
+                return;
+            }
+            game.socket.emit(`module.${MODULE_ID}`, {
+                type: "mealDayConsumeRequest",
+                userId: game.user.id,
+                consumeByCharacter
+            });
+            for (const [charId, pack] of Object.entries(consumeByCharacter)) {
+                const consumedDays = [...(pack.consumedDays ?? [])];
+                consumedDays.push({ food: pack.food, water: pack.water });
+                const priorDay = pack.currentDay ?? (pack.consumedDays?.length ?? 0);
+                app._mealChoices.set(charId, {
+                    food: [],
+                    water: [],
+                    consumedDays,
+                    currentDay: priorDay + 1
+                });
+            }
+            await app._saveRestState();
+            app.render();
+            return;
         }
 
         await app._saveRestState();
@@ -182,6 +237,9 @@ export class MealDelegate {
         });
 
         app._mealSubmitted = true;
+        if (isStationLayerActive()) {
+            refreshStationEmptyNoticeFade(app);
+        }
         app.render();
         ui.notifications.info("Meal choices submitted.");
     }
@@ -454,6 +512,7 @@ export class MealDelegate {
 
         // Transition to reflection
         app._phase = "reflection";
+        await app._applyBeddingDown();
         console.log(`[Respite:Meal] Transitioning to reflection, emitting phaseChanged`);
 
         game.socket.emit(`module.${MODULE_ID}`, {
@@ -524,7 +583,8 @@ export class MealDelegate {
     /**
      * GM receives meal choices from a player via socket.
      */
-    receiveMealChoices(userId, choices) {
+    async receiveMealChoices(userId, choices) {
+        if (!game.user.isGM) return;
         const app = this._app;
         if (!app._mealChoices) app._mealChoices = new Map();
         if (!app._mealSubmissions) app._mealSubmissions = new Map();
@@ -538,14 +598,113 @@ export class MealDelegate {
             characterIds: Object.keys(choices)
         });
 
+        if (!app._activityMealRationsSubmitted) app._activityMealRationsSubmitted = new Set();
+        for (const charId of Object.keys(choices)) {
+            app._activityMealRationsSubmitted.add(charId);
+        }
+
         console.log(`[Respite:Meal] Received meal choices from user ${userId}:`, choices);
+        await app._saveRestState();
+        const snapshot = app.getRestSnapshot?.();
+        if (snapshot) {
+            game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
+        }
         app.render();
+        // Refresh GM footer bar so ration count is reflected
+        if (typeof app._updateRestBarProgress === "function") app._updateRestBarProgress();
+        if (typeof app._refreshStationOverlayMeals === "function") app._refreshStationOverlayMeals();
     }
 
     /**
      * GM receives a client's consumed meal day progress via socket.
      */
+    /**
+     * GM: apply meal-day inventory consumption requested by a player client.
+     * @param {string} userId
+     * @param {Record<string, { food: string[], water: string[], consumedDays?: unknown[], currentDay?: number }>} consumeByCharacter
+     */
+    async receiveMealDayConsumeRequest(userId, consumeByCharacter) {
+        if (!game.user.isGM) return;
+        const app = this._app;
+        if (!consumeByCharacter || typeof consumeByCharacter !== "object") return;
+        if (!app._mealChoices) app._mealChoices = new Map();
+
+        const requestingUser = game.users.get(userId);
+        for (const [charId, pack] of Object.entries(consumeByCharacter)) {
+            const actor = game.actors.get(charId);
+            if (!actor) continue;
+            if (requestingUser && !requestingUser.isGM) {
+                if (!actor.testUserPermission(requestingUser, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)) {
+                    console.warn(`[Respite:Meal] mealDayConsumeRequest rejected — ${charId} not owned by user ${userId}`);
+                    continue;
+                }
+            }
+
+            const food = Array.isArray(pack.food) ? [...pack.food] : [];
+            const water = Array.isArray(pack.water) ? [...pack.water] : [];
+
+            // Snapshot food items before consumption for Well Fed resolution
+            const foodSnapshots = new Map();
+            for (const itemId of food) {
+                if (itemId && itemId !== "skip") {
+                    const item = actor.items.get(itemId);
+                    if (item) foodSnapshots.set(itemId, item.toObject(false));
+                }
+            }
+
+            const partyIds = [...(app._mealChoices?.keys() ?? [])];
+            for (const itemId of food) {
+                if (itemId && itemId !== "skip") {
+                    const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                    const snapshot = foodSnapshots.get(itemId);
+                    if (snapshot && consumed > 0) {
+                        await MealPhaseHandler._dispatchWellFedMealServing({
+                            consumerActor: actor,
+                            itemSnapshot: snapshot,
+                            partyIds
+                        });
+                    }
+                }
+            }
+            for (const itemId of water) {
+                if (itemId && itemId !== "skip") {
+                    const item = actor.items.get(itemId);
+                    const drainAmount = item?.system?.uses?.value || 1;
+                    await MealPhaseHandler._consumeItem(actor, itemId, drainAmount);
+                }
+            }
+
+            const consumedDays = [...(pack.consumedDays ?? [])];
+            consumedDays.push({ food, water });
+            const priorDay = pack.currentDay ?? (pack.consumedDays?.length ?? 0);
+            app._mealChoices.set(charId, {
+                food: [],
+                water: [],
+                consumedDays,
+                currentDay: priorDay + 1
+            });
+        }
+
+        await app._saveRestState();
+
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "mealDayConsumed",
+            userId,
+            mealChoices: Object.fromEntries(app._mealChoices)
+        });
+
+        const snapshot = app.getRestSnapshot?.();
+        if (snapshot) {
+            game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
+        }
+
+        app.render();
+        if (typeof app._updateRestBarProgress === "function") app._updateRestBarProgress();
+        if (typeof app._refreshStationOverlayMeals === "function") app._refreshStationOverlayMeals();
+    }
+
     async receiveMealDayConsumed(userId, clientChoices) {
+        if (!game.user.isGM) return;
         const app = this._app;
         if (!app._mealChoices) app._mealChoices = new Map();
 
@@ -569,6 +728,7 @@ export class MealDelegate {
      * Player receives a dehydration save request from the GM.
      */
     async receiveDehydrationPrompt(characterId, actorName, dc) {
+        if (game.user.isGM) return;
         const actor = game.actors.get(characterId);
         if (!actor) return;
 
@@ -619,6 +779,7 @@ export class MealDelegate {
      * GM receives a dehydration save result from a player.
      */
     async receiveDehydrationResult(data) {
+        if (!game.user.isGM) return;
         const app = this._app;
         const { characterId, actorName, dc, total, passed } = data;
         const actor = game.actors.get(characterId);

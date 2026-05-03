@@ -25,30 +25,22 @@
     {{!-- Banner header --}}
     <div class="sr-banner"><img src="{{banner}}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.src='{{bannerFallback}}'"></div>
 
-    {{!-- Roster strip: AFK toggle | player chips (with readiness) | GM chip --}}
+    {{!-- Roster strip: readiness; .afk + fa-mug-hot badge (same language as TABLE panel) --}}
     {{#if roster.length}}
     <div class="roster-strip sr-roster-strip">
-        <div class="roster-afk-btn {{#if selfAfk}}active{{/if}}" data-action="toggleSrAfk" data-roster-id="{{selfAfkId}}"
-            title="{{#if selfAfk}}Mark yourself present{{else}}Step away from the table{{/if}}" role="button" tabindex="0">
-            <i class="fas fa-mug-hot"></i>
-            <span>AFK</span>
-        </div>
-
-        <div class="roster-divider"></div>
-
         <div class="roster-players">
             {{#each roster}}
-            <div class="roster-chip {{#if isAfk}}afk{{/if}} {{#if isFinished}}sr-finished{{/if}}" data-roster-id="{{id}}" title="{{fullName}}">
-                {{#if isAfk}}
-                <span class="roster-afk-portrait"><i class="fas fa-mug-hot"></i></span>
-                {{else}}
-                <img class="roster-portrait" src="{{img}}" alt="{{name}}">
-                {{/if}}
+            <div class="roster-chip {{#if isAfk}}afk{{/if}} {{#if isFinished}}sr-finished{{/if}} {{#if isWorkbenchFocus}}sr-wb-roster-focus{{/if}} {{#if ../gmWorkbenchRosterPick}}sr-wb-roster-pickable{{/if}}"
+                data-roster-id="{{id}}"
+                {{#if ../gmWorkbenchRosterPick}}data-action="selectWorkbenchRosterActor"{{/if}}
+                title="{{fullName}}{{#if ../gmWorkbenchRosterPick}}. GM: click to show this character's workbench.{{/if}}">
+                <span class="roster-portrait-wrap">
+                    <img class="roster-portrait" src="{{img}}" alt="{{name}}">
+                    {{#if isAfk}}<span class="roster-afk-mug" aria-hidden="true"><i class="fas fa-mug-hot"></i></span>{{/if}}
+                </span>
                 <span class="roster-name">{{name}}</span>
                 <span class="roster-status">
-                    {{#if isAfk}}
-                    <i class="fas fa-mug-hot" title="AFK"></i>
-                    {{else if isFinished}}
+                    {{#if isFinished}}
                     <i class="fas fa-check-circle" title="Finished"></i>
                     {{else}}
                     <i class="fas fa-hourglass-half" title="Resting"></i>
@@ -57,18 +49,22 @@
             </div>
             {{/each}}
         </div>
-
-        <div class="roster-chip gm-chip {{#if gmRosterChip.isAfk}}afk{{/if}}" data-roster-id="gm" title="{{gmRosterChip.fullName}}">
-            {{#if gmRosterChip.isAfk}}
-            <span class="roster-afk-portrait"><i class="fas fa-mug-hot"></i></span>
-            {{else}}
-            <span class="roster-gm-icon"><i class="fas fa-dice-d20"></i></span>
-            {{/if}}
-            <span class="roster-name">{{gmRosterChip.name}}</span>
-        </div>
     </div>
     {{/if}}
 
+    {{#unless completionPhase}}
+    <div class="sr-tab-bar" role="tablist" aria-label="Short rest sections">
+        <button type="button" role="tab" class="sr-tab {{#if (eq activeTab "recovery")}}active{{/if}}"
+            data-action="switchShortRestTab" data-tab="recovery" {{#if (eq activeTab "recovery")}}aria-selected="true"{{else}}aria-selected="false"{{/if}}>
+            <i class="fas fa-heart"></i> Recovery
+        </button>
+        <button type="button" role="tab" class="sr-tab {{#if (eq activeTab "workbench")}}active{{/if}}"
+            data-action="switchShortRestTab" data-tab="workbench" {{#if (eq activeTab "workbench")}}aria-selected="true"{{else}}aria-selected="false"{{/if}}>
+            <i class="fas fa-hammer"></i> Workbench
+        </button>
+    </div>
+
+    {{#if (eq activeTab "recovery")}}
     {{!-- Scrollable body: character cards --}}
     <div class="sr-scroll-body">
 
@@ -230,6 +226,14 @@
             </div>
             {{/if}}
             {{/if}}
+
+            {{#if srRechargeBadges.length}}
+            <div class="sr-recharge-badges" title="These class features and items often recharge on a short rest.">
+                {{#each srRechargeBadges}}
+                <span class="sr-recharge-pill">{{this}}</span>
+                {{/each}}
+            </div>
+            {{/if}}
         </div>
         {{/each}}
     </div>
@@ -266,10 +270,47 @@
     {{/if}}
 
     </div>{{!-- /sr-scroll-body --}}
+    {{else}}
+    <div class="sr-scroll-body sr-workbench-body">
+        <p class="sr-wb-hint">Focus, potion tastes, Detect Magic. Attune at the desk workbench, Activities tab.</p>
+        <div class="sr-workbench-identify-host">
+        {{#with workbenchEmbed}}
+        {{> workbenchIdentifyEmbed}}
+        {{/with}}
+        </div>
+    </div>
+    {{/if}}
+
+    {{else}}
+    <div class="sr-scroll-body sr-completion-body">
+        <h2 class="sr-completion-heading">Short rest summary</h2>
+        <div class="sr-completion-list">
+            {{#each completionSummaryForUser}}
+            <div class="sr-completion-card">
+                <div class="sr-completion-name">{{name}}</div>
+                <p class="sr-completion-line">{{line}}</p>
+            </div>
+            {{/each}}
+            {{#if completionSummaryEmpty}}
+            <p class="sr-completion-empty">No party characters are assigned to this user. When the GM applies recovery, this window will close.</p>
+            {{/if}}
+        </div>
+        <p class="sr-completion-lead">The next step runs Foundry short rest on each sheet (class features, item uses, Wild Shape uses, and similar).</p>
+    </div>
+    {{/unless}}
 
     {{!-- Sticky footer --}}
     <div class="sr-footer">
         <div class="sr-footer-row">
+            {{#if completionPhase}}
+            {{#if isGM}}
+            <button type="button" class="btn-primary sr-complete-btn" data-action="finalizeShortRestRecovery">
+                <i class="fas fa-check"></i> Apply native recovery &amp; close
+            </button>
+            {{else}}
+            <span class="sr-waiting"><i class="fas fa-hourglass-half"></i> Waiting for the GM to apply recovery...</span>
+            {{/if}}
+            {{else}}
             {{#unless isGM}}
             <button type="button" class="sr-finished-toggle {{#if shortRestFooter.myFinished}}active{{/if}}" data-action="toggleShortRestFinished">
                 {{#if shortRestFooter.myFinished}}
@@ -285,6 +326,7 @@
             </button>
             {{else}}
             <span class="sr-waiting"><i class="fas fa-hourglass-half"></i> Waiting for GM...</span>
+            {{/if}}
             {{/if}}
         </div>
     </div>

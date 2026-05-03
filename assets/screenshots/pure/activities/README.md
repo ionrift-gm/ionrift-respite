@@ -30,7 +30,7 @@ Individual benefit activities.
 
 ![Training - ability check for XP](activity_training.png)
 
-**Training** - Drill or practice. Ability check (highest score) against DC 15 for XP. Diminishing returns on consecutive rests. +2 initiative if combat occurs (warmed up).
+**Training** - Drill or practice. Ability check (highest score) against DC 13 for XP. Diminishing returns on consecutive rests. +2 initiative if combat occurs (warmed up).
 
 ![Rest Fully - comfort tier bonus](activity_rest_fully.png)
 

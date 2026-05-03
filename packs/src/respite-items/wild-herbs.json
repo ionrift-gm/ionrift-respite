@@ -1,0 +1,35 @@
+{
+    "_key": "!items!a1b2c3d4e5f60001",
+    "_id": "a1b2c3d4e5f60001",
+    "name": "Wild Herbs",
+    "type": "consumable",
+    "img": "icons/consumables/plants/leaf-herb-green.webp",
+    "system": {
+        "description": {
+            "value": "<p>A handful of fragrant wild herbs, plucked from the undergrowth. Useful for seasoning camp meals.</p>"
+        },
+        "rarity": "common",
+        "weight": 0.1,
+        "price": {
+            "value": 2,
+            "denomination": "cp"
+        },
+        "type": {
+            "value": "food",
+            "subtype": ""
+        }
+    },
+    "folder": "f0ra6e0000000001",
+    "flags": {
+        "ionrift-respite": {
+            "itemRef": "wild_herbs",
+            "terrain": "forest,swamp,mountain,wilderness",
+            "category": "forage"
+        }
+    },
+    "effects": [],
+    "ownership": {
+        "default": 0
+    },
+    "sort": 100
+}

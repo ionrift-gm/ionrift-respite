@@ -15,6 +15,9 @@
  *   ambitious:  DC +5, upgraded output on success, ingredient loss on failure
  */
 
+import { waitForDiceSoNice } from "./RollRequestManager.js";
+import { SpoilageClock } from "./SpoilageClock.js";
+
 const MODULE_ID = "ionrift-respite";
 
 export class CraftingEngine {
@@ -42,6 +45,64 @@ export class CraftingEngine {
     }
 
     /**
+     * @param {Actor} actor
+     * @returns {boolean}
+     */
+    static _hasChefFeat(actor) {
+        return actor?.items?.some(i =>
+            i.type === "feat" && i.name?.toLowerCase() === "chef"
+        ) ?? false;
+    }
+
+    /**
+     * DC used for the crafting check and UI (risk tier, terrain, Chef feat -2).
+     * @param {Actor} actor
+     * @param {Object} recipe
+     * @param {string} [riskTier]
+     * @param {string|null} [terrainTag]
+     * @returns {number}
+     */
+    getAdjustedCraftingDc(actor, recipe, riskTier = "standard", terrainTag = null) {
+        return this.getDcBreakdown(actor, recipe, riskTier, terrainTag).total;
+    }
+
+    /**
+     * Returns the contributing factors that make up the crafting DC.
+     * @param {Actor} actor
+     * @param {Object} recipe
+     * @param {string} [riskTier]
+     * @param {string|null} [terrainTag]
+     * @returns {{ base: number, total: number, hasModifiers: boolean, factors: { label: string, value: number, sign: "pos"|"neg" }[] }}
+     */
+    getDcBreakdown(actor, recipe, riskTier = "standard", terrainTag = null) {
+        const riskMods = { safe: -3, standard: 0, ambitious: 5 };
+        const base = recipe.dc ?? 12;
+        const riskMod = riskMods[riskTier] ?? 0;
+        const terrainMod = (terrainTag && recipe.terrainDcModifier?.[terrainTag]) ?? 0;
+        const chefMod = CraftingEngine._hasChefFeat(actor) ? -2 : 0;
+
+        const factors = [];
+        if (riskMod !== 0) {
+            const label = riskTier.charAt(0).toUpperCase() + riskTier.slice(1);
+            factors.push({ label: `${riskMod > 0 ? "+" : ""}${riskMod} ${label}`, value: riskMod, sign: riskMod > 0 ? "pos" : "neg" });
+        }
+        if (terrainMod !== 0) {
+            const tLabel = terrainTag ? terrainTag.charAt(0).toUpperCase() + terrainTag.slice(1) : "Terrain";
+            factors.push({ label: `${terrainMod > 0 ? "+" : ""}${terrainMod} ${tLabel}`, value: terrainMod, sign: terrainMod > 0 ? "pos" : "neg" });
+        }
+        if (chefMod !== 0) {
+            factors.push({ label: `${chefMod} Chef`, value: chefMod, sign: "neg" });
+        }
+
+        return {
+            base,
+            total: base + riskMod + terrainMod + chefMod,
+            hasModifiers: factors.length > 0,
+            factors
+        };
+    }
+
+    /**
      * Scans an actor's inventory and returns available recipes for a profession,
      * categorized by what can be crafted now vs what's missing ingredients.
      * @param {Actor} actor
@@ -51,7 +112,7 @@ export class CraftingEngine {
      *        field are always available.
      * @returns {Object} { available: Recipe[], partial: Recipe[], locked: Recipe[] }
      */
-    getRecipeStatus(actor, professionId, terrainTag = null) {
+    getRecipeStatus(actor, professionId, terrainTag = null, partySize = 1) {
         const allRecipes = this.recipes.get(professionId) ?? [];
         const inventory = this._buildInventoryMap(actor);
 
@@ -72,7 +133,7 @@ export class CraftingEngine {
             }
 
             // Check ingredients
-            const ingredientStatus = this._checkIngredients(recipe.ingredients, inventory);
+            const ingredientStatus = this._checkIngredients(recipe.ingredients, inventory, partySize);
 
             if (ingredientStatus.canCraft) {
                 available.push({ ...recipe, ingredientStatus });
@@ -95,7 +156,7 @@ export class CraftingEngine {
      * @param {string} [terrainTag] - Current terrain for DC modifier and variant output
      * @returns {Object} Crafting result.
      */
-    async resolve(actor, recipeId, professionId, riskTier = "standard", terrainTag = null) {
+    async resolve(actor, recipeId, professionId, riskTier = "standard", terrainTag = null, partySize = 1) {
         const allRecipes = this.recipes.get(professionId) ?? [];
         const recipe = allRecipes.find(r => r.id === recipeId);
         if (!recipe) {
@@ -103,16 +164,12 @@ export class CraftingEngine {
         }
 
         const inventory = this._buildInventoryMap(actor);
-        const ingredientStatus = this._checkIngredients(recipe.ingredients, inventory);
+        const ingredientStatus = this._checkIngredients(recipe.ingredients, inventory, partySize);
         if (!ingredientStatus.canCraft) {
             return { success: false, error: "Missing ingredients.", ingredientStatus };
         }
 
-        // Calculate DC with risk modifier and terrain modifier
-        const riskMods = { safe: -3, standard: 0, ambitious: 5 };
-        const baseDc = recipe.dc ?? 12;
-        const terrainDcMod = (terrainTag && recipe.terrainDcModifier?.[terrainTag]) ?? 0;
-        const adjustedDc = baseDc + (riskMods[riskTier] ?? 0) + terrainDcMod;
+        const adjustedDc = this.getAdjustedCraftingDc(actor, recipe, riskTier, terrainTag);
 
         // Roll the skill check
         const skill = recipe.skill ?? "sur";
@@ -120,36 +177,49 @@ export class CraftingEngine {
         const modifier = skillData?.total ?? skillData?.mod ?? 0;
         const roll = await new Roll(`1d20 + ${modifier}`).evaluate();
 
+        const naturalRoll = roll.dice[0]?.results?.[0]?.result;
+        const useAmbitiousOutput = Boolean(
+            recipe.ambitiousOutput
+            && (riskTier === "ambitious"
+                || (CraftingEngine._hasChefFeat(actor) && naturalRoll === 20))
+        );
+
         await roll.toMessage({
             speaker: ChatMessage.getSpeaker({ actor }),
             flavor: `${recipe.name} (${skill.toUpperCase()}) - DC ${adjustedDc} [${riskTier}]`
         });
+
+        await waitForDiceSoNice();
 
         const success = roll.total >= adjustedDc;
 
         // Consume ingredients (always consumed on standard/ambitious, not on safe failure)
         const consumeIngredients = success || riskTier !== "safe";
         if (consumeIngredients) {
-            await this._consumeIngredients(actor, recipe.ingredients);
+            await this._consumeIngredients(actor, recipe.ingredients, partySize);
         }
 
         if (success) {
-            // Determine output based on risk tier, then check terrain variants
-            let output = riskTier === "ambitious" && recipe.ambitiousOutput
+            // Output tier: chosen ambitious, or Chef feat natural 20 upgrade
+            let output = useAmbitiousOutput
                 ? recipe.ambitiousOutput
                 : recipe.output;
 
             // Apply terrain variant if one exists for this terrain + tier
             if (terrainTag && recipe.terrainVariants?.[terrainTag]) {
                 const variant = recipe.terrainVariants[terrainTag];
-                const variantOutput = riskTier === "ambitious" && variant.ambitiousOutput
+                const variantOutput = useAmbitiousOutput && variant.ambitiousOutput
                     ? variant.ambitiousOutput
                     : variant.output;
                 if (variantOutput) output = variantOutput;
             }
 
+            const outputFlags = useAmbitiousOutput
+                ? (recipe.ambitiousOutputFlags ?? recipe.outputFlags)
+                : recipe.outputFlags;
+
             // Create the output item on the actor
-            const createdItems = await this._createOutputItems(actor, output);
+            const createdItems = await this._createOutputItems(actor, output, outputFlags);
 
             return {
                 success: true,
@@ -204,11 +274,12 @@ export class CraftingEngine {
 
     /**
      * Checks if ingredients are available in the inventory.
-     * @param {Object[]} ingredients - [{ name, quantity }]
+     * @param {Object[]} ingredients - [{ name, quantity, perPartyMember? }]
      * @param {Map} inventory
+     * @param {number} [partySize] - Current party size for perPartyMember scaling (B5 offset: max(1, n-2))
      * @returns {Object} { canCraft, hasAny, details: [{ name, required, available, met }] }
      */
-    _checkIngredients(ingredients, inventory) {
+    _checkIngredients(ingredients, inventory, partySize = 1) {
         if (!ingredients?.length) return { canCraft: true, hasAny: true, details: [] };
 
         let canCraft = true;
@@ -219,14 +290,15 @@ export class CraftingEngine {
             const key = ing.name.toLowerCase().trim();
             const entry = inventory.get(key);
             const available = entry?.quantity ?? 0;
-            const met = available >= (ing.quantity ?? 1);
+            const effectiveQty = (ing.quantity ?? 1) * (ing.perPartyMember ? Math.max(1, partySize - 2) : 1);
+            const met = available >= effectiveQty;
 
             if (!met) canCraft = false;
             if (available > 0) hasAny = true;
 
             details.push({
                 name: ing.name,
-                required: ing.quantity ?? 1,
+                required: effectiveQty,
                 available,
                 met
             });
@@ -238,16 +310,22 @@ export class CraftingEngine {
     /**
      * Consumes ingredients from the actor's inventory.
      * @param {Actor} actor
-     * @param {Object[]} ingredients - [{ name, quantity }]
+     * @param {Object[]} ingredients - [{ name, quantity, perPartyMember? }]
+     * @param {number} [partySize] - Current party size for perPartyMember scaling
      */
-    async _consumeIngredients(actor, ingredients) {
+    async _consumeIngredients(actor, ingredients, partySize = 1) {
         for (const ing of ingredients) {
             const key = ing.name.toLowerCase().trim();
-            const required = ing.quantity ?? 1;
+            const required = (ing.quantity ?? 1) * (ing.perPartyMember ? Math.max(1, partySize - 2) : 1);
             let remaining = required;
 
-            // Find matching items and reduce quantities
             const matches = actor.items.filter(i => i.name.toLowerCase().trim() === key);
+            matches.sort((a, b) => {
+                const ka = SpoilageClock.getConsumeSortKey(a);
+                const kb = SpoilageClock.getConsumeSortKey(b);
+                if (ka !== kb) return ka - kb;
+                return String(a.id).localeCompare(String(b.id));
+            });
             const updates = [];
             const deletes = [];
 
@@ -273,25 +351,68 @@ export class CraftingEngine {
      * Creates output items on the actor.
      * @param {Actor} actor
      * @param {Object} output - { name, type, img, quantity, system }
+     * @param {Object} [outputFlags] - Optional Foundry flags object (e.g. recipe.outputFlags)
      * @returns {Item[]} Created items.
      */
-    async _createOutputItems(actor, output) {
+    async _createOutputItems(actor, output, outputFlags) {
         if (!output) return [];
 
         const { ItemOutcomeHandler } = await import("./ItemOutcomeHandler.js");
-        const grantSummary = await ItemOutcomeHandler.grantItemsToActor(actor, [{
-            name: output.name,
-            type: output.type ?? "consumable",
-            img: output.img ?? "icons/consumables/food/bowl-stew-brown.webp",
-            quantity: output.quantity ?? 1,
-            system: {
-                description: { value: output.description ?? "" },
-                rarity: output.rarity ?? "common",
-                ...(output.system ?? {})
-            }
-        }]);
 
-        return grantSummary;
+        const itemRef = output.itemRef ?? outputFlags?.[MODULE_ID]?.itemRef;
+
+        const grantFromResolved = async (ref) => {
+            const resolved = await ItemOutcomeHandler._resolveItemRef({ itemRef: ref });
+            if (!resolved) return null;
+            const qty = output.quantity ?? 1;
+            const grant = {
+                name: output.name ?? resolved.name,
+                type: output.type ?? resolved.type,
+                img: output.img ?? resolved.img,
+                quantity: qty,
+                system: foundry.utils.mergeObject(
+                    foundry.utils.duplicate(resolved.system ?? {}),
+                    foundry.utils.mergeObject(
+                        output.system ?? {},
+                        { quantity: qty },
+                        { inplace: false }
+                    ),
+                    { inplace: false }
+                ),
+                flags: foundry.utils.mergeObject(
+                    foundry.utils.duplicate(resolved.flags ?? {}),
+                    outputFlags ?? {},
+                    { inplace: false }
+                )
+            };
+            return ItemOutcomeHandler.grantItemsToActor(actor, [grant]);
+        };
+
+        try {
+            if (itemRef) {
+                const fromRef = await grantFromResolved(itemRef);
+                if (fromRef?.length) return fromRef;
+            }
+
+            return await ItemOutcomeHandler.grantItemsToActor(actor, [{
+                name: output.name,
+                type: output.type ?? "consumable",
+                img: output.img ?? "icons/consumables/food/bowl-stew-brown.webp",
+                quantity: output.quantity ?? 1,
+                system: {
+                    description: { value: output.description ?? "" },
+                    rarity: output.rarity ?? "common",
+                    ...(output.system ?? {})
+                },
+                flags: outputFlags ?? {}
+            }]);
+        } catch (err) {
+            console.error(`${MODULE_ID} | CraftingEngine._createOutputItems`, err);
+            ui.notifications.error(
+                `Could not add ${output.name ?? "crafted item"} to inventory. Open the dev console (F12) for details.`
+            );
+            return [];
+        }
     }
 
     /**

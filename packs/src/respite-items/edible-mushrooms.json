@@ -1,0 +1,36 @@
+{
+    "_key": "!items!a1b2c3d4e5f60003",
+    "_id": "a1b2c3d4e5f60003",
+    "name": "Edible Mushrooms",
+    "type": "consumable",
+    "img": "icons/consumables/mushrooms/bell-shiitake-brown.webp",
+    "system": {
+        "description": {
+            "value": "<p>A cluster of brown-capped mushrooms, safe to eat. Best roasted over a fire.</p>"
+        },
+        "rarity": "common",
+        "weight": 0.1,
+        "price": {
+            "value": 1,
+            "denomination": "cp"
+        },
+        "type": {
+            "value": "food",
+            "subtype": ""
+        }
+    },
+    "folder": "f0ra6e0000000001",
+    "flags": {
+        "ionrift-respite": {
+            "itemRef": "edible_mushrooms",
+            "terrain": "forest,swamp",
+            "category": "forage",
+            "spoilsAfter": 3
+        }
+    },
+    "effects": [],
+    "ownership": {
+        "default": 0
+    },
+    "sort": 300
+}

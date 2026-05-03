@@ -1,0 +1,36 @@
+{
+    "_key": "!items!a1b2c3d4e5f60004",
+    "_id": "a1b2c3d4e5f60004",
+    "name": "Prickly Pear",
+    "type": "consumable",
+    "img": "icons/consumables/fruit/pickly-pear-cactus-red-yellow.webp",
+    "system": {
+        "description": {
+            "value": "<p>A spiny desert fruit with sweet, ruby-coloured flesh. Careful picking it.</p>"
+        },
+        "rarity": "common",
+        "weight": 0.2,
+        "price": {
+            "value": 2,
+            "denomination": "cp"
+        },
+        "type": {
+            "value": "food",
+            "subtype": ""
+        }
+    },
+    "folder": "f0ra6e0000000001",
+    "flags": {
+        "ionrift-respite": {
+            "itemRef": "prickly_pear",
+            "terrain": "desert",
+            "category": "forage",
+            "spoilsAfter": 3
+        }
+    },
+    "effects": [],
+    "ownership": {
+        "default": 0
+    },
+    "sort": 400
+}

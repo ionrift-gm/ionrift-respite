@@ -10,7 +10,8 @@
         "4_hours": { "seconds": 14400, "removal": "timer", "daeSpecial": null, "label": "4 hours" },
         "8_hours": { "seconds": 28800, "removal": "timer", "daeSpecial": null, "label": "8 hours" },
         "24_hours": { "seconds": 86400, "removal": "timer", "daeSpecial": "newDay", "label": "24 hours" },
-        "permanent": { "seconds": null, "removal": "manual", "daeSpecial": null, "label": "Permanent" }
+        "permanent": { "seconds": null, "removal": "manual", "daeSpecial": null, "label": "Permanent" },
+        "1_attack": { "seconds": null, "removal": "timer", "daeSpecial": "1Attack", "label": "Next attack" }
     },
     "conditions": [
         {
@@ -76,6 +77,33 @@
             "description": "Speed halved, disadvantage on ability checks.",
             "defaultDuration": "permanent",
             "colorTheme": "amber"
+        },
+        {
+            "id": "respite-diseased",
+            "condition": "diseased",
+            "ceStandard": false,
+            "label": "Diseased",
+            "icon": "icons/skills/wounds/blood-drip-1-red.webp",
+            "description": "A lingering illness. Disadvantage on CON checks and saves until cured.",
+            "defaultDuration": "permanent",
+            "colorTheme": "green",
+            "changes": [
+                { "key": "flags.midi-qol.disadvantage.ability.check.con", "mode": 0, "value": "1" },
+                { "key": "flags.midi-qol.disadvantage.ability.save.con", "mode": 0, "value": "1" }
+            ]
+        },
+        {
+            "id": "respite-disadvantage-attack-1",
+            "condition": "disadvantage_attack",
+            "ceStandard": false,
+            "label": "Disadvantage (next attack)",
+            "icon": "icons/svg/downgrade.svg",
+            "description": "The next attack roll is at disadvantage, then the effect ends.",
+            "defaultDuration": "1_attack",
+            "colorTheme": "grey",
+            "changes": [
+                { "key": "flags.midi-qol.disadvantage.attack.all", "mode": 0, "value": "1" }
+            ]
         }
     ]
 }

@@ -11,14 +11,48 @@ import { SpellSlotRecovery } from "../services/SpellSlotRecovery.js";
  * Calls actor.shortRest() on completion for class feature recovery.
  */
 
-import { registerActiveShortRestApp, clearActiveShortRestApp, getPartyActors, _showGmShortRestIndicator, _removeGmShortRestIndicator, notifyShortRestActive } from "../module.js";
+import {
+    registerActiveShortRestApp,
+    clearActiveShortRestApp,
+    _showGmShortRestIndicator,
+    _removeGmShortRestIndicator,
+    notifyShortRestActive,
+    showAfkPanel,
+    hideAfkPanelAfterRest
+} from "../module.js";
+import { getPartyActors } from "../services/partyActors.js";
+import * as RestAfkState from "../services/RestAfkState.js";
 
 const MODULE_ID = "ionrift-respite";
 /** World setting: when Song of Rest HP is applied. */
 const SONG_TIMING_KEY = "songOfRestTiming";
+/** World setting: homebrew max-face Hit Dice on short rests. */
+const MAX_VALUE_HD_KEY = "maxValueHitDice";
 /** Actor flag: pending Arcane/Natural Recovery selections for GM apply on rest complete. */
 const SPELL_RECOVERY_FLAG = "spellRecoveryPending";
 import { ImageResolver } from "../util/ImageResolver.js";
+import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
+import {
+    collectPartyIdentifyEmbedData,
+    computeCanShowDetectMagicScanButton,
+    computeCanTriggerDetectMagicScan,
+    DetectMagicDelegate,
+    spawnDetectMagicCastRipple
+} from "./delegates/DetectMagicDelegate.js";
+import {
+    DETECT_MAGIC_BTN_LABEL_GM,
+    DETECT_MAGIC_BTN_LABEL_PLAYER,
+    DETECT_MAGIC_BTN_LABEL_DISMISS,
+    DETECT_MAGIC_BTN_TITLE_GM
+} from "./RestConstants.js";
+import { getShortRestRechargeLabels } from "../services/ShortRestRecharge.js";
+import { setNativeShortRestUnsuppressed } from "../services/NativeRestPass.js";
+import {
+    emitShortRestWorkbenchSync,
+    emitShortRestWorkbenchStagingFromPlayer,
+    emitShortRestCompletionSummary,
+    emitShortRestComplete
+} from "../services/SocketController.js";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 /** RP prompts -- one picked at random per rest. */
@@ -52,8 +86,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             resizable: true,
         },
         position: {
-            width: 720,
-            height: 680,
+            width: 700,
+            height: 700,
         },
         actions: {
             spendHitDie:            ShortRestApp.#onSpendHitDie,
@@ -64,8 +98,15 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             confirmRecovery:      ShortRestApp.#onConfirmRecovery,
             editRecovery:         ShortRestApp.#onEditRecovery,
             volunteerSong:             ShortRestApp.#onVolunteerSong,
-            toggleSrAfk:               ShortRestApp.#onToggleSrAfk,
             toggleShortRestFinished:   ShortRestApp.#onToggleShortRestFinished,
+            switchShortRestTab:        ShortRestApp.#onSwitchTab,
+            selectWorkbenchRosterActor: ShortRestApp.#onSelectWorkbenchRosterActor,
+            stationDetectMagicScan:    ShortRestApp.#onStationDetectMagicScan,
+            stationIdentifyScannedItem:  ShortRestApp.#onStationIdentifyScannedItem,
+            submitWorkbenchIdentify:   ShortRestApp.#onSubmitWorkbenchIdentify,
+            workbenchIdentifyRemovePotion: ShortRestApp.#onWorkbenchIdentifyRemovePotion,
+            dismissWorkbenchIdentifyAck:   ShortRestApp.#onDismissWorkbenchIdentifyAck,
+            finalizeShortRestRecovery: ShortRestApp.#onFinalizeShortRestRecovery,
         },
     };
 
@@ -107,9 +148,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
          * @type {{ actorId: string, bardName: string, bardLevel: number, songDie: string }|null} */
         this._songVolunteer = null;
 
-        /** Character IDs marked AFK for this short rest (synced). */
-        this._afkCharacters = new Set();
-
         /** User IDs who signalled they are done with short rest actions (synced). */
         this._finishedUsers = new Set();
 
@@ -118,6 +156,35 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
          * False when the window is merely being dismissed (preserves state).
          */
         this._isTerminating = false;
+        RestAfkState.clear();
+
+        /** Local mirror of RestAfkState for serialization and test inspection. */
+        this._afkCharacters = new Set();
+
+        /** @type {"recovery"|"workbench"} */
+        this._activeTab = "recovery";
+        /** @type {string|null} */
+        this._workbenchFocusActorId = null;
+
+        this._workbenchIdentifyStaging = new Map();
+        this._workbenchIdentifyAcknowledge = new Map();
+        this._workbenchFocusUsed = new Set();
+        this._magicScanResults = null;
+        this._magicScanComplete = false;
+        this._identifiedItems = [];
+
+        this._workbench = new WorkbenchDelegate(this);
+        this._detectMagic = new DetectMagicDelegate(this);
+
+        /** @type {number|null} */
+        this._workbenchHookId = null;
+
+        /** True after GM confirms complete: summary shown, native shortRest not yet run. */
+        this._completionPhase = false;
+        /** @type {Array<{ actorId: string, name: string, line: string }>|null} */
+        this._completionSummaryLines = null;
+        /** Prevents double-submit on Apply native recovery. */
+        this._finalizeShortRestBusy = false;
     }
 
     // ── Lifecycle ──────────────────────────────────────────────
@@ -125,19 +192,20 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     async render(options = {}) {
         if (this._isGM) {
             registerActiveShortRestApp(this);
-            // Broadcast state to players so anyone already connected gets it
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "shortRestStarted",
-                rolls: this._serializeRolls(),
-                songBonuses: this._serializeSongBonuses(),
-                afkCharacterIds: [...this._afkCharacters],
-                finishedUserIds: [...this._finishedUsers],
-                activeShelter: this._activeShelter,
-                rpPrompt: this._rpPrompt,
-                songVolunteer: this._songVolunteer,
-            });
-            // Persist to world setting for session recovery
-            this._saveShortRestState();
+            if (!this._completionPhase) {
+                game.socket.emit(`module.${MODULE_ID}`, {
+                    type: "shortRestStarted",
+                    rolls: this._serializeRolls(),
+                    songBonuses: this._serializeSongBonuses(),
+                    afkCharacterIds: RestAfkState.getAfkCharacterIds(),
+                    finishedUserIds: [...this._finishedUsers],
+                    activeShelter: this._activeShelter,
+                    rpPrompt: this._rpPrompt,
+                    songVolunteer: this._songVolunteer,
+                    workbench: this._serializeWorkbenchStateForNet(),
+                });
+                void this._saveShortRestState();
+            }
         }
         // Live sync: party roster actors (not only hasPlayerOwner) so GM-owned roster PCs
         // and spell slot changes still refresh Arcane Recovery / Natural Recovery.
@@ -151,7 +219,20 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (partyHas(item.actor)) this.render();
             });
         }
-        return super.render(options);
+        const out = await super.render(options);
+        if (this._isGM && !this._workbenchHookId) {
+            this._workbenchHookId = Hooks.on(
+                `${MODULE_ID}.workbenchIdentifyStagingTouched`,
+                () => this._onWorkbenchStagingTouchedFromHook()
+            );
+        }
+        queueMicrotask(() => {
+            if (this._activeTab === "workbench" && this._workbench && this.element) {
+                this._workbench.bindDragDrop(this.element);
+            }
+        });
+        showAfkPanel();
+        return out;
     }
 
     async close(options = {}) {
@@ -164,6 +245,10 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             Hooks.off("updateItem", this._itemHookId);
             this._itemHookId = null;
         }
+        if (this._workbenchHookId) {
+            Hooks.off(`${MODULE_ID}.workbenchIdentifyStagingTouched`, this._workbenchHookId);
+            this._workbenchHookId = null;
+        }
 
         if (this._isTerminating) {
             // Rest is ending (complete or abandon): wipe all state
@@ -172,8 +257,15 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._spellRecovery.clear();
             this._songBonusByActor.clear();
             this._songVolunteer = null;
-            this._afkCharacters.clear();
             this._finishedUsers.clear();
+            this._workbenchIdentifyStaging?.clear();
+            this._workbenchIdentifyAcknowledge?.clear();
+            this._workbenchFocusUsed?.clear();
+            this._magicScanResults = null;
+            this._magicScanComplete = false;
+            this._activeTab = "recovery";
+            this._workbenchFocusActorId = null;
+            hideAfkPanelAfterRest();
         } else if (this._isGM) {
             // GM dismissed the window but the rest persists.
             // State already saved on last render. Show resume bar.
@@ -188,10 +280,188 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return super.close(options);
     }
 
+    // ── Workbench (short rest) ───────────────────────────────────
+
+    _onWorkbenchStagingTouchedFromHook() {
+        if (game.user.isGM) {
+            void this._saveShortRestState();
+            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+            return;
+        }
+        emitShortRestWorkbenchStagingFromPlayer({
+            userId: game.user.id,
+            staging: Array.from(this._workbenchIdentifyStaging?.entries() ?? []),
+        });
+    }
+
+    _serializeWorkbenchStateForNet() {
+        return {
+            workbenchStaging: Array.from(this._workbenchIdentifyStaging?.entries() ?? []),
+            workbenchAck: Array.from(this._workbenchIdentifyAcknowledge?.entries() ?? []),
+            magicScanResults: this._magicScanResults,
+            magicScanComplete: !!this._magicScanComplete,
+            workbenchFocusActorId: this._workbenchFocusActorId,
+        };
+    }
+
+    /**
+     * @param {object} data
+     * @param {function} emitSync
+     */
+    applyWorkbenchStagingFromPlayer(data, emitSync) {
+        const uid = data.userId;
+        const user = game.users.get(uid);
+        if (!user) return;
+        for (const [actorId, st] of (data.staging ?? [])) {
+            const a = game.actors.get(actorId);
+            if (!a) continue;
+            if (!a.testUserPermission(user, "OWNER")) continue;
+            this._workbench.setStaging(actorId, {
+                gearItemId: st?.gearItemId ?? null,
+                gearActorId: st?.gearActorId ?? null,
+                potionItemId: st?.potionItemId ?? null,
+            });
+        }
+        if (data.workbenchFocusActorId) {
+            this._workbenchFocusActorId = data.workbenchFocusActorId;
+        }
+        void this._saveShortRestState();
+        emitSync(this._serializeWorkbenchStateForNet());
+        if (this.rendered) void this.render();
+    }
+
+    /**
+     * @param {object} data
+     */
+    applyWorkbenchStateFromHost(data) {
+        this._workbenchIdentifyStaging = new Map(data.workbenchStaging ?? []);
+        this._workbenchIdentifyAcknowledge = new Map(data.workbenchAck ?? []);
+        this._magicScanResults = data.magicScanResults ?? null;
+        this._magicScanComplete = !!data.magicScanComplete;
+        if (data.workbenchFocusActorId !== undefined) {
+            this._workbenchFocusActorId = data.workbenchFocusActorId;
+        }
+    }
+
+    getStationIdentifyEmbedContext(options = {}) {
+        return collectPartyIdentifyEmbedData(getPartyActors(), options);
+    }
+
+    canShowDetectMagicScanButtonFromParty() {
+        return computeCanShowDetectMagicScanButton(getPartyActors());
+    }
+
+    getWorkbenchIdentifyDragContext(actorId) {
+        return this._workbench.getDragContext(actorId, collectPartyIdentifyEmbedData, getPartyActors);
+    }
+
+    dismissWorkbenchIdentifyAcknowledgement(actorId) {
+        this._workbench.dismissAcknowledgement(actorId);
+    }
+
+    removeWorkbenchIdentifyPotionFromStation(actorId, itemId) {
+        this._workbench.removePotionFromStation(actorId, itemId);
+    }
+
+    async submitWorkbenchIdentifyFromStation(actorId) {
+        await this._workbench.submitFromStation(actorId);
+    }
+
+    /**
+     * Actor whose workbench identify UI and staging apply for the current user.
+     * GM uses roster focus; players use linked character or first owned party actor.
+     * @returns {string|null}
+     */
+    _resolveWorkbenchActorIdForEmbed() {
+        const party = getPartyActors();
+        if (!party.length) return null;
+        if (game.user?.isGM) {
+            const id = this._workbenchFocusActorId;
+            if (id && party.some((a) => a.id === id)) return id;
+            return party[0].id;
+        }
+        const linkedId = game.user?.character?.id ?? null;
+        if (linkedId) {
+            const linked = party.find((a) => a.id === linkedId);
+            if (linked?.isOwner) return linked.id;
+        }
+        const owned = party.find((a) => a.isOwner);
+        if (owned) return owned.id;
+        return party[0].id;
+    }
+
+    _getWorkbenchEmbedContext() {
+        const focus = this._resolveWorkbenchActorIdForEmbed();
+        if (!focus) {
+            return {
+                identifyCasters: [],
+                detectMagicCasters: [],
+                isGmUser: !!game.user?.isGM,
+                canShowDetectMagicScanButton: false,
+                canTriggerDetectMagicScan: false,
+                detectMagicScanButtonLabel: DETECT_MAGIC_BTN_LABEL_PLAYER,
+                detectMagicScanButtonTitle: "",
+                magicScanResults: [],
+                magicScanComplete: false,
+                magicScanActive: false,
+                workbenchIdentifyActorId: null,
+                workbenchGearChip: null,
+                workbenchPotionChip: null,
+                workbenchSubmitLocked: true,
+                workbenchIdentifyAcknowledgement: null,
+                workbenchAckRevealReady: true,
+                workbenchFocusExhausted: false,
+                isShortRestWorkbench: true,
+            };
+        }
+        // ── Shared Pool gating (same logic as StationActivityDialog) ──
+        const embedFull = this.getStationIdentifyEmbedContext({});
+        const isIdentifyCaster = embedFull.identifyCasters?.some(c => c.id === focus);
+        const canSeeSharedPool = !!game.user?.isGM || !!isIdentifyCaster;
+        const poolItems = canSeeSharedPool
+            ? (embedFull.unidentifiedItems ?? [])
+            : (embedFull.unidentifiedItems ?? []).filter(it => it.actorId === focus);
+        // Group gear items (not potions) by owner
+        const _byOwner = new Map();
+        for (const item of poolItems.filter(it => !it.isPotion)) {
+            if (!_byOwner.has(item.actorId)) {
+                _byOwner.set(item.actorId, { ownerName: item.actorName, ownerId: item.actorId, items: [] });
+            }
+            _byOwner.get(item.actorId).items.push(item);
+        }
+        const emb = { ...embedFull, unidentifiedItems: poolItems };
+        const wb = this.getWorkbenchIdentifyDragContext(focus);
+        return {
+            ...emb,
+            ...wb,
+            unidentifiedItemsByOwner: [..._byOwner.values()],
+            canSeeSharedPool,
+            isGmUser: !!game.user?.isGM,
+            canShowDetectMagicScanButton: this.canShowDetectMagicScanButtonFromParty(),
+            canTriggerDetectMagicScan: computeCanTriggerDetectMagicScan(getPartyActors()),
+            detectMagicScanButtonLabel: this._magicScanComplete
+                ? DETECT_MAGIC_BTN_LABEL_DISMISS
+                : (game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER),
+            detectMagicScanButtonTitle: game.user?.isGM ? DETECT_MAGIC_BTN_TITLE_GM : "",
+            magicScanResults: this._magicScanResults ?? [],
+            magicScanComplete: !!this._magicScanComplete,
+            magicScanActive: !!this._magicScanComplete,
+            isShortRestWorkbench: true,
+        };
+    }
+
     // ── Context ────────────────────────────────────────────────
 
     async _prepareContext(options) {
         const partyActors = getPartyActors();
+
+        if (this._isGM && partyActors.length) {
+            const valid = this._workbenchFocusActorId
+                && partyActors.some((a) => a.id === this._workbenchFocusActorId);
+            if (!valid) {
+                this._workbenchFocusActorId = partyActors[0].id;
+            }
+        }
 
         // Detect which shelter spells anyone in the party has prepared
         const preparedShelterIds = new Set(["none"]);
@@ -298,7 +568,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 noHdLeft: hdData.remaining <= 0,
                 isOwner: this._isGM || a.isOwner,
                 conMod: a.system?.abilities?.con?.mod ?? 0,
-                isAfk: this._afkCharacters.has(a.id),
+                isAfk: RestAfkState.isAfk(a.id),
                 isSelfCard,
                 rollsCompressed,
                 rollsToShow,
@@ -413,9 +683,12 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
             }
 
+            const srRechargeBadges = getShortRestRechargeLabels(a);
+
             return {
                 ...baseCharacter,
                 spellRecovery,
+                srRechargeBadges,
             };
         });
 
@@ -441,8 +714,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         };
 
         // Roster strip: avatar chips with AFK + readiness state
+        const gmWorkbenchRosterPick = this._isGM && this._activeTab === "workbench";
         const roster = partyActors.map(a => {
-            const isAfk = this._afkCharacters.has(a.id);
+            const isAfk = RestAfkState.isAfk(a.id);
             const ownerUser = game.users.find(u => !u.isGM && u.active && a.testUserPermission(u, "OWNER"));
             const isFinished = ownerUser ? this._finishedUsers.has(ownerUser.id) : false;
             return {
@@ -453,23 +727,16 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 isAfk,
                 isFinished,
                 isOwner: this._isGM || a.isOwner,
+                isWorkbenchFocus: gmWorkbenchRosterPick && this._workbenchFocusActorId === a.id,
             };
         });
 
-        const gmAfk = this._afkCharacters.has("gm");
-        const gmRosterChip = {
-            id: "gm",
-            name: "GM",
-            fullName: game.users.find(u => u.isGM)?.name ?? "Game Master",
-            isAfk: gmAfk,
-        };
-
-        const selfAfk = this._isGM
-            ? gmAfk
-            : roster.some(r => r.isOwner && r.isAfk);
-        const selfAfkId = this._isGM
-            ? "gm"
-            : (roster.find(r => r.isOwner)?.id ?? "");
+        const rawCompletionLines = this._completionSummaryLines ?? [];
+        const completionPhase = !!this._completionPhase;
+        const completionSummaryForUser = completionPhase
+            ? ShortRestApp.#completionRowsForUser(this._isGM, rawCompletionLines)
+            : [];
+        const completionSummaryEmpty = completionPhase && !this._isGM && completionSummaryForUser.length === 0;
 
         return {
             isGM: this._isGM,
@@ -479,9 +746,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             shelterBadge,
             rpPrompt: this._rpPrompt,
             roster,
-            gmRosterChip,
-            selfAfk,
-            selfAfkId,
+            activeTab: this._activeTab,
+            gmWorkbenchRosterPick,
+            workbenchEmbed: this._getWorkbenchEmbedContext(),
             shortRestFooter: {
                 myFinished: this._finishedUsers.has(game.user.id),
             },
@@ -498,6 +765,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ? ImageResolver.terrainBanner("short-rest", "rope_trick.png")
                 : ImageResolver.terrainBanner("short-rest", "banner.png"),
             bannerFallback: ImageResolver.fallbackBanner,
+            completionPhase,
+            completionSummaryForUser,
+            completionSummaryEmpty,
         };
     }
 
@@ -587,6 +857,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static async #onAddSpellSlot(event, target) {
+        if (this._completionPhase) return;
         const actorId = target.dataset.actorId;
         const actor = game.actors.get(actorId);
         if (!actor) return;
@@ -610,6 +881,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static async #onRemoveSpellSlot(event, target) {
+        if (this._completionPhase) return;
         const actorId = target.dataset.actorId;
         const actor = game.actors.get(actorId);
         if (!actor) return;
@@ -633,6 +905,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Player confirms their spell recovery selections; locks the controls.
      */
     static async #onConfirmRecovery(event, target) {
+        if (this._completionPhase) return;
         const actorId = target.dataset.actorId;
         const actor = game.actors.get(actorId);
         if (!actor) return;
@@ -646,6 +919,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Player un-confirms their spell recovery selections; unlocks the controls.
      */
     static async #onEditRecovery(event, target) {
+        if (this._completionPhase) return;
         const actorId = target.dataset.actorId;
         const actor = game.actors.get(actorId);
         if (!actor) return;
@@ -655,40 +929,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this.render();
     }
 
-    /**
-     * Unified AFK toggle (bulk per-player, matching long rest behavior).
-     * GM toggles "gm"; players toggle all owned characters at once.
-     */
-    static #onToggleSrAfk(event, target) {
-        event.preventDefault?.();
-
-        if (this._isGM) {
-            const next = !this._afkCharacters.has("gm");
-            if (next) this._afkCharacters.add("gm");
-            else this._afkCharacters.delete("gm");
-            game.socket.emit(`module.${MODULE_ID}`, {
-                type: "shortRestAfkUpdate",
-                characterId: "gm",
-                isAfk: next,
-            });
-        } else {
-            const owned = getPartyActors().filter(a => a.testUserPermission(game.user, "OWNER"));
-            const anyAfk = owned.some(a => this._afkCharacters.has(a.id));
-            const next = !anyAfk;
-            for (const a of owned) {
-                if (next) this._afkCharacters.add(a.id);
-                else this._afkCharacters.delete(a.id);
-                game.socket.emit(`module.${MODULE_ID}`, {
-                    type: "shortRestAfkUpdate",
-                    characterId: a.id,
-                    isAfk: next,
-                });
-            }
-        }
-        this.render();
-    }
-
     static #onToggleShortRestFinished(event, target) {
+        if (this._completionPhase) return;
         event.preventDefault?.();
         const uid = game.user.id;
         const next = !this._finishedUsers.has(uid);
@@ -704,6 +946,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static async #onVolunteerSong(event, target) {
+        if (this._completionPhase) return;
         const actorId = target.dataset.actorId;
         const actor = game.actors.get(actorId);
         if (!actor) return;
@@ -735,6 +978,39 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * @param {Actor[]} partyActors
+     * @returns {Actor|null}
+     */
+    static #findChefActor(partyActors) {
+        for (const a of partyActors) {
+            for (const i of a.items ?? []) {
+                if (i.type !== "feat" && i.type !== "background") continue;
+                if (String(i.name ?? "").toLowerCase().includes("chef")) return a;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param {boolean} isGm
+     * @param {Array<{ actorId: string, name: string, line: string }>} lines
+     */
+    static #completionRowsForUser(isGm, lines) {
+        if (!lines?.length) return [];
+        if (isGm) {
+            return lines.map(({ actorId, name, line }) => ({ actorId, name, line }));
+        }
+        const linkedId = game.user?.character?.id ?? null;
+        return lines
+            .filter((row) => {
+                if (linkedId && row.actorId === linkedId) return true;
+                const actor = game.actors.get(row.actorId);
+                return !!actor?.isOwner;
+            })
+            .map(({ actorId, name, line }) => ({ actorId, name, line }));
+    }
+
+    /**
      * @param {string} bardName
      * @param {string} recipientName
      * @param {string} formula
@@ -745,6 +1021,29 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const r = ShortRestApp.#escapeChat(recipientName);
         const f = ShortRestApp.#escapeChat(formula);
         return `<div class="respite-song-of-rest respite-song-of-rest-card respite-chat-parchment"><div class="respite-song-title"><i class="fas fa-music"></i> Song of Rest</div><p><strong>${r}</strong> gains <strong>+${total} HP</strong> <span class="respite-song-meta">(${f})</span> from <em>${b}</em>’s performance (applied with this character’s first Hit Die this rest).</p></div>`;
+    }
+
+    /**
+     * Chat card when Respite realigns Hit Die HP after the native roll (max die, Durable, Periapt, etc.).
+     * @param {string} actorName
+     * @param {number} rollTotal Total from the system roll card (before Respite rules)
+     * @param {number} adjustedTotal Final Hit Die healing for this spend
+     * @param {string[]} annotationLines Modifier labels (e.g. Max HD homebrew)
+     * @returns {string}
+     */
+    static #buildHitDieCorrectionChat(actorName, rollTotal, adjustedTotal, annotationLines) {
+        const n = ShortRestApp.#escapeChat(actorName);
+        const ann = (annotationLines ?? [])
+            .map((line) => ShortRestApp.#escapeChat(line))
+            .filter(Boolean)
+            .join(", ");
+        const meta = ann
+            ? `<p class="respite-song-meta">${ann}</p>`
+            : "";
+        return `<div class="respite-hit-die-correction respite-chat-parchment">` +
+            `<div class="respite-song-title"><i class="fas fa-heart-pulse"></i> Healing surge</div>` +
+            `<p><strong>${n}</strong> The system card showed <strong>+${rollTotal}</strong> HP from this Hit Die. ` +
+            `Respite aligned short rest healing to <strong>+${adjustedTotal}</strong> HP.</p>${meta}</div>`;
     }
 
     /**
@@ -759,10 +1058,109 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return `<div class="respite-song-of-rest respite-song-of-rest-summary respite-chat-parchment"><div class="respite-song-title"><i class="fas fa-music"></i> Song of Rest: ${b}</div><p class="respite-song-lead">Each ally who spent at least one Hit Die during this short rest gains extra healing (one die each):</p><ul class="respite-song-list">${rows}</ul></div>`;
     }
 
+    static #onSwitchTab(event, target) {
+        if (this._completionPhase) return;
+        const tab = target?.dataset?.tab;
+        if (tab !== "recovery" && tab !== "workbench") return;
+        this._activeTab = tab;
+        if (this._isGM) {
+            void this._saveShortRestState();
+            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+        } else {
+            emitShortRestWorkbenchStagingFromPlayer({
+                userId: game.user.id,
+                staging: Array.from(this._workbenchIdentifyStaging?.entries() ?? []),
+            });
+        }
+        this.render();
+    }
+
+    static #onSelectWorkbenchRosterActor(event, target) {
+        if (this._completionPhase) return;
+        if (!this._isGM || this._activeTab !== "workbench") return;
+        const chip = target?.closest?.("[data-roster-id]");
+        const id = chip?.dataset?.rosterId;
+        if (!id) return;
+        const party = getPartyActors();
+        if (!party.some((a) => a.id === id)) return;
+        this._workbenchFocusActorId = id;
+        void this._saveShortRestState();
+        emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+        this.render();
+    }
+
+    static async #onStationDetectMagicScan(event) {
+        if (this._completionPhase) return;
+        if (!this._detectMagic) return;
+        const btn = event?.currentTarget ?? null;
+        btn?.classList.add("is-casting");
+        spawnDetectMagicCastRipple(btn);
+        if (this._magicScanComplete) {
+            this._detectMagic.clearScanSession();
+        } else {
+            await this._detectMagic.runScan(getPartyActors);
+            if (this._isGM) {
+                void this._saveShortRestState();
+                emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+            }
+        }
+    }
+
+    static async #onStationIdentifyScannedItem(event, target) {
+        if (this._completionPhase) return;
+        const actorId = target?.dataset?.actorId;
+        const itemId = target?.dataset?.itemId;
+        if (!actorId || !itemId) return;
+        await this._detectMagic.identifyScannedItem(actorId, itemId, getPartyActors);
+        if (this._isGM) {
+            void this._saveShortRestState();
+            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+        }
+    }
+
+    static async #onSubmitWorkbenchIdentify() {
+        if (this._completionPhase) return;
+        const el = this.element?.querySelector?.(".station-workbench-identify-embed[data-workbench-actor-id]");
+        const actorId = el?.dataset?.workbenchActorId;
+        if (!actorId) return;
+        await this._workbench.submitFromStation(actorId);
+        if (this._isGM) {
+            void this._saveShortRestState();
+            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+        }
+    }
+
+    static #onWorkbenchIdentifyRemovePotion(event, target) {
+        if (this._completionPhase) return;
+        const el = this.element?.querySelector?.(".station-workbench-identify-embed[data-workbench-actor-id]");
+        const actorId = el?.dataset?.workbenchActorId;
+        if (!actorId) return;
+        this._workbench.removePotionFromStation(actorId);
+        if (this._isGM) {
+            void this._saveShortRestState();
+            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+        }
+    }
+
+    static async #onDismissWorkbenchIdentifyAck() {
+        if (this._completionPhase) return;
+        const el = this.element?.querySelector?.(".station-workbench-identify-embed[data-workbench-actor-id]");
+        const actorId = el?.dataset?.workbenchActorId;
+        if (!actorId) return;
+        const ack = this._workbenchIdentifyAcknowledge?.get(actorId);
+        if (!ack || Date.now() < ack.revealAt) return;
+        this._workbench.dismissAcknowledgement(actorId);
+        if (this._isGM) {
+            void this._saveShortRestState();
+            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+        }
+    }
+
     /**
      * Player spends 1 Hit Die. Uses Foundry's native rollHitDie().
      */
     static async #onSpendHitDie(event, target) {
+        if (this._completionPhase) return;
         const actorId = target.dataset.actorId;
         const actor = game.actors.get(actorId);
         if (!actor) return;
@@ -774,6 +1172,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             ui.notifications.warn(`${actor.name} has no Hit Dice remaining.`);
             return;
         }
+
+        const hpSnapshot = actor.system?.attributes?.hp?.value ?? 0;
+        const hpMax = actor.system?.attributes?.hp?.max ?? 0;
 
         // DnD5e v4 signature: rollHitDie(denomination, options)
         // v3 signature: rollHitDie(options)
@@ -802,16 +1203,35 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const conMod = actor.system?.abilities?.con?.mod ?? 0;
 
         const modifiers = HitDieModifiers.scan(actor);
-        const rawDie = rollTotal - conMod;
+        let rawDie = rollTotal - conMod;
+        const maxHdEnabled = !!game.settings.get(MODULE_ID, MAX_VALUE_HD_KEY);
+        const maxOverride = HitDieModifiers.applyMaxValueOverride(maxHdEnabled, rawDie, hdData.die);
+        rawDie = maxOverride.rawDie;
         const { adjustedTotal, annotations } = HitDieModifiers.modifyRoll(rawDie, conMod, modifiers);
+        const mergedAnnotations = [...maxOverride.annotations, ...annotations];
 
-        // Apply HP correction if modifiers changed the total
+        // Apply HP: anchor to pre-roll snapshot to avoid stale-read race with rollHitDie's own update.
+        // When max-value override is active this is the only correct path.
+        // For non-override rolls it still applies correctly (adjustedTotal === rollTotal means native
+        // roll already did the right thing, but overwriting with the same value is harmless).
         if (adjustedTotal !== rollTotal) {
-            const hpDiff = adjustedTotal - rollTotal;
+            const targetHp = Math.min(hpSnapshot + adjustedTotal, hpMax);
             const hp = actor.system?.attributes?.hp;
-            if (hp) {
-                const newHp = Math.min((hp.value ?? 0) + hpDiff, hp.max ?? 0);
-                await actor.update({ "system.attributes.hp.value": newHp });
+            if (hp && targetHp !== (hp.value ?? 0)) {
+                await actor.update({ "system.attributes.hp.value": targetHp });
+            }
+            try {
+                await ChatMessage.create({
+                    content: ShortRestApp.#buildHitDieCorrectionChat(
+                        actor.name,
+                        rollTotal,
+                        adjustedTotal,
+                        mergedAnnotations
+                    ),
+                    speaker: ChatMessage.getSpeaker({ actor }),
+                });
+            } catch (err) {
+                Logger.warn(`${MODULE_ID} | Hit Die correction chat message failed:`, err);
             }
         }
 
@@ -821,7 +1241,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             total: adjustedTotal,
             die: hdData.die,
             conMod,
-            annotations: [...annotations],
+            annotations: [...mergedAnnotations],
         });
 
         const songTiming = game.settings.get(MODULE_ID, SONG_TIMING_KEY) ?? "endOfRest";
@@ -868,7 +1288,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             rollTotal: adjustedTotal,
             die: hdData.die,
             conMod,
-            annotations: [...annotations],
+            annotations: [...mergedAnnotations],
             ...(songBonusUpdate ? { songBonusUpdate } : {}),
         });
 
@@ -881,12 +1301,13 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #onCompleteShortRest(event, target) {
         if (!this._isGM) return;
+        if (this._completionPhase) return;
 
         const partyActorsPreCheck = getPartyActors();
         const afkCharNames = partyActorsPreCheck
-            .filter(a => this._afkCharacters.has(a.id))
+            .filter(a => RestAfkState.isAfk(a.id))
             .map(a => a.name);
-        const gmIsAfk = this._afkCharacters.has("gm");
+        const gmIsAfk = RestAfkState.isAfk("gm");
         if (afkCharNames.length > 0 || gmIsAfk) {
             const afkList = [...afkCharNames];
             if (gmIsAfk) afkList.unshift("GM");
@@ -1008,19 +1429,89 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._spellRecovery.delete(actor.id);
         }
 
-        for (const actor of partyActors) {
-            try {
-                await actor.shortRest({ dialog: false, chat: true });
-            } catch (e) {
-                Logger.warn(`Failed shortRest for ${actor.name}:`, e);
-            }
+        const summaryLines = [];
+        for (const a of partyActors) {
+            const rolls = this._rolls.get(a.id) ?? [];
+            const healed = rolls.reduce((sum, r) => sum + (Number(r.total) || 0), 0);
+            const song = this._songBonusByActor.get(a.id)?.total ?? 0;
+            const badges = getShortRestRechargeLabels(a);
+            const parts = [];
+            if (healed) parts.push(`+${healed} HP from Hit Dice`);
+            if (song) parts.push(`+${song} HP from Song of Rest (tracked above)`);
+            if (badges.length) parts.push(`Typical recharges: ${badges.join(", ")}`);
+            const line = parts.length
+                ? parts.join(". ") + "."
+                : "No HD healing from this window.";
+            summaryLines.push({ actorId: a.id, name: a.name, line });
         }
 
-        await this._clearShortRestState();
-        game.socket.emit(`module.${MODULE_ID}`, { type: "shortRestComplete" });
-        ui.notifications.info("Short rest complete. Class features recovered.");
-        this._isTerminating = true;
-        this.close();
+        this._completionSummaryLines = summaryLines;
+        this._completionPhase = true;
+        emitShortRestCompletionSummary({ lines: summaryLines });
+        await this.render(true);
+    }
+
+    /**
+     * GM second step: run native shortRest(), Chef temp HP, then close for everyone.
+     */
+    static async #onFinalizeShortRestRecovery() {
+        if (!this._isGM) return;
+        if (!this._completionPhase) return;
+        if (this._finalizeShortRestBusy) return;
+        this._finalizeShortRestBusy = true;
+
+        const partyActors = getPartyActors();
+
+        try {
+            setNativeShortRestUnsuppressed(true);
+            try {
+                for (const actor of partyActors) {
+                    try {
+                        if (game.system.id === "dnd5e") {
+                            await actor.shortRest({ dialog: false, chat: true });
+                        }
+                    } catch (e) {
+                        Logger.warn(`Failed shortRest for ${actor.name}:`, e);
+                    }
+                }
+            } finally {
+                setNativeShortRestUnsuppressed(false);
+            }
+
+            const chef = ShortRestApp.#findChefActor(partyActors);
+            if (chef && game.system.id === "dnd5e") {
+                const pb = Number(chef.system?.attributes?.prof) || 2;
+                const targets = partyActors.slice(0, 4);
+                for (const t of targets) {
+                    try {
+                        await t.update({ "system.attributes.hp.temp": pb });
+                    } catch (e) {
+                        Logger.warn(`${MODULE_ID} | Chef temp HP:`, e);
+                    }
+                }
+                try {
+                    await ChatMessage.create({
+                        content:
+                            `<div class="respite-chat-parchment"><i class="fas fa-utensils"></i> ` +
+                            `Chef treats: <strong>up to four party members</strong> gain <strong>${pb} temporary ` +
+                            `HP</strong> (feat: ${ShortRestApp.#escapeChat(chef.name)}).</div>`,
+                        speaker: ChatMessage.getSpeaker({ actor: chef }),
+                    });
+                } catch (e) {
+                    Logger.warn(`${MODULE_ID} | Chef chat:`, e);
+                }
+            }
+
+            await this._clearShortRestState();
+            emitShortRestComplete();
+            ui.notifications.info("Short rest complete. Class features recovered.");
+            this._completionPhase = false;
+            this._completionSummaryLines = null;
+            this._isTerminating = true;
+            this.close();
+        } finally {
+            this._finalizeShortRestBusy = false;
+        }
     }
 
     /**
@@ -1041,6 +1532,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         });
         if (!proceed) return;
 
+        this._completionPhase = false;
+        this._completionSummaryLines = null;
+
         await this._clearShortRestState();
         game.socket.emit(`module.${MODULE_ID}`, { type: "shortRestAbandoned" });
         ui.notifications.info("Short rest abandoned.");
@@ -1053,7 +1547,15 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /**
      * Called on GM side when a player spends a hit die.
      */
+    receiveCompletionSummary(data) {
+        const lines = Array.isArray(data?.lines) ? data.lines : [];
+        this._completionSummaryLines = lines;
+        this._completionPhase = true;
+        void this.render(true);
+    }
+
     receiveHdSpent(data) {
+        if (this._completionPhase) return;
         const { actorId, rollTotal, die, conMod, annotations, songBonusUpdate } = data;
         if (!this._rolls.has(actorId)) this._rolls.set(actorId, []);
         const entry = { total: rollTotal, die, conMod };
@@ -1078,7 +1580,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._songBonusByActor = this._deserializeSongBonuses(data.songBonuses);
         }
         if (data.afkCharacterIds !== undefined) {
-            this._afkCharacters = new Set(data.afkCharacterIds);
+            RestAfkState.replaceAll(data.afkCharacterIds);
         }
         if (data.finishedUserIds !== undefined) {
             this._finishedUsers = new Set(data.finishedUserIds);
@@ -1086,24 +1588,17 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (data.activeShelter) this._activeShelter = data.activeShelter;
         if (data.rpPrompt) this._rpPrompt = data.rpPrompt;
         if (data.songVolunteer !== undefined) this._songVolunteer = data.songVolunteer ?? null;
+        if (data.workbench) {
+            this.applyWorkbenchStateFromHost(data.workbench);
+        }
         this.render({ force: true });
-    }
-
-    /**
-     * @param {string} characterId
-     * @param {boolean} isAfk
-     */
-    receiveShortRestAfk(characterId, isAfk) {
-        if (!characterId) return;
-        if (isAfk) this._afkCharacters.add(characterId);
-        else this._afkCharacters.delete(characterId);
-        this.render();
     }
 
     /**
      * @param {{ songVolunteer: object|null }} data
      */
     receiveSongVolunteer(data) {
+        if (this._completionPhase) return;
         this._songVolunteer = data.songVolunteer ?? null;
         this.render();
     }
@@ -1112,6 +1607,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {{ userId?: string, finished?: boolean }} data
      */
     receivePlayerFinished(data) {
+        if (this._completionPhase) return;
         if (!data?.userId) return;
         if (data.finished) this._finishedUsers.add(data.userId);
         else this._finishedUsers.delete(data.userId);
@@ -1163,6 +1659,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     async _saveShortRestState() {
         if (!game.user.isGM) return;
+        // Keep local mirror in sync with the module-scoped singleton before saving.
+        this._afkCharacters = new Set(RestAfkState.getAfkCharacterIds());
         const state = {
             rolls: this._serializeRolls(),
             songBonuses: this._serializeSongBonuses(),
@@ -1172,6 +1670,11 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             rpPrompt: this._rpPrompt,
             songVolunteer: this._songVolunteer,
             confirmedRecovery: [...this._confirmedRecovery],
+            workbenchFocusActorId: this._workbenchFocusActorId,
+            magicScanResults: this._magicScanResults,
+            magicScanComplete: this._magicScanComplete,
+            workbenchStaging: Array.from(this._workbenchIdentifyStaging?.entries() ?? []),
+            workbenchAck: Array.from(this._workbenchIdentifyAcknowledge?.entries() ?? []),
             timestamp: Date.now(),
         };
         try {
@@ -1191,12 +1694,20 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         if (state.rolls) this._rolls = this._deserializeRolls(state.rolls);
         if (state.songBonuses) this._songBonusByActor = this._deserializeSongBonuses(state.songBonuses);
-        if (state.afkCharacterIds) this._afkCharacters = new Set(state.afkCharacterIds);
+        if (state.afkCharacterIds) {
+            RestAfkState.replaceAll(state.afkCharacterIds);
+            this._afkCharacters = new Set(state.afkCharacterIds);
+        }
         if (state.finishedUserIds) this._finishedUsers = new Set(state.finishedUserIds);
         if (state.activeShelter) this._activeShelter = state.activeShelter;
         if (state.rpPrompt) this._rpPrompt = state.rpPrompt;
         if (state.songVolunteer !== undefined) this._songVolunteer = state.songVolunteer ?? null;
         if (state.confirmedRecovery) this._confirmedRecovery = new Set(state.confirmedRecovery);
+        if (state.workbenchFocusActorId !== undefined) this._workbenchFocusActorId = state.workbenchFocusActorId;
+        this._magicScanResults = state.magicScanResults ?? null;
+        this._magicScanComplete = !!state.magicScanComplete;
+        this._workbenchIdentifyStaging = new Map(state.workbenchStaging ?? []);
+        this._workbenchIdentifyAcknowledge = new Map(state.workbenchAck ?? []);
 
         return true;
     }

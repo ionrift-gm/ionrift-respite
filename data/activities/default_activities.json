@@ -51,6 +51,11 @@
                     {
                         "type": "comfort_boost",
                         "description": "Effective comfort level increased by one tier for personal recovery."
+                    },
+                    {
+                        "type": "bonus_hd",
+                        "value": 1,
+                        "description": "Recover one additional Hit Die from deep, uninterrupted sleep."
                     }
                 ]
             }
@@ -64,7 +69,6 @@
     },
     {
         "id": "act_forage",
-        "disabled": true,
         "name": "Forage",
         "professions": [
             "leatherworker",
@@ -357,7 +361,7 @@
         "id": "act_tend_wounds",
         "name": "Tend Wounds",
         "professions": [],
-        "description": "Care for an injured companion. Clean wounds, set bones, change dressings.",
+        "description": "Patch up an injured companion. Immediate healing before encounters, and boosts the target's recovery tier for the rest.",
         "restTypes": [
             "long",
             "short"
@@ -376,22 +380,26 @@
         },
         "outcomes": {
             "success": {
-                "narrative": "Your steady hands ease the pain. Your companion rests easier.",
+                "narrative": "Your steady hands ease the pain. Your companion rests easier tonight.",
                 "items": [],
                 "effects": [
                     {
-                        "type": "heal_bonus",
-                        "description": "Target character recovers an additional hit die worth of HP."
+                        "type": "immediate_heal",
+                        "description": "Target recovers one Hit Die worth of HP now, before encounters."
+                    },
+                    {
+                        "type": "target_comfort_boost",
+                        "description": "Target's effective comfort increased by one tier for rest recovery."
                     }
                 ]
             },
             "failure": {
-                "narrative": "You do your best, but the wounds are stubborn.",
+                "narrative": "You do your best, but the wounds are stubborn. A little help is better than none.",
                 "items": [],
                 "effects": [
                     {
-                        "type": "heal_partial",
-                        "description": "Target recovers a small amount of HP. Not a wasted effort."
+                        "type": "immediate_heal_partial",
+                        "description": "Target recovers a small amount of HP (your Wisdom modifier)."
                     }
                 ]
             }
@@ -408,9 +416,10 @@
     },
     {
         "id": "act_scout",
+        "disabled": true,
         "name": "Scout Perimeter",
         "professions": [],
-        "description": "Move through the surrounding area. Map escape routes, identify approaches, spot threats before they arrive.",
+        "description": "Move through the surrounding area. Identify approaches and spot threats before they arrive.",
         "restTypes": [
             "long"
         ],
@@ -434,7 +443,7 @@
                 "effects": [
                     {
                         "type": "early_warning",
-                        "description": "Escape routes mapped, blind spots covered."
+                        "description": "Approaches identified, blind spots covered."
                     }
                 ]
             },
@@ -592,10 +601,10 @@
                             "arrows": "Arrow",
                             "bolts": "Crossbow Bolt"
                         },
-                        "itemDataMap": {
-                            "arrows": { "name": "Arrow", "type": "consumable", "img": "icons/weapons/ammunition/arrow-head-war-flight.webp", "system": { "quantity": 1 } },
-                            "bolts": { "name": "Crossbow Bolt", "type": "consumable", "img": "icons/weapons/ammunition/bolt-tip-engraved.webp", "system": { "quantity": 1 } }
-                        },
+                            "itemDataMap": {
+                                "arrows": { "name": "Arrow", "type": "consumable", "img": "icons/weapons/ammunition/arrow-head-war-flight.webp", "system": { "type": { "value": "ammo" } } },
+                                "bolts": { "name": "Crossbow Bolt", "type": "consumable", "img": "icons/weapons/ammunition/bolt-tip-engraved.webp", "system": { "type": { "value": "ammo" } } }
+                            },
                         "quantity": "1d4+prof"
                     }
                 ],
@@ -702,6 +711,7 @@
     },
     {
         "id": "act_attune",
+        "disabled": true,
         "name": "Attune Item",
         "professions": [],
         "description": "Focus on a magical item to form a bond with it. Requires concentration during a rest period.",
@@ -759,15 +769,15 @@
             "label": "Spell level being copied",
             "default": "1",
             "options": [
-                { "value": "1", "label": "Level 1 — 50gp, DC 11" },
-                { "value": "2", "label": "Level 2 — 100gp, DC 12" },
-                { "value": "3", "label": "Level 3 — 150gp, DC 13" },
-                { "value": "4", "label": "Level 4 — 200gp, DC 14" },
-                { "value": "5", "label": "Level 5 — 250gp, DC 15" },
-                { "value": "6", "label": "Level 6 — 300gp, DC 16" },
-                { "value": "7", "label": "Level 7 — 350gp, DC 17" },
-                { "value": "8", "label": "Level 8 — 400gp, DC 18" },
-                { "value": "9", "label": "Level 9 — 450gp, DC 19" }
+                { "value": "1", "label": "Level 1: 50gp, DC 11" },
+                { "value": "2", "label": "Level 2: 100gp, DC 12" },
+                { "value": "3", "label": "Level 3: 150gp, DC 13" },
+                { "value": "4", "label": "Level 4: 200gp, DC 14" },
+                { "value": "5", "label": "Level 5: 250gp, DC 15" },
+                { "value": "6", "label": "Level 6: 300gp, DC 16" },
+                { "value": "7", "label": "Level 7: 350gp, DC 17" },
+                { "value": "8", "label": "Level 8: 400gp, DC 18" },
+                { "value": "9", "label": "Level 9: 450gp, DC 19" }
             ]
         },
         "outcomes": {
@@ -804,7 +814,7 @@
         "name": "Training",
         "professions": [],
         "category": "active",
-        "description": "Drill, study, or practice during a rest. Make an ability check (using your highest score) against DC 15. Consecutive rests training yield diminishing returns. Ineffective beyond level 5.",
+        "description": "Drill, study, or practice during a rest. Make an ability check (using your highest score) against DC 13. Consecutive rests training yield diminishing returns. Ineffective beyond level 5.",
         "restTypes": [
             "long"
         ],
@@ -813,7 +823,7 @@
         },
         "check": {
             "ability": "best",
-            "dc": 15,
+            "dc": 13,
             "advantageIf": []
         },
         "outcomes": {
@@ -849,5 +859,28 @@
             "actorFlag": "trainingStreak",
             "resetsOnDifferentActivity": true
         }
+    },
+    {
+        "id": "act_other",
+        "name": "Other",
+        "professions": [],
+        "description": "Spend the evening your own way. Socialise, journal, whittle, stargaze, or simply sit in companionable silence. No skill check required.",
+        "restTypes": [
+            "long",
+            "short"
+        ],
+        "prerequisites": {},
+        "check": null,
+        "outcomes": {
+            "success": {
+                "narrative": "A quiet evening, spent on your own terms.",
+                "items": [],
+                "effects": []
+            }
+        },
+        "combatModifiers": {
+            "description": "Normal readiness. Present and aware."
+        },
+        "category": "active"
     }
 ]

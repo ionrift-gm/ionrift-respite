@@ -1,0 +1,40 @@
+{
+    "_key": "!items!a1b2c3d4e5f60008",
+    "_id": "a1b2c3d4e5f60008",
+    "name": "Camp Porridge",
+    "type": "consumable",
+    "img": "icons/consumables/food/bowl-stew-tofu-potato-brown.webp",
+    "system": {
+        "description": {
+            "value": "<p>A warm bowl of simple grain porridge. Filling, if not exciting.</p>"
+        },
+        "rarity": "common",
+        "weight": 0.5,
+        "price": {
+            "value": 2,
+            "denomination": "cp"
+        },
+        "type": {
+            "value": "food",
+            "subtype": ""
+        },
+        "uses": {
+            "max": 1,
+            "per": "charges",
+            "autoDestroy": true
+        }
+    },
+    "folder": "c00ked0000000001",
+    "flags": {
+        "ionrift-respite": {
+            "itemRef": "camp_porridge",
+            "category": "prepared",
+            "foodTag": "cooked_meal"
+        }
+    },
+    "effects": [],
+    "ownership": {
+        "default": 0
+    },
+    "sort": 800
+}
