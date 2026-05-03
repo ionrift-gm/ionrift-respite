@@ -2613,7 +2613,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
                 // Player-side context: multi-day aware
                 const terrain = TerrainRegistry.get(terrainTag);
-                const allowed = terrain?.travelActivities ?? [];
+                const allowed = terrain?.travelActivities ?? ["forage", "hunt", "scout"];
                 const canForage = allowed.includes("forage");
                 const canHunt = allowed.includes("hunt");
                 const scoutAllowed = this._travelScoutingAllowed ?? true;
