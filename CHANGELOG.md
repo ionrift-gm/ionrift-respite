@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.0.6] - 2026-05-04
+
+### Changed
+- **Water consumption reworked.** Each character now drinks 2 pints per day instead of consuming a whole container. Waterskins hold 8 pints, flasks hold 2. The station meal embed shows a pool bar that fills as you pour water from inventory, so you can see exactly how much is left.
+- Arctic terrain now doubles water and food requirements. The station rations embed shows terrain alerts when requirements are increased.
+- Cooking recipes that need water now call for pints as a generic ingredient instead of requiring a whole waterskin.
+
+### Fixed
+- Players could not see foraging or hunting options during the travel phase. The GM saw all travel activities but player clients showed "Foraging and hunting are not available" for every terrain except dungeon. Mountain, forest, swamp, desert, arctic, tavern, and urban were all affected.
+- Station rations embed no longer clips the submit button when the meal card is tall. The submit row is now pinned to the bottom of the panel.
+- Station water pool bar no longer stretches across the full column width on wide screens.
+- Campfire drawer no longer logs a warning on player clients during the travel phase. The auto-open was firing regardless of which phase the rest was in.
+
 ## [2.0.5] - 2026-05-03
 
 ### Fixed
