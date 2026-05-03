@@ -796,7 +796,10 @@
         {{/if}}
         <div class="meal-drop-columns">
             <div class="meal-panel food-panel {{#unless hasFood}}panel-empty{{/unless}}">
-                <div class="meal-panel-heading"><i class="fas fa-drumstick-bite" aria-hidden="true"></i> Food</div>
+                <div class="meal-panel-heading meal-panel-heading--food">
+                    <span class="meal-panel-heading-title"><i class="fas fa-drumstick-bite" aria-hidden="true"></i> Food</span>
+                    <span class="meal-panel-req-note">{{foodRequired}} ration{{#unless (eq foodRequired 1)}}s{{/unless}} needed</span>
+                </div>
                 {{#if hasFood}}
                 {{#each foodSlots}}
                 <div class="meal-drop-header-row">

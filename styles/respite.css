@@ -12417,7 +12417,8 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     color: #fca5a5;
 }
 
-.meal-panel-heading--water {
+.meal-panel-heading--water,
+.meal-panel-heading--food {
     display: flex;
     align-items: center;
     justify-content: space-between;
