@@ -70,15 +70,6 @@ export function _fileSource() {
         ? "forgevtt" : "data";
 }
 
-/**
- * Terrains that don't have their own art pack directory fall back to a
- * thematically similar terrain's art. Add entries here as new terrain
- * stubs are registered without matching art pack coverage.
- */
-const TERRAIN_ART_ALIASES = {
-    mountain: "arctic",
-};
-
 // Images known to exist in the base module's assets/terrains/ folders.
 // Add entries here as bundled art is committed to the module.
 // Format: "terrain/filename" e.g. "forest/banner.png"
@@ -242,7 +233,7 @@ export class ImageResolver {
             console.warn(`${MODULE_ID} | ImageResolver: failed to persist art pack cache:`, e);
         }
 
-        console.log(`${MODULE_ID} | ImageResolver: artPack=${this.#artPackActive}${this.#artPackActive ? ` (${this.#importedArtPath}, tokens=${this.#hasStationTokens}, terrains=${this.#artTerrains.length} [${this.#artTerrains.join(",")}]${this.#stationTokenBasePath && this.#stationTokenBasePath !== this.#importedArtPath ? ` via ${this.#stationTokenBasePath}` : ""})` : ""}`);
+        console.log(`${MODULE_ID} | ImageResolver: artPack=${this.#artPackActive}${this.#artPackActive ? ` (${this.#importedArtPath}, tokens=${this.#hasStationTokens}${this.#stationTokenBasePath && this.#stationTokenBasePath !== this.#importedArtPath ? ` via ${this.#stationTokenBasePath}` : ""})` : ""}`);
         if (this.#hasStationTokens) {
             console.log(`${MODULE_ID} | ImageResolver: station tokens: [${[...this.#stationTokenFiles].join(", ")}]`);
         }
@@ -256,16 +247,9 @@ export class ImageResolver {
      * for that terrain, otherwise the universal fallback.
      */
     static terrainBanner(terrain, filename) {
-        // Art pack active AND this terrain (or its alias) is covered by the pack
-        if (this.#artPackActive) {
-            const resolved = this.#artTerrains.includes(terrain)
-                ? terrain
-                : (TERRAIN_ART_ALIASES[terrain] && this.#artTerrains.includes(TERRAIN_ART_ALIASES[terrain])
-                    ? TERRAIN_ART_ALIASES[terrain]
-                    : null);
-            if (resolved) {
-                return `${this.#basePath}/data/terrains/${resolved}/${filename}`;
-            }
+        // Art pack active AND this terrain is covered by the pack
+        if (this.#artPackActive && this.#artTerrains.includes(terrain)) {
+            return `${this.#basePath}/data/terrains/${terrain}/${filename}`;
         }
         const key = `${terrain}/${filename}`;
         if (KNOWN_BASE_IMAGES.has(key)) {
