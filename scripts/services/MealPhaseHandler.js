@@ -1055,7 +1055,7 @@ export class MealPhaseHandler {
             const qty = item.system?.quantity ?? 1;
             if (qty <= 0) continue;
 
-            const isFood = this._isFoodItem(item);
+            const isFood = ItemClassifier.isFood(item, actor);
             if (!isFood) continue;
 
             options.push({
@@ -1099,7 +1099,7 @@ export class MealPhaseHandler {
             const uses = item.system?.uses;
             if (qty <= 0 && (!uses || uses.value <= 0)) continue;
 
-            const isWater = this._isWaterItem(item);
+            const isWater = ItemClassifier.isWater(item, actor);
             if (!isWater) continue;
 
             // Per-waterskin: show quantity of skins, not internal pint charges
