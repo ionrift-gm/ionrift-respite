@@ -6049,6 +6049,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const slotIndex = zone.dataset.slotIndex !== undefined ? parseInt(zone.dataset.slotIndex) : undefined;
 
             zone.addEventListener("dragover", (e) => {
+                if (slot === "water" && zone.dataset.poolFull === "true") return;
                 if (!e.dataTransfer.types.includes("text/plain")) return;
                 e.preventDefault();
                 zone.classList.add("drop-hover");
@@ -6062,6 +6063,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             zone.addEventListener("drop", (e) => {
                 e.preventDefault();
                 zone.classList.remove("drop-hover");
+                if (slot === "water" && zone.dataset.poolFull === "true") return;
                 const raw = e.dataTransfer.getData("text/plain");
                 if (!raw?.startsWith("meal:")) return;
 
