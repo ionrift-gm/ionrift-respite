@@ -12427,17 +12427,24 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 .water-pool-bar {
     display: flex;
+    flex-direction: row;
+    align-self: stretch;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     gap: 2px;
     height: 12px;
     border-radius: 6px;
     overflow: hidden;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(100, 160, 255, 0.2);
-    margin: 0 8px 6px;
+    margin: 0 0 6px;
+    min-width: 0;
 }
 
 .water-pool-segment {
-    flex: 1;
+    flex: 1 1 0;
+    min-width: 0;
     background: rgba(100, 160, 255, 0.1);
     transition: background 0.3s ease;
 }
@@ -12448,9 +12455,12 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 }
 
 .water-pool-status {
+    align-self: stretch;
+    width: 100%;
+    box-sizing: border-box;
     text-align: center;
     font-size: 0.75rem;
-    padding: 0 8px 4px;
+    padding: 0 0 4px;
 }
 
 .pool-status-ok { color: #4ade80; }
@@ -12461,9 +12471,12 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 .water-pool-sources {
     display: flex;
+    align-self: stretch;
+    width: 100%;
+    box-sizing: border-box;
     gap: 4px;
     flex-wrap: wrap;
-    padding: 0 8px 6px;
+    padding: 0 0 6px;
     justify-content: center;
 }
 
