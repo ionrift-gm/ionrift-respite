@@ -20,7 +20,7 @@ export const STUB_RECIPES = {
             dc: 8,
             ingredients: [
                 { name: "Rations", quantity: 1 },
-                { name: "Waterskin", quantity: 1 }
+                { name: "Water", quantity: 2, resourceType: "water" }
             ],
             output: {
                 name: "Camp Porridge",
@@ -263,7 +263,7 @@ export const STUB_RECIPES = {
             ingredients: [
                 { name: "Rations", quantity: 1, perPartyMember: true },
                 { name: "Fresh Meat", quantity: 1 },
-                { name: "Waterskin", quantity: 1 }
+                { name: "Water", quantity: 2, resourceType: "water" }
             ],
             output: {
                 name: "Hearty Stew",
