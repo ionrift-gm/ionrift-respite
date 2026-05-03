@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.7] - 2026-05-04
+
+### Fixed
+- Players cooking a feast and clicking "Serve Now" no longer get a permission error. The feast serve and party meal distribution now route through the host, so players don't need direct ownership of every party member's character sheet.
+- After serving a feast, players can interact with other stations again. The permission failure was cascading into a broken activity state that blocked all further station clicks.
+
 ## [2.0.6] - 2026-05-04
 
 ### Changed
