@@ -1396,10 +1396,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         };
     }
 
-    /** GM-only advisory when no terrain art pack is active (Make Camp phase). */
+    /** GM-only advisory when no terrain art pack is active OR pack is outdated (Make Camp phase). */
     _shouldShowArtNudge() {
         if (!game.user.isGM) return false;
-        if (ImageResolver.hasArtPack) return false;
+        if (ImageResolver.hasArtPack && ImageResolver.hasStationTokens) return false;
         if (game.settings.get(MODULE_ID, "artNudgeSuppressed")) return false;
         const snoozedUntil = game.settings.get(MODULE_ID, "artNudgeSnoozedUntil");
         if (snoozedUntil) {
@@ -3008,6 +3008,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             canProceedFromCamp: false,
             campMinimalMode: this._phase === "camp",
             showArtNudge: this._phase === "camp" && this._shouldShowArtNudge(),
+            artNudgeIsUpdate: this._phase === "camp" && ImageResolver.hasArtPack && !ImageResolver.hasStationTokens,
             campPitPlacementCancelled: !!this._campPitPlacementCancelled,
             showCampfireCanvasPanel: !!this._showCampfireCanvasPanel,
             campMakeCampStep,
