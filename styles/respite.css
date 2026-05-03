@@ -12370,6 +12370,111 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 .meal-terrain-note i { margin-right: 0.3rem; }
 
+/* Station rations: terrain alert + water pool bar */
+.meal-terrain-alert {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    border: 1px solid;
+}
+
+.meal-terrain-alert.terrain-desert {
+    border-color: rgba(251, 191, 36, 0.4);
+    background: rgba(251, 191, 36, 0.08);
+    color: #fbbf24;
+}
+
+.meal-terrain-alert.terrain-arctic {
+    border-color: rgba(96, 165, 250, 0.4);
+    background: rgba(96, 165, 250, 0.08);
+    color: #93c5fd;
+}
+
+.meal-terrain-alert.terrain-extreme {
+    border-color: rgba(248, 113, 113, 0.4);
+    background: rgba(248, 113, 113, 0.08);
+    color: #fca5a5;
+}
+
+.meal-panel-heading--water {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 0.35rem;
+}
+
+.meal-panel-heading-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.meal-panel-req-note {
+    margin-left: auto;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-weight: normal;
+}
+
+.water-pool-target {
+    margin: 0 auto 8px;
+}
+
+.water-pool-bar {
+    display: flex;
+    gap: 2px;
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(100, 160, 255, 0.2);
+    margin: 0 8px 6px;
+}
+
+.water-pool-segment {
+    flex: 1;
+    background: rgba(100, 160, 255, 0.1);
+    transition: background 0.3s ease;
+}
+
+.water-pool-segment.filled {
+    background: linear-gradient(135deg, #4a9eff, #2563eb);
+    box-shadow: 0 0 6px rgba(74, 158, 255, 0.3);
+}
+
+.water-pool-status {
+    text-align: center;
+    font-size: 0.75rem;
+    padding: 0 8px 4px;
+}
+
+.pool-status-ok { color: #4ade80; }
+
+.pool-status-partial { color: #fbbf24; }
+
+.pool-status-empty { color: rgba(255, 255, 255, 0.4); }
+
+.water-pool-sources {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    padding: 0 8px 6px;
+    justify-content: center;
+}
+
+.pool-source-pill {
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: rgba(100, 160, 255, 0.15);
+    color: rgba(255, 255, 255, 0.7);
+}
+
 /* Days Since Last Rest stepper */
 .days-since-rest-block {
     margin-top: 0.6rem;

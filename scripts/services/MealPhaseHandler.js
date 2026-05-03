@@ -384,6 +384,43 @@ export class MealPhaseHandler {
                 summaryWaterSufficient = summaryWaterFilled >= summaryWaterRequired;
             }
 
+            const poolWaterRequired = allDaysConsumed ? summaryWaterRequired : wpd;
+            const poolWaterFilled = allDaysConsumed ? summaryWaterFilled : effectiveWaterFilled;
+            const waterPoolSegments = [];
+            for (let i = 0; i < poolWaterRequired; i++) {
+                waterPoolSegments.push({ index: i, filled: i < poolWaterFilled });
+            }
+
+            const waterPoolSources = [];
+            const sourceMap = new Map();
+            for (const slot of waterSlots) {
+                if (!slot.filled || !slot.selected || slot.selected === "skip") continue;
+                if (slot.selected.startsWith?.("__")) {
+                    if (!sourceMap.has("__feast")) sourceMap.set("__feast", { name: "Feast", pintsUsed: 0 });
+                    sourceMap.get("__feast").pintsUsed++;
+                    continue;
+                }
+                const item = actor.items.get(slot.selected);
+                const key = slot.selected;
+                if (!sourceMap.has(key)) sourceMap.set(key, { name: item?.name ?? "Unknown", pintsUsed: 0 });
+                sourceMap.get(key).pintsUsed++;
+            }
+            for (const src of sourceMap.values()) waterPoolSources.push(src);
+
+            const isNonStandard = rules.waterPerDay > 2 || rules.foodPerDay > 1;
+            let terrainAlertClass = "";
+            let terrainAlertIcon = "fas fa-info-circle";
+            if (rules.waterPerDay >= 4) {
+                terrainAlertClass = "terrain-desert";
+                terrainAlertIcon = "fas fa-sun";
+            } else if (rules.foodPerDay >= 2) {
+                terrainAlertClass = "terrain-arctic";
+                terrainAlertIcon = "fas fa-snowflake";
+            } else if (isNonStandard) {
+                terrainAlertClass = "terrain-extreme";
+                terrainAlertIcon = "fas fa-exclamation-triangle";
+            }
+
             cards.push({
                 characterId: charId,
                 actorName: actor.name,
@@ -406,6 +443,10 @@ export class MealPhaseHandler {
                 waterFilledCount: allDaysConsumed ? summaryWaterFilled : effectiveWaterFilled,
                 waterSufficient: allDaysConsumed ? summaryWaterSufficient : waterSufficient,
                 waterRequired: allDaysConsumed ? summaryWaterRequired : wpd,
+                waterPoolSegments,
+                waterPoolSources,
+                terrainAlertClass,
+                terrainAlertIcon,
                 terrainNote: rules.note ?? null,
                 totalDays,
                 currentDay: currentDay + 1,
@@ -1122,12 +1163,27 @@ export class MealPhaseHandler {
             if (!isWater) continue;
 
             const avail = qty;
+            const uses = item.system?.uses;
+            const maxCharges = (uses && uses.max > 0) ? uses.max : null;
+            const isV5 = uses && ("spent" in uses);
+            const remainingCharges = maxCharges
+                ? (isV5 ? (uses.max - (uses.spent ?? 0)) : (uses.value ?? 0))
+                : null;
+            const totalPints = maxCharges
+                ? (remainingCharges + (avail - 1) * maxCharges)
+                : avail;
+            const label = maxCharges
+                ? `${item.name} (${remainingCharges} pints)`
+                : `${item.name} (\u00d7${avail})`;
             options.push({
                 value: item.id,
-                label: `${item.name} (\u00d7${avail})`,
+                label,
                 name: item.name,
                 itemId: item.id,
                 available: avail,
+                maxCharges,
+                remainingCharges,
+                totalPints,
                 icon: item.img ?? "icons/consumables/drinks/waterskin-leather-tan.webp"
             });
         }
