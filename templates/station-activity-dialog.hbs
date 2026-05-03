@@ -787,6 +787,7 @@
             </span>
         </div>
         {{else}}
+        <div class="station-meal-embed-scroll">
         {{#if terrainNote}}
         <div class="meal-terrain-alert {{terrainAlertClass}}">
             <i class="{{terrainAlertIcon}}" aria-hidden="true"></i>
@@ -857,12 +858,16 @@
                     <span class="meal-panel-req-note">{{waterRequired}} pints needed</span>
                 </div>
                 {{#if hasWater}}
-                <div class="water-pool-target meal-drop-zone water-drop-zone"
-                     data-character-id="{{characterId}}" data-slot="water" data-slot-index="0">
+                <div class="water-pool-target meal-drop-zone water-drop-zone{{#if waterSufficient}} water-pool-target--complete{{/if}}"
+                     data-character-id="{{characterId}}" data-slot="water" data-slot-index="0"{{#if waterSufficient}} data-pool-full="true"{{/if}}>
                     <div class="drop-zone-silhouette">
+                        {{#if waterSufficient}}
+                        <i class="fas fa-check-circle water-pool-complete-icon" aria-hidden="true"></i>
+                        {{else}}
                         <i class="fas fa-tint drop-zone-goblet"></i>
+                        {{/if}}
                     </div>
-                    <span class="meal-drop-hint-text">drop water here</span>
+                    <span class="meal-drop-hint-text">{{#if waterSufficient}}Water needs met{{else}}drop water here{{/if}}</span>
                 </div>
                 <div class="water-pool-bar" data-target="{{waterRequired}}" data-filled="{{waterFilledCount}}">
                     {{#each waterPoolSegments}}
@@ -910,6 +915,7 @@
                 </div>
                 {{/if}}
             </div>
+        </div>
         </div>
         <div class="station-meal-submit-row">
             <button type="button" class="station-meal-submit-btn" data-action="submitStationRations">Submit rations</button>

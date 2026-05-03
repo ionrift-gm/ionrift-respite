@@ -8671,8 +8671,18 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 }
 
 .ionrift-station-dialog .station-meal-embed {
-    padding: 0.25rem 0.35rem 0.45rem;
-    max-height: 340px;
+    display: flex;
+    flex-direction: column;
+    padding: 0.2rem 0.35rem 0.35rem;
+    max-height: min(520px, 72vh);
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.ionrift-station-dialog .station-meal-embed-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
     overflow-y: auto;
 }
 
@@ -8695,7 +8705,12 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 }
 
 .ionrift-station-dialog .station-meal-embed .meal-drop-columns {
-    gap: 0.35rem;
+    gap: 0.3rem;
+}
+
+.ionrift-station-dialog .station-meal-embed .water-pool-target.meal-drop-zone {
+    width: 72px;
+    height: 72px;
 }
 
 .ionrift-station-dialog .station-meal-embed .meal-panel {
@@ -8707,8 +8722,9 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 }
 
 .ionrift-station-dialog .station-meal-submit-row {
-    margin-top: 0.45rem;
-    padding-top: 0.35rem;
+    flex-shrink: 0;
+    margin-top: 0.35rem;
+    padding-top: 0.3rem;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
     display: flex;
     justify-content: flex-end;
@@ -9187,10 +9203,11 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 }
 
 .ionrift-station-dialog .station-essence-hint {
+    flex-shrink: 0;
     font-size: 0.62rem;
     color: rgba(251, 191, 36, 0.85);
-    margin: 0 0 0.35rem;
-    padding: 0.25rem 0.35rem;
+    margin: 0 0 0.28rem;
+    padding: 0.22rem 0.35rem;
     background: rgba(0, 0, 0, 0.2);
     border-radius: 4px;
 }
@@ -12422,7 +12439,30 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 }
 
 .water-pool-target {
-    margin: 0 auto 8px;
+    margin: 0 auto 6px;
+}
+
+.water-pool-target.water-pool-target--complete {
+    border-style: solid;
+    border-color: rgba(74, 158, 255, 0.42);
+    background: rgba(74, 158, 255, 0.07);
+    cursor: default;
+}
+
+.water-pool-target.water-pool-target--complete.drop-hover {
+    border-color: rgba(74, 158, 255, 0.42);
+    box-shadow: none;
+}
+
+.water-pool-target .water-pool-complete-icon {
+    font-size: 2rem;
+    color: rgba(96, 165, 250, 0.92);
+    filter: drop-shadow(0 0 6px rgba(74, 158, 255, 0.45));
+}
+
+.water-pool-target.water-pool-target--complete .meal-drop-hint-text {
+    font-size: 0.58rem;
+    color: rgba(147, 197, 253, 0.85);
 }
 
 .water-pool-bar {
