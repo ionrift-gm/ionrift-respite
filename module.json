@@ -7,7 +7,7 @@
     "url": "https://github.com/ionrift-gm/ionrift-respite",
     "manifest": "https://github.com/ionrift-gm/ionrift-respite/releases/latest/download/module.json",
     "readme": "https://raw.githubusercontent.com/ionrift-gm/ionrift-respite/main/README.md",
-    "download": "https://github.com/ionrift-gm/ionrift-respite/releases/download/v2.0.3/module.zip",
+    "download": "https://github.com/ionrift-gm/ionrift-respite/releases/download/v2.0.4/module.zip",
     "systems": ["dnd5e", "pf2e"],
     "compatibility": {
         "minimum": "12",
