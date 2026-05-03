@@ -13,7 +13,7 @@
         "good":    ["A thicket so dense nothing can approach unseen.", "A hollow tree large enough for a camp.", "A ridge with clear lines of sight."],
         "nat20":   ["A hidden sylvan grove, unnaturally peaceful.", "An ancient treehouse platform, sturdy and concealed.", "A dry cave behind a moss curtain, invisible from outside."]
     },
-    "mealRules": { "waterPerDay": 1, "foodPerDay": 1 },
+    "mealRules": { "waterPerDay": 2, "foodPerDay": 1 },
     "weather": ["clear", "overcast", "fog", "rain", "heavy_rain", "hail"],
     "eventsFile": "core/events/forest_events.json"
 }

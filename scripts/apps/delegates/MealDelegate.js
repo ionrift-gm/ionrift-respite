@@ -7,6 +7,7 @@
 
 import { MealPhaseHandler } from "../../services/MealPhaseHandler.js";
 import { TerrainRegistry } from "../../services/TerrainRegistry.js";
+import { ItemClassifier } from "../../services/ItemClassifier.js";
 import { getPartyActors } from "../../services/partyActors.js";
 import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../../services/StationInteractionLayer.js";
 
@@ -160,53 +161,65 @@ export class MealDelegate {
     }
 
     /**
-     * Player submits their meal choices via socket to the GM.
+     * Player-owned actors that owe meal picks for this rest: party roster participant,
+     * Foundry character sheet, sustenance not "none". Omits auxiliary sheets (loot,
+     * shared chest actors typed non-character, etc.) that were inflating Skip Meals.
+     * @param {import("../RestSetupApp.js").RestSetupApp} app
+     * @returns {Set<string>}
      */
-    async onSubmitMealChoices(event, target) {
-        const app = this._app;
-        if (app._isGM) return;
+    _mealObligatedOwnedCharacterIds(app) {
+        const owned = app._myCharacterIds;
+        if (!owned?.size) return new Set();
 
-        const choices = {};
-        const skippedSlots = [];
-        if (app._mealChoices) {
-            const totalDays = app._engine?.durationDays ?? 1;
-            for (const [charId, choice] of app._mealChoices) {
-                if (app._myCharacterIds?.has(charId)) {
-                    if ((choice.consumedDays?.length ?? 0) >= totalDays) {
-                        choices[charId] = choice;
-                        continue;
-                    }
-
-                    choices[charId] = choice;
-                    const actor = game.actors.get(charId);
-                    const name = actor?.name ?? charId;
-                    const foodArr = Array.isArray(choice.food) ? choice.food : [];
-                    const foodEmpty = foodArr.filter(v => !v || v === "skip").length;
-                    if (foodArr.length === 0 || foodEmpty > 0) skippedSlots.push(`${name}: ${foodArr.length === 0 ? "no food" : `${foodEmpty} food slot${foodEmpty > 1 ? "s" : ""} empty`}`);
-                    const waterArr = Array.isArray(choice.water) ? choice.water : [];
-                    const waterEmpty = waterArr.filter(v => !v || v === "skip").length;
-                    if (waterArr.length === 0 || waterEmpty > 0) skippedSlots.push(`${name}: ${waterArr.length === 0 ? "no water" : `${waterEmpty} water slot${waterEmpty > 1 ? "s" : ""} empty`}`);
-                }
-            }
+        const rosterIds = new Set(getPartyActors().map(a => a.id));
+        let participantIds;
+        if (app._engine?.characterChoices?.size) {
+            participantIds = [...app._engine.characterChoices.keys()].filter(id => rosterIds.has(id));
+        } else {
+            participantIds = [...rosterIds].filter(id => owned.has(id));
         }
 
-        if (app._myCharacterIds) {
-            for (const charId of app._myCharacterIds) {
-                if (!choices[charId]) {
-                    const actor = game.actors.get(charId);
-                    const name = actor?.name ?? charId;
-                    skippedSlots.push(`${name}: no food`);
-                    skippedSlots.push(`${name}: no water`);
-                    choices[charId] = { food: [], water: [] };
-                }
-            }
+        const out = new Set();
+        for (const id of participantIds) {
+            if (!owned.has(id)) continue;
+            const actor = game.actors.get(id);
+            if (!actor || actor.type !== "character") continue;
+            if (ItemClassifier.getSustenanceType(actor) === "none") continue;
+            out.add(id);
         }
+        return out;
+    }
 
-        if (skippedSlots.length > 0) {
-            const confirmed = await new Promise(resolve => {
-                const overlay = document.createElement("div");
-                overlay.classList.add("ionrift-armor-modal-overlay");
-                overlay.innerHTML = `
+    /**
+     * @param {string[]} skippedSlots
+     * @param {string} charId
+     * @param {{ food?: unknown[], water?: unknown[] }} choice
+     */
+    _pushMealSlotWarnings(skippedSlots, charId, choice) {
+        const actor = game.actors.get(charId);
+        const name = actor?.name ?? charId;
+        const foodArr = Array.isArray(choice.food) ? choice.food : [];
+        const foodEmpty = foodArr.filter(v => !v || v === "skip").length;
+        if (foodArr.length === 0 || foodEmpty > 0) {
+            skippedSlots.push(`${name}: ${foodArr.length === 0 ? "no food" : `${foodEmpty} food slot${foodEmpty > 1 ? "s" : ""} empty`}`);
+        }
+        const waterArr = Array.isArray(choice.water) ? choice.water : [];
+        const waterEmpty = waterArr.filter(v => !v || v === "skip").length;
+        if (waterArr.length === 0 || waterEmpty > 0) {
+            skippedSlots.push(`${name}: ${waterArr.length === 0 ? "no water" : `${waterEmpty} water slot${waterEmpty > 1 ? "s" : ""} empty`}`);
+        }
+    }
+
+    /**
+     * @param {string[]} skippedSlots
+     * @returns {Promise<boolean>}
+     */
+    async _confirmSkipMeals(skippedSlots) {
+        if (skippedSlots.length === 0) return true;
+        return await new Promise(resolve => {
+            const overlay = document.createElement("div");
+            overlay.classList.add("ionrift-armor-modal-overlay");
+            overlay.innerHTML = `
                     <div class="ionrift-armor-modal">
                         <h3><i class="fas fa-exclamation-triangle"></i> Skip Meals?</h3>
                         <p>The following meals are empty:</p>
@@ -217,24 +230,108 @@ export class MealDelegate {
                             <button class="btn-armor-cancel"><i class="fas fa-arrow-left"></i> Go Back</button>
                         </div>
                     </div>`;
-                document.body.appendChild(overlay);
-                overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => {
-                    overlay.remove();
-                    resolve(true);
-                });
-                overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => {
-                    overlay.remove();
-                    resolve(false);
-                });
+            document.body.appendChild(overlay);
+            overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => {
+                overlay.remove();
+                resolve(true);
             });
-            if (!confirmed) return;
+            overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => {
+                overlay.remove();
+                resolve(false);
+            });
+        });
+    }
+
+    /**
+     * Activity-phase Cooking Station: submit rations for one character only (socket + local flags).
+     * Avoids validating every owned actor (e.g. party chest sheets) on each station submit.
+     * @param {string} actorId
+     */
+    async onSubmitStationMealChoices(actorId) {
+        const app = this._app;
+        if (app._isGM || !actorId) return;
+
+        const obligated = this._mealObligatedOwnedCharacterIds(app);
+        if (!obligated.has(actorId)) return;
+
+        if (!app._activityMealRationsSubmitted) app._activityMealRationsSubmitted = new Set();
+        if (app._activityMealRationsSubmitted.has(actorId)) return;
+
+        const choice = app._mealChoices?.get(actorId) ?? {};
+        const totalDays = app._engine?.durationDays ?? 1;
+        if ((choice.consumedDays?.length ?? 0) >= totalDays) {
+            app._activityMealRationsSubmitted.add(actorId);
+            const allRecorded = [...obligated].every(id => app._activityMealRationsSubmitted.has(id));
+            if (allRecorded) app._mealSubmitted = true;
+            app.render();
+            return;
         }
+
+        const skippedSlots = [];
+        this._pushMealSlotWarnings(skippedSlots, actorId, choice);
+        if (!(await this._confirmSkipMeals(skippedSlots))) return;
+
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "mealChoice",
+            userId: game.user.id,
+            choices: { [actorId]: choice }
+        });
+
+        app._activityMealRationsSubmitted.add(actorId);
+        const allRecorded = [...obligated].every(id => app._activityMealRationsSubmitted.has(id));
+        if (allRecorded) app._mealSubmitted = true;
+
+        if (isStationLayerActive()) {
+            refreshStationEmptyNoticeFade(app);
+        }
+        app.render();
+        ui.notifications.info("Meal choices submitted.");
+    }
+
+    /**
+     * Player submits their meal choices via socket to the GM.
+     */
+    async onSubmitMealChoices(event, target) {
+        const app = this._app;
+        if (app._isGM) return;
+
+        const obligated = this._mealObligatedOwnedCharacterIds(app);
+        const submitted = app._activityMealRationsSubmitted ?? new Set();
+        const pending = new Set([...obligated].filter(id => !submitted.has(id)));
+
+        const choices = {};
+        const skippedSlots = [];
+        const totalDays = app._engine?.durationDays ?? 1;
+
+        for (const charId of obligated) {
+            const choice = app._mealChoices?.get(charId) ?? {};
+
+            if ((choice.consumedDays?.length ?? 0) >= totalDays) {
+                choices[charId] = choice;
+                continue;
+            }
+
+            if (!pending.has(charId)) {
+                choices[charId] = choice;
+                continue;
+            }
+
+            choices[charId] = choice;
+            this._pushMealSlotWarnings(skippedSlots, charId, choice);
+        }
+
+        if (!(await this._confirmSkipMeals(skippedSlots))) return;
 
         game.socket.emit(`module.${MODULE_ID}`, {
             type: "mealChoice",
             userId: game.user.id,
             choices
         });
+
+        if (!app._activityMealRationsSubmitted) app._activityMealRationsSubmitted = new Set();
+        for (const charId of obligated) {
+            app._activityMealRationsSubmitted.add(charId);
+        }
 
         app._mealSubmitted = true;
         if (isStationLayerActive()) {

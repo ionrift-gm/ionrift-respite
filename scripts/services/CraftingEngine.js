@@ -17,6 +17,7 @@
 
 import { waitForDiceSoNice } from "./RollRequestManager.js";
 import { SpoilageClock } from "./SpoilageClock.js";
+import { ItemClassifier } from "./ItemClassifier.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -133,7 +134,7 @@ export class CraftingEngine {
             }
 
             // Check ingredients
-            const ingredientStatus = this._checkIngredients(recipe.ingredients, inventory, partySize);
+            const ingredientStatus = this._checkIngredients(recipe.ingredients, inventory, partySize, actor);
 
             if (ingredientStatus.canCraft) {
                 available.push({ ...recipe, ingredientStatus });
@@ -164,7 +165,7 @@ export class CraftingEngine {
         }
 
         const inventory = this._buildInventoryMap(actor);
-        const ingredientStatus = this._checkIngredients(recipe.ingredients, inventory, partySize);
+        const ingredientStatus = this._checkIngredients(recipe.ingredients, inventory, partySize, actor);
         if (!ingredientStatus.canCraft) {
             return { success: false, error: "Missing ingredients.", ingredientStatus };
         }
@@ -274,12 +275,13 @@ export class CraftingEngine {
 
     /**
      * Checks if ingredients are available in the inventory.
-     * @param {Object[]} ingredients - [{ name, quantity, perPartyMember? }]
-     * @param {Map} inventory
-     * @param {number} [partySize] - Current party size for perPartyMember scaling (B5 offset: max(1, n-2))
+     * @param {Object[]} ingredients - [{ name, quantity, perPartyMember?, resourceType? }]
+     * @param {Map} inventory - Name-keyed inventory map from _buildInventoryMap
+     * @param {number} [partySize]
+     * @param {Actor} [actor] - Required when any ingredient uses resourceType
      * @returns {Object} { canCraft, hasAny, details: [{ name, required, available, met }] }
      */
-    _checkIngredients(ingredients, inventory, partySize = 1) {
+    _checkIngredients(ingredients, inventory, partySize = 1, actor = null) {
         if (!ingredients?.length) return { canCraft: true, hasAny: true, details: [] };
 
         let canCraft = true;
@@ -287,12 +289,18 @@ export class CraftingEngine {
         const details = [];
 
         for (const ing of ingredients) {
-            const key = ing.name.toLowerCase().trim();
-            const entry = inventory.get(key);
-            const available = entry?.quantity ?? 0;
             const effectiveQty = (ing.quantity ?? 1) * (ing.perPartyMember ? Math.max(1, partySize - 2) : 1);
-            const met = available >= effectiveQty;
+            let available;
 
+            if (ing.resourceType === "water" && actor) {
+                available = this._countWaterPints(actor);
+            } else {
+                const key = ing.name.toLowerCase().trim();
+                const entry = inventory.get(key);
+                available = entry?.quantity ?? 0;
+            }
+
+            const met = available >= effectiveQty;
             if (!met) canCraft = false;
             if (available > 0) hasAny = true;
 
@@ -308,15 +316,52 @@ export class CraftingEngine {
     }
 
     /**
+     * Count total available water pints across all water items in inventory.
+     * Items with use-charges (waterskins): remaining charges per unit, summed.
+     * Items without charges: quantity treated as 1 pint each.
+     * @param {Actor} actor
+     * @returns {number}
+     */
+    _countWaterPints(actor) {
+        let total = 0;
+        for (const item of actor.items) {
+            if (!ItemClassifier.isWater(item, actor)) continue;
+            const qty = item.system?.quantity ?? 1;
+            if (qty <= 0) continue;
+            const uses = item.system?.uses;
+            const rawMax = uses && uses.max > 0 ? uses.max : 0;
+            if (rawMax > 1) {
+                const isV5 = ("spent" in uses);
+                const chargesPerUnit = isV5 ? (uses.max - (uses.spent ?? 0)) : (uses.value ?? 0);
+                total += chargesPerUnit + ((qty - 1) * uses.max);
+            } else if (rawMax === 1) {
+                const isV5 = ("spent" in uses);
+                const rcRaw = isV5 ? (uses.max - (uses.spent ?? 0)) : uses.value;
+                const rc = rcRaw != null ? Math.max(0, rcRaw) : qty;
+                total += Math.min(qty, rc);
+            } else {
+                total += qty;
+            }
+        }
+        return total;
+    }
+
+    /**
      * Consumes ingredients from the actor's inventory.
      * @param {Actor} actor
-     * @param {Object[]} ingredients - [{ name, quantity, perPartyMember? }]
+     * @param {Object[]} ingredients - [{ name, quantity, perPartyMember?, resourceType? }]
      * @param {number} [partySize] - Current party size for perPartyMember scaling
      */
     async _consumeIngredients(actor, ingredients, partySize = 1) {
         for (const ing of ingredients) {
-            const key = ing.name.toLowerCase().trim();
             const required = (ing.quantity ?? 1) * (ing.perPartyMember ? Math.max(1, partySize - 2) : 1);
+
+            if (ing.resourceType === "water") {
+                await this._consumeWaterPints(actor, required);
+                continue;
+            }
+
+            const key = ing.name.toLowerCase().trim();
             let remaining = required;
 
             const matches = actor.items.filter(i => i.name.toLowerCase().trim() === key);
@@ -345,6 +390,94 @@ export class CraftingEngine {
             if (updates.length) await actor.updateEmbeddedDocuments("Item", updates);
             if (deletes.length) await actor.deleteEmbeddedDocuments("Item", deletes);
         }
+    }
+
+    /**
+     * Consume water pints from any water items.
+     * Prefers depleting charges on multi-use items first, then qty-only items.
+     * @param {Actor} actor
+     * @param {number} pints - Number of pints to consume
+     */
+    async _consumeWaterPints(actor, pints) {
+        let remaining = pints;
+        const waterItems = actor.items.filter(i => ItemClassifier.isWater(i, actor) && (i.system?.quantity ?? 0) > 0);
+
+        waterItems.sort((a, b) => {
+            const ka = SpoilageClock.getConsumeSortKey(a);
+            const kb = SpoilageClock.getConsumeSortKey(b);
+            if (ka !== kb) return ka - kb;
+            return String(a.id).localeCompare(String(b.id));
+        });
+
+        const chargeItems = waterItems.filter(i => (i.system?.uses?.max ?? 0) > 1);
+        const qtyOnlyItems = waterItems.filter(i => (i.system?.uses?.max ?? 0) <= 1);
+
+        const updates = [];
+        const deletes = [];
+
+        for (const item of chargeItems) {
+            if (remaining <= 0) break;
+            const qty = item.system?.quantity ?? 1;
+            const uses = item.system.uses;
+            const isV5 = ("spent" in uses);
+            const chargesRemaining = isV5 ? (uses.max - (uses.spent ?? 0)) : (uses.value ?? 0);
+            const totalPints = chargesRemaining + ((qty - 1) * uses.max);
+
+            if (totalPints <= remaining) {
+                deletes.push(item.id);
+                remaining -= totalPints;
+            } else {
+                let pintsToConsume = remaining;
+                let currentCharges = chargesRemaining;
+                let currentQty = qty;
+
+                while (pintsToConsume > 0 && currentQty > 0) {
+                    if (currentCharges > 0) {
+                        const take = Math.min(pintsToConsume, currentCharges);
+                        currentCharges -= take;
+                        pintsToConsume -= take;
+                    }
+                    if (currentCharges <= 0 && pintsToConsume > 0) {
+                        currentQty--;
+                        currentCharges = currentQty > 0 ? uses.max : 0;
+                    } else if (currentCharges <= 0 && currentQty > 1) {
+                        currentQty--;
+                        currentCharges = uses.max;
+                    } else {
+                        break;
+                    }
+                }
+
+                if (currentQty <= 0) {
+                    deletes.push(item.id);
+                } else {
+                    const update = { _id: item.id, "system.quantity": currentQty };
+                    if (isV5) {
+                        update["system.uses.spent"] = uses.max - currentCharges;
+                    } else {
+                        update["system.uses.value"] = currentCharges;
+                    }
+                    updates.push(update);
+                }
+                remaining = pintsToConsume;
+            }
+        }
+
+        for (const item of qtyOnlyItems) {
+            if (remaining <= 0) break;
+            const qty = item.system?.quantity ?? 1;
+
+            if (qty <= remaining) {
+                deletes.push(item.id);
+                remaining -= qty;
+            } else {
+                updates.push({ _id: item.id, "system.quantity": qty - remaining });
+                remaining = 0;
+            }
+        }
+
+        if (updates.length) await actor.updateEmbeddedDocuments("Item", updates);
+        if (deletes.length) await actor.deleteEmbeddedDocuments("Item", deletes);
     }
 
     /**

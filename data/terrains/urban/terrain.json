@@ -13,7 +13,7 @@
         "good":    ["A forgotten attic space, hidden entrance.", "A walled garden, single gate.", "An old watchtower, clear sightlines."],
         "nat20":   ["A safe house with intact locks and a back exit.", "A noble's abandoned estate, fully furnished.", "A temple sanctuary, warded and respected."]
     },
-    "mealRules": { "waterPerDay": 1, "foodPerDay": 1, "note": "Water and basic food are generally available in towns." },
+    "mealRules": { "waterPerDay": 2, "foodPerDay": 1, "note": "Water and basic food are generally available in towns." },
     "weather": ["clear", "overcast", "fog", "rain", "heavy_rain", "thunderstorm", "snow", "extreme_heat"],
     "eventsFile": "core/events/urban_events.json"
 }
