@@ -1,0 +1,26 @@
+{
+  "version": "1",
+  "packs": {
+    "respite-items": {
+      "status": "approved",
+      "approvedBy": "ionrift",
+      "approvedDate": "2026-04-01",
+      "assetPolicy": "foundry-core-only",
+      "note": "Rest consumables and camp items"
+    },
+    "respite-guide": {
+      "status": "approved",
+      "approvedBy": "ionrift",
+      "approvedDate": "2026-04-01",
+      "assetPolicy": "foundry-core-only",
+      "note": "GM guide journals"
+    },
+    "respite-actors": {
+      "status": "approved",
+      "approvedBy": "ionrift",
+      "approvedDate": "2026-04-01",
+      "assetPolicy": "foundry-core-only",
+      "note": "Camp actor templates"
+    }
+  }
+}

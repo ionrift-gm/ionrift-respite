@@ -14,6 +14,24 @@ import { ItemClassifier } from "./ItemClassifier.js";
 import { CalendarHandler } from "./CalendarHandler.js";
 import { SpoilageClock } from "./SpoilageClock.js";
 
+/**
+ * Compute per-actor food/water slot counts. Essence actors always need at
+ * least 1 food slot (terrain cannot "provide" custom essence items). For
+ * water, essence actors with only exotic drinks (oil, not water) also need
+ * at least 1 slot since the terrain only covers standard water.
+ */
+function _actorMealSlots(actor, rules) {
+    const isEssence = ItemClassifier.requiresEssence(actor);
+    if (!isEssence) return { foodPerDay: rules.foodPerDay, waterPerDay: rules.waterPerDay, needsEssence: false };
+    const diet = ItemClassifier.getDiet(actor);
+    const needsExoticDrink = diet.canDrink.length > 0 && !diet.canDrink.includes("water");
+    return {
+        foodPerDay: Math.max(1, rules.foodPerDay),
+        waterPerDay: needsExoticDrink ? Math.max(1, rules.waterPerDay) : rules.waterPerDay,
+        needsEssence: true
+    };
+}
+
 const MODULE_ID = "ionrift-respite";
 
 const SPOILED_FOOD_TEMPLATE = {
@@ -32,7 +50,7 @@ const SPOILED_FOOD_TEMPLATE = {
 
 /** Default meal requirements (PHB RAW baseline). */
 const MEAL_DEFAULTS = {
-    waterPerDay: 1,
+    waterPerDay: 2,
     foodPerDay: 1,
     dehydrationDC: 15,
     foodGraceDays: null  // null = 3 + CON mod (calculated per character)
@@ -270,6 +288,12 @@ export class MealPhaseHandler {
             const foodOptions = this._buildFoodOptions(actor);
             const waterOptions = this._buildWaterOptions(actor, rules);
 
+            // Per-actor slot counts: essence actors always need at least 1
+            // food slot (terrain cannot provide custom essence items).
+            const actorSlots = _actorMealSlots(actor, rules);
+            const fpd = actorSlots.foodPerDay;
+            const wpd = actorSlots.waterPerDay;
+
             // Calculate food grace period (3 + CON mod)
             const conMod = actor.system?.abilities?.con?.mod ?? 0;
             const foodGrace = rules.foodGraceDays ?? (3 + Math.max(0, conMod));
@@ -279,7 +303,7 @@ export class MealPhaseHandler {
             const foodArr = Array.isArray(currentChoice.food) ? currentChoice.food : (currentChoice.food && currentChoice.food !== "skip" ? [currentChoice.food] : []);
             const foodLockedSlots = Array.isArray(currentChoice.foodLockedSlots) ? currentChoice.foodLockedSlots : [];
             const foodSlots = [];
-            for (let i = 0; i < rules.foodPerDay; i++) {
+            for (let i = 0; i < fpd; i++) {
                 const sel = foodArr[i] ?? "skip";
                 foodSlots.push({
                     index: i,
@@ -289,13 +313,13 @@ export class MealPhaseHandler {
                 });
             }
             const foodFilledCount = foodSlots.filter(s => s.filled).length;
-            const foodSufficient = foodFilledCount >= rules.foodPerDay;
+            const foodSufficient = foodFilledCount >= fpd;
 
             // Build water slots (1 per unit required)
             const waterArr = Array.isArray(currentChoice.water) ? currentChoice.water : (currentChoice.water && currentChoice.water !== "skip" ? [currentChoice.water] : []);
             const waterLockedSlots = Array.isArray(currentChoice.waterLockedSlots) ? currentChoice.waterLockedSlots : [];
             const waterSlots = [];
-            for (let i = 0; i < rules.waterPerDay; i++) {
+            for (let i = 0; i < wpd; i++) {
                 const sel = waterArr[i] ?? "skip";
                 waterSlots.push({
                     index: i,
@@ -314,7 +338,6 @@ export class MealPhaseHandler {
             let bonusWater = 0;
             for (const slot of foodSlots) {
                 if (!slot.filled || !slot.selected || slot.selected === "skip") continue;
-                // Synthetic feast markers already fill the water slot directly
                 if (slot.selected.startsWith?.("__")) continue;
                 const foodItem = actor.items.get(slot.selected);
                 if (!foodItem) continue;
@@ -324,7 +347,7 @@ export class MealPhaseHandler {
                 }
             }
             const effectiveWaterFilled = waterFilledCount + bonusWater;
-            const waterSufficient = effectiveWaterFilled >= rules.waterPerDay;
+            const waterSufficient = effectiveWaterFilled >= wpd;
 
             // Build advisories (reactive to current selections)
             const partialSustenance = game.settings.get(MODULE_ID, "partialSustenance") ?? true;
@@ -346,19 +369,56 @@ export class MealPhaseHandler {
             // When all days consumed, summarize from consumedDays (active selections are cleared)
             let summaryFoodFilled = foodFilledCount;
             let summaryFoodSufficient = foodSufficient;
-            let summaryFoodRequired = rules.foodPerDay;
+            let summaryFoodRequired = fpd;
             let summaryWaterFilled = waterFilledCount;
             let summaryWaterSufficient = waterSufficient;
-            let summaryWaterRequired = rules.waterPerDay;
+            let summaryWaterRequired = wpd;
             if (allDaysConsumed && consumedDays.length > 0) {
                 summaryFoodFilled = consumedDays.reduce((sum, d) =>
                     sum + (d.food ?? []).filter(v => v && v !== "skip").length, 0);
                 summaryWaterFilled = consumedDays.reduce((sum, d) =>
                     sum + (d.water ?? []).filter(v => v && v !== "skip").length, 0);
-                summaryFoodRequired = rules.foodPerDay * totalDays;
-                summaryWaterRequired = rules.waterPerDay * totalDays;
+                summaryFoodRequired = fpd * totalDays;
+                summaryWaterRequired = wpd * totalDays;
                 summaryFoodSufficient = summaryFoodFilled >= summaryFoodRequired;
                 summaryWaterSufficient = summaryWaterFilled >= summaryWaterRequired;
+            }
+
+            const poolWaterRequired = allDaysConsumed ? summaryWaterRequired : wpd;
+            const poolWaterFilled = allDaysConsumed ? summaryWaterFilled : effectiveWaterFilled;
+            const waterPoolSegments = [];
+            for (let i = 0; i < poolWaterRequired; i++) {
+                waterPoolSegments.push({ index: i, filled: i < poolWaterFilled });
+            }
+
+            const waterPoolSources = [];
+            const sourceMap = new Map();
+            for (const slot of waterSlots) {
+                if (!slot.filled || !slot.selected || slot.selected === "skip") continue;
+                if (slot.selected.startsWith?.("__")) {
+                    if (!sourceMap.has("__feast")) sourceMap.set("__feast", { name: "Feast", pintsUsed: 0 });
+                    sourceMap.get("__feast").pintsUsed++;
+                    continue;
+                }
+                const item = actor.items.get(slot.selected);
+                const key = slot.selected;
+                if (!sourceMap.has(key)) sourceMap.set(key, { name: item?.name ?? "Unknown", pintsUsed: 0 });
+                sourceMap.get(key).pintsUsed++;
+            }
+            for (const src of sourceMap.values()) waterPoolSources.push(src);
+
+            const isNonStandard = rules.waterPerDay > 2 || rules.foodPerDay > 1;
+            let terrainAlertClass = "";
+            let terrainAlertIcon = "fas fa-info-circle";
+            if (rules.waterPerDay >= 4) {
+                terrainAlertClass = "terrain-desert";
+                terrainAlertIcon = "fas fa-sun";
+            } else if (rules.foodPerDay >= 2) {
+                terrainAlertClass = "terrain-arctic";
+                terrainAlertIcon = "fas fa-snowflake";
+            } else if (isNonStandard) {
+                terrainAlertClass = "terrain-extreme";
+                terrainAlertIcon = "fas fa-exclamation-triangle";
             }
 
             cards.push({
@@ -372,15 +432,21 @@ export class MealPhaseHandler {
                 waterOptions,
                 hasFood: foodOptions.length > 0,
                 hasWater: waterOptions.length > 0,
+                needsEssence: actorSlots.needsEssence,
+                essenceRequired: actorSlots.needsEssence ? fpd : 0,
                 advisories,
                 foodSlots,
                 foodFilledCount: allDaysConsumed ? summaryFoodFilled : foodFilledCount,
                 foodSufficient: allDaysConsumed ? summaryFoodSufficient : foodSufficient,
-                foodRequired: allDaysConsumed ? summaryFoodRequired : rules.foodPerDay,
+                foodRequired: allDaysConsumed ? summaryFoodRequired : fpd,
                 waterSlots,
                 waterFilledCount: allDaysConsumed ? summaryWaterFilled : effectiveWaterFilled,
                 waterSufficient: allDaysConsumed ? summaryWaterSufficient : waterSufficient,
-                waterRequired: allDaysConsumed ? summaryWaterRequired : rules.waterPerDay,
+                waterRequired: allDaysConsumed ? summaryWaterRequired : wpd,
+                waterPoolSegments,
+                waterPoolSources,
+                terrainAlertClass,
+                terrainAlertIcon,
                 terrainNote: rules.note ?? null,
                 totalDays,
                 currentDay: currentDay + 1,
@@ -509,7 +575,7 @@ export class MealPhaseHandler {
                     }
                 }
                 for (const [itemId, amount] of waterUsage) {
-                    const consumed = await this._consumeItem(actor, itemId, amount);
+                    const consumed = await this._consumeItem(actor, itemId, amount, { wholeUnit: true });
                     console.log(`[Respite:Meal] Consumed ${consumed}x water item ${itemId} from ${actor.name}`);
                 }
             }
@@ -1084,34 +1150,55 @@ export class MealPhaseHandler {
 
     /**
      * Build water options from actor inventory.
-     *
-     * Detection strategy (first match wins per item):
-     *   1. Respite flag: item.flags["ionrift-respite"].foodType === "water"
-     *   2. Name fallback: matches WATER_NAMES allowlist
-     *
-     * DnD5e has no native "water" consumable subtype, so we rely on
-     * flags and names. The flag path lets content packs and GMs mark
-     * custom water sources (oil flasks for warforged, etc.).
+     * Delegates to {@link ItemClassifier.isWater} for diet-aware filtering.
      */
     static _buildWaterOptions(actor, rules) {
         const options = [];
 
         for (const item of actor.items) {
             const qty = item.system?.quantity ?? 1;
-            const uses = item.system?.uses;
-            if (qty <= 0 && (!uses || uses.value <= 0)) continue;
+            if (qty <= 0) continue;
 
             const isWater = ItemClassifier.isWater(item, actor);
             if (!isWater) continue;
 
-            // Per-waterskin: show quantity of skins, not internal pint charges
-            const avail = uses ? (uses.value > 0 ? qty : Math.max(0, qty - 1)) : qty;
+            const avail = qty;
+            const uses = item.system?.uses;
+            const rawMax = uses && uses.max > 0 ? uses.max : 0;
+            const isV5 = uses && ("spent" in uses);
+
+            let totalPints;
+            let maxCharges = null;
+            let remainingCharges = null;
+            let label;
+
+            if (rawMax <= 0) {
+                totalPints = avail;
+                label = `${item.name} (\u00d7${avail})`;
+            } else if (rawMax <= 1) {
+                const rcRaw = isV5 ? (uses.max - (uses.spent ?? 0)) : uses.value;
+                const rc = rcRaw != null ? Math.max(0, rcRaw) : avail;
+                totalPints = Math.min(avail, rc);
+                label = `${item.name} (${totalPints} pint${totalPints === 1 ? "" : "s"})`;
+            } else {
+                maxCharges = rawMax;
+                const top = isV5 ? (uses.max - (uses.spent ?? 0)) : (uses.value ?? 0);
+                remainingCharges = Math.max(0, top);
+                totalPints = remainingCharges + (avail - 1) * rawMax;
+                label = `${item.name} (${totalPints} pints)`;
+            }
+
+            if (totalPints <= 0) continue;
+
             options.push({
                 value: item.id,
-                label: `${item.name} (\u00d7${avail})`,
+                label,
                 name: item.name,
                 itemId: item.id,
                 available: avail,
+                maxCharges,
+                remainingCharges,
+                totalPints,
                 icon: item.img ?? "icons/consumables/drinks/waterskin-leather-tan.webp"
             });
         }
@@ -1226,9 +1313,13 @@ export class MealPhaseHandler {
      * @param {Actor} actor
      * @param {string} itemId - Item ID to consume
      * @param {number} amount - Number of units to consume
+     * @param {object} [opts]
+     * @param {boolean} [opts.wholeUnit=false] - Skip charge tracking and
+     *   decrement quantity directly. Used for water/drink consumption where
+     *   1 slot = 1 whole container regardless of internal pint charges.
      * @returns {number} Units actually consumed
      */
-    static async _consumeItem(actor, itemId, amount = 1) {
+    static async _consumeItem(actor, itemId, amount = 1, { wholeUnit = false } = {}) {
         const item = actor.items.get(itemId);
         if (!item) return 0;
 
@@ -1236,7 +1327,17 @@ export class MealPhaseHandler {
         const qty = item.system?.quantity ?? 1;
         let consumed = 0;
 
-        // Items with charges (waterskin 4/4, rations 1/1)
+        if (wholeUnit) {
+            consumed = Math.min(amount, qty);
+            if (qty - consumed > 0) {
+                await item.update({ "system.quantity": qty - consumed });
+            } else {
+                await actor.deleteEmbeddedDocuments("Item", [item.id]);
+            }
+            return consumed;
+        }
+
+        // Items with charges (rations bundles, etc.)
         if (uses && uses.max > 0) {
             // DnD5e v5+: uses.spent exists, value = max - spent (read-only)
             // Legacy: uses.value is directly writable

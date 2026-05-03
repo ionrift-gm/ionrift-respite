@@ -2613,7 +2613,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
                 // Player-side context: multi-day aware
                 const terrain = TerrainRegistry.get(terrainTag);
-                const allowed = terrain?.travelActivities ?? [];
+                const allowed = terrain?.travelActivities ?? ["forage", "hunt", "scout"];
                 const canForage = allowed.includes("forage");
                 const canHunt = allowed.includes("hunt");
                 const scoutAllowed = this._travelScoutingAllowed ?? true;
@@ -5968,6 +5968,50 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (this.rendered) this.render();
         };
 
+        const fillWaterPool = (charId, itemId, elRoot) => {
+            if (!this._mealChoices) this._mealChoices = new Map();
+            const existing = this._mealChoices.get(charId) ?? {};
+            const arr = Array.isArray(existing.water) ? [...existing.water] : [];
+            const lockedSlots = Array.isArray(existing.waterLockedSlots) ? existing.waterLockedSlots : [];
+
+            const poolBar = elRoot.querySelector(".water-pool-bar");
+            const wpd = parseInt(poolBar?.dataset?.target ?? "2", 10) || 0;
+            while (arr.length < wpd) arr.push("skip");
+
+            let slotsNeeded = 0;
+            for (let i = 0; i < wpd; i++) {
+                if (lockedSlots.includes(i)) continue;
+                const v = arr[i];
+                if (!v || v === "skip") slotsNeeded++;
+            }
+            if (slotsNeeded <= 0) {
+                ui.notifications.info("Water is already sufficient.");
+                return;
+            }
+
+            const trayCard = elRoot.querySelector(
+                `.meal-inv-card[data-item-id="${itemId}"][data-slot="water"][data-character-id="${charId}"]`
+            );
+            let totalPints = parseInt(trayCard?.dataset?.totalPints ?? trayCard?.dataset?.available ?? "0", 10);
+            if (!Number.isFinite(totalPints) || totalPints < 0) totalPints = 0;
+            if (totalPints <= 0) {
+                ui.notifications.warn("This water source is empty.");
+                return;
+            }
+
+            const pintsToFill = Math.min(slotsNeeded, totalPints);
+            for (let i = 0; i < pintsToFill; i++) {
+                const emptyIdx = arr.findIndex((v, j) =>
+                    j < wpd && (!v || v === "skip") && !lockedSlots.includes(j));
+                if (emptyIdx >= 0) arr[emptyIdx] = itemId;
+                else break;
+            }
+            this._mealChoices.set(charId, { ...existing, water: arr });
+            notifyStationMealChoicesUpdated();
+            this._refreshStationOverlayMeals();
+            if (this.rendered) this.render();
+        };
+
         // Draggable + clickable inventory items
         for (const item of items) {
             if (item._mealBound) continue;
@@ -5984,6 +6028,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const charId = item.dataset.characterId;
                 const itemId = item.dataset.itemId;
                 if (!slot || !charId || !itemId) return;
+                if (slot === "water") {
+                    fillWaterPool(charId, itemId, el);
+                    return;
+                }
                 setChoice(charId, slot, itemId);
             });
         }
@@ -6001,6 +6049,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const slotIndex = zone.dataset.slotIndex !== undefined ? parseInt(zone.dataset.slotIndex) : undefined;
 
             zone.addEventListener("dragover", (e) => {
+                if (slot === "water" && zone.dataset.poolFull === "true") return;
                 if (!e.dataTransfer.types.includes("text/plain")) return;
                 e.preventDefault();
                 zone.classList.add("drop-hover");
@@ -6014,17 +6063,39 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             zone.addEventListener("drop", (e) => {
                 e.preventDefault();
                 zone.classList.remove("drop-hover");
+                if (slot === "water" && zone.dataset.poolFull === "true") return;
                 const raw = e.dataTransfer.getData("text/plain");
                 if (!raw?.startsWith("meal:")) return;
 
                 const [, dragSlot, itemId, dragCharId] = raw.split(":");
                 if (dragSlot !== slot || dragCharId !== charId) return;
+                if (slot === "water") {
+                    fillWaterPool(charId, itemId, el);
+                    return;
+                }
                 setChoice(charId, slot, itemId, slotIndex);
             });
 
             // Click on filled zone = clear it
             zone.addEventListener("click", () => {
                 if (!this._mealChoices) return;
+                if (slot === "water") {
+                    const existing = this._mealChoices.get(charId) ?? {};
+                    const lockedSlots = Array.isArray(existing.waterLockedSlots) ? existing.waterLockedSlots : [];
+                    const prev = Array.isArray(existing.water) ? existing.water : [];
+                    const poolBar = el.querySelector(".water-pool-bar");
+                    const wpd = parseInt(poolBar?.dataset?.target ?? "2", 10) || 0;
+                    const len = Math.max(wpd, prev.length);
+                    const arr = [];
+                    for (let i = 0; i < len; i++) {
+                        arr[i] = lockedSlots.includes(i) ? prev[i] : "skip";
+                    }
+                    this._mealChoices.set(charId, { ...existing, water: arr });
+                    notifyStationMealChoicesUpdated();
+                    this._refreshStationOverlayMeals();
+                    if (this.rendered) this.render();
+                    return;
+                }
                 const existing = this._mealChoices.get(charId) ?? {};
                 const arr = Array.isArray(existing[slot]) ? [...existing[slot]] : [];
                 if (slotIndex !== undefined && arr[slotIndex] && arr[slotIndex] !== "skip") {
@@ -8128,7 +8199,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const card = cards[0] ?? null;
         if (!card) return null;
         if (this._activityMealRationsSubmitted?.has(actorId)) card.playerSubmitted = true;
-        if (!this._isGM && this._mealSubmitted && this._myCharacterIds?.has(actorId)) {
+        if (!this._isGM && this._mealSubmitted && this._meals._mealObligatedOwnedCharacterIds(this).has(actorId)) {
             card.playerSubmitted = true;
         }
         return card;
@@ -8391,10 +8462,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         if (!this._myCharacterIds?.has(actorId)) return;
-        await this._meals.onSubmitMealChoices(null, null);
-        // Track ration submission locally so the rejoin bar updates immediately
-        if (!this._activityMealRationsSubmitted) this._activityMealRationsSubmitted = new Set();
-        this._activityMealRationsSubmitted.add(actorId);
+        await this._meals.onSubmitStationMealChoices(actorId);
         notifyStationMealChoicesUpdated();
         if (isStationLayerActive()) {
             refreshStationEmptyNoticeFade(this);

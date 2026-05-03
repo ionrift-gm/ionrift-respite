@@ -787,9 +787,19 @@
             </span>
         </div>
         {{else}}
+        <div class="station-meal-embed-scroll">
+        {{#if terrainNote}}
+        <div class="meal-terrain-alert {{terrainAlertClass}}">
+            <i class="{{terrainAlertIcon}}" aria-hidden="true"></i>
+            <span>{{terrainNote}}</span>
+        </div>
+        {{/if}}
         <div class="meal-drop-columns">
             <div class="meal-panel food-panel {{#unless hasFood}}panel-empty{{/unless}}">
-                <div class="meal-panel-heading"><i class="fas fa-drumstick-bite" aria-hidden="true"></i> Food</div>
+                <div class="meal-panel-heading meal-panel-heading--food">
+                    <span class="meal-panel-heading-title"><i class="fas fa-drumstick-bite" aria-hidden="true"></i> Food</span>
+                    <span class="meal-panel-req-note">{{foodRequired}} ration{{#unless (eq foodRequired 1)}}s{{/unless}} needed</span>
+                </div>
                 {{#if hasFood}}
                 {{#each foodSlots}}
                 <div class="meal-drop-header-row">
@@ -846,38 +856,43 @@
                 {{/if}}
             </div>
             <div class="meal-panel water-panel {{#unless hasWater}}panel-empty{{/unless}}">
-                <div class="meal-panel-heading"><i class="fas fa-tint" aria-hidden="true"></i> Water</div>
-                {{#if hasWater}}
-                {{#each waterSlots}}
-                <div class="meal-drop-header-row">
-                    <div class="meal-drop-zone water-drop-zone {{#if filled}}filled{{/if}}{{#if locked}} locked{{/if}}"
-                         data-character-id="{{../characterId}}" data-slot="water" data-slot-index="{{index}}"{{#if locked}} data-locked="true"{{/if}}>
-                        <div class="drop-zone-silhouette">
-                            {{#if filled}}
-                            {{#each ../waterOptions}}
-                            {{#if (eq ../selected value)}}
-                            <img src="{{icon}}" alt="" class="drop-zone-item-icon">
-                            {{/if}}
-                            {{/each}}
-                            {{else}}
-                            <i class="fas fa-tint drop-zone-goblet"></i>
-                            {{/if}}
-                        </div>
-                    </div>
-                    <div class="meal-drop-label">
-                        {{#if filled}}
-                        {{#each ../waterOptions}}
-                        {{#if (eq ../selected value)}}
-                        <span class="meal-drop-item-name">{{name}}</span>
-                        <span class="meal-drop-item-qty">×{{available}}</span>
-                        {{/if}}
-                        {{/each}}
-                        {{else}}
-                        <span class="meal-drop-hint-text">drag from below</span>
-                        {{/if}}
-                    </div>
+                <div class="meal-panel-heading meal-panel-heading--water">
+                    <span class="meal-panel-heading-title"><i class="fas fa-tint" aria-hidden="true"></i> Water</span>
+                    <span class="meal-panel-req-note">{{waterRequired}} pints needed</span>
                 </div>
-                {{/each}}
+                {{#if hasWater}}
+                <div class="water-pool-target meal-drop-zone water-drop-zone{{#if waterSufficient}} water-pool-target--complete{{/if}}"
+                     data-character-id="{{characterId}}" data-slot="water" data-slot-index="0"{{#if waterSufficient}} data-pool-full="true"{{/if}}>
+                    <div class="drop-zone-silhouette">
+                        {{#if waterSufficient}}
+                        <i class="fas fa-check-circle water-pool-complete-icon" aria-hidden="true"></i>
+                        {{else}}
+                        <i class="fas fa-tint drop-zone-goblet"></i>
+                        {{/if}}
+                    </div>
+                    <span class="meal-drop-hint-text">{{#if waterSufficient}}Water needs met{{else}}drop water here{{/if}}</span>
+                </div>
+                <div class="water-pool-bar" data-target="{{waterRequired}}" data-filled="{{waterFilledCount}}">
+                    {{#each waterPoolSegments}}
+                    <div class="water-pool-segment {{#if filled}}filled{{/if}}"></div>
+                    {{/each}}
+                </div>
+                <div class="water-pool-status">
+                    {{#if waterSufficient}}
+                    <span class="pool-status-ok"><i class="fas fa-check"></i> {{waterFilledCount}}/{{waterRequired}} pints — Hydrated</span>
+                    {{else if waterFilledCount}}
+                    <span class="pool-status-partial">{{waterFilledCount}} of {{waterRequired}} pints</span>
+                    {{else}}
+                    <span class="pool-status-empty">0 of {{waterRequired}} pints</span>
+                    {{/if}}
+                </div>
+                {{#if waterPoolSources.length}}
+                <div class="water-pool-sources">
+                    {{#each waterPoolSources}}
+                    <span class="pool-source-pill">{{name}}: {{pintsUsed}} pints used</span>
+                    {{/each}}
+                </div>
+                {{/if}}
                 <div class="meal-panel-divider"></div>
                 <div class="meal-inventory-tray-scroll">
                     <div class="meal-inventory-grid water-tray">
@@ -886,10 +901,14 @@
                              data-item-id="{{value}}"
                              data-slot="water"
                              data-available="{{available}}"
+                             data-total-pints="{{totalPints}}"
                              data-character-id="{{../characterId}}"
-                             title="{{label}}">
+                             title="{{label}}: ×{{available}} carried, {{totalPints}}p pourable">
                             <img src="{{icon}}" alt="{{label}}" class="meal-inv-card-icon" draggable="false">
-                            <span class="meal-inv-card-qty">×{{available}}</span>
+                            <span class="meal-inv-card-qty meal-inv-card-qty--water">
+                                <span class="meal-inv-qty-stack">×{{available}}</span>
+                                <span class="meal-inv-qty-pints">{{totalPints}}p</span>
+                            </span>
                             <span class="meal-inv-card-name">{{name}}</span>
                         </div>
                         {{/each}}
@@ -902,6 +921,7 @@
                 </div>
                 {{/if}}
             </div>
+        </div>
         </div>
         <div class="station-meal-submit-row">
             <button type="button" class="station-meal-submit-btn" data-action="submitStationRations">Submit rations</button>

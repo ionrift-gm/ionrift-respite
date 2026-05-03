@@ -13,7 +13,7 @@
         "good":    ["A concealed island in the marsh. Only one approach.", "A hunter's blind, elevated and hidden.", "A dry cave behind hanging moss."],
         "nat20":   ["An ancient stone platform, hidden by mist.", "A druid's grove, warded and dry.", "A hollow cypress trunk, spacious and concealed."]
     },
-    "mealRules": { "waterPerDay": 1, "foodPerDay": 1 },
+    "mealRules": { "waterPerDay": 2, "foodPerDay": 1 },
     "weather": ["clear", "overcast", "fog", "rain", "heavy_rain", "thunderstorm"],
     "eventsFile": "core/events/swamp_events.json"
 }

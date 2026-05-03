@@ -13,7 +13,7 @@
         "good":    ["A deep canyon slot, hidden from the wind.", "An abandoned waystation, walls still standing.", "A cave mouth facing away from the wind."],
         "nat20":   ["A hidden spring in a sheltered grotto.", "An intact underground cistern, cool and defensible.", "A palm grove oasis, surrounded by natural barriers."]
     },
-    "mealRules": { "waterPerDay": 2, "foodPerDay": 1, "dehydrationDC": 15, "note": "Arid heat causes rapid dehydration. Double water requirement." },
+    "mealRules": { "waterPerDay": 4, "foodPerDay": 1, "dehydrationDC": 15, "note": "Arid heat causes rapid dehydration. Double water requirement." },
     "weather": ["clear", "overcast", "extreme_heat", "sandstorm"],
     "eventsFile": "core/events/desert_events.json"
 }
