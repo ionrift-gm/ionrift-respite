@@ -347,20 +347,21 @@ export class ItemClassifier {
      * @returns {boolean}
      */
     static isWater(item, actor = null) {
-        const type = this.classify(item);
-        if (!type) return false;
+        if (!item) return false;
 
         const diet = this.getDiet(actor);
         const drinkType = this.getDrinkType(item);
 
-        // Check if the drink sub-type is in the actor's canDrink list
+        // Name/flag drink types (oil, alcohol) before classify: plain "Oil" may not
+        // match fuel/water lists yet still infer drinkType oil for construct diets.
         if (drinkType && diet.canDrink.includes(drinkType)) return true;
 
-        // Check custom water names from diet
         const name = item.name?.toLowerCase().trim() ?? "";
-        if (name && diet.customWaterNames.some(n => n === name)) return true;
+        if (name && diet.customWaterNames.some(n => n.toLowerCase().trim() === name)) return true;
 
-        // Fall back to standard water classification if diet allows "water"
+        const type = this.classify(item);
+        if (!type) return false;
+
         if (diet.canDrink.includes("water") && type === "water") return true;
 
         return false;
