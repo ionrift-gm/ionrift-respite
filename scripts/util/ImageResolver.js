@@ -16,7 +16,7 @@
 const MODULE_ID = "ionrift-respite";
 const FALLBACK_BANNER = `modules/${MODULE_ID}/assets/placeholder-banner.webp`;
 
-/** Raw art pack folder (Patreon zip dropped directly into Data). */
+/** Raw art pack folder (Ionrift art zip dropped directly into Data). */
 const RAW_ART_FOLDER = "ionrift-respite-art";
 
 /**
@@ -72,7 +72,7 @@ export function _fileSource() {
 // Add entries here as bundled art is committed to the module.
 // Format: "terrain/filename" e.g. "forest/banner.png"
 const KNOWN_BASE_IMAGES = new Set([
-    // No bundled art yet — all terrain art ships via the Patreon art pack.
+    // No bundled art yet — all terrain art ships via the Ionrift art pack.
 ]);
 
 export class ImageResolver {
@@ -197,7 +197,7 @@ export class ImageResolver {
         // Secondary probe: if the primary art pack has no tokens, check
         // remaining candidate paths specifically for an assets/tokens/ dir.
         // This handles the case where terrains are zip-imported but station
-        // tokens live in the raw Patreon folder.
+        // tokens live in the raw Ionrift art folder.
         if (this.#artPackActive && !this.#hasStationTokens) {
             const source = _fileSource();
             const remaining = candidatePaths.filter(p => p !== this.#importedArtPath);

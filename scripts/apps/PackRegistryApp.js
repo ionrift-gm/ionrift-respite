@@ -590,7 +590,7 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
 
         // Footer links
         html += this._renderFooterLinks([
-            { href: "https://www.patreon.com/collection/2079931", icon: "fas fa-download", label: "Get art packs" },
+            { href: "https://www.patreon.com/posts/154985310", icon: "fas fa-download", label: "Get art packs" },
             { href: "https://github.com/ionrift-gm/ionrift-library/wiki/Art-Packs", icon: "fas fa-book", label: "Documentation" }
         ]);
 
