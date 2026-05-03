@@ -381,7 +381,27 @@ export class ItemClassifier {
         const stored = actor.flags?.[MODULE_ID]?.diet;
         if (!stored) return { ...DEFAULT_DIET };
 
-        return { ...DEFAULT_DIET, ...stored };
+        const merged = { ...DEFAULT_DIET, ...stored };
+        merged.customFoodNames = this._normalizeDietNameList(merged.customFoodNames);
+        merged.customWaterNames = this._normalizeDietNameList(merged.customWaterNames);
+        return merged;
+    }
+
+    /**
+     * Coerce diet name lists to trimmed lowercase string arrays.
+     * Handles legacy comma-separated strings on the flag object.
+     * @param {unknown} val
+     * @returns {string[]}
+     */
+    static _normalizeDietNameList(val) {
+        if (val == null) return [];
+        if (Array.isArray(val)) {
+            return val.map(s => String(s).trim().toLowerCase()).filter(Boolean);
+        }
+        if (typeof val === "string") {
+            return val.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+        }
+        return [];
     }
 
     /**
@@ -480,12 +500,10 @@ export class ItemClassifier {
         const type = this.classify(item);
         if (type === "fuel") return true;
 
-        // Check actor's customFoodNames if diet is essence-based
-        if (actor) {
+        // Check actor's customFoodNames if diet is essence-based (includes legacy requiresEssence)
+        if (actor && this.getSustenanceType(actor) === "essence") {
             const diet = this.getDiet(actor);
-            if (diet.sustenanceType === "essence") {
-                if (name && diet.customFoodNames?.some(n => n.toLowerCase().trim() === name)) return true;
-            }
+            if (name && diet.customFoodNames?.some(n => n.toLowerCase().trim() === name)) return true;
         }
 
         return false;
