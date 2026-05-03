@@ -61,9 +61,21 @@ jobs:
       - name: Validate compendium sign-offs
         run: node tools/validate-packs.mjs
 
+      - name: Validate shipping manifest
+        run: node tools/validate-shipping.mjs
+
+      - name: Build shipping manifest
+        run: node tools/filter-manifest.mjs
+
+      - name: Stage filtered manifest for release
+        run: cp .build/module.json module.json
+
       - name: Zip Module
         run: |
-          zip -r module.zip . -x ".git/*" ".github/*" ".gitignore" ".gitattributes" "RELEASE_WORKFLOW.md" "task.md" "package.json" "package-lock.json" "node_modules/*" "scripts/tests/*" "data/professions/*" "packs/src/*" "assets/items/forage/*" "*.bak" "audit_*.json" "audit_*.txt" "audit_*.js" "docs/*" "SETUP_GUIDE.md" "TEST_SCENARIOS.md" "BACKLOG.md" "pack-items.mjs" "pack-actors.mjs" "scripts/utils/*" "tests/*" "vitest*" ".eslintrc*" "tools/*"
+          zip -r module.zip . -x ".git/*" ".github/*" ".gitignore" ".gitattributes" "RELEASE_WORKFLOW.md" "task.md" "package.json" "package-lock.json" "node_modules/*" "scripts/tests/*" "data/professions/*" "packs/*" "packs/src/*" "assets/items/forage/*" "*.bak" "audit_*.json" "audit_*.txt" "audit_*.js" "docs/*" "SETUP_GUIDE.md" "TEST_SCENARIOS.md" "BACKLOG.md" "pack-items.mjs" "pack-actors.mjs" "scripts/utils/*" "tests/*" "vitest*" ".eslintrc*" "tools/*" ".build/*"
+
+      - name: Append approved compendium packs to zip
+        run: node tools/append-approved-packs-to-zip.mjs
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
