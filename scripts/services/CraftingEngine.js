@@ -329,10 +329,16 @@ export class CraftingEngine {
             const qty = item.system?.quantity ?? 1;
             if (qty <= 0) continue;
             const uses = item.system?.uses;
-            if (uses && uses.max > 0) {
+            const rawMax = uses && uses.max > 0 ? uses.max : 0;
+            if (rawMax > 1) {
                 const isV5 = ("spent" in uses);
                 const chargesPerUnit = isV5 ? (uses.max - (uses.spent ?? 0)) : (uses.value ?? 0);
                 total += chargesPerUnit + ((qty - 1) * uses.max);
+            } else if (rawMax === 1) {
+                const isV5 = ("spent" in uses);
+                const rcRaw = isV5 ? (uses.max - (uses.spent ?? 0)) : uses.value;
+                const rc = rcRaw != null ? Math.max(0, rcRaw) : qty;
+                total += Math.min(qty, rc);
             } else {
                 total += qty;
             }
@@ -403,8 +409,8 @@ export class CraftingEngine {
             return String(a.id).localeCompare(String(b.id));
         });
 
-        const chargeItems = waterItems.filter(i => i.system?.uses?.max > 0);
-        const qtyOnlyItems = waterItems.filter(i => !(i.system?.uses?.max > 0));
+        const chargeItems = waterItems.filter(i => (i.system?.uses?.max ?? 0) > 1);
+        const qtyOnlyItems = waterItems.filter(i => (i.system?.uses?.max ?? 0) <= 1);
 
         const updates = [];
         const deletes = [];

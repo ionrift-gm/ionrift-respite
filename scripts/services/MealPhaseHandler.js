@@ -1164,17 +1164,32 @@ export class MealPhaseHandler {
 
             const avail = qty;
             const uses = item.system?.uses;
-            const maxCharges = (uses && uses.max > 0) ? uses.max : null;
+            const rawMax = uses && uses.max > 0 ? uses.max : 0;
             const isV5 = uses && ("spent" in uses);
-            const remainingCharges = maxCharges
-                ? (isV5 ? (uses.max - (uses.spent ?? 0)) : (uses.value ?? 0))
-                : null;
-            const totalPints = maxCharges
-                ? (remainingCharges + (avail - 1) * maxCharges)
-                : avail;
-            const label = maxCharges
-                ? `${item.name} (${remainingCharges} pints)`
-                : `${item.name} (\u00d7${avail})`;
+
+            let totalPints;
+            let maxCharges = null;
+            let remainingCharges = null;
+            let label;
+
+            if (rawMax <= 0) {
+                totalPints = avail;
+                label = `${item.name} (\u00d7${avail})`;
+            } else if (rawMax <= 1) {
+                const rcRaw = isV5 ? (uses.max - (uses.spent ?? 0)) : uses.value;
+                const rc = rcRaw != null ? Math.max(0, rcRaw) : avail;
+                totalPints = Math.min(avail, rc);
+                label = `${item.name} (${totalPints} pint${totalPints === 1 ? "" : "s"})`;
+            } else {
+                maxCharges = rawMax;
+                const top = isV5 ? (uses.max - (uses.spent ?? 0)) : (uses.value ?? 0);
+                remainingCharges = Math.max(0, top);
+                totalPints = remainingCharges + (avail - 1) * rawMax;
+                label = `${item.name} (${totalPints} pints)`;
+            }
+
+            if (totalPints <= 0) continue;
+
             options.push({
                 value: item.id,
                 label,
