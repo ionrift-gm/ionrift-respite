@@ -2,6 +2,9 @@
 
 ## [2.0.3] - 2026-05-03
 
+### Changed
+- **Published bundle matches the shipped compendium set.** The install archive only includes compendiums that are cleared for distribution.
+
 ### Added
 - **Tavern resting.** Selecting a tavern terrain now skips campfire setup and station placement. All characters are automatically set to Rest Fully, meals are waived, and the flow advances straight to reflection or resolution.
 - Tavern stations are filtered to context-appropriate options - campfire and weapon rack are hidden, bedroll becomes "Your Room", and the cooking station becomes "Hearth & Table".
@@ -365,5 +368,6 @@ Initial public release.
 - Centralized Logger gated on debug setting
 - DnD5e system adapter with PF2e and Daggerheart stubs
 
-  
+ 
+ 
  
