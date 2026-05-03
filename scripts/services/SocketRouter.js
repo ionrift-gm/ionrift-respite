@@ -302,7 +302,7 @@ export function dispatch(data, ctx) {
         }
 
         case SOCKET_TYPES.WORKBENCH_IDENTIFY_RESULT: {
-            if (data.targetUserId != null && data.targetUserId !== game.user.id) break;
+            if (data.targetUserId !== null && data.targetUserId !== game.user.id) break;
             const { requestId, success } = data;
             const pendingCount = WorkbenchDelegate._pendingIdentifyRequests?.size ?? -1;
             console.log(`[Respite] WB-IDENTIFY player: result received success=${success} req=${requestId} pendingMapSize=${pendingCount}`);
@@ -346,11 +346,11 @@ export function dispatch(data, ctx) {
             if (game.user.isGM) return;
             if (ctx.activePlayerRestApp) {
                 ctx.activePlayerRestApp._syncedTravelDeclarations = data.declarations ?? {};
-                if (data.activeDay != null) ctx.activePlayerRestApp._travelActiveDay = data.activeDay;
-                if (data.totalDays != null) ctx.activePlayerRestApp._travelTotalDays = data.totalDays;
-                if (data.scoutingAllowed != null) ctx.activePlayerRestApp._travelScoutingAllowed = data.scoutingAllowed;
-                if (data.forageDC != null) ctx.activePlayerRestApp._travelForageDC = data.forageDC;
-                if (data.huntDC != null) ctx.activePlayerRestApp._travelHuntDC = data.huntDC;
+                if (data.activeDay !== null) ctx.activePlayerRestApp._travelActiveDay = data.activeDay;
+                if (data.totalDays !== null) ctx.activePlayerRestApp._travelTotalDays = data.totalDays;
+                if (data.scoutingAllowed !== null) ctx.activePlayerRestApp._travelScoutingAllowed = data.scoutingAllowed;
+                if (data.forageDC !== null) ctx.activePlayerRestApp._travelForageDC = data.forageDC;
+                if (data.huntDC !== null) ctx.activePlayerRestApp._travelHuntDC = data.huntDC;
                 ctx.activePlayerRestApp.render();
             }
             break;

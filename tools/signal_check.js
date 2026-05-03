@@ -12,7 +12,12 @@ const ALLOWLIST_PATHS = new Set([
     path.normalize('scripts/apps/RestConstants.js'),           // rpPrompt: data schema field for shelter roleplay prompts
     path.normalize('scripts/apps/RestSetupApp.js'),            // rpPrompt: data schema field; copySpellRollPrompt: spell mechanic field
     path.normalize('scripts/apps/ShortRestApp.js'),            // rpPrompt: data schema field
+    path.normalize('scripts/apps/StationActivityDialog.js'),   // isGmUser: legitimate template data key
     path.normalize('scripts/services/DecisionTreeResolver.js'), // prompt: decision tree schema field (event tree node data)
+    path.normalize('scripts/services/SocketController.js'),    // COPY_SPELL_ROLL_PROMPT: socket event constant
+    path.normalize('scripts/services/SocketRouter.js'),        // COPY_SPELL_ROLL_PROMPT: socket routing case
+    path.normalize('scripts/services/SocketRouterHandlers.js'), // rpPrompt: data schema field for roleplay prompts
+    path.normalize('scripts/services/SpoilageMergeGuard.js'),  // user: game.user.name (Foundry API call)
     path.normalize('scripts/module.js')                        // rpPrompt: data schema field; architectural comment contains 'here is the'
 ]);
 

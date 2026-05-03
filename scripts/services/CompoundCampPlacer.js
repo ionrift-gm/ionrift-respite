@@ -1173,7 +1173,7 @@ export async function placeStationPlaceholders() {
             // When only non-furniture tokens (player tokens) are blocking, place the station
             // anyway. Stations sort to -50000, so they render under player tokens. Then try
             // to nudge each blocker toward the camp center; leave them if no free cell exists.
-            if (v.tx != null) {
+            if (v.tx !== null) {
                 const blockers = getBlockingTokens(v.tx, v.ty, phW, phH, scene);
                 if (blockers.length && blockers.every(b => !isCampFurnitureToken(b))) {
                     const tokenData = buildPlaceholderToken(slot.key, v.tx, v.ty);
@@ -1299,7 +1299,7 @@ export function getTargetSortForModuleCampFlags(f) {
  * @returns {boolean}
  */
 export function isCampFloorStackToken(document) {
-    return getTargetSortForModuleCampFlags(document.flags?.[MODULE_ID]) != null;
+    return getTargetSortForModuleCampFlags(document.flags?.[MODULE_ID]) !== null;
 }
 
 /**
@@ -1307,7 +1307,7 @@ export function isCampFloorStackToken(document) {
  */
 export function applyCampFloorSortToPreCreateData(data) {
     const t = getTargetSortForModuleCampFlags(data?.flags?.[MODULE_ID]);
-    if (t != null) data.sort = t;
+    if (t !== null) data.sort = t;
 }
 
 /**
@@ -1319,7 +1319,7 @@ export function applyCampFloorSortToPreCreateData(data) {
 export function clampCampFloorTokenInPreUpdate(document, updateData) {
     if (!("sort" in updateData)) return;
     const target = getTargetSortForModuleCampFlags(document.flags?.[MODULE_ID]);
-    if (target == null) return;
+    if (target === null) return;
     updateData.sort = target;
 }
 
@@ -1333,7 +1333,7 @@ export async function enforceCampFloorFurnitureSortOnSceneIfGm(scene) {
     const updates = [];
     for (const t of scene.tokens) {
         const target = getTargetSortForModuleCampFlags(t.flags?.[MODULE_ID]);
-        if (target == null) continue;
+        if (target === null) continue;
         if (t.sort !== target) {
             updates.push({ _id: t.id, sort: target });
         }

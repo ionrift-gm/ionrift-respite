@@ -40,7 +40,7 @@ function _faGlyphFromIconClass(iconClass) {
     const faName = parts.find(p => p.startsWith("fa-"));
     if (!faName) return "";
     const cp = FA_SOLID_CODEPOINT[faName];
-    return cp != null ? String.fromCodePoint(cp) : "";
+    return cp !== null ? String.fromCodePoint(cp) : "";
 }
 
 const _faRasterCache = new Map();
@@ -423,14 +423,14 @@ class StationOverlay {
     _syncMealRowAlpha() {
         if (!this._mealRowRoot?.visible) return;
         const a = this._bodyRoot?.alpha;
-        if (a == null) return;
+        if (a === null) return;
         this._mealRowRoot.alpha = a;
     }
 
     _syncPortraitRowAlpha() {
         if (!this._portraitRoot?.visible) return;
         const a = this._bodyRoot?.alpha;
-        if (a == null) return;
+        if (a === null) return;
         this._portraitRoot.alpha = a;
     }
 
@@ -1215,7 +1215,7 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
             );
             _overlays.push(overlay);
             const me = _currentUserPartyActorId();
-            if (me != null && actorId !== me) {
+            if (me !== null && actorId !== me) {
                 overlay._permanentlyDimmed = true;
                 overlay.setDimmed();
             }

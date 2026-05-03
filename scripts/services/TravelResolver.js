@@ -249,7 +249,7 @@ export class TravelResolver {
             data.system.quantity = entry.quantity ?? 1;
 
             const respFlags = data.flags?.[MODULE_ID];
-            if (respFlags?.spoilsAfter != null && !respFlags.harvestedDate) {
+            if (respFlags?.spoilsAfter !== null && !respFlags.harvestedDate) {
                 data.flags = data.flags ?? {};
                 data.flags[MODULE_ID] = { ...respFlags, harvestedDate };
             }

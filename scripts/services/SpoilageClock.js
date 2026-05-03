@@ -52,7 +52,7 @@ export class SpoilageClock {
      */
     static getCalendarDaysRemaining(itemLike, clock = {}) {
         const spoilsAfter = ItemClassifier.getSpoilsAfter(itemLike);
-        if (spoilsAfter == null || spoilsAfter <= 0) return null;
+        if (spoilsAfter === null || spoilsAfter <= 0) return null;
 
         const flags = itemLike.flags?.[MODULE_ID] ?? {};
         if (flags.spoiled) return 0;

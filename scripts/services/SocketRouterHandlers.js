@@ -27,7 +27,8 @@ import {
 } from "./CompoundCampPlacer.js";
 import {
     emitShortRestStarted, emitRestStarted, emitShortRestWorkbenchSync,
-    emitCampGearPlaced, emitCampStationPlaced, emitCampSceneCleared
+    emitCampGearPlaced, emitCampStationPlaced, emitCampSceneCleared,
+    emitRequestRestState, emitRequestShortRestState
 } from "./SocketController.js";
 import {
     showRejoinNotification, removeRejoinNotification,
@@ -35,7 +36,6 @@ import {
     showPrepNotification, removePrepNotification,
     removeGmRestIndicator
 } from "./RejoinManager.js";
-import { emitRequestRestState, emitRequestShortRestState } from "./SocketController.js";
 import { resolvePlayerCloseOptions } from "./playerClosePolicy.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -330,7 +330,7 @@ export async function handleConsumeFirewood(data) {
 
 export async function handleCampGearPlace(data, ctx) {
     const { actorId, gearType, x, y } = data;
-    if (!actorId || !gearType || x == null || y == null) return;
+    if (!actorId || !gearType || x === null || y === null) return;
     const placed = await placePlayerGear(x, y, gearType, actorId);
     if (placed) {
         emitCampGearPlaced({ actorId, gearType });
@@ -343,7 +343,7 @@ export async function handleCampGearPlace(data, ctx) {
 
 export async function handleCampStationPlace(data, ctx) {
     const { actorId, stationKey, x, y, userId } = data;
-    if (!actorId || !stationKey || x == null || y == null || !userId) return;
+    if (!actorId || !stationKey || x === null || y === null || !userId) return;
     const actor = game.actors.get(actorId);
     const user = game.users.get(userId);
     if (!actor || !user) return;

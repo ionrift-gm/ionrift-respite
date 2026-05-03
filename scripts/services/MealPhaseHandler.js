@@ -68,7 +68,7 @@ export class MealPhaseHandler {
             const result = await this._spoilActorItems(actor, (item, flags) => {
                 if (flags.foragedThisRest) return false;
                 const spoilsAfter = ItemClassifier.getSpoilsAfter(item);
-                if (spoilsAfter == null || spoilsAfter <= 0) return false;
+                if (spoilsAfter === null || spoilsAfter <= 0) return false;
                 return daysSinceLastRest >= spoilsAfter;
             });
 
@@ -122,7 +122,7 @@ export class MealPhaseHandler {
             const toStamp = [];
             for (const item of actor.items) {
                 const spoilsAfter = ItemClassifier.getSpoilsAfter(item);
-                if (spoilsAfter == null || spoilsAfter <= 0) continue;
+                if (spoilsAfter === null || spoilsAfter <= 0) continue;
                 const flags = item.flags?.[MODULE_ID] ?? {};
                 if (flags.harvestedDate) continue;
                 toStamp.push({ _id: item.id, [`flags.${MODULE_ID}.harvestedDate`]: now ?? String(nowEpoch) });
@@ -138,7 +138,7 @@ export class MealPhaseHandler {
 
             const result = await this._spoilActorItems(actor, (item, flags) => {
                 const spoilsAfter = ItemClassifier.getSpoilsAfter(item);
-                if (spoilsAfter == null || spoilsAfter <= 0) return false;
+                if (spoilsAfter === null || spoilsAfter <= 0) return false;
 
                 const harvested = flags.harvestedDate;
                 if (!harvested) return false;
@@ -685,7 +685,7 @@ export class MealPhaseHandler {
         const flags = item?.flags?.[MODULE_ID] ?? {};
         if (flags.wellFed !== true) return [];
         const buffRaw = flags.buff;
-        if (buffRaw == null) return [];
+        if (buffRaw === null) return [];
 
         const buffs = Array.isArray(buffRaw) ? buffRaw : [buffRaw];
         await MealPhaseHandler._removeWellFedEffects(actor);

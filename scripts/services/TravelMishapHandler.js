@@ -106,7 +106,7 @@ export class TravelMishapHandler {
     static _formatConditionName(condition, level) {
         if (!condition) return "Condition";
         const base = condition.charAt(0).toUpperCase() + condition.slice(1);
-        if (condition === "exhaustion" && level != null) return `Exhaustion ${level}`;
+        if (condition === "exhaustion" && level !== null) return `Exhaustion ${level}`;
         return base;
     }
 

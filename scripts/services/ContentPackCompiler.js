@@ -7,6 +7,8 @@
  * Ionrift / Respite sidebar folder.
  */
 
+/* global CompendiumCollection */
+
 const MODULE_ID = "ionrift-respite";
 
 export class ContentPackCompiler {

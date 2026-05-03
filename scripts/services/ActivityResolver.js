@@ -323,9 +323,9 @@ export class ActivityResolver {
 
                     // Spend one kit charge on any outcome (success or failure)
                     if (hasKit && healerKit) {
-                        if (healerKit.system?.uses?.value != null) {
+                        if (healerKit.system?.uses?.value !== null) {
                             await healerKit.update({ "system.uses.value": Math.max(0, kitCharges - 1) });
-                        } else if (healerKit.system?.quantity != null) {
+                        } else if (healerKit.system?.quantity !== null) {
                             const newQty = Math.max(0, (healerKit.system.quantity ?? 1) - 1);
                             if (newQty <= 0) await healerKit.delete();
                             else await healerKit.update({ "system.quantity": newQty });

@@ -10,7 +10,7 @@ export class DetectMagicScanner {
      * @returns {string} slug for CSS (abj, evo, unknown, …)
      */
     static normalizeSchoolForGlow(school) {
-        if (school == null || school === "") return "unknown";
+        if (school === null || school === "") return "unknown";
         if (typeof school !== "string") return "unknown";
         const k = school.trim().toLowerCase();
         const map = {

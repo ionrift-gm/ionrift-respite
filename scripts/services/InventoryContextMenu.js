@@ -97,7 +97,7 @@ async function _consumeFromInventory(actor, item, isFood) {
     // Check for Well Fed buff and apply if present
     const flags = itemSnapshot.flags?.[MODULE_ID] ?? {};
     let buffLines = [];
-    if (flags.wellFed === true && flags.buff != null) {
+    if (flags.wellFed === true && flags.buff !== null) {
         buffLines = await MealPhaseHandler._applyWellFedEffect(actor, itemSnapshot);
     }
 
