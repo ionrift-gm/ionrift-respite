@@ -313,7 +313,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 const advisory = this._actor
                     ? getActivityAdvisory(act.id, this._actor, ps)
                     : { text: "", urgent: false };
-                const advRaw = advisory.text != null ? String(advisory.text).trim() : "";
+                const advRaw = advisory.text !== null && advisory.text !== undefined ? String(advisory.text).trim() : "";
                 const hasAdvisory = advRaw.length > 0;
                 const hintText = hasAdvisory ? advRaw : (act.description ?? "").trim() || "";
                 const nv = !!advisory.nonViable;
@@ -651,7 +651,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         const ps = this._partyState ?? buildPartyState([], new Map(), 14);
         const advisory = actor ? getActivityAdvisory(activityId, actor, ps) : null;
-        const advText = advisory?.text != null ? String(advisory.text).trim() : "";
+        const advText = advisory?.text !== null && advisory?.text !== undefined ? String(advisory.text).trim() : "";
 
         return {
             activityDetail: {

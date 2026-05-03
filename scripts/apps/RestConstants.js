@@ -183,7 +183,7 @@ export function getActivityAdvisory(activityId, actor, partyState) {
             if (level > 5)
                 return { text: "Training has no effect above level 5", urgent: false, nonViable: true };
             const xp = actor.system?.details?.xp ?? {};
-            const gap = (xp.max && xp.value != null) ? (xp.max - xp.value) : null;
+            const gap = (xp.max && xp.value !== null && xp.value !== undefined) ? (xp.max - xp.value) : null;
             const streak = actor.getFlag?.("ionrift-respite", "trainingStreak") ?? 0;
             const baseXP = 45;
             const reduction = streak * 5;

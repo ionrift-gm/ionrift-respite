@@ -3866,7 +3866,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 );
                 picker.addEventListener("pointerleave", (e) => {
                     if (!picker.contains(e.relatedTarget)) {
-                        if (this._campFirePreviewLevel != null) {
+                        if (this._campFirePreviewLevel !== null && this._campFirePreviewLevel !== undefined) {
                             this._campFirePreviewLevel = null;
                             if ((this._fireLevel ?? "unlit") === "unlit") {
                                 this.render({ force: true });
@@ -7639,7 +7639,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const followUps = {};
         for (const [cid] of this._characterChoices) {
             const fu = this._gmFollowUps?.get(cid);
-            if (fu != null) followUps[cid] = fu;
+            if (fu !== null && fu !== undefined) followUps[cid] = fu;
         }
         emitActivityChoice(
                     game.user.id,
