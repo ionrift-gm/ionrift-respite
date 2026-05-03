@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.2] - 2026-05-03
+
+### Fixed
+- The art pack nudge and Content Packs screen incorrectly linked to a Patreon-gated collection. The core art pack is free — all download links now point to the public post.
+- Pack registry marked the core art pack as Acolyte tier. Corrected to Free.
+
 ## [2.0.1] - 2026-05-03
 
 ### Fixed
