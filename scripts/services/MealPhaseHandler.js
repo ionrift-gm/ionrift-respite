@@ -1040,23 +1040,25 @@ export class MealPhaseHandler {
     /**
      * Build food options from actor inventory.
      *
-     * Detection strategy (first match wins per item):
-     *   1. DnD5e consumable subtype: item.system.type.value === "food"
-     *   2. Respite flag: item.flags["ionrift-respite"].foodType === "food"
-     *   3. Name fallback: matches FOOD_NAMES allowlist
-     *
-     * This allows custom food items (homebrew diets, Gatherer outputs,
-     * crafted meals) to appear in the meal phase without name hacking.
+     * Biological diets: ItemClassifier.isFood (resource type + tags + exclusions).
+     * Essence diets (construct, undead, etc.): ItemClassifier.isEssence so diet
+     * customFoodNames and fuel/oil rules match what the meal phase consumes.
      */
     static _buildFoodOptions(actor) {
         const options = [];
+        const useEssenceTray = ItemClassifier.requiresEssence(actor);
+        const defaultFoodIcon = useEssenceTray
+            ? "icons/commodities/gems/gem-rough-white-blue.webp"
+            : "icons/consumables/food/bread-loaf-round-white.webp";
 
         for (const item of actor.items) {
             const qty = item.system?.quantity ?? 1;
             if (qty <= 0) continue;
 
-            const isFood = ItemClassifier.isFood(item, actor);
-            if (!isFood) continue;
+            const allowed = useEssenceTray
+                ? ItemClassifier.isEssence(item, actor)
+                : ItemClassifier.isFood(item, actor);
+            if (!allowed) continue;
 
             options.push({
                 value: item.id,
@@ -1064,7 +1066,7 @@ export class MealPhaseHandler {
                 name: item.name,
                 itemId: item.id,
                 available: qty,
-                icon: item.img ?? "icons/consumables/food/bread-loaf-round-white.webp",
+                icon: item.img ?? defaultFoodIcon,
                 partyMeal: item.flags?.[MODULE_ID]?.partyMeal ?? false
             });
         }
