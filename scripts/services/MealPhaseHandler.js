@@ -1041,8 +1041,8 @@ export class MealPhaseHandler {
      * Build food options from actor inventory.
      *
      * Biological diets: ItemClassifier.isFood (resource type + tags + exclusions).
-     * Essence diets (construct, undead, etc.): ItemClassifier.isEssence so diet
-     * customFoodNames and fuel/oil rules match what the meal phase consumes.
+     * Essence diets (construct, undead, etc.): ItemClassifier.isEssenceMealFoodOption
+     * (customFoodNames + fuel; oil flasks live under water only when diet allows oil).
      */
     static _buildFoodOptions(actor) {
         const options = [];
@@ -1056,7 +1056,7 @@ export class MealPhaseHandler {
             if (qty <= 0) continue;
 
             const allowed = useEssenceTray
-                ? ItemClassifier.isEssence(item, actor)
+                ? ItemClassifier.isEssenceMealFoodOption(item, actor)
                 : ItemClassifier.isFood(item, actor);
             if (!allowed) continue;
 
@@ -1202,7 +1202,7 @@ export class MealPhaseHandler {
             const qty = item.system?.quantity ?? 1;
             if (qty <= 0) continue;
 
-            if (!ItemClassifier.isEssence(item, actor)) continue;
+            if (!ItemClassifier.isEssenceMealFoodOption(item, actor)) continue;
 
             options.push({
                 value: item.id,
