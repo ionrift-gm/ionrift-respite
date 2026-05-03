@@ -1307,7 +1307,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
             // Content packs: loaded from world storage via Import Pack workflow.
             // Packs are NOT Foundry modules. They are JSON files downloaded from
-            // Patreon and imported through Respite's Content Packs settings UI.
+            // Ionrift and imported through Respite's Content Packs settings UI.
             await this._loadContentPacks();
         } catch (e) {
             console.error(`${MODULE_ID} | Failed to load seed data:`, e);
@@ -1317,7 +1317,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /**
      * Loads imported content pack events from world storage.
      * Packs are stored as world-level settings after being imported
-     * through the Content Packs UI (JSON file upload from Patreon).
+     * through the Content Packs UI (JSON file upload from Ionrift).
      */
     async _loadContentPacks() {
         const enabledPacks = game.settings.get(MODULE_ID, "enabledPacks") ?? {};
@@ -9887,7 +9887,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static #onOpenArtPackPatreon(event, target) {
-        window.open("https://www.patreon.com/posts/154985310?collection=2079931", "_blank");
+        window.open("https://www.patreon.com/posts/154985310", "_blank");
     }
 
     static async #onOpenArtPackImport(event, target) {
