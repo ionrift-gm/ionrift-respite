@@ -57,6 +57,8 @@ export const SOCKET_TYPES = Object.freeze({
 
     // ── Meal ──
     MEAL_CHOICE:           "mealChoice",
+    /** Player → GM: serve feast/party meal (GM creates items + effects on all recipients) */
+    FEAST_SERVE_REQUEST:   "feastServeRequest",
     /** Player → GM: apply meal-day consumption (inventory) on host */
     MEAL_DAY_CONSUME_REQUEST: "mealDayConsumeRequest",
     MEAL_DAY_CONSUMED:     "mealDayConsumed",
@@ -664,6 +666,17 @@ export function emitRequestShortRestState(userId) {
  */
 export function emitShortRestAfkUpdate(characterId, isAfk) {
     _emit(SOCKET_TYPES.SHORT_REST_AFK_UPDATE, { characterId, isAfk });
+}
+
+// ── Feast Serve Emitter ─────────────────────────────────────────────────────
+
+/**
+ * Player → GM: request the GM to execute feast serving (Well Fed effects, item
+ * distribution) on behalf of the player who lacks OWNER on other actors.
+ * @param {object} data - { cookActorId, itemSnapshot, partyIds, feastMode }
+ */
+export function emitFeastServeRequest(data) {
+    _emit(SOCKET_TYPES.FEAST_SERVE_REQUEST, data);
 }
 
 // ── Monster Cooking Emitter ─────────────────────────────────────────────────
