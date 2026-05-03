@@ -12897,6 +12897,27 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     border-radius: 4px;
     pointer-events: none;
 }
+
+.meal-inv-card-qty.meal-inv-card-qty--water {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.06rem;
+    padding: 0.08rem 0.22rem;
+    line-height: 1.08;
+}
+
+.meal-inv-card-qty--water .meal-inv-qty-stack {
+    font-size: 0.56rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.52);
+}
+
+.meal-inv-card-qty--water .meal-inv-qty-pints {
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: rgba(147, 197, 253, 0.95);
+}
 .meal-inv-card-name {
     font-size: 0.68rem;
     color: rgba(255, 255, 255, 0.7);
