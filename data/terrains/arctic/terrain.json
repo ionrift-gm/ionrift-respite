@@ -13,7 +13,7 @@
         "good":    ["A natural snow cave, stable and insulated.", "A sheltered ice ravine with high walls.", "A wind-carved alcove in a glacier face."],
         "nat20":   ["An abandoned expedition cache shelter, still intact.", "A geothermal vent warming a sheltered hollow. Steam rises gently.", "A deep ice cave, eerily beautiful and completely still."]
     },
-    "mealRules": { "waterPerDay": 1, "foodPerDay": 1 },
+    "mealRules": { "waterPerDay": 2, "foodPerDay": 1 },
     "weather": ["clear", "overcast", "snow", "blizzard", "whiteout"],
     "eventsFile": null
 }
