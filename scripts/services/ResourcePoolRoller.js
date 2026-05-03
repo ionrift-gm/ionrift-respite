@@ -21,11 +21,31 @@ export class ResourcePoolRoller {
     }
 
     /**
+     * @param {string} poolId
+     * @returns {boolean}
+     */
+    hasPool(poolId) {
+        return this.pools.has(poolId);
+    }
+
+    /**
      * Rolls against a named pool a given number of times.
      * @param {string} poolId - Resource pool ID.
      * @param {number} rolls - Number of rolls to make.
      * @returns {Object[]} Array of { itemRef, quantity, itemData }.
      */
+    /**
+     * Pool used for standard travel/camp forage draws (matches {@link ResourcePoolRoller.roll} fallback rules).
+     * @param {string} terrainTag
+     * @returns {Object|null}
+     */
+    getEffectiveForagePool(terrainTag) {
+        const poolId = `resource_pool_${terrainTag}`;
+        let pool = this.pools.get(poolId);
+        if (!pool) pool = this.pools.get("resource_pool_wilderness");
+        return pool ?? null;
+    }
+
     async roll(poolId, rolls = 1) {
         let pool = this.pools.get(poolId);
 

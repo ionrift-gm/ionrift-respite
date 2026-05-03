@@ -1,0 +1,87 @@
+{{!-- Workbench Examine: Detect Magic, casters, scan, focus/taste, submit, acknowledgement (station dialog + short rest) --}}
+<div class="station-workbench-identify-embed station-identify-embed identify-tab"
+     data-workbench-actor-id="{{workbenchIdentifyActorId}}">
+    {{!-- Caster advisories (compact, above zones) --}}
+    {{#if identifyCasters.length}}
+    <div class="identify-caster-advisory">
+        <i class="fas fa-hat-wizard"></i>
+        {{#each identifyCasters}}{{#unless @first}}, {{/unless}}{{name}}{{/each}}
+        can cast Identify (ritual, free)
+    </div>
+    {{/if}}
+    {{!-- Drop zones — hero position --}}
+    <div class="identify-scroll-area station-identify-scroll wb-ident-scroll">
+    <div class="meal-drop-columns wb-ident-drop-columns">
+        <div class="meal-panel wb-ident-gear-panel{{#if workbenchFocusExhausted}} wb-ident-exhausted{{/if}}">
+            <span class="panel-label">Focus
+                {{#if workbenchFocusExhausted}}<span class="wb-ident-used-badge">Used</span>{{/if}}
+            </span>
+            <div class="wb-ident-gear-slot-wrap">
+                <div class="meal-drop-zone wb-ident-drop-zone gear-focus-drop-zone {{#if workbenchGearChip}}filled{{/if}}
+                    {{#if workbenchFocusExhausted}}wb-ident-zone-blocked{{/if}}"
+                    data-wb-zone="gear"
+                    title="{{#if workbenchFocusExhausted}}Focus identify already used this rest{{else}}Drop one non-potion item here. Click to clear.{{/if}}">
+                    <div class="drop-zone-silhouette">
+                        {{#if workbenchGearChip}}
+                        <img src="{{workbenchGearChip.img}}" alt="" class="drop-zone-item-icon" onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
+                        {{else}}
+                        <i class="fas fa-hand-holding drop-zone-gear-sil"></i>
+                        {{/if}}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="meal-panel wb-ident-potion-panel">
+            <span class="panel-label">Potion</span>
+            <div class="wb-ident-potion-slot-wrap">
+                <div class="meal-drop-zone wb-ident-drop-zone potion-taste-drop-zone {{#if workbenchPotionChip}}filled{{/if}}"
+                     data-wb-zone="potion" title="Drop one potion here. Click to clear.">
+                    <div class="drop-zone-silhouette">
+                        {{#if workbenchPotionChip}}
+                        <img src="{{workbenchPotionChip.img}}" alt="" class="drop-zone-item-icon" onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
+                        {{else}}
+                        <i class="fas fa-flask drop-zone-potion-sil"></i>
+                        {{/if}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{!-- Footer toolbar: Detect Magic + Submit --}}
+    <div class="station-meal-submit-row wb-ident-submit-row wb-ident-footer-toolbar">
+        <button type="button" class="btn-detect-magic{{#if magicScanActive}} is-active{{/if}}"
+            data-action="stationDetectMagicScan"
+            {{#unless canTriggerDetectMagicScan}}disabled{{/unless}}
+            title="{{#if magicScanActive}}Dismiss scan{{else}}{{#if canTriggerDetectMagicScan}}{{#if isGmUser}}Cast Detect Magic for the party{{else}}Cast Detect Magic{{/if}}{{else}}No Detect Magic caster in party{{/if}}{{/if}}">
+            <i class="fas {{#if magicScanActive}}fa-eye-slash{{else}}fa-eye{{/if}}" aria-hidden="true"></i>
+            <span class="btn-detect-magic-text">{{#if magicScanActive}}Dismiss{{else}}Detect Magic{{/if}}</span>
+        </button>
+        <button type="button" class="station-meal-submit-btn" data-action="submitWorkbenchIdentify"
+            data-workbench-actor-id="{{workbenchIdentifyActorId}}"
+            {{#if workbenchSubmitLocked}}disabled{{/if}}>Submit identify</button>
+    </div>
+    </div>
+
+    {{#if workbenchIdentifyAcknowledgement}}
+    <div class="wb-ident-ack-overlay" role="dialog" aria-modal="true">
+        <div class="wb-ident-ack-card wb-ident-ack-fx">
+            <div class="wb-ident-ack-title" id="wb-ident-ack-heading"><i class="fas fa-scroll"></i> Revelation</div>
+            <p class="wb-ident-ack-lead">Names and properties resolve for this rest.</p>
+            {{#each workbenchIdentifyAcknowledgement.items}}
+            <div class="wb-ident-ack-row">
+                <img src="{{img}}" alt="" class="wb-ident-ack-img" onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
+                <div class="wb-ident-ack-meta">
+                    <span class="wb-ident-ack-name">{{name}}</span>
+                    {{#if requiresAttunement}}<span class="magic-attune-hint">Requires attunement</span>{{/if}}
+                </div>
+            </div>
+            {{/each}}
+            <button type="button" class="station-meal-submit-btn wb-ident-ack-btn" data-action="dismissWorkbenchIdentifyAck"
+                data-workbench-actor-id="{{workbenchIdentifyActorId}}"
+                {{#unless workbenchAckRevealReady}} disabled title="Brief pause before you continue"{{/unless}}>
+                {{#if workbenchAckRevealReady}}Continue{{else}}Wait...{{/if}}
+            </button>
+        </div>
+    </div>
+    {{/if}}
+</div>

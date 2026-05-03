@@ -84,7 +84,7 @@ export async function postRollToChat(actor, roll, flavor) {
  * @returns {Promise<void>}
  */
 export async function waitForDiceSoNice(timeoutMs = 5000) {
-    if (!game.modules.get("dice-so-nice")?.active) return;
+    if (!game.modules?.get?.("dice-so-nice")?.active) return;
     return new Promise(resolve => {
         const timeout = setTimeout(resolve, timeoutMs);
         Hooks.once("diceSoNiceRollComplete", () => {
@@ -98,6 +98,18 @@ export async function waitForDiceSoNice(timeoutMs = 5000) {
  * Disables a roll button and shows a spinner.
  * @param {HTMLElement} target - The button element.
  */
+/**
+ * Natural d20 face from a standard 1d20+mod skill roll (Foundry v12+ Roll terms).
+ * @param {Roll} roll
+ * @returns {number|null}
+ */
+export function getNatD20FromRoll(roll) {
+    const t0 = roll?.terms?.[0];
+    const r0 = t0?.results?.[0]?.result;
+    if (typeof r0 === "number") return r0;
+    return roll?.dice?.[0]?.results?.[0]?.result ?? null;
+}
+
 export function disableRollButton(target) {
     if (!target) return;
     target.disabled = true;
@@ -114,7 +126,7 @@ export function disableRollButton(target) {
  * @param {number} dc - Difficulty class.
  * @param {string} [context="Skill check"] - Context label for chat flavor.
  * @param {'normal'|'advantage'|'disadvantage'} [rollMode='normal']
- * @returns {Promise<{ total: number, passed: boolean, skill: string, modifier: number }>}
+ * @returns {Promise<{ total: number, passed: boolean, skill: string, modifier: number, natD20: number|null }>}
  */
 export async function rollForPlayer(actor, skills, dc, context = "Skill check", rollMode = "normal") {
     const skillList = Array.isArray(skills) ? skills : [skills];
@@ -130,7 +142,7 @@ export async function rollForPlayer(actor, skills, dc, context = "Skill check", 
     await postRollToChat(actor, roll, flavor);
     await waitForDiceSoNice();
 
-    return { total: roll.total, passed, skill, modifier };
+    return { total: roll.total, passed, skill, modifier, natD20: getNatD20FromRoll(roll) };
 }
 
 /**

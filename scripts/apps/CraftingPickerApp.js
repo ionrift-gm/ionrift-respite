@@ -67,8 +67,9 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         const selectedRecipe = available.find(r => r.id === this._selectedRecipeId);
         let commitSummary = null;
         if (selectedRecipe && !this._hasCrafted) {
-            const riskMods = { safe: -3, standard: 0, ambitious: 5 };
-            const adjustedDc = (selectedRecipe.dc ?? 12) + (riskMods[this._selectedRisk] ?? 0);
+            const adjustedDc = this._engine.getAdjustedCraftingDc(
+                this._actor, selectedRecipe, this._selectedRisk, this._terrainTag
+            );
 
             // Determine which output to show based on risk
             const outputForRisk = this._selectedRisk === "ambitious" && selectedRecipe.ambitiousOutput
@@ -100,9 +101,9 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
             hasCrafted: this._hasCrafted,
             showMissing: this._showMissing,
             riskTiers: [
-                { id: "safe", label: "Safe", hint: "DC -3, ingredients preserved on failure", selected: this._selectedRisk === "safe" },
-                { id: "standard", label: "Standard", hint: "Base DC, ingredients consumed", selected: this._selectedRisk === "standard" },
-                { id: "ambitious", label: "Ambitious", hint: "DC +5, enhanced output on success", selected: this._selectedRisk === "ambitious" }
+                { id: "safe", label: "Safe", hint: "DC −3 · Ingredients kept", selected: this._selectedRisk === "safe" },
+                { id: "standard", label: "Standard", hint: "Base DC · Ingredients used", selected: this._selectedRisk === "standard" },
+                { id: "ambitious", label: "Ambitious", hint: "DC +5 · Better yield", selected: this._selectedRisk === "ambitious" }
             ],
             available,
             partial,
@@ -113,8 +114,9 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
     }
 
     _enrichRecipe(recipe) {
-        const riskMods = { safe: -3, standard: 0, ambitious: 5 };
-        const adjustedDc = (recipe.dc ?? 12) + (riskMods[this._selectedRisk] ?? 0);
+        const adjustedDc = this._engine.getAdjustedCraftingDc(
+            this._actor, recipe, this._selectedRisk, this._terrainTag
+        );
         return {
             ...recipe,
             dcDisplay: adjustedDc,

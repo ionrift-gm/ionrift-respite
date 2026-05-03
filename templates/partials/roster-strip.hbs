@@ -1,25 +1,15 @@
-{{!-- Roster Strip Partial: [AFK toggle] | [Players] ... [GM chip] --}}
+{{!-- Roster strip: selection + activity; .afk + fa-mug-hot badge (same language as TABLE AFK panel) --}}
 {{#if roster.length}}
 <div class="roster-strip">
-    {{!-- AFK button toggle: tall card style --}}
-    <div class="roster-afk-btn {{#if selfAfk}}active{{/if}}" data-action="afkToggle" data-roster-id="{{selfAfkId}}"
-        title="{{#if selfAfk}}Mark yourself present{{else}}Step away from the table{{/if}}" role="button" tabindex="0">
-        <i class="fas fa-mug-hot"></i>
-        <span>AFK</span>
-    </div>
-
-    <div class="roster-divider"></div>
-
-    {{!-- Player chips --}}
     <div class="roster-players">
         {{#each roster}}
         <div class="roster-chip {{#if isSelected}}selected{{/if}} {{source}} {{#unless isOwner}}not-owned{{/unless}} {{#if isAfk}}afk{{/if}}"
             data-roster-id="{{id}}" title="{{fullName}}">
-            {{#if isAfk}}
-            <span class="roster-afk-portrait"><i class="fas fa-mug-hot"></i></span>
-            {{else}}
-            <img class="roster-portrait" src="{{img}}" alt="{{name}}">
-            {{/if}}
+            <span class="roster-portrait-wrap">
+                <img class="roster-portrait" src="{{img}}" alt="{{name}}">
+                {{#if isAfk}}<span class="roster-afk-mug" aria-hidden="true"><i class="fas fa-mug-hot"></i></span>{{/if}}
+                {{#if isBeddedDown}}<span class="roster-zzz" aria-hidden="true">Zzz</span>{{/if}}
+            </span>
             <span class="roster-name">{{name}}</span>
             {{#if activityLabel}}<span class="roster-activity-label" title="{{activityLabel}}">{{activityLabel}}</span>{{/if}}
             <span class="roster-status">
@@ -39,24 +29,6 @@
             </span>
         </div>
         {{/each}}
-    </div>
-
-    {{!-- GM Chip: right --}}
-    <div class="roster-chip gm-chip {{#if gmRosterChip.isAfk}}afk{{/if}}"
-        data-roster-id="gm" title="{{gmRosterChip.fullName}}">
-        {{#if gmRosterChip.isAfk}}
-        <span class="roster-afk-portrait"><i class="fas fa-mug-hot"></i></span>
-        {{else}}
-        <span class="roster-gm-icon"><i class="fas fa-dice-d20"></i></span>
-        {{/if}}
-        <span class="roster-name">{{gmRosterChip.name}}</span>
-        <span class="roster-status">
-            {{#if gmRosterChip.pendingRoll}}
-            <i class="fas fa-dice-d20 roster-roll-pending" title="GM must roll"></i>
-            {{else if gmRosterChip.rolledResult}}
-            <i class="fas fa-check-circle roster-roll-done" title="Rolled"></i>
-            {{/if}}
-        </span>
     </div>
 </div>
 {{/if}}

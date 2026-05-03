@@ -4,6 +4,9 @@
  * to reduce file size and improve maintainability.
  */
 
+import { isGearDeployed } from "../services/CompoundCampPlacer.js";
+import { HD_PENALTY, boostComfort } from "../services/ComfortCalculator.js";
+
 /**
  * Weather master table. Each entry defines comfort penalty, encounter DC modifier,
  * and tent interaction. `tentReduces` means tent lowers penalty by 1 (partial help).
@@ -61,7 +64,288 @@ export const ACTIVITY_ICONS = {
     act_cook: "fas fa-utensils", act_brew: "fas fa-flask", act_tailor: "fas fa-cut",
     act_craft: "fas fa-tools", act_fletch: "fas fa-crosshairs",
     act_defenses: "fas fa-shield-alt", act_train: "fas fa-dumbbell",
-    act_identify: "fas fa-search", act_attune: "fas fa-gem", act_scribe: "fas fa-scroll"
+    act_identify: "fas fa-search", act_scribe: "fas fa-scroll",
+    act_other: "fas fa-comments"
+};
+
+/** Static fallback hints for activities without dynamic advisories */
+const ACTIVITY_HINTS_STATIC = {
+    act_study: "Skill check DC 12. On success, GM may share a clue or detail",
+    act_tell_tales: "Performance DC 10. Inspiration for one ally, all on exceptional",
+    act_cook: "Prepare a meal from ingredients",
+    act_brew: "Brew a potion or salve",
+    act_tailor: "Stitch materials into gear",
+    act_craft: "Work raw materials into items",
+    act_other: "No check, no mechanical effect"
+};
+
+/**
+ * Generate a contextual advisory for an activity card.
+ * Advisory text is player-visible. Never include encounter DC or GM-only data.
+ * @param {string} activityId - The activity ID
+ * @param {Actor5e} actor - The actor considering this activity
+ * @param {object} partyState - Pre-computed party state from buildPartyState()
+ * @returns {{text: string, urgent: boolean}}
+ */
+export function getActivityAdvisory(activityId, actor, partyState) {
+    const hp = actor.system?.attributes?.hp ?? {};
+    const hpPct = hp.max ? Math.round((hp.value / hp.max) * 100) : 100;
+    const hd = actor.system?.attributes?.hd ?? {};
+    const hdAvail = typeof hd.value === "number" ? hd.value : (hd.available ?? 0);
+    const hdMax = hd.max ?? actor.system?.details?.level ?? 1;
+    const hdDeficit = hdMax - hdAvail;
+
+    switch (activityId) {
+        case "act_keep_watch": {
+            const watchers = partyState.watcherCount ?? 0;
+            if (!partyState.hasWatcher)
+                return { text: "No one on watch. Watcher: +3 initiative, surprise immune, +1 party initiative", urgent: true };
+            if (watchers >= 2)
+                return { text: `${watchers} watchers already assigned. Consider another activity`, urgent: false };
+            return { text: "On watch: +3 initiative, surprise immune, +1 party initiative", urgent: false };
+        }
+        case "act_tend_wounds": {
+            const injured = partyState.injuredMembers.filter(m => m.id !== actor.id);
+            const hasKit = actor.items?.some(i =>
+                i.name?.toLowerCase().includes("healer") && i.name?.toLowerCase().includes("kit")
+                && ((i.system?.uses?.value ?? i.system?.quantity ?? 0) > 0)
+            );
+            const hasFeat = actor.items?.some(i => i.type === "feat" && i.name?.toLowerCase() === "healer");
+            const gearNote = hasFeat && hasKit ? " (Healer feat + kit)" : hasKit ? " (kit: advantage)" : "";
+            if (!injured.length)
+                return { text: "No one is injured", urgent: false, nonViable: true };
+            const worst = injured[0];
+            if (worst.hpPct < 50)
+                return { text: `${worst.name} at ${worst.hpPct}% HP. Heals now + boosts their recovery tier${gearNote}`, urgent: true };
+            return { text: `${worst.name} at ${worst.hpPct}% HP. Heals now + boosts their recovery tier${gearNote}`, urgent: false };
+        }
+        case "act_defenses": {
+            if (partyState.hasDefenses)
+                return { text: "Someone is already setting defenses. Consider another activity", urgent: false };
+            return { text: "On success, lowers encounter chance by 2 and grants +1 party initiative", urgent: false };
+        }
+        case "act_scout": {
+            if (partyState.hasScout)
+                return { text: "Someone is already scouting. Consider another activity", urgent: false };
+            return { text: "On success, advantage on initiative and surprise", urgent: false };
+        }
+        case "act_rest_fully": {
+            const comfortTier = partyState.comfort ?? "sheltered";
+            const isHostile = comfortTier === "hostile";
+            const isRough = comfortTier === "rough";
+            const adapter = game.ionrift?.respite?.adapter;
+            const exhaustion = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+
+            const basePenalty = HD_PENALTY[comfortTier] ?? 0;
+            const boostedPenalty = HD_PENALTY[boostComfort(comfortTier, 1)] ?? 0;
+            const rawHdRecovery = Math.max(1, Math.floor(hdMax / 2));
+            const hdWithout = Math.max(0, rawHdRecovery - basePenalty);
+            const hdWith = Math.max(0, rawHdRecovery - boostedPenalty) + 1;
+            const effectiveGain = Math.max(0, Math.min(hdWith, hdDeficit) - Math.min(hdWithout, hdDeficit));
+
+            if (isHostile) {
+                if (hdDeficit >= 1)
+                    return { text: `Hostile camp. Rest Fully recovers ${effectiveGain || 1} extra HD, removes HP cap`, urgent: true };
+                if (hpPct < 100)
+                    return { text: "Hostile camp. Rest Fully removes the 75% HP cap", urgent: true };
+                return { text: "All HD and HP full. No recovery benefit", urgent: false, nonViable: true };
+            }
+            if (isRough) {
+                if (effectiveGain > 0) {
+                    const exNote = exhaustion >= 1 ? ", clears exhaustion DC" : "";
+                    return { text: `Rough camp. Rest Fully recovers ${effectiveGain} extra HD${exNote}`, urgent: true };
+                }
+                if (exhaustion >= 1)
+                    return { text: `Rough camp + ${exhaustion} exhaustion. Rest Fully clears exhaustion DC`, urgent: true };
+                if (hdDeficit >= 1)
+                    return { text: "Recovery at this comfort covers all missing HD", urgent: false, nonViable: true };
+                return { text: "No recovery benefit at this comfort", urgent: false, nonViable: true };
+            }
+            if (effectiveGain > 0)
+                return { text: `Missing ${hdDeficit} HD. Rest Fully recovers +${effectiveGain} extra HD`, urgent: false };
+            if (hdDeficit >= 1)
+                return { text: "Recovery at this comfort covers all missing HD", urgent: false, nonViable: true };
+            return { text: "All HD and HP full. No recovery benefit", urgent: false, nonViable: true };
+        }
+        case "act_pray": {
+            const prof = actor.system?.attributes?.prof ?? 2;
+            return { text: `On success, ${prof} temp HP (proficiency bonus)`, urgent: false };
+        }
+        case "act_fletch": {
+            const ammo = _countAmmo(actor);
+            const prof = actor.system?.attributes?.prof ?? 2;
+            if (ammo !== null && ammo < 10)
+                return { text: `Low ammo: ${ammo} remaining. Yields 1d4+${prof} on success`, urgent: true };
+            return { text: `Craft arrows or bolts. Yields 1d4+${prof} on success`, urgent: false };
+        }
+        case "act_train": {
+            const level = actor.system?.details?.level ?? 1;
+            if (level > 5)
+                return { text: "Training has no effect above level 5", urgent: false, nonViable: true };
+            const xp = actor.system?.details?.xp ?? {};
+            const gap = (xp.max && xp.value != null) ? (xp.max - xp.value) : null;
+            const streak = actor.getFlag?.("ionrift-respite", "trainingStreak") ?? 0;
+            const baseXP = 45;
+            const reduction = streak * 5;
+            const effectiveXP = Math.max(baseXP - reduction, 0);
+            const effectiveFailXP = Math.max(15 - reduction, 0);
+            if (effectiveXP <= 0)
+                return { text: "Diminishing returns: no XP gain this rest. Try something else", urgent: false, nonViable: true };
+            if (gap !== null && gap > 0 && gap <= effectiveXP)
+                return { text: `${gap} XP to level up. Training can close that gap this rest`, urgent: true };
+            if (streak >= 2)
+                return { text: `Training streak (${streak}): XP reduced to ${effectiveXP} success / ${effectiveFailXP} fail`, urgent: false };
+            if (gap !== null && gap > 0)
+                return { text: `${gap} XP to next level. ${effectiveXP} XP on success, ${effectiveFailXP} on fail`, urgent: false };
+            return { text: `${effectiveXP} XP on success (DC 13 ability check)`, urgent: false };
+        }
+        case "act_scribe":
+            return { text: "Arcana check (DC 10 + spell level), 50gp per level. Scroll consumed regardless", urgent: false };
+        default:
+            return { text: ACTIVITY_HINTS_STATIC[activityId] ?? null, urgent: false };
+    }
+}
+
+/**
+ * Pre-compute party state for advisory generation.
+ * Call once per render, pass to each getActivityAdvisory call.
+ * @param {Actor5e[]} partyActors - All actors in the rest
+ * @param {Map} pendingSelections - Map of actorId → activityId
+ * @param {number} encounterDC - Current effective encounter DC
+ * @returns {object}
+ */
+export function buildPartyState(partyActors, pendingSelections, encounterDC, comfort) {
+    const picks = [...(pendingSelections?.values() ?? [])];
+    const watcherCount = picks.filter(id => id === "act_keep_watch").length;
+    const hasWatcher = watcherCount > 0;
+    const hasScout = picks.includes("act_scout");
+    const hasDefenses = picks.includes("act_defenses");
+    const partySize = partyActors.length;
+
+    const injuredMembers = partyActors
+        .map(a => {
+            const hp = a.system?.attributes?.hp ?? {};
+            const pct = hp.max ? Math.round((hp.value / hp.max) * 100) : 100;
+            return { id: a.id, name: a.name, hpPct: pct };
+        })
+        .filter(m => m.hpPct < 100)
+        .sort((a, b) => a.hpPct - b.hpPct);
+
+    return {
+        hasWatcher, watcherCount, hasScout, hasDefenses,
+        partySize,
+        injuredMembers,
+        encounterDC: encounterDC ?? 14,
+        comfort: comfort ?? "sheltered"
+    };
+}
+
+/** Count ammunition (arrows, bolts, darts) in an actor's inventory */
+function _countAmmo(actor) {
+    const AMMO_NAMES = /arrow|bolt|dart|sling bullet/i;
+    let total = 0;
+    let found = false;
+    for (const item of actor.items ?? []) {
+        if (item.type === "consumable" && item.system?.type?.value === "ammo" &&
+            AMMO_NAMES.test(item.name)) {
+            total += item.system?.quantity ?? 0;
+            found = true;
+        }
+    }
+    return found ? total : null;
+}
+
+/**
+ * Camp station definitions. Each station groups activities by the campsite
+ * furniture they are performed at. Order determines display order.
+ * `furnitureKey` ties back to CompoundCampPlacer token flags.
+ */
+export const CAMP_STATIONS = [
+    {
+        id: "workbench",
+        label: "Workbench",
+        icon: "fas fa-tools",
+        furnitureKey: "table",
+        tagline: "Identify, study, scribe",
+        activities: ["act_identify", "act_study", "act_scribe"]
+    },
+    {
+        id: "weapon_rack",
+        label: "Weapon Rack",
+        icon: "fas fa-shield-alt",
+        furnitureKey: "weaponRack",
+        tagline: "Fletch, defences, watch, other",
+        activities: ["act_fletch", "act_defenses", "act_keep_watch", "act_other"]
+    },
+    {
+        id: "medical_bed",
+        label: "Medical Bed",
+        icon: "fas fa-hand-holding-medical",
+        furnitureKey: "medicalBed",
+        tagline: "Tend wounds, rest fully",
+        activities: ["act_tend_wounds", "act_rest_fully"]
+    },
+    {
+        id: "bedroll",
+        label: "Your Bedroll",
+        icon: "fas fa-bed",
+        furnitureKey: null,
+        tagline: "Rest, pray, train, tales, craft, tailor, other",
+        activities: ["act_rest_fully", "act_pray", "act_train", "act_tell_tales", "act_craft", "act_tailor", "act_other"]
+    },
+    {
+        id: "campfire",
+        label: "Campfire",
+        icon: "fas fa-fire",
+        furnitureKey: "campfire",
+        tagline: "Fire state, comfort, personal camp",
+        activities: []
+    },
+    {
+        id: "cooking_station",
+        label: "Cooking Station",
+        icon: "fas fa-utensils",
+        furnitureKey: "cookingArea",
+        tagline: "Cook, brew",
+        activities: ["act_cook", "act_brew"]
+    }
+];
+
+/**
+ * One canvas station id for a chosen activity (used for overlay portraits).
+ * When an activity appears on both bedroll and campfire, picks from deployed bedroll gear;
+ * otherwise the first matching station in {@link CAMP_STATIONS} order.
+ * @param {string} activityId
+ * @param {string|null} [actorId]
+ * @returns {string}
+ */
+export function inferCanvasStationForActivity(activityId, actorId = null) {
+    if (!activityId) return "campfire";
+    const hits = CAMP_STATIONS.filter(s => (s.activities ?? []).includes(activityId));
+    if (!hits.length) return "campfire";
+    if (hits.length === 1) return hits[0].id;
+    const hasBed = hits.some(h => h.id === "bedroll");
+    const hasFire = hits.some(h => h.id === "campfire");
+    if (hasBed && hasFire && actorId) {
+        return isGearDeployed(actorId, "bedroll") ? "bedroll" : "campfire";
+    }
+    return hits[0].id;
+}
+
+/** Maximum distance (grid squares) a player token may be from a station to interact with it. */
+export const STATION_RANGE_SQUARES = 3;
+
+/**
+ * Camp station placeholder (build site) before the fire is lit. Swapped in-place when promoted.
+ * World Data path (same root as FURNITURE draft art in CompoundCampPlacer).
+ * @type {{ name: string, path: string, width: number, height: number }}
+ */
+export const PLACEHOLDER_CAMP_STATION = {
+    name: "Build site",
+    path: "icons/svg/circle.svg",
+    /** Half-grid footprint — small supply bundle, not a full station. */
+    width: 0.5,
+    height: 0.5
 };
 
 /** Shelter spell definitions. Used in setup phase for shelter detection. */
@@ -84,3 +368,12 @@ export const COMFORT_TIPS = {
     sheltered: "Sheltered: full HP, full HD recovery",
     safe: "Safe: full HP, full HD recovery, no encounter risk"
 };
+
+/** Identify tab: Detect Magic toolbar label. */
+export const DETECT_MAGIC_BTN_LABEL_PLAYER = "Detect Magic";
+export const DETECT_MAGIC_BTN_LABEL_GM = "Detect Magic";
+/** Shown when a scan is already active; clicking again dismisses it. */
+export const DETECT_MAGIC_BTN_LABEL_DISMISS = "Dismiss";
+export const DETECT_MAGIC_BTN_TITLE_GM = "Cast Detect Magic for the party. Use when you are granting the spell at the table; skip if a player should trigger it from their own character.";
+export const DETECT_MAGIC_BTN_TITLE_PLAYER = "Cast Detect Magic";
+export const DETECT_MAGIC_BTN_TITLE_NONE = "No Detect Magic available in the party";

@@ -1,4 +1,5 @@
-import { getPartyActors } from "../module.js";
+import { getPartyActors } from "./partyActors.js";
+import { boostComfort, getHdPenalty, getExhaustionDC, HP_FRACTION } from "./ComfortCalculator.js";
 
 /**
  * RestFlowEngine
@@ -86,9 +87,14 @@ export class RestFlowEngine {
         this._phase = "events";
 
         // All modifiers adjust the THRESHOLD (DC), not the roll.
-        // Positive shelter/weather/scouting/fire/defenses reduce DC (easier to avoid events).
-        // Positive gmEncounterAdj raises DC (harder to avoid events).
-        const campMods = (this.fireRollModifier ?? 0) + (this.shelterEncounterMod ?? 0) + (this._encounterBreakdown?.defenses ?? 0);
+        // Positive shelter+weather (shelterEncounterMod), scouting, fire, and defenses each
+        // increase campMods so effectiveDC drops (easier quiet night). Positive gmEncounterAdj
+        // raises effectiveDC (harder quiet night). Must match RestSetupApp encounter bar total.
+        const campMods = (this.fireRollModifier ?? 0)
+            + (this.shelterEncounterMod ?? 0)
+            + (this._encounterBreakdown?.scouting ?? 0)
+            + (this._encounterBreakdown?.defenses ?? 0)
+            + (this._encounterBreakdown?.travelMishap ?? 0);
         const baseDC = this._baseDC ?? 15; // Set during setup from terrain table
         const effectiveDC = Math.max(1, baseDC - campMods + (this.gmEncounterAdj ?? 0));
         console.log(`[Respite:Engine] resolveEvents — baseDC=${baseDC}, shelterEncounterMod=${this.shelterEncounterMod ?? 0}, fireRollModifier=${this.fireRollModifier ?? 0}, breakdownDefenses=${this._encounterBreakdown?.defenses ?? 0}, campMods=${campMods}, gmAdj=${this.gmEncounterAdj ?? 0} → effectiveDC=${effectiveDC}, scoutTier=${scoutTier}`);
@@ -104,6 +110,7 @@ export class RestFlowEngine {
      */
     async resolve(activityResolver, triggeredEvents = [], earlyResults = new Map()) {
         this._phase = "resolve";
+        this._earlyResults = earlyResults;
         const outcomes = [];
 
         // Filter through current roster to exclude characters removed mid-rest
@@ -208,23 +215,24 @@ export class RestFlowEngine {
         const rawHdRecovery = Math.max(1, Math.floor(totalHd / 2));
 
         // Effective comfort: start with camp comfort, boost if activity has comfort_boost
-        const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
         let effectiveComfort = this.comfort;
         const hasComfortBoost = activitySchema?.outcomes?.success?.effects?.some(e => e.type === "comfort_boost");
         if (hasComfortBoost) {
-            const idx = COMFORT_TIERS.indexOf(this.comfort);
-            if (idx >= 0 && idx < COMFORT_TIERS.length - 1) {
-                effectiveComfort = COMFORT_TIERS[idx + 1];
-            }
+            effectiveComfort = boostComfort(effectiveComfort, 1);
+        }
+
+        // Tend Wounds: if someone successfully tended this character, boost their comfort too
+        const hasTendBoost = this._isTendWoundsTarget(actor.id);
+        if (hasTendBoost) {
+            effectiveComfort = boostComfort(effectiveComfort, 1);
         }
 
         // Comfort tier penalties (using effective comfort)
-        const HD_PENALTY = { safe: 0, sheltered: 0, rough: 1, hostile: 2 };
-        const hdPenalty = HD_PENALTY[effectiveComfort] ?? 0;
+        const hdPenalty = getHdPenalty(effectiveComfort);
         let baseHdRecovered = Math.max(0, rawHdRecovery - hdPenalty);
 
         const isHostile = effectiveComfort === "hostile";
-        const maxHpRestorable = isHostile ? Math.floor(maxHp * 0.75) : maxHp;
+        const maxHpRestorable = isHostile ? Math.floor(maxHp * (HP_FRACTION.hostile)) : maxHp;
         let baseHpRestored = maxHpRestorable;
 
         // hpMultiplier automation (from event effects)
@@ -237,6 +245,13 @@ export class RestFlowEngine {
             }
         }
 
+        const travelRec = typeof actor.getFlag === "function"
+            ? (actor.getFlag("ionrift-respite", "travelMishapRecovery") ?? null)
+            : null;
+        if (travelRec?.hpMultiplier && typeof travelRec.hpMultiplier === "number") {
+            overallHpMultiplier *= travelRec.hpMultiplier;
+        }
+
         if (overallHpMultiplier !== 1.0) {
             const recoveryGap = maxHp - currentHp;
             const naturalHealing = Math.min(maxHpRestorable, recoveryGap);
@@ -244,9 +259,7 @@ export class RestFlowEngine {
         }
 
         // Exhaustion risk at Rough/Hostile (using effective comfort)
-        let exhaustionDC = effectiveComfort === "hostile" ? 15
-            : effectiveComfort === "rough" ? 10
-            : null;
+        let exhaustionDC = getExhaustionDC(effectiveComfort);
 
         // ── Xanathar's Armor Sleep Penalty (gated by setting) ──
         // Sleeping in medium/heavy armor: recover only 1/4 HD, exhaustion not reduced
@@ -274,6 +287,11 @@ export class RestFlowEngine {
         const hasCooksUtensils = items.some(n => n?.includes("cook") && n?.includes("utensil"));
         const hasDiningGear = hasMessKit || hasCooksUtensils;
 
+        // Activity bonus HD (Rest Fully: +1 HD from deep sleep)
+        const bonusHdFromActivity = activitySchema?.outcomes?.success?.effects
+            ?.filter(e => e.type === "bonus_hd")
+            ?.reduce((sum, e) => sum + (e.value ?? 0), 0) ?? 0;
+
         // Gear bonuses
         const gearBonusHd = hasBedroll ? 1 : 0;
         // Mess Kit / Cook's Utensils: advantage on exhaustion save when fire is lit
@@ -289,11 +307,17 @@ export class RestFlowEngine {
             gearDescriptors.push(`${gearLabel}: no fire (advantage inactive)`);
         }
         if (gearBonusHd > 0) gearDescriptors.push("Bedroll: +1 HD");
+        if (bonusHdFromActivity > 0) gearDescriptors.push("Deep sleep: +1 HD");
+        if (hasTendBoost) gearDescriptors.push("Tended: comfort +1 tier");
         if (armorSleepPenalty) gearDescriptors.push(`Sleeping in ${equippedArmor.name}: 1/4 HD, exhaustion not reduced`);
+
+        if (travelRec?.hpMultiplier && typeof actor.unsetFlag === "function") {
+            void actor.unsetFlag("ionrift-respite", "travelMishapRecovery");
+        }
 
         return {
             hpRestored: baseHpRestored,
-            hdRestored: baseHdRecovered + gearBonusHd,
+            hdRestored: baseHdRecovered + gearBonusHd + bonusHdFromActivity,
             spellSlotsRestored: this.restType === "long",
             comfortLevel: effectiveComfort,
             campComfort: this.comfort,
@@ -305,6 +329,25 @@ export class RestFlowEngine {
             gearBonuses: { hd: gearBonusHd, exhaustionAdvantage },
             gearDescriptors
         };
+    }
+
+    /**
+     * Checks if the given actor is the successful target of a Tend Wounds activity.
+     * Scans all character choices for act_tend_wounds with a followUpValue matching actorId,
+     * then checks the tender's early result for success/exceptional.
+     * @param {string} actorId
+     * @returns {boolean}
+     */
+    _isTendWoundsTarget(actorId) {
+        for (const [tenderId, choice] of this.characterChoices) {
+            if (choice.activityId !== "act_tend_wounds") continue;
+            if (choice.options?.followUpValue !== actorId) continue;
+            if (!this._earlyResults) return true;
+            const tenderResult = this._earlyResults.get(tenderId);
+            if (!tenderResult) return true;
+            return ["success", "exceptional"].includes(tenderResult.result);
+        }
+        return false;
     }
 
     /**

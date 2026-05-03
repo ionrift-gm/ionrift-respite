@@ -288,6 +288,250 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
     }
 
     // ═══════════════════════════════════════════════════════════════
+    //  CONTENT TAB
+    // ═══════════════════════════════════════════════════════════════
+
+    async _renderContentTab(context, panel) {
+        const contentPacks = context.packs.filter(p => p.type === "content" || p.type === "mixed");
+
+        let html = `<div class="pack-tab-content">`;
+
+        if (contentPacks.length === 0) {
+            html += `
+            <div class="art-empty-state">
+                <i class="fas fa-utensils"></i>
+                <p>No content packs installed.</p>
+                <span>Import a content pack to enable cooking recipes, foraging pools, and hunt yields.</span>
+            </div>`;
+        } else {
+            const totalItems = contentPacks.reduce((s, p) => s + p.totalItems, 0);
+            const totalRecipes = contentPacks.reduce((s, p) => s + p.contentCounts.recipes, 0);
+            const totalPools = contentPacks.reduce((s, p) => s + p.contentCounts.pools, 0);
+
+            html += this._renderSummaryBar([
+                { label: "recipes", value: totalRecipes },
+                { label: "forage pools", value: totalPools },
+                { label: "total items", value: totalItems }
+            ]);
+
+            html += `<div class="pack-section-header"><i class="fas fa-utensils"></i> Profession Content</div>`;
+
+            for (const pack of contentPacks) {
+                const bodyHtml = this._renderContentCardBody(pack);
+                html += this._renderPackCard(pack, bodyHtml, { deletable: !!pack._rawData });
+            }
+        }
+
+        html += `</div>`;
+
+        // Footer links
+        html += this._renderFooterLinks([
+            { href: "https://www.patreon.com/collection/2079931", icon: "fas fa-download", label: "Get more packs" }
+        ]);
+
+        // Action buttons
+        html += this._renderActionButtons([
+            { cls: "pack-browse-content-btn", icon: "fas fa-book-open", label: "Browse Content" },
+            { cls: "pack-import-content-btn", icon: "fas fa-file-import", label: "Import Content Pack" },
+            { cls: "pack-save-content-btn", icon: "fas fa-save", label: "Save Changes" }
+        ]);
+
+        panel.innerHTML = html;
+
+        // Wire toggles
+        this._wireToggles(panel);
+
+        // Wire action buttons
+        panel.querySelector(".pack-import-content-btn")?.addEventListener("click", () => this._importPack());
+        panel.querySelector(".pack-save-content-btn")?.addEventListener("click", () => this._onSaveEventPacks(panel));
+        panel.querySelector(".pack-browse-content-btn")?.addEventListener("click", () => {
+            const firstPack = contentPacks.find(p => p._rawData);
+            if (!firstPack) {
+                ui.notifications.warn("No content packs loaded to browse.");
+                return;
+            }
+            this._openContentBrowser(firstPack);
+        });
+
+        // Wire delete buttons
+        panel.querySelectorAll(".pack-delete-btn").forEach(btn => {
+            btn.addEventListener("click", () => this._deleteImportedPack(btn.dataset.packId));
+        });
+    }
+
+    _renderContentCardBody(pack) {
+        const cc = pack.contentCounts;
+        const badges = [];
+
+        if (cc.recipes > 0) {
+            badges.push(`<span class="pack-terrain-badge"><i class="fas fa-scroll"></i> ${cc.recipes} recipes</span>`);
+        }
+        if (cc.pools > 0) {
+            badges.push(`<span class="pack-terrain-badge"><i class="fas fa-seedling"></i> ${cc.pools} forage pools</span>`);
+        }
+        if (cc.yieldTerrains > 0) {
+            badges.push(`<span class="pack-terrain-badge"><i class="fas fa-drumstick-bite"></i> ${cc.yieldTerrains} hunt terrains</span>`);
+        }
+        if (cc.butcherEntries > 0) {
+            badges.push(`<span class="pack-terrain-badge"><i class="fas fa-skull"></i> ${cc.butcherEntries} butcher entries</span>`);
+        }
+        if (cc.events > 0) {
+            badges.push(`<span class="pack-terrain-badge"><i class="fas fa-bolt"></i> ${cc.events} events</span>`);
+        }
+
+        return `<div class="pack-terrain-list">${badges.join("")}</div>`;
+    }
+
+    /**
+     * Opens an inline content browser dialog for a content pack.
+     * Shows a categorised breakdown of recipes, pools, and yields.
+     */
+    _openContentBrowser(pack) {
+        const raw = pack._rawData;
+        if (!raw) return;
+
+        let body = "";
+
+        // Recipes
+        if (raw.recipes) {
+            for (const [profId, recipes] of Object.entries(raw.recipes)) {
+                const profLabel = profId.charAt(0).toUpperCase() + profId.slice(1);
+                body += `<h3 style="margin: 0.8em 0 0.4em; color: var(--ionrift-purple-light, #b48ead);"><i class="fas fa-scroll"></i> ${profLabel} Recipes (${recipes.length})</h3>`;
+                body += `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 0.6em;">`;
+                for (const recipe of recipes) {
+                    const dcLabel = recipe.dc ? ` DC ${recipe.dc}` : "";
+                    const monsterTag = recipe.monsterRecipe ? ` <i class="fas fa-dragon" title="Monster Recipe" style="color: var(--color-level-error);"></i>` : "";
+                    const ingredientCount = recipe.ingredients?.length ?? 0;
+                    body += `<span class="pack-terrain-badge" title="${recipe.description ?? ""}\n${ingredientCount} ingredient(s)${dcLabel}" style="cursor: help;">
+                        <img src="${recipe.output?.img ?? "icons/svg/mystery-man.svg"}" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 3px; border: none;" />
+                        ${recipe.name}${monsterTag}
+                    </span>`;
+                }
+                body += `</div>`;
+            }
+        }
+
+        // Resource Pools
+        if (raw.resourcePools?.length) {
+            body += `<h3 style="margin: 0.8em 0 0.4em; color: var(--ionrift-purple-light, #b48ead);"><i class="fas fa-seedling"></i> Forage Pools (${raw.resourcePools.length})</h3>`;
+            body += `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 0.6em;">`;
+            for (const pool of raw.resourcePools) {
+                const entryCount = pool.entries?.length ?? 0;
+                body += `<span class="pack-terrain-badge" title="${entryCount} items in pool">
+                    <i class="${this._getTerrainIcon(pool.terrainTag ?? "wilderness")}"></i> ${pool.name ?? pool.id}
+                    <em>${entryCount}</em>
+                </span>`;
+            }
+            body += `</div>`;
+
+            // Item listing per pool
+            for (const pool of raw.resourcePools) {
+                if (!pool.entries?.length) continue;
+                body += `<details style="margin: 0.3em 0 0.6em; padding-left: 0.5em;"><summary style="cursor: pointer; color: var(--ionrift-purple-light, #b48ead); font-size: 0.85em;"><i class="${this._getTerrainIcon(pool.terrainTag ?? "wilderness")}"></i> ${pool.name ?? pool.id}</summary>`;
+                body += `<div style="display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px;">`;
+                for (const entry of pool.entries) {
+                    const itemName = entry.itemData?.name ?? entry.itemRef ?? "Unknown";
+                    const img = entry.itemData?.img ?? "icons/svg/mystery-man.svg";
+                    const weight = entry.weight ?? 1;
+                    body += `<span class="pack-terrain-badge" title="Weight: ${weight}, Qty: ${entry.quantity ?? 1}" style="cursor: help;">
+                        <img src="${img}" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 2px; border: none;" />
+                        ${itemName}
+                    </span>`;
+                }
+                body += `</div></details>`;
+            }
+        }
+
+        // Hunt Yields
+        if (raw.huntYields) {
+            const terrains = Object.keys(raw.huntYields);
+            body += `<h3 style="margin: 0.8em 0 0.4em; color: var(--ionrift-purple-light, #b48ead);"><i class="fas fa-drumstick-bite"></i> Hunt Yields (${terrains.length} terrains)</h3>`;
+            body += `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 0.6em;">`;
+            for (const terrain of terrains) {
+                const yields = raw.huntYields[terrain];
+                const stdCount = yields.standard?.length ?? 0;
+                const excCount = yields.exceptional?.length ?? 0;
+                body += `<span class="pack-terrain-badge" title="Standard: ${stdCount} items, Exceptional: ${excCount} items">
+                    <i class="${this._getTerrainIcon(terrain)}"></i> ${terrain}
+                    <em>${stdCount + excCount}</em>
+                </span>`;
+            }
+            body += `</div>`;
+        }
+
+        // Butcher Registry
+        if (raw.butcherRegistry) {
+            const entries = Object.entries(raw.butcherRegistry).filter(([k]) => k !== "_meta");
+            body += `<h3 style="margin: 0.8em 0 0.4em; color: var(--ionrift-purple-light, #b48ead);"><i class="fas fa-skull"></i> Butcher Registry (${entries.length} creatures)</h3>`;
+            body += `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 0.6em;">`;
+            for (const [id, entry] of entries) {
+                const tierColor = { common: "#aaa", uncommon: "#6abf6a", rare: "#4a8fd4", legendary: "#d4a44a" }[entry.tier] ?? "#aaa";
+                body += `<span class="pack-terrain-badge" title="${entry.flavour ?? ""}\nMin CR: ${entry.minCR ?? "?"}, Tier: ${entry.tier ?? "?"}" style="cursor: help; border-color: ${tierColor};">
+                    ${entry.label ?? id}
+                    <em style="color: ${tierColor};">${entry.tier ?? ""}</em>
+                </span>`;
+            }
+            body += `</div>`;
+        }
+
+        new Dialog({
+            title: `${pack.label}: Content Browser`,
+            content: `<div style="max-height: 500px; overflow-y: auto; padding: 0.5em;">${body}</div>`,
+            buttons: { close: { label: "Close", icon: "fas fa-times" } },
+            default: "close"
+        }, { width: 520, classes: ["ionrift-window"] }).render(true);
+    }
+
+    /**
+     * Delete an imported pack from world storage and remove its compiled compendium.
+     * Works for both event packs and content packs.
+     * @param {string} packId
+     */
+    async _deleteImportedPack(packId) {
+        if (PackRegistryApp._deletePending) return;
+        PackRegistryApp._deletePending = true;
+
+        try {
+            const importedPacks = game.settings.get("ionrift-respite", "importedPacks") ?? {};
+            const packData = importedPacks[packId];
+            if (!packData) return;
+
+            const packName = packData.name ?? packId;
+            const confirmed = await foundry.applications.api.DialogV2.confirm({
+                window: { title: "Remove Pack", icon: "fas fa-trash-alt" },
+                classes: ["ionrift-window"],
+                content: `<p>Remove <strong>${packName}</strong>?</p>
+                          <p>All content from this pack will no longer be available. You can re-import at any time.</p>`,
+                yes: { label: "Remove", icon: "fas fa-trash-alt" },
+                no: { label: "Cancel", icon: "fas fa-times" }
+            });
+            if (!confirmed) return;
+
+            // Remove compiled compendium (if one was created)
+            const compName = `respite-${packId}`;
+            const existing = game.packs.get(`world.${compName}`);
+            if (existing) {
+                try { await existing.deleteCompendium(); }
+                catch (err) { console.warn(`ionrift-respite | Failed to delete compendium "${compName}":`, err); }
+            }
+
+            // Remove from importedPacks
+            delete importedPacks[packId];
+            await game.settings.set("ionrift-respite", "importedPacks", importedPacks);
+
+            // Remove from enabledPacks
+            const enabledPacks = game.settings.get("ionrift-respite", "enabledPacks") ?? {};
+            delete enabledPacks[packId];
+            await game.settings.set("ionrift-respite", "enabledPacks", enabledPacks);
+
+            ui.notifications.info(`Removed "${packName}".`);
+            this.render({ force: true });
+        } finally {
+            PackRegistryApp._deletePending = false;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     //  ART TAB
     // ═══════════════════════════════════════════════════════════════
 
@@ -467,6 +711,8 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
             if (!confirmed) return;
 
             await game.settings.set("ionrift-respite", "artPackDisabled", true);
+            await game.settings.set("ionrift-respite", "artNudgeSnoozedUntil", "");
+            await game.settings.set("ionrift-respite", "artNudgeSuppressed", false);
             await ImageResolver.init();
             ui.notifications.info("Art pack disabled. Placeholder banners will be used.");
             this.render({ force: true });

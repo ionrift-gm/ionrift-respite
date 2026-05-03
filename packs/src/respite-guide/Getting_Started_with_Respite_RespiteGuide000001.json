@@ -9,61 +9,31 @@
     "pages": [
         {
             "_id": "aQc3PtQPrYDi9Mlx",
-            "name": "How to Start a Rest",
+            "name": "Player Guide",
             "type": "text",
             "text": {
-                "content": "<h2>Launching a Rest</h2><p>Only the GM can start a rest. Two ways to do it:</p><ul><li><strong>Chat command</strong> - type <code>/respite</code> in the chat bar.</li><li><strong>Scene control</strong> - click the campground icon in the token controls toolbar (left side of the canvas).</li></ul><p>The module intercepts long rests by default. When a player clicks \"Long Rest\" on their character sheet, Respite opens instead of the standard dialog. This can be toggled off in settings.</p>",
+                "content": "<h2>Respite: Player Guide</h2><p>Long rests in Respite are more than clicking a button. Where the party camps, what gear they carry, and what they choose to do during the night all affect how much they recover.</p><h3>How it works</h3><p>Each rest runs through four phases: <strong>Setup</strong> (the GM sets terrain and shelter), <strong>Activities</strong> (each character picks a camp activity), <strong>Events</strong> (the GM rolls for encounters), and <strong>Resolution</strong> (HP, hit dice, spell slots, and exhaustion are processed). If meal tracking is on, there is also a rations step where characters need food and water.</p><h3>Comfort</h3><p>Comfort is the single biggest factor in how much the party recovers. The GM sets it based on the environment, but shelter, fire, and certain activities can shift it up or down.</p><table><thead><tr><th>Tier</th><th>HP</th><th>Hit Dice</th><th>Exhaustion</th></tr></thead><tbody><tr><td><strong>Safe</strong></td><td>Full</td><td>Full</td><td>No encounter risk</td></tr><tr><td><strong>Sheltered</strong></td><td>Full</td><td>Full</td><td>Normal recovery</td></tr><tr><td><strong>Rough</strong></td><td>Full</td><td>-1 HD</td><td>CON DC 10 or +1</td></tr><tr><td><strong>Hostile</strong></td><td>75%</td><td>-2 HD</td><td>CON DC 15 or +1</td></tr></tbody></table><h3>Gear that matters</h3><p>Respite checks the party's inventory for camping gear. If a character has it, the module detects it automatically.</p><table><thead><tr><th>Item</th><th>Effect</th></tr></thead><tbody><tr><td><strong>Bedroll</strong></td><td>+1 Hit Die recovered during long rest</td></tr><tr><td><strong>Mess Kit</strong></td><td>Advantage on exhaustion saves (requires a lit campfire)</td></tr><tr><td><strong>Tent</strong></td><td>Shelter option that cancels or reduces weather penalties</td></tr></tbody></table><p>Bedrolls and mess kits are cheap and light. A tent is heavier (20 lb), so carrying one is a real choice. Forgetting any of them in the wild has consequences.</p><h3>Activities</h3><p>Each character picks one camp activity. There is a tension between helping the camp and helping yourself. Guarding lowers the chance of an event but means less personal recovery. Resting fully boosts comfort by one tier but leaves the character in deep sleep if something goes wrong.</p><p>Some activities are shared duties (Keep Watch, Scout, Set Up Defenses, Tend Wounds). Others are personal (Rest Fully, Training, Forage, Fletch Arrows). Spellcasters may also see arcane options like Identify Items, Attune Item, or Copy Spell.</p><h3>Campfire</h3><p>Someone needs to tend the fire. Fire level affects comfort and encounter odds. A bonfire boosts comfort by one step but is visible from a distance. An unlit camp drops comfort by one step. Drag kindling from inventory to fuel it, or whittle to contribute without spending items.</p><h3>Events</h3><p>The night is not always safe. The GM rolls against the encounter DC, which is shaped by terrain, weather, shelter, and what the party did during activities. Events can be hostile (creatures, hazards), complications (gear damage, resource loss), or discoveries (useful finds). Sometimes nothing happens. Sometimes it does.</p><p>The party's choices during activities directly affect these odds. More guards and scouts mean a safer night.</p>",
                 "format": 1,
                 "markdown": ""
             },
             "sort": 100000,
             "ownership": {
-                "default": -1
+                "default": 2
             },
             "flags": {}
         },
         {
             "_id": "dvr4TYdYmX88MCCf",
-            "name": "Rest Phases",
+            "name": "How to Start a Rest",
             "type": "text",
             "text": {
-                "content": "<h2>The Four Phases</h2><p>Each rest runs through four phases in order.</p><h3>1. Setup</h3><p>The GM picks the terrain, shelter type (safe, sheltered, rough, or exposed), and weather conditions. These determine the baseline encounter DC - how likely the party is to be interrupted. A visible breakdown shows how each factor (fire, scouting, defenses) shifts the odds.</p><h3>2. Activities</h3><p>Each character picks one camp activity for the night. GMs assign activities for NPCs, and players pick their own.</p><ul><li><strong>Guard</strong> - Lowers the encounter DC. Armor-dependent bonuses if wearing medium/heavy.</li><li><strong>Scout</strong> - Perception check to lower the encounter threshold. Can detect threats early.</li><li><strong>Rest Fully</strong> - No encounter benefit, but the character recovers without penalties.</li><li><strong>Fortify</strong> - Raises the camp defenses. Stacks with other fortifiers.</li><li><strong>Train</strong> - No camp benefit. Purely a narrative option.</li><li><strong>Campfire</strong> - Tends the fire. Terrain-specific difficulty. Magical shelter and taverns skip this.</li><li><strong>Study / Identify</strong> - Work with magical items, copy spells (Wizards), or run a Detect Magic scan.</li></ul><h3>3. Events</h3><p>The GM rolls against the encounter DC. Events are pulled from terrain-tagged pools with weighted selection. Some events are positive (a merchant caravan passes), some negative (a storm rolls in), some are decision trees where the GM picks how the party responds. The system tracks event history so the same disaster does not repeat until the pool cycles.</p><h3>4. Resolution</h3><p>HP, hit dice, spell slots, and exhaustion are processed according to the comfort level. Each player gets a private whisper with their personal recovery summary. The GM sees the full breakdown.</p>",
+                "content": "<h2>Launching a Rest</h2><p>Only the GM can start a rest. Two ways to do it:</p><ul><li><strong>Chat command</strong>: type <code>/respite</code> in the chat bar.</li><li><strong>Scene control</strong>: click the campground icon in the token controls toolbar (left side of the canvas).</li></ul><p>The module intercepts long rests by default. When a player clicks \"Long Rest\" on their character sheet, Respite opens instead of the standard dialog. This can be toggled off in settings.</p>",
                 "format": 1,
                 "markdown": ""
             },
             "sort": 200000,
             "ownership": {
-                "default": -1
-            },
-            "flags": {}
-        },
-        {
-            "_id": "uUZqFRiGZkQLNbjW",
-            "name": "Terrain and Comfort",
-            "type": "text",
-            "text": {
-                "content": "<h2>Terrain</h2><p>Terrain sets the event pool and base encounter difficulty. Available terrains include forest, desert, swamp, urban, dungeon, tavern, and more. Each terrain has its own set of events and baseline DC.</p><h2>Comfort Levels</h2><p>Comfort determines how much the party recovers. The GM sets this during setup or uses the module default.</p><ul><li><strong>Safe</strong> - Full HP, full HD, full spell slots. Exhaustion reduced by 1.</li><li><strong>Sheltered</strong> - Full HP, half HD rounded up. Full spell slots. Exhaustion reduced by 1.</li><li><strong>Rough</strong> - Half HP rounded up, half HD rounded up. Full spell slots. Exhaustion reduced by 1.</li><li><strong>Exposed</strong> - Half HP rounded up, quarter HD (minimum 1). Full spell slots. No exhaustion reduction.</li></ul>",
-                "format": 1,
-                "markdown": ""
-            },
-            "sort": 300000,
-            "ownership": {
-                "default": -1
-            },
-            "flags": {}
-        },
-        {
-            "_id": "yRwt7dwMRQbNp96Q",
-            "name": "Meals and Rations",
-            "type": "text",
-            "text": {
-                "content": "<h2>Food and Water Tracking</h2><p>When meal tracking is enabled in settings, a rations phase appears between Activities and Events. Each character needs food and water for the rest period.</p><p>Players drag ration items from their inventory onto the food and water plates. If a character goes without food or water, they may need to make Constitution saves or gain exhaustion, following the standard 5e variant rules.</p><p>Multi-day rests (when the party has been traveling for several days since their last rest) require provisions for each day.</p><p>Meal tracking is optional and can be toggled off entirely in module settings.</p>",
-                "format": 1,
-                "markdown": ""
-            },
-            "sort": 400000,
-            "ownership": {
-                "default": -1
+                "default": 0
             },
             "flags": {}
         },
@@ -76,22 +46,37 @@
                 "format": 1,
                 "markdown": ""
             },
-            "sort": 500000,
+            "sort": 300000,
             "ownership": {
-                "default": -1
+                "default": 0
+            },
+            "flags": {}
+        },
+        {
+            "_id": "cK8pRQdW2nFb4Xvj",
+            "name": "Cooking & Recipes",
+            "type": "text",
+            "text": {
+                "content": "<h2>Cooking</h2><p>Characters with Cook's Utensils (or Brewer's Supplies / Herbalism Kit) and the matching tool proficiency can prepare meals during a rest. Cooking is a <strong>camp activity</strong>. It takes the character's activity slot for the night.</p><h3>How Cooking Works</h3><ol><li>Select a recipe from the recipe browser.</li><li>Choose an approach: <strong>Standard</strong> (base DC) or <strong>Ambitious</strong> (DC +5, superior output on success).</li><li>Roll a Survival check against the recipe's DC. Ingredients are consumed regardless of the outcome.</li></ol><h3>Party Meals (Feasts)</h3><p>Some recipes are <strong>party meals</strong>: a single crafted item that feeds and buffs the entire party. These are marked with a party icon in the recipe browser.</p><p>Party meals have <strong>scaled ingredients</strong>: certain ingredients (typically rations) cost more based on party size. The formula is <code>max(1, partySize - 2)</code> per scaled ingredient. The fixed ingredients (the hero ingredient and water) stay the same regardless of party size.</p><h4>Example: Hearty Stew</h4><table><thead><tr><th>Party</th><th>Fresh Meat</th><th>Rations</th><th>Waterskin</th><th>Total</th></tr></thead><tbody><tr><td>3</td><td>1</td><td>1</td><td>1</td><td>3</td></tr><tr><td>4</td><td>1</td><td>2</td><td>1</td><td>4</td></tr><tr><td>5</td><td>1</td><td>3</td><td>1</td><td>5</td></tr><tr><td>6</td><td>1</td><td>4</td><td>1</td><td>6</td></tr><tr><td>7</td><td>1</td><td>5</td><td>1</td><td>7</td></tr></tbody></table><p>The pot needs its foundation: a chunk of meat for flavour and a skin of water for the broth. After that, each person adds a ration to the pot.</p><h3>Well Fed</h3><p>Eating a cooked meal (or being served a feast) grants the <strong>Well Fed</strong> condition. While Well Fed, a character gains temporary hit points based on the cook's proficiency bonus. The formula is <code>(PB-1)d6</code> for standard meals, stepping up one die size for ambitious successes.</p><h3>Recipe Authoring (Content Packs)</h3><p>Content packs can define custom recipes. To mark an ingredient as scaling with party size, add <code>perPartyMember: true</code> to the ingredient definition:</p><pre><code>{ \"name\": \"Rations\", \"quantity\": 1, \"perPartyMember\": true }</code></pre><p>This flag only takes effect when the recipe has <code>partyMeal: true</code> in its output flags. Non-party-meal recipes ignore the flag.</p>",
+                "format": 1,
+                "markdown": ""
+            },
+            "sort": 150000,
+            "ownership": {
+                "default": 2
             },
             "flags": {}
         },
         {
             "_id": "zA0gnfQJRBoM7wiw",
-            "name": "Terrains & Events (GM Only)",
+            "name": "Terrains & Events",
             "type": "text",
             "text": {
-                "content": "<h2>Event Coverage</h2><p>Respite ships with 31 events across 6 terrains. Each event has up to 4 outcome tiers (triumph, success, mixed, failure), producing over 120 distinct narrative outcomes. Events are weighted, terrain-tagged, and never repeat until the pool cycles.</p><h3>Forest (5 events)</h3><ul><li><strong>Pack Circling</strong> (encounter) - Wolves test the firelight perimeter.</li><li><strong>Widowmaker</strong> (complication) - A dead branch shifts in the canopy above a sleeper.</li><li><strong>Creeping Fog</strong> (complication) - Thick fog rolls in from the lowland.</li><li><strong>Moonlit Clearing</strong> (discovery) - The watch finds a clearing with edible mushrooms and herbs.</li><li><strong>Dawn Chorus</strong> (ambient) - Birdsong at first light. A good omen.</li></ul><h3>Desert (5 events)</h3><ul><li><strong>Sand Burial</strong> (complication) - Shifting dunes threaten to swallow gear.</li><li><strong>Scorpion Nest</strong> (encounter) - Something crawls out of the sand.</li><li><strong>Water Shortage</strong> (complication) - The dry air takes its toll on supplies.</li><li><strong>Buried Trade Goods</strong> (discovery) - Half-buried cargo from a lost caravan.</li><li><strong>Desert Sky</strong> (ambient) - Stars so dense they cast shadows.</li></ul><h3>Dungeon (5 events)</h3><ul><li><strong>Wandering Patrol</strong> (encounter) - Footsteps echo from a nearby corridor.</li><li><strong>Vermin Nest</strong> (complication) - Rats or insects disturbed by the camp.</li><li><strong>Stale Air</strong> (complication) - The air thickens and breathing gets harder.</li><li><strong>Previous Expedition</strong> (discovery) - Remains of an older adventuring party.</li><li><strong>Claw Marks</strong> (ambient) - Deep scratches scored into the stone walls.</li></ul><h3>Swamp (5 events)</h3><ul><li><strong>Swamp Stalkers</strong> (encounter) - Something tracks the party from the waterline.</li><li><strong>Leech Infestation</strong> (complication) - Leeches find exposed skin overnight.</li><li><strong>Foul Miasma</strong> (complication) - Toxic gas rises from the bog.</li><li><strong>Bog Rot</strong> (complication) - Wounds fester in the damp air.</li><li><strong>Dancing Lights</strong> (ambient) - Strange lights drift across the marsh surface.</li></ul><h3>Urban (5 events)</h3><ul><li><strong>Light Fingers</strong> (encounter) - A thief tests the party's awareness.</li><li><strong>Street Disturbance</strong> (complication) - Noise from the street disrupts rest.</li><li><strong>Late-Night Peddler</strong> (discovery) - A merchant with unusual wares.</li><li><strong>City Watch Patrol</strong> (complication) - Guards check the area.</li><li><strong>City Sounds</strong> (ambient) - The city never fully sleeps.</li></ul><h3>Tavern (5 events)</h3><ul><li><strong>A Familiar Tune</strong> (ambient) - A bard plays something the party recognises.</li><li><strong>Local Gossip</strong> (ambient) - Overheard conversation at the next table.</li><li><strong>Tense Words</strong> (ambient) - An argument brewing between locals.</li><li><strong>Wandering Merchant</strong> (ambient) - A trader offers goods to travellers.</li><li><strong>The Local Cat</strong> (ambient) - A tavern cat investigates the newcomers.</li></ul><h3>Disasters (1 event)</h3><ul><li><strong>Flash Flood</strong> (complication) - A wall of water surges through the campsite. Triggered on natural 1.</li></ul><hr><h3>Event Categories</h3><table><thead><tr><th>Category</th><th>What it means</th></tr></thead><tbody><tr><td>Encounter</td><td>Something hostile or confrontational. May lead to combat.</td></tr><tr><td>Complication</td><td>A problem that needs solving. Skill checks, resource loss, condition risks.</td></tr><tr><td>Discovery</td><td>Something useful found. Items, information, or resources.</td></tr><tr><td>Ambient</td><td>Colour and atmosphere. No mechanical impact, but sets the tone.</td></tr></tbody></table><h3>Outcome Tiers</h3><p>Most events resolve through a skill check with four possible outcomes:</p><ul><li><strong>Triumph</strong> - Beat the DC by 5 or more. Best possible result.</li><li><strong>Success</strong> - Meet the DC. Problem handled cleanly.</li><li><strong>Mixed</strong> - Fail by less than 5. Partial success with a cost.</li><li><strong>Failure</strong> - Miss the DC by 5 or more. Full consequences.</li></ul><p>The GM can Force Pass or Force Fail any check from the event card UI.</p>",
+                "content": "<h2>Terrains</h2><p>Terrain sets the event pool and baseline encounter DC. Available terrains include forest, desert, swamp, coast, arctic, underdark, urban, ruins, dungeon, and tavern. Each has its own events and base difficulty.</p><h2>Events</h2><p>Events are pulled from terrain-tagged pools with weighted selection. They never repeat until the pool cycles. Each event resolves on a 4-tier scale (triumph, success, mixed, failure) based on how far above or below the DC the roll lands.</p><p>The base pack ships with events across all terrains. Additional event packs can be enabled through the <strong>Content Packs</strong> settings panel.</p><h3>Event Browser</h3><p>To browse all available events, open <strong>Module Settings &gt; Content Packs &gt; Manage Packs</strong>, then click <strong>Browse Events</strong> at the bottom of the panel. The browser lets you filter by terrain and page through every event with its full outcome tiers.</p><img src=\"modules/ionrift-respite/assets/screenshots/pure/event_browser.png\" alt=\"Event Browser accessed from Content Packs settings\" /><h3>Event Categories</h3><table><thead><tr><th>Category</th><th>What it means</th></tr></thead><tbody><tr><td>Encounter</td><td>Something hostile or confrontational. May lead to combat.</td></tr><tr><td>Complication</td><td>A problem that needs solving. Skill checks, resource loss, condition risks.</td></tr><tr><td>Discovery</td><td>Something useful found. Items, information, or resources.</td></tr><tr><td>Ambient</td><td>Colour and atmosphere. No mechanical impact, sets the tone.</td></tr></tbody></table>",
                 "format": 1,
                 "markdown": ""
             },
-            "sort": 600000,
+            "sort": 400000,
             "ownership": {
                 "default": 0
             },
