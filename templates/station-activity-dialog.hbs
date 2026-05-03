@@ -900,9 +900,12 @@
                              data-available="{{available}}"
                              data-total-pints="{{totalPints}}"
                              data-character-id="{{../characterId}}"
-                             title="{{label}}">
+                             title="{{label}}: ×{{available}} carried, {{totalPints}}p pourable">
                             <img src="{{icon}}" alt="{{label}}" class="meal-inv-card-icon" draggable="false">
-                            <span class="meal-inv-card-qty">{{totalPints}}p</span>
+                            <span class="meal-inv-card-qty meal-inv-card-qty--water">
+                                <span class="meal-inv-qty-stack">×{{available}}</span>
+                                <span class="meal-inv-qty-pints">{{totalPints}}p</span>
+                            </span>
                             <span class="meal-inv-card-name">{{name}}</span>
                         </div>
                         {{/each}}
