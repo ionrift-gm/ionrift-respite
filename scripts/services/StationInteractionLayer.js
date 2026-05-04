@@ -967,9 +967,8 @@ class StationOverlay {
         this.token = null;
         this.clearChosenPortrait();
         this.clearMealPortraits({ skipLayout: true });
-        if (this._container) {
-            const parent = this._container.parent;
-            if (parent) parent.removeChild(this._container);
+        if (this._container && !this._container.destroyed) {
+            this._container.parent?.removeChild?.(this._container);
             this._container.destroy({ children: true });
         }
         this._container = null;
@@ -1292,9 +1291,10 @@ export function deactivateStationLayer() {
     _faRasterCache.clear();
 
     if (_overlayContainer) {
-        const parent = _overlayContainer.parent;
-        if (parent) parent.removeChild(_overlayContainer);
-        _overlayContainer.destroy({ children: true });
+        if (!_overlayContainer.destroyed) {
+            _overlayContainer.parent?.removeChild?.(_overlayContainer);
+            _overlayContainer.destroy({ children: true });
+        }
         _overlayContainer = null;
     }
 
