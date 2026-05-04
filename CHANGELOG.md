@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.8] - 2026-05-04
+
+### Fixed
+- Drinking water now spends pints from your waterskin charges instead of consuming whole waterskins. A full waterskin (8 pints) lasts 4 days at 2 pints per day, as intended by the v2.0.6 rework.
+- Failing a CON save in rough terrain now actually imposes exhaustion. Previously, the long rest's natural recovery cancelled the penalty before it was applied, making the save meaningless.
+
 ## [2.0.7] - 2026-05-04
 
 ### Fixed
