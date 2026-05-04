@@ -197,22 +197,29 @@ export class RecoveryHandler {
         const currentExhaustion = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
         if (currentExhaustion === 0 && !(recovery.exhaustionGain > 0) && !recovery.exhaustionDC) return 0;
 
-        let delta = 0;
+        // --- Phase 1: Rest recovery (negative = reduction) ---
+        let restRecovery = 0;
 
         // Long rest base reduction (matches dnd5e default: -1 per long rest)
         if (recovery.restType === "long") {
             if (recovery.comfortLevel === "hostile") {
                 // Hostile conditions: no natural exhaustion reduction
-                delta = 0;
+                restRecovery = 0;
             } else {
-                delta = -1;
+                restRecovery = -1;
             }
         }
 
         // 'Rest Fully' activity bonus: extra -1 for choosing to rest instead of craft/watch
         if (recovery.restedFully) {
-            delta -= 1;
+            restRecovery -= 1;
         }
+
+        // Clamp recovery: can't reduce below 0 exhaustion
+        const clampedRecovery = Math.max(-currentExhaustion, restRecovery);
+
+        // --- Phase 2: Penalties (positive = gain, applied after recovery) ---
+        let penalty = 0;
 
         // CON save at rough/hostile: fail = +1 exhaustion
         if (recovery.exhaustionDC) {
@@ -233,7 +240,7 @@ export class RecoveryHandler {
             });
 
             if (!passed) {
-                delta += 1;
+                penalty += 1;
                 recovery.exhaustionSaveResult = "failed";
                 console.log(`[Respite:Recovery] ${actor.name} failed exhaustion save (${roll.total} vs DC ${recovery.exhaustionDC}), +1 exhaustion`);
             } else {
@@ -244,10 +251,10 @@ export class RecoveryHandler {
 
         // Event-inflicted exhaustion (from complication effects)
         if (recovery.exhaustionGain) {
-            delta += recovery.exhaustionGain;
+            penalty += recovery.exhaustionGain;
         }
 
-        return delta;
+        return clampedRecovery + penalty;
     }
 
     /**

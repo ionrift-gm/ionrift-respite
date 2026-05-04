@@ -575,8 +575,8 @@ export class MealPhaseHandler {
                     }
                 }
                 for (const [itemId, amount] of waterUsage) {
-                    const consumed = await this._consumeItem(actor, itemId, amount, { wholeUnit: true });
-                    console.log(`[Respite:Meal] Consumed ${consumed}x water item ${itemId} from ${actor.name}`);
+                    const consumed = await this._consumeItem(actor, itemId, amount);
+                    console.log(`[Respite:Meal] Consumed ${consumed} pint(s) from water item ${itemId} from ${actor.name}`);
                 }
             }
 

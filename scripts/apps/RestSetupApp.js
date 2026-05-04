@@ -8415,9 +8415,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
             for (const itemId of water) {
                 if (itemId && itemId !== "skip" && !itemId.startsWith("__")) {
-                    const item = actor.items.get(itemId);
-                    const drainAmount = item?.system?.uses?.value || 1;
-                    await MealPhaseHandler._consumeItem(actor, itemId, drainAmount);
+                    await MealPhaseHandler._consumeItem(actor, itemId, 1);
                 }
             }
             for (const itemId of essence) {
