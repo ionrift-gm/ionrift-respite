@@ -56,7 +56,7 @@ import { CampCeremonyDelegate } from "./delegates/CampCeremonyDelegate.js";
 import { EventsPhaseDelegate } from "./delegates/EventsPhaseDelegate.js";
 import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
 import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple } from "./delegates/DetectMagicDelegate.js";
-import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, CAMP_STATIONS, getStationsForTerrain, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState } from "./RestConstants.js";
+import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, CAMP_STATIONS, getStationsForTerrain, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments } from "./RestConstants.js";
 import {
     activateStationLayer,
     deactivateStationLayer,
@@ -319,7 +319,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             retryCampPitPlacement: RestSetupApp.#onRetryCampPitPlacement,
             dismissArtNudge: RestSetupApp.#onDismissArtNudge,
             openArtPackPatreon: RestSetupApp.#onOpenArtPackPatreon,
-            openArtPackImport: RestSetupApp.#onOpenArtPackImport
+            openArtPackImport: RestSetupApp.#onOpenArtPackImport,
+            selectTotmActivity: RestSetupApp.#onSelectTotmActivity
         }
     };
 
@@ -1210,8 +1211,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     async applyRestoredPhaseUi() {
         if (this._phase !== "activity") return;
         await this.render({ force: true });
-        this._attachActivityPhaseCanvasChrome();
-        await this.close({});
+        const isTheater = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return true; } })();
+        if (!isTheater) {
+            this._attachActivityPhaseCanvasChrome();
+            await this.close({});
+        }
     }
 
     /**
@@ -2129,6 +2133,87 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             };
         });
 
+        // ── TotM station cards (global, not per-character) ─────────────
+        const totmStationCards = (() => {
+            try {
+                if (game.settings.get(MODULE_ID, "restInterfaceMode") !== "theater") return [];
+            } catch { return []; }
+            if (this._phase !== "activity") return [];
+
+            // Gather the union of available + faded activity IDs across all party members
+            const fireLevel = this._fireLevel ?? "unlit";
+            const isFireLit = !!(this._fireLevel && this._fireLevel !== "unlit");
+            const resolverOpts = { isFireLit, fireLevel, ...this._forageResolverOpts() };
+            const restType = this._engine?.restType ?? "long";
+            const seenIds = new Set();
+            const unionTiles = [];
+
+            for (const a of partyActors) {
+                const { available: avail, faded } = this._activityResolver.getAvailableActivitiesWithFaded(a, restType, resolverOpts);
+                for (const act of [...avail, ...faded]) {
+                    if (seenIds.has(act.id)) continue;
+                    seenIds.add(act.id);
+                    const advisory = getActivityAdvisory(act.id, a, partyState);
+                    unionTiles.push({
+                        id: act.id,
+                        name: act.name,
+                        icon: ACTIVITY_ICONS[act.id] ?? "fas fa-circle",
+                        hint: advisory.text,
+                        hintUrgent: advisory.urgent,
+                        available: avail.some(x => x.id === act.id),
+                        nonViable: advisory.nonViable ?? false,
+                        isFaded: faded.some(x => x.id === act.id) && !avail.some(x => x.id === act.id),
+                        fadedHint: act.fadedHint ?? null,
+                        isCrafting: !!act.crafting?.enabled,
+                        profession: act.crafting?.profession ?? null
+                    });
+                }
+            }
+
+            // Portrait assignments
+            const assignments = buildActivityAssignments(this._characterChoices, this._earlyResults);
+            for (const tile of unionTiles) {
+                const assigned = assignments[tile.id] ?? [];
+                tile.assignedPortraits = assigned.slice(0, 3);
+                tile.assignedOverflow = Math.max(0, assigned.length - 3);
+                tile.hasAssignments = assigned.length > 0;
+            }
+
+            const tileMap = new Map(unionTiles.map(t => [t.id, t]));
+            const terrain = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
+            const terrainStations = getStationsForTerrain(terrain);
+
+            // TotM: keep all stations as separate sections, skip only campfire.
+            // Identify goes to a future tab; deduplicate activities across stations.
+            const SKIP_STATIONS = new Set(["campfire"]);
+            const IDENTIFY_TAB_IDS = new Set(["act_identify"]);
+            const TOTM_LABELS = { medical_bed: "First Aid" };
+            const TOTM_ORDER = { weapon_rack: 0, workbench: 1, cooking_station: 2, medical_bed: 3, bedroll: 4 };
+            const usedIds = new Set();
+
+            const cards = [];
+            for (const station of terrainStations) {
+                if (SKIP_STATIONS.has(station.id)) continue;
+
+                const tiles = station.activities
+                    .filter(id => !IDENTIFY_TAB_IDS.has(id) && !usedIds.has(id))
+                    .map(id => tileMap.get(id))
+                    .filter(Boolean);
+
+                for (const t of tiles) usedIds.add(t.id);
+
+                if (!tiles.length) continue;
+                cards.push({
+                    id: station.id,
+                    label: TOTM_LABELS[station.id] ?? station.label,
+                    icon: station.icon,
+                    tiles
+                });
+            }
+            cards.sort((a, b) => (TOTM_ORDER[a.id] ?? 99) - (TOTM_ORDER[b.id] ?? 99));
+            return cards;
+        })();
+
         // Split into hero cards (owned, interactive) and party cards (others, info only)
         // GM sees all as heroes since they manage all characters
         const heroCharacters = this._isGM
@@ -2596,6 +2681,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         return {
             isGM: this._isGM,
+            isTheaterMode: (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return true; } })(),
+            totmStationCards,
             emptyParty,
             rosterInfo: (() => {
                 const roster = getPartyActors();
@@ -5288,6 +5375,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         await MealPhaseHandler.cleanupWellFedEffects(getPartyActors());
         await this._saveRestState();
 
+        // Theater of the Mind: skip camp phase, jump to activity
+        if (this._phase === "camp" && await this._skipCampForTheater()) return;
         // Tavern: skip camp phase entirely (no campfire/furniture to place)
         if (this._phase === "camp" && await this._skipCampForTavern()) return;
 
@@ -8813,14 +8902,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Activity phase: canvas station overlays for all clients; players minimise to the rest bar
         if (phase === "activity") {
+            const isTheater = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return true; } })();
             if (!this._isGM) {
                 _removeGmRestIndicator();
             }
-            this._attachActivityPhaseCanvasChrome();
-            if (!this._isGM) {
-                console.log(`${MODULE_ID} | Activity phase (player): minimise rest window, retain app for station sockets`);
-                await this.close({ retainPlayerApp: true });
-                return;
+            if (!isTheater) {
+                this._attachActivityPhaseCanvasChrome();
+                if (!this._isGM) {
+                    console.log(`${MODULE_ID} | Activity phase (player): minimise rest window, retain app for station sockets`);
+                    await this.close({ retainPlayerApp: true });
+                    return;
+                }
             }
         } else if (prevPhase === "activity" && phase !== "activity") {
             await closeOpenStationDialog();
@@ -9082,21 +9174,26 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Activity phase: same as receivePhaseChange (F5 rejoin after GM already advanced)
+        const _isTheaterRestore = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return true; } })();
         if (this._phase === "activity" && !this._isGM) {
             // eslint-disable-next-line no-console
-            console.debug(`${MODULE_ID} | [REJOIN] receiveRestSnapshot: activity phase → retain close, choices=${this._characterChoices?.size ?? 0}`);
-            this._attachActivityPhaseCanvasChrome();
-            void this.close({ retainPlayerApp: true });
-            return;
+            console.debug(`${MODULE_ID} | [REJOIN] receiveRestSnapshot: activity phase → choices=${this._characterChoices?.size ?? 0}, theater=${_isTheaterRestore}`);
+            if (!_isTheaterRestore) {
+                this._attachActivityPhaseCanvasChrome();
+                void this.close({ retainPlayerApp: true });
+                return;
+            }
         }
         if (this._phase === "activity" && this._isGM) {
-            this._attachActivityPhaseCanvasChrome();
-            this._gmMinimizedToFooter = true;
-            _showGmRestIndicator(this);
-            if (this.rendered) {
-                void this.close({});
+            if (!_isTheaterRestore) {
+                this._attachActivityPhaseCanvasChrome();
+                this._gmMinimizedToFooter = true;
+                _showGmRestIndicator(this);
+                if (this.rendered) {
+                    void this.close({});
+                }
+                return;
             }
-            return;
         }
 
         // Single render with all state applied
@@ -9529,6 +9626,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (this._travel.isFullyResolved()) {
             this._phase = "camp";
             this._campStep2Entered = false;
+            // Theater of the Mind: skip camp, jump to activity
+            if (await this._skipCampForTheater()) return;
             // Tavern: skip camp phase entirely
             if (await this._skipCampForTavern()) return;
             emitPhaseChanged(this._phase, {});
@@ -9560,6 +9659,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._phase = "camp";
         this._campStep2Entered = false;
 
+        // Theater of the Mind: skip camp, jump to activity
+        if (await this._skipCampForTheater()) return;
         // Tavern: skip camp phase entirely
         if (await this._skipCampForTavern()) return;
 
@@ -9602,6 +9703,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._phase = "camp";
         this._campStep2Entered = false;
 
+        // Theater of the Mind: skip camp, jump to activity
+        if (await this._skipCampForTheater()) return;
         // Tavern: skip camp phase entirely
         if (await this._skipCampForTavern()) return;
 
@@ -9834,8 +9937,43 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Theater of the Mind: skip the camp phase entirely.
+     * Camp is a canvas-placement ceremony (pit cursor, furniture tokens,
+     * station overlays) that has no meaning without a map.  Jump straight
+     * to the activity phase so the GM and players pick activities inline.
+     *
+     * Fire defaults to unlit.  The TotM fire-lighting UI is handled in
+     * the inline Activities tab (Batch 3).
+     *
+     * @returns {boolean} True if skipped (caller should return early).
+     */
+    async _skipCampForTheater() {
+        if (!game.user.isGM) return false;
+        try {
+            if (game.settings.get(MODULE_ID, "restInterfaceMode") !== "theater") return false;
+        } catch { return false; }
+
+        this._fireLevel = "unlit";
+        this._coldCampDecided = false;
+        this._campToActivityDone = true;
+        this._campStep2Entered = true;
+
+        this._phase = "activity";
+        this._applyLoseActivityTravelLocks();
+
+        emitPhaseChanged(this._phase, {
+            campStatus: this._campStatus,
+            fireLevel: this._fireLevel
+        });
+
+        await this._saveRestState();
+        this.render({ force: true });
+        return true;
+    }
+
+    /**
      * Tavern / safe-haven terrains skip camp and activity phases entirely.
-     * The inn provides shelter, fire, and board — no campfire ceremony, no
+     * The inn provides shelter, fire, and board. No campfire ceremony, no
      * station tokens, no activity selection needed.
      *
      * All characters are auto-assigned "Rest Fully" and meals are waived
@@ -9947,14 +10085,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._applyLoseActivityTravelLocks();
         _logGmRestSheet("_advanceCampToActivity", "phase -> activity, closing window");
 
-        await this.close({});
+        const isTheater = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return true; } })();
+        if (!isTheater) {
+            await this.close({});
+        }
 
         emitPhaseChanged(this._phase, {
                 campStatus: this._campStatus,
                 fireLevel: this._fireLevel
             });
         await this._saveRestState();
-        this._activateCanvasStationLayer();
+        if (!isTheater) {
+            this._activateCanvasStationLayer();
+        } else {
+            this.render({ force: true });
+        }
         _logGmRestSheet("_advanceCampToActivity", "advance complete", { rendered: this.rendered });
     }
 
@@ -10199,6 +10344,52 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             app.element?.querySelector('.pack-tab[data-tab="art"]')?.click();
         }, 200);
     }
+
+    /**
+     * TotM activity card click: assigns the activity for the selected character.
+     * Simple activities finalize immediately (advisory is already visible on the card).
+     * Crafting and follow-up activities open the StationActivityDialog for input.
+     */
+    static async #onSelectTotmActivity(event, target) {
+        const activityId = target.closest("[data-activity-id]")?.dataset?.activityId;
+        if (!activityId) return;
+        const characterId = this._selectedCharacterId;
+        if (!characterId) {
+            ui.notifications.warn("Select a character from the roster first.");
+            return;
+        }
+        if (this._lockedCharacters?.has(characterId)) {
+            ui.notifications.warn("This character has already submitted their activity.");
+            return;
+        }
+        const actor = game.actors.get(characterId);
+        if (!actor) return;
+
+        // Check if this activity needs follow-up input or is crafting
+        const activity = this._activityResolver?.activities?.get(activityId);
+        const needsFollowUp = !!activity?.followUp;
+        const isCrafting = !!activity?.crafting?.enabled;
+
+        if (isCrafting || needsFollowUp) {
+            // Open the StationActivityDialog for activities that need user input.
+            // Map the activity to its home station for dialog context.
+            const stationId = inferCanvasStationForActivity(activityId, characterId);
+            const station = CAMP_STATIONS.find(s => s.id === stationId) ?? CAMP_STATIONS.find(s => s.id === "bedroll");
+            const { StationActivityDialog } = await import("./StationActivityDialog.js");
+            const dlg = new StationActivityDialog({
+                station,
+                actor,
+                restApp: this,
+                initialActivityId: activityId
+            });
+            dlg.render(true);
+            return;
+        }
+
+        // Simple activity: finalize directly (same as old per-character button flow)
+        await this.finalizeActivityChoiceFromStation(characterId, activityId, null, {});
+    }
+
 
     /** @deprecated Use this._campCeremony.lightFire() */
     async _lightFire(userId, actorId, method) {

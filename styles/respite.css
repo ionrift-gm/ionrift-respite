@@ -9389,6 +9389,203 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     margin: 0;
 }
 
+/* ── TotM Activity Card Grid (rest-setup panel) ────────────── */
+
+.totm-activity-cards {
+    padding: 0.35rem 0.5rem 0.65rem;
+    column-count: 2;
+    column-gap: 0.65rem;
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+.totm-station-section {
+    margin-bottom: 0.45rem;
+    break-inside: avoid;
+}
+
+.totm-station-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0 0 0.25rem 0.15rem;
+    padding: 0;
+    border: none;
+}
+
+.totm-station-header i {
+    font-size: 0.7rem;
+    color: rgba(196, 181, 253, 0.55);
+}
+
+.totm-activity-cards ul.station-activities {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.totm-activity-cards ul.station-activities > li {
+    margin: 0;
+    padding: 0;
+}
+
+/* Card base: same visual as spatial station-dialog cards */
+.totm-activity-cards button.activity-card,
+.totm-activity-cards div.activity-card.station-activity {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin: 0;
+    padding: 0.55rem 0.65rem;
+    min-height: 2.95rem;
+    gap: 0.5rem;
+    font-family: var(--ionrift-font-stack, "Signika", sans-serif);
+    font-size: inherit;
+    font-weight: 500;
+    line-height: inherit;
+    color: rgba(255, 255, 255, 0.75);
+    text-align: left;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-left: 2px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.035);
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    filter: none !important;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.totm-activity-cards button.activity-card:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.9);
+    box-shadow: none !important;
+}
+
+.totm-activity-cards button.activity-card:focus,
+.totm-activity-cards button.activity-card:focus-visible {
+    outline: none;
+    box-shadow: none !important;
+}
+
+.totm-activity-cards button.activity-card > i,
+.totm-activity-cards div.activity-card.station-activity > i {
+    font-size: 0.85rem;
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 0;
+}
+
+.totm-activity-cards button.activity-card:hover:not(:disabled) > i {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.totm-activity-cards .activity-card .card-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+    justify-content: center;
+}
+
+.totm-activity-cards .activity-card .card-name {
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+.totm-activity-cards .activity-card .card-hint {
+    font-size: 0.6rem;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.35);
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.3;
+}
+
+.totm-activity-cards .activity-card .card-hint.urgent {
+    color: #f9d77e;
+}
+
+.totm-activity-cards .activity-card.station-activity.faded {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.totm-activity-cards .activity-card.station-activity.faded > i {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.totm-activity-cards .card-hint.faded-hint {
+    color: rgba(252, 165, 165, 0.75);
+}
+
+.totm-activity-cards .activity-card.station-activity.non-viable {
+    opacity: 0.45;
+    cursor: default;
+    filter: grayscale(0.6);
+    border-style: dashed;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.totm-activity-cards .activity-card.station-activity.non-viable > i {
+    color: rgba(255, 255, 255, 0.25);
+}
+
+.totm-activity-cards .card-hint.non-viable-hint {
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+}
+
+/* TotM compact footer bar */
+.totm-activity-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.65rem;
+    margin-top: 0.15rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.totm-footer-stat {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.totm-footer-stat i {
+    color: rgba(196, 181, 253, 0.5);
+}
+
+.totm-footer-proceed {
+    padding: 0.35rem 0.85rem;
+    font-size: 0.75rem;
+}
+
+.totm-footer-waiting {
+    font-size: 0.68rem;
+    color: rgba(245, 158, 11, 0.7);
+    font-style: italic;
+}
+
 /* ── UX-9: Activity Assignment Portrait Bubbles ── */
 .activity-portraits {
     display: flex;

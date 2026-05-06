@@ -419,3 +419,35 @@ export const DETECT_MAGIC_BTN_LABEL_DISMISS = "Dismiss";
 export const DETECT_MAGIC_BTN_TITLE_GM = "Cast Detect Magic for the party. Use when you are granting the spell at the table; skip if a player should trigger it from their own character.";
 export const DETECT_MAGIC_BTN_TITLE_PLAYER = "Cast Detect Magic";
 export const DETECT_MAGIC_BTN_TITLE_NONE = "No Detect Magic available in the party";
+
+/**
+ * Build per-activity portrait assignment map.
+ * Shared between StationActivityDialog (spatial) and TotM card grid.
+ * @param {Map<string,string>} characterChoices - actorId -> activityId
+ * @param {Map<string,object>} earlyResults - actorId -> { result, narrative }
+ * @param {Set<string>|null} [filterActivityIds] - If provided, only include these activity IDs
+ * @returns {Object<string, Array<{actorId, actorName, portraitImg, status}>>}
+ */
+export function buildActivityAssignments(characterChoices, earlyResults, filterActivityIds = null) {
+    const assignments = {};
+    if (!characterChoices?.size) return assignments;
+    for (const [charId, actId] of characterChoices) {
+        if (filterActivityIds && !filterActivityIds.has(actId)) continue;
+        const actor = game.actors.get(charId);
+        if (!actor) continue;
+        let status = "pending";
+        const earlyResult = earlyResults?.get(charId);
+        if (earlyResult) {
+            if (earlyResult.result === "success" || earlyResult.result === "exceptional") status = "success";
+            else if (earlyResult.result === "failure" || earlyResult.result === "failure_complication") status = "fail";
+        }
+        if (!assignments[actId]) assignments[actId] = [];
+        assignments[actId].push({
+            actorId: charId,
+            actorName: actor.name,
+            portraitImg: actor.img ?? actor.prototypeToken?.texture?.src ?? "icons/svg/mystery-man.svg",
+            status
+        });
+    }
+    return assignments;
+}

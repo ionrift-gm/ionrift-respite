@@ -790,6 +790,7 @@
     </div>
     {{> rosterStrip}}
 
+    {{#unless isTheaterMode}}
     {{#if postStationChoiceReview}}
     <div class="station-choice-review-bar">
         <span class="station-choice-review-text">
@@ -801,6 +802,7 @@
         </button>
     </div>
     {{/if}}
+    {{/unless}}
 
     {{!-- Collapsed camp summary: no comfort or fire here (banner and map; chips often disagreed). Encounter DC and tent when relevant. --}}
     {{#if (or encounterBar campStatus.hasTent)}}
@@ -818,7 +820,86 @@
     </div>
     {{/if}}
 
+    {{!-- TotM inline activity cards --}}
+    {{#if isTheaterMode}}
+    {{#if totmStationCards.length}}
+    <div class="totm-activity-cards">
+        {{#each totmStationCards}}
+        <div class="totm-station-section">
+            <h4 class="totm-station-header">
+                <i class="{{this.icon}}" aria-hidden="true"></i>
+                {{this.label}}
+            </h4>
+            <ul class="station-activities">
+                {{#each this.tiles}}
+                <li>
+                    {{#if this.available}}
+                    <button type="button"
+                            class="activity-card station-activity"
+                            data-action="selectTotmActivity"
+                            data-activity-id="{{this.id}}">
+                        <i class="{{this.icon}}" aria-hidden="true"></i>
+                        <div class="card-body">
+                            <span class="card-name">{{this.name}}</span>
+                            {{#if this.hint}}
+                            <span class="card-hint {{#if this.hintUrgent}}urgent{{/if}}">
+                                {{this.hint}}
+                            </span>
+                            {{/if}}
+                        </div>
+                        {{> activityPortraits}}
+                    </button>
+                    {{else if this.nonViable}}
+                    <div class="activity-card station-activity non-viable"
+                         title="{{this.fadedHint}}">
+                        <i class="{{this.icon}}" aria-hidden="true"></i>
+                        <div class="card-body">
+                            <span class="card-name">{{this.name}}</span>
+                            {{#if this.hint}}
+                            <span class="card-hint non-viable-hint">{{this.hint}}</span>
+                            {{/if}}
+                        </div>
+                    </div>
+                    {{else}}
+                    <div class="activity-card station-activity faded"
+                         title="{{this.fadedHint}}">
+                        <i class="{{this.icon}}" aria-hidden="true"></i>
+                        <div class="card-body">
+                            <span class="card-name">{{this.name}}</span>
+                            {{#if this.hint}}
+                            <span class="card-hint faded-hint">{{this.hint}}</span>
+                            {{/if}}
+                        </div>
+                    </div>
+                    {{/if}}
+                </li>
+                {{/each}}
+            </ul>
+        </div>
+        {{/each}}
+    </div>
+    {{/if}}
+    {{/if}}
+
     {{#if activityPhasePlayerOverview}}
+    {{#if isTheaterMode}}
+    {{!-- TotM compact footer: assignment count + Settle In --}}
+    <div class="totm-activity-footer">
+        <span class="totm-footer-stat">
+            <i class="fas fa-users" aria-hidden="true"></i>
+            {{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}} activities assigned
+        </span>
+        {{#if activityPhasePlayerOverview.allResolved}}
+        {{#if isGM}}
+        <button type="button" class="btn-primary totm-footer-proceed" data-action="submitActivities">
+            <i class="fas fa-arrow-right"></i> Settle In
+        </button>
+        {{else}}
+        <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Waiting on GM</span>
+        {{/if}}
+        {{/if}}
+    </div>
+    {{else}}
     <div class="activity-phase-layout">
         <div class="respite-activities activity-phase-player-overview-wrap">
             <div class="player-overview-heading">
@@ -861,6 +942,7 @@
             {{/if}}
         </div>
     </div>
+    {{/if}}
     {{/if}}
     {{/if}}
 
