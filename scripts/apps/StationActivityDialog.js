@@ -267,6 +267,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         /** @type {((...args: unknown[]) => void) | null} */
         this._mealHookBound    = null;
         this._trackStarted     = false;
+        /** Set when user manually drags the dialog; stops auto-tracking to token. */
+        this._userDragged      = false;
 
         /** @type {"list"|"detail"|"result"|"crafting"} */
         this._dialogState      = "list";
@@ -346,6 +348,22 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         const cookActItems = this._cookingAvailable.map(act => mapAct(act, true));
         const cookFaded    = this._cookingFaded.map(act => mapAct(act, false));
+
+        // UX-9: Inject portrait assignments into each activity item
+        const assignments = this._buildActivityAssignments();
+        const _injectAssignments = (items) => {
+            for (const item of items) {
+                const assigned = assignments[item.id] ?? [];
+                // Show up to 3 portraits; extra count as "+N"
+                item.assignedPortraits = assigned.slice(0, 3);
+                item.assignedOverflow = Math.max(0, assigned.length - 3);
+                item.hasAssignments = assigned.length > 0;
+            }
+        };
+        _injectAssignments(activityItems);
+        _injectAssignments(fadedItems);
+        _injectAssignments(cookActItems);
+        _injectAssignments(cookFaded);
 
         const hubEligible = this._showStationTabs;
         const mealCard = (hubEligible && this._station.id !== "workbench" && this._restApp?.getStationMealCardForActor && this._actor?.id)
@@ -454,9 +472,10 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             ? this._restApp.getWorkbenchIdentifyDragContext(this._actor?.id ?? null)
             : wbWorkbenchDefaults;
 
+
         return {
             activities:       [...activityItems, ...fadedItems],
-            hasAny:           activityItems.length > 0,
+            hasAny:           activityItems.length > 0 || fadedItems.length > 0,
             cookingActivities: [...cookActItems, ...cookFaded],
             hasCookingAny:    cookActItems.length > 0 || cookFaded.length > 0,
             actorHasCookingUtensils: this._actorHasCookingUtensils,
@@ -777,6 +796,57 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         return stationTabs;
     }
 
+    /**
+     * UX-9: Build per-activity portrait assignments for the current station.
+     * Iterates _characterChoices, filters to activities visible at this station,
+     * and annotates with resolution status from _earlyResults.
+     *
+     * @returns {Object<string, Object[]>} Map of activityId → array of
+     *   { actorId, actorName, portraitImg, status: 'pending'|'success'|'fail' }
+     */
+    _buildActivityAssignments() {
+        const assignments = {};
+        const restApp = this._restApp;
+        if (!restApp?._characterChoices?.size) return assignments;
+
+        // Activity IDs visible at this station (available + faded)
+        const stationActIds = new Set([
+            ...this._available.map(a => a.id),
+            ...this._faded.map(a => a.id),
+            ...this._cookingAvailable.map(a => a.id),
+            ...this._cookingFaded.map(a => a.id)
+        ]);
+
+        for (const [charId, actId] of restApp._characterChoices) {
+            if (!stationActIds.has(actId)) continue;
+
+            const actor = game.actors.get(charId);
+            if (!actor) continue;
+
+            // Derive status from early results
+            let status = "pending";
+            const earlyResult = restApp._earlyResults?.get(charId);
+            if (earlyResult) {
+                if (earlyResult.result === "success" || earlyResult.result === "exceptional") {
+                    status = "success";
+                } else if (earlyResult.result === "failure" || earlyResult.result === "failure_complication") {
+                    status = "fail";
+                }
+                // pending_approval stays as "pending"
+            }
+
+            if (!assignments[actId]) assignments[actId] = [];
+            assignments[actId].push({
+                actorId: charId,
+                actorName: actor.name,
+                portraitImg: actor.img ?? actor.prototypeToken?.texture?.src ?? "icons/svg/mystery-man.svg",
+                status
+            });
+        }
+
+        return assignments;
+    }
+
     _buildCraftingContext() {
         const actor = this._actor;
         const engine = this._restApp?._craftingEngine;
@@ -802,7 +872,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 dcDisplay: dcBreakdown.total,
                 dcBreakdown,
                 outputName: recipe.output?.name ?? "Unknown",
-                outputImg: recipe.output?.img ?? "icons/svg/mystery-man.svg",
+                outputImg: recipe.output?.img ?? "icons/consumables/food/bowl-stew-brown.webp",
                 ambitiousOutput: recipe.ambitiousOutput,
                 isSelected: recipe.id === this._craftRecipeId,
                 description: recipe.description ?? "",
@@ -818,12 +888,16 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                     const detail = recipe.ingredientStatus?.details?.find(d => d.name === ing.name);
                     const invKey = ing.name.toLowerCase().trim();
                     const invEntry = actor.items?.find(i => i.name.toLowerCase().trim() === invKey);
+                    const fallbackIcon = ing.resourceType === "water"
+                        ? "icons/magic/water/water-drop-swirl-blue.webp"
+                        : "icons/consumables/food/bread-loaf-round-white.webp";
+                    const rawImg = invEntry?.img;
                     return {
                         name: ing.name,
                         required: ing.quantity ?? 1,
                         available: detail?.available ?? 0,
                         met: detail?.met ?? false,
-                        img: invEntry?.img ?? "icons/svg/mystery-man.svg"
+                        img: (rawImg && !rawImg.includes("mystery-man")) ? rawImg : fallbackIcon
                     };
                 })
             };
@@ -850,10 +924,14 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 ingredients: (selectedRecipe.ingredients ?? []).map(ing => {
                     const invKey = ing.name.toLowerCase().trim();
                     const invEntry = actor.items?.find(i => i.name.toLowerCase().trim() === invKey);
+                    const fallbackIcon = ing.resourceType === "water"
+                        ? "icons/magic/water/water-drop-swirl-blue.webp"
+                        : "icons/consumables/food/bread-loaf-round-white.webp";
+                    const rawImg = invEntry?.img;
                     return {
                         name: ing.name,
                         quantity: ing.quantity ?? 1,
-                        img: invEntry?.img ?? "icons/svg/mystery-man.svg"
+                        img: (rawImg && !rawImg.includes("mystery-man")) ? rawImg : fallbackIcon
                     };
                 }),
                 ingredientCost: (selectedRecipe.ingredients ?? []).map(i => `${i.quantity ?? 1}x ${i.name}`).join(", "),
@@ -1465,6 +1543,12 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
     _onRender(context, options) {
         super._onRender?.(context, options);
         this._attachTrackers();
+        // Allow user to drag the dialog by its header; stops auto-tracking to token
+        const header = this.element?.querySelector?.(".window-header");
+        if (header && !header._ionriftDragBound) {
+            header._ionriftDragBound = true;
+            header.addEventListener("pointerdown", () => { this._userDragged = true; });
+        }
         // Force width on DOM — Foundry's setPosition doesn't reliably expand beyond content width
         if (this._station?.id === "cooking_station" && this._stationHasCooking) {
             const el = this.element;
@@ -1522,7 +1606,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
     _bindStationWorkbenchIdentifyIfNeeded() {
         if (!this.rendered || !this.element) return;
-        if (this._station?.id !== "workbench" || this._stationPanelTab !== "identify") return;
+        if (this._station?.id !== "workbench" || (this._stationPanelTab !== "identify" && this._stationPanelTab !== "examine")) return;
         if (!this._restApp?._bindWorkbenchIdentifyDragDrop) return;
         this._restApp._bindWorkbenchIdentifyDragDrop(this.element);
     }
@@ -1537,7 +1621,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
     /** Re-render when the post-identify Continue button should unlock. */
     _scheduleWorkbenchAckRevealIfNeeded() {
         if (!this.rendered || !this.element) return;
-        if (this._station?.id !== "workbench" || this._stationPanelTab !== "identify") return;
+        if (this._station?.id !== "workbench" || (this._stationPanelTab !== "identify" && this._stationPanelTab !== "examine")) return;
         const actorId = this._actor?.id;
         if (!actorId || !this._restApp?._workbenchIdentifyAcknowledge) return;
         const ack = this._restApp._workbenchIdentifyAcknowledge.get(actorId);
@@ -1710,7 +1794,11 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             return;
         }
 
-        this.setPosition({ left: pos.left, top: pos.top });
+        // If user dragged the dialog, only keep the visibility check (close if off-screen)
+        // but skip repositioning so the user's drag position is preserved.
+        if (!this._userDragged) {
+            this.setPosition({ left: pos.left, top: pos.top });
+        }
     }
 
     async close(options = {}) {
@@ -1782,8 +1870,11 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             const resolver = restApp._activityResolver;
             const chosenAct = resolver?.activities?.get(chosenId);
             actorChoiceLocked = chosenAct?.name ?? chosenId;
+            // Move all available activities to faded so they show dimmed/read-only
+            for (const act of available) {
+                faded.push({ ...act, fadedHint: `Already assigned to ${actorChoiceLocked}` });
+            }
             available = [];
-            faded = [];
         }
 
         const order = station?.activities ?? [];

@@ -152,8 +152,8 @@ function _textureFromStationIcon(station, fillColor, pixelSize) {
 
 // V2: circular icon badge with floating portrait bubbles
 const OV = {
-    BADGE_R:       18,
-    ICON_RING_PAD: 3,
+    BADGE_R:       24,
+    ICON_RING_PAD: 4,
     SHADOW_OFFSET: 2,
     SHADOW_ALPHA:  0.34,
     BG_COLOR:      0x0c0b10,
@@ -166,9 +166,9 @@ const OV = {
     OUTLINE_HOVER: 0.24,
     OUTLINE_MEAL:  0.42,
     OUTLINE_FAR:   0.55,
-    FONT_TOOLTIP:  { fontFamily: UI_FONT_STACK, fontSize: 9, fill: 0xffffff, fontWeight: "bold" },
-    FONT_FAR:      { fontFamily: UI_FONT_STACK, fontSize: 8, fill: 0xfca5a5 },
-    ICON_TEX_PX:   16,
+    FONT_TOOLTIP:  { fontFamily: UI_FONT_STACK, fontSize: 11, fill: 0xffffff, fontWeight: "bold" },
+    FONT_FAR:      { fontFamily: UI_FONT_STACK, fontSize: 10, fill: 0xfca5a5 },
+    ICON_TEX_PX:   22,
     PULSE_SPEED:   0.0015,
     PULSE_MIN:     0.9,
     PULSE_MAX:     1.0,
@@ -176,16 +176,16 @@ const OV = {
     EMPTY_PULSE_MAX: 0.58,
     DIM_ALPHA:     0.22,
     MEAL_BODY_ALPHA: 0.92,
-    PORTRAIT_R:    13,
+    PORTRAIT_R:    17,
     PORTRAIT_GAP:  2,
-    PORTRAIT_STACK_OVERLAP: 9,
+    PORTRAIT_STACK_OVERLAP: 11,
     PORTRAIT_STACK_MAX:    4,
     MEAL_GAP:      2,
     /** Smaller than PORTRAIT_R: rations debt queue vs major-activity pick portraits. */
-    MEAL_PORTRAIT_R:     8,
-    MEAL_PORTRAIT_STEP:  6,
+    MEAL_PORTRAIT_R:     11,
+    MEAL_PORTRAIT_STEP:  8,
     MEAL_PORTRAIT_STACK_MAX: 5,
-    LABEL_GAP:     4,
+    LABEL_GAP:     5,
     /** Ring for portraits meaning “major activity committed at this station.” */
     PORTRAIT_ACTIVITY_BORDER:    0x7dd3fc,
     PORTRAIT_ACTIVITY_BORDER_W:  2,
@@ -543,7 +543,6 @@ class StationOverlay {
     }
 
     _onClick() {
-        if (this._dimmed) return;
         if (!_stationTokenStillOnScene(this.token)) return;
         console.log(`${MODULE_ID} | Station overlay _onClick`, { stationId: this.station.id, dimmed: this._dimmed });
         if (this._skipProximity) {

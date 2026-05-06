@@ -19,7 +19,10 @@ const MODULE_ID = "ionrift-respite";
 
 /** Built-in food item names (lowercase). */
 const FOOD_NAMES = new Set([
-    "rations", "rations (1 day)", "trail rations", "iron rations"
+    "rations", "rations (1 day)", "trail rations", "iron rations",
+    "camp porridge", "honeyed porridge", "smoked fish", "spiced jerky",
+    "berry preserves", "roasted mushrooms", "herb-seasoned rations",
+    "hearty stew", "fortified trail rations"
 ]);
 
 /** Built-in water item names (lowercase). */
@@ -225,7 +228,13 @@ export class ItemClassifier {
         //    Must run before the DnD5e "food" subtype catch-all.
         if (this._matchesIngredientByName(item)) return "ingredient";
 
-        // 4. DnD5e consumable subtype "food" (covers food AND drink in DnD5e)
+        // 4a. Module foodTag flag: items with a foodTag are definitively food
+        //     (covers crafted meals that may have wrong DnD5e type)
+        const foodTag = item.flags?.[MODULE_ID]?.foodTag;
+        if (foodTag && FOOD_TAGS.has(foodTag)) return "food";
+        if (foodTag === "cooked_meal") return "food";
+
+        // 4b. DnD5e consumable subtype "food" (covers food AND drink in DnD5e)
         if (item.type === "consumable" && item.system?.type?.value === "food") return "food";
 
         // 5. Name list fallback: food

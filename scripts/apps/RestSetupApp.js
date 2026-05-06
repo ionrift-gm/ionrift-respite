@@ -1643,6 +1643,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         let campMyFirewoodActorId = null;
         let campFireTierCards = [];
         let campFireTotalPledged = 0;
+        let campViewerCanLight = false;
+        let campFireLighterNames = "";
         if (this._phase === "camp" && campScanData) {
             campFireIsLit = !!this._fireLitBy || (this._fireLevel ?? "unlit") !== "unlit";
             campFireLitBy = this._fireLitBy ?? null;
@@ -1667,6 +1669,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ...l,
                 isViewerActor: (game.actors.get(l.actorId)?.ownership?.[game.user.id] ?? 0) >= OWNER
             }));
+            campViewerCanLight = campFireLighters.some(l => l.isViewerActor);
+            campFireLighterNames = campFireLighters.map(l => l.actorName).filter((v, i, a) => a.indexOf(v) === i).join(" or ");
 
             campFirewoodPledgeList = Array.from(this._firewoodPledges.values())
                 .filter(p => p.count > 0)
@@ -1750,6 +1754,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campColdCampDecided,
             campScanData,
             campFirePickerLevels,
+            campViewerCanLight,
+            campFireLighterNames,
             mapComfortLabel,
             mapComfortLine,
             mapComfortTierClass
@@ -2406,6 +2412,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         let campMyFirewoodActorId = null;
         let campFireTierCards = [];
         let campFireTotalPledged = 0;
+        let campViewerCanLight = false;
+        let campFireLighterNames = "";
         if (this._phase === "camp" && campScanData) {
             campFireIsLit = !!this._fireLitBy || (this._fireLevel ?? "unlit") !== "unlit";
             campFireLitBy = this._fireLitBy ?? null;
@@ -2432,6 +2440,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ...l,
                 isViewerActor: (game.actors.get(l.actorId)?.ownership?.[game.user.id] ?? 0) >= OWNER
             }));
+            campViewerCanLight = campFireLighters.some(l => l.isViewerActor);
+            campFireLighterNames = campFireLighters.map(l => l.actorName).filter((v, i, a) => a.indexOf(v) === i).join(" or ");
 
             // Firewood pledge list for summary display
             campFirewoodPledgeList = Array.from(this._firewoodPledges.values())
@@ -3027,6 +3037,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campComfortIsHostile,
             campFireTierCards,
             campFireTotalPledged,
+            campViewerCanLight,
+            campFireLighterNames,
             campPersonalSelected,
             campGearForSelected,
             campPlacementRuleHint,
@@ -3482,10 +3494,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!a) return null;
         const items = a.items?.map(i => i.name?.toLowerCase() ?? "") ?? [];
         const hasBedroll = items.some(n => n.includes("bedroll"));
-        const hasTent = items.some(n => n.includes("tent"));
-        const hasMessKit = items.some(n =>
-            n.includes("mess kit") || (n.includes("cook") && n.includes("utensil"))
-        );
+        const hasTent = items.some(n => /(?:^|[\s,\-])tent\b/i.test(n));
+        const hasActualMessKit = items.some(n => n.includes("mess kit"));
+        const hasCooksUtensils = items.some(n => n.includes("cook") && n.includes("utensil"));
+        const hasMessKit = hasActualMessKit || hasCooksUtensils;
+        /** @type {"messkit"|"utensils"|null} */
+        const messKitSource = hasActualMessKit ? "messkit" : (hasCooksUtensils ? "utensils" : null);
         const isOwner = !!a.isOwner;
         const canDragUser = this._isGM || isOwner;
         const fireIsLit = (this._fireLevel ?? "unlit") !== "unlit";
@@ -3505,6 +3519,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             hasBedroll,
             hasTent,
             hasMessKit,
+            messKitSource,
             bedrollDeployed,
             tentDeployed,
             messKitDeployed,
@@ -3739,13 +3754,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }),
             slot({
                 gearType: "messkit",
-                title: "Mess kit",
-                icon: "fas fa-utensils",
+                title: g.messKitSource === "utensils" ? "Cook's Utensils" : "Mess kit",
+                icon: g.messKitSource === "utensils" ? "fas fa-mortar-pestle" : "fas fa-utensils",
                 owned: g.hasMessKit,
                 deployed: g.messKitDeployed,
                 canDrag: g.canDragMessKit,
-                benefitLine: "Advantage on exhaustion saves when the fire is lit.",
-                missingLine: "No mess kit. No camp-gear advantage on exhaustion saves."
+                benefitLine: g.messKitSource === "utensils"
+                    ? "Cook's utensils serve as a mess kit. Advantage on exhaustion saves when fire is lit."
+                    : "Advantage on exhaustion saves when the fire is lit.",
+                missingLine: "No mess kit or cook's utensils. No camp-gear advantage on exhaustion saves."
             })
         ];
 
@@ -5963,6 +5980,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
             }
             this._mealChoices.set(charId, { ...existing, [slot]: arr });
+            // When food with satiates:water is placed, trim excess water entries
+            if (slot === "food") this._autoTrimExcessWater(charId);
             notifyStationMealChoicesUpdated();
             this._refreshStationOverlayMeals();
             if (this.rendered) this.render();
@@ -5978,12 +5997,31 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const wpd = parseInt(poolBar?.dataset?.target ?? "2", 10) || 0;
             while (arr.length < wpd) arr.push("skip");
 
+            // Account for meal-based water credits from food slots
+            const foodArr = Array.isArray(existing.food) ? existing.food : [];
+            const satiatesLookup = this._buildSatiatesLookup();
+            let bonusWater = 0;
+            const actor = game.actors.get(charId);
+            for (const fid of foodArr) {
+                if (!fid || fid === "skip" || fid.startsWith?.("__")) continue;
+                const fItem = actor?.items?.get(fid);
+                if (!fItem) continue;
+                const fFlags = fItem.flags?.[MODULE_ID] ?? {};
+                let fSat = fFlags.satiates;
+                if (!Array.isArray(fSat) && satiatesLookup) {
+                    fSat = satiatesLookup.get(fItem.name.toLowerCase().trim()) ?? null;
+                }
+                if (Array.isArray(fSat) && fSat.includes("water")) bonusWater++;
+            }
+
             let slotsNeeded = 0;
             for (let i = 0; i < wpd; i++) {
                 if (lockedSlots.includes(i)) continue;
                 const v = arr[i];
                 if (!v || v === "skip") slotsNeeded++;
             }
+            // Subtract bonus water from meal credits
+            slotsNeeded = Math.max(0, slotsNeeded - bonusWater);
             if (slotsNeeded <= 0) {
                 ui.notifications.info("Water is already sufficient.");
                 return;
@@ -8194,7 +8232,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             terrainTag,
             terrainMealRules,
             this._daysSinceLastRest ?? 1,
-            this._mealChoices ?? new Map()
+            this._mealChoices ?? new Map(),
+            this._buildSatiatesLookup()
         );
         const card = cards[0] ?? null;
         if (!card) return null;
@@ -8203,6 +8242,88 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             card.playerSubmitted = true;
         }
         return card;
+    }
+
+    /**
+     * Build a name→satiates lookup from loaded CraftingEngine recipes.
+     * Used so items crafted before outputFlags was applied can still be
+     * recognised by name match for the water credit UI.
+     * @returns {Map<string, string[]>|null}
+     */
+    _buildSatiatesLookup() {
+        const engine = this._craftingEngine;
+        if (!engine?.recipes?.size) return null;
+        const lookup = new Map();
+        for (const recipes of engine.recipes.values()) {
+            for (const recipe of recipes) {
+                const sat = recipe.outputFlags?.["ionrift-respite"]?.satiates;
+                if (Array.isArray(sat) && recipe.output?.name) {
+                    lookup.set(recipe.output.name.toLowerCase().trim(), sat);
+                }
+                const ambSat = recipe.ambitiousOutputFlags?.["ionrift-respite"]?.satiates
+                    ?? recipe.outputFlags?.["ionrift-respite"]?.satiates;
+                if (Array.isArray(ambSat) && recipe.ambitiousOutput?.name) {
+                    lookup.set(recipe.ambitiousOutput.name.toLowerCase().trim(), ambSat);
+                }
+            }
+        }
+        return lookup.size ? lookup : null;
+    }
+
+    /**
+     * After a food slot is assigned, check if the food satiates water and
+     * remove excess water pool entries that are no longer needed.
+     * Only trims non-locked entries from the end.
+     * @param {string} charId
+     */
+    _autoTrimExcessWater(charId) {
+        if (!this._mealChoices) return;
+        const choice = this._mealChoices.get(charId);
+        if (!choice) return;
+        const actor = game.actors.get(charId);
+        if (!actor) return;
+
+        const foodArr = Array.isArray(choice.food) ? choice.food : [];
+        const satiatesLookup = this._buildSatiatesLookup();
+
+        let bonusWater = 0;
+        for (const itemId of foodArr) {
+            if (!itemId || itemId === "skip" || itemId.startsWith?.("__")) continue;
+            const item = actor.items.get(itemId);
+            if (!item) continue;
+            const flags = item.flags?.[MODULE_ID] ?? {};
+            let satiates = flags.satiates;
+            if (!Array.isArray(satiates) && satiatesLookup) {
+                satiates = satiatesLookup.get(item.name.toLowerCase().trim()) ?? null;
+            }
+            if (Array.isArray(satiates) && satiates.includes("water")) bonusWater++;
+        }
+        if (bonusWater <= 0) return;
+
+        const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
+        const wpd = TerrainRegistry.getDefaults(terrainTag)?.mealRules?.waterPerDay ?? 2;
+        const manualNeeded = Math.max(0, wpd - bonusWater);
+
+        const waterArr = Array.isArray(choice.water) ? [...choice.water] : [];
+        const lockedSlots = Array.isArray(choice.waterLockedSlots) ? choice.waterLockedSlots : [];
+
+        // Count filled non-locked water entries
+        const filledNonLocked = waterArr.reduce((n, v, i) => {
+            if (lockedSlots.includes(i)) return n;
+            return (v && v !== "skip" && !v.startsWith?.("__")) ? n + 1 : n;
+        }, 0);
+        if (filledNonLocked <= manualNeeded) return;
+
+        // Trim excess from the end
+        let toRemove = filledNonLocked - manualNeeded;
+        for (let i = waterArr.length - 1; i >= 0 && toRemove > 0; i--) {
+            if (lockedSlots.includes(i)) continue;
+            if (waterArr[i] && waterArr[i] !== "skip" && !waterArr[i].startsWith?.("__")) {
+                waterArr[i] = "skip";
+                toRemove--;
+            }
+        }
+        this._mealChoices.set(charId, { ...choice, water: waterArr });
     }
 
     /**
@@ -8413,9 +8534,30 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     }
                 }
             }
+            // ── Smart submit: only consume water entries that are actually
+            //    needed after accounting for meal-based water credits. ──
+            let submitBonusWater = 0;
+            const submitSatiatesLookup = this._buildSatiatesLookup();
+            for (const fid of food) {
+                if (!fid || fid === "skip" || fid.startsWith?.("__")) continue;
+                const fItem = actor.items.get(fid);
+                if (!fItem) continue;
+                const fFlags = fItem.flags?.[MODULE_ID] ?? {};
+                let fSat = fFlags.satiates;
+                if (!Array.isArray(fSat) && submitSatiatesLookup) {
+                    fSat = submitSatiatesLookup.get(fItem.name.toLowerCase().trim()) ?? null;
+                }
+                if (Array.isArray(fSat) && fSat.includes("water")) submitBonusWater++;
+            }
+            const submitTerrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
+            const submitWpd = TerrainRegistry.getDefaults(submitTerrainTag)?.mealRules?.waterPerDay ?? 2;
+            const waterToConsume = Math.max(0, submitWpd - submitBonusWater);
+            let waterConsumed = 0;
             for (const itemId of water) {
+                if (waterConsumed >= waterToConsume) break;
                 if (itemId && itemId !== "skip" && !itemId.startsWith("__")) {
                     await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                    waterConsumed++;
                 }
             }
             for (const itemId of essence) {
@@ -9575,8 +9717,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /** Player or GM clicks "Light Fire with [item]" in the new contribution UI. */
     static async #onCampLightFire(event, target) {
         const root = target?.closest?.("[data-action=\"campLightFire\"]") ?? target;
-        const actorId = root?.dataset?.actorId;
+        let actorId = root?.dataset?.actorId;
         const method = root?.dataset?.method ?? "Tinderbox";
+        // GM override: no party member had a tinderbox/cantrip — use first party actor
+        if (actorId === "__gm__" && game.user.isGM) {
+            const partyActors = getPartyActors();
+            actorId = partyActors[0]?.id ?? null;
+        }
         if (!actorId) return;
         if (!game.user.isGM) {
             emitCampLightFire(game.user.id, actorId, method);

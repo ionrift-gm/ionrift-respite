@@ -240,7 +240,7 @@ export class MealPhaseHandler {
      * @param {Map} mealChoices - Current selections (characterId -> { food, water })
      * @returns {Object[]} Per-character meal card data
      */
-    static buildMealContext(characterIds, terrainTag, terrainMealRules = {}, daysSinceLastRest = 1, mealChoices = new Map()) {
+    static buildMealContext(characterIds, terrainTag, terrainMealRules = {}, daysSinceLastRest = 1, mealChoices = new Map(), satiatesLookup = null) {
         const rules = { ...MEAL_DEFAULTS, ...terrainMealRules };
         const cards = [];
         const totalDays = daysSinceLastRest;
@@ -342,7 +342,13 @@ export class MealPhaseHandler {
                 const foodItem = actor.items.get(slot.selected);
                 if (!foodItem) continue;
                 const itemFlags = foodItem.flags?.[MODULE_ID] ?? {};
-                if (Array.isArray(itemFlags.satiates) && itemFlags.satiates.includes("water")) {
+                let satiates = itemFlags.satiates;
+                // Fallback: item may lack flags if crafted before outputFlags were applied.
+                // Check the recipe registry by output name.
+                if (!Array.isArray(satiates) && satiatesLookup) {
+                    satiates = satiatesLookup.get(foodItem.name.toLowerCase().trim()) ?? null;
+                }
+                if (Array.isArray(satiates) && satiates.includes("water")) {
                     bonusWater++;
                 }
             }
@@ -386,9 +392,12 @@ export class MealPhaseHandler {
 
             const poolWaterRequired = allDaysConsumed ? summaryWaterRequired : wpd;
             const poolWaterFilled = allDaysConsumed ? summaryWaterFilled : effectiveWaterFilled;
+            const poolManualFilled = allDaysConsumed ? summaryWaterFilled : waterFilledCount;
             const waterPoolSegments = [];
             for (let i = 0; i < poolWaterRequired; i++) {
-                waterPoolSegments.push({ index: i, filled: i < poolWaterFilled });
+                const filled = i < poolWaterFilled;
+                const isBonus = filled && i >= poolManualFilled;
+                waterPoolSegments.push({ index: i, filled, bonus: isBonus });
             }
 
             const waterPoolSources = [];
@@ -406,6 +415,9 @@ export class MealPhaseHandler {
                 sourceMap.get(key).pintsUsed++;
             }
             for (const src of sourceMap.values()) waterPoolSources.push(src);
+            if (bonusWater > 0) {
+                waterPoolSources.push({ name: "Covered by meal", pintsUsed: bonusWater, isMealCredit: true });
+            }
 
             const isNonStandard = rules.waterPerDay > 2 || rules.foodPerDay > 1;
             let terrainAlertClass = "";
@@ -443,6 +455,7 @@ export class MealPhaseHandler {
                 waterFilledCount: allDaysConsumed ? summaryWaterFilled : effectiveWaterFilled,
                 waterSufficient: allDaysConsumed ? summaryWaterSufficient : waterSufficient,
                 waterRequired: allDaysConsumed ? summaryWaterRequired : wpd,
+                bonusWater,
                 waterPoolSegments,
                 waterPoolSources,
                 terrainAlertClass,
@@ -487,7 +500,7 @@ export class MealPhaseHandler {
             const foodUsage = new Map();
             for (const day of (choice.consumedDays ?? [])) {
                 for (const id of (day.food ?? [])) {
-                    if (id && id !== "skip") foodUsage.set(id, (foodUsage.get(id) ?? 0) + 1);
+                    if (id && id !== "skip" && !id.startsWith("__")) foodUsage.set(id, (foodUsage.get(id) ?? 0) + 1);
                 }
             }
             const snapMap = new Map();
@@ -551,13 +564,14 @@ export class MealPhaseHandler {
 
             // --- Actually consume items from inventory ---
             // Skip if items were already consumed at station submission time
+
             if (!choice.itemsConsumed) {
                 const foodUsage = mealSnapshotsByChar.get(charId)?.foodUsage ?? new Map();
                 const snapMap = mealSnapshotsByChar.get(charId)?.snapMap ?? new Map();
                 const waterUsage = new Map();
                 for (const day of consumedDays) {
                     for (const id of (day.water ?? [])) {
-                        if (id && id !== "skip") waterUsage.set(id, (waterUsage.get(id) ?? 0) + 1);
+                        if (id && id !== "skip" && !id.startsWith("__")) waterUsage.set(id, (waterUsage.get(id) ?? 0) + 1);
                     }
                 }
                 for (const [itemId, amount] of foodUsage) {
@@ -749,6 +763,7 @@ export class MealPhaseHandler {
      */
     static async _applyWellFedEffect(actor, item) {
         const flags = item?.flags?.[MODULE_ID] ?? {};
+
         if (flags.wellFed !== true) return [];
         const buffRaw = flags.buff;
         if (buffRaw === null) return [];
@@ -899,6 +914,7 @@ export class MealPhaseHandler {
                 return chatDetail ? `healing +${heal}` : `healing +${heal}`;
             }
             case "exhaustion_save": {
+
                 const dc = Number(buff.save?.dc ?? buff.formula ?? 15);
                 const roll = await new Roll(`1d20 + @abilities.con.save`, actor.getRollData?.() ?? {}).evaluate();
                 const total = roll.total;
@@ -909,7 +925,8 @@ export class MealPhaseHandler {
                 }
                 const detail = `${roll.formula} = ${total} vs DC ${dc} (${pass ? "pass" : "fail"})`;
                 await ChatMessage.create({
-                    content: `<div class="respite-recovery-chat"><p><i class="fas fa-dice-d20"></i> <strong>${actor.name}</strong> ${detail}. ${pass ? "Removes 1 exhaustion." : "No exhaustion removed."}</p></div>`,
+                    content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>Meal Buff — Exhaustion Save</strong></p><p><i class="fas fa-dice-d20"></i> <strong>${actor.name}</strong> ${detail}. ${pass ? "Removes 1 exhaustion." : "No exhaustion removed."}</p></div>`,
+                    rolls: [roll],
                     speaker: ChatMessage.getSpeaker({ actor })
                 });
                 return chatDetail ? `exhaustion save (${detail})` : `exhaustion save (${pass ? "pass" : "fail"})`;
@@ -1132,7 +1149,7 @@ export class MealPhaseHandler {
                 name: item.name,
                 itemId: item.id,
                 available: qty,
-                icon: item.img ?? defaultFoodIcon,
+                icon: (item.img && !item.img.includes("mystery-man")) ? item.img : defaultFoodIcon,
                 partyMeal: item.flags?.[MODULE_ID]?.partyMeal ?? false
             });
         }
@@ -1199,7 +1216,7 @@ export class MealPhaseHandler {
                 maxCharges,
                 remainingCharges,
                 totalPints,
-                icon: item.img ?? "icons/consumables/drinks/waterskin-leather-tan.webp"
+                icon: (item.img && !item.img.includes("mystery-man")) ? item.img : "icons/magic/water/water-drop-swirl-blue.webp"
             });
         }
 

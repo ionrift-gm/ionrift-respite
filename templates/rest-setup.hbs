@@ -61,8 +61,8 @@
         </span>
         {{/each}}
         {{#unless campStatus.hasTent}}
-        <span class="camp-status-chip shelter-chip absent" title="No tent: exposed to weather penalties">
-            <i class="fas fa-campground"></i> Tent
+        <span class="camp-status-chip shelter-chip absent" title="No tent pitched — the whole camp is exposed to weather penalties and lower encounter safety">
+            <i class="fas fa-campground"></i> No Tent
         </span>
         {{/unless}}
         {{!-- Fire badge removed: the fire section below covers this --}}
@@ -2263,7 +2263,7 @@
             {{#if recovery.exhaustionDC}}
             <div class="outcome-exhaustion-advisory {{#if (eq recovery.exhaustionSaveResult 'passed')}}save-passed{{else if (eq recovery.exhaustionSaveResult 'failed')}}save-failed{{/if}}">
                 <i class="fas fa-bed"></i>
-                <span>CON save DC {{recovery.exhaustionDC}}{{#if recovery.exhaustionAdvantage}} <span class="gear-annotation">(advantage from hot meal)</span>{{/if}}{{#if (eq recovery.exhaustionSaveResult 'passed')}} <span class="exhaustion-recovered">Passed (no exhaustion gained)</span>{{else if (eq recovery.exhaustionSaveResult 'failed')}}{{#if (gt recovery.exhaustionDelta 0)}} <span class="exhaustion-gained">Failed (+1 Exhaustion)</span>{{else}} <span class="exhaustion-offset">Failed (offset by rest recovery)</span>{{/if}}{{/if}}</span>
+                <span>CON save DC {{recovery.exhaustionDC}}{{#if recovery.exhaustionAdvantage}} <span class="gear-annotation">(advantage from hot meal)</span>{{/if}}{{#if (eq recovery.exhaustionSaveResult 'passed')}} <span class="exhaustion-recovered">Passed (no exhaustion gained)</span>{{else if (eq recovery.exhaustionSaveResult 'failed')}}{{#if (gt recovery.exhaustionDelta 0)}} <span class="exhaustion-gained">Failed (+1 Exhaustion)</span>{{else}} <span class="exhaustion-offset">Failed (no net change)</span>{{/if}}{{/if}}</span>
             </div>
             <div class="outcome-effect-line" style="opacity:0.6;font-size:0.75em;padding-left:1.2rem;">{{#if (eq recovery.comfortLevel 'hostile')}}Hostile{{else}}Rough{{/if}} rest conditions require a Constitution save to avoid exhaustion.</div>
             {{/if}}
@@ -2375,7 +2375,7 @@
             {{#if recovery.exhaustionDC}}
             <div class="outcome-exhaustion-advisory {{#if (eq recovery.exhaustionSaveResult 'passed')}}save-passed{{else if (eq recovery.exhaustionSaveResult 'failed')}}save-failed{{/if}}">
                 <i class="fas fa-bed"></i>
-                <span>CON save DC {{recovery.exhaustionDC}}{{#if recovery.exhaustionAdvantage}} <span class="gear-annotation">(advantage from hot meal)</span>{{/if}}{{#if (eq recovery.exhaustionSaveResult 'passed')}} <span class="exhaustion-recovered">Passed (no exhaustion gained)</span>{{else if (eq recovery.exhaustionSaveResult 'failed')}}{{#if (gt recovery.exhaustionDelta 0)}} <span class="exhaustion-gained">Failed (+1 Exhaustion)</span>{{else}} <span class="exhaustion-offset">Failed (offset by rest recovery)</span>{{/if}}{{/if}}</span>
+                <span>CON save DC {{recovery.exhaustionDC}}{{#if recovery.exhaustionAdvantage}} <span class="gear-annotation">(advantage from hot meal)</span>{{/if}}{{#if (eq recovery.exhaustionSaveResult 'passed')}} <span class="exhaustion-recovered">Passed (no exhaustion gained)</span>{{else if (eq recovery.exhaustionSaveResult 'failed')}}{{#if (gt recovery.exhaustionDelta 0)}} <span class="exhaustion-gained">Failed (+1 Exhaustion)</span>{{else}} <span class="exhaustion-offset">Failed (no net change)</span>{{/if}}{{/if}}</span>
             </div>
             <div class="outcome-effect-line" style="opacity:0.6;font-size:0.75em;padding-left:1.2rem;">{{#if (eq recovery.comfortLevel 'hostile')}}Hostile{{else}}Rough{{/if}} rest conditions require a Constitution save to avoid exhaustion.</div>
             {{/if}}
