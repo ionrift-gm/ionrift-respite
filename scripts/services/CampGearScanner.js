@@ -117,7 +117,7 @@ export class CampGearScanner {
         })) ?? [];
 
         const hasBedroll = items.some(i => i.name.includes("bedroll"));
-        const hasTent = items.some(i => i.name.includes("tent"));
+        const hasTent = items.some(i => /(?:^|[\s,\-])tent\b/i.test(i.name));
         const hasMessKit = items.some(i =>
             i.name.includes("mess kit") ||
             (i.name.includes("cook") && i.name.includes("utensil"))
@@ -212,7 +212,7 @@ export class CampGearScanner {
                 breakdown.push({ label: "Bedroll", icon: "fas fa-bed", delta: 1 });
                 personalComfort = boostComfort(personalComfort, 1);
             }
-            // Tent: weather shield and encounter DC bump only. No personal comfort.
+            // Tent: camp-wide weather shield and encounter DC buff. Benefits all party members, not personal comfort.
 
             const rules = this.getRules(personalComfort);
 

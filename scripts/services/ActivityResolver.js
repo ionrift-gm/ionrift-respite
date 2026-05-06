@@ -162,7 +162,25 @@ export class ActivityResolver {
             rollLabel = aKey.toUpperCase();
         } else {
             // Skill check: pick whichever gives the actor a higher modifier
-            if (activity.check.altSkill) {
+            if (chosenSkillKey === "best") {
+                // "best" means the player picks a skill via followUp (Study uses
+                // arc/his/inv/nat/rel). Use that selection when available; otherwise
+                // fall back to the actor's highest-total skill.
+                const followUpSkill = options.followUpValue;
+                if (followUpSkill && actor.system?.skills?.[followUpSkill]) {
+                    chosenSkillKey = followUpSkill;
+                } else {
+                    // No followUp or invalid key — pick the actor's best skill
+                    const skills = actor.system?.skills ?? {};
+                    let bestKey = null;
+                    let bestTotal = -99;
+                    for (const [key, data] of Object.entries(skills)) {
+                        const total = data.total ?? data.mod ?? 0;
+                        if (total > bestTotal) { bestTotal = total; bestKey = key; }
+                    }
+                    if (bestKey) chosenSkillKey = bestKey;
+                }
+            } else if (activity.check.altSkill) {
                 const primary = actor.system?.skills?.[activity.check.skill]?.total ?? 0;
                 const alt = actor.system?.skills?.[activity.check.altSkill]?.total ?? 0;
                 if (alt > primary) chosenSkillKey = activity.check.altSkill;

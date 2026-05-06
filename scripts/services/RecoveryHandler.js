@@ -31,8 +31,24 @@ export class RecoveryHandler {
     static async apply(actor, recovery) {
         if (!actor || !recovery) return { hp: 0, hd: 0, exhaustion: 0 };
 
+        console.log(`[Respite:Recovery] ── apply() START for ${actor.name} (${actor.id}) ──`, {
+            comfortLevel: recovery.comfortLevel,
+            restType: recovery.restType,
+            hpRestored: recovery.hpRestored,
+            hdRestored: recovery.hdRestored,
+            spellSlotsRestored: recovery.spellSlotsRestored,
+            restedFully: recovery.restedFully,
+            exhaustionDC: recovery.exhaustionDC,
+            exhaustionAdvantage: recovery.exhaustionAdvantage,
+            exhaustionGain: recovery.exhaustionGain,
+            armorSleepPenalty: recovery.armorSleepPenalty
+        });
+
         const hp = actor.system?.attributes?.hp;
-        if (!hp) return { hp: 0, hd: 0, exhaustion: 0 };
+        if (!hp) {
+            console.warn(`[Respite:Recovery] ${actor.name}: no HP data, skipping`);
+            return { hp: 0, hd: 0, exhaustion: 0 };
+        }
 
         // --- HP Recovery ---
         const currentHp = hp.value ?? 0;
@@ -70,6 +86,13 @@ export class RecoveryHandler {
         // Post recovery summary to chat
         await this._postRecoveryChat(actor, recovery, hpToRestore, hdRecovered, exhaustionDelta);
 
+        console.log(`[Respite:Recovery] ── apply() END for ${actor.name} ──`, {
+            hpBefore: currentHp, hpAfter: newHp, hpToRestore,
+            hdRecovered,
+            exhaustionDelta,
+            comfortLevel: recovery.comfortLevel
+        });
+
         return { hp: hpToRestore, hd: hdRecovered, exhaustion: exhaustionDelta };
     }
 
@@ -80,6 +103,22 @@ export class RecoveryHandler {
      * @returns {Object[]} Per-character recovery summaries
      */
     static async applyAll(outcomes, skipIfRestRecovery = false) {
+        console.log(`[Respite:Recovery] ── applyAll() START ──`, {
+            outcomeCount: outcomes?.length ?? 0,
+            skipIfRestRecovery,
+            characters: outcomes?.map(o => {
+                const a = game.actors?.get(o.characterId);
+                return {
+                    id: o.characterId,
+                    name: a?.name ?? "(unknown)",
+                    comfort: o.recovery?.comfortLevel,
+                    restType: o.recovery?.restType,
+                    restedFully: o.recovery?.restedFully,
+                    armorSleepPenalty: o.recovery?.armorSleepPenalty
+                };
+            }) ?? []
+        });
+
         if (skipIfRestRecovery) {
             console.log(`${MODULE_ID} | Skipping HP/HD recovery (rest-recovery module active)`);
             return outcomes.map(o => ({ characterId: o.characterId, hp: 0, hd: 0, deferred: true }));
@@ -195,6 +234,18 @@ export class RecoveryHandler {
     static async _calculateExhaustionDelta(actor, recovery) {
         const adapter = game.ionrift?.respite?.adapter;
         const currentExhaustion = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+
+        console.log(`[Respite:Recovery] _calculateExhaustionDelta ${actor.name}:`, {
+            currentExhaustion,
+            comfortLevel: recovery.comfortLevel,
+            restType: recovery.restType,
+            restedFully: recovery.restedFully,
+            exhaustionDC: recovery.exhaustionDC,
+            exhaustionAdvantage: recovery.exhaustionAdvantage,
+            exhaustionGain: recovery.exhaustionGain,
+            armorSleepPenalty: recovery.armorSleepPenalty
+        });
+
         if (currentExhaustion === 0 && !(recovery.exhaustionGain > 0) && !recovery.exhaustionDC) return 0;
 
         // --- Phase 1: Rest recovery (negative = reduction) ---

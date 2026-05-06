@@ -446,12 +446,14 @@ export class WorkbenchDelegate {
      * @param {HTMLElement} el - Container element (station dialog or main UI).
      */
     bindDragDrop(el) {
-        if (!el) return;
+        if (!el) { console.warn(`[Respite:Workbench] bindDragDrop: no element`); return; }
         const embed = el.querySelector(".station-workbench-identify-embed[data-workbench-actor-id]");
-        if (!embed) return;
-        if (embed.querySelector(".wb-ident-ack-overlay")) return;
+        if (!embed) { console.warn(`[Respite:Workbench] bindDragDrop: no embed element found in`, el); return; }
+        if (embed.querySelector(".wb-ident-ack-overlay")) { console.log(`[Respite:Workbench] bindDragDrop: ack overlay active, skipping`); return; }
         const actorId = embed.dataset.workbenchActorId;
-        if (!actorId) return;
+        if (!actorId) { console.warn(`[Respite:Workbench] bindDragDrop: no actorId on embed`); return; }
+
+        console.log(`[Respite:Workbench] bindDragDrop: binding for actor ${actorId}`);
 
         embed.querySelectorAll(".dragging").forEach(n => n.classList.remove("dragging"));
         embed.querySelectorAll(".drop-hover").forEach(n => n.classList.remove("drop-hover"));
@@ -546,6 +548,7 @@ export class WorkbenchDelegate {
                 e.preventDefault();
                 zone.classList.remove("drop-hover");
                 const raw = e.dataTransfer?.getData("text/plain") ?? "";
+                console.log(`[Respite:Workbench] drop event on zone=${zoneType}`, { raw: raw.substring(0, 80), actorId });
 
                 if (raw.startsWith("wbident:")) {
                     const parts = raw.split(":");
@@ -564,11 +567,13 @@ export class WorkbenchDelegate {
                     return;
                 }
                 const item = await resolveItemFromDropEvent(e);
+                console.log(`[Respite:Workbench] resolveItemFromDropEvent =>`, { found: !!item, itemName: item?.name, parentId: item?.parent?.id, expectedActorId: actorId });
                 if (!item) {
                     ui.notifications.warn("Could not read that drop. Drag from this character's inventory on the sheet.");
                     return;
                 }
                 if (item.parent?.id !== actorId) {
+                    console.warn(`[Respite:Workbench] item parent mismatch: item.parent.id=${item.parent?.id}, expected=${actorId}`);
                     ui.notifications.warn("Drop an item that belongs to this character's sheet.");
                     return;
                 }

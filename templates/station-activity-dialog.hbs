@@ -660,6 +660,12 @@
 
     {{!-- Single-list stations (no meal hub tabs) --}}
     {{#unless showStationTabs}}
+    {{#if actorChoiceLocked}}
+    <div class="station-choice-locked">
+        <i class="fas fa-check-circle" aria-hidden="true"></i>
+        <span>{{actorName}} is already set to <strong>{{actorChoiceLocked}}</strong> this rest.</span>
+    </div>
+    {{/if}}
     {{#if hasAny}}
     <ul class="station-activities">
         {{#each activities}}
@@ -674,6 +680,7 @@
                     <span class="card-name">{{this.name}}</span>
                     {{#if this.hint}}<span class="card-hint {{#if this.hintUrgent}}urgent{{/if}}">{{this.hint}}</span>{{/if}}
                 </div>
+                {{> activityPortraits}}
             </button>
             {{else if this.nonViable}}
             <div class="activity-card station-activity non-viable" title="{{this.fadedHint}}">
@@ -697,14 +704,9 @@
     </ul>
     {{else}}
     {{#unless hideNoActivitiesMessage}}
-    {{#if actorChoiceLocked}}
-    <div class="station-choice-locked">
-        <i class="fas fa-check-circle" aria-hidden="true"></i>
-        <span>{{actorName}} is already set to <strong>{{actorChoiceLocked}}</strong> this rest.</span>
-    </div>
-    {{else}}
+    {{#unless actorChoiceLocked}}
     <p class="station-no-activities">No activities available here for {{actorName}}.</p>
-    {{/if}}
+    {{/unless}}
     {{/unless}}
     {{/if}}
     {{/unless}}
@@ -712,6 +714,12 @@
     {{!-- Campfire: activities tab --}}
     {{#if showStationTabs}}
     {{#if (eq stationPanelTab "activity")}}
+    {{#if actorChoiceLocked}}
+    <div class="station-choice-locked">
+        <i class="fas fa-check-circle" aria-hidden="true"></i>
+        <span>{{actorName}} is already set to <strong>{{actorChoiceLocked}}</strong> this rest.</span>
+    </div>
+    {{/if}}
     {{#if hasAny}}
     <ul class="station-activities">
         {{#each activities}}
@@ -726,6 +734,7 @@
                     <span class="card-name">{{this.name}}</span>
                     {{#if this.hint}}<span class="card-hint {{#if this.hintUrgent}}urgent{{/if}}">{{this.hint}}</span>{{/if}}
                 </div>
+                {{> activityPortraits}}
             </button>
             {{else if this.nonViable}}
             <div class="activity-card station-activity non-viable" title="{{this.fadedHint}}">
@@ -749,14 +758,9 @@
     </ul>
     {{else}}
     {{#unless hideNoActivitiesMessage}}
-    {{#if actorChoiceLocked}}
-    <div class="station-choice-locked">
-        <i class="fas fa-check-circle" aria-hidden="true"></i>
-        <span>{{actorName}} is already set to <strong>{{actorChoiceLocked}}</strong> this rest.</span>
-    </div>
-    {{else}}
+    {{#unless actorChoiceLocked}}
     <p class="station-no-activities">No activities available here for {{actorName}}.</p>
-    {{/if}}
+    {{/unless}}
     {{/unless}}
     {{/if}}
     {{/if}}
@@ -874,7 +878,7 @@
                 </div>
                 <div class="water-pool-bar" data-target="{{waterRequired}}" data-filled="{{waterFilledCount}}">
                     {{#each waterPoolSegments}}
-                    <div class="water-pool-segment {{#if filled}}filled{{/if}}"></div>
+                    <div class="water-pool-segment {{#if filled}}filled{{/if}}{{#if bonus}} bonus{{/if}}"></div>
                     {{/each}}
                 </div>
                 <div class="water-pool-status">
@@ -889,7 +893,7 @@
                 {{#if waterPoolSources.length}}
                 <div class="water-pool-sources">
                     {{#each waterPoolSources}}
-                    <span class="pool-source-pill">{{name}}: {{pintsUsed}} pints used</span>
+                    <span class="pool-source-pill{{#if isMealCredit}} pool-source-pill--meal{{/if}}">{{#if isMealCredit}}<i class="fas fa-utensils" aria-hidden="true"></i> {{/if}}{{name}}{{#unless isMealCredit}}: {{pintsUsed}} pints used{{/unless}}</span>
                     {{/each}}
                 </div>
                 {{/if}}
@@ -941,9 +945,9 @@
     {{#if actorChoiceLocked}}
     <div class="station-cooking-gate station-cooking-gate--activity-locked">
         <i class="fas fa-check-circle station-cooking-gate-icon" aria-hidden="true"></i>
-        <p class="station-cooking-gate-text">{{actorName}} already chose <strong>{{actorChoiceLocked}}</strong> for this rest. One activity per character.</p>
+        <p class="station-cooking-gate-text">{{actorName}} already chose <strong>{{actorChoiceLocked}}</strong> for this rest.</p>
     </div>
-    {{else}}
+    {{/if}}
     {{#unless actorHasCookingUtensils}}
     <div class="station-cooking-gate">
         <i class="fas fa-utensils station-cooking-gate-icon"></i>
@@ -954,7 +958,7 @@
     <ul class="station-activities">
         {{#each cookingActivities}}
         <li>
-            {{#if this.available}}
+            {{#if (and this.available (not ../actorChoiceLocked))}}
             <button type="button"
                     class="activity-card station-activity"
                     data-action="selectActivity"
@@ -989,7 +993,6 @@
     <p class="station-no-activities">No cook or brew activities available for {{actorName}}.</p>
     {{/if}}
     {{/unless}}
-    {{/if}}
     {{/if}}
     {{/if}}
 

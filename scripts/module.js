@@ -302,6 +302,12 @@ Hooks.once("init", async () => {
         .then(t => Handlebars.registerPartial("workbenchIdentifyEmbed", t))
         .catch(e => console.warn(`${MODULE_ID} | Failed to load workbench identify partial:`, e));
 
+    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/activity-portraits.hbs"]);
+    fetch("modules/ionrift-respite/templates/partials/activity-portraits.hbs")
+        .then(r => r.text())
+        .then(t => Handlebars.registerPartial("activityPortraits", t))
+        .catch(e => console.warn(`${MODULE_ID} | Failed to load activity-portraits partial:`, e));
+
     // Expose API
     const adapter = createAdapter();
     game.ionrift = game.ionrift || {};

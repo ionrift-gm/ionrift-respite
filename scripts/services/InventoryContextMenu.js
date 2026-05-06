@@ -190,6 +190,12 @@ async function _syncWithRestMealState(actor, itemId, isFood, itemSnapshot) {
         restApp._mealChoices.set(charId, { ...updated, [crossSlot]: crossArr, [crossLockedKey]: crossLocked });
     }
 
+    // Auto-trim excess water if eating food that satiates water
+    // (handles: player drank via right-click, then eats porridge — trim the redundant water)
+    if (isFood && typeof restApp._autoTrimExcessWater === "function") {
+        restApp._autoTrimExcessWater(charId);
+    }
+
     // NOTE: Do NOT mark _activityMealRationsSubmitted here.
     // Eating from inventory fills ONE slot (food or water) but does not
     // constitute a full ration submission. The player still needs to

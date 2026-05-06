@@ -522,6 +522,7 @@ export class CraftingEngine {
         };
 
         try {
+
             if (itemRef) {
                 const fromRef = await grantFromResolved(itemRef);
                 if (fromRef?.length) return fromRef;

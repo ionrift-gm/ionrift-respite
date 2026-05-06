@@ -1076,6 +1076,45 @@
     padding: 0.3rem 0;
 }
 
+.camp-fire-no-lighter-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.68rem;
+    color: rgba(255, 180, 80, 0.75);
+    font-style: italic;
+    padding: 0.35rem 0.5rem;
+    margin: 0;
+    background: rgba(255, 160, 40, 0.06);
+    border-left: 2px solid rgba(255, 160, 40, 0.3);
+    border-radius: 0 4px 4px 0;
+}
+
+.camp-fire-no-lighter-hint i {
+    color: rgba(255, 160, 40, 0.6);
+    font-size: 0.7rem;
+    flex-shrink: 0;
+}
+
+.camp-fire-no-lighter-prominent {
+    font-size: 0.78rem;
+    font-style: normal;
+    background: rgba(255, 140, 40, 0.1);
+    border-left: 3px solid rgba(255, 140, 40, 0.5);
+    color: rgba(255, 190, 100, 0.9);
+    padding: 0.5rem 0.6rem;
+}
+
+/* ── Footer bar advisory (before player submits) ────── */
+
+.respite-bar-advisory {
+    color: rgba(255, 200, 100, 0.95) !important;
+}
+
+.respite-bar-advisory i {
+    color: rgba(255, 200, 100, 0.8);
+}
+
 /* ── Lit state ───────────────────────────────────────── */
 
 .camp-fire-lit-banner {
@@ -9350,6 +9389,73 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     margin: 0;
 }
 
+/* ── UX-9: Activity Assignment Portrait Bubbles ── */
+.activity-portraits {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-shrink: 0;
+    margin-left: auto;
+    padding-left: 0.35rem;
+}
+
+.activity-portrait {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Stack overlap: subsequent portraits shift left */
+.activity-portrait + .activity-portrait {
+    margin-left: -6px;
+}
+
+.activity-portrait img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
+
+/* Ring statuses */
+.activity-portrait.ring-pending {
+    border-color: rgba(243, 156, 18, 0.7);
+}
+
+.activity-portrait.ring-success {
+    border-color: rgba(46, 204, 113, 0.8);
+    box-shadow: 0 0 4px rgba(46, 204, 113, 0.3);
+}
+
+.activity-portrait.ring-fail {
+    border-color: rgba(231, 76, 60, 0.75);
+    box-shadow: 0 0 4px rgba(231, 76, 60, 0.25);
+}
+
+/* Overflow counter (+N) */
+.activity-portrait-overflow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-left: -6px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.5rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
 .station-choice-locked {
     display: flex;
     align-items: center;
@@ -12495,6 +12601,12 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     box-shadow: 0 0 6px rgba(74, 158, 255, 0.3);
 }
 
+/* Meal-credited water: teal gradient to distinguish from manual water */
+.water-pool-segment.filled.bonus {
+    background: linear-gradient(135deg, #2dd4bf, #0d9488);
+    box-shadow: 0 0 6px rgba(45, 212, 191, 0.35);
+}
+
 .water-pool-status {
     align-self: stretch;
     width: 100%;
@@ -12527,6 +12639,17 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     border-radius: 8px;
     background: rgba(100, 160, 255, 0.15);
     color: rgba(255, 255, 255, 0.7);
+}
+
+.pool-source-pill--meal {
+    background: rgba(45, 212, 191, 0.15);
+    border: 1px solid rgba(45, 212, 191, 0.25);
+    color: rgba(45, 212, 191, 0.9);
+}
+
+.pool-source-pill--meal i {
+    margin-right: 2px;
+    font-size: 0.55rem;
 }
 
 /* Days Since Last Rest stepper */

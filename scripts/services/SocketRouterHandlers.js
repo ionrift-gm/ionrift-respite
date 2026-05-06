@@ -103,7 +103,7 @@ export function handleRestStarted(data, ctx) {
                 }
                 ctx.setActivePlayerRestApp(null);
                 if (ctx.playerRestActive && !options.skipRejoin) {
-                    showRejoinNotification(null, () => {
+                    showRejoinNotification(app, () => {
                         removeRejoinNotification();
                         emitRequestRestState(game.user.id);
                     });

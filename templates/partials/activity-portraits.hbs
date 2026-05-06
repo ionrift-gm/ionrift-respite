@@ -1,0 +1,13 @@
+{{!-- UX-9: Portrait bubble stack for activity assignments --}}
+{{#if this.hasAssignments}}
+<div class="activity-portraits" aria-label="Assigned characters">
+    {{#each this.assignedPortraits}}
+    <div class="activity-portrait ring-{{this.status}}" title="{{this.actorName}}">
+        <img src="{{this.portraitImg}}" alt="{{this.actorName}}" loading="lazy">
+    </div>
+    {{/each}}
+    {{#if this.assignedOverflow}}
+    <span class="activity-portrait-overflow" title="{{this.assignedOverflow}} more">+{{this.assignedOverflow}}</span>
+    {{/if}}
+</div>
+{{/if}}

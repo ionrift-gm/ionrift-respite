@@ -53,6 +53,8 @@ export class CampfireMakeCampDialog extends HandlebarsApplicationMixin(Applicati
         this._tickerFn = null;
         this._canvasPanFn = null;
         this._trackStarted = false;
+        /** Set when user manually drags the dialog; stops auto-tracking to token. */
+        this._userDragged = false;
     }
 
     async _prepareContext() {
@@ -92,7 +94,9 @@ export class CampfireMakeCampDialog extends HandlebarsApplicationMixin(Applicati
             this.close();
             return;
         }
-        this.setPosition({ left: pos.left, top: pos.top });
+        if (!this._userDragged) {
+            this.setPosition({ left: pos.left, top: pos.top });
+        }
     }
 
     _attachTrackers() {
@@ -128,6 +132,12 @@ export class CampfireMakeCampDialog extends HandlebarsApplicationMixin(Applicati
     async _onRender(context, options) {
         await super._onRender(context, options);
         this._syncTrackPosition();
+        // Allow user to drag the dialog by its header; stops auto-tracking to token
+        const header = this.element?.querySelector?.(".window-header");
+        if (header && !header._ionriftDragBound) {
+            header._ionriftDragBound = true;
+            header.addEventListener("pointerdown", () => { this._userDragged = true; });
+        }
     }
 
     static async #onCampLightFire(event, target) {
