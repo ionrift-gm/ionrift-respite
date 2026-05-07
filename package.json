@@ -1,11 +1,14 @@
 {
   "scripts": {
-    "test": "vitest run --config tests/vitest.config.js"
+    "test": "vitest run --config tests/vitest.config.js",
+    "lint:hbs": "node tools/lint-hbs.mjs",
+    "lint:hbs:watch": "node tools/lint-hbs.mjs --watch"
   },
   "dependencies": {
     "classic-level": "^3.0.0"
   },
   "devDependencies": {
+    "handlebars": "^4.7.9",
     "sharp": "^0.34.5",
     "vitest": "^3.0.0"
   }

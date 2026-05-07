@@ -308,6 +308,12 @@ Hooks.once("init", async () => {
         .then(t => Handlebars.registerPartial("activityPortraits", t))
         .catch(e => console.warn(`${MODULE_ID} | Failed to load activity-portraits partial:`, e));
 
+    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/fire-tier-picker.hbs"]);
+    fetch("modules/ionrift-respite/templates/partials/fire-tier-picker.hbs")
+        .then(r => r.text())
+        .then(t => Handlebars.registerPartial("fireTierPicker", t))
+        .catch(e => console.warn(`${MODULE_ID} | Failed to load fire-tier-picker partial:`, e));
+
     // Expose API
     const adapter = createAdapter();
     game.ionrift = game.ionrift || {};

@@ -110,7 +110,8 @@ import {
     emitTravelDeclaration, emitTravelDeclarationsSync,
     emitTravelRollRequest, emitTravelRollResult,
     emitTravelDebrief, emitTravelIndividualDebrief,
-    emitCopySpellProposal
+    emitCopySpellProposal,
+    emitFeastServeRequest
 } from "../services/SocketController.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -324,7 +325,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             selectTotmActivity: RestSetupApp.#onSelectTotmActivity,
             confirmTotmFollowUp: RestSetupApp.#onConfirmTotmFollowUp,
             cancelTotmFollowUp: RestSetupApp.#onCancelTotmFollowUp,
-            proceedFromTotmCamp: RestSetupApp.#onProceedFromTotmCamp
+            proceedFromTotmCamp: RestSetupApp.#onProceedFromTotmCamp,
+            switchTotmTab: RestSetupApp.#onSwitchTotmTab,
+            submitWorkbenchIdentify: RestSetupApp.#onSubmitWorkbenchIdentifyTotm,
+            dismissWorkbenchIdentifyAck: RestSetupApp.#onDismissWorkbenchIdentifyAckTotm,
+            stationDetectMagicScan: RestSetupApp.#onDetectMagicScanTotm,
+            craftSelectRecipe: RestSetupApp.#onTotmCraftSelectRecipe,
+            craftSelectRisk: RestSetupApp.#onTotmCraftSelectRisk,
+            craftCommit: RestSetupApp.#onTotmCraftCommit,
+            craftToggleMissing: RestSetupApp.#onTotmCraftToggleMissing,
+            craftClose: RestSetupApp.#onTotmCraftClose,
+            feastServeNow: RestSetupApp.#onTotmFeastServeNow
         }
     };
 
@@ -379,6 +390,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._campfireSnapshot = null;
         this._selectedCharacterId = null;
         this._activitySubTab = "identify"; // identify | activity | meal
+        /** TotM Activity phase: which tab is active. "activities" | "identify" | "fire" */
+        this._totmActiveTab = "activities";
         /** When set, activity-phase station grid highlights this station (canvas interaction). */
         this._canvasFocusedStationId = null;
         /** controlToken hook: GM roster sync; all users station overlay refresh in activity phase. */
@@ -487,6 +500,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             Hooks.on("deleteItem", this._inventoryHookHandler),
             Hooks.on("updateItem", this._inventoryHookHandler)
         ];
+    }
+
+    // ── Mode Detection ──────────────────────────────────────────────────
+
+    /**
+     * Whether the rest is running in Theater of the Mind mode.
+     * Single source of truth — replaces the repeated IIFE checks.
+     * @returns {boolean}
+     */
+    get _isTotM() {
+        try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; }
+        catch { return false; }
     }
 
     /**
@@ -2144,7 +2169,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             };
         });
 
-        // â”€â”€ TotM station cards (global, not per-character) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Early-init: ensure _selectedCharacterId is set before card builders use it.
+        // On first render _selectedCharacterId is null; pick the first owned character.
+        if (!this._selectedCharacterId && partyActors.length > 0) {
+            if (this._isGM) {
+                this._selectedCharacterId = partyActors[0].id;
+            } else {
+                const owned = partyActors.find(a => a.isOwner);
+                this._selectedCharacterId = owned?.id ?? partyActors[0].id;
+            }
+        }
+
+        // ── TotM station cards (global, not per-character) ─────────────────
         const totmStationCards = (() => {
             try {
                 if (game.settings.get(MODULE_ID, "restInterfaceMode") !== "theater") return [];
@@ -2181,6 +2217,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 tile.assignedPortraits = assigned.slice(0, 3);
                 tile.assignedOverflow = Math.max(0, assigned.length - 3);
                 tile.hasAssignments = assigned.length > 0;
+            }
+
+            // If the selected character already has a locked activity, downgrade all tiles to faded
+            const charLocked = this._lockedCharacters?.has(this._selectedCharacterId)
+                || (this._isGM && this._gmOverrides?.has(this._selectedCharacterId));
+            if (charLocked) {
+                for (const tile of unionTiles) {
+                    tile.available = false;
+                    tile.nonViable = false;
+                }
             }
 
             // Detail panel data is built in the totmDetailPanel variable below.
@@ -2228,8 +2274,151 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (!expanded || this._phase !== "activity") return null;
             try { if (game.settings.get(MODULE_ID, "restInterfaceMode") !== "theater") return null; } catch { return null; }
             const expandActor = game.actors.get(expanded.characterId);
+            if (!expandActor) return null;
+
+            // ── Crafting branch: inline crafting using the STATION UI layout ──
+            // Produces the same `crafting` context shape as StationActivityDialog._buildCraftingContext()
+            // so the template can reuse the station split-panel markup verbatim (no split-brain).
+            if (expanded.isCrafting) {
+                const professionId = expanded.profession;
+                const professionLabels = {
+                    cooking: "Cooking", alchemy: "Alchemy",
+                    smithing: "Smithing", leatherworking: "Leatherworking",
+                    brewing: "Brewing", tailoring: "Tailoring"
+                };
+                const engine = this._craftingEngine;
+                const terrainTag = this._engine?.terrainTag ?? this._restData?.terrainTag ?? null;
+                const risk = this._totmCraftRisk ?? "standard";
+                const partySize = getPartyActors().length;
+                const status = engine.getRecipeStatus(expandActor, professionId, terrainTag, partySize);
+
+                const _formatBuffPreview = (buff) => {
+                    if (!buff) return null;
+                    const labels = { temp_hp: "Temp HP", advantage: "Advantage", exhaustion_save: "Exhaustion Save" };
+                    const dur = { immediate: "Immediate", untilLongRest: "Until long rest", nextSave: "Next save" };
+                    return { label: labels[buff.type] ?? buff.type, formula: buff.formula ?? "", duration: dur[buff.duration] ?? buff.duration ?? "", target: buff.target ?? "self" };
+                };
+
+                const enrichRecipe = (recipe) => {
+                    const dcBreakdown = engine.getDcBreakdown(expandActor, recipe, risk, terrainTag);
+                    const flags = recipe.outputFlags?.["ionrift-respite"];
+                    return {
+                        ...recipe,
+                        dcDisplay: dcBreakdown.total,
+                        dcBreakdown,
+                        outputName: recipe.output?.name ?? "Unknown",
+                        outputImg: recipe.output?.img ?? "icons/consumables/food/bowl-stew-brown.webp",
+                        ambitiousOutput: recipe.ambitiousOutput,
+                        isSelected: recipe.id === this._totmCraftRecipeId,
+                        description: recipe.description ?? "",
+                        buffPreview: _formatBuffPreview(flags?.buff),
+                        isPartyMeal: !!flags?.partyMeal,
+                        isWellFed: !!flags?.wellFed,
+                        satiates: flags?.satiates ?? [],
+                        ambitiousName: recipe.ambitiousOutput?.name ?? null,
+                        ambitiousBuffPreview: _formatBuffPreview(
+                            recipe.ambitiousOutputFlags?.["ionrift-respite"]?.buff ?? flags?.buff
+                        ),
+                        ingredientList: (recipe.ingredients ?? []).map(ing => {
+                            const detail = recipe.ingredientStatus?.details?.find(d => d.name === ing.name);
+                            const invKey = ing.name.toLowerCase().trim();
+                            const invEntry = expandActor.items?.find(i => i.name.toLowerCase().trim() === invKey);
+                            const fallbackIcon = ing.resourceType === "water"
+                                ? "icons/magic/water/water-drop-swirl-blue.webp"
+                                : "icons/consumables/food/bread-loaf-round-white.webp";
+                            const rawImg = invEntry?.img;
+                            return {
+                                name: ing.name,
+                                required: ing.quantity ?? 1,
+                                available: detail?.available ?? 0,
+                                met: detail?.met ?? false,
+                                img: (rawImg && !rawImg.includes("mystery-man")) ? rawImg : fallbackIcon
+                            };
+                        })
+                    };
+                };
+
+                const available = status.available.map(r => enrichRecipe(r));
+                const partial = status.partial.map(r => enrichRecipe(r));
+                const selectedRecipe = available.find(r => r.id === this._totmCraftRecipeId)
+                    ?? partial.find(r => r.id === this._totmCraftRecipeId);
+
+                let commitSummary = null;
+                if (selectedRecipe && !this._totmCraftHasCrafted) {
+                    const outputForRisk = risk === "ambitious" && selectedRecipe.ambitiousOutput
+                        ? selectedRecipe.ambitiousOutput : selectedRecipe.output;
+                    commitSummary = {
+                        recipeName: selectedRecipe.name,
+                        dc: selectedRecipe.dcBreakdown.total,
+                        dcBreakdown: selectedRecipe.dcBreakdown,
+                        risk,
+                        riskLabel: { standard: "Standard", ambitious: "Ambitious" }[risk],
+                        outputName: outputForRisk?.name ?? selectedRecipe.outputName,
+                        outputImg: outputForRisk?.img ?? selectedRecipe.outputImg ?? "icons/svg/mystery-man.svg",
+                        outputQuantity: outputForRisk?.quantity ?? 1,
+                        ingredients: (selectedRecipe.ingredients ?? []).map(ing => {
+                            const invKey = ing.name.toLowerCase().trim();
+                            const invEntry = expandActor.items?.find(i => i.name.toLowerCase().trim() === invKey);
+                            const fallbackIcon = ing.resourceType === "water"
+                                ? "icons/magic/water/water-drop-swirl-blue.webp"
+                                : "icons/consumables/food/bread-loaf-round-white.webp";
+                            const rawImg = invEntry?.img;
+                            return {
+                                name: ing.name,
+                                quantity: ing.quantity ?? 1,
+                                img: (rawImg && !rawImg.includes("mystery-man")) ? rawImg : fallbackIcon
+                            };
+                        }),
+                        ingredientCost: (selectedRecipe.ingredients ?? []).map(i => `${i.quantity ?? 1}x ${i.name}`).join(", "),
+                        failConsequence: "Ingredients consumed on failure",
+                        skill: (selectedRecipe.skill ?? "sur").toUpperCase()
+                    };
+                }
+
+                return {
+                    isCrafting: true,
+                    name: professionLabels[professionId] ?? professionId,
+                    icon: "fas fa-hammer",
+                    actorName: expandActor.name,
+                    actorPortrait: expandActor.img ?? expandActor.prototypeToken?.texture?.src ?? "icons/svg/mystery-man.svg",
+                    // Station-compatible `crafting` sub-object (same shape as StationActivityDialog)
+                    crafting: {
+                        profession: professionLabels[professionId] ?? professionId,
+                        professionId,
+                        actorName: expandActor.name,
+                        actorImg: expandActor.img,
+                        selectedRisk: risk,
+                        selectedRecipeId: this._totmCraftRecipeId,
+                        hasCrafted: !!this._totmCraftHasCrafted,
+                        rollPending: !!this._totmCraftRollPending,
+                        showMissing: !!this._totmCraftShowMissing,
+                        riskTiers: [
+                            { id: "standard", label: "Standard", hint: "Base DC · Ingredients used", selected: risk === "standard" },
+                            { id: "ambitious", label: "Ambitious", hint: "DC +5 · Better yield", selected: risk === "ambitious" }
+                        ],
+                        available,
+                        partial,
+                        selectedRecipe: selectedRecipe ?? null,
+                        isAmbitiousSelected: risk === "ambitious",
+                        commitSummary,
+                        craftingResult: this._totmCraftResult ? {
+                            ...this._totmCraftResult,
+                            isPartyMeal: !!(selectedRecipe?.isPartyMeal ?? false),
+                            partyMealDispositionDone: !!this._totmFeastServed,
+                            partyRoster: getPartyActors().map(a => ({
+                                id: a.id,
+                                name: a.name,
+                                img: a.img || "icons/svg/mystery-man.svg",
+                                alreadyWellFed: a.effects?.some(e => e.flags?.[MODULE_ID]?.wellFed === true) ?? false
+                            }))
+                        } : null
+                    }
+                };
+            }
+
+            // ── Standard activity detail panel ──
             const expandActivity = this._activityResolver?.activities?.get(expanded.activityId);
-            if (!expandActor || !expandActivity) return null;
+            if (!expandActivity) return null;
             const comfort = this._engine?.comfort ?? "sheltered";
             const existingFollowUp = this._gmFollowUps?.get(expanded.characterId) ?? null;
             let armorRuleEnabled = false;
@@ -2442,7 +2631,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         let campColdCampDecided = false;
         let campComfortIsHostile = false;
         let canContinueToCampLayout = false;
-        if (this._phase === "camp") {
+        const _needsFireData = this._phase === "camp" || (this._phase === "activity" && this._isTotM && this._totmActiveTab === "fire");
+        if (_needsFireData) {
             const terrainTagCamp = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
             const terrainCamp = TerrainRegistry.get(terrainTagCamp);
             const shelterSpellCamp = (this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")
@@ -2462,16 +2652,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ? (this._fireLevel ?? "unlit")
                 : (this._campFirePreviewLevel ?? this._fireLevel ?? "unlit");
             const encMod = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[effectiveScanLevel] ?? 0;
-            // RestFlowEngine: effectiveDC = baseDC - campMods. Positive fireRollModifier raises campMods,
-            // lowering effectiveDC (fewer night events). Sign convention matches shelter modifiers.
+            // RestFlowEngine: effectiveDC = baseDC - campMods. Negative fireRollModifier
+            // subtracts a negative, RAISING effectiveDC (harder to avoid encounters).
+            // "Fire is a beacon" — see CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL.
             if (effectiveScanLevel === "unlit") {
                 campFireEncounterHint = "No fire is lit yet. The tier row shows what each level would do.";
             } else if (effectiveScanLevel === "embers") {
-                campFireEncounterHint = "Embers: no change to encounter chance.";
+                campFireEncounterHint = "Embers: no change to encounter DC.";
             } else if (effectiveScanLevel === "campfire") {
-                campFireEncounterHint = "Campfire: encounter threshold âˆ’1 (quieter night).";
+                campFireEncounterHint = "Campfire: +1 encounter DC (light draws attention).";
             } else if (effectiveScanLevel === "bonfire") {
-                campFireEncounterHint = "Bonfire: encounter threshold âˆ’2 (quieter night).";
+                campFireEncounterHint = "Bonfire: +2 encounter DC (beacon in the dark).";
             } else {
                 campFireEncounterHint = "";
             }
@@ -2536,7 +2727,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         let campViewerCanLight = false;
         let campFireOtherLighterCount = 0;
         let campFireLighterNames = "";
-        if (this._phase === "camp" && campScanData) {
+        if (_needsFireData && campScanData) {
             campFireIsLit = !!this._fireLitBy || (this._fireLevel ?? "unlit") !== "unlit";
             campFireLitBy = this._fireLitBy ?? null;
             campFireTotalPledged = Array.from(this._firewoodPledges.values()).reduce((s, p) => s + p.count, 0);
@@ -2719,9 +2910,33 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         return {
             isGM: this._isGM,
-            isTheaterMode: (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return true; } })(),
+            isTheaterMode: this._isTotM,
+            totmActiveTab: this._totmActiveTab,
             totmStationCards,
             totmDetailPanel,
+            totmCharacterLocked: (() => {
+                const cid = this._selectedCharacterId;
+                if (!cid) return null;
+                const isLocked = this._lockedCharacters?.has(cid)
+                    || (this._isGM && this._gmOverrides?.has(cid));
+                if (!isLocked) return null;
+                const actId = this._characterChoices?.get(cid);
+                const act = actId ? this._activityResolver?.activities?.get(actId) : null;
+                return act?.name ?? actId ?? "an activity";
+            })(),
+            // TotM Identify tab context
+            ...(this._isTotM && this._phase === "activity" && this._totmActiveTab === "identify" ? (() => {
+                const rosterSelected = this._selectedCharacterId || getPartyActors()[0]?.id || null;
+                const wbCtx = this._workbench.getDragContext(rosterSelected, collectPartyIdentifyEmbedData, getPartyActors);
+                const dmScan = this._detectMagic;
+                return {
+                    ...wbCtx,
+                    identifyCasters: collectPartyIdentifyEmbedData(getPartyActors()),
+                    canTriggerDetectMagicScan: computeCanTriggerDetectMagicScan(getPartyActors),
+                    magicScanActive: dmScan?.scanActive ?? false,
+                    isGmUser: this._isGM
+                };
+            })() : {}),
             emptyParty,
             rosterInfo: (() => {
                 const roster = getPartyActors();
@@ -3118,8 +3333,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const FIRE_TIPS = {
                     unlit: "Unlit: âˆ’1 comfort step at resolution",
                     embers: "Embers: no change to encounter chance.",
-                    campfire: "Campfire: encounter threshold âˆ’1 (quieter night).",
-                    bonfire: "Bonfire: +1 camp comfort. Encounter threshold âˆ’2 (quieter night)."
+                    campfire: "Campfire: +1 encounter DC (light draws attention).",
+                    bonfire: "+1 camp comfort. +2 encounter DC (beacon in the dark)."
                 };
                 return this._campStatus = {
                     comfort,
@@ -3153,6 +3368,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campFireGatePit,
             campFireGateLevel,
             campFireIsLit,
+            campFireLabel: (() => {
+                const l = this._fireLevel ?? "unlit";
+                return l.charAt(0).toUpperCase() + l.slice(1);
+            })(),
             campFireLitBy,
             campFireLighters,
             campFirewoodPledgeList,
@@ -3192,7 +3411,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (shelter !== 0) chips.push({ label: "Shelter", value: fmt(shelter), icon: "fas fa-campground" });
                 if (scouting !== 0) chips.push({ label: `Scout: ${bd.scoutingResult ?? "?"}`, value: fmt(scouting), icon: "fas fa-binoculars" });
                 if (complication) chips.push({ label: "Complication", value: "", icon: "fas fa-exclamation-triangle", warn: true });
-                if (fire !== 0) chips.push({ label: this._fireLevel ?? "Fire", value: fmt(fire), icon: "fas fa-fire" });
+                if (fire !== 0) chips.push({ label: this._fireLevel ?? "Fire", value: fmt(-fire), icon: "fas fa-fire" });
                 if (defenses !== 0) chips.push({ label: "Defenses", value: fmt(defenses), icon: "fas fa-shield-alt" });
                 if (gmAdj !== 0) chips.push({ label: "GM", value: fmt(gmAdj), icon: "fas fa-gavel" });
                 return {
@@ -3969,8 +4188,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const el = this.element;
             if (!el) return;
             const h = el.offsetHeight;
-            const _isTotmMode = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; } })();
-            if (this._phase === "camp" && !_isTotmMode) {
+            if (this._phase === "camp" && !this._isTotM) {
                 // Spatial: dock narrow panel top-right so the canvas map is visible.
                 const w = el.offsetWidth;
                 el.classList.add("ionrift-camp-dock");
@@ -3991,19 +4209,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._bindMealDragDrop(this.element);
         }
 
+        // TotM Activity: bind workbench drag-drop when Identify tab is active
+        if (this._phase === "activity" && this._isTotM && this._totmActiveTab === "identify") {
+            this._workbench.bindDragDrop(this.element);
+        }
+
         // Camp: crosshair pit (GM), map notice for all clients, optional canvas panel (gear drag)
         if (this._phase === "camp") {
-            const _isTotmCamp = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; } })();
-            if (!_isTotmCamp && this._isGM && !hasCampfirePlaced() && !this._campPitCursorInFlight && !this._campPitPlacementCancelled) {
+            if (!this._isTotM && this._isGM && !hasCampfirePlaced() && !this._campPitCursorInFlight && !this._campPitPlacementCancelled) {
                 void this._startCampPitCursorFlow();
-            } else if (!_isTotmCamp && hasCampfirePlaced() && !this._campToActivityDone && !isStationLayerActive()) {
+            } else if (!this._isTotM && hasCampfirePlaced() && !this._campToActivityDone && !isStationLayerActive()) {
                 void this._refreshCampPitNoticeLayer();
             }
             // TotM camp: mark the window so CSS enforces min-width on the container.
-            if (this.element) this.element.classList.toggle("totm-camp-active", _isTotmCamp);
+            if (this.element) this.element.classList.toggle("totm-camp-active", this._isTotM);
             // One-shot center + widen when first entering TotM camp phase.
             // Subsequent renders (tab clicks, re-renders) skip this entirely.
-            if (_isTotmCamp && !this._totmCampPositioned) {
+            if (this._isTotM && !this._totmCampPositioned) {
                 this._totmCampPositioned = true;
                 const w = 720;
                 this.setPosition({
@@ -4443,6 +4665,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this._canvasFocusedStationId = null;
                 this._activityDetailId = null;
                 this._craftingDrawerOpen = false;
+                // Collapse any expanded TotM detail/crafting panel on character switch
+                this._totmFollowUpExpanded = null;
+                this._resetTotmCraftState();
                 if (isStationLayerActive()) {
                     if (!this._isGM) this._refreshStationOverlayForFocusChange();
                     else {
@@ -10393,8 +10618,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /**
      * TotM activity card click.
-     * ALL non-crafting activities open the inline detail panel first.
-     * Crafting activities open CraftingPickerApp directly.
+     * ALL activities (including crafting) open the inline detail panel.
      * Clicking the same card again while expanded collapses the panel.
      */
     static async #onSelectTotmActivity(event, target) {
@@ -10416,10 +10640,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const isCrafting = !!activity?.crafting?.enabled;
 
         if (isCrafting) {
-            // Crafting: open CraftingPickerApp directly (own full UI, no panel needed).
+            // Crafting: expand inline crafting panel (TotM only — station mode still uses CraftingPickerApp).
             const craftingProfession = activity.crafting.profession ?? "cooking";
-            const syntheticTarget = { dataset: { characterId, profession: craftingProfession } };
-            RestSetupApp.#onOpenCrafting.call(this, null, syntheticTarget);
+            if (this._totmFollowUpExpanded?.isCrafting
+                    && this._totmFollowUpExpanded?.profession === craftingProfession
+                    && this._totmFollowUpExpanded?.characterId === characterId) {
+                // Toggle off
+                this._totmFollowUpExpanded = null;
+                this._resetTotmCraftState();
+            } else {
+                // Reset crafting state for a fresh session
+                this._resetTotmCraftState();
+                this._totmFollowUpExpanded = { activityId, characterId, isCrafting: true, profession: craftingProfession };
+            }
+            this.render();
             return;
         }
 
@@ -10512,6 +10746,289 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this.render();
     }
 
+    // ── TotM Activity Tabs ──────────────────────────────────────────────
+
+    /**
+     * TotM: switch between Activities / Identify / Fire tabs.
+     */
+    static #onSwitchTotmTab(event, target) {
+        const tab = target.dataset.totmTab;
+        if (!tab) return;
+        this._totmActiveTab = tab;
+        // Reset detail panel and crafting state when switching tabs
+        this._totmFollowUpExpanded = null;
+        this._resetTotmCraftState();
+        this.render();
+    }
+
+    /**
+     * TotM Identify tab: submit staged items for identify.
+     */
+    static async #onSubmitWorkbenchIdentifyTotm(event, target) {
+        const actorId = target.dataset.workbenchActorId
+            ?? this.element?.querySelector(".station-workbench-identify-embed")?.dataset?.workbenchActorId;
+        if (!actorId) return;
+        await this._workbench.submitFromStation(actorId);
+    }
+
+    /**
+     * TotM Identify tab: dismiss reveal overlay.
+     */
+    static #onDismissWorkbenchIdentifyAckTotm(event, target) {
+        const actorId = target.dataset.workbenchActorId
+            ?? this.element?.querySelector(".station-workbench-identify-embed")?.dataset?.workbenchActorId;
+        if (!actorId) return;
+        this._workbench.dismissAcknowledgement(actorId);
+    }
+
+    /**
+     * TotM Identify tab: trigger detect magic scan.
+     */
+    static async #onDetectMagicScanTotm() {
+        await this._detectMagic.runScan(getPartyActors);
+    }
+
+    // ── TotM Inline Crafting Handlers ─────────────────────────────────────
+
+    /**
+     * Reset ephemeral crafting state for the TotM inline panel.
+     * Called when the panel is collapsed or a new crafting session starts.
+     */
+    _resetTotmCraftState() {
+        this._totmCraftRecipeId = null;
+        this._totmCraftRisk = "standard";
+        this._totmCraftResult = null;
+        this._totmCraftHasCrafted = false;
+        this._totmCraftShowMissing = false;
+        this._totmCraftRollPending = false;
+        this._totmFeastServed = false;
+        this._totmFeastInFlight = false;
+    }
+
+    /** TotM inline crafting: select a recipe. */
+    static #onTotmCraftSelectRecipe(event, target) {
+        if (this._totmCraftRollPending || this._totmCraftHasCrafted) return;
+        this._totmCraftRecipeId = target.dataset.recipeId;
+        this.render();
+    }
+
+    /** TotM inline crafting: select a risk tier. */
+    static #onTotmCraftSelectRisk(event, target) {
+        if (this._totmCraftRollPending || this._totmCraftHasCrafted) return;
+        this._totmCraftRisk = target.dataset.risk;
+        this.render();
+    }
+
+    /** TotM inline crafting: execute the craft roll. */
+    static async #onTotmCraftCommit(event, target) {
+        if (this._totmCraftRollPending || this._totmCraftHasCrafted || !this._totmCraftRecipeId) return;
+        const expanded = this._totmFollowUpExpanded;
+        if (!expanded?.isCrafting) return;
+
+        const actor = game.actors.get(expanded.characterId);
+        if (!actor) return;
+
+        const terrainTag = this._engine?.terrainTag ?? this._restData?.terrainTag ?? null;
+        const engine = this._craftingEngine;
+        const allRecipes = engine.recipes?.get(expanded.profession) ?? [];
+        const craftRecipe = allRecipes.find(r => r.id === this._totmCraftRecipeId);
+        const partySize = craftRecipe?.outputFlags?.["ionrift-respite"]?.partyMeal
+            ? getPartyActors().length
+            : 1;
+
+        this._totmCraftRollPending = true;
+        this.render();
+        try {
+            this._totmCraftResult = await engine.resolve(
+                actor, this._totmCraftRecipeId, expanded.profession, this._totmCraftRisk, terrainTag, partySize
+            );
+            this._totmCraftHasCrafted = true;
+        } finally {
+            this._totmCraftRollPending = false;
+            this.render();
+        }
+    }
+
+    /** TotM inline crafting: toggle partial recipe visibility. */
+    static #onTotmCraftToggleMissing(event, target) {
+        if (this._totmCraftRollPending) return;
+        this._totmCraftShowMissing = !this._totmCraftShowMissing;
+        this.render();
+    }
+
+    /**
+     * TotM inline crafting: close the crafting panel and commit.
+     * Mirrors CraftingDelegate.onClose submission logic.
+     */
+    static #onTotmCraftClose(event, target) {
+        if (this._totmCraftRollPending) return;
+        const expanded = this._totmFollowUpExpanded;
+        if (!expanded?.isCrafting) {
+            this._totmFollowUpExpanded = null;
+            this.render();
+            return;
+        }
+
+        const characterId = expanded.characterId;
+        const profession = expanded.profession;
+        const result = this._totmCraftResult;
+
+        // Collapse the panel
+        this._totmFollowUpExpanded = null;
+
+        // If crafting was completed, commit the result
+        if (this._totmCraftHasCrafted && result) {
+            this._craftingResults.set(characterId, result);
+
+            const resolver = this._activityResolver;
+            const craftAct = resolver?.activities ? [...resolver.activities.values()].find(
+                a => a.crafting?.profession === profession
+            ) : null;
+            const activityId = craftAct?.id ?? "act_cook";
+
+            if (this._isGM) {
+                this._gmOverrides.set(characterId, activityId);
+                this._rebuildCharacterChoices?.();
+                const submissions = {};
+                for (const [charId, actId] of this._characterChoices) {
+                    const act = resolver?.activities?.get(actId);
+                    submissions[charId] = {
+                        activityId: actId,
+                        activityName: act?.name ?? actId,
+                        source: this._gmOverrides.has(charId) ? "gm" : "player"
+                    };
+                }
+                emitSubmissionUpdate(submissions);
+            } else {
+                this._characterChoices.set(characterId, activityId);
+                this._lockedCharacters = this._lockedCharacters ?? new Set();
+                this._lockedCharacters.add(characterId);
+                emitActivityChoice(
+                    game.user.id,
+                    Object.fromEntries(this._characterChoices),
+                    { [characterId]: result },
+                    null,
+                    this._earlyResults?.size ? Object.fromEntries(this._earlyResults) : null
+                );
+                const actor = game.actors.get(characterId);
+                if (actor) ui.notifications.info(`${actor.name}'s activity submitted.`);
+            }
+        }
+
+        this._resetTotmCraftState();
+        this.render();
+    }
+
+    /**
+     * TotM inline crafting: serve a feast to the party.
+     * Mirrors StationActivityDialog.#onFeastServeNow.
+     */
+    static async #onTotmFeastServeNow() {
+        if (this._totmFeastServed || this._totmFeastInFlight) return;
+        const craftResult = this._totmCraftResult;
+        if (!craftResult?.output) return;
+
+        const expanded = this._totmFollowUpExpanded;
+        if (!expanded?.isCrafting) return;
+        const actor = game.actors.get(expanded.characterId);
+        if (!actor) return;
+
+        const item = actor.items?.find(i =>
+            i.name === craftResult.output?.name
+            && i.flags?.[MODULE_ID]?.partyMeal === true
+        );
+        if (!item) {
+            ui.notifications.warn("Could not find the feast item in inventory.");
+            return;
+        }
+
+        this._totmFeastInFlight = true;
+        try {
+            const partyIds = getPartyActors().map(a => a.id);
+            const snapshot = item.toObject(false);
+
+            if (game.user.isGM) {
+                await MealPhaseHandler._dispatchWellFedMealServing({
+                    consumerActor: actor,
+                    itemSnapshot: snapshot,
+                    partyIds
+                });
+            } else {
+                emitFeastServeRequest({
+                    cookActorId: actor.id,
+                    itemSnapshot: snapshot,
+                    partyIds,
+                    feastMode: "feast"
+                });
+            }
+
+            const consumed = await MealPhaseHandler._consumeItem(actor, item.id, 1);
+            if (consumed < 1) {
+                ui.notifications.error("Serving finished but the feast item could not be removed from inventory.");
+                return;
+            }
+            ui.notifications.info(`${actor.name} serves ${craftResult.output.name} to the party!`);
+            this._totmFeastServed = true;
+
+            // Credit feast satiation for all party members
+            const feastFlags = snapshot.flags?.[MODULE_ID] ?? {};
+            const satiates = Array.isArray(feastFlags.satiates) ? feastFlags.satiates : [];
+            if (satiates.length) {
+                if (!this._mealChoices) this._mealChoices = new Map();
+                if (!this._activityMealRationsSubmitted) this._activityMealRationsSubmitted = new Set();
+                for (const pid of partyIds) {
+                    if (this._activityMealRationsSubmitted.has(pid)) continue;
+                    const existing = this._mealChoices.get(pid) ?? {};
+                    if (satiates.includes("food")) {
+                        const foodArr = Array.isArray(existing.food) ? [...existing.food] : [];
+                        const foodLocked = Array.isArray(existing.foodLockedSlots) ? [...existing.foodLockedSlots] : [];
+                        const emptyIdx = foodArr.findIndex(v => !v || v === "skip");
+                        const idx = emptyIdx >= 0 ? emptyIdx : foodArr.length;
+                        foodArr[idx] = "__feast_food";
+                        if (!foodLocked.includes(idx)) foodLocked.push(idx);
+                        existing.food = foodArr;
+                        existing.foodLockedSlots = foodLocked;
+                    }
+                    if (satiates.includes("water")) {
+                        const waterArr = Array.isArray(existing.water) ? [...existing.water] : [];
+                        const waterLocked = Array.isArray(existing.waterLockedSlots) ? [...existing.waterLockedSlots] : [];
+                        const emptyIdx = waterArr.findIndex(v => !v || v === "skip");
+                        const idx = emptyIdx >= 0 ? emptyIdx : waterArr.length;
+                        waterArr[idx] = "__feast_water";
+                        if (!waterLocked.includes(idx)) waterLocked.push(idx);
+                        existing.water = waterArr;
+                        existing.waterLockedSlots = waterLocked;
+                    }
+                    const consumedDays = Array.isArray(existing.consumedDays) ? [...existing.consumedDays] : [];
+                    consumedDays.push({
+                        food: [...(existing.food ?? [])],
+                        water: [...(existing.water ?? [])],
+                        essence: [...(existing.essence ?? [])]
+                    });
+                    this._mealChoices.set(pid, {
+                        ...existing, consumedDays,
+                        currentDay: consumedDays.length,
+                        food: [], water: [],
+                        essence: existing.essence ?? [],
+                        itemsConsumed: true,
+                        foodLockedSlots: existing.foodLockedSlots ?? [],
+                        waterLockedSlots: existing.waterLockedSlots ?? []
+                    });
+                    this._activityMealRationsSubmitted.add(pid);
+                }
+                try { if (typeof this._saveRestState === "function") this._saveRestState(); } catch { /* ok */ }
+                try {
+                    const snap = typeof this.getRestSnapshot === "function" ? this.getRestSnapshot() : null;
+                    if (snap) game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot: snap });
+                } catch { /* ok */ }
+                notifyStationMealChoicesUpdated();
+            }
+
+            this.render();
+        } finally {
+            this._totmFeastInFlight = false;
+        }
+    }
 
     /** @deprecated Use this._campCeremony.lightFire() */
     async _lightFire(userId, actorId, method) {
