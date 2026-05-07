@@ -48,6 +48,20 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     // ── Gameplay Settings ────────────────────────────────────────────
 
+    game.settings.register(MODULE_ID, "restInterfaceMode", {
+        name: "Rest Interface Mode",
+        hint: "Stations: players walk to canvas station overlays (Weapon Rack, Bedroll, etc.) to choose activities. Requires a prepared map with camp furniture. Theater of the Mind: all activities are shown inline in the Rest Setup window. No canvas, no station overlays, no map required.",
+        scope: "world",
+        config: true,
+        type: String,
+        default: "stations",
+        choices: {
+            theater: "Theater of the Mind (inline cards)",
+            stations: "Stations (canvas overlays)"
+        },
+        restricted: true
+    });
+
     game.settings.register(MODULE_ID, "interceptRests", {
         name: "Intercept Player Rests",
         hint: "Block the default Short/Long Rest buttons for players. Rests must go through the GM-managed Respite flow.",
@@ -527,6 +541,7 @@ export function registerItemEnrichments() {
  */
 export const SETTING_KEYS = [
     "partyRoster",
+    "restInterfaceMode",
     "interceptRests",
     "armorDoffRule",
     "spellRecoveryMaxLevel",

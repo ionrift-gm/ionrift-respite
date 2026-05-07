@@ -29,12 +29,31 @@ export function showRejoinNotification(app, rejoinFn) {
     const partySize = isActivity ? (getPartyActors().length || 0) : 0;
     const activitiesResolved = isActivity ? (app?._characterChoices?.size ?? 0) : 0;
     const trackFood = isActivity && game.settings.get(MODULE_ID, "trackFood");
-    const rationsResolved = trackFood ? (app?._activityMealRationsSubmitted?.size ?? 0) : 0;
-    const totalTasks = partySize + (trackFood ? partySize : 0);
-    const resolvedTasks = activitiesResolved + rationsResolved;
-    const allDone = isActivity && totalTasks > 0 && resolvedTasks >= totalTasks;
+    const membersReady = isActivity ? (() => {
+        let count = 0;
+        const actors = getPartyActors();
+        for (const a of actors) {
+            const hasActivity = app?._characterChoices?.has(a.id);
+            const hasRations = !trackFood || (app?._activityMealRationsSubmitted?.has(a.id));
+            if (hasActivity && hasRations) count++;
+        }
+        return count;
+    })() : 0;
+    const allDone = isActivity && partySize > 0 && membersReady >= partySize;
+
+    // Check if the current viewer has submitted (any owned actor)
+    const viewerDone = isActivity ? getPartyActors().some(a => {
+        const owned = (a.ownership?.[game.user.id] ?? 0) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
+        if (!owned) return false;
+        const hasActivity = app?._characterChoices?.has(a.id);
+        const hasRations = !trackFood || (app?._activityMealRationsSubmitted?.has(a.id));
+        return hasActivity && hasRations;
+    }) : false;
+
     const progressHtml = isActivity
-        ? `<span class="respite-bar-progress">${resolvedTasks} / ${totalTasks} tasks to complete</span>`
+        ? (viewerDone
+            ? `<span class="respite-bar-progress"><i class="fas fa-users"></i> ${membersReady} / ${partySize} party members ready</span>`
+            : `<span class="respite-bar-progress respite-bar-advisory"><i class="fas fa-hand-pointer"></i> Choose one activity${trackFood ? " and assign rations" : ""}</span>`)
         : "";
     el.innerHTML = `
         <i class="fas fa-campground"></i>
@@ -131,12 +150,24 @@ export function showGmRestIndicator(app) {
     const partySize = isActivity ? getPartyActors().length : 0;
     const activitiesResolved = isActivity ? (app?._characterChoices?.size ?? 0) : 0;
     const trackFood = isActivity && game.settings.get(MODULE_ID, "trackFood");
-    const rationsResolved = trackFood ? (app?._activityMealRationsSubmitted?.size ?? 0) : 0;
-    const totalTasks = partySize + (trackFood ? partySize : 0);
-    const resolvedTasks = activitiesResolved + rationsResolved;
-    const allDone = isActivity && totalTasks > 0 && resolvedTasks >= totalTasks;
+    // TotM: rations are collected in the dedicated meal phase, not the activity phase.
+    // Mirror the allRationsSubmitted bypass used in the template context builder.
+    const isTotM = isActivity && (() => {
+        try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; }
+    })();
+    const membersReady = isActivity ? (() => {
+        let count = 0;
+        const actors = getPartyActors();
+        for (const a of actors) {
+            const hasActivity = app?._characterChoices?.has(a.id);
+            const hasRations = !trackFood || isTotM || (app?._activityMealRationsSubmitted?.has(a.id));
+            if (hasActivity && hasRations) count++;
+        }
+        return count;
+    })() : 0;
+    const allDone = isActivity && partySize > 0 && membersReady >= partySize;
     const progressHtml = isActivity
-        ? `<span class="respite-bar-progress">${resolvedTasks} / ${totalTasks} tasks to complete</span>`
+        ? `<span class="respite-bar-progress"><i class="fas fa-users"></i> ${membersReady} / ${partySize} party members ready</span>`
         : "";
     el.innerHTML = `
         <i class="fas fa-campground"></i>
@@ -172,15 +203,21 @@ export function refreshGmRestIndicator(app) {
     if (!bar || app?._phase !== "activity") return;
     const span = bar.querySelector(".respite-bar-progress");
     if (!span) return;
-    const partySize = getPartyActors().length;
-    const activitiesResolved = app._characterChoices?.size ?? 0;
     const trackFood = game.settings.get(MODULE_ID, "trackFood");
-    const rationsResolved = trackFood ? (app._activityMealRationsSubmitted?.size ?? 0) : 0;
-    const totalTasks = partySize + (trackFood ? partySize : 0);
-    const resolvedTasks = activitiesResolved + rationsResolved;
-    span.textContent = `${resolvedTasks} / ${totalTasks} tasks to complete`;
+    const isTotM = (() => {
+        try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; }
+    })();
+    const actors = getPartyActors();
+    let membersReady = 0;
+    for (const a of actors) {
+        const hasActivity = app._characterChoices?.has(a.id);
+        const hasRations = !trackFood || isTotM || (app._activityMealRationsSubmitted?.has(a.id));
+        if (hasActivity && hasRations) membersReady++;
+    }
+    const partySize = actors.length;
+    span.textContent = `${membersReady} / ${partySize} party members ready`;
     const btn = bar.querySelector("#respite-gm-resume-btn");
-    if (btn) btn.classList.toggle("respite-resume-ready", totalTasks > 0 && resolvedTasks >= totalTasks);
+    if (btn) btn.classList.toggle("respite-resume-ready", partySize > 0 && membersReady >= partySize);
 }
 
 /**
@@ -193,15 +230,35 @@ export function refreshRejoinBar(app) {
     if (!bar || app?._phase !== "activity") return;
     const span = bar.querySelector(".respite-bar-progress");
     if (!span) return;
-    const partySize = getPartyActors().length;
-    const activitiesResolved = app._characterChoices?.size ?? 0;
     const trackFood = game.settings.get(MODULE_ID, "trackFood");
-    const rationsResolved = trackFood ? (app._activityMealRationsSubmitted?.size ?? 0) : 0;
-    const totalTasks = partySize + (trackFood ? partySize : 0);
-    const resolvedTasks = activitiesResolved + rationsResolved;
-    span.textContent = `${resolvedTasks} / ${totalTasks} tasks to complete`;
+    // TotM: rations collected in meal phase, not activity phase — bypass ration requirement.
+    const isTotM = (() => {
+        try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; }
+    })();
+    const actors = getPartyActors();
+    let membersReady = 0;
+    for (const a of actors) {
+        const hasActivity = app._characterChoices?.has(a.id);
+        const hasRations = !trackFood || isTotM || (app._activityMealRationsSubmitted?.has(a.id));
+        if (hasActivity && hasRations) membersReady++;
+    }
+    const partySize = actors.length;
+
+    const viewerDone = actors.some(a => {
+        const owned = (a.ownership?.[game.user.id] ?? 0) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
+        if (!owned) return false;
+        return app._characterChoices?.has(a.id) && (!trackFood || isTotM || app._activityMealRationsSubmitted?.has(a.id));
+    });
+
+    if (viewerDone) {
+        span.textContent = `${membersReady} / ${partySize} party members ready`;
+        span.classList.remove("respite-bar-advisory");
+    } else {
+        span.textContent = `Choose one activity${trackFood && !isTotM ? " and assign rations" : ""}`;
+        span.classList.add("respite-bar-advisory");
+    }
     const btn = bar.querySelector("#respite-rejoin-btn");
-    if (btn) btn.classList.toggle("respite-resume-ready", totalTasks > 0 && resolvedTasks >= totalTasks);
+    if (btn) btn.classList.toggle("respite-resume-ready", partySize > 0 && membersReady >= partySize);
 }
 
 // ── GM: Short Rest Indicator Bar ─────────────────────────────
