@@ -107,7 +107,7 @@ export class TerrainRegistry {
      */
     static getDefaults(tag) {
         const t = this.get(tag);
-        if (!t) return { comfort: "sheltered", scoutingAvailable: false, mealRules: { waterPerDay: 1, foodPerDay: 1 } };
+        if (!t) return { comfort: "sheltered", scoutingAvailable: false, mealRules: { waterPerDay: 2, foodPerDay: 1 } };
         const rawComfort = t.comfort ?? "sheltered";
         const comfort = VALID_COMFORT.has(rawComfort) ? rawComfort : "rough";
         if (!VALID_COMFORT.has(rawComfort)) {
@@ -118,7 +118,7 @@ export class TerrainRegistry {
             scoutingAvailable: t.scoutingAvailable ?? false,
             scoutGuidance: t.scoutGuidance ?? null,
             scoutFlavor: t.scoutFlavor ?? null,
-            mealRules: t.mealRules ?? { waterPerDay: 1, foodPerDay: 1 }
+            mealRules: t.mealRules ?? { waterPerDay: 2, foodPerDay: 1 }
         };
     }
 
