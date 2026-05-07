@@ -378,6 +378,32 @@ export class MealPhaseHandler {
                     sum + (d.food ?? []).filter(v => v && v !== "skip").length, 0);
                 summaryWaterFilled = consumedDays.reduce((sum, d) =>
                     sum + (d.water ?? []).filter(v => v && v !== "skip").length, 0);
+
+                // Credit bonus water from consumed food items that satiate water.
+                // Prefer the stored bonusWater field (persisted at consumption time);
+                // fall back to item lookup for legacy data without the field.
+                let summaryBonusWater = 0;
+                for (const day of consumedDays) {
+                    if (typeof day.bonusWater === "number") {
+                        summaryBonusWater += day.bonusWater;
+                    } else {
+                        // Legacy: try item lookup + satiatesLookup fallback
+                        for (const foodId of (day.food ?? [])) {
+                            if (!foodId || foodId === "skip" || foodId.startsWith?.("__")) continue;
+                            const foodItem = actor.items.get(foodId);
+                            if (!foodItem) continue;
+                            let sats = foodItem.flags?.[MODULE_ID]?.satiates;
+                            if (!Array.isArray(sats) && satiatesLookup) {
+                                sats = satiatesLookup.get(foodItem.name.toLowerCase().trim()) ?? null;
+                            }
+                            if (Array.isArray(sats) && sats.includes("water")) summaryBonusWater++;
+                        }
+                    }
+                }
+                // Also include bonusWater from the active food slots (non-consumed day preview)
+                summaryBonusWater += bonusWater;
+                summaryWaterFilled += summaryBonusWater;
+
                 summaryFoodRequired = fpd * totalDays;
                 summaryWaterRequired = wpd * totalDays;
                 summaryFoodSufficient = summaryFoodFilled >= summaryFoodRequired;

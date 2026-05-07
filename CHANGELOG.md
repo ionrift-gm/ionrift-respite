@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.1.0] - 2026-05-07
+
+### Added
+- **Theater of the Mind mode.** All rest activities - weapons rack, workbench, bedroll, first aid, cooking, fire setup, and crafting - now work without placing a camp on the map. Enable it in module settings under "Rest Interface Mode". Stations (canvas overlays) remain the default for tables that use a prepared scene; TotM is opt-in.
+- **TotM crafting inline.** Crafting activities resolve inside the TotM panel instead of opening a separate dialog. Roll outcomes, blocking overlays, and the feast disposition flow ("Serve Now" vs. "Keep in inventory") all work the same as the station-based flow.
+- **TotM fire setup.** Lighting the campfire in TotM mode uses the same firewood spend logic as the spatial mode - prioritising the player who set the fire level, then falling back to other party members, with an error prompt if there is not enough wood.
+- **TotM meal phase.** Food and water submission, feast serving, and the water pool bar work inline in TotM without canvas interaction.
+- **Detect Magic in TotM.** The animated scan, item glow, and dismiss toggle all work in TotM mode.
+
+### Changed
+- The GM minimised rest indicator no longer requires meal submission in TotM mode - it reads readiness directly from activity state.
+- `_mealSubmitted` is now synced across the party during feast-serving flows so the submit button and navigation gates respond correctly on all clients.
+
+### Fixed
+- Ration submission in the station activity dialog now triggers an immediate UI refresh across all clients instead of waiting for the next polling cycle.
+- Water slots fulfilled by a feast sentinel value (`__feast_water`) now correctly bypass the dehydration check for all party members.
+- False-positive "skip meal" warnings no longer fire when bonus water from food credits covers the full water requirement.
+
 ## [2.0.8] - 2026-05-04
 
 ### Fixed
