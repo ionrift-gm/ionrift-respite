@@ -914,16 +914,28 @@ export class MealPhaseHandler {
                 return chatDetail ? `healing +${heal}` : `healing +${heal}`;
             }
             case "exhaustion_save": {
-
                 const dc = Number(buff.save?.dc ?? buff.formula ?? 15);
-                const roll = await new Roll(`1d20 + @abilities.con.save`, actor.getRollData?.() ?? {}).evaluate();
+                // Compute CON save bonus as a literal to avoid @abilities.con.save
+                // resolving to a non-numeric StringTerm in newer system versions.
+                const rollData = actor.getRollData?.() ?? {};
+                const conSaveBonus = (() => {
+                    // DnD5e: rollData.abilities.con.save is the total save bonus
+                    const fromRollData = rollData?.abilities?.con?.save;
+                    if (typeof fromRollData === "number") return fromRollData;
+                    // Fallback: mod + prof if CON save is proficient, else just mod
+                    const conMod = actor.system?.abilities?.con?.mod ?? 0;
+                    const profBonus = actor.system?.attributes?.prof ?? 0;
+                    const proficient = actor.system?.abilities?.con?.proficient ?? 0;
+                    return conMod + (proficient > 0 ? Math.floor(profBonus * proficient) : 0);
+                })();
+                const roll = await new Roll(`1d20 + ${conSaveBonus}`).evaluate();
                 const total = roll.total;
                 const pass = total >= dc;
                 if (pass && game.system.id === "dnd5e") {
                     const ex = foundry.utils.getProperty(actor, "system.attributes.exhaustion") ?? 0;
                     if (ex > 0) await actor.update({ "system.attributes.exhaustion": ex - 1 });
                 }
-                const detail = `${roll.formula} = ${total} vs DC ${dc} (${pass ? "pass" : "fail"})`;
+                const detail = `1d20 + ${conSaveBonus} = ${total} vs DC ${dc} (${pass ? "pass" : "fail"})`;
                 await ChatMessage.create({
                     content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>Meal Buff — Exhaustion Save</strong></p><p><i class="fas fa-dice-d20"></i> <strong>${actor.name}</strong> ${detail}. ${pass ? "Removes 1 exhaustion." : "No exhaustion removed."}</p></div>`,
                     rolls: [roll],

@@ -1900,38 +1900,52 @@
                     <span class="meal-actor-name">{{actorName}}</span>
                 </div>
 
-                {{#if (or allDaysConsumed playerSubmitted)}}
-                {{#if playerSubmitted}}
-                <div class="meal-submitted-badge" style="font-size:0.75rem;color:rgba(180,220,255,0.7);margin-bottom:0.3rem;">
-                    <i class="fas fa-check"></i> Submitted by player
+                {{!-- Feast advisory: shown when a TotM Serve Now feast pre-covered this character --}}
+                {{#if feastAdvisory}}
+                <div class="meal-advisory ok">
+                    <i class="fas fa-utensils"></i> A feast was served — food and water are covered for the party.
                 </div>
                 {{/if}}
-                <div class="meal-summary-status" style="margin: 0.4rem 0;">
+
+                {{#if (or allDaysConsumed playerSubmitted)}}
+                <div class="station-meal-rations-done-lead" role="status">
+                    <i class="fas fa-check-circle" aria-hidden="true"></i>
+                    <p>Food and water for this rest are already submitted. The status below is read-only.</p>
+                </div>
+                <div class="meal-summary-status">
                     <span class="meal-summary-stat {{#if foodSufficient}}stat-ok{{else}}stat-warn{{/if}}">
                         <i class="fas {{#if foodSufficient}}fa-check-circle{{else}}fa-drumstick-bite{{/if}}"></i>
-                        {{#if foodSufficient}}Fed{{else}}Hungry{{/if}} ({{foodFilledCount}}/{{foodRequired}})
+                        {{#if foodSufficient}}Fed{{else}}Hungry{{/if}}
                     </span>
                     <span class="meal-summary-stat {{#if waterSufficient}}stat-ok{{else}}stat-warn{{/if}}">
                         <i class="fas {{#if waterSufficient}}fa-check-circle{{else}}fa-tint-slash{{/if}}"></i>
-                        {{#if waterSufficient}}Hydrated{{else}}Thirsty{{/if}} ({{waterFilledCount}}/{{waterRequired}})
+                        {{#if waterSufficient}}Hydrated{{else}}Thirsty{{/if}}
                     </span>
                 </div>
                 {{else}}
+                <div class="station-meal-embed-scroll">
+                {{#if terrainNote}}
+                <div class="meal-terrain-alert {{terrainAlertClass}}">
+                    <i class="{{terrainAlertIcon}}" aria-hidden="true"></i>
+                    <span>{{terrainNote}}</span>
+                </div>
+                {{/if}}
                 <div class="meal-drop-columns">
-                    {{!-- Food panel --}}
                     <div class="meal-panel food-panel {{#unless hasFood}}panel-empty{{/unless}}">
-                        <span class="panel-label">Food{{#if (gt foodRequired 1)}} ({{foodFilledCount}} of {{foodRequired}}){{/if}}</span>
+                        <div class="meal-panel-heading meal-panel-heading--food">
+                            <span class="meal-panel-heading-title"><i class="fas fa-drumstick-bite" aria-hidden="true"></i> Food</span>
+                            <span class="meal-panel-req-note">{{foodRequired}} ration{{#unless (eq foodRequired 1)}}s{{/unless}} needed</span>
+                        </div>
                         {{#if hasFood}}
-                        <div class="food-plates-row">
                         {{#each foodSlots}}
-                        <div class="food-plate-slot">
+                        <div class="meal-drop-header-row">
                             <div class="meal-drop-zone food-drop-zone {{#if filled}}filled{{/if}}{{#if locked}} locked{{/if}}"
                                  data-character-id="{{../characterId}}" data-slot="food" data-slot-index="{{index}}"{{#if locked}} data-locked="true"{{/if}}>
                                 <div class="drop-zone-silhouette">
                                     {{#if filled}}
                                     {{#each ../foodOptions}}
                                     {{#if (eq ../selected value)}}
-                                    <img src="{{icon}}" alt="{{label}}" class="drop-zone-item-icon">
+                                    <img src="{{icon}}" alt="" class="drop-zone-item-icon">
                                     {{/if}}
                                     {{/each}}
                                     {{else}}
@@ -1939,26 +1953,36 @@
                                     {{/if}}
                                 </div>
                             </div>
+                            <div class="meal-drop-label">
+                                {{#if filled}}
+                                {{#each ../foodOptions}}
+                                {{#if (eq ../selected value)}}
+                                <span class="meal-drop-item-name">{{name}}</span>
+                                <span class="meal-drop-item-qty">×{{available}}</span>
+                                {{/if}}
+                                {{/each}}
+                                {{else}}
+                                <span class="meal-drop-hint-text">drag from below</span>
+                                {{/if}}
+                            </div>
                         </div>
                         {{/each}}
-                        </div>
-                        <span class="panel-item-name">
-                            {{#unless foodSufficient}}
-                            <span class="panel-empty-hint">{{#if (gt foodRequired 1)}}Drag to fill {{foodRequired}} plates{{else}}Drag food here{{/if}}</span>
-                            {{/unless}}
-                        </span>
-                        <div class="meal-inventory-tray food-tray">
-                            {{#each foodOptions}}
-                            <div class="meal-inv-item" draggable="true"
-                                 data-item-id="{{value}}"
-                                 data-slot="food"
-                                 data-available="{{available}}"
-                                 data-character-id="{{../characterId}}"
-                                 title="{{label}}">
-                                <img src="{{icon}}" alt="{{label}}" class="meal-inv-icon">
-                                <span class="meal-inv-qty">{{label}}</span>
+                        <div class="meal-panel-divider"></div>
+                        <div class="meal-inventory-tray-scroll">
+                            <div class="meal-inventory-grid food-tray">
+                                {{#each foodOptions}}
+                                <div class="meal-inv-card" draggable="true"
+                                     data-item-id="{{value}}"
+                                     data-slot="food"
+                                     data-available="{{available}}"
+                                     data-character-id="{{../characterId}}"
+                                     title="{{label}}">
+                                    <img src="{{icon}}" alt="{{label}}" class="meal-inv-card-icon" draggable="false">
+                                    <span class="meal-inv-card-qty">×{{available}}</span>
+                                    <span class="meal-inv-card-name">{{name}}</span>
+                                </div>
+                                {{/each}}
                             </div>
-                            {{/each}}
                         </div>
                         {{else}}
                         <div class="panel-no-inventory">
@@ -1967,48 +1991,64 @@
                         </div>
                         {{/if}}
                     </div>
-
-                    {{!-- Water panel --}}
                     <div class="meal-panel water-panel {{#unless hasWater}}panel-empty{{/unless}}">
-                        <span class="panel-label">Water{{#if (gt waterRequired 1)}} ({{waterFilledCount}} of {{waterRequired}}){{/if}}</span>
+                        <div class="meal-panel-heading meal-panel-heading--water">
+                            <span class="meal-panel-heading-title"><i class="fas fa-tint" aria-hidden="true"></i> Water</span>
+                            <span class="meal-panel-req-note">{{waterRequired}} pints needed</span>
+                        </div>
                         {{#if hasWater}}
-                        <div class="water-goblets-row">
-                        {{#each waterSlots}}
-                        <div class="water-goblet-slot">
-                            <div class="meal-drop-zone water-drop-zone {{#if filled}}filled{{/if}}{{#if locked}} locked{{/if}}"
-                                 data-character-id="{{../characterId}}" data-slot="water" data-slot-index="{{index}}"{{#if locked}} data-locked="true"{{/if}}>
-                                <div class="drop-zone-silhouette">
-                                    {{#if filled}}
-                                    {{#each ../waterOptions}}
-                                    {{#if (eq ../selected value)}}
-                                    <img src="{{icon}}" alt="{{label}}" class="drop-zone-item-icon">
-                                    {{/if}}
-                                    {{/each}}
-                                    {{else}}
-                                    <i class="fas fa-tint drop-zone-goblet"></i>
-                                    {{/if}}
-                                </div>
+                        <div class="water-pool-target meal-drop-zone water-drop-zone{{#if waterSufficient}} water-pool-target--complete{{/if}}"
+                             data-character-id="{{characterId}}" data-slot="water" data-slot-index="0"{{#if waterSufficient}} data-pool-full="true"{{/if}}>
+                            <div class="drop-zone-silhouette">
+                                {{#if waterSufficient}}
+                                <i class="fas fa-check-circle water-pool-complete-icon" aria-hidden="true"></i>
+                                {{else}}
+                                <i class="fas fa-tint drop-zone-goblet"></i>
+                                {{/if}}
                             </div>
+                            <span class="meal-drop-hint-text">{{#if waterSufficient}}Water needs met{{else}}drop water here{{/if}}</span>
                         </div>
-                        {{/each}}
-                        </div>
-                        <span class="panel-item-name">
-                            {{#unless waterSufficient}}
-                            <span class="panel-empty-hint">{{#if (gt waterRequired 1)}}Drag to fill {{waterRequired}} goblets{{else}}Drag water here{{/if}}</span>
-                            {{/unless}}
-                        </span>
-                        <div class="meal-inventory-tray water-tray">
-                            {{#each waterOptions}}
-                            <div class="meal-inv-item" draggable="true"
-                                 data-item-id="{{value}}"
-                                 data-slot="water"
-                                 data-available="{{available}}"
-                                 data-character-id="{{../characterId}}"
-                                 title="{{label}}">
-                                <img src="{{icon}}" alt="{{label}}" class="meal-inv-icon">
-                                <span class="meal-inv-qty">{{label}}</span>
-                            </div>
+                        <div class="water-pool-bar" data-target="{{waterRequired}}" data-filled="{{waterFilledCount}}">
+                            {{#each waterPoolSegments}}
+                            <div class="water-pool-segment {{#if filled}}filled{{/if}}{{#if bonus}} bonus{{/if}}"></div>
                             {{/each}}
+                        </div>
+                        <div class="water-pool-status">
+                            {{#if waterSufficient}}
+                            <span class="pool-status-ok"><i class="fas fa-check"></i> {{waterFilledCount}}/{{waterRequired}} pints — Hydrated</span>
+                            {{else if waterFilledCount}}
+                            <span class="pool-status-partial">{{waterFilledCount}} of {{waterRequired}} pints</span>
+                            {{else}}
+                            <span class="pool-status-empty">0 of {{waterRequired}} pints</span>
+                            {{/if}}
+                        </div>
+                        {{#if waterPoolSources.length}}
+                        <div class="water-pool-sources">
+                            {{#each waterPoolSources}}
+                            <span class="pool-source-pill{{#if isMealCredit}} pool-source-pill--meal{{/if}}">{{#if isMealCredit}}<i class="fas fa-utensils" aria-hidden="true"></i> {{/if}}{{name}}{{#unless isMealCredit}}: {{pintsUsed}} pints used{{/unless}}</span>
+                            {{/each}}
+                        </div>
+                        {{/if}}
+                        <div class="meal-panel-divider"></div>
+                        <div class="meal-inventory-tray-scroll">
+                            <div class="meal-inventory-grid water-tray">
+                                {{#each waterOptions}}
+                                <div class="meal-inv-card" draggable="true"
+                                     data-item-id="{{value}}"
+                                     data-slot="water"
+                                     data-available="{{available}}"
+                                     data-total-pints="{{totalPints}}"
+                                     data-character-id="{{../characterId}}"
+                                     title="{{label}}: ×{{available}} carried, {{totalPints}}p pourable">
+                                    <img src="{{icon}}" alt="{{label}}" class="meal-inv-card-icon" draggable="false">
+                                    <span class="meal-inv-card-qty meal-inv-card-qty--water">
+                                        <span class="meal-inv-qty-stack">×{{available}}</span>
+                                        <span class="meal-inv-qty-pints">{{totalPints}}p</span>
+                                    </span>
+                                    <span class="meal-inv-card-name">{{name}}</span>
+                                </div>
+                                {{/each}}
+                            </div>
                         </div>
                         {{else}}
                         <div class="panel-no-inventory">
@@ -2018,18 +2058,11 @@
                         {{/if}}
                     </div>
                 </div>
-                {{/if}}
-
-                {{!-- Advisories (shown for submitted cards so GM sees warnings; hidden in consumed state) --}}
-                {{#unless (and allDaysConsumed (not playerSubmitted))}}
-                {{#each advisories}}
-                {{#unless (eq level 'info')}}
-                <div class="meal-advisory {{level}}">
-                    <i class="{{icon}}"></i> {{message}}
                 </div>
-                {{/unless}}
-                {{/each}}
-                {{/unless}}
+                <div class="station-meal-submit-row">
+                    <button type="button" class="station-meal-submit-btn" data-action="submitMealChoices">Submit rations</button>
+                </div>
+                {{/if}}
             </div>
         {{/each}}
         </div>
@@ -2125,10 +2158,12 @@
         {{/if}}
 
     </div>
-    {{!-- Campfire drawer --}}
+    {{!-- Campfire drawer: spatial mode only — TotM handles fire in the Activities tab --}}
+    {{#unless isTheaterMode}}
     <div class="campfire-drawer">
         <div class="campfire-drawer-content"></div>
     </div>
+    {{/unless}}
     </div>{{!-- /activity-phase-layout --}}
     {{/if}}
 

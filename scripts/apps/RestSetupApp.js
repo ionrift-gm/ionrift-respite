@@ -2532,6 +2532,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const resolvedCount = characterStatuses.filter(c => c.source !== "pending").length;
         const trackFoodSetting = game.settings.get(MODULE_ID, "trackFood");
         const allRationsSubmitted = !trackFoodSetting
+            || this._isTotM  // TotM: rations are collected in the dedicated Meal phase, not activity-phase station tabs
             || (this._activityMealRationsSubmitted?.size ?? 0) >= totalCharacters;
         const allResolved = resolvedCount === totalCharacters
             && !this._gmCopySpellProposal
@@ -3431,8 +3432,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // Meal phase context
             mealCards: (() => {
                 if (this._phase !== "meal") return null;
-                const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
-                const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
 
                 // GM: roster characters only. Player: only owned + rostered characters.
                 const rosterIds = new Set(getPartyActors().map(a => a.id));
@@ -3447,10 +3446,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         : [];
                 }
 
-                const allCards = MealPhaseHandler.buildMealContext(
-                    characterIds, terrainTag, terrainMealRules,
-                    this._daysSinceLastRest ?? 1, this._mealChoices ?? new Map()
-                );
+                const allCards = characterIds
+                    .map(id => this.getStationMealCardForActor(id))
+                    .filter(Boolean);
 
                 // Mark cards where the owning player has already submitted their choices
                 if (this._isGM && this._mealSubmissions) {
@@ -3460,6 +3458,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         const ownerUser = game.users.find(u => !u.isGM && actor.testUserPermission(u, "OWNER"));
                         if (ownerUser && this._mealSubmissions.has(ownerUser.id)) {
                             card.playerSubmitted = true;
+                        }
+                    }
+                }
+
+                // Feast advisory: mark cards pre-covered by a TotM Serve Now feast.
+                // Purely decorative — the resolution pipeline reads _activityMealRationsSubmitted directly.
+                if (this._activityMealRationsSubmitted?.size) {
+                    for (const card of allCards) {
+                        if (this._activityMealRationsSubmitted.has(card.characterId)) {
+                            card.feastAdvisory = true;
                         }
                     }
                 }
@@ -6194,14 +6202,26 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const trackFood = game.settings.get(MODULE_ID, "trackFood");
             const terrainTag = this._engine?.terrainTag ?? "forest";
             const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
+            const hasMealRules = terrainMealRules.waterPerDay > 0 || terrainMealRules.foodPerDay > 0;
 
-            if (trackFood && (terrainMealRules.waterPerDay > 0 || terrainMealRules.foodPerDay > 0)) {
+            if (trackFood && hasMealRules && this._isTotM) {
+                // TotM: show the meal phase UI so players can submit rations.
+                // _activityMealRationsSubmitted may already have feast-covered characters
+                // from #onTotmFeastServeNow — those cards show the feast advisory banner.
+                this._mealChoices = this._mealChoices ?? new Map();
+                this._daysSinceLastRest = this._daysSinceLastRest ?? 1;
+                this._phase = "meal";
+            } else if (trackFood && hasMealRules) {
+                // Spatial mode: rations were submitted via station tabs; auto-process now.
                 this._mealChoices = this._mealChoices ?? new Map();
                 this._daysSinceLastRest = this._daysSinceLastRest ?? 1;
                 await this._autoProcessRations();
+                this._phase = "reflection";
+                await this._applyBeddingDown();
+            } else {
+                this._phase = "reflection";
+                await this._applyBeddingDown();
             }
-            this._phase = "reflection";
-            await this._applyBeddingDown();
         }
 
         // Broadcast phase change to players
@@ -6538,9 +6558,25 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onConsumeMealDay(event, target) { await this._meals.onConsumeMealDay(event, target); }
 
     /**
-     * Meal: Player submits their meal choices via socket to the GM.
+     * Meal: Submit rations for the current character (GM) or all unsubmitted owned characters (player).
+     * Delegates to submitActivityMealRationsFromStation, which handles both GM direct-consume and
+     * player socket paths.
      */
-    static async #onSubmitMealChoices(event, target) { await this._meals.onSubmitMealChoices(event, target); }
+    static async #onSubmitMealChoices(event, target) {
+        if (this._isGM) {
+            const charId = this._selectedCharacterId
+                ?? target.closest("[data-character-id]")?.dataset.characterId;
+            if (charId) await this.submitActivityMealRationsFromStation(charId);
+            return;
+        }
+        // Player: submit for each owned character not yet recorded
+        const submitted = this._activityMealRationsSubmitted ?? new Set();
+        for (const charId of (this._myCharacterIds ?? [])) {
+            if (!submitted.has(charId)) {
+                await this.submitActivityMealRationsFromStation(charId);
+            }
+        }
+    }
 
     /**
      * GM receives meal choices from a player via socket.
@@ -8839,13 +8875,31 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 );
             }
             const waterArr = Array.isArray(choice.water) ? choice.water : [];
-            const waterEmpty = waterArr.filter(v => !v || v === "skip").length;
-            if (waterArr.length === 0 || waterEmpty > 0) {
-                skippedSlots.push(
-                    waterArr.length === 0
-                        ? `${actor.name}: no water`
-                        : `${actor.name}: ${waterEmpty} water slot${waterEmpty > 1 ? "s" : ""} empty`
-                );
+            // Account for food-based water credits before raising a skip warning.
+            // Matches the smart-submit logic below so the dialog fires only when
+            // water is genuinely short after food credits are applied.
+            let warnBonusWater = 0;
+            const warnSatiatesLookup = this._buildSatiatesLookup();
+            for (const fid of foodArr) {
+                if (!fid || fid === "skip" || fid.startsWith?.("__")) continue;
+                const fItem = actor.items.get(fid);
+                if (!fItem) continue;
+                const fFlags = fItem.flags?.[MODULE_ID] ?? {};
+                let fSat = fFlags.satiates;
+                if (!Array.isArray(fSat) && warnSatiatesLookup) {
+                    fSat = warnSatiatesLookup.get(fItem.name.toLowerCase().trim()) ?? null;
+                }
+                if (Array.isArray(fSat) && fSat.includes("water")) warnBonusWater++;
+            }
+            const warnTerrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
+            const warnWpd = TerrainRegistry.getDefaults(warnTerrainTag)?.mealRules?.waterPerDay ?? 2;
+            const warnWaterNeeded = Math.max(0, warnWpd - warnBonusWater);
+            const waterFilled = waterArr.filter(v => v && v !== "skip" && !v.startsWith?.("__")).length;
+            const waterShortfall = Math.max(0, warnWaterNeeded - waterFilled);
+            if (warnWaterNeeded > 0 && waterArr.length === 0 && waterShortfall > 0) {
+                skippedSlots.push(`${actor.name}: no water`);
+            } else if (waterShortfall > 0) {
+                skippedSlots.push(`${actor.name}: ${waterShortfall} water pint${waterShortfall > 1 ? "s" : ""} still needed`);
             }
             if (skippedSlots.length > 0) {
                 const confirmed = await new Promise(resolve => {
