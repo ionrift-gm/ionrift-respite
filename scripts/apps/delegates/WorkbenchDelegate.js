@@ -189,13 +189,18 @@ export class WorkbenchDelegate {
         const resolveGearChip = (itemId, gearActorId) => {
             const owner = gearActorId ? game.actors.get(gearActorId) : actor;
             const item = owner?.items.get(itemId);
-            if (!item || !itemIsWorkbenchUnidentified(owner, item)) return null;
+            if (!item) return null;
+            // Allow any item to display in the chip — the identify logic handles
+            // "already identified" gracefully. This prevents metagame information
+            // leak (player can't tell mundane vs magical by what the zone accepts).
+            const isUnidentified = itemIsWorkbenchUnidentified(owner, item);
             return {
                 itemId,
                 gearActorId: owner?.id ?? actorId,
                 img: item.img || "icons/svg/mystery-man.svg",
-                label: item.system?.unidentified?.name || item.name || "Item",
-                ownerName: owner?.name ?? ""
+                label: (isUnidentified ? (item.system?.unidentified?.name || item.name) : item.name) || "Item",
+                ownerName: owner?.name ?? "",
+                alreadyIdentified: !isUnidentified
             };
         };
         const resolvePotionChip = itemId => {
@@ -314,6 +319,14 @@ export class WorkbenchDelegate {
         }
         notifyWorkbenchIdentifyStagingTouched();
         if (this._app.rendered) this._app.render();
+        // Schedule a follow-up render after the reveal delay so the
+        // "Wait..." button transitions to "Continue" automatically.
+        const REVEAL_MS = 950;
+        setTimeout(() => {
+            if (this._app.rendered && this.acknowledge?.has(actorId)) {
+                this._app.render();
+            }
+        }, REVEAL_MS);
     }
 
     /**
@@ -486,9 +499,9 @@ export class WorkbenchDelegate {
             const isPotion = itemIsDnD5ePotionType(item);
             if (zone === "gear") {
                 if (isPotion) return { ok: false, msg: "Drop potions onto the potion circle." };
-                if (!itemIsWorkbenchUnidentified(itemOwner, item)) {
-                    return { ok: false, msg: "That item is already identified." };
-                }
+                // Allow any item — if already identified, the submit handler
+                // will report "already identified" gracefully. Blocking here
+                // would leak metagame info (mundane vs magical).
             }
             if (zone === "potion" && !isPotion) {
                 return { ok: false, msg: "Drop that item onto the focus circle." };

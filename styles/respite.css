@@ -9389,6 +9389,474 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     margin: 0;
 }
 
+/* ── TotM Activity Tab Bar ──────────────────────────────────── */
+
+.totm-tab-bar {
+    display: flex;
+    gap: 0;
+    padding: 0 0.5rem;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.totm-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.55rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: rgba(255, 255, 255, 0.4);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    filter: none !important;
+}
+
+.totm-tab:hover {
+    color: rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.totm-tab.active {
+    color: rgba(196, 181, 253, 0.95);
+    border-bottom-color: rgba(196, 181, 253, 0.65);
+    background: rgba(196, 181, 253, 0.04);
+}
+
+.totm-tab i {
+    font-size: 0.68rem;
+}
+
+/* ── TotM Identify Panel ──────────────────────────────────── */
+
+.totm-identify-panel {
+    padding: 0.5rem;
+}
+
+.totm-identify-panel .station-workbench-identify-embed {
+    padding: 0.35rem;
+}
+
+.totm-identify-panel .wb-ident-drop-columns {
+    gap: 0.5rem;
+}
+
+.totm-identify-panel .identify-caster-advisory {
+    font-size: 0.65rem;
+    color: rgba(196, 181, 253, 0.75);
+    padding: 0.3rem 0.45rem;
+    margin-bottom: 0.35rem;
+    background: rgba(196, 181, 253, 0.05);
+    border: 1px solid rgba(196, 181, 253, 0.12);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.totm-identify-panel .wb-ident-footer-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.totm-identify-panel .btn-detect-magic {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.68rem;
+    border-radius: 4px;
+    border: 1px solid rgba(196, 181, 253, 0.25);
+    background: rgba(196, 181, 253, 0.06);
+    color: rgba(196, 181, 253, 0.8);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    background-image: none !important;
+    box-shadow: none !important;
+}
+
+.totm-identify-panel .btn-detect-magic:hover:not(:disabled) {
+    background: rgba(196, 181, 253, 0.12);
+    border-color: rgba(196, 181, 253, 0.4);
+}
+
+.totm-identify-panel .btn-detect-magic:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.totm-identify-panel .btn-detect-magic.is-active {
+    background: rgba(196, 181, 253, 0.15);
+    border-color: rgba(196, 181, 253, 0.5);
+    color: rgba(196, 181, 253, 1);
+}
+
+.totm-identify-panel .station-meal-submit-btn {
+    flex: 1;
+}
+
+/* Reuse workbench CSS from station dialog within TotM panel */
+.totm-identify-panel .meal-drop-zone {
+    width: 72px;
+    height: 72px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s, background 0.15s, transform 0.15s;
+    cursor: pointer;
+}
+
+.totm-identify-panel .gear-focus-drop-zone {
+    border: 2px dashed rgba(196, 181, 253, 0.35);
+    background: rgba(196, 181, 253, 0.04);
+}
+
+.totm-identify-panel .gear-focus-drop-zone.filled {
+    border-style: solid;
+    border-color: rgba(196, 181, 253, 0.55);
+    background: rgba(196, 181, 253, 0.1);
+    box-shadow: 0 0 14px rgba(196, 181, 253, 0.18);
+}
+
+.totm-identify-panel .potion-taste-drop-zone {
+    border: 2px dashed rgba(100, 200, 150, 0.35);
+    background: rgba(100, 200, 150, 0.04);
+}
+
+.totm-identify-panel .potion-taste-drop-zone.filled {
+    border-style: solid;
+    border-color: rgba(100, 200, 150, 0.55);
+    background: rgba(100, 200, 150, 0.1);
+    box-shadow: 0 0 14px rgba(100, 200, 150, 0.18);
+}
+
+.totm-identify-panel .drop-zone-silhouette {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.totm-identify-panel .drop-zone-gear-sil {
+    font-size: 1.45rem;
+    color: rgba(196, 181, 253, 0.22);
+}
+
+.totm-identify-panel .drop-zone-potion-sil {
+    font-size: 1.45rem;
+    color: rgba(100, 200, 150, 0.22);
+}
+
+.totm-identify-panel .drop-zone-item-icon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+.totm-identify-panel .wb-ident-gear-slot-wrap,
+.totm-identify-panel .wb-ident-potion-slot-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.15rem;
+}
+
+.totm-identify-panel .panel-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.45);
+    margin-bottom: 0.25rem;
+    text-align: center;
+}
+
+.totm-identify-panel .wb-ident-exhausted {
+    opacity: 0.45;
+    pointer-events: none;
+    filter: grayscale(60%);
+}
+
+.totm-identify-panel .wb-ident-used-badge {
+    font-size: 0.6em;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.35);
+    margin-left: 0.3rem;
+    text-transform: uppercase;
+}
+
+.totm-identify-panel .wb-ident-scroll {
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+/* ── TotM Identify Acknowledgement Overlay ─────────────── */
+
+.totm-identify-panel .wb-ident-ack-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(4px);
+    border-radius: 8px;
+}
+
+.totm-identify-panel .wb-ident-ack-card {
+    background: rgba(30, 22, 44, 0.92);
+    border: 1px solid rgba(196, 181, 253, 0.25);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    max-width: 280px;
+    width: 100%;
+    text-align: center;
+}
+
+.totm-identify-panel .wb-ident-ack-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(196, 181, 253, 0.95);
+    margin-bottom: 0.25rem;
+}
+
+.totm-identify-panel .wb-ident-ack-lead {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 0.5rem;
+}
+
+.totm-identify-panel .wb-ident-ack-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.25rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    text-align: left;
+}
+
+.totm-identify-panel .wb-ident-ack-row:first-of-type {
+    border-top: none;
+}
+
+.totm-identify-panel .wb-ident-ack-img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    flex-shrink: 0;
+}
+
+.totm-identify-panel .wb-ident-ack-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.totm-identify-panel .wb-ident-ack-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.totm-identify-panel .wb-ident-ack-btn {
+    margin-top: 0.5rem;
+    width: 100%;
+}
+
+/* Ensure the panel is positioned for the absolute overlay */
+.totm-identify-panel {
+    position: relative;
+}
+
+/* ── TotM Fire Panel ──────────────────────────────────────── */
+
+.totm-fire-panel {
+    padding: 0.5rem;
+}
+
+.totm-fire-current {
+    margin-bottom: 0.5rem;
+}
+
+.totm-fire-current-level {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.8rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: 6px;
+    background: rgba(255, 160, 50, 0.06);
+    border: 1px solid rgba(255, 160, 50, 0.2);
+    color: rgba(255, 200, 130, 0.95);
+}
+
+.totm-fire-current-level i {
+    font-size: 1rem;
+    color: rgba(255, 160, 50, 0.75);
+}
+
+.totm-fire-current-level.cold-camp {
+    background: rgba(100, 180, 255, 0.06);
+    border-color: rgba(100, 180, 255, 0.2);
+    color: rgba(180, 220, 255, 0.85);
+}
+
+.totm-fire-current-level.cold-camp i {
+    color: rgba(100, 180, 255, 0.65);
+}
+
+.totm-fire-current-level.unlit {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.totm-fire-current-level.unlit i {
+    color: rgba(255, 255, 255, 0.25);
+}
+
+.totm-fire-readonly {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.4);
+    padding: 0.5rem;
+    text-align: center;
+}
+
+.totm-fire-readonly p {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+}
+
+/* Fire tier picker cards (shared partial) */
+.totm-fire-tiers {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.totm-fire-tier-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.025);
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.totm-fire-tier-card.selected {
+    border-color: rgba(255, 160, 50, 0.4);
+    background: rgba(255, 160, 50, 0.06);
+}
+
+.totm-fire-tier-card.disabled {
+    opacity: 0.35;
+}
+
+.totm-fire-tier-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.totm-fire-tier-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.totm-fire-tier-cost {
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.totm-fire-tier-body {
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.4);
+    margin: 0;
+    line-height: 1.35;
+}
+
+.totm-fire-tier-current {
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 160, 50, 0.8);
+    margin-top: 0.15rem;
+}
+
+.totm-fire-tier-set-btn {
+    align-self: flex-start;
+    padding: 0.22rem 0.6rem;
+    font-size: 0.62rem;
+    font-weight: 600;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 160, 50, 0.35);
+    background: rgba(255, 160, 50, 0.08);
+    color: rgba(255, 200, 130, 0.9);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    margin-top: 0.15rem;
+    background-image: none !important;
+    box-shadow: none !important;
+}
+
+.totm-fire-tier-set-btn:hover {
+    background: rgba(255, 160, 50, 0.18);
+    border-color: rgba(255, 160, 50, 0.55);
+}
+
+.totm-fire-tier-disabled-reason {
+    font-size: 0.58rem;
+    color: rgba(248, 113, 113, 0.7);
+    font-style: italic;
+}
+
+.totm-fire-pledges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.5rem;
+    margin-top: 0.35rem;
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.4);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.totm-fire-pledges-label {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.totm-fire-pledge-entry {
+    color: rgba(255, 200, 130, 0.7);
+}
+
 /* ── TotM Activity Card Grid (rest-setup panel) ────────────── */
 
 .totm-activity-cards {
@@ -9768,7 +10236,45 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     border-color: rgba(99, 102, 241, 0.7);
 }
 
-/* TotM compact footer bar */
+/* ── TotM Crafting Embed: shim to fit station crafting panel in detail view ── */
+
+.totm-crafting-embed {
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+}
+
+.totm-crafting-embed .crafting-split-body {
+    max-height: 340px;
+    overflow-y: auto;
+}
+
+.totm-crafting-embed .crafting-roll-blocking-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 25;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 1rem;
+    text-align: center;
+    background: rgba(12, 10, 18, 0.78);
+    border-radius: 6px;
+    pointer-events: auto;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.totm-crafting-embed .crafting-roll-blocking-overlay .fa-spinner {
+    font-size: 1.35rem;
+    color: rgba(140, 190, 255, 0.9);
+}
+
+
 .totm-activity-footer {
     display: flex;
     align-items: center;

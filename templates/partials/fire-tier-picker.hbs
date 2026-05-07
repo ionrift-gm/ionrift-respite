@@ -1,0 +1,44 @@
+{{!-- Fire Tier Picker: shared between TotM camp phase and TotM activity Fire tab --}}
+<div class="totm-fire-tiers">
+    {{#each campFirePickerLevels}}
+    <div class="totm-fire-tier-card {{#if selected}}selected{{/if}} {{#if disabled}}disabled{{/if}}" data-tier="{{id}}">
+        <div class="totm-fire-tier-top">
+            <span class="totm-fire-tier-name">{{label}}</span>
+            <span class="totm-fire-tier-cost">{{costLabel}}</span>
+        </div>
+        <p class="totm-fire-tier-body">{{body}}</p>
+        {{#if ../campFireIsLit}}
+            {{#if selected}}
+            <span class="totm-fire-tier-current">CURRENT</span>
+            {{else if (not disabled)}}
+            <button type="button" class="totm-fire-tier-set-btn"
+                    data-action="selectCampFireLevel"
+                    data-fire-level="{{id}}">
+                Set
+            </button>
+            {{/if}}
+        {{else unless ../campColdCampDecided}}
+            {{#if (not disabled)}}
+            {{#if selected}}
+            <span class="totm-fire-tier-current">Selected</span>
+            {{/if}}
+            {{/if}}
+        {{/if}}
+        {{#if disabledReason}}
+        <span class="totm-fire-tier-disabled-reason">{{disabledReason}}</span>
+        {{/if}}
+    </div>
+    {{/each}}
+</div>
+
+{{!-- Firewood pledges (after fire is lit) --}}
+{{#if campFireIsLit}}
+{{#if campFirewoodPledgeList.length}}
+<div class="totm-fire-pledges">
+    <span class="totm-fire-pledges-label">Firewood pledged:</span>
+    {{#each campFirewoodPledgeList}}
+    <span class="totm-fire-pledge-entry">{{actorName}} ({{count}})</span>
+    {{/each}}
+</div>
+{{/if}}
+{{/if}}
