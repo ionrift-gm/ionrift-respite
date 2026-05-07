@@ -451,3 +451,135 @@ export function buildActivityAssignments(characterChoices, earlyResults, filterA
     }
     return assignments;
 }
+
+/**
+ * Build the follow-up input descriptor for a given activity and actor.
+ * Extracted from StationActivityDialog._buildDetailContext() so TotM inline
+ * panels can use the same logic without instantiating the full dialog.
+ *
+ * @param {string} activityId
+ * @param {object} activity - Activity schema from ActivityResolver
+ * @param {Actor5e} actor
+ * @param {string|null} [currentValue] - Existing follow-up answer (for pre-selection)
+ * @returns {object|null} Follow-up descriptor, or null if the activity has no follow-up
+ */
+export function buildFollowUpDataForActivity(activityId, activity, actor, currentValue = null) {
+    if (!activity?.followUp) return null;
+
+    const fu = activity.followUp;
+    const result = {
+        type: fu.type,
+        label: fu.label,
+        currentValue
+    };
+
+    if (fu.type === "partyMember") {
+        const partyActors = (() => {
+            try { return game.actors.filter(a => a.hasPlayerOwner && a.type === "character" && a.id !== actor?.id); }
+            catch { return []; }
+        })();
+        result.options = partyActors.sort((a, b) => {
+            const aRatio = (a.system?.attributes?.hp?.value ?? 0) / (a.system?.attributes?.hp?.max ?? 1);
+            const bRatio = (b.system?.attributes?.hp?.value ?? 0) / (b.system?.attributes?.hp?.max ?? 1);
+            return aRatio - bRatio;
+        }).map(a => {
+            const hp = a.system?.attributes?.hp;
+            const hpText = hp ? ` (${hp.value}/${hp.max} HP)` : "";
+            return { value: a.id, label: `${a.name}${hpText}`, isSelected: a.id === currentValue };
+        });
+
+    } else if (fu.type === "radio" || fu.type === "select") {
+        const selectedVal = currentValue || fu.default || fu.options?.[0]?.value;
+
+        if (activityId === "act_scribe") {
+            const currentGold = actor?.system?.currency?.gp ?? 0;
+            result.goldInfo = `${actor?.name ?? "Character"} has ${currentGold}gp`;
+            result.options = (fu.options ?? []).map(opt => {
+                const cost = parseInt(opt.value, 10) * 50;
+                return {
+                    ...opt,
+                    label: currentGold >= cost ? opt.label : `${opt.label} (can't afford)`,
+                    isSelected: opt.value === selectedVal,
+                    isDisabled: currentGold < cost
+                };
+            });
+        } else {
+            result.options = (fu.options ?? []).map(opt => ({ ...opt, isSelected: opt.value === selectedVal }));
+        }
+
+        if (result.options?.length && !result.options.some(o => o.isSelected)) {
+            result.options[0].isSelected = true;
+        }
+
+    } else if (fu.type === "actorItem" && fu.filter === "attuneable") {
+        const attuneItems = (actor?.items ?? []).filter(i => {
+            const att = i.system?.attunement;
+            return (att === "required" || att === 1) && !i.system?.attuned;
+        });
+        result.options = attuneItems.map(i => ({
+            value: i.id,
+            label: i.name,
+            isSelected: i.id === currentValue
+        }));
+        const attunement = actor?.system?.attributes?.attunement;
+        if (attunement) {
+            const current = attunement.value ?? 0;
+            const max = attunement.max ?? 3;
+            result.slotInfo = `${current}/${max}${current >= max ? " (at capacity)" : ""}`;
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Build a short check label string for a given activity (e.g. "Arcana check, DC 15").
+ * Mirrors the check label logic in StationActivityDialog._buildDetailContext().
+ *
+ * @param {object} activity - Activity schema from ActivityResolver
+ * @param {Actor5e} actor
+ * @param {string} [comfort] - Comfort tier key
+ * @param {string|null} [followUpValue] - Current follow-up value (used for copySpell DC)
+ * @returns {string|null}
+ */
+export function buildCheckLabelForActivity(activity, actor, comfort = "sheltered", followUpValue = null) {
+    if (!activity?.check) return null;
+
+    const comfortDcMod = { safe: 0, sheltered: 0, rough: 2, hostile: 5 };
+    const comfortMod = comfortDcMod[comfort] ?? 0;
+
+    let baseDc = activity.check.dc ?? 12;
+    if (activity.check.dynamicDc === "copySpell") {
+        const spellLevel = Math.min(9, Math.max(1, parseInt(followUpValue || activity.followUp?.default || "1", 10) || 1));
+        baseDc = 10 + spellLevel;
+    }
+
+    let checkKind = "";
+    if (activity.check.skill) {
+        let chosenSkill = activity.check.skill;
+        if (activity.check.altSkill && actor) {
+            const primary = actor.system?.skills?.[activity.check.skill]?.total ?? 0;
+            const alt = actor.system?.skills?.[activity.check.altSkill]?.total ?? 0;
+            if (alt > primary) chosenSkill = activity.check.altSkill;
+        }
+        checkKind = chosenSkill.charAt(0).toUpperCase() + chosenSkill.slice(1);
+    } else if (activity.check.ability) {
+        let abilityKey = activity.check.ability;
+        if (abilityKey === "best" && actor?.system?.abilities) {
+            let bestKey = "str"; let bestMod = -99;
+            for (const [key, data] of Object.entries(actor.system.abilities)) {
+                if ((data.mod ?? 0) > bestMod) { bestMod = data.mod; bestKey = key; }
+            }
+            abilityKey = bestKey;
+        }
+        checkKind = abilityKey.toUpperCase();
+    }
+
+    if (activity.check.dynamicDc === "copySpell") {
+        return `${checkKind} check, DC ${baseDc}`;
+    }
+    if (comfortMod > 0) {
+        return `${checkKind} check, DC ${baseDc + comfortMod} (${baseDc} base +${comfortMod} terrain)`;
+    }
+    return `${checkKind} check, DC ${baseDc}`;
+}
