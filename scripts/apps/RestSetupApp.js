@@ -2934,7 +2934,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     ...wbCtx,
                     identifyCasters: collectPartyIdentifyEmbedData(getPartyActors()),
                     canTriggerDetectMagicScan: computeCanTriggerDetectMagicScan(getPartyActors),
-                    magicScanActive: dmScan?.scanActive ?? false,
+                    magicScanActive: dmScan?.scanComplete ?? false,
                     isGmUser: this._isGM
                 };
             })() : {}),
