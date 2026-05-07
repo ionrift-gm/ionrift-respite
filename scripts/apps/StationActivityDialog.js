@@ -22,6 +22,7 @@ import { getPartyActors } from "../services/partyActors.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
 import { emitFeastServeRequest } from "../services/SocketController.js";
 import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../services/StationInteractionLayer.js";
+import { TerrainRegistry } from "../services/TerrainRegistry.js";
 import { _refreshGmRestIndicator } from "../module.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -79,6 +80,12 @@ function _creditFeastMealState(restApp, partyIds, satiates) {
     if (!restApp._mealChoices) restApp._mealChoices = new Map();
     if (!restApp._activityMealRationsSubmitted) restApp._activityMealRationsSubmitted = new Set();
 
+    // Determine per-day slot counts from terrain meal rules
+    const terrainTag = restApp._engine?.terrainTag ?? restApp._selectedTerrain ?? "forest";
+    const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
+    const fpd = terrainMealRules.foodPerDay ?? 1;
+    const wpd = terrainMealRules.waterPerDay ?? 2;
+
     for (const pid of partyIds) {
         // Skip characters already submitted — feast credit is additive, not overwriting
         if (restApp._activityMealRationsSubmitted.has(pid)) continue;
@@ -88,10 +95,13 @@ function _creditFeastMealState(restApp, partyIds, satiates) {
         if (satiates.includes("food")) {
             const foodArr = Array.isArray(existing.food) ? [...existing.food] : [];
             const foodLocked = Array.isArray(existing.foodLockedSlots) ? [...existing.foodLockedSlots] : [];
-            const emptyIdx = foodArr.findIndex(v => !v || v === "skip");
-            const idx = emptyIdx >= 0 ? emptyIdx : foodArr.length;
-            foodArr[idx] = "__feast_food";
-            if (!foodLocked.includes(idx)) foodLocked.push(idx);
+            // Fill ALL remaining food slots up to fpd
+            for (let i = 0; i < fpd; i++) {
+                if (!foodArr[i] || foodArr[i] === "skip") {
+                    foodArr[i] = "__feast_food";
+                    if (!foodLocked.includes(i)) foodLocked.push(i);
+                }
+            }
             existing.food = foodArr;
             existing.foodLockedSlots = foodLocked;
         }
@@ -99,10 +109,13 @@ function _creditFeastMealState(restApp, partyIds, satiates) {
         if (satiates.includes("water")) {
             const waterArr = Array.isArray(existing.water) ? [...existing.water] : [];
             const waterLocked = Array.isArray(existing.waterLockedSlots) ? [...existing.waterLockedSlots] : [];
-            const emptyIdx = waterArr.findIndex(v => !v || v === "skip");
-            const idx = emptyIdx >= 0 ? emptyIdx : waterArr.length;
-            waterArr[idx] = "__feast_water";
-            if (!waterLocked.includes(idx)) waterLocked.push(idx);
+            // Fill ALL remaining water slots up to wpd
+            for (let i = 0; i < wpd; i++) {
+                if (!waterArr[i] || waterArr[i] === "skip") {
+                    waterArr[i] = "__feast_water";
+                    if (!waterLocked.includes(i)) waterLocked.push(i);
+                }
+            }
             existing.water = waterArr;
             existing.waterLockedSlots = waterLocked;
         }
@@ -134,6 +147,11 @@ function _creditFeastMealState(restApp, partyIds, satiates) {
     try {
         if (typeof restApp._saveRestState === "function") restApp._saveRestState();
     } catch (e) { console.warn(`${MODULE_ID} | _creditFeastMealState: save failed`, e); }
+
+    // Feast covers the whole party — mark meal as submitted so the snapshot
+    // carries mealSubmitted:true to players, replacing "Submit Meals" with
+    // "Waiting for GM to proceed".
+    restApp._mealSubmitted = true;
 
     try {
         const snap = typeof restApp.getRestSnapshot === "function" ? restApp.getRestSnapshot() : null;

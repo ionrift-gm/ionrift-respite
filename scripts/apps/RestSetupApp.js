@@ -99,7 +99,7 @@ import {
     emitRestStarted, emitRestSnapshot, emitRestPreparing, emitRestResolved,
     emitRestAbandoned, emitPhaseChanged, emitSubmissionUpdate,
     emitActivityChoice, emitArmorToggle,
-    emitCampLightFire, emitCampFireLevelRequest,
+    emitCampLightFire, emitCampFireLevelRequest, emitActivityFireLevelRequest,
     emitCampFirewoodPledge, emitCampFirewoodReclaim,
     emitCampGearPlace, emitCampGearPlaced, emitCampGearClearPlayer,
     emitCampGearReclaim, emitCampStationPlace, emitCampStationPlaced,
@@ -1155,6 +1155,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             mealChoices: this._mealChoices ? Array.from(this._mealChoices.entries()) : [],
             mealSubmissions: this._mealSubmissions ? Array.from(this._mealSubmissions.entries()) : [],
             activityMealRationsSubmitted: [...(this._activityMealRationsSubmitted ?? [])],
+            totmFeastServed: this._totmFeastServed ?? false,
             daysSinceLastRest: this._daysSinceLastRest ?? 1,
             campfireSnapshot: RestSetupApp._campfireSnapshotFromFireLevel(this._fireLevel),
             travelState: this._travel?.serialize() ?? null,
@@ -1215,6 +1216,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._mealChoices = new Map(state.mealChoices ?? []);
         this._mealSubmissions = new Map(state.mealSubmissions ?? []);
         this._activityMealRationsSubmitted = new Set(state.activityMealRationsSubmitted ?? []);
+        this._totmFeastServed = state.totmFeastServed ?? false;
         this._daysSinceLastRest = state.daysSinceLastRest ?? 1;
         this._campfireSnapshot = state.campfireSnapshot ?? null;
 
@@ -1933,8 +1935,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const characterStatuses = partyActors.map(a => {
             const gmOverride = this._gmOverrides.get(a.id);
             const playerChoice = this._getPlayerChoiceForCharacter(a.id);
-            const effectiveChoice = gmOverride ?? playerChoice?.activityId ?? null;
+            const effectiveChoice = gmOverride ?? playerChoice?.activityId ?? this._characterChoices?.get(a.id) ?? null;
             let source = gmOverride ? "gm" : playerChoice ? "player" : "pending";
+
+            // Fallback: choices restored via receiveSubmissionUpdate land in
+            // _characterChoices (keyed by charId) but not in _playerSubmissions
+            // (keyed by userId). Count them as "player" sourced.
+            if (source === "pending" && this._characterChoices?.has(a.id)) {
+                source = "player";
+            }
 
             let activityName = null;
             if (effectiveChoice) {
@@ -2537,12 +2546,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const allResolved = resolvedCount === totalCharacters
             && !this._gmCopySpellProposal
             && allRationsSubmitted;
+        const viewerHasSubmitted = !this._isGM && characterStatuses
+            .filter(c => c.isOwner)
+            .every(c => c.source !== "pending");
         const activityPhasePlayerOverview =
             this._phase === "activity"
                 ? {
                       resolvedCount,
                       totalCharacters,
                       allResolved,
+                      viewerHasSubmitted,
                       trackFood: !!trackFoodSetting,
                       mealRationsSubmitted: this._activityMealRationsSubmitted?.size ?? 0,
                       activityProgressPercent:
@@ -2933,7 +2946,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 return {
                     ...wbCtx,
                     identifyCasters: collectPartyIdentifyEmbedData(getPartyActors()),
-                    canTriggerDetectMagicScan: computeCanTriggerDetectMagicScan(getPartyActors),
+                    canTriggerDetectMagicScan: computeCanTriggerDetectMagicScan(getPartyActors()),
                     magicScanActive: dmScan?.scanComplete ?? false,
                     isGmUser: this._isGM
                 };
@@ -3463,8 +3476,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
 
                 // Feast advisory: mark cards pre-covered by a TotM Serve Now feast.
-                // Purely decorative — the resolution pipeline reads _activityMealRationsSubmitted directly.
-                if (this._activityMealRationsSubmitted?.size) {
+                // Only show when an actual party feast was served — not for individual rations
+                // like porridge that happen to satiate water.
+                if (this._totmFeastServed && this._activityMealRationsSubmitted?.size) {
                     for (const card of allCards) {
                         if (this._activityMealRationsSubmitted.has(card.characterId)) {
                             card.feastAdvisory = true;
@@ -8177,6 +8191,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         this._updateRestBarProgress();
+        _refreshRejoinBar(this);
 
         // GM: advance focus to the next unchosen party member so overlays
         // reflect who still needs to pick, not the character who just committed.
@@ -9112,6 +9127,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             mealChoices: this._mealChoices ? Object.fromEntries(this._mealChoices) : null,
             mealSubmitted: this._mealSubmitted ?? false,
             activityMealRationsSubmitted: [...(this._activityMealRationsSubmitted ?? [])],
+            totmFeastServed: this._totmFeastServed ?? false,
             dehydrationResults: (this._pendingDehydrationSaves ?? []).filter(s => s.resolved).map(s => ({
                 actorName: s.actorName,
                 total: s.total,
@@ -9455,6 +9471,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         if (Array.isArray(snapshot.activityMealRationsSubmitted)) {
             this._activityMealRationsSubmitted = new Set(snapshot.activityMealRationsSubmitted);
+        }
+        if (snapshot.totmFeastServed != null) {
+            this._totmFeastServed = !!snapshot.totmFeastServed;
         }
         if (snapshot.daysSinceLastRest) {
             this._daysSinceLastRest = snapshot.daysSinceLastRest;
@@ -10206,13 +10225,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const level = root?.dataset?.fireLevel;
         if (!level || !["embers", "campfire", "bonfire"].includes(level)) return;
 
+        // Activity-phase fire changes use a separate socket + handler
+        // so the GM runs changeFireLevelDuringActivity (which confirms cost deltas).
+        if (this._phase === "activity" && this._isTotM) {
+            if (!game.user.isGM) {
+                emitActivityFireLevelRequest(level);
+            } else {
+                await this.changeFireLevelDuringActivity(level);
+            }
+            return;
+        }
+
+        // Camp phase: standard flow
         if (!game.user.isGM) {
-            // Socket auto-applies via _runSetCampFireLevelForGm on the GM side.
-            // No additional GM action needed — suppress the misleading notification.
-            emitCampFireLevelRequest({
-                    userId: game.user.id,
-                    fireLevel: level
-                });
+            emitCampFireLevelRequest(level, game.user.id);
             return;
         }
         await this._runSetCampFireLevelForGm(level, null);
@@ -11038,26 +11064,39 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (satiates.length) {
                 if (!this._mealChoices) this._mealChoices = new Map();
                 if (!this._activityMealRationsSubmitted) this._activityMealRationsSubmitted = new Set();
+
+                // Determine per-day slot counts from terrain meal rules
+                const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
+                const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
+                const fpd = terrainMealRules.foodPerDay ?? 1;
+                const wpd = terrainMealRules.waterPerDay ?? 2;
+
                 for (const pid of partyIds) {
                     if (this._activityMealRationsSubmitted.has(pid)) continue;
                     const existing = this._mealChoices.get(pid) ?? {};
                     if (satiates.includes("food")) {
                         const foodArr = Array.isArray(existing.food) ? [...existing.food] : [];
                         const foodLocked = Array.isArray(existing.foodLockedSlots) ? [...existing.foodLockedSlots] : [];
-                        const emptyIdx = foodArr.findIndex(v => !v || v === "skip");
-                        const idx = emptyIdx >= 0 ? emptyIdx : foodArr.length;
-                        foodArr[idx] = "__feast_food";
-                        if (!foodLocked.includes(idx)) foodLocked.push(idx);
+                        // Fill ALL remaining food slots up to fpd
+                        for (let i = 0; i < fpd; i++) {
+                            if (!foodArr[i] || foodArr[i] === "skip") {
+                                foodArr[i] = "__feast_food";
+                                if (!foodLocked.includes(i)) foodLocked.push(i);
+                            }
+                        }
                         existing.food = foodArr;
                         existing.foodLockedSlots = foodLocked;
                     }
                     if (satiates.includes("water")) {
                         const waterArr = Array.isArray(existing.water) ? [...existing.water] : [];
                         const waterLocked = Array.isArray(existing.waterLockedSlots) ? [...existing.waterLockedSlots] : [];
-                        const emptyIdx = waterArr.findIndex(v => !v || v === "skip");
-                        const idx = emptyIdx >= 0 ? emptyIdx : waterArr.length;
-                        waterArr[idx] = "__feast_water";
-                        if (!waterLocked.includes(idx)) waterLocked.push(idx);
+                        // Fill ALL remaining water slots up to wpd
+                        for (let i = 0; i < wpd; i++) {
+                            if (!waterArr[i] || waterArr[i] === "skip") {
+                                waterArr[i] = "__feast_water";
+                                if (!waterLocked.includes(i)) waterLocked.push(i);
+                            }
+                        }
                         existing.water = waterArr;
                         existing.waterLockedSlots = waterLocked;
                     }
@@ -11079,6 +11118,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     this._activityMealRationsSubmitted.add(pid);
                 }
                 try { if (typeof this._saveRestState === "function") this._saveRestState(); } catch { /* ok */ }
+                // Mark meal as submitted for all clients: feast covers the whole party.
+                // The snapshot broadcast below will carry mealSubmitted:true to player windows,
+                // replacing the "Submit Meals" button with the "Waiting for GM" label.
+                this._mealSubmitted = true;
                 try {
                     const snap = typeof this.getRestSnapshot === "function" ? this.getRestSnapshot() : null;
                     if (snap) game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot: snap });

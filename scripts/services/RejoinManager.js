@@ -150,12 +150,17 @@ export function showGmRestIndicator(app) {
     const partySize = isActivity ? getPartyActors().length : 0;
     const activitiesResolved = isActivity ? (app?._characterChoices?.size ?? 0) : 0;
     const trackFood = isActivity && game.settings.get(MODULE_ID, "trackFood");
+    // TotM: rations are collected in the dedicated meal phase, not the activity phase.
+    // Mirror the allRationsSubmitted bypass used in the template context builder.
+    const isTotM = isActivity && (() => {
+        try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; }
+    })();
     const membersReady = isActivity ? (() => {
         let count = 0;
         const actors = getPartyActors();
         for (const a of actors) {
             const hasActivity = app?._characterChoices?.has(a.id);
-            const hasRations = !trackFood || (app?._activityMealRationsSubmitted?.has(a.id));
+            const hasRations = !trackFood || isTotM || (app?._activityMealRationsSubmitted?.has(a.id));
             if (hasActivity && hasRations) count++;
         }
         return count;
@@ -199,11 +204,14 @@ export function refreshGmRestIndicator(app) {
     const span = bar.querySelector(".respite-bar-progress");
     if (!span) return;
     const trackFood = game.settings.get(MODULE_ID, "trackFood");
+    const isTotM = (() => {
+        try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; }
+    })();
     const actors = getPartyActors();
     let membersReady = 0;
     for (const a of actors) {
         const hasActivity = app._characterChoices?.has(a.id);
-        const hasRations = !trackFood || (app._activityMealRationsSubmitted?.has(a.id));
+        const hasRations = !trackFood || isTotM || (app._activityMealRationsSubmitted?.has(a.id));
         if (hasActivity && hasRations) membersReady++;
     }
     const partySize = actors.length;
@@ -223,11 +231,15 @@ export function refreshRejoinBar(app) {
     const span = bar.querySelector(".respite-bar-progress");
     if (!span) return;
     const trackFood = game.settings.get(MODULE_ID, "trackFood");
+    // TotM: rations collected in meal phase, not activity phase — bypass ration requirement.
+    const isTotM = (() => {
+        try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; }
+    })();
     const actors = getPartyActors();
     let membersReady = 0;
     for (const a of actors) {
         const hasActivity = app._characterChoices?.has(a.id);
-        const hasRations = !trackFood || (app._activityMealRationsSubmitted?.has(a.id));
+        const hasRations = !trackFood || isTotM || (app._activityMealRationsSubmitted?.has(a.id));
         if (hasActivity && hasRations) membersReady++;
     }
     const partySize = actors.length;
@@ -235,14 +247,14 @@ export function refreshRejoinBar(app) {
     const viewerDone = actors.some(a => {
         const owned = (a.ownership?.[game.user.id] ?? 0) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
         if (!owned) return false;
-        return app._characterChoices?.has(a.id) && (!trackFood || app._activityMealRationsSubmitted?.has(a.id));
+        return app._characterChoices?.has(a.id) && (!trackFood || isTotM || app._activityMealRationsSubmitted?.has(a.id));
     });
 
     if (viewerDone) {
         span.textContent = `${membersReady} / ${partySize} party members ready`;
         span.classList.remove("respite-bar-advisory");
     } else {
-        span.textContent = `Choose one activity${trackFood ? " and assign rations" : ""}`;
+        span.textContent = `Choose one activity${trackFood && !isTotM ? " and assign rations" : ""}`;
         span.classList.add("respite-bar-advisory");
     }
     const btn = bar.querySelector("#respite-rejoin-btn");

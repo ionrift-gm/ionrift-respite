@@ -78,6 +78,21 @@ export class MealDelegate {
             }
 
             const actor = game.actors.get(charId);
+            // Compute bonusWater BEFORE consuming items (items still in inventory)
+            let dayBonusWater = 0;
+            if (actor) {
+                const satiatesLookup = app._buildSatiatesLookup?.() ?? null;
+                for (const itemId of food) {
+                    if (!itemId || itemId === "skip" || itemId.startsWith?.("__")) continue;
+                    const item = actor.items.get(itemId);
+                    if (!item) continue;
+                    let sats = item.flags?.["ionrift-respite"]?.satiates;
+                    if (!Array.isArray(sats) && satiatesLookup) {
+                        sats = satiatesLookup.get(item.name.toLowerCase().trim()) ?? null;
+                    }
+                    if (Array.isArray(sats) && sats.includes("water")) dayBonusWater++;
+                }
+            }
             if (actor) {
                 // Snapshot food items before consumption for Well Fed resolution
                 const foodSnapshots = new Map();
@@ -112,7 +127,7 @@ export class MealDelegate {
                 }
             }
 
-            consumedDays.push({ food, water });
+            consumedDays.push({ food, water, bonusWater: dayBonusWater });
             app._mealChoices.set(charId, {
                 food: [],
                 water: [],
@@ -133,7 +148,7 @@ export class MealDelegate {
             });
             for (const [charId, pack] of Object.entries(consumeByCharacter)) {
                 const consumedDays = [...(pack.consumedDays ?? [])];
-                consumedDays.push({ food: pack.food, water: pack.water });
+                consumedDays.push({ food: pack.food, water: pack.water, bonusWater: pack.bonusWater ?? 0 });
                 const priorDay = pack.currentDay ?? (pack.consumedDays?.length ?? 0);
                 app._mealChoices.set(charId, {
                     food: [],
@@ -194,6 +209,7 @@ export class MealDelegate {
      * @param {{ food?: unknown[], water?: unknown[] }} choice
      */
     _pushMealSlotWarnings(skippedSlots, charId, choice) {
+        const MODULE_ID_LOCAL = "ionrift-respite";
         const actor = game.actors.get(charId);
         const name = actor?.name ?? charId;
         const foodArr = Array.isArray(choice.food) ? choice.food : [];
@@ -201,10 +217,29 @@ export class MealDelegate {
         if (foodArr.length === 0 || foodEmpty > 0) {
             skippedSlots.push(`${name}: ${foodArr.length === 0 ? "no food" : `${foodEmpty} food slot${foodEmpty > 1 ? "s" : ""} empty`}`);
         }
+
+        // Count bonus water from food items that satiate water (e.g. Camp Porridge)
+        let bonusWater = 0;
+        if (actor) {
+            const satiatesLookup = this._app._buildSatiatesLookup?.() ?? null;
+            for (const itemId of foodArr) {
+                if (!itemId || itemId === "skip" || itemId.startsWith?.("__")) continue;
+                const item = actor.items.get(itemId);
+                if (!item) continue;
+                let satiates = item.flags?.[MODULE_ID_LOCAL]?.satiates;
+                if (!Array.isArray(satiates) && satiatesLookup) {
+                    satiates = satiatesLookup.get(item.name.toLowerCase().trim()) ?? null;
+                }
+                if (Array.isArray(satiates) && satiates.includes("water")) bonusWater++;
+            }
+        }
+
         const waterArr = Array.isArray(choice.water) ? choice.water : [];
         const waterEmpty = waterArr.filter(v => !v || v === "skip").length;
-        if (waterArr.length === 0 || waterEmpty > 0) {
-            skippedSlots.push(`${name}: ${waterArr.length === 0 ? "no water" : `${waterEmpty} water slot${waterEmpty > 1 ? "s" : ""} empty`}`);
+        const effectiveWaterEmpty = Math.max(0, waterEmpty - bonusWater);
+        const effectiveNoWater = waterArr.length === 0 && bonusWater === 0;
+        if (effectiveNoWater || effectiveWaterEmpty > 0) {
+            skippedSlots.push(`${name}: ${effectiveNoWater ? "no water" : `${effectiveWaterEmpty} water slot${effectiveWaterEmpty > 1 ? "s" : ""} empty`}`);
         }
     }
 

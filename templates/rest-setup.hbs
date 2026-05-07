@@ -937,7 +937,7 @@
                     <i class="fas fa-fire-alt" aria-hidden="true"></i>
                     <span>{{campFireLighterNames}} can light the fire.</span>
                 </div>
-                <p class="totm-fire-switch-hint">Switch to their portrait above to light it.</p>
+                <p class="totm-fire-switch-hint">Waiting for them or the GM to light it.</p>
 
                 {{else}}
                 {{!-- PLAYER STATE 3: No one can --}}
@@ -1712,13 +1712,12 @@
             </div>
             {{/if}}
         </div>
-        {{#if isGM}}
         {{> fireTierPicker}}
-        {{else}}
-        <div class="totm-fire-readonly">
-            <p><i class="fas fa-info-circle" aria-hidden="true"></i> Fire level is set by the GM.</p>
+        {{#unless isGM}}
+        <div class="totm-fire-player-hint">
+            <i class="fas fa-info-circle" aria-hidden="true"></i> Changes are requested from the GM.
         </div>
-        {{/if}}
+        {{/unless}}
     </div>
     {{/if}}
 
@@ -1728,20 +1727,28 @@
 
     {{#if activityPhasePlayerOverview}}
     {{#if isTheaterMode}}
-    {{!-- TotM compact footer: assignment count + Settle In --}}
+    {{!-- TotM compact footer: assignment count + Proceed to Rations --}}
     <div class="totm-activity-footer">
         <span class="totm-footer-stat">
             <i class="fas fa-users" aria-hidden="true"></i>
+            {{#if activityPhasePlayerOverview.viewerHasSubmitted}}
+            {{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}} completed
+            {{else if isGM}}
             {{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}} activities assigned
+            {{else}}
+            Choose one activity
+            {{/if}}
         </span>
         {{#if activityPhasePlayerOverview.allResolved}}
         {{#if isGM}}
         <button type="button" class="btn-primary totm-footer-proceed" data-action="submitActivities">
-            <i class="fas fa-arrow-right"></i> Settle In
+            <i class="fas fa-arrow-right"></i> Proceed to Rations
         </button>
         {{else}}
         <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Waiting on GM</span>
         {{/if}}
+        {{else if activityPhasePlayerOverview.viewerHasSubmitted}}
+        <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Waiting for others</span>
         {{/if}}
     </div>
     {{else}}
@@ -1778,7 +1785,7 @@
             {{#if isGM}}
             <div class="respite-action-bar">
                 <button type="button" class="btn-primary" data-action="submitActivities">
-                    <i class="fas fa-arrow-right"></i> Settle In
+                    <i class="fas fa-arrow-right"></i> Proceed to Rations
                 </button>
             </div>
             {{else}}
@@ -1895,10 +1902,12 @@
         <div class="meal-cards">
         {{#each mealCards}}
             <div class="meal-card" data-character-id="{{characterId}}">
+                {{#unless ../isTheaterMode}}
                 <div class="meal-card-header">
                     <img src="{{actorImg}}" alt="{{actorName}}" class="meal-portrait">
                     <span class="meal-actor-name">{{actorName}}</span>
                 </div>
+                {{/unless}}
 
                 {{!-- Feast advisory: shown when a TotM Serve Now feast pre-covered this character --}}
                 {{#if feastAdvisory}}
@@ -2059,9 +2068,11 @@
                     </div>
                 </div>
                 </div>
+                {{#unless ../isTheaterMode}}
                 <div class="station-meal-submit-row">
                     <button type="button" class="station-meal-submit-btn" data-action="submitMealChoices">Submit rations</button>
                 </div>
+                {{/unless}}
                 {{/if}}
             </div>
         {{/each}}
@@ -2142,6 +2153,9 @@
         </div>
         {{else}}
         <div class="respite-action-bar">
+                {{#if mealSubmitted}}
+                <span class="phase-waiting-label"><i class="fas fa-hourglass-half"></i> Waiting for GM to proceed...</span>
+                {{else}}
                 {{#with (lookup mealCards 0)}}
                 {{#if (and isMultiDay (not allDaysConsumed))}}
                 <button type="button" class="btn-primary btn-consume-day" data-action="consumeMealDay">
@@ -2153,6 +2167,7 @@
                 </button>
                 {{/if}}
                 {{/with}}
+                {{/if}}
         </div>
         {{/if}}
         {{/if}}
