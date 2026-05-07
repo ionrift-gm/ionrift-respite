@@ -10838,8 +10838,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /**
      * TotM Identify tab: trigger detect magic scan.
      */
-    static async #onDetectMagicScanTotm() {
-        await this._detectMagic.runScan(getPartyActors);
+    static async #onDetectMagicScanTotm(event, target) {
+        const btn = event?.currentTarget ?? null;
+        btn?.classList.add("is-casting");
+        spawnDetectMagicCastRipple(btn);
+        if (this._magicScanComplete) {
+            this._clearDetectMagicScanSession();
+            this.render();
+        } else {
+            await this._detectMagic.runScan(getPartyActors);
+        }
     }
 
     // ── TotM Inline Crafting Handlers ─────────────────────────────────────
