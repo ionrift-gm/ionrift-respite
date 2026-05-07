@@ -197,7 +197,12 @@ export class CampCeremonyDelegate {
             fireLitBy: null
         });
         await this._app._saveRestState();
-        await this._app._advanceCampToActivity();
+        const _isTotmCold = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; } })();
+        if (_isTotmCold) {
+            this._app.render();
+        } else {
+            await this._app._advanceCampToActivity();
+        }
     }
 
     /**
@@ -221,7 +226,9 @@ export class CampCeremonyDelegate {
             selectedTerrain: this._app._selectedTerrain ?? null
         });
         await this._app._saveRestState();
+        const _isTotm = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; } })();
         const willAdvance =
+            !_isTotm &&
             this._app._phase === "camp" && !this._app._campToActivityDone && this.fireLevel !== "unlit";
         if (willAdvance) {
             await this._app._advanceCampToActivity();

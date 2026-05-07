@@ -9552,6 +9552,221 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     color: rgba(255, 255, 255, 0.45);
     font-style: italic;
 }
+/* TotM detail view: full-width context switch that replaces the card grid */
+.totm-detail-view {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    padding: 0.75rem 0.85rem 0.85rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(196, 181, 253, 0.15);
+    border-radius: 6px;
+    animation: totmDetailIn 0.15s ease;
+}
+
+@keyframes totmDetailIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.totm-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.totm-detail-back {
+    flex-shrink: 0;
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    font-size: 0.75rem;
+    box-shadow: none !important;
+    background-image: none !important;
+}
+
+.totm-detail-back:hover {
+    background: rgba(196, 181, 253, 0.15);
+    border-color: rgba(196, 181, 253, 0.35);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.totm-detail-icon {
+    font-size: 1.1rem;
+    color: rgba(196, 181, 253, 0.65);
+    flex-shrink: 0;
+}
+
+.totm-detail-titles {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.totm-detail-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+    line-height: 1.2;
+}
+
+.totm-detail-actor {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.totm-detail-portrait {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.totm-detail-description {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.45;
+    margin: 0;
+}
+
+/* Outcome hints: success (green chevrons), failure (red), exceptional (gold) */
+.totm-detail-outcomes {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.totm-outcome-hint {
+    font-size: 0.67rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    line-height: 1.35;
+}
+
+.totm-outcome-hint i { flex-shrink: 0; margin-top: 0.1rem; font-size: 0.55rem; }
+
+.totm-outcome-hint.success    { color: rgba(74, 222, 128, 0.85); }
+.totm-outcome-hint.exceptional { color: rgba(250, 204, 21, 0.9); }
+.totm-outcome-hint.failure     { color: rgba(248, 113, 113, 0.8); }
+
+/* Armor hint: positive (shield, green-tinted) or warning (triangle, amber) */
+.totm-detail-armor-hint {
+    font-size: 0.68rem;
+    border-radius: 4px;
+    padding: 0.35rem 0.5rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    line-height: 1.4;
+}
+
+.totm-detail-armor-hint i { flex-shrink: 0; margin-top: 0.1rem; }
+
+.totm-detail-armor-hint.warning {
+    color: rgba(251, 191, 36, 0.9);
+    background: rgba(251, 191, 36, 0.07);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+.totm-detail-armor-hint.positive {
+    color: rgba(74, 222, 128, 0.85);
+    background: rgba(74, 222, 128, 0.06);
+    border: 1px solid rgba(74, 222, 128, 0.18);
+}
+
+.totm-detail-advisory {
+    font-size: 0.68rem;
+    color: rgba(147, 197, 253, 0.9);
+    background: rgba(96, 165, 250, 0.07);
+    border: 1px solid rgba(96, 165, 250, 0.18);
+    border-radius: 4px;
+    padding: 0.35rem 0.5rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    line-height: 1.4;
+}
+
+.totm-detail-advisory.urgent {
+    color: rgba(255, 140, 80, 0.95);
+    background: rgba(255, 100, 50, 0.08);
+    border-color: rgba(255, 120, 60, 0.25);
+}
+
+.totm-detail-advisory i { flex-shrink: 0; margin-top: 0.1rem; }
+
+.totm-detail-check {
+    font-size: 0.68rem;
+    color: rgba(196, 181, 253, 0.8);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.totm-detail-nocheck {
+    color: rgba(74, 222, 128, 0.8);
+}
+
+.totm-detail-followup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.4rem 0.5rem;
+    background: rgba(0, 0, 0, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+}
+
+.totm-detail-actions {
+    padding-top: 0.4rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.totm-detail-confirm-btn {
+    width: 100%;
+    font-size: 0.8rem;
+    padding: 0.45rem 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.15s, border-color 0.15s;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(99, 102, 241, 0.18));
+    border: 1px solid rgba(99, 102, 241, 0.45);
+    color: rgba(255, 255, 255, 0.92);
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    filter: none !important;
+}
+
+.totm-detail-confirm-btn:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.55), rgba(99, 102, 241, 0.32));
+    border-color: rgba(99, 102, 241, 0.7);
+}
 
 /* TotM compact footer bar */
 .totm-activity-footer {
@@ -20181,3 +20396,657 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     cursor: not-allowed;
     filter: grayscale(0.6);
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   TotM MAKE CAMP PHASE LAYOUT
+   Two-column: Camp Comfort (left) / Campfire Ceremony (right)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.ionrift-respite-app .totm-camp-layout {
+    display: grid;
+    grid-template-columns: 55% 45%;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem 0;
+    align-items: start;
+}
+
+/* .totm-camp-active: window class toggled during TotM Make Camp phase.
+   Position/width managed by one-shot JS setPosition in _onRender. */
+.ionrift-respite-app.totm-camp-active {
+    /* intentionally empty — width is set once via setPosition, not CSS */
+}
+
+/* ── Left: Camp Comfort panel ─────────────────────────────────────── */
+.ionrift-respite-app .totm-camp-comfort-panel {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(196, 181, 253, 0.15);
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Hero header: label row + big tier text */
+.ionrift-respite-app .totm-camp-comfort-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.ionrift-respite-app .totm-camp-comfort-hero-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.ionrift-respite-app .totm-camp-comfort-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: rgba(200, 195, 220, 0.6);
+}
+
+.ionrift-respite-app .totm-camp-comfort-same {
+    font-size: 0.6rem;
+    color: rgba(200, 195, 220, 0.4);
+    font-style: italic;
+}
+
+/* Big tier label — the headline of the panel */
+.ionrift-respite-app .totm-camp-comfort-tier-big {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    line-height: 1;
+}
+
+.ionrift-respite-app .totm-camp-comfort-tier-big.comfort-hostile  { color: #f87171; }
+.ionrift-respite-app .totm-camp-comfort-tier-big.comfort-rough    { color: #fb923c; }
+.ionrift-respite-app .totm-camp-comfort-tier-big.comfort-sheltered { color: #facc15; }
+.ionrift-respite-app .totm-camp-comfort-tier-big.comfort-safe     { color: #4ade80; }
+
+.ionrift-respite-app .totm-camp-comfort-reason {
+    margin: 0;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: rgba(210, 205, 230, 0.72);
+    font-style: italic;
+}
+
+/* No-selection placeholder */
+.ionrift-respite-app .totm-camp-no-selection {
+    margin: 0.5rem 0 0;
+    font-size: 0.72rem;
+    color: rgba(200, 195, 220, 0.4);
+    font-style: italic;
+    text-align: center;
+    padding: 0.5rem 0;
+}
+
+/* Contributing factors subheading */
+.ionrift-respite-app .totm-camp-factors-heading,
+.ionrift-respite-app .totm-camp-outcomes-heading {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(196, 181, 253, 0.55);
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid rgba(196, 181, 253, 0.12);
+    margin-top: 0.1rem;
+}
+
+.ionrift-respite-app .totm-camp-factors {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.ionrift-respite-app .totm-camp-factor-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    padding: 0.22rem 0.1rem;
+}
+
+.ionrift-respite-app .totm-factor-icon {
+    width: 0.9rem;
+    text-align: center;
+    font-size: 0.72rem;
+    color: rgba(196, 181, 253, 0.5);
+    flex-shrink: 0;
+}
+
+.ionrift-respite-app .totm-factor-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(225, 220, 240, 0.85);
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 4.5rem;
+}
+
+.ionrift-respite-app .totm-factor-desc {
+    flex: 1;
+    font-size: 0.68rem;
+    color: rgba(200, 195, 220, 0.55);
+    line-height: 1.35;
+}
+
+.ionrift-respite-app .totm-factor-badge {
+    font-size: 0.63rem;
+    font-weight: 600;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.ionrift-respite-app .totm-factor-badge.missing {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px dashed rgba(255, 255, 255, 0.18);
+    color: rgba(200, 195, 220, 0.45);
+}
+
+.ionrift-respite-app .totm-factor-badge.present {
+    background: rgba(100, 220, 150, 0.1);
+    border: 1px solid rgba(100, 220, 150, 0.3);
+    color: rgba(100, 220, 150, 0.9);
+}
+
+.ionrift-respite-app .totm-factor-badge.fire-active {
+    background: rgba(251, 146, 60, 0.14);
+    border: 1px solid rgba(251, 146, 60, 0.4);
+    color: rgba(251, 146, 60, 0.95);
+}
+
+.ionrift-respite-app .totm-factor-badge.cold-camp {
+    background: rgba(100, 160, 255, 0.1);
+    border: 1px solid rgba(100, 160, 255, 0.3);
+    color: rgba(130, 180, 255, 0.85);
+}
+
+/* Outcome rows — match station campfire dialog: filled chips, bold text */
+.ionrift-respite-app .totm-camp-outcomes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: 0.1rem;
+}
+
+.ionrift-respite-app .totm-camp-outcome {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.35rem 0.55rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.ionrift-respite-app .totm-camp-outcome i {
+    margin-top: 0.1rem;
+    font-size: 0.72rem;
+    flex-shrink: 0;
+}
+
+/* Success: green chip — full HP, no HD penalty, no exhaustion risk */
+.ionrift-respite-app .totm-camp-outcome.success {
+    color: rgba(74, 222, 128, 0.95);
+    background: rgba(74, 222, 128, 0.08);
+    border-left: 3px solid rgba(74, 222, 128, 0.5);
+}
+
+/* Warning: amber chip — HD penalty, partial HP, mild exhaustion risk */
+.ionrift-respite-app .totm-camp-outcome.warning,
+.ionrift-respite-app .totm-camp-outcome.amber,
+.ionrift-respite-app .totm-camp-outcome.notice {
+    color: rgba(251, 191, 36, 0.97);
+    background: rgba(251, 191, 36, 0.1);
+    border-left: 3px solid rgba(251, 191, 36, 0.55);
+}
+
+/* Danger: orange chip — 0 HD recovered, hostile-tier exhaustion */
+.ionrift-respite-app .totm-camp-outcome.danger {
+    color: rgba(251, 113, 60, 0.97);
+    background: rgba(251, 113, 60, 0.1);
+    border-left: 3px solid rgba(251, 113, 60, 0.55);
+}
+
+
+/* ── Right: Campfire ceremony panel ───────────────────────────────── */
+.ionrift-respite-app .totm-camp-fire-panel {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(196, 181, 253, 0.14);
+    border-radius: 10px;
+    padding: 0.65rem 0.7rem 0.7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* Fire lit: warm amber edge glow */
+.ionrift-respite-app .totm-camp-fire-panel.fire-lit {
+    border-color: rgba(251, 146, 60, 0.35);
+    box-shadow: 0 0 18px rgba(251, 146, 60, 0.08), inset 0 0 12px rgba(251, 146, 60, 0.04);
+}
+
+/* Cold camp: cool blue tint */
+.ionrift-respite-app .totm-camp-fire-panel.cold-camp {
+    border-color: rgba(100, 160, 255, 0.25);
+}
+
+.ionrift-respite-app .totm-camp-fire-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+}
+
+.ionrift-respite-app .totm-camp-fire-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(251, 146, 60, 0.7);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.ionrift-respite-app .totm-camp-fire-status {
+    font-size: 0.65rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 10px;
+}
+
+.ionrift-respite-app .totm-camp-fire-status.unlit {
+    color: rgba(200, 195, 220, 0.45);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.ionrift-respite-app .totm-camp-fire-status.lit {
+    color: rgba(251, 146, 60, 0.95);
+    background: rgba(251, 146, 60, 0.12);
+}
+
+.ionrift-respite-app .totm-camp-fire-status.lit i {
+    color: rgba(74, 222, 128, 0.9);
+    font-size: 0.45rem;
+}
+
+.ionrift-respite-app .totm-camp-fire-status.cold {
+    color: rgba(130, 180, 255, 0.85);
+    background: rgba(100, 160, 255, 0.08);
+}
+
+/* Lighter list */
+.ionrift-respite-app .totm-fire-lighters {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.ionrift-respite-app .totm-fire-lighters-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(196, 181, 253, 0.5);
+}
+
+.ionrift-respite-app .totm-fire-lighter-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.2rem 0.25rem;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.ionrift-respite-app .totm-fire-lighter-name {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(225, 220, 240, 0.9);
+    flex: 1;
+}
+
+.ionrift-respite-app .totm-fire-lighter-method {
+    font-size: 0.63rem;
+    color: rgba(200, 195, 220, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.ionrift-respite-app .totm-fire-light-btn {
+    font-size: 0.65rem;
+    padding: 0.18rem 0.45rem;
+    border-radius: 5px;
+    border: 1px solid rgba(251, 146, 60, 0.45);
+    background: rgba(251, 146, 60, 0.12);
+    color: rgba(251, 146, 60, 0.95);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.ionrift-respite-app .totm-fire-light-btn:hover {
+    background: rgba(251, 146, 60, 0.22);
+    border-color: rgba(251, 146, 60, 0.65);
+}
+
+.ionrift-respite-app .totm-fire-light-btn.gm-light {
+    width: 100%;
+    justify-content: center;
+    margin-top: 0.1rem;
+}
+
+/* GM state: count summary + light-for-them button side by side */
+.ionrift-respite-app .totm-fire-gm-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    padding: 0.15rem 0;
+}
+
+.ionrift-respite-app .totm-fire-gm-count {
+    font-size: 0.72rem;
+    color: rgba(196, 181, 253, 0.75);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+/* Viewer-can-light: single prominent row */
+.ionrift-respite-app .totm-fire-viewer-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.2rem 0.25rem;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* Others-summary: dim one-liner below the viewer row */
+.ionrift-respite-app .totm-fire-others-summary {
+    font-size: 0.63rem;
+    color: rgba(200, 195, 220, 0.4);
+    padding-left: 0.25rem;
+}
+
+/* State 2: others-info row */
+.ionrift-respite-app .totm-fire-others-info {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    color: rgba(200, 195, 220, 0.75);
+    padding: 0.15rem 0;
+}
+
+.ionrift-respite-app .totm-fire-others-info i {
+    margin-top: 0.1rem;
+    color: rgba(251, 146, 60, 0.6);
+    flex-shrink: 0;
+}
+
+/* State 2/3: switch hint / ask-GM hint */
+.ionrift-respite-app .totm-fire-switch-hint {
+    margin: 0.1rem 0 0 0.1rem;
+    font-size: 0.63rem;
+    color: rgba(200, 195, 220, 0.38);
+    font-style: italic;
+}
+
+/* State 3 / GM no-lighters: warning row */
+.ionrift-respite-app .totm-fire-none-warning {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    color: rgba(251, 146, 60, 0.8);
+    padding: 0.15rem 0;
+}
+
+.ionrift-respite-app .totm-fire-no-lighters {
+    font-size: 0.7rem;
+    color: rgba(200, 195, 220, 0.5);
+    font-style: italic;
+    margin: 0 0 0.25rem;
+}
+
+/* Fire tier cards */
+.ionrift-respite-app .totm-fire-tiers {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.ionrift-respite-app .totm-fire-tier-card {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 0.45rem 0.55rem 0.4rem;
+    position: relative;
+    transition: border-color 0.2s;
+}
+
+/* Embers: unselected — very muted */
+.ionrift-respite-app .totm-fire-tier-card[data-tier="embers"] {
+    background: rgba(80, 40, 20, 0.08);
+}
+
+/* Campfire: unselected — very muted */
+.ionrift-respite-app .totm-fire-tier-card[data-tier="campfire"] {
+    background: rgba(120, 55, 15, 0.08);
+}
+
+/* Bonfire: unselected — very muted */
+.ionrift-respite-app .totm-fire-tier-card[data-tier="bonfire"] {
+    background: rgba(100, 25, 10, 0.08);
+}
+
+/* Selected: warm fill so it reads clearly against the muted siblings */
+.ionrift-respite-app .totm-fire-tier-card.selected {
+    border-color: rgba(251, 146, 60, 0.6);
+    background: rgba(120, 55, 15, 0.3);
+    box-shadow: 0 0 10px rgba(251, 146, 60, 0.1);
+}
+
+.ionrift-respite-app .totm-fire-tier-card.disabled {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.ionrift-respite-app .totm-fire-tier-top {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    margin-bottom: 0.2rem;
+}
+
+.ionrift-respite-app .totm-fire-tier-name {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: rgba(255, 230, 190, 0.95);
+}
+
+.ionrift-respite-app .totm-fire-tier-cost {
+    font-size: 0.62rem;
+    color: rgba(200, 175, 140, 0.6);
+    font-style: italic;
+}
+
+.ionrift-respite-app .totm-fire-tier-body {
+    margin: 0;
+    font-size: 0.7rem;
+    color: rgba(210, 195, 175, 0.8);
+    line-height: 1.4;
+}
+
+.ionrift-respite-app .totm-fire-tier-current {
+    display: block;
+    margin-top: 0.3rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(74, 222, 128, 0.9);
+}
+
+.ionrift-respite-app .totm-fire-tier-set-btn {
+    position: absolute;
+    bottom: 0.4rem;
+    right: 0.45rem;
+    font-size: 0.62rem;
+    padding: 0.12rem 0.4rem;
+    border-radius: 4px;
+    border: 1px solid rgba(251, 146, 60, 0.4);
+    background: rgba(251, 146, 60, 0.1);
+    color: rgba(251, 146, 60, 0.9);
+    cursor: pointer;
+}
+
+.ionrift-respite-app .totm-fire-tier-set-btn:hover {
+    background: rgba(251, 146, 60, 0.2);
+}
+
+.ionrift-respite-app .totm-fire-tier-disabled-reason {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+    padding: 0.25rem 0.45rem;
+    border-radius: 4px;
+    background: rgba(251, 146, 60, 0.12);
+    border: 1px solid rgba(251, 146, 60, 0.3);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgba(251, 146, 60, 0.9);
+    font-style: normal;
+}
+
+/* Firewood pledges & cooking note */
+.ionrift-respite-app .totm-fire-pledges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+}
+
+.ionrift-respite-app .totm-fire-pledges-label {
+    color: rgba(200, 195, 220, 0.55);
+    font-weight: 600;
+}
+
+.ionrift-respite-app .totm-fire-pledge-entry {
+    background: rgba(251, 146, 60, 0.1);
+    border: 1px solid rgba(251, 146, 60, 0.25);
+    border-radius: 4px;
+    padding: 0.05rem 0.35rem;
+    color: rgba(251, 146, 60, 0.85);
+}
+
+.ionrift-respite-app .totm-fire-cooking-note {
+    margin: 0;
+    font-size: 0.68rem;
+    color: rgba(200, 195, 220, 0.5);
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+/* Cold camp button */
+.ionrift-respite-app .totm-fire-actions {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.ionrift-respite-app .totm-cold-camp-btn {
+    font-size: 0.72rem;
+    padding: 0.28rem 0.65rem;
+    border-radius: 6px;
+    border: 1px solid rgba(100, 160, 255, 0.3);
+    background: rgba(100, 160, 255, 0.06);
+    color: rgba(130, 180, 255, 0.85);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.ionrift-respite-app .totm-cold-camp-btn:hover {
+    background: rgba(100, 160, 255, 0.12);
+    border-color: rgba(100, 160, 255, 0.45);
+}
+
+/* ── Proceed footer ────────────────────────────────────────────────── */
+.ionrift-respite-app .totm-camp-footer {
+    padding: 0.5rem 0.6rem 0.6rem;
+    display: flex;
+    justify-content: center;
+}
+
+.ionrift-respite-app .totm-camp-proceed {
+    width: 100%;
+    max-width: 24rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.85) 0%, rgba(109, 40, 217, 0.9) 100%);
+    color: rgba(255, 255, 255, 0.95);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    box-shadow: 0 0 18px rgba(139, 92, 246, 0.3);
+    transition: background 0.2s, box-shadow 0.2s;
+}
+
+.ionrift-respite-app .totm-camp-proceed:hover {
+    background: linear-gradient(135deg, rgba(167, 139, 250, 0.9) 0%, rgba(139, 92, 246, 0.95) 100%);
+    box-shadow: 0 0 28px rgba(139, 92, 246, 0.45);
+}
+
+.ionrift-respite-app .totm-camp-proceed.disabled,
+.ionrift-respite-app .totm-camp-proceed:disabled {
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(200, 195, 220, 0.4);
+    cursor: not-allowed;
+    box-shadow: none;
+    border: 1px dashed rgba(200, 195, 220, 0.15);
+}
+
+.ionrift-respite-app .totm-camp-player-wait {
+    font-size: 0.78rem;
+    color: rgba(200, 195, 220, 0.55);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-style: italic;
+}
+
+/* Comfort tier badge colours (shared with existing comfort-X classes) */
+.ionrift-respite-app .comfort-tier-badge.comfort-hostile { color: #f87171; }
+.ionrift-respite-app .comfort-tier-badge.comfort-rough   { color: #fb923c; }
+.ionrift-respite-app .comfort-tier-badge.comfort-sheltered { color: #facc15; }
+.ionrift-respite-app .comfort-tier-badge.comfort-safe    { color: #4ade80; }

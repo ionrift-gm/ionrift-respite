@@ -15,6 +15,7 @@ import {
     DETECT_MAGIC_BTN_LABEL_DISMISS,
     DETECT_MAGIC_BTN_TITLE_GM
 } from "./RestConstants.js";
+import { buildActivityListItem, buildActivityDetailContext } from "./ActivityDetailBuilder.js";
 import { computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple } from "./delegates/DetectMagicDelegate.js";
 import { canPlaceStation, actorHasBrewingTools } from "../services/CompoundCampPlacer.js";
 import { getPartyActors } from "../services/partyActors.js";
@@ -312,35 +313,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
     _buildListContext() {
         const ps = this._partyState ?? buildPartyState([], new Map(), 14);
         const mapAct = (act, isAvail) => {
-            if (isAvail) {
-                const advisory = this._actor
-                    ? getActivityAdvisory(act.id, this._actor, ps)
-                    : { text: "", urgent: false };
-                const advRaw = advisory.text !== null && advisory.text !== undefined ? String(advisory.text).trim() : "";
-                const hasAdvisory = advRaw.length > 0;
-                const hintText = hasAdvisory ? advRaw : (act.description ?? "").trim() || "";
-                const nv = !!advisory.nonViable;
-                return {
-                    id:          act.id,
-                    name:        act.name,
-                    hint:        hintText,
-                    hintUrgent:  hasAdvisory && !!advisory.urgent,
-                    icon:        ACTIVITY_ICONS[act.id] ?? act.icon ?? "fas fa-circle",
-                    available:   !nv,
-                    nonViable:   nv,
-                    fadedHint:   nv ? hintText : null
-                };
-            }
-            return {
-                id:          act.id,
-                name:        act.name,
-                hint:        act.fadedHint ?? "Not available.",
-                hintUrgent:  false,
-                icon:        ACTIVITY_ICONS[act.id] ?? act.icon ?? "fas fa-circle",
-                available:   false,
-                nonViable:   false,
-                fadedHint:   act.fadedHint ?? "Not available."
-            };
+            const item = buildActivityListItem(act.id, act, isAvail ? this._actor : null, ps, isAvail);
+            return item;
         };
 
         const activityItems = this._available.map(act => mapAct(act, true));
@@ -518,179 +492,25 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const activity = resolver?.activities?.get(activityId);
         if (!activity) return { activityDetail: null };
 
-        const icon = ACTIVITY_ICONS[activityId] ?? activity.icon ?? "fas fa-circle";
         const actor = this._actor;
         const comfort = this._restApp?._engine?.comfort ?? "sheltered";
-
-        const outcomeHints = [];
-        for (const tier of ["success", "exceptional", "failure"]) {
-            const effects = activity.outcomes?.[tier]?.effects ?? [];
-            for (const eff of effects) {
-                if (eff.description) outcomeHints.push({ text: eff.description, type: tier });
-            }
-        }
-
-        let checkLabel = null;
-        if (activity.check) {
-            const comfortDcMod = { safe: 0, sheltered: 0, rough: 2, hostile: 5 };
-            const comfortMod = comfortDcMod[comfort] ?? 0;
-
-            const followUpCurrent =
-                this._followUpValue
-                ?? this._restApp?._gmFollowUps?.get(actor?.id)
-                ?? this._restApp?._getFollowUpForCharacter?.(actor?.id)
-                ?? null;
-
-            let baseDc = activity.check.dc ?? 12;
-            if (activity.check.dynamicDc === "copySpell") {
-                const spellLevel = Math.min(
-                    9,
-                    Math.max(1, parseInt(followUpCurrent || activity.followUp?.default || "1", 10) || 1)
-                );
-                baseDc = 10 + spellLevel;
-            }
-
-            /** Short skill/ability label only (no modifier; players use their own sheet). */
-            let checkKind = "";
-            if (activity.check.skill) {
-                let chosenSkill = activity.check.skill;
-                if (activity.check.altSkill && actor) {
-                    const primary = actor.system?.skills?.[activity.check.skill]?.total ?? 0;
-                    const alt = actor.system?.skills?.[activity.check.altSkill]?.total ?? 0;
-                    if (alt > primary) chosenSkill = activity.check.altSkill;
-                }
-                checkKind = chosenSkill.charAt(0).toUpperCase() + chosenSkill.slice(1);
-            } else if (activity.check.ability) {
-                let abilityKey = activity.check.ability;
-                if (abilityKey === "best" && actor?.system?.abilities) {
-                    let bestKey = "str"; let bestMod = -99;
-                    for (const [key, data] of Object.entries(actor.system.abilities)) {
-                        if ((data.mod ?? 0) > bestMod) { bestMod = data.mod; bestKey = key; }
-                    }
-                    abilityKey = bestKey;
-                }
-                checkKind = abilityKey.toUpperCase();
-            }
-
-            if (activity.check.dynamicDc === "copySpell") {
-                checkLabel = `${checkKind} check, DC ${baseDc}`;
-            } else if (comfortMod > 0) {
-                const totalDc = baseDc + comfortMod;
-                checkLabel = `${checkKind} check, DC ${totalDc} (${baseDc} activity, +${comfortMod} from ${comfort} terrain)`;
-            } else {
-                checkLabel = `${checkKind} check, DC ${baseDc}`;
-            }
-        }
-
-        let followUpData = null;
-        if (activity.followUp) {
-            const currentValue = this._followUpValue
-                ?? this._restApp?._gmFollowUps?.get(actor?.id)
-                ?? this._restApp?._getFollowUpForCharacter?.(actor?.id)
-                ?? null;
-
-            followUpData = {
-                type: activity.followUp.type,
-                label: activity.followUp.label,
-                currentValue
-            };
-
-            if (activity.followUp.type === "partyMember") {
-                const partyActors = getPartyActors().filter(a => a.id !== actor?.id);
-                followUpData.options = partyActors.sort((a, b) => {
-                    const aRatio = (a.system.attributes?.hp?.value ?? 0) / (a.system.attributes?.hp?.max ?? 1);
-                    const bRatio = (b.system.attributes?.hp?.value ?? 0) / (b.system.attributes?.hp?.max ?? 1);
-                    return aRatio - bRatio;
-                }).map(a => {
-                    const hp = a.system.attributes?.hp;
-                    const hpText = hp ? ` (${hp.value}/${hp.max} HP)` : "";
-                    return { value: a.id, label: `${a.name}${hpText}`, isSelected: a.id === currentValue };
-                });
-            } else if (activity.followUp.type === "radio" || activity.followUp.type === "select") {
-                const selectedVal = currentValue || activity.followUp.default || activity.followUp.options?.[0]?.value;
-
-                if (activityId === "act_scribe") {
-                    const currentGold = actor?.system?.currency?.gp ?? 0;
-                    followUpData.goldInfo = `${actor?.name ?? "Character"} has ${currentGold}gp`;
-                    followUpData.options = activity.followUp.options.map(opt => {
-                        const cost = parseInt(opt.value, 10) * 50;
-                        return {
-                            ...opt,
-                            label: currentGold >= cost ? opt.label : `${opt.label} (can't afford)`,
-                            isSelected: opt.value === selectedVal,
-                            isDisabled: currentGold < cost
-                        };
-                    });
-                } else {
-                    followUpData.options = activity.followUp.options.map(opt => ({
-                        ...opt,
-                        isSelected: opt.value === selectedVal
-                    }));
-                }
-
-                if (followUpData.options?.length && !followUpData.options.some(o => o.isSelected)) {
-                    followUpData.options[0].isSelected = true;
-                }
-            } else if (activity.followUp.type === "actorItem" && activity.followUp.filter === "attuneable") {
-                const attuneItems = (actor?.items ?? []).filter(i => {
-                    const att = i.system?.attunement;
-                    return (att === "required" || att === 1) && !i.system?.attuned;
-                });
-                followUpData.options = attuneItems.map(i => ({
-                    value: i.id,
-                    label: i.name,
-                    isSelected: i.id === currentValue
-                }));
-                const attunement = actor?.system?.attributes?.attunement;
-                if (attunement) {
-                    const current = attunement.value ?? 0;
-                    const max = attunement.max ?? 3;
-                    followUpData.slotInfo = `${current}/${max}${current >= max ? " (at capacity)" : ""}`;
-                }
-            }
-        }
-
-        let armorHint = null;
-        try {
-            const armorRuleEnabled = game.settings.get("ionrift-respite", "armorDoffRule");
-            if (armorRuleEnabled) {
-                const equippedArmor = actor?.items?.find(i =>
-                    i.type === "equipment" && i.system?.equipped
-                    && ["medium", "heavy"].includes(i.system?.type?.value ?? i.system?.armor?.type)
-                );
-                if (equippedArmor && activity.armorSleepWaiver) {
-                    armorHint = { text: "Sleeping light between rotations. Armor stays on, weapon close. No HP or HD recovery penalty.", type: "positive" };
-                } else if (equippedArmor && !activity.armorSleepWaiver) {
-                    armorHint = { text: "Sleeping in armor. Recover only 1/4 Hit Dice, exhaustion not reduced (Xanathar's). Consider doffing first.", type: "warning" };
-                }
-            }
-        } catch (e) { /* setting may not exist */ }
-
-        const isCrafting = !!activity.crafting?.enabled;
-        const armorWarning = this._restApp?.getArmorWarningForActivityDetail?.(actor, activity) ?? null;
-
+        const followUpValue =
+            this._followUpValue
+            ?? this._restApp?._gmFollowUps?.get(actor?.id)
+            ?? this._restApp?._getFollowUpForCharacter?.(actor?.id)
+            ?? null;
+        let armorRuleEnabled = false;
+        try { armorRuleEnabled = !!game.settings.get("ionrift-respite", "armorDoffRule"); } catch { /* ok */ }
         const ps = this._partyState ?? buildPartyState([], new Map(), 14);
-        const advisory = actor ? getActivityAdvisory(activityId, actor, ps) : null;
-        const advText = advisory?.text !== null && advisory?.text !== undefined ? String(advisory.text).trim() : "";
 
-        return {
-            activityDetail: {
-                id: activityId,
-                name: activity.name,
-                description: activity.description || "No additional details available.",
-                icon,
-                check: checkLabel,
-                outcomeHints,
-                followUpData,
-                armorHint,
-                armorWarning,
-                advisory: advText || null,
-                advisoryUrgent: !!advisory?.urgent,
-                combatModifiers: activity.combatModifiers ?? null,
-                isCrafting,
-                characterId: actor?.id
-            }
-        };
+        const detail = buildActivityDetailContext(activityId, activity, actor, ps, {
+            comfort,
+            followUpValue,
+            armorRuleEnabled,
+            getArmorWarning: this._restApp?.getArmorWarningForActivityDetail?.bind(this._restApp) ?? null
+        });
+
+        return { activityDetail: { ...detail, characterId: actor?.id } };
     }
 
     _buildResultContext() {

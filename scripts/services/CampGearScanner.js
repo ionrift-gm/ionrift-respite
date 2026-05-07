@@ -38,15 +38,23 @@ export class CampGearScanner {
 
     /**
      * Encounter modifier from fire size.
-     * Positive = raises campMods in RestFlowEngine → lowers effectiveDC → fewer encounters.
-     * A campfire draws attention but provides safety; bonfire more so.
-     * Sign convention matches shelter modifiers (positive = safer night).
+     *
+     * DESIGN RULE — DO NOT CHANGE WITHOUT A FAILING TEST:
+     * Fire is a BEACON. A campfire attracts wandering monsters; a bonfire more so.
+     * These values are NEGATIVE so that, in the RestFlowEngine formula
+     *   effectiveDC = baseDC − campMods   (where campMods = shelter + weather + scouting + fire)
+     * a negative fire value subtracts a negative, i.e. RAISES effectiveDC.
+     * Higher effectiveDC = harder to roll over = more encounters. That is correct.
+     *
+     * Mnemonic: "fire raises the DC, fire raises the danger."
+     * If you think it should be positive (safety angle), you are wrong — see RestFlowEngine.test.js
+     * "fire is a beacon" suite.
      */
     static FIRE_ENCOUNTER_MOD_BY_LEVEL = Object.freeze({
-        unlit: 0,
-        embers: 0,
-        campfire: 1,
-        bonfire: 2
+        unlit:    0,   // dark camp — no modifier
+        embers:   0,   // barely visible — no encounter change
+        campfire: -1,  // visible glow — +1 encounter DC (harder to avoid encounters)
+        bonfire:  -2   // obvious beacon — +2 encounter DC (significantly harder to avoid encounters)
     });
 
     /**
