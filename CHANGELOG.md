@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.1.3] - 2026-05-08
+
+### Fixed
+- Module failed to load on startup. The v2.1.0 release shipped with source files that were out of sync, causing a cascade of silent import errors. Supersedes v2.1.1 and v2.1.2 which each partially fixed the issue. This release ships the complete, consistent codebase.
+
 ## [2.1.0] - 2026-05-07
 
 ### Added
