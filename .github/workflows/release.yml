@@ -23,6 +23,22 @@ jobs:
         uses: actions/checkout@v4
         with:
           lfs: true
+          fetch-depth: 0
+
+      - name: Verify branch sync
+        run: |
+          git fetch origin master dev 2>/dev/null || true
+          if git rev-parse origin/dev >/dev/null 2>&1; then
+            if ! git merge-base --is-ancestor origin/dev HEAD; then
+              echo "::error::dev branch contains commits not in this release. Sync branches before tagging."
+              echo "  HEAD:   $(git rev-parse HEAD)"
+              echo "  dev:    $(git rev-parse origin/dev)"
+              exit 1
+            fi
+            echo "OK: dev is an ancestor of HEAD"
+          else
+            echo "INFO: No dev branch found — skipping sync check"
+          fi
 
       - name: Validate Assets
         run: |
@@ -70,12 +86,54 @@ jobs:
       - name: Stage filtered manifest for release
         run: cp .build/module.json module.json
 
+      - name: Validate ES module imports
+        run: |
+          ERRORS=0
+          while IFS= read -r jsfile; do
+            DIR=$(dirname "$jsfile")
+            # Extract relative import paths: from "./something.js"
+            grep -oP "from\s+['\"](\.\./|\./)[^'\"]+['\"]" "$jsfile" 2>/dev/null | while IFS= read -r match; do
+              IMPORT_PATH=$(echo "$match" | sed "s/from\s*['\"]//;s/['\"]//")
+              TARGET="$DIR/$IMPORT_PATH"
+              if [ ! -f "$TARGET" ]; then
+                echo "::error file=$jsfile::Import '$IMPORT_PATH' resolves to '$TARGET' which does not exist"
+                ERRORS=$((ERRORS + 1))
+              fi
+            done
+          done < <(find scripts/ -name '*.js' -type f)
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "FAILED: $ERRORS broken import(s) found"
+            exit 1
+          fi
+          echo "OK: All static imports resolve to existing files"
+
+      - name: Verify version matches tag
+        run: |
+          VERSION=$(jq -r .version module.json)
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ "$VERSION" != "$TAG" ]; then
+            echo "::error::module.json version ($VERSION) does not match tag ($TAG)"
+            exit 1
+          fi
+          echo "OK: module.json version ($VERSION) matches tag ($TAG)"
+
       - name: Zip Module
         run: |
           zip -r module.zip . -x ".git/*" ".github/*" ".gitignore" ".gitattributes" "RELEASE_WORKFLOW.md" "task.md" "package.json" "package-lock.json" "node_modules/*" "scripts/tests/*" "data/professions/*" "packs/*" "packs/src/*" "assets/items/forage/*" "*.bak" "audit_*.json" "audit_*.txt" "audit_*.js" "docs/*" "SETUP_GUIDE.md" "TEST_SCENARIOS.md" "BACKLOG.md" "pack-items.mjs" "pack-actors.mjs" "scripts/utils/*" "tests/*" "vitest*" ".eslintrc*" "tools/*" ".build/*"
 
       - name: Append approved compendium packs to zip
         run: node tools/append-approved-packs-to-zip.mjs
+
+      - name: Smoke test release ZIP
+        run: |
+          mkdir -p /tmp/smoke && cd /tmp/smoke
+          unzip -q $GITHUB_WORKSPACE/module.zip
+          ENTRY=$(jq -r '.esmodules[0]' module.json)
+          if [ ! -f "$ENTRY" ]; then
+            echo "::error::esmodules entry '$ENTRY' not found in release ZIP"
+            exit 1
+          fi
+          echo "OK: Release ZIP contains entry point ($ENTRY)"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
