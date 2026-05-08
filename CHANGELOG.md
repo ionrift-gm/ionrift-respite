@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.1.1] - 2026-05-08
+
+### Fixed
+- Module failed to load after updating to 2.1.0. A required script file was missing from the release package, which caused the entire module to silently fail on startup - no settings, no sidebar button, no rest flow. Fixed by including the missing file. No other changes.
+
 ## [2.1.0] - 2026-05-07
 
 ### Added
