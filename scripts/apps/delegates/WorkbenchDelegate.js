@@ -292,7 +292,7 @@ export class WorkbenchDelegate {
                 ownerActorId,
                 name: trueName,
                 img: itemAfter?.img ?? itemBefore.img ?? "icons/svg/mystery-man.svg",
-                requiresAttunement: !!itemAfter?.system?.attunement
+                requiresAttunement: (att => att === "required" || att === 1)(itemAfter?.system?.attunement)
             });
             // Notify the item owner when a different caster identifies their item
             if (ownerActorId !== actorId) {
@@ -435,7 +435,7 @@ export class WorkbenchDelegate {
             name: trueName,
             img: fresh?.img ?? item.img,
             actorName: actor.name,
-            requiresAttunement: !!fresh?.system?.attunement
+            requiresAttunement: (att => att === "required" || att === 1)(fresh?.system?.attunement)
         });
         if (!deferNotify) ui.notifications.info(`${trueName} identified by ${actor.name}.`);
         if (!deferRender) this._app.render();

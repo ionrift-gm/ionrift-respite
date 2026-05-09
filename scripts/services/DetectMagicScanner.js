@@ -161,7 +161,7 @@ export class DetectMagicScanner {
 
         const school = item.system?.school;
         const schoolLabel = school ? ` (${school})` : "";
-        const attunement = item.system?.attunement ? " Requires attunement." : "";
+        const attunement = (item.system?.attunement === "required" || item.system?.attunement === 1) ? " Requires attunement." : "";
 
         await ChatMessage.create({
             content: `<div class="ionrift-identify-reveal">
@@ -174,7 +174,7 @@ export class DetectMagicScanner {
         return {
             trueName: item.name,
             school: school ?? "unknown",
-            requiresAttunement: !!item.system?.attunement
+            requiresAttunement: (att => att === "required" || att === 1)(item.system?.attunement)
         };
     }
 

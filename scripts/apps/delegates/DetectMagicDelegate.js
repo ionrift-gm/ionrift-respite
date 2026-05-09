@@ -96,7 +96,7 @@ export function collectPartyIdentifyEmbedData(partyActors, options = {}) {
                         type: item.type,
                         isPotion,
                         hasUnidentifiedData,
-                        requiresAttunement: !!item.system?.attunement,
+                        requiresAttunement: (att => att === "required" || att === 1)(item.system?.attunement),
                         identified: false
                     });
                 }
