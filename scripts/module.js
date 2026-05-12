@@ -397,6 +397,12 @@ Hooks.once("init", async () => {
         packStatus: async () => {
             if (!game.user.isGM) return;
             await TerrainRegistry.init();
+            // Push Respite terrains into the shared lib spine so other modules can see them.
+            if (game.ionrift?.library?.terrains) {
+                for (const t of TerrainRegistry.getAll()) {
+                    game.ionrift.library.terrains.register({ id: t.id, label: t.label });
+                }
+            }
             const coreTerrains = new Set(["forest", "swamp", "desert", "urban", "dungeon", "tavern"]);
             const results = {};
             for (const t of TerrainRegistry.getAvailableIds()) {
@@ -644,6 +650,12 @@ Hooks.once("ready", async () => {
 
     // Initialize terrain registry early so data is available before first rest
     await TerrainRegistry.init();
+    // Push Respite terrains into the shared lib spine so other modules can see them.
+    if (game.ionrift?.library?.terrains) {
+        for (const t of TerrainRegistry.getAll()) {
+            game.ionrift.library.terrains.register({ id: t.id, label: t.label });
+        }
+    }
 
     try {
         const respiteItemsPack = game.packs.get("ionrift-respite.respite-items");
@@ -651,6 +663,17 @@ Hooks.once("ready", async () => {
             game.ionrift.respite.travelBasePoolIndex = await respiteItemsPack.getIndex({
                 fields: ["flags", "name", "img", "type", "system"]
             });
+            const idx = game.ionrift.respite.travelBasePoolIndex;
+            const forageCount = [...(idx ?? [])].filter(
+                e => e.flags?.["ionrift-respite"]?.category === "forage"
+            ).length;
+            const huntCount = [...(idx ?? [])].filter(
+                e => e.flags?.["ionrift-respite"]?.category === "hunt"
+            ).length;
+            console.log(`${MODULE_ID} | Base pool index: ${idx?.size ?? 0} items, ${forageCount} forage, ${huntCount} hunt`);
+            if (forageCount === 0) {
+                console.warn(`${MODULE_ID} | No forage items in respite-items compendium. Camp forage will rely on content pack pools only.`);
+            }
         }
     } catch (e) {
         console.warn(`${MODULE_ID} | Failed to load respite-items index for travel pools:`, e);

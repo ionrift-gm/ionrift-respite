@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.1.4] - 2026-05-12
+
+### Fixed
+- **Foraging is no longer blocked during camp rests.** A fresh install without a content pack imported would grey out the Forage activity with a "requires pack" tooltip. The gate was designed for travel-phase foraging and was incorrectly applied to camp rests. Forage now works out of the box on any terrain that has items in the shipped compendium.
+- Revelation cards no longer incorrectly show "Requires Attunement" for identified items that don't need it.
+
 ## [2.1.3] - 2026-05-08
 
 ### Fixed
