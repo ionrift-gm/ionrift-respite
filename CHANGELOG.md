@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.1.5] - 2026-05-12
+
+### Fixed
+- Foraging is no longer blocked during camp rests. Supersedes v2.1.4, which had the same fix but a broken release build. No other changes.
+
 ## [2.1.4] - 2026-05-12
 
 ### Fixed
