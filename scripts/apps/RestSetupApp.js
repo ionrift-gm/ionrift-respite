@@ -16,6 +16,7 @@ import { CopySpellHandler } from "../services/CopySpellHandler.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
 import { ConditionAdvisory } from "../services/ConditionAdvisory.js";
 import { ResourceSink } from "../services/ResourceSink.js";
+import { ForageActivityValidator } from "../services/ForageActivityValidator.js";
 import { CampfireTokenLinker } from "../services/CampfireTokenLinker.js";
 import { CampGearScanner } from "../services/CampGearScanner.js";
 import {
@@ -1347,6 +1348,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // Packs are NOT Foundry modules. They are JSON files downloaded from
             // Ionrift and imported through Respite's Content Packs settings UI.
             await this._loadContentPacks();
+
+            // Ensure the travel delegate's resolver has base pool items from the
+            // shipped compendium. The delegate constructor may have fired before
+            // the compendium index was ready (race condition on startup/restore).
+            if (this._travel && game.ionrift?.respite?.travelBasePoolIndex) {
+                const resolver = this._travel.getTravelResolver();
+                if (resolver && resolver.basePoolCoverage.length === 0) {
+                    resolver.loadBaseItems(game.ionrift.respite.travelBasePoolIndex);
+                }
+            }
         } catch (e) {
             console.error(`${MODULE_ID} | Failed to load seed data:`, e);
         }
@@ -1414,17 +1425,26 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /**
      * Forage gate snapshot for sockets and the activity picker (current rest terrain).
+     * Uses the camp-aware validator when the travel delegate's strict gate returns disabled,
+     * so that camp rests without content packs still allow foraging from the shipped compendium.
      */
     _forageActivityGatePayload() {
         const tag = this._engine?.terrainTag ?? this._selectedTerrain ?? this._restData?.terrainTag ?? "forest";
-        return this._travel?.getForageGate?.(tag) ?? null;
+        const travelGate = this._travel?.getForageGate?.(tag) ?? null;
+        // If the travel gate says enabled, use it directly
+        if (travelGate && !travelGate.disabled) return travelGate;
+        // For camp rests: fall back to the camp-aware check that includes compendium base pools
+        const resolver = this._travel?.getTravelResolver?.() ?? null;
+        if (ForageActivityValidator.isCampForageAvailable(resolver, tag)) {
+            return { disabled: false, disabledReasonKey: null };
+        }
+        return travelGate;
     }
 
     /** @returns {Object} Merged into ActivityResolver travel/camp forage checks on this client. */
     _forageResolverOpts() {
         const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? this._restData?.terrainTag ?? "forest";
-        const gate = this._travel?.getForageGate?.(terrainTag)
-            ?? { disabled: true, disabledReasonKey: "ionrift-respite.travel.forage.requires_pack" };
+        const gate = this._travel?.getForageGate?.(terrainTag) ?? null;
         return {
             forageActivityGate: gate,
             terrainTag,
@@ -5633,7 +5653,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             restType: this._engine.restType,
             activities: this._activities ?? [],
             recipes: Object.fromEntries(this._craftingEngine.recipes),
-            forageActivityGate: this._travel?.getForageGate?.(this._engine.terrainTag) ?? null
+            forageActivityGate: this._forageActivityGatePayload()
         };
 
         setActiveRestData(restPayload);

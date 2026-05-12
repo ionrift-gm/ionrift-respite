@@ -75,11 +75,10 @@ export class ActivityResolver {
         const gate = options.forageActivityGate;
         if (gate) return !!gate.disabled;
         const resolver = options.travelResolver;
-        if (resolver && ForageActivityValidator.isForageAvailable(resolver, terrainTag)) {
+        if (ForageActivityValidator.isCampForageAvailable(resolver, terrainTag)) {
             return false;
         }
-        return !options.resourcePoolsFromPack
-            || !ForageActivityValidator.hasValidPool(options.resourcePoolRoller, terrainTag);
+        return true;
     }
 
     /**
