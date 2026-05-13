@@ -1,5 +1,14 @@
 import { ForageActivityValidator } from "./ForageActivityValidator.js";
 
+/** Activities hidden when the GM marks a safe rest spot (no encounter risk; no redundant camp duties). */
+export const SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS = new Set([
+    "act_keep_watch",
+    "act_defenses",
+    "act_scout",
+    "act_tend_wounds",
+    "act_rest_fully"
+]);
+
 /**
  * ActivityResolver
  * Resolves a character's chosen rest activity against their proficiencies,
@@ -26,7 +35,7 @@ export class ActivityResolver {
      * Returns activities available to a given actor based on proficiencies and rest type.
      * @param {Actor} actor
      * @param {string} restType - "long" or "short"
-     * @param {Object} [options] - Forage gate: forageActivityGate, terrainTag, resourcePoolsFromPack, resourcePoolRoller, travelResolver.
+     * @param {Object} [options] - Forage gate: forageActivityGate, terrainTag, resourcePoolsFromPack, resourcePoolRoller, travelResolver, safeRestSpot.
      * @returns {Object[]} Filtered activity schemas.
      */
     getAvailableActivities(actor, restType, options = {}) {
@@ -34,6 +43,7 @@ export class ActivityResolver {
         for (const activity of this.activities.values()) {
             if (!activity.restTypes.includes(restType)) continue;
             if (activity.disabled) continue;
+            if (options.safeRestSpot && SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
 
             // Gate Study behind module setting
             if (activity.id === "act_study") {
@@ -92,6 +102,7 @@ export class ActivityResolver {
      * @returns {Object} Activity outcome fragment.
      */
     async resolve(activityId, actor, terrainTag, comfort, options = {}) {
+        const safeRestSpot = !!options.safeRestSpot;
         const activity = this.activities.get(activityId);
         if (!activity) {
             return {
@@ -128,10 +139,11 @@ export class ActivityResolver {
             };
         }
 
-        // Calculate DC with comfort friction
+        // Calculate DC with comfort friction (safe rest spot: none)
         const comfortDcMod = { safe: 0, sheltered: 0, rough: 2, hostile: 5 };
         const baseDc = activity.check.dc ?? 12;
-        const adjustedDc = baseDc + (comfortDcMod[comfort] ?? 0);
+        const comfortForDc = safeRestSpot ? "safe" : comfort;
+        const adjustedDc = baseDc + (comfortDcMod[comfortForDc] ?? 0);
 
         // Roll skill check directly (avoids midi-qol / libWrapper collision)
         // If check.ability is defined, use a flat ability check instead of a skill
@@ -235,8 +247,8 @@ export class ActivityResolver {
         } else {
             resultTier = "failure";
 
-            // Hostile comfort: failure triggers complication
-            if (comfort === "hostile" || comfort === "rough") {
+            // Hostile comfort: failure triggers complication (not in safe rest spot)
+            if (!safeRestSpot && (comfort === "hostile" || comfort === "rough")) {
                 const ownerIds = game.users.filter(u => actor.testUserPermission(u, "OWNER")).map(u => u.id);
                 await roll.toMessage({
                     speaker: ChatMessage.getSpeaker({ actor }),
@@ -270,8 +282,8 @@ export class ActivityResolver {
             whisper: ownerIds
         });
 
-        // Tend Wounds: apply immediate HP to the target before encounters
-        if (activityId === "act_tend_wounds" && options.followUpValue) {
+        // Tend Wounds: apply immediate HP to the target before encounters (not safe rest spot)
+        if (!safeRestSpot && activityId === "act_tend_wounds" && options.followUpValue) {
             const target = game.actors.get(options.followUpValue);
             if (target) {
                 const hp = target.system?.attributes?.hp;
@@ -524,6 +536,7 @@ export class ActivityResolver {
         for (const activity of this.activities.values()) {
             if (activity.disabled) continue;
             if (!activity.restTypes.includes(restType)) continue;
+            if (options.safeRestSpot && SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
 
             // Gate Study behind module setting
             if (activity.id === "act_study") {

@@ -516,6 +516,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Engine flag, active rest payload, then world setting (same merge as getData).
+     * @returns {boolean}
+     */
+    _effectiveSafeRestSpot() {
+        let fromSetting = false;
+        try {
+            fromSetting = !!game.settings.get(MODULE_ID, "safeRestSpot");
+        } catch { /* settings not ready */ }
+        return !!(this._engine?.safeRestSpot ?? this._restData?.safeRestSpot ?? fromSetting);
+    }
+
+    /**
      * Rest flow engine (travel mishap encounter mods, recovery, etc.).
      * @returns {import("../services/RestFlowEngine.js").RestFlowEngine|null}
      */
@@ -1653,7 +1665,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 shelterSpellCamp,
                 terrainCamp?.comfortReason ?? "",
                 terrainCamp?.label ?? terrainTagCamp,
-                encMod
+                encMod,
+                !!this._engine?.safeRestSpot
             );
             const fs = campScanData.fireSelection ?? {};
             const cur = this._fireLevel ?? "unlit";
@@ -1874,6 +1887,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Determine current rest type from state (defaults to long)
         const currentRestType = this._selectedRestType ?? "long";
 
+        let safeRestSpotFromSetting = false;
+        try {
+            safeRestSpotFromSetting = !!game.settings.get(MODULE_ID, "safeRestSpot");
+        } catch { /* settings not ready */ }
+        const safeRestSpot = !!(this._engine?.safeRestSpot ?? this._restData?.safeRestSpot ?? safeRestSpotFromSetting);
+
+        if (safeRestSpot && this._isTotM && this._phase === "activity" && this._totmActiveTab === "fire") {
+            this._totmActiveTab = "activities";
+        }
+
         // Detect tents from party inventory
         const tentOwners = partyActors.filter(a =>
             a.items?.some(i => i.name?.toLowerCase().includes("tent"))
@@ -1990,6 +2013,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const { available: avail, faded: fadedActivities, minor: minorActivities, fadedMinor: fadedMinorActivities } = this._activityResolver.getAvailableActivitiesWithFaded(a, this._engine?.restType ?? "long", {
                 isFireLit,
                 fireLevel,
+                safeRestSpot,
                 ...this._forageResolverOpts()
             });
             for (const act of avail) {
@@ -2113,7 +2137,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
             // Station-grouped activity cards (terrain-filtered)
             const allAvailableIds = new Set(allTiles.map(t => t.id));
-            const terrainStations = getStationsForTerrain(this._selectedTerrain ?? this._engine?.terrainTag ?? "forest");
+            const terrainStations = getStationsForTerrain(this._selectedTerrain ?? this._engine?.terrainTag ?? "forest", safeRestSpot);
             const stationCards = terrainStations
                 .map(station => {
                     const stationTiles = station.activities
@@ -2219,7 +2243,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // Gather the union of available + faded activity IDs across all party members
             const fireLevel = this._fireLevel ?? "unlit";
             const isFireLit = !!(this._fireLevel && this._fireLevel !== "unlit");
-            const resolverOpts = { isFireLit, fireLevel, ...this._forageResolverOpts() };
+            const resolverOpts = { isFireLit, fireLevel, safeRestSpot, ...this._forageResolverOpts() };
             const restType = this._engine?.restType ?? "long";
             const seenIds = new Set();
             const unionTiles = [];
@@ -2263,7 +2287,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
             const tileMap = new Map(unionTiles.map(t => [t.id, t]));
             const terrain = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
-            const terrainStations = getStationsForTerrain(terrain);
+            const terrainStations = getStationsForTerrain(terrain, safeRestSpot);
 
             // TotM: keep all stations as separate sections, skip only campfire.
             // Identify goes to a future tab; deduplicate activities across stations.
@@ -2450,15 +2474,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (!expandActivity) return null;
             const comfort = this._engine?.comfort ?? "sheltered";
             const existingFollowUp = this._gmFollowUps?.get(expanded.characterId) ?? null;
-            let armorRuleEnabled = false;
-            try { armorRuleEnabled = !!game.settings.get(MODULE_ID, "armorDoffRule"); } catch { /* ok */ }
+            let armorDoffSetting = false;
+            try { armorDoffSetting = !!game.settings.get(MODULE_ID, "armorDoffRule"); } catch { /* ok */ }
+            const armorRuleEnabled = !safeRestSpot && armorDoffSetting;
             const detail = buildActivityDetailContext(
                 expanded.activityId, expandActivity, expandActor, partyState,
                 {
                     comfort,
                     followUpValue: existingFollowUp,
                     armorRuleEnabled,
-                    getArmorWarning: this.getArmorWarningForActivityDetail?.bind(this) ?? null
+                    getArmorWarning: armorRuleEnabled
+                        ? (this.getArmorWarningForActivityDetail?.bind(this) ?? null)
+                        : null
                 }
             );
             return {
@@ -2709,7 +2736,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 shelterSpellCamp,
                 terrainCamp?.comfortReason ?? "",
                 terrainCamp?.label ?? terrainTagCamp,
-                encMod
+                encMod,
+                !!this._engine?.safeRestSpot
             );
             const fs = campScanData.fireSelection ?? {};
             const cur = this._fireLevel ?? "unlit";
@@ -3002,7 +3030,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const canForage = allowed.includes("forage");
                 const canHunt = allowed.includes("hunt");
                 const scoutAllowed = this._travelScoutingAllowed ?? true;
-                const canScout = allowed.includes("scout") && scoutAllowed;
+                const canScout = !safeRestSpot && allowed.includes("scout") && scoutAllowed;
                 const hasTravelOptions = canForage || canHunt || canScout;
                 let disabledReason = null;
                 if (!canForage && !canHunt) {
@@ -3126,14 +3154,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             travelDebrief: this._travelDebrief?.length ? this._travelDebrief : null,
             travelFullyResolved: this._travelFullyResolved ?? false,
             travelScoutingDone: this._travelScoutingDone ?? false,
-            scoutingDebrief: this._isGM ? (this._scoutingDebrief ?? (() => {
+            scoutingDebrief: this._isGM ? (() => {
+                if (this._travel?.isEffectiveSafeRestSpot?.()) return null;
                 if (this._travel?.scoutingResult) {
                     const terrainTag = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
-                    this._scoutingDebrief = this._travel.getScoutingDebrief(terrainTag);
+                    this._scoutingDebrief ??= this._travel.getScoutingDebrief(terrainTag);
                     return this._scoutingDebrief;
                 }
                 return null;
-            })()) : null,
+            })() : null,
             terrainOptions: (() => {
                 const lastTerrain = game.settings.get(MODULE_ID, "lastTerrain");
                 // Only show terrains that have event sources (core eventsFile or content pack events)
@@ -3156,7 +3185,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const t = this._selectedTerrain ?? "forest";
                 const d = TerrainRegistry.getDefaults(t);
                 const comfort = (d.comfort ?? "sheltered").charAt(0).toUpperCase() + (d.comfort ?? "sheltered").slice(1);
-                const scout = d.scoutingAvailable !== false ? "Scouting available." : "No scouting.";
+                const scout = safeRestSpot
+                    ? "Travel scouting is not used for a safe rest spot."
+                    : (d.scoutingAvailable !== false ? "Scouting available." : "No scouting.");
                 return `Implied comfort: ${comfort}. ${scout}`;
             })(),
             weatherOptions: (() => {
@@ -3195,6 +3226,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             selectedRestType: this._selectedRestType ?? "long",
             selectedRestTypeLabel: this._selectedRestType === "short" ? "Short Rest" : "Long Rest",
             isShortRest: (this._selectedRestType ?? "long") === "short",
+            safeRestSpot,
             selectedWeatherLabel: WEATHER_TABLE[this._selectedWeather]?.label ?? "Clear",
             selectedScoutLabel: this._selectedScout ?? "None",
             scoutingAvailable: terrainDefaults.scoutingAvailable ?? false,
@@ -3425,7 +3457,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campfirePlaced,
             campStationCards,
             craftingDrawer: this._buildCraftingDrawerContext(),
-            encounterBar: (this._engine && !this._eventsRolled) ? (() => {
+            encounterBar: (this._engine && !this._eventsRolled && !this._engine.safeRestSpot) ? (() => {
                 const bd = this._engine._encounterBreakdown ?? {};
                 const shelter = bd.shelter ?? 0;
                 const weather = bd.weather ?? 0;
@@ -3583,6 +3615,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     _buildArmorWarningForActor(a) {
         if (!a) return null;
+        if (this._effectiveSafeRestSpot()) return null;
         try {
             const armorDoffEnabled = game.settings.get(MODULE_ID, "armorDoffRule");
             if (!armorDoffEnabled) return null;
@@ -3810,24 +3843,26 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
-        // Build armor-aware hint (gated by Xanathar's rest rules setting)
+        // Build armor-aware hint (gated by Xanathar's rest rules setting; omitted for safe rest spot)
         let armorHint = null;
-        try {
-            const armorRuleEnabled = game.settings.get("ionrift-respite", "armorDoffRule");
-            if (armorRuleEnabled) {
-                const actor = game.actors.get(selectedCharacter.id);
-                const equippedArmor = actor?.items?.find(i => i.type === "equipment" && i.system?.equipped && ["medium", "heavy"].includes(i.system?.type?.value ?? i.system?.armor?.type));
-                if (equippedArmor && tile.armorSleepWaiver) {
-                    armorHint = { text: "Sleeping light between rotations. Armor stays on, weapon close. No HP or HD recovery penalty.", type: "positive" };
-                } else if (equippedArmor && !tile.armorSleepWaiver) {
-                    // Resting activities: armor sleep penalty applies
-                    armorHint = { text: "Sleeping in armor. Recover only 1/4 Hit Dice, exhaustion not reduced (Xanathar's). Consider doffing first.", type: "warning" };
+        let armorWarning = null;
+        if (!this._effectiveSafeRestSpot()) {
+            try {
+                const armorRuleEnabled = game.settings.get("ionrift-respite", "armorDoffRule");
+                if (armorRuleEnabled) {
+                    const actorForHint = game.actors.get(selectedCharacter.id);
+                    const equippedArmor = actorForHint?.items?.find(i => i.type === "equipment" && i.system?.equipped && ["medium", "heavy"].includes(i.system?.type?.value ?? i.system?.armor?.type));
+                    if (equippedArmor && tile.armorSleepWaiver) {
+                        armorHint = { text: "Sleeping light between rotations. Armor stays on, weapon close. No HP or HD recovery penalty.", type: "positive" };
+                    } else if (equippedArmor && !tile.armorSleepWaiver) {
+                        armorHint = { text: "Sleeping in armor. Recover only 1/4 Hit Dice, exhaustion not reduced (Xanathar's). Consider doffing first.", type: "warning" };
+                    }
                 }
-            }
-        } catch (e) { /* setting may not exist yet */ }
+            } catch (e) { /* setting may not exist yet */ }
 
-        const actor = game.actors.get(selectedCharacter.id);
-        const armorWarning = this.getArmorWarningForActivityDetail(actor, tile);
+            const actor = game.actors.get(selectedCharacter.id);
+            armorWarning = this.getArmorWarningForActivityDetail(actor, tile);
+        }
 
         return {
             id: tile.id,
@@ -3953,7 +3988,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             shelterSpellCamp,
             terrainCamp?.comfortReason ?? "",
             terrainCamp?.label ?? terrainTagCamp,
-            encMod
+            encMod,
+            !!this._engine?.safeRestSpot
         ) ?? null;
     }
 
@@ -4457,6 +4493,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             });
         }
 
+        const safeRestSpotCb = this.element.querySelector('input[name="safeRestSpot"]');
+        if (safeRestSpotCb && game.user.isGM) {
+            safeRestSpotCb.addEventListener("change", async () => {
+                try {
+                    await game.settings.set(MODULE_ID, "safeRestSpot", !!safeRestSpotCb.checked);
+                } catch (e) {
+                    console.warn(`${MODULE_ID} | safeRestSpot setting`, e);
+                }
+                this.render();
+            });
+        }
+
         // Terrain change: update weather dropdown options
         const terrainSelect = this.element.querySelector('[name="terrain"]');
         if (terrainSelect) {
@@ -4658,7 +4706,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 } else if (actor && this._engine) {
                     const followUpValue = this._gmFollowUps?.get(characterId) ?? this._getFollowUpForCharacter(characterId);
                     this._activityResolver.resolve(
-                        activityId, actor, this._engine.terrainTag, this._engine.comfort, { followUpValue }
+                        activityId, actor, this._engine.terrainTag, this._engine.comfort, {
+                            followUpValue,
+                            safeRestSpot: !!this._engine.safeRestSpot
+                        }
                     ).then(result => {
                         this._earlyResults.set(characterId, result);
                         const tier = result.result === "exceptional" ? "Exceptional!"
@@ -5622,10 +5673,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const weatherEncounterMod = weatherCancelled ? 0 : (wx.encounterDC ?? 0);
         const scoutEncounterMod = scout.encounterDC ?? 0;
 
+        const safeRestSpot = !!(formData.safeRestSpot === "on" || formData.safeRestSpot === true || formData.safeRestSpot === "1");
+        try {
+            await game.settings.set(MODULE_ID, "safeRestSpot", safeRestSpot);
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Could not persist safeRestSpot`, e);
+        }
+
         this._engine = new RestFlowEngine({
             restType: formData.restType ?? "long",
             terrainTag,
-            comfort: effectiveComfort
+            comfort: effectiveComfort,
+            safeRestSpot
         });
         this._engine.shelterEncounterMod = shelterEncounterMod + weatherEncounterMod + scoutEncounterMod;
         // Store individual modifiers for encounter bar breakdown
@@ -5646,11 +5705,31 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._engine._baseDC = terrainTable?.noEventThreshold ?? 15;
         this._engine.setup();
 
+        if (safeRestSpot) {
+            this._engine.comfort = "safe";
+            this._engine.shelterEncounterMod = 0;
+            this._engine._encounterBreakdown = {
+                shelter: 0,
+                weather: 0,
+                scouting: 0,
+                defenses: 0,
+                travelMishap: 0,
+                weatherName: weather,
+                scoutingResult: "none"
+            };
+            this._engine.scoutingComplication = false;
+            this._engine.fireRollModifier = 0;
+            this._engine.fireLevel = "campfire";
+            this._engine.gmEncounterAdj = 0;
+            this._fireLevel = "campfire";
+        }
+
         const restPayload = {
             restId: `rest_${Date.now()}`,
             terrainTag: this._engine.terrainTag,
             comfort: this._engine.comfort,
             restType: this._engine.restType,
+            safeRestSpot: this._engine.safeRestSpot,
             activities: this._activities ?? [],
             recipes: Object.fromEntries(this._craftingEngine.recipes),
             forageActivityGate: this._forageActivityGatePayload()
@@ -5834,8 +5913,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const activityId = this._activityDetailId;
         if (!characterId || !activityId) return;
 
-        // Armor sleep penalty confirmation (gated by Xanathar's setting)
-        if (!this._armorConfirmed) {
+        // Armor sleep penalty confirmation (gated by Xanathar's setting; skipped at a safe rest spot)
+        if (!this._armorConfirmed && !this._effectiveSafeRestSpot()) {
             try {
                 const armorRuleEnabled = game.settings.get(MODULE_ID, "armorDoffRule");
                 if (armorRuleEnabled) {
@@ -6658,6 +6737,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             width: defaultWidth,
             left: Math.max(8, Math.round((window.innerWidth - defaultWidth) / 2))
         });
+
+        if (this._engine?.safeRestSpot) {
+            if (this._engine) {
+                this._engine.fireRollModifier = 0;
+                this._engine.fireLevel = "campfire";
+            }
+            this._fireLevel = "campfire";
+            this._closeCampfire();
+            this._triggeredEvents = [];
+            this._eventsRolled = true;
+            this._pendingCampRolls = [];
+            await this._saveRestState();
+            await RestSetupApp.#onResolveEvents.call(this, event, target);
+            return;
+        }
 
         // Apply fire level comfort modifications
         // Unlit: -1 comfort step | Embers: 0 | Campfire: 0 | Bonfire: +1 camp comfort
@@ -8169,7 +8263,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         } else if (actor && this._engine) {
             const followUpValue = options.followUpValue ?? this._gmFollowUps?.get(characterId) ?? this._getFollowUpForCharacter(characterId);
             activityResult = await this._activityResolver.resolve(
-                activityId, actor, this._engine.terrainTag, this._engine.comfort, { followUpValue }
+                activityId, actor, this._engine.terrainTag, this._engine.comfort, {
+                    followUpValue,
+                    safeRestSpot: !!this._engine.safeRestSpot
+                }
             );
             this._earlyResults.set(characterId, activityResult);
             const tier = activityResult.result === "exceptional" ? "Exceptional!"
@@ -8334,6 +8431,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const restType = this._engine?.restType ?? "long";
         const fireLevel = this._fireLevel ?? "unlit";
         const isFireLit = !!(this._fireLevel && this._fireLevel !== "unlit");
+        const safeRestSpot = !!(this._engine?.safeRestSpot ?? this._restData?.safeRestSpot);
         const choices = this._characterChoices;
         const unchosen = partyActors.filter(a => a?.id && !choices?.has(a.id));
         // eslint-disable-next-line no-console
@@ -8363,12 +8461,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const hasAvailableAtStation = (actor, stationIdSet) => {
             const { available: allAvail } = this._activityResolver.getAvailableActivitiesWithFaded(
-                actor, restType, { isFireLit, fireLevel, ...this._forageResolverOpts() }
+                actor, restType, { isFireLit, fireLevel, safeRestSpot, ...this._forageResolverOpts() }
             );
             return allAvail.some(a => stationIdSet.has(a.id));
         };
 
-        const terrainStationsForMap = getStationsForTerrain(this._selectedTerrain ?? this._engine?.terrainTag ?? "forest");
+        const terrainStationsForMap = getStationsForTerrain(this._selectedTerrain ?? this._engine?.terrainTag ?? "forest", safeRestSpot);
 
         if (viewer && this._characterChoices.has(viewer.id)) {
             for (const station of terrainStationsForMap) {
@@ -8503,7 +8601,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 return;
             }
             const terrainTagForStation = app._selectedTerrain ?? app._engine?.terrainTag ?? "forest";
-            const effectiveStations = getStationsForTerrain(terrainTagForStation);
+            const safeSpot = !!(app._engine?.safeRestSpot ?? app._restData?.safeRestSpot);
+            const effectiveStations = getStationsForTerrain(terrainTagForStation, safeSpot);
             const station = effectiveStations.find(s => s.id === stationId);
             if (!station) return;
 
@@ -8543,6 +8642,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     ? app._activityResolver.getAvailableActivitiesWithFaded(actor, restType, {
                         isFireLit,
                         fireLevel,
+                        safeRestSpot: safeSpot,
                         ...(app._forageResolverOpts?.() ?? {})
                     })
                     : { available: [], faded: [] };
@@ -9159,6 +9259,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             magicScanResults: this._magicScanComplete ? (this._magicScanResults ?? []) : null,
             coldCampDecided: this._coldCampDecided ?? false,
             campStep2Entered: this._campStep2Entered ?? false,
+            safeRestSpot: !!this._engine?.safeRestSpot,
             // Include the activity list so late-joining players can load their resolver.
             activities: this._activities ?? []
         };
@@ -9403,6 +9504,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Apply phase + phase data
         if (snapshot.phase) {
             this._phase = snapshot.phase;
+        }
+        if (this._restData && snapshot.safeRestSpot !== undefined) {
+            this._restData = { ...this._restData, safeRestSpot: !!snapshot.safeRestSpot };
         }
         if (snapshot.triggeredEvents) {
             this._triggeredEvents = this._isGM ? snapshot.triggeredEvents
@@ -10156,6 +10260,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     _applyScoutingFromTravel() {
         if (!this._engine) return;
+        if (this._travel?.isEffectiveSafeRestSpot?.()) {
+            this._engine.scoutingResult = "none";
+            this._engine.scoutingComplication = false;
+            if (!this._engine._encounterBreakdown) this._engine._encounterBreakdown = {};
+            this._engine._encounterBreakdown.scouting = 0;
+            this._engine._encounterBreakdown.scoutingResult = "none";
+            const bd = this._engine._encounterBreakdown;
+            this._engine.shelterEncounterMod = (bd.shelter ?? 0) + (bd.weather ?? 0);
+            return;
+        }
         const effects = this._travel.scoutingEffects;
         const tier = this._travel.scoutingResult ?? "none";
 
@@ -10423,31 +10537,33 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._campToActivityDone = true;
         this._campStep2Entered = true;
 
-        await promoteAllPlaceholders();
+        await promoteAllPlaceholders(!!this._engine?.safeRestSpot);
 
-        const pledges = Array.from(this._firewoodPledges.entries());
-        for (const [, pledge] of pledges) {
-            if (pledge.gmPledge) continue;
-            const actor = game.actors.get(pledge.actorId);
-            if (!actor) continue;
-            const firewoodItem = actor.items.find(i => {
-                const n = i.name?.toLowerCase() ?? "";
-                return n.includes("firewood") || n === "kindling";
-            });
-            if (firewoodItem && (firewoodItem.system?.quantity ?? 0) >= pledge.count) {
-                await firewoodItem.update({ "system.quantity": (firewoodItem.system.quantity - pledge.count) });
-            } else {
-                const fallback = await this._spendPartyFirewoodForMakeCamp(pledge.count, null);
-                if (!fallback.ok) {
-                    ui.notifications.warn(`Could not spend firewood for ${pledge.actorName}. Proceeding anyway.`);
+        if (!this._engine?.safeRestSpot) {
+            const pledges = Array.from(this._firewoodPledges.entries());
+            for (const [, pledge] of pledges) {
+                if (pledge.gmPledge) continue;
+                const actor = game.actors.get(pledge.actorId);
+                if (!actor) continue;
+                const firewoodItem = actor.items.find(i => {
+                    const n = i.name?.toLowerCase() ?? "";
+                    return n.includes("firewood") || n === "kindling";
+                });
+                if (firewoodItem && (firewoodItem.system?.quantity ?? 0) >= pledge.count) {
+                    await firewoodItem.update({ "system.quantity": (firewoodItem.system.quantity - pledge.count) });
+                } else {
+                    const fallback = await this._spendPartyFirewoodForMakeCamp(pledge.count, null);
+                    if (!fallback.ok) {
+                        ui.notifications.warn(`Could not spend firewood for ${pledge.actorName}. Proceeding anyway.`);
+                    }
                 }
             }
-        }
-        if (pledges.length > 0) {
-            const level = this._fireLevel ?? "unlit";
-            const label = level.charAt(0).toUpperCase() + level.slice(1);
-            const names = pledges.map(([, p]) => p.actorName).join(" and ");
-            ui.notifications.info(`${names} ${pledges.length === 1 ? "spends" : "spend"} firewood for ${label}.`);
+            if (pledges.length > 0) {
+                const level = this._fireLevel ?? "unlit";
+                const label = level.charAt(0).toUpperCase() + level.slice(1);
+                const names = pledges.map(([, p]) => p.actorName).join(" and ");
+                ui.notifications.info(`${names} ${pledges.length === 1 ? "spends" : "spend"} firewood for ${label}.`);
+            }
         }
         this._campFireWoodSpendUserId = null;
 
@@ -10477,7 +10593,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /**
      * Picks a canvas point (GM). Left click confirms; right-click or Escape cancels.
      * Shows a semi-transparent pit sprite and build-site stub ghosts; all snap to the grid.
-     * @param {{ pitBaseTextureSrc?: string }} [options] - Art for the ghost; same source should be passed to {@link placeCampfire}.
+     * @param {{ pitBaseTextureSrc?: string, safeRestSpot?: boolean }} [options] - Art for the ghost; same source should be passed to {@link placeCampfire}.
      * @returns {Promise<{x: number, y: number}|null>}
      */
     _pickPitWorldPoint(options = {}) {
@@ -10487,6 +10603,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 return;
             }
             const pitBaseTextureSrc = options.pitBaseTextureSrc ?? "";
+            const safeRestSpot = !!options.safeRestSpot;
             const canvasEl = document.getElementById("board");
             const originalCursor = canvasEl?.style.cursor;
             if (canvasEl) canvasEl.style.cursor = "crosshair";
@@ -10509,12 +10626,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             phRoot.name = "ionrift-camp-stub-previews";
             container.addChild(phRoot);
             const phSprites = [];
-            const MAX_STUB = 4;
+            const maxStub = safeRestSpot ? 3 : 4;
 
             const updateStubGhosts = (pitCX, pitCY) => {
                 if (!container.parent) return;
-                const slots = getStationPlaceholderPreviewsForPitCenter(pitCX, pitCY);
-                for (let i = 0; i < MAX_STUB; i++) {
+                const slots = getStationPlaceholderPreviewsForPitCenter(pitCX, pitCY, safeRestSpot);
+                for (let i = 0; i < maxStub; i++) {
                     if (i >= slots.length) {
                         if (phSprites[i]) phSprites[i].visible = false;
                         continue;
@@ -10626,7 +10743,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._campPitCursorInFlight = true;
         try {
             const pitBaseTextureSrc = pickCampfirePitBaseTexture();
-            const pos = await this._pickPitWorldPoint({ pitBaseTextureSrc });
+            const pos = await this._pickPitWorldPoint({
+                pitBaseTextureSrc,
+                safeRestSpot: !!this._engine?.safeRestSpot
+            });
             if (!pos) {
                 this._campPitPlacementCancelled = true;
                 this.render({ force: true });
@@ -10635,7 +10755,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const res = await placeCampfire(pos.x, pos.y, { pitBaseTextureSrc });
             if (!res) return;
             await CampfireTokenLinker.setLightState(false, "unlit");
-            await placeStationPlaceholders();
+            await placeStationPlaceholders(!!this._engine?.safeRestSpot);
             await this._saveRestState();
             emitPhaseChanged("camp", { campPitCursorDone: true });
             this.render({ force: true });
@@ -10795,13 +10915,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             else if (radio) followUpValue = radio.value || null;
         }
 
-        // â”€â”€ Armor penalty gate (parity with StationActivityDialog.#onConfirm) â”€â”€â”€â”€â”€
-        // If the actor is wearing medium/heavy armor and the activity offers no waiver,
-        // show the same confirmation dialog as the spatial station flow.
+        // Armor penalty gate (parity with StationActivityDialog.#onConfirm). Skipped for safe rest spot.
         const actor = game.actors.get(characterId);
         const resolver = this._activityResolver;
         const activity = resolver?.activities?.get(activityId);
-        if (actor && activity && !activity.armorSleepWaiver) {
+        if (!this._effectiveSafeRestSpot() && actor && activity && !activity.armorSleepWaiver) {
             try {
                 const armorRuleEnabled = game.settings.get("ionrift-respite", "armorDoffRule");
                 if (armorRuleEnabled) {
@@ -10849,12 +10967,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     // ── TotM Activity Tabs ──────────────────────────────────────────────
 
     /**
-     * TotM: switch between Activities / Identify / Fire tabs.
+     * TotM: switch between Activities / Identify / Fire tabs (Fire hidden when safe rest spot).
      */
     static #onSwitchTotmTab(event, target) {
         const tab = target.dataset.totmTab;
         if (!tab) return;
-        this._totmActiveTab = tab;
+        let safeFromSetting = false;
+        try {
+            safeFromSetting = !!game.settings.get(MODULE_ID, "safeRestSpot");
+        } catch { /* noop */ }
+        const effectiveSafe = !!(this._engine?.safeRestSpot ?? this._restData?.safeRestSpot ?? safeFromSetting);
+        if (tab === "fire" && effectiveSafe) {
+            this._totmActiveTab = "activities";
+        } else {
+            this._totmActiveTab = tab;
+        }
         // Reset detail panel and crafting state when switching tabs
         this._totmFollowUpExpanded = null;
         this._resetTotmCraftState();
@@ -11379,11 +11506,40 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Single-button Ionrift glass overlay (same shell as ionrift-library DialogHelper).
+     * Avoids Foundry's default Dialog styling for GM notices during rest setup.
+     * @param {{ title: string, content: string, okLabel?: string, icon?: string }} opts
+     * @returns {Promise<void>}
+     */
+    static #showGlassAlertModal({ title, content, okLabel = "OK", icon = "fas fa-fire" } = {}) {
+        const safeTitle = foundry.utils.escapeHTML(title ?? "");
+        const safeOk = foundry.utils.escapeHTML(okLabel ?? "OK");
+        return new Promise((resolve) => {
+            const overlay = document.createElement("div");
+            overlay.classList.add("ionrift-armor-modal-overlay");
+            overlay.innerHTML = `
+                <div class="ionrift-armor-modal">
+                    <h3><i class="${icon}"></i> ${safeTitle}</h3>
+                    ${content}
+                    <div class="ionrift-armor-modal-buttons">
+                        <button type="button" class="btn-armor-confirm"><i class="fas fa-check"></i> ${safeOk}</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+            overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => {
+                overlay.remove();
+                resolve();
+            });
+        });
+    }
+
+    /**
      * TotM Make Camp: advance to activities without the canvas pit gate.
      * Spends firewood for the committed fire level before advancing:
      *   1. Tries the actor who lit the fire first (preferred donor).
      *   2. Falls back to any other party member with firewood + toast notification.
      *   3. Blocks with a modal if cost > 0 and no firewood is found anywhere.
+     * Safe rest spot skips spend and blocking (fire counts as lit without inventory cost).
      */
     static async #onProceedFromTotmCamp(event, target) {
         if (!game.user.isGM) return;
@@ -11398,39 +11554,43 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
-        // ── Firewood spend (TotM path — no pledge system) ────────────────
-        const cost = CampGearScanner.FIREWOOD_COST_BY_LEVEL[this._fireLevel ?? "unlit"] ?? 0;
-        if (cost > 0) {
-            // Prefer spending from whoever lit the fire.
-            const lighterUserId = this._fireLitBy?.userId ?? null;
-            const spend = await this._spendPartyFirewoodForMakeCamp(cost, lighterUserId);
+        const safeRestSpot = !!this._engine?.safeRestSpot;
 
-            if (!spend.ok) {
-                // No firewood found anywhere — block with a modal.
+        if (!safeRestSpot) {
+            // ── Firewood spend (TotM path — no pledge system) ────────────────
+            const cost = CampGearScanner.FIREWOOD_COST_BY_LEVEL[this._fireLevel ?? "unlit"] ?? 0;
+            if (cost > 0) {
+                // Prefer spending from whoever lit the fire.
+                const lighterUserId = this._fireLitBy?.userId ?? null;
+                const spend = await this._spendPartyFirewoodForMakeCamp(cost, lighterUserId);
+
+                if (!spend.ok) {
+                    const level = this._fireLevel ?? "campfire";
+                    const label = level.charAt(0).toUpperCase() + level.slice(1);
+                    const safeLabel = foundry.utils.escapeHTML(label);
+                    await this.#showGlassAlertModal({
+                        title: "Not Enough Firewood",
+                        content: `<p>A <strong>${safeLabel}</strong> requires <strong>${cost} firewood</strong>, but none could be found in the party's inventory.</p><p>Reduce the fire to Embers or ask players to provide firewood before proceeding.</p>`,
+                        okLabel: "OK",
+                        icon: "fas fa-fire"
+                    });
+                    return;
+                }
+
+                // Notify who paid.
                 const level = this._fireLevel ?? "campfire";
                 const label = level.charAt(0).toUpperCase() + level.slice(1);
-                await Dialog.prompt({
-                    title: "Not Enough Firewood",
-                    content: `<p>A <strong>${label}</strong> requires <strong>${cost} firewood</strong>, but none could be found in the party's inventory.</p><p>Reduce the fire to Embers or ask players to provide firewood before proceeding.</p>`,
-                    label: "OK",
-                    rejectClose: false
-                });
-                return; // Do not advance.
+                const lighterName = this._fireLitBy?.actorName ?? null;
+                const donors = spend.spendNames.join(" and ");
+                const allFromLighter = lighterName && spend.spendNames.every(n => n === lighterName);
+                if (allFromLighter) {
+                    ui.notifications.info(`${donors} provides firewood for the ${label}.`);
+                } else {
+                    ui.notifications.info(`Firewood for ${label} taken from ${donors}.`);
+                }
             }
-
-            // Notify who paid.
-            const level = this._fireLevel ?? "campfire";
-            const label = level.charAt(0).toUpperCase() + level.slice(1);
-            const lighterName = this._fireLitBy?.actorName ?? null;
-            const donors = spend.spendNames.join(" and ");
-            const allFromLighter = lighterName && spend.spendNames.every(n => n === lighterName);
-            if (allFromLighter) {
-                ui.notifications.info(`${donors} provides firewood for the ${label}.`);
-            } else {
-                ui.notifications.info(`Firewood for ${label} taken from ${donors}.`);
-            }
+            // ─────────────────────────────────────────────────────────────────
         }
-        // ─────────────────────────────────────────────────────────────────
 
         await this._advanceCampToActivity();
     }
@@ -11733,7 +11893,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 fireIsLit ? (this._fireLevel ?? "campfire") : null
             );
             if (this._phase === "camp") {
-                await placeStationPlaceholders();
+                await placeStationPlaceholders(!!this._engine?.safeRestSpot);
                 emitPhaseChanged("camp", { campPitCursorDone: true });
                 await this._saveRestState();
                 void this._refreshCampPitNoticeLayer();

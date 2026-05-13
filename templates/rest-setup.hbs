@@ -61,9 +61,15 @@
         </span>
         {{/each}}
         {{#unless campStatus.hasTent}}
+        {{#unless safeRestSpot}}
         <span class="camp-status-chip shelter-chip absent" title="No tent pitched — the whole camp is exposed to weather penalties and lower encounter safety">
             <i class="fas fa-campground"></i> No Tent
         </span>
+        {{else}}
+        <span class="camp-status-chip shelter-chip absent" title="No tent pitched — weather flavor only in a safe rest spot">
+            <i class="fas fa-campground"></i> No Tent
+        </span>
+        {{/unless}}
         {{/unless}}
         {{!-- Fire badge removed: the fire section below covers this --}}
     </div>
@@ -90,23 +96,7 @@
     {{else}}
     <div class="respite-setup">
 
-        {{!-- Party Roster Indicator --}}
-        {{#if rosterInfo}}
-        <div class="roster-indicator">
-            <div class="roster-indicator-portraits">
-                {{#each rosterInfo.portraits}}
-                <img class="roster-indicator-portrait" src="{{img}}" alt="{{name}}" title="{{name}}">
-                {{/each}}
-                {{#if rosterInfo.overflow}}
-                <span class="roster-indicator-overflow">+{{rosterInfo.overflow}}</span>
-                {{/if}}
-            </div>
-            <span class="roster-indicator-label">{{rosterInfo.count}} characters</span>
-            <button type="button" class="roster-indicator-edit" onclick="const App = game.ionrift?.library?.PartyRosterApp; if (App) new App().render(true); else ui.notifications.warn('Party Roster requires ionrift-library.');" title="Edit Party Roster">
-                <i class="fas fa-pencil-alt"></i>
-            </button>
-        </div>
-        {{/if}}
+
 
         {{!-- Scene: Rest Type + Environment + Weather --}}
         <div class="scene-grid">
@@ -123,6 +113,16 @@
                     </button>
                     <input type="hidden" name="restType" value="{{#if (eq selectedRestType 'short')}}short{{else}}long{{/if}}">
                 </div>
+                {{#unless isShortRest}}
+                <div class="safe-rest-spot-row {{#if safeRestSpot}}is-active{{/if}}">
+                    <label class="safe-rest-spot-toggle" title="No encounter risk. Skips night events, comfort penalties, and camp defense. Activities, cooking, and identification only.">
+                        <i class="fas fa-shield-halved" aria-hidden="true"></i>
+                        <span class="safe-rest-spot-label">Safe Rest Spot</span>
+                        <input type="checkbox" name="safeRestSpot" value="1" {{#if safeRestSpot}}checked{{/if}}>
+                    </label>
+                    <span class="safe-rest-spot-hint">Disables encounter rolls, night events, and comfort penalties.</span>
+                </div>
+                {{/unless}}
             </div>
             {{#unless isShortRest}}
             <div class="form-group scene-environment">
@@ -135,8 +135,8 @@
                 <span class="terrain-hint" id="terrain-hint">{{terrainPreview}}</span>
             </div>
             {{/unless}}
-            {{!-- Weather: only shown for Long Rest --}}
             {{#unless isShortRest}}
+            {{#unless safeRestSpot}}
             <div class="form-group scene-weather">
                 <label>Weather</label>
                 <select name="weather">
@@ -150,6 +150,17 @@
                 {{/if}}
                 {{/each}}
             </div>
+            {{else}}
+            <div class="form-group scene-weather scene-weather-flavor">
+                <label>Weather (flavor)</label>
+                <select name="weather">
+                    {{#each weatherOptions}}
+                    <option value="{{value}}" title="{{hint}}" {{#if (eq value ../defaultWeather)}}selected{{/if}}>{{label}}</option>
+                    {{/each}}
+                </select>
+                <span class="weather-hint">Narrative only in a safe rest spot. No comfort or encounter modifiers.</span>
+            </div>
+            {{/unless}}
             {{/unless}}
         </div>
 
@@ -159,6 +170,23 @@
                 <i class="fas fa-cog"></i> Advanced
             </summary>
             <div class="scene-advanced-body">
+                {{!-- Party Roster --}}
+                {{#if rosterInfo}}
+                <div class="roster-indicator">
+                    <div class="roster-indicator-portraits">
+                        {{#each rosterInfo.portraits}}
+                        <img class="roster-indicator-portrait" src="{{img}}" alt="{{name}}" title="{{name}}">
+                        {{/each}}
+                        {{#if rosterInfo.overflow}}
+                        <span class="roster-indicator-overflow">+{{rosterInfo.overflow}}</span>
+                        {{/if}}
+                    </div>
+                    <span class="roster-indicator-label">{{rosterInfo.count}} characters</span>
+                    <button type="button" class="roster-indicator-edit" onclick="const App = game.ionrift?.library?.PartyRosterApp; if (App) new App().render(true); else ui.notifications.warn('Party Roster requires ionrift-library.');" title="Edit Party Roster">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                </div>
+                {{/if}}
                 {{#if trackFood}}
                 <div class="days-since-rest-block">
                     <div class="days-since-rest-row">
@@ -175,6 +203,7 @@
                     {{/if}}
                 </div>
                 {{/if}}
+                {{#unless safeRestSpot}}
                 {{#if scoutingAvailable}}
                 <div class="scouting-block">
                     <div class="scouting-guidance">
@@ -193,6 +222,7 @@
                     </select>
                     <span class="comfort-hint">Override the comfort derived from player gear. Leave at terrain default unless you have a reason to change it.</span>
                 </div>
+                {{/unless}}
             </div>
         </details>
 
@@ -739,6 +769,7 @@
     {{> rosterStrip}}
     <div class="totm-camp-layout">
 
+        {{#unless safeRestSpot}}
         {{!-- LEFT: Personal Comfort (character-contextual) --}}
         <div class="totm-camp-comfort-panel">
 
@@ -863,6 +894,11 @@
             {{/if}}
 
         </div>
+        {{else}}
+        <div class="totm-camp-comfort-panel totm-safe-rest-note">
+            <p class="totm-safe-rest-hint"><i class="fas fa-shield-alt" aria-hidden="true"></i> Safe rest spot: no comfort tiers or encounter pressure. Fire counts as lit for cooking.</p>
+        </div>
+        {{/unless}}
 
         {{!-- RIGHT: Campfire ceremony --}}
         <div class="totm-camp-fire-panel {{#if campFireIsLit}}fire-lit{{/if}} {{#if campColdCampDecided}}cold-camp{{/if}}">
@@ -951,6 +987,7 @@
             {{/unless}}
             {{/unless}}
 
+            {{#unless safeRestSpot}}
             {{!-- Fire tier cards --}}
             <div class="totm-fire-tiers">
                 {{#each campFirePickerLevels}}
@@ -997,6 +1034,12 @@
                 {{/each}}
             </div>
             {{/if}}
+            {{/if}}
+            {{else}}
+            <p class="totm-fire-safe-note"><i class="fas fa-fire" aria-hidden="true"></i> Campfire counts as lit for cooking. No firewood spend and no encounter modifier.</p>
+            {{/unless}}
+
+            {{#if campFireIsLit}}
             {{!-- Cooking note: only campfire and bonfire support cooking, not embers --}}
             {{#if (or (eq campCurrentFireLevel "campfire") (eq campCurrentFireLevel "bonfire"))}}
             <p class="totm-fire-cooking-note">
@@ -1025,7 +1068,7 @@
     {{!-- Proceed footer (TotM) --}}
     {{#if isGM}}
     <div class="totm-camp-footer">
-        {{#if (or campFireIsLit campColdCampDecided)}}
+        {{#if (or safeRestSpot campFireIsLit campColdCampDecided)}}
         <button type="button" class="btn-primary totm-camp-proceed"
                 data-action="proceedFromTotmCamp">
             <i class="fas fa-arrow-right" aria-hidden="true"></i> Proceed to Activities
@@ -1040,7 +1083,7 @@
     <div class="totm-camp-footer">
         <span class="totm-camp-player-wait">
             <i class="fas fa-campground" aria-hidden="true"></i>
-            {{#if (or campFireIsLit campColdCampDecided)}}
+            {{#if (or safeRestSpot campFireIsLit campColdCampDecided)}}
             Camp is set. Waiting for the GM to proceed.
             {{else}}
             Setting up camp...
@@ -1613,10 +1656,12 @@
                 data-action="switchTotmTab" data-totm-tab="identify">
             <i class="fas fa-search" aria-hidden="true"></i> Identify
         </button>
+        {{#unless safeRestSpot}}
         <button type="button" class="totm-tab {{#if (eq totmActiveTab 'fire')}}active{{/if}}"
                 data-action="switchTotmTab" data-totm-tab="fire">
             <i class="fas fa-fire" aria-hidden="true"></i> Fire
         </button>
+        {{/unless}}
     </div>
 
     {{!-- ── Activities Tab ── --}}
@@ -1691,8 +1736,9 @@
     </div>
     {{/if}}
 
-    {{!-- ── Fire Tab ── --}}
+    {{!-- ── Fire Tab (not used at a safe rest spot; fire is treated as lit) ── --}}
     {{#if (eq totmActiveTab 'fire')}}
+    {{#unless safeRestSpot}}
     <div class="totm-fire-panel">
         <div class="totm-fire-current">
             {{#if campFireIsLit}}
@@ -1719,6 +1765,7 @@
         </div>
         {{/unless}}
     </div>
+    {{/unless}}
     {{/if}}
 
     {{/if}}
@@ -2226,7 +2273,11 @@
     {{#if isGM}}
     <div class="respite-action-bar">
         <button type="button" class="btn-primary" data-action="proceedToEvents">
+            {{#if safeRestSpot}}
+            <i class="fas fa-arrow-right"></i> Proceed to Resolution
+            {{else}}
             <i class="fas fa-moon"></i> Proceed to Events
+            {{/if}}
         </button>
     </div>
     {{else}}

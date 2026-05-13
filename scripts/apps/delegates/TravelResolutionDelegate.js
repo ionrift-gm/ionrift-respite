@@ -19,7 +19,7 @@ const SCOUTING_EFFECTS = {
  * TravelResolutionDelegate
  * Manages the Travel Resolution phase with multi-day support.
  * Entries are keyed by "day:actorId" for per-day per-character tracking.
- * Scouting is available on the final day only.
+ * Scouting is available on the final day only, and not during a safe rest spot.
  *
  * States per entry:
  *   "idle"      - GM is configuring (activity select)
@@ -74,6 +74,23 @@ export class TravelResolutionDelegate {
         this.#resolver = new TravelResolver();
         const idx = game.ionrift?.respite?.travelBasePoolIndex;
         if (idx) this.#resolver.loadBaseItems(idx);
+    }
+
+    /**
+     * Matches RestSetupApp getData merge: engine flag, active rest payload, then world setting.
+     * @returns {boolean}
+     */
+    #effectiveSafeRestSpot() {
+        let fromSetting = false;
+        try {
+            fromSetting = !!game.settings.get(MODULE_ID, "safeRestSpot");
+        } catch { /* settings not ready */ }
+        return !!(this.#app._engine?.safeRestSpot ?? this.#app._restData?.safeRestSpot ?? fromSetting);
+    }
+
+    /** Exposed for RestSetupApp when applying travel scouting to the engine. */
+    isEffectiveSafeRestSpot() {
+        return this.#effectiveSafeRestSpot();
     }
 
     // ── Day management ──
@@ -250,6 +267,14 @@ export class TravelResolutionDelegate {
         const d = day ?? this.#activeDay;
         if (activity === "forage" && this.getForageGate(this._terrainTagForForageGate()).disabled) {
             return;
+        }
+        if (activity === "scout") {
+            if (this.#effectiveSafeRestSpot()) return;
+            if (!this.#scoutingAllowed) return;
+            if (d !== this.#totalDays) return;
+            const terrain = TerrainRegistry.get(this._terrainTagForForageGate());
+            const allowed = terrain?.travelActivities ?? ["forage", "hunt", "scout"];
+            if (!allowed.includes("scout")) return;
         }
         const existing = this._getEntry(d, actorId);
         if (existing
@@ -433,7 +458,8 @@ export class TravelResolutionDelegate {
         const allowed = terrain?.travelActivities ?? ["forage", "hunt", "scout"];
         const canForage = allowed.includes("forage");
         const canHunt = allowed.includes("hunt");
-        const canScout = allowed.includes("scout") && this.#scoutingAllowed;
+        const safeRest = this.#effectiveSafeRestSpot();
+        const canScout = !safeRest && allowed.includes("scout") && this.#scoutingAllowed;
         const hasTravelOptions = canForage || canHunt || canScout;
 
         let disabledReason = null;
@@ -602,12 +628,6 @@ export class TravelResolutionDelegate {
             }
 
             if (entry.activity === "scout") {
-                scoutTotals.push({
-                    actorId: actor.id,
-                    total: entry.total,
-                    actorName: actor.name,
-                    natD20: entry.natD20 ?? null
-                });
                 entry.status = "resolved";
                 entry.result = {
                     activity: "scout",
@@ -616,7 +636,17 @@ export class TravelResolutionDelegate {
                     total: entry.total,
                     natD20: entry.natD20 ?? null
                 };
-                try { await actor.setFlag(MODULE_ID, "lastTravelActivity", "scout"); } catch { /* noop */ }
+                if (!this.#effectiveSafeRestSpot()) {
+                    scoutTotals.push({
+                        actorId: actor.id,
+                        total: entry.total,
+                        actorName: actor.name,
+                        natD20: entry.natD20 ?? null
+                    });
+                    try { await actor.setFlag(MODULE_ID, "lastTravelActivity", "scout"); } catch { /* noop */ }
+                } else {
+                    try { await actor.setFlag(MODULE_ID, "lastTravelActivity", "nothing"); } catch { /* noop */ }
+                }
                 continue;
             }
 
@@ -765,6 +795,7 @@ export class TravelResolutionDelegate {
      * Build the GM scouting debrief panel data.
      */
     getScoutingDebrief(terrainTag) {
+        if (this.#effectiveSafeRestSpot()) return null;
         if (!this.#scoutingResult) return null;
 
         const terrain = TerrainRegistry.get(terrainTag);

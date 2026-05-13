@@ -15,6 +15,7 @@ export class RestFlowEngine {
      * @param {string[]} config.secondaryTags - Optional secondary tags
      * @param {string} config.comfort - Comfort level key
      * @param {Object} config.restModifiers - Recovery/event modifiers
+     * @param {boolean} [config.safeRestSpot] - No encounter risk; safe recovery and simplified camp
      */
     constructor(config) {
         this.restType = config.restType ?? "long";
@@ -22,6 +23,7 @@ export class RestFlowEngine {
         this.secondaryTags = config.secondaryTags ?? [];
         this.comfort = config.comfort ?? "sheltered";
         this.restModifiers = config.restModifiers ?? {};
+        this.safeRestSpot = !!config.safeRestSpot;
 
         // Character choices: populated during Activity phase
         this.characterChoices = new Map();
@@ -79,7 +81,7 @@ export class RestFlowEngine {
      * @returns {Object[]} Array of triggered events.
      */
     async resolveEvents(eventResolver, scoutTier = "none") {
-        if (this.restType === "short") {
+        if (this.restType === "short" || this.safeRestSpot) {
             this._phase = "resolve";
             return [];
         }
@@ -122,13 +124,14 @@ export class RestFlowEngine {
             if (!actor) continue;
 
             // Use early result if available (rolled during activity phase), otherwise roll now
+            const resolveOpts = { ...(choice.options ?? {}), safeRestSpot: this.safeRestSpot };
             const activityResult = earlyResults.get(characterId)
                 ?? await activityResolver.resolve(
                     choice.activityId,
                     actor,
                     this.terrainTag,
                     this.comfort,
-                    choice.options
+                    resolveOpts
                 );
 
             // Check if any events targeted this character
@@ -213,6 +216,84 @@ export class RestFlowEngine {
         const currentHp = actor.system?.attributes?.hp?.value ?? 0;
         const totalHd = actor.system?.attributes?.hd?.max ?? actor.system?.details?.level ?? 0;
         const rawHdRecovery = Math.max(1, Math.floor(totalHd / 2));
+
+        // Safe rest spot: full HP cap, no comfort tier penalties, no exhaustion risk
+        if (this.safeRestSpot) {
+            const effectiveComfort = "safe";
+            const hdPenalty = 0;
+            let baseHdRecovered = Math.max(0, rawHdRecovery - hdPenalty);
+            const maxHpRestorable = maxHp;
+            let baseHpRestored = maxHpRestorable;
+
+            let overallHpMultiplier = 1.0;
+            for (const outcome of eventOutcomes) {
+                for (const effect of (outcome.effects || [])) {
+                    if (["recovery_penalty", "recovery_bonus"].includes(effect.type) && typeof effect.hpMultiplier === "number") {
+                        overallHpMultiplier *= effect.hpMultiplier;
+                    }
+                }
+            }
+            const travelRec = typeof actor.getFlag === "function"
+                ? (actor.getFlag("ionrift-respite", "travelMishapRecovery") ?? null)
+                : null;
+            if (travelRec?.hpMultiplier && typeof travelRec.hpMultiplier === "number") {
+                overallHpMultiplier *= travelRec.hpMultiplier;
+            }
+            if (overallHpMultiplier !== 1.0) {
+                const recoveryGap = maxHp - currentHp;
+                const naturalHealing = Math.min(maxHpRestorable, recoveryGap);
+                baseHpRestored = Math.max(0, Math.floor(naturalHealing * overallHpMultiplier));
+            }
+
+            let armorSleepPenalty = false;
+            let equippedArmor = null;
+            try {
+                const armorRuleEnabled = game.settings.get("ionrift-respite", "armorDoffRule");
+                if (armorRuleEnabled) {
+                    equippedArmor = actor.items?.find(i =>
+                        i.type === "equipment" && i.system?.equipped &&
+                        ["medium", "heavy"].includes(i.system?.type?.value ?? i.system?.armor?.type)
+                    );
+                    if (equippedArmor && !activitySchema?.armorSleepWaiver) {
+                        armorSleepPenalty = true;
+                        baseHdRecovered = Math.max(0, Math.floor(totalHd / 4) - hdPenalty);
+                    }
+                }
+            } catch (e) { /* setting may not exist yet */ }
+
+            const items = actor.items?.map(i => i.name?.toLowerCase()) ?? [];
+            const hasBedroll = items.some(n => n?.includes("bedroll"));
+            const bonusHdFromActivity = activitySchema?.outcomes?.success?.effects
+                ?.filter(e => e.type === "bonus_hd")
+                ?.reduce((sum, e) => sum + (e.value ?? 0), 0) ?? 0;
+            const gearBonusHd = hasBedroll ? 1 : 0;
+            const exhaustionDC = null;
+            const exhaustionAdvantage = false;
+
+            const gearDescriptors = [];
+            if (gearBonusHd > 0) gearDescriptors.push("Bedroll: +1 HD");
+            if (bonusHdFromActivity > 0) gearDescriptors.push("Deep sleep: +1 HD");
+            if (armorSleepPenalty) gearDescriptors.push(`Sleeping in ${equippedArmor.name}: 1/4 HD, exhaustion not reduced`);
+
+            if (travelRec?.hpMultiplier && typeof actor.unsetFlag === "function") {
+                void actor.unsetFlag("ionrift-respite", "travelMishapRecovery");
+            }
+
+            return {
+                hpRestored: baseHpRestored,
+                hdRestored: baseHdRecovered + gearBonusHd + bonusHdFromActivity,
+                spellSlotsRestored: this.restType === "long",
+                comfortLevel: effectiveComfort,
+                campComfort: this.comfort,
+                restType: this.restType,
+                restedFully: activitySchema?.id === "act_rest_fully",
+                exhaustionDC,
+                exhaustionAdvantage,
+                armorSleepPenalty,
+                gearBonuses: { hd: gearBonusHd, exhaustionAdvantage },
+                gearDescriptors
+            };
+        }
 
         // Effective comfort: start with camp comfort, boost if activity has comfort_boost
         let effectiveComfort = this.comfort;
@@ -419,6 +500,7 @@ export class RestFlowEngine {
             secondaryTags: this.secondaryTags,
             comfort: this.comfort,
             restModifiers: this.restModifiers,
+            safeRestSpot: this.safeRestSpot ?? false,
             phase: this._phase,
             characterChoices: Array.from(this.characterChoices.entries()),
             watchRoster: this.watchRoster,
@@ -449,7 +531,8 @@ export class RestFlowEngine {
             terrainTag: data.terrainTag,
             secondaryTags: data.secondaryTags,
             comfort: data.comfort,
-            restModifiers: data.restModifiers
+            restModifiers: data.restModifiers,
+            safeRestSpot: data.safeRestSpot ?? false
         });
         engine._phase = data.phase ?? "setup";
         engine.characterChoices = new Map(data.characterChoices ?? []);
