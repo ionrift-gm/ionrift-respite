@@ -321,9 +321,10 @@ export const CAMP_STATIONS = [
  * migrate are folded into fallback stations (e.g. Keep Watch → bedroll in taverns).
  * Labels are overridden per terrainLabel where defined.
  * @param {string} terrainTag
+ * @param {boolean} [safeRestSpot] - Hides medical bed and relabels weapon rack for safe rest flow
  * @returns {Object[]}
  */
-export function getStationsForTerrain(terrainTag) {
+export function getStationsForTerrain(terrainTag, safeRestSpot = false) {
     const hidden = new Set();
     /** Activities orphaned by hidden stations that should migrate to bedroll. */
     const MIGRATING_ACTIVITIES = new Set(["act_keep_watch", "act_other"]);
@@ -343,12 +344,20 @@ export function getStationsForTerrain(terrainTag) {
     const result = [];
     for (const station of CAMP_STATIONS) {
         if (hidden.has(station.id)) continue;
-        const label = station.terrainLabel?.[terrainTag] ?? station.label;
+        if (safeRestSpot && station.id === "medical_bed") continue;
+        let label = station.terrainLabel?.[terrainTag] ?? station.label;
+        let activities = [...(station.activities ?? [])];
+        let tagline = station.tagline;
+        if (safeRestSpot && station.id === "weapon_rack") {
+            label = "Supply Table";
+            tagline = "Fletch, other";
+            activities = ["act_fletch", "act_other"];
+        }
         const extra = station.id === "bedroll" ? orphanedActivities : [];
-        const activities = extra.length
-            ? [...station.activities, ...extra.filter(id => !station.activities.includes(id))]
-            : station.activities;
-        result.push({ ...station, label, activities });
+        const mergedActivities = extra.length
+            ? [...activities, ...extra.filter(id => !activities.includes(id))]
+            : activities;
+        result.push({ ...station, label, activities: mergedActivities, tagline });
     }
     return result;
 }

@@ -79,7 +79,8 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
             forageActivityGate: this._restData.forageActivityGate,
             terrainTag,
             resourcePoolsFromPack: false,
-            resourcePoolRoller: null
+            resourcePoolRoller: null,
+            safeRestSpot: !!this._restData.safeRestSpot
         };
         return {
             terrain: terrainLabel,

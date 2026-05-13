@@ -903,6 +903,28 @@ export function resetCampSession() {
 }
 
 /**
+ * Cardinal offsets for auto station placement (2 grid from pit center by default).
+ * @param {number} offset - Grid distance from pit center
+ * @param {boolean} [safeRestSpot] - Omit medical bed (3 stations only)
+ * @returns {{ key: string, dx: number, dy: number }[]}
+ */
+export function getCampStationLayoutOffsets(offset, safeRestSpot = false) {
+    if (safeRestSpot) {
+        return [
+            { key: "table", dx: -offset, dy: 0 },
+            { key: "weaponRack", dx: offset, dy: 0 },
+            { key: "cookingArea", dx: 0, dy: -offset }
+        ];
+    }
+    return [
+        { key: "table", dx: -offset, dy: 0 },
+        { key: "weaponRack", dx: offset, dy: 0 },
+        { key: "cookingArea", dx: 0, dy: -offset },
+        { key: "medicalBed", dx: 0, dy: offset }
+    ];
+}
+
+/**
  * Auto-place eligible camp stations around the campfire when entering step 2.
  * Controlled by AUTO_PLACE_STATIONS flag.
  *
@@ -910,11 +932,12 @@ export function resetCampSession() {
  *   - table (Workbench): west
  *   - weaponRack: east
  *   - cookingArea: north (token name reflects party cook's utensils or mess table)
- *   - medicalBed: south
+ *   - medicalBed: south (omitted when safeRestSpot)
  *
+ * @param {boolean} [safeRestSpot]
  * @returns {Promise<string[]>} keys of stations placed
  */
-export async function autoPlaceStations() {
+export async function autoPlaceStations(safeRestSpot = false) {
     if (!AUTO_PLACE_STATIONS) {
         console.log(`${MODULE_ID} | autoPlaceStations: feature flag disabled`);
         return [];
@@ -936,12 +959,7 @@ export async function autoPlaceStations() {
 
     const partyActors = getPartyActors();
 
-    const layout = [
-        { key: "table",       dx: -offset, dy: 0 },
-        { key: "weaponRack",  dx:  offset, dy: 0 },
-        { key: "cookingArea", dx: 0,       dy: -offset },
-        { key: "medicalBed",  dx: 0,       dy:  offset }
-    ];
+    const layout = getCampStationLayoutOffsets(offset, safeRestSpot);
 
     const placed = [];
     for (const slot of layout) {
@@ -951,9 +969,12 @@ export async function autoPlaceStations() {
         const rawDef = FURNITURE[slot.key];
         if (!rawDef) continue;
 
-        const def = slot.key === "cookingArea"
+        let def = slot.key === "cookingArea"
             ? { ...rawDef, name: partyHasCookingUtensils() ? rawDef.name : (rawDef.basicName ?? rawDef.name) }
             : rawDef;
+        if (safeRestSpot && slot.key === "weaponRack") {
+            def = { ...def, name: "Supply Table" };
+        }
 
         const worldX = center.x + slot.dx;
         const worldY = center.y + slot.dy;
@@ -1018,20 +1039,16 @@ function buildPlaceholderToken(targetKey, x, y) {
  *
  * @param {number} pitCenterX
  * @param {number} pitCenterY
+ * @param {boolean} [safeRestSpot]
  * @returns {{ key: string, tx: number, ty: number, gridW: number, gridH: number, textureSrc: string, valid: boolean }[]}
  */
-export function getStationPlaceholderPreviewsForPitCenter(pitCenterX, pitCenterY) {
+export function getStationPlaceholderPreviewsForPitCenter(pitCenterX, pitCenterY, safeRestSpot = false) {
     if (!canvas?.scene || !canvas?.grid) return [];
 
     const gs = gridSize();
     const offset = 2 * gs;
     const pitCenter = { x: pitCenterX, y: pitCenterY };
-    const layout = [
-        { key: "table",       dx: -offset, dy: 0 },
-        { key: "weaponRack",  dx:  offset, dy: 0 },
-        { key: "cookingArea", dx: 0,       dy: -offset },
-        { key: "medicalBed",  dx: 0,       dy:  offset }
-    ];
+    const layout = getCampStationLayoutOffsets(offset, safeRestSpot);
     const gridW = PLACEHOLDER_CAMP_STATION.width ?? 1;
     const gridH = PLACEHOLDER_CAMP_STATION.height ?? 1;
     const textureSrc = resolveStationIcon("buildSite");
@@ -1136,7 +1153,7 @@ async function nudgeTokenTowardCenter(doc, pitCenter, scene) {
     return false;
 }
 
-export async function placeStationPlaceholders() {
+export async function placeStationPlaceholders(safeRestSpot = false) {
     if (!game.user.isGM) return [];
     hydrateCampSessionFromScene();
     const center = pitCenterWorld();
@@ -1150,12 +1167,7 @@ export async function placeStationPlaceholders() {
 
     const gs = gridSize();
     const offset = 2 * gs;
-    const layout = [
-        { key: "table",       dx: -offset, dy: 0 },
-        { key: "weaponRack",  dx:  offset, dy: 0 },
-        { key: "cookingArea", dx: 0,       dy: -offset },
-        { key: "medicalBed",  dx: 0,       dy:  offset }
-    ];
+    const layout = getCampStationLayoutOffsets(offset, safeRestSpot);
     const phW = PLACEHOLDER_CAMP_STATION.width ?? 1;
     const phH = PLACEHOLDER_CAMP_STATION.height ?? 1;
 
@@ -1202,9 +1214,10 @@ export async function placeStationPlaceholders() {
 /**
  * After the fire is lit, replace placeholder art with real station tokens (same position).
  * GM only. Batch-updates to reduce token flash.
+ * @param {boolean} [safeRestSpot] - Relabel weapon rack token to Supply Table
  * @returns {Promise<string[]>} promoted target keys
  */
-export async function promoteAllPlaceholders() {
+export async function promoteAllPlaceholders(safeRestSpot = false) {
     if (!game.user.isGM) return [];
 
     const scene = canvas?.scene;
@@ -1246,7 +1259,9 @@ export async function promoteAllPlaceholders() {
 
         const displayName = key === "cookingArea"
             ? (partyHasCookingUtensils() ? def.name : (def.basicName ?? def.name))
-            : def.name;
+            : (key === "weaponRack" && safeRestSpot)
+                ? "Supply Table"
+                : def.name;
 
         const u = {
             _id: doc.id,

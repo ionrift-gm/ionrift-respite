@@ -519,13 +519,21 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             ?? null;
         let armorRuleEnabled = false;
         try { armorRuleEnabled = !!game.settings.get("ionrift-respite", "armorDoffRule"); } catch { /* ok */ }
+        const safeSpot = !!(this._restApp?._engine?.safeRestSpot ?? this._restApp?._restData?.safeRestSpot);
+        let fromSetting = false;
+        try { fromSetting = !!game.settings.get("ionrift-respite", "safeRestSpot"); } catch { /* ok */ }
+        const effectiveSafe = safeSpot || fromSetting;
+        const armorForDetail = !effectiveSafe && armorRuleEnabled;
+
         const ps = this._partyState ?? buildPartyState([], new Map(), 14);
 
         const detail = buildActivityDetailContext(activityId, activity, actor, ps, {
             comfort,
             followUpValue,
-            armorRuleEnabled,
-            getArmorWarning: this._restApp?.getArmorWarningForActivityDetail?.bind(this._restApp) ?? null
+            armorRuleEnabled: armorForDetail,
+            getArmorWarning: armorForDetail
+                ? (this._restApp?.getArmorWarningForActivityDetail?.bind(this._restApp) ?? null)
+                : null
         });
 
         return { activityDetail: { ...detail, characterId: actor?.id } };
@@ -884,7 +892,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         console.log(`ionrift-respite | #onConfirm activity`, { activity: activity?.id, isCrafting: !!activity?.crafting?.enabled, isCookId: !!COOK_ACTIVITY_IDS.has(activityId) });
 
         // Armor penalty gate: warn before locking an activity that penalises sleeping in armor.
-        if (!activity?.armorSleepWaiver) {
+        const effectiveSafe = !!(this._restApp?._engine?.safeRestSpot ?? this._restApp?._restData?.safeRestSpot)
+            || (() => { try { return !!game.settings.get("ionrift-respite", "safeRestSpot"); } catch { return false; } })();
+        if (!effectiveSafe && !activity?.armorSleepWaiver) {
             try {
                 const armorRuleEnabled = game.settings.get("ionrift-respite", "armorDoffRule");
                 if (armorRuleEnabled) {

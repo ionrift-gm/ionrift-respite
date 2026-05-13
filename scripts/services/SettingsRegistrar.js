@@ -178,6 +178,14 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     // ── Hidden/Internal Settings ─────────────────────────────────────
 
+    /** Remembered from Rest Setup: long rest uses safe rest spot (no encounter risk). */
+    game.settings.register(MODULE_ID, "safeRestSpot", {
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false
+    });
+
     game.settings.register(MODULE_ID, "campfireTokenName", {
         name: "Campfire Token Name",
         hint: "Name of the token on the scene to link with the campfire. When the campfire is lit, the token's light turns on. Case-insensitive.",
@@ -553,6 +561,7 @@ export const SETTING_KEYS = [
     "partialSustenance",
     "lockPlayerQuantity",
     "lockAttuneOutsideRest",
+    "safeRestSpot",
     "campfireTokenName",
     "torchTokenName",
     "torchAutoLink",

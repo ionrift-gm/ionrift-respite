@@ -161,11 +161,97 @@ export class CampGearScanner {
      * @param {string} comfortReason - Optional description of terrain comfort source.
      * @param {string} terrainLabel - Display name of the terrain.
      * @param {number} fireEncounterMod - Encounter DC modifier from having a fire.
+     * @param {boolean} [safeRestSpot] - When true, skip comfort tiers and encounter fire modifier; fire reads as campfire for previews.
      * @returns {Object} Full camp scan results with comfort breakdown.
      */
-    static scan(terrainComfort, fireLevel = "unlit", shelterSpell = null, comfortReason = "", terrainLabel = "", fireEncounterMod = 1) {
+    static scan(terrainComfort, fireLevel = "unlit", shelterSpell = null, comfortReason = "", terrainLabel = "", fireEncounterMod = 1, safeRestSpot = false) {
         const actors = getPartyActors();
         const members = actors.map(a => this.scanActor(a));
+
+        if (safeRestSpot) {
+            const campComfort = "safe";
+            const rules = this.getRules(campComfort);
+            const fireLevelEff = "campfire";
+            const fireIsLit = true;
+            const personalCards = members.map(m => {
+                const actor = actors.find(a => a.id === m.actorId);
+                const totalHd = actor?.system?.attributes?.hd?.max ?? actor?.system?.details?.level ?? 0;
+                const rawHdRecovery = Math.max(1, Math.floor(totalHd / 2));
+                const hdRecovered = Math.max(0, rawHdRecovery - rules.hdPenalty + (m.hasBedroll ? 1 : 0));
+                const currentHd = actor?.system?.attributes?.hd?.value ?? totalHd;
+                const exitHd = Math.min(totalHd, currentHd + hdRecovered);
+                const breakdown = [];
+                if (m.hasBedroll) {
+                    breakdown.push({ label: "Bedroll", icon: "fas fa-bed", delta: 1 });
+                }
+                return {
+                    ...m,
+                    personalComfort: campComfort,
+                    personalComfortLabel: rules.label,
+                    personalMatchesCamp: true,
+                    gearBreakdown: breakdown,
+                    recovery: {
+                        hpFull: true,
+                        hpLabel: "Regain all HP",
+                        hpSeverity: "",
+                        hdLabel: (() => {
+                            const singPlur = hdRecovered === 1 ? "Hit Die" : "Hit Dice";
+                            const pool = `will be ${exitHd}/${totalHd} after rest`;
+                            return `Recover ${hdRecovered} ${singPlur}, ${pool}`;
+                        })(),
+                        hdSeverity: "",
+                        hdRecovered,
+                        totalHd,
+                        exhaustionDC: null,
+                        exhaustionSeverity: null,
+                        exhaustionLabel: "No exhaustion risk"
+                    }
+                };
+            });
+            const fireLighters = members
+                .filter(m => m.hasTinderbox)
+                .map(m => ({
+                    actorId: m.actorId,
+                    actorName: m.actorName,
+                    method: "Tinderbox"
+                }));
+            const firewoodHolders = members
+                .filter(m => m.firewoodCount > 0)
+                .map(m => ({ actorId: m.actorId, name: m.actorName, count: m.firewoodCount }));
+            const totalFirewood = firewoodHolders.reduce((sum, h) => sum + h.count, 0);
+            const costEmbers = this.FIREWOOD_COST_BY_LEVEL.embers ?? 0;
+            const costCampfire = this.FIREWOOD_COST_BY_LEVEL.campfire ?? 1;
+            const costBonfire = this.FIREWOOD_COST_BY_LEVEL.bonfire ?? 2;
+            const canTinder = fireLighters.length > 0;
+            return {
+                campComfort,
+                campComfortPreFire: campComfort,
+                campComfortLabel: rules.label,
+                comfortTooltip: "Full HP recovery, no exhaustion risk",
+                campBreakdown: [{ label: terrainLabel || "Safe rest spot", value: "safe", delta: 0 }],
+                comfortReason,
+                terrainLabel,
+                fireEncounterMod: 0,
+                hasModifiers: false,
+                personalCards,
+                fireLighters,
+                firewoodHolders,
+                totalFirewood,
+                canLightFire: fireLighters.length > 0,
+                fireSelection: {
+                    canPickEmbers: true,
+                    canPickCampfire: true,
+                    canPickBonfire: canTinder && totalFirewood >= costBonfire,
+                    costEmbers,
+                    costCampfire,
+                    costBonfire
+                },
+                fireIsLit,
+                fireLevel: fireLevelEff,
+                shelterSpell: null,
+                noFirePreview: null
+            };
+        }
 
         // ── Camp Comfort (shared) ──────────────────────────────
         let campComfort = COMFORT_TIERS.includes(terrainComfort) ? terrainComfort : "rough";

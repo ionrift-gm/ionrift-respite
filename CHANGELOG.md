@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.2.0] - 2026-05-13
+
+### Added
+- **Safe Rest Spot.** A new toggle in the setup phase that marks the campsite as safe. Encounter rolls, night events, comfort penalties, and camp defense are all disabled. Activities like cooking, crafting, and identification still work normally. Useful for taverns you want to control, allied fortresses, or any location where the party is genuinely secure.
+- Safe rest spots skip the entire event phase and suppress comfort-tier penalties. Recovery uses the "safe" tier regardless of terrain, so characters heal fully with no exhaustion risk.
+- Activities that only matter when there is danger - Keep Watch, Set Up Defenses, Scout Perimeter, Tend Wounds, and Rest Fully - are hidden from the activity picker during a safe rest.
+- The setting persists between rests, so the GM does not need to re-check it if the party stays in the same location.
+
+### Changed
+- The party roster indicator has moved from the top of the setup form into the Advanced drawer. The setup phase is now more focused: rest type, safe rest toggle, environment, and weather.
+- The Safe Rest Spot checkbox has been restyled with an amber accent border and shield icon, making it visually distinct from the rest type toggle.
+
 ## [2.1.5] - 2026-05-12
 
 ### Fixed
