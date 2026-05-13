@@ -9,8 +9,7 @@
 - The setting persists between rests, so the GM does not need to re-check it if the party stays in the same location.
 
 ### Changed
-- The party roster indicator has moved from the top of the setup form into the Advanced drawer. The setup phase is now more focused: rest type, safe rest toggle, environment, and weather.
-- The Safe Rest Spot checkbox has been restyled with an amber accent border and shield icon, making it visually distinct from the rest type toggle.
+- Party roster portraits moved into the Advanced drawer to keep the main setup screen focused.
 
 ## [2.1.5] - 2026-05-12
 
