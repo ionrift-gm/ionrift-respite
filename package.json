@@ -2,12 +2,14 @@
   "scripts": {
     "test": "vitest run --config tests/vitest.config.js",
     "lint:hbs": "node tools/lint-hbs.mjs",
-    "lint:hbs:watch": "node tools/lint-hbs.mjs --watch"
+    "lint:hbs:watch": "node tools/lint-hbs.mjs --watch",
+    "build:packs": "node tools/compile-packs.mjs"
   },
   "dependencies": {
     "classic-level": "^3.0.0"
   },
   "devDependencies": {
+    "@foundryvtt/foundryvtt-cli": "^1.1.0",
     "handlebars": "^4.7.9",
     "sharp": "^0.34.5",
     "vitest": "^3.0.0"

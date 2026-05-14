@@ -1,0 +1,10 @@
+{
+    "_id": "CampEquipFolder0",
+    "_key": "!folders!CampEquipFolder0",
+    "name": "Camp Equipment",
+    "type": "Actor",
+    "sorting": "a",
+    "sort": 0,
+    "color": "#8b5cf6",
+    "flags": {}
+}

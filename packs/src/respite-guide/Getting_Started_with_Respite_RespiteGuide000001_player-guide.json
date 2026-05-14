@@ -1,0 +1,20 @@
+{
+    "_id": "aQc3PtQPrYDi9Mlx",
+    "_key": "!journal.pages!1Zh2gDQ1xOLFUrhW.aQc3PtQPrYDi9Mlx",
+    "name": "Player Guide",
+    "type": "text",
+    "title": { "show": true, "level": 1 },
+    "image": {},
+    "video": { "controls": true, "volume": 0.5 },
+    "src": null,
+    "system": {},
+    "text": {
+        "content": "<h2>Respite: Player Guide</h2><p>Long rests in Respite are more than clicking a button. Where the party camps, what gear they carry, and what they choose to do during the night all affect how much they recover.</p><h3>How it works</h3><p>Each rest runs through four phases: <strong>Setup</strong> (the GM sets terrain and shelter), <strong>Activities</strong> (each character picks a camp activity), <strong>Events</strong> (the GM rolls for encounters), and <strong>Resolution</strong> (HP, hit dice, spell slots, and exhaustion are processed). If meal tracking is on, there is also a rations step where characters need food and water.</p><h3>Comfort</h3><p>Comfort is the single biggest factor in how much the party recovers. The GM sets it based on the environment, but shelter, fire, and certain activities can shift it up or down.</p><table><thead><tr><th>Tier</th><th>HP</th><th>Hit Dice</th><th>Exhaustion</th></tr></thead><tbody><tr><td><strong>Safe</strong></td><td>Full</td><td>Full</td><td>No encounter risk</td></tr><tr><td><strong>Sheltered</strong></td><td>Full</td><td>Full</td><td>Normal recovery</td></tr><tr><td><strong>Rough</strong></td><td>Full</td><td>-1 HD</td><td>CON DC 10 or +1</td></tr><tr><td><strong>Hostile</strong></td><td>75%</td><td>-2 HD</td><td>CON DC 15 or +1</td></tr></tbody></table><h3>Gear that matters</h3><p>Respite checks the party's inventory for camping gear. If a character has it, the module detects it automatically.</p><table><thead><tr><th>Item</th><th>Effect</th></tr></thead><tbody><tr><td><strong>Bedroll</strong></td><td>+1 Hit Die recovered during long rest</td></tr><tr><td><strong>Mess Kit</strong></td><td>Advantage on exhaustion saves (requires a lit campfire)</td></tr><tr><td><strong>Tent</strong></td><td>Shelter option that cancels or reduces weather penalties</td></tr></tbody></table><p>Bedrolls and mess kits are cheap and light. A tent is heavier (20 lb), so carrying one is a real choice. Forgetting any of them in the wild has consequences.</p><h3>Activities</h3><p>Each character picks one camp activity. There is a tension between helping the camp and helping yourself. Guarding lowers the chance of an event but means less personal recovery. Resting fully boosts comfort by one tier but leaves the character in deep sleep if something goes wrong.</p><p>Some activities are shared duties (Keep Watch, Scout, Set Up Defenses, Tend Wounds). Others are personal (Rest Fully, Training, Forage, Fletch Arrows). Spellcasters may also see arcane options like Identify Items, Attune Item, or Copy Spell.</p><h3>Campfire</h3><p>Someone needs to tend the fire. Fire level affects comfort and encounter odds. A bonfire boosts comfort by one step but is visible from a distance. An unlit camp drops comfort by one step. Drag kindling from inventory to fuel it, or whittle to contribute without spending items.</p><h3>Events</h3><p>The night is not always safe. The GM rolls against the encounter DC, which is shaped by terrain, weather, shelter, and what the party did during activities. Events can be hostile (creatures, hazards), complications (gear damage, resource loss), or discoveries (useful finds). Sometimes nothing happens. Sometimes it does.</p><p>The party's choices during activities directly affect these odds. More guards and scouts mean a safer night.</p>",
+        "format": 1,
+        "markdown": ""
+    },
+    "sort": 100000,
+    "ownership": { "default": 2 },
+    "flags": {},
+    "_stats": { "compendiumSource": null, "duplicateSource": null, "coreVersion": "12.331", "systemId": null, "systemVersion": null, "createdTime": null, "modifiedTime": null, "lastModifiedBy": null }
+}
