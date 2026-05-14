@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.2.1] - 2026-05-14
+## [2.2.2] - 2026-05-14
 
 ### Fixed
 - **Fresh installs now load all compendium data.** Installing Respite for the first time (or reinstalling) resulted in empty compendiums — no campfire actor, no forage items, no guide journal. Camp stations would not place, and foraging was greyed out with a "requires content pack" tooltip. Existing installs that had been updated in-place were unaffected. This has been broken since v2.0.3.
