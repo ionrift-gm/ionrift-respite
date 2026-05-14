@@ -90,8 +90,19 @@ export function registerLockdownHooks() {
         if (changes?.system?.quantity !== undefined) {
             try {
                 if (game.settings.get(MODULE_ID, "lockPlayerQuantity")) {
-                    ui.notifications.warn("Item quantities are managed by the GM.");
-                    return false;
+                    // Allow consumable use: dnd5e decrements quantity when a player uses
+                    // a potion, ration, or other consumable. Blocking this prevents
+                    // legitimate use. Only block quantity *increases* on any item type,
+                    // or any quantity change on non-consumable items.
+                    const isConsumable = item.type === "consumable";
+                    const oldQty = item.system?.quantity ?? 0;
+                    const newQty = changes.system.quantity;
+                    const isDecrement = isConsumable && (newQty < oldQty);
+
+                    if (!isDecrement) {
+                        ui.notifications.warn("Item quantities are managed by the GM.");
+                        return false;
+                    }
                 }
             } catch { /* setting not registered yet */ }
         }

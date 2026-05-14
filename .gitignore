@@ -36,14 +36,11 @@ scripts/utils/
 scripts/dev-link-packs.ps1
 macros/
 
-# LevelDB runtime files (created by Foundry at boot, never ship)
-packs/*/LOCK
-packs/*/CURRENT
-packs/*/MANIFEST-*
-packs/*/LOG
-packs/*/LOG.old
-packs/*/*.log
-packs/*/lost/
+# LevelDB compiled packs (build artifacts — compiled from packs/src/ at release time)
+# JSON source files in packs/src/ are the canonical data.
+packs/respite-items/
+packs/respite-actors/
+packs/respite-guide/
 
 # Dev artifacts
 *.bak

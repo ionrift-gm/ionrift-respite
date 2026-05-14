@@ -1,88 +1,20 @@
 {
-    "_key": "!journal!1Zh2gDQ1xOLFUrhW",
     "_id": "1Zh2gDQ1xOLFUrhW",
+    "_key": "!journal!1Zh2gDQ1xOLFUrhW",
     "name": "Getting Started with Respite",
-    "ownership": {
-        "default": 2
-    },
+    "ownership": { "default": 2 },
     "flags": {},
-    "pages": [
-        {
-            "_id": "aQc3PtQPrYDi9Mlx",
-            "name": "Player Guide",
-            "type": "text",
-            "text": {
-                "content": "<h2>Respite: Player Guide</h2><p>Long rests in Respite are more than clicking a button. Where the party camps, what gear they carry, and what they choose to do during the night all affect how much they recover.</p><h3>How it works</h3><p>Each rest runs through four phases: <strong>Setup</strong> (the GM sets terrain and shelter), <strong>Activities</strong> (each character picks a camp activity), <strong>Events</strong> (the GM rolls for encounters), and <strong>Resolution</strong> (HP, hit dice, spell slots, and exhaustion are processed). If meal tracking is on, there is also a rations step where characters need food and water.</p><h3>Comfort</h3><p>Comfort is the single biggest factor in how much the party recovers. The GM sets it based on the environment, but shelter, fire, and certain activities can shift it up or down.</p><table><thead><tr><th>Tier</th><th>HP</th><th>Hit Dice</th><th>Exhaustion</th></tr></thead><tbody><tr><td><strong>Safe</strong></td><td>Full</td><td>Full</td><td>No encounter risk</td></tr><tr><td><strong>Sheltered</strong></td><td>Full</td><td>Full</td><td>Normal recovery</td></tr><tr><td><strong>Rough</strong></td><td>Full</td><td>-1 HD</td><td>CON DC 10 or +1</td></tr><tr><td><strong>Hostile</strong></td><td>75%</td><td>-2 HD</td><td>CON DC 15 or +1</td></tr></tbody></table><h3>Gear that matters</h3><p>Respite checks the party's inventory for camping gear. If a character has it, the module detects it automatically.</p><table><thead><tr><th>Item</th><th>Effect</th></tr></thead><tbody><tr><td><strong>Bedroll</strong></td><td>+1 Hit Die recovered during long rest</td></tr><tr><td><strong>Mess Kit</strong></td><td>Advantage on exhaustion saves (requires a lit campfire)</td></tr><tr><td><strong>Tent</strong></td><td>Shelter option that cancels or reduces weather penalties</td></tr></tbody></table><p>Bedrolls and mess kits are cheap and light. A tent is heavier (20 lb), so carrying one is a real choice. Forgetting any of them in the wild has consequences.</p><h3>Activities</h3><p>Each character picks one camp activity. There is a tension between helping the camp and helping yourself. Guarding lowers the chance of an event but means less personal recovery. Resting fully boosts comfort by one tier but leaves the character in deep sleep if something goes wrong.</p><p>Some activities are shared duties (Keep Watch, Scout, Set Up Defenses, Tend Wounds). Others are personal (Rest Fully, Training, Forage, Fletch Arrows). Spellcasters may also see arcane options like Identify Items, Attune Item, or Copy Spell.</p><h3>Campfire</h3><p>Someone needs to tend the fire. Fire level affects comfort and encounter odds. A bonfire boosts comfort by one step but is visible from a distance. An unlit camp drops comfort by one step. Drag kindling from inventory to fuel it, or whittle to contribute without spending items.</p><h3>Events</h3><p>The night is not always safe. The GM rolls against the encounter DC, which is shaped by terrain, weather, shelter, and what the party did during activities. Events can be hostile (creatures, hazards), complications (gear damage, resource loss), or discoveries (useful finds). Sometimes nothing happens. Sometimes it does.</p><p>The party's choices during activities directly affect these odds. More guards and scouts mean a safer night.</p>",
-                "format": 1,
-                "markdown": ""
-            },
-            "sort": 100000,
-            "ownership": {
-                "default": 2
-            },
-            "flags": {}
-        },
-        {
-            "_id": "dvr4TYdYmX88MCCf",
-            "name": "How to Start a Rest",
-            "type": "text",
-            "text": {
-                "content": "<h2>Launching a Rest</h2><p>Only the GM can start a rest. Two ways to do it:</p><ul><li><strong>Chat command</strong>: type <code>/respite</code> in the chat bar.</li><li><strong>Scene control</strong>: click the campground icon in the token controls toolbar (left side of the canvas).</li></ul><p>The module intercepts long rests by default. When a player clicks \"Long Rest\" on their character sheet, Respite opens instead of the standard dialog. This can be toggled off in settings.</p>",
-                "format": 1,
-                "markdown": ""
-            },
-            "sort": 200000,
-            "ownership": {
-                "default": 0
-            },
-            "flags": {}
-        },
-        {
-            "_id": "Vnk9XsDNGBF6yTbu",
-            "name": "Settings Reference",
-            "type": "text",
-            "text": {
-                "content": "<h2>Module Settings</h2><p>All settings are under <strong>Game Settings &gt; Module Settings &gt; Ionrift Respite</strong>.</p><ul><li><strong>Default Comfort Level</strong> - The comfort tier used when the GM does not pick one during setup.</li><li><strong>Intercept Player Rests</strong> - When enabled, clicking \"Long Rest\" on a character sheet opens the Respite flow instead of the default dialog.</li><li><strong>Armor Doff/Don Advisory</strong> - Shows a reminder when characters are resting in heavy armor (Xanathar's rules).</li><li><strong>Study Activity</strong> - Enables the Study activity tile for identifying items, copying spells, and Detect Magic scans.</li><li><strong>Track Food &amp; Water</strong> - Enables the rations phase. When off, the rest skips straight from Activities to Events.</li><li><strong>Partial Sustenance</strong> - Allows partial food/water (half rations) without full penalties.</li><li><strong>Content Packs</strong> - Enable or disable expansion event packs. Shows event counts per terrain.</li></ul>",
-                "format": 1,
-                "markdown": ""
-            },
-            "sort": 300000,
-            "ownership": {
-                "default": 0
-            },
-            "flags": {}
-        },
-        {
-            "_id": "cK8pRQdW2nFb4Xvj",
-            "name": "Cooking & Recipes",
-            "type": "text",
-            "text": {
-                "content": "<h2>Cooking</h2><p>Characters with Cook's Utensils (or Brewer's Supplies / Herbalism Kit) and the matching tool proficiency can prepare meals during a rest. Cooking is a <strong>camp activity</strong>. It takes the character's activity slot for the night.</p><h3>How Cooking Works</h3><ol><li>Select a recipe from the recipe browser.</li><li>Choose an approach: <strong>Standard</strong> (base DC) or <strong>Ambitious</strong> (DC +5, superior output on success).</li><li>Roll a Survival check against the recipe's DC. Ingredients are consumed regardless of the outcome.</li></ol><h3>Party Meals (Feasts)</h3><p>Some recipes are <strong>party meals</strong>: a single crafted item that feeds and buffs the entire party. These are marked with a party icon in the recipe browser.</p><p>Party meals have <strong>scaled ingredients</strong>: certain ingredients (typically rations) cost more based on party size. The formula is <code>max(1, partySize - 2)</code> per scaled ingredient. The fixed ingredients (the hero ingredient and water) stay the same regardless of party size.</p><h4>Example: Hearty Stew</h4><table><thead><tr><th>Party</th><th>Fresh Meat</th><th>Rations</th><th>Waterskin</th><th>Total</th></tr></thead><tbody><tr><td>3</td><td>1</td><td>1</td><td>1</td><td>3</td></tr><tr><td>4</td><td>1</td><td>2</td><td>1</td><td>4</td></tr><tr><td>5</td><td>1</td><td>3</td><td>1</td><td>5</td></tr><tr><td>6</td><td>1</td><td>4</td><td>1</td><td>6</td></tr><tr><td>7</td><td>1</td><td>5</td><td>1</td><td>7</td></tr></tbody></table><p>The pot needs its foundation: a chunk of meat for flavour and a skin of water for the broth. After that, each person adds a ration to the pot.</p><h3>Well Fed</h3><p>Eating a cooked meal (or being served a feast) grants the <strong>Well Fed</strong> condition. While Well Fed, a character gains temporary hit points based on the cook's proficiency bonus. The formula is <code>(PB-1)d6</code> for standard meals, stepping up one die size for ambitious successes.</p><h3>Recipe Authoring (Content Packs)</h3><p>Content packs can define custom recipes. To mark an ingredient as scaling with party size, add <code>perPartyMember: true</code> to the ingredient definition:</p><pre><code>{ \"name\": \"Rations\", \"quantity\": 1, \"perPartyMember\": true }</code></pre><p>This flag only takes effect when the recipe has <code>partyMeal: true</code> in its output flags. Non-party-meal recipes ignore the flag.</p>",
-                "format": 1,
-                "markdown": ""
-            },
-            "sort": 150000,
-            "ownership": {
-                "default": 2
-            },
-            "flags": {}
-        },
-        {
-            "_id": "zA0gnfQJRBoM7wiw",
-            "name": "Terrains & Events",
-            "type": "text",
-            "text": {
-                "content": "<h2>Terrains</h2><p>Terrain sets the event pool and baseline encounter DC. Available terrains include forest, desert, swamp, coast, arctic, underdark, urban, ruins, dungeon, and tavern. Each has its own events and base difficulty.</p><h2>Events</h2><p>Events are pulled from terrain-tagged pools with weighted selection. They never repeat until the pool cycles. Each event resolves on a 4-tier scale (triumph, success, mixed, failure) based on how far above or below the DC the roll lands.</p><p>The base pack ships with events across all terrains. Additional event packs can be enabled through the <strong>Content Packs</strong> settings panel.</p><h3>Event Browser</h3><p>To browse all available events, open <strong>Module Settings &gt; Content Packs &gt; Manage Packs</strong>, then click <strong>Browse Events</strong> at the bottom of the panel. The browser lets you filter by terrain and page through every event with its full outcome tiers.</p><img src=\"modules/ionrift-respite/assets/screenshots/pure/event_browser.png\" alt=\"Event Browser accessed from Content Packs settings\" /><h3>Event Categories</h3><table><thead><tr><th>Category</th><th>What it means</th></tr></thead><tbody><tr><td>Encounter</td><td>Something hostile or confrontational. May lead to combat.</td></tr><tr><td>Complication</td><td>A problem that needs solving. Skill checks, resource loss, condition risks.</td></tr><tr><td>Discovery</td><td>Something useful found. Items, information, or resources.</td></tr><tr><td>Ambient</td><td>Colour and atmosphere. No mechanical impact, sets the tone.</td></tr></tbody></table>",
-                "format": 1,
-                "markdown": ""
-            },
-            "sort": 400000,
-            "ownership": {
-                "default": 0
-            },
-            "flags": {}
-        }
-    ],
+    "pages": [],
     "sort": 0,
-    "folder": null
+    "folder": null,
+    "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "coreVersion": "12.331",
+        "systemId": null,
+        "systemVersion": null,
+        "createdTime": null,
+        "modifiedTime": null,
+        "lastModifiedBy": null
+    }
 }

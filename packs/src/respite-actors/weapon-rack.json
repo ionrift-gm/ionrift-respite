@@ -1,0 +1,25 @@
+{
+    "_id": "CampWeapRack1",
+    "_key": "!actors!CampWeapRack1",
+    "name": "Weapon Rack",
+    "type": "npc",
+    "img": "icons/svg/sword.svg",
+    "system": {
+        "description": { "value": "<h2>Weapon Rack</h2><p>A makeshift rack for maintaining and repairing weapons during a rest.</p><p>Drag this actor onto the scene to place the weapon rack token. Respite will auto-place one when a rest begins, but you can use this to customise the token art.</p>" },
+        "attributes": { "hp": { "value": 1, "max": 1 } },
+        "details": { "type": { "value": "construct" }, "cr": 0 }
+    },
+    "prototypeToken": {
+        "name": "Weapon Rack", "displayName": 0, "width": 1, "height": 1,
+        "texture": { "src": "icons/svg/sword.svg", "scaleX": 1, "scaleY": 1 },
+        "hidden": false, "lockRotation": true, "rotation": 0, "actorLink": false,
+        "disposition": -2, "light": { "bright": 0, "dim": 0 },
+        "sight": { "enabled": false }, "detectionModes": []
+    },
+    "items": [], "effects": [],
+    "folder": "CampEquipFolder0",
+    "ownership": { "default": 0 },
+    "flags": { "ionrift-respite": { "isCampEquipment": true, "equipmentKey": "CampWeapRack1" } },
+    "sort": 300,
+    "_stats": { "compendiumSource": null, "duplicateSource": null, "coreVersion": "12.331", "systemId": "dnd5e", "systemVersion": "4.1.2", "createdTime": null, "modifiedTime": null, "lastModifiedBy": null }
+}

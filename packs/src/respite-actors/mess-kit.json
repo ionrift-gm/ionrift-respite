@@ -1,0 +1,25 @@
+{
+    "_id": "CampMessKit1",
+    "_key": "!actors!CampMessKit1",
+    "name": "Mess Kit",
+    "type": "npc",
+    "img": "icons/svg/tankard.svg",
+    "system": {
+        "description": { "value": "<h2>Mess Kit</h2><p>A small half-grid dining token placed for party members with a mess kit.</p><p>Drag this actor onto the scene to place a mess kit token. Respite auto-places these for equipped characters, but you can use this to customise the token art.</p>" },
+        "attributes": { "hp": { "value": 1, "max": 1 } },
+        "details": { "type": { "value": "construct" }, "cr": 0 }
+    },
+    "prototypeToken": {
+        "name": "Mess Kit", "displayName": 0, "width": 0.5, "height": 0.5,
+        "texture": { "src": "icons/svg/tankard.svg", "scaleX": 1, "scaleY": 1 },
+        "hidden": false, "lockRotation": true, "rotation": 0, "actorLink": false,
+        "disposition": -2, "light": { "bright": 0, "dim": 0 },
+        "sight": { "enabled": false }, "detectionModes": []
+    },
+    "items": [], "effects": [],
+    "folder": "CampEquipFolder0",
+    "ownership": { "default": 0 },
+    "flags": { "ionrift-respite": { "isCampEquipment": true, "equipmentKey": "CampMessKit1" } },
+    "sort": 700,
+    "_stats": { "compendiumSource": null, "duplicateSource": null, "coreVersion": "12.331", "systemId": "dnd5e", "systemVersion": "4.1.2", "createdTime": null, "modifiedTime": null, "lastModifiedBy": null }
+}

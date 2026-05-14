@@ -1,0 +1,76 @@
+{
+    "_id": "CampfireToken001",
+    "_key": "!actors!CampfireToken001",
+    "name": "Campfire",
+    "type": "npc",
+    "img": "modules/ionrift-respite/assets/tokens/campfire_topdown_128x128.png",
+    "system": {
+        "description": {
+            "value": "<h2>Campfire Token</h2><p>A top-down animated campfire for use with Ionrift Respite.</p><h3>Setup</h3><ol><li>Drag this actor onto the scene where the party will rest.</li><li>Right-click the token and select <strong>Toggle Visibility</strong> to hide it from players.</li><li>Start a rest through Respite as normal.</li></ol><p>When the rest begins, Respite will automatically ensure the token is hidden. When players light the campfire during the rest, the token becomes visible and its light turns on. When the fire goes out, the token hides again.</p><h3>Customisation</h3><p>The token name must match the <strong>Campfire Token Name</strong> setting in the Respite module settings (default: \"Campfire\"). If you rename the token, update the setting to match.</p><p>To customise the light radius and colour, edit this actor's prototype token light settings. Respite will read the light configuration from this actor when lighting the campfire.</p>"
+        },
+        "attributes": {
+            "hp": { "value": 1, "max": 1 }
+        },
+        "details": {
+            "type": { "value": "construct" },
+            "cr": 0
+        }
+    },
+    "prototypeToken": {
+        "name": "Campfire",
+        "displayName": 0,
+        "width": 1,
+        "height": 1,
+        "texture": {
+            "src": "modules/ionrift-respite/assets/tokens/campfire_topdown_128x128.webm",
+            "scaleX": 1,
+            "scaleY": 1
+        },
+        "hidden": true,
+        "lockRotation": true,
+        "rotation": 0,
+        "actorLink": false,
+        "disposition": -2,
+        "light": {
+            "bright": 20,
+            "dim": 40,
+            "color": "#ff9329",
+            "alpha": 0.4,
+            "angle": 360,
+            "coloration": 1,
+            "luminosity": 0.5,
+            "saturation": 0,
+            "contrast": 0,
+            "shadows": 0,
+            "animation": {
+                "type": "torch",
+                "speed": 3,
+                "intensity": 4,
+                "reverse": false
+            },
+            "darkness": { "min": 0, "max": 1 }
+        },
+        "sight": { "enabled": false },
+        "detectionModes": []
+    },
+    "items": [],
+    "effects": [],
+    "folder": null,
+    "ownership": { "default": 0 },
+    "flags": {
+        "ionrift-respite": {
+            "isCampfireToken": true
+        }
+    },
+    "sort": 0,
+    "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "coreVersion": "12.331",
+        "systemId": "dnd5e",
+        "systemVersion": "4.1.2",
+        "createdTime": null,
+        "modifiedTime": null,
+        "lastModifiedBy": null
+    }
+}

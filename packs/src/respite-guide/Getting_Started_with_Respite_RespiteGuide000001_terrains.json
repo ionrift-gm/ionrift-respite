@@ -1,0 +1,20 @@
+{
+    "_id": "zA0gnfQJRBoM7wiw",
+    "_key": "!journal.pages!1Zh2gDQ1xOLFUrhW.zA0gnfQJRBoM7wiw",
+    "name": "Terrains & Events",
+    "type": "text",
+    "title": { "show": true, "level": 1 },
+    "image": {},
+    "video": { "controls": true, "volume": 0.5 },
+    "src": null,
+    "system": {},
+    "text": {
+        "content": "<h2>Terrains</h2><p>Terrain sets the event pool and baseline encounter DC. Available terrains include forest, desert, swamp, coast, arctic, underdark, urban, ruins, dungeon, and tavern. Each has its own events and base difficulty.</p><h2>Events</h2><p>Events are pulled from terrain-tagged pools with weighted selection. They never repeat until the pool cycles. Each event resolves on a 4-tier scale (triumph, success, mixed, failure) based on how far above or below the DC the roll lands.</p><p>The base pack ships with events across all terrains. Additional event packs can be enabled through the <strong>Content Packs</strong> settings panel.</p><h3>Event Browser</h3><p>To browse all available events, open <strong>Module Settings &gt; Content Packs &gt; Manage Packs</strong>, then click <strong>Browse Events</strong> at the bottom of the panel. The browser lets you filter by terrain and page through every event with its full outcome tiers.</p><img src=\"modules/ionrift-respite/assets/screenshots/pure/event_browser.png\" alt=\"Event Browser accessed from Content Packs settings\" /><h3>Event Categories</h3><table><thead><tr><th>Category</th><th>What it means</th></tr></thead><tbody><tr><td>Encounter</td><td>Something hostile or confrontational. May lead to combat.</td></tr><tr><td>Complication</td><td>A problem that needs solving. Skill checks, resource loss, condition risks.</td></tr><tr><td>Discovery</td><td>Something useful found. Items, information, or resources.</td></tr><tr><td>Ambient</td><td>Colour and atmosphere. No mechanical impact, sets the tone.</td></tr></tbody></table>",
+        "format": 1,
+        "markdown": ""
+    },
+    "sort": 400000,
+    "ownership": { "default": 0 },
+    "flags": {},
+    "_stats": { "compendiumSource": null, "duplicateSource": null, "coreVersion": "12.331", "systemId": null, "systemVersion": null, "createdTime": null, "modifiedTime": null, "lastModifiedBy": null }
+}

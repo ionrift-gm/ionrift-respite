@@ -1,0 +1,20 @@
+{
+    "_id": "Vnk9XsDNGBF6yTbu",
+    "_key": "!journal.pages!1Zh2gDQ1xOLFUrhW.Vnk9XsDNGBF6yTbu",
+    "name": "Settings Reference",
+    "type": "text",
+    "title": { "show": true, "level": 1 },
+    "image": {},
+    "video": { "controls": true, "volume": 0.5 },
+    "src": null,
+    "system": {},
+    "text": {
+        "content": "<h2>Module Settings</h2><p>All settings are under <strong>Game Settings &gt; Module Settings &gt; Ionrift Respite</strong>.</p><ul><li><strong>Default Comfort Level</strong> - The comfort tier used when the GM does not pick one during setup.</li><li><strong>Intercept Player Rests</strong> - When enabled, clicking \"Long Rest\" on a character sheet opens the Respite flow instead of the default dialog.</li><li><strong>Armor Doff/Don Advisory</strong> - Shows a reminder when characters are resting in heavy armor (Xanathar's rules).</li><li><strong>Study Activity</strong> - Enables the Study activity tile for identifying items, copying spells, and Detect Magic scans.</li><li><strong>Track Food &amp; Water</strong> - Enables the rations phase. When off, the rest skips straight from Activities to Events.</li><li><strong>Partial Sustenance</strong> - Allows partial food/water (half rations) without full penalties.</li><li><strong>Content Packs</strong> - Enable or disable expansion event packs. Shows event counts per terrain.</li></ul>",
+        "format": 1,
+        "markdown": ""
+    },
+    "sort": 300000,
+    "ownership": { "default": 0 },
+    "flags": {},
+    "_stats": { "compendiumSource": null, "duplicateSource": null, "coreVersion": "12.331", "systemId": null, "systemVersion": null, "createdTime": null, "modifiedTime": null, "lastModifiedBy": null }
+}
