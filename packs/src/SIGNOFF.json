@@ -108,14 +108,113 @@
       "assetSourceNote": "icons/consumables/plants/leaf-herb-green.webp"
     }
   },
-  "actors": {},
+  "actors": {
+    "_folder_camp-equipment.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-14",
+      "assetSource": "none",
+      "assetSourceNote": "Folder document, no images"
+    },
+    "arcane-workbench.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-14",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/svg/chest.svg"
+    },
+    "bedroll.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-14",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/svg/sleep.svg"
+    },
+    "campfire.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-14",
+      "assetSource": "module-bundled",
+      "assetSourceNote": "modules/ionrift-respite/assets/tokens/campfire_topdown_128x128.png + .webm"
+    },
+    "cooking-station.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-14",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/svg/fire.svg"
+    },
+    "medical-bedding.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-14",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/svg/heal.svg"
+    },
+    "mess-kit.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-14",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/svg/tankard.svg"
+    },
+    "tent.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-14",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/svg/house.svg"
+    },
+    "weapon-rack.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-14",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/svg/sword.svg"
+    }
+  },
   "guide": {
     "Getting_Started_with_Respite_RespiteGuide000001.json": {
       "status": "approved",
       "approvedBy": "geoff",
       "approvedDate": "2026-04-27",
       "assetSource": "none",
-      "assetSourceNote": "Journal entry, no images"
+      "assetSourceNote": "Journal parent document, no images"
+    },
+    "Getting_Started_with_Respite_RespiteGuide000001_player-guide.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-14",
+      "assetSource": "none",
+      "assetSourceNote": "Journal page, no images"
+    },
+    "Getting_Started_with_Respite_RespiteGuide000001_how-to-start.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-14",
+      "assetSource": "none",
+      "assetSourceNote": "Journal page, no images"
+    },
+    "Getting_Started_with_Respite_RespiteGuide000001_settings.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-14",
+      "assetSource": "none",
+      "assetSourceNote": "Journal page, no images"
+    },
+    "Getting_Started_with_Respite_RespiteGuide000001_cooking.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-14",
+      "assetSource": "none",
+      "assetSourceNote": "Journal page, no images"
+    },
+    "Getting_Started_with_Respite_RespiteGuide000001_terrains.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-05-14",
+      "assetSource": "none",
+      "assetSourceNote": "Journal page, references modules/ionrift-respite/assets/screenshots/pure/event_browser.png"
     }
   }
 }
