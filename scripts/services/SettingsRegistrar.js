@@ -353,10 +353,9 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         name: "Debug Mode",
         hint: "Enable verbose logging for rest flow.",
         scope: "client",
-        config: true,
+        config: false,
         type: Boolean,
-        default: false,
-        restricted: true
+        default: false
     });
 
     // ── Reset Rest Date (lightweight cooldown clear) ─────────────────
