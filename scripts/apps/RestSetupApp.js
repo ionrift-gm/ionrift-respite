@@ -56,7 +56,7 @@ import { TravelResolutionDelegate } from "./delegates/TravelResolutionDelegate.j
 import { CampCeremonyDelegate } from "./delegates/CampCeremonyDelegate.js";
 import { EventsPhaseDelegate } from "./delegates/EventsPhaseDelegate.js";
 import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
-import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple } from "./delegates/DetectMagicDelegate.js";
+import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple, purgeDetectMagicEffects } from "./delegates/DetectMagicDelegate.js";
 import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, CAMP_STATIONS, getStationsForTerrain, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments } from "./RestConstants.js";
 import { buildActivityListItem, buildActivityDetailContext } from "./ActivityDetailBuilder.js";
 import {
@@ -7897,7 +7897,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // the preRestCompleted hook in module.js suppresses those from the
         // system's own recovery so there is no double-dipping.
         // When rest-recovery module is active it handles everything, so we skip.
-        // PF2e has no actor.longRest() â€” skip for non-5e systems.
+        // PF2e has no actor.longRest() — skip for non-5e systems.
         if (!skipRecovery && game.system.id === "dnd5e") {
             const restType = this._engine?.restType ?? "long";
             for (const outcome of this._outcomes) {
@@ -7916,6 +7916,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         } else if (!skipRecovery && game.system.id !== "dnd5e") {
             console.log(`${MODULE_ID} | Skipping native rest call (system: ${game.system.id} â€” no longRest/shortRest API).`);
+        }
+
+        // Strip any Detect Magic active effects left on party actors from the rest scan.
+        try {
+            await purgeDetectMagicEffects(getPartyActors());
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Failed to purge Detect Magic effects:`, e);
         }
 
         // Stamp Well Fed AEs with DAE longRest specialDuration now that native rest has run.

@@ -3,9 +3,11 @@
 
     {{!-- Abandon button: top-right, matching long rest placement --}}
     {{#if isGM}}
-    <button type="button" class="btn-abandon-rest" data-action="abandonShortRest" title="Abandon this short rest">
-        <i class="fas fa-times"></i> Abandon Rest
-    </button>
+    <div class="sr-header-bar">
+        <button type="button" class="btn-abandon-rest" data-action="abandonShortRest" title="Abandon this short rest">
+            <i class="fas fa-times"></i> Abandon Rest
+        </button>
+    </div>
     {{/if}}
 
     {{!-- Camp status badges above the banner (matches long rest placement) --}}
@@ -272,7 +274,7 @@
     </div>{{!-- /sr-scroll-body --}}
     {{else}}
     <div class="sr-scroll-body sr-workbench-body">
-        <p class="sr-wb-hint">Focus, potion tastes, Detect Magic. Attune at the desk workbench, Activities tab.</p>
+        <p class="sr-wb-hint">Focus on 1 magic item per rest to learn its properties (DMG p.136). Taste potions to identify them. Use Detect Magic to reveal auras.</p>
         <div class="sr-workbench-identify-host">
         {{#with workbenchEmbed}}
         {{> workbenchIdentifyEmbed}}

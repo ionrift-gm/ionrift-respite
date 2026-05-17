@@ -60,6 +60,9 @@
             data-workbench-actor-id="{{workbenchIdentifyActorId}}"
             {{#if workbenchSubmitLocked}}disabled{{/if}}>Submit identify</button>
     </div>
+    {{#unless magicScanActive}}
+    <p class="wb-detect-magic-attribution">{{#if isGmUser}}GM override - cast Detect Magic on behalf of the party.{{else}}{{detectMagicScanButtonTitle}}{{/if}}</p>
+    {{/unless}}
     </div>
 
     {{#if workbenchIdentifyAcknowledgement}}

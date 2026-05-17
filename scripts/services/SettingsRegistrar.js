@@ -54,7 +54,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         scope: "world",
         config: true,
         type: String,
-        default: "stations",
+        default: "theater",
         choices: {
             theater: "Theater of the Mind (inline cards)",
             stations: "Stations (canvas overlays)"
