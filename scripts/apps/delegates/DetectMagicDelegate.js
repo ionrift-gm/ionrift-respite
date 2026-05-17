@@ -137,6 +137,70 @@ export function computeCanShowDetectMagicScanButton(partyActors) {
 }
 
 /**
+ * Returns a human-readable tooltip string explaining why this player can
+ * trigger the Detect Magic scan — e.g. "Lyra has Detect Magic as a cantrip."
+ * Returns null for GMs (they have their own static title) and for players
+ * with no access.
+ * @param {Actor[]} partyActors
+ * @returns {string|null}
+ */
+export function getDetectMagicPlayerAccessReason(partyActors) {
+    if (game.user?.isGM) return null;
+    for (const actor of partyActors) {
+        if (!actor.isOwner) continue;
+        for (const item of actor.items ?? []) {
+            if (item.type !== "spell") continue;
+            if (item.name?.toLowerCase() !== "detect magic") continue;
+            const level = item.system?.level ?? 0;
+            if (level === 0) {
+                return `${actor.name} has Detect Magic as a cantrip.`;
+            }
+            const isRitual = (item.system?.properties instanceof Set && item.system.properties.has("ritual"))
+                || item.system?.properties?.ritual === true
+                || item.system?.components?.ritual === true;
+            if (isRitual) {
+                return `${actor.name} has Detect Magic as a ritual and can cast it from their spellbook.`;
+            }
+            let mode, isPrepared;
+            if (item.system !== null && "method" in item.system) {
+                mode = item.system.method;
+                isPrepared = item.system.prepared;
+            } else {
+                const prep = item.system?.preparation;
+                mode = prep?.mode;
+                isPrepared = prep?.prepared;
+            }
+            if (mode === "innate") return `${actor.name} can cast Detect Magic innately.`;
+            if (mode === "always") return `${actor.name} always has Detect Magic available.`;
+            if (isPrepared === true) return `${actor.name} has Detect Magic prepared.`;
+        }
+    }
+    return null;
+}
+
+/**
+ * Deletes any "Detect Magic" active effects from the given actors.
+ * Called at rest conclusion (short and long) so timed spell effects
+ * left over from the scan don't persist past the rest window.
+ * @param {Actor[]} actors
+ * @returns {Promise<void>}
+ */
+export async function purgeDetectMagicEffects(actors) {
+    const toDelete = [];
+    for (const actor of actors ?? []) {
+        for (const effect of actor.effects ?? []) {
+            if (effect.name?.toLowerCase() === "detect magic") {
+                toDelete.push(effect);
+            }
+        }
+    }
+    if (!toDelete.length) return;
+    await Promise.allSettled(toDelete.map(e => e.delete().catch(err =>
+        console.warn(`[Respite] Failed to delete Detect Magic effect on ${e.parent?.name}:`, err)
+    )));
+}
+
+/**
  * Spawn 3 concentric expanding ring ripples centered on an element, appended to
  * document.body so they survive an app re-render that replaces the source element.
  * @param {HTMLElement|null} element

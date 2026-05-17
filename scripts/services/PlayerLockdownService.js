@@ -13,12 +13,15 @@ const MODULE_ID = "ionrift-respite";
 
 /**
  * Returns true if a Respite rest flow (long or short) is currently active.
- * Checks the module API first, then falls back to world settings.
+ * Checks the module API, the short rest app reference (all clients), then world settings.
  * @returns {boolean}
  */
 function isRestActive() {
-    // Primary: module API getter (added in module.js)
+    // Primary: module API getter (set on GM during long rest)
     if (game.ionrift?.respite?.isRestActive) return true;
+
+    // Short rest: activeShortRestApp is set on all clients via socket
+    if (game.ionrift?.respite?.activeShortRestApp) return true;
 
     // Fallback: check persisted rest state in world settings
     try {

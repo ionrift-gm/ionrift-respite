@@ -37,6 +37,8 @@ import {
     computeCanShowDetectMagicScanButton,
     computeCanTriggerDetectMagicScan,
     DetectMagicDelegate,
+    getDetectMagicPlayerAccessReason,
+    purgeDetectMagicEffects,
     spawnDetectMagicCastRipple
 } from "./delegates/DetectMagicDelegate.js";
 import {
@@ -442,7 +444,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             detectMagicScanButtonLabel: this._magicScanComplete
                 ? DETECT_MAGIC_BTN_LABEL_DISMISS
                 : (game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER),
-            detectMagicScanButtonTitle: game.user?.isGM ? DETECT_MAGIC_BTN_TITLE_GM : "",
+            detectMagicScanButtonTitle: game.user?.isGM
+                ? DETECT_MAGIC_BTN_TITLE_GM
+                : (getDetectMagicPlayerAccessReason(getPartyActors()) ?? ""),
             magicScanResults: this._magicScanResults ?? [],
             magicScanComplete: !!this._magicScanComplete,
             magicScanActive: !!this._magicScanComplete,
@@ -1502,12 +1506,22 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
             }
 
+            // Strip any Detect Magic active effects left on party actors from the scan.
+            try {
+                await purgeDetectMagicEffects(partyActors);
+            } catch (e) {
+                console.warn(`${MODULE_ID} | Failed to purge Detect Magic effects:`, e);
+            }
+
             await this._clearShortRestState();
             emitShortRestComplete();
             ui.notifications.info("Short rest complete. Class features recovered.");
             this._completionPhase = false;
             this._completionSummaryLines = null;
             this._isTerminating = true;
+            // Clear Detect Magic glow state before closing so it doesn't persist
+            // past the rest conclusion on actor sheets.
+            this._detectMagic?.clearScanSession({ skipSave: true });
             this.close();
         } finally {
             this._finalizeShortRestBusy = false;
@@ -1539,6 +1553,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         game.socket.emit(`module.${MODULE_ID}`, { type: "shortRestAbandoned" });
         ui.notifications.info("Short rest abandoned.");
         this._isTerminating = true;
+        // Clear Detect Magic glow state before closing so it doesn't persist
+        // after an abandoned short rest.
+        this._detectMagic?.clearScanSession({ skipSave: true });
         this.close();
     }
 

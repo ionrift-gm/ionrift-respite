@@ -16,7 +16,7 @@ import {
     DETECT_MAGIC_BTN_TITLE_GM
 } from "./RestConstants.js";
 import { buildActivityListItem, buildActivityDetailContext } from "./ActivityDetailBuilder.js";
-import { computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple } from "./delegates/DetectMagicDelegate.js";
+import { computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, getDetectMagicPlayerAccessReason, spawnDetectMagicCastRipple } from "./delegates/DetectMagicDelegate.js";
 import { canPlaceStation, actorHasBrewingTools } from "../services/CompoundCampPlacer.js";
 import { getPartyActors } from "../services/partyActors.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
@@ -495,7 +495,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             detectMagicScanButtonLabel: this._restApp?._magicScanComplete
                 ? DETECT_MAGIC_BTN_LABEL_DISMISS
                 : (game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER),
-            detectMagicScanButtonTitle: game.user?.isGM ? DETECT_MAGIC_BTN_TITLE_GM : "",
+            detectMagicScanButtonTitle: game.user?.isGM
+                ? DETECT_MAGIC_BTN_TITLE_GM
+                : (getDetectMagicPlayerAccessReason(getPartyActors()) ?? ""),
             magicScanResults: this._restApp?._magicScanResults ?? [],
             magicScanComplete: !!this._restApp?._magicScanComplete,
             magicScanActive: !!this._restApp?._magicScanComplete,
