@@ -90,6 +90,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         type: Number,
         default: 5,
         range: { min: 1, max: 9, step: 1 },
+        restricted: true
     });
 
     game.settings.register(MODULE_ID, "songOfRestTiming", {
@@ -334,7 +335,8 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         config: true,
         type: Boolean,
         default: false,
-        onChange: onAmbientAfkChange
+        onChange: onAmbientAfkChange,
+        restricted: true
     });
 
     // ── Client: AFK HUD position ─────────────────────────────────────
@@ -353,7 +355,8 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         scope: "client",
         config: true,
         type: Boolean,
-        default: false
+        default: false,
+        restricted: true
     });
 
     // ── Reset Rest Date (lightweight cooldown clear) ─────────────────
