@@ -7,6 +7,14 @@
 import { isGearDeployed } from "../services/CompoundCampPlacer.js";
 import { HD_PENALTY, boostComfort } from "../services/ComfortCalculator.js";
 
+/** Activities hidden when the GM marks a safe rest spot (no encounter risk; no redundant camp duties). */
+export const SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS = new Set([
+    "act_keep_watch",
+    "act_defenses",
+    "act_scout",
+    "act_tend_wounds"
+]);
+
 /**
  * Weather master table. Each entry defines comfort penalty, encounter DC modifier,
  * and tent interaction. `tentReduces` means tent lowers penalty by 1 (partial help).
@@ -133,6 +141,7 @@ export function getActivityAdvisory(activityId, actor, partyState) {
             const comfortTier = partyState.comfort ?? "sheltered";
             const isHostile = comfortTier === "hostile";
             const isRough = comfortTier === "rough";
+            const isSafe = comfortTier === "safe";
             const adapter = game.ionrift?.respite?.adapter;
             const exhaustion = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
 
@@ -143,6 +152,16 @@ export function getActivityAdvisory(activityId, actor, partyState) {
             const hdWith = Math.max(0, rawHdRecovery - boostedPenalty) + 1;
             const effectiveGain = Math.max(0, Math.min(hdWith, hdDeficit) - Math.min(hdWithout, hdDeficit));
 
+            // Safe rest spot: Rest Fully's main value is the extra -1 exhaustion
+            if (isSafe) {
+                if (exhaustion >= 2)
+                    return { text: `${exhaustion} exhaustion. Rest Fully reduces an extra level beyond the long rest base`, urgent: true };
+                if (exhaustion === 1)
+                    return { text: "1 exhaustion. Rest Fully clears it entirely (base -1 + bonus -1)", urgent: false };
+                if (hdDeficit >= 1 && effectiveGain > 0)
+                    return { text: `Missing ${hdDeficit} HD. Rest Fully recovers +${effectiveGain} extra HD`, urgent: false };
+                return { text: "Full recovery guaranteed. No additional benefit", urgent: false, nonViable: true };
+            }
             if (isHostile) {
                 if (hdDeficit >= 1)
                     return { text: `Hostile camp. Rest Fully recovers ${effectiveGain || 1} extra HD, removes HP cap`, urgent: true };

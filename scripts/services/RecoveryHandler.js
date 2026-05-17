@@ -256,6 +256,9 @@ export class RecoveryHandler {
             if (recovery.comfortLevel === "hostile") {
                 // Hostile conditions: no natural exhaustion reduction
                 restRecovery = 0;
+            } else if (recovery.armorSleepPenalty) {
+                // Xanathar's: sleeping in medium/heavy armor blocks exhaustion reduction
+                restRecovery = 0;
             } else {
                 restRecovery = -1;
             }
