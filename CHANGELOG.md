@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.2.3] - 2026-05-17
+
+### Fixed
+- **Detect Magic no longer lingers after a rest.** The scan glow and any active effects from a Detect Magic cast during the workbench session are now stripped from all party members when the rest concludes - whether completed or abandoned. Previously the effect would persist on actor sheets with no way to clear it short of a world reload.
+- Abandoning a short rest now clears the Detect Magic scan state. The glow and dismiss toggle no longer carry over to the next session.
+- The Workbench Detect Magic button now shows players which character has the spell available and why, instead of showing nothing when a player can use it.
+- Workbench focus hint updated to cite the correct rule reference (DMG p.136).
+- The Abandon Rest button on the short rest screen is now consistently aligned with the rest header, matching the long rest layout.
+- New worlds now default to Theater of the Mind mode for the rest interface. Worlds that already have a saved setting are not affected.
+
 ## [2.2.2] - 2026-05-14
 
 ### Fixed
