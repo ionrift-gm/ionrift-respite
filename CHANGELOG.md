@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.2.4] - 2026-05-17
+
+### Fixed
+- **Rest Fully is now available during safe rests.** Characters with exhaustion can choose Rest Fully at a tavern or safe campsite to reduce an extra exhaustion level. The activity card shows an advisory when this matters - urgent yellow at 2+ exhaustion, informational at 1.
+- Sleeping in medium or heavy armor now correctly blocks the base exhaustion reduction on a long rest outside a safe location, as per the Xanathar's variant rule. The Rest Fully bonus still applies on top.
+- Armor sleep penalties no longer apply at safe rest spots. Characters at a tavern or allied camp are assumed to manage their own gear - no Hit Die penalty, no exhaustion block.
+- Party portraits now appear on activity cards even when the card is greyed out for the currently selected character. Randal choosing Rest Fully was invisible to the rest of the party.
+
 ## [2.2.3] - 2026-05-17
 
 ### Fixed
@@ -466,7 +474,3 @@ Initial public release.
 - Socket-based multiplayer synchronisation
 - Centralized Logger gated on debug setting
 - DnD5e system adapter with PF2e and Daggerheart stubs
-
- 
- 
- 
