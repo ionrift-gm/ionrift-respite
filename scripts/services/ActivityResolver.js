@@ -5,8 +5,7 @@ export const SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS = new Set([
     "act_keep_watch",
     "act_defenses",
     "act_scout",
-    "act_tend_wounds",
-    "act_rest_fully"
+    "act_tend_wounds"
 ]);
 
 /**

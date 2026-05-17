@@ -217,11 +217,13 @@ export class RestFlowEngine {
         const totalHd = actor.system?.attributes?.hd?.max ?? actor.system?.details?.level ?? 0;
         const rawHdRecovery = Math.max(1, Math.floor(totalHd / 2));
 
-        // Safe rest spot: full HP cap, no comfort tier penalties, no exhaustion risk
+        // Safe rest spot: full HP cap, no comfort tier penalties, no exhaustion risk.
+        // Armor sleep penalty is waived — characters in a safe haven are assumed to
+        // manage their own armor (doff at the inn, etc.) without mechanical penalty.
         if (this.safeRestSpot) {
             const effectiveComfort = "safe";
             const hdPenalty = 0;
-            let baseHdRecovered = Math.max(0, rawHdRecovery - hdPenalty);
+            const baseHdRecovered = Math.max(0, rawHdRecovery - hdPenalty);
             const maxHpRestorable = maxHp;
             let baseHpRestored = maxHpRestorable;
 
@@ -245,22 +247,6 @@ export class RestFlowEngine {
                 baseHpRestored = Math.max(0, Math.floor(naturalHealing * overallHpMultiplier));
             }
 
-            let armorSleepPenalty = false;
-            let equippedArmor = null;
-            try {
-                const armorRuleEnabled = game.settings.get("ionrift-respite", "armorDoffRule");
-                if (armorRuleEnabled) {
-                    equippedArmor = actor.items?.find(i =>
-                        i.type === "equipment" && i.system?.equipped &&
-                        ["medium", "heavy"].includes(i.system?.type?.value ?? i.system?.armor?.type)
-                    );
-                    if (equippedArmor && !activitySchema?.armorSleepWaiver) {
-                        armorSleepPenalty = true;
-                        baseHdRecovered = Math.max(0, Math.floor(totalHd / 4) - hdPenalty);
-                    }
-                }
-            } catch (e) { /* setting may not exist yet */ }
-
             const items = actor.items?.map(i => i.name?.toLowerCase()) ?? [];
             const hasBedroll = items.some(n => n?.includes("bedroll"));
             const bonusHdFromActivity = activitySchema?.outcomes?.success?.effects
@@ -273,7 +259,6 @@ export class RestFlowEngine {
             const gearDescriptors = [];
             if (gearBonusHd > 0) gearDescriptors.push("Bedroll: +1 HD");
             if (bonusHdFromActivity > 0) gearDescriptors.push("Deep sleep: +1 HD");
-            if (armorSleepPenalty) gearDescriptors.push(`Sleeping in ${equippedArmor.name}: 1/4 HD, exhaustion not reduced`);
 
             if (travelRec?.hpMultiplier && typeof actor.unsetFlag === "function") {
                 void actor.unsetFlag("ionrift-respite", "travelMishapRecovery");
@@ -289,7 +274,7 @@ export class RestFlowEngine {
                 restedFully: activitySchema?.id === "act_rest_fully",
                 exhaustionDC,
                 exhaustionAdvantage,
-                armorSleepPenalty,
+                armorSleepPenalty: false,
                 gearBonuses: { hd: gearBonusHd, exhaustionAdvantage },
                 gearDescriptors
             };
