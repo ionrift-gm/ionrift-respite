@@ -512,6 +512,14 @@ Hooks.once("init", async () => {
     registerItemEnrichments();
 });
 
+Hooks.on("ionrift.overlayContentChanged", async (detail) => {
+    if (detail?.moduleId !== MODULE_ID) return;
+    if (detail.overlayId !== "respite-core-overlay") return;
+
+    const disabled = !detail.installed || !detail.active;
+    await game.settings.set(MODULE_ID, "artPackDisabled", disabled);
+    await ImageResolver.init();
+});
 
 // Scene Controls: Campfire button in the token controls group
 Hooks.on("getSceneControlButtons", (controls) => {

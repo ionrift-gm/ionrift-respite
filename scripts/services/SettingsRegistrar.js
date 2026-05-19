@@ -7,6 +7,8 @@
  */
 
 
+import { EventBrowserApp } from "../apps/EventBrowserApp.js";
+
 const MODULE_ID = "ionrift-respite";
 
 /**
@@ -20,11 +22,24 @@ const MODULE_ID = "ionrift-respite";
  */
 export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientAfkChange }) {
 
-    // ── Content Packs button (via kernel) ────────────────────────────
-    const SettingsLayoutForPack = game.ionrift?.library?.SettingsLayout;
-    SettingsLayoutForPack?.registerPackButton(MODULE_ID, PackRegistryApp, {
-        hint: "Enable or disable event content packs. Shows event counts per terrain."
+    // ── Event Browser (reference tool; content install lives in Patreon Library) ──
+    game.settings.registerMenu(MODULE_ID, "eventBrowser", {
+        name: "Event Browser",
+        label: "Browse Events",
+        hint: "Read every event in packs enabled for this world, filtered by terrain.",
+        icon: "fas fa-book-open",
+        type: EventBrowserApp,
+        restricted: true
     });
+
+    // Legacy pack manager: only when Patreon Library does not own overlay delivery.
+    const overlayPackUi = game.ionrift?.library?.isOverlayDistributionActive?.();
+    if (!overlayPackUi) {
+        const SettingsLayoutForPack = game.ionrift?.library?.SettingsLayout;
+        SettingsLayoutForPack?.registerPackButton(MODULE_ID, PackRegistryApp, {
+            hint: "Enable or disable event content packs. Shows event counts per terrain."
+        });
+    }
 
     // ── Party Roster (migration-only) ────────────────────────────────
     // Menu removed: roster UI now lives in ionrift-library (game.ionrift.library.party).

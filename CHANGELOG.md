@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.2.5] - 2026-05-19
+
+### Added
+- **Browse Events is now its own settings entry.** Open it from Module Settings without going through the pack manager.
+
 ## [2.2.4] - 2026-05-17
 
 ### Fixed
