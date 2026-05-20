@@ -67,3 +67,4 @@ vitest.config.*
 # Dev composition profiles (local only)
 dev-profiles.json
 packs/.staging/
+ionrift-respite.lock

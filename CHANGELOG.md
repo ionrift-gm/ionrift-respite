@@ -1,9 +1,18 @@
 # Changelog
 
-## [2.2.5] - 2026-05-19
+## [2.2.6] - 2026-05-20
 
 ### Added
-- **Browse Events is now its own settings entry.** Open it from Module Settings without going through the pack manager.
+- Content packs now correctly populate and report their status against the
+  remote manifest. The Library shows the full set of available packs, and
+  each can be toggled on or off independently.
+- A reminder appears in Module Settings when default token art is in use and
+  the Respite art pack has not been installed. The reminder shares dismiss
+  and snooze state with the existing in-app camp-phase prompt.
+
+### Changed
+- The art and content nudges now use the shared Ionrift Library banner.
+  Existing snooze and dismiss choices carry over.
 
 ## [2.2.4] - 2026-05-17
 

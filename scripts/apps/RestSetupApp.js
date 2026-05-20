@@ -1492,7 +1492,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         try {
             const resp = await fetch(path);
             if (!resp.ok) {
-                console.warn(`${MODULE_ID} | No event file for terrain: ${terrainTag}`);
+                // Try overlay-delivered events (Patreon Library content packs)
+                const loaded = await this._loadTerrainEventsFromOverlay(terrainTag);
+                if (!loaded) {
+                    console.warn(`${MODULE_ID} | No event file for terrain: ${terrainTag}`);
+                }
                 return;
             }
             const data = await resp.json();
@@ -1500,6 +1504,31 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         } catch (e) {
             console.warn(`${MODULE_ID} | Failed to load events for ${terrainTag}:`, e);
         }
+    }
+
+    /**
+     * Attempts to load terrain events from overlay packs.
+     * @param {string} terrainTag
+     * @returns {Promise<boolean>} True if events were found and loaded.
+     */
+    async _loadTerrainEventsFromOverlay(terrainTag) {
+        try {
+            const { OverlayEventLoader } = await import("../services/OverlayEventLoader.js");
+            const packs = await OverlayEventLoader.loadAll();
+            for (const { data } of packs) {
+                const hasMatchingEvents = (data.events ?? []).some(
+                    e => e.terrainTags?.includes(terrainTag)
+                );
+                if (hasMatchingEvents) {
+                    this._eventResolver.load(data.tables, data.events);
+                    console.log(`${MODULE_ID} | Loaded overlay events for terrain: ${terrainTag}`);
+                    return true;
+                }
+            }
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Overlay event lookup failed for ${terrainTag}:`, e);
+        }
+        return false;
     }
 
     render(options = {}) {
@@ -3165,15 +3194,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             })() : null,
             terrainOptions: (() => {
                 const lastTerrain = game.settings.get(MODULE_ID, "lastTerrain");
-                // Only show terrains that have event sources (core eventsFile or content pack events)
                 const opts = TerrainRegistry.getAll()
-                    .filter(t => {
-                        // Has built-in core events file
-                        if (t.eventsFile) return true;
-                        // Has events loaded from an enabled content pack
-                        if (this._eventResolver?.tables?.has(t.id)) return true;
-                        return false;
-                    })
                     .map(t => ({ value: t.id, label: t.label }));
                 if (lastTerrain) {
                     const match = opts.find(o => o.value === lastTerrain);

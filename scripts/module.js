@@ -510,15 +510,35 @@ Hooks.once("init", async () => {
 
     // Register Respite-specific item enrichments with the shared library engine.
     registerItemEnrichments();
+
+    // Register Core Art Pack nudge with the shared library service so the
+    // Settings panel surfaces it alongside the in-app camp-phase nudge.
+    try {
+        const { registerArtPackNudge } = await import("./artPackNudge.js");
+        registerArtPackNudge();
+    } catch (e) {
+        console.warn(`${MODULE_ID} | Art pack nudge registration failed:`, e);
+    }
 });
 
 Hooks.on("ionrift.overlayContentChanged", async (detail) => {
     if (detail?.moduleId !== MODULE_ID) return;
-    if (detail.overlayId !== "respite-core-overlay") return;
 
-    const disabled = !detail.installed || !detail.active;
-    await game.settings.set(MODULE_ID, "artPackDisabled", disabled);
-    await ImageResolver.init();
+    // Art overlay
+    if (detail.overlayId === "respite-core-overlay") {
+        const disabled = !detail.installed || !detail.active;
+        await game.settings.set(MODULE_ID, "artPackDisabled", disabled);
+        await ImageResolver.init();
+        return;
+    }
+
+    // Event/content overlay — invalidate cached event data
+    // The next rest start or browser open will re-scan overlays
+    try {
+        const { OverlayEventLoader } = await import("./services/OverlayEventLoader.js");
+        OverlayEventLoader.invalidate();
+    } catch { /* loader not available */ }
+    console.log(`${MODULE_ID} | Overlay content changed: ${detail.overlayId} (active=${detail.active})`);
 });
 
 // Scene Controls: Campfire button in the token controls group
@@ -649,6 +669,20 @@ Hooks.once("ready", async () => {
             runFn: async () => {
                 const { runAdapterTests } = await import("./tests/AdapterTests.js");
                 return runAdapterTests();
+            }
+        });
+
+        game.ionrift.library.tests.register("ionrift-respite-overlays", {
+            name: "Respite Overlay Events",
+            description: "Overlay event loading, terrain registry population, cache invalidation",
+            runFn: async () => {
+                try {
+                    const { runOverlayEventTests } = await import("./tests/OverlayEventTests.js");
+                    return runOverlayEventTests();
+                } catch {
+                    return { passed: 0, failed: 0, total: 0, skipped: true,
+                        results: [{ name: "OverlayEventTests", status: "skip", message: "Test file not present (production build)." }] };
+                }
             }
         });
     }
