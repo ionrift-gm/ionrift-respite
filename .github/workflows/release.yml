@@ -74,6 +74,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      - name: Validate CHANGELOG
+        run: node tools/validate-changelog.mjs
+
       - name: Validate compendium sign-offs
         run: node tools/validate-packs.mjs
 
