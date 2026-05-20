@@ -139,6 +139,32 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
             }
         }
 
+        // ── Scan overlay content packs (Patreon Library delivered) ──
+        try {
+            const { OverlayEventLoader } = await import("../services/OverlayEventLoader.js");
+            const overlayPacks = await OverlayEventLoader.loadAll();
+            for (const { packId, data } of overlayPacks) {
+                const events = data.events ?? [];
+                if (!events.length) continue;
+
+                const pack = _ensurePack(packId);
+                pack.label = data.name ?? packId.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+                pack.icon = data.icon ?? "fas fa-mountain";
+                pack.description = data.description ?? "Overlay content pack";
+                pack.version = data.version ?? null;
+                for (const event of events) {
+                    if (event.tier) pack.tiers[event.tier] = (pack.tiers[event.tier] ?? 0) + 1;
+                    if (event.tier === "disaster") continue;
+                    for (const tag of (event.terrainTags ?? [])) {
+                        pack.terrains[tag] = (pack.terrains[tag] ?? 0) + 1;
+                    }
+                    pack.totalItems++;
+                }
+            }
+        } catch (e) {
+            console.warn("ionrift-respite | PackRegistry: Overlay pack scanning failed:", e);
+        }
+
         // Set base pack version from module manifest
         const basePack = packs.get("base");
         if (basePack) basePack.version = game.modules.get("ionrift-respite")?.version ?? null;

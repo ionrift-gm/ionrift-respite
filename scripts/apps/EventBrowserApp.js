@@ -225,6 +225,19 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
             }
         }
 
+        // Overlay packs (Patreon Library delivered content)
+        try {
+            const { OverlayEventLoader } = await import("../services/OverlayEventLoader.js");
+            const overlayPacks = await OverlayEventLoader.loadAll();
+            for (const { data } of overlayPacks) {
+                for (const evt of (data.events ?? [])) {
+                    events.push(evt);
+                }
+            }
+        } catch (e) {
+            console.warn("ionrift-respite | EventBrowser: Overlay event loading failed:", e);
+        }
+
         // Sort: alphabetical by name
         events.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
         this.#allEvents = events;
