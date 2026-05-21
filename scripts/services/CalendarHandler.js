@@ -7,6 +7,13 @@
 
 const MODULE_ID = "ionrift-respite";
 
+/** Check if either Simple Calendar variant is active */
+function _isSimpleCalendarActive() {
+    return (game.modules.get("foundryvtt-simple-calendar")?.active
+         || game.modules.get("foundryvtt-simple-calendar-reborn")?.active)
+        && typeof SimpleCalendar !== "undefined";
+}
+
 export class CalendarHandler {
 
     /**
@@ -14,8 +21,8 @@ export class CalendarHandler {
      * @returns {boolean}
      */
     static isAvailable() {
-        // Simple Calendar
-        if (game.modules.get("foundryvtt-simple-calendar")?.active && typeof SimpleCalendar !== "undefined") {
+        // Simple Calendar (original or Reborn fork)
+        if (_isSimpleCalendarActive()) {
             return true;
         }
         // Simple Timekeeping (TheRipper93) - uses core Foundry time API
@@ -31,7 +38,7 @@ export class CalendarHandler {
      */
     static getCurrentDate() {
         try {
-            if (game.modules.get("foundryvtt-simple-calendar")?.active && typeof SimpleCalendar !== "undefined") {
+            if (_isSimpleCalendarActive()) {
                 const dt = SimpleCalendar.api.currentDateTime();
                 return `${dt.year}-${dt.month}-${dt.day}`;
             }
@@ -53,7 +60,7 @@ export class CalendarHandler {
      */
     static getFormattedDate() {
         try {
-            if (game.modules.get("foundryvtt-simple-calendar")?.active && typeof SimpleCalendar !== "undefined") {
+            if (_isSimpleCalendarActive()) {
                 const dt = SimpleCalendar.api.currentDateTime();
                 const monthName = SimpleCalendar.api.getCurrentMonth?.()?.name;
                 if (monthName) {
