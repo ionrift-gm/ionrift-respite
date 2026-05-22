@@ -141,6 +141,10 @@ export class ItemOutcomeHandler {
 
         // Batch create new items
         if (toCreate.length) {
+            const minting = game.ionrift?.library?.minting;
+            if (minting?.guardAll) {
+                minting.guardAll(toCreate, { moduleId: MODULE_ID, mode: "create" });
+            }
             await actor.createEmbeddedDocuments("Item", toCreate);
         }
 
