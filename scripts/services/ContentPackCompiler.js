@@ -58,6 +58,11 @@ export class ContentPackCompiler {
             return prepared;
         });
 
+        const minting = game.ionrift?.library?.minting;
+        if (minting?.guardAll) {
+            minting.guardAll(preparedItems, { moduleId: MODULE_ID, mode: "pack" });
+        }
+
         // Batch insert
         const chunkSize = 50;
         for (let i = 0; i < preparedItems.length; i += chunkSize) {
