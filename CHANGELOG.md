@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- Terrain banners now display correctly when the Respite content pack is installed through the Patreon Library. Previously the rest setup screen kept showing the placeholder banner even with the pack present, because the art resolver only looked at the older zip-import folder.
+
 ## [2.2.6] - 2026-05-20
 
 ### Added
