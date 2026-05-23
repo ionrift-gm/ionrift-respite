@@ -7773,10 +7773,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Clear the resolved tree state now that we're proceeding past events
-        // but first collect any condition effects (exhaustion) from the tree
+        // but first collect any condition effects (exhaustion) from the tree.
+        // EventResolver._buildResult always populates evt.effects from the
+        // mechanical.onFailure block, so we must skip events whose actual
+        // resolution was success or triumph; otherwise a triumph-resolved
+        // event still applies its onFailure exhaustion to the party.
         const conditionEffects = [];
         for (const evt of (this._triggeredEvents ?? [])) {
             if (!evt.effects) continue;
+            if (["success", "triumph"].includes(evt.resolvedOutcome)) continue;
             for (const eff of evt.effects) {
                 if (eff.type === "condition" && eff.condition === "exhaustion") {
                     conditionEffects.push(eff);
@@ -7791,8 +7796,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
-        // Apply disaster exhaustion to actors and track per-actor gains
-        const disasterExhaustion = new Map(); // actorId -> total levels gained
+        // Apply disaster exhaustion to actors and track per-actor gains.
+        // `preAppliedConditions` records the `${actorId}:${condition}` tuples
+        // we touched directly via the adapter so ConditionAdvisory can render
+        // them as already-applied without firing a second Convenient Effects
+        // add on top of the system value.
+        const disasterExhaustion = new Map();
+        const preAppliedConditions = new Set();
         if (conditionEffects.length > 0) {
             const characters = getPartyActors();
             const adapter = game.ionrift?.respite?.adapter;
@@ -7825,9 +7835,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         const newLevel = Math.min(6, current + gain + level);
                         await actor.update({ "system.attributes.exhaustion": newLevel });
                     }
+                    preAppliedConditions.add(`${actor.id}:${eff.condition}`);
                 }
             }
         }
+        this._preAppliedConditions = preAppliedConditions;
 
         this._activeTreeState = null;
 
@@ -7983,12 +7995,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             console.warn(`${MODULE_ID} | Auto-grant party discoveries failed:`, e);
         }
 
-        // Post condition advisory for any unhandled condition/temp_hp effects
+        // Post condition advisory for any unhandled condition/temp_hp effects.
+        // Pass the disaster-path applied set so the advisory renders those as
+        // already-applied and skips a redundant CE add for the same condition.
         try {
-            await ConditionAdvisory.processAll(this._outcomes);
+            await ConditionAdvisory.processAll(this._outcomes, {
+                preApplied: this._preAppliedConditions ?? new Set()
+            });
         } catch (e) {
             console.warn(`${MODULE_ID} | Condition advisory failed:`, e);
         }
+        this._preAppliedConditions = null;
 
         // Send private whispered rest summary to each player
         for (const outcome of this._outcomes) {

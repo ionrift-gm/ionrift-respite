@@ -249,8 +249,8 @@
                             "type": "condition",
                             "condition": "exhaustion",
                             "level": 1,
-                            "scope": "all",
-                            "description": "The heat broke them despite the water."
+                            "scope": "failed",
+                            "description": "The heat broke the characters who could not manage their exposure."
                         }
                     ]
                 }
