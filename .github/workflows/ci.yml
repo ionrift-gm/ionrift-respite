@@ -90,3 +90,18 @@ jobs:
 
       - name: Check fallback parity
         run: node tools/fallback_parity.mjs
+
+  event-schema:
+    name: Event schema validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate core event JSON
+        run: node tools/validate-event-schema.mjs
