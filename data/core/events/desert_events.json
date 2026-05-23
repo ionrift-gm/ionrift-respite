@@ -32,7 +32,7 @@
                 "type": "skill_check",
                 "skill": "sur",
                 "dc": 14,
-                "targets": "watch",
+                "targets": "all",
                 "volunteerPolicy": "best_of",
                 "onTriumph": {
                     "narrative": "You read the wind shift early. By the time the storm hit, every stake was double-deep, every pack was under a weighted tarp. The party slept through it.",

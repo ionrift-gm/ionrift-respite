@@ -178,7 +178,7 @@
                 "type": "skill_check",
                 "skill": "sur",
                 "dc": 12,
-                "targets": "watch",
+                "targets": "all",
                 "volunteerPolicy": "best_of",
                 "onTriumph": {
                     "narrative": "You noticed the fire dimming early and traced the problem to a blocked vent. A few minutes with a crowbar opened a draft from the corridor above. Fresh air, relatively speaking.",
