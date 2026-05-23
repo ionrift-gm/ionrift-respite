@@ -23,6 +23,7 @@ import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
 import { emitFeastServeRequest } from "../services/SocketController.js";
 import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../services/StationInteractionLayer.js";
 import { TerrainRegistry } from "../services/TerrainRegistry.js";
+import { guardEmbedItems } from "../services/MintGuard.js";
 import { _refreshGmRestIndicator } from "../module.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -1259,6 +1260,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         if (game.user.isGM) {
             for (const recipient of recipients) {
+                guardEmbedItems([itemData]);
                 await recipient.createEmbeddedDocuments("Item", [itemData]);
             }
         } else {

@@ -13,6 +13,7 @@
 import { ItemClassifier } from "./ItemClassifier.js";
 import { CalendarHandler } from "./CalendarHandler.js";
 import { SpoilageClock } from "./SpoilageClock.js";
+import { guardEmbedItems } from "./MintGuard.js";
 
 /**
  * Compute per-actor food/water slot counts. Essence actors always need at
@@ -222,6 +223,7 @@ export class MealPhaseHandler {
             } else {
                 const data = foundry.utils.deepClone(SPOILED_FOOD_TEMPLATE);
                 data.system.quantity = spoiledQty;
+                guardEmbedItems([data]);
                 await actor.createEmbeddedDocuments("Item", [data]);
             }
         }
@@ -747,6 +749,7 @@ export class MealPhaseHandler {
                 const alreadyWellFed = member.effects?.some(e => e.flags?.[MODULE_ID]?.wellFed === true) ?? false;
                 if (alreadyWellFed) {
                     const doc = MealPhaseHandler._mealSnapshotAsSingleLeftover(itemSnapshot);
+                    guardEmbedItems([doc]);
                     await member.createEmbeddedDocuments("Item", [doc]);
                     summaries.push(`<strong>${member.name}</strong>: packed serving (already Well Fed)`);
                 } else {
@@ -764,6 +767,7 @@ export class MealPhaseHandler {
             const alreadyWellFed = consumerActor.effects?.some(e => e.flags?.[MODULE_ID]?.wellFed === true) ?? false;
             if (alreadyWellFed) {
                 const doc = MealPhaseHandler._mealSnapshotAsSingleLeftover(itemSnapshot);
+                guardEmbedItems([doc]);
                 await consumerActor.createEmbeddedDocuments("Item", [doc]);
                 await ChatMessage.create({
                     content: `<div class="respite-recovery-chat"><p><i class="fas fa-box-open"></i> <strong>${consumerActor.name}</strong> could not eat another full meal yet. <strong>${itemName}</strong> was packed away.</p></div>`,
