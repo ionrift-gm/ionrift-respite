@@ -168,6 +168,10 @@
                             "formula": "1d4",
                             "damageType": "bludgeoning",
                             "scope": "randomTarget",
+                            "randomTarget": {
+                                "pool": "sleeping",
+                                "count": 1
+                            },
                             "timing": "post_rest",
                             "description": "Glancing blow from a falling branch."
                         }
@@ -181,6 +185,10 @@
                             "formula": "2d4",
                             "damageType": "bludgeoning",
                             "scope": "randomTarget",
+                            "randomTarget": {
+                                "pool": "sleeping",
+                                "count": 1
+                            },
                             "timing": "post_rest",
                             "description": "A heavy branch falls on a sleeping character."
                         }

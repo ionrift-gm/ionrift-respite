@@ -62,34 +62,79 @@ export class ConditionAdvisory {
     }
 
     /**
-     * Extract condition and temp_hp effects from resolved outcomes.
+     * Extract condition and temp_hp effects from resolved outcomes and route
+     * them to the correct characters based on each effect's `scope`.
+     *
+     * Routing rules:
+     *   "all" (or unset)            applied to whichever character's outcome
+     *                               contains the effect (preserves existing
+     *                               behavior for events whose targets array
+     *                               already drives party-wide delivery).
+     *   "random" | "randomTarget"   applied to the IDs pre-resolved on
+     *   | "stung"                   `effect._resolvedTargetIds` by the
+     *                               RecoveryHandler scope-resolution pass.
+     *                               Each effect is dispatched once even if it
+     *                               appears in several characters' outcomes.
+     *   any other value             treated as a literal actor id.
+     *
      * @param {Object[]} outcomes - Array of outcome objects from the rest flow.
      * @returns {Object[]} Array of { characterId, characterName, effects: [...] }
      */
     static extractConditionEffects(outcomes) {
-        const result = [];
+        const charNames = new Map();
+        for (const outcome of (outcomes ?? [])) {
+            if (!outcome.characterId) continue;
+            charNames.set(outcome.characterId, outcome.characterName ?? outcome.characterId);
+        }
+
+        const buckets = new Map();
+        const pushTo = (characterId, payload) => {
+            if (!buckets.has(characterId)) buckets.set(characterId, []);
+            buckets.get(characterId).push(payload);
+        };
+
+        // Track dispatched effects so a single shared effect object (e.g. an
+        // event delivered to multiple watchers) is only routed once.
+        const dispatched = new WeakSet();
 
         for (const outcome of (outcomes ?? [])) {
-            const charEffects = [];
-
             for (const sub of (outcome.outcomes ?? [])) {
                 for (const effect of (sub.effects ?? [])) {
-                    if (this.HANDLED_TYPES.has(effect.type)) {
-                        charEffects.push({
-                            ...effect,
-                            source: sub.source ?? sub.eventId ?? "unknown"
-                        });
+                    if (!this.HANDLED_TYPES.has(effect.type)) continue;
+
+                    const scope = effect.scope ?? "all";
+                    const payload = {
+                        ...effect,
+                        source: sub.source ?? sub.eventId ?? "unknown"
+                    };
+
+                    if (scope === "random" || scope === "randomTarget" || scope === "stung") {
+                        if (dispatched.has(effect)) continue;
+                        dispatched.add(effect);
+                        const targetIds = Array.isArray(effect._resolvedTargetIds)
+                            ? effect._resolvedTargetIds
+                            : [];
+                        for (const id of targetIds) pushTo(id, payload);
+                    } else if (scope === "all") {
+                        pushTo(outcome.characterId, payload);
+                    } else {
+                        // Specific actor id. Dispatch once.
+                        if (dispatched.has(effect)) continue;
+                        dispatched.add(effect);
+                        pushTo(scope, payload);
                     }
                 }
             }
+        }
 
-            if (charEffects.length > 0) {
-                result.push({
-                    characterId: outcome.characterId,
-                    characterName: outcome.characterName ?? outcome.characterId,
-                    effects: charEffects
-                });
-            }
+        const result = [];
+        for (const [characterId, effects] of buckets) {
+            if (effects.length === 0) continue;
+            result.push({
+                characterId,
+                characterName: charNames.get(characterId) ?? characterId,
+                effects
+            });
         }
 
         return result;

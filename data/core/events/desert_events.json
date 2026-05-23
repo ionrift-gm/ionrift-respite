@@ -249,7 +249,7 @@
                             "type": "condition",
                             "condition": "exhaustion",
                             "level": 1,
-                            "scope": "failed",
+                            "scope": "all",
                             "description": "The heat broke them despite the water."
                         }
                     ]
