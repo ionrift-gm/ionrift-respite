@@ -1,6 +1,7 @@
 {
   "scripts": {
     "test": "vitest run --config tests/vitest.config.js",
+    "validate:events": "node tools/validate-event-schema.mjs",
     "lint:hbs": "node tools/lint-hbs.mjs",
     "lint:hbs:watch": "node tools/lint-hbs.mjs --watch",
     "build:packs": "node tools/compile-packs.mjs"
