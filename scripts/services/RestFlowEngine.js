@@ -164,6 +164,14 @@ export class RestFlowEngine {
 
                 const isPositive = ["triumph", "success"].includes(e.resolvedOutcome);
 
+                // Per-character roll results from the events phase. Threaded
+                // through so downstream scope routing (`scope: "failed"`)
+                // can target the characters who personally rolled below DC.
+                const failedCharacterIds = (e.resolvedRolls ?? [])
+                    .filter(r => r && r.passed === false)
+                    .map(r => r.characterId)
+                    .filter(Boolean);
+
                 return {
                     source: "event",
                     eventId: e.id,
@@ -171,6 +179,7 @@ export class RestFlowEngine {
                     category: e.category,
                     result: e.result,
                     resolvedOutcome: e.resolvedOutcome ?? null,
+                    failedCharacterIds,
                     items: block.items ?? [],
                     effects: isPositive ? [] : (block.effects ?? []),
                     narrative: block.narrative ?? e.narrative ?? ""

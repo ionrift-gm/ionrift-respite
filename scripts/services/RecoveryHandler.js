@@ -228,6 +228,13 @@ export class RecoveryHandler {
                         const picked = this._pickN(pool, count);
                         effect._resolvedTargetIds = picked;
                         lastResolvedIds = picked;
+                    } else if (scope === "failed") {
+                        // Per-character check failures threaded onto the sub
+                        // at engine-resolve time. Empty for events without a
+                        // skill check (decision trees, narrative-only).
+                        effect._resolvedTargetIds = Array.isArray(sub.failedCharacterIds)
+                            ? [...sub.failedCharacterIds]
+                            : [];
                     } else if (effect.type === "condition" && scope === "stung") {
                         effect._resolvedTargetIds = lastResolvedIds ?? [];
                     }
@@ -303,7 +310,7 @@ export class RecoveryHandler {
                 for (const effect of (sub.effects ?? [])) {
                     if (effect.type !== "damage" || !effect.formula) continue;
                     const scope = effect.scope ?? "all";
-                    if (scope !== "random" && scope !== "randomTarget") continue;
+                    if (scope !== "random" && scope !== "randomTarget" && scope !== "failed") continue;
                     if (visited.has(effect)) continue;
                     visited.add(effect);
 
@@ -566,7 +573,7 @@ export class RecoveryHandler {
                 if (effect.type !== "damage" || !effect.formula) continue;
 
                 const scope = effect.scope ?? "all";
-                if (scope === "random" || scope === "randomTarget") continue;
+                if (scope === "random" || scope === "randomTarget" || scope === "failed") continue;
                 if (scope !== "all" && scope !== actor.id) continue;
 
                 try {

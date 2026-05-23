@@ -71,7 +71,7 @@ export class ConditionAdvisory {
      *                               behavior for events whose targets array
      *                               already drives party-wide delivery).
      *   "random" | "randomTarget"   applied to the IDs pre-resolved on
-     *   | "stung"                   `effect._resolvedTargetIds` by the
+     *   | "stung" | "failed"        `effect._resolvedTargetIds` by the
      *                               RecoveryHandler scope-resolution pass.
      *                               Each effect is dispatched once even if it
      *                               appears in several characters' outcomes.
@@ -108,7 +108,7 @@ export class ConditionAdvisory {
                         source: sub.source ?? sub.eventId ?? "unknown"
                     };
 
-                    if (scope === "random" || scope === "randomTarget" || scope === "stung") {
+                    if (scope === "random" || scope === "randomTarget" || scope === "stung" || scope === "failed") {
                         if (dispatched.has(effect)) continue;
                         dispatched.add(effect);
                         const targetIds = Array.isArray(effect._resolvedTargetIds)
@@ -143,11 +143,19 @@ export class ConditionAdvisory {
     /**
      * Process condition effects: auto-apply via CE or registry, then post advisory.
      * @param {Object[]} outcomes - Full outcomes array from the rest flow.
+     * @param {Object} [options]
+     * @param {Set<string>} [options.preApplied] - Set of `${actorId}:${condition}`
+     *        tuples already applied directly via the system adapter. These are
+     *        marked as "Applied" in the advisory and skipped for CE/registry
+     *        application so we don't stack a Convenient Effect on top of an
+     *        adapter-driven `system.attributes.exhaustion` update.
      * @returns {boolean} True if any conditions were found and reported.
      */
-    static async processAll(outcomes) {
+    static async processAll(outcomes, options = {}) {
         const conditionData = this.extractConditionEffects(outcomes);
         if (conditionData.length === 0) return false;
+
+        const preApplied = options.preApplied instanceof Set ? options.preApplied : new Set();
 
         await this._loadRegistry();
 
@@ -166,6 +174,15 @@ export class ConditionAdvisory {
 
                 const ceEffectId = this._mapConditionToCeId(effect.condition);
                 const key = `${charData.characterId}:${this._buildRegistryKey(effect.condition, effect.checks)}`;
+                const adapterKey = `${charData.characterId}:${effect.condition}`;
+
+                // Adapter already applied this condition (e.g. disaster-tree
+                // exhaustion path). Mark applied so the advisory renders it
+                // as a done deal and skip CE/registry to avoid stacking.
+                if (preApplied.has(adapterKey)) {
+                    applied.add(key);
+                    continue;
+                }
 
                 // Path A: CE standard condition
                 if (ceEffectId && ceAvailable) {
