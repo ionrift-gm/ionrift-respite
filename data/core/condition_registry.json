@@ -55,6 +55,24 @@
             ]
         },
         {
+            "id": "respite-disadv-cha-check",
+            "condition": "disadvantage",
+            "checks": ["cha"],
+            "ceStandard": false,
+            "label": "Unclean",
+            "icon": "icons/magic/water/dirt-stains-spots.webp",
+            "description": "Covered in filth or stink. Disadvantage on Charisma checks (saves unaffected) until you can wash properly.",
+            "defaultDuration": "next_rest",
+            "colorTheme": "brown",
+            "changes": [
+                { "key": "flags.midi-qol.disadvantage.ability.check.cha", "mode": 0, "value": "1" },
+                { "key": "flags.midi-qol.disadvantage.skill.per", "mode": 0, "value": "1" },
+                { "key": "flags.midi-qol.disadvantage.skill.dec", "mode": 0, "value": "1" },
+                { "key": "flags.midi-qol.disadvantage.skill.itm", "mode": 0, "value": "1" },
+                { "key": "flags.midi-qol.disadvantage.skill.prf", "mode": 0, "value": "1" }
+            ]
+        },
+        {
             "id": "respite-exhaustion-1",
             "condition": "exhaustion",
             "level": 1,
