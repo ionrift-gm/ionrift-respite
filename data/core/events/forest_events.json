@@ -222,7 +222,7 @@
                 "type": "skill_check",
                 "skill": "sur",
                 "dc": 11,
-                "targets": "watch",
+                "targets": "all",
                 "volunteerPolicy": "best_of",
                 "onTriumph": {
                     "narrative": "You smelled the damp before it arrived. Fire stoked, landmarks called out, gear pulled close. The fog came and went. Dawn came without incident.",
