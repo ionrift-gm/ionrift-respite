@@ -7802,8 +7802,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 let targets;
                 if (scope === "all") {
                     targets = characters;
-                } else if (scope === "random") {
-                    targets = [characters[Math.floor(Math.random() * characters.length)]];
+                } else if (scope === "random" || scope === "randomTarget") {
+                    // Disaster-tree path runs before the engine resolves outcomes,
+                    // so the pool/count metadata on randomTarget can't be honored
+                    // here. Treat it as a single random pick; the per-outcome
+                    // pre-resolution in RecoveryHandler handles the richer case.
+                    targets = characters.length > 0
+                        ? [characters[Math.floor(Math.random() * characters.length)]]
+                        : [];
                 } else {
                     targets = characters.filter(a => a.id === scope);
                 }

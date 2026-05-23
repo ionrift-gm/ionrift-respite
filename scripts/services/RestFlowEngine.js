@@ -118,6 +118,11 @@ export class RestFlowEngine {
         // Filter through current roster to exclude characters removed mid-rest
         const rosterIds = new Set(getPartyActors().map(a => a.id));
 
+        // Set of character IDs currently on watch. Used downstream by
+        // RecoveryHandler / ConditionAdvisory to honor `randomTarget.pool`
+        // (sleeping vs awake) and route `scope: "stung"` consequences.
+        const watchIds = new Set((this.watchRoster ?? []).map(w => w.characterId));
+
         for (const [characterId, choice] of this.characterChoices) {
             if (!rosterIds.has(characterId)) continue;
             const actor = game.actors.get(characterId);
@@ -181,6 +186,7 @@ export class RestFlowEngine {
             outcomes.push({
                 characterId,
                 characterName: actor.name,
+                onWatch: watchIds.has(characterId),
                 eventDisrupted,
                 outcomes: [
                     activityResult,

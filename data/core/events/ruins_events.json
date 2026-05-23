@@ -1,0 +1,511 @@
+{
+    "tables": [
+        {
+            "id": "table_ruins_default",
+            "name": "Ruins Rest Events",
+            "terrainTag": "ruins",
+            "rollFormula": "1d20",
+            "noEventThreshold": 9
+        }
+    ],
+    "events": [
+        {
+            "id": "evt_ruins_seepage",
+            "name": "Rising Water",
+            "category": "complication",
+            "terrainTags": [
+                "ruins"
+            ],
+            "weight": 2,
+            "watchTarget": "all",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "escalate",
+            "noWatchAmplifier": 1,
+            "gmPrompt": "A cold seam of damp creeps across the flagstones near the gear pile. Then a thin sheen of water. Beyond the wall: recent rain pushing through old drainage, or an old cistern overflowing into the foundations. Whatever the source, the groundwater is up and pushing through every crack in the floor.",
+            "checkContext": "Survival check to identify the low ground and elevate the camp before the water reaches the gear.",
+            "gmGuidance": "Not a flood. The water rises slow and steady through fractures in the floor, driven by groundwater pressure from a nearby source: recent rain through old drainage, or an old cistern overflowing into the foundations. Not life-threatening, very disruptive. It will ruin a bedroll left on the stones and soak a ration pack that sat too long. The fix is universal: read the floor for low points and elevate gear onto rubble platforms or the gear pile itself. escalate without a watch because nobody notices the seep until well into the night, by which time the camp is reacting in the dark. Mold Earth or Shape Water can redirect the worst cracks. Destroy Water clears a small puddle for a minute; the seep refills it.",
+            "description": "Groundwater rises through cracks in the floor. A slow flood that ruins anything left on the stones.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "sur",
+                "dc": 12,
+                "targets": "all",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "The slowest seam ran clear of the camp through the night. By dawn a puddle pooled three paces away from the nearest pack, and not a single bedroll touched the wet.",
+                    "effects": []
+                },
+                "onSuccess": {
+                    "narrative": "The first damp patch caught early. Bedrolls and packs lifted onto rubble. The water rose around the camp without reaching anything important.",
+                    "effects": []
+                },
+                "onMixed": {
+                    "narrative": "Half the gear made it onto higher ground in time. The ration pack at the edge sat in standing water for hours and is bloated past use. The rest of the camp stayed clear.",
+                    "effects": [
+                        {
+                            "type": "consume_resource",
+                            "resource": "rations",
+                            "method": "percent_roll",
+                            "roll": "1d4",
+                            "multiplier": 5,
+                            "min": 1,
+                            "maxPercent": 20,
+                            "severity": "standard",
+                            "description": "Rations waterlogged by the rising puddle."
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "By the second watch the floor is shin-deep at the low end and still rising. Bedrolls grabbed and shoved onto packs, packs shifted again as new seams open under the pressure, sleep gone for everyone not perched on rubble. The party holds gear above the slow tide until dawn. Some of it loses the fight.",
+                    "effects": [
+                        {
+                            "type": "consume_resource",
+                            "resource": "rations",
+                            "method": "percent_roll",
+                            "roll": "1d4+2",
+                            "multiplier": 5,
+                            "min": 2,
+                            "maxPercent": 40,
+                            "severity": "standard",
+                            "description": "Ration packs lost to the slow tide despite the scramble."
+                        },
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.7,
+                            "description": "Half the night spent shifting gear and holding ground above the water."
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_ruins_centipedes",
+            "name": "Pale Centipedes",
+            "category": "encounter",
+            "terrainTags": [
+                "ruins"
+            ],
+            "weight": 2,
+            "watchTarget": "watch",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "auto_fail",
+            "noWatchAmplifier": 1,
+            "randomTarget": {
+                "pool": "sleeping",
+                "count": "1"
+            },
+            "gmPrompt": "A dry rustling from the rubble. Movement at the edge of the firelight, chitinous and segmented, longer than a forearm. Pale centipedes have come out of cracks where they have lived in the dark for generations. They follow the body heat from the sleepers, and they do not stop.",
+            "checkContext": "Perception check to spot the brood emerging and clear the bedrolls before the centipedes reach the sleepers.",
+            "gmGuidance": "Pale, forearm-length centipedes. Generations in the dark have left them pale and venomous. They emerge from cracks at night drawn to body heat, and they will work their way into a bedroll if given the chance. The threat is the bite (painful, mildly poisonous), not the number. A handful are crawling toward the camp. Fire and noise keep them at bay; the watcher's job is to spot the emergence and shake out the bedrolls before any centipede climbs in. auto_fail without a watch because they reach the sleepers undisturbed. Speak with Animals returns single-minded hunger. No conversation in them. Mold Earth or Druidcraft can seal a crack preemptively. Mage Hand can pluck one out of a bedroll.",
+            "description": "Pale, forearm-length centipedes emerge from cracks in the stone. They follow the body heat from the sleepers.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "prc",
+                "dc": 13,
+                "targets": "watch",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "The first one crossed the firelight too soon and was seen. By the time the brood pressed forward they met small fires set at the camp perimeter, and the bedrolls had already been shaken out. They retreated into the cracks. Nobody was touched.",
+                    "effects": []
+                },
+                "onSuccess": {
+                    "narrative": "Fire and noise at the right moments kept the brood back through the night. A tense watch, but no contact.",
+                    "effects": []
+                },
+                "onMixed": {
+                    "narrative": "One worked its way into a bedroll before the alarm went up. A bite to the calf before a boot caught it. The wound is swollen and tender by morning.",
+                    "effects": [
+                        {
+                            "type": "damage",
+                            "formula": "1d4",
+                            "damageType": "piercing",
+                            "scope": "randomTarget",
+                            "randomTarget": {
+                                "pool": "sleeping",
+                                "count": 1
+                            },
+                            "timing": "post_rest",
+                            "description": "Centipede bite. Swelling persists into the day."
+                        },
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.85,
+                            "description": "Camp tense after the bite. Light, restless sleep."
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "By the time the alarm went up, the brood had reached the bedrolls. Bites before the centipedes were crushed. The bitten wake hard, swollen and feverish, and the venom does not leave by morning.",
+                    "effects": [
+                        {
+                            "type": "damage",
+                            "formula": "1d4",
+                            "damageType": "piercing",
+                            "scope": "randomTarget",
+                            "randomTarget": {
+                                "pool": "sleeping",
+                                "count": "1d2"
+                            },
+                            "timing": "post_rest",
+                            "description": "Centipede bite. Swelling into the day."
+                        },
+                        {
+                            "type": "condition",
+                            "condition": "poisoned",
+                            "duration": "next_rest",
+                            "scope": "stung",
+                            "description": "Centipede venom. Persists through the next rest."
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_ruins_roost",
+            "name": "Night Roost",
+            "category": "complication",
+            "terrainTags": [
+                "ruins"
+            ],
+            "weight": 2,
+            "watchTarget": "watch",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "escalate",
+            "noWatchAmplifier": 1,
+            "gmPrompt": "A scrape of claws from high above. The first shape flaps in from outside and lands on a broken rafter. Then another. The colony the party did not see in daylight has come back to roost, and the camp is directly beneath. They are still settling. They have not yet started to purge.",
+            "checkContext": "Perception check to spot the returning colony and shift the camp clear before the rafters fill.",
+            "gmGuidance": "Bats, jackdaws, or whatever fits the ruin. The party did not see the colony during daylight because the inhabitants were out feeding. They return at dusk and stay until first light. The watcher's job is to catch the arrival, before the rafters fill, when the camp can still relocate quietly. Failing that, the camp wakes up to droppings already falling and has to move in the dark, mid-rest. escalate without a watch because nobody is awake at the arrival, and the relocation costs half the night. Sealed gear (waterskins, wrapped rations) comes through fine; the indignity is the night itself, not the inventory. Bedrolls and any cloaks left under the rafters are fouled by morning (gross and smell-soiled, not destroyed). The real cost is sleep. Animal Handling treat as inconvenience, not flight; the colony will accept relocation but will not abandon a long-used rafter. Speak with Animals returns territorial complaint. They want their rafter back. Druidcraft can light a flame the colony will avoid, placed to redirect them to a different rafter.",
+            "description": "A colony of bats or birds in the rafters above the camp. The night belongs to the rafters.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "prc",
+                "dc": 12,
+                "targets": "watch",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "The watcher caught the first shape coming in and had the whole camp up and across the chamber, clear of the rafters, before the rest of the colony arrived. The roost settled into a hundred small shapes overhead and ignored the silent strangers across the room. The party slept beneath the noise as if it weren't there.",
+                    "effects": []
+                },
+                "onSuccess": {
+                    "narrative": "The watcher spotted the return early. A quick rouse, gear and bedrolls dragged to a clear stretch of floor away from the rafters. A noisy night above, but nothing landed on anyone.",
+                    "effects": []
+                },
+                "onMixed": {
+                    "narrative": "Half the camp moved in time. The other half kept their bedrolls in place and learned why that was a mistake. By morning a couple of cloaks need a stream and an hour, and nobody is talking about the night.",
+                    "effects": [
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.85,
+                            "description": "Half the camp slept under the rafters. Light, broken sleep."
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "The first the camp knew of the colony was a spatter across a bedroll and a curse in the dark. By the time everyone was up, the rafters were full and the night's work well underway. The party dragged bedrolls clear, found a section the droppings could not reach, and took the rest of the night in patches. By dawn the stone is streaked white and the party is moving slow, smelling worse, and not making eye contact with anyone they meet on the road.",
+                    "effects": [
+                        {
+                            "type": "recovery_penalty",
+                            "hpMultiplier": 0.7,
+                            "description": "Half the night spent relocating in the dark under a working colony. Sleep broken."
+                        },
+                        {
+                            "type": "condition",
+                            "condition": "disadvantage",
+                            "checks": ["cha"],
+                            "duration": "next_rest",
+                            "scope": "all",
+                            "description": "The party smells like a roost. Disadvantage on Charisma checks until they can wash properly."
+                        }
+                    ]
+                }
+            },
+            "tier": "normal",
+            "sentiment": "negative",
+            "pack": "base"
+        },
+        {
+            "id": "evt_ruins_inscription",
+            "name": "Carved Names",
+            "category": "discovery",
+            "terrainTags": [
+                "ruins"
+            ],
+            "weight": 2,
+            "watchTarget": "watch",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "skip",
+            "gmPrompt": "The watcher's torchlight catches deep carvings on an interior wall. A name. Tally marks counting days, line by line, then stopping. The cuts are decades old, the edges worn soft. Whoever was here counted, and then they didn't. A few coins are wedged in the cracks beneath the inscription.",
+            "checkContext": "Investigation check to follow the deepest carvings to the cracks and recover the coins wedged beneath.",
+            "gmGuidance": "Reward event. Watch-only. Decades-old carvings: a traveler's name, a tally counting days, a small coin cache stashed in the cracks beneath. The tally simply ends. The story is closed. Whoever they were, they camped here once, counted days, and never came back. Do not introduce campaign hooks: no faction, no destination, no quest pointer, no map. If a player presses for more, the answer is that the carvings are decades old and there is nothing else to find. The coins are a small reward; the inscription is atmosphere. Triumph and success yield coins. Mixed yields a single stray coin shaken loose. Failure means the carvings are too weathered to follow to the cracks; nothing recovered. The coins are not trapped.",
+            "description": "Deep carvings on a wall: a name and a tally of days. A few coins wedged in the cracks beneath.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "inv",
+                "dc": 11,
+                "targets": "watch",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "Patient torchwork along the deepest cuts. The tally stops at forty-seven days, then nothing. Below the last mark a stone shifts under fingertips and a dry leather pouch comes free. More than expected. Whoever this was had a small fortune put aside for a return that never came.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "ruins_coins",
+                            "quantity": "3d6",
+                            "itemData": {
+                                "name": "Old Coins",
+                                "type": "loot",
+                                "img": "icons/commodities/currency/coins-assorted-mix-copper-silver-gold.webp",
+                                "system": {
+                                    "description": {
+                                        "value": "<p>A handful of old coins recovered from cracks beneath a decades-old inscription. Tarnished and worn, but spendable.</p>"
+                                    },
+                                    "rarity": "common",
+                                    "price": {
+                                        "value": 1,
+                                        "denomination": "gp"
+                                    }
+                                },
+                                "flags": {
+                                    "ionrift-respite": {
+                                        "itemCategory": "loot"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                "onSuccess": {
+                    "narrative": "The name reads clear: a single word, deeply cut. Below it, a loose stone gives way and a handful of coins falls into the palm. Nothing else behind. Nothing further to find.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "ruins_coins",
+                            "quantity": "2d6",
+                            "itemData": {
+                                "name": "Old Coins",
+                                "type": "loot",
+                                "img": "icons/commodities/currency/coins-assorted-mix-copper-silver-gold.webp",
+                                "system": {
+                                    "description": {
+                                        "value": "<p>A handful of old coins recovered from cracks beneath a decades-old inscription. Tarnished and worn, but spendable.</p>"
+                                    },
+                                    "rarity": "common",
+                                    "price": {
+                                        "value": 1,
+                                        "denomination": "gp"
+                                    }
+                                },
+                                "flags": {
+                                    "ionrift-respite": {
+                                        "itemCategory": "loot"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                "onMixed": {
+                    "narrative": "Names worn to suggestion. The tally readable in places. A single coin loose in a side crack, brushed free with the fingertips. The rest, if there ever were others, are gone with the stone.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "ruins_coins",
+                            "quantity": "1d3",
+                            "itemData": {
+                                "name": "Old Coins",
+                                "type": "loot",
+                                "img": "icons/commodities/currency/coins-assorted-mix-copper-silver-gold.webp",
+                                "system": {
+                                    "description": {
+                                        "value": "<p>A handful of old coins recovered from cracks beneath a decades-old inscription. Tarnished and worn, but spendable.</p>"
+                                    },
+                                    "rarity": "common",
+                                    "price": {
+                                        "value": 1,
+                                        "denomination": "gp"
+                                    }
+                                },
+                                "flags": {
+                                    "ionrift-respite": {
+                                        "itemCategory": "loot"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "Weathered beyond reading. Names worn to nothing, the tally just notches in stone. Someone was here, once. Nothing else remains.",
+                    "effects": []
+                }
+            },
+            "tier": "normal",
+            "sentiment": "positive",
+            "pack": "base"
+        },
+        {
+            "id": "evt_ruins_silence",
+            "name": "Dead Air",
+            "category": "ambient",
+            "terrainTags": [
+                "ruins"
+            ],
+            "weight": 3,
+            "watchTarget": "none",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "skip",
+            "gmPrompt": "No wind. No insects. The stones hold the heat of the day and radiate it back in slow, patient waves. The only sound is breathing and the occasional crack of cooling stone. Somewhere in the distance, a single piece of masonry shifts and settles. Then silence again. An uneventful night in a place that used to be something.",
+            "checkContext": "No check. Ambient event.",
+            "gmGuidance": "Pure atmosphere. No mechanical consequence. The ruins are quiet. Not ominously, just empty. The heat radiating from stone, the crack of thermal contraction, the absolute stillness. If the table wants it, a moment for characters to reflect on what this place was. If they do not, skip it and move on. Rest undisturbed.",
+            "description": "No wind. No insects. The stones hold the heat of the day and radiate it back. The only sound is breathing and the occasional crack of cooling stone.",
+            "mechanical": null,
+            "tier": "normal",
+            "sentiment": "neutral",
+            "pack": "base"
+        },
+        {
+            "id": "evt_ruins_coin_cache",
+            "name": "Old Coin Purse",
+            "category": "discovery",
+            "terrainTags": [
+                "ruins"
+            ],
+            "weight": 2,
+            "watchTarget": "watch",
+            "levelRange": [
+                1,
+                20
+            ],
+            "noWatchBehavior": "skip",
+            "gmPrompt": "A glint in a wall crevice, caught by torchlight at the right angle. An old coin purse. The leather rotted to nothing, but the coins are wedged into the crack where they fell when the leather gave way. Whoever hid it here never came back for it.",
+            "checkContext": "Investigation check to extract the coins without losing them into the rubble below.",
+            "gmGuidance": "Reward event. Watch-only. The coins are not trapped, just physically difficult to extract from a narrow crack in old masonry. Failure means the coins slip deeper into the rubble, not a trap springing. Follows the desert Buried Trade Goods pattern exactly: Investigation check, positive discovery, loot category coins. Triumph yields more coins. The fiction is strong for ruins. People hide things in walls, and ruins are full of walls with gaps.",
+            "description": "A glint in a wall crevice. An old coin purse. The leather rotted away, but the coins remain wedged where they fell.",
+            "mechanical": {
+                "type": "skill_check",
+                "skill": "inv",
+                "dc": 12,
+                "targets": "watch",
+                "volunteerPolicy": "best_of",
+                "onTriumph": {
+                    "narrative": "Patient fingers and a belt knife. You worked them out one by one. More than expected. The crack goes deeper than it looks. A proper stash, not pocket change. Whoever hid this had time and reason.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "ruins_wall_coins",
+                            "quantity": "4d6",
+                            "itemData": {
+                                "name": "Old Coins",
+                                "type": "loot",
+                                "img": "icons/commodities/currency/coins-assorted-mix-copper-silver-gold.webp",
+                                "system": {
+                                    "description": {
+                                        "value": "<p>Old coins prised from a wall crevice in the ruins. Different mints, different decades. All spendable.</p>"
+                                    },
+                                    "rarity": "common",
+                                    "price": {
+                                        "value": 1,
+                                        "denomination": "gp"
+                                    }
+                                },
+                                "flags": {
+                                    "ionrift-respite": {
+                                        "itemCategory": "loot"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                "onSuccess": {
+                    "narrative": "A belt knife and careful prying. Most of them came free. A decent find for a night's watch.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "ruins_wall_coins",
+                            "quantity": "2d6",
+                            "itemData": {
+                                "name": "Old Coins",
+                                "type": "loot",
+                                "img": "icons/commodities/currency/coins-assorted-mix-copper-silver-gold.webp",
+                                "system": {
+                                    "description": {
+                                        "value": "<p>Old coins prised from a wall crevice in the ruins. Different mints, different decades. All spendable.</p>"
+                                    },
+                                    "rarity": "common",
+                                    "price": {
+                                        "value": 1,
+                                        "denomination": "gp"
+                                    }
+                                },
+                                "flags": {
+                                    "ionrift-respite": {
+                                        "itemCategory": "loot"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                "onMixed": {
+                    "narrative": "You got a few, but the rest slipped deeper into the crack. You can hear them clink as they fall into whatever void is behind the wall. Gone.",
+                    "effects": [],
+                    "items": [
+                        {
+                            "itemRef": "ruins_wall_coins",
+                            "quantity": "1d6",
+                            "itemData": {
+                                "name": "Old Coins",
+                                "type": "loot",
+                                "img": "icons/commodities/currency/coins-assorted-mix-copper-silver-gold.webp",
+                                "system": {
+                                    "description": {
+                                        "value": "<p>Old coins prised from a wall crevice in the ruins. Different mints, different decades. All spendable.</p>"
+                                    },
+                                    "rarity": "common",
+                                    "price": {
+                                        "value": 1,
+                                        "denomination": "gp"
+                                    }
+                                },
+                                "flags": {
+                                    "ionrift-respite": {
+                                        "itemCategory": "loot"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                },
+                "onFailure": {
+                    "narrative": "Your fingers close on the first coin and the rest cascade downward into the rubble. A distant, mocking clatter from deep inside the wall. Nothing recoverable.",
+                    "effects": []
+                }
+            },
+            "tier": "normal",
+            "sentiment": "positive",
+            "pack": "base"
+        }
+    ]
+}

@@ -124,27 +124,16 @@ export class RecoveryHandler {
             return outcomes.map(o => ({ characterId: o.characterId, hp: 0, hd: 0, deferred: true }));
         }
 
-        // Pre-resolve "random" scope to a specific actor ID.
-        // Uses a stable key per effect so the same random target is picked
-        // consistently across all character outcomes.
-        const allCharacterIds = outcomes.map(o => o.characterId).filter(Boolean);
-        if (allCharacterIds.length > 0) {
-            const randomTargetCache = new Map();
-            for (const outcome of outcomes) {
-                for (const sub of (outcome.outcomes ?? [])) {
-                    for (const effect of (sub.effects ?? [])) {
-                        if (effect.scope === "random") {
-                            const key = `${sub.eventId ?? sub.eventName ?? ""}:${effect.type}:${effect.description ?? ""}`;
-                            if (!randomTargetCache.has(key)) {
-                                const idx = Math.floor(Math.random() * allCharacterIds.length);
-                                randomTargetCache.set(key, allCharacterIds[idx]);
-                            }
-                            effect._resolvedScope = randomTargetCache.get(key);
-                        }
-                    }
-                }
-            }
-        }
+        // Pre-resolve random / randomTarget / stung scopes on event effects.
+        // Stamps `effect._resolvedTargetIds` so the damage dispatcher and the
+        // downstream ConditionAdvisory can route by intent rather than by
+        // which character's outcome happens to contain the effect.
+        await this._resolveEventScopes(outcomes);
+
+        // Damage for random / randomTarget scopes is rolled and applied
+        // globally so a scorpion can sting a sleeping character even when
+        // the event itself is filed under the watcher's outcomes.
+        const globalDamage = await this._dispatchRandomTargetDamage(outcomes);
 
         const results = [];
         for (const outcome of outcomes) {
@@ -152,9 +141,12 @@ export class RecoveryHandler {
             if (!actor) continue;
             const result = await this.apply(actor, outcome.recovery);
 
-            // Apply event damage from failed complication effects
-            const damageApplied = await this._applyEventDamage(actor, outcome);
-            if (damageApplied > 0) result.eventDamage = damageApplied;
+            // Per-outcome damage: scope "all" and specific-actor scopes.
+            // random / randomTarget were already handled above.
+            const perOutcomeDamage = await this._applyEventDamage(actor, outcome);
+            const globalForActor = globalDamage.get(outcome.characterId) ?? 0;
+            const totalDamage = perOutcomeDamage + globalForActor;
+            if (totalDamage > 0) result.eventDamage = totalDamage;
 
             results.push({ characterId: outcome.characterId, ...result });
 
@@ -162,6 +154,195 @@ export class RecoveryHandler {
             if (outcome.recovery) outcome.recovery.exhaustionDelta = result.exhaustion ?? 0;
         }
         return results;
+    }
+
+    /**
+     * Pre-resolves random / randomTarget / stung scopes on event effects.
+     * Stamps `effect._resolvedTargetIds` on the shared effect objects so the
+     * damage dispatcher and the condition advisory both route by the same set.
+     *
+     * Pool semantics:
+     *   "sleeping" — characters not on watch (falls back to whole party if
+     *                everyone is on watch).
+     *   "awake"    — characters on watch (falls back to whole party).
+     *   "all"      — every character with an outcome (default).
+     *
+     * Count may be a number, numeric string, or a dice formula (e.g. "1d2").
+     * The resolved count is clamped to the pool size.
+     *
+     * Condition effects with `scope: "stung"` inherit their target IDs from
+     * the most recent random / randomTarget damage effect in the same
+     * sub-outcome. This binds the venom to whoever actually got bitten.
+     *
+     * @param {Object[]} outcomes
+     */
+    static async _resolveEventScopes(outcomes) {
+        const allIds = [];
+        const sleepingIds = [];
+        const awakeIds = [];
+        for (const o of (outcomes ?? [])) {
+            if (!o.characterId) continue;
+            allIds.push(o.characterId);
+            if (o.onWatch) awakeIds.push(o.characterId);
+            else sleepingIds.push(o.characterId);
+        }
+        if (allIds.length === 0) return;
+
+        const poolFor = (pool) => {
+            if (pool === "awake") return awakeIds.length > 0 ? awakeIds : allIds;
+            if (pool === "sleeping") return sleepingIds.length > 0 ? sleepingIds : allIds;
+            return allIds;
+        };
+
+        // Same effect object may appear in multiple outcomes (event assigned
+        // to several characters). WeakSet ensures we resolve it once.
+        const visited = new WeakSet();
+
+        for (const outcome of (outcomes ?? [])) {
+            for (const sub of (outcome.outcomes ?? [])) {
+                if (sub.source !== "event") continue;
+                if (["success", "triumph"].includes(sub.resolvedOutcome)) continue;
+                const effects = sub.effects ?? [];
+
+                let lastResolvedIds = null;
+
+                for (const effect of effects) {
+                    if (visited.has(effect)) {
+                        // Already resolved on a prior outcome iteration. We still
+                        // need to track the most recent random target set so that
+                        // any unvisited `stung` condition further down the array
+                        // can inherit from it.
+                        if (effect.type === "damage" && Array.isArray(effect._resolvedTargetIds)) {
+                            lastResolvedIds = effect._resolvedTargetIds;
+                        }
+                        continue;
+                    }
+                    visited.add(effect);
+
+                    const scope = effect.scope ?? "all";
+
+                    if (effect.type === "damage" && (scope === "random" || scope === "randomTarget")) {
+                        const spec = effect.randomTarget ?? {};
+                        const pool = poolFor(spec.pool ?? "all");
+                        const count = await this._evaluateTargetCount(spec.count, pool.length);
+                        const picked = this._pickN(pool, count);
+                        effect._resolvedTargetIds = picked;
+                        lastResolvedIds = picked;
+                    } else if (effect.type === "condition" && scope === "stung") {
+                        effect._resolvedTargetIds = lastResolvedIds ?? [];
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Rolls a target count specification. Accepts:
+     *   - number          (clamped to pool size)
+     *   - numeric string  ("1", "2")
+     *   - dice formula    ("1d2", "1d4-1")
+     * Anything unparseable defaults to 1.
+     * @param {*} countSpec
+     * @param {number} poolSize
+     * @returns {Promise<number>}
+     */
+    static async _evaluateTargetCount(countSpec, poolSize) {
+        if (poolSize === 0) return 0;
+        if (countSpec == null) return Math.min(1, poolSize);
+        if (typeof countSpec === "number") {
+            return Math.max(0, Math.min(Math.floor(countSpec), poolSize));
+        }
+        const s = String(countSpec).trim();
+        if (/^\d+$/.test(s)) {
+            return Math.max(0, Math.min(parseInt(s, 10), poolSize));
+        }
+        try {
+            const roll = await new Roll(s).evaluate();
+            return Math.max(0, Math.min(Math.floor(roll.total), poolSize));
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Could not evaluate randomTarget.count "${countSpec}":`, e);
+            return Math.min(1, poolSize);
+        }
+    }
+
+    /**
+     * Picks N distinct entries from a pool using Fisher-Yates.
+     * @param {string[]} pool
+     * @param {number} n
+     * @returns {string[]}
+     */
+    static _pickN(pool, n) {
+        if (n <= 0 || pool.length === 0) return [];
+        if (n >= pool.length) return [...pool];
+        const shuffled = [...pool];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled.slice(0, n);
+    }
+
+    /**
+     * Rolls and applies damage for every random / randomTarget damage effect
+     * in the outcomes. Each chosen target rolls its own copy of the formula.
+     * Returns a map of actorId → total damage applied so the per-outcome
+     * recovery loop can surface it via `result.eventDamage`.
+     *
+     * @param {Object[]} outcomes
+     * @returns {Promise<Map<string, number>>}
+     */
+    static async _dispatchRandomTargetDamage(outcomes) {
+        const damageByActor = new Map();
+        const visited = new WeakSet();
+
+        for (const outcome of (outcomes ?? [])) {
+            for (const sub of (outcome.outcomes ?? [])) {
+                if (sub.source !== "event") continue;
+                if (["success", "triumph"].includes(sub.resolvedOutcome)) continue;
+
+                for (const effect of (sub.effects ?? [])) {
+                    if (effect.type !== "damage" || !effect.formula) continue;
+                    const scope = effect.scope ?? "all";
+                    if (scope !== "random" && scope !== "randomTarget") continue;
+                    if (visited.has(effect)) continue;
+                    visited.add(effect);
+
+                    const targetIds = Array.isArray(effect._resolvedTargetIds)
+                        ? effect._resolvedTargetIds
+                        : [];
+
+                    for (const actorId of targetIds) {
+                        const actor = game.actors.get(actorId);
+                        if (!actor) continue;
+                        try {
+                            const roll = await new Roll(effect.formula).evaluate();
+                            const damage = roll.total;
+                            damageByActor.set(actorId, (damageByActor.get(actorId) ?? 0) + damage);
+                            await roll.toMessage({
+                                speaker: { alias: sub.eventName ?? "Rest Event" },
+                                flavor: `<strong>${actor.name}</strong>: ${effect.formula} ${effect.damageType ?? ""} damage<br><em>${effect.description ?? ""}</em>`,
+                                whisper: game.users.filter(u => u.isGM).map(u => u.id)
+                            });
+                        } catch (e) {
+                            console.warn(`${MODULE_ID} | Failed to roll event damage:`, e);
+                        }
+                    }
+                }
+            }
+        }
+
+        for (const [actorId, totalDamage] of damageByActor) {
+            if (totalDamage <= 0) continue;
+            const actor = game.actors.get(actorId);
+            if (!actor) continue;
+            const hp = actor.system?.attributes?.hp;
+            if (hp) {
+                const newHp = Math.max(0, (hp.value ?? 0) - totalDamage);
+                await actor.update({ "system.attributes.hp.value": newHp });
+            }
+        }
+
+        return damageByActor;
     }
 
     /**
@@ -366,7 +547,11 @@ export class RecoveryHandler {
     }
 
     /**
-     * Rolls and applies event damage from failed complication effects.
+     * Rolls and applies per-outcome event damage. Handles `scope: "all"`
+     * (every character whose outcome contains the effect rolls and takes
+     * their own damage) and specific-actor scopes. The `random` /
+     * `randomTarget` scopes are dispatched globally in
+     * {@link _dispatchRandomTargetDamage}, so they are skipped here.
      * @param {Actor} actor
      * @param {Object} outcome - Full outcome object with sub-outcomes
      * @returns {number} Total damage applied
@@ -380,21 +565,15 @@ export class RecoveryHandler {
             for (const effect of (sub.effects ?? [])) {
                 if (effect.type !== "damage" || !effect.formula) continue;
 
-                // Scope filtering: skip this effect if the actor is not the intended target
                 const scope = effect.scope ?? "all";
-                if (scope === "random") {
-                    // "random" should have been pre-resolved to a specific actor ID in applyAll
-                    if (effect._resolvedScope && effect._resolvedScope !== actor.id) continue;
-                } else if (scope !== "all" && scope !== actor.id) {
-                    continue;
-                }
+                if (scope === "random" || scope === "randomTarget") continue;
+                if (scope !== "all" && scope !== actor.id) continue;
 
                 try {
                     const roll = await new Roll(effect.formula).evaluate();
                     const damage = roll.total;
                     totalDamage += damage;
 
-                    // Post damage roll to GM chat
                     await roll.toMessage({
                         speaker: { alias: sub.eventName ?? "Rest Event" },
                         flavor: `<strong>${actor.name}</strong>: ${effect.formula} ${effect.damageType ?? ""} damage<br><em>${effect.description ?? ""}</em>`,
@@ -406,7 +585,6 @@ export class RecoveryHandler {
             }
         }
 
-        // Deduct total damage from actor HP
         if (totalDamage > 0) {
             const hp = actor.system?.attributes?.hp;
             if (hp) {
