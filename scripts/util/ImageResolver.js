@@ -36,6 +36,9 @@ const OVERLAY_DATA_ROOT = "ionrift-data/overlays";
  */
 const OVERLAY_SUBLAYERS = ["core", "free"];
 
+/** Named Follower drops that add terrain art outside the core overlay. */
+const OVERLAY_TERRAIN_SUPPLEMENTS = ["frost-stone"];
+
 /** Raw art pack folder (Ionrift art zip dropped directly into Data). */
 const RAW_ART_FOLDER = "ionrift-respite-art";
 
@@ -136,6 +139,12 @@ export class ImageResolver {
     static #artTerrains = [];
 
     /**
+     * Per-terrain absolute `terrains/` roots when art is split across
+     * overlays (e.g. mountain/arctic in `frost-stone/`, rest in `core/`).
+     */
+    static #terrainRootsByTag = new Map();
+
+    /**
      * Call once during the ready hook.
      * GM: probes the filesystem and caches results in a world setting.
      * Player: reads the cached setting (FilePicker.browse is GM-only).
@@ -151,6 +160,7 @@ export class ImageResolver {
         this.#stationTokenBasePath = null;
         this.#terrainsRoot = null;
         this.#tokensRoot = null;
+        this.#terrainRootsByTag = new Map();
         this.#basePath = `modules/${MODULE_ID}`;
 
         // Check for GM disable flag
@@ -177,6 +187,9 @@ export class ImageResolver {
                 this.#terrainsRoot = cache.terrainsRoot ?? `${cache.path}/data/terrains`;
                 this.#tokensRoot = cache.tokensRoot
                     ?? (this.#stationTokenBasePath ? `${this.#stationTokenBasePath}/assets/tokens` : null);
+                this.#terrainRootsByTag = new Map(
+                    Object.entries(cache.terrainRootsByTag ?? {})
+                );
             }
             console.log(`${MODULE_ID} | ImageResolver (player): artPack=${this.#artPackActive}${this.#artPackActive ? ` (${this.#importedArtPath}, ${this.#artTerrains.length} terrains, tokens=${this.#hasStationTokens})` : ""}`);
             return;
@@ -247,6 +260,11 @@ export class ImageResolver {
                     this.#artFileCount = fileCount;
                     this.#artTerrains = terrains.sort();
                     this.#terrainsRoot = terrainsRoot;
+                    if (terrainsRoot) {
+                        for (const tag of terrains) {
+                            this.#terrainRootsByTag.set(tag, terrainsRoot);
+                        }
+                    }
                     if (tokenFiles.length > 0) {
                         this.#hasStationTokens = true;
                         this.#stationTokenFiles = new Set(tokenFiles);
@@ -256,6 +274,44 @@ export class ImageResolver {
                 }
             } catch {
                 // Directory doesn't exist, try next candidate
+            }
+        }
+
+        // Supplement probe: named overlays (Frost & Stone) may ship terrain
+        // art outside core/. Merge mountain/arctic (and any future split
+        // terrains) into the resolver without requiring a second full install
+        // root for tokens.
+        const source = _fileSource();
+        for (const sublayer of OVERLAY_TERRAIN_SUPPLEMENTS) {
+            const supplementRoot = `${OVERLAY_DATA_ROOT}/${MODULE_ID}/${sublayer}`;
+            const terrainDirCandidates = [
+                `${supplementRoot}/art/terrains`,
+                `${supplementRoot}/data/terrains`
+            ];
+            for (const terrainDir of terrainDirCandidates) {
+                try {
+                    const result = await FP.browse(source, terrainDir);
+                    const tags = (result.dirs ?? [])
+                        .map((d) => d.split("/").pop())
+                        .filter(Boolean);
+                    if (tags.length === 0) continue;
+                    if (!this.#artPackActive) {
+                        this.#artPackActive = true;
+                        this.#importedArtPath = supplementRoot;
+                        this.#basePath = supplementRoot;
+                    }
+                    for (const tag of tags) {
+                        if (!this.#artTerrains.includes(tag)) {
+                            this.#artTerrains.push(tag);
+                        }
+                        this.#terrainRootsByTag.set(tag, terrainDir);
+                    }
+                    this.#artTerrains.sort();
+                    if (!this.#terrainsRoot) {
+                        this.#terrainsRoot = terrainDir;
+                    }
+                    break;
+                } catch { /* try next layout */ }
             }
         }
 
@@ -302,7 +358,8 @@ export class ImageResolver {
                 stationTokenFiles: [...this.#stationTokenFiles],
                 stationTokenBasePath: this.#stationTokenBasePath,
                 terrainsRoot: this.#terrainsRoot,
-                tokensRoot: this.#tokensRoot
+                tokensRoot: this.#tokensRoot,
+                terrainRootsByTag: Object.fromEntries(this.#terrainRootsByTag)
             });
         } catch (e) {
             console.warn(`${MODULE_ID} | ImageResolver: failed to persist art pack cache:`, e);
@@ -326,8 +383,9 @@ export class ImageResolver {
      * exists for that terrain, otherwise the universal fallback.
      */
     static terrainBanner(terrain, filename) {
-        if (this.#artPackActive && this.#terrainsRoot && this.#artTerrains.includes(terrain)) {
-            return `${this.#terrainsRoot}/${terrain}/${filename}`;
+        const terrainRoot = this.#terrainRootsByTag.get(terrain) ?? this.#terrainsRoot;
+        if (this.#artPackActive && terrainRoot && this.#artTerrains.includes(terrain)) {
+            return `${terrainRoot}/${terrain}/${filename}`;
         }
         const key = `${terrain}/${filename}`;
         if (KNOWN_BASE_IMAGES.has(key)) {
