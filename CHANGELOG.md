@@ -1,8 +1,14 @@
 # Changelog
 
-## [Unreleased]
+## [2.3.0] - 2026-05-24
+
+### Added
+- **Simple Calendar Reborn compatibility.** Respite now detects both the original Simple Calendar and the Reborn fork, so date tracking works whichever version you run.
+- **Unclean condition.** A new rest event outcome can impose the Unclean condition, giving disadvantage on Charisma checks until the character bathes or the condition is removed.
 
 ### Fixed
+- Party-wide events now correctly target all eligible characters instead of only the watch character when the event scope calls for it.
+- Event tier and failure outcomes now route to the correct scope, fixing cases where a mixed result would apply effects intended for the failure tier.
 - Terrain banners now display correctly when the Respite content pack is installed through the Patreon Library. Previously the rest setup screen kept showing the placeholder banner even with the pack present, because the art resolver only looked at the older zip-import folder.
 
 ## [2.2.6] - 2026-05-20
