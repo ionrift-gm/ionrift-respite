@@ -8,8 +8,8 @@
     </header>
     <ul class="ionrift-afk-panel-list">
         {{#each rows}}
-        <li class="ionrift-afk-panel-row {{#if isAfk}}is-afk{{/if}} {{#if gmClickable}}is-gm-toggle{{/if}}"
-            {{#if gmClickable}}data-action="afkGmToggleRow" data-character-id="{{id}}" role="button" tabindex="0" title="Toggle AFK for {{name}}"{{else}}title="{{name}}"{{/if}}>
+        <li class="ionrift-afk-panel-row {{#if isAfk}}is-afk{{/if}} {{#if gmClickable}}{{#unless ../controlsReadOnly}}is-gm-toggle{{/unless}}{{/if}}"
+            {{#if gmClickable}}{{#unless ../controlsReadOnly}}data-action="afkGmToggleRow" data-character-id="{{id}}" role="button" tabindex="0" title="Toggle AFK for {{name}}"{{else}}title="{{name}} (read-only)"{{/unless}}{{else}}title="{{name}}"{{/if}}>
             <span class="ionrift-afk-panel-portrait-wrap">
                 <img class="ionrift-afk-panel-portrait" src="{{img}}" alt="">
                 {{#if isAfk}}<span class="ionrift-afk-panel-mug" aria-hidden="true"><i class="fas fa-mug-hot"></i></span>{{/if}}
@@ -18,9 +18,13 @@
         </li>
         {{/each}}
     </ul>
+    {{#unless controlsReadOnly}}
     <button type="button" class="ionrift-afk-panel-self-btn {{#if selfAfk}}is-afk{{/if}}" data-action="afkSelfToggle"
         title="{{#if selfAfk}}Mark yourself present{{else}}Step away from the session{{/if}}">
         <i class="fas fa-mug-hot"></i>
         <span>{{#if selfAfk}}I'm back{{else}}Step away{{/if}}</span>
     </button>
+    {{else}}
+    <p class="ionrift-afk-panel-hint">AFK is controlled by another module. Use Fast Flip (Shift+K) or Player Status (/afk).</p>
+    {{/unless}}
 </aside>

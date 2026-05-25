@@ -22,6 +22,7 @@ import {
 } from "../module.js";
 import { getPartyActors } from "../services/partyActors.js";
 import * as RestAfkState from "../services/RestAfkState.js";
+import { pushAllStateToAdapters } from "../services/afk/AfkBridgeService.js";
 
 const MODULE_ID = "ionrift-respite";
 /** World setting: when Song of Rest HP is applied. */
@@ -1598,6 +1599,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         if (data.afkCharacterIds !== undefined) {
             RestAfkState.replaceAll(data.afkCharacterIds);
+            pushAllStateToAdapters();
         }
         if (data.finishedUserIds !== undefined) {
             this._finishedUsers = new Set(data.finishedUserIds);
@@ -1713,6 +1715,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (state.songBonuses) this._songBonusByActor = this._deserializeSongBonuses(state.songBonuses);
         if (state.afkCharacterIds) {
             RestAfkState.replaceAll(state.afkCharacterIds);
+            pushAllStateToAdapters();
             this._afkCharacters = new Set(state.afkCharacterIds);
         }
         if (state.finishedUserIds) this._finishedUsers = new Set(state.finishedUserIds);

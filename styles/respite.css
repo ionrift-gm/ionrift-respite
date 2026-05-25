@@ -611,6 +611,33 @@
     margin-bottom: 0.1rem;
 }
 
+.respite-setup .scene-environment select {
+    color-scheme: dark;
+    font-size: 0.9rem;
+}
+
+.respite-setup .scene-environment select optgroup {
+    background: rgb(14, 12, 24);
+    color: rgba(210, 185, 255, 0.98);
+    font-style: normal;
+    font-weight: 700;
+    font-size: 0.88rem;
+    letter-spacing: 0.04em;
+}
+
+.respite-setup .scene-environment select option {
+    background: rgb(22, 18, 38);
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 400;
+    font-size: 0.92rem;
+    padding: 5px 10px;
+}
+
+.respite-setup .scene-environment select option:checked {
+    background: rgba(120, 90, 200, 0.45);
+    color: #fff;
+}
+
 /* Scouting block: visually separated from weather/comfort */
 .scouting-block {
     margin-top: 0.4rem;
@@ -3902,6 +3929,14 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 .ionrift-afk-panel-self-btn i {
     font-size: 0.75rem;
+}
+
+.ionrift-afk-panel-hint {
+    margin: 0.35rem 0 0;
+    font-size: 0.6rem;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.55);
+    text-align: center;
 }
 
 /* Camp roll result colors */
@@ -16639,8 +16674,30 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 4px;
     color: rgba(255, 255, 255, 0.85);
-    font-size: 0.78rem;
+    font-size: 0.9rem;
     padding: 0.25rem 0.4rem;
+    color-scheme: dark;
+}
+
+.event-terrain-select optgroup {
+    background: rgb(14, 12, 24);
+    color: rgba(210, 185, 255, 0.98);
+    font-style: normal;
+    font-weight: 700;
+    font-size: 0.88rem;
+    letter-spacing: 0.04em;
+}
+
+.event-terrain-select option {
+    background: rgb(22, 18, 38);
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 0.92rem;
+    padding: 5px 10px;
+}
+
+.event-terrain-select option:checked {
+    background: rgba(120, 90, 200, 0.45);
+    color: #fff;
 }
 
 .event-terrain-select:focus {

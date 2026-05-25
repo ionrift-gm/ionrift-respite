@@ -5,9 +5,11 @@
 import { getPartyActors } from "../services/partyActors.js";
 import * as RestAfkState from "../services/RestAfkState.js";
 import {
-    emitRestSessionAfk,
-    refreshAfterAfkChange
-} from "../services/restSessionAfkEmit.js";
+    canUseRespiteAfkControls,
+    getDetectedAfkAdapters,
+    isIntegratedAfkPrimary,
+    setCharacterAfk
+} from "../services/afk/AfkBridgeService.js";
 
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -76,15 +78,15 @@ export class AfkPanelApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /** @param {string[]} ids */
     static #emitBulk(ids, newState) {
+        if (!canUseRespiteAfkControls()) return;
         for (const id of ids) {
-            RestAfkState.applyUpdate(id, newState);
-            emitRestSessionAfk(id, newState);
+            setCharacterAfk(id, newState, "respite");
         }
-        refreshAfterAfkChange();
     }
 
     static #onSelfToggle(event, target) {
         event.preventDefault?.();
+        if (!canUseRespiteAfkControls()) return;
 
         let ids;
         if (game.user.isGM) {
@@ -103,15 +105,14 @@ export class AfkPanelApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     static #onGmToggleRow(event, target) {
         event.preventDefault?.();
+        if (!canUseRespiteAfkControls()) return;
         if (!game.user.isGM) return;
         const row = target.closest("[data-character-id]");
         const id = row?.dataset?.characterId;
         if (!id) return;
 
         const newState = !RestAfkState.isAfk(id);
-        RestAfkState.applyUpdate(id, newState);
-        emitRestSessionAfk(id, newState);
-        refreshAfterAfkChange();
+        setCharacterAfk(id, newState, "respite");
     }
 
     static async #onAfkPanelToggleLock(event, target) {
@@ -284,7 +285,17 @@ export class AfkPanelApp extends HandlebarsApplicationMixin(ApplicationV2) {
             : party.some(a => a.isOwner && RestAfkState.isAfk(a.id));
 
         const hasAnyoneAfk = RestAfkState.getAfkCharacterIds().length > 0;
+        const integratedPrimary = isIntegratedAfkPrimary();
+        const externalAdapters = getDetectedAfkAdapters();
+        const controlsReadOnly = integratedPrimary && externalAdapters.length > 0;
 
-        return { rows, selfAfk, panelLocked: layout.locked, hasAnyoneAfk };
+        return {
+            rows,
+            selfAfk,
+            panelLocked: layout.locked,
+            hasAnyoneAfk,
+            controlsReadOnly,
+            integratedPrimary
+        };
     }
 }

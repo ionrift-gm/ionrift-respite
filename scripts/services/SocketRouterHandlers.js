@@ -11,7 +11,7 @@
 import { RestSetupApp } from "../apps/RestSetupApp.js";
 import { ShortRestApp } from "../apps/ShortRestApp.js";
 import * as RestAfkState from "./RestAfkState.js";
-import { refreshAfterAfkChange } from "./restSessionAfkEmit.js";
+import { setCharacterAfk } from "./afk/AfkBridgeService.js";
 import { CopySpellHandler } from "./CopySpellHandler.js";
 import { CampfireTokenLinker } from "./CampfireTokenLinker.js";
 import { TorchTokenLinker } from "./TorchTokenLinker.js";
@@ -305,8 +305,7 @@ export function handleShortRestWorkbenchSync(data, ctx) {
 // ── AFK / Armor ─────────────────────────────────────────────────────────────
 
 export function handleAfkUpdate(data) {
-    RestAfkState.applyUpdate(data.characterId, data.isAfk);
-    refreshAfterAfkChange();
+    setCharacterAfk(data.characterId, data.isAfk, "socket", { emitSocket: false });
 }
 
 export function handleArmorToggle(data, ctx) {

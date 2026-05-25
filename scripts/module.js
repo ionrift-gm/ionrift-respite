@@ -38,6 +38,10 @@ import {
     setAfkUiRefresh,
     refreshAfterAfkChange
 } from "./services/restSessionAfkEmit.js";
+import {
+    initAfkBridge,
+    reconcileFromAdapters
+} from "./services/afk/AfkBridgeService.js";
 import { MealPhaseHandler } from "./services/MealPhaseHandler.js";
 import {
     setDetectMagicInventoryGlowAdapter,
@@ -177,6 +181,7 @@ let activeAfkPanel = null;
  * Shows the persistent AFK panel during an active rest (long or short).
  */
 export function showAfkPanel() {
+    reconcileFromAdapters();
     if (activeAfkPanel?.rendered) {
         activeAfkPanel.render({ force: true });
         return;
@@ -400,7 +405,11 @@ Hooks.once("init", async () => {
             // Push Respite terrains into the shared lib spine so other modules can see them.
             if (game.ionrift?.library?.terrains) {
                 for (const t of TerrainRegistry.getAll()) {
-                    game.ionrift.library.terrains.register({ id: t.id, label: t.label });
+                    game.ionrift.library.terrains.register({
+                        id: t.id,
+                        label: t.label,
+                        flags: { category: TerrainRegistry.getCategory(t.id) }
+                    });
                 }
             }
             const coreTerrains = new Set(["forest", "swamp", "desert", "urban", "dungeon", "tavern"]);
@@ -528,6 +537,12 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
     if (detail.overlayId === "respite-core-overlay") {
         const disabled = !detail.installed || !detail.active;
         await game.settings.set(MODULE_ID, "artPackDisabled", disabled);
+        await ImageResolver.init();
+        return;
+    }
+
+    // Terrain art supplements (Frost & Stone, Bone & Dust)
+    if (detail.overlayId === "respite-frost-stone-overlay" || detail.overlayId === "respite-bone-dust-overlay") {
         await ImageResolver.init();
         return;
     }
@@ -695,7 +710,11 @@ Hooks.once("ready", async () => {
     // Push Respite terrains into the shared lib spine so other modules can see them.
     if (game.ionrift?.library?.terrains) {
         for (const t of TerrainRegistry.getAll()) {
-            game.ionrift.library.terrains.register({ id: t.id, label: t.label });
+            game.ionrift.library.terrains.register({
+                id: t.id,
+                label: t.label,
+                flags: { category: TerrainRegistry.getCategory(t.id) }
+            });
         }
     }
 
@@ -1085,6 +1104,7 @@ Hooks.once("ready", async () => {
 
     _maybeShowAmbientAfkPanelAtReady();
 
+    initAfkBridge();
 
     console.log(`${MODULE_ID} | Boot complete.`);
 });

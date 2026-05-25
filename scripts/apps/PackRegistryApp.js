@@ -63,59 +63,20 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
             return packs.get(packId);
         };
 
-        // ── Scan core event files ──
-        const coreEventFiles = [
-            "forest_events.json", "dungeon_events.json", "desert_events.json",
-            "swamp_events.json", "urban_events.json", "camp_disasters.json"
-        ];
-
-        for (const file of coreEventFiles) {
-            try {
-                const resp = await fetch(`modules/ionrift-respite/data/core/events/${file}`);
-                if (!resp.ok) continue;
-                const data = await resp.json();
-                for (const event of (data.events ?? [])) {
-                    const pack = _ensurePack(event.pack ?? "base");
-                    if (event.tier) pack.tiers[event.tier] = (pack.tiers[event.tier] ?? 0) + 1;
-                    for (const tag of (event.terrainTags ?? [])) {
-                        pack.terrains[tag] = (pack.terrains[tag] ?? 0) + 1;
-                    }
-                    pack.totalItems++;
-                }
-            } catch (e) {
-                console.warn(`[Respite:PackRegistry] Failed to load core/${file}:`, e);
-            }
-        }
-
-        // ── Scan terrain pack events via manifest ──
+        // ── Scan released terrain events (manifest + terrain.json eventsFile) ──
         try {
-            await TerrainRegistry.init();
-            const manifestResp = await fetch(`modules/ionrift-respite/data/terrains/manifest.json`);
-            if (manifestResp.ok) {
-                const manifest = await manifestResp.json();
-                const coreTerrains = new Set(["forest", "swamp", "desert", "urban", "dungeon", "tavern"]);
-                for (const terrain of (manifest.released ?? [])) {
-                    if (coreTerrains.has(terrain)) continue;
-                    try {
-                        const resp = await fetch(`modules/ionrift-respite/data/terrains/${terrain}/events.json`);
-                        if (!resp.ok) continue;
-                        const data = await resp.json();
-                        for (const event of (data.events ?? [])) {
-                            const pack = _ensurePack(event.pack ?? `terrain_${terrain}`);
-                            if (event.tier) pack.tiers[event.tier] = (pack.tiers[event.tier] ?? 0) + 1;
-                            if (event.tier === "disaster") continue;
-                            for (const tag of (event.terrainTags ?? [])) {
-                                pack.terrains[tag] = (pack.terrains[tag] ?? 0) + 1;
-                            }
-                            pack.totalItems++;
-                        }
-                    } catch (e) {
-                        console.warn(`[Respite:PackRegistry] Failed to load terrain ${terrain}:`, e);
-                    }
+            const releasedEvents = await TerrainRegistry.loadReleasedEvents();
+            for (const event of releasedEvents) {
+                const pack = _ensurePack(event.pack ?? "base");
+                if (event.tier) pack.tiers[event.tier] = (pack.tiers[event.tier] ?? 0) + 1;
+                pack.totalItems++;
+                if (event.tier === "disaster") continue;
+                for (const tag of (event.terrainTags ?? [])) {
+                    pack.terrains[tag] = (pack.terrains[tag] ?? 0) + 1;
                 }
             }
         } catch (e) {
-            console.warn(`[Respite:PackRegistry] Failed to load terrain manifest:`, e);
+            console.warn(`[Respite:PackRegistry] Failed to load released terrain events:`, e);
         }
 
         // ── Scan imported content packs (from world storage) ──

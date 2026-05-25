@@ -15,7 +15,7 @@ import { CopySpellHandler } from "./CopySpellHandler.js";
 import { CampfireTokenLinker } from "./CampfireTokenLinker.js";
 import { TorchTokenLinker } from "./TorchTokenLinker.js";
 import * as RestAfkState from "./RestAfkState.js";
-import { refreshAfterAfkChange } from "./restSessionAfkEmit.js";
+import { setCharacterAfk } from "./afk/AfkBridgeService.js";
 import {
     notifyDetectMagicScanApplied,
     notifyDetectMagicScanCleared
@@ -460,8 +460,7 @@ export function dispatch(data, ctx) {
             break;
 
         case SOCKET_TYPES.SHORT_REST_AFK_UPDATE:
-            RestAfkState.applyUpdate(data.characterId, data.isAfk);
-            refreshAfterAfkChange();
+            setCharacterAfk(data.characterId, data.isAfk, "socket", { emitSocket: false });
             break;
 
         case SOCKET_TYPES.SHORT_REST_PLAYER_FINISHED:
