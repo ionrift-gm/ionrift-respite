@@ -128,8 +128,12 @@
             <div class="form-group scene-environment">
                 <label>Environment</label>
                 <select name="terrain">
-                    {{#each terrainOptions}}
-                    <option value="{{value}}" {{#if (eq value ../selectedTerrain)}}selected{{/if}}>{{label}}</option>
+                    {{#each terrainOptionGroups}}
+                    <optgroup label="{{group}}">
+                        {{#each options}}
+                        <option value="{{value}}" {{#if (eq value ../../selectedTerrain)}}selected{{/if}}>{{label}}</option>
+                        {{/each}}
+                    </optgroup>
                     {{/each}}
                 </select>
                 <span class="terrain-hint" id="terrain-hint">{{terrainPreview}}</span>

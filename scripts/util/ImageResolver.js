@@ -36,8 +36,8 @@ const OVERLAY_DATA_ROOT = "ionrift-data/overlays";
  */
 const OVERLAY_SUBLAYERS = ["core", "free"];
 
-/** Named Follower drops that add terrain art outside the core overlay. */
-const OVERLAY_TERRAIN_SUPPLEMENTS = ["frost-stone"];
+/** Named overlays that add terrain art outside the core/free install root. */
+const OVERLAY_TERRAIN_SUPPLEMENTS = ["frost-stone", "bone-dust"];
 
 /** Raw art pack folder (Ionrift art zip dropped directly into Data). */
 const RAW_ART_FOLDER = "ionrift-respite-art";

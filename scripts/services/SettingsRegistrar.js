@@ -342,6 +342,26 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
     const SettingsLayout = game.ionrift?.library?.SettingsLayout;
     SettingsLayout?.registerFooter(MODULE_ID);
 
+    // ── AFK control source ───────────────────────────────────────────
+    game.settings.register(MODULE_ID, "afkControlSource", {
+        name: "AFK control source",
+        hint: "Respite: use the rest AFK panel (syncs to Fast Flip and Player Status when active). Integrated: other modules drive AFK; the panel is read-only.",
+        scope: "world",
+        config: true,
+        type: String,
+        choices: {
+            respite: "Respite panel (sync out to other modules)",
+            integrated: "Integrated modules (Fast Flip, Player Status, etc.)"
+        },
+        default: "respite",
+        restricted: true,
+        onChange: () => {
+            import("./afk/AfkBridgeService.js").then(m => {
+                if (m.isIntegratedAfkPrimary()) m.reconcileFromAdapters();
+            }).catch(() => {});
+        }
+    });
+
     // ── Ambient AFK HUD ──────────────────────────────────────────────
     game.settings.register(MODULE_ID, "ambientAfkHud", {
         name: "Ambient AFK HUD",
@@ -373,36 +393,11 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         default: false
     });
 
-    // ── Reset Rest Date (lightweight cooldown clear) ─────────────────
-    game.settings.registerMenu(MODULE_ID, "resetRestDate", {
-        name: "Reset Daily Rest Cooldown",
-        label: "Reset Rest Date",
-        hint: "Clears the 'already rested today' flag so the party can rest again on the same in-game day.",
-        icon: "fas fa-calendar-minus",
-        type: class ResetRestDateApp extends FormApplication {
-            async _updateObject() {
-                await game.settings.set(MODULE_ID, "lastRestDate", "");
-                ui.notifications.info("Daily rest cooldown cleared.");
-            }
-            async render() {
-                const proceed = await Dialog.confirm({
-                    title: "Reset Daily Rest Cooldown",
-                    content: "<p>This clears the 'already rested today' flag. The party will be able to start a new rest on the current in-game day.</p><p>No rest data is lost and no reload is needed.</p>",
-                    yes: () => true,
-                    no: () => false,
-                    defaultYes: true
-                });
-                if (proceed) await this._updateObject();
-            }
-        },
-        restricted: true
-    });
-
-    // ── Clear Rest State Menu (GM escape hatch) ──────────────────────
+    // ── Reset Rest State (GM escape hatch) ───────────────────────────
     game.settings.registerMenu(MODULE_ID, "clearRestState", {
         name: "Reset Rest State",
         label: "Reset Rest State",
-        hint: "Clears rest state, flow locks, active rest data, and the daily rest cooldown. Also removes Respite camp tokens and Camp Prop torches on the active scene. Use when resting will not start or a rest did not clean up.",
+        hint: "Clears rest locks so the party can rest again, including the same in-game day. Removes camp tokens on the active scene and reloads all clients.",
         icon: "fas fa-broom",
         type: class ClearRestStateApp extends FormApplication {
             async _updateObject() {
@@ -411,7 +406,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
             async render() {
                 const proceed = await Dialog.confirm({
                     title: "Reset Rest State",
-                    content: "<p>This will discard any in-progress rest, clear the daily rest cooldown, remove Respite camp and perimeter torch tokens on the <strong>active scene</strong>, and reload all connected clients.</p><p>Only use this if resting is stuck or blocked.</p>",
+                    content: "<p>Rest locks and any in-progress rest will be cleared. Camp tokens on the active scene are removed and all clients reload.</p><p>Use when rest will not start, the party needs to rest again today, or a rest did not finish cleanly.</p>",
                     yes: () => true,
                     no: () => false,
                     defaultYes: false
@@ -596,6 +591,7 @@ export const SETTING_KEYS = [
     "artNudgeSnoozedUntil",
     "artNudgeSuppressed",
     "pf2eAdvisoryShown",
+    "afkControlSource",
     "ambientAfkHud",
     "afkPanelLayout",
     "debug"
@@ -606,7 +602,6 @@ export const SETTING_KEYS = [
  */
 export const MENU_KEYS = [
     "dietConfigMenu",
-    "resetRestDate",
     "clearRestState"
 ];
 

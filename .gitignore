@@ -11,6 +11,8 @@ data/terrains/*/
 !data/terrains/swamp/
 !data/terrains/tavern/
 !data/terrains/urban/
+!data/terrains/ruins/
+!data/terrains/catacombs/
 
 # !! CONTENT PACKS — PATREON ONLY !!
 # These paths contain proprietary content distributed through Patreon.

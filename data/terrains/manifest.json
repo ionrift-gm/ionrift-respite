@@ -7,7 +7,9 @@
         "dungeon",
         "tavern",
         "mountain",
-        "arctic"
+        "arctic",
+        "ruins",
+        "catacombs"
     ],
     "_comment": "Only released terrains are loaded in production. Add terrain names here to release them."
 }

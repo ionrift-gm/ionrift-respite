@@ -96,6 +96,7 @@ import {
 } from "../module.js";
 import { getPartyActors } from "../services/partyActors.js";
 import * as RestAfkState from "../services/RestAfkState.js";
+import { pushAllStateToAdapters } from "../services/afk/AfkBridgeService.js";
 import {
     emitRestStarted, emitRestSnapshot, emitRestPreparing, emitRestResolved,
     emitRestAbandoned, emitPhaseChanged, emitSubmissionUpdate,
@@ -3192,15 +3193,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
                 return null;
             })() : null,
-            terrainOptions: (() => {
+            terrainOptionGroups: (() => {
                 const lastTerrain = game.settings.get(MODULE_ID, "lastTerrain");
-                const opts = TerrainRegistry.getAll()
-                    .map(t => ({ value: t.id, label: t.label }));
-                if (lastTerrain) {
-                    const match = opts.find(o => o.value === lastTerrain);
-                    if (match) match.label += " (last used)";
-                }
-                return opts;
+                return TerrainRegistry.getOptionGroups({ lastTerrain });
             })(),
             terrainPreview: (() => {
                 const t = this._selectedTerrain ?? "forest";
@@ -9550,6 +9545,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         if (snapshot.afkCharacters !== undefined) {
             RestAfkState.replaceAll(snapshot.afkCharacters ?? []);
+            pushAllStateToAdapters();
         }
 
         // Apply phase + phase data

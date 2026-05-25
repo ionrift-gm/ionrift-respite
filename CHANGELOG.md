@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- Module settings now expose one **Reset Rest State** button instead of separate daily cooldown and full reset controls.
+
 ## [2.3.0] - 2026-05-24
 
 ### Added
@@ -7,6 +12,10 @@
 - **Unclean condition.** A new rest event outcome can impose the Unclean condition, giving disadvantage on Charisma checks until the character bathes or the condition is removed.
 
 ### Fixed
+- **Ruins and Catacombs** now appear in the rest setup Environment dropdown and in Quartermaster terrain lists. Terrain data and events were already in the module; they were omitted from the release manifest, so the registry never loaded them.
+- **Bone & Dust terrain banners** now resolve from the overlay install path. The art resolver only probed the core and Frost & Stone supplements, so Ruins and Catacombs kept the placeholder banner after pack install.
+- Environment and Cache Generator terrain dropdowns are grouped into **Dungeon** (Dungeon, Ruins, Catacombs), **Safe Haven** (Tavern), and **Wilderness** (outdoor terrains).
+- **Event Browser** terrain filter now uses the same `TerrainRegistry` list and grouping as rest setup, and loads event files from each released terrain's `eventsFile` path so Ruins, Catacombs, and Tavern events appear in the browser.
 - Party-wide events now correctly target all eligible characters instead of only the watch character when the event scope calls for it.
 - Event tier and failure outcomes now route to the correct scope, fixing cases where a mixed result would apply effects intended for the failure tier.
 - Terrain banners now display correctly when the Respite content pack is installed through the Patreon Library. Previously the rest setup screen kept showing the placeholder banner even with the pack present, because the art resolver only looked at the older zip-import folder.

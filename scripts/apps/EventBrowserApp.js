@@ -30,19 +30,19 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
 
     /** @override */
     async _prepareContext() {
+        await TerrainRegistry.init();
         if (this.#allEvents.length === 0) {
             await this.#loadEvents();
         }
         this.#applyFilter();
 
         const event = this.#events[this.#index] ?? null;
-        const terrains = [...new Set(this.#allEvents.flatMap(e => e.terrainTags ?? []))].sort();
 
         return {
             event,
             index: this.#index,
             total: this.#events.length,
-            terrains,
+            terrainOptionGroups: TerrainRegistry.getOptionGroups(),
             activeFilter: this.#terrainFilter,
             hasEvents: this.#events.length > 0
         };
@@ -53,9 +53,14 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
         const el = document.createElement("div");
         el.classList.add("respite-event-browser");
 
-        // Terrain filter
-        const terrainOptions = context.terrains
-            .map(t => `<option value="${t}" ${context.activeFilter === t ? "selected" : ""}>${t}</option>`)
+        // Terrain filter (same groups as Rest Setup Environment dropdown)
+        const terrainGroupHtml = (context.terrainOptionGroups ?? [])
+            .map(g => `
+                <optgroup label="${g.group}">
+                    ${g.options.map(o => `
+                        <option value="${o.value}" ${context.activeFilter === o.value ? "selected" : ""}>${o.label}</option>
+                    `).join("")}
+                </optgroup>`)
             .join("");
 
         let html = `
@@ -63,7 +68,7 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
             <label for="terrain-filter"><i class="fas fa-map-marker-alt"></i> Terrain</label>
             <select id="terrain-filter" class="event-terrain-select">
                 <option value="">All terrains</option>
-                ${terrainOptions}
+                ${terrainGroupHtml}
             </select>
             <span class="event-counter">${context.hasEvents ? `${context.index + 1} / ${context.total}` : "No events"}</span>
         </div>`;
@@ -79,7 +84,8 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
                 .map(t => {
                     const terrain = TerrainRegistry.get(t);
                     const icon = terrain?.icon ?? "fas fa-map-marker-alt";
-                    return `<span class="event-terrain-badge"><i class="${icon}"></i> ${t}</span>`;
+                    const label = terrain?.label ?? t;
+                    return `<span class="event-terrain-badge"><i class="${icon}"></i> ${label}</span>`;
                 }).join("");
 
             const packLabel = evt.pack
@@ -176,46 +182,10 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
     }
 
     /**
-     * Loads all event data from core + terrain + imported pack sources.
+     * Loads all event data from released terrains (via TerrainRegistry), overlays, and imports.
      */
     async #loadEvents() {
-        const events = [];
-
-        // Core events
-        const coreFiles = [
-            "forest_events.json", "dungeon_events.json", "desert_events.json",
-            "swamp_events.json", "urban_events.json", "camp_disasters.json"
-        ];
-        for (const file of coreFiles) {
-            try {
-                const resp = await fetch(`modules/ionrift-respite/data/core/events/${file}`);
-                if (!resp.ok) continue;
-                const data = await resp.json();
-                for (const evt of (data.events ?? [])) {
-                    events.push(evt);
-                }
-            } catch (e) { /* skip */ }
-        }
-
-        // Terrain packs
-        try {
-            const manifestResp = await fetch(`modules/ionrift-respite/data/terrains/manifest.json`);
-            if (manifestResp.ok) {
-                const manifest = await manifestResp.json();
-                const coreTerrains = new Set(["forest", "swamp", "desert", "urban", "dungeon", "tavern"]);
-                for (const terrain of (manifest.released ?? [])) {
-                    if (coreTerrains.has(terrain)) continue;
-                    try {
-                        const resp = await fetch(`modules/ionrift-respite/data/terrains/${terrain}/events.json`);
-                        if (!resp.ok) continue;
-                        const data = await resp.json();
-                        for (const evt of (data.events ?? [])) {
-                            events.push(evt);
-                        }
-                    } catch (e) { /* skip */ }
-                }
-            }
-        } catch (e) { /* skip */ }
+        const events = [...await TerrainRegistry.loadReleasedEvents()];
 
         // Imported packs
         const importedPacks = game.settings.get("ionrift-respite", "importedPacks") ?? {};
