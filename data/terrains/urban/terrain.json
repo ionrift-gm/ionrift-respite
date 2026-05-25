@@ -1,6 +1,7 @@
 {
     "id": "urban",
     "label": "Urban",
+    "category": "wilderness",
     "icon": "fas fa-city",
     "comfort": "sheltered",
     "comfortReason": "Buildings and infrastructure provide ready-made cover. Safety varies by neighborhood.",
