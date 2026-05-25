@@ -1,0 +1,17 @@
+{
+    "id": "catacombs",
+    "label": "Catacombs",
+    "category": "dungeon",
+    "icon": "fas fa-skull",
+    "comfort": "hostile",
+    "comfortReason": "Underground burial complex. Stale air, narrow passages, and the company of the dead.",
+    "scoutingAvailable": false,
+    "mealRules": {
+        "waterPerDay": 1,
+        "foodPerDay": 1,
+        "note": "No water sources. Food must be carried. Air quality may degrade in sealed sections."
+    },
+    "weather": ["dungeon_normal", "dungeon_damp"],
+    "eventsFile": "core/events/catacombs_events.json",
+    "travelActivities": []
+}

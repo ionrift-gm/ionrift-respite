@@ -1,6 +1,7 @@
 {
     "id": "tavern",
-    "label": "Tavern / Safe Haven",
+    "label": "Tavern",
+    "category": "safe-haven",
     "icon": "fas fa-beer",
     "comfort": "safe",
     "comfortReason": "Walls, a roof, and a door. The standard for a comfortable rest.",

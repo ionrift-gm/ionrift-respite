@@ -1,6 +1,7 @@
 {
     "id": "swamp",
     "label": "Swamp",
+    "category": "wilderness",
     "icon": "fas fa-frog",
     "comfort": "rough",
     "comfortReason": "Waterlogged ground, biting insects, and poor visibility. Not a gentle place to rest.",

@@ -1,6 +1,7 @@
 {
     "id": "mountain",
     "label": "Mountain",
+    "category": "wilderness",
     "icon": "fas fa-mountain",
     "comfort": "rough",
     "comfortReason": "High altitude, thin air, hard ground. Exposed rock offers no insulation. Wind cuts through everything.",

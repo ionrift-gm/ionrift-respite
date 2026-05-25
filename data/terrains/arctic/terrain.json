@@ -1,6 +1,7 @@
 {
     "id": "arctic",
     "label": "Arctic",
+    "category": "wilderness",
     "icon": "fas fa-snowflake",
     "comfort": "hostile",
     "comfortReason": "Extreme cold, constant wind, no natural shelter. Everything freezes. Survival depends on preparation and fire.",

@@ -1,6 +1,7 @@
 {
     "id": "forest",
     "label": "Forest",
+    "category": "wilderness",
     "icon": "fas fa-tree",
     "comfort": "rough",
     "comfortReason": "Trees overhead but still outdoors. Rain, wildlife, and insects make it rough.",

@@ -13,6 +13,16 @@ const MODULE_ID = "ionrift-respite";
 /** Camp comfort keys used by RestSetupApp and RestFlowEngine */
 const VALID_COMFORT = new Set(["safe", "sheltered", "rough", "hostile"]);
 
+/** Valid terrain category values. Declared in each terrain.json as "category". */
+const VALID_CATEGORIES = new Set(["dungeon", "safe-haven", "wilderness"]);
+
+/**
+ * Comfort → category fallback for terrain.json files that predate the category field.
+ * "safe" comfort → safe-haven (taverns, inns).
+ * Not used when terrain.category is present.
+ */
+const COMFORT_CATEGORY_FALLBACK = { safe: "safe-haven" };
+
 export class TerrainRegistry {
 
     /** @type {Map<string, object>} Cached terrain manifests keyed by terrain id */
@@ -84,6 +94,49 @@ export class TerrainRegistry {
     }
 
     /**
+     * Terrain category for UI grouping and cross-module spine flags.
+     * Reads "category" from the terrain's own terrain.json. Falls back to
+     * a comfort-based heuristic for terrain.json files without a category field.
+     * Never uses hardcoded terrain ID lists — callers must not either.
+     * @param {string} id
+     * @returns {"dungeon"|"safe-haven"|"wilderness"}
+     */
+    static getCategory(id) {
+        const t = this._terrains.get(id);
+        if (!t) return "wilderness";
+        if (t.category && VALID_CATEGORIES.has(t.category)) return t.category;
+        // Fallback: derive from comfort field for legacy terrain.json files
+        return COMFORT_CATEGORY_FALLBACK[t.comfort] ?? "wilderness";
+    }
+
+    /**
+     * Environment dropdown groups (Dungeon, Safe Haven, Wilderness).
+     * @param {{ lastTerrain?: string }} [options]
+     * @returns {{ group: string, options: { value: string, label: string }[] }[]}
+     */
+    static getOptionGroups(options = {}) {
+        const { lastTerrain } = options;
+        const dungeon = [];
+        const safeHaven = [];
+        const wilderness = [];
+        for (const t of this.getAll()) {
+            const opt = {
+                value: t.id,
+                label: (t.label ?? t.id) + (lastTerrain && t.id === lastTerrain ? " (last used)" : "")
+            };
+            const category = this.getCategory(t.id);
+            if (category === "dungeon") dungeon.push(opt);
+            else if (category === "safe-haven") safeHaven.push(opt);
+            else wilderness.push(opt);
+        }
+        const groups = [];
+        if (dungeon.length) groups.push({ group: "Dungeon", options: dungeon });
+        if (safeHaven.length) groups.push({ group: "Safe Haven", options: safeHaven });
+        if (wilderness.length) groups.push({ group: "Wilderness", options: wilderness });
+        return groups;
+    }
+
+    /**
      * Get all loaded terrain ids as a Set.
      * @returns {Set<string>}
      */
@@ -131,6 +184,45 @@ export class TerrainRegistry {
         const t = this.get(tag);
         if (!t?.eventsFile) return null;
         return `modules/${MODULE_ID}/data/${t.eventsFile}`;
+    }
+
+    /**
+     * Load event objects from camp disasters and each released terrain's eventsFile.
+     * Shared by Event Browser and Pack Registry so scans stay aligned with manifest.released.
+     *
+     * @param {{ includeCampDisasters?: boolean }} [options]
+     * @returns {Promise<object[]>}
+     */
+    static async loadReleasedEvents(options = {}) {
+        const { includeCampDisasters = true } = options;
+        await this.init();
+        const events = [];
+        const seenPaths = new Set();
+
+        const appendFromPath = async (path) => {
+            if (!path || seenPaths.has(path)) return;
+            seenPaths.add(path);
+            try {
+                const resp = await fetch(path);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                for (const evt of (data.events ?? [])) {
+                    events.push(evt);
+                }
+            } catch (e) {
+                console.warn(`${MODULE_ID} | TerrainRegistry: Failed to load events from ${path}:`, e);
+            }
+        };
+
+        if (includeCampDisasters) {
+            await appendFromPath(`modules/${MODULE_ID}/data/core/events/camp_disasters.json`);
+        }
+
+        for (const terrain of this.getAll()) {
+            await appendFromPath(this.getEventsPath(terrain.id));
+        }
+
+        return events;
     }
 
     /**

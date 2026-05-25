@@ -1,0 +1,13 @@
+{
+    "id": "ruins",
+    "label": "Ruins",
+    "category": "dungeon",
+    "icon": "fas fa-landmark",
+    "comfort": "rough",
+    "comfortReason": "Exposed to weather. Rubble and debris underfoot. Walls provide cover but no guarantee of structural integrity.",
+    "scoutingAvailable": false,
+    "mealRules": { "waterPerDay": 1, "foodPerDay": 1, "note": "Water may collect in cisterns or cracks. Food must be carried." },
+    "weather": ["clear", "overcast", "rain", "extreme_cold"],
+    "eventsFile": "core/events/ruins_events.json",
+    "travelActivities": []
+}

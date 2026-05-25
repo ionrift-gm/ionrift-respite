@@ -1,6 +1,7 @@
 {
     "id": "dungeon",
-    "label": "Dungeon / Cave",
+    "label": "Dungeon",
+    "category": "dungeon",
     "icon": "fas fa-dungeon",
     "comfort": "hostile",
     "comfortReason": "Hostile by nature. No daylight, unknown threats, and no guarantee of safety.",

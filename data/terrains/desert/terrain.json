@@ -1,6 +1,7 @@
 {
     "id": "desert",
     "label": "Desert",
+    "category": "wilderness",
     "icon": "fas fa-sun",
     "comfort": "hostile",
     "comfortReason": "Extreme heat, zero shade, no water. Survival without shelter is a gamble.",
