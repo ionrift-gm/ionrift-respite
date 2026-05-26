@@ -35,6 +35,45 @@ function _actorMealSlots(actor, rules) {
 
 const MODULE_ID = "ionrift-respite";
 
+// ── Cross-system container helpers ──────────────────────────────────
+
+/**
+ * Get the ID of the container an item lives inside, if any.
+ * DnD5e 5.x: item.system.container (string)
+ * PF2e 8.x:  item.system.containerId (string or { value: string })
+ * @param {Item} item
+ * @returns {string|null}
+ */
+function _getContainerParentId(item) {
+    const dnd = item.system?.container;
+    if (typeof dnd === "string" && dnd) return dnd;
+    const pf2 = item.system?.containerId;
+    if (typeof pf2 === "string" && pf2) return pf2;
+    if (pf2 && typeof pf2.value === "string" && pf2.value) return pf2.value;
+    return null;
+}
+
+/** DnD5e uses "container"; PF2e uses "backpack". */
+const CONTAINER_ITEM_TYPES = new Set(["container", "backpack"]);
+
+function _isContainerType(item) {
+    return CONTAINER_ITEM_TYPES.has(item.type);
+}
+
+/**
+ * Build a Set of item IDs that are container-type items in this actor's
+ * inventory. Used to identify children via _getContainerParentId.
+ * @param {Iterable<Item>} items
+ * @returns {Set<string>}
+ */
+function _collectContainerIds(items) {
+    const ids = new Set();
+    for (const item of items) {
+        if (_isContainerType(item)) ids.add(item.id);
+    }
+    return ids;
+}
+
 const SPOILED_FOOD_TEMPLATE = {
     name: "Spoiled Food",
     type: "consumable",
@@ -1175,10 +1214,16 @@ export class MealPhaseHandler {
         const defaultFoodIcon = useEssenceTray
             ? "icons/commodities/gems/gem-rough-white-blue.webp"
             : "icons/consumables/food/bread-loaf-round-white.webp";
+        const containerIds = _collectContainerIds(actor.items);
 
         for (const item of actor.items) {
             const qty = item.system?.quantity ?? 1;
             if (qty <= 0) continue;
+
+            // Skip items stored inside a container — they are accessed
+            // through their parent container, not independently.
+            const parentId = _getContainerParentId(item);
+            if (parentId && containerIds.has(parentId)) continue;
 
             const allowed = useEssenceTray
                 ? ItemClassifier.isEssenceMealFoodOption(item, actor)
@@ -1204,7 +1249,7 @@ export class MealPhaseHandler {
     /** Known water item names (lowercase). Used as fallback when flag detection misses. */
     static WATER_NAMES = new Set([
         "waterskin", "water flask", "canteen",
-        "water (pint)", "water, fresh (pint)", "water, salt (pint)"
+        "water (pint)", "water, fresh (pint)"
     ]);
 
     /**
@@ -1213,10 +1258,16 @@ export class MealPhaseHandler {
      */
     static _buildWaterOptions(actor, rules) {
         const options = [];
+        const containerIds = _collectContainerIds(actor.items);
 
         for (const item of actor.items) {
             const qty = item.system?.quantity ?? 1;
             if (qty <= 0) continue;
+
+            // Skip items stored inside a container — their pints are
+            // accounted for by the parent container entry.
+            const parentId = _getContainerParentId(item);
+            if (parentId && containerIds.has(parentId)) continue;
 
             const isWater = ItemClassifier.isWater(item, actor);
             if (!isWater) continue;
@@ -1245,6 +1296,20 @@ export class MealPhaseHandler {
                 remainingCharges = Math.max(0, top);
                 totalPints = remainingCharges + (avail - 1) * rawMax;
                 label = `${item.name} (${totalPints} pints)`;
+            }
+
+            // Container-type items (DnD5e Waterskin as container): count
+            // contained water items instead of the container's own quantity.
+            if (_isContainerType(item) && rawMax <= 0) {
+                let containedPints = 0;
+                for (const child of actor.items) {
+                    if (_getContainerParentId(child) !== item.id) continue;
+                    if (!ItemClassifier.isWater(child, actor)) continue;
+                    containedPints += child.system?.quantity ?? 1;
+                }
+                if (containedPints <= 0) continue;
+                totalPints = containedPints;
+                label = `${item.name} (${totalPints} pint${totalPints === 1 ? "" : "s"})`;
             }
 
             if (totalPints <= 0) continue;
@@ -1381,6 +1446,29 @@ export class MealPhaseHandler {
     static async _consumeItem(actor, itemId, amount = 1, { wholeUnit = false } = {}) {
         const item = actor.items.get(itemId);
         if (!item) return 0;
+
+        // Container-type items (e.g. Waterskin as DnD5e container): consume
+        // from the contained water items, not the container itself.
+        if (_isContainerType(item)) {
+            let consumed = 0;
+            let remaining = amount;
+            const children = [...actor.items].filter(
+                c => _getContainerParentId(c) === itemId && ItemClassifier.isWater(c, actor)
+            );
+            for (const child of children) {
+                if (remaining <= 0) break;
+                const cQty = child.system?.quantity ?? 1;
+                const take = Math.min(remaining, cQty);
+                if (cQty - take > 0) {
+                    await child.update({ "system.quantity": cQty - take });
+                } else {
+                    await actor.deleteEmbeddedDocuments("Item", [child.id]);
+                }
+                consumed += take;
+                remaining -= take;
+            }
+            return consumed;
+        }
 
         const uses = item.system?.uses;
         const qty = item.system?.quantity ?? 1;

@@ -28,7 +28,7 @@ const FOOD_NAMES = new Set([
 /** Built-in water item names (lowercase). */
 const WATER_NAMES = new Set([
     "waterskin", "water flask", "canteen",
-    "water (pint)", "water, fresh (pint)", "water, salt (pint)",
+    "water (pint)", "water, fresh (pint)",
     "holy water"
 ]);
 
