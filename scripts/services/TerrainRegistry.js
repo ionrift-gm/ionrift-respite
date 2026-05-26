@@ -1,8 +1,14 @@
 /**
  * TerrainRegistry
- * Centralized, data-driven terrain configuration.
- * Scans terrain folders and loads per-terrain JSON manifests at boot.
- * All terrain metadata lives in data/terrains/{name}/terrain.json.
+ * Centralized, data-driven terrain configuration for Respite.
+ *
+ * The module ships only its base terrains under
+ * `data/terrains/{name}/terrain.json`. Every other terrain is delivered
+ * plug-and-play by an active overlay: at init the registry scans each
+ * installed overlay for `data/terrains/<id>/terrain.json` and merges those
+ * in. Toggling an overlay re-evaluates the picker via `reset()` + `init()`
+ * from `ionrift.overlayContentChanged`, so packs come and go without a
+ * world reload and without a module patch.
  *
  * Consumers (RestSetupApp, PackRegistryApp, module.js) use this registry
  * instead of hardcoded arrays and objects.
@@ -32,13 +38,28 @@ export class TerrainRegistry {
     static _ready = false;
 
     /**
-     * Initialize the registry. Loads the release manifest, then fetches
-     * each terrain's terrain.json. Safe to call multiple times (no-ops after first).
+     * Initialize the registry. Loads the module-shipped base terrains, then
+     * scans every installed and active overlay for additional terrain folders
+     * and merges them in. The module ships data only for its base set; every
+     * other terrain is delivered plug-and-play by an active overlay.
      */
     static async init() {
         if (this._ready) return;
 
-        // Load release manifest to know which terrains are shipped
+        await this._loadModuleBase();
+        await this._loadFromOverlays();
+
+        this._ready = true;
+
+        const sorted = [...this._terrains.keys()].sort().join(", ");
+        console.log(`${MODULE_ID} | TerrainRegistry: Loaded ${this._terrains.size} terrains: ${sorted}`);
+    }
+
+    /**
+     * Load the module-shipped terrains listed in data/terrains/manifest.json.
+     * @private
+     */
+    static async _loadModuleBase() {
         let released = [];
         try {
             const resp = await fetch(`modules/${MODULE_ID}/data/terrains/manifest.json`);
@@ -50,7 +71,6 @@ export class TerrainRegistry {
             console.warn(`${MODULE_ID} | TerrainRegistry: Failed to load manifest.json:`, e);
         }
 
-        // Load each released terrain's manifest
         const loadPromises = released.map(async (terrainId) => {
             try {
                 const resp = await fetch(`modules/${MODULE_ID}/data/terrains/${terrainId}/terrain.json`);
@@ -59,7 +79,6 @@ export class TerrainRegistry {
                     return;
                 }
                 const data = await resp.json();
-                // Ensure the id field matches the folder name
                 data.id = data.id ?? terrainId;
                 this._terrains.set(terrainId, data);
             } catch (e) {
@@ -68,10 +87,67 @@ export class TerrainRegistry {
         });
 
         await Promise.all(loadPromises);
-        this._ready = true;
+    }
 
-        const sorted = [...this._terrains.keys()].sort().join(", ");
-        console.log(`${MODULE_ID} | TerrainRegistry: Loaded ${this._terrains.size} terrains: ${sorted}`);
+    /**
+     * Scan every installed overlay for `data/terrains/<id>/terrain.json` files
+     * and merge them into the local registry. Only active overlays are loaded;
+     * an inactive or absent overlay surfaces no terrain.
+     * @private
+     */
+    static async _loadFromOverlays() {
+        const overlay = game.ionrift?.library?.overlay;
+        if (!overlay) return;
+
+        let sublayers = [];
+        try {
+            sublayers = await overlay.listInstalledSublayers(MODULE_ID);
+        } catch (e) {
+            console.warn(`${MODULE_ID} | TerrainRegistry: overlay sublayer scan failed:`, e);
+            return;
+        }
+
+        for (const sublayer of sublayers) {
+            try {
+                const manifest = await overlay.getLocalManifest(MODULE_ID, sublayer);
+                if (!manifest?.overlayId) continue;
+
+                const active = await overlay.isOverlayActive(
+                    manifest.overlayId, MODULE_ID, sublayer
+                );
+                if (!active) continue;
+
+                const listing = await overlay.listOverlayDir(
+                    MODULE_ID, sublayer, "data/terrains"
+                );
+                const terrainDirs = listing?.dirs ?? [];
+
+                for (const terrainId of terrainDirs) {
+                    try {
+                        const data = await overlay.readOverlayFile(
+                            MODULE_ID, sublayer, `data/terrains/${terrainId}/terrain.json`
+                        );
+                        if (!data) continue;
+                        data.id = data.id ?? terrainId;
+                        this._terrains.set(data.id, data);
+                    } catch (e) {
+                        console.warn(`${MODULE_ID} | TerrainRegistry: Failed to read overlay terrain "${terrainId}" from ${sublayer}:`, e);
+                    }
+                }
+            } catch (e) {
+                console.warn(`${MODULE_ID} | TerrainRegistry: Failed to scan overlay sublayer "${sublayer}":`, e);
+            }
+        }
+    }
+
+    /**
+     * Clear the registry so init() will re-run from scratch.
+     * Called when a pack overlay's active state changes so the picker can pick
+     * up the new visibility set without a world reload.
+     */
+    static reset() {
+        this._terrains.clear();
+        this._ready = false;
     }
 
     /**

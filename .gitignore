@@ -1,18 +1,16 @@
 # === Ionrift Respite ===
 
-# Terrain packs: ignore all, then whitelist shipped terrains
+# Terrain packs: ignore all, then whitelist module-shipped base terrains.
+# Overlay-delivered terrains (arctic, mountain, ruins, catacombs) live in
+# ionrift-pack-workshop and never land here.
 data/terrains/*/
-!data/terrains/arctic/
 !data/terrains/desert/
 !data/terrains/dungeon/
 !data/terrains/forest/
-!data/terrains/mountain/
 !data/terrains/short-rest/
 !data/terrains/swamp/
 !data/terrains/tavern/
 !data/terrains/urban/
-!data/terrains/ruins/
-!data/terrains/catacombs/
 
 # !! CONTENT PACKS — PATREON ONLY !!
 # These paths contain proprietary content distributed through Patreon.
