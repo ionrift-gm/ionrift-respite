@@ -1,14 +1,10 @@
 # Changelog
 
-## [Unreleased]
+## [2.4.0] - 2026-05-26
 
 ### Changed
+- Terrain data is plug-and-play. The module ships only its base terrains; Ruins, Catacombs, Arctic, and Mountain now travel with their content overlays. Installing an overlay adds its terrains and events automatically, with no module patch required.
 - Module settings now expose one **Reset Rest State** button instead of separate daily cooldown and full reset controls.
-- Terrain data is plug-and-play. The module ships only its base terrains; Arctic, Mountain, Ruins, and Catacombs now travel with their content overlays. Installing a content overlay adds its terrains the next time the registry refreshes, with no module patch required.
-- Catacombs and Ruins camp events move into the Bone & Dust overlay alongside the terrain definitions. Worlds without the overlay no longer see those terrains or their events.
-
-### Added
-- **Overlay event parity tests.** The Respite test suite now verifies, for every installed overlay, that the terrains advertised in `contents.json` are present on disk, and that every terrain file shipped on disk has been loaded by the registry. Catches the failure mode where an overlay's manifest promises terrains that the ZIP did not actually carry.
 
 ## [2.3.0] - 2026-05-24
 
