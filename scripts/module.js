@@ -402,16 +402,6 @@ Hooks.once("init", async () => {
         packStatus: async () => {
             if (!game.user.isGM) return;
             await TerrainRegistry.init();
-            // Push Respite terrains into the shared lib spine so other modules can see them.
-            if (game.ionrift?.library?.terrains) {
-                for (const t of TerrainRegistry.getAll()) {
-                    game.ionrift.library.terrains.register({
-                        id: t.id,
-                        label: t.label,
-                        flags: { category: TerrainRegistry.getCategory(t.id) }
-                    });
-                }
-            }
             const coreTerrains = new Set(["forest", "swamp", "desert", "urban", "dungeon", "tavern"]);
             const results = {};
             for (const t of TerrainRegistry.getAvailableIds()) {
@@ -541,9 +531,18 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
         return;
     }
 
-    // Terrain art supplements (Frost & Stone, Bone & Dust)
+    // Terrain art supplements (Frost & Stone, Bone & Dust). These overlays also
+    // gate which terrains the local registry surfaces, so it has to re-evaluate
+    // every time their active state changes.
     if (detail.overlayId === "respite-frost-stone-overlay" || detail.overlayId === "respite-bone-dust-overlay") {
         await ImageResolver.init();
+        try {
+            const { TerrainRegistry } = await import("./services/TerrainRegistry.js");
+            TerrainRegistry.reset();
+            await TerrainRegistry.init();
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Terrain registry reset failed:`, e);
+        }
         return;
     }
 
@@ -705,18 +704,11 @@ Hooks.once("ready", async () => {
     // Initialize image resolver (art pack detection â€” probes ionrift-data/)
     await ImageResolver.init();
 
-    // Initialize terrain registry early so data is available before first rest
+    // Initialize terrain registry early so data is available before first rest.
+    // The registry is Respite-local under strict sovereignty: nothing is pushed
+    // into the shared library spine, and other modules are expected to build
+    // their own view on top of `game.ionrift.library.terrains.getBase()`.
     await TerrainRegistry.init();
-    // Push Respite terrains into the shared lib spine so other modules can see them.
-    if (game.ionrift?.library?.terrains) {
-        for (const t of TerrainRegistry.getAll()) {
-            game.ionrift.library.terrains.register({
-                id: t.id,
-                label: t.label,
-                flags: { category: TerrainRegistry.getCategory(t.id) }
-            });
-        }
-    }
 
     try {
         const respiteItemsPack = game.packs.get("ionrift-respite.respite-items");

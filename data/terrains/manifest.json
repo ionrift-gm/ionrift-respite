@@ -5,11 +5,7 @@
         "desert",
         "urban",
         "dungeon",
-        "tavern",
-        "mountain",
-        "arctic",
-        "ruins",
-        "catacombs"
+        "tavern"
     ],
-    "_comment": "Only released terrains are loaded in production. Add terrain names here to release them."
+    "_comment": "Module-shipped terrains. The kernel base from ionrift-library defines the canonical id set; Tavern is the Respite safe-haven addition. Pack overlays deliver their own terrains via data/terrains/<id>/terrain.json. Adding a terrain id here ships its data with the module, not via an overlay."
 }
