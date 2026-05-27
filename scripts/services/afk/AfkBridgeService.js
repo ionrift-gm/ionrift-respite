@@ -36,27 +36,7 @@ const ADAPTER_READERS = [
     { meta: playerListStatusAdapterMeta, read: readPlayerListStatusAfk, write: writePlayerListStatusAfk }
 ];
 
-/**
- * @returns {"respite"|"integrated"}
- */
-export function getAfkControlSource() {
-    try {
-        const v = game.settings.get(MODULE_ID, "afkControlSource");
-        return v === "integrated" ? "integrated" : "respite";
-    } catch {
-        return "respite";
-    }
-}
 
-/** @returns {boolean} */
-export function canUseRespiteAfkControls() {
-    return getAfkControlSource() === "respite";
-}
-
-/** @returns {boolean} */
-export function isIntegratedAfkPrimary() {
-    return getAfkControlSource() === "integrated";
-}
 
 /** @returns {{ id: string, label: string, active: boolean }[]} */
 export function getDetectedAfkAdapters() {
@@ -123,11 +103,9 @@ export function setCharacterAfk(characterId, isAfk, origin, opts = {}) {
         emitRestSessionAfk(characterId, isAfk);
     }
 
-    if (origin === "respite" || origin === "socket" || origin === "reconcile") {
-        void pushToAdapters(characterId, isAfk, opts.adapterId);
-    } else if (origin === "external" && !isIntegratedAfkPrimary()) {
-        void pushToAdapters(characterId, isAfk, opts.adapterId);
-    }
+    // Always push to all adapters (bidirectional sync), skipping the adapter
+    // that originated the change to avoid feedback loops.
+    void pushToAdapters(characterId, isAfk, opts.adapterId);
 
     refreshAfterAfkChange();
 }
@@ -193,5 +171,5 @@ export function removeAfkBridgeHooks() {
 
 export function initAfkBridge() {
     installAfkBridgeHooks();
-    if (isIntegratedAfkPrimary()) reconcileFromAdapters();
+    reconcileFromAdapters();
 }
