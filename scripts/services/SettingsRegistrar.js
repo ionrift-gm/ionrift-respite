@@ -342,25 +342,6 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
     const SettingsLayout = game.ionrift?.library?.SettingsLayout;
     SettingsLayout?.registerFooter(MODULE_ID);
 
-    // ── AFK control source ───────────────────────────────────────────
-    game.settings.register(MODULE_ID, "afkControlSource", {
-        name: "AFK control source",
-        hint: "Respite: use the rest AFK panel (syncs to Fast Flip and Player Status when active). Integrated: other modules drive AFK; the panel is read-only.",
-        scope: "world",
-        config: true,
-        type: String,
-        choices: {
-            respite: "Respite panel (sync out to other modules)",
-            integrated: "Integrated modules (Fast Flip, Player Status, etc.)"
-        },
-        default: "respite",
-        restricted: true,
-        onChange: () => {
-            import("./afk/AfkBridgeService.js").then(m => {
-                if (m.isIntegratedAfkPrimary()) m.reconcileFromAdapters();
-            }).catch(() => {});
-        }
-    });
 
     // ── Ambient AFK HUD ──────────────────────────────────────────────
     game.settings.register(MODULE_ID, "ambientAfkHud", {
@@ -591,7 +572,6 @@ export const SETTING_KEYS = [
     "artNudgeSnoozedUntil",
     "artNudgeSuppressed",
     "pf2eAdvisoryShown",
-    "afkControlSource",
     "ambientAfkHud",
     "afkPanelLayout",
     "debug"
