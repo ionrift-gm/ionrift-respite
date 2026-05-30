@@ -16,7 +16,6 @@ import { CopySpellHandler } from "../services/CopySpellHandler.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
 import { ConditionAdvisory } from "../services/ConditionAdvisory.js";
 import { ResourceSink } from "../services/ResourceSink.js";
-import { ForageActivityValidator } from "../services/ForageActivityValidator.js";
 import { CampfireTokenLinker } from "../services/CampfireTokenLinker.js";
 import { CampGearScanner } from "../services/CampGearScanner.js";
 import {
@@ -881,8 +880,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const restPayload = {
             restId: `rest_${Date.now()}`, terrainTag: this._engine.terrainTag, comfort: this._engine.comfort,
             restType: this._engine.restType, activities: this._activities ?? [],
-            recipes: Object.fromEntries(this._craftingEngine?.recipes || []),
-            forageActivityGate: this._forageActivityGatePayload()
+            recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
         };
         setActiveRestData(restPayload);
         emitRestStarted(restPayload);
@@ -994,8 +992,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const restPayload = {
             restId: `rest_${Date.now()}`, terrainTag: this._engine.terrainTag, comfort: this._engine.comfort,
             restType: this._engine.restType, activities: this._activities ?? [],
-            recipes: Object.fromEntries(this._craftingEngine?.recipes || []),
-            forageActivityGate: this._forageActivityGatePayload()
+            recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
         };
         setActiveRestData(restPayload);
         emitRestStarted(restPayload);
@@ -1081,8 +1078,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const restPayload = {
             restId: `rest_${Date.now()}`, terrainTag: this._engine.terrainTag, comfort: this._engine.comfort,
             restType: this._engine.restType, activities: this._activities ?? [],
-            recipes: Object.fromEntries(this._craftingEngine?.recipes || []),
-            forageActivityGate: this._forageActivityGatePayload()
+            recipes: Object.fromEntries(this._craftingEngine?.recipes || [])
         };
         setActiveRestData(restPayload);
         emitRestStarted(restPayload);
@@ -1436,23 +1432,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
     }
 
-    /**
-     * Forage gate snapshot for sockets and the activity picker (current rest terrain).
-     * Uses the camp-aware validator when the travel delegate's strict gate returns disabled,
-     * so that camp rests without content packs still allow foraging from the shipped compendium.
-     */
-    _forageActivityGatePayload() {
-        const tag = this._engine?.terrainTag ?? this._selectedTerrain ?? this._restData?.terrainTag ?? "forest";
-        const travelGate = this._travel?.getForageGate?.(tag) ?? null;
-        // If the travel gate says enabled, use it directly
-        if (travelGate && !travelGate.disabled) return travelGate;
-        // For camp rests: fall back to the camp-aware check that includes compendium base pools
-        const resolver = this._travel?.getTravelResolver?.() ?? null;
-        if (ForageActivityValidator.isCampForageAvailable(resolver, tag)) {
-            return { disabled: false, disabledReasonKey: null };
-        }
-        return travelGate;
-    }
 
     /** @returns {Object} Merged into ActivityResolver travel/camp forage checks on this client. */
     _forageResolverOpts() {
@@ -5747,8 +5726,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             restType: this._engine.restType,
             safeRestSpot: this._engine.safeRestSpot,
             activities: this._activities ?? [],
-            recipes: Object.fromEntries(this._craftingEngine.recipes),
-            forageActivityGate: this._forageActivityGatePayload()
+            recipes: Object.fromEntries(this._craftingEngine.recipes)
         };
 
         setActiveRestData(restPayload);
@@ -5757,21 +5735,28 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         ui.notifications.info("Rest phase started. Activity pickers sent to all players.");
 
-        // Long rests always show the Travel Resolution phase so the GM
-        // understands why activities are or aren't available in this terrain.
+        // Long rests show the Travel Resolution phase unless professions are disabled
+        // (travel activities are redundant when resource-gathering is off).
         if (this._engine.restType === "long") {
-            this._phase = "travel";
-            this._travel.setTotalDays(this._daysSinceLastRest ?? 1);
-            this._travel.scoutingAllowed = this._scoutingAllowed ?? true;
+            let skipTravel = false;
+            try { skipTravel = !game.settings.get(MODULE_ID, "enableProfessions"); } catch (e) { /* */ }
 
-            setTimeout(() => {
-                emitPhaseChanged("travel", {
-                        selectedTerrain: this._selectedTerrain ?? "forest",
-                        travelDays: this._travel.totalDays,
-                        scoutingAllowed: this._travel.scoutingAllowed
-                    });
-                this._broadcastTravelDeclarations();
-            }, 200);
+            if (skipTravel) {
+                this._phase = "camp";
+            } else {
+                this._phase = "travel";
+                this._travel.setTotalDays(this._daysSinceLastRest ?? 1);
+                this._travel.scoutingAllowed = this._scoutingAllowed ?? true;
+
+                setTimeout(() => {
+                    emitPhaseChanged("travel", {
+                            selectedTerrain: this._selectedTerrain ?? "forest",
+                            travelDays: this._travel.totalDays,
+                            scoutingAllowed: this._travel.scoutingAllowed
+                        });
+                    this._broadcastTravelDeclarations();
+                }, 200);
+            }
         } else {
             this._phase = "camp";
         }
@@ -5796,7 +5781,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Theater of the Mind: skip camp phase, jump to activity
         if (this._phase === "camp" && await this._skipCampForTheater()) return;
         // Tavern: skip camp phase entirely (no campfire/furniture to place)
-        if (this._phase === "camp" && await this._skipCampForTavern()) return;
+        if (this._phase === "camp" && await this._skipCampForSafeRest()) return;
 
         // Campfire opens after render (see _onRender)
         this.render();
@@ -10154,7 +10139,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // Theater of the Mind: skip camp, jump to activity
             if (await this._skipCampForTheater()) return;
             // Tavern: skip camp phase entirely
-            if (await this._skipCampForTavern()) return;
+            if (await this._skipCampForSafeRest()) return;
             emitPhaseChanged(this._phase, {});
             await this._saveRestState();
             this.render();
@@ -10187,7 +10172,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Theater of the Mind: skip camp, jump to activity
         if (await this._skipCampForTheater()) return;
         // Tavern: skip camp phase entirely
-        if (await this._skipCampForTavern()) return;
+        if (await this._skipCampForSafeRest()) return;
 
         emitPhaseChanged(this._phase, { travelResults: this._travel.serialize() });
 
@@ -10231,7 +10216,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Theater of the Mind: skip camp, jump to activity
         if (await this._skipCampForTheater()) return;
         // Tavern: skip camp phase entirely
-        if (await this._skipCampForTavern()) return;
+        if (await this._skipCampForSafeRest()) return;
 
         emitPhaseChanged(this._phase, {});
 
@@ -10503,19 +10488,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Tavern / safe-haven terrains skip camp and activity phases entirely.
-     * The inn provides shelter, fire, and board. No campfire ceremony, no
-     * station tokens, no activity selection needed.
+     * Safe rest spots (taverns, safe camps) and tavern terrain skip camp and
+     * activity phases entirely. The environment is secure: no campfire ceremony,
+     * no station tokens, no activity selection needed.
      *
-     * All characters are auto-assigned "Rest Fully" and meals are waived
-     * (the tavern feeds and waters you). Advances straight to reflection
-     * for long rests, or resolve for short rests.
+     * All characters are auto-assigned "Rest Fully" and meals are waived.
+     * Advances straight to reflection for long rests, or resolve for short rests.
      *
      * @returns {boolean} True if the phase was skipped (caller should not proceed to camp render).
      */
-    async _skipCampForTavern() {
+    async _skipCampForSafeRest() {
         const terrain = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
-        if (terrain !== "tavern") return false;
+        const isSafeRest = !!(this._engine?.safeRestSpot);
+        if (terrain !== "tavern" && !isSafeRest) return false;
         if (!game.user.isGM) return false;
 
         // Fire is implicitly "campfire" (the establishment's hearth).
@@ -10524,7 +10509,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._campToActivityDone = true;
         this._campStep2Entered = true;
 
-        _logGmRestSheet("_skipCampForTavern", "tavern terrain â€” skipping camp + activity, auto-assigning rest");
+        _logGmRestSheet("_skipCampForSafeRest", "tavern terrain â€” skipping camp + activity, auto-assigning rest");
 
         // Auto-assign act_rest_fully to every party member and register with engine.
         const partyActors = getPartyActors();

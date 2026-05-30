@@ -68,68 +68,6 @@
         "category": "active"
     },
     {
-        "id": "act_forage",
-        "name": "Forage",
-        "professions": [
-            "leatherworker",
-            "cobbler"
-        ],
-        "description": "Search the surrounding area for useful materials.",
-        "restTypes": [
-            "long"
-        ],
-        "prerequisites": {
-            "proficiencies": [
-                "sur"
-            ],
-            "tools": [],
-            "minimumLevel": 1
-        },
-        "check": {
-            "skill": "sur",
-            "dc": 12,
-            "advantageIf": [
-                "profession_match",
-                "terrain_familiar"
-            ]
-        },
-        "outcomes": {
-            "success": {
-                "narrative": "You return with a bundle of useful materials.",
-                "items": [
-                    {
-                        "pool": "resource_pool_${terrain}",
-                        "rolls": 2
-                    }
-                ]
-            },
-            "exceptional": {
-                "threshold": 20,
-                "narrative": "You find something remarkable among the undergrowth.",
-                "items": [
-                    {
-                        "pool": "resource_pool_${terrain}",
-                        "rolls": 2
-                    },
-                    {
-                        "pool": "resource_pool_${terrain}_rare",
-                        "rolls": 1
-                    }
-                ]
-            },
-            "failure": {
-                "narrative": "The area yields nothing useful.",
-                "items": [],
-                "effects": []
-            }
-        },
-        "combatModifiers": {
-            "initiative": -5,
-            "description": "-5 initiative. Away from camp, scrambling back."
-        },
-        "category": "active"
-    },
-    {
         "id": "act_cook",
         "name": "Cook",
         "professions": [

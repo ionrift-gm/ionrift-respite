@@ -12,8 +12,7 @@ export const SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS = new Set([
     "act_keep_watch",
     "act_defenses",
     "act_scout",
-    "act_tend_wounds",
-    "act_forage"
+    "act_tend_wounds"
 ]);
 
 /**
@@ -67,7 +66,7 @@ export const RANK_TO_KEY = ["hostile", "rough", "sheltered", "safe"];
 /** Activity icon mapping */
 export const ACTIVITY_ICONS = {
     act_keep_watch: "fas fa-eye", act_rest_fully: "fas fa-bed",
-    act_forage: "fas fa-leaf", act_study: "fas fa-book",
+    act_study: "fas fa-book",
     act_scout: "fas fa-binoculars", act_tell_tales: "fas fa-theater-masks",
     act_tend_wounds: "fas fa-hand-holding-medical", act_pray: "fas fa-pray",
     act_cook: "fas fa-utensils", act_brew: "fas fa-flask", act_tailor: "fas fa-cut",

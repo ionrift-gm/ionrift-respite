@@ -152,6 +152,26 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         restricted: true
     });
 
+    game.settings.register(MODULE_ID, "enableProfessions", {
+        name: "Crafting Professions",
+        hint: "Show cooking, brewing, tailoring, and crafting activities during rest. Disable for a simpler rest without profession crafting. Also auto-skips the travel phase when disabled.",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: true,
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "enableFletching", {
+        name: "Fletching Activity",
+        hint: "Show the Fletch Arrows activity during long rests. Available to all characters.",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: true,
+        restricted: true
+    });
+
     game.settings.register(MODULE_ID, "trackFood", {
         name: "Track Food & Water",
         hint: "Show the Meal phase during long rests. Characters consume rations and water, with advisories for starvation and dehydration.",
@@ -550,6 +570,8 @@ export const SETTING_KEYS = [
     "maxValueHitDice",
     "enableStudy",
     "enableTraining",
+    "enableProfessions",
+    "enableFletching",
     "trackFood",
     "partialSustenance",
     "lockPlayerQuantity",
