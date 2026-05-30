@@ -1,12 +1,9 @@
-import { ForageActivityValidator } from "./ForageActivityValidator.js";
-
 /** Activities hidden when the GM marks a safe rest spot (no encounter risk; no redundant camp duties). */
 export const SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS = new Set([
     "act_keep_watch",
     "act_defenses",
     "act_scout",
-    "act_tend_wounds",
-    "act_forage"
+    "act_tend_wounds"
 ]);
 
 /**
@@ -35,7 +32,7 @@ export class ActivityResolver {
      * Returns activities available to a given actor based on proficiencies and rest type.
      * @param {Actor} actor
      * @param {string} restType - "long" or "short"
-     * @param {Object} [options] - Forage gate: forageActivityGate, terrainTag, resourcePoolsFromPack, resourcePoolRoller, travelResolver, safeRestSpot.
+     * @param {Object} [options] - safeRestSpot gate.
      * @returns {Object[]} Filtered activity schemas.
      */
     getAvailableActivities(actor, restType, options = {}) {
@@ -59,37 +56,28 @@ export class ActivityResolver {
                 } catch (e) { /* setting may not exist yet */ }
             }
 
+            // Gate Professions (cook, brew, tailor, craft) behind module setting
+            if (activity.category === "profession") {
+                try {
+                    if (!game.settings.get("ionrift-respite", "enableProfessions")) continue;
+                } catch (e) { /* setting may not exist yet */ }
+            }
+
+            // Gate Fletching behind module setting
+            if (activity.id === "act_fletch") {
+                try {
+                    if (!game.settings.get("ionrift-respite", "enableFletching")) continue;
+                } catch (e) { /* setting may not exist yet */ }
+            }
+
             if (this._meetsPrerequisites(actor, activity.prerequisites)) {
-                if (activity.id === "act_forage" && this._isCampForageBlocked(options)) {
-                    const key = options.forageActivityGate?.disabledReasonKey
-                        ?? "ionrift-respite.travel.forage.requires_pack";
-                    available.push({
-                        ...activity,
-                        activityDisabled: true,
-                        disabledTooltip: game.i18n.localize(key)
-                    });
-                    continue;
-                }
                 available.push(activity);
             }
         }
         return available;
     }
 
-    /**
-     * @param {Object} options
-     * @returns {boolean}
-     */
-    _isCampForageBlocked(options) {
-        const terrainTag = options.terrainTag ?? "forest";
-        const gate = options.forageActivityGate;
-        if (gate) return !!gate.disabled;
-        const resolver = options.travelResolver;
-        if (ForageActivityValidator.isCampForageAvailable(resolver, terrainTag)) {
-            return false;
-        }
-        return true;
-    }
+
 
     /**
      * Resolves an activity for a character. Rolls skill checks and produces outcomes.
@@ -552,21 +540,26 @@ export class ActivityResolver {
                 } catch (e) { /* setting may not exist yet */ }
             }
 
+            // Gate Professions (cook, brew, tailor, craft) behind module setting
+            if (activity.category === "profession") {
+                try {
+                    if (!game.settings.get("ionrift-respite", "enableProfessions")) continue;
+                } catch (e) { /* setting may not exist yet */ }
+            }
+
+            // Gate Fletching behind module setting
+            if (activity.id === "act_fletch") {
+                try {
+                    if (!game.settings.get("ionrift-respite", "enableFletching")) continue;
+                } catch (e) { /* setting may not exist yet */ }
+            }
+
             // Runtime attunement check
             if (activity.id === "act_attune" && !this._hasAttuneableItems(actor)) {
                 continue;
             }
 
             if (this._meetsPrerequisites(actor, activity.prerequisites)) {
-                if (activity.id === "act_forage" && this._isCampForageBlocked(options)) {
-                    const key = options.forageActivityGate?.disabledReasonKey
-                        ?? "ionrift-respite.travel.forage.requires_pack";
-                    faded.push({
-                        ...activity,
-                        fadedHint: game.i18n.localize(key)
-                    });
-                    continue;
-                }
                 // requiresFire: cooking needs campfire or bonfire (embers counts as lit but not hot enough)
                 if (activity.requiresFire) {
                     if (!fireIsBurning) {
