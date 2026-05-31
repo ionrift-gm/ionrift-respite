@@ -21756,3 +21756,184 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 .ionrift-respite-app .comfort-tier-badge.comfort-rough   { color: #fb923c; }
 .ionrift-respite-app .comfort-tier-badge.comfort-sheltered { color: #facc15; }
 .ionrift-respite-app .comfort-tier-badge.comfort-safe    { color: #4ade80; }
+
+/* ═══════════════════════════════════════════════════════════
+   ACTIVITY CONFIG APP (Rest Activities submenu)
+   ═══════════════════════════════════════════════════════════ */
+
+#respite-activity-config .window-body {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.respite-activity-config {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    flex: 1;
+    min-height: 0;
+}
+
+/* Header */
+.activity-config-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.5rem 0.6rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+}
+
+.activity-config-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    letter-spacing: 0.02em;
+}
+
+.activity-config-title i {
+    color: rgba(155, 89, 182, 0.7);
+    margin-right: 0.3rem;
+}
+
+.activity-config-subtitle {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.35);
+    font-style: italic;
+}
+
+/* Toggle list */
+.activity-config-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+/* Each toggle row */
+.activity-config-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.65rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    transition: border-color 0.15s;
+}
+
+.activity-config-row:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.activity-config-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.activity-config-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.activity-config-icon {
+    width: 1.1rem;
+    text-align: center;
+    color: rgba(155, 89, 182, 0.55);
+    margin-right: 0.25rem;
+    font-size: 0.72rem;
+}
+
+.activity-config-hint {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.35);
+    line-height: 1.35;
+}
+
+/* Toggle switch */
+.activity-config-toggle {
+    position: relative;
+    display: inline-block;
+    width: 38px;
+    height: 20px;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.activity-config-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.activity-config-slider {
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    transition: all 0.2s ease;
+}
+
+.activity-config-slider::before {
+    content: "";
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    left: 2px;
+    bottom: 2px;
+    background: rgba(255, 255, 255, 0.35);
+    transition: all 0.2s ease;
+}
+
+.activity-config-toggle input:checked + .activity-config-slider {
+    background: rgba(155, 89, 182, 0.2);
+    border-color: rgba(155, 89, 182, 0.4);
+}
+
+.activity-config-toggle input:checked + .activity-config-slider::before {
+    transform: translateX(18px);
+    background: var(--ionrift-accent, #9b59b6);
+    box-shadow: 0 0 6px rgba(155, 89, 182, 0.4);
+}
+
+/* Save button */
+.activity-config-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.4rem 0 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.activity-config-save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 1rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid rgba(155, 89, 182, 0.35);
+    background: rgba(155, 89, 182, 0.15);
+    color: rgba(155, 89, 182, 0.9);
+}
+
+.activity-config-save-btn:hover {
+    background: rgba(155, 89, 182, 0.25);
+    border-color: rgba(155, 89, 182, 0.5);
+    box-shadow: 0 0 10px rgba(155, 89, 182, 0.15);
+}
+
+.activity-config-save-btn i {
+    font-size: 0.7rem;
+}
