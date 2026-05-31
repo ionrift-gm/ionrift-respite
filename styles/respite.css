@@ -22816,6 +22816,9 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     padding: 0.5rem 0.6rem;
     line-height: 1.3;
     text-align: left;
+    border: 1px solid rgba(200, 160, 60, 0.28);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.15);
 }
 
 .respite-profile-btn:hover {
@@ -22836,6 +22839,19 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     font-size: 0.68rem;
     opacity: 0.6;
     white-space: normal;
+}
+
+.respite-profile-custom {
+    cursor: default;
+    border-style: dashed;
+}
+
+.respite-profile-custom:not(.is-active) {
+    opacity: 0.5;
+}
+
+.respite-profile-custom:hover {
+    border-color: rgba(200, 160, 60, 0.28);
 }
 
 .respite-profile-btn .rp-active {
