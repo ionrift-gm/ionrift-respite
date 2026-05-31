@@ -22764,29 +22764,11 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 }
 
 /* ─────────────────────────────────────────────────────────────────── */
-/*  Settings panel: Respite section lead, group headers, guide button  */
+/*  Settings panel: Respite Quick Setup card and group headers         */
 /*  Injected into Foundry's native Settings window by                  */
 /*  SettingsPanelLayout.js. Tuned to sit alongside the kernel's amber  */
 /*  divider rather than the dark-glass module windows.                 */
 /* ─────────────────────────────────────────────────────────────────── */
-.respite-settings-lead {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    margin: 0.25rem 0 0.6rem;
-    padding: 0.55rem 0.7rem;
-    font-size: 0.82rem;
-    line-height: 1.45;
-    border-radius: 6px;
-    background: rgba(200, 160, 60, 0.08);
-    border: 1px solid rgba(200, 160, 60, 0.28);
-}
-
-.respite-settings-lead i {
-    margin-top: 0.1rem;
-    color: rgba(200, 160, 60, 0.9);
-}
-
 /* Quick Setup card: one-click play-style profiles in the hero slot */
 .respite-quick-setup {
     margin: 0 0 0.7rem;
@@ -22856,7 +22838,45 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     white-space: normal;
 }
 
+.respite-profile-btn .rp-active {
+    display: none;
+    margin-top: 0.15rem;
+    font-size: 0.66rem;
+    font-weight: 600;
+    color: #7ddc8f;
+    letter-spacing: 0.02em;
+}
+
+.respite-profile-btn .rp-active i {
+    margin-right: 0.25rem;
+}
+
+.respite-profile-btn.is-active {
+    border-color: rgba(125, 220, 143, 0.7);
+    box-shadow: 0 0 0 1px rgba(125, 220, 143, 0.35), 0 0 10px rgba(125, 220, 143, 0.18);
+    background: rgba(125, 220, 143, 0.06);
+}
+
+.respite-profile-btn.is-active:hover {
+    border-color: rgba(125, 220, 143, 0.85);
+}
+
+.respite-profile-btn.is-active .rp-active {
+    display: inline-flex;
+    align-items: center;
+}
+
 /* Profile confirm dialog (Ionrift glass) */
+.respite-profile-confirm tr.rp-group td {
+    padding-top: 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.55;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
 .respite-profile-confirm table {
     width: 100%;
     margin: 0.4rem 0;

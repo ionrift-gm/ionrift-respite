@@ -208,23 +208,27 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
     });
 
     // Surfaced in the Food & Diet dialog (DietConfigApp), not the native panel.
+    // Default off so a fresh world matches the Standard Quick Setup profile;
+    // the Survival profile turns meal tracking on.
     game.settings.register(MODULE_ID, "trackFood", {
         name: "Track Food & Water",
         hint: "Show the Meal phase during long rests. Characters consume rations and water, with advisories for starvation and dehydration.",
         scope: "world",
         config: false,
         type: Boolean,
-        default: true,
+        default: false,
         restricted: true
     });
 
+    // Default off so a fresh world matches the Standard Quick Setup profile;
+    // the Survival profile turns this leniency on alongside meal tracking.
     game.settings.register(MODULE_ID, "partialSustenance", {
         name: "Partial Sustenance (House Rule)",
         hint: "In terrains requiring double rations or water, partial fulfilment grants a benefit: +2 to CON save (water) or extended grace period (food). Disable for strict RAW.",
         scope: "world",
         config: false,
         type: Boolean,
-        default: true,
+        default: false,
         restricted: true
     });
 

@@ -5,7 +5,6 @@
  * The shared kernel (ionrift-library SettingsLayout) already moves the footer
  * (Discord / Wiki) to the bottom and draws a divider. This module adds the
  * Respite-specific touches on top of that, scoped to the Respite section only:
- *   - a one-line lead explaining defaults are sensible and everything is optional
  *   - a Quick Setup card that applies a play-style profile in one click
  *   - subtle group headers so the section reads as a few short lists
  *   - a frequency/danger ordering (mode and event pool first, reset last)
@@ -18,28 +17,41 @@
 const MODULE_ID = "ionrift-respite";
 
 /**
- * Gameplay-complexity toggles a Quick Setup profile writes. Player
- * restrictions and the interface mode are intentionally left alone: those are
- * separate policy/UX choices, not part of the complexity dial.
+ * Settings a Quick Setup profile writes, in two tiers. Complexity keys set the
+ * rules weight of a rest; player keys set what players may do on their own
+ * sheets. World data (scene token names, custom food lists, per-character
+ * diets, recovery timing) is deliberately excluded: a profile must never
+ * overwrite world-specific text a GM has tuned.
  */
-const PROFILE_KEYS = [
+const COMPLEXITY_KEYS = [
     "enableComfort",
     "enableProfessions",
-    "trackFood",
-    "partialSustenance",
     "enableTraining",
     "enableFletching",
+    "trackFood",
+    "partialSustenance",
     "armorDoffRule"
 ];
+
+const PLAYER_KEYS = [
+    "interceptRests",
+    "lockAttuneOutsideRest",
+    "lockPlayerQuantity"
+];
+
+const PROFILE_KEYS = [...COMPLEXITY_KEYS, ...PLAYER_KEYS];
 
 const KEY_LABELS = {
     enableComfort: "Comfort rules",
     enableProfessions: "Crafting professions (and travel phase)",
-    trackFood: "Meal tracking",
-    partialSustenance: "Partial sustenance",
     enableTraining: "Training activity",
     enableFletching: "Fletching activity",
-    armorDoffRule: "Armor sleep penalties"
+    trackFood: "Meal tracking",
+    partialSustenance: "Partial sustenance",
+    armorDoffRule: "Armor sleep penalties",
+    interceptRests: "Intercept player rests",
+    lockAttuneOutsideRest: "Lock attunement to rest",
+    lockPlayerQuantity: "Lock player quantities"
 };
 
 /**
@@ -51,45 +63,54 @@ const PROFILES = [
         id: "simple",
         label: "Simple",
         icon: "fas fa-feather",
-        desc: "Pared back. No comfort, professions, meals, or extra activities.",
+        desc: "Bare-bones rest. No comfort, professions, food, or extra activities.",
         values: {
             enableComfort: false,
             enableProfessions: false,
-            trackFood: false,
-            partialSustenance: false,
             enableTraining: false,
             enableFletching: false,
-            armorDoffRule: false
+            trackFood: false,
+            partialSustenance: false,
+            armorDoffRule: false,
+            interceptRests: true,
+            lockAttuneOutsideRest: false,
+            lockPlayerQuantity: false
         }
     },
     {
         id: "standard",
         label: "Standard",
         icon: "fas fa-campground",
-        desc: "The default mix. Comfort, professions, meals, training, and fletching.",
+        desc: "Full camp: comfort, professions, training, and fletching. No food tracking.",
         values: {
             enableComfort: true,
             enableProfessions: true,
-            trackFood: true,
-            partialSustenance: true,
             enableTraining: true,
             enableFletching: true,
-            armorDoffRule: true
+            trackFood: false,
+            partialSustenance: false,
+            armorDoffRule: true,
+            interceptRests: true,
+            lockAttuneOutsideRest: true,
+            lockPlayerQuantity: false
         }
     },
     {
         id: "survival",
         label: "Survival",
         icon: "fas fa-mountain-sun",
-        desc: "Everything on, strict rations. Partial sustenance off.",
+        desc: "Standard plus food and water. Strict rations, locked quantities.",
         values: {
             enableComfort: true,
             enableProfessions: true,
-            trackFood: true,
-            partialSustenance: false,
             enableTraining: true,
             enableFletching: true,
-            armorDoffRule: true
+            trackFood: true,
+            partialSustenance: true,
+            armorDoffRule: true,
+            interceptRests: true,
+            lockAttuneOutsideRest: true,
+            lockPlayerQuantity: true
         }
     }
 ];
@@ -121,6 +142,30 @@ function getGroup(root, key) {
 }
 
 /**
+ * Returns the id of the profile whose values match the current settings
+ * exactly, or null if the live configuration matches none of them (i.e. the
+ * GM has deviated from every preset).
+ * @returns {string|null}
+ */
+function getActiveProfileId() {
+    const current = {};
+    for (const k of PROFILE_KEYS) current[k] = game.settings.get(MODULE_ID, k);
+    const match = PROFILES.find(p => PROFILE_KEYS.every(k => current[k] === p.values[k]));
+    return match ? match.id : null;
+}
+
+/**
+ * Toggles the active highlight on the profile buttons within a scope.
+ * @param {ParentNode} [scope=document]
+ */
+function markActiveProfile(scope = document) {
+    const activeId = getActiveProfileId();
+    scope.querySelectorAll(".respite-profile-btn").forEach(btn => {
+        btn.classList.toggle("is-active", btn.dataset.profile === activeId);
+    });
+}
+
+/**
  * Confirms and applies a Quick Setup profile to world settings.
  * @param {string} id
  */
@@ -130,17 +175,20 @@ async function applyProfile(id) {
 
     const rows = PROFILE_KEYS.map(k => {
         const on = profile.values[k];
-        return `<tr><td>${KEY_LABELS[k]}</td><td class="${on ? "on" : "off"}">${on ? "On" : "Off"}</td></tr>`;
+        const groupLabel = k === PLAYER_KEYS[0]
+            ? `<tr class="rp-group"><td colspan="2">Player rules</td></tr>`
+            : "";
+        return `${groupLabel}<tr><td>${KEY_LABELS[k]}</td><td class="${on ? "on" : "off"}">${on ? "On" : "Off"}</td></tr>`;
     }).join("");
 
     const content = `
         <div class="respite-profile-confirm">
             <p>Apply the <strong>${profile.label}</strong> setup for the whole world?</p>
             <table>${rows}</table>
-            <p class="respite-profile-note">Player restrictions and the interface mode are left as they are. Fine-tune anything afterward in the panels below.</p>
+            <p class="respite-profile-note">The interface mode, scene token names, and per-character diets are left as they are. Fine-tune anything afterward in the panels below.</p>
         </div>`;
 
-    // lint-ignore: DialogV2 — this module is a settings-panel UI enhancer, not a
+    // lint-ignore: DialogV2. This module is a settings-panel UI enhancer, not a
     // headless service; the branded confirm needs the DialogV2 form-footer theme.
     const proceed = await foundry.applications.api.DialogV2.confirm({
         window: { title: `Apply ${profile.label} setup`, icon: profile.icon },
@@ -155,6 +203,7 @@ async function applyProfile(id) {
     for (const k of PROFILE_KEYS) {
         await game.settings.set(MODULE_ID, k, profile.values[k]);
     }
+    markActiveProfile();
     ui.notifications?.info(`Respite: ${profile.label} setup applied.`);
 }
 
@@ -172,7 +221,7 @@ export function enhanceRespiteSettings(root) {
     if (!anchor) return;
     const container = anchor.parentElement;
     if (!container) return;
-    if (container.querySelector(".respite-settings-lead")) return;
+    if (container.querySelector(".respite-quick-setup")) return;
 
     // Insertion boundary: keep everything above the footer (Discord/Wiki).
     // Prefer the kernel divider if present, else the first footer group.
@@ -196,29 +245,26 @@ export function enhanceRespiteSettings(root) {
         for (const el of present) place(el);
     }
 
-    const lead = document.createElement("div");
-    lead.className = "respite-settings-lead";
-    lead.innerHTML = `<i class="fas fa-campground"></i><span>Respite runs with sensible defaults. Everything here is optional; set it up only as far as the table wants.</span>`;
-    container.insertBefore(lead, container.firstChild);
-
     const quick = document.createElement("div");
     quick.className = "respite-quick-setup";
     quick.innerHTML = `
         <div class="respite-quick-setup-head">
             <span class="respite-quick-setup-title"><i class="fas fa-sliders"></i> Quick setup</span>
-            <span class="respite-quick-setup-sub">Pick a starting point. Everything stays adjustable below.</span>
+            <span class="respite-quick-setup-sub">Pick a starting point for the table. Every option stays adjustable in the panels below.</span>
         </div>
         <div class="respite-quick-setup-options">
             ${PROFILES.map(p => `
                 <button type="button" class="respite-profile-btn" data-profile="${p.id}">
                     <span class="rp-name"><i class="${p.icon}"></i> ${p.label}</span>
                     <span class="rp-desc">${p.desc}</span>
+                    <span class="rp-active"><i class="fas fa-circle-check"></i> Active</span>
                 </button>`).join("")}
         </div>`;
     quick.querySelectorAll(".respite-profile-btn").forEach(btn => {
         btn.addEventListener("click", () => applyProfile(btn.dataset.profile));
     });
-    lead.after(quick);
+    container.insertBefore(quick, container.firstChild);
+    markActiveProfile(quick);
 }
 
 Hooks.on("renderSettingsConfig", (app, html) => {
