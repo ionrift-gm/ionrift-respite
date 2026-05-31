@@ -22,7 +22,7 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
     static DEFAULT_OPTIONS = {
         id: "respite-diet-config",
         window: {
-            title: "Diet Configuration",
+            title: "Food & Diet",
             icon: "fas fa-utensils",
             resizable: true
         },
@@ -93,7 +93,15 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
             };
         });
 
-        return { rows, presets, foodTags, drinkTypes, isSingleActor: !!this.#focusActorId };
+        return {
+            rows,
+            presets,
+            foodTags,
+            drinkTypes,
+            isSingleActor: !!this.#focusActorId,
+            trackFood: game.settings.get(MODULE_ID, "trackFood"),
+            partialSustenance: game.settings.get(MODULE_ID, "partialSustenance")
+        };
     }
 
     /** @override */
@@ -108,6 +116,31 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
         let html = "";
 
         if (!context.isSingleActor) {
+            const trackOn = context.trackFood;
+            const partialDisabled = trackOn ? "" : "disabled";
+            html += `
+            <div class="diet-global-section">
+                <div class="diet-global-title">
+                    <i class="fas fa-drumstick-bite"></i> Meal tracking
+                </div>
+                <label class="diet-global-toggle">
+                    <input type="checkbox" class="diet-track-food-cb" ${trackOn ? "checked" : ""} />
+                    <span class="diet-global-switch"></span>
+                    <span class="diet-global-copy">
+                        <span class="diet-global-name">Track food &amp; water</span>
+                        <span class="diet-global-hint">Adds a Meal phase to long rests. Characters consume rations and water, with advisories for starvation and dehydration.</span>
+                    </span>
+                </label>
+                <label class="diet-global-toggle ${trackOn ? "" : "is-disabled"}">
+                    <input type="checkbox" class="diet-partial-cb" ${context.partialSustenance ? "checked" : ""} ${partialDisabled} />
+                    <span class="diet-global-switch"></span>
+                    <span class="diet-global-copy">
+                        <span class="diet-global-name">Partial sustenance <span class="diet-global-tag">house rule</span></span>
+                        <span class="diet-global-hint">In terrains needing double rations or water, partial fulfilment still helps: +2 to the CON save (water) or a longer grace period (food). Turn off for strict RAW.</span>
+                    </span>
+                </label>
+            </div>`;
+
             html += `
             <div class="diet-summary-bar">
                 <span class="diet-summary-count">
@@ -283,6 +316,15 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
     }
 
     _wireEvents(el, context) {
+        el.querySelector(".diet-track-food-cb")?.addEventListener("change", async (ev) => {
+            await game.settings.set(MODULE_ID, "trackFood", ev.target.checked);
+            this.render({ force: true });
+        });
+
+        el.querySelector(".diet-partial-cb")?.addEventListener("change", async (ev) => {
+            await game.settings.set(MODULE_ID, "partialSustenance", ev.target.checked);
+        });
+
         el.querySelectorAll(".diet-preset-select").forEach(sel => {
             sel.addEventListener("change", () => {
                 const actorId = sel.dataset.actorId;

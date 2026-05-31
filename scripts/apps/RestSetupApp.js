@@ -238,7 +238,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             beginRest: RestSetupApp.#onBeginRest,
             beginShortRest: RestSetupApp.#onBeginShortRest,
             submitActivities: RestSetupApp.#onSubmitActivities,
-            proceedToEvents: RestSetupApp.#onProceedToEvents,
             setFireLevel: RestSetupApp.#onSetFireLevel,
             rollEvents: RestSetupApp.#onRollEvents,
             resolveEvents: RestSetupApp.#onResolveEvents,
@@ -1682,20 +1681,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const campfirePlacedGate = hasCampfirePlaced();
             const fireCommitted = !!this._fireLitBy || !!this._coldCampDecided;
             campColdCampDecided = !!this._coldCampDecided;
+            // When fire hasn't been committed, preview defaults to "embers" (the
+            // default highlighted tab), NOT "unlit" which applies a no-fire penalty.
             const effectiveScanLevel = (campfirePlacedGate && fireCommitted)
                 ? (this._fireLevel ?? "unlit")
-                : (this._campFirePreviewLevel ?? this._fireLevel ?? "unlit");
+                : (this._campFirePreviewLevel ?? (this._fireLevel !== "unlit" ? this._fireLevel : "embers"));
+            console.log(`[CAMP-DIAG] buildCampfireDrawerContextForMapDialog: pitGate=${campfirePlacedGate}, fireCommitted=${fireCommitted}, _fireLevel=${this._fireLevel}, _campFirePreviewLevel=${this._campFirePreviewLevel}, effectiveScanLevel=${effectiveScanLevel}`);
             const encMod = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[effectiveScanLevel] ?? 0;
             if (effectiveScanLevel === "cold_camp") {
-                campFireEncounterHint = "Cold camp: −2 encounter DC (stealth bonus).";
+                campFireEncounterHint = "Cold camp: harder to detect (lower encounter chance).";
             } else if (effectiveScanLevel === "unlit") {
                 campFireEncounterHint = "Choose a fire level or go cold camp.";
             } else if (effectiveScanLevel === "embers") {
-                campFireEncounterHint = "Embers: no change to encounter DC.";
+                campFireEncounterHint = "Embers: no change to encounter chance.";
             } else if (effectiveScanLevel === "campfire") {
-                campFireEncounterHint = "Campfire: +1 encounter DC.";
+                campFireEncounterHint = "Campfire: light draws attention (higher encounter chance).";
             } else if (effectiveScanLevel === "bonfire") {
-                campFireEncounterHint = "Bonfire: +2 encounter DC.";
+                campFireEncounterHint = "Bonfire: beacon in the dark (much higher encounter chance).";
             } else {
                 campFireEncounterHint = "";
             }
@@ -1728,7 +1730,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     id: "campfire",
                     label: "Campfire",
                     costLabel: "1 firewood",
-                    body: "Cooking and warmth. +1 encounter DC.",
+                    body: "Cooking and warmth. <span class=\"fire-risk\">Draws attention (higher encounter chance).</span>",
                     disabled: !fs.canPickCampfire,
                     disabledReason: !fs.canPickCampfire
                         ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 1 firewood in the party.")
@@ -1739,7 +1741,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     id: "bonfire",
                     label: "Bonfire",
                     costLabel: "2 firewood",
-                    body: "+1 camp comfort. +2 encounter DC.",
+                    body: "<span class=\"fire-benefit\">+1 camp comfort.</span> <span class=\"fire-risk\">Beacon in the dark (much higher encounter chance).</span>",
                     disabled: !fs.canPickBonfire,
                     disabledReason: !fs.canPickBonfire
                         ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 2 firewood in the party.")
@@ -2766,9 +2768,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             canContinueToCampLayout = false;
             campFireGatePit = campfirePlacedGate;
             campFireGateLevel = fireCommitted;
+            // When fire hasn't been committed, preview defaults to "embers" (the
+            // default highlighted tab), NOT "unlit" which applies a no-fire penalty.
             const effectiveScanLevel = (campfirePlacedGate && fireCommitted)
                 ? (this._fireLevel ?? "unlit")
-                : (this._campFirePreviewLevel ?? this._fireLevel ?? "unlit");
+                : (this._campFirePreviewLevel ?? (this._fireLevel !== "unlit" ? this._fireLevel : "embers"));
+            console.log(`[CAMP-DIAG] _prepareContext: phase=${this._phase}, isTotM=${this._isTotM}, pitGate=${campfirePlacedGate}, fireCommitted=${fireCommitted}, _fireLevel=${this._fireLevel}, _campFirePreviewLevel=${this._campFirePreviewLevel}, effectiveScanLevel=${effectiveScanLevel}, baseComfort=${this._engine?.comfort ?? 'engine-null'}`);
             const encMod = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[effectiveScanLevel] ?? 0;
             // RestFlowEngine: effectiveDC = baseDC - campMods. Negative fireRollModifier
             // subtracts a negative, RAISING effectiveDC (harder to avoid encounters).
@@ -2776,11 +2781,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (effectiveScanLevel === "unlit") {
                 campFireEncounterHint = "No fire is lit yet. The tier row shows what each level would do.";
             } else if (effectiveScanLevel === "embers") {
-                campFireEncounterHint = "Embers: no change to encounter DC.";
+                campFireEncounterHint = "Embers: no change to encounter chance.";
             } else if (effectiveScanLevel === "campfire") {
-                campFireEncounterHint = "Campfire: +1 encounter DC (light draws attention).";
+                campFireEncounterHint = "Campfire: light draws attention (higher encounter chance).";
             } else if (effectiveScanLevel === "bonfire") {
-                campFireEncounterHint = "Bonfire: +2 encounter DC (beacon in the dark).";
+                campFireEncounterHint = "Bonfire: beacon in the dark (much higher encounter chance).";
             } else {
                 campFireEncounterHint = "";
             }
@@ -2796,6 +2801,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 encMod,
                 !!this._engine?.safeRestSpot
             );
+            console.log(`[CAMP-DIAG] scan result: campComfort=${campScanData?.campComfort}, campComfortPreFire=${campScanData?.campComfortPreFire}, campComfortLabel=${campScanData?.campComfortLabel}, baseTerrainComfort=${baseTerrainComfort}`);
             const fs = campScanData.fireSelection ?? {};
             const cur = this._fireLevel ?? "unlit";
             const preview = this._campFirePreviewLevel ?? "embers";
@@ -2813,7 +2819,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     id: "campfire",
                     label: "Campfire",
                     costLabel: "1 firewood",
-                    body: "Cooking and warmth. +1 encounter DC.",
+                    body: "Cooking and warmth. <span class=\"fire-risk\">Draws attention (higher encounter chance).</span>",
                     disabled: !fs.canPickCampfire,
                     disabledReason: !fs.canPickCampfire
                         ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 1 firewood in the party.")
@@ -2824,7 +2830,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     id: "bonfire",
                     label: "Bonfire",
                     costLabel: "2 firewood",
-                    body: "+1 camp comfort. +2 encounter DC.",
+                    body: "<span class=\"fire-benefit\">+1 camp comfort.</span> <span class=\"fire-risk\">Beacon in the dark (much higher encounter chance).</span>",
                     disabled: !fs.canPickBonfire,
                     disabledReason: !fs.canPickBonfire
                         ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 2 firewood in the party.")
@@ -3036,9 +3042,41 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             });
         })();
 
+        // Whether the Meal phase runs as a distinct step this rest (drives the stepper).
+        // Matches the gate in #beginEvents: tracked food, Theater of the Mind, a long
+        // rest, not a safe spot, and a terrain that actually imposes meal rules.
+        const _mealStepTerrain = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
+        const _mealStepRules = TerrainRegistry.getDefaults(_mealStepTerrain)?.mealRules ?? {};
+        const showMealStep = !!trackFoodSetting
+            && this._isTotM
+            && !safeRestSpot
+            && (this._selectedRestType ?? "long") !== "short"
+            && ((_mealStepRules.waterPerDay > 0) || (_mealStepRules.foodPerDay > 0));
+
+        // Setup-screen summary of the settings that reshape this rest, so global
+        // toggles read as local context instead of silently changing the flow.
+        const restConfigBadges = (this._isGM && this._phase === "setup"
+            && (this._selectedRestType ?? "long") !== "short")
+            ? (() => {
+                const g = (k) => { try { return !!game.settings.get(MODULE_ID, k); } catch (e) { return false; } };
+                const comfort = g("enableComfort");
+                const professions = g("enableProfessions");
+                const meals = g("trackFood");
+                const intercept = g("interceptRests");
+                return [
+                    { on: comfort, icon: "fas fa-temperature-half", label: "Comfort", tooltip: comfort ? "Comfort tiers, fire, and exhaustion saves are on. Change under Recovery Rules." : "Comfort off: no fire phase and no terrain exhaustion saves. Change under Recovery Rules." },
+                    { on: professions, icon: "fas fa-hammer", label: "Professions", tooltip: professions ? "Crafting professions and the travel phase are on. Change under Rest Activities." : "Professions off: the travel phase is skipped. Change under Rest Activities." },
+                    { on: meals, icon: "fas fa-drumstick-bite", label: "Meals", tooltip: meals ? "Food and water tracking is on; the Meal phase runs." : "Meal tracking off: no rations or dehydration saves. Change in module settings." },
+                    { on: intercept, icon: "fas fa-hand", label: "Intercept", tooltip: intercept ? "Native Short and Long Rest buttons route into this flow. Change under Player Restrictions." : "Native rest buttons are not intercepted. Change under Player Restrictions." }
+                ];
+            })()
+            : [];
+
         return {
             isGM: this._isGM,
             isTheaterMode: this._isTotM,
+            showMealStep,
+            restConfigBadges,
             totmActiveTab: this._totmActiveTab,
             totmStationCards,
             totmDetailPanel,
@@ -3282,21 +3320,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             selectedWeatherLabel: WEATHER_TABLE[this._selectedWeather]?.label ?? "Clear",
             selectedScoutLabel: this._selectedScout ?? "None",
             scoutingAvailable: terrainDefaults.scoutingAvailable ?? false,
-            scoutSkill: (() => {
-                const g = terrainDefaults.scoutGuidance ?? "";
-                return g.startsWith("Investigation") ? "Investigation" : "Survival";
-            })(),
-            scoutTiers: (() => {
-                const g = terrainDefaults.scoutGuidance ?? "";
-                const m = g.match(/Poor:\s*([^|]+)\|\s*Average:\s*([^|]+)\|\s*Good:\s*(.+?)\./);
-                if (!m) return null;
-                return { poor: m[1].trim(), average: m[2].trim(), good: m[3].trim() };
-            })(),
-            scoutAdvantage: (() => {
-                const g = terrainDefaults.scoutGuidance ?? "";
-                const parts = g.split(". ").filter(p => p.includes("advantage") || p.includes("disadvantage"));
-                return parts.map(p => p.replace(/\.$/, "")).join(". ") || null;
-            })(),
             shelterNeeded: (this._selectedTerrain ?? "forest") !== "tavern",
             defaultComfort,
             shelterOptions,
@@ -3543,16 +3566,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const terrainTable = this._eventResolver?.tables?.get(this._engine.terrainTag);
                 const baseDC = terrainTable?.noEventThreshold ?? 15;
                 const effectiveDC = Math.max(1, baseDC - total + gmAdj - defenses);
-                console.log(`[Respite:UI] encounterBar â€” baseDC=${baseDC}, shelter=${shelter}, weather=${weather}, scouting=${scouting}, fire=${fire}, total=${total}, defenses=${defenses}, gmAdj=${gmAdj} â†’ effectiveDC=${effectiveDC}`);
+                console.log(`[Respite:UI] encounterBar: baseDC=${baseDC}, shelter=${shelter}, weather=${weather}, scouting=${scouting}, fire=${fire}, total=${total}, defenses=${defenses}, gmAdj=${gmAdj}, effectiveDC=${effectiveDC}`);
                 const fmt = (v) => v > 0 ? `+${v}` : `${v}`;
                 const chips = [];
-                if (weather !== 0) chips.push({ label: bd.weatherName ?? "Weather", value: fmt(weather), icon: "fas fa-cloud-sun-rain" });
-                if (shelter !== 0) chips.push({ label: "Shelter", value: fmt(shelter), icon: "fas fa-campground" });
-                if (scouting !== 0) chips.push({ label: `Scout: ${bd.scoutingResult ?? "?"}`, value: fmt(scouting), icon: "fas fa-binoculars" });
-                if (complication) chips.push({ label: "Complication", value: "", icon: "fas fa-exclamation-triangle", warn: true });
-                if (fire !== 0) chips.push({ label: this._fireLevel ?? "Fire", value: fmt(-fire), icon: "fas fa-fire" });
-                if (defenses !== 0) chips.push({ label: "Defenses", value: fmt(defenses), icon: "fas fa-shield-alt" });
-                if (gmAdj !== 0) chips.push({ label: "GM", value: fmt(gmAdj), icon: "fas fa-gavel" });
+                if (weather !== 0) chips.push({ label: bd.weatherName ?? "Weather", value: fmt(weather), icon: "fas fa-cloud-sun-rain", tooltip: "Weather shifts the night check. Rough weather makes a camp event more likely. The value is this factor's effect on the DC." });
+                if (shelter !== 0) chips.push({ label: "Shelter", value: fmt(shelter), icon: "fas fa-campground", tooltip: "A tent or shelter spell hides the camp and lowers the chance of a night event." });
+                if (scouting !== 0) chips.push({ label: `Scout: ${bd.scoutingResult ?? "?"}`, value: fmt(scouting), icon: "fas fa-binoculars", tooltip: "Scouting result during travel. A good scout lowers the event chance; a poor scout raises it." });
+                if (complication) chips.push({ label: "Complication", value: "", icon: "fas fa-exclamation-triangle", warn: true, tooltip: "A failed scout left a hidden complication that will trigger during events." });
+                if (fire !== 0) chips.push({ label: this._fireLevel ?? "Fire", value: fmt(-fire), icon: "fas fa-fire", tooltip: "A lit fire is a beacon. A larger fire raises the encounter DC and draws attention." });
+                if (defenses !== 0) chips.push({ label: "Defenses", value: fmt(defenses), icon: "fas fa-shield-alt", tooltip: "Camp defenses (Set Defenses, perimeter watch) lower the chance of a night event." });
+                if (gmAdj !== 0) chips.push({ label: "GM", value: fmt(gmAdj), icon: "fas fa-gavel", tooltip: "Manual GM adjustment to the encounter DC, set with the plus and minus buttons." });
                 return {
                     total,
                     baseDC,
@@ -4100,17 +4123,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (effectiveScanLevel === "unlit") {
             campFireEncounterHint = "No fire is lit. The tier row shows what each level would do.";
         } else if (effectiveScanLevel === "embers") {
-            campFireEncounterHint = "Embers: no change to encounter DC.";
+            campFireEncounterHint = "Embers: no change to encounter chance.";
         } else if (effectiveScanLevel === "campfire") {
-            campFireEncounterHint = "Campfire: +1 encounter DC.";
+            campFireEncounterHint = "Campfire: light draws attention (higher encounter chance).";
         } else if (effectiveScanLevel === "bonfire") {
-            campFireEncounterHint = "Bonfire: +2 encounter DC.";
+            campFireEncounterHint = "Bonfire: beacon in the dark (much higher encounter chance).";
         }
 
         const TIER_BODIES = {
             embers: "No cooking. No comfort change.",
-            campfire: "Cooking and warmth. Encounter threshold âˆ’1.",
-            bonfire: "+1 camp comfort. Encounter threshold âˆ’2."
+            campfire: "Cooking and warmth. <span class=\"fire-risk\">Draws attention (higher encounter chance).</span>",
+            bonfire: "<span class=\"fire-benefit\">+1 camp comfort.</span> <span class=\"fire-risk\">Beacon in the dark (much higher encounter chance).</span>"
         };
         const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
         const TIER_LABELS = Object.fromEntries(
@@ -4710,87 +4733,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 weatherHint.textContent = selected?.title ?? "";
             });
         }
-
-        // Scouting hint: update on dropdown change with terrain flavor text
-        const scoutingSelect = this.element.querySelector('[name="scouting"]');
-        const scoutingHint = this.element.querySelector('.scouting-hint');
-        if (scoutingSelect && scoutingHint) {
-            scoutingSelect.addEventListener("change", () => {
-                const selected = scoutingSelect.options[scoutingSelect.selectedIndex];
-                const scoutVal = selected?.value;
-                const terrain = this._selectedTerrain ?? "forest";
-                const flavorPool = TerrainRegistry.getDefaults(terrain)?.scoutFlavor?.[scoutVal];
-                const flavor = flavorPool ? flavorPool[Math.floor(Math.random() * flavorPool.length)] : "";
-                const mechanic = selected?.title ?? "";
-                scoutingHint.innerHTML = flavor
-                    ? `<em>"${flavor}"</em><br>${mechanic}`
-                    : mechanic;
-                updatePreview();
-            });
-        }
-
-        // Live preview bar: compute effective comfort + encounter DC
-        const previewComfort = this.element.querySelector('#preview-comfort');
-        const previewEncounter = this.element.querySelector('#preview-encounter');
-
-        const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
-        const COMFORT_LABELS = { hostile: "Hostile", rough: "Rough", sheltered: "Sheltered", safe: "Safe" };
-
-        const updatePreview = () => {
-            if (!previewComfort || !previewEncounter) return;
-
-            // Base comfort from dropdown
-            const baseComfort = comfortSelect?.value ?? "sheltered";
-            let comfortIdx = COMFORT_TIERS.indexOf(baseComfort);
-            if (comfortIdx < 0) comfortIdx = 1;
-
-            // Scouting bonus
-            const scoutVal = scoutingSelect?.value ?? "none";
-            if (scoutVal === "average" || scoutVal === "good") comfortIdx += 1;
-            else if (scoutVal === "nat20") comfortIdx += 2;
-
-            // Weather penalty
-            const weatherVal = weatherSelect?.value ?? "clear";
-            const weatherData = WEATHER_TABLE[weatherVal];
-            if (weatherData?.comfortPenalty) comfortIdx -= weatherData.comfortPenalty;
-
-            // Clamp
-            comfortIdx = Math.max(0, Math.min(COMFORT_TIERS.length - 1, comfortIdx));
-            const effectiveComfort = COMFORT_TIERS[comfortIdx];
-            previewComfort.textContent = COMFORT_LABELS[effectiveComfort];
-
-            // Color code
-            const comfortColors = { hostile: "#e55", rough: "#e95", sheltered: "#eb5", safe: "#5e8" };
-            previewComfort.style.color = comfortColors[effectiveComfort] ?? "#fff";
-
-            // Encounter DC modifier
-            let encounterMod = weatherData?.encounterDC ?? 0;
-            if (scoutVal === "good") encounterMod += 1;
-            const sign = encounterMod >= 0 ? "+" : "";
-            previewEncounter.textContent = `${sign}${encounterMod}`;
-            previewEncounter.style.color = encounterMod > 0 ? "#5e8" : encounterMod < 0 ? "#e55" : "rgba(255,255,255,0.6)";
-
-            // Nat 1 hidden complication indicator
-            let complicationEl = this.element.querySelector('#preview-complication');
-            if (!complicationEl) {
-                complicationEl = document.createElement("div");
-                complicationEl.id = "preview-complication";
-                complicationEl.className = "preview-complication";
-                previewEncounter.closest('.setup-preview')?.appendChild(complicationEl);
-            }
-            if (scoutVal === "nat1") {
-                complicationEl.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Hidden complication will trigger during events`;
-                complicationEl.style.display = "";
-            } else {
-                complicationEl.style.display = "none";
-            }
-        };
-
-        // Hook into all dropdowns
-        if (weatherSelect) weatherSelect.addEventListener("change", updatePreview);
-        if (comfortSelect) comfortSelect.addEventListener("change", updatePreview);
-        // Initial computation
-        updatePreview();
 
         // (Sub-tab and meal auto-consume bindings removed: activity phase uses unified progress panel)
 
@@ -6899,22 +6841,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Phase 3 (reflection) -> 4 (events): GM moves past campfire to the night.
-     * NOTE: Reflection phase skipped (v2.1). This handler is retained in the
-     * action map but will not fire during normal flow. _advanceToEvents()
-     * is called directly after bedding down.
-     */
-    static async #onProceedToEvents(event, target) {
-        await this._advanceToEvents();
-    }
-
-    /**
      * Advance from post-activity bedding directly to the events phase.
      * Applies fire-level comfort modifiers, builds camp-preparation roll
      * requests, and broadcasts the phase change.
-     *
-     * Formerly the body of #onProceedToEvents; extracted so it can be
-     * called inline when skipping the (now-removed) reflection pause.
      */
     async _advanceToEvents() {
         // Bedding / Zzz persist through events until resolve or encounter interrupt.
@@ -11857,7 +11786,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     const level = this._fireLevel ?? "campfire";
                     const label = level.charAt(0).toUpperCase() + level.slice(1);
                     const safeLabel = foundry.utils.escapeHTML(label);
-                    await this.#showGlassAlertModal({
+                    await RestSetupApp.#showGlassAlertModal({
                         title: "Not Enough Firewood",
                         content: `<p>A <strong>${safeLabel}</strong> requires <strong>${cost} firewood</strong>, but none could be found in the party's inventory.</p><p>Reduce the fire to Embers or ask players to provide firewood before proceeding.</p>`,
                         okLabel: "OK",

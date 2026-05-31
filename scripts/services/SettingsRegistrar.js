@@ -55,11 +55,11 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         default: []
     });
 
-    // ── Menu: Diet Profiles ──────────────────────────────────────────
+    // ── Menu: Food & Diet (meal tracking + per-character diets) ──────
     game.settings.registerMenu(MODULE_ID, "dietConfigMenu", {
-        name: "Diet Profiles",
-        label: "Configure Diets",
-        hint: "Set per-character dietary rules: what each character can eat and drink, preset profiles (Warforged, Herbivore, etc.), and custom overrides.",
+        name: "Food & Diet",
+        label: "Configure Food & Diet",
+        hint: "Turn meal tracking on or off, set the partial-sustenance house rule, and set per-character dietary rules (what each character can eat and drink, preset profiles, and custom overrides).",
         icon: "fas fa-utensils",
         type: DietConfigApp,
         restricted: true
@@ -69,7 +69,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
     game.settings.registerMenu(MODULE_ID, "activityConfig", {
         name: "Rest Activities",
         label: "Configure Activities",
-        hint: "Toggle crafting, fletching, training, and study activities on or off.",
+        hint: "Toggle crafting, fletching, and training activities on or off.",
         icon: "fas fa-campground",
         type: ActivityConfigApp,
         restricted: true
@@ -99,14 +99,14 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     game.settings.register(MODULE_ID, "restInterfaceMode", {
         name: "Rest Interface Mode",
-        hint: "Stations: players walk to canvas station overlays (Weapon Rack, Bedroll, etc.) to choose activities. Requires a prepared map with camp furniture. Theater of the Mind: all activities are shown inline in the Rest Setup window. No canvas, no station overlays, no map required.",
+        hint: "Choose how the table engages with camp. One window runs the whole rest in a single panel, with players picking activities from a list. Camp stations drops the camp onto the scene in one click; players move their tokens to a piece to act there, which suits groups that prefer to stay in character.",
         scope: "world",
         config: true,
         type: String,
         default: "theater",
         choices: {
-            theater: "Theater of the Mind (inline cards)",
-            stations: "Stations (canvas overlays)"
+            theater: "One window (run camp as a single panel)",
+            stations: "Camp stations (place pieces on the scene, move tokens)"
         },
         restricted: true
     });
@@ -177,16 +177,6 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         restricted: true,
     });
 
-    game.settings.register(MODULE_ID, "enableStudy", {
-        name: "Study Activity",
-        hint: "Enables the Study workbench activity (check and follow-up UI). Off by default. When on, requires Arcana or Investigation proficiency.",
-        scope: "world",
-        config: false,
-        type: Boolean,
-        default: false,
-        restricted: true
-    });
-
     game.settings.register(MODULE_ID, "enableTraining", {
         name: "Training Activity",
         hint: "Allow the Training activity during long rests. Characters level 5 and below can train to earn XP.",
@@ -217,11 +207,12 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         restricted: true
     });
 
+    // Surfaced in the Food & Diet dialog (DietConfigApp), not the native panel.
     game.settings.register(MODULE_ID, "trackFood", {
         name: "Track Food & Water",
         hint: "Show the Meal phase during long rests. Characters consume rations and water, with advisories for starvation and dehydration.",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: true,
         restricted: true
@@ -231,7 +222,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         name: "Partial Sustenance (House Rule)",
         hint: "In terrains requiring double rations or water, partial fulfilment grants a benefit: +2 to CON save (water) or extended grace period (food). Disable for strict RAW.",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: true,
         restricted: true
@@ -464,7 +455,8 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         scope: "client",
         config: false,
         type: Boolean,
-        default: false
+        default: false,
+        restricted: true
     });
 
     // ── Reset Rest State (GM escape hatch) ───────────────────────────
@@ -651,7 +643,6 @@ export const SETTING_KEYS = [
     "spellRecoveryMaxLevel",
     "songOfRestTiming",
     "maxValueHitDice",
-    "enableStudy",
     "enableTraining",
     "enableProfessions",
     "enableFletching",

@@ -84,15 +84,7 @@ export class RecoveryConfigApp extends foundry.applications.api.ApplicationV2 {
         el.classList.add("respite-settings-config");
 
         let html = `
-        <div class="settings-config-header">
-            <span class="settings-config-title">
-                <i class="fas fa-heart-pulse"></i>
-                Recovery Rules
-            </span>
-            <span class="settings-config-subtitle">
-                Control how rest mechanically resolves for this world.
-            </span>
-        </div>
+        <p class="settings-config-lead">Control how rest mechanically resolves for this world.</p>
         <div class="settings-config-list">`;
 
         for (const setting of context.settings) {

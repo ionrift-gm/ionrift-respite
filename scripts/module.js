@@ -66,6 +66,7 @@ import {
     emitAfkUpdate,
 } from "./services/SocketController.js";
 import { registerAllSettings, registerItemEnrichments } from "./services/SettingsRegistrar.js";
+import "./services/SettingsPanelLayout.js";
 import { registerUiHooks, refreshZzzOverlay } from "./services/UiInjections.js";
 import { registerSpoilageMergeGuard } from "./services/SpoilageMergeGuard.js";
 import { registerInventoryContextMenu } from "./services/InventoryContextMenu.js";
@@ -292,6 +293,17 @@ Hooks.once("init", async () => {
     Handlebars.registerHelper("humanDuration", (d) => {
         const map = { next_rest: "until next rest", end_of_rest: "end of rest", "1_hour": "1 hour", "8_hours": "8 hours", permanent: "permanent" };
         return typeof d === "string" ? (map[d] ?? d.replace(/_/g, " ")) : d;
+    });
+    // Shared comfort-tier explanation. Used as a tooltip wherever a comfort badge
+    // renders, so the mechanical meaning travels with the label.
+    Handlebars.registerHelper("comfortHint", (tier) => {
+        const map = {
+            safe: "Safe: full HP and Hit Die recovery. No exhaustion save from terrain.",
+            sheltered: "Sheltered: normal recovery. No exhaustion save from terrain.",
+            rough: "Rough: reduced recovery. Each character makes a CON save or gains exhaustion.",
+            hostile: "Hostile: poor recovery, existing exhaustion cannot be cleared, and a CON save is required to avoid gaining more."
+        };
+        return map[typeof tier === "string" ? tier.toLowerCase() : tier] ?? "Rest comfort affects HP and Hit Die recovery.";
     });
 
     // Register partials
@@ -568,7 +580,7 @@ Hooks.on("getSceneControlButtons", (controls) => {
 
     const toolDef = {
         name: "respite",
-        title: "Rest Phase",
+        title: "Begin Rest (Respite)",
         icon: "fas fa-campground",
         button: true,
         onClick: () => {

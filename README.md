@@ -84,7 +84,7 @@ Separate single-screen wizard. Per-die HD spending, shelter detection, RP prompt
 
 ## Settings
 
-All under **Game Settings > Module Settings > Ionrift Respite**: default comfort level, rest interception, armor advisory, study toggle, meal tracking, content packs, debug logging.
+All under **Game Settings > Module Settings > Ionrift Respite**: default comfort level, rest interception, armor advisory, meal tracking, content packs, debug logging.
 
 ## Bug reports
 
