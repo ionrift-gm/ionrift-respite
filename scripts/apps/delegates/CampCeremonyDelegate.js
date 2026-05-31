@@ -10,6 +10,7 @@
 import { CampGearScanner } from "../../services/CampGearScanner.js";
 import { CampfireTokenLinker } from "../../services/CampfireTokenLinker.js";
 import { emitPhaseChanged } from "../../services/SocketController.js";
+import { isComfortEnabled } from "../../services/ComfortCalculator.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -82,7 +83,8 @@ export class CampCeremonyDelegate {
      * @returns {boolean}
      */
     isFireCommitted() {
-        return !!this.fireLitBy || this.fireLevel !== "unlit" || this.coldCampDecided;
+        if (!isComfortEnabled()) return true; // no fire phase when comfort disabled
+        return !!this.fireLitBy || this.coldCampDecided;
     }
 
     /**
@@ -195,9 +197,16 @@ export class CampCeremonyDelegate {
      */
     async decideColdCamp() {
         if (!game.user.isGM) return;
+        if (!isComfortEnabled()) return; // no fire phase when comfort disabled
         this.coldCampDecided = true;
         this.fireLitBy = null;
         this.fireLevel = "unlit";
+        // Cold camp stealth bonus — no light = harder for monsters to find camp
+        const FIRE_MOD = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL;
+        if (this._app._engine) {
+            this._app._engine.fireLevel = "unlit";
+            this._app._engine.fireRollModifier = FIRE_MOD.cold_camp ?? 0;
+        }
         emitPhaseChanged(this._app._phase, {
             coldCampDecided: true,
             fireLevel: "unlit",

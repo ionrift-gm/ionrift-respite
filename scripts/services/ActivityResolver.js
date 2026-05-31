@@ -1,8 +1,16 @@
+import { getComfortDcMod, isComfortEnabled } from "./ComfortCalculator.js";
+
 /** Activities hidden when the GM marks a safe rest spot (no encounter risk; no redundant camp duties). */
 export const SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS = new Set([
     "act_keep_watch",
     "act_defenses",
     "act_scout",
+    "act_tend_wounds"
+]);
+
+/** Activities hidden when the comfort subsystem is disabled (no comfort tiers = no benefit). */
+const COMFORT_EXCLUDED_ACTIVITY_IDS = new Set([
+    "act_rest_fully",
     "act_tend_wounds"
 ]);
 
@@ -41,6 +49,7 @@ export class ActivityResolver {
             if (!activity.restTypes.includes(restType)) continue;
             if (activity.disabled) continue;
             if (options.safeRestSpot && SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
+            if (!isComfortEnabled() && COMFORT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
 
             // Gate Study behind module setting
             if (activity.id === "act_study") {
@@ -128,10 +137,9 @@ export class ActivityResolver {
         }
 
         // Calculate DC with comfort friction (safe rest spot: none)
-        const comfortDcMod = { safe: 0, sheltered: 0, rough: 2, hostile: 5 };
         const baseDc = activity.check.dc ?? 12;
         const comfortForDc = safeRestSpot ? "safe" : comfort;
-        const adjustedDc = baseDc + (comfortDcMod[comfortForDc] ?? 0);
+        const adjustedDc = baseDc + getComfortDcMod(comfortForDc);
 
         // Roll skill check directly (avoids midi-qol / libWrapper collision)
         // If check.ability is defined, use a flat ability check instead of a skill
@@ -525,6 +533,7 @@ export class ActivityResolver {
             if (activity.disabled) continue;
             if (!activity.restTypes.includes(restType)) continue;
             if (options.safeRestSpot && SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
+            if (!isComfortEnabled() && COMFORT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
 
             // Gate Study behind module setting
             if (activity.id === "act_study") {
