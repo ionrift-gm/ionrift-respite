@@ -8,6 +8,7 @@
 
 
 import { EventBrowserApp } from "../apps/EventBrowserApp.js";
+import { ActivityConfigApp } from "../apps/ActivityConfigApp.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -58,6 +59,16 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         hint: "Set per-character dietary rules: what each character can eat and drink, preset profiles (Warforged, Herbivore, etc.), and custom overrides.",
         icon: "fas fa-utensils",
         type: DietConfigApp,
+        restricted: true
+    });
+
+    // ── Rest Activities submenu ──────────────────────────────────────
+    game.settings.registerMenu(MODULE_ID, "activityConfig", {
+        name: "Rest Activities",
+        label: "Configure Activities",
+        hint: "Toggle crafting, fletching, training, and study activities on or off.",
+        icon: "fas fa-campground",
+        type: ActivityConfigApp,
         restricted: true
     });
 
@@ -136,7 +147,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         name: "Study Activity",
         hint: "Enables the Study workbench activity (check and follow-up UI). Off by default. When on, requires Arcana or Investigation proficiency.",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: false,
         restricted: true
@@ -146,7 +157,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         name: "Training Activity",
         hint: "Allow the Training activity during long rests. Characters level 5 and below can train to earn XP.",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: true,
         restricted: true
@@ -156,7 +167,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         name: "Crafting Professions",
         hint: "Show cooking, brewing, tailoring, and crafting activities during rest. Disable for a simpler rest without profession crafting. Also auto-skips the travel phase when disabled.",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: true,
         restricted: true
@@ -166,7 +177,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         name: "Fletching Activity",
         hint: "Show the Fletch Arrows activity during long rests. Available to all characters.",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: true,
         restricted: true
