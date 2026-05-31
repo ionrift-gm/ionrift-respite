@@ -56,7 +56,8 @@ import { CampCeremonyDelegate } from "./delegates/CampCeremonyDelegate.js";
 import { EventsPhaseDelegate } from "./delegates/EventsPhaseDelegate.js";
 import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
 import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple, purgeDetectMagicEffects } from "./delegates/DetectMagicDelegate.js";
-import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, CAMP_STATIONS, getStationsForTerrain, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments } from "./RestConstants.js";
+import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, getComfortTip, CAMP_STATIONS, getStationsForTerrain, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments } from "./RestConstants.js";
+import { isComfortEnabled } from "../services/ComfortCalculator.js";
 import { buildActivityListItem, buildActivityDetailContext } from "./ActivityDetailBuilder.js";
 import {
     activateStationLayer,
@@ -310,6 +311,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campPledgeFirewood: RestSetupApp.#onCampPledgeFirewood,
             campReclaimFirewood: RestSetupApp.#onCampReclaimFirewood,
             selectCampFireLevel: RestSetupApp.#onSelectCampFireLevel,
+            previewCampFireLevel: RestSetupApp.#onPreviewCampFireLevel,
             campColdCamp: RestSetupApp.#onCampColdCamp,
             continueToCampLayout: RestSetupApp.#onContinueToCampLayout,
             proceedFromCamp: RestSetupApp.#onProceedFromCamp,
@@ -1648,14 +1650,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ? SHELTER_SPELLS[(this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")]?.label ?? null
                 : null;
             const campfirePlacedGate = hasCampfirePlaced();
-            const fireCommitted = !!this._fireLitBy || (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided;
+            const fireCommitted = !!this._fireLitBy || !!this._coldCampDecided;
             campColdCampDecided = !!this._coldCampDecided;
             const effectiveScanLevel = (campfirePlacedGate && fireCommitted)
                 ? (this._fireLevel ?? "unlit")
                 : (this._campFirePreviewLevel ?? this._fireLevel ?? "unlit");
             const encMod = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[effectiveScanLevel] ?? 0;
-            if (effectiveScanLevel === "unlit") {
-                campFireEncounterHint = "No fire is lit yet. The tier row shows what each level would do.";
+            if (effectiveScanLevel === "cold_camp") {
+                campFireEncounterHint = "Cold camp: −2 encounter DC (stealth bonus).";
+            } else if (effectiveScanLevel === "unlit") {
+                campFireEncounterHint = "Choose a fire level or go cold camp.";
             } else if (effectiveScanLevel === "embers") {
                 campFireEncounterHint = "Embers: no change to encounter DC.";
             } else if (effectiveScanLevel === "campfire") {
@@ -1679,6 +1683,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             );
             const fs = campScanData.fireSelection ?? {};
             const cur = this._fireLevel ?? "unlit";
+            const preview = this._campFirePreviewLevel ?? "embers";
             campFirePickerLevels = [
                 {
                     id: "embers",
@@ -1687,7 +1692,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     body: "No cooking. No comfort change.",
                     disabled: !fs.canPickEmbers,
                     disabledReason: fs.canPickEmbers ? "" : "Someone needs a tinderbox or flint and steel.",
-                    selected: cur === "embers"
+                    selected: cur !== "unlit" ? cur === "embers" : preview === "embers"
                 },
                 {
                     id: "campfire",
@@ -1698,7 +1703,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     disabledReason: !fs.canPickCampfire
                         ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 1 firewood in the party.")
                         : "",
-                    selected: cur === "campfire"
+                    selected: cur !== "unlit" ? cur === "campfire" : preview === "campfire"
                 },
                 {
                     id: "bonfire",
@@ -1709,7 +1714,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     disabledReason: !fs.canPickBonfire
                         ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 2 firewood in the party.")
                         : "",
-                    selected: cur === "bonfire"
+                    selected: cur !== "unlit" ? cur === "bonfire" : preview === "bonfire"
                 }
             ];
         }
@@ -1727,7 +1732,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         let campFireOtherLighterCount = 0;
         let campFireLighterNames = "";
         if (this._phase === "camp" && campScanData) {
-            campFireIsLit = !!this._fireLitBy || (this._fireLevel ?? "unlit") !== "unlit";
+            campFireIsLit = !!this._fireLitBy;
             campFireLitBy = this._fireLitBy ?? null;
             campFireTotalPledged = Array.from(this._firewoodPledges.values()).reduce((s, p) => s + p.count, 0);
 
@@ -1837,6 +1842,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campColdCampDecided,
             campScanData,
             campFirePickerLevels,
+            campFirePreviewLevel: this._campFirePreviewLevel ?? "embers",
+            campPreviewIsColdCamp: (this._campFirePreviewLevel ?? "embers") === "cold_camp",
             campViewerCanLight,
             campFireOtherLighterCount,
             campFireLighterNames,
@@ -2710,7 +2717,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 : null;
             const campfirePlacedGate = hasCampfirePlaced();
             // Gate: fire is lit, OR table decided cold camp (no fire)
-            const fireCommitted = !!this._fireLitBy || (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided;
+            const fireCommitted = !!this._fireLitBy || !!this._coldCampDecided;
             campColdCampDecided = !!this._coldCampDecided;
             const campGatesReady = campfirePlacedGate && fireCommitted;
             campMakeCampPlacementUnlocked = false;
@@ -2750,6 +2757,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             );
             const fs = campScanData.fireSelection ?? {};
             const cur = this._fireLevel ?? "unlit";
+            const preview = this._campFirePreviewLevel ?? "embers";
             campFirePickerLevels = [
                 {
                     id: "embers",
@@ -2758,7 +2766,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     body: "No cooking. No comfort change.",
                     disabled: !fs.canPickEmbers,
                     disabledReason: fs.canPickEmbers ? "" : "Someone needs a tinderbox or flint and steel.",
-                    selected: cur === "embers"
+                    selected: cur !== "unlit" ? cur === "embers" : preview === "embers"
                 },
                 {
                     id: "campfire",
@@ -2769,7 +2777,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     disabledReason: !fs.canPickCampfire
                         ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 1 firewood in the party.")
                         : "",
-                    selected: cur === "campfire"
+                    selected: cur !== "unlit" ? cur === "campfire" : preview === "campfire"
                 },
                 {
                     id: "bonfire",
@@ -2780,7 +2788,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     disabledReason: !fs.canPickBonfire
                         ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 2 firewood in the party.")
                         : "",
-                    selected: cur === "bonfire"
+                    selected: cur !== "unlit" ? cur === "bonfire" : preview === "bonfire"
                 }
             ];
         }
@@ -2799,7 +2807,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         let campFireOtherLighterCount = 0;
         let campFireLighterNames = "";
         if (_needsFireData && campScanData) {
-            campFireIsLit = !!this._fireLitBy || (this._fireLevel ?? "unlit") !== "unlit";
+            campFireIsLit = !!this._fireLitBy;
             campFireLitBy = this._fireLitBy ?? null;
             campFireTotalPledged = Array.from(this._firewoodPledges.values()).reduce((s, p) => s + p.count, 0);
 
@@ -3399,7 +3407,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 };
                 return this._campStatus = {
                     comfort,
-                    comfortTooltip: COMFORT_TIPS[comfort] ?? comfort,
+                    comfortTooltip: getComfortTip(comfort),
                     weather: weatherKey !== "clear" ? weatherKey : null,
                     weatherLabel: wx.label,
                     weatherTooltip: weatherParts.length ? `${wx.label}: ${weatherParts.join(", ")}` : wx.label,
@@ -3426,6 +3434,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campMakeCampStep,
             campFireEncounterHint,
             campFirePickerLevels,
+            campFirePreviewLevel: this._campFirePreviewLevel ?? "embers",
+            campPreviewIsColdCamp: (this._campFirePreviewLevel ?? "embers") === "cold_camp",
             campFireGatePit,
             campFireGateLevel,
             campFireIsLit,
@@ -10353,11 +10363,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
         await this._campCeremony.lightFire(game.user.id, actorId, method);
-        // In TotM mode, default the fire level to "embers" immediately so a tier
-        // is selected, the proceed button unlocks, and players can upgrade via Set.
+        // In TotM mode, commit the pre-selected fire level (from the segment strip)
+        // so the proceed button unlocks and players see the correct fire state.
         const _isTotm = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; } })();
         if (_isTotm && (this._fireLevel ?? "unlit") === "unlit") {
-            await this._runSetCampFireLevelForGm("embers", null);
+            const previewLevel = this._campFirePreviewLevel ?? "embers";
+            if (previewLevel === "cold_camp") {
+                // User pre-selected cold camp but clicked Light — honour cold camp
+                await this._campCeremony.decideColdCamp();
+            } else {
+                await this._runSetCampFireLevelForGm(previewLevel, null);
+            }
         }
     }
 
@@ -11514,6 +11530,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Pre-light only: set the preview fire level (no fire lit, no state change).
+     * Used by the 4-segment strip when fire is not yet lit.
+     * Accepts 'cold_camp', 'embers', 'campfire', 'bonfire'.
+     */
+    static async #onPreviewCampFireLevel(event, target) {
+        const root = target?.closest?.("[data-action=\"previewCampFireLevel\"]") ?? target;
+        const level = root?.dataset?.fireLevel;
+        if (!level || !["cold_camp", "embers", "campfire", "bonfire"].includes(level)) return;
+        if (this._campFirePreviewLevel === level) return;
+        this._campFirePreviewLevel = level;
+        this.render();
+    }
+
+    /**
      * Legacy: campfire-first flow auto-advances. No-op if triggered from an old button.
      */
     static async #onContinueToCampLayout(event, target) {
@@ -11531,8 +11561,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             ui.notifications?.info("Already advanced from Make Camp.");
             return;
         }
-        const pit = hasCampfirePlaced();
-        const fireOk = (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided;
+        const comfortOn = isComfortEnabled();
+        const pit = comfortOn ? hasCampfirePlaced() : true;
+        const fireOk = !comfortOn || (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided;
         if (!pit || !fireOk) {
             ui.notifications?.warn("Place the pit and light the fire (or choose cold camp) from the map.");
             return;
@@ -11583,7 +11614,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             ui.notifications?.info("Already advanced from Make Camp.");
             return;
         }
-        const fireOk = (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided;
+        const fireOk = !isComfortEnabled() || (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided;
         if (!fireOk) {
             ui.notifications?.warn("Light the fire or declare cold camp before proceeding.");
             return;

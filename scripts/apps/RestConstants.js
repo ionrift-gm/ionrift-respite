@@ -5,7 +5,7 @@
  */
 
 import { isGearDeployed } from "../services/CompoundCampPlacer.js";
-import { HD_PENALTY, boostComfort } from "../services/ComfortCalculator.js";
+import { HD_PENALTY, boostComfort, isComfortEnabled, getComfortDcMod } from "../services/ComfortCalculator.js";
 
 /** Activities hidden when the GM marks a safe rest spot (no encounter risk; no redundant camp duties). */
 export const SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS = new Set([
@@ -432,6 +432,18 @@ export const SHELTER_SPELLS = [
 ];
 
 /** Comfort tier tooltips for the camp status bar */
+export function getComfortTip(tier) {
+    if (!isComfortEnabled()) return "Comfort rules disabled — full recovery";
+    const tips = {
+        hostile: "Hostile: 75% HP, -2 HD, CON DC 15 or +1 exhaustion",
+        rough: "Rough: full HP, -1 HD, CON DC 10 or +1 exhaustion",
+        sheltered: "Sheltered: full HP, full HD recovery",
+        safe: "Safe: full HP, full HD recovery, no encounter risk"
+    };
+    return tips[tier] ?? tips.sheltered;
+}
+
+/** @deprecated Use getComfortTip(tier) instead. Kept for existing consumers. */
 export const COMFORT_TIPS = {
     hostile: "Hostile: 75% HP, -2 HD, CON DC 15 or +1 exhaustion",
     rough: "Rough: full HP, -1 HD, CON DC 10 or +1 exhaustion",
@@ -573,8 +585,7 @@ export function buildFollowUpDataForActivity(activityId, activity, actor, curren
 export function buildCheckLabelForActivity(activity, actor, comfort = "sheltered", followUpValue = null) {
     if (!activity?.check) return null;
 
-    const comfortDcMod = { safe: 0, sheltered: 0, rough: 2, hostile: 5 };
-    const comfortMod = comfortDcMod[comfort] ?? 0;
+    const comfortMod = getComfortDcMod(comfort);
 
     let baseDc = activity.check.dc ?? 12;
     if (activity.check.dynamicDc === "copySpell") {

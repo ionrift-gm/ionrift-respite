@@ -12,6 +12,13 @@ const MODULE_ID = "ionrift-respite";
 /** Recovery setting definitions — order = display order. */
 const RECOVERY_SETTINGS = [
     {
+        key: "enableComfort",
+        label: "Comfort Rules",
+        icon: "fas fa-thermometer-half",
+        hint: "Terrain comfort tiers, fire mechanics, and gear-driven recovery modifiers. Disable for simplified rests with no comfort penalties, no fire phase, and no exhaustion saves.",
+        type: "boolean"
+    },
+    {
         key: "armorDoffRule",
         label: "Armor Sleep Penalties",
         icon: "fas fa-shield-alt",

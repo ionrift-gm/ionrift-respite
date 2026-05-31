@@ -4,7 +4,8 @@ import {
     boostComfort,
     getHdPenalty,
     getHpFraction,
-    getExhaustionDC
+    getExhaustionDC,
+    isComfortEnabled
 } from "./ComfortCalculator.js";
 
 /**
@@ -51,8 +52,9 @@ export class CampGearScanner {
      * "fire is a beacon" suite.
      */
     static FIRE_ENCOUNTER_MOD_BY_LEVEL = Object.freeze({
-        unlit:    0,   // dark camp — no modifier
-        embers:   0,   // barely visible — no encounter change
+        cold_camp: 2,  // dark camp — stealth bonus, LOWERS effectiveDC (fewer encounters)
+        unlit:     0,   // undecided — no modifier
+        embers:    0,   // barely visible — no encounter change
         campfire: -1,  // visible glow — +1 encounter DC (harder to avoid encounters)
         bonfire:  -2   // obvious beacon — +2 encounter DC (significantly harder to avoid encounters)
     });
@@ -249,6 +251,59 @@ export class CampGearScanner {
                 fireIsLit,
                 fireLevel: fireLevelEff,
                 shelterSpell: null,
+                noFirePreview: null
+            };
+        }
+
+        // ── Comfort Disabled: flat safe recovery ──────────────────
+        if (!isComfortEnabled()) {
+            const campComfort = "safe";
+            const rules = this.getRules(campComfort);
+            const personalCards = members.map(m => {
+                const actor = actors.find(a => a.id === m.actorId);
+                const totalHd = actor?.system?.attributes?.hd?.max ?? actor?.system?.details?.level ?? 0;
+                const rawHdRecovery = Math.max(1, Math.floor(totalHd / 2));
+                const currentHd = actor?.system?.attributes?.hd?.value ?? totalHd;
+                const exitHd = Math.min(totalHd, currentHd + rawHdRecovery);
+                return {
+                    ...m,
+                    personalComfort: campComfort,
+                    personalComfortLabel: rules.label,
+                    personalMatchesCamp: true,
+                    gearBreakdown: [],
+                    recovery: {
+                        hpFull: true,
+                        hpLabel: "Regain all HP",
+                        hpSeverity: "",
+                        hdLabel: `Recover ${rawHdRecovery} ${rawHdRecovery === 1 ? "Hit Die" : "Hit Dice"}, will be ${exitHd}/${totalHd} after rest`,
+                        hdSeverity: "",
+                        hdRecovered: rawHdRecovery,
+                        totalHd,
+                        exhaustionDC: null,
+                        exhaustionSeverity: null,
+                        exhaustionLabel: "No exhaustion risk"
+                    }
+                };
+            });
+            return {
+                campComfort,
+                campComfortPreFire: campComfort,
+                campComfortLabel: rules.label,
+                comfortTooltip: "Comfort rules disabled — full recovery",
+                campBreakdown: [{ label: terrainLabel || "Base (terrain)", value: "safe", delta: 0 }],
+                comfortReason,
+                terrainLabel,
+                fireEncounterMod: 0,
+                hasModifiers: false,
+                personalCards,
+                fireLighters: [],
+                firewoodHolders: [],
+                totalFirewood: 0,
+                canLightFire: false,
+                fireSelection: { canPickEmbers: false, canPickCampfire: false, canPickBonfire: false, costEmbers: 0, costCampfire: 1, costBonfire: 2 },
+                fireIsLit: false,
+                fireLevel: "unlit",
+                shelterSpell,
                 noFirePreview: null
             };
         }

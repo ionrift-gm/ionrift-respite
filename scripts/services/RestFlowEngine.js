@@ -1,5 +1,5 @@
 import { getPartyActors } from "./partyActors.js";
-import { boostComfort, getHdPenalty, getExhaustionDC, HP_FRACTION } from "./ComfortCalculator.js";
+import { boostComfort, getHdPenalty, getExhaustionDC, HP_FRACTION, isComfortEnabled } from "./ComfortCalculator.js";
 
 /**
  * RestFlowEngine
@@ -297,15 +297,22 @@ export class RestFlowEngine {
 
         // Effective comfort: start with camp comfort, boost if activity has comfort_boost
         let effectiveComfort = this.comfort;
-        const hasComfortBoost = activitySchema?.outcomes?.success?.effects?.some(e => e.type === "comfort_boost");
-        if (hasComfortBoost) {
-            effectiveComfort = boostComfort(effectiveComfort, 1);
-        }
 
-        // Tend Wounds: if someone successfully tended this character, boost their comfort too
-        const hasTendBoost = this._isTendWoundsTarget(actor.id);
-        if (hasTendBoost) {
-            effectiveComfort = boostComfort(effectiveComfort, 1);
+        // When comfort is disabled, force safe — skip all comfort tier logic
+        const comfortEnabled = isComfortEnabled();
+        if (!comfortEnabled) {
+            effectiveComfort = "safe";
+        } else {
+            const hasComfortBoost = activitySchema?.outcomes?.success?.effects?.some(e => e.type === "comfort_boost");
+            if (hasComfortBoost) {
+                effectiveComfort = boostComfort(effectiveComfort, 1);
+            }
+
+            // Tend Wounds: if someone successfully tended this character, boost their comfort too
+            const hasTendBoost = this._isTendWoundsTarget(actor.id);
+            if (hasTendBoost) {
+                effectiveComfort = boostComfort(effectiveComfort, 1);
+            }
         }
 
         // Comfort tier penalties (using effective comfort)
@@ -373,23 +380,28 @@ export class RestFlowEngine {
             ?.filter(e => e.type === "bonus_hd")
             ?.reduce((sum, e) => sum + (e.value ?? 0), 0) ?? 0;
 
-        // Gear bonuses
-        const gearBonusHd = hasBedroll ? 1 : 0;
+        // Gear bonuses — bedroll and mess kit effects are part of comfort rules
+        const gearBonusHd = (comfortEnabled && hasBedroll) ? 1 : 0;
         // Mess Kit / Cook's Utensils: advantage on exhaustion save when fire is lit
         const fireIsLit = this.fireLevel && this.fireLevel !== "unlit";
-        const exhaustionAdvantage = !!(hasDiningGear && fireIsLit && exhaustionDC);
+        const exhaustionAdvantage = !!(comfortEnabled && hasDiningGear && fireIsLit && exhaustionDC);
 
         const gearDescriptors = [];
-        if (exhaustionAdvantage) {
-            const gearLabel = hasCooksUtensils ? "Cook's Utensils" : "Mess Kit";
-            gearDescriptors.push(`${gearLabel}: advantage on exhaustion save`);
-        } else if (hasDiningGear && !fireIsLit && exhaustionDC) {
-            const gearLabel = hasCooksUtensils ? "Cook's Utensils" : "Mess Kit";
-            gearDescriptors.push(`${gearLabel}: no fire (advantage inactive)`);
+        if (comfortEnabled) {
+            if (exhaustionAdvantage) {
+                const gearLabel = hasCooksUtensils ? "Cook's Utensils" : "Mess Kit";
+                gearDescriptors.push(`${gearLabel}: advantage on exhaustion save`);
+            } else if (hasDiningGear && !fireIsLit && exhaustionDC) {
+                const gearLabel = hasCooksUtensils ? "Cook's Utensils" : "Mess Kit";
+                gearDescriptors.push(`${gearLabel}: no fire (advantage inactive)`);
+            }
+            if (gearBonusHd > 0) gearDescriptors.push("Bedroll: +1 HD");
+            if (bonusHdFromActivity > 0) gearDescriptors.push("Deep sleep: +1 HD");
+            const hasTendBoost = this._isTendWoundsTarget(actor.id);
+            if (hasTendBoost) gearDescriptors.push("Tended: comfort +1 tier");
+        } else {
+            if (bonusHdFromActivity > 0) gearDescriptors.push("Deep sleep: +1 HD");
         }
-        if (gearBonusHd > 0) gearDescriptors.push("Bedroll: +1 HD");
-        if (bonusHdFromActivity > 0) gearDescriptors.push("Deep sleep: +1 HD");
-        if (hasTendBoost) gearDescriptors.push("Tended: comfort +1 tier");
         if (armorSleepPenalty) gearDescriptors.push(`Sleeping in ${equippedArmor.name}: 1/4 HD, exhaustion not reduced`);
 
         if (travelRec?.hpMultiplier && typeof actor.unsetFlag === "function") {

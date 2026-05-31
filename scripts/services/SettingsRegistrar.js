@@ -10,6 +10,7 @@
 import { EventBrowserApp } from "../apps/EventBrowserApp.js";
 import { ActivityConfigApp } from "../apps/ActivityConfigApp.js";
 import { RecoveryConfigApp } from "../apps/RecoveryConfigApp.js";
+import { isComfortEnabled } from "./ComfortCalculator.js";
 import { PlayerRestrictionsApp } from "../apps/PlayerRestrictionsApp.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -128,6 +129,17 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         type: Boolean,
         default: true,
         restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "enableComfort", {
+        name: "Comfort Rules (Homebrew)",
+        hint: "Enable terrain comfort tiers, fire mechanics, and gear-driven recovery modifiers. Disable for simplified rests with no comfort penalties, no fire phase, and no exhaustion saves from terrain.",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: true,
+        restricted: true,
+        onChange: () => registerItemEnrichments()
     });
 
     game.settings.register(MODULE_ID, "spellRecoveryMaxLevel", {
@@ -457,11 +469,14 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
  * Called during init, after the library is available.
  */
 export function registerItemEnrichments() {
+    const comfortOn = isComfortEnabled();
     game.ionrift?.library?.enrichment?.registerBatch({
         // ── Bedroll ────────────────────────────────────────────────────
         "bedroll": {
-            html: `<hr><p><strong>Respite:</strong> A character carrying a bedroll recovers <strong>+1 Hit Die</strong> during a long rest, regardless of camp comfort level. This bonus stacks with normal HD recovery.</p>`,
-            tags: ["+1 HD Recovery"]
+            html: comfortOn
+                ? `<hr><p><strong>Respite:</strong> A character carrying a bedroll recovers <strong>+1 Hit Die</strong> during a long rest, regardless of camp comfort level. This bonus stacks with normal HD recovery.</p>`
+                : `<hr><p><strong>Respite:</strong> Bedroll tracked for rest flavour. <em>Comfort rules disabled — no HD bonus applied.</em></p>`,
+            tags: comfortOn ? ["+1 HD Recovery"] : ["Comfort Off"]
         },
 
         // ── Tents ──────────────────────────────────────────────────────
@@ -484,14 +499,18 @@ export function registerItemEnrichments() {
 
         // ── Mess Kit ───────────────────────────────────────────────────
         "mess kit": {
-            html: `<hr><p><strong>Respite:</strong> A character carrying a mess kit gains <strong>advantage on the exhaustion save</strong> during rest, but only when the campfire is lit. Without a fire, the mess kit provides no mechanical benefit. Functions identically to Cook's Utensils for this purpose.</p>`,
-            tags: ["Exhaustion Advantage (with fire)"]
+            html: comfortOn
+                ? `<hr><p><strong>Respite:</strong> A character carrying a mess kit gains <strong>advantage on the exhaustion save</strong> during rest, but only when the campfire is lit. Without a fire, the mess kit provides no mechanical benefit. Functions identically to Cook's Utensils for this purpose.</p>`
+                : `<hr><p><strong>Respite:</strong> Mess kit tracked for rest flavour. <em>Comfort rules disabled — no exhaustion advantage applied.</em></p>`,
+            tags: comfortOn ? ["Exhaustion Advantage (with fire)"] : ["Comfort Off"]
         },
 
         // ── Cook's Utensils ────────────────────────────────────────────
         "cook's utensils": {
-            html: `<hr><p><strong>Respite:</strong> A character carrying Cook's Utensils gains <strong>advantage on the exhaustion save</strong> during rest when the campfire is lit. Also qualifies for the <strong>Cooking</strong> crafting profession, allowing the character to prepare meals that grant temporary buffs.</p>`,
-            tags: ["Exhaustion Advantage (with fire)", "Cooking Profession"]
+            html: comfortOn
+                ? `<hr><p><strong>Respite:</strong> A character carrying Cook's Utensils gains <strong>advantage on the exhaustion save</strong> during rest when the campfire is lit. Also qualifies for the <strong>Cooking</strong> crafting profession, allowing the character to prepare meals that grant temporary buffs.</p>`
+                : `<hr><p><strong>Respite:</strong> Qualifies for the <strong>Cooking</strong> crafting profession during rest. <em>Comfort rules disabled — no exhaustion advantage applied.</em></p>`,
+            tags: comfortOn ? ["Exhaustion Advantage (with fire)", "Cooking Profession"] : ["Cooking Profession", "Comfort Off"]
         },
 
         // ── Rations ────────────────────────────────────────────────────
@@ -537,8 +556,10 @@ export function registerItemEnrichments() {
 
         // ── Tinderbox ─────────────────────────────────────────────────
         "tinderbox": {
-            html: `<hr><p><strong>Respite:</strong> Required to <strong>light the campfire</strong> during the Camp phase. Without a tinderbox (or equivalent), the party cannot start a fire, losing access to cooking, warmth bonuses, and campfire-dependent activities. One tinderbox serves the whole party.</p>`,
-            tags: ["Campfire (required)"]
+            html: comfortOn
+                ? `<hr><p><strong>Respite:</strong> Required to <strong>light the campfire</strong> during the Camp phase. Without a tinderbox (or equivalent), the party cannot start a fire, losing access to cooking, warmth bonuses, and campfire-dependent activities. One tinderbox serves the whole party.</p>`
+                : `<hr><p><strong>Respite:</strong> Tinderbox tracked for rest flavour. <em>Comfort rules disabled — fire phase is bypassed.</em></p>`,
+            tags: comfortOn ? ["Campfire (required)"] : ["Comfort Off"]
         },
 
         // ── Perishable Foods ──────────────────────────────────────────
@@ -598,6 +619,7 @@ export const SETTING_KEYS = [
     "restInterfaceMode",
     "interceptRests",
     "armorDoffRule",
+    "enableComfort",
     "spellRecoveryMaxLevel",
     "songOfRestTiming",
     "maxValueHitDice",
