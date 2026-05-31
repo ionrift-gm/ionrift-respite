@@ -9,6 +9,8 @@
 
 import { EventBrowserApp } from "../apps/EventBrowserApp.js";
 import { ActivityConfigApp } from "../apps/ActivityConfigApp.js";
+import { RecoveryConfigApp } from "../apps/RecoveryConfigApp.js";
+import { PlayerRestrictionsApp } from "../apps/PlayerRestrictionsApp.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -72,6 +74,26 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         restricted: true
     });
 
+    // ── Recovery Rules submenu ───────────────────────────────────────
+    game.settings.registerMenu(MODULE_ID, "recoveryConfig", {
+        name: "Recovery Rules",
+        label: "Configure Recovery",
+        hint: "Armor penalties, spell recovery, Song of Rest timing, and homebrew hit die rules.",
+        icon: "fas fa-heart-pulse",
+        type: RecoveryConfigApp,
+        restricted: true
+    });
+
+    // ── Player Restrictions submenu ──────────────────────────────────
+    game.settings.registerMenu(MODULE_ID, "playerRestrictions", {
+        name: "Player Restrictions",
+        label: "Configure Restrictions",
+        hint: "Control rest interception, quantity locks, and attunement rules.",
+        icon: "fas fa-user-lock",
+        type: PlayerRestrictionsApp,
+        restricted: true
+    });
+
     // ── Gameplay Settings ────────────────────────────────────────────
 
     game.settings.register(MODULE_ID, "restInterfaceMode", {
@@ -92,7 +114,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         name: "Intercept Player Rests",
         hint: "Block the default Short/Long Rest buttons for players. Rests must go through the GM-managed Respite flow.",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: true,
         restricted: true
@@ -102,7 +124,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         name: "Armor Sleep Penalties",
         hint: "Characters sleeping in medium or heavy armor recover fewer Hit Dice and cannot reduce exhaustion (Xanathar's). Characters on watch are exempt.",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: true,
         restricted: true
@@ -112,7 +134,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         name: "Spell Recovery Max Level",
         hint: "Maximum spell slot level recoverable via Arcane Recovery and Natural Recovery. The default matches the 2014 rules cap of 5. Increase for homebrew.",
         scope: "world",
-        config: true,
+        config: false,
         type: Number,
         default: 5,
         range: { min: 1, max: 9, step: 1 },
@@ -123,7 +145,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         name: "Song of Rest Timing",
         hint: "End of rest: bonus die is rolled for each qualifying character when the GM completes the short rest (strict table timing). With first Hit Die: each character's bonus is rolled and applied as soon as they spend their first Hit Die this rest (clearer at the table, still once per character per rest).",
         scope: "world",
-        config: true,
+        config: false,
         type: String,
         default: "endOfRest",
         choices: {
@@ -137,7 +159,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         name: "Short Rest: Max Hit Dice (Homebrew)",
         hint: "During short rests only, each Hit Die heals for the die's maximum roll plus CON modifier (not a random roll). Native Hit Die spend and chat card still run; HP is corrected to match. Optional rule, not RAW.",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: false,
         restricted: true,
@@ -207,7 +229,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         name: "Lock Player Quantity Controls",
         hint: "Prevents players from adjusting item quantities on their character sheet. The GM can still modify quantities. Useful when tracking rations and consumables through the Respite rest flow.",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: false,
         restricted: true
@@ -217,7 +239,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         name: "Lock Attunement to Rest",
         hint: "Players can only attune or de-attune items during an active rest (long or short). Outside of rest, the attunement toggle is disabled. RAW: attunement requires a short rest.",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: true,
         restricted: true
