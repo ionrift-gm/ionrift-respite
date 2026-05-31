@@ -7,19 +7,16 @@
     <div class="respite-phase-header">
         <div class="phase-indicator">
             <div
-                class="phase-dot {{#if (eq phase 'setup')}}active{{/if}} {{#if (or (eq phase 'travel') (eq phase 'camp') (eq phase 'activity') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+                class="phase-dot {{#if (eq phase 'setup')}}active{{/if}} {{#if (or (eq phase 'travel') (eq phase 'camp') (eq phase 'activity') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
             </div>
             <div
-                class="phase-dot {{#if (eq phase 'travel')}}active{{/if}} {{#if (or (eq phase 'camp') (eq phase 'activity') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+                class="phase-dot {{#if (eq phase 'travel')}}active{{/if}} {{#if (or (eq phase 'camp') (eq phase 'activity') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
             </div>
             <div
-                class="phase-dot {{#if (eq phase 'camp')}}active{{/if}} {{#if (or (eq phase 'activity') (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+                class="phase-dot {{#if (eq phase 'camp')}}active{{/if}} {{#if (or (eq phase 'activity') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
             </div>
             <div
-                class="phase-dot {{#if (eq phase 'activity')}}active{{/if}} {{#if (or (eq phase 'reflection') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
-            </div>
-            <div
-                class="phase-dot {{#if (eq phase 'reflection')}}active{{/if}} {{#if (or (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+                class="phase-dot {{#if (eq phase 'activity')}}active{{/if}} {{#if (or (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
             </div>
             <div class="phase-dot {{#if (eq phase 'events')}}active{{/if}} {{#if (eq phase 'resolve')}}complete{{/if}}">
             </div>
@@ -30,7 +27,6 @@
             {{#if (eq phase 'travel')}}Travel{{/if}}
             {{#if (eq phase 'camp')}}Make Camp{{/if}}
             {{#if (eq phase 'activity')}}Activities{{/if}}
-            {{#if (eq phase 'reflection')}}Campfire{{/if}}
             {{#if (eq phase 'events')}}Events{{/if}}
             {{#if (eq phase 'resolve')}}Resolution{{/if}}
         </span>
@@ -778,109 +774,90 @@
         <div class="totm-camp-comfort-panel">
 
             {{#if campPersonalSelected}}
-            {{!-- ── Character view (roster portrait selected) ─────────── --}}
-            <div class="totm-camp-comfort-hero">
-                <div class="totm-camp-comfort-hero-labels">
-                    <span class="totm-camp-comfort-label">Personal Comfort</span>
-                    {{#if campPersonalSelected.personalMatchesCamp}}
-                    <span class="totm-camp-comfort-same">(same as camp)</span>
-                    {{/if}}
-                </div>
-                <span class="totm-camp-comfort-tier-big comfort-{{campPersonalSelected.personalComfort}}">
-                    {{campPersonalSelected.personalComfortLabel}}
-                </span>
-            </div>
-            {{#if mapComfortLine}}
-            <p class="totm-camp-comfort-reason">{{mapComfortLine}}</p>
-            {{/if}}
-
-            <div class="totm-camp-factors-heading">Contributing Factors</div>
-            <div class="totm-camp-factors">
-                <div class="totm-camp-factor-row">
-                    <i class="fas fa-bed totm-factor-icon" aria-hidden="true"></i>
-                    <span class="totm-factor-label">Bedroll</span>
-                    <span class="totm-factor-desc">
-                        {{#if campPersonalSelected.hasBedroll}}+1 personal comfort.{{else}}Comfort stays at camp level.{{/if}}
-                    </span>
+            {{!-- ── Compact gear grid (2×2 icon tiles) ─────────────────── --}}
+            <div class="totm-camp-factors-heading">Your Gear</div>
+            <div class="totm-camp-factors-grid">
+                <div class="totm-factor-tile {{#if campPersonalSelected.hasBedroll}}present{{else}}missing{{/if}}"
+                     title="{{#if campPersonalSelected.hasBedroll}}+1 personal comfort{{else}}Comfort stays at camp level{{/if}}">
+                    <i class="fas fa-bed totm-factor-tile-icon" aria-hidden="true"></i>
+                    <span class="totm-factor-tile-label">Bedroll</span>
                     {{#if campPersonalSelected.hasBedroll}}
-                    <span class="totm-factor-badge present">Bedroll</span>
+                    <span class="totm-factor-tile-status present"><i class="fas fa-check" aria-hidden="true"></i></span>
                     {{else}}
-                    <span class="totm-factor-badge missing">✗ missing</span>
+                    <span class="totm-factor-tile-status missing"><i class="fas fa-times" aria-hidden="true"></i></span>
                     {{/if}}
                 </div>
-                <div class="totm-camp-factor-row">
-                    <i class="fas fa-campground totm-factor-icon" aria-hidden="true"></i>
-                    <span class="totm-factor-label">Tent</span>
-                    <span class="totm-factor-desc">
-                        {{#if campPersonalSelected.hasTent}}Weather shield active.{{else}}No weather shield.{{/if}}
-                    </span>
+                <div class="totm-factor-tile {{#if campPersonalSelected.hasTent}}present{{else}}missing{{/if}}"
+                     title="{{#if campPersonalSelected.hasTent}}Weather shield active{{else}}No weather shield{{/if}}">
+                    <i class="fas fa-campground totm-factor-tile-icon" aria-hidden="true"></i>
+                    <span class="totm-factor-tile-label">Tent</span>
                     {{#if campPersonalSelected.hasTent}}
-                    <span class="totm-factor-badge present">Tent</span>
+                    <span class="totm-factor-tile-status present"><i class="fas fa-check" aria-hidden="true"></i></span>
                     {{else}}
-                    <span class="totm-factor-badge missing">✗ missing</span>
+                    <span class="totm-factor-tile-status missing"><i class="fas fa-times" aria-hidden="true"></i></span>
                     {{/if}}
                 </div>
-                <div class="totm-camp-factor-row">
-                    <i class="fas fa-utensils totm-factor-icon" aria-hidden="true"></i>
-                    <span class="totm-factor-label">Mess Kit</span>
-                    <span class="totm-factor-desc">
-                        {{#if campPersonalSelected.hasMessKit}}Exhaustion-save advantage.{{else}}Lose exhaustion-save advantage.{{/if}}
-                    </span>
+                <div class="totm-factor-tile {{#if campPersonalSelected.hasMessKit}}present{{else}}missing{{/if}}"
+                     title="{{#if campPersonalSelected.hasMessKit}}Exhaustion-save advantage{{else}}Lose exhaustion-save advantage{{/if}}">
+                    <i class="fas fa-utensils totm-factor-tile-icon" aria-hidden="true"></i>
+                    <span class="totm-factor-tile-label">Mess Kit</span>
                     {{#if campPersonalSelected.hasMessKit}}
-                    <span class="totm-factor-badge present">Kit</span>
+                    <span class="totm-factor-tile-status present"><i class="fas fa-check" aria-hidden="true"></i></span>
                     {{else}}
-                    <span class="totm-factor-badge missing">✗ missing</span>
+                    <span class="totm-factor-tile-status missing"><i class="fas fa-times" aria-hidden="true"></i></span>
                     {{/if}}
                 </div>
-                <div class="totm-camp-factor-row">
-                    <i class="fas fa-fire totm-factor-icon" aria-hidden="true"></i>
-                    <span class="totm-factor-label">Fire Level</span>
-                    <span class="totm-factor-desc">
-                        {{#if campFireIsLit}}
-                            {{#each campFirePickerLevels}}{{#if selected}}{{body}}{{/if}}{{/each}}
-                        {{else if campColdCampDecided}}
-                            No fire. Cold night — −1 comfort.
-                        {{else}}
-                            No fire lit yet.
-                        {{/if}}
-                    </span>
+                <div class="totm-factor-tile fire {{#if campFireIsLit}}present{{else if campColdCampDecided}}cold{{else}}missing{{/if}}"
+                     title="{{#if campFireIsLit}}{{#each campFirePickerLevels}}{{#if selected}}{{label}}: {{body}}{{/if}}{{/each}}{{else if campColdCampDecided}}Cold camp — no fire, −1 comfort, −2 encounter DC{{else}}No fire lit yet{{/if}}">
+                    <i class="fas fa-fire totm-factor-tile-icon" aria-hidden="true"></i>
+                    <span class="totm-factor-tile-label">Fire</span>
                     {{#if campFireIsLit}}
-                    <span class="totm-factor-badge fire-active">
-                        🔥 {{#each campFirePickerLevels}}{{#if selected}}{{label}}{{/if}}{{/each}}
-                    </span>
+                    <span class="totm-factor-tile-status fire-active">🔥</span>
                     {{else if campColdCampDecided}}
-                    <span class="totm-factor-badge cold-camp">Cold Camp</span>
+                    <span class="totm-factor-tile-status cold"><i class="fas fa-moon" aria-hidden="true"></i></span>
                     {{else}}
-                    <span class="totm-factor-badge missing">unlit</span>
+                    <span class="totm-factor-tile-status missing"><i class="fas fa-times" aria-hidden="true"></i></span>
                     {{/if}}
                 </div>
             </div>
 
-            {{!-- Recovery outcomes — always shown, colour-coded by severity --}}
-            <div class="totm-camp-outcomes-heading">Tonight's Rest</div>
-            <div class="totm-camp-outcomes">
-                {{!-- HP: green only if full recovery, amber if partial --}}
-                <div class="totm-camp-outcome {{#if campPersonalSelected.recovery.hpFull}}success{{else}}warning{{/if}}">
-                    <i class="fas fa-heart" aria-hidden="true"></i>
-                    <span>{{campPersonalSelected.recovery.hpLabel}}</span>
+            {{!-- Comfort + recovery card ─────────────────────────── --}}
+            <div class="totm-rest-card comfort-{{campPersonalSelected.personalComfort}}">
+                <div class="totm-rest-card-header comfort-{{campPersonalSelected.personalComfort}}">
+                    <span class="totm-rest-card-title">{{campPersonalSelected.personalComfortLabel}}</span>
+                    <span class="totm-rest-card-subtitle">Your Rest</span>
                 </div>
-                {{!-- HD: danger if 0, warning if penalised, success if normal --}}
-                <div class="totm-camp-outcome {{#if campPersonalSelected.recovery.hdSeverity}}{{campPersonalSelected.recovery.hdSeverity}}{{else}}success{{/if}}">
-                    <i class="fas fa-cube" aria-hidden="true"></i>
-                    <span>{{campPersonalSelected.recovery.hdLabel}}</span>
+                <div class="totm-rest-card-body">
+                    {{!-- HP chip --}}
+                    <span class="totm-rest-chip {{#if campPersonalSelected.recovery.hpFull}}success{{else}}warning{{/if}}">
+                        <i class="fas fa-heart" aria-hidden="true"></i>
+                        {{campPersonalSelected.recovery.hpLabel}}
+                    </span>
+                    {{!-- HD chip --}}
+                    <span class="totm-rest-chip {{#if campPersonalSelected.recovery.hdSeverity}}{{campPersonalSelected.recovery.hdSeverity}}{{else}}success{{/if}}">
+                        <i class="fas fa-cube" aria-hidden="true"></i>
+                        {{campPersonalSelected.recovery.hdLabel}}
+                    </span>
+                    {{!-- Exhaustion chip --}}
+                    {{#if campPersonalSelected.recovery.exhaustionDC}}
+                    <span class="totm-rest-chip {{campPersonalSelected.recovery.exhaustionSeverity}}">
+                        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                        {{campPersonalSelected.recovery.exhaustionLabel}}
+                    </span>
+                    {{else}}
+                    <span class="totm-rest-chip success">
+                        <i class="fas fa-shield-alt" aria-hidden="true"></i>
+                        No exhaustion risk
+                    </span>
+                    {{/if}}
+                    {{!-- Encounter DC chip (fire level impact) --}}
+                    {{#if campFireEncounterHint}}
+                    <span class="totm-rest-chip info" title="{{campFireEncounterHint}}">
+                        <i class="fas fa-dice-d20" aria-hidden="true"></i>
+                        {{campFireEncounterHint}}
+                    </span>
+                    {{/if}}
                 </div>
-                {{!-- Exhaustion: danger if hostile, warning if rough, absent if none --}}
-                {{#if campPersonalSelected.recovery.exhaustionDC}}
-                <div class="totm-camp-outcome {{campPersonalSelected.recovery.exhaustionSeverity}}">
-                    <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
-                    <span>{{campPersonalSelected.recovery.exhaustionLabel}}</span>
-                </div>
-                {{else}}
-                <div class="totm-camp-outcome success">
-                    <i class="fas fa-shield-alt" aria-hidden="true"></i>
-                    <span>No exhaustion risk</span>
-                </div>
-                {{/if}}
             </div>
 
             {{else}}
@@ -917,115 +894,117 @@
                 {{/if}}
             </div>
 
-            {{#unless campColdCampDecided}}
-            {{#unless campFireIsLit}}
-            {{!-- WHO CAN LIGHT IT: 4-state context-aware block --}}
-            <div class="totm-fire-lighters">
-                <span class="totm-fire-lighters-label">Who can light it:</span>
+            {{#unless safeRestSpot}}
+            {{!-- Fire tier segmented control (Option C: All-in-one Strip) --}}
+            <div class="totm-fire-segment-wrap">
+                <div class="totm-fire-segments" role="radiogroup" aria-label="Fire intensity tiers">
+                    {{!-- Cold Camp segment: only visible when fire is NOT yet lit --}}
+                    {{#unless campFireIsLit}}
+                    <button type="button"
+                            class="totm-fire-segment cold-camp {{#if campColdCampDecided}}selected{{else}}{{#if campPreviewIsColdCamp}}selected{{/if}}{{/if}}"
+                            data-tier="cold_camp"
+                            {{#if campColdCampDecided}}aria-checked="true"{{else}}{{#if campPreviewIsColdCamp}}aria-checked="true"{{else}}aria-checked="false"{{/if}}{{/if}}
+                            role="radio"
+                            {{#unless campColdCampDecided}}
+                            data-action="previewCampFireLevel" data-fire-level="cold_camp"
+                            {{/unless}}>
+                        <i class="fas fa-moon" aria-hidden="true"></i>
+                        <span class="totm-fire-segment-label">Cold Camp</span>
+                        <span class="totm-fire-segment-cost">No fire</span>
+                    </button>
+                    {{/unless}}
+                    {{!-- Fire tier segments: Embers, Campfire, Bonfire --}}
+                    {{#each campFirePickerLevels}}
+                    <button type="button"
+                            class="totm-fire-segment {{#if selected}}selected{{/if}} {{#if disabled}}{{#unless @root.isGM}}disabled{{/unless}}{{/if}}"
+                            data-tier="{{id}}"
+                            {{#if disabled}}{{#unless @root.isGM}}disabled{{/unless}} title="{{disabledReason}}"{{/if}}
+                            {{#if selected}}aria-checked="true"{{else}}aria-checked="false"{{/if}}
+                            role="radio"
+                            {{#unless selected}}
+                            {{#unless @root.campFireIsLit}}
+                            data-action="previewCampFireLevel" data-fire-level="{{id}}"
+                            {{/unless}}
+                            {{/unless}}>
+                        <span class="totm-fire-segment-label">{{label}}</span>
+                        <span class="totm-fire-segment-cost">{{costLabel}}</span>
+                    </button>
+                    {{/each}}
+                </div>
+                {{!-- Show selected tier description --}}
+                {{#each campFirePickerLevels}}
+                {{#if selected}}
+                <p class="totm-fire-segment-desc">{{body}}</p>
+                {{/if}}
+                {{/each}}
+                {{!-- Cold camp description --}}
+                {{#unless campFireIsLit}}
+                {{#if campColdCampDecided}}
+                <p class="totm-fire-segment-desc">No fire tonight. −1 comfort, −2 encounter DC. No cooking.</p>
+                {{else if campPreviewIsColdCamp}}
+                <p class="totm-fire-segment-desc">No fire tonight. −1 comfort, −2 encounter DC. No cooking.</p>
+                {{/if}}
+                {{/unless}}
 
-                {{#if isGM}}
-                {{!-- GM STATE: compact count + light-for-them --}}
-                {{#if campFireLighters.length}}
-                <div class="totm-fire-gm-row">
-                    <span class="totm-fire-gm-count">
-                        <i class="fas fa-fire-alt" aria-hidden="true"></i>
-                        {{campFireLighters.length}} can light it
-                    </span>
-                    <button type="button" class="totm-fire-light-btn btn-sm gm-light"
+                {{!-- ═══ FIRE BILL: Itemized requirements ═══ --}}
+                {{#unless campFireIsLit}}
+                {{#unless campColdCampDecided}}
+                {{#unless campPreviewIsColdCamp}}
+                <div class="totm-fire-bill">
+                    {{!-- Line 1: Firewood cost --}}
+                    <div class="totm-fire-bill-line {{#if campHasEnoughFirewood}}met{{else}}unmet{{/if}}">
+                        {{#if campHasEnoughFirewood}}
+                        <i class="fas fa-check" aria-hidden="true"></i>
+                        {{else}}
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                        {{/if}}
+                        <span>{{campSelectedFirewoodCost}} firewood needed</span>
+                        <span class="totm-fire-bill-detail">(party has {{campPartyFirewood}})</span>
+                    </div>
+                    {{!-- Line 2: Lighter availability --}}
+                    <div class="totm-fire-bill-line {{#if campCanLight}}met{{else}}unmet{{/if}}">
+                        {{#if campCanLight}}
+                        <i class="fas fa-check" aria-hidden="true"></i>
+                        <span class="totm-fire-bill-lighter" title="{{campFireLighterNames}}">
+                            {{campFireLighters.length}} can light it
+                        </span>
+                        {{else}}
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                        <span>No tinderbox or fire cantrip</span>
+                        {{/if}}
+                    </div>
+
+                    {{!-- Action row: GM or player --}}
+                    {{#if isGM}}
+                    <button type="button" class="totm-fire-light-btn gm-light-submit"
                             data-action="campLightFire"
                             data-actor-id="__gm__"
-                            data-method="Tinderbox">
+                            data-method="Tinderbox"
+                            title="Optional - players with gear see their own Light button. Use this as a GM override.">
                         <i class="fas fa-fire" aria-hidden="true"></i> Light it for them
                     </button>
-                </div>
-                {{else}}
-                <div class="totm-fire-none-warning">
-                    <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
-                    No fire-starting tools in the party.
-                </div>
-                <button type="button" class="totm-fire-light-btn btn-sm gm-light"
-                        data-action="campLightFire"
-                        data-actor-id="__gm__"
-                        data-method="Tinderbox">
-                    <i class="fas fa-fire" aria-hidden="true"></i> Light it for them
-                </button>
-                {{/if}}
-
-                {{else if campViewerCanLight}}
-                {{!-- PLAYER STATE 1: Viewer can light — show their row, summarise others --}}
-                {{#each campFireLighters}}{{#if this.isViewerActor}}
-                <div class="totm-fire-viewer-row">
-                    <span class="totm-fire-lighter-name">{{this.actorName}}</span>
-                    <span class="totm-fire-lighter-method">
-                        <i class="{{this.methodIcon}}" aria-hidden="true"></i> {{this.method}}
-                    </span>
-                    <button type="button" class="totm-fire-light-btn btn-sm"
+                    {{else if campViewerCanLight}}
+                    {{#each campFireLighters}}{{#if this.isViewerActor}}
+                    <button type="button" class="totm-fire-light-btn player-light-submit"
                             data-action="campLightFire"
                             data-actor-id="{{this.actorId}}"
                             data-method="{{this.method}}">
                         <i class="fas fa-fire" aria-hidden="true"></i> Light
                     </button>
-                </div>
-                {{/if}}{{/each}}
-                {{#if campFireOtherLighterCount}}
-                <span class="totm-fire-others-summary">+ {{campFireOtherLighterCount}} others can also light it</span>
-                {{/if}}
-
-                {{else if campFireLighters.length}}
-                {{!-- PLAYER STATE 2: Others can, viewer cannot --}}
-                <div class="totm-fire-others-info">
-                    <i class="fas fa-fire-alt" aria-hidden="true"></i>
-                    <span>{{campFireLighterNames}} can light the fire.</span>
-                </div>
-                <p class="totm-fire-switch-hint">Waiting for them or the GM to light it.</p>
-
-                {{else}}
-                {{!-- PLAYER STATE 3: No one can --}}
-                <div class="totm-fire-none-warning">
-                    <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
-                    No tinderbox or fire cantrip in the party.
-                </div>
-                <p class="totm-fire-switch-hint">Declare a cold camp, or ask the GM.</p>
-                {{/if}}
-            </div>
-            {{/unless}}
-            {{/unless}}
-
-            {{#unless safeRestSpot}}
-            {{!-- Fire tier cards --}}
-            <div class="totm-fire-tiers">
-                {{#each campFirePickerLevels}}
-                <div class="totm-fire-tier-card {{#if selected}}selected{{/if}} {{#if disabled}}disabled{{/if}}" data-tier="{{id}}">
-                    <div class="totm-fire-tier-top">
-                        <span class="totm-fire-tier-name">{{label}}</span>
-                        <span class="totm-fire-tier-cost">{{costLabel}}</span>
-                    </div>
-                    <p class="totm-fire-tier-body">{{body}}</p>
-                    {{#if ../campFireIsLit}}
-                        {{#if selected}}
-                        <span class="totm-fire-tier-current">CURRENT</span>
-                        {{else if (not disabled)}}
-                        <button type="button" class="totm-fire-tier-set-btn"
-                                data-action="selectCampFireLevel"
-                                data-fire-level="{{id}}">
-                            Set
-                        </button>
+                    {{/if}}{{/each}}
+                    {{else}}
+                    <p class="totm-fire-bill-hint">
+                        {{#if campFireLighters.length}}
+                        Waiting for {{campFireLighterNames}} or the GM to light it.
+                        {{else}}
+                        Choose cold camp, or ask the GM.
                         {{/if}}
-                    {{else unless ../campColdCampDecided}}
-                        {{#if (not disabled)}}
-                        {{#if selected}}
-                        <span class="totm-fire-tier-current">Selected</span>
-                        {{/if}}
-                        {{/if}}
-                    {{/if}}
-                    {{#if disabledReason}}
-                    <span class="totm-fire-tier-disabled-reason">
-                        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
-                        {{disabledReason}}
-                    </span>
+                    </p>
                     {{/if}}
                 </div>
-                {{/each}}
+                {{/unless}}
+                {{/unless}}
+                {{/unless}}
             </div>
 
             {{!-- Firewood pledges (after fire is lit) --}}
@@ -1053,19 +1032,7 @@
             {{/if}}
             {{/if}}
 
-            {{!-- Action buttons (only when fire decision not yet made) --}}
-            {{#unless campFireIsLit}}
-            {{#unless campColdCampDecided}}
-            {{#if isGM}}
-            <div class="totm-fire-actions">
-                <button type="button" class="btn-secondary totm-cold-camp-btn"
-                        data-action="campColdCamp">
-                    <i class="fas fa-moon" aria-hidden="true"></i> Cold Camp
-                </button>
-            </div>
-            {{/if}}
-            {{/unless}}
-            {{/unless}}
+
         </div>
     </div>
 
@@ -1077,9 +1044,14 @@
                 data-action="proceedFromTotmCamp">
             <i class="fas fa-arrow-right" aria-hidden="true"></i> Proceed to Activities
         </button>
+        {{else if campPreviewIsColdCamp}}
+        <button type="button" class="btn-primary totm-camp-proceed cold-camp-confirm"
+                data-action="campColdCamp">
+            <i class="fas fa-moon" aria-hidden="true"></i> Confirm Cold Camp &amp; Proceed
+        </button>
         {{else}}
         <button type="button" class="btn-primary totm-camp-proceed disabled" disabled>
-            <i class="fas fa-lock" aria-hidden="true"></i> Light the fire or declare cold camp first
+            <i class="fas fa-lock" aria-hidden="true"></i> Light the fire or choose cold camp
         </button>
         {{/if}}
     </div>
@@ -2168,7 +2140,7 @@
                 {{#if pendingDehydrationSaves}}
                     {{#if allDehydrationResolved}}
                     <button type="button" class="btn-primary" data-action="proceedFromMeal">
-                        <i class="fas fa-fire"></i> Proceed to Reflection
+                        <i class="fas fa-moon"></i> Proceed to Events
                     </button>
                     {{else}}
                     <button type="button" class="btn-primary" disabled>
@@ -2182,7 +2154,7 @@
                     {{/if}}
                 {{else}}
                 <button type="button" class="btn-primary" data-action="proceedFromMeal">
-                    <i class="fas fa-fire"></i> Proceed to Reflection
+                    <i class="fas fa-moon"></i> Proceed to Events
                 </button>
                 {{/if}}
             {{else}}
@@ -2235,7 +2207,8 @@
     </div>{{!-- /activity-phase-layout --}}
     {{/if}}
 
-    {{!-- =============== REFLECTION PHASE =============== --}}
+    {{!-- =============== REFLECTION PHASE (skipped v2.1) ===============
+         Phase is never reached. Markup retained for potential re-enablement.
     {{#if (eq phase 'reflection')}}
     <div class="phase-banner">
         <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
@@ -2292,6 +2265,7 @@
     </div>
     {{/if}}
     {{/if}}
+    --}}
 
     {{!-- =============== EVENTS PHASE =============== --}}
     {{#if (eq phase 'events')}}
@@ -3038,6 +3012,27 @@
 
         {{!-- Night Watch: shown when camp preps resolved or no preps needed --}}
         {{#if campPrepsResolved}}
+
+        {{#if showEventPoolNudge}}
+        <div class="art-nudge-banner event-pool-nudge-banner">
+            <div class="art-nudge-content">
+                <i class="fas fa-book-open art-nudge-icon"></i>
+                <div class="art-nudge-text">
+                    <span class="art-nudge-title">No events in your pool for {{eventPoolTerrainLabel}}.</span>
+                    <span class="art-nudge-subtitle">Pick which camp events can occur. Until then, Roll for Events still runs a normal night check; a low roll will not draw from an empty pool.</span>
+                </div>
+            </div>
+            <div class="art-nudge-actions">
+                <button type="button" data-action="openEventPoolCurator" class="art-nudge-btn primary">
+                    <i class="fas fa-book-open"></i> Curate Pool
+                </button>
+                <button type="button" data-action="dismissEventPoolNudge" class="art-nudge-dismiss" title="Dismiss for now">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        {{/if}}
+
         <div class="respite-event-card ambient event-roll-prompt">
             <div class="event-name"><i class="fas fa-dice-d20"></i> Night Watch</div>
             <div class="event-description">
@@ -3210,113 +3205,99 @@
     </div>
     {{> rosterStrip}}
 
-    {{#if isGM}}
-    <div class="respite-resolution">
-        {{#each outcomes}}
-        <div class="respite-outcome-card">
-            <div class="outcome-header">
-                <strong>{{characterName}}</strong>
-                <span class="comfort-indicator {{recovery.comfortLevel}}">{{recovery.comfortLevel}}</span>
-            </div>
-            {{#if eventDisrupted}}
-            <div class="outcome-disrupted">
-                <i class="fas fa-exclamation-triangle"></i> Complications during rest
-            </div>
-            {{/if}}
-            {{#each outcomes}}
-            {{#if (eq source "event")}}
-            <div class="outcome-event {{category}}">
-                <div class="outcome-event-header">
-                    <i class="fas {{#if (eq category 'complication')}}fa-exclamation-triangle{{else if (eq category 'encounter')}}fa-swords{{else if (eq category 'discovery')}}fa-search{{else}}fa-moon{{/if}}"></i>
-                    <strong>{{eventName}}</strong>
-                    {{#if resolvedOutcome}}
-                    <span class="roll-verdict {{resolvedOutcome}}">{{#if (eq resolvedOutcome "success")}}Passed{{else}}Failed{{/if}}</span>
-                    {{/if}}
-                </div>
-                <div class="outcome-narrative">{{narrative}}</div>
-                {{#if effects.length}}
-                <div class="outcome-effects">
-                    {{#each effects}}
-                    <div class="outcome-effect-line">
-                        {{#if (eq type "damage")}}<i class="fas fa-heart-broken"></i> {{formula}} {{damageType}} damage
-                        {{else if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> Recovery reduced (x{{hpMultiplier}})
-                        {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> Gained {{condition}}{{#if checks.length}} on {{#each checks}}{{#if @index}}, {{/if}}{{upper this}}{{/each}} checks{{/if}} {{#if duration}}({{humanDuration duration}}){{/if}}
-                        {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{narrative}}
-                        {{else if (eq type "encounter")}}<i class="fas fa-swords"></i> Combat encounter
-                        {{else}}{{narrative}}
-                        {{/if}}
-                    </div>
-                    {{/each}}
-                </div>
-                {{/if}}
-            </div>
-            {{else}}
-            {{#if result}}
-            <span class="roll-verdict {{result}}">
-                {{#if (eq result "exceptional")}}<i class="fas fa-star"></i> Exceptional
-                {{else if (eq result "success")}}<i class="fas fa-check"></i> Success
-                {{else if (eq result "failure")}}<i class="fas fa-times"></i> Failed
-                {{else if (eq result "failure_complication")}}<i class="fas fa-exclamation-triangle"></i> Failed
-                {{/if}}
+    {{#*inline "resolutionSub"}}
+    <div class="outcome-line outcome-line--{{valence}}{{#if (eq source 'event')}} outcome-event {{category}}{{/if}}">
+        <div class="outcome-verdict-row">
+            <span class="outcome-verdict {{valence}}">
+                <i class="{{verdictIcon}}"></i>
+                <span class="outcome-verdict-name">{{displayName}}</span>{{#if verdictLabel}} <span class="outcome-verdict-result">{{verdictLabel}}</span>{{/if}}
             </span>
-            {{/if}}
-            <div class="outcome-narrative">{{narrative}}</div>
-            {{#if effects.length}}
-            <div class="outcome-effects">
-                {{#each effects}}
-                <div class="outcome-effect-line">
-                    <i class="fas fa-cog"></i> {{description}}
-                </div>
-                {{/each}}
+        </div>
+        {{#if narrative}}<div class="outcome-narrative">{{narrative}}</div>{{/if}}
+        {{#if effects.length}}
+        <div class="outcome-effects">
+            {{#each effects}}
+            <div class="outcome-effect-line">
+                {{#if (eq type "damage")}}<i class="fas fa-heart-broken"></i> {{formula}} {{damageType}} damage
+                {{else if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> Recovery reduced (x{{hpMultiplier}})
+                {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> Gained {{condition}}{{#if checks.length}} on {{#each checks}}{{#if @index}}, {{/if}}{{upper this}}{{/each}} checks{{/if}} {{#if duration}}({{humanDuration duration}}){{/if}}
+                {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{narrative}}
+                {{else if (eq type "encounter")}}<i class="fas fa-swords"></i> Combat encounter
+                {{else if description}}<i class="fas fa-cog"></i> {{description}}
+                {{else}}{{narrative}}
+                {{/if}}
             </div>
-            {{/if}}
-            {{#if craftingResult}}
-            <div class="outcome-craft-detail">
-                Rolled {{craftingResult.roll}} vs DC {{craftingResult.dc}} ({{craftingResult.riskTier}})
-            </div>
-            {{/if}}
-            {{#unless (eq source "event")}}
-            {{#if items.length}}
-            <div class="outcome-items">
-                {{#each items}}
-                <div class="item-gained"><i class="fas fa-plus-circle"></i> {{#if
-                    name}}{{name}}{{else}}{{itemRef}}{{/if}} {{#if quantity}}x{{quantity}}{{/if}}</div>
-                {{/each}}
-            </div>
-            {{/if}}
-            {{/unless}}
-            {{/if}}
             {{/each}}
-            {{#if recovery.gearDescriptors.length}}
-            <div class="outcome-effects" style="opacity:0.7;font-size:0.85em;">
-                {{#each recovery.gearDescriptors}}
-                <div class="outcome-effect-line"><i class="fas fa-cog"></i> {{this}}</div>
-                {{/each}}
-            </div>
+        </div>
+        {{/if}}
+        {{#if craftingResult}}
+        <div class="outcome-craft-detail">Rolled {{craftingResult.roll}} vs DC {{craftingResult.dc}} ({{craftingResult.riskTier}})</div>
+        {{/if}}
+        {{#if items.length}}
+        <div class="outcome-items">
+            {{#each items}}
+            <div class="item-gained"><i class="fas fa-plus-circle"></i> {{#if name}}{{name}}{{else}}{{itemRef}}{{/if}}{{#if quantity}} x{{quantity}}{{/if}}</div>
+            {{/each}}
+        </div>
+        {{/if}}
+    </div>
+    {{/inline}}
+
+    {{#*inline "resolutionCard"}}
+    <div class="respite-outcome-card">
+        <div class="outcome-header">
+            <strong>{{characterName}}</strong>
+            {{#if comfortLevel}}<span class="comfort-indicator {{comfortLevel}}" title="Rest comfort level affects HP recovery">{{comfortLevel}}</span>{{/if}}
+        </div>
+        {{#if neutrals.length}}
+        <div class="outcome-neutral">
+            {{#each neutrals}}{{> resolutionSub}}{{/each}}
+        </div>
+        {{/if}}
+        {{#if gearDescriptors.length}}
+        <div class="outcome-effects outcome-gear-descriptors">
+            {{#each gearDescriptors}}<div class="outcome-effect-line"><i class="fas fa-cog"></i> {{this}}</div>{{/each}}
+        </div>
+        {{/if}}
+        {{#if hasRecovered}}
+        <div class="outcome-group outcome-group--recovered">
+            <div class="outcome-group-header"><i class="fas fa-leaf"></i> Recovered</div>
+            {{#if hasGain}}
+            <div class="outcome-effect-line outcome-gain"><i class="fas fa-heart"></i> +{{hpRestored}} HP, +{{hdRestored}} HD{{#if gearBonusBedroll}} <span class="gear-annotation">(+1 bedroll)</span>{{/if}}</div>
             {{/if}}
-            {{#if recovery.exhaustionDC}}
-            <div class="outcome-exhaustion-advisory {{#if (eq recovery.exhaustionSaveResult 'passed')}}save-passed{{else if (eq recovery.exhaustionSaveResult 'failed')}}save-failed{{/if}}">
-                <i class="fas fa-bed"></i>
-                <span>CON save DC {{recovery.exhaustionDC}}{{#if recovery.exhaustionAdvantage}} <span class="gear-annotation">(advantage from hot meal)</span>{{/if}}{{#if (eq recovery.exhaustionSaveResult 'passed')}} <span class="exhaustion-recovered">Passed (no exhaustion gained)</span>{{else if (eq recovery.exhaustionSaveResult 'failed')}}{{#if (gt recovery.exhaustionDelta 0)}} <span class="exhaustion-gained">Failed (+1 Exhaustion)</span>{{else}} <span class="exhaustion-offset">Failed (no net change)</span>{{/if}}{{/if}}</span>
-            </div>
-            <div class="outcome-effect-line" style="opacity:0.6;font-size:0.75em;padding-left:1.2rem;">{{#if (eq recovery.comfortLevel 'hostile')}}Hostile{{else}}Rough{{/if}} rest conditions require a Constitution save to avoid exhaustion.</div>
+            {{#if exhaustionSavePassed}}
+            <div class="outcome-effect-line outcome-gain"><i class="fas fa-bed"></i> CON save DC {{exhaustionDC}}{{#if exhaustionAdvantage}} <span class="gear-annotation">(mess kit gives advantage)</span>{{/if}} <span class="exhaustion-recovered">Passed (no exhaustion gained)</span></div>
             {{/if}}
-            {{#if (eq recovery.comfortLevel "hostile")}}
-            {{#unless (lt recovery.exhaustionDelta 0)}}
-            <div class="outcome-exhaustion-advisory hostile-note">
-                <i class="fas fa-skull"></i>
-                <span>Hostile conditions block recovery of existing exhaustion</span>
-            </div>
-            {{/unless}}
+            {{#each positives}}{{> resolutionSub}}{{/each}}
+        </div>
+        {{/if}}
+        {{#if hasSetback}}
+        <div class="outcome-group outcome-group--setback">
+            <div class="outcome-group-header"><i class="fas fa-triangle-exclamation"></i> Setbacks</div>
+            {{#if eventDisrupted}}
+            <div class="outcome-effect-line outcome-loss"><i class="fas fa-exclamation-triangle"></i> Complications during rest</div>
             {{/if}}
-            {{#if recovery.eventDamage}}
-            <div class="outcome-exhaustion-advisory" style="background: rgba(231, 76, 60, 0.1); border-left: 2px solid #e74c3c;">
-                <i class="fas fa-tint" style="color: #e74c3c;"></i>
-                <span style="color: #e74c3c;">Took {{recovery.eventDamage}} damage</span>
-            </div>
+            {{#each setbacks}}{{> resolutionSub}}{{/each}}
+            {{#if exhaustionSaveFailed}}
+            <div class="outcome-effect-line outcome-loss"><i class="fas fa-bed"></i> CON save DC {{exhaustionDC}}{{#if exhaustionAdvantage}} <span class="gear-annotation">(mess kit gives advantage)</span>{{/if}} {{#if (gt exhaustionDelta 0)}}<span class="exhaustion-gained">Failed (+1 Exhaustion)</span>{{else}}<span class="exhaustion-offset">Failed (no net change)</span>{{/if}}</div>
+            {{/if}}
+            {{#if hostileBlocksRecovery}}
+            <div class="outcome-effect-line outcome-loss"><i class="fas fa-skull"></i> Hostile conditions block recovery of existing exhaustion</div>
+            {{/if}}
+            {{#if eventDamage}}
+            <div class="outcome-effect-line outcome-loss"><i class="fas fa-tint"></i> Took {{eventDamage}} damage</div>
             {{/if}}
         </div>
-        {{/each}}
+        {{/if}}
+        {{#if exhaustionDC}}
+        <div class="outcome-save-context">{{exhaustionConditionLabel}} rest conditions require a Constitution save to avoid exhaustion.</div>
+        {{/if}}
+    </div>
+    {{/inline}}
+
+    {{#if isGM}}
+    <div class="respite-resolution">
+        {{#each resolutionCards}}{{> resolutionCard}}{{/each}}
     </div>
     {{#if partyDiscoveries.length}}
     <div class="party-discoveries">
@@ -3370,65 +3351,8 @@
     {{else}}
     {{!-- Player: show personal results --}}
     <div class="respite-resolution">
-        {{#if outcomes.length}}
-        {{#each outcomes}}
-        <div class="respite-outcome-card">
-            <div class="outcome-header">
-                <strong>{{characterName}}</strong>
-                {{#if recovery.comfortLevel}}
-                <span class="comfort-indicator {{recovery.comfortLevel}}" title="Rest comfort level affects HP recovery">
-                    <i class="fas fa-bed"></i> Comfort: {{recovery.comfortLevel}}
-                </span>
-                {{/if}}
-            </div>
-            {{#each outcomes}}
-            <div class="outcome-narrative">{{narrative}}</div>
-            {{#if craftingResult}}
-            <div class="outcome-craft-detail">
-                Rolled {{craftingResult.roll}} vs DC {{craftingResult.dc}} ({{craftingResult.riskTier}})
-            </div>
-            {{/if}}
-            {{#unless (eq source "event")}}
-            {{#if items.length}}
-            <div class="outcome-items">
-                {{#each items}}
-                <div class="item-gained"><i class="fas fa-plus-circle"></i> {{#if
-                    name}}{{name}}{{else}}{{itemRef}}{{/if}} {{#if quantity}}x{{quantity}}{{/if}}</div>
-                {{/each}}
-            </div>
-            {{/if}}
-            {{/unless}}
-            {{/each}}
-            {{#if recovery.gearDescriptors.length}}
-            <div class="outcome-effects" style="opacity:0.7;font-size:0.85em;">
-                {{#each recovery.gearDescriptors}}
-                <div class="outcome-effect-line"><i class="fas fa-cog"></i> {{this}}</div>
-                {{/each}}
-            </div>
-            {{/if}}
-            {{#if recovery.exhaustionDC}}
-            <div class="outcome-exhaustion-advisory {{#if (eq recovery.exhaustionSaveResult 'passed')}}save-passed{{else if (eq recovery.exhaustionSaveResult 'failed')}}save-failed{{/if}}">
-                <i class="fas fa-bed"></i>
-                <span>CON save DC {{recovery.exhaustionDC}}{{#if recovery.exhaustionAdvantage}} <span class="gear-annotation">(advantage from hot meal)</span>{{/if}}{{#if (eq recovery.exhaustionSaveResult 'passed')}} <span class="exhaustion-recovered">Passed (no exhaustion gained)</span>{{else if (eq recovery.exhaustionSaveResult 'failed')}}{{#if (gt recovery.exhaustionDelta 0)}} <span class="exhaustion-gained">Failed (+1 Exhaustion)</span>{{else}} <span class="exhaustion-offset">Failed (no net change)</span>{{/if}}{{/if}}</span>
-            </div>
-            <div class="outcome-effect-line" style="opacity:0.6;font-size:0.75em;padding-left:1.2rem;">{{#if (eq recovery.comfortLevel 'hostile')}}Hostile{{else}}Rough{{/if}} rest conditions require a Constitution save to avoid exhaustion.</div>
-            {{/if}}
-            {{#if (eq recovery.comfortLevel "hostile")}}
-            {{#unless (lt recovery.exhaustionDelta 0)}}
-            <div class="outcome-exhaustion-advisory hostile-note">
-                <i class="fas fa-skull"></i>
-                <span>Hostile conditions block recovery of existing exhaustion</span>
-            </div>
-            {{/unless}}
-            {{/if}}
-            {{#if recovery.eventDamage}}
-            <div class="outcome-exhaustion-advisory" style="background: rgba(231, 76, 60, 0.1); border-left: 2px solid #e74c3c;">
-                <i class="fas fa-tint" style="color: #e74c3c;"></i>
-                <span style="color: #e74c3c;">Took {{recovery.eventDamage}} damage</span>
-            </div>
-            {{/if}}
-        </div>
-        {{/each}}
+        {{#if resolutionCards.length}}
+        {{#each resolutionCards}}{{> resolutionCard}}{{/each}}
         {{#if partyDiscoveries.length}}
         <div class="party-discoveries">
             <div class="party-discoveries-header"><i class="fas fa-gem"></i> Party Discoveries</div>

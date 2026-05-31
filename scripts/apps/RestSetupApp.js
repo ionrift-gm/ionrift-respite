@@ -6,6 +6,8 @@ import {
 import { TerrainRegistry } from "../services/TerrainRegistry.js";
 import { ActivityResolver } from "../services/ActivityResolver.js";
 import { EventResolver } from "../services/EventResolver.js";
+import { countPoolEventsForTerrain } from "../services/EventCatalogLoader.js";
+import { openEventPoolApp } from "../services/EventPoolMigration.js";
 import { DecisionTreeResolver } from "../services/DecisionTreeResolver.js";
 import { CraftingEngine } from "../services/CraftingEngine.js";
 import { ResourcePoolRoller } from "../services/ResourcePoolRoller.js";
@@ -323,6 +325,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             dismissCampfireCanvasPanel: RestSetupApp.#onDismissCampfireCanvasPanel,
             retryCampPitPlacement: RestSetupApp.#onRetryCampPitPlacement,
             dismissArtNudge: RestSetupApp.#onDismissArtNudge,
+            dismissEventPoolNudge: RestSetupApp.#onDismissEventPoolNudge,
+            openEventPoolCurator: RestSetupApp.#onOpenEventPoolCurator,
             openArtPackPatreon: RestSetupApp.#onOpenArtPackPatreon,
             openArtPackImport: RestSetupApp.#onOpenArtPackImport,
             selectTotmActivity: RestSetupApp.#onSelectTotmActivity,
@@ -1343,6 +1347,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
     }
 
+    /**
+     * Rebuilds the in-memory event pool after the GM saves eventPoolSelection.
+     * Needed because EventResolver.load() applies selection at ingest time.
+     */
+    async _refreshEventPool() {
+        const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain;
+        this._eventResolver = new EventResolver();
+        await this._loadData();
+        if (terrainTag) {
+            await this._loadTerrainEvents(terrainTag);
+        }
+    }
+
     async _loadData() {
         try {
             const activityResp = await fetch(`modules/${MODULE_ID}/data/activities/default_activities.json`);
@@ -1454,6 +1471,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (ImageResolver.hasArtPack && ImageResolver.hasStationTokens) return false;
         if (game.settings.get(MODULE_ID, "artNudgeSuppressed")) return false;
         const snoozedUntil = game.settings.get(MODULE_ID, "artNudgeSnoozedUntil");
+        if (snoozedUntil) {
+            const snoozeDate = new Date(snoozedUntil);
+            if (!isNaN(snoozeDate.getTime()) && snoozeDate > new Date()) return false;
+        }
+        return true;
+    }
+
+    /** GM-only banner when the curated event pool is empty for the current terrain. */
+    _shouldShowEventPoolNudge(terrainTag) {
+        if (!game.user.isGM) return false;
+        if (this._phase !== "events" || this._eventsRolled) return false;
+        if (countPoolEventsForTerrain(this._eventResolver, terrainTag) > 0) return false;
+        const snoozedUntil = game.settings.get(MODULE_ID, "eventPoolNudgeSnoozedUntil");
         if (snoozedUntil) {
             const snoozeDate = new Date(snoozedUntil);
             if (!isNaN(snoozeDate.getTime()) && snoozeDate > new Date()) return false;
@@ -2579,7 +2609,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 activityLabel = act?.name ?? null;
             }
 
-            const isBeddedDown = this._phase === "reflection"
+            const isBeddedDown = (this._phase === "events" || this._phase === "reflection")
                 && !this._nightWatchActorIds().has(c.id);
             return {
                 id: c.id,
@@ -2666,6 +2696,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     }
                 }
             }
+            // Group passes and failures rather than interlacing them in the chip row.
+            const isFailureChip = (r) => r === "failure" || r === "failure_complication";
+            activitySummary.sort((a, b) => Number(isFailureChip(a.result)) - Number(isFailureChip(b.result)));
 
             // Aggregate event item rewards into party discoveries (shown once, not per-character)
             const seenEvents = new Set();
@@ -2697,6 +2730,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const personalOutcomes = this._isGM
             ? this._outcomes
             : (this._outcomes ?? []).filter(o => this._myCharacterIds?.has(o.characterId));
+
+        // Grouped resolution cards: split each character's results into a Recovered
+        // (positive) cluster and a Setbacks (negative) cluster so the report card no
+        // longer interlaces pass/fail badges. Verdicts carry the activity/event name
+        // so a "Failed" badge reads in context.
+        const resolutionCards = this._phase === "resolve"
+            ? this._buildResolutionCards(personalOutcomes ?? [])
+            : [];
 
         let campScanData = null;
         let campMakeCampPlacementUnlocked = false;
@@ -2795,6 +2836,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // â”€â”€ Fire contribution UI context â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         let campFireIsLit = false;
+
+        // ── Fire bill: itemized requirements for the selected/previewed tier ──
+        const _fireBillLevel = this._campFirePreviewLevel ?? "embers";
+        const _COST_MAP = CampGearScanner.FIREWOOD_COST_BY_LEVEL;
+        const campSelectedFirewoodCost = _COST_MAP[_fireBillLevel] ?? 0;
+        const campPartyFirewood = campScanData?.totalFirewood ?? 0;
+        const campHasEnoughFirewood = campPartyFirewood >= campSelectedFirewoodCost;
+        const campCanLight = campScanData?.canLightFire ?? false;
         let campFireLitBy = null;
         let campFireLighters = [];
         let campFirewoodPledgeList = [];
@@ -3220,7 +3269,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const p = this._phase ?? "setup";
                 
                 // All terrains look in their specific folder.
-                const filename = (p === "activity" || p === "reflection" || p === "meal" || p === "travel" || p === "camp") ? "banner.png" : `${p}.png`;
+                const filename = (p === "activity" || p === "meal" || p === "travel" || p === "camp") ? "banner.png" : `${p}.png`;
                 return ImageResolver.terrainBanner(t, filename);
             })(),
             terrainBannerFallback: ImageResolver.fallbackBanner,
@@ -3263,6 +3312,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             allResolved,
             activityPhasePlayerOverview,
             outcomes: personalOutcomes ?? [],
+            resolutionCards,
             triggeredEvents: (this._triggeredEvents ?? []).map(e => {
                 // Resolve target IDs to actor names for the template
                 const targetNames = (e.targets ?? [])
@@ -3429,6 +3479,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campMinimalMode: this._phase === "camp",
             showArtNudge: this._phase === "camp" && this._shouldShowArtNudge(),
             artNudgeIsUpdate: this._phase === "camp" && ImageResolver.hasArtPack && !ImageResolver.hasStationTokens,
+            ...(this._phase === "events" && !this._eventsRolled ? (() => {
+                const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
+                const poolCount = countPoolEventsForTerrain(this._eventResolver, terrainTag);
+                const terrain = TerrainRegistry.get(terrainTag);
+                return {
+                    eventPoolCount: poolCount,
+                    showEventPoolNudge: this._shouldShowEventPoolNudge(terrainTag),
+                    eventPoolTerrainLabel: terrain?.label ?? terrainTag
+                };
+            })() : {
+                eventPoolCount: null,
+                showEventPoolNudge: false,
+                eventPoolTerrainLabel: ""
+            }),
             campPitPlacementCancelled: !!this._campPitPlacementCancelled,
             showCampfireCanvasPanel: !!this._showCampfireCanvasPanel,
             campMakeCampStep,
@@ -3444,6 +3508,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 return l.charAt(0).toUpperCase() + l.slice(1);
             })(),
             campFireLitBy,
+            campSelectedFirewoodCost,
+            campPartyFirewood,
+            campHasEnoughFirewood,
+            campCanLight,
             campFireLighters,
             campFirewoodPledgeList,
             campMyPledge,
@@ -4265,6 +4333,117 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         };
     }
 
+    /**
+     * Builds grouped resolution cards from raw rest outcomes. Each card splits its
+     * sub-outcomes and recovery readout into a positive (Recovered) cluster and a
+     * negative (Setbacks) cluster, and labels every verdict with the activity or
+     * event name so badges carry context on their own.
+     * @param {Array<Object>} outcomes
+     * @returns {Array<Object>}
+     */
+    _buildResolutionCards(outcomes) {
+        const activityResolver = this._activityResolver;
+
+        const classifyActivity = (result) => {
+            switch (result) {
+                case "exceptional": return { valence: "positive", label: "Exceptional", icon: "fas fa-star" };
+                case "success": return { valence: "positive", label: "Success", icon: "fas fa-check" };
+                case "failure":
+                case "failure_complication": return { valence: "negative", label: "Failed", icon: "fas fa-times" };
+                default: return { valence: "neutral", label: null, icon: "fas fa-circle" };
+            }
+        };
+        const classifyEvent = (resolvedOutcome) => {
+            switch (resolvedOutcome) {
+                case "triumph": return { valence: "positive", label: "Triumph", icon: "fas fa-star" };
+                case "success": return { valence: "positive", label: "Passed", icon: "fas fa-check" };
+                case "partial": return { valence: "partial", label: "Partial", icon: "fas fa-exclamation-triangle" };
+                case "failure":
+                case "failure_complication": return { valence: "negative", label: "Failed", icon: "fas fa-times" };
+                default: return { valence: "neutral", label: null, icon: "fas fa-moon" };
+            }
+        };
+
+        return (outcomes ?? []).map(o => {
+            const recovery = o.recovery ?? {};
+            const positives = [];
+            const setbacks = [];
+            const neutrals = [];
+
+            for (const sub of (o.outcomes ?? [])) {
+                if (sub.source === "event") {
+                    const cls = classifyEvent(sub.resolvedOutcome);
+                    // Passive discoveries (no check, but items found) read as a gain.
+                    if (cls.valence === "neutral" && (sub.items?.length || sub.effects?.length === 0)) {
+                        cls.valence = sub.items?.length ? "positive" : "neutral";
+                    }
+                    const enriched = {
+                        ...sub,
+                        displayName: sub.eventName ?? "Event",
+                        verdictLabel: cls.label,
+                        verdictIcon: cls.icon,
+                        valence: cls.valence
+                    };
+                    if (cls.valence === "positive") positives.push(enriched);
+                    else if (cls.valence === "neutral") neutrals.push(enriched);
+                    else setbacks.push(enriched);
+                } else {
+                    const act = sub.activityId ? activityResolver?.activities?.get(sub.activityId) : null;
+                    const cls = classifyActivity(sub.result);
+                    const enriched = {
+                        ...sub,
+                        displayName: act?.name ?? sub.activityId ?? "Activity",
+                        verdictLabel: cls.label,
+                        verdictIcon: cls.icon,
+                        valence: cls.valence
+                    };
+                    if (cls.valence === "positive") positives.push(enriched);
+                    else if (cls.valence === "neutral") neutrals.push(enriched);
+                    else setbacks.push(enriched);
+                }
+            }
+
+            const exhaustionSavePassed = !!recovery.exhaustionDC && recovery.exhaustionSaveResult === "passed";
+            const exhaustionSaveFailed = !!recovery.exhaustionDC && recovery.exhaustionSaveResult === "failed";
+            const hostileBlocksRecovery = recovery.comfortLevel === "hostile" && !(recovery.exhaustionDelta < 0);
+            const eventDamage = recovery.eventDamage ?? 0;
+            const hpRestored = recovery.hpRestored ?? 0;
+            const hdRestored = recovery.hdRestored ?? 0;
+            const hasGain = hpRestored > 0 || hdRestored > 0;
+
+            const exhaustionConditionLabel = recovery.comfortLevel === "hostile" ? "Hostile" : "Rough";
+
+            const hasRecovered = positives.length > 0 || exhaustionSavePassed || hasGain;
+            const hasSetback = setbacks.length > 0 || exhaustionSaveFailed
+                || hostileBlocksRecovery || eventDamage > 0 || !!o.eventDisrupted;
+
+            return {
+                characterId: o.characterId,
+                characterName: o.characterName,
+                comfortLevel: recovery.comfortLevel ?? null,
+                eventDisrupted: !!o.eventDisrupted,
+                gearDescriptors: recovery.gearDescriptors ?? [],
+                neutrals,
+                positives,
+                setbacks,
+                hasRecovered,
+                hasSetback,
+                hpRestored,
+                hdRestored,
+                hasGain,
+                gearBonusBedroll: !!recovery.gearBonuses?.hd,
+                exhaustionDC: recovery.exhaustionDC ?? null,
+                exhaustionAdvantage: !!recovery.exhaustionAdvantage,
+                exhaustionSavePassed,
+                exhaustionSaveFailed,
+                exhaustionDelta: recovery.exhaustionDelta ?? 0,
+                exhaustionConditionLabel,
+                hostileBlocksRecovery,
+                eventDamage
+            };
+        });
+    }
+
     _onRenderBindings(context, options) {
         // Re-center after content changes; dock Make Camp top-right so the map stays clear
         requestAnimationFrame(() => {
@@ -4343,6 +4522,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 });
             }
             CampfireMakeCampDialog.refreshIfOpen(this);
+        } else {
+            // Remove camp-specific class when NOT in camp phase (banner height etc.)
+            if (this.element) this.element.classList.remove("totm-camp-active");
         }
 
         // Bind travel activity selects (change event, not click)
@@ -4403,7 +4585,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
-        if (this._phase === "meal" || this._phase === "activity" || this._phase === "reflection") {
+        if (this._phase === "meal" || this._phase === "activity") {
             const drawerContainer = this.element?.querySelector(".campfire-drawer-content");
             if (drawerContainer) {
                 this._openCampfire();
@@ -6340,11 +6522,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this._mealChoices = this._mealChoices ?? new Map();
                 this._daysSinceLastRest = this._daysSinceLastRest ?? 1;
                 await this._autoProcessRations();
-                this._phase = "reflection";
                 await this._applyBeddingDown();
+                // Reflection phase skipped (v2.1) — advance straight to events.
+                await this._advanceToEvents();
+                return;
             } else {
-                this._phase = "reflection";
                 await this._applyBeddingDown();
+                // Reflection phase skipped (v2.1) — advance straight to events.
+                await this._advanceToEvents();
+                return;
             }
         }
 
@@ -6712,33 +6898,25 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         });
     }
 
-    receiveMealDayConsumeRequest(userId, consumeByCharacter) {
-        return this._meals.receiveMealDayConsumeRequest(userId, consumeByCharacter);
-    }
-
-    async receiveMealDayConsumed(userId, clientChoices) { await this._meals.receiveMealDayConsumed(userId, clientChoices); }
-
-    async receiveDehydrationPrompt(characterId, actorName, dc) { await this._meals.receiveDehydrationPrompt(characterId, actorName, dc); }
-
-    async receiveDehydrationResult(data) { await this._meals.receiveDehydrationResult(data); }
-
-    /**
-     * Meal -> Reflection: GM proceeds from meal phase.
-     * Applies consumption (decrements rations/waterskin) and updates tracking flags.
-     */
-    static async #onProceedFromMeal(event, target) { await this._meals.onProceedFromMeal(event, target); }
-
-    /**
-     * GM skips all unresolved dehydration saves, auto-failing them.
-     * Applies exhaustion and posts chat for each, then unblocks the flow.
-     */
-    static async #onSkipPendingSaves(event, target) { await this._meals.onSkipPendingSaves(event, target); }
-
     /**
      * Phase 3 (reflection) -> 4 (events): GM moves past campfire to the night.
-     * Applies fire level comfort modifications before events.
+     * NOTE: Reflection phase skipped (v2.1). This handler is retained in the
+     * action map but will not fire during normal flow. _advanceToEvents()
+     * is called directly after bedding down.
      */
     static async #onProceedToEvents(event, target) {
+        await this._advanceToEvents();
+    }
+
+    /**
+     * Advance from post-activity bedding directly to the events phase.
+     * Applies fire-level comfort modifiers, builds camp-preparation roll
+     * requests, and broadcasts the phase change.
+     *
+     * Formerly the body of #onProceedToEvents; extracted so it can be
+     * called inline when skipping the (now-removed) reflection pause.
+     */
+    async _advanceToEvents() {
         // Bedding / Zzz persist through events until resolve or encounter interrupt.
 
         // Restore default window size and center on screen so the full events
@@ -6760,7 +6938,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._eventsRolled = true;
             this._pendingCampRolls = [];
             await this._saveRestState();
-            await RestSetupApp.#onResolveEvents.call(this, event, target);
+            await RestSetupApp.#onResolveEvents.call(this, null, null);
             return;
         }
 
@@ -6769,7 +6947,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const FIRE_COMFORT_MOD = { unlit: -1, embers: 0, campfire: 0, bonfire: 1 };
         const fireComfortMod = FIRE_COMFORT_MOD[this._fireLevel] ?? 0;
         if (fireComfortMod !== 0 && this._engine) {
-            const comfortRank = COMFORT_RANK;
             let rank = COMFORT_RANK[this._engine.comfort] ?? 1;
             rank = Math.max(0, Math.min(3, rank + fireComfortMod));
             this._engine.comfort = RANK_TO_KEY[rank];
@@ -6784,10 +6961,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._closeCampfire();
 
         this._eventsRolled = false;
-        console.log(`[Respite:State] #onProceedToEvents â€” eventsRolled reset to false`);
+        console.log(`[Respite:State] _advanceToEvents — eventsRolled reset to false`);
         this._phase = "events";
+        this._eventPoolQuietNightBypass = false;
 
-        // â”€â”€ Camp Preparations: identify camp activities needing pre-event rolls â”€â”€
+        // ——— Camp Preparations: identify camp activities needing pre-event rolls ———
         this._pendingCampRolls = [];
         const campActivities = (this._activities ?? []).filter(a => a.category === "camp");
         const partyActors = getPartyActors();
@@ -6862,6 +7040,28 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         this.render();
     }
+
+    receiveMealDayConsumeRequest(userId, consumeByCharacter) {
+        return this._meals.receiveMealDayConsumeRequest(userId, consumeByCharacter);
+    }
+
+    async receiveMealDayConsumed(userId, clientChoices) { await this._meals.receiveMealDayConsumed(userId, clientChoices); }
+
+    async receiveDehydrationPrompt(characterId, actorName, dc) { await this._meals.receiveDehydrationPrompt(characterId, actorName, dc); }
+
+    async receiveDehydrationResult(data) { await this._meals.receiveDehydrationResult(data); }
+
+    /**
+     * Meal -> Reflection: GM proceeds from meal phase.
+     * Applies consumption (decrements rations/waterskin) and updates tracking flags.
+     */
+    static async #onProceedFromMeal(event, target) { await this._meals.onProceedFromMeal(event, target); }
+
+    /**
+     * GM skips all unresolved dehydration saves, auto-failing them.
+     * Applies exhaustion and posts chat for each, then unblocks the flow.
+     */
+    static async #onSkipPendingSaves(event, target) { await this._meals.onSkipPendingSaves(event, target); }
 
     /**
      * Phase 3: GM rolls for events. Performs the actual event table roll
@@ -9407,11 +9607,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Campfire panel lifecycle for players
-        if (phase === "reflection") {
-            this._openCampfire();
-        } else {
-            this._closeCampfire();
-        }
+        // NOTE: Reflection phase skipped (v2.1) — always close.
+        this._closeCampfire();
 
         // Activity phase: canvas station overlays for all clients; players minimise to the rest bar
         if (phase === "activity") {
@@ -9687,11 +9884,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Campfire panel lifecycle on snapshot restore
-        if (this._phase === "reflection") {
-            this._openCampfire();
-        } else {
-            this._closeCampfire();
-        }
+        // NOTE: Reflection phase skipped (v2.1) — always close.
+        this._closeCampfire();
 
         // Activity phase: same as receivePhaseChange (F5 rejoin after GM already advanced)
         const _isTheaterRestore = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return true; } })();
@@ -10337,7 +10531,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€ Make Camp Phase Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ——————————————————————————— Make Camp Phase Handlers ———————————————————————————
 
     /**
      * Player or GM lights the campfire during Make Camp.
@@ -10362,18 +10556,24 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             emitCampLightFire(game.user.id, actorId, method);
             return;
         }
-        await this._campCeremony.lightFire(game.user.id, actorId, method);
-        // In TotM mode, commit the pre-selected fire level (from the segment strip)
-        // so the proceed button unlocks and players see the correct fire state.
+        // Capture the preview level BEFORE lightFire (which resets it via pledge sync to "embers")
+        const previewLevel = this._campFirePreviewLevel ?? "embers";
         const _isTotm = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; } })();
-        if (_isTotm && (this._fireLevel ?? "unlit") === "unlit") {
-            const previewLevel = this._campFirePreviewLevel ?? "embers";
-            if (previewLevel === "cold_camp") {
-                // User pre-selected cold camp but clicked Light — honour cold camp
-                await this._campCeremony.decideColdCamp();
-            } else {
-                await this._runSetCampFireLevelForGm(previewLevel, null);
-            }
+
+        console.log(`[FIRE-DIAG] PRE-LIGHT: _campFirePreviewLevel=${JSON.stringify(this._campFirePreviewLevel)}, previewLevel=${previewLevel}, _fireLevel=${this._fireLevel}, isTotm=${_isTotm}`);
+
+        await this._campCeremony.lightFire(game.user.id, actorId, method);
+
+        console.log(`[FIRE-DIAG] POST-LIGHT: _fireLevel=${this._fireLevel}, _campFirePreviewLevel=${JSON.stringify(this._campFirePreviewLevel)}, previewLevel=${previewLevel}`);
+        console.log(`[FIRE-DIAG] GATE CHECK: isTotm=${_isTotm}, previewLevel!==cold_camp=${previewLevel !== "cold_camp"}, previewLevel!==embers=${previewLevel !== "embers"}, willCommit=${_isTotm && previewLevel !== "cold_camp" && previewLevel !== "embers"}`);
+
+        // In TotM mode, commit the pre-selected fire level from the segment strip
+        if (_isTotm && previewLevel !== "cold_camp" && previewLevel !== "embers") {
+            console.log(`[FIRE-DIAG] COMMITTING preview level: ${previewLevel}`);
+            await this._runSetCampFireLevelForGm(previewLevel, null, true);
+            console.log(`[FIRE-DIAG] POST-COMMIT: _fireLevel=${this._fireLevel}`);
+        } else {
+            console.log(`[FIRE-DIAG] SKIPPED commit. Final _fireLevel=${this._fireLevel}`);
         }
     }
 
@@ -10406,6 +10606,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const root = target?.closest?.("[data-action=\"selectCampFireLevel\"]") ?? target;
         const level = root?.dataset?.fireLevel;
         if (!level || !["embers", "campfire", "bonfire"].includes(level)) return;
+        // Block changes on the camp strip once fire is lit (players use fire tab after)
+        if (this._phase === "camp" && this._fireLitBy) return;
 
         // Activity-phase fire changes use a separate socket + handler
         // so the GM runs changeFireLevelDuringActivity (which confirms cost deltas).
@@ -10559,8 +10761,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     await this._autoProcessRations();
                 }
             }
-            this._phase = "reflection";
             await this._applyBeddingDown();
+            // Reflection phase skipped (v2.1) — advance straight to events.
+            await this._advanceToEvents();
+            return true;
         }
 
         // Broadcast phase change to players.
@@ -10872,6 +11076,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         banner?.remove();
+    }
+
+    static async #onDismissEventPoolNudge(event, target) {
+        const snoozeUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        await game.settings.set(MODULE_ID, "eventPoolNudgeSnoozedUntil", snoozeUntil);
+        await this._saveRestState();
+        this.render();
+    }
+
+    static #onOpenEventPoolCurator(event, target) {
+        const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
+        openEventPoolApp(terrainTag);
     }
 
     static #onOpenArtPackPatreon(event, target) {
@@ -11353,31 +11569,35 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return this._campCeremony.removeFirewoodPledge(userId);
     }
 
-    async _runSetCampFireLevelForGm(level, requestingUserId = null) {
+    async _runSetCampFireLevelForGm(level, requestingUserId = null, gmOverride = false) {
         if (!game.user.isGM) return;
         if (!["embers", "campfire", "bonfire"].includes(level)) return;
 
         const actors = getPartyActors();
-        const hasTinderbox = actors.some(a => a.items.some(i => {
-            const n = i.name?.toLowerCase() ?? "";
-            return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
-        }));
-        if (!hasTinderbox) {
-            ui.notifications.warn("No one has a tinderbox or flint & steel to start a fire.");
-            return;
+        if (!gmOverride) {
+            const hasTinderbox = actors.some(a => a.items.some(i => {
+                const n = i.name?.toLowerCase() ?? "";
+                return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
+            }));
+            if (!hasTinderbox) {
+                ui.notifications.warn("No one has a tinderbox or flint & steel to start a fire.");
+                return;
+            }
         }
 
         const cost = CampGearScanner.FIREWOOD_COST_BY_LEVEL[level] ?? 0;
-        const totalFirewood = actors.reduce((sum, a) => {
-            const it = a.items.find(i => {
-                const n = i.name?.toLowerCase() ?? "";
-                return n.includes("firewood") || n === "kindling";
-            });
-            return sum + (it?.system?.quantity ?? 0);
-        }, 0);
-        if (cost > totalFirewood) {
-            ui.notifications.warn("Not enough firewood in the party for that fire size.");
-            return;
+        if (!gmOverride) {
+            const totalFirewood = actors.reduce((sum, a) => {
+                const it = a.items.find(i => {
+                    const n = i.name?.toLowerCase() ?? "";
+                    return n.includes("firewood") || n === "kindling";
+                });
+                return sum + (it?.system?.quantity ?? 0);
+            }, 0);
+            if (cost > totalFirewood) {
+                ui.notifications.warn("Not enough firewood in the party for that fire size.");
+                return;
+            }
         }
 
         if (level === (this._fireLevel ?? "unlit")) return;
@@ -11538,6 +11758,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const root = target?.closest?.("[data-action=\"previewCampFireLevel\"]") ?? target;
         const level = root?.dataset?.fireLevel;
         if (!level || !["cold_camp", "embers", "campfire", "bonfire"].includes(level)) return;
+        // Block preview changes once fire is committed
+        if (this._fireLitBy) return;
         if (this._campFirePreviewLevel === level) return;
         this._campFirePreviewLevel = level;
         this.render();
@@ -11614,6 +11836,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             ui.notifications?.info("Already advanced from Make Camp.");
             return;
         }
+
         const fireOk = !isComfortEnabled() || (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided;
         if (!fireOk) {
             ui.notifications?.warn("Light the fire or declare cold camp before proceeding.");
