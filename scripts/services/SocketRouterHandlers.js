@@ -120,7 +120,7 @@ export function handleRestStarted(data, ctx) {
         }
         setTimeout(() => {
             const phase = ctx.activePlayerRestApp?._phase;
-            if (ctx.activePlayerRestApp?._openCampfire && (phase === "reflection" || phase === "meal" || phase === "activity")) {
+            if (ctx.activePlayerRestApp?._openCampfire && (phase === "meal" || phase === "activity")) {
                 console.log(`${MODULE_ID} | Opening campfire for player on rest start`);
                 ctx.activePlayerRestApp._openCampfire();
             }
