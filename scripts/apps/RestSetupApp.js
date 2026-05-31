@@ -10531,14 +10531,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             SoundDelegate.stopAll();
             this._phase = "resolve";
         } else {
-            // Auto-process rations (tavern terrain mealRules may set food/water to 0,
-            // but run the normal path to be safe).
-            const trackFood = game.settings.get(MODULE_ID, "trackFood");
-            const terrainMealRules = TerrainRegistry.getDefaults(terrain)?.mealRules ?? {};
-            if (trackFood && (terrainMealRules.waterPerDay > 0 || terrainMealRules.foodPerDay > 0)) {
-                this._mealChoices = this._mealChoices ?? new Map();
-                this._daysSinceLastRest = this._daysSinceLastRest ?? 1;
-                await this._autoProcessRations();
+            // Auto-process rations only for tavern terrain (the inn may still
+            // charge food/water).  Non-tavern safe rest spots waive meals
+            // entirely — no dehydration or starvation saves.
+            if (terrain === "tavern") {
+                const trackFood = game.settings.get(MODULE_ID, "trackFood");
+                const terrainMealRules = TerrainRegistry.getDefaults(terrain)?.mealRules ?? {};
+                if (trackFood && (terrainMealRules.waterPerDay > 0 || terrainMealRules.foodPerDay > 0)) {
+                    this._mealChoices = this._mealChoices ?? new Map();
+                    this._daysSinceLastRest = this._daysSinceLastRest ?? 1;
+                    await this._autoProcessRations();
+                }
             }
             this._phase = "reflection";
             await this._applyBeddingDown();
