@@ -161,7 +161,9 @@ function getActiveProfileId() {
 function markActiveProfile(scope = document) {
     const activeId = getActiveProfileId();
     scope.querySelectorAll(".respite-profile-btn").forEach(btn => {
-        btn.classList.toggle("is-active", btn.dataset.profile === activeId);
+        const id = btn.dataset.profile;
+        const active = id === "custom" ? activeId === null : id === activeId;
+        btn.classList.toggle("is-active", active);
     });
 }
 
@@ -259,8 +261,13 @@ export function enhanceRespiteSettings(root) {
                     <span class="rp-desc">${p.desc}</span>
                     <span class="rp-active"><i class="fas fa-circle-check"></i> Active</span>
                 </button>`).join("")}
+            <div class="respite-profile-btn respite-profile-custom" data-profile="custom">
+                <span class="rp-name"><i class="fas fa-pen-to-square"></i> Custom</span>
+                <span class="rp-desc">Your own mix of the options below.</span>
+                <span class="rp-active"><i class="fas fa-circle-check"></i> Active</span>
+            </div>
         </div>`;
-    quick.querySelectorAll(".respite-profile-btn").forEach(btn => {
+    quick.querySelectorAll(".respite-profile-btn:not(.respite-profile-custom)").forEach(btn => {
         btn.addEventListener("click", () => applyProfile(btn.dataset.profile));
     });
     container.insertBefore(quick, container.firstChild);
