@@ -3062,12 +3062,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const comfort = g("enableComfort");
                 const professions = g("enableProfessions");
                 const meals = g("trackFood");
-                const intercept = g("interceptRests");
                 return [
                     { on: comfort, icon: "fas fa-temperature-half", label: "Comfort", tooltip: comfort ? "Comfort tiers, fire, and exhaustion saves are on. Change under Recovery Rules." : "Comfort off: no fire phase and no terrain exhaustion saves. Change under Recovery Rules." },
                     { on: professions, icon: "fas fa-hammer", label: "Professions", tooltip: professions ? "Crafting professions and the travel phase are on. Change under Rest Activities." : "Professions off: the travel phase is skipped. Change under Rest Activities." },
-                    { on: meals, icon: "fas fa-drumstick-bite", label: "Meals", tooltip: meals ? "Food and water tracking is on; the Meal phase runs." : "Meal tracking off: no rations or dehydration saves. Change in module settings." },
-                    { on: intercept, icon: "fas fa-hand", label: "Intercept", tooltip: intercept ? "Native Short and Long Rest buttons route into this flow. Change under Player Restrictions." : "Native rest buttons are not intercepted. Change under Player Restrictions." }
+                    { on: meals, icon: "fas fa-drumstick-bite", label: "Meals", tooltip: meals ? "Food and water tracking is on; the Meal phase runs." : "Meal tracking off: no rations or dehydration saves. Change in module settings." }
                 ];
             })()
             : [];
