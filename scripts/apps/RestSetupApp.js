@@ -2674,17 +2674,33 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const scopedOutcomes = this._isGM
                 ? this._outcomes
                 : this._outcomes.filter(o => this._myCharacterIds?.has(o.characterId));
-            recoverySummary = scopedOutcomes.map(o => ({
-                name: o.characterName,
-                hp: o.recovery?.hpRestored ?? 0,
-                hd: o.recovery?.hdRestored ?? 0,
-                eventDamage: o.recovery?.eventDamage ?? 0,
-                exhaustionDelta: o.recovery?.exhaustionDelta ?? 0,
-                exhaustionDC: o.recovery?.exhaustionDC ?? 0,
-                exhaustionSaveResult: o.recovery?.exhaustionSaveResult ?? null,
-                gearBonuses: o.recovery?.gearBonuses ?? {},
-                gearDescriptors: o.recovery?.gearDescriptors ?? []
-            }));
+            recoverySummary = scopedOutcomes.map(o => {
+                const actor = game.actors?.get(o.characterId);
+                let hpAtMax = false;
+                let hdAtMax = false;
+                if (actor) {
+                    const hp = actor.system?.attributes?.hp;
+                    if (hp) hpAtMax = (hp.value ?? 0) >= (hp.max ?? 1);
+                    const classes = actor.items?.filter(i => i.type === "class") ?? [];
+                    const totalHdSpent = classes.reduce((sum, cls) => {
+                        return sum + (cls.system?.hd?.spent ?? cls.system?.hitDiceUsed ?? 0);
+                    }, 0);
+                    hdAtMax = totalHdSpent <= 0;
+                }
+                return {
+                    name: o.characterName,
+                    hp: o.recovery?.hpRestored ?? 0,
+                    hd: o.recovery?.hdRestored ?? 0,
+                    hpAtMax,
+                    hdAtMax,
+                    eventDamage: o.recovery?.eventDamage ?? 0,
+                    exhaustionDelta: o.recovery?.exhaustionDelta ?? 0,
+                    exhaustionDC: o.recovery?.exhaustionDC ?? 0,
+                    exhaustionSaveResult: o.recovery?.exhaustionSaveResult ?? null,
+                    gearBonuses: o.recovery?.gearBonuses ?? {},
+                    gearDescriptors: o.recovery?.gearDescriptors ?? []
+                };
+            });
             // Extract activity outcomes for badges
             for (const o of scopedOutcomes) {
                 for (const sub of (o.outcomes ?? [])) {
@@ -4432,6 +4448,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const hdRestored = recovery.hdRestored ?? 0;
             const hasGain = hpRestored > 0 || hdRestored > 0;
 
+            // Detect whether recovery fills the resource to max
+            const actor = game.actors?.get(o.characterId);
+            let hpAtMax = false;
+            let hdAtMax = false;
+            if (actor) {
+                const hp = actor.system?.attributes?.hp;
+                if (hp) hpAtMax = (hp.value ?? 0) >= (hp.max ?? 1);
+                const classes = actor.items?.filter(i => i.type === "class") ?? [];
+                const totalHdSpent = classes.reduce((sum, cls) => {
+                    return sum + (cls.system?.hd?.spent ?? cls.system?.hitDiceUsed ?? 0);
+                }, 0);
+                hdAtMax = totalHdSpent <= 0;
+            }
+
             const exhaustionConditionLabel = recovery.comfortLevel === "hostile" ? "Hostile" : "Rough";
 
             const hasRecovered = positives.length > 0 || exhaustionSavePassed || hasGain;
@@ -4451,6 +4481,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 hasSetback,
                 hpRestored,
                 hdRestored,
+                hpAtMax,
+                hdAtMax,
                 hasGain,
                 gearBonusBedroll: !!recovery.gearBonuses?.hd,
                 exhaustionDC: recovery.exhaustionDC ?? null,

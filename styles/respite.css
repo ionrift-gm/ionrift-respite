@@ -4381,6 +4381,9 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    max-width: 540px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .respite-event-card {
@@ -5122,6 +5125,9 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     padding: 1rem;
     overflow-y: auto;
     flex: 1;
+    max-width: 540px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .respite-outcome-card {
@@ -5346,6 +5352,12 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 .outcome-effect-line.outcome-gain i { color: #2ecc71; }
 .outcome-effect-line.outcome-loss { color: #e74c3c; }
 .outcome-effect-line.outcome-loss i { color: #e74c3c; }
+
+/* Partial recovery: when HP or HD didn't reach max */
+.outcome-effect-line.outcome-partial { color: rgba(251, 191, 36, 0.9); }
+.outcome-effect-line.outcome-partial i { color: rgba(251, 191, 36, 0.9); }
+.recovery-partial { color: rgba(251, 191, 36, 0.9); }
+.recovery-chip.recovery-partial { border-color: rgba(251, 191, 36, 0.35); }
 
 .respite-outcome-card .outcome-save-context {
     opacity: 0.55;
@@ -10352,10 +10364,14 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     display: flex;
     flex-direction: column;
     gap: 0.55rem;
-    padding: 0.75rem 0.85rem 0.85rem;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(196, 181, 253, 0.15);
-    border-radius: 6px;
+    padding: 0.75rem 1.25rem 0.85rem;
+    max-width: 540px;
+    margin-left: auto;
+    margin-right: auto;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(196, 181, 253, 0.18);
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
     animation: totmDetailIn 0.15s ease;
 }
 
@@ -17117,6 +17133,37 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     line-height: 1.3;
 }
 
+.event-pool-group-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0.4rem 0.1rem 0.15rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid rgba(255, 120, 90, 0.25);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 140, 110, 0.85);
+}
+
+.event-pool-group-divider i {
+    font-size: 0.7rem;
+}
+
+.event-pool-check-item.disaster {
+    color: rgba(255, 165, 140, 0.9);
+}
+
+.event-pool-check-item.disaster:hover,
+.event-pool-check-item.disaster.active {
+    background: rgba(255, 100, 70, 0.1);
+}
+
+.event-pool-check-item.disaster.active {
+    border-color: rgba(255, 120, 90, 0.4);
+}
+
 .event-pool-detail {
     min-height: 0;
     overflow-y: auto;
@@ -17224,6 +17271,109 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 }
 .event-outcome-row.failure .outcome-label {
     color: rgba(255, 120, 90, 0.9);
+}
+
+.event-decision-tree {
+    margin-top: 0.4rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.event-decision-header {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 140, 110, 0.85);
+    margin-bottom: 0.3rem;
+}
+
+.event-decision-prompt {
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.75);
+    margin: 0 0 0.4rem;
+}
+
+.event-decision-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.event-decision-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 4px;
+    border-left: 3px solid rgba(255, 120, 90, 0.45);
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.event-decision-option-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.event-decision-option-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 200, 180, 0.95);
+}
+
+.event-decision-dc {
+    flex: none;
+    font-size: 0.68rem;
+    color: rgba(180, 200, 255, 0.85);
+    white-space: nowrap;
+}
+
+.event-decision-option-desc {
+    font-size: 0.76rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.event-decision-branch {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.event-gm-guidance {
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 4px;
+    border-left: 3px solid rgba(155, 89, 182, 0.5);
+    background: rgba(109, 40, 217, 0.08);
+}
+
+.event-gm-guidance-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(179, 136, 255, 0.85);
+    margin-bottom: 0.25rem;
+}
+
+.event-gm-guidance p {
+    font-size: 0.76rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
 }
 
 /* ---- Roll Modifier Badges ---- */
