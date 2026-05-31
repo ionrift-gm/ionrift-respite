@@ -32,9 +32,18 @@ export class EventResolver {
             enabledPacks = game.settings.get("ionrift-respite", "enabledPacks");
         } catch (e) { /* setting may not exist yet */ }
 
+        let selection = null;
+        try {
+            selection = game.settings.get("ionrift-respite", "eventPoolSelection");
+        } catch (e) { /* setting may not exist yet */ }
+
         for (const event of eventData) {
             // Filter by pack if pack registry is active
             if (enabledPacks && event.pack && enabledPacks[event.pack] === false) {
+                continue;
+            }
+            // Opt-in pool: only events explicitly selected are eligible
+            if (selection && !selection[event.id]) {
                 continue;
             }
             this.events.set(event.id, event);
@@ -201,7 +210,7 @@ export class EventResolver {
             console.warn(`[Respite:EventResolver] No events available for terrain "${terrainTag}". Check Content Packs settings.`);
             await roll.toMessage({
                 speaker: { alias: "Night Watch" },
-                flavor: `<strong>Night check</strong> (${terrainTag}) threshold ${effectiveDC}<br><em>Roll is below threshold, but no events are available for this terrain. Check <strong>Content Packs</strong> in module settings.</em>`,
+                flavor: `<strong>Night check</strong> (${terrainTag}) threshold ${effectiveDC}<br><em>Roll is below threshold, but no events are in your pool for this terrain. Open <strong>Curate Event Pool</strong> in module settings to add events.</em>`,
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
             if (game.modules.get("dice-so-nice")?.active) {

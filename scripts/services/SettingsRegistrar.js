@@ -26,11 +26,11 @@ const MODULE_ID = "ionrift-respite";
  */
 export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientAfkChange }) {
 
-    // ── Event Browser (reference tool; content install lives in Patreon Library) ──
+    // ── Event Pool curation (per-event opt-in roll pool) ──
     game.settings.registerMenu(MODULE_ID, "eventBrowser", {
-        name: "Event Browser",
-        label: "Browse Events",
-        hint: "Read every event in packs enabled for this world, filtered by terrain.",
+        name: "Event Pool",
+        label: "Curate Event Pool",
+        hint: "Browse camp events and choose which ones can occur when you roll the night check.",
         icon: "fas fa-book-open",
         type: EventBrowserApp,
         restricted: true
@@ -360,6 +360,34 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         default: { base: true }
     });
 
+    game.settings.register(MODULE_ID, "eventPoolSelection", {
+        scope: "world",
+        config: false,
+        type: Object,
+        default: {}
+    });
+
+    game.settings.register(MODULE_ID, "eventPoolInitialized", {
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false
+    });
+
+    game.settings.register(MODULE_ID, "eventPoolNudgeSuppressed", {
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false
+    });
+
+    game.settings.register(MODULE_ID, "eventPoolNudgeSnoozedUntil", {
+        scope: "world",
+        config: false,
+        type: String,
+        default: ""
+    });
+
     game.settings.register(MODULE_ID, "importedPacks", {
         scope: "world",
         config: false,
@@ -643,6 +671,10 @@ export const SETTING_KEYS = [
     "activeRest",
     "activeShortRest",
     "enabledPacks",
+    "eventPoolSelection",
+    "eventPoolInitialized",
+    "eventPoolNudgeSuppressed",
+    "eventPoolNudgeSnoozedUntil",
     "importedPacks",
     "artPackDisabled",
     "artPackCache",
