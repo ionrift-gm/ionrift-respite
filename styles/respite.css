@@ -132,6 +132,17 @@
     background: rgba(126, 184, 218, 0.3);
 }
 
+.ionrift-armor-modal-buttons--stack {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.ionrift-armor-modal-buttons--stack button {
+    justify-content: center;
+    width: 100%;
+    padding: 0.55rem 0.9rem;
+}
+
 /* ---- Phase Banners ---- */
 
 .phase-banner {
@@ -5174,6 +5185,117 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 .respite-outcome-card .item-gained i {
     font-size: 0.7rem;
+}
+
+/* ---- Grouped resolution (Recovered / Setbacks) ---- */
+.respite-outcome-card .outcome-neutral {
+    margin-bottom: 0.45rem;
+}
+
+.respite-outcome-card .outcome-gear-descriptors {
+    opacity: 0.7;
+    font-size: 0.85em;
+    margin-bottom: 0.45rem;
+}
+
+.outcome-group {
+    border-radius: 6px;
+    padding: 0.4rem 0.55rem;
+    margin-bottom: 0.45rem;
+    border-left: 3px solid transparent;
+}
+
+.outcome-group--recovered {
+    background: rgba(46, 204, 113, 0.07);
+    border-left-color: rgba(46, 204, 113, 0.55);
+}
+
+.outcome-group--setback {
+    background: rgba(231, 76, 60, 0.07);
+    border-left-color: rgba(231, 76, 60, 0.55);
+}
+
+.outcome-group-header {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+}
+
+.outcome-group--recovered .outcome-group-header {
+    color: #2ecc71;
+}
+
+.outcome-group--setback .outcome-group-header {
+    color: #e74c3c;
+}
+
+.outcome-line {
+    padding: 0.2rem 0;
+}
+
+.outcome-line + .outcome-line {
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    margin-top: 0.2rem;
+    padding-top: 0.35rem;
+}
+
+.outcome-verdict-row {
+    margin-bottom: 0.15rem;
+}
+
+.outcome-verdict {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    font-size: 0.82rem;
+}
+
+.outcome-verdict .outcome-verdict-name {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.outcome-verdict .outcome-verdict-result {
+    font-weight: 700;
+    font-size: 0.72rem;
+    padding: 0.05rem 0.4rem;
+    border-radius: 3px;
+}
+
+.outcome-verdict.positive .outcome-verdict-result {
+    background: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+}
+
+.outcome-verdict.partial .outcome-verdict-result {
+    background: rgba(241, 196, 15, 0.2);
+    color: #f1c40f;
+}
+
+.outcome-verdict.negative .outcome-verdict-result {
+    background: rgba(231, 76, 60, 0.2);
+    color: #e74c3c;
+}
+
+.outcome-verdict.positive i { color: #2ecc71; }
+.outcome-verdict.partial i { color: #f1c40f; }
+.outcome-verdict.negative i { color: #e74c3c; }
+
+.outcome-effect-line.outcome-gain { color: #2ecc71; }
+.outcome-effect-line.outcome-gain i { color: #2ecc71; }
+.outcome-effect-line.outcome-loss { color: #e74c3c; }
+.outcome-effect-line.outcome-loss i { color: #e74c3c; }
+
+.respite-outcome-card .outcome-save-context {
+    opacity: 0.55;
+    font-size: 0.72rem;
+    font-style: italic;
+    margin-top: 0.1rem;
 }
 
 /* ---- Resolution Event Outcomes ---- */
@@ -16930,6 +17052,118 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     font-size: 0.7rem;
 }
 
+.event-pool-nudge-banner {
+    margin-bottom: 0.5rem;
+}
+
+.event-pool-curator-intro {
+    margin-bottom: 0.35rem;
+}
+
+/* Event Pool curation */
+.event-pool-summary {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: rgba(255, 200, 100, 0.85);
+    white-space: nowrap;
+    text-align: right;
+}
+
+.event-pool-intro {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.55);
+    margin: 0;
+    line-height: 1.35;
+}
+
+.event-pool-layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(180px, 34%) 1fr;
+    gap: 0.5rem;
+    min-height: 0;
+}
+
+.event-pool-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    overflow-y: auto;
+    padding: 0.35rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+}
+
+.event-pool-check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    padding: 0.3rem 0.4rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.event-pool-check-item:hover,
+.event-pool-check-item.active {
+    background: rgba(255, 200, 100, 0.08);
+}
+
+.event-pool-check-item.active {
+    border: 1px solid rgba(255, 200, 100, 0.25);
+}
+
+.event-pool-check-name {
+    line-height: 1.3;
+}
+
+.event-pool-detail {
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.event-pool-card-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 200, 100, 0.85);
+    margin: 0.2rem 0 0.4rem;
+    cursor: pointer;
+}
+
+.event-pool-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 0.25rem;
+}
+
+.event-pool-save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.9rem;
+    background: rgba(120, 90, 200, 0.35);
+    border: 1px solid rgba(180, 142, 173, 0.45);
+    border-radius: 5px;
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.event-pool-save-btn:hover:not([disabled]) {
+    background: rgba(120, 90, 200, 0.5);
+}
+
+.event-pool-save-btn[disabled] {
+    opacity: 0.35;
+    cursor: default;
+}
+
 /* Outcome Narratives */
 .event-outcomes-list {
     display: flex;
@@ -21110,7 +21344,7 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 .ionrift-respite-app .totm-camp-layout {
     display: grid;
-    grid-template-columns: 55% 45%;
+    grid-template-columns: 1fr 1fr;
     gap: 0.75rem;
     padding: 0.5rem 0.75rem 0;
     align-items: start;
@@ -21329,11 +21563,14 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(196, 181, 253, 0.14);
     border-radius: 10px;
-    padding: 0.65rem 0.7rem 0.7rem;
+    padding: 0.55rem 0.55rem 0.6rem;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     transition: border-color 0.4s ease, box-shadow 0.4s ease;
+    box-sizing: border-box;
+    min-width: 0;
+    overflow: hidden;
 }
 
 /* Fire lit: warm amber edge glow */
@@ -21454,9 +21691,75 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 }
 
 .ionrift-respite-app .totm-fire-light-btn.gm-light {
-    width: 100%;
     justify-content: center;
-    margin-top: 0.1rem;
+    flex: 1;
+    font-size: 0.62rem;
+    padding: 0.2rem 0.4rem;
+}
+
+/* Submit row: Light button + lighter count below the strip */
+/* ── Fire bill: itemized requirements ────────────────────── */
+.ionrift-respite-app .totm-fire-bill {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-top: 0.35rem;
+    padding: 0.4rem 0.5rem;
+    border-top: 1px solid rgba(200, 195, 220, 0.08);
+}
+
+.ionrift-respite-app .totm-fire-bill-line {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.65rem;
+    color: rgba(200, 195, 220, 0.6);
+}
+
+.ionrift-respite-app .totm-fire-bill-line.met i {
+    color: rgba(100, 220, 150, 0.8);
+}
+
+.ionrift-respite-app .totm-fire-bill-line.unmet i {
+    color: rgba(251, 100, 80, 0.8);
+}
+
+.ionrift-respite-app .totm-fire-bill-line.unmet span {
+    color: rgba(251, 100, 80, 0.7);
+}
+
+.ionrift-respite-app .totm-fire-bill-detail {
+    color: rgba(200, 195, 220, 0.35);
+    font-size: 0.6rem;
+}
+
+.ionrift-respite-app .totm-fire-bill-lighter {
+    cursor: help;
+}
+
+.ionrift-respite-app .totm-fire-bill-hint {
+    font-size: 0.62rem;
+    color: rgba(200, 195, 220, 0.4);
+    margin: 0.15rem 0 0;
+    font-style: italic;
+}
+
+.ionrift-respite-app .totm-fire-light-btn.gm-light-submit,
+.ionrift-respite-app .totm-fire-light-btn.player-light-submit {
+    justify-content: center;
+    font-size: 0.68rem;
+    padding: 0.3rem 0.5rem;
+    margin-top: 0.25rem;
+    border-radius: 6px;
+    border: 1px solid rgba(251, 146, 60, 0.5);
+    background: rgba(251, 146, 60, 0.15);
+    color: rgba(251, 146, 60, 0.95);
+    width: 100%;
+}
+.ionrift-respite-app .totm-fire-light-btn.gm-light-submit:hover,
+.ionrift-respite-app .totm-fire-light-btn.player-light-submit:hover {
+    background: rgba(251, 146, 60, 0.28);
+    border-color: rgba(251, 146, 60, 0.7);
 }
 
 /* GM state: count summary + light-for-them button side by side */
@@ -21677,30 +21980,7 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     gap: 0.3rem;
 }
 
-/* Cold camp button */
-.ionrift-respite-app .totm-fire-actions {
-    display: flex;
-    gap: 0.4rem;
-}
-
-.ionrift-respite-app .totm-cold-camp-btn {
-    font-size: 0.72rem;
-    padding: 0.28rem 0.65rem;
-    border-radius: 6px;
-    border: 1px solid rgba(100, 160, 255, 0.3);
-    background: rgba(100, 160, 255, 0.06);
-    color: rgba(130, 180, 255, 0.85);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    transition: background 0.15s, border-color 0.15s;
-}
-
-.ionrift-respite-app .totm-cold-camp-btn:hover {
-    background: rgba(100, 160, 255, 0.12);
-    border-color: rgba(100, 160, 255, 0.45);
-}
+/* Cold camp button — removed; merged into fire segment strip */
 
 /* ── Proceed footer ────────────────────────────────────────────────── */
 .ionrift-respite-app .totm-camp-footer {
@@ -21742,6 +22022,15 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     border: 1px dashed rgba(200, 195, 220, 0.15);
 }
 
+.ionrift-respite-app .totm-camp-proceed.cold-camp-confirm {
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.7) 0%, rgba(59, 130, 246, 0.8) 100%);
+    box-shadow: 0 0 18px rgba(96, 165, 250, 0.25);
+}
+.ionrift-respite-app .totm-camp-proceed.cold-camp-confirm:hover {
+    background: linear-gradient(135deg, rgba(130, 185, 255, 0.8) 0%, rgba(96, 165, 250, 0.9) 100%);
+    box-shadow: 0 0 28px rgba(96, 165, 250, 0.4);
+}
+
 .ionrift-respite-app .totm-camp-player-wait {
     font-size: 0.78rem;
     color: rgba(200, 195, 220, 0.55);
@@ -21756,6 +22045,358 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 .ionrift-respite-app .comfort-tier-badge.comfort-rough   { color: #fb923c; }
 .ionrift-respite-app .comfort-tier-badge.comfort-sheltered { color: #facc15; }
 .ionrift-respite-app .comfort-tier-badge.comfort-safe    { color: #4ade80; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   COMPACT INTEGRATED: Factor tile grid, rest chips, fire segments
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Phase banner compact: reduce height for camp phase ──────────── */
+.ionrift-respite-app.totm-camp-active .phase-banner {
+    height: 80px;
+}
+
+/* ── 2×2 Factor tile grid ────────────────────────────────────────── */
+.ionrift-respite-app .totm-camp-factors-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem;
+}
+
+.ionrift-respite-app .totm-factor-tile {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.45rem;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: default;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.ionrift-respite-app .totm-factor-tile.present {
+    border-color: rgba(100, 220, 150, 0.25);
+    background: rgba(100, 220, 150, 0.05);
+}
+
+.ionrift-respite-app .totm-factor-tile.missing {
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.ionrift-respite-app .totm-factor-tile.cold {
+    border-color: rgba(100, 160, 255, 0.2);
+    background: rgba(100, 160, 255, 0.04);
+}
+
+.ionrift-respite-app .totm-factor-tile-icon {
+    font-size: 0.72rem;
+    flex-shrink: 0;
+    width: 0.9rem;
+    text-align: center;
+}
+
+.ionrift-respite-app .totm-factor-tile.present .totm-factor-tile-icon {
+    color: rgba(100, 220, 150, 0.7);
+}
+
+.ionrift-respite-app .totm-factor-tile.missing .totm-factor-tile-icon {
+    color: rgba(200, 195, 220, 0.35);
+}
+
+.ionrift-respite-app .totm-factor-tile.fire.present .totm-factor-tile-icon {
+    color: rgba(251, 146, 60, 0.8);
+}
+
+.ionrift-respite-app .totm-factor-tile.fire.missing .totm-factor-tile-icon {
+    color: rgba(200, 195, 220, 0.35);
+}
+
+.ionrift-respite-app .totm-factor-tile.cold .totm-factor-tile-icon {
+    color: rgba(130, 180, 255, 0.6);
+}
+
+.ionrift-respite-app .totm-factor-tile-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    flex: 1;
+}
+
+.ionrift-respite-app .totm-factor-tile.present .totm-factor-tile-label {
+    color: rgba(100, 220, 150, 0.85);
+}
+
+.ionrift-respite-app .totm-factor-tile.missing .totm-factor-tile-label {
+    color: rgba(200, 195, 220, 0.45);
+}
+
+.ionrift-respite-app .totm-factor-tile.fire.present .totm-factor-tile-label {
+    color: rgba(251, 146, 60, 0.85);
+}
+
+.ionrift-respite-app .totm-factor-tile.fire.cold .totm-factor-tile-label,
+.ionrift-respite-app .totm-factor-tile.cold .totm-factor-tile-label {
+    color: rgba(130, 180, 255, 0.75);
+}
+
+.ionrift-respite-app .totm-factor-tile.fire.missing .totm-factor-tile-label {
+    color: rgba(200, 195, 220, 0.45);
+}
+
+.ionrift-respite-app .totm-factor-tile-status {
+    font-size: 0.6rem;
+    flex-shrink: 0;
+}
+
+.ionrift-respite-app .totm-factor-tile-status.present {
+    color: rgba(100, 220, 150, 0.9);
+}
+
+.ionrift-respite-app .totm-factor-tile-status.missing {
+    color: rgba(200, 195, 220, 0.3);
+}
+
+.ionrift-respite-app .totm-factor-tile-status.fire-active {
+    font-size: 0.72rem;
+}
+
+.ionrift-respite-app .totm-factor-tile-status.cold {
+    color: rgba(130, 180, 255, 0.7);
+}
+
+/* ── Rest card (comfort-colored wrapper) ─────────────────────────── */
+.ionrift-respite-app .totm-rest-card {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 0.25rem;
+}
+
+/* Tier-colored borders */
+.ionrift-respite-app .totm-rest-card.comfort-hostile  { border-color: rgba(248, 113, 113, 0.55); }
+.ionrift-respite-app .totm-rest-card.comfort-rough    { border-color: rgba(251, 146, 60, 0.5); }
+.ionrift-respite-app .totm-rest-card.comfort-sheltered { border-color: rgba(250, 204, 21, 0.4); }
+.ionrift-respite-app .totm-rest-card.comfort-safe     { border-color: rgba(74, 222, 128, 0.4); }
+
+/* Card header: tier name + "Your Rest" subtitle */
+.ionrift-respite-app .totm-rest-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.3rem 0.55rem;
+}
+
+.ionrift-respite-app .totm-rest-card-header.comfort-hostile {
+    background: rgba(248, 113, 113, 0.18);
+}
+.ionrift-respite-app .totm-rest-card-header.comfort-rough {
+    background: rgba(251, 146, 60, 0.16);
+}
+.ionrift-respite-app .totm-rest-card-header.comfort-sheltered {
+    background: rgba(250, 204, 21, 0.12);
+}
+.ionrift-respite-app .totm-rest-card-header.comfort-safe {
+    background: rgba(74, 222, 128, 0.12);
+}
+
+.ionrift-respite-app .totm-rest-card-title {
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+
+.ionrift-respite-app .totm-rest-card-header.comfort-hostile  .totm-rest-card-title { color: #f87171; }
+.ionrift-respite-app .totm-rest-card-header.comfort-rough    .totm-rest-card-title { color: #fb923c; }
+.ionrift-respite-app .totm-rest-card-header.comfort-sheltered .totm-rest-card-title { color: #facc15; }
+.ionrift-respite-app .totm-rest-card-header.comfort-safe     .totm-rest-card-title { color: #4ade80; }
+
+.ionrift-respite-app .totm-rest-card-subtitle {
+    font-size: 0.55rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(200, 195, 220, 0.4);
+}
+
+/* Card body: rest chips */
+.ionrift-respite-app .totm-rest-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.4rem 0.5rem;
+}
+
+/* Rest chips */
+.ionrift-respite-app .totm-rest-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.22rem 0.5rem;
+    border-radius: 5px;
+    line-height: 1.35;
+}
+
+.ionrift-respite-app .totm-rest-chip i {
+    font-size: 0.6rem;
+    flex-shrink: 0;
+}
+
+.ionrift-respite-app .totm-rest-chip.success {
+    color: rgba(74, 222, 128, 0.95);
+    background: rgba(74, 222, 128, 0.12);
+    border: 1px solid rgba(74, 222, 128, 0.25);
+}
+
+.ionrift-respite-app .totm-rest-chip.warning {
+    color: rgba(251, 191, 36, 1);
+    background: rgba(251, 191, 36, 0.12);
+    border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+.ionrift-respite-app .totm-rest-chip.amber,
+.ionrift-respite-app .totm-rest-chip.notice {
+    color: rgba(251, 191, 36, 1);
+    background: rgba(251, 191, 36, 0.12);
+    border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+.ionrift-respite-app .totm-rest-chip.danger {
+    color: rgba(248, 113, 113, 1);
+    background: rgba(248, 113, 113, 0.12);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+.ionrift-respite-app .totm-rest-chip.info {
+    color: rgba(148, 163, 184, 0.9);
+    background: rgba(148, 163, 184, 0.08);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+/* ── Fire segmented control ──────────────────────────────────────── */
+.ionrift-respite-app .totm-fire-segment-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.ionrift-respite-app .totm-fire-segments {
+    display: flex;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(251, 146, 60, 0.2);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.ionrift-respite-app .totm-fire-segment {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    padding: 0.5rem 0.15rem 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: rgba(255, 230, 190, 0.55);
+    background: transparent;
+    border: none;
+    border-right: 1px solid rgba(251, 146, 60, 0.12);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+    min-width: 0;
+    min-height: 3rem;
+}
+
+.ionrift-respite-app .totm-fire-segment:last-child {
+    border-right: none;
+}
+
+.ionrift-respite-app .totm-fire-segment:hover:not(.selected):not(:disabled) {
+    background: rgba(251, 146, 60, 0.08);
+    color: rgba(255, 230, 190, 0.8);
+}
+
+.ionrift-respite-app .totm-fire-segment.selected {
+    background: rgba(251, 146, 60, 0.35) !important;
+    color: rgba(255, 240, 210, 1) !important;
+    box-shadow: inset 0 -3px 0 rgba(251, 146, 60, 0.85);
+    text-shadow: 0 0 8px rgba(251, 146, 60, 0.3);
+}
+
+.ionrift-respite-app .totm-fire-segment.disabled,
+.ionrift-respite-app .totm-fire-segment:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.ionrift-respite-app .totm-fire-segment-cost {
+    font-size: 0.58rem;
+    font-weight: 500;
+    color: rgba(200, 175, 140, 0.5);
+    font-style: italic;
+    white-space: nowrap;
+}
+
+.ionrift-respite-app .totm-fire-segment-label {
+    white-space: nowrap;
+}
+
+.ionrift-respite-app .totm-fire-segment.selected .totm-fire-segment-cost {
+    color: rgba(200, 175, 140, 0.7);
+}
+
+.ionrift-respite-app .totm-fire-segment-desc {
+    margin: 0;
+    font-size: 0.68rem;
+    color: rgba(210, 195, 175, 0.7);
+    line-height: 1.4;
+    padding: 0.15rem 0.1rem 0;
+}
+
+.ionrift-respite-app .totm-fire-segment-locked {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: rgba(251, 146, 60, 0.65);
+    font-style: italic;
+}
+
+/* Cold Camp segment: blue/cool tones to contrast with amber fire tiers */
+.ionrift-respite-app .totm-fire-segment.cold-camp {
+    color: rgba(130, 180, 255, 0.7);
+    border-right: 1px solid rgba(96, 165, 250, 0.15);
+}
+
+.ionrift-respite-app .totm-fire-segment.cold-camp .totm-fire-segment-cost {
+    color: rgba(130, 180, 255, 0.4);
+}
+
+.ionrift-respite-app .totm-fire-segment.cold-camp:hover:not(.selected):not(:disabled) {
+    background: rgba(96, 165, 250, 0.08);
+    color: rgba(130, 180, 255, 0.9);
+}
+
+.ionrift-respite-app .totm-fire-segment.cold-camp.selected {
+    background: rgba(96, 165, 250, 0.3) !important;
+    color: rgba(160, 200, 255, 1) !important;
+    box-shadow: inset 0 -3px 0 rgba(96, 165, 250, 0.85);
+    text-shadow: 0 0 8px rgba(96, 165, 250, 0.3);
+}
+
+.ionrift-respite-app .totm-fire-segment.cold-camp.selected .totm-fire-segment-cost {
+    color: rgba(130, 180, 255, 0.6);
+}
+
+.ionrift-respite-app .totm-fire-segment.cold-camp i {
+    font-size: 0.55rem;
+    line-height: 1;
+    margin-bottom: -0.1rem;
+}
 
 /* ═══════════════════════════════════════════════════════════
    SETTINGS CONFIG SUBMENUS (shared by Activity, Recovery, Player Restrictions)

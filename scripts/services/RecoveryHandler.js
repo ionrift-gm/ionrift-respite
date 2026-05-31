@@ -474,7 +474,7 @@ export class RecoveryHandler {
             const passed = roll.total >= recovery.exhaustionDC;
 
             // Post the save roll to chat (GM-whispered)
-            const advLabel = advantage ? " (advantage from hot meal)" : "";
+            const advLabel = advantage ? " (mess kit gives advantage)" : "";
             await roll.toMessage({
                 speaker: ChatMessage.getSpeaker({ actor }),
                 flavor: `<strong>${actor.name}</strong>: CON save vs exhaustion DC ${recovery.exhaustionDC}${advLabel}`,
