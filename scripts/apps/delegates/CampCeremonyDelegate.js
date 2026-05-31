@@ -55,7 +55,14 @@ export class CampCeremonyDelegate {
      * @returns {string}
      */
     deriveCampFireLevel() {
-        if (!this.fireLitBy) return "unlit";
+        if (!this.fireLitBy) {
+            // Persisted fireLevel may survive a save/restore cycle where
+            // fireLitBy was lost. Honour the persisted level so the
+            // delegate stays consistent with isFireCommitted() and the
+            // player-side campFireIsLit check.
+            const persisted = this._app._fireLevel ?? "unlit";
+            return persisted !== "unlit" ? persisted : "unlit";
+        }
         const total = this._totalPledged();
         if (total <= 0) return "embers";
         if (total === 1) return "campfire";
@@ -123,7 +130,7 @@ export class CampCeremonyDelegate {
      */
     async addFirewoodPledge(userId, actorId) {
         if (!game.user.isGM) return;
-        if (!this.fireLitBy) {
+        if (!this.fireLitBy && this.fireLevel === "unlit") {
             ui.notifications.warn("Light the fire first.");
             return;
         }
@@ -154,7 +161,7 @@ export class CampCeremonyDelegate {
      */
     async addGmFirewoodPledge() {
         if (!game.user.isGM) return;
-        if (!this.fireLitBy) {
+        if (!this.fireLitBy && this.fireLevel === "unlit") {
             ui.notifications.warn("Light the fire first.");
             return;
         }

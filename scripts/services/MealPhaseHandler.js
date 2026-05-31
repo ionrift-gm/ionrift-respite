@@ -1214,16 +1214,14 @@ export class MealPhaseHandler {
         const defaultFoodIcon = useEssenceTray
             ? "icons/commodities/gems/gem-rough-white-blue.webp"
             : "icons/consumables/food/bread-loaf-round-white.webp";
-        const containerIds = _collectContainerIds(actor.items);
 
         for (const item of actor.items) {
             const qty = item.system?.quantity ?? 1;
             if (qty <= 0) continue;
 
-            // Skip items stored inside a container — they are accessed
-            // through their parent container, not independently.
-            const parentId = _getContainerParentId(item);
-            if (parentId && containerIds.has(parentId)) continue;
+            // Food inside any container (backpack, bag of holding, etc.)
+            // is accessible and should appear in the meal tray.
+            // No container exclusion for food items.
 
             const allowed = useEssenceTray
                 ? ItemClassifier.isEssenceMealFoodOption(item, actor)
@@ -1260,14 +1258,32 @@ export class MealPhaseHandler {
         const options = [];
         const containerIds = _collectContainerIds(actor.items);
 
+        // Build a set of container IDs that are water sources (Waterskin
+        // containers). Items inside these are accounted for via the
+        // parent entry; items inside mundane containers (backpacks)
+        // should still appear as standalone options.
+        const waterContainerIds = new Set();
+        for (const item of actor.items) {
+            if (!_isContainerType(item)) continue;
+            if (!containerIds.has(item.id)) continue;
+            // A container is a water source if it's classified as water
+            // or has the resourceType: "water" flag.
+            const flaggedWater = item.flags?.[MODULE_ID]?.resourceType === "water";
+            if (flaggedWater || ItemClassifier.isWater(item, actor)) {
+                waterContainerIds.add(item.id);
+            }
+        }
+
         for (const item of actor.items) {
             const qty = item.system?.quantity ?? 1;
             if (qty <= 0) continue;
 
-            // Skip items stored inside a container — their pints are
-            // accounted for by the parent container entry.
+            // Only skip items stored inside a water-source container
+            // (e.g. Water Pints inside a Waterskin container) — their
+            // pints are accounted for by the parent container entry.
+            // Items inside mundane containers (backpacks) pass through.
             const parentId = _getContainerParentId(item);
-            if (parentId && containerIds.has(parentId)) continue;
+            if (parentId && waterContainerIds.has(parentId)) continue;
 
             const isWater = ItemClassifier.isWater(item, actor);
             if (!isWater) continue;
