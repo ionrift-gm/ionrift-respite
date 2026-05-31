@@ -3225,7 +3225,10 @@
         <div class="outcome-group outcome-group--recovered">
             <div class="outcome-group-header"><i class="fas fa-leaf"></i> Recovered</div>
             {{#if hasGain}}
-            <div class="outcome-effect-line outcome-gain"><i class="fas fa-heart"></i> +{{hpRestored}} HP, +{{hdRestored}} HD{{#if gearBonusBedroll}} <span class="gear-annotation">(+1 bedroll)</span>{{/if}}</div>
+            <div class="outcome-effect-line outcome-gain{{#unless hpAtMax}}{{#unless hdAtMax}} outcome-partial{{/unless}}{{/unless}}">
+                <i class="fas fa-heart"></i>
+                {{#if hpAtMax}}Max HP{{else}}<span class="recovery-partial">+{{hpRestored}} HP</span>{{/if}}, {{#if hdAtMax}}Max HD{{else}}<span class="recovery-partial">+{{hdRestored}} HD</span>{{/if}}{{#if gearBonusBedroll}} <span class="gear-annotation">(+1 bedroll)</span>{{/if}}
+            </div>
             {{/if}}
             {{#if exhaustionSavePassed}}
             <div class="outcome-effect-line outcome-gain"><i class="fas fa-bed"></i> CON save DC {{exhaustionDC}}{{#if exhaustionAdvantage}} <span class="gear-annotation">(mess kit gives advantage)</span>{{/if}} <span class="exhaustion-recovered">Passed (no exhaustion gained)</span></div>
@@ -3296,7 +3299,7 @@
         {{#if recoverySummary.length}}
         <div class="recovery-preview">
             {{#each recoverySummary}}
-            <span class="recovery-chip{{#if eventDamage}} has-damage{{/if}}">{{name}}: +{{hp}} HP, +{{hd}} HD{{#if gearBonuses.hd}} <span class="gear-annotation">(+1 bedroll)</span>{{/if}}{{#if eventDamage}}, <span class="event-damage">-{{eventDamage}} dmg</span>{{/if}}{{#if exhaustionDC}}{{#if exhaustionDelta}}{{#if (gt exhaustionDelta 0)}}, <span class="exhaustion-gained">+{{exhaustionDelta}} Exhaustion</span>{{else}}, <span class="exhaustion-recovered">exhaustion save: passed{{#if gearBonuses.exhaustionAdvantage}} (advantage){{/if}}</span>{{/if}}{{else}} <span class="gear-annotation">(CON DC {{exhaustionDC}}{{#if gearBonuses.exhaustionAdvantage}}, advantage{{/if}})</span>{{/if}}{{/if}}{{#unless exhaustionDC}}{{#if exhaustionDelta}}{{#if (gt exhaustionDelta 0)}}, <span class="exhaustion-gained">+{{exhaustionDelta}} Exhaustion</span>{{else}}, <span class="exhaustion-recovered">{{exhaustionDelta}} Exhaustion</span>{{/if}}{{/if}}{{/unless}}</span>
+            <span class="recovery-chip{{#if eventDamage}} has-damage{{/if}}{{#unless hpAtMax}}{{#unless hdAtMax}} recovery-partial{{/unless}}{{/unless}}">{{name}}: {{#if hpAtMax}}Max HP{{else}}+{{hp}} HP{{/if}}, {{#if hdAtMax}}Max HD{{else}}+{{hd}} HD{{/if}}{{#if gearBonuses.hd}} <span class="gear-annotation">(+1 bedroll)</span>{{/if}}{{#if eventDamage}}, <span class="event-damage">-{{eventDamage}} dmg</span>{{/if}}{{#if exhaustionDC}}{{#if exhaustionDelta}}{{#if (gt exhaustionDelta 0)}}, <span class="exhaustion-gained">+{{exhaustionDelta}} Exhaustion</span>{{else}}, <span class="exhaustion-recovered">exhaustion save: passed{{#if gearBonuses.exhaustionAdvantage}} (advantage){{/if}}</span>{{/if}}{{else}} <span class="gear-annotation">(CON DC {{exhaustionDC}}{{#if gearBonuses.exhaustionAdvantage}}, advantage{{/if}})</span>{{/if}}{{/if}}{{#unless exhaustionDC}}{{#if exhaustionDelta}}{{#if (gt exhaustionDelta 0)}}, <span class="exhaustion-gained">+{{exhaustionDelta}} Exhaustion</span>{{else}}, <span class="exhaustion-recovered">{{exhaustionDelta}} Exhaustion</span>{{/if}}{{/if}}{{/unless}}</span>
             {{/each}}
             {{#each activitySummary}}
             <span class="recovery-chip {{#if (eq result 'failure')}}failure{{/if}}{{#if (eq result 'failure_complication')}}failure{{/if}}">
