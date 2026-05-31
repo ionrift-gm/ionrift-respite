@@ -66,7 +66,6 @@ export const RANK_TO_KEY = ["hostile", "rough", "sheltered", "safe"];
 /** Activity icon mapping */
 export const ACTIVITY_ICONS = {
     act_keep_watch: "fas fa-eye", act_rest_fully: "fas fa-bed",
-    act_study: "fas fa-book",
     act_scout: "fas fa-binoculars", act_tell_tales: "fas fa-theater-masks",
     act_tend_wounds: "fas fa-hand-holding-medical", act_pray: "fas fa-pray",
     act_cook: "fas fa-utensils", act_brew: "fas fa-flask", act_tailor: "fas fa-cut",
@@ -78,7 +77,6 @@ export const ACTIVITY_ICONS = {
 
 /** Static fallback hints for activities without dynamic advisories */
 const ACTIVITY_HINTS_STATIC = {
-    act_study: "Skill check DC 12. On success, GM may share a clue or detail",
     act_tell_tales: "Performance DC 10. Inspiration for one ally, all on exceptional",
     act_cook: "Prepare a meal from ingredients",
     act_brew: "Brew a potion or salve",
@@ -285,8 +283,8 @@ export const CAMP_STATIONS = [
         label: "Workbench",
         icon: "fas fa-tools",
         furnitureKey: "table",
-        tagline: "Identify, study, scribe",
-        activities: ["act_identify", "act_study", "act_scribe"]
+        tagline: "Identify, scribe",
+        activities: ["act_identify", "act_scribe"]
     },
     {
         id: "weapon_rack",

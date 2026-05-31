@@ -59,15 +59,7 @@ export class PlayerRestrictionsApp extends foundry.applications.api.ApplicationV
         el.classList.add("respite-settings-config");
 
         let html = `
-        <div class="settings-config-header">
-            <span class="settings-config-title">
-                <i class="fas fa-user-lock"></i>
-                Player Restrictions
-            </span>
-            <span class="settings-config-subtitle">
-                Control what players can do outside the GM rest flow.
-            </span>
-        </div>
+        <p class="settings-config-lead">Control what players can do outside the GM rest flow.</p>
         <div class="settings-config-list">`;
 
         for (const toggle of context.toggles) {

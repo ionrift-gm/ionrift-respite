@@ -237,6 +237,47 @@
     letter-spacing: 0.05em;
 }
 
+/* ---- Setup: rest configuration summary ---- */
+.rest-config-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0.6rem 0 0.2rem;
+}
+
+.rest-config-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.18rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    cursor: help;
+    white-space: nowrap;
+}
+
+.rest-config-badge i {
+    font-size: 0.62rem;
+}
+
+.rest-config-badge.is-on {
+    background: rgba(46, 204, 113, 0.12);
+    border-color: rgba(46, 204, 113, 0.3);
+    color: rgba(120, 220, 160, 0.9);
+}
+
+.rest-config-badge.is-off {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.rest-config-badge.is-off i {
+    opacity: 0.6;
+}
+
 /* ---- Camp Status Bar ---- */
 
 .camp-status-bar {
@@ -1568,6 +1609,15 @@
     line-height: 1.4;
     color: rgba(255, 230, 210, 0.82);
     overflow-wrap: anywhere;
+}
+.camp-fire-tier-body .fire-benefit {
+    color: rgba(134, 239, 172, 0.9);
+}
+.camp-fire-tier-body .fire-risk {
+    color: rgba(251, 146, 60, 0.85);
+}
+.camp-fire-tier-body .fire-penalty {
+    color: rgba(248, 113, 113, 0.85);
 }
 
 .camp-fire-tier-comfort {
@@ -4603,6 +4653,12 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 /* Disaster choice card */
 .disaster-choice-card { border-left-color: #e74c3c !important; }
+.disaster-guidance {
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.55);
+    margin: 0.4rem 0 0.1rem;
+}
 .disaster-buttons {
     display: flex;
     flex-direction: column;
@@ -11303,64 +11359,6 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 }
 
 /* ============================================================
-   REFLECTION PHASE
-   ============================================================ */
-
-.respite-reflection {
-    padding: 0 0.75rem;
-}
-
-.reflection-intro {
-    text-align: center;
-    padding: 0.5rem 0 0.4rem;
-    color: rgba(200, 200, 200, 0.45);
-    font-style: italic;
-    font-size: 0.75rem;
-}
-
-.reflection-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.35rem;
-    padding-bottom: 0.5rem;
-}
-
-.reflection-tile {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 0.45rem 0.35rem;
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 4px;
-    text-align: center;
-    cursor: default;
-    filter: grayscale(0.35);
-    opacity: 0.78;
-    user-select: none;
-}
-
-.reflection-tile-icon {
-    font-size: 0.95rem;
-    color: rgba(180, 180, 180, 0.55);
-    margin-bottom: 0.2rem;
-}
-
-.reflection-tile-label {
-    font-size: 0.68rem;
-    font-weight: 600;
-    color: rgba(200, 200, 200, 0.55);
-    margin-bottom: 0.12rem;
-}
-
-.reflection-tile-hint {
-    font-size: 0.6rem;
-    line-height: 1.2;
-    color: rgba(160, 160, 160, 0.4);
-}
-
-/* ============================================================
    CAMPFIRE FIRE-LEVEL CONTROL
    ============================================================ */
 
@@ -17562,6 +17560,112 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     overflow: hidden;
 }
 
+/* Meal-tracking toggles (folded in from the settings panel) */
+.diet-global-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.6rem 0.7rem;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.diet-global-section .diet-global-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.diet-global-section .diet-global-title i {
+    margin-right: 0.35rem;
+    color: rgba(255, 180, 90, 0.7);
+}
+
+.diet-global-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    cursor: pointer;
+}
+
+.diet-global-toggle.is-disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.diet-global-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.diet-global-switch {
+    position: relative;
+    flex-shrink: 0;
+    width: 34px;
+    height: 18px;
+    margin-top: 0.15rem;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transition: background 0.15s ease;
+}
+
+.diet-global-switch::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.75);
+    transition: transform 0.15s ease;
+}
+
+.diet-global-toggle input:checked + .diet-global-switch {
+    background: rgba(100, 180, 255, 0.5);
+    border-color: rgba(100, 180, 255, 0.6);
+}
+
+.diet-global-toggle input:checked + .diet-global-switch::after {
+    transform: translateX(16px);
+    background: #fff;
+}
+
+.diet-global-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.diet-global-name {
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.diet-global-tag {
+    margin-left: 0.3rem;
+    padding: 0 0.3rem;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 180, 90, 0.85);
+    border: 1px solid rgba(255, 180, 90, 0.4);
+    border-radius: 4px;
+    vertical-align: middle;
+}
+
+.diet-global-hint {
+    font-size: 0.68rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.45);
+}
+
 /* Summary bar */
 .diet-summary-bar {
     display: flex;
@@ -22050,10 +22154,8 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
    COMPACT INTEGRATED: Factor tile grid, rest chips, fire segments
    ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Phase banner compact: reduce height for camp phase ──────────── */
-.ionrift-respite-app.totm-camp-active .phase-banner {
-    height: 80px;
-}
+/* ── Phase banner: consistent height across all phases ───────────── */
+/* Inherits the base .phase-banner height (120px).                    */
 
 /* ── 2×2 Factor tile grid ────────────────────────────────────────── */
 .ionrift-respite-app .totm-camp-factors-grid {
@@ -22355,6 +22457,15 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     line-height: 1.4;
     padding: 0.15rem 0.1rem 0;
 }
+.ionrift-respite-app .totm-fire-segment-desc .fire-benefit {
+    color: rgba(134, 239, 172, 0.9);
+}
+.ionrift-respite-app .totm-fire-segment-desc .fire-risk {
+    color: rgba(251, 146, 60, 0.85);
+}
+.ionrift-respite-app .totm-fire-segment-desc .fire-penalty {
+    color: rgba(248, 113, 113, 0.85);
+}
 
 .ionrift-respite-app .totm-fire-segment-locked {
     display: flex;
@@ -22420,38 +22531,15 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     min-height: 0;
 }
 
-/* Header — distinguished from setting rows (no card background) */
-.settings-config-header,
-.activity-config-header {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    padding: 0.25rem 0.2rem 0.5rem;
-    background: none;
-    border: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 0;
-}
-
-.settings-config-title,
-.activity-config-title {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.8);
-    letter-spacing: 0.02em;
-}
-
-.settings-config-title i,
-.activity-config-title i {
-    color: rgba(155, 89, 182, 0.7);
-    margin-right: 0.3rem;
-}
-
-.settings-config-subtitle,
-.activity-config-subtitle {
-    font-size: 0.68rem;
-    color: rgba(255, 255, 255, 0.35);
-    font-style: italic;
+/* Intro lead — the window title bar already names the panel, so the body
+   shows only a short description and lets the option cards carry the weight. */
+.settings-config-lead,
+.activity-config-lead {
+    margin: 0.1rem 0.2rem 0.4rem;
+    padding: 0;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.4);
 }
 
 /* Toggle list */
@@ -22491,18 +22579,18 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 
 .settings-config-label,
 .activity-config-label {
-    font-size: 0.78rem;
+    font-size: 0.86rem;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.82);
+    color: rgba(255, 255, 255, 0.92);
 }
 
 .settings-config-icon,
 .activity-config-icon {
     width: 1.1rem;
     text-align: center;
-    color: rgba(155, 89, 182, 0.55);
-    margin-right: 0.25rem;
-    font-size: 0.72rem;
+    color: rgba(155, 89, 182, 0.85);
+    margin-right: 0.3rem;
+    font-size: 0.8rem;
 }
 
 .settings-config-hint,
@@ -22673,5 +22761,148 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 .settings-config-save-btn i,
 .activity-config-save-btn i {
     font-size: 0.7rem;
+}
+
+/* ─────────────────────────────────────────────────────────────────── */
+/*  Settings panel: Respite section lead, group headers, guide button  */
+/*  Injected into Foundry's native Settings window by                  */
+/*  SettingsPanelLayout.js. Tuned to sit alongside the kernel's amber  */
+/*  divider rather than the dark-glass module windows.                 */
+/* ─────────────────────────────────────────────────────────────────── */
+.respite-settings-lead {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin: 0.25rem 0 0.6rem;
+    padding: 0.55rem 0.7rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    border-radius: 6px;
+    background: rgba(200, 160, 60, 0.08);
+    border: 1px solid rgba(200, 160, 60, 0.28);
+}
+
+.respite-settings-lead i {
+    margin-top: 0.1rem;
+    color: rgba(200, 160, 60, 0.9);
+}
+
+/* Quick Setup card: one-click play-style profiles in the hero slot */
+.respite-quick-setup {
+    margin: 0 0 0.7rem;
+    padding: 0.6rem 0.7rem;
+    border: 1px solid rgba(200, 160, 60, 0.28);
+    border-radius: 6px;
+    background: rgba(200, 160, 60, 0.06);
+}
+
+.respite-quick-setup-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.respite-quick-setup-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.respite-quick-setup-title i {
+    color: rgba(200, 160, 60, 0.9);
+    margin-right: 0.35rem;
+}
+
+.respite-quick-setup-sub {
+    font-size: 0.72rem;
+    opacity: 0.6;
+}
+
+.respite-quick-setup-options {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.respite-profile-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+    width: auto;
+    height: auto;
+    padding: 0.5rem 0.6rem;
+    line-height: 1.3;
+    text-align: left;
+}
+
+.respite-profile-btn:hover {
+    border-color: rgba(200, 160, 60, 0.6);
+}
+
+.respite-profile-btn .rp-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.respite-profile-btn .rp-name i {
+    color: rgba(200, 160, 60, 0.9);
+    margin-right: 0.3rem;
+}
+
+.respite-profile-btn .rp-desc {
+    font-size: 0.68rem;
+    opacity: 0.6;
+    white-space: normal;
+}
+
+/* Profile confirm dialog (Ionrift glass) */
+.respite-profile-confirm table {
+    width: 100%;
+    margin: 0.4rem 0;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.respite-profile-confirm td {
+    padding: 0.15rem 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.respite-profile-confirm td:last-child {
+    text-align: right;
+    font-weight: 600;
+}
+
+.respite-profile-confirm td.on {
+    color: #7ddc8f;
+}
+
+.respite-profile-confirm td.off {
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.respite-profile-note {
+    font-size: 0.72rem;
+    opacity: 0.6;
+    margin-top: 0.4rem;
+}
+
+.respite-settings-group-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0.75rem 0 0.25rem;
+    padding-bottom: 0.2rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    opacity: 0.75;
+    border-bottom: 1px solid rgba(200, 160, 60, 0.22);
+}
+
+.respite-settings-group-header i {
+    color: rgba(200, 160, 60, 0.85);
 }
 

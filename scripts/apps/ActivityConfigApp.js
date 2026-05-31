@@ -28,12 +28,6 @@ const ACTIVITY_TOGGLES = [
         label: "Training",
         icon: "fas fa-dumbbell",
         hint: "Training activity for characters level 5 and below to earn XP."
-    },
-    {
-        key: "enableStudy",
-        label: "Study",
-        icon: "fas fa-book",
-        hint: "Study workbench activity. Requires Arcana or Investigation proficiency."
     }
 ];
 
@@ -66,15 +60,7 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
         el.classList.add("respite-activity-config");
 
         let html = `
-        <div class="activity-config-header">
-            <span class="activity-config-title">
-                <i class="fas fa-campground"></i>
-                Activity Toggles
-            </span>
-            <span class="activity-config-subtitle">
-                Enable or disable rest activities for this world.
-            </span>
-        </div>
+        <p class="activity-config-lead">Turn rest activities on or off for this world.</p>
         <div class="activity-config-list">`;
 
         for (const toggle of context.toggles) {

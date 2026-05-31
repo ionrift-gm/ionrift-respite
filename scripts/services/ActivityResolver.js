@@ -51,13 +51,6 @@ export class ActivityResolver {
             if (options.safeRestSpot && SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
             if (!isComfortEnabled() && COMFORT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
 
-            // Gate Study behind module setting
-            if (activity.id === "act_study") {
-                try {
-                    if (!game.settings.get("ionrift-respite", "enableStudy")) continue;
-                } catch (e) { /* setting may not exist yet */ }
-            }
-
             // Gate Training behind module setting
             if (activity.id === "act_train") {
                 try {
@@ -170,9 +163,9 @@ export class ActivityResolver {
         } else {
             // Skill check: pick whichever gives the actor a higher modifier
             if (chosenSkillKey === "best") {
-                // "best" means the player picks a skill via followUp (Study uses
-                // arc/his/inv/nat/rel). Use that selection when available; otherwise
-                // fall back to the actor's highest-total skill.
+                // "best" means the player picks a skill via followUp. Use that
+                // selection when available; otherwise fall back to the actor's
+                // highest-total skill.
                 const followUpSkill = options.followUpValue;
                 if (followUpSkill && actor.system?.skills?.[followUpSkill]) {
                     chosenSkillKey = followUpSkill;
@@ -534,13 +527,6 @@ export class ActivityResolver {
             if (!activity.restTypes.includes(restType)) continue;
             if (options.safeRestSpot && SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
             if (!isComfortEnabled() && COMFORT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
-
-            // Gate Study behind module setting
-            if (activity.id === "act_study") {
-                try {
-                    if (!game.settings.get("ionrift-respite", "enableStudy")) continue;
-                } catch (e) { /* setting may not exist yet */ }
-            }
 
             // Gate Training behind module setting
             if (activity.id === "act_train") {

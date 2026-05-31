@@ -7,17 +7,21 @@
     <div class="respite-phase-header">
         <div class="phase-indicator">
             <div
-                class="phase-dot {{#if (eq phase 'setup')}}active{{/if}} {{#if (or (eq phase 'travel') (eq phase 'camp') (eq phase 'activity') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+                class="phase-dot {{#if (eq phase 'setup')}}active{{/if}} {{#if (or (eq phase 'travel') (eq phase 'camp') (eq phase 'activity') (eq phase 'meal') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
             </div>
             <div
-                class="phase-dot {{#if (eq phase 'travel')}}active{{/if}} {{#if (or (eq phase 'camp') (eq phase 'activity') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+                class="phase-dot {{#if (eq phase 'travel')}}active{{/if}} {{#if (or (eq phase 'camp') (eq phase 'activity') (eq phase 'meal') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
             </div>
             <div
-                class="phase-dot {{#if (eq phase 'camp')}}active{{/if}} {{#if (or (eq phase 'activity') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+                class="phase-dot {{#if (eq phase 'camp')}}active{{/if}} {{#if (or (eq phase 'activity') (eq phase 'meal') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
             </div>
             <div
-                class="phase-dot {{#if (eq phase 'activity')}}active{{/if}} {{#if (or (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+                class="phase-dot {{#if (eq phase 'activity')}}active{{/if}} {{#if (or (eq phase 'meal') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
             </div>
+            {{#if showMealStep}}
+            <div class="phase-dot {{#if (eq phase 'meal')}}active{{/if}} {{#if (or (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
+            </div>
+            {{/if}}
             <div class="phase-dot {{#if (eq phase 'events')}}active{{/if}} {{#if (eq phase 'resolve')}}complete{{/if}}">
             </div>
             <div class="phase-dot {{#if (eq phase 'resolve')}}active{{/if}}"></div>
@@ -27,6 +31,7 @@
             {{#if (eq phase 'travel')}}Travel{{/if}}
             {{#if (eq phase 'camp')}}Make Camp{{/if}}
             {{#if (eq phase 'activity')}}Activities{{/if}}
+            {{#if (eq phase 'meal')}}Meal{{/if}}
             {{#if (eq phase 'events')}}Events{{/if}}
             {{#if (eq phase 'resolve')}}Resolution{{/if}}
         </span>
@@ -164,6 +169,18 @@
             {{/unless}}
         </div>
 
+        {{#if restConfigBadges.length}}
+        {{#unless isShortRest}}
+        <div class="rest-config-summary" title="What this rest includes, based on module settings.">
+            {{#each restConfigBadges}}
+            <span class="rest-config-badge {{#if on}}is-on{{else}}is-off{{/if}}" title="{{tooltip}}">
+                <i class="{{icon}}"></i> {{label}}
+            </span>
+            {{/each}}
+        </div>
+        {{/unless}}
+        {{/if}}
+
         {{!-- Advanced Drawer (collapsed by default) --}}
         <details class="scene-advanced-drawer">
             <summary class="scene-advanced-toggle">
@@ -208,9 +225,9 @@
                 <div class="scouting-block">
                     <div class="scouting-guidance">
                         <i class="fas fa-binoculars"></i>
-                        <span>Allow scouting during travel</span>
-                    </label>
-                    <span class="scouting-toggle-hint">When enabled, characters can scout for a campsite during travel. Scouting adjusts encounter risk.</span>
+                        <span>Scouting runs during travel</span>
+                    </div>
+                    <span class="scouting-toggle-hint">Characters can scout for a campsite during the travel phase. A good scout lowers encounter risk and can raise comfort; a poor scout does the opposite.</span>
                 </div>
                 {{/if}}
                 <div class="form-group scene-comfort-override">
@@ -823,7 +840,7 @@
 
             {{!-- Comfort + recovery card ─────────────────────────── --}}
             <div class="totm-rest-card comfort-{{campPersonalSelected.personalComfort}}">
-                <div class="totm-rest-card-header comfort-{{campPersonalSelected.personalComfort}}">
+                <div class="totm-rest-card-header comfort-{{campPersonalSelected.personalComfort}}" title="{{comfortHint campPersonalSelected.personalComfort}}">
                     <span class="totm-rest-card-title">{{campPersonalSelected.personalComfortLabel}}</span>
                     <span class="totm-rest-card-subtitle">Your Rest</span>
                 </div>
@@ -850,13 +867,6 @@
                         No exhaustion risk
                     </span>
                     {{/if}}
-                    {{!-- Encounter DC chip (fire level impact) --}}
-                    {{#if campFireEncounterHint}}
-                    <span class="totm-rest-chip info" title="{{campFireEncounterHint}}">
-                        <i class="fas fa-dice-d20" aria-hidden="true"></i>
-                        {{campFireEncounterHint}}
-                    </span>
-                    {{/if}}
                 </div>
             </div>
 
@@ -864,7 +874,7 @@
             {{!-- ── No character selected: show party camp comfort ──────── --}}
             <div class="totm-camp-comfort-hero">
                 <span class="totm-camp-comfort-label">Camp Comfort</span>
-                <span class="totm-camp-comfort-tier-big comfort-{{campScanData.campComfort}}">
+                <span class="totm-camp-comfort-tier-big comfort-{{campScanData.campComfort}}" title="{{comfortHint campScanData.campComfort}}">
                     {{campScanData.campComfortLabel}}
                 </span>
             </div>
@@ -886,7 +896,7 @@
             <div class="totm-camp-fire-header">
                 <span class="totm-camp-fire-title"><i class="fas fa-fire" aria-hidden="true"></i> Campfire</span>
                 {{#if campFireIsLit}}
-                <span class="totm-camp-fire-status lit"><i class="fas fa-circle" aria-hidden="true"></i> Burning</span>
+                <span class="totm-camp-fire-status lit"><i class="fas fa-circle" aria-hidden="true"></i> {{campFireLabel}}</span>
                 {{else if campColdCampDecided}}
                 <span class="totm-camp-fire-status cold"><i class="fas fa-moon" aria-hidden="true"></i> Cold camp</span>
                 {{else}}
@@ -895,6 +905,14 @@
             </div>
 
             {{#unless safeRestSpot}}
+            {{#if campFireIsLit}}
+            {{!-- Fire is committed: show only the tier description --}}
+            {{#each campFirePickerLevels}}
+            {{#if selected}}
+            <p class="totm-fire-segment-desc">{{body}}</p>
+            {{/if}}
+            {{/each}}
+            {{else}}
             {{!-- Fire tier segmented control (Option C: All-in-one Strip) --}}
             <div class="totm-fire-segment-wrap">
                 <div class="totm-fire-segments" role="radiogroup" aria-label="Fire intensity tiers">
@@ -934,15 +952,15 @@
                 {{!-- Show selected tier description --}}
                 {{#each campFirePickerLevels}}
                 {{#if selected}}
-                <p class="totm-fire-segment-desc">{{body}}</p>
+                <p class="totm-fire-segment-desc">{{{body}}}</p>
                 {{/if}}
                 {{/each}}
                 {{!-- Cold camp description --}}
                 {{#unless campFireIsLit}}
                 {{#if campColdCampDecided}}
-                <p class="totm-fire-segment-desc">No fire tonight. −1 comfort, −2 encounter DC. No cooking.</p>
+                <p class="totm-fire-segment-desc">No fire tonight. <span class="fire-penalty">−1 comfort.</span> <span class="fire-benefit">Harder to detect (lower encounter chance).</span> No cooking.</p>
                 {{else if campPreviewIsColdCamp}}
-                <p class="totm-fire-segment-desc">No fire tonight. −1 comfort, −2 encounter DC. No cooking.</p>
+                <p class="totm-fire-segment-desc">No fire tonight. <span class="fire-penalty">−1 comfort.</span> <span class="fire-benefit">Harder to detect (lower encounter chance).</span> No cooking.</p>
                 {{/if}}
                 {{/unless}}
 
@@ -1006,6 +1024,7 @@
                 {{/unless}}
                 {{/unless}}
             </div>
+            {{/if}} {{!-- /campFireIsLit else --}}
 
             {{!-- Firewood pledges (after fire is lit) --}}
             {{#if campFireIsLit}}
@@ -2207,66 +2226,6 @@
     </div>{{!-- /activity-phase-layout --}}
     {{/if}}
 
-    {{!-- =============== REFLECTION PHASE (skipped v2.1) ===============
-         Phase is never reached. Markup retained for potential re-enablement.
-    {{#if (eq phase 'reflection')}}
-    <div class="phase-banner">
-        <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
-    </div>
-    {{> rosterStrip}}
-    <div class="respite-reflection">
-        <div class="reflection-intro">Conversation starters for the campfire. No rolls, no mechanics.</div>
-        <div class="reflection-grid">
-            <div class="reflection-tile">
-                <div class="reflection-tile-icon"><i class="fas fa-book-open"></i></div>
-                <div class="reflection-tile-label">Reflect on the Day</div>
-                <div class="reflection-tile-hint">What stood out? What surprised you?</div>
-            </div>
-            <div class="reflection-tile">
-                <div class="reflection-tile-icon"><i class="fas fa-scroll"></i></div>
-                <div class="reflection-tile-label">Examine Quests</div>
-                <div class="reflection-tile-hint">Review goals, update plans.</div>
-            </div>
-            <div class="reflection-tile">
-                <div class="reflection-tile-icon"><i class="fas fa-hat-wizard"></i></div>
-                <div class="reflection-tile-label">Study Lore</div>
-                <div class="reflection-tile-hint">Books, clues, maps, mysteries.</div>
-            </div>
-            <div class="reflection-tile">
-                <div class="reflection-tile-icon"><i class="fas fa-compass"></i></div>
-                <div class="reflection-tile-label">Plan for Tomorrow</div>
-                <div class="reflection-tile-hint">Strategy, route, marching order.</div>
-            </div>
-            <div class="reflection-tile">
-                <div class="reflection-tile-icon"><i class="fas fa-comments"></i></div>
-                <div class="reflection-tile-label">Share a Story</div>
-                <div class="reflection-tile-hint">Memories, backstory, tall tales.</div>
-            </div>
-            <div class="reflection-tile">
-                <div class="reflection-tile-icon"><i class="fas fa-shield-alt"></i></div>
-                <div class="reflection-tile-label">Mend &amp; Prepare</div>
-                <div class="reflection-tile-hint">Check gear, sharpen blades, patch armor.</div>
-            </div>
-        </div>
-    </div>
-    {{#if isGM}}
-    <div class="respite-action-bar">
-        <button type="button" class="btn-primary" data-action="proceedToEvents">
-            {{#if safeRestSpot}}
-            <i class="fas fa-arrow-right"></i> Proceed to Resolution
-            {{else}}
-            <i class="fas fa-moon"></i> Proceed to Events
-            {{/if}}
-        </button>
-    </div>
-    {{else}}
-    <div class="respite-action-bar">
-        <span class="phase-waiting-label"><i class="fas fa-fire"></i> Enjoy the campfire...</span>
-    </div>
-    {{/if}}
-    {{/if}}
-    --}}
-
     {{!-- =============== EVENTS PHASE =============== --}}
     {{#if (eq phase 'events')}}
     <div class="phase-banner">
@@ -2286,9 +2245,10 @@
                 A terrible omen. Choose how the night unfolds.
             </div>
             {{#if isGM}}
+            <p class="disaster-guidance">Pick one outcome. A disaster event is a branching scene of skill checks, a combat encounter pulls a monster into camp, and the lighter option runs one or more ordinary events. Dismiss if the night should simply pass.</p>
             <div class="disaster-buttons">
                 {{#if disasterChoice.tree}}
-                <button type="button" class="btn-disaster tree" data-action="disasterChoice" data-pick="tree">
+                <button type="button" class="btn-disaster tree" data-action="disasterChoice" data-pick="tree" title="Run a branching disaster scene: a sequence of skill checks with consequences.">
                     <i class="fas fa-skull"></i>
                     <div class="disaster-btn-content">
                         <strong>Disaster Event</strong>
@@ -2297,7 +2257,7 @@
                 </button>
                 {{/if}}
                 {{#if disasterChoice.encounter}}
-                <button type="button" class="btn-disaster encounter" data-action="disasterChoice" data-pick="encounter">
+                <button type="button" class="btn-disaster encounter" data-action="disasterChoice" data-pick="encounter" title="Drop a combat encounter into the camp.">
                     <i class="fas fa-swords"></i>
                     <div class="disaster-btn-content">
                         <strong>Combat Encounter</strong>
@@ -2306,7 +2266,7 @@
                 </button>
                 {{/if}}
                 {{#if disasterChoice.normals.length}}
-                <button type="button" class="btn-disaster normals" data-action="disasterChoice" data-pick="normals">
+                <button type="button" class="btn-disaster normals" data-action="disasterChoice" data-pick="normals" title="Run one or more ordinary camp events instead of a full disaster.">
                     <i class="fas fa-exclamation-triangle"></i>
                     <div class="disaster-btn-content">
                         <strong>{{disasterChoice.normalsLabel}}</strong>
@@ -2317,7 +2277,7 @@
                 </button>
                 {{/if}}
                 <div class="disaster-dismiss">
-                    <button type="button" class="btn-override-link" data-action="disasterChoice" data-pick="dismiss">Dismiss and continue</button>
+                    <button type="button" class="btn-override-link" data-action="disasterChoice" data-pick="dismiss" title="Skip the disaster: the night passes with no event.">Dismiss and continue</button>
                 </div>
             </div>
             {{else}}
@@ -2776,8 +2736,8 @@
                 </div>
                 {{/if}}
                 <div class="event-override-links">
-                    <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="success">Force Pass</button>
-                    <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="failure">Force Fail</button>
+                    <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="success" title="Skip the roll and set this check as a success.">Force Pass</button>
+                    <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="failure" title="Skip the roll and set this check as a failure.">Force Fail</button>
                 </div>
 
                 {{else}}
@@ -2845,8 +2805,10 @@
                     </button>
                     <div class="event-override-links">
                         <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="success"
+                            title="Skip the roll and set this check as a success."
                             {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}disabled{{/unless}}{{/if}}>Force Pass</button>
                         <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="failure"
+                            title="Skip the roll and set this check as a failure."
                             {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}disabled{{/unless}}{{/if}}>Force Fail</button>
                     </div>
                 </div>
@@ -3247,7 +3209,7 @@
     <div class="respite-outcome-card">
         <div class="outcome-header">
             <strong>{{characterName}}</strong>
-            {{#if comfortLevel}}<span class="comfort-indicator {{comfortLevel}}" title="Rest comfort level affects HP recovery">{{comfortLevel}}</span>{{/if}}
+            {{#if comfortLevel}}<span class="comfort-indicator {{comfortLevel}}" title="{{comfortHint comfortLevel}}">{{comfortLevel}}</span>{{/if}}
         </div>
         {{#if neutrals.length}}
         <div class="outcome-neutral">
@@ -3504,7 +3466,7 @@
         {{#if encounterBar.chips.length}}
         <span class="encounter-bar-chips">
             {{#each encounterBar.chips}}
-            <span class="encounter-chip {{#if warn}}warn{{/if}}">
+            <span class="encounter-chip {{#if warn}}warn{{/if}}"{{#if tooltip}} title="{{tooltip}}"{{/if}}>
                 <i class="{{icon}}"></i> {{label}}{{#if value}} {{value}}{{/if}}
             </span>
             {{/each}}
