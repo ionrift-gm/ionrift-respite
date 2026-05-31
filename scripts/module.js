@@ -710,6 +710,9 @@ Hooks.once("ready", async () => {
     // their own view on top of `game.ionrift.library.terrains.getBase()`.
     await TerrainRegistry.init();
 
+    const { initializeEventPoolIfNeeded } = await import("./services/EventPoolMigration.js");
+    await initializeEventPoolIfNeeded();
+
     try {
         const respiteItemsPack = game.packs.get("ionrift-respite.respite-items");
         if (respiteItemsPack && game.ionrift?.respite) {

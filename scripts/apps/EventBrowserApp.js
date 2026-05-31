@@ -1,42 +1,64 @@
 import { TerrainRegistry } from "../services/TerrainRegistry.js";
+import { getEventPoolSelection, loadAllCatalogEvents } from "../services/EventCatalogLoader.js";
+
+const MODULE_ID = "ionrift-respite";
 
 /**
  * EventBrowserApp
- * GM-only read-only event viewer with prev/next navigation.
- * Accessed from the PackRegistryApp "Browse Events" button.
- * Shows event details including name, terrain, category, tier, description, and pack.
+ * GM-only event pool curation tool with per-event opt-in toggles.
+ * Accessed from module settings or Content Packs.
  */
 export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
 
     /** All loaded events (post-filter). */
     #events = [];
-    /** Current event index. */
+    /** Current event index for detail view. */
     #index = 0;
     /** Active terrain filter (null = all). */
     #terrainFilter = null;
     /** Raw event data before filtering. */
     #allEvents = [];
+    /** Pending selection before Save ({ id: true }). */
+    #pendingSelection = {};
+    /** Whether pending selection differs from saved setting. */
+    #dirty = false;
 
     static DEFAULT_OPTIONS = {
         id: "respite-event-browser",
         window: {
-            title: "Event Browser",
+            title: "Event Pool",
             icon: "fas fa-book-open",
             resizable: true
         },
-        position: { width: 460, height: 480 },
+        position: { width: 720, height: 560 },
         classes: ["ionrift-window"]
     };
+
+    constructor(options = {}) {
+        super(options);
+        if (options.terrainFilter) {
+            this.#terrainFilter = options.terrainFilter;
+        }
+    }
 
     /** @override */
     async _prepareContext() {
         await TerrainRegistry.init();
         if (this.#allEvents.length === 0) {
             await this.#loadEvents();
+            this.#pendingSelection = { ...getEventPoolSelection() };
+            this.#dirty = false;
         }
         this.#applyFilter();
 
         const event = this.#events[this.#index] ?? null;
+        const poolCount = Object.keys(this.#pendingSelection).length;
+        const filteredPoolCount = this.#events.filter(evt => this.#pendingSelection[evt.id]).length;
+        const terrainPoolCount = this.#terrainFilter
+            ? this.#allEvents.filter(evt =>
+                evt.terrainTags?.includes(this.#terrainFilter) && this.#pendingSelection[evt.id]
+            ).length
+            : null;
 
         return {
             event,
@@ -44,7 +66,13 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
             total: this.#events.length,
             terrainOptionGroups: TerrainRegistry.getOptionGroups(),
             activeFilter: this.#terrainFilter,
-            hasEvents: this.#events.length > 0
+            hasEvents: this.#events.length > 0,
+            poolCount,
+            catalogCount: this.#allEvents.length,
+            filteredPoolCount,
+            terrainPoolCount,
+            pendingSelection: this.#pendingSelection,
+            dirty: this.#dirty
         };
     }
 
@@ -53,7 +81,6 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
         const el = document.createElement("div");
         el.classList.add("respite-event-browser");
 
-        // Terrain filter (same groups as Rest Setup Environment dropdown)
         const terrainGroupHtml = (context.terrainOptionGroups ?? [])
             .map(g => `
                 <optgroup label="${g.group}">
@@ -63,6 +90,10 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
                 </optgroup>`)
             .join("");
 
+        const terrainCountLabel = context.activeFilter && context.terrainPoolCount !== null
+            ? ` · ${context.terrainPoolCount} in ${context.activeFilter}`
+            : "";
+
         let html = `
         <div class="event-browser-filter">
             <label for="terrain-filter"><i class="fas fa-map-marker-alt"></i> Terrain</label>
@@ -70,59 +101,173 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
                 <option value="">All terrains</option>
                 ${terrainGroupHtml}
             </select>
-            <span class="event-counter">${context.hasEvents ? `${context.index + 1} / ${context.total}` : "No events"}</span>
+            <span class="event-pool-summary">${context.poolCount} in pool (${context.catalogCount} available)${terrainCountLabel}</span>
         </div>`;
 
-        if (context.hasEvents && context.event) {
-            const evt = context.event;
-            const sentiment = evt.sentiment ?? "neutral";
-            const isDisaster = evt.tier === "disaster";
-            const badgeClass = isDisaster ? "disaster" : sentiment;
-            const badgeLabel = isDisaster ? "Disaster" : sentiment.replace(/^\w/, c => c.toUpperCase());
-            const categoryIcon = this.#getCategoryIcon(evt.category);
-            const terrainBadges = (evt.terrainTags ?? [])
-                .map(t => {
-                    const terrain = TerrainRegistry.get(t);
-                    const icon = terrain?.icon ?? "fas fa-map-marker-alt";
-                    const label = terrain?.label ?? t;
-                    return `<span class="event-terrain-badge"><i class="${icon}"></i> ${label}</span>`;
-                }).join("");
+        if (context.poolCount === 0 && context.hasEvents) {
+            html += `
+        <div class="art-nudge-banner event-pool-nudge-banner event-pool-curator-intro">
+            <div class="art-nudge-content">
+                <i class="fas fa-book-open art-nudge-icon"></i>
+                <div class="art-nudge-text">
+                    <span class="art-nudge-title">Your camp event pool is empty.</span>
+                    <span class="art-nudge-subtitle">Tick the events you are willing to run at camp, then Save Pool. Only selected events can appear on a night check roll.</span>
+                </div>
+            </div>
+        </div>`;
+        }
 
-            const packLabel = evt.pack
-                ? evt.pack.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())
-                : "Base Pack";
+        html += `
+        <p class="event-pool-intro">Tick events you are willing to run at camp. Only selected events can appear on a night check roll.</p>`;
 
-            // Build outcome narratives
-            const mech = evt.mechanical ?? {};
-            let outcomesHtml = "";
-            const tiers = [
-                { key: "onTriumph", label: "Triumph", cls: "triumph" },
-                { key: "onSuccess", label: "Success", cls: "success" },
-                { key: "onMixed", label: "Mixed", cls: "mixed" },
-                { key: "onFailure", label: "Failure", cls: "failure" }
-            ];
-            const hasTiers = tiers.some(t => mech[t.key]);
-            if (hasTiers) {
-                outcomesHtml = `<div class="event-outcomes-list">`;
-                for (const tier of tiers) {
-                    const data = mech[tier.key];
-                    if (!data) continue;
-                    const narrative = data.narrative ?? data.description ?? "";
-                    outcomesHtml += `
-                        <div class="event-outcome-row ${tier.cls}">
-                            <span class="outcome-label">${tier.label}</span>
-                            <span class="outcome-text">${narrative}</span>
-                        </div>`;
-                }
-                outcomesHtml += `</div>`;
+        if (context.hasEvents) {
+            const checklistHtml = this.#events.map((evt, idx) => {
+                const checked = context.pendingSelection[evt.id] ? "checked" : "";
+                const active = idx === context.index ? " active" : "";
+                const tierHint = evt.tier === "disaster" ? " · disaster" : "";
+                return `
+                <label class="event-pool-check-item${active}" data-index="${idx}">
+                    <input type="checkbox" class="event-pool-check" data-event-id="${evt.id}" ${checked} />
+                    <span class="event-pool-check-name">${evt.name ?? evt.id}${tierHint}</span>
+                </label>`;
+            }).join("");
+
+            html += `
+            <div class="event-pool-layout">
+                <div class="event-pool-checklist">${checklistHtml}</div>
+                <div class="event-pool-detail">`;
+
+            if (context.event) {
+                html += this.#renderEventCard(context.event, context.pendingSelection[context.event.id]);
             }
 
             html += `
+                </div>
+            </div>`;
+        } else {
+            html += `
+            <div class="event-browser-empty">
+                <i class="fas fa-ghost"></i>
+                <p>No events match this filter.</p>
+            </div>`;
+        }
+
+        html += `
+        <div class="event-pool-footer">
+            <button type="button" class="event-pool-save-btn" ${context.dirty ? "" : "disabled"}>
+                <i class="fas fa-save"></i> Save Pool
+            </button>
+        </div>`;
+
+        el.innerHTML = html;
+
+        el.querySelector(".event-terrain-select")?.addEventListener("change", (e) => {
+            this.#terrainFilter = e.target.value || null;
+            this.#index = 0;
+            this.render({ force: true });
+        });
+
+        el.querySelectorAll(".event-pool-check-item").forEach(item => {
+            item.addEventListener("click", (e) => {
+                if (e.target.classList.contains("event-pool-check")) return;
+                const idx = Number(item.dataset.index);
+                if (!Number.isNaN(idx)) {
+                    this.#index = idx;
+                    this.render({ force: true });
+                }
+            });
+        });
+
+        el.querySelectorAll(".event-pool-check").forEach(cb => {
+            cb.addEventListener("change", () => {
+                const eventId = cb.dataset.eventId;
+                if (cb.checked) {
+                    this.#pendingSelection[eventId] = true;
+                } else {
+                    delete this.#pendingSelection[eventId];
+                }
+                this.#dirty = true;
+                this.render({ force: true });
+            });
+        });
+
+        el.querySelector(".event-pool-detail .event-pool-card-toggle")?.addEventListener("change", (e) => {
+            const eventId = e.target.dataset.eventId;
+            if (e.target.checked) {
+                this.#pendingSelection[eventId] = true;
+            } else {
+                delete this.#pendingSelection[eventId];
+            }
+            this.#dirty = true;
+            this.render({ force: true });
+        });
+
+        el.querySelector(".event-pool-save-btn")?.addEventListener("click", () => this.#savePool());
+
+        return el;
+    }
+
+    /**
+     * Renders the detail card for a single event.
+     *
+     * @param {object} evt
+     * @param {boolean} inPool
+     * @returns {string}
+     */
+    #renderEventCard(evt, inPool) {
+        const sentiment = evt.sentiment ?? "neutral";
+        const isDisaster = evt.tier === "disaster";
+        const badgeClass = isDisaster ? "disaster" : sentiment;
+        const badgeLabel = isDisaster ? "Disaster" : sentiment.replace(/^\w/, c => c.toUpperCase());
+        const categoryIcon = this.#getCategoryIcon(evt.category);
+        const terrainBadges = (evt.terrainTags ?? [])
+            .map(t => {
+                const terrain = TerrainRegistry.get(t);
+                const icon = terrain?.icon ?? "fas fa-map-marker-alt";
+                const label = terrain?.label ?? t;
+                return `<span class="event-terrain-badge"><i class="${icon}"></i> ${label}</span>`;
+            }).join("");
+
+        const packLabel = evt.pack
+            ? evt.pack.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())
+            : "Base Pack";
+
+        const mech = evt.mechanical ?? {};
+        let outcomesHtml = "";
+        const tiers = [
+            { key: "onTriumph", label: "Triumph", cls: "triumph" },
+            { key: "onSuccess", label: "Success", cls: "success" },
+            { key: "onMixed", label: "Mixed", cls: "mixed" },
+            { key: "onFailure", label: "Failure", cls: "failure" }
+        ];
+        const hasTiers = tiers.some(t => mech[t.key]);
+        if (hasTiers) {
+            outcomesHtml = `<div class="event-outcomes-list">`;
+            for (const tier of tiers) {
+                const data = mech[tier.key];
+                if (!data) continue;
+                const narrative = data.narrative ?? data.description ?? "";
+                outcomesHtml += `
+                    <div class="event-outcome-row ${tier.cls}">
+                        <span class="outcome-label">${tier.label}</span>
+                        <span class="outcome-text">${narrative}</span>
+                    </div>`;
+            }
+            outcomesHtml += `</div>`;
+        }
+
+        const checked = inPool ? "checked" : "";
+
+        return `
         <div class="event-card">
             <div class="event-card-header">
                 <span class="event-name"><i class="${categoryIcon}"></i> ${evt.name}</span>
                 <span class="event-tier-badge ${badgeClass}">${badgeLabel}</span>
             </div>
+            <label class="event-pool-card-toggle-row">
+                <input type="checkbox" class="event-pool-card-toggle" data-event-id="${evt.id}" ${checked} />
+                <span>In roll pool</span>
+            </label>
             <div class="event-card-meta">
                 <div class="event-terrain-list">${terrainBadges}</div>
                 <span class="event-pack-badge"><i class="fas fa-box"></i> ${packLabel}</span>
@@ -136,44 +281,28 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
                 ${mech.groupCheck ? `<span class="event-dc"><i class="fas fa-dice-d20"></i> DC ${mech.groupCheck.dc ?? "?"} ${mech.groupCheck.skill ?? ""}</span>` : ""}
             </div>
         </div>`;
-        } else {
-            html += `
-        <div class="event-browser-empty">
-            <i class="fas fa-ghost"></i>
-            <p>No events match this filter.</p>
-        </div>`;
+    }
+
+    /** Persists pending selection to world settings. */
+    async #savePool() {
+        await game.settings.set(MODULE_ID, "eventPoolSelection", { ...this.#pendingSelection });
+        this.#dirty = false;
+        ui.notifications.info("Event pool saved.");
+
+        const instances = foundry.applications?.instances;
+        if (instances) {
+            for (const app of instances.values()) {
+                if (app.options?.id === "ionrift-respite-setup" && app.rendered) {
+                    if (typeof app._refreshEventPool === "function") {
+                        await app._refreshEventPool();
+                    }
+                    app.render({ force: true });
+                    break;
+                }
+            }
         }
 
-        // Navigation
-        html += `
-        <div class="event-browser-nav">
-            <button type="button" class="event-nav-btn" data-dir="prev" ${context.index <= 0 ? "disabled" : ""}>
-                <i class="fas fa-chevron-left"></i> Previous
-            </button>
-            <button type="button" class="event-nav-btn" data-dir="next" ${context.index >= context.total - 1 ? "disabled" : ""}>
-                Next <i class="fas fa-chevron-right"></i>
-            </button>
-        </div>`;
-
-        el.innerHTML = html;
-
-        // Wire filter
-        el.querySelector(".event-terrain-select").addEventListener("change", (e) => {
-            this.#terrainFilter = e.target.value || null;
-            this.#index = 0;
-            this.render({ force: true });
-        });
-
-        // Wire navigation
-        el.querySelectorAll(".event-nav-btn").forEach(btn => {
-            btn.addEventListener("click", () => {
-                if (btn.dataset.dir === "prev" && this.#index > 0) this.#index--;
-                if (btn.dataset.dir === "next" && this.#index < this.#events.length - 1) this.#index++;
-                this.render({ force: true });
-            });
-        });
-
-        return el;
+        this.render({ force: true });
     }
 
     /** @override */
@@ -181,41 +310,12 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
         content.replaceChildren(result);
     }
 
-    /**
-     * Loads all event data from released terrains (via TerrainRegistry), overlays, and imports.
-     */
+    /** Loads all catalog events for browsing and curation. */
     async #loadEvents() {
-        const events = [...await TerrainRegistry.loadReleasedEvents()];
-
-        // Imported packs
-        const importedPacks = game.settings.get("ionrift-respite", "importedPacks") ?? {};
-        for (const [packId, packData] of Object.entries(importedPacks)) {
-            for (const evt of (packData.events ?? [])) {
-                events.push(evt);
-            }
-        }
-
-        // Overlay packs (Patreon Library delivered content)
-        try {
-            const { OverlayEventLoader } = await import("../services/OverlayEventLoader.js");
-            const overlayPacks = await OverlayEventLoader.loadAll();
-            for (const { data } of overlayPacks) {
-                for (const evt of (data.events ?? [])) {
-                    events.push(evt);
-                }
-            }
-        } catch (e) {
-            console.warn("ionrift-respite | EventBrowser: Overlay event loading failed:", e);
-        }
-
-        // Sort: alphabetical by name
-        events.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
-        this.#allEvents = events;
+        this.#allEvents = await loadAllCatalogEvents();
     }
 
-    /**
-     * Applies the current terrain filter to the event list.
-     */
+    /** Applies the current terrain filter to the event list. */
     #applyFilter() {
         if (this.#terrainFilter) {
             this.#events = this.#allEvents.filter(e =>
@@ -224,13 +324,12 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
         } else {
             this.#events = [...this.#allEvents];
         }
-        // Clamp index
-        if (this.#index >= this.#events.length) this.#index = Math.max(0, this.#events.length - 1);
+        if (this.#index >= this.#events.length) {
+            this.#index = Math.max(0, this.#events.length - 1);
+        }
     }
 
-    /**
-     * Returns a FontAwesome icon class for a given event category.
-     */
+    /** Returns a FontAwesome icon class for a given event category. */
     #getCategoryIcon(category) {
         const icons = {
             encounter: "fas fa-swords",

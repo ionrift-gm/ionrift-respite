@@ -191,7 +191,7 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
 
         // Action buttons
         html += this._renderActionButtons([
-            { cls: "pack-browse-btn", icon: "fas fa-book-open", label: "Browse Events" },
+            { cls: "pack-browse-btn", icon: "fas fa-book-open", label: "Curate Pool" },
             { cls: "pack-import-btn", icon: "fas fa-file-import", label: "Import Events" },
             { cls: "pack-save-btn", icon: "fas fa-save", label: "Save Changes" }
         ]);
