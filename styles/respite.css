@@ -21758,16 +21758,19 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 .ionrift-respite-app .comfort-tier-badge.comfort-safe    { color: #4ade80; }
 
 /* ═══════════════════════════════════════════════════════════
-   ACTIVITY CONFIG APP (Rest Activities submenu)
+   SETTINGS CONFIG SUBMENUS (shared by Activity, Recovery, Player Restrictions)
    ═══════════════════════════════════════════════════════════ */
 
-#respite-activity-config .window-body {
+#respite-activity-config .window-body,
+#respite-recovery-config .window-body,
+#respite-player-restrictions .window-body {
     overflow: hidden;
     display: flex;
     flex-direction: column;
 }
 
-.respite-activity-config {
+.respite-activity-config,
+.respite-settings-config {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -21777,6 +21780,7 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 }
 
 /* Header */
+.settings-config-header,
 .activity-config-header {
     display: flex;
     flex-direction: column;
@@ -21787,6 +21791,7 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     border-radius: 8px;
 }
 
+.settings-config-title,
 .activity-config-title {
     font-size: 0.82rem;
     font-weight: 600;
@@ -21794,11 +21799,13 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     letter-spacing: 0.02em;
 }
 
+.settings-config-title i,
 .activity-config-title i {
     color: rgba(155, 89, 182, 0.7);
     margin-right: 0.3rem;
 }
 
+.settings-config-subtitle,
 .activity-config-subtitle {
     font-size: 0.68rem;
     color: rgba(255, 255, 255, 0.35);
@@ -21806,13 +21813,15 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
 }
 
 /* Toggle list */
+.settings-config-list,
 .activity-config-list {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
 }
 
-/* Each toggle row */
+/* Each setting row */
+.settings-config-row,
 .activity-config-row {
     display: flex;
     align-items: center;
@@ -21824,10 +21833,12 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     transition: border-color 0.15s;
 }
 
+.settings-config-row:hover,
 .activity-config-row:hover {
     border-color: rgba(255, 255, 255, 0.12);
 }
 
+.settings-config-info,
 .activity-config-info {
     flex: 1;
     min-width: 0;
@@ -21836,12 +21847,14 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     gap: 0.1rem;
 }
 
+.settings-config-label,
 .activity-config-label {
     font-size: 0.78rem;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.82);
 }
 
+.settings-config-icon,
 .activity-config-icon {
     width: 1.1rem;
     text-align: center;
@@ -21850,13 +21863,15 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     font-size: 0.72rem;
 }
 
+.settings-config-hint,
 .activity-config-hint {
     font-size: 0.65rem;
     color: rgba(255, 255, 255, 0.35);
     line-height: 1.35;
 }
 
-/* Toggle switch */
+/* Toggle switch (boolean) */
+.settings-config-toggle,
 .activity-config-toggle {
     position: relative;
     display: inline-block;
@@ -21866,6 +21881,7 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     cursor: pointer;
 }
 
+.settings-config-toggle input,
 .activity-config-toggle input {
     position: absolute;
     opacity: 0;
@@ -21873,6 +21889,7 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     height: 0;
 }
 
+.settings-config-slider,
 .activity-config-slider {
     position: absolute;
     inset: 0;
@@ -21882,6 +21899,7 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     transition: all 0.2s ease;
 }
 
+.settings-config-slider::before,
 .activity-config-slider::before {
     content: "";
     position: absolute;
@@ -21894,18 +21912,92 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     transition: all 0.2s ease;
 }
 
+.settings-config-toggle input:checked + .settings-config-slider,
 .activity-config-toggle input:checked + .activity-config-slider {
     background: rgba(155, 89, 182, 0.2);
     border-color: rgba(155, 89, 182, 0.4);
 }
 
+.settings-config-toggle input:checked + .settings-config-slider::before,
 .activity-config-toggle input:checked + .activity-config-slider::before {
     transform: translateX(18px);
     background: var(--ionrift-accent, #9b59b6);
     box-shadow: 0 0 6px rgba(155, 89, 182, 0.4);
 }
 
+/* Select dropdown (Song of Rest, etc.) */
+.settings-config-select {
+    width: 200px;
+    flex-shrink: 0;
+    padding: 0.3rem 0.45rem;
+    font-size: 0.72rem;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+}
+
+.settings-config-select:focus {
+    outline: none;
+    border-color: rgba(155, 89, 182, 0.4);
+}
+
+.settings-config-select option {
+    background: #1a1a2e;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* Range slider (Spell Recovery Max Level, etc.) */
+.settings-config-range-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.settings-config-range {
+    width: 100px;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.settings-config-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--ionrift-accent, #9b59b6);
+    border: 2px solid rgba(155, 89, 182, 0.6);
+    box-shadow: 0 0 4px rgba(155, 89, 182, 0.3);
+    cursor: pointer;
+}
+
+.settings-config-range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--ionrift-accent, #9b59b6);
+    border: 2px solid rgba(155, 89, 182, 0.6);
+    box-shadow: 0 0 4px rgba(155, 89, 182, 0.3);
+    cursor: pointer;
+}
+
+.settings-config-range-val {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.75);
+    min-width: 1.2rem;
+    text-align: center;
+}
+
 /* Save button */
+.settings-config-actions,
 .activity-config-actions {
     display: flex;
     justify-content: flex-end;
@@ -21913,6 +22005,7 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
+.settings-config-save-btn,
 .activity-config-save-btn {
     display: inline-flex;
     align-items: center;
@@ -21928,12 +22021,15 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     color: rgba(155, 89, 182, 0.9);
 }
 
+.settings-config-save-btn:hover,
 .activity-config-save-btn:hover {
     background: rgba(155, 89, 182, 0.25);
     border-color: rgba(155, 89, 182, 0.5);
     box-shadow: 0 0 10px rgba(155, 89, 182, 0.15);
 }
 
+.settings-config-save-btn i,
 .activity-config-save-btn i {
     font-size: 0.7rem;
 }
+
