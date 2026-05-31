@@ -21779,16 +21779,17 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     min-height: 0;
 }
 
-/* Header */
+/* Header — distinguished from setting rows (no card background) */
 .settings-config-header,
 .activity-config-header {
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
-    padding: 0.5rem 0.6rem;
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 8px;
+    padding: 0.25rem 0.2rem 0.5rem;
+    background: none;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 0;
 }
 
 .settings-config-title,
