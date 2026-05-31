@@ -640,19 +640,10 @@ export class MealDelegate {
             }
         }
 
-        // Transition to reflection
-        app._phase = "reflection";
+        // Reflection phase skipped (v2.1) — advance straight to events.
         await app._applyBeddingDown();
-        console.log(`[Respite:Meal] Transitioning to reflection, emitting phaseChanged`);
-
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "phaseChanged",
-            phase: app._phase,
-            phaseData: { campStatus: app._campStatus }
-        });
-
-        await app._saveRestState();
-        app.render();
+        console.log(`[Respite:Meal] Reflection skipped, advancing to events`);
+        await app._advanceToEvents();
     }
 
     /**
