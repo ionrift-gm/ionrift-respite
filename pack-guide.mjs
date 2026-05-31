@@ -3,11 +3,16 @@
  * Rebuilds the Respite Guide LevelDB compendium from source JSON.
  * Usage (Foundry must be closed): node pack-guide.mjs
  * Requires: npm install classic-level (already installed)
+ *
+ * Reads ALL *.json files from the source directory:
+ *   - The parent journal document (contains _key starting with "!journal!")
+ *   - Individual page documents (contain _key starting with "!journal.pages!")
  */
 import { ClassicLevel } from 'classic-level';
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
+import { join } from 'path';
 
-const SRC = 'packs/src/respite-guide/Getting_Started_with_Respite_RespiteGuide000001.json';
+const SRC_DIR = 'packs/src/respite-guide';
 const PACK_DIR = 'packs/respite-guide';
 
 function makeStats() {
@@ -24,35 +29,71 @@ function makeStats() {
 }
 
 async function main() {
-    const src = JSON.parse(readFileSync(SRC, 'utf8'));
+    // Read all JSON files from the source directory
+    const files = readdirSync(SRC_DIR).filter(f => f.endsWith('.json'));
+    if (!files.length) {
+        console.error(`No JSON files found in ${SRC_DIR}`);
+        process.exit(1);
+    }
+
+    // Separate parent journal from page documents
+    let parent = null;
+    const pages = [];
+
+    for (const file of files) {
+        const data = JSON.parse(readFileSync(join(SRC_DIR, file), 'utf8'));
+        const key = data._key ?? '';
+
+        if (key.startsWith('!journal.pages!')) {
+            pages.push(data);
+        } else if (key.startsWith('!journal!') || data.pages !== undefined) {
+            parent = data;
+        } else {
+            console.warn(`Skipping unrecognised file: ${file}`);
+        }
+    }
+
+    if (!parent) {
+        console.error('No parent journal document found in source directory');
+        process.exit(1);
+    }
+
+    if (!pages.length) {
+        console.error('No page documents found in source directory');
+        process.exit(1);
+    }
+
+    // Sort pages by sort order for deterministic output
+    pages.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+
     const db = new ClassicLevel(PACK_DIR, { valueEncoding: 'json', createIfMissing: true });
     await db.open();
 
     const batch = [];
 
-    // Journal parent document - pages array must list page IDs
-    const journalKey = `!journal!${src._id}`;
-    const pageIds = src.pages.map(p => p._id);
+    // Journal parent document — pages array lists page IDs
+    const journalKey = `!journal!${parent._id}`;
+    const pageIds = pages.map(p => p._id);
     batch.push({
         type: 'put',
         key: journalKey,
         value: {
             _key: journalKey,
-            _id: src._id,
-            name: src.name,
+            _id: parent._id,
+            name: parent.name,
             pages: pageIds,
             categories: [],
-            ownership: src.ownership || { default: 2 },
-            flags: src.flags || {},
-            sort: src.sort || 0,
-            folder: src.folder || null,
-            _stats: makeStats(),
+            ownership: parent.ownership || { default: 2 },
+            flags: parent.flags || {},
+            sort: parent.sort || 0,
+            folder: parent.folder || null,
+            _stats: parent._stats || makeStats(),
         }
     });
 
     // Journal page documents
-    for (const page of src.pages) {
-        const pageKey = `!journal.pages!${src._id}.${page._id}`;
+    for (const page of pages) {
+        const pageKey = `!journal.pages!${parent._id}.${page._id}`;
         batch.push({
             type: 'put',
             key: pageKey,
@@ -61,11 +102,11 @@ async function main() {
                 _id: page._id,
                 name: page.name,
                 type: page.type || 'text',
-                title: { show: true, level: 1 },
-                image: {},
-                video: { controls: true, volume: 0.5 },
-                src: null,
-                system: {},
+                title: page.title || { show: true, level: 1 },
+                image: page.image || {},
+                video: page.video || { controls: true, volume: 0.5 },
+                src: page.src || null,
+                system: page.system || {},
                 text: {
                     content: page.text?.content || '',
                     format: page.text?.format || 1,
@@ -74,14 +115,14 @@ async function main() {
                 sort: page.sort || 0,
                 ownership: page.ownership || { default: -1 },
                 flags: page.flags || {},
-                _stats: makeStats(),
+                _stats: page._stats || makeStats(),
             }
         });
     }
 
     await db.batch(batch);
     await db.close();
-    console.log(`Packed ${batch.length} entries (1 journal + ${src.pages.length} pages) into ${PACK_DIR}`);
+    console.log(`Packed ${batch.length} entries (1 journal + ${pages.length} pages) into ${PACK_DIR}`);
 }
 
 main().catch(console.error);
