@@ -213,44 +213,49 @@ export class ItemOutcomeHandler {
      * @param {string|number} quantity - Fixed number or dice expression (e.g. "1d4")
      * @returns {{ rolled: number, itemName: string, actorName: string }}
      */
-    static async grantToActor(actorId, itemRef, quantity = 1) {
+    static async grantToActor(actorId, itemRef, quantity = 1, { ledger, slotKey } = {}) {
         const actor = game.actors.get(actorId);
         if (!actor) throw new Error(`Actor ${actorId} not found`);
 
-        // Roll quantity dice if it's a string expression
-        let rolledQty = typeof quantity === "number" ? quantity : 1;
-        if (typeof quantity === "string" && /d/i.test(quantity)) {
-            const roll = await new Roll(quantity).evaluate();
-            rolledQty = roll.total;
-            // Show the roll in chat
-            roll.toMessage({
-                speaker: ChatMessage.getSpeaker({ alias: "Respite" }),
-                flavor: `Rolling ${quantity} for ${itemRef.replace(/_/g, " ")}`
-            });
-        } else if (typeof quantity === "string") {
-            rolledQty = parseInt(quantity) || 1;
-        }
-        rolledQty = Math.max(1, rolledQty);
+        const performGrant = async () => {
+            let rolledQty = typeof quantity === "number" ? quantity : 1;
+            if (typeof quantity === "string" && /d/i.test(quantity)) {
+                const roll = await new Roll(quantity).evaluate();
+                rolledQty = roll.total;
+                roll.toMessage({
+                    speaker: ChatMessage.getSpeaker({ alias: "Respite" }),
+                    flavor: `Rolling ${quantity} for ${itemRef.replace(/_/g, " ")}`
+                });
+            } else if (typeof quantity === "string") {
+                rolledQty = parseInt(quantity) || 1;
+            }
+            rolledQty = Math.max(1, rolledQty);
 
-        // Resolve the item data
-        const resolved = await this._resolveItemRef({ itemRef });
-        if (!resolved) throw new Error(`Could not resolve item: ${itemRef}`);
+            const resolved = await this._resolveItemRef({ itemRef });
+            if (!resolved) throw new Error(`Could not resolve item: ${itemRef}`);
 
-        // Grant through centralized method (stacks onto existing)
-        const grantSummary = await this.grantItemsToActor(actor, [{
-            name: resolved.name,
-            type: resolved.type,
-            img: resolved.img,
-            quantity: rolledQty,
-            system: resolved.system ?? {},
-            flags: resolved.flags ?? {}
-        }]);
+            await this.grantItemsToActor(actor, [{
+                name: resolved.name,
+                type: resolved.type,
+                img: resolved.img,
+                quantity: rolledQty,
+                system: resolved.system ?? {},
+                flags: resolved.flags ?? {}
+            }]);
 
-        return {
-            rolled: rolledQty,
-            itemName: resolved.name ?? itemRef.replace(/_/g, " "),
-            actorName: actor.name
+            return {
+                rolled: rolledQty,
+                itemName: resolved.name ?? itemRef.replace(/_/g, " "),
+                actorName: actor.name
+            };
         };
+
+        if (ledger && slotKey) {
+            const { duplicate, summary } = await ledger.grantOnce(slotKey, performGrant);
+            return { ...(summary ?? {}), duplicate };
+        }
+
+        return performGrant();
     }
 
     // ── Internal Helpers ─────────────────────────────────────────

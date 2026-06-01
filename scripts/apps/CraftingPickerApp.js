@@ -36,13 +36,14 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         form: { template: `modules/${MODULE_ID}/templates/crafting-picker.hbs` }
     };
 
-    constructor(actor, professionId, engine, onComplete, terrainTag = null) {
+    constructor(actor, professionId, engine, onComplete, terrainTag = null, ledger = null) {
         super();
         this._actor = actor;
         this._professionId = professionId;
         this._engine = engine;
         this._onComplete = onComplete;
         this._terrainTag = terrainTag;
+        this._ledger = ledger;
         this._selectedRisk = "standard";
         this._selectedRecipeId = null;
         this._craftingResult = null;
@@ -174,7 +175,8 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         if (this._hasCrafted || !this._selectedRecipeId) return;
 
         this._craftingResult = await this._engine.resolve(
-            this._actor, this._selectedRecipeId, this._professionId, this._selectedRisk, this._terrainTag
+            this._actor, this._selectedRecipeId, this._professionId, this._selectedRisk, this._terrainTag,
+            1, { ledger: this._ledger }
         );
         this._hasCrafted = true;
         this.render();

@@ -143,7 +143,8 @@ export class CraftingDelegate {
 
         const terrainTag = app._engine?.terrainTag ?? app._restData?.terrainTag ?? null;
         app._craftingDrawerResult = await app._craftingEngine.resolve(
-            actor, app._craftingDrawerRecipeId, app._craftingDrawerProfession, app._craftingDrawerRisk, terrainTag
+            actor, app._craftingDrawerRecipeId, app._craftingDrawerProfession, app._craftingDrawerRisk, terrainTag,
+            1, { ledger: app._grantLedger }
         );
         app._craftingDrawerHasCrafted = true;
         app.render();

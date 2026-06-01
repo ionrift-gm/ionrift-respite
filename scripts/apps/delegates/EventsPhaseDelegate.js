@@ -23,6 +23,7 @@ import {
     SKILL_DISPLAY_NAMES,
     waitForDiceSoNice
 } from "../../services/RollRequestManager.js";
+import { GrantLedger } from "../../services/GrantLedger.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -72,8 +73,6 @@ export class EventsPhaseDelegate {
     set pendingTreeRoll(v) { this._app._pendingTreeRoll = v; }
 
     /** @returns {Map} Granted discovery items. */
-    get grantedDiscoveries() { return this._app._grantedDiscoveries; }
-
     // ── Roll Collection (GM-side) ───────────────────────────────────────
 
     /**
@@ -247,7 +246,6 @@ export class EventsPhaseDelegate {
             targets: data.targets ?? [],
             rollModes: data.rollModes ?? {},
             eventTitle: data.eventTitle,
-            checkContext: data.checkContext ?? "",
             targetLabel: data.targetLabel ?? "",
             rolledCharacters: new Set()
         };
@@ -629,7 +627,6 @@ export class EventsPhaseDelegate {
             combatBuffs: this.combatBuffs,
             awaitingCombat: this.awaitingCombat,
             combatAcknowledged: this.combatAcknowledged,
-            grantedDiscoveries: Array.from(this.grantedDiscoveries?.entries?.() ?? [])
         };
     }
 
@@ -646,8 +643,19 @@ export class EventsPhaseDelegate {
         this.combatBuffs = state.combatBuffs ?? null;
         this.awaitingCombat = state.awaitingCombat ?? false;
         this.combatAcknowledged = state.combatAcknowledged ?? false;
-        if (state.grantedDiscoveries) {
-            this._app._grantedDiscoveries = new Map(state.grantedDiscoveries);
+
+        if (state.grantedDiscoveries?.length && this._app._grantLedger) {
+            for (const [grantKey, result] of state.grantedDiscoveries) {
+                const colon = grantKey.indexOf(":");
+                if (colon < 0) continue;
+                const slotKey = GrantLedger.discoverySlotKey(
+                    grantKey.slice(0, colon),
+                    grantKey.slice(colon + 1)
+                );
+                if (!this._app._grantLedger.has(slotKey)) {
+                    this._app._grantLedger.record(slotKey, result);
+                }
+            }
         }
     }
 }

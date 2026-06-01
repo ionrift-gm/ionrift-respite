@@ -2,6 +2,7 @@ import { TravelResolver } from "../../services/TravelResolver.js";
 import { TravelMishapHandler } from "../../services/TravelMishapHandler.js";
 import { TerrainRegistry } from "../../services/TerrainRegistry.js";
 import { ForageActivityValidator } from "../../services/ForageActivityValidator.js";
+import { GrantLedger } from "../../services/GrantLedger.js";
 
 const MODULE_ID = "ionrift-respite";
 const MAX_TRAVEL_DAYS = 3;
@@ -395,13 +396,27 @@ export class TravelResolutionDelegate {
 
     // ── Receive roll results ──
 
+    /**
+     * @returns {boolean} false when the roll was ignored (already rolled or resolved).
+     */
     receiveRollResult(actorId, total, day = null, natD20 = null) {
         const d = day ?? this.#activeDay;
         const entry = this._getEntry(d, actorId);
-        if (!entry) return;
+        if (!entry) return false;
+
+        if (entry.status === "resolved") {
+            console.warn(`${MODULE_ID} | Ignored duplicate travel roll for ${actorId} day ${d} (already resolved)`);
+            return false;
+        }
+        if (entry.status === "rolled" && entry.total != null) {
+            console.warn(`${MODULE_ID} | Ignored duplicate travel roll for ${actorId} day ${d} (already rolled)`);
+            return false;
+        }
+
         entry.total = total;
         if (natD20 !== null) entry.natD20 = natD20;
         entry.status = "rolled";
+        return true;
     }
 
     /**
@@ -430,7 +445,11 @@ export class TravelResolutionDelegate {
         }
 
         if (result.success && result.items?.length) {
-            await this.#resolver.grantItems(actor, result.items);
+            const slotKey = GrantLedger.travelSlotKey(day, actorId, entry.activity);
+            await this.#resolver.grantItems(actor, result.items, {
+                ledger: this.#app._grantLedger,
+                slotKey
+            });
         }
 
         if (result.mishap) {
@@ -662,7 +681,11 @@ export class TravelResolutionDelegate {
             }
 
             if (result.success && result.items?.length) {
-                await this.#resolver.grantItems(actor, result.items);
+                const slotKey = GrantLedger.travelSlotKey(day, actor.id, entry.activity);
+                await this.#resolver.grantItems(actor, result.items, {
+                    ledger: this.#app._grantLedger,
+                    slotKey
+                });
             }
 
             if (result.mishap && !result.mishap.effectsApplied) {

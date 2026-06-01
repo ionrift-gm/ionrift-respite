@@ -24,6 +24,8 @@ import { emitFeastServeRequest } from "../services/SocketController.js";
 import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../services/StationInteractionLayer.js";
 import { TerrainRegistry } from "../services/TerrainRegistry.js";
 import { guardEmbedItems } from "../services/MintGuard.js";
+import { GrantLedger } from "../services/GrantLedger.js";
+import { ItemOutcomeHandler } from "../services/ItemOutcomeHandler.js";
 import { _refreshGmRestIndicator } from "../module.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -1045,6 +1047,14 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             ? [...resolver.activities.values()].find(a => a.crafting?.profession === profession)
             : null;
         const activityId = craftAct?.id ?? this._selectedActivityId;
+        console.log(`ionrift-respite | _autoCommitCraftResult DEBUG`, {
+            profession,
+            resolverSize: resolver?.activities?.size ?? "no-resolver",
+            craftActId: craftAct?.id ?? null,
+            selectedActivityId: this._selectedActivityId,
+            resolvedActivityId: activityId,
+            characterChoicesBefore: Object.fromEntries(restApp._characterChoices ?? [])
+        });
 
         if (restApp._isGM) {
             restApp._gmOverrides?.set(characterId, activityId);
@@ -1063,10 +1073,16 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             restApp._characterChoices?.set(characterId, activityId);
             restApp._lockedCharacters = restApp._lockedCharacters ?? new Set();
             restApp._lockedCharacters.add(characterId);
+            const choicesPayload = Object.fromEntries(restApp._characterChoices);
+            console.log(`ionrift-respite | _autoCommitCraftResult EMIT`, {
+                activityId,
+                choicesPayload,
+                characterId
+            });
             game.socket.emit(`module.${MODULE_ID}`, {
                 type: "activityChoice",
                 userId: game.user.id,
-                choices: Object.fromEntries(restApp._characterChoices),
+                choices: choicesPayload,
                 craftingResults: { [characterId]: result }
             });
             ui.notifications.info(`${this._actor?.name}'s activity submitted.`);
@@ -1259,9 +1275,25 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         delete itemData._id;
 
         if (game.user.isGM) {
+            const ledger = this._restApp?._grantLedger;
+            const itemRef = itemData.flags?.[MODULE_ID]?.itemRef ?? itemData.name ?? "feast_serving";
             for (const recipient of recipients) {
-                guardEmbedItems([itemData]);
-                await recipient.createEmbeddedDocuments("Item", [itemData]);
+                const slotKey = GrantLedger.mealSlotKey(recipient.id, itemRef);
+                const grant = [{
+                    name: itemData.name,
+                    type: itemData.type ?? "loot",
+                    img: itemData.img ?? "icons/svg/item-bag.svg",
+                    quantity: 1,
+                    system: { ...(itemData.system ?? {}), quantity: 1 },
+                    flags: itemData.flags ?? {}
+                }];
+                guardEmbedItems(grant);
+                const perform = () => ItemOutcomeHandler.grantItemsToActor(recipient, grant);
+                if (ledger) {
+                    await ledger.grantOnce(slotKey, perform);
+                } else {
+                    await perform();
+                }
             }
         } else {
             emitFeastServeRequest({

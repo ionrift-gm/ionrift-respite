@@ -18,6 +18,7 @@
 import { waitForDiceSoNice } from "./RollRequestManager.js";
 import { SpoilageClock } from "./SpoilageClock.js";
 import { ItemClassifier } from "./ItemClassifier.js";
+import { GrantLedger } from "./GrantLedger.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -157,7 +158,7 @@ export class CraftingEngine {
      * @param {string} [terrainTag] - Current terrain for DC modifier and variant output
      * @returns {Object} Crafting result.
      */
-    async resolve(actor, recipeId, professionId, riskTier = "standard", terrainTag = null, partySize = 1) {
+    async resolve(actor, recipeId, professionId, riskTier = "standard", terrainTag = null, partySize = 1, { ledger } = {}) {
         const allRecipes = this.recipes.get(professionId) ?? [];
         const recipe = allRecipes.find(r => r.id === recipeId);
         if (!recipe) {
@@ -194,19 +195,13 @@ export class CraftingEngine {
 
         const success = roll.total >= adjustedDc;
 
-        // Consume ingredients (always consumed on standard/ambitious, not on safe failure)
         const consumeIngredients = success || riskTier !== "safe";
-        if (consumeIngredients) {
-            await this._consumeIngredients(actor, recipe.ingredients, partySize);
-        }
 
         if (success) {
-            // Output tier: chosen ambitious, or Chef feat natural 20 upgrade
             let output = useAmbitiousOutput
                 ? recipe.ambitiousOutput
                 : recipe.output;
 
-            // Apply terrain variant if one exists for this terrain + tier
             if (terrainTag && recipe.terrainVariants?.[terrainTag]) {
                 const variant = recipe.terrainVariants[terrainTag];
                 const variantOutput = useAmbitiousOutput && variant.ambitiousOutput
@@ -219,11 +214,35 @@ export class CraftingEngine {
                 ? (recipe.ambitiousOutputFlags ?? recipe.outputFlags)
                 : recipe.outputFlags;
 
-            // Create the output item on the actor
-            const createdItems = await this._createOutputItems(actor, output, outputFlags);
+            const slotKey = GrantLedger.craftingSlotKey(actor.id, professionId, recipeId);
+
+            const performSuccessGrant = async () => {
+                if (consumeIngredients) {
+                    await this._consumeIngredients(actor, recipe.ingredients, partySize);
+                }
+                const createdItems = await this._createOutputItems(actor, output, outputFlags);
+                return { createdItems, output, outputFlags };
+            };
+
+            let createdItems = [];
+            let duplicate = false;
+
+            if (ledger) {
+                const { duplicate: wasDup, summary } = await ledger.grantOnce(slotKey, performSuccessGrant);
+                duplicate = wasDup;
+                createdItems = summary?.createdItems ?? [];
+                if (!wasDup) {
+                    output = summary?.output ?? output;
+                }
+            } else {
+                const summary = await performSuccessGrant();
+                createdItems = summary.createdItems;
+                output = summary.output;
+            }
 
             return {
                 success: true,
+                duplicate,
                 recipeId,
                 recipeName: recipe.name,
                 riskTier,
@@ -231,10 +250,13 @@ export class CraftingEngine {
                 dc: adjustedDc,
                 output,
                 createdItems,
-                ingredientsConsumed: true,
+                ingredientsConsumed: !duplicate && consumeIngredients,
                 narrative: recipe.successNarrative ?? `You successfully prepare ${recipe.name}.`
             };
         } else {
+            if (consumeIngredients) {
+                await this._consumeIngredients(actor, recipe.ingredients, partySize);
+            }
             return {
                 success: false,
                 recipeId,
