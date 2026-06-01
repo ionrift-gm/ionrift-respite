@@ -107,6 +107,22 @@ export class GrantLedger {
     }
 
     /**
+     * True when this actor already received a crafting grant this rest.
+     * @param {string} actorId
+     * @param {string} [professionId] - When set, only that profession is checked.
+     * @returns {boolean}
+     */
+    hasCraftingForActor(actorId, professionId = null) {
+        const prefix = professionId
+            ? `crafting:${actorId}:${professionId}:`
+            : `crafting:${actorId}:`;
+        for (const key of this.#entries.keys()) {
+            if (key.startsWith(prefix)) return true;
+        }
+        return false;
+    }
+
+    /**
      * @param {string} eventId
      * @param {string} itemRef
      * @returns {string}
