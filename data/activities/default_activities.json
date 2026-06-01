@@ -18,7 +18,7 @@
                     {
                         "type": "initiative_bonus",
                         "value": 3,
-                        "description": "Awake, alert, and ready to act."
+                        "description": "+3 initiative, immune to surprise. Party gains +1 initiative if the alarm sounds."
                     }
                 ]
             }
@@ -314,7 +314,7 @@
                 "effects": [
                     {
                         "type": "early_warning",
-                        "description": "Approaches identified, blind spots covered."
+                        "description": "Advantage on initiative and surprise. Approaches mapped, blind spots covered."
                     }
                 ]
             },
@@ -531,7 +531,7 @@
                     {
                         "type": "encounter_reduction",
                         "value": 2,
-                        "description": "Encounter threshold reduced by 2. Enemies are less likely to approach."
+                        "description": "Encounter threshold reduced by 2. Party gains +1 initiative if combat starts."
                     }
                 ]
             },
@@ -735,7 +735,7 @@
         "id": "act_other",
         "name": "Other",
         "professions": [],
-        "description": "Spend the evening your own way. Socialise, journal, whittle, stargaze, or simply sit in companionable silence. No skill check required.",
+        "description": "Spend the evening your own way. Socialise, journal, whittle, stargaze, or simply sit in companionable silence.",
         "restTypes": [
             "long",
             "short"

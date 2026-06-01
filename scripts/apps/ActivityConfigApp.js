@@ -28,6 +28,12 @@ const ACTIVITY_TOGGLES = [
         label: "Training",
         icon: "fas fa-dumbbell",
         hint: "Training activity for characters level 5 and below to earn XP."
+    },
+    {
+        key: "enableEncounters",
+        label: "Night Encounters & Watch",
+        icon: "fas fa-shield-alt",
+        hint: "Keep Watch, Set Up Defenses, scouting, and the night encounter roll. Off keeps the night closer to RAW; the GM can still improvise an event by hand."
     }
 ];
 

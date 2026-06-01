@@ -8,11 +8,13 @@
         <div class="check-module-skill">{{rollRequest.skillName}}</div>
         <div class="check-module-dc-row check-module-dc-row--readonly">
             <div class="ionrift-dc-stage">
+                {{#if rollRequest.dcPulseActive}}
                 <span class="ionrift-dc-ripple" aria-hidden="true"></span>
                 <span class="ionrift-dc-ripple ionrift-dc-ripple--b" aria-hidden="true"></span>
-                <div class="event-dc-badge circular ionrift-dc-badge--live">
+                {{/if}}
+                <div class="event-dc-badge circular{{#if rollRequest.dcPulseActive}} ionrift-dc-badge--live{{/if}}">
                     <span class="dc-label">DC</span>
-                    <span class="dc-value">{{rollRequest.dc}}</span>
+                    <span class="dc-value">{{#if rollRequest.meta.noDc}}—{{else}}{{rollRequest.dc}}{{/if}}</span>
                 </div>
             </div>
         </div>
@@ -30,7 +32,7 @@
                 <span class="ionrift-roll-participant__you-pill">You</span>
                 {{/if}}
                 <span class="check-avatar check-avatar--static{{#if (eq rollMode "advantage")}} adv{{/if}}{{#if (eq rollMode "disadvantage")}} dis{{/if}}{{#if rolled}} rolled{{/if}}{{#if isOwner}} is-yours{{/if}}"
-                    title="{{name}}{{#if (eq rollMode "advantage")}} · Advantage{{/if}}{{#if (eq rollMode "disadvantage")}} · Disadvantage{{/if}}{{#if isOwner}} · You{{/if}}">
+                    data-tooltip="{{name}}{{#if (eq rollMode "advantage")}} · Advantage{{/if}}{{#if (eq rollMode "disadvantage")}} · Disadvantage{{/if}}{{#if isOwner}} · You{{/if}}">
                     {{#if img}}
                     <img src="{{img}}" alt="{{name}}" />
                     {{/if}}
@@ -60,10 +62,12 @@
         {{/if}}
     </div>
 
+    {{#if rollRequest.gmView}}
     {{#if rollRequest.checkContext}}
     <div class="event-check-context">
         <i class="fas fa-dice-d20"></i> {{rollRequest.checkContext}}
     </div>
+    {{/if}}
     {{/if}}
 
     {{#if rollRequest.gmView}}
@@ -79,7 +83,7 @@
                 data-action="{{../rollRequest.gmRollAction}}"
                 data-character-id="{{id}}"
                 {{#if ../rollRequest.meta.eventIndex}}data-event-index="{{../rollRequest.meta.eventIndex}}"{{/if}}
-                title="Roll on their behalf">
+                data-tooltip="Roll on their behalf">
                 <i class="fas fa-dice"></i> Roll for them
             </button>
         </div>
@@ -103,13 +107,21 @@
     <div class="event-adjudicate-buttons ionrift-roll-request__actions">
         {{#each rollRequest.actionTargets}}
         <button type="button"
-            class="btn-resolve-check"
+            class="btn-resolve-check{{#if (eq rollMode "force-pass")}} btn-resolve-check--force-pass{{/if}}{{#if (eq rollMode "force-fail")}} btn-resolve-check--force-fail{{/if}}"
             data-action="ionriftRoll"
             data-flow="{{../rollRequest.flow}}"
             data-character-id="{{id}}"
-            {{#if ../rollRequest.meta.eventIndex}}data-event-index="{{../rollRequest.meta.eventIndex}}"{{/if}}>
+            {{#if ../rollRequest.meta.eventIndex}}data-event-index="{{../rollRequest.meta.eventIndex}}"{{/if}}
+            {{#if ../rollRequest.meta.activityId}}data-activity-id="{{../rollRequest.meta.activityId}}"{{/if}}
+            {{#if ../rollRequest.meta.day}}data-day="{{../rollRequest.meta.day}}"{{/if}}>
+            {{#if (eq rollMode "force-pass")}}
+            <i class="fas fa-check"></i> Confirm Auto-Success · {{name}}
+            {{else if (eq rollMode "force-fail")}}
+            <i class="fas fa-times"></i> Confirm Auto-Failure · {{name}}
+            {{else}}
             <i class="fas fa-dice-d20"></i>
             Roll {{../rollRequest.skillName}} · {{name}}
+            {{/if}}
         </button>
         {{/each}}
     </div>

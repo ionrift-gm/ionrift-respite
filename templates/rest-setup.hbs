@@ -9,13 +9,20 @@
     <div class="respite-phase-header">
         <div class="phase-indicator">
             {{#each phaseSteps}}
-            <div class="phase-dot {{#if active}}active{{/if}} {{#if complete}}complete{{/if}}"></div>
+            <div class="phase-dot {{#if active}}active{{/if}} {{#if complete}}complete{{/if}}"
+                 data-tooltip="{{label}}"></div>
             {{/each}}
         </div>
         <span class="phase-label">{{phaseLabel}}</span>
 
+        <button type="button" class="btn-phase-guide" data-action="openGuide"
+                data-tooltip="Open the Respite guide."
+                aria-label="Open Respite guide">
+            <i class="fas fa-circle-question" aria-hidden="true"></i>
+        </button>
+
         {{#if isGM}}
-        <button type="button" class="btn-abandon-rest" data-action="abandonRest" title="Cancel this rest for all players">
+        <button type="button" class="btn-abandon-rest" data-action="abandonRest" data-tooltip="Cancel this rest for all players">
             <i class="fas fa-times"></i> Abandon Rest
         </button>
         {{/if}}
@@ -29,23 +36,23 @@
         {{!-- Comfort badge removed: the Camp Comfort section below covers this --}}
         {{#if campStatus.weather}}
         {{#unless (eq campStatus.weather "clear")}}
-        <span class="camp-status-chip weather-chip" title="{{campStatus.weatherTooltip}}">
+        <span class="camp-status-chip weather-chip" data-tooltip="{{campStatus.weatherTooltip}}">
             <i class="fas fa-cloud-sun-rain"></i> {{campStatus.weatherLabel}}
         </span>
         {{/unless}}
         {{/if}}
         {{#each campStatus.activeShelters}}
-        <span class="camp-status-chip shelter-chip shelter-chip-{{id}}" title="{{tooltip}}">
+        <span class="camp-status-chip shelter-chip shelter-chip-{{id}}" data-tooltip="{{tooltip}}">
             <i class="{{icon}}"></i> {{name}}
         </span>
         {{/each}}
         {{#unless campStatus.hasTent}}
         {{#unless safeRestSpot}}
-        <span class="camp-status-chip shelter-chip absent" title="No tent pitched. The whole camp is exposed to weather penalties and lower encounter safety.">
+        <span class="camp-status-chip shelter-chip absent" data-tooltip="No tent pitched. The camp is exposed to weather and easier for enemies to find.">
             <i class="fas fa-campground"></i> No Tent
         </span>
         {{else}}
-        <span class="camp-status-chip shelter-chip absent" title="No tent pitched. Weather flavor only in a safe rest spot.">
+        <span class="camp-status-chip shelter-chip absent" data-tooltip="No tent pitched. Weather flavor only in a safe rest spot.">
             <i class="fas fa-campground"></i> No Tent
         </span>
         {{/unless}}
@@ -94,7 +101,7 @@
                         <input type="hidden" name="restType" value="{{#if (eq selectedRestType 'short')}}short{{else}}long{{/if}}">
                     </div>
                     {{#unless isShortRest}}
-                    <label class="safe-rest-spot-toggle {{#if safeRestSpot}}is-active{{/if}}" title="No encounter risk. Skips night events, comfort penalties, and camp defense. Activities, cooking, and identification only.">
+                    <label class="safe-rest-spot-toggle {{#if safeRestSpot}}is-active{{/if}}" data-tooltip="No encounter risk. Skips night events, comfort penalties, and camp defense. Activities, cooking, and identification only.">
                         <i class="fas fa-shield-halved" aria-hidden="true"></i>
                         <span class="safe-rest-spot-label">Safe Rest</span>
                         <span class="safe-rest-switch"><input type="checkbox" name="safeRestSpot" value="1" {{#if safeRestSpot}}checked{{/if}}><span class="safe-rest-slider"></span></span>
@@ -107,7 +114,7 @@
             <hr class="setup-divider scene-grid-full">
 
             <div class="form-group scene-environment">
-                <label title="{{terrainPreview}}">Environment:</label>
+                <label data-tooltip="{{terrainPreview}}">Environment:</label>
                 <select name="terrain">
                     {{#each terrainOptionGroups}}
                     <optgroup label="{{group}}">
@@ -132,15 +139,15 @@
         </div>
 
         {{#unless isShortRest}}
-        <div class="setup-status-line" title="Summary of terrain and weather effects">{{setupStatusLine}}</div>
+        <div class="setup-status-line" data-tooltip="Summary of terrain and weather effects">{{setupStatusLine}}</div>
         <hr class="setup-divider">
         {{/unless}}
 
         {{#if restConfigBadges.length}}
         {{#unless isShortRest}}
-        <div class="rest-config-summary" title="What this rest includes, based on module settings.">
+        <div class="rest-config-summary" data-tooltip="What this rest includes, based on module settings.">
             {{#each restConfigBadges}}
-            <span class="rest-config-badge {{#if on}}is-on{{else}}is-off{{/if}}" title="{{tooltip}}">
+            <span class="rest-config-badge {{#if on}}is-on{{else}}is-off{{/if}}" data-tooltip="{{tooltip}}">
                 <i class="{{icon}}"></i> {{label}}
             </span>
             {{/each}}
@@ -159,14 +166,14 @@
                 <div class="roster-indicator">
                     <div class="roster-indicator-portraits">
                         {{#each rosterInfo.portraits}}
-                        <img class="roster-indicator-portrait" src="{{img}}" alt="{{name}}" title="{{name}}">
+                        <img class="roster-indicator-portrait" src="{{img}}" alt="{{name}}" data-tooltip="{{name}}">
                         {{/each}}
                         {{#if rosterInfo.overflow}}
                         <span class="roster-indicator-overflow">+{{rosterInfo.overflow}}</span>
                         {{/if}}
                     </div>
                     <span class="roster-indicator-label">{{rosterInfo.count}} characters</span>
-                    <button type="button" class="roster-indicator-edit" onclick="const App = game.ionrift?.library?.PartyRosterApp; if (App) new App().render(true); else ui.notifications.warn('Party Roster requires ionrift-library.');" title="Edit Party Roster">
+                    <button type="button" class="roster-indicator-edit" onclick="const App = game.ionrift?.library?.PartyRosterApp; if (App) new App().render(true); else ui.notifications.warn('Party Roster requires ionrift-library.');" data-tooltip="Edit Party Roster">
                         <i class="fas fa-pencil-alt"></i>
                     </button>
                 </div>
@@ -228,6 +235,7 @@
     <div class="phase-banner">
         <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
+    {{> rosterStrip}}
 
     {{#if travelContext}}
     <div class="respite-travel-phase {{#if travelContext.travelSkipRecommended}}travel-skip-mode{{else}}{{#unless travelContext.hasTravelOptions}}travel-disabled{{/unless}}{{/if}}">
@@ -264,7 +272,7 @@
         <div class="travel-dc-bar">
             {{#if travelContext.canForage}}
             {{#if travelContext.forageDisabled}}
-            <span class="travel-dc-chip travel-dc-chip--muted" title="{{travelContext.forageDisabledTooltip}}">
+            <span class="travel-dc-chip travel-dc-chip--muted" data-tooltip="{{travelContext.forageDisabledTooltip}}">
                 <i class="fas fa-seedling"></i> Forage unavailable
             </span>
             {{else}}
@@ -274,8 +282,8 @@
                 <span class="encounter-chip"><i class="fas fa-wrench"></i> GM {{travelContext.forageGMAdj}}</span>
                 {{/if}}
                 <span class="encounter-gm-adj">
-                    <button type="button" class="encounter-adj-btn" data-action="adjustGlobalDC" data-activity="forage" data-delta="-1" title="Reduce Forage DC">−</button>
-                    <button type="button" class="encounter-adj-btn" data-action="adjustGlobalDC" data-activity="forage" data-delta="1" title="Increase Forage DC">+</button>
+                    <button type="button" class="encounter-adj-btn" data-action="adjustGlobalDC" data-activity="forage" data-delta="-1" data-tooltip="Reduce Forage DC">−</button>
+                    <button type="button" class="encounter-adj-btn" data-action="adjustGlobalDC" data-activity="forage" data-delta="1" data-tooltip="Increase Forage DC">+</button>
                 </span>
             </span>
             {{/if}}
@@ -287,8 +295,8 @@
                 <span class="encounter-chip"><i class="fas fa-wrench"></i> GM {{travelContext.huntGMAdj}}</span>
                 {{/if}}
                 <span class="encounter-gm-adj">
-                    <button type="button" class="encounter-adj-btn" data-action="adjustGlobalDC" data-activity="hunt" data-delta="-1" title="Reduce Hunt DC">−</button>
-                    <button type="button" class="encounter-adj-btn" data-action="adjustGlobalDC" data-activity="hunt" data-delta="1" title="Increase Hunt DC">+</button>
+                    <button type="button" class="encounter-adj-btn" data-action="adjustGlobalDC" data-activity="hunt" data-delta="-1" data-tooltip="Reduce Hunt DC">−</button>
+                    <button type="button" class="encounter-adj-btn" data-action="adjustGlobalDC" data-activity="hunt" data-delta="1" data-tooltip="Increase Hunt DC">+</button>
                 </span>
             </span>
             {{/if}}
@@ -300,7 +308,7 @@
             {{#each travelContext.days}}
             <button type="button" class="travel-day-tab {{#if isActive}}active{{/if}} {{#if resolved}}resolved{{/if}}" data-action="switchTravelDay" data-day="{{day}}">
                 {{#if resolved}}<i class="fas fa-check"></i>{{/if}}
-                Day {{day}}{{#if isFinalDay}} <i class="fas fa-campground" title="Arrival day, scouting available"></i>{{/if}}
+                Day {{day}}{{#if isFinalDay}} <i class="fas fa-campground" data-tooltip="Arrival day. Travel activities available (forage, hunt, scout)."></i>{{/if}}
             </button>
             {{/each}}
         </div>
@@ -314,7 +322,7 @@
             {{#if isFinalDay}}
             {{#if ../travelContext.canScout}}
             <div class="travel-scout-notice">
-                <i class="fas fa-campground"></i> Arrival at this site. Scouting, rest, foraging, and making camp are all in play. Resolve the day below to see who did what.
+                <i class="fas fa-campground"></i> Arrival day. Forage, hunt, scout, or take it easy before camp. Resolve the day below to see who did what.
             </div>
             {{/if}}
             {{/if}}
@@ -327,7 +335,7 @@
                         <span class="travel-char-name">{{name}}{{#if confirmed}}<span class="travel-confirmed-pick">{{#if (eq activity 'forage')}}<i class="fas fa-seedling"></i> Forage
                         {{else if (eq activity 'hunt')}}<i class="fas fa-crosshairs"></i> Hunt
                         {{else if (eq activity 'scout')}}<i class="fas fa-binoculars"></i> Scout
-                        {{else}}<span class="travel-other-emoji" aria-hidden="true">&#127969;</span> Other{{/if}} <i class="fas fa-check travel-confirmed-icon" title="Player locked in"></i></span>{{else}}<span class="travel-pending-pick" title="Not confirmed yet">{{#if (eq activity 'forage')}}<i class="fas fa-seedling"></i> Forage
+                        {{else}}<span class="travel-other-emoji" aria-hidden="true">&#127969;</span> Other{{/if}} <i class="fas fa-check travel-confirmed-icon" data-tooltip="Player locked in"></i></span>{{else}}<span class="travel-pending-pick" data-tooltip="Not confirmed yet">{{#if (eq activity 'forage')}}<i class="fas fa-seedling"></i> Forage
                         {{else if (eq activity 'hunt')}}<i class="fas fa-crosshairs"></i> Hunt
                         {{else if (eq activity 'scout')}}<i class="fas fa-binoculars"></i> Scout
                         {{else}}<span class="travel-other-emoji" aria-hidden="true">&#127969;</span> Other{{/if}}</span>{{/if}}</span>
@@ -390,16 +398,16 @@
                     {{else if requested}}
                     <div class="travel-gm-activity-pick">
                     <span class="travel-pending-label"><i class="fas fa-paper-plane"></i> Sent</span>
-                    {{#if awaitingPlayerResponse}}<span class="travel-player-await" title="Waiting for a roll"><i class="fas fa-circle-notch fa-spin"></i></span>{{/if}}
-                    <button type="button" class="btn-roll-for-player travel-fallback" data-action="rollTravelForPlayer" data-actor-id="{{id}}" data-day="{{../day}}" title="Roll on their behalf">
+                    {{#if awaitingPlayerResponse}}<span class="travel-player-await" data-tooltip="Waiting for a roll"><i class="fas fa-circle-notch fa-spin"></i></span>{{/if}}
+                    <button type="button" class="btn-roll-for-player travel-fallback" data-action="rollTravelForPlayer" data-actor-id="{{id}}" data-day="{{../day}}" data-tooltip="Roll on their behalf">
                         <i class="fas fa-dice"></i>
                     </button>
                     </div>
 
                     {{else if otherLockedIn}}
                     <div class="travel-gm-activity-pick travel-gm-other-locked">
-                        <span class="travel-gm-other-locked-label" title="Other, confirmed for this day"><span class="travel-other-emoji" aria-hidden="true">&#127969;</span> Other</span>
-                        <span class="travel-gm-confirmed-badge" title="Locked in as Other"><i class="fas fa-check"></i></span>
+                        <span class="travel-gm-other-locked-label" data-tooltip="Other, confirmed for this day"><span class="travel-other-emoji" aria-hidden="true">&#127969;</span> Other</span>
+                        <span class="travel-gm-confirmed-badge" data-tooltip="Locked in as Other"><i class="fas fa-check"></i></span>
                     </div>
 
                     {{else}}
@@ -411,13 +419,13 @@
                         {{#if ../../travelContext.canHunt}}<option value="hunt" {{#if (eq activity 'hunt')}}selected{{/if}}>🎯 Hunt</option>{{/if}}
                         {{#if ../canScout}}<option value="scout" {{#if (eq activity 'scout')}}selected{{/if}}>🔭 Scout</option>{{/if}}
                     </select>
-                    {{#if awaitingPlayerResponse}}<span class="travel-player-await" title="Waiting for this character"><i class="fas fa-circle-notch fa-spin"></i></span>{{/if}}
+                    {{#if awaitingPlayerResponse}}<span class="travel-player-await" data-tooltip="Waiting for this character"><i class="fas fa-circle-notch fa-spin"></i></span>{{/if}}
                     {{#if (eq activity 'nothing')}}
-                    <button type="button" class="travel-gm-confirm-for-btn" data-action="confirmTravelForPlayer" data-actor-id="{{id}}" data-day="{{../day}}" title="Confirm Other on their behalf (absent player)">
+                    <button type="button" class="travel-gm-confirm-for-btn" data-action="confirmTravelForPlayer" data-actor-id="{{id}}" data-day="{{../day}}" data-tooltip="Confirm Other on their behalf (absent player)">
                         <i class="fas fa-check"></i> Confirm
                     </button>
                     {{else}}
-                    <button type="button" class="btn-roll-for-player travel-gm-direct-roll" data-action="rollTravelForPlayer" data-actor-id="{{id}}" data-day="{{../day}}" title="Roll on their behalf (absent player)">
+                    <button type="button" class="btn-roll-for-player travel-gm-direct-roll" data-action="rollTravelForPlayer" data-actor-id="{{id}}" data-day="{{../day}}" data-tooltip="Roll on their behalf (absent player)">
                         <i class="fas fa-dice"></i>
                     </button>
                     {{/if}}
@@ -439,13 +447,13 @@
                 </button>
                 {{else}}
                 <button type="button" class="btn-primary travel-resolve-day-btn disabled" data-day="{{day}}" disabled
-                    title="Unlocks when every party member has rolled or confirmed.">
+                    data-tooltip="Unlocks when every party member has rolled or confirmed.">
                     <i class="fas fa-lock"></i> Waiting on travel rolls
                 </button>
                 {{/if}}
                 </div>
                 {{#unless allRollsIn}}
-                <button type="button" class="travel-skip-link" data-action="skipTravelPhase" title="Skip remaining travel and continue">
+                <button type="button" class="travel-skip-link" data-action="skipTravelPhase" data-tooltip="Skip remaining travel and continue">
                     <i class="fas fa-forward"></i> Skip Travel
                 </button>
                 {{/unless}}
@@ -564,10 +572,15 @@
             </div>
             {{/if}}
 
+
             {{#if travelFullyResolved}}
             <div class="travel-player-info travel-waiting-gm">
                 <i class="fas fa-hourglass-half"></i>
                 <span>Waiting for the GM to continue...</span>
+            </div>
+            {{else}}
+            <div class="respite-action-bar">
+                <span class="phase-waiting-label"><i class="fas fa-hourglass-half"></i> Waiting for the GM to proceed...</span>
             </div>
             {{/if}}
 
@@ -579,22 +592,8 @@
             </div>
             <div class="travel-roll-section">
                 {{#each pendingTravelRoll.activities}}
-                {{#if isOwner}}
-                <div class="travel-roll-prompt {{#if rolled}}rolled{{/if}}">
-                    <div class="travel-roll-info">
-                        <strong>{{actorName}}: {{activityLabel}}</strong>
-                        <span class="travel-roll-skill">{{skillName}}{{#if dc}} DC {{dc}}{{/if}}</span>
-                    </div>
-                    {{#if rolled}}
-                    <span class="travel-roll-result pending">
-                        <i class="fas fa-spinner fa-spin"></i> Awaiting...
-                    </span>
-                    {{else}}
-                    <button type="button" class="btn-primary btn-travel-roll" data-action="rollTravelCheck" data-actor-id="{{actorId}}" data-day="{{day}}">
-                        <i class="fas fa-dice-d20"></i> Roll
-                    </button>
-                    {{/if}}
-                </div>
+                {{#if rollRequest}}
+                {{> rollRequest rollRequest=rollRequest}}
                 {{/if}}
                 {{/each}}
             </div>
@@ -649,7 +648,7 @@
                         {{#if ../canScout}}<option value="scout" {{#if (eq declaration 'scout')}}selected{{/if}}>🔭 Scout</option>{{/if}}
                     </select>
                     {{#if (eq declaration 'nothing')}}
-                    <button type="button" class="travel-confirm-btn" data-actor-id="{{id}}" data-day="{{../day}}" title="Lock in choice">
+                    <button type="button" class="travel-confirm-btn" data-actor-id="{{id}}" data-day="{{../day}}" data-tooltip="Lock in choice">
                         <i class="fas fa-check"></i>
                     </button>
                     {{else}}
@@ -662,28 +661,12 @@
                 {{/if}}
                 {{/each}}
 
-                {{!-- Other characters: compact grid --}}
-                <div class="travel-party-grid">
-                    {{#each characters}}
-                    {{#unless isOwner}}
-                    <div class="travel-grid-card {{#if confirmed}}confirmed{{/if}} {{#if declarationIcon}}active{{/if}} {{#if (eq declaration 'nothing')}}active-other{{/if}}" title="{{name}}{{#if confirmed}}, locked in{{/if}}">
-                        <div class="travel-grid-portrait-wrap">
-                            <img class="travel-grid-portrait" src="{{img}}" alt="{{name}}" />
-                            {{#if confirmed}}<i class="fas fa-check travel-grid-confirmed-badge"></i>{{/if}}
-                        </div>
-                        <span class="travel-grid-name">{{name}}</span>
-                        <span class="travel-grid-activity{{#unless declarationIcon}}{{#if (eq declaration 'nothing')}} travel-activity-other{{else}} idle{{/if}}{{/unless}}">
-                            {{#if declarationIcon}}<i class="fas {{declarationIcon}}"></i>{{else}}<i class="fas fa-campground" title="Other"></i>{{/if}}
-                        </span>
-                        {{#if declarationLabel}}
-                        <span class="travel-grid-label">{{declarationLabel}}</span>
-                        {{else}}
-                        <span class="travel-grid-label">Other</span>
-                        {{/if}}
-                    </div>
-                    {{/unless}}
-                    {{/each}}
-                </div>
+
+            {{#if playerDone}}
+            <div class="respite-action-bar">
+                <span class="phase-waiting-label"><i class="fas fa-hourglass-half"></i> Waiting for the GM to proceed...</span>
+            </div>
+            {{/if}}
             </div>
             {{/if}}
             {{/each}}
@@ -754,7 +737,7 @@
             <div class="totm-camp-factors-heading">Your Gear</div>
             <div class="totm-camp-factors-grid">
                 <div class="totm-factor-tile {{#if campPersonalSelected.hasBedroll}}present{{else}}missing{{/if}}"
-                     title="{{#if campPersonalSelected.hasBedroll}}+1 personal comfort{{else}}Comfort stays at camp level{{/if}}">
+                     data-tooltip="{{#if campPersonalSelected.hasBedroll}}+1 personal comfort{{else}}Comfort stays at camp level{{/if}}">
                     <i class="fas fa-bed totm-factor-tile-icon" aria-hidden="true"></i>
                     <span class="totm-factor-tile-label">Bedroll</span>
                     {{#if campPersonalSelected.hasBedroll}}
@@ -764,7 +747,7 @@
                     {{/if}}
                 </div>
                 <div class="totm-factor-tile {{#if campPersonalSelected.hasTent}}present{{else}}missing{{/if}}"
-                     title="{{#if campPersonalSelected.hasTent}}Weather shield active{{else}}No weather shield{{/if}}">
+                     data-tooltip="{{#if campPersonalSelected.hasTent}}Weather shield active{{else}}No weather shield{{/if}}">
                     <i class="fas fa-campground totm-factor-tile-icon" aria-hidden="true"></i>
                     <span class="totm-factor-tile-label">Tent</span>
                     {{#if campPersonalSelected.hasTent}}
@@ -774,7 +757,7 @@
                     {{/if}}
                 </div>
                 <div class="totm-factor-tile {{#if campPersonalSelected.hasMessKit}}present{{else}}missing{{/if}}"
-                     title="{{#if campPersonalSelected.hasMessKit}}Exhaustion-save advantage{{else}}Lose exhaustion-save advantage{{/if}}">
+                     data-tooltip="{{#if campPersonalSelected.hasMessKit}}Advantage on the exhaustion save (fire must be lit){{else}}No exhaustion-save advantage{{/if}}">
                     <i class="fas fa-utensils totm-factor-tile-icon" aria-hidden="true"></i>
                     <span class="totm-factor-tile-label">Mess Kit</span>
                     {{#if campPersonalSelected.hasMessKit}}
@@ -783,8 +766,8 @@
                     <span class="totm-factor-tile-status missing"><i class="fas fa-times" aria-hidden="true"></i></span>
                     {{/if}}
                 </div>
-                <div class="totm-factor-tile fire {{#if campFireIsLit}}present{{else if campColdCampDecided}}cold{{else}}missing{{/if}}"
-                     title="{{#if campFireIsLit}}{{#each campFirePickerLevels}}{{#if selected}}{{label}}: {{fireTierPlain id}}{{/if}}{{/each}}{{else if campColdCampDecided}}Cold camp: no fire, −1 comfort, −2 encounter DC{{else}}No fire lit yet{{/if}}">
+                <div class="totm-factor-tile fire {{#if campColdCampDecided}}cold{{else if campFireIsLit}}present{{else}}missing{{/if}}"
+                     data-tooltip="{{#if campColdCampDecided}}Cold camp: no fire, −1 comfort, harder for enemies to spot.{{else if campFireIsLit}}{{#each campFirePickerLevels}}{{#if selected}}{{label}}: {{fireTierPlain id}}{{/if}}{{/each}}{{else}}No fire lit yet{{/if}}">
                     <i class="fas fa-fire totm-factor-tile-icon" aria-hidden="true"></i>
                     <span class="totm-factor-tile-label">Fire</span>
                     {{#if campFireIsLit}}
@@ -799,7 +782,7 @@
 
             {{!-- Comfort + recovery card ─────────────────────────── --}}
             <div class="totm-rest-card comfort-{{campPersonalSelected.personalComfort}}">
-                <div class="totm-rest-card-header comfort-{{campPersonalSelected.personalComfort}}" title="{{comfortHint campPersonalSelected.personalComfort}}">
+                <div class="totm-rest-card-header comfort-{{campPersonalSelected.personalComfort}}" data-tooltip="{{comfortHint campPersonalSelected.personalComfort}}" data-tooltip-direction="UP">
                     <span class="totm-rest-card-title">{{campPersonalSelected.personalComfortLabel}}</span>
                     <span class="totm-rest-card-subtitle">Your Rest</span>
                 </div>
@@ -833,7 +816,7 @@
             {{!-- ── No character selected: show party camp comfort ──────── --}}
             <div class="totm-camp-comfort-hero">
                 <span class="totm-camp-comfort-label">Camp Comfort</span>
-                <span class="totm-camp-comfort-tier-big comfort-{{campScanData.campComfort}}" title="{{comfortHint campScanData.campComfort}}">
+                <span class="totm-camp-comfort-tier-big comfort-{{campScanData.campComfort}}" data-tooltip="{{comfortHint campScanData.campComfort}}" data-tooltip-direction="UP">
                     {{campScanData.campComfortLabel}}
                 </span>
             </div>
@@ -864,71 +847,52 @@
             </div>
 
             {{#unless safeRestSpot}}
-            {{#if campFireIsLit}}
-            {{!-- Fire is committed: show only the tier description --}}
-            {{#each campFirePickerLevels}}
-            {{#if selected}}
-            <p class="totm-fire-segment-desc">{{> fireTierBody}}</p>
-            {{/if}}
-            {{/each}}
-            {{else}}
-            {{!-- Fire tier segmented control (Option C: All-in-one Strip) --}}
+            {{!-- Fire tier segmented control: synced tier picks; cold camp always available --}}
             <div class="totm-fire-segment-wrap">
                 <div class="totm-fire-segments" role="radiogroup" aria-label="Fire intensity tiers">
-                    {{!-- Cold Camp segment: only visible when fire is NOT yet lit --}}
-                    {{#unless campFireIsLit}}
                     <button type="button"
-                            class="totm-fire-segment cold-camp {{#if campColdCampDecided}}selected{{else}}{{#if campPreviewIsColdCamp}}selected{{/if}}{{/if}}"
+                            class="totm-fire-segment cold-camp {{#if campColdCampDecided}}selected{{else if campPreviewIsColdCamp}}selected{{/if}}"
                             data-tier="cold_camp"
-                            {{#if campColdCampDecided}}aria-checked="true"{{else}}{{#if campPreviewIsColdCamp}}aria-checked="true"{{else}}aria-checked="false"{{/if}}{{/if}}
+                            {{#if campColdCampDecided}}aria-checked="true"{{else if campPreviewIsColdCamp}}aria-checked="true"{{else}}aria-checked="false"{{/if}}
                             role="radio"
                             {{#unless campColdCampDecided}}
-                            data-action="previewCampFireLevel" data-fire-level="cold_camp"
+                            data-action="selectCampColdCamp"
                             {{/unless}}>
                         <i class="fas fa-moon" aria-hidden="true"></i>
                         <span class="totm-fire-segment-label">Cold Camp</span>
                         <span class="totm-fire-segment-cost">No fire</span>
                     </button>
-                    {{/unless}}
-                    {{!-- Fire tier segments: Embers, Campfire, Bonfire --}}
                     {{#each campFirePickerLevels}}
                     <button type="button"
                             class="totm-fire-segment {{#if selected}}selected{{/if}} {{#if disabled}}{{#unless @root.isGM}}disabled{{/unless}}{{/if}}"
                             data-tier="{{id}}"
-                            {{#if disabled}}{{#unless @root.isGM}}disabled{{/unless}} title="{{disabledReason}}"{{/if}}
+                            {{#if disabled}}{{#unless @root.isGM}}disabled{{/unless}} data-tooltip="{{disabledReason}}"{{/if}}
                             {{#if selected}}aria-checked="true"{{else}}aria-checked="false"{{/if}}
                             role="radio"
                             {{#unless selected}}
-                            {{#unless @root.campFireIsLit}}
-                            data-action="previewCampFireLevel" data-fire-level="{{id}}"
-                            {{/unless}}
+                            data-action="selectCampFireLevel" data-fire-level="{{id}}"
                             {{/unless}}>
                         <span class="totm-fire-segment-label">{{label}}</span>
                         <span class="totm-fire-segment-cost">{{costLabel}}</span>
                     </button>
                     {{/each}}
                 </div>
-                {{!-- Show selected tier description --}}
+                {{#if campColdCampDecided}}
+                <p class="totm-fire-segment-desc">No fire tonight. <span class="fire-penalty">−1 comfort.</span> <span class="fire-benefit">Harder for enemies to spot.</span> No cooking.</p>
+                {{else if campPreviewIsColdCamp}}
+                <p class="totm-fire-segment-desc">No fire tonight. <span class="fire-penalty">−1 comfort.</span> <span class="fire-benefit">Harder for enemies to spot.</span> No cooking.</p>
+                {{else}}
                 {{#each campFirePickerLevels}}
                 {{#if selected}}
                 <p class="totm-fire-segment-desc">{{> fireTierBody}}</p>
                 {{/if}}
                 {{/each}}
-                {{!-- Cold camp description --}}
-                {{#unless campFireIsLit}}
-                {{#if campColdCampDecided}}
-                <p class="totm-fire-segment-desc">No fire tonight. <span class="fire-penalty">−1 comfort.</span> <span class="fire-benefit">Harder to detect (lower encounter chance).</span> No cooking.</p>
-                {{else if campPreviewIsColdCamp}}
-                <p class="totm-fire-segment-desc">No fire tonight. <span class="fire-penalty">−1 comfort.</span> <span class="fire-benefit">Harder to detect (lower encounter chance).</span> No cooking.</p>
                 {{/if}}
-                {{/unless}}
 
-                {{!-- ═══ FIRE BILL: Itemized requirements ═══ --}}
                 {{#unless campFireIsLit}}
                 {{#unless campColdCampDecided}}
                 {{#unless campPreviewIsColdCamp}}
                 <div class="totm-fire-bill">
-                    {{!-- Line 1: Firewood cost --}}
                     <div class="totm-fire-bill-line {{#if campHasEnoughFirewood}}met{{else}}unmet{{/if}}">
                         {{#if campHasEnoughFirewood}}
                         <i class="fas fa-check" aria-hidden="true"></i>
@@ -938,11 +902,10 @@
                         <span>{{campSelectedFirewoodCost}} firewood needed</span>
                         <span class="totm-fire-bill-detail">(party has {{campPartyFirewood}})</span>
                     </div>
-                    {{!-- Line 2: Lighter availability --}}
                     <div class="totm-fire-bill-line {{#if campCanLight}}met{{else}}unmet{{/if}}">
                         {{#if campCanLight}}
                         <i class="fas fa-check" aria-hidden="true"></i>
-                        <span class="totm-fire-bill-lighter" title="{{campFireLighterNames}}">
+                        <span class="totm-fire-bill-lighter" data-tooltip="{{campFireLighterNames}}">
                             {{campFireLighters.length}} can light it
                         </span>
                         {{else}}
@@ -951,13 +914,12 @@
                         {{/if}}
                     </div>
 
-                    {{!-- Action row: GM or player --}}
                     {{#if isGM}}
                     <button type="button" class="totm-fire-light-btn gm-light-submit"
                             data-action="campLightFire"
                             data-actor-id="__gm__"
                             data-method="Tinderbox"
-                            title="Optional - players with gear see their own Light button. Use this as a GM override.">
+                            data-tooltip="Optional. Players with gear see their own Light button. Use this as a GM override.">
                         <i class="fas fa-fire" aria-hidden="true"></i> Light it for them
                     </button>
                     {{else if campViewerCanLight}}
@@ -972,9 +934,9 @@
                     {{else}}
                     <p class="totm-fire-bill-hint">
                         {{#if campFireLighters.length}}
-                        Waiting for {{campFireLighterNames}} or the GM to light it.
+                        Pick a fire tier above, or wait for {{campFireLighterNames}} or the GM.
                         {{else}}
-                        Choose cold camp, or ask the GM.
+                        Pick a fire tier above, choose cold camp, or ask the GM.
                         {{/if}}
                     </p>
                     {{/if}}
@@ -983,7 +945,6 @@
                 {{/unless}}
                 {{/unless}}
             </div>
-            {{/if}} {{!-- /campFireIsLit else --}}
 
             {{!-- Firewood pledges (after fire is lit) --}}
             {{#if campFireIsLit}}
@@ -1017,15 +978,10 @@
     {{!-- Proceed footer (TotM) --}}
     {{#if isGM}}
     <div class="totm-camp-footer">
-        {{#if (or safeRestSpot campFireIsLit campColdCampDecided)}}
+        {{#if (or safeRestSpot campFireIsLit campColdCampDecided campPreviewIsColdCamp)}}
         <button type="button" class="btn-primary totm-camp-proceed"
                 data-action="proceedFromTotmCamp">
             <i class="fas fa-arrow-right" aria-hidden="true"></i> Proceed to Activities
-        </button>
-        {{else if campPreviewIsColdCamp}}
-        <button type="button" class="btn-primary totm-camp-proceed cold-camp-confirm"
-                data-action="campColdCamp">
-            <i class="fas fa-moon" aria-hidden="true"></i> Confirm Cold Camp &amp; Proceed
         </button>
         {{else}}
         <button type="button" class="btn-primary totm-camp-proceed disabled" disabled>
@@ -1070,7 +1026,7 @@
             <button type="button" data-action="openArtPackImport" class="art-nudge-btn primary">
                 <i class="fas fa-file-import"></i> {{#if artNudgeIsUpdate}}Update Art Pack{{else}}Import Art Pack{{/if}}
             </button>
-            <button type="button" data-action="dismissArtNudge" class="art-nudge-dismiss" title="Dismiss">
+            <button type="button" data-action="dismissArtNudge" class="art-nudge-dismiss" data-tooltip="Dismiss">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -1207,7 +1163,7 @@
                     <div class="feast-roster-portraits">
                         {{#each craftingResult.partyRoster}}
                         <div class="feast-portrait {{#if alreadyWellFed}}already-fed{{else}}will-eat{{/if}}"
-                             title="{{name}}{{#if alreadyWellFed}}: already Well Fed, goes to inventory{{else}}: will eat now{{/if}}">
+                             data-tooltip="{{name}}{{#if alreadyWellFed}}: already Well Fed, goes to inventory{{else}}: will eat now{{/if}}">
                             <img src="{{img}}" alt="{{name}}" class="feast-portrait-img">
                             <span class="feast-portrait-badge">
                                 {{#if alreadyWellFed}}
@@ -1313,7 +1269,7 @@
 
                     {{!-- Hero Card: Selected Recipe --}}
                     {{#if selectedRecipe}}
-                    <div class="recipe-hero">
+                    <div class="recipe-hero{{#if selectedRecipe.ambitiousName}} recipe-hero--has-ambitious{{/if}}">
                         <div class="recipe-hero-header">
                             <img src="{{selectedRecipe.outputImg}}" alt="{{selectedRecipe.name}}" class="recipe-hero-icon">
                             <div class="recipe-hero-titles">
@@ -1339,7 +1295,7 @@
                         {{!-- Ingredient tokens --}}
                         <div class="recipe-hero-ingredients">
                             {{#each selectedRecipe.ingredientList}}
-                            <div class="hero-ingredient-token {{#if met}}met{{else}}unmet{{/if}}" title="{{required}}x {{name}} (have {{available}})">
+                            <div class="hero-ingredient-token {{#if met}}met{{else}}unmet{{/if}}" data-tooltip="{{required}}x {{name}} (have {{available}})">
                                 <img src="{{img}}" alt="{{name}}" class="hero-ingredient-icon">
                                 <span class="hero-ingredient-qty">{{required}}</span>
                                 <span class="hero-ingredient-name">{{name}}</span>
@@ -1377,14 +1333,12 @@
                         </div>
                         {{/if}}
 
-                        {{!-- Ambitious teaser --}}
-                        {{#if isAmbitiousSelected}}
+                        {{!-- Ambitious teaser: slot always reserved when recipe supports it --}}
                         {{#if selectedRecipe.ambitiousName}}
-                        <div class="recipe-hero-ambitious">
+                        <div class="recipe-hero-ambitious{{#unless isAmbitiousSelected}} recipe-hero-ambitious--reserved{{/unless}}">
                             <i class="fas fa-fire-alt"></i>
                             <span>On success: <strong>{{selectedRecipe.ambitiousName}}</strong></span>
                         </div>
-                        {{/if}}
                         {{/if}}
                     </div>
                     {{else}}
@@ -1418,14 +1372,14 @@
                         <div class="commit-visual-flow">
                             <div class="commit-inputs">
                                 {{#each commitSummary.ingredients}}
-                                <div class="commit-item-token" title="{{quantity}}x {{name}}">
+                                <div class="commit-item-token" data-tooltip="{{quantity}}x {{name}}">
                                     <img src="{{img}}" alt="{{name}}">
                                     <span class="commit-item-qty">{{quantity}}</span>
                                 </div>
                                 {{/each}}
                             </div>
                             <div class="commit-flow-arrow"><i class="fas fa-long-arrow-alt-right"></i></div>
-                            <div class="commit-output-token" title="{{commitSummary.outputName}}">
+                            <div class="commit-output-token" data-tooltip="{{commitSummary.outputName}}">
                                 <img src="{{commitSummary.outputImg}}" alt="{{commitSummary.outputName}}">
                                 <span class="commit-output-name">{{commitSummary.outputName}}</span>
                             </div>
@@ -1557,7 +1511,7 @@
         </div>
         {{/if}}
         {{#if totmDetailPanel.armorWarning}}
-        <div class="armor-advisory {{#if totmDetailPanel.armorWarning.isDoffed}}doffed{{/if}}" title="{{totmDetailPanel.armorWarning.hint}}">
+        <div class="armor-advisory {{#if totmDetailPanel.armorWarning.isDoffed}}doffed{{/if}}" data-tooltip="{{totmDetailPanel.armorWarning.hint}}">
             <i class="fas fa-shield-alt"></i>
             <span class="armor-advisory-text">
                 {{#if totmDetailPanel.armorWarning.isDoffed}}
@@ -1570,7 +1524,7 @@
                 data-actor-id="{{totmDetailPanel.armorWarning.actorId}}"
                 data-item-id="{{totmDetailPanel.armorWarning.itemId}}"
                 data-is-doffed="{{totmDetailPanel.armorWarning.isDoffed}}"
-                title="{{#if totmDetailPanel.armorWarning.isDoffed}}Re-equip armor{{else}}Remove armor for rest{{/if}}">
+                data-tooltip="{{#if totmDetailPanel.armorWarning.isDoffed}}Re-equip armor{{else}}Remove armor for rest{{/if}}">
                 {{#if totmDetailPanel.armorWarning.isDoffed}}
                 <i class="fas fa-shield-alt"></i> Don
                 {{else}}
@@ -1643,7 +1597,7 @@
                         {{> activityPortraits}}
                     </button>
                     {{else if this.nonViable}}
-                    <div class="activity-card station-activity non-viable" title="{{this.fadedHint}}">
+                    <div class="activity-card station-activity non-viable" data-tooltip="{{this.fadedHint}}">
                         <i class="{{this.icon}}" aria-hidden="true"></i>
                         <div class="card-body">
                             <span class="card-name">{{this.name}}</span>
@@ -1654,7 +1608,7 @@
                         {{> activityPortraits}}
                     </div>
                     {{else}}
-                    <div class="activity-card station-activity faded" title="{{this.fadedHint}}">
+                    <div class="activity-card station-activity faded" data-tooltip="{{this.fadedHint}}">
                         <i class="{{this.icon}}" aria-hidden="true"></i>
                         <div class="card-body">
                             <span class="card-name">{{this.name}}</span>
@@ -1685,7 +1639,7 @@
     {{#if (eq totmActiveTab 'fire')}}
     {{#if comfortEnabled}}
     {{#unless safeRestSpot}}
-    <div class="totm-fire-panel">
+    <div class="totm-fire-panel ionrift-list">
         <div class="totm-fire-current">
             {{#if campFireIsLit}}
             <div class="totm-fire-current-level">
@@ -1705,11 +1659,6 @@
             {{/if}}
         </div>
         {{> fireTierPicker}}
-        {{#unless isGM}}
-        <div class="totm-fire-player-hint">
-            <i class="fas fa-info-circle" aria-hidden="true"></i> Changes are requested from the GM.
-        </div>
-        {{/unless}}
     </div>
     {{/unless}}
     {{/if}}
@@ -1736,15 +1685,15 @@
         {{#if activityPhasePlayerOverview.allResolved}}
         {{#if isGM}}
         <button type="button" class="btn-primary totm-footer-proceed" data-action="submitActivities">
-            <i class="fas fa-arrow-right"></i> Proceed to Rations
+            <i class="{{activityProceed.icon}}"></i> {{activityProceed.label}}
         </button>
         {{else}}
         <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Waiting on GM</span>
         {{/if}}
         {{else if isGM}}
         <button type="button" class="btn-primary totm-footer-proceed disabled" disabled
-                title="{{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}} activities assigned. All must be assigned to proceed.">
-            <i class="fas fa-lock" aria-hidden="true"></i> Proceed to Rations
+                data-tooltip="{{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}} activities assigned. All must be assigned to proceed.">
+            <i class="fas fa-lock" aria-hidden="true"></i> {{activityProceed.label}}
         </button>
         {{else if activityPhasePlayerOverview.viewerHasSubmitted}}
         <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Waiting for others</span>
@@ -1784,7 +1733,7 @@
             {{#if isGM}}
             <div class="respite-action-bar">
                 <button type="button" class="btn-primary" data-action="submitActivities">
-                    <i class="fas fa-arrow-right"></i> Proceed to Rations
+                    <i class="{{activityProceed.icon}}"></i> {{activityProceed.label}}
                 </button>
             </div>
             {{else}}
@@ -1793,8 +1742,8 @@
             {{else if isGM}}
             <div class="respite-action-bar">
                 <button type="button" class="btn-primary disabled" disabled
-                        title="{{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}} activities assigned. All must be assigned to proceed.">
-                    <i class="fas fa-lock"></i> Proceed to Rations
+                        data-tooltip="{{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}} activities assigned. All must be assigned to proceed.">
+                    <i class="fas fa-lock"></i> {{activityProceed.label}}
                 </button>
             </div>
             {{/if}}
@@ -1991,7 +1940,7 @@
                                      data-slot="food"
                                      data-available="{{available}}"
                                      data-character-id="{{../characterId}}"
-                                     title="{{label}}">
+                                     data-tooltip="{{label}}">
                                     <img src="{{icon}}" alt="{{label}}" class="meal-inv-card-icon" draggable="false">
                                     <span class="meal-inv-card-qty">×{{available}}</span>
                                     <span class="meal-inv-card-name">{{name}}</span>
@@ -2054,7 +2003,7 @@
                                      data-available="{{available}}"
                                      data-total-pints="{{totalPints}}"
                                      data-character-id="{{../characterId}}"
-                                     title="{{label}}: ×{{available}} carried, {{totalPints}}p pourable">
+                                     data-tooltip="{{label}}: ×{{available}} carried, {{totalPints}}p pourable">
                                     <img src="{{icon}}" alt="{{label}}" class="meal-inv-card-icon" draggable="false">
                                     <span class="meal-inv-card-qty meal-inv-card-qty--water">
                                         <span class="meal-inv-qty-stack">×{{available}}</span>
@@ -2128,7 +2077,7 @@
                         <i class="fas fa-hourglass-half"></i> Waiting for {{pendingDehydrationSaves}} CON save(s)...
                     </button>
                     {{#if hasUnresolvedSaves}}
-                    <button type="button" class="btn-secondary" data-action="skipPendingSaves" title="Auto-fail all pending saves and apply exhaustion">
+                    <button type="button" class="btn-secondary" data-action="skipPendingSaves" data-tooltip="Auto-fail all pending saves and apply exhaustion">
                         <i class="fas fa-forward"></i> Skip Pending Saves
                     </button>
                     {{/if}}
@@ -2210,7 +2159,7 @@
             <p class="disaster-guidance">Pick one outcome. A disaster event is a branching scene of skill checks, a combat encounter pulls a monster into camp, and the lighter option runs one or more ordinary events. Dismiss if the night should simply pass.</p>
             <div class="disaster-buttons">
                 {{#if disasterChoice.tree}}
-                <button type="button" class="btn-disaster tree" data-action="disasterChoice" data-pick="tree" title="Run a branching disaster scene: a sequence of skill checks with consequences.">
+                <button type="button" class="btn-disaster tree" data-action="disasterChoice" data-pick="tree" data-tooltip="Run a branching disaster scene: a sequence of skill checks with consequences.">
                     <i class="fas fa-skull"></i>
                     <div class="disaster-btn-content">
                         <strong>Disaster Event</strong>
@@ -2219,7 +2168,7 @@
                 </button>
                 {{/if}}
                 {{#if disasterChoice.encounter}}
-                <button type="button" class="btn-disaster encounter" data-action="disasterChoice" data-pick="encounter" title="Drop a combat encounter into the camp.">
+                <button type="button" class="btn-disaster encounter" data-action="disasterChoice" data-pick="encounter" data-tooltip="Drop a combat encounter into the camp.">
                     <i class="fas fa-swords"></i>
                     <div class="disaster-btn-content">
                         <strong>Combat Encounter</strong>
@@ -2228,7 +2177,7 @@
                 </button>
                 {{/if}}
                 {{#if disasterChoice.normals.length}}
-                <button type="button" class="btn-disaster normals" data-action="disasterChoice" data-pick="normals" title="Run one or more ordinary camp events instead of a full disaster.">
+                <button type="button" class="btn-disaster normals" data-action="disasterChoice" data-pick="normals" data-tooltip="Run one or more ordinary camp events instead of a full disaster.">
                     <i class="fas fa-exclamation-triangle"></i>
                     <div class="disaster-btn-content">
                         <strong>{{disasterChoice.normalsLabel}}</strong>
@@ -2239,7 +2188,7 @@
                 </button>
                 {{/if}}
                 <div class="disaster-dismiss">
-                    <button type="button" class="btn-override-link" data-action="disasterChoice" data-pick="dismiss" title="Skip the disaster: the night passes with no event.">Dismiss and continue</button>
+                    <button type="button" class="btn-override-link" data-action="disasterChoice" data-pick="dismiss" data-tooltip="Skip the disaster: the night passes with no event.">Dismiss and continue</button>
                 </div>
             </div>
             {{else}}
@@ -2266,7 +2215,7 @@
                     <span class="event-name-text"><i class="fas fa-exclamation-triangle"></i> {{activeTreeState.eventName}}</span>
                     {{#if isGM}}
                     {{#if activeTreeState.gmGuidance}}
-                    <button type="button" class="tree-gm-notes-btn" data-action="toggleGmGuidance" title="GM Guidance">
+                    <button type="button" class="tree-gm-notes-btn" data-action="toggleGmGuidance" data-tooltip="GM Guidance">
                         <i class="fas fa-book-reader"></i> GM Notes
                     </button>
                     {{/if}}
@@ -2318,7 +2267,7 @@
             {{#if activeTreeState.hasStallPenalty}}
             <div class="tree-stall-area">
                 <button type="button" class="btn-stall-penalty" data-action="applyStallPenalty"
-                    title="The mountain does not negotiate. DCs +{{activeTreeState.stallPenalty.dcBump}}, supplies lost to the delay. Can be applied multiple times.">
+                    data-tooltip="The mountain does not negotiate. DCs +{{activeTreeState.stallPenalty.dcBump}}, supplies lost to the delay. Can be applied multiple times.">
                     <i class="fas fa-hourglass-half"></i> Players Stalling
                 </button>
                 <span class="stall-hint-text">Third option bid &middot; negotiating between choices &middot; repeating answered questions</span>
@@ -2375,7 +2324,7 @@
                         {{!-- Roll mode selector --}}
                         <select class="select-roll-mode roll-mode--{{rollMode}}"
                             data-character-id="{{id}}"
-                            title="Set roll modifier for this player">
+                            data-tooltip="Set roll modifier for this player">
                             <option value="normal"       {{#if (eq rollMode "normal")}}selected{{/if}}>Normal</option>
                             <option value="advantage"    {{#if (eq rollMode "advantage")}}selected{{/if}}>↑ Adv</option>
                             <option value="disadvantage" {{#if (eq rollMode "disadvantage")}}selected{{/if}}>↓ Dis</option>
@@ -2383,7 +2332,7 @@
                             <option value="force-fail"   {{#if (eq rollMode "force-fail")}}selected{{/if}}>✗ Fail</option>
                         </select>
                         {{#if @root.activeTreeState.rollRequestSent}}
-                        <button type="button" class="btn-roll-for-player" data-action="rollTreeForPlayer" data-character-id="{{id}}" title="Roll on their behalf">
+                        <button type="button" class="btn-roll-for-player" data-action="rollTreeForPlayer" data-character-id="{{id}}" data-tooltip="Roll on their behalf">
                             <i class="fas fa-dice"></i>
                         </button>
                         {{/if}}
@@ -2392,11 +2341,11 @@
                 </div>
                 <div class="tree-roll-actions">
                     {{#if activeTreeState.rollRequestSent}}
-                    <button type="button" class="btn-resend-roll" data-action="resendTreeRollRequest" title="Re-send the roll request to players">
+                    <button type="button" class="btn-resend-roll" data-action="resendTreeRollRequest" data-tooltip="Re-send the roll request to players">
                         <i class="fas fa-paper-plane"></i> Resend
                     </button>
                     {{else}}
-                    <button type="button" class="btn-send-roll-request" data-action="sendTreeRollRequest" title="Dispatch roll request to all players with current modifiers">
+                    <button type="button" class="btn-send-roll-request" data-action="sendTreeRollRequest" data-tooltip="Dispatch roll request to all players with current modifiers">
                         <i class="fas fa-paper-plane"></i> Send Roll Request
                     </button>
                     {{/if}}
@@ -2404,45 +2353,11 @@
             </div>
             {{else}}
             {{!-- Player: Show roll buttons when tree roll is pending --}}
-            {{#if @root.pendingTreeRoll}}
-            <div class="tree-player-roll-area">
-                <div class="tree-roll-header">
-                    <i class="fas fa-dice-d20"></i>
-                    {{@root.pendingTreeRoll.eventName}}: {{@root.pendingTreeRoll.skillName}} Check
-                </div>
-                {{#each @root.pendingTreeRoll.ownedTargets}}
-                <div class="tree-roll-character">
-                    {{#if rolled}}
-                    <div class="tree-roll-result {{#if passed}}pass{{else}}fail{{/if}}">
-                        <i class="fas {{#if passed}}fa-check-circle{{else}}fa-times-circle{{/if}}"></i>
-                        <span class="roll-char-name">{{name}}</span>
-                        <span class="roll-total">{{total}}</span>
-                    </div>
-                    {{else}}
-                    {{!-- Roll mode badge (visible to player before rolling) --}}
-                    {{#if (or (eq rollMode "advantage") (eq rollMode "disadvantage") (eq rollMode "force-pass") (eq rollMode "force-fail"))}}
-                    <div class="roll-mode-badge roll-mode-badge--{{rollMode}}">
-                        {{#if (eq rollMode "advantage")}}<i class="fas fa-chevron-double-up"></i> Roll with Advantage
-                        {{else if (eq rollMode "disadvantage")}}<i class="fas fa-chevron-double-down"></i> Roll with Disadvantage
-                        {{else if (eq rollMode "force-pass")}}<i class="fas fa-check"></i> Auto-Success
-                        {{else if (eq rollMode "force-fail")}}<i class="fas fa-times"></i> Auto-Fail
-                        {{/if}}
-                    </div>
-                    {{/if}}
-                    {{#if (or (eq rollMode "force-pass") (eq rollMode "force-fail"))}}
-                    <button type="button" class="btn-tree-roll btn-tree-roll--{{rollMode}}" data-action="rollTreeCheck" data-character-id="{{id}}">
-                        {{#if (eq rollMode "force-pass")}}<i class="fas fa-check"></i> Confirm Auto-Success for {{name}}
-                        {{else}}<i class="fas fa-times"></i> Confirm Auto-Failure for {{name}}
-                        {{/if}}
-                    </button>
-                    {{else}}
-                    <button type="button" class="btn-tree-roll" data-action="rollTreeCheck" data-character-id="{{id}}">
-                        <i class="fas fa-dice-d20"></i> Roll for {{name}}
-                    </button>
-                    {{/if}}
-                    {{/if}}
-                </div>
-                {{/each}}
+            {{#if @root.pendingTreeRoll.rollRequest}}
+            {{> rollRequest rollRequest=@root.pendingTreeRoll.rollRequest}}
+            {{else if @root.pendingTreeRoll}}
+            <div class="tree-waiting">
+                <i class="fas fa-dice-d20"></i> Waiting for roll request...
             </div>
             {{else}}
             <div class="tree-waiting">
@@ -2477,8 +2392,8 @@
                 </button>
                 {{#if @root.isGM}}
                 <div class="tree-dc-adj">
-                    <button type="button" class="encounter-adj-btn" data-action="treeDcAdjDown" title="Reduce DC">−</button>
-                    <button type="button" class="encounter-adj-btn" data-action="treeDcAdjUp" title="Increase DC">+</button>
+                    <button type="button" class="encounter-adj-btn" data-action="treeDcAdjDown" data-tooltip="Reduce DC">−</button>
+                    <button type="button" class="encounter-adj-btn" data-action="treeDcAdjUp" data-tooltip="Increase DC">+</button>
                     {{#if @root.activeTreeState.treeDcAdj}}<span class="tree-dc-adj-label">GM adj: {{@root.activeTreeState.treeDcAdj}}</span>{{/if}}
                 </div>
                 {{/if}}
@@ -2673,8 +2588,8 @@
                 {{> rollRequest rollRequest=gmRollRequest}}
                 {{/if}}
                 <div class="event-override-links">
-                    <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="success" title="Skip the roll and set this check as a success.">Force Pass</button>
-                    <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="failure" title="Skip the roll and set this check as a failure.">Force Fail</button>
+                    <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="success" data-tooltip="Skip the roll and set this check as a success.">Force Pass</button>
+                    <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="failure" data-tooltip="Skip the roll and set this check as a failure.">Force Fail</button>
                 </div>
 
                 {{else}}
@@ -2698,12 +2613,12 @@
                 <div class="event-check-module">
                     <div class="check-module-skill">{{skillName}}</div>
                     <div class="check-module-dc-row">
-                        <button type="button" class="dc-nudge" data-action="adjustEventDc" data-event-index="{{@index}}" data-delta="-1" title="Lower the DC"><i class="fas fa-minus"></i></button>
+                        <button type="button" class="dc-nudge" data-action="adjustEventDc" data-event-index="{{@index}}" data-delta="-1" data-tooltip="Lower the DC"><i class="fas fa-minus"></i></button>
                         <div class="event-dc-badge circular">
                             <span class="dc-label">DC</span>
                             <span class="dc-value">{{mechanical.dc}}</span>
                         </div>
-                        <button type="button" class="dc-nudge" data-action="adjustEventDc" data-event-index="{{@index}}" data-delta="1" title="Raise the DC"><i class="fas fa-plus"></i></button>
+                        <button type="button" class="dc-nudge" data-action="adjustEventDc" data-event-index="{{@index}}" data-delta="1" data-tooltip="Raise the DC"><i class="fas fa-plus"></i></button>
                     </div>
                     <div class="check-module-target">
                         {{#if (eq mechanical.targets "watch")}}Watch only{{else if (eq mechanical.targets "all")}}Entire party{{else}}Watch{{/if}} · Group Check (averaged)
@@ -2716,7 +2631,7 @@
                             data-action="cycleEventRollMode"
                             data-event-index="{{@../index}}"
                             data-character-id="{{id}}"
-                            title="{{name}} · {{#if rollModeAdvantage}}Advantage{{else if rollModeDisadvantage}}Disadvantage{{else}}Normal{{/if}} (click to change)">
+                            data-tooltip="{{name}} · {{#if rollModeAdvantage}}Advantage{{else if rollModeDisadvantage}}Disadvantage{{else}}Normal{{/if}} (click to change)">
                             <img src="{{img}}" alt="{{name}}" />
                             {{#if rollModeAdvantage}}<span class="check-avatar-mode adv"><i class="fas fa-angle-up"></i></span>{{/if}}
                             {{#if rollModeDisadvantage}}<span class="check-avatar-mode dis"><i class="fas fa-angle-down"></i></span>{{/if}}
@@ -2761,15 +2676,15 @@
                 {{!-- 4. Action buttons --}}
                 <div class="event-adjudicate-buttons">
                     <button type="button" class="btn-resolve-check" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="auto"
-                        {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}disabled title="Resolve the current event first"{{/unless}}{{/if}}>
+                        {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}disabled data-tooltip="Resolve the current event first"{{/unless}}{{/if}}>
                         <i class="fas fa-dice-d20"></i> Request Rolls
                     </button>
                     <div class="event-override-links">
                         <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="success"
-                            title="Skip the roll and set this check as a success."
+                            data-tooltip="Skip the roll and set this check as a success."
                             {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}disabled{{/unless}}{{/if}}>Force Pass</button>
                         <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="failure"
-                            title="Skip the roll and set this check as a failure."
+                            data-tooltip="Skip the roll and set this check as a failure."
                             {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}disabled{{/unless}}{{/if}}>Force Fail</button>
                     </div>
                 </div>
@@ -2889,17 +2804,17 @@
                     {{#if requested}}
                     <span class="camp-prep-skill">{{skillName}} DC {{dc}}{{#unless (eq dc baseDC)}} <span class="camp-dc-base">(was {{baseDC}})</span>{{/unless}}</span>
                     <span class="camp-prep-result pending"><i class="fas fa-paper-plane"></i> Sent</span>
-                    <button type="button" class="btn-roll-for-player camp-fallback" data-action="rollCampForPlayer" data-character-id="{{characterId}}" title="Roll on their behalf">
+                    <button type="button" class="btn-roll-for-player camp-fallback" data-action="rollCampForPlayer" data-character-id="{{characterId}}" data-tooltip="Roll on their behalf">
                         <i class="fas fa-dice"></i>
                     </button>
                     {{else}}
                     <span class="camp-prep-dc-controls">
                         <span class="camp-prep-skill">{{skillName}}</span>
-                        <button type="button" class="camp-dc-btn" data-action="adjustCampDC" data-character-id="{{characterId}}" data-delta="-1" title="Lower DC">−</button>
+                        <button type="button" class="camp-dc-btn" data-action="adjustCampDC" data-character-id="{{characterId}}" data-delta="-1" data-tooltip="Lower DC">−</button>
                         <span class="camp-dc-value">DC {{dc}}{{#unless (eq dc baseDC)}} <span class="camp-dc-base">({{baseDC}})</span>{{/unless}}</span>
-                        <button type="button" class="camp-dc-btn" data-action="adjustCampDC" data-character-id="{{characterId}}" data-delta="1" title="Raise DC">+</button>
+                        <button type="button" class="camp-dc-btn" data-action="adjustCampDC" data-character-id="{{characterId}}" data-delta="1" data-tooltip="Raise DC">+</button>
                     </span>
-                    <button type="button" class="camp-prep-roll-btn" data-action="requestCampRoll" data-character-id="{{characterId}}" title="Send roll request to player">
+                    <button type="button" class="camp-prep-roll-btn" data-action="requestCampRoll" data-character-id="{{characterId}}" data-tooltip="Send roll request to player">
                         <i class="fas fa-dice-d20"></i>
                     </button>
                     {{/if}}
@@ -2942,25 +2857,26 @@
         <div class="respite-event-card ambient event-roll-prompt nw-mode-{{eventsMode}}">
             <div class="event-name">Night Watch</div>
 
+            {{#if encountersEnabled}}
             <div class="nw-mode-selector" role="tablist" aria-label="How does the night unfold?">
                 <button type="button" class="nw-mode-tab {{#if eventsModeIsRandom}}is-active{{/if}}"
                     role="tab" aria-selected="{{#if eventsModeIsRandom}}true{{else}}false{{/if}}"
                     data-action="setEventsMode" data-mode="random"
-                    title="Roll a d20 against the encounter threshold. High rolls will trigger a random event from the terrain event pool.">
+                    data-tooltip="Roll a d20 against the encounter threshold. High rolls will trigger a random event from the terrain event pool.">
                     <i class="fas fa-dice-d20 nw-mode-icon"></i>
                     <span class="nw-mode-label">Random</span>
                 </button>
                 <button type="button" class="nw-mode-tab {{#if eventsModeIsImprovise}}is-active{{/if}}"
                     role="tab" aria-selected="{{#if eventsModeIsImprovise}}true{{else}}false{{/if}}"
                     data-action="setEventsMode" data-mode="improvise"
-                    title="Skip the dice and narrate your own night event on the spot.">
+                    data-tooltip="Skip the dice and narrate your own night event on the spot.">
                     <i class="fas fa-hat-wizard nw-mode-icon"></i>
                     <span class="nw-mode-label">Improvise</span>
                 </button>
                 <button type="button" class="nw-mode-tab {{#if eventsModeIsPick}}is-active{{/if}}"
                     role="tab" aria-selected="{{#if eventsModeIsPick}}true{{else}}false{{/if}}"
                     data-action="setEventsMode" data-mode="pick"
-                    title="{{#if eventsModePickAvailable}}Choose a specific event from your curated pool. Bypasses the encounter threshold; the event runs as written.{{else}}No events in the curated pool for this terrain. Curate the pool first.{{/if}}"
+                    data-tooltip="{{#if eventsModePickAvailable}}Choose a specific event from your curated pool. Bypasses the encounter threshold; the event runs as written.{{else}}No events in the curated pool for this terrain. Curate the pool first.{{/if}}"
                     {{#unless eventsModePickAvailable}}disabled{{/unless}}>
                     <i class="fas fa-book-open nw-mode-icon"></i>
                     <span class="nw-mode-label">Pick from pool</span>
@@ -3025,6 +2941,11 @@
                 <span>{{eventPoolCount}} event{{#unless (eq eventPoolCount 1)}}s{{/unless}} available for {{eventPoolTerrainLabel}}.</span>
             </div>
             {{/if}}
+            {{else}}
+            <div class="event-description">
+                Encounters are off for this rest. The night passes on its own. Run an event by hand only if you want one.
+            </div>
+            {{/if}}
         </div>
         {{/if}}
 
@@ -3040,36 +2961,35 @@
             {{#if pendingCampRoll.activities.length}}
             <div class="camp-roll-section">
                 {{#each pendingCampRoll.activities}}
-                <div class="camp-roll-prompt {{status}}">
+                {{#if rollRequest}}
+                {{> rollRequest rollRequest=rollRequest}}
+                {{else if (eq status 'pass')}}
+                <div class="camp-roll-prompt pass">
                     <div class="camp-roll-info">
                         <strong>{{activityName}}</strong>
                         <span class="camp-roll-skill">{{skillName}} DC {{dc}}</span>
                     </div>
-                    {{#if (eq status 'pass')}}
-                    <span class="camp-roll-result pass" title="Success! Rolled {{total}}">
+                    <span class="camp-roll-result pass" data-tooltip="Success! Rolled {{total}}">
                         <i class="fas fa-check-circle"></i> {{total}} - Passed
                     </span>
                     {{#each effectDescriptions}}
                     <div class="camp-roll-effect"><i class="fas fa-cog"></i> {{this}}</div>
                     {{/each}}
-                    {{else if (eq status 'fail')}}
-                    <span class="camp-roll-result fail" title="Failed. Rolled {{total}}">
+                </div>
+                {{else if (eq status 'fail')}}
+                <div class="camp-roll-prompt fail">
+                    <div class="camp-roll-info">
+                        <strong>{{activityName}}</strong>
+                        <span class="camp-roll-skill">{{skillName}} DC {{dc}}</span>
+                    </div>
+                    <span class="camp-roll-result fail" data-tooltip="Failed. Rolled {{total}}">
                         <i class="fas fa-times-circle"></i> {{total}} - Failed
                     </span>
                     {{#each effectDescriptions}}
                     <div class="camp-roll-effect"><i class="fas fa-cog"></i> {{this}}</div>
                     {{/each}}
-                    {{else if rolled}}
-                    <span class="camp-roll-result pending">
-                        <i class="fas fa-spinner fa-spin"></i> Awaiting...
-                    </span>
-                    {{else}}
-                    <button type="button" class="btn-primary btn-camp-roll" data-action="rollCampCheck"
-                        data-character-id="{{characterId}}">
-                        <i class="fas fa-dice-d20"></i> Roll
-                    </button>
-                    {{/if}}
                 </div>
+                {{/if}}
                 {{/each}}
             </div>
             {{/if}}
@@ -3141,21 +3061,30 @@
             {{/unless}}{{/if}}
             {{#unless (and activeTreeState (not activeTreeState.resolved))}}
             <button type="button" class="btn-primary" data-action="resolveEvents"
-                {{#if disasterChoice}}disabled title="Choose a disaster outcome first"{{/if}}
-                {{#unless allEventChecksResolved}}disabled title="Resolve all event skill checks first"{{/unless}}>
+                {{#if disasterChoice}}disabled data-tooltip="Choose a disaster outcome first"{{/if}}
+                {{#unless allEventChecksResolved}}disabled data-tooltip="Resolve all event skill checks first"{{/unless}}>
                 <i class="fas fa-arrow-right"></i> Proceed to Resolution
             </button>
             {{/unless}}
             {{/if}}
         {{else}}
+        {{#if encountersEnabled}}
         <button type="button" class="btn-primary btn-roll-events" data-action="commitEventsMode"
-            {{#unless campPrepsResolved}}disabled title="Awaiting camp activity rolls"{{/unless}}>
+            {{#unless campPrepsResolved}}disabled data-tooltip="Awaiting camp activity rolls"{{/unless}}>
             {{#if eventsModeIsPick}}
             <i class="fas fa-book-open"></i> Choose event
             {{else}}
             <i class="fas fa-dice-d20"></i> Roll for Events
             {{/if}}
         </button>
+        {{else}}
+        <button type="button" class="btn-secondary btn-improvise-night" data-action="improviseNight">
+            <i class="fas fa-hat-wizard"></i> Improvise an event
+        </button>
+        <button type="button" class="btn-primary btn-night-passes" data-action="nightPasses">
+            <i class="fas fa-moon"></i> The night passes
+        </button>
+        {{/if}}
         {{/if}}
     </div>
     {{else}}
@@ -3218,7 +3147,7 @@
     <div class="respite-outcome-card">
         <div class="outcome-header">
             <strong>{{characterName}}</strong>
-            {{#if comfortLevel}}<span class="comfort-indicator {{comfortLevel}}" title="{{comfortHint comfortLevel}}">{{comfortLevel}}</span>{{/if}}
+            {{#if comfortLevel}}<span class="comfort-indicator {{comfortLevel}}" data-tooltip="{{comfortHint comfortLevel}}">{{comfortLevel}}</span>{{/if}}
         </div>
         {{#if neutrals.length}}
         <div class="outcome-neutral">
@@ -3446,24 +3375,8 @@
     {{/if}}
 
     {{!-- Player Copy Spell Roll Card --}}
-    {{#if copySpellRollPrompt}}
-    <div class="player-copy-spell-roll" style="background: rgba(60,80,140,0.15); border: 1px solid rgba(126,184,218,0.4); border-radius: 6px; padding: 0.6rem 0.75rem; margin: 0.5rem 0.75rem;">
-        <div style="font-weight: 600; color: rgba(126,184,218,0.9); font-size: 0.85rem; margin-bottom: 0.4rem;">
-            <i class="fas fa-dice-d20"></i> Arcana Check Required
-        </div>
-        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.75); line-height: 1.5;">
-            <strong>{{copySpellRollPrompt.cost}}gp</strong> charged for a
-            <strong>Level {{copySpellRollPrompt.spellLevel}}</strong> spell.
-            ({{copySpellRollPrompt.remainingGold}}gp remaining)<br>
-            Roll Arcana to meet <strong>DC {{copySpellRollPrompt.dc}}</strong>.
-        </div>
-        <div style="margin-top: 0.5rem;">
-            <button type="button" data-action="rollCopySpellArcana"
-                style="width: 100%; padding: 0.4rem 0.5rem; border-radius: 4px; background: linear-gradient(135deg, rgba(126,184,218,0.35), rgba(126,184,218,0.15)); border: 1px solid rgba(126,184,218,0.5); color: rgba(255,255,255,0.95); font-weight: 600; font-size: 0.85rem; cursor: pointer;">
-                <i class="fas fa-dice-d20"></i> Roll Arcana
-            </button>
-        </div>
-    </div>
+    {{#if copySpellRollRequest}}
+    {{> rollRequest rollRequest=copySpellRollRequest}}
     {{/if}}
 
     {{!-- Encounter Status Bar: persistent footer --}}
@@ -3481,7 +3394,7 @@
         {{#if encounterBar.chips.length}}
         <span class="encounter-bar-chips">
             {{#each encounterBar.chips}}
-            <span class="encounter-chip {{#if warn}}warn{{/if}}"{{#if tooltip}} title="{{tooltip}}"{{/if}}>
+            <span class="encounter-chip {{#if warn}}warn{{/if}}"{{#if tooltip}} data-tooltip="{{tooltip}}"{{/if}}>
                 <i class="{{icon}}"></i> {{label}}{{#if value}} {{value}}{{/if}}
             </span>
             {{/each}}
@@ -3489,8 +3402,8 @@
         {{/if}}
         {{#if encounterBar.isGM}}
         <span class="encounter-gm-adj">
-            <button type="button" class="encounter-adj-btn" data-action="encounterAdjDown" title="Reduce DC">−</button>
-            <button type="button" class="encounter-adj-btn" data-action="encounterAdjUp" title="Increase DC">+</button>
+            <button type="button" class="encounter-adj-btn" data-action="encounterAdjDown" data-tooltip="Reduce DC">−</button>
+            <button type="button" class="encounter-adj-btn" data-action="encounterAdjUp" data-tooltip="Increase DC">+</button>
         </span>
         {{/if}}
     </div>

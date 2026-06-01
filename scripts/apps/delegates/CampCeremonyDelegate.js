@@ -192,31 +192,43 @@ export class CampCeremonyDelegate {
     }
 
     /**
-     * GM records that the table decided to sleep cold (no fire).
-     * Satisfies the fire gate without lighting, broadcasts to all clients.
+     * GM sets cold camp as the table's fire choice during Make Camp.
+     * Syncs to all clients and stays in the camp phase so the table can still change tier.
      */
-    async decideColdCamp() {
+    async selectColdCamp() {
         if (!game.user.isGM) return;
-        if (!isComfortEnabled()) return; // no fire phase when comfort disabled
+        if (!isComfortEnabled()) return;
+        if (this.coldCampDecided && (this.fireLevel ?? "unlit") === "unlit") return;
+
         this.coldCampDecided = true;
         this.fireLitBy = null;
         this.fireLevel = "unlit";
-        // Cold camp stealth bonus: no light = harder for monsters to find camp
+        this.campFirePreviewLevel = null;
         const FIRE_MOD = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL;
         if (this._app._engine) {
             this._app._engine.fireLevel = "unlit";
             this._app._engine.fireRollModifier = FIRE_MOD.cold_camp ?? 0;
         }
+        await CampfireTokenLinker.setLightState(false);
         emitPhaseChanged(this._app._phase, {
             coldCampDecided: true,
             fireLevel: "unlit",
-            fireLitBy: null
+            fireLitBy: null,
+            selectedTerrain: this._app._selectedTerrain ?? null
         });
         await this._app._saveRestState();
+        this._app.render();
+    }
+
+    /**
+     * GM records cold camp and, on map mode, advances straight to activities.
+     * TotM and synced tier picks use {@link selectColdCamp} and Proceed instead.
+     */
+    async decideColdCamp() {
+        if (!game.user.isGM) return;
+        await this.selectColdCamp();
         const _isTotmCold = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; } })();
-        if (_isTotmCold) {
-            this._app.render();
-        } else {
+        if (!_isTotmCold && this._app._phase === "camp" && !this._app._campToActivityDone) {
             await this._app._advanceCampToActivity();
         }
     }

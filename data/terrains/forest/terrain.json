@@ -5,8 +5,6 @@
     "icon": "fas fa-tree",
     "comfort": "rough",
     "comfortReason": "Trees overhead but still outdoors. Rain, wildlife, and insects make it rough.",
-    "scoutingAvailable": true,
-    "scoutGuidance": "Survival check. Poor: 2-7 | Average: 8-12 | Good: 13+. Ranger or druid has advantage. Heavy armor has disadvantage.",
     "scoutFlavor": {
         "nat1":    ["A mossy clearing under old growth. Peaceful.", "A grove by a stream. Soft ground, good water.", "Flat ground under old oaks. Feels like it was made for resting."],
         "poor":    ["Dense forest floor. Roots everywhere.", "A damp hollow. Mushrooms and mud.", "Under the canopy. Better than the open."],

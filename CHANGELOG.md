@@ -13,6 +13,7 @@
 
 ### Fixed
 - Travel forage and hunt no longer grant duplicate loot after a browser refresh or a repeated roll. Rewards for a given character, day, and activity are recorded once per rest.
+- After you submit a travel activity or see your forage or hunt results, refreshing the browser no longer resets the travel panel to an empty choice. Rejoin and world state restore your declaration, roll status, and debrief.
 - Cooking at a station locks in the activity when the craft succeeds, not only when the dialog closes. Refreshing after a cook no longer leaves cooking open for another attempt on the same recipe.
 - Cooking, party discoveries, feast servings, and meal leftovers use the same per-rest grant ledger as travel, so those rewards cannot be claimed twice by refreshing or resubmitting.
 

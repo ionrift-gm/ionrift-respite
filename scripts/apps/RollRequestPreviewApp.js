@@ -6,6 +6,7 @@
 import { executePlayerRoll } from "../services/RollRequestManager.js";
 import { getPartyActors } from "../services/partyActors.js";
 import { findPreviewPlayerActor, centerRollRequestRoster } from "../services/RollRequestView.js";
+import { ensureDcPulseAnimation } from "../services/RollRequestDcPulse.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -156,6 +157,7 @@ export class RollRequestPreviewApp extends HandlebarsApplicationMixin(Applicatio
         }
 
         centerRollRequestRoster(this.element);
+        ensureDcPulseAnimation(this.element);
     }
 
     static #onSelectVariant(event, target) {

@@ -9,7 +9,7 @@
  * @module SocketRouter
  */
 
-import { SOCKET_TYPES, emitRequestRestState, emitWorkbenchIdentifyResult } from "./SocketController.js";
+import { SOCKET_TYPES, emitRequestRestState, emitWorkbenchIdentifyResult, emitPhaseChanged } from "./SocketController.js";
 import { WorkbenchDelegate } from "../apps/delegates/WorkbenchDelegate.js";
 import { CopySpellHandler } from "./CopySpellHandler.js";
 import { CampfireTokenLinker } from "./CampfireTokenLinker.js";
@@ -133,10 +133,39 @@ export function dispatch(data, ctx) {
 
         case SOCKET_TYPES.CAMP_FIRE_LEVEL_REQUEST:
             if (!game.user.isGM) return;
-            if (ctx.activeRestSetupApp?._runSetCampFireLevelForGm) {
-                void ctx.activeRestSetupApp._runSetCampFireLevelForGm(data.fireLevel, data.userId ?? null).catch(err => {
-                    console.error(`${MODULE_ID} | campFireLevelRequest:`, err);
-                    ui.notifications.error("Could not set fire level. Check the console.");
+            if (ctx.activeRestSetupApp) {
+                // Set preview level and broadcast to all clients (preview, not commit)
+                ctx.activeRestSetupApp._campFirePreviewLevel = data.fireLevel;
+                ctx.activeRestSetupApp._coldCampPreview = false;
+                emitPhaseChanged(ctx.activeRestSetupApp._phase, {
+                    campFirePreviewLevel: data.fireLevel,
+                    coldCampPreview: false,
+                    selectedTerrain: ctx.activeRestSetupApp._selectedTerrain ?? null
+                });
+                ctx.activeRestSetupApp.render();
+            } else { ui.notifications.warn("Open the rest session on the GM client first."); }
+            break;
+
+        case SOCKET_TYPES.CAMP_COLD_CAMP:
+            if (!game.user.isGM) return;
+            if (ctx.activeRestSetupApp) {
+                // Set cold camp preview and broadcast to all clients (preview, not commit)
+                ctx.activeRestSetupApp._coldCampPreview = true;
+                ctx.activeRestSetupApp._campFirePreviewLevel = "cold_camp";
+                emitPhaseChanged(ctx.activeRestSetupApp._phase, {
+                    coldCampPreview: true,
+                    campFirePreviewLevel: "cold_camp",
+                    selectedTerrain: ctx.activeRestSetupApp._selectedTerrain ?? null
+                });
+                ctx.activeRestSetupApp.render();
+            } else { ui.notifications.warn("Open the rest session on the GM client first."); }
+            break;
+
+        case SOCKET_TYPES.ACTIVITY_COLD_CAMP_REQUEST:
+            if (!game.user.isGM) return;
+            if (ctx.activeRestSetupApp?.setColdCampDuringActivity) {
+                void ctx.activeRestSetupApp.setColdCampDuringActivity({ fromPlayer: true }).catch(err => {
+                    console.error(`${MODULE_ID} | activityColdCampRequest:`, err);
                 });
             } else { ui.notifications.warn("Open the rest session on the GM client first."); }
             break;
@@ -144,7 +173,7 @@ export function dispatch(data, ctx) {
         case SOCKET_TYPES.ACTIVITY_FIRE_LEVEL_REQUEST:
             if (!game.user.isGM) return;
             if (ctx.activeRestSetupApp?.changeFireLevelDuringActivity) {
-                void ctx.activeRestSetupApp.changeFireLevelDuringActivity(data.fireLevel, { fromPlayer: true }).catch(err => {
+                void ctx.activeRestSetupApp.changeFireLevelDuringActivity(data.fireLevel, { fromPlayer: true, requestingUserId: data.userId ?? null }).catch(err => {
                     console.error(`${MODULE_ID} | activityFireLevelRequest:`, err);
                 });
             } else { ui.notifications.warn("Open the rest session on the GM client first."); }
@@ -157,10 +186,24 @@ export function dispatch(data, ctx) {
                 hasCeremony: !!ctx.activeRestSetupApp?._campCeremony,
                 userId: data.userId,
                 actorId: data.actorId,
-                method: data.method
+                method: data.method,
+                previewLevel: data.previewLevel
             });
             if (ctx.activeRestSetupApp?._campCeremony) {
-                void ctx.activeRestSetupApp._campCeremony.lightFire(data.userId, data.actorId, data.method ?? "Tinderbox").catch(err => {
+                // Apply the player's previewed fire level so the post-light commit
+                // uses the tier the player selected, not the GM's local preview.
+                if (data.previewLevel) {
+                    ctx.activeRestSetupApp._campFirePreviewLevel = data.previewLevel;
+                }
+                const previewLevel = data.previewLevel ?? "embers";
+                void (async () => {
+                    await ctx.activeRestSetupApp._campCeremony.lightFire(data.userId, data.actorId, data.method ?? "Tinderbox");
+                    // Commit the player's chosen fire level (mirrors #onCampLightFire post-light logic)
+                    const isTotm = (() => { try { return game.settings.get("ionrift-respite", "restInterfaceMode") === "theater"; } catch { return false; } })();
+                    if (isTotm && previewLevel !== "cold_camp" && previewLevel !== "embers") {
+                        await ctx.activeRestSetupApp._runSetCampFireLevelForGm(previewLevel, data.userId ?? null, true);
+                    }
+                })().catch(err => {
                     console.error(`${MODULE_ID} | campLightFire:`, err);
                 });
             } else { ui.notifications.warn("Open the rest session on the GM client first."); }
@@ -253,7 +296,7 @@ export function dispatch(data, ctx) {
                 clrApp._magicScanComplete = false;
                 clrApp._workbenchIdentifyStaging?.clear();
                 clrApp._workbenchIdentifyAcknowledge?.clear();
-                if (clrApp.rendered) void clrApp.render(false);
+                if (clrApp.rendered && !clrApp._terminated) void clrApp.render(false);
             }
             Hooks.callAll(`${MODULE_ID}.workbenchIdentifyStagingTouched`);
             notifyDetectMagicScanCleared();
@@ -387,11 +430,29 @@ export function dispatch(data, ctx) {
             if (game.user.isGM) return;
             if (data.targetUserId !== game.user.id) return;
             if (ctx.activePlayerRestApp) {
-                if (!ctx.activePlayerRestApp._travelDebrief) ctx.activePlayerRestApp._travelDebrief = [];
-                ctx.activePlayerRestApp._travelDebrief.push(...(data.results ?? []));
-                ctx.activePlayerRestApp._travelFullyResolved = !!data.fullyResolved;
-                ctx.activePlayerRestApp._travelScoutingDone = !!data.scoutingDone;
-                ctx.activePlayerRestApp.render();
+                const results = data.results ?? [];
+                const declarations = {};
+                const confirmed = {};
+                const rolled = {};
+                for (const row of results) {
+                    const day = row.day;
+                    const actorId = row.result?.actorId;
+                    if (!day || !actorId) continue;
+                    declarations[day] ??= {};
+                    declarations[day][actorId] = row.activity ?? "nothing";
+                    confirmed[day] ??= {};
+                    confirmed[day][actorId] = true;
+                    rolled[day] ??= {};
+                    rolled[day][actorId] = true;
+                }
+                ctx.activePlayerRestApp.receiveTravelPlayerState?.({
+                    debrief: results,
+                    declarations: Object.keys(declarations).length ? declarations : null,
+                    confirmed: Object.keys(confirmed).length ? confirmed : null,
+                    rolled: Object.keys(rolled).length ? rolled : null,
+                    fullyResolved: !!data.fullyResolved,
+                    scoutingDone: !!data.scoutingDone
+                });
             }
             break;
 
@@ -399,9 +460,24 @@ export function dispatch(data, ctx) {
             if (game.user.isGM) return;
             if (data.targetUserId !== game.user.id) return;
             if (ctx.activePlayerRestApp) {
-                if (!ctx.activePlayerRestApp._travelDebrief) ctx.activePlayerRestApp._travelDebrief = [];
-                if (data.result) ctx.activePlayerRestApp._travelDebrief.push(data.result);
-                ctx.activePlayerRestApp.render();
+                if (data.playerTravel) {
+                    ctx.activePlayerRestApp.receiveTravelPlayerState?.(data.playerTravel);
+                } else if (data.result) {
+                    ctx.activePlayerRestApp.receiveTravelPlayerState?.({
+                        debrief: [data.result],
+                        declarations: data.result.day != null && data.result.result?.actorId
+                            ? { [data.result.day]: { [data.result.result.actorId]: data.result.activity } }
+                            : null,
+                        confirmed: data.result.day != null && data.result.result?.actorId
+                            ? { [data.result.day]: { [data.result.result.actorId]: true } }
+                            : null,
+                        rolled: data.result.day != null && data.result.result?.actorId
+                            ? { [data.result.day]: { [data.result.result.actorId]: true } }
+                            : null
+                    });
+                } else {
+                    ctx.activePlayerRestApp.render();
+                }
             }
             break;
 

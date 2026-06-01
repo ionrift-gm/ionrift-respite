@@ -9,7 +9,8 @@
     <div class="station-camp-comfort glass-ui" data-station-camp-comfort="1">
         <div class="station-camp-comfort-row">
             <span class="station-camp-comfort-label">Camp comfort</span>
-            <span class="comfort-tier {{campComfortAtFire.mapComfortTierClass}}">{{campComfortAtFire.mapComfortLabel}}</span>
+            <span class="comfort-tier {{campComfortAtFire.mapComfortTierClass}}"
+                  data-tooltip="{{comfortHint campComfortAtFire.mapComfortTier}}">{{campComfortAtFire.mapComfortLabel}}</span>
         </div>
         {{#unless (and campPersonalCard (eq stationPanelTab "camp"))}}
         <p class="station-camp-comfort-line">{{campComfortAtFire.mapComfortLine}}</p>
@@ -103,7 +104,7 @@
             </div>
             {{/if}}
             {{#if activityDetail.armorWarning}}
-            <div class="armor-advisory {{#if activityDetail.armorWarning.isDoffed}}doffed{{/if}}" title="{{activityDetail.armorWarning.hint}}">
+            <div class="armor-advisory {{#if activityDetail.armorWarning.isDoffed}}doffed{{/if}}" data-tooltip="{{activityDetail.armorWarning.hint}}">
                 <i class="fas fa-shield-alt"></i>
                 <span class="armor-advisory-text">
                     {{#if activityDetail.armorWarning.isDoffed}}
@@ -116,7 +117,7 @@
                     data-actor-id="{{activityDetail.armorWarning.actorId}}"
                     data-item-id="{{activityDetail.armorWarning.itemId}}"
                     data-is-doffed="{{activityDetail.armorWarning.isDoffed}}"
-                    title="{{#if activityDetail.armorWarning.isDoffed}}Re-equip armor{{else}}Remove armor for rest{{/if}}">
+                    data-tooltip="{{#if activityDetail.armorWarning.isDoffed}}Re-equip armor{{else}}Remove armor for rest{{/if}}">
                     {{#if activityDetail.armorWarning.isDoffed}}
                     <i class="fas fa-shield-alt"></i> Don
                     {{else}}
@@ -149,8 +150,8 @@
         {{#each stationTabs}}
         <button type="button" role="tab" class="station-sub-tab {{#if (eq ../stationPanelTab id)}}active{{/if}}{{#if hintClass}} {{hintClass}}{{/if}}"
             data-action="switchStationPanelTab" data-tab="{{id}}"
-            {{#if ../craftRollPending}}disabled aria-disabled="true" title="Wait for the roll to finish"
-            {{else}}{{#if title}}title="{{title}}"{{/if}}{{/if}}>
+            {{#if ../craftRollPending}}disabled aria-disabled="true" data-tooltip="Wait for the roll to finish"
+            {{else}}{{#if title}}data-tooltip="{{title}}"{{/if}}{{/if}}>
             {{label}}
         </button>
         {{/each}}
@@ -220,7 +221,7 @@
                 <div class="feast-roster-portraits">
                     {{#each crafting.craftingResult.partyRoster}}
                     <div class="feast-portrait {{#if alreadyWellFed}}already-fed{{else}}will-eat{{/if}}"
-                         title="{{name}}{{#if alreadyWellFed}}: already Well Fed, goes to inventory{{else}}: will eat now{{/if}}">
+                         data-tooltip="{{name}}{{#if alreadyWellFed}}: already Well Fed, goes to inventory{{else}}: will eat now{{/if}}">
                         <img src="{{img}}" alt="{{name}}" class="feast-portrait-img">
                         <span class="feast-portrait-badge">
                             {{#if alreadyWellFed}}
@@ -326,7 +327,7 @@
 
                 {{!-- Hero Card: Selected Recipe --}}
                 {{#if crafting.selectedRecipe}}
-                <div class="recipe-hero">
+                <div class="recipe-hero{{#if crafting.selectedRecipe.ambitiousName}} recipe-hero--has-ambitious{{/if}}">
                     <div class="recipe-hero-header">
                         <img src="{{crafting.selectedRecipe.outputImg}}" alt="{{crafting.selectedRecipe.name}}" class="recipe-hero-icon">
                         <div class="recipe-hero-titles">
@@ -352,7 +353,7 @@
                     {{!-- Ingredient tokens --}}
                     <div class="recipe-hero-ingredients">
                         {{#each crafting.selectedRecipe.ingredientList}}
-                        <div class="hero-ingredient-token {{#if met}}met{{else}}unmet{{/if}}" title="{{required}}x {{name}} (have {{available}})">
+                        <div class="hero-ingredient-token {{#if met}}met{{else}}unmet{{/if}}" data-tooltip="{{required}}x {{name}} (have {{available}})">
                             <img src="{{img}}" alt="{{name}}" class="hero-ingredient-icon">
                             <span class="hero-ingredient-qty">{{required}}</span>
                             <span class="hero-ingredient-name">{{name}}</span>
@@ -390,14 +391,12 @@
                     </div>
                     {{/if}}
 
-                    {{!-- Ambitious teaser (only when Ambitious approach selected) --}}
-                    {{#if crafting.isAmbitiousSelected}}
+                    {{!-- Ambitious teaser: slot always reserved when recipe supports it --}}
                     {{#if crafting.selectedRecipe.ambitiousName}}
-                    <div class="recipe-hero-ambitious">
+                    <div class="recipe-hero-ambitious{{#unless crafting.isAmbitiousSelected}} recipe-hero-ambitious--reserved{{/unless}}">
                         <i class="fas fa-fire-alt"></i>
                         <span>On success: <strong>{{crafting.selectedRecipe.ambitiousName}}</strong></span>
                     </div>
-                    {{/if}}
                     {{/if}}
                 </div>
                 {{else}}
@@ -431,14 +430,14 @@
                     <div class="commit-visual-flow">
                         <div class="commit-inputs">
                             {{#each crafting.commitSummary.ingredients}}
-                            <div class="commit-item-token" title="{{quantity}}x {{name}}">
+                            <div class="commit-item-token" data-tooltip="{{quantity}}x {{name}}">
                                 <img src="{{img}}" alt="{{name}}">
                                 <span class="commit-item-qty">{{quantity}}</span>
                             </div>
                             {{/each}}
                         </div>
                         <div class="commit-flow-arrow"><i class="fas fa-long-arrow-alt-right"></i></div>
-                        <div class="commit-output-token" title="{{crafting.commitSummary.outputName}}">
+                        <div class="commit-output-token" data-tooltip="{{crafting.commitSummary.outputName}}">
                             <img src="{{crafting.commitSummary.outputImg}}" alt="{{crafting.commitSummary.outputName}}">
                             <span class="commit-output-name">{{crafting.commitSummary.outputName}}</span>
                         </div>
@@ -522,7 +521,7 @@
         {{#each stationTabs}}
         <button type="button" role="tab" class="station-sub-tab {{#if (eq ../stationPanelTab id)}}active{{/if}}{{#if hintClass}} {{hintClass}}{{/if}}"
             data-action="switchStationPanelTab" data-tab="{{id}}"
-            {{#if title}}title="{{title}}"{{/if}}>
+            {{#if title}}data-tooltip="{{title}}"{{/if}}>
             {{label}}
         </button>
         {{/each}}
@@ -531,7 +530,7 @@
 
     {{#if (eq station.id "campfire")}}
     {{#if (and showTabBar (eq stationPanelTab "fire") fireTabContext)}}
-    <div class="station-fire-tab glass-ui" data-station-fire-tab="1">
+    <div class="station-fire-tab station-fire-tab-scroll ionrift-list glass-ui" data-station-fire-tab="1">
         {{#if fireTabContext.campFireTabColdCamp}}
         <p class="station-fire-cold-hint glass-ui"><i class="fas fa-moon"></i> Cold camp. The table chose no fire.</p>
         {{else}}
@@ -553,15 +552,15 @@
                         {{#if active}}
                         <span class="station-fire-current-label">Current</span>
                         {{else if @root.isGmUser}}
-                        <button type="button" class="station-fire-set-btn" data-action="setFireLevel" data-fire-level="{{id}}" {{#if setDisabled}}disabled title="Not enough firewood"{{/if}}>Set</button>
+                        <button type="button" class="station-fire-set-btn" data-action="setFireLevel" data-fire-level="{{id}}" {{#if setDisabled}}disabled data-tooltip="Not enough firewood"{{/if}}>Set</button>
                         {{else}}
-                        <button type="button" class="station-fire-set-btn" data-action="requestFireLevel" data-fire-level="{{id}}" {{#if requestDisabled}}disabled title="Not enough party firewood"{{/if}}>Request</button>
+                        <button type="button" class="station-fire-set-btn" data-action="requestFireLevel" data-fire-level="{{id}}" {{#if requestDisabled}}disabled data-tooltip="Not enough party firewood"{{/if}}>Request</button>
                         {{/if}}
                     </div>
                 </div>
                 {{/each}}
             </div>
-            <p class="station-fire-tier-footnote">Larger fires add encounter risk. Bonfire can move camp comfort up one step when the scene allows it.</p>
+            <p class="station-fire-tier-footnote">Larger fires make the camp easier for enemies to spot. Bonfire can move camp comfort up one step when the scene allows it.</p>
         </div>
         {{/if}}
         {{#if fireTabContext.campFirewoodPledgeList.length}}
@@ -578,11 +577,14 @@
         <div class="comfort-hero-row">
             <span class="comfort-hero-label">Camp comfort</span>
             <span class="comfort-hero-tier-wrap">
-                <span class="comfort-tier comfort-{{campPersonalCard.personalComfort}}" style="font-size:1.15rem;">
+                <span class="comfort-tier comfort-{{campPersonalCard.personalComfort}}"
+                      data-tooltip="{{comfortHint campPersonalCard.personalComfort}}"
+                      data-tooltip-direction="UP"
+                      style="font-size:1.15rem;">
                     {{campPersonalCard.personalComfortLabel}}
                 </span>
                 {{#if campPersonalCard.personalMatchesCamp}}
-                <span class="station-personal-comfort-same comfort-hero-match-hint" title="Personal rest tier matches the camp baseline above.">(same as camp)</span>
+                <span class="station-personal-comfort-same comfort-hero-match-hint" data-tooltip="Personal rest tier matches the camp baseline above.">(same as camp)</span>
                 {{/if}}
             </span>
         </div>
@@ -604,14 +606,14 @@
                 {{#if canDrag}}
                 <span class="camp-gear-placeable-wrap comfort-factor-drag" draggable="true"
                       data-drag-type="player-gear" data-gear-type="{{gearType}}" data-actor-id="{{actorId}}"
-                      title="Place on map for ambiance">
+                      data-tooltip="Place on map for ambiance">
                     <i class="fas fa-grip-vertical"></i> map
                 </span>
                 {{/if}}
                 {{#if isPlaced}}
                 <button type="button" class="comfort-factor-drag" data-action="reclaimCampGear"
                         data-actor-id="{{actorId}}" data-gear-type="{{gearType}}"
-                        title="Pick up from map">
+                        data-tooltip="Pick up from map">
                     <i class="fas fa-check"></i> on map
                 </button>
                 {{/if}}
@@ -683,7 +685,7 @@
                 {{> activityPortraits}}
             </button>
             {{else if this.nonViable}}
-            <div class="activity-card station-activity non-viable" title="{{this.fadedHint}}">
+            <div class="activity-card station-activity non-viable" data-tooltip="{{this.fadedHint}}">
                 <i class="{{this.icon}}" aria-hidden="true"></i>
                 <div class="card-body">
                     <span class="card-name">{{this.name}}</span>
@@ -691,7 +693,7 @@
                 </div>
             </div>
             {{else}}
-            <div class="activity-card station-activity faded" title="{{this.fadedHint}}">
+            <div class="activity-card station-activity faded" data-tooltip="{{this.fadedHint}}">
                 <i class="{{this.icon}}" aria-hidden="true"></i>
                 <div class="card-body">
                     <span class="card-name">{{this.name}}</span>
@@ -737,7 +739,7 @@
                 {{> activityPortraits}}
             </button>
             {{else if this.nonViable}}
-            <div class="activity-card station-activity non-viable" title="{{this.fadedHint}}">
+            <div class="activity-card station-activity non-viable" data-tooltip="{{this.fadedHint}}">
                 <i class="{{this.icon}}" aria-hidden="true"></i>
                 <div class="card-body">
                     <span class="card-name">{{this.name}}</span>
@@ -745,7 +747,7 @@
                 </div>
             </div>
             {{else}}
-            <div class="activity-card station-activity faded" title="{{this.fadedHint}}">
+            <div class="activity-card station-activity faded" data-tooltip="{{this.fadedHint}}">
                 <i class="{{this.icon}}" aria-hidden="true"></i>
                 <div class="card-body">
                     <span class="card-name">{{this.name}}</span>
@@ -844,7 +846,7 @@
                              data-slot="food"
                              data-available="{{available}}"
                              data-character-id="{{../characterId}}"
-                             title="{{label}}">
+                             data-tooltip="{{label}}">
                             <img src="{{icon}}" alt="{{label}}" class="meal-inv-card-icon" draggable="false">
                             <span class="meal-inv-card-qty">×{{available}}</span>
                             <span class="meal-inv-card-name">{{name}}</span>
@@ -907,7 +909,7 @@
                              data-available="{{available}}"
                              data-total-pints="{{totalPints}}"
                              data-character-id="{{../characterId}}"
-                             title="{{label}}: ×{{available}} carried, {{totalPints}}p pourable">
+                             data-tooltip="{{label}}: ×{{available}} carried, {{totalPints}}p pourable">
                             <img src="{{icon}}" alt="{{label}}" class="meal-inv-card-icon" draggable="false">
                             <span class="meal-inv-card-qty meal-inv-card-qty--water">
                                 <span class="meal-inv-qty-stack">×{{available}}</span>
@@ -970,7 +972,7 @@
                 </div>
             </button>
             {{else if this.nonViable}}
-            <div class="activity-card station-activity non-viable" title="{{this.fadedHint}}">
+            <div class="activity-card station-activity non-viable" data-tooltip="{{this.fadedHint}}">
                 <i class="{{this.icon}}" aria-hidden="true"></i>
                 <div class="card-body">
                     <span class="card-name">{{this.name}}</span>
@@ -978,7 +980,7 @@
                 </div>
             </div>
             {{else}}
-            <div class="activity-card station-activity faded" title="{{this.fadedHint}}">
+            <div class="activity-card station-activity faded" data-tooltip="{{this.fadedHint}}">
                 <i class="{{this.icon}}" aria-hidden="true"></i>
                 <div class="card-body">
                     <span class="card-name">{{this.name}}</span>
@@ -1021,7 +1023,7 @@
             <button type="button" class="wb-ident-pool-row wb-ident-pool-btn"
                  data-action="identifyPoolItem"
                  data-item-actor-id="{{actorId}}" data-item-id="{{itemId}}"
-                 title="Identify {{name}}: owned by {{actorName}}">
+                 data-tooltip="Identify {{name}}: owned by {{actorName}}">
                 <img src="{{img}}" alt="" class="wb-ident-pool-icon"
                      onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
                 <span class="wb-ident-pool-name">{{name}}</span>

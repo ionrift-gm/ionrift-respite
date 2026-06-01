@@ -44,6 +44,7 @@ export const SOCKET_TYPES = Object.freeze({
     CAMP_FIREWOOD_PLEDGE:  "campFirewoodPledge",
     CAMP_FIREWOOD_RECLAIM: "campFirewoodReclaim",
     CAMP_COLD_CAMP:        "campColdCamp",
+    ACTIVITY_COLD_CAMP_REQUEST: "activityColdCampRequest",
 
     // ── Camp gear & stations ──
     CAMP_GEAR_PLACE:       "campGearPlace",
@@ -260,11 +261,28 @@ export function emitCampFireLevelRequest(fireLevel, userId) {
 }
 
 /**
+ * Player → GM: request cold camp during Make Camp.
+ * @param {string} [userId]
+ */
+export function emitCampColdCampRequest(userId) {
+    _emit(SOCKET_TYPES.CAMP_COLD_CAMP, { userId });
+}
+
+/**
+ * Player → GM: request cold camp during the activity Fire tab.
+ * @param {string} [userId]
+ */
+export function emitActivityColdCampRequest(userId) {
+    _emit(SOCKET_TYPES.ACTIVITY_COLD_CAMP_REQUEST, { userId });
+}
+
+/**
  * Player → GM: request fire level change during activity phase.
  * @param {string} fireLevel
+ * @param {string} [userId] - Requesting user's ID (for firewood ownership scoping).
  */
-export function emitActivityFireLevelRequest(fireLevel) {
-    _emit(SOCKET_TYPES.ACTIVITY_FIRE_LEVEL_REQUEST, { fireLevel });
+export function emitActivityFireLevelRequest(fireLevel, userId) {
+    _emit(SOCKET_TYPES.ACTIVITY_FIRE_LEVEL_REQUEST, { fireLevel, userId });
 }
 
 /**
@@ -272,9 +290,10 @@ export function emitActivityFireLevelRequest(fireLevel) {
  * @param {string} userId
  * @param {string} actorId
  * @param {string} [method="Tinderbox"]
+ * @param {string} [previewLevel] - The fire level the player previewed.
  */
-export function emitCampLightFire(userId, actorId, method = "Tinderbox") {
-    _emit(SOCKET_TYPES.CAMP_LIGHT_FIRE, { userId, actorId, method });
+export function emitCampLightFire(userId, actorId, method = "Tinderbox", previewLevel = null) {
+    _emit(SOCKET_TYPES.CAMP_LIGHT_FIRE, { userId, actorId, method, previewLevel });
 }
 
 /**

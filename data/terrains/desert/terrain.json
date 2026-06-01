@@ -5,8 +5,6 @@
     "icon": "fas fa-sun",
     "comfort": "hostile",
     "comfortReason": "Extreme heat, zero shade, no water. Survival without shelter is a gamble.",
-    "scoutingAvailable": true,
-    "scoutGuidance": "Survival check. Poor: 2-11 | Average: 12-16 | Good: 17+. Ranger has advantage. No nature proficiency has disadvantage.",
     "scoutFlavor": {
         "nat1":    ["A sheltered dune with good shade from a rock face.", "Rock overhang with shade. Looks like a solid spot.", "A small oasis with clear water and palm cover."],
         "poor":    ["Open sand. No shade, no cover.", "A shallow depression. Better than nothing.", "Rocky ground. Hard, hot, exposed."],

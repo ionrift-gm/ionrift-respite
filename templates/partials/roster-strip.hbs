@@ -4,31 +4,31 @@
     <div class="roster-players">
         {{#each roster}}
         <div class="roster-chip {{#if isSelected}}selected{{/if}} {{source}} {{#unless isOwner}}not-owned{{/unless}} {{#if isAfk}}afk{{/if}} {{#if mealStatus}}meal-{{mealStatus.state}}{{/if}}"
-            data-roster-id="{{id}}" title="{{fullName}}">
+            data-roster-id="{{id}}" data-tooltip="{{fullName}}">
             <span class="roster-portrait-wrap">
                 <img class="roster-portrait" src="{{img}}" alt="{{name}}">
                 {{#if isAfk}}<span class="roster-afk-mug" aria-hidden="true"><i class="fas fa-mug-hot"></i></span>{{/if}}
                 {{#if isBeddedDown}}<span class="roster-zzz" aria-hidden="true">Zzz</span>{{/if}}
             </span>
             <span class="roster-name">{{name}}</span>
-            {{#if activityLabel}}<span class="roster-activity-label" title="{{activityLabel}}">{{activityLabel}}</span>{{/if}}
+            {{#if activityLabel}}<span class="roster-activity-label" data-tooltip="{{activityLabel}}">{{activityLabel}}</span>{{/if}}
             <span class="roster-status">
                 {{#if pendingRoll}}
-                <i class="fas fa-dice-d20 roster-roll-pending" title="Awaiting roll"></i>
+                <i class="fas fa-dice-d20 roster-roll-pending" data-tooltip="Awaiting roll"></i>
                 {{else if rolledResult}}
-                <i class="fas fa-check-circle roster-roll-done" title="Rolled: {{rolledResult}}"></i>
+                <i class="fas fa-check-circle roster-roll-done" data-tooltip="Rolled: {{rolledResult}}"></i>
                 {{else if exhaustion}}
-                <i class="fas fa-skull roster-exhaustion" title="Exhaustion {{exhaustion}}"></i>
+                <i class="fas fa-skull roster-exhaustion" data-tooltip="Exhaustion {{exhaustion}}"></i>
                 {{else if (eq source 'player')}}
-                <i class="fas fa-check-circle roster-resolved" title="Activity chosen"></i>
+                <i class="fas fa-check-circle roster-resolved" data-tooltip="Activity chosen"></i>
                 {{else if (eq source 'gm')}}
-                <i class="fas fa-crown roster-gm-override" title="GM Override"></i>
+                <i class="fas fa-crown roster-gm-override" data-tooltip="GM Override"></i>
                 {{else}}
-                <i class="fas fa-clock roster-waiting" title="Waiting"></i>
+                <i class="fas fa-clock roster-waiting" data-tooltip="Waiting"></i>
                 {{/if}}
             </span>
             {{#if mealStatus}}
-            <span class="roster-meal-status {{mealStatus.state}}" title="{{mealStatus.tooltip}}">
+            <span class="roster-meal-status {{mealStatus.state}}" data-tooltip="{{mealStatus.tooltip}}">
                 {{#if mealStatus.submitted}}
                 <i class="fas fa-check-circle" aria-hidden="true"></i><span class="rms-label">sent</span>
                 {{else}}

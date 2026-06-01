@@ -2,12 +2,12 @@
 {{#if this.hasAssignments}}
 <div class="activity-portraits" aria-label="Assigned characters">
     {{#each this.assignedPortraits}}
-    <div class="activity-portrait ring-{{this.status}}" title="{{this.actorName}}">
+    <div class="activity-portrait ring-{{this.status}}" data-tooltip="{{this.actorName}}">
         <img src="{{this.portraitImg}}" alt="{{this.actorName}}" loading="lazy">
     </div>
     {{/each}}
     {{#if this.assignedOverflow}}
-    <span class="activity-portrait-overflow" title="{{this.assignedOverflow}} more">+{{this.assignedOverflow}}</span>
+    <span class="activity-portrait-overflow" data-tooltip="{{this.assignedOverflow}} more">+{{this.assignedOverflow}}</span>
     {{/if}}
 </div>
 {{/if}}

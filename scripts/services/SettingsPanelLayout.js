@@ -28,6 +28,7 @@ const COMPLEXITY_KEYS = [
     "enableProfessions",
     "enableTraining",
     "enableFletching",
+    "enableEncounters",
     "trackFood",
     "partialSustenance",
     "armorDoffRule"
@@ -46,6 +47,7 @@ const KEY_LABELS = {
     enableProfessions: "Crafting professions (and travel phase)",
     enableTraining: "Training activity",
     enableFletching: "Fletching activity",
+    enableEncounters: "Night encounters & watch",
     trackFood: "Meal tracking",
     partialSustenance: "Partial sustenance",
     armorDoffRule: "Armor sleep penalties",
@@ -63,12 +65,13 @@ const PROFILES = [
         id: "simple",
         label: "Simple",
         icon: "fas fa-feather",
-        desc: "Bare-bones rest. No comfort, professions, food, or extra activities.",
+        desc: "Bare-bones rest. No comfort, professions, food, encounters, or extra activities.",
         values: {
             enableComfort: false,
             enableProfessions: false,
             enableTraining: false,
             enableFletching: false,
+            enableEncounters: false,
             trackFood: false,
             partialSustenance: false,
             armorDoffRule: false,
@@ -81,12 +84,13 @@ const PROFILES = [
         id: "standard",
         label: "Standard",
         icon: "fas fa-campground",
-        desc: "Full camp: comfort, professions, training, and fletching. No food tracking.",
+        desc: "Full camp: comfort, professions, training, fletching, and night encounters. No food tracking.",
         values: {
             enableComfort: true,
             enableProfessions: true,
             enableTraining: true,
             enableFletching: true,
+            enableEncounters: true,
             trackFood: false,
             partialSustenance: false,
             armorDoffRule: true,
@@ -105,6 +109,7 @@ const PROFILES = [
             enableProfessions: true,
             enableTraining: true,
             enableFletching: true,
+            enableEncounters: true,
             trackFood: true,
             partialSustenance: true,
             armorDoffRule: true,
@@ -251,7 +256,14 @@ export function enhanceRespiteSettings(root) {
     quick.className = "respite-quick-setup";
     quick.innerHTML = `
         <div class="respite-quick-setup-head">
-            <span class="respite-quick-setup-title"><i class="fas fa-sliders"></i> Quick setup</span>
+            <div class="respite-quick-setup-head-top">
+                <span class="respite-quick-setup-title"><i class="fas fa-sliders"></i> Quick setup</span>
+                <button type="button" class="respite-quick-setup-guide-link" data-action="openGuide"
+                    data-tooltip="Opens the in-Foundry player guide: rest phases, comfort tiers, and what your nightly camp activity does."
+                    aria-label="Open player guide">
+                    <i class="fas fa-book-open" aria-hidden="true"></i> Open guide
+                </button>
+            </div>
             <span class="respite-quick-setup-sub">Pick a starting point for the table. Every option stays adjustable in the panels below.</span>
         </div>
         <div class="respite-quick-setup-options">
@@ -269,6 +281,11 @@ export function enhanceRespiteSettings(root) {
         </div>`;
     quick.querySelectorAll(".respite-profile-btn:not(.respite-profile-custom)").forEach(btn => {
         btn.addEventListener("click", () => applyProfile(btn.dataset.profile));
+    });
+    quick.querySelector('[data-action="openGuide"]')?.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        game.ionrift?.respite?.openPlayerGuide?.();
     });
     container.insertBefore(quick, container.firstChild);
     markActiveProfile(quick);

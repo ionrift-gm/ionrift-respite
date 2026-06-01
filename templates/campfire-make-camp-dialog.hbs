@@ -8,7 +8,7 @@
         <div class="campfire-map-comfort">
             <div class="campfire-map-comfort-header">
                 <span class="camp-comfort-header-inline">Camp comfort</span>
-                <span class="comfort-tier {{mapComfortTierClass}}">{{mapComfortLabel}}</span>
+                <span class="comfort-tier {{mapComfortTierClass}}" data-tooltip="{{comfortHint campScanData.campComfort}}">{{mapComfortLabel}}</span>
             </div>
             <p class="camp-comfort-reason campfire-map-comfort-line">{{mapComfortLine}}</p>
         </div>
@@ -17,39 +17,49 @@
         <div class="campfire-map-fire-levels">
             <h4 class="campfire-map-section-title">Fire levels</h4>
             <div class="camp-fire-tier-strip" role="list" aria-label="Fire intensity tiers">
+                <button type="button"
+                        class="camp-fire-tier-card cold-camp{{#if campColdCampDecided}} active selected{{/if}}"
+                        data-action="selectCampColdCampMap"
+                        role="listitem"
+                        {{#if campColdCampDecided}}aria-current="true"{{/if}}>
+                    <span class="camp-fire-tier-watermark" aria-hidden="true"><i class="fas fa-moon"></i></span>
+                    <span class="camp-fire-tier-label">Cold Camp</span>
+                    <span class="camp-fire-tier-cost">(No fire)</span>
+                    <span class="camp-fire-tier-body">No cooking. Harder for enemies to spot.</span>
+                </button>
                 {{#each campFireTierCards}}
-                <div class="camp-fire-tier-card{{#if active}} active{{/if}}" data-fire-level="{{id}}" role="listitem">
+                <button type="button"
+                        class="camp-fire-tier-card{{#if active}} active selected{{/if}}"
+                        data-fire-level="{{id}}"
+                        data-action="selectCampFireLevelMap"
+                        role="listitem"
+                        {{#if active}}aria-current="true"{{/if}}>
                     <span class="camp-fire-tier-watermark" aria-hidden="true"><i class="fas fa-fire"></i></span>
                     <span class="camp-fire-tier-label">{{label}}</span>
                     <span class="camp-fire-tier-cost">({{costLabel}})</span>
                     <span class="camp-fire-tier-body">{{body}}</span>
                     <span class="camp-fire-tier-comfort{{#if comfortChanged}} comfort-changed{{/if}}">{{comfortHint}}</span>
-                </div>
+                </button>
                 {{/each}}
             </div>
-            <p class="campfire-map-tier-footnote">Larger fires add encounter risk on the table. Bonfire can move camp comfort up one step when the scene allows it.</p>
+            <p class="campfire-map-tier-footnote">Anyone at the table can pick a tier. Cold camp and fire tiers stay editable until the GM proceeds.</p>
         </div>
         {{/if}}
-        {{#if campFireIsLit}}
-        <div class="camp-fire-step1 camp-fire-step1-lit">
-            <div class="camp-fire-lit-banner"><i class="fas fa-fire"></i> {{#if campFireLitBy}}<span>{{campFireLitBy.actorName}} lit the fire ({{campFireLitBy.method}}).</span>{{else}}<span>The fire is lit.</span>{{/if}}</div>
-            <p class="camp-fire-encounter-hint"><i class="fas fa-eye"></i> {{campFireEncounterHint}}</p>
-            <p class="camp-fire-flavor">Bright fire helps the camp, and it is easier to notice from a distance.</p>
-            {{#if campFirewoodPledgeList.length}}
-            <div class="camp-firewood-pledge-list campfire-map-pledges">
-            {{#each campFirewoodPledgeList}}<div class="camp-firewood-pledge-row"><i class="fas fa-check"></i> <span>{{actorName}}: {{count}} firewood</span></div>{{/each}}
-            </div>
-            {{/if}}
-            <div class="camp-fuel-controls">
-                <button type="button" class="camp-pledge-btn" data-action="campPledgeFirewoodMap" data-actor-id="{{campMyFirewoodActorId}}" {{#unless campCanAddFirewood}}disabled{{/unless}}><i class="fas fa-plus"></i> Add Firewood</button>
-                <button type="button" class="camp-reclaim-btn" data-action="campReclaimFirewoodMap" {{#unless campMyPledge}}disabled{{/unless}}><i class="fas fa-undo"></i> Take Back</button>
-            </div>
+        <p class="camp-fire-encounter-hint campfire-map-encounter-preview"><i class="fas fa-eye"></i> {{campFireEncounterHint}}</p>
+        {{#if campColdCampDecided}}
+        <p class="camp-fire-cold-banner glass-ui"><i class="fas fa-moon"></i> Cold camp selected</p>
+        {{else if campFireIsLit}}
+        <div class="camp-fire-lit-banner"><i class="fas fa-fire"></i> {{#if campFireLitBy}}<span>{{campFireLitBy.actorName}} lit the fire ({{campFireLitBy.method}}).</span>{{else}}<span>{{campCurrentFireLevel}} fire selected.</span>{{/if}}</div>
+        {{#if campFirewoodPledgeList.length}}
+        <div class="camp-firewood-pledge-list campfire-map-pledges">
+        {{#each campFirewoodPledgeList}}<div class="camp-firewood-pledge-row"><i class="fas fa-check"></i> <span>{{actorName}}: {{count}} firewood</span></div>{{/each}}
+        </div>
+        {{/if}}
+        <div class="camp-fuel-controls">
+            <button type="button" class="camp-pledge-btn" data-action="campPledgeFirewoodMap" data-actor-id="{{campMyFirewoodActorId}}" {{#unless campCanAddFirewood}}disabled{{/unless}}><i class="fas fa-plus"></i> Add Firewood</button>
+            <button type="button" class="camp-reclaim-btn" data-action="campReclaimFirewoodMap" {{#unless campMyPledge}}disabled{{/unless}}><i class="fas fa-undo"></i> Take Back</button>
         </div>
         {{else}}
-        {{#if campColdCampDecided}}
-        <p class="camp-fire-cold-banner glass-ui"><i class="fas fa-moon"></i> Cold camp</p>
-        {{else}}
-        <p class="camp-fire-encounter-hint campfire-map-encounter-preview"><i class="fas fa-eye"></i> {{campFireEncounterHint}}</p>
         {{#if isGM}}
         <div class="camp-gm-override-row">
             {{#if campFireLighters.length}}
@@ -57,14 +67,11 @@
             {{else}}
             <button type="button" class="camp-gm-light-override" data-action="campLightFireMap" data-actor-id="__gm__" data-method="GM Override"><i class="fas fa-fire-alt"></i> Light Fire (GM)</button>
             {{/if}}
-            <button type="button" class="camp-gm-cold-override" data-action="campColdCampMap"><i class="fas fa-moon"></i> Cold camp</button>
         </div>
         {{else}}
         <div class="camp-fire-lighter-list">
         {{#if campFireLighters.length}}
-            {{!-- Show buttons only for the viewer's own actors --}}
             {{#each campFireLighters}}{{#if isViewerActor}}<button type="button" class="camp-light-fire-btn" data-action="campLightFireMap" data-actor-id="{{actorId}}" data-method="{{method}}"><i class="fas fa-fire"></i> {{method}}</button>{{/if}}{{/each}}
-            {{!-- If the viewer can't light it but someone else can, say who --}}
             {{#unless campViewerCanLight}}
             <p class="camp-fire-no-lighter-hint"><i class="fas fa-info-circle"></i> You don't have a tinderbox or fire cantrip. {{campFireLighterNames}} can light the fire.</p>
             {{/unless}}
@@ -72,7 +79,6 @@
         <p class="camp-fire-no-lighter-hint camp-fire-no-lighter-prominent"><i class="fas fa-exclamation-triangle"></i> <strong>No fire starter.</strong> Someone in the party needs a tinderbox, flint &amp; steel, or a fire cantrip to light the campfire.</p>
         {{/if}}
         </div>
-        {{/if}}
         {{/if}}
         {{/if}}
     </div>

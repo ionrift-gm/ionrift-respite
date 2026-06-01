@@ -13,7 +13,14 @@
       "approvedBy": "ionrift",
       "approvedDate": "2026-04-01",
       "assetPolicy": "foundry-core-only",
-      "note": "GM guide journals"
+      "note": "Player guide journals (Player Quick Reference, Cooking)"
+    },
+    "respite-guide-gm": {
+      "status": "approved",
+      "approvedBy": "ionrift",
+      "approvedDate": "2026-06-01",
+      "assetPolicy": "foundry-core-only",
+      "note": "GM-only guide journal"
     },
     "respite-actors": {
       "status": "approved",

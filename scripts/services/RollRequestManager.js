@@ -166,7 +166,7 @@ export async function rollForPlayer(actor, skills, dc, context = "Skill check", 
  * @param {string} flavorText - Chat message flavor.
  * @param {HTMLElement} [buttonTarget] - Optional button to disable.
  * @param {'normal'|'advantage'|'disadvantage'} [rollMode='normal']
- * @returns {Promise<{ total: number, passed: boolean }>}
+ * @returns {Promise<{ total: number, passed: boolean, roll: Roll }>}
  */
 export async function executePlayerRoll(actor, skillKey, dc, flavorText, buttonTarget, rollMode = "normal") {
     const { roll } = buildSkillRoll(actor, skillKey, rollMode);
@@ -177,7 +177,7 @@ export async function executePlayerRoll(actor, skillKey, dc, flavorText, buttonT
     await showDiceSoNiceRoll(roll);
     await postRollToChat(actor, roll, flavorText);
 
-    return { total: roll.total, passed: roll.total >= dc };
+    return { total: roll.total, passed: roll.total >= dc, roll };
 }
 
 /**

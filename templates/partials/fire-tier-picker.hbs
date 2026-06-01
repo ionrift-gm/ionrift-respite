@@ -1,5 +1,20 @@
-{{!-- Fire Tier Picker: shared between TotM camp phase and TotM activity Fire tab --}}
+{{!-- Fire Tier Picker: TotM activity Fire tab --}}
 <div class="totm-fire-tiers">
+    <div class="totm-fire-tier-card cold-camp {{#if campColdCampDecided}}selected{{/if}}" data-tier="cold_camp">
+        <div class="totm-fire-tier-top">
+            <span class="totm-fire-tier-name">Cold Camp</span>
+            <span class="totm-fire-tier-cost">No fire</span>
+        </div>
+        <p class="totm-fire-tier-body">No fire tonight. <span class="fire-penalty">−1 comfort.</span> <span class="fire-benefit">Harder for enemies to spot.</span> No cooking.</p>
+        {{#if campColdCampDecided}}
+        <span class="totm-fire-tier-current">CURRENT</span>
+        {{else}}
+        <button type="button" class="totm-fire-tier-set-btn"
+                data-action="selectCampColdCamp">
+            Set
+        </button>
+        {{/if}}
+    </div>
     {{#each campFirePickerLevels}}
     <div class="totm-fire-tier-card {{#if selected}}selected{{/if}} {{#if disabled}}disabled{{/if}}" data-tier="{{id}}">
         <div class="totm-fire-tier-top">
@@ -7,22 +22,14 @@
             <span class="totm-fire-tier-cost">{{costLabel}}</span>
         </div>
         <p class="totm-fire-tier-body">{{> fireTierBody}}</p>
-        {{#if ../campFireIsLit}}
-            {{#if selected}}
-            <span class="totm-fire-tier-current">CURRENT</span>
-            {{else if (not disabled)}}
-            <button type="button" class="totm-fire-tier-set-btn"
-                    data-action="selectCampFireLevel"
-                    data-fire-level="{{id}}">
-                Set
-            </button>
-            {{/if}}
-        {{else unless ../campColdCampDecided}}
-            {{#if (not disabled)}}
-            {{#if selected}}
-            <span class="totm-fire-tier-current">Selected</span>
-            {{/if}}
-            {{/if}}
+        {{#if selected}}
+        <span class="totm-fire-tier-current">CURRENT</span>
+        {{else if (not disabled)}}
+        <button type="button" class="totm-fire-tier-set-btn"
+                data-action="selectCampFireLevel"
+                data-fire-level="{{id}}">
+            Set
+        </button>
         {{/if}}
         {{#if disabledReason}}
         <span class="totm-fire-tier-disabled-reason">{{disabledReason}}</span>

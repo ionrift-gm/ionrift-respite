@@ -20,7 +20,7 @@
                 <div class="meal-drop-zone wb-ident-drop-zone gear-focus-drop-zone {{#if workbenchGearChip}}filled{{/if}}
                     {{#if workbenchFocusExhausted}}wb-ident-zone-blocked{{/if}}"
                     data-wb-zone="gear"
-                    title="{{#if workbenchFocusExhausted}}Focus identify already used this rest{{else}}Drop one non-potion item here. Click to clear.{{/if}}">
+                    data-tooltip="{{#if workbenchFocusExhausted}}Focus identify already used this rest{{else}}Drop one non-potion item here. Click to clear.{{/if}}">
                     <div class="drop-zone-silhouette">
                         {{#if workbenchGearChip}}
                         <img src="{{workbenchGearChip.img}}" alt="" class="drop-zone-item-icon" onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
@@ -35,7 +35,7 @@
             <span class="panel-label">Potion</span>
             <div class="wb-ident-potion-slot-wrap">
                 <div class="meal-drop-zone wb-ident-drop-zone potion-taste-drop-zone {{#if workbenchPotionChip}}filled{{/if}}"
-                     data-wb-zone="potion" title="Drop one potion here. Click to clear.">
+                     data-wb-zone="potion" data-tooltip="Drop one potion here. Click to clear.">
                     <div class="drop-zone-silhouette">
                         {{#if workbenchPotionChip}}
                         <img src="{{workbenchPotionChip.img}}" alt="" class="drop-zone-item-icon" onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
@@ -52,7 +52,7 @@
         <button type="button" class="btn-detect-magic{{#if magicScanActive}} is-active{{/if}}"
             data-action="stationDetectMagicScan"
             {{#unless canTriggerDetectMagicScan}}disabled{{/unless}}
-            title="{{#if magicScanActive}}Dismiss scan{{else}}{{#if canTriggerDetectMagicScan}}{{#if isGmUser}}Cast Detect Magic for the party{{else}}Cast Detect Magic{{/if}}{{else}}No Detect Magic caster in party{{/if}}{{/if}}">
+            data-tooltip="{{#if magicScanActive}}Dismiss scan{{else}}{{#if canTriggerDetectMagicScan}}{{#if isGmUser}}Cast Detect Magic for the party{{else}}Cast Detect Magic{{/if}}{{else}}No Detect Magic caster in party{{/if}}{{/if}}">
             <i class="fas {{#if magicScanActive}}fa-eye-slash{{else}}fa-eye{{/if}}" aria-hidden="true"></i>
             <span class="btn-detect-magic-text">{{#if magicScanActive}}Dismiss{{else}}Detect Magic{{/if}}</span>
         </button>
@@ -81,7 +81,7 @@
             {{/each}}
             <button type="button" class="station-meal-submit-btn wb-ident-ack-btn" data-action="dismissWorkbenchIdentifyAck"
                 data-workbench-actor-id="{{workbenchIdentifyActorId}}"
-                {{#unless workbenchAckRevealReady}} disabled title="Brief pause before you continue"{{/unless}}>
+                {{#unless workbenchAckRevealReady}} disabled data-tooltip="Brief pause before you continue"{{/unless}}>
                 {{#if workbenchAckRevealReady}}Continue{{else}}Wait...{{/if}}
             </button>
         </div>

@@ -1,0 +1,20 @@
+{
+    "_id": "dvr4TYdYmX88MCCf",
+    "_key": "!journal.pages!hG4mR3fRespGuide01.dvr4TYdYmX88MCCf",
+    "name": "GM Reference",
+    "type": "text",
+    "title": { "show": true, "level": 1 },
+    "image": {},
+    "video": { "controls": true, "volume": 0.5 },
+    "src": null,
+    "system": {},
+    "text": {
+        "content": "<p><em>Settings live in <strong>Game Settings &gt; Module Settings &gt; Ionrift Respite</strong>. Each setting carries its own hint, so this page sticks to the things the panel cannot show in a hover.</em></p><h2>Starting a rest</h2><p>Only the GM starts a rest. Three ways:</p><ul><li>Type <code>/respite</code> in chat.</li><li>Click the campground icon in the token controls on the left of the canvas.</li><li>Let a player click <em>Long Rest</em> on their character sheet. With <strong>Intercept Player Rests</strong> on (default), the Respite flow opens instead of the native dialog.</li></ul><h2>Quick Setup profiles</h2><p>The top of the settings panel offers <strong>Simple</strong>, <strong>Standard</strong>, and <strong>Survival</strong> presets. Pick the closest one, then tune in the panels below. <em>Standard</em> is the recommended starting point.</p><h2>Comfort, in detail</h2><p>Comfort is the headline mechanic. The GM sets the baseline from the environment. Shelter, fire, gear, and certain camp activities shift it up or down. The tier the rest resolves at determines:</p><table><thead><tr><th>Tier</th><th>HP recovery</th><th>Hit Dice penalty</th><th>Exhaustion save</th><th>Encounter pressure</th></tr></thead><tbody><tr><td>Safe</td><td>Full</td><td>None</td><td>None</td><td>None (skipped)</td></tr><tr><td>Sheltered</td><td>Full</td><td>None</td><td>None</td><td>Normal</td></tr><tr><td>Rough</td><td>Full</td><td>&minus;1 HD</td><td>CON DC 10 or +1 exhaustion</td><td>Raised</td></tr><tr><td>Hostile</td><td>75% of max</td><td>&minus;2 HD</td><td>CON DC 15 or +1 exhaustion; existing exhaustion cannot clear</td><td>High</td></tr></tbody></table><p>The comfort badge anywhere in the UI shows the same hint on hover. Disable comfort entirely with <strong>Comfort Rules</strong> in the settings panel for a simplified rest.</p><h2>Terrains and events</h2><p>Terrain sets the event pool and the baseline encounter DC. Each ships with its own pool: forest, desert, swamp, coast, arctic, underdark, urban, ruins, dungeon, tavern.</p><p>Events resolve on a four-tier outcome scale (triumph, success, mixed, failure) shaped by how far the GM's roll lands above or below the night's DC. Categories: <em>Encounter</em> (something hostile), <em>Complication</em> (a problem to solve), <em>Discovery</em> (something useful), <em>Ambient</em> (colour, no mechanics).</p><h3>Curating the pool</h3><p>Camp events only fire if you have added them to the active pool. Open <strong>Module Settings &gt; Ionrift Respite &gt; Curate Event Pool</strong>, or click <strong>Curate Pool</strong> from the Content Packs panel. Until the pool has entries, a low night-check roll simply passes with no event, so you can read through everything before anything can surprise the table.</p><img src=\"modules/ionrift-respite/assets/screenshots/pure/event_browser.png\" alt=\"Event Pool curation window opened from Content Packs settings\" /><h2>Meals and diets</h2><p>Off by default. Turn it on under <strong>Food &amp; Diet</strong> if you want rations and water tracked at camp. Per-character dietary rules and preset profiles live in the same dialog.</p><h2>If a rest gets stuck</h2><p><strong>Reset Rest State</strong> in the settings panel (under Tools) clears any lock and removes camp tokens from the active scene. Use it when a rest cannot start, the party needs to rest again the same in-game day, or a previous rest did not finish cleanly.</p>",
+        "format": 1,
+        "markdown": ""
+    },
+    "sort": 100000,
+    "ownership": { "default": 0 },
+    "flags": {},
+    "_stats": { "compendiumSource": null, "duplicateSource": null, "coreVersion": "12.331", "systemId": null, "systemVersion": null, "createdTime": null, "modifiedTime": null, "lastModifiedBy": null }
+}

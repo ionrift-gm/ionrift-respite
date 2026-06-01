@@ -17,6 +17,7 @@ const SIGNOFF_PATH = path.join(PACK_SRC, "SIGNOFF.json");
 const ITEMS_DIR = path.join(PACK_SRC, "respite-items");
 const ACTORS_DIR = path.join(PACK_SRC, "respite-actors");
 const GUIDE_DIR = path.join(PACK_SRC, "respite-guide");
+const GUIDE_GM_DIR = path.join(PACK_SRC, "respite-guide-gm");
 
 const BLOCKING_STATUSES = new Set(["draft", "test", "pending-review"]);
 
@@ -104,7 +105,8 @@ function main() {
   const sections = [
     { key: "items", label: "respite-items", dir: ITEMS_DIR },
     { key: "actors", label: "respite-actors", dir: ACTORS_DIR },
-    { key: "guide", label: "respite-guide", dir: GUIDE_DIR }
+    { key: "guide", label: "respite-guide", dir: GUIDE_DIR },
+    { key: "guideGm", label: "respite-guide-gm", dir: GUIDE_GM_DIR }
   ];
 
   const allFiles = [];
@@ -128,8 +130,9 @@ function main() {
   const signoffItems = signoff.items && typeof signoff.items === "object" ? signoff.items : {};
   const signoffActors = signoff.actors && typeof signoff.actors === "object" ? signoff.actors : {};
   const signoffGuide = signoff.guide && typeof signoff.guide === "object" ? signoff.guide : {};
+  const signoffGuideGm = signoff.guideGm && typeof signoff.guideGm === "object" ? signoff.guideGm : {};
 
-  const signoffMap = { items: signoffItems, actors: signoffActors, guide: signoffGuide };
+  const signoffMap = { items: signoffItems, actors: signoffActors, guide: signoffGuide, guideGm: signoffGuideGm };
 
   for (const file of allFiles) {
     const entry = signoffMap[file.sectionKey][file.name];

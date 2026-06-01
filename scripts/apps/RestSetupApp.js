@@ -246,6 +246,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             setFireLevel: RestSetupApp.#onSetFireLevel,
             rollEvents: RestSetupApp.#onRollEvents,
             improviseEvent: RestSetupApp.#onImproviseEvent,
+            nightPasses: RestSetupApp.#onNightPasses,
+            improviseNight: RestSetupApp.#onImproviseNight,
             pickPoolEvent: RestSetupApp.#onPickPoolEvent,
             setEventsMode: RestSetupApp.#onSetEventsMode,
             commitEventsMode: RestSetupApp.#onCommitEventsMode,
@@ -1620,6 +1622,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             console.log(`ionrift-respite | [CLOSE-DEBUG] render blocked by _terminated flag`);
             return;
         }
+        const preserveTotmCraftScroll = this._totmFollowUpExpanded?.isCrafting
+            && this.rendered
+            && !options.resetCraftScroll;
+        if (preserveTotmCraftScroll) {
+            const scrollEl = this.element?.querySelector(".totm-crafting-embed .crafting-detail-panel")
+                ?? this.element?.querySelector(".totm-crafting-embed .crafting-split-body");
+            this._totmCraftScrollTop = scrollEl?.scrollTop ?? 0;
+        }
         if (this._isGM) {
             if (options.force) {
                 this._gmMinimizedToFooter = false;
@@ -1636,7 +1646,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         try {
             const out = super.render(options);
             void Promise.resolve(out)
-                .then(() => showAfkPanel())
+                .then(() => {
+                    if (preserveTotmCraftScroll && (this._totmCraftScrollTop ?? 0) > 0) {
+                        const scrollEl = this.element?.querySelector(".totm-crafting-embed .crafting-detail-panel")
+                            ?? this.element?.querySelector(".totm-crafting-embed .crafting-split-body");
+                        if (scrollEl) scrollEl.scrollTop = this._totmCraftScrollTop;
+                    }
+                    showAfkPanel();
+                })
                 .catch((err) => {
                     console.error(`${MODULE_ID} | RestSetupApp render failed:`, err);
                     if (this._isGM) clearActiveRestApp();
@@ -1795,7 +1812,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const fs = campScanData.fireSelection ?? {};
             const cur = this._fireLevel ?? "unlit";
             const preview = this._campFirePreviewLevel ?? "embers";
-            const coldSelected = !!this._coldCampDecided;
+            const coldSelected = !!this._coldCampDecided || (preview === "cold_camp");
             campFirePickerLevels = [
                 {
                     id: "embers",
@@ -2022,8 +2039,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         } catch { /* settings not ready */ }
         const safeRestSpot = !!(this._engine?.safeRestSpot ?? this._restData?.safeRestSpot ?? safeRestSpotFromSetting);
 
+        let encountersEnabled = true;
+        try {
+            encountersEnabled = !!game.settings.get(MODULE_ID, "enableEncounters");
+        } catch { /* settings not ready */ }
+
         if ((safeRestSpot || !isComfortEnabled()) && this._isTotM && this._phase === "activity" && this._totmActiveTab === "fire") {
             this._totmActiveTab = "activities";
+        }
+
+        // With the encounter layer off, the activity phase is mostly empty (only
+        // Other survives), so lead with Identify, the one structured interaction.
+        if (!encountersEnabled && this._isTotM && this._phase === "activity"
+            && !this._totmTabUserSet && this._totmActiveTab === "activities") {
+            this._totmActiveTab = "identify";
         }
 
         // Detect tents from party inventory
@@ -2692,6 +2721,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 activityLabel = act?.name ?? null;
             }
 
+            // Travel phase: surface the travel declaration as the activity label
+            if (!activityLabel && this._phase === "travel") {
+                const activeDay = this._travelActiveDay ?? 1;
+                const decl = this._isGM
+                    ? (this._travel?.getDayDeclarations?.(activeDay)?.[c.id] ?? "nothing")
+                    : (this._playerTravelDeclarations?.[activeDay]?.[c.id]
+                        ?? this._syncedTravelDeclarations?.[activeDay]?.[c.id]
+                        ?? this._syncedTravelDeclarations?.[c.id]
+                        ?? "nothing");
+                const TRAVEL_LABELS = { forage: "Forage", hunt: "Hunt", scout: "Scout" };
+                activityLabel = TRAVEL_LABELS[decl] ?? null;
+            }
+
             const isBeddedDown = (this._phase === "events" || this._phase === "reflection")
                 && !this._nightWatchActorIds().has(c.id);
 
@@ -2931,7 +2973,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const fs = campScanData.fireSelection ?? {};
             const cur = this._fireLevel ?? "unlit";
             const preview = this._campFirePreviewLevel ?? "embers";
-            const coldSelected = !!this._coldCampDecided;
+            const coldSelected = !!this._coldCampDecided || (preview === "cold_camp");
             campFirePickerLevels = [
                 {
                     id: "embers",
@@ -3206,6 +3248,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }));
         const phaseLabel = _currentStepIndex >= 0 ? _phaseStepDefs[_currentStepIndex].label : "";
 
+        // Activity-phase "proceed" button label tracks the actual next step, so it
+        // never promises a Rations stage that this configuration skips.
+        const _activityNextStep = showMealStep ? "meal" : (_includeEventsStep ? "events" : "resolve");
+        const activityProceed = ({
+            meal:    { label: "Proceed to Rations", icon: "fas fa-arrow-right" },
+            events:  { label: "Proceed to Events", icon: "fas fa-moon" },
+            resolve: { label: "Proceed to Resolution", icon: "fas fa-arrow-right" }
+        })[_activityNextStep];
+
         // Setup-screen summary of the settings that reshape this rest, so global
         // toggles read as local context instead of silently changing the flow.
         const restConfigBadges = (this._isGM && this._phase === "setup"
@@ -3227,9 +3278,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return {
             isGM: this._isGM,
             isTheaterMode: this._isTotM,
+            encountersEnabled,
             showMealStep,
             phaseSteps,
             phaseLabel,
+            activityProceed,
             restConfigBadges,
             totmActiveTab: this._totmActiveTab,
             totmStationCards,
@@ -3314,14 +3367,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     const daySynced = syncedDecl[day] ?? syncedDecl; // fallback flat for compat
                     const chars = partyActors.map(a => {
                         const decl = a.isOwner
-                            ? (dayLocal[a.id] ?? "nothing")
+                            ? (dayLocal[a.id] ?? daySynced[a.id] ?? "nothing")
                             : (daySynced[a.id] ?? "nothing");
                         const lastAct = a.getFlag?.("ionrift-respite", "lastTravelActivity") ?? null;
                         const lastLabel = lastAct === "forage" ? "Forage"
                             : lastAct === "hunt" ? "Hunt"
                             : lastAct === "scout" ? "Scout" : null;
                         const confirmed = a.isOwner
-                            ? !!(this._playerTravelConfirmed?.[day]?.[a.id])
+                            ? !!(this._playerTravelConfirmed?.[day]?.[a.id]
+                                || daySynced._confirmed?.[a.id])
                             : !!(syncedDecl[day]?._confirmed?.[a.id] ?? daySynced._confirmed?.[a.id]);
                         const rolled = !!(this._playerTravelRolled?.[day]?.[a.id]
                             || this._syncedTravelRolled?.[day]?.[a.id]
@@ -3384,6 +3438,29 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const forageDisabled = canForage && forageGate.disabled;
                 const forageDisabledReasonKey = forageDisabled ? forageGate.disabledReasonKey : null;
 
+                // Build peer roster (non-owned characters) in roster-strip chip shape
+                // so the travel phase can use {{> rosterStrip}} like every other phase.
+                const activeChars = (days.find(d => d.isActive)?.characters ?? []);
+                const travelPeerRoster = activeChars
+                    .filter(c => !c.isOwner)
+                    .map(c => ({
+                        id: c.id,
+                        name: c.name.split(" ")[0],
+                        fullName: c.name,
+                        img: c.img ?? "icons/svg/mystery-man.svg",
+                        source: c.confirmed ? "player" : "pending",
+                        isOwner: false,
+                        isSelected: false,
+                        isAfk: false,
+                        isBeddedDown: false,
+                        exhaustion: null,
+                        pendingRoll: false,
+                        rolledResult: c.rolled ? "done" : null,
+                        // Show declaration as the activity label (Forage, Hunt, Scout, or null for Other)
+                        activityLabel: c.declarationLabel ?? null,
+                        mealStatus: null
+                    }));
+
                 return {
                     days,
                     totalDays,
@@ -3401,7 +3478,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     forageDisabledReasonKey,
                     forageDisabledTooltip: forageDisabledReasonKey
                         ? game.i18n.localize(forageDisabledReasonKey)
-                        : null
+                        : null,
+                    travelPeerRoster
                 };
             })(),
             pendingTravelRoll: this._pendingTravelRoll ? (() => {
@@ -3715,7 +3793,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const effectiveMode = (eventsMode === "pick" && !pickAvailable) ? "random" : eventsMode;
                 return {
                     eventPoolCount: poolCount,
-                    showEventPoolNudge: this._shouldShowEventPoolNudge(terrainTag),
+                    showEventPoolNudge: encountersEnabled && this._shouldShowEventPoolNudge(terrainTag),
                     eventPoolTerrainLabel: terrain?.label ?? terrainTag,
                     eventsMode: effectiveMode,
                     eventsModePickAvailable: pickAvailable,
@@ -3770,7 +3848,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campfirePlaced,
             campStationCards,
             craftingDrawer: this._buildCraftingDrawerContext(),
-            encounterBar: (this._engine && !this._eventsRolled && !this._engine.safeRestSpot) ? (() => {
+            encounterBar: (this._engine && !this._eventsRolled && !this._engine.safeRestSpot && encountersEnabled) ? (() => {
                 const bd = this._engine._encounterBreakdown ?? {};
                 const shelter = bd.shelter ?? 0;
                 const weather = bd.weather ?? 0;
@@ -7405,6 +7483,47 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Encounters-off night: the GM declares a quiet night. No dice, no DC,
+     * just close out the events phase and move to resolution.
+     */
+    static async #onNightPasses(event, target) {
+        if (!game.user.isGM) return;
+        if (!this._engine || this._phase !== "events" || this._eventsRolled) return;
+        await ChatMessage.create({
+            speaker: { alias: "Night Watch" },
+            content: `<div style="border-left:3px solid #7eb8da;padding-left:8px;"><strong>Night Watch</strong><br>The night passes without incident.</div>`,
+            whisper: game.users.filter(u => u.isGM).map(u => u.id)
+        });
+        this._triggeredEvents = [];
+        this._eventsRolled = true;
+        await RestSetupApp.#finalizeEventsRoll.call(this);
+    }
+
+    /**
+     * Encounters-off night: the GM chooses to run an event by hand. No dice;
+     * an ad-hoc event is staged for the GM to narrate at the table.
+     */
+    static async #onImproviseNight(event, target) {
+        if (!game.user.isGM) return;
+        if (!this._engine || this._phase !== "events" || this._eventsRolled) return;
+        this._triggeredEvents = [{
+            id: `adhoc_${Date.now()}`,
+            name: "Improvised Encounter",
+            category: "encounter",
+            description: "",
+            mechanical: null,
+            isDecisionTree: false,
+            targets: [],
+            rollTotal: null,
+            result: "triggered",
+            narrative: "",
+            adHoc: true
+        }];
+        this._eventsRolled = true;
+        await RestSetupApp.#finalizeEventsRoll.call(this);
+    }
+
+    /**
      * GM picks a curated pool event without rolling the night check.
      */
     static async #onPickPoolEvent(event, target) {
@@ -9774,6 +9893,170 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Build per-user travel UI state from serialized delegate data (GM or activeRest).
+     * @param {object} travelState - Output of TravelResolutionDelegate.serialize()
+     * @param {string} userId
+     * @param {object} [opts]
+     * @returns {object|null}
+     */
+    static buildPlayerTravelRestoreFromSerialized(travelState, userId, opts = {}) {
+        if (!travelState?.entries || !userId) return null;
+
+        const ownedActorIds = new Set();
+        for (const actor of getPartyActors()) {
+            const owners = Object.entries(actor.ownership ?? {})
+                .filter(([id, level]) => id !== "default" && level >= 3)
+                .map(([id]) => id);
+            if (owners.includes(userId)) ownedActorIds.add(actor.id);
+        }
+        if (!ownedActorIds.size) return null;
+
+        const declarations = {};
+        const confirmed = {};
+        const rolled = {};
+        const debrief = [];
+
+        for (const [key, entry] of Object.entries(travelState.entries)) {
+            const colon = key.indexOf(":");
+            if (colon < 0) continue;
+            const day = parseInt(key.slice(0, colon), 10);
+            const actorId = key.slice(colon + 1);
+            if (!day || !ownedActorIds.has(actorId)) continue;
+
+            declarations[day] ??= {};
+            declarations[day][actorId] = entry.activity ?? "nothing";
+
+            if (travelState.confirmed?.[`${day}:${actorId}`]) {
+                confirmed[day] ??= {};
+                confirmed[day][actorId] = true;
+            }
+
+            if (entry.status === "rolled" || entry.status === "resolved") {
+                rolled[day] ??= {};
+                rolled[day][actorId] = true;
+            }
+
+            if (entry.status === "resolved" && entry.result
+                && entry.activity !== "scout") {
+                debrief.push({
+                    day,
+                    activity: entry.activity,
+                    result: entry.result
+                });
+            }
+        }
+
+        if (!Object.keys(declarations).length && !debrief.length) return null;
+
+        const totalDays = travelState.totalDays ?? 1;
+        let fullyResolved = !!opts.fullyResolved;
+        if (opts.fullyResolved === undefined && travelState.dayResolved) {
+            fullyResolved = true;
+            for (let d = 1; d <= totalDays; d++) {
+                const resolved = travelState.dayResolved[d] ?? travelState.dayResolved[String(d)];
+                if (!resolved) {
+                    fullyResolved = false;
+                    break;
+                }
+            }
+        }
+
+        return {
+            declarations,
+            confirmed,
+            rolled,
+            debrief: debrief.length ? debrief : null,
+            totalDays,
+            activeDay: travelState.activeDay ?? 1,
+            forageDC: opts.forageDC ?? null,
+            huntDC: opts.huntDC ?? null,
+            scoutingAllowed: travelState.scoutingAllowed ?? null,
+            fullyResolved,
+            scoutingDone: !!opts.scoutingDone || !!travelState.scoutingResult
+        };
+    }
+
+    /**
+     * Per-user travel slice for rejoin snapshots (owned actors only).
+     * @param {string} userId
+     * @returns {object|null}
+     */
+    _buildPlayerTravelRestore(userId) {
+        if (!this._travel || !userId) return null;
+        const base = RestSetupApp.buildPlayerTravelRestoreFromSerialized(
+            this._travel.serialize(),
+            userId,
+            {
+                fullyResolved: this._travel.isFullyResolved(),
+                scoutingDone: !!this._scoutingDebrief
+            }
+        );
+        if (!base) return null;
+        base.forageDC = this._travel.forageDC;
+        base.huntDC = this._travel.huntDC;
+        base.scoutingAllowed = this._travel.scoutingAllowed;
+        return base;
+    }
+
+    /**
+     * Apply travel UI state on a player client (rejoin, debrief, or world fallback).
+     * @param {object} pt
+     */
+    _applyPlayerTravelRestore(pt) {
+        if (!pt || this._isGM) return;
+
+        if (pt.totalDays != null) this._travelTotalDays = pt.totalDays;
+        if (pt.activeDay != null) this._travelActiveDay = pt.activeDay;
+        if (pt.forageDC != null) this._travelForageDC = pt.forageDC;
+        if (pt.huntDC != null) this._travelHuntDC = pt.huntDC;
+        if (pt.scoutingAllowed != null) this._travelScoutingAllowed = pt.scoutingAllowed;
+
+        if (pt.declarations) {
+            this._playerTravelDeclarations = foundry.utils.mergeObject(
+                this._playerTravelDeclarations ?? {},
+                pt.declarations,
+                { inplace: false, insertKeys: true, insertValues: true }
+            );
+        }
+        if (pt.confirmed) {
+            this._playerTravelConfirmed = foundry.utils.mergeObject(
+                this._playerTravelConfirmed ?? {},
+                pt.confirmed,
+                { inplace: false, insertKeys: true, insertValues: true }
+            );
+        }
+        if (pt.rolled) {
+            this._playerTravelRolled = foundry.utils.mergeObject(
+                this._playerTravelRolled ?? {},
+                pt.rolled,
+                { inplace: false, insertKeys: true, insertValues: true }
+            );
+        }
+        if (pt.debrief?.length) {
+            const merged = [...(this._travelDebrief ?? [])];
+            for (const row of pt.debrief) {
+                const actorId = row.result?.actorId;
+                const dup = merged.some(
+                    d => d.day === row.day && d.result?.actorId === actorId
+                );
+                if (!dup) merged.push(row);
+            }
+            this._travelDebrief = merged;
+        }
+        if (pt.fullyResolved != null) this._travelFullyResolved = !!pt.fullyResolved;
+        if (pt.scoutingDone != null) this._travelScoutingDone = !!pt.scoutingDone;
+    }
+
+    /**
+     * Player socket receiver: travel declarations, rolls, and debrief for owned actors.
+     * @param {object} pt - Same shape as buildPlayerTravelRestoreFromSerialized output
+     */
+    receiveTravelPlayerState(pt) {
+        this._applyPlayerTravelRestore(pt);
+        this.render();
+    }
+
+    /**
      * Exports a snapshot of the current rest state for late-joining/rejoining players.
      * @returns {Object} Full state snapshot
      */
@@ -9848,6 +10131,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         };
     }
 
+    /**
+     * Snapshot for a specific reconnecting player (includes owned travel state).
+     * @param {string} userId
+     * @returns {Object}
+     */
+    getRestSnapshotForUser(userId) {
+        const snapshot = this.getRestSnapshot();
+        if (!userId || this._phase !== "travel") return snapshot;
+        const playerTravel = this._buildPlayerTravelRestore(userId);
+        if (playerTravel) snapshot.playerTravel = playerTravel;
+        return snapshot;
+    }
+
     // â”€â”€â”€â”€â”€â”€â”€â”€ Player-mode socket receivers â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
@@ -9917,6 +10213,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     void CampfireTokenLinker.setLightState(false);
                 }
                 CampfireMakeCampDialog.refreshIfOpen(this);
+            }
+        }
+        // Synced preview state: fire level preview and cold camp preview (not committed)
+        if (phaseData.campFirePreviewLevel !== undefined) {
+            this._campFirePreviewLevel = phaseData.campFirePreviewLevel;
+        }
+        if (phaseData.coldCampPreview !== undefined) {
+            this._coldCampPreview = !!phaseData.coldCampPreview;
+            // If cold camp preview is active, set preview level to cold_camp
+            if (this._coldCampPreview) {
+                this._campFirePreviewLevel = "cold_camp";
             }
         }
         if (phaseData.campStep2Entered) this._campStep2Entered = true;
@@ -10263,6 +10570,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             for (const charId of this._craftingResults.keys()) {
                 this._lockedCharacters.add(charId);
             }
+        }
+
+        if (snapshot.playerTravel) {
+            this._applyPlayerTravelRestore(snapshot.playerTravel);
+        } else if (!this._isGM && this._phase === "travel") {
+            try {
+                const saved = game.settings.get(MODULE_ID, "activeRest");
+                if (saved?.travelState) {
+                    const pt = RestSetupApp.buildPlayerTravelRestoreFromSerialized(
+                        saved.travelState,
+                        game.user.id
+                    );
+                    if (pt) this._applyPlayerTravelRestore(pt);
+                }
+            } catch { /* setting may be unavailable */ }
         }
 
         if (Array.isArray(snapshot.activities) && snapshot.activities.length > 0
@@ -10649,9 +10971,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                             .map(([id]) => id);
                         for (const uid of ownerIds) {
                             emitTravelIndividualDebrief({
-                    targetUserId: uid,
-                    result: row
-                });
+                                targetUserId: uid,
+                                result: row,
+                                playerTravel: this._buildPlayerTravelRestore(uid)
+                            });
                         }
                     }
                 }
@@ -10966,7 +11289,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         if (!actorId) return;
         if (!game.user.isGM) {
-            emitCampLightFire(game.user.id, actorId, method);
+            emitCampLightFire(game.user.id, actorId, method, this._campFirePreviewLevel ?? "embers");
             return;
         }
         // Capture the preview level BEFORE lightFire (which resets it via pledge sync to "embers")
@@ -11104,12 +11427,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
-        // Camp phase: standard flow
+        // Camp phase: broadcast preview to all players via GM relay.
+        // The segment strip updates are a party decision, so all clients must see them.
         if (!game.user.isGM) {
             emitCampFireLevelRequest(level, game.user.id);
             return;
         }
-        await this._runSetCampFireLevelForGm(level, null);
+        // GM: set local preview and broadcast to all clients
+        this._campFirePreviewLevel = level;
+        this._coldCampPreview = false;
+        emitPhaseChanged(this._phase, {
+            campFirePreviewLevel: level,
+            coldCampPreview: false,
+            selectedTerrain: this._selectedTerrain ?? null
+        });
+        this.render();
     }
 
     /**
@@ -11782,6 +12114,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             safeFromSetting = !!game.settings.get(MODULE_ID, "safeRestSpot");
         } catch { /* noop */ }
         const effectiveSafe = !!(this._engine?.safeRestSpot ?? this._restData?.safeRestSpot ?? safeFromSetting);
+        // Remember the manual choice so the encounters-off default does not
+        // override a GM who deliberately opened the Activities tab.
+        this._totmTabUserSet = true;
         if (tab === "fire" && effectiveSafe) {
             this._totmActiveTab = "activities";
         } else {
@@ -11841,6 +12176,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._totmCraftHasCrafted = false;
         this._totmCraftShowMissing = false;
         this._totmCraftRollPending = false;
+        this._totmCraftScrollTop = 0;
         this._totmFeastServed = false;
         this._totmFeastInFlight = false;
     }
@@ -12339,13 +12675,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
         if (this._phase !== "camp") return;
-        if (this._coldCampDecided) return;
+        // Camp phase: cold camp is a preview toggle, not an instant lock-in.
+        // Players and GM can preview cold camp and switch back to fire tiers.
         if (!game.user.isGM) {
             emitCampColdCampRequest(game.user.id);
             return;
         }
-        await this._campCeremony.selectColdCamp();
-        CampfireMakeCampDialog.refreshIfOpen(this);
+        // GM: toggle cold camp preview and broadcast
+        this._coldCampPreview = true;
+        this._campFirePreviewLevel = "cold_camp";
+        emitPhaseChanged(this._phase, {
+            coldCampPreview: true,
+            campFirePreviewLevel: "cold_camp",
+            selectedTerrain: this._selectedTerrain ?? null
+        });
+        this.render();
     }
 
     /**
@@ -12407,10 +12751,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
-        const fireOk = !isComfortEnabled() || (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided;
+        const coldCampPreview = !!this._coldCampPreview;
+        const fireOk = !isComfortEnabled() || (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided || coldCampPreview;
         if (!fireOk) {
             ui.notifications?.warn("Light the fire or declare cold camp before proceeding.");
             return;
+        }
+        // Commit cold camp preview if active (the party previewed cold camp and GM hit Proceed)
+        if (coldCampPreview && !this._coldCampDecided) {
+            await this._campCeremony.selectColdCamp();
         }
 
         const safeRestSpot = !!this._engine?.safeRestSpot;

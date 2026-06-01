@@ -184,37 +184,32 @@
     "Getting_Started_with_Respite_RespiteGuide000001_player-guide.json": {
       "status": "approved",
       "approvedBy": "geoff",
-      "approvedDate": "2026-05-14",
+      "approvedDate": "2026-06-01",
       "assetSource": "none",
-      "assetSourceNote": "Journal page, no images"
-    },
-    "Getting_Started_with_Respite_RespiteGuide000001_how-to-start.json": {
-      "status": "approved",
-      "approvedBy": "geoff",
-      "approvedDate": "2026-05-14",
-      "assetSource": "none",
-      "assetSourceNote": "Journal page, no images"
-    },
-    "Getting_Started_with_Respite_RespiteGuide000001_settings.json": {
-      "status": "approved",
-      "approvedBy": "geoff",
-      "approvedDate": "2026-05-14",
-      "assetSource": "none",
-      "assetSourceNote": "Journal page, no images"
+      "assetSourceNote": "Player Quick Reference page, no images"
     },
     "Getting_Started_with_Respite_RespiteGuide000001_cooking.json": {
       "status": "approved",
       "approvedBy": "geoff",
-      "approvedDate": "2026-05-14",
+      "approvedDate": "2026-06-01",
       "assetSource": "none",
-      "assetSourceNote": "Journal page, no images"
-    },
-    "Getting_Started_with_Respite_RespiteGuide000001_terrains.json": {
+      "assetSourceNote": "Cooking page, no images"
+    }
+  },
+  "guideGm": {
+    "Respite_GM_Reference.json": {
       "status": "approved",
       "approvedBy": "geoff",
-      "approvedDate": "2026-05-14",
+      "approvedDate": "2026-06-01",
       "assetSource": "none",
-      "assetSourceNote": "Journal page, references modules/ionrift-respite/assets/screenshots/pure/event_browser.png"
+      "assetSourceNote": "GM guide journal parent, no images"
+    },
+    "Respite_GM_Reference_gm-reference.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-06-01",
+      "assetSource": "none",
+      "assetSourceNote": "GM Reference page, references modules/ionrift-respite/assets/screenshots/pure/event_browser.png"
     }
   }
 }

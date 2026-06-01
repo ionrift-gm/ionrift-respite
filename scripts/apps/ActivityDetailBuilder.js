@@ -169,10 +169,14 @@ export function buildActivityDetailContext(activityId, activity, actor, partySta
     const armorWarning = getArmorWarning ? getArmorWarning(actor, activity) : null;
 
     // ── Advisory ─────────────────────────────────────────────────────────────
+    // The advisory drives both the at-a-glance card hint and the blue pill in
+    // the detail panel. When the advisory is flagged cardOnly, it is a static
+    // mechanical summary that simply restates the success-outcome chevron
+    // already shown below; skip it here so the two do not visually compete.
     const advisory = actor && partyState
         ? getActivityAdvisory(activityId, actor, partyState)
         : null;
-    const advText = (advisory?.text !== null && advisory?.text !== undefined)
+    const advText = (advisory?.text !== null && advisory?.text !== undefined && !advisory?.cardOnly)
         ? String(advisory.text).trim()
         : "";
 

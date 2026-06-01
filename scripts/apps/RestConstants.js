@@ -75,23 +75,37 @@ export const ACTIVITY_ICONS = {
     act_other: "fas fa-comments"
 };
 
-/** Static fallback hints for activities without dynamic advisories */
+/**
+ * Static fallback hints surfaced on the activity card and the detail-panel advisory pill.
+ * Keep these complementary to the activity description and to the lavender check label.
+ * Do not restate the skill or DC; the check label already shows them.
+ * Do not restate "no check required"; the neutral chip below the detail already says it.
+ */
 const ACTIVITY_HINTS_STATIC = {
-    act_tell_tales: "Performance DC 10. Inspiration for one ally, all on exceptional",
+    act_tell_tales: "Inspires one ally. All allies on exceptional roll",
     act_cook: "Prepare a meal from ingredients",
     act_brew: "Brew a potion or salve",
     act_tailor: "Stitch materials into gear",
-    act_craft: "Work raw materials into items",
-    act_other: "No check, no mechanical effect"
+    act_craft: "Work raw materials into items"
 };
 
 /**
  * Generate a contextual advisory for an activity card.
  * Advisory text is player-visible. Never include encounter DC or GM-only data.
+ *
+ * Return shape: { text, urgent, nonViable?, cardOnly? }
+ *
+ *   cardOnly: true when the advisory is a static mechanical summary that
+ *   simply mirrors the success-outcome chevron. The card list shows it as a
+ *   useful at-a-glance hint, but the detail panel suppresses it so the blue
+ *   pill does not visually compete with the green outcome chevron immediately
+ *   below. Use cardOnly only when the text adds nothing the outcome chevron
+ *   does not already say.
+ *
  * @param {string} activityId - The activity ID
  * @param {Actor5e} actor - The actor considering this activity
  * @param {object} partyState - Pre-computed party state from buildPartyState()
- * @returns {{text: string, urgent: boolean}}
+ * @returns {{text: string, urgent: boolean, nonViable?: boolean, cardOnly?: boolean}}
  */
 export function getActivityAdvisory(activityId, actor, partyState) {
     const hp = actor.system?.attributes?.hp ?? {};
@@ -105,10 +119,10 @@ export function getActivityAdvisory(activityId, actor, partyState) {
         case "act_keep_watch": {
             const watchers = partyState.watcherCount ?? 0;
             if (!partyState.hasWatcher)
-                return { text: "No one on watch. Watcher: +3 initiative, surprise immune, +1 party initiative", urgent: true };
+                return { text: "No one on watch yet. Take the first shift.", urgent: true };
             if (watchers >= 2)
                 return { text: `${watchers} watchers already assigned. Consider another activity`, urgent: false };
-            return { text: "On watch: +3 initiative, surprise immune, +1 party initiative", urgent: false };
+            return { text: "+3 initiative, surprise immune, +1 party initiative on alarm", urgent: false, cardOnly: true };
         }
         case "act_tend_wounds": {
             const injured = partyState.injuredMembers.filter(m => m.id !== actor.id);
@@ -117,23 +131,23 @@ export function getActivityAdvisory(activityId, actor, partyState) {
                 && ((i.system?.uses?.value ?? i.system?.quantity ?? 0) > 0)
             );
             const hasFeat = actor.items?.some(i => i.type === "feat" && i.name?.toLowerCase() === "healer");
-            const gearNote = hasFeat && hasKit ? " (Healer feat + kit)" : hasKit ? " (kit: advantage)" : "";
+            const gearNote = hasFeat && hasKit ? ", Healer feat + kit"
+                : hasKit ? ", kit gives advantage"
+                : "";
             if (!injured.length)
                 return { text: "No one is injured", urgent: false, nonViable: true };
             const worst = injured[0];
-            if (worst.hpPct < 50)
-                return { text: `${worst.name} at ${worst.hpPct}% HP. Heals now + boosts their recovery tier${gearNote}`, urgent: true };
-            return { text: `${worst.name} at ${worst.hpPct}% HP. Heals now + boosts their recovery tier${gearNote}`, urgent: false };
+            return { text: `${worst.name} at ${worst.hpPct}% HP${gearNote}`, urgent: worst.hpPct < 50 };
         }
         case "act_defenses": {
             if (partyState.hasDefenses)
                 return { text: "Someone is already setting defenses. Consider another activity", urgent: false };
-            return { text: "On success, lowers encounter chance by 2 and grants +1 party initiative", urgent: false };
+            return { text: "Lowers encounter chance by 2, grants +1 party initiative on success", urgent: false, cardOnly: true };
         }
         case "act_scout": {
             if (partyState.hasScout)
                 return { text: "Someone is already scouting. Consider another activity", urgent: false };
-            return { text: "On success, advantage on initiative and surprise", urgent: false };
+            return { text: "Advantage on initiative and surprise on success", urgent: false, cardOnly: true };
         }
         case "act_rest_fully": {
             const comfortTier = partyState.comfort ?? "sheltered";
@@ -164,7 +178,7 @@ export function getActivityAdvisory(activityId, actor, partyState) {
                 if (hdDeficit >= 1)
                     return { text: `Hostile camp. Rest Fully recovers ${effectiveGain || 1} extra HD, removes HP cap`, urgent: true };
                 if (hpPct < 100)
-                    return { text: "Hostile camp. Rest Fully removes the 75% HP cap", urgent: true };
+                    return { text: "Hostile camp. Rest Fully restores full HP recovery", urgent: true };
                 return { text: "All HD and HP full. No recovery benefit", urgent: false, nonViable: true };
             }
             if (isRough) {
@@ -186,7 +200,7 @@ export function getActivityAdvisory(activityId, actor, partyState) {
         }
         case "act_pray": {
             const prof = actor.system?.attributes?.prof ?? 2;
-            return { text: `On success, ${prof} temp HP (proficiency bonus)`, urgent: false };
+            return { text: `+${prof} temp HP on success`, urgent: false };
         }
         case "act_fletch": {
             const ammo = _countAmmo(actor);
@@ -214,10 +228,10 @@ export function getActivityAdvisory(activityId, actor, partyState) {
                 return { text: `Training streak (${streak}): XP reduced to ${effectiveXP} success / ${effectiveFailXP} fail`, urgent: false };
             if (gap !== null && gap > 0)
                 return { text: `${gap} XP to next level. ${effectiveXP} XP on success, ${effectiveFailXP} on fail`, urgent: false };
-            return { text: `${effectiveXP} XP on success (DC 13 ability check)`, urgent: false };
+            return { text: `${effectiveXP} XP on success, ${effectiveFailXP} on fail`, urgent: false };
         }
         case "act_scribe":
-            return { text: "Arcana check (DC 10 + spell level), 50gp per level. Scroll consumed regardless", urgent: false };
+            return { text: "50gp per spell level. Scroll consumed regardless of success", urgent: false };
         default:
             return { text: ACTIVITY_HINTS_STATIC[activityId] ?? null, urgent: false };
     }
@@ -433,7 +447,7 @@ export const SHELTER_SPELLS = [
 export function getComfortTip(tier) {
     if (!isComfortEnabled()) return "Comfort rules disabled, full recovery";
     const tips = {
-        hostile: "Hostile: 75% HP, -2 HD, CON DC 15 or +1 exhaustion",
+        hostile: "Hostile: regain 75% max HP, -2 HD, CON DC 15 or +1 exhaustion",
         rough: "Rough: full HP, -1 HD, CON DC 10 or +1 exhaustion",
         sheltered: "Sheltered: full HP, full HD recovery",
         safe: "Safe: full HP, full HD recovery, no encounter risk"
@@ -443,7 +457,7 @@ export function getComfortTip(tier) {
 
 /** @deprecated Use getComfortTip(tier) instead. Kept for existing consumers. */
 export const COMFORT_TIPS = {
-    hostile: "Hostile: 75% HP, -2 HD, CON DC 15 or +1 exhaustion",
+    hostile: "Hostile: regain 75% max HP, -2 HD, CON DC 15 or +1 exhaustion",
     rough: "Rough: full HP, -1 HD, CON DC 10 or +1 exhaustion",
     sheltered: "Sheltered: full HP, full HD recovery",
     safe: "Safe: full HP, full HD recovery, no encounter risk"

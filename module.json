@@ -29,7 +29,15 @@
             "name": "respite-guide",
             "label": "Respite Guide",
             "type": "JournalEntry",
-            "path": "packs/respite-guide"
+            "path": "packs/respite-guide",
+            "ownership": { "PLAYER": "OBSERVER", "GAMEMASTER": "OWNER" }
+        },
+        {
+            "name": "respite-guide-gm",
+            "label": "Respite GM Reference",
+            "type": "JournalEntry",
+            "path": "packs/respite-guide-gm",
+            "ownership": { "GAMEMASTER": "OWNER" }
         },
         {
             "name": "respite-actors",
@@ -47,7 +55,7 @@
             "folders": [
                 {
                     "name": "Respite",
-                    "packs": ["respite-actors", "respite-guide", "respite-items"]
+                    "packs": ["respite-actors", "respite-guide", "respite-guide-gm", "respite-items"]
                 }
             ]
         }

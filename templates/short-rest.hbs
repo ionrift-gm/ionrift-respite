@@ -4,7 +4,7 @@
     {{!-- Abandon button: top-right, matching long rest placement --}}
     {{#if isGM}}
     <div class="sr-header-bar">
-        <button type="button" class="btn-abandon-rest" data-action="abandonShortRest" title="Abandon this short rest">
+        <button type="button" class="btn-abandon-rest" data-action="abandonShortRest" data-tooltip="Abandon this short rest">
             <i class="fas fa-times"></i> Abandon Rest
         </button>
     </div>
@@ -13,11 +13,11 @@
     {{!-- Camp status badges above the banner (matches long rest placement) --}}
     <div class="sr-camp-meta">
         <div class="camp-status-bar">
-            <span class="camp-status-chip shelter-chip shelter-chip-{{shelterBadge.id}}" title="{{shelterBadge.name}}">
+            <span class="camp-status-chip shelter-chip shelter-chip-{{shelterBadge.id}}" data-tooltip="{{shelterBadge.name}}">
                 <i class="{{shelterBadge.icon}}"></i> {{shelterBadge.name}}
             </span>
             {{#if songOfRest}}
-            <span class="camp-status-chip sr-song-chip" title="Song of Rest: {{songOfRest.bardName}} rolls {{songOfRest.songDie}} extra healing for each character who spends at least one Hit Die. {{#if songOfRest.timingEnd}}Applied when the GM completes this rest.{{else}}Applied immediately with each character's first Hit Die.{{/if}}">
+            <span class="camp-status-chip sr-song-chip" data-tooltip="Song of Rest: {{songOfRest.bardName}} rolls {{songOfRest.songDie}} extra healing for each character who spends at least one Hit Die. {{#if songOfRest.timingEnd}}Applied when the GM completes this rest.{{else}}Applied immediately with each character's first Hit Die.{{/if}}">
                 <i class="fas fa-music"></i> {{songOfRest.bardName}} · {{songOfRest.songDie}} · {{#if songOfRest.timingEnd}}on complete (if you spend HD){{else}}on 1st HD{{/if}}
             </span>
             {{/if}}
@@ -35,7 +35,7 @@
             <div class="roster-chip {{#if isAfk}}afk{{/if}} {{#if isFinished}}sr-finished{{/if}} {{#if isWorkbenchFocus}}sr-wb-roster-focus{{/if}} {{#if ../gmWorkbenchRosterPick}}sr-wb-roster-pickable{{/if}}"
                 data-roster-id="{{id}}"
                 {{#if ../gmWorkbenchRosterPick}}data-action="selectWorkbenchRosterActor"{{/if}}
-                title="{{fullName}}{{#if ../gmWorkbenchRosterPick}}. GM: click to show this character's workbench.{{/if}}">
+                data-tooltip="{{fullName}}{{#if ../gmWorkbenchRosterPick}}. GM: click to show this character's workbench.{{/if}}">
                 <span class="roster-portrait-wrap">
                     <img class="roster-portrait" src="{{img}}" alt="{{name}}">
                     {{#if isAfk}}<span class="roster-afk-mug" aria-hidden="true"><i class="fas fa-mug-hot"></i></span>{{/if}}
@@ -43,9 +43,9 @@
                 <span class="roster-name">{{name}}</span>
                 <span class="roster-status">
                     {{#if isFinished}}
-                    <i class="fas fa-check-circle" title="Finished"></i>
+                    <i class="fas fa-check-circle" data-tooltip="Finished"></i>
                     {{else}}
-                    <i class="fas fa-hourglass-half" title="Resting"></i>
+                    <i class="fas fa-hourglass-half" data-tooltip="Resting"></i>
                     {{/if}}
                 </span>
             </div>
@@ -98,11 +98,11 @@
                 </div>
                 {{#if isOwner}}
                 {{#if isFullHp}}
-                <button type="button" class="sr-spend-btn faded" disabled title="Already at full HP.">
+                <button type="button" class="sr-spend-btn faded" disabled data-tooltip="Already at full HP.">
                     <i class="fas fa-dice-d20"></i> Spend HD
                 </button>
                 {{else if noHdLeft}}
-                <button type="button" class="sr-spend-btn faded" disabled title="No Hit Dice remaining.">
+                <button type="button" class="sr-spend-btn faded" disabled data-tooltip="No Hit Dice remaining.">
                     <i class="fas fa-dice-d20"></i> Spend HD
                 </button>
                 {{else}}
@@ -117,10 +117,10 @@
             {{#if rolls.length}}
             <div class="sr-roll-log">
                 {{#if rollsCompressed}}
-                <span class="sr-roll-hidden-badge" title="{{rollsHidden}} earlier rolls">+{{rollsHidden}} more</span>
+                <span class="sr-roll-hidden-badge" data-tooltip="{{rollsHidden}} earlier rolls">+{{rollsHidden}} more</span>
                 {{/if}}
                 {{#each rollsToShow}}
-                <span class="sr-roll-entry" title="d{{die}} + {{conMod}} CON{{#if annotations.length}} | {{#each annotations}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}">+{{total}}{{#if annotations.length}}<span class="sr-roll-mod-badge">{{#each annotations}}{{this}}{{#unless @last}} · {{/unless}}{{/each}}</span>{{/if}}</span>
+                <span class="sr-roll-entry" data-tooltip="d{{die}} + {{conMod}} CON{{#if annotations.length}} | {{#each annotations}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}">+{{total}}{{#if annotations.length}}<span class="sr-roll-mod-badge">{{#each annotations}}{{this}}{{#unless @last}} · {{/unless}}{{/each}}</span>{{/if}}</span>
                 {{/each}}
                 <span class="sr-roll-total">
                     <i class="fas fa-plus-circle"></i> {{totalHealed}} HP{{#if songBonusTotal}} <span class="sr-roll-song-addon">+ {{songBonusTotal}} Song</span>{{/if}}
@@ -230,7 +230,7 @@
             {{/if}}
 
             {{#if srRechargeBadges.length}}
-            <div class="sr-recharge-badges" title="These class features and items often recharge on a short rest.">
+            <div class="sr-recharge-badges" data-tooltip="These class features and items often recharge on a short rest.">
                 {{#each srRechargeBadges}}
                 <span class="sr-recharge-pill">{{this}}</span>
                 {{/each}}
