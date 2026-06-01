@@ -7,9 +7,13 @@
     <div class="event-check-module">
         <div class="check-module-skill">{{rollRequest.skillName}}</div>
         <div class="check-module-dc-row check-module-dc-row--readonly">
-            <div class="event-dc-badge circular ionrift-dc-badge--live">
-                <span class="dc-label">DC</span>
-                <span class="dc-value">{{rollRequest.dc}}</span>
+            <div class="ionrift-dc-stage">
+                <span class="ionrift-dc-ripple" aria-hidden="true"></span>
+                <span class="ionrift-dc-ripple ionrift-dc-ripple--b" aria-hidden="true"></span>
+                <div class="event-dc-badge circular ionrift-dc-badge--live">
+                    <span class="dc-label">DC</span>
+                    <span class="dc-value">{{rollRequest.dc}}</span>
+                </div>
             </div>
         </div>
         {{#if rollRequest.targetLabel}}
