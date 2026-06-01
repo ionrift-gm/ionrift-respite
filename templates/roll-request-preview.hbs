@@ -1,0 +1,18 @@
+<div class="roll-request-preview">
+    <details class="roll-request-preview__controls">
+        <summary class="roll-request-preview__controls-summary">Preview controls</summary>
+        <label class="roll-request-preview__label" for="roll-request-preview-variant">Variant</label>
+        <select id="roll-request-preview-variant" class="roll-request-preview__select" data-action="previewSelectVariant">
+            {{#each variants}}
+            <option value="{{id}}" {{#if (eq id ../currentVariant)}}selected{{/if}}>{{label}}</option>
+            {{/each}}
+        </select>
+        <label class="roll-request-preview__toggle">
+            <input type="checkbox" data-action="previewToggleGmView" {{#if gmViewForced}}checked{{/if}} />
+            Force player POV
+        </label>
+    </details>
+    <div class="roll-request-preview__stage">
+        {{> rollRequest rollRequest=rollRequest}}
+    </div>
+</div>

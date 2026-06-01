@@ -95,6 +95,17 @@ export async function waitForDiceSoNice(timeoutMs = 5000) {
 }
 
 /**
+ * Show a roll in Dice So Nice and await the animation.
+ * @param {Roll} roll - Evaluated roll.
+ * @param {User} [user=game.user]
+ * @returns {Promise<void>}
+ */
+export async function showDiceSoNiceRoll(roll, user = game.user) {
+    if (!game.modules?.get?.("dice-so-nice")?.active || !game.dice3d) return;
+    await game.dice3d.showForRoll(roll, user, true);
+}
+
+/**
  * Disables a roll button and shows a spinner.
  * @param {HTMLElement} target - The button element.
  */
@@ -139,8 +150,8 @@ export async function rollForPlayer(actor, skills, dc, context = "Skill check", 
     const modeLabel = rollMode === "advantage" ? " [Advantage]" : rollMode === "disadvantage" ? " [Disadvantage]" : "";
     const flavor = `<strong>${actor.name}</strong> - ${context} (${skillName}, DC ${dc}) [GM roll]${modeLabel}`;
 
+    await showDiceSoNiceRoll(roll);
     await postRollToChat(actor, roll, flavor);
-    await waitForDiceSoNice();
 
     return { total: roll.total, passed, skill, modifier, natD20: getNatD20FromRoll(roll) };
 }
@@ -161,11 +172,10 @@ export async function executePlayerRoll(actor, skillKey, dc, flavorText, buttonT
     const { roll } = buildSkillRoll(actor, skillKey, rollMode);
     await roll.evaluate();
 
-    await postRollToChat(actor, roll, flavorText);
-
     if (buttonTarget) disableRollButton(buttonTarget);
 
-    await waitForDiceSoNice();
+    await showDiceSoNiceRoll(roll);
+    await postRollToChat(actor, roll, flavorText);
 
     return { total: roll.total, passed: roll.total >= dc };
 }

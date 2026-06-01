@@ -2669,33 +2669,8 @@
 
                 {{#if awaitingRolls}}
                 {{!-- GM: Awaiting player rolls --}}
-                <div class="event-narration-advisory">
-                    <i class="fas fa-hourglass-half"></i>
-                    <em>Waiting for players to roll...</em>
-                </div>
-                {{#if resolvedRolls.length}}
-                <div class="event-roll-results">
-                    {{#each resolvedRolls}}
-                    <div class="event-roll-line {{#if passed}}pass{{else}}fail{{/if}}">
-                        <span class="roll-char-name">{{name}}</span>
-                        <span class="roll-value">{{total}}</span>
-                        <i class="fas {{#if passed}}fa-check-circle{{else}}fa-times-circle{{/if}}"></i>
-                    </div>
-                    {{/each}}
-                </div>
-                {{/if}}
-                {{#if pendingRolls.length}}
-                <div class="event-pending-rolls">
-                    {{#each pendingRolls}}
-                    <div class="event-roll-line pending">
-                        <span class="roll-char-name">{{lookup (lookup @root.actorLookup this) "name"}}</span>
-                        <span class="roll-status"><i class="fas fa-spinner fa-spin"></i> Waiting...</span>
-                        <button type="button" class="btn-roll-for-player" data-action="rollEventForPlayer" data-character-id="{{this}}" data-event-index="{{@../index}}" title="Roll on their behalf">
-                            <i class="fas fa-dice"></i> Roll for them
-                        </button>
-                    </div>
-                    {{/each}}
-                </div>
+                {{#if gmRollRequest}}
+                {{> rollRequest rollRequest=gmRollRequest}}
                 {{/if}}
                 <div class="event-override-links">
                     <button type="button" class="btn-override-link" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="success" title="Skip the roll and set this check as a success.">Force Pass</button>
@@ -2705,10 +2680,18 @@
                 {{else}}
                 {{!-- GM: Pre-request state --}}
 
-                {{!-- 1. Read-aloud narration (the scene to relate to players) --}}
+                {{!-- 1. Read-aloud + GM context, one block, two voices --}}
                 <div class="event-narration-advisory lead">
-                    <i class="fas fa-theater-masks"></i>
-                    {{#if readAloud}}<span class="narration-read-aloud">{{readAloud}}</span>{{else}}<em>Set the scene for the party, then resolve below.</em>{{/if}}
+                    <div class="narration-read-aloud">
+                        <i class="fas fa-theater-masks"></i>
+                        {{#if readAloud}}<span>{{readAloud}}</span>{{else}}<em>Set the scene for the party, then resolve below.</em>{{/if}}
+                    </div>
+                    {{#if gmGuidance}}
+                    <div class="narration-gm-context">
+                        <i class="fas fa-chess-rook"></i>
+                        <span>{{gmGuidance}}</span>
+                    </div>
+                    {{/if}}
                 </div>
 
                 {{!-- 2. The check: centered module, nudgeable DC, watch avatars --}}
@@ -2728,7 +2711,16 @@
                     {{#if targetActors.length}}
                     <div class="check-module-avatars">
                         {{#each targetActors}}
-                        <img class="check-avatar" src="{{img}}" alt="{{name}}" title="{{name}}" />
+                        <button type="button"
+                            class="check-avatar{{#if rollModeAdvantage}} adv{{/if}}{{#if rollModeDisadvantage}} dis{{/if}}"
+                            data-action="cycleEventRollMode"
+                            data-event-index="{{@../index}}"
+                            data-character-id="{{id}}"
+                            title="{{name}} · {{#if rollModeAdvantage}}Advantage{{else if rollModeDisadvantage}}Disadvantage{{else}}Normal{{/if}} (click to change)">
+                            <img src="{{img}}" alt="{{name}}" />
+                            {{#if rollModeAdvantage}}<span class="check-avatar-mode adv"><i class="fas fa-angle-up"></i></span>{{/if}}
+                            {{#if rollModeDisadvantage}}<span class="check-avatar-mode dis"><i class="fas fa-angle-down"></i></span>{{/if}}
+                        </button>
                         {{/each}}
                     </div>
                     {{/if}}
@@ -2742,28 +2734,29 @@
                     <i class="fas fa-info-circle"></i>
                     Averaged rolls trend toward ~10. DCs above 13 are harder, below 8 are easier than individual checks.
                 </div>
-                <details class="event-gm-guidance-box">
-                    <summary><i class="fas fa-user-secret"></i> GM Notes</summary>
-                    <div class="event-gm-guidance-text">{{#if gmGuidance}}{{gmGuidance}}{{else}}<span class="gm-guidance-empty">No extra notes for this event. Run it as written.</span>{{/if}}</div>
+                {{!-- 3. Outcome preview, collapsed pre-roll to keep the CTA in view --}}
+                <details class="event-outcome-toggle">
+                    <summary>
+                        <i class="fas fa-eye"></i> Preview Outcomes
+                        <i class="fas fa-chevron-right outcome-toggle-chevron"></i>
+                    </summary>
+                    <div class="event-outcome-preview two-col">
+                        <div class="outcome-preview-col pass">
+                            <div class="outcome-preview-head"><i class="fas fa-check-circle"></i> Pass</div>
+                            <div class="outcome-preview-text">{{mechanical.onSuccess.narrative}}</div>
+                            {{#each mechanical.onSuccess.effects}}{{#if description}}
+                            <div class="outcome-preview-effect pass"><i class="fas fa-circle"></i> {{description}}</div>
+                            {{/if}}{{/each}}
+                        </div>
+                        <div class="outcome-preview-col fail">
+                            <div class="outcome-preview-head"><i class="fas fa-times-circle"></i> Fail</div>
+                            <div class="outcome-preview-text">{{mechanical.onFailure.narrative}}</div>
+                            {{#each mechanical.onFailure.effects}}{{#if description}}
+                            <div class="outcome-preview-effect fail"><i class="fas fa-circle"></i> {{description}}</div>
+                            {{/if}}{{/each}}
+                        </div>
+                    </div>
                 </details>
-
-                {{!-- 3. Stakes preview: side-by-side pass/fail --}}
-                <div class="event-outcome-preview two-col">
-                    <div class="outcome-preview-col pass">
-                        <div class="outcome-preview-head"><i class="fas fa-check-circle"></i> Pass</div>
-                        <div class="outcome-preview-text">{{mechanical.onSuccess.narrative}}</div>
-                        {{#each mechanical.onSuccess.effects}}{{#if description}}
-                        <div class="outcome-preview-effect pass"><i class="fas fa-circle"></i> {{description}}</div>
-                        {{/if}}{{/each}}
-                    </div>
-                    <div class="outcome-preview-col fail">
-                        <div class="outcome-preview-head"><i class="fas fa-times-circle"></i> Fail</div>
-                        <div class="outcome-preview-text">{{mechanical.onFailure.narrative}}</div>
-                        {{#each mechanical.onFailure.effects}}{{#if description}}
-                        <div class="outcome-preview-effect fail"><i class="fas fa-circle"></i> {{description}}</div>
-                        {{/if}}{{/each}}
-                    </div>
-                </div>
 
                 {{!-- 4. Action buttons --}}
                 <div class="event-adjudicate-buttons">
@@ -2787,20 +2780,8 @@
                 {{#if @root.pendingEventRoll}}
                 {{#if (eq @index @root.pendingEventRoll.eventIndex)}}
                 {{!-- This is the event the GM requested rolls for --}}
-                {{#if @root.pendingEventRoll.ownedTargets.length}}
-                <div class="event-player-roll-area">
-                    {{#each @root.pendingEventRoll.ownedTargets}}
-                    {{#if rolled}}
-                    <div class="event-roll-submitted">
-                        <i class="fas fa-check"></i> {{name}} has rolled.
-                    </div>
-                    {{else}}
-                    <button type="button" class="btn-player-roll" data-action="rollEventCheck" data-character-id="{{id}}">
-                        <i class="fas fa-dice-d20"></i> Roll {{@root.pendingEventRoll.skillName}} - {{name}}
-                    </button>
-                    {{/if}}
-                    {{/each}}
-                </div>
+                {{#if @root.pendingEventRoll.rollRequest}}
+                {{> rollRequest rollRequest=@root.pendingEventRoll.rollRequest}}
                 {{else}}
                 <div class="event-check-waiting">
                     <i class="fas fa-hourglass-half"></i> Waiting for watch to roll...
@@ -3276,6 +3257,9 @@
             {{/if}}
             {{#if hostileBlocksRecovery}}
             <div class="outcome-effect-line outcome-loss"><i class="fas fa-skull"></i> Hostile conditions block recovery of existing exhaustion</div>
+            {{/if}}
+            {{#if deprivationBlocksRecovery}}
+            <div class="outcome-effect-line outcome-loss"><i class="fas fa-tint-slash"></i> Lack of food or water blocks exhaustion recovery</div>
             {{/if}}
             {{#if eventDamage}}
             <div class="outcome-effect-line outcome-loss"><i class="fas fa-tint"></i> Took {{eventDamage}} damage</div>

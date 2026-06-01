@@ -3,6 +3,7 @@ import { RestFlowEngine } from "../services/RestFlowEngine.js";
 import {
     executePlayerRoll, rollForPlayer, pickBestSkill, SKILL_DISPLAY_NAMES, waitForDiceSoNice, getNatD20FromRoll
 } from "../services/RollRequestManager.js";
+import { buildEventPlayerRollContext, buildRollTargetLabel, buildEventGmRollContext, centerRollRequestRoster } from "../services/RollRequestView.js";
 import { TerrainRegistry } from "../services/TerrainRegistry.js";
 import { ActivityResolver } from "../services/ActivityResolver.js";
 import { EventResolver } from "../services/EventResolver.js";
@@ -269,7 +270,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             encounterAdjDown: RestSetupApp.#onEncounterAdjDown,
             resolveSkillCheck: RestSetupApp.#onResolveSkillCheck,
             adjustEventDc: RestSetupApp.#onAdjustEventDc,
+            cycleEventRollMode: RestSetupApp.#onCycleEventRollMode,
             rollEventCheck: RestSetupApp.#onRollEventCheck,
+            ionriftRoll: RestSetupApp.#onIonriftRoll,
             disasterChoice: RestSetupApp.#onDisasterChoice,
             rollCampCheck: RestSetupApp.#onRollCampCheck,
             adjustCampDC: RestSetupApp.#onAdjustCampDC,
@@ -3432,12 +3435,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             activityPhasePlayerOverview,
             outcomes: personalOutcomes ?? [],
             resolutionCards,
-            triggeredEvents: (this._triggeredEvents ?? []).map(e => {
+            triggeredEvents: (this._triggeredEvents ?? []).map((e, eventIndex) => {
                 // Resolve target IDs to actor names for the template
+                const eventRollModes = e.rollModes ?? {};
                 const targetActors = (e.targets ?? [])
                     .map(id => game.actors.get(id))
                     .filter(Boolean)
-                    .map(a => ({ name: a.name, img: a.img || "icons/svg/mystery-man.svg" }));
+                    .map(a => {
+                        const rollMode = eventRollModes[a.id] ?? "normal";
+                        return {
+                            id: a.id,
+                            name: a.name,
+                            img: a.img || "icons/svg/mystery-man.svg",
+                            rollMode,
+                            rollModeAdvantage: rollMode === "advantage",
+                            rollModeDisadvantage: rollMode === "disadvantage"
+                        };
+                    });
                 const targetNames = targetActors.map(a => a.name);
                 const skillName = e.mechanical?.skill
                     ? (SKILL_NAMES[e.mechanical.skill] ?? e.mechanical.skill)
@@ -3459,14 +3473,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     ...r,
                     isOwner: game.actors.get(r.characterId)?.isOwner ?? false
                 }));
-                return { ...e, targetNames, targetActors, skillName, gmPrompt, gmGuidance, description, checkContext, readAloud, resolvedRolls };
+                return { ...e, targetNames, targetActors, skillName, gmPrompt, gmGuidance, description, checkContext, readAloud, resolvedRolls,
+                    gmRollRequest: e.awaitingRolls && this._isGM ? buildEventGmRollContext({ ...e, skillName, checkContext }, eventIndex) : null
+                };
             }),
             allEventChecksResolved: !(this._triggeredEvents ?? []).some(
                 e => e.mechanical?.type === "skill_check" && (!e.resolvedOutcome || e.awaitingRolls)
             ),
             anyEventAwaitingRolls: (this._triggeredEvents ?? []).some(e => e.awaitingRolls),
             pendingEventRoll: this._pendingEventRoll ? (() => {
-                // Build list of targets this player owns and hasn't rolled yet
                 const ownedTargets = (this._pendingEventRoll.targets ?? [])
                     .map(id => game.actors.get(id))
                     .filter(a => a?.isOwner)
@@ -3475,7 +3490,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         name: a.name,
                         rolled: this._pendingEventRoll.rolledCharacters?.has(a.id) ?? false
                     }));
-                return { ...this._pendingEventRoll, ownedTargets };
+                const merged = { ...this._pendingEventRoll, ownedTargets };
+                const triggeredEvent = this._triggeredEvents?.[this._pendingEventRoll.eventIndex] ?? null;
+                return {
+                    ...merged,
+                    rollRequest: buildEventPlayerRollContext(merged, triggeredEvent)
+                };
             })() : null,
             pendingTreeRoll: this._pendingTreeRoll ? (() => {
                 const rollModes = this._pendingTreeRoll.rollModes ?? {};
@@ -4547,6 +4567,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const exhaustionSavePassed = !!recovery.exhaustionDC && recovery.exhaustionSaveResult === "passed";
             const exhaustionSaveFailed = !!recovery.exhaustionDC && recovery.exhaustionSaveResult === "failed";
             const hostileBlocksRecovery = recovery.comfortLevel === "hostile" && !(recovery.exhaustionDelta < 0);
+            const deprivationBlocksRecovery = !!recovery.noFoodOrWater && !(recovery.exhaustionDelta < 0);
             const eventDamage = recovery.eventDamage ?? 0;
             const hpRestored = recovery.hpRestored ?? 0;
             const hdRestored = recovery.hdRestored ?? 0;
@@ -4570,7 +4591,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
             const hasRecovered = positives.length > 0 || exhaustionSavePassed || hasGain;
             const hasSetback = setbacks.length > 0 || exhaustionSaveFailed
-                || hostileBlocksRecovery || eventDamage > 0 || !!o.eventDisrupted;
+                || hostileBlocksRecovery || deprivationBlocksRecovery || eventDamage > 0 || !!o.eventDisrupted;
 
             return {
                 characterId: o.characterId,
@@ -4596,6 +4617,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 exhaustionDelta: recovery.exhaustionDelta ?? 0,
                 exhaustionConditionLabel,
                 hostileBlocksRecovery,
+                deprivationBlocksRecovery,
                 eventDamage
             };
         });
@@ -5348,6 +5370,43 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this.render();
     }
 
+    /**
+     * GM clicks a contributor's portrait to cycle their roll mode for this event.
+     * Order: normal -> advantage -> disadvantage -> normal. Local until rolls are
+     * requested; the active modes ride along in the roll request broadcast.
+     */
+    static #onCycleEventRollMode(event, target) {
+        event.preventDefault?.();
+        if (!game.user.isGM) return;
+
+        const eventIndex = parseInt(target.dataset.eventIndex ?? target.closest("[data-event-index]")?.dataset.eventIndex);
+        const characterId = target.dataset.characterId;
+        const triggeredEvent = this._triggeredEvents?.[eventIndex];
+        if (!triggeredEvent?.mechanical || !characterId || triggeredEvent.awaitingRolls || triggeredEvent.resolvedOutcome) return;
+
+        if (!triggeredEvent.rollModes) triggeredEvent.rollModes = {};
+        const CYCLE = { normal: "advantage", advantage: "disadvantage", disadvantage: "normal" };
+        const current = triggeredEvent.rollModes[characterId] ?? "normal";
+        const next = CYCLE[current] ?? "advantage";
+        triggeredEvent.rollModes[characterId] = next;
+
+        // Update the portrait in place. A full re-render would reset the scroll
+        // position; this is a local toggle only consumed when rolls are requested.
+        const button = target.closest(".check-avatar") ?? target;
+        button.classList.toggle("adv", next === "advantage");
+        button.classList.toggle("dis", next === "disadvantage");
+        const name = button.getAttribute("title")?.split(" \u00b7 ")[0] ?? "";
+        const modeLabel = next === "advantage" ? "Advantage" : next === "disadvantage" ? "Disadvantage" : "Normal";
+        button.setAttribute("title", `${name} \u00b7 ${modeLabel} (click to change)`);
+        button.querySelector(".check-avatar-mode")?.remove();
+        if (next !== "normal") {
+            const badge = document.createElement("span");
+            badge.className = `check-avatar-mode ${next === "advantage" ? "adv" : "dis"}`;
+            badge.innerHTML = `<i class="fas fa-angle-${next === "advantage" ? "up" : "down"}"></i>`;
+            button.appendChild(badge);
+        }
+    }
+
     static async #onResolveSkillCheck(event, target) {
         if (!game.user.isGM) return;
         event.preventDefault?.();
@@ -5394,7 +5453,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     skillName,
                     dc,
                     targets: pendingRolls,
-                    eventTitle: triggeredEvent.title ?? "Event"
+                    rollModes: triggeredEvent.rollModes ?? {},
+                    eventTitle: triggeredEvent.title ?? "Event",
+                    checkContext: triggeredEvent.checkContext ?? null,
+                    targetLabel: buildRollTargetLabel(triggeredEvent.mechanical)
                 });
 
             // Also broadcast the updated event state so players see the pending UI
@@ -5629,6 +5691,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     _onRender(context, options) {
         super._onRender?.(context, options);
         this._onRenderBindings(context, options);
+        centerRollRequestRoster(this.element);
 
         const titleEl =
             this.element?.querySelector(".window-header .window-title")
@@ -5674,6 +5737,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Unified player roll action. Routes to flow-specific handlers.
+     */
+    static async #onIonriftRoll(event, target) {
+        event.preventDefault?.();
+        const flow = target.dataset.flow ?? "event";
+        if (flow === "event") {
+            return RestSetupApp.#onRollEventCheck(event, target);
+        }
+    }
+
+    /**
      * Player action: roll a skill check for an owned character.
      * Posts the roll to chat and sends the result back to the GM.
      */
@@ -5695,31 +5769,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Already rolled?
         if (pending.rolledCharacters?.has(characterId)) return;
 
-        // Build roll using actor's actual skill modifier (bypasses Midi-QoL wrapper issues)
-        const skillData = actor.system?.skills?.[pending.skill];
-        const modifier = skillData?.total ?? 0;
-        const roll = await new Roll(`1d20 + ${modifier}`).evaluate();
-        const total = roll.total;
-        const msg = await roll.toMessage({
-            speaker: ChatMessage.getSpeaker({ actor }),
-            flavor: `<strong>${actor.name}</strong> attempts ${pending.skillName} check (DC ${pending.dc})`
-        });
-        const rollMessageId = msg?.id ?? null;
+        const rollMode = pending.rollModes?.[characterId] ?? "normal";
+        const modeLabel = rollMode === "advantage" ? " [Advantage]" : rollMode === "disadvantage" ? " [Disadvantage]" : "";
+        const flavor = `<strong>${actor.name}</strong> attempts ${pending.skillName} check (DC ${pending.dc})${modeLabel}`;
 
-        // Disable the button to prevent double-clicks
-        target.disabled = true;
-        target.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Rolling...`;
-
-        // Wait for Dice So Nice animation to complete (if present)
-        if (game.modules.get("dice-so-nice")?.active) {
-            await new Promise(resolve => {
-                const timeout = setTimeout(resolve, 5000); // 5s safety fallback
-                Hooks.once("diceSoNiceRollComplete", () => {
-                    clearTimeout(timeout);
-                    resolve();
-                });
-            });
-        }
+        const { total } = await executePlayerRoll(
+            actor,
+            pending.skill,
+            pending.dc,
+            flavor,
+            target,
+            rollMode
+        );
 
         // Mark as rolled locally
         if (!pending.rolledCharacters) pending.rolledCharacters = new Set();
@@ -6475,6 +6536,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             try {
                 const outcome = await MealPhaseHandler.processAndApply(this._mealChoices, totalDays, terrainMealRules);
                 mealResults = outcome.results;
+                this._mealResults = mealResults;
                 console.log(`[Respite:Meal] Auto-process consumption results:`, mealResults);
             } catch (err) {
                 console.error(`[Respite:Meal] Auto-process consumption error:`, err);
@@ -7198,7 +7260,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._eventsRolled = true;
         console.log(`[Respite:State] #onRollEvents: eventsRolled set to true, events=${this._triggeredEvents?.length ?? 0}`);
 
-        await this.#finalizeEventsRoll();
+        await RestSetupApp.#finalizeEventsRoll.call(this);
     }
 
     /**
@@ -7288,7 +7350,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         this._eventsRolled = true;
-        await this.#finalizeEventsRoll();
+        await RestSetupApp.#finalizeEventsRoll.call(this);
     }
 
     /**
@@ -7760,8 +7822,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const dc = triggeredEvent.mechanical?.dc ?? 10;
         const skillName = SKILL_DISPLAY_NAMES[skill] ?? skill;
         const context = `${triggeredEvent.name ?? "Event"} (${skillName})`;
+        const rollMode = triggeredEvent.rollModes?.[characterId] ?? "normal";
 
-        const result = await rollForPlayer(actor, [skill], dc, context);
+        const result = await rollForPlayer(actor, [skill], dc, context, rollMode);
 
         // Feed through the normal collection path
         await this.receiveRollResult({
@@ -8307,6 +8370,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
+        // PHB p.185: exhaustion recovery requires adequate food and drink.
+        // Stamp recovery objects so RecoveryHandler blocks the -1 reduction
+        // for characters who skipped meals or water during the meal phase.
+        if (this._mealResults?.length) {
+            for (const outcome of this._outcomes) {
+                const mr = this._mealResults.find(r => r.characterId === outcome.characterId);
+                if (mr && (!mr.ate || !mr.drank) && outcome.recovery) {
+                    outcome.recovery.noFoodOrWater = true;
+                }
+            }
+        }
+
         // Apply recovery (HP, HD, exhaustion) immediately at resolution
         const skipRecovery = game.settings.get(MODULE_ID, "restRecoveryDetected");
         const recoveryResults = await RecoveryHandler.applyAll(this._outcomes, skipRecovery);
@@ -8433,6 +8508,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
                 if (recovery.comfortLevel === "hostile") {
                     lines.push(`<p style="font-size:0.85em;color:#f9d77e;"><i class="fas fa-skull"></i> Hostile conditions prevent natural exhaustion recovery</p>`);
+                }
+                if (recovery.noFoodOrWater) {
+                    lines.push(`<p style="font-size:0.85em;color:#f9d77e;"><i class="fas fa-tint-slash"></i> Lack of food or water prevents exhaustion recovery</p>`);
                 }
                 // Surface gear contributions so the player sees their inventory mattered
                 if (recovery.gearDescriptors?.length) {
@@ -9715,6 +9793,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (phaseData.triggeredEvents) {
             this._triggeredEvents = this._isGM ? phaseData.triggeredEvents
                 : phaseData.triggeredEvents.map(e => ({ ...e, name: undefined, narrative: undefined, description: undefined, gmPrompt: undefined, checkContext: undefined, gmGuidance: undefined, readAloud: undefined }));
+
+            if (this._pendingEventRoll) {
+                const evt = phaseData.triggeredEvents[this._pendingEventRoll.eventIndex];
+                if (evt?.resolvedRolls?.length) {
+                    if (!this._pendingEventRoll.rolledCharacters) {
+                        this._pendingEventRoll.rolledCharacters = new Set();
+                    }
+                    for (const entry of evt.resolvedRolls) {
+                        this._pendingEventRoll.rolledCharacters.add(entry.characterId);
+                    }
+                }
+            }
         }
         if (phaseData.activeTreeState) this._activeTreeState = phaseData.activeTreeState;
         if (phaseData.eventsRolled !== undefined) this._eventsRolled = phaseData.eventsRolled;
