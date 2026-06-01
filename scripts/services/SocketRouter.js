@@ -144,7 +144,7 @@ export function dispatch(data, ctx) {
         case SOCKET_TYPES.ACTIVITY_FIRE_LEVEL_REQUEST:
             if (!game.user.isGM) return;
             if (ctx.activeRestSetupApp?.changeFireLevelDuringActivity) {
-                void ctx.activeRestSetupApp.changeFireLevelDuringActivity(data.fireLevel).catch(err => {
+                void ctx.activeRestSetupApp.changeFireLevelDuringActivity(data.fireLevel, { fromPlayer: true }).catch(err => {
                     console.error(`${MODULE_ID} | activityFireLevelRequest:`, err);
                 });
             } else { ui.notifications.warn("Open the rest session on the GM client first."); }
@@ -351,13 +351,25 @@ export function dispatch(data, ctx) {
         case SOCKET_TYPES.TRAVEL_DECLARATIONS_SYNC:
             if (game.user.isGM) return;
             if (ctx.activePlayerRestApp) {
-                ctx.activePlayerRestApp._syncedTravelDeclarations = data.declarations ?? {};
-                if (data.activeDay !== null) ctx.activePlayerRestApp._travelActiveDay = data.activeDay;
-                if (data.totalDays !== null) ctx.activePlayerRestApp._travelTotalDays = data.totalDays;
-                if (data.scoutingAllowed !== null) ctx.activePlayerRestApp._travelScoutingAllowed = data.scoutingAllowed;
-                if (data.forageDC !== null) ctx.activePlayerRestApp._travelForageDC = data.forageDC;
-                if (data.huntDC !== null) ctx.activePlayerRestApp._travelHuntDC = data.huntDC;
-                ctx.activePlayerRestApp.render();
+                const app = ctx.activePlayerRestApp;
+                app._syncedTravelDeclarations = data.declarations ?? {};
+                app._syncedTravelRolled = data.rolled ?? {};
+                app._syncedTravelResolved = data.resolved ?? {};
+                if (data.activeDay !== null) app._travelActiveDay = data.activeDay;
+                if (data.totalDays !== null) app._travelTotalDays = data.totalDays;
+                if (data.scoutingAllowed !== null) app._travelScoutingAllowed = data.scoutingAllowed;
+                if (data.forageDC !== null) app._travelForageDC = data.forageDC;
+                if (data.huntDC !== null) app._travelHuntDC = data.huntDC;
+                if (!app._playerTravelRolled) app._playerTravelRolled = {};
+                for (const [dayKey, actors] of Object.entries(data.rolled ?? {})) {
+                    const day = parseInt(dayKey, 10);
+                    if (!day) continue;
+                    app._playerTravelRolled[day] ??= {};
+                    for (const actorId of Object.keys(actors ?? {})) {
+                        if (actors[actorId]) app._playerTravelRolled[day][actorId] = true;
+                    }
+                }
+                app.render();
             }
             break;
 

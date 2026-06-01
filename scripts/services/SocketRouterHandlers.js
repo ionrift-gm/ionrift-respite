@@ -20,6 +20,9 @@ import {
     notifyDetectMagicScanCleared
 } from "./DetectMagicInventoryGlowBridge.js";
 import { closeOpenStationDialog } from "../apps/StationActivityDialog.js";
+import { GrantLedger } from "./GrantLedger.js";
+import { ItemOutcomeHandler } from "./ItemOutcomeHandler.js";
+import { guardEmbedItems } from "./MintGuard.js";
 import { deactivateStationLayer } from "./StationInteractionLayer.js";
 import {
     placePlayerGear, placeStation, canPlaceStation,
@@ -471,8 +474,25 @@ export async function handleFeastServeRequest(data, ctx) {
                 .map(id => game.actors.get(id))
                 .filter(Boolean);
 
+            const ledger = game.ionrift?.respite?.getActiveApp?.()?._grantLedger;
+            const itemRef = itemData.flags?.["ionrift-respite"]?.itemRef ?? itemData.name ?? "feast_serving";
             for (const recipient of recipients) {
-                await recipient.createEmbeddedDocuments("Item", [itemData]);
+                const slotKey = GrantLedger.mealSlotKey(recipient.id, itemRef);
+                const grant = [{
+                    name: itemData.name,
+                    type: itemData.type ?? "loot",
+                    img: itemData.img ?? "icons/svg/item-bag.svg",
+                    quantity: 1,
+                    system: { ...(itemData.system ?? {}), quantity: 1 },
+                    flags: itemData.flags ?? {}
+                }];
+                guardEmbedItems(grant);
+                const perform = () => ItemOutcomeHandler.grantItemsToActor(recipient, grant);
+                if (ledger) {
+                    await ledger.grantOnce(slotKey, perform);
+                } else {
+                    await perform();
+                }
             }
         } else {
             // Feast mode: dispatch Well Fed effects + item creation for the full party

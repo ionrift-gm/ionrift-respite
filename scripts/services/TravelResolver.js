@@ -237,32 +237,44 @@ export class TravelResolver {
      * Grant resolved items to an actor's inventory (stacks only when spoilage cohort matches).
      * @param {Actor} actor
      * @param {Object[]} items - Array of { itemRef, quantity, itemData }
+     * @param {Object} [opts]
+     * @param {import("./GrantLedger.js").GrantLedger} [opts.ledger]
+     * @param {string} [opts.slotKey]
      */
-    async grantItems(actor, items) {
+    async grantItems(actor, items, { ledger, slotKey } = {}) {
         if (!actor || !items?.length) return;
 
-        const harvestedDate = CalendarHandler.getCurrentDate() ?? String(game.time.worldTime);
-        for (const entry of items) {
-            if (!entry.itemData) continue;
-            const data = foundry.utils.deepClone(entry.itemData);
-            data.system = data.system ?? {};
-            data.system.quantity = entry.quantity ?? 1;
+        const performGrant = async () => {
+            const harvestedDate = CalendarHandler.getCurrentDate() ?? String(game.time.worldTime);
+            for (const entry of items) {
+                if (!entry.itemData) continue;
+                const data = foundry.utils.deepClone(entry.itemData);
+                data.system = data.system ?? {};
+                data.system.quantity = entry.quantity ?? 1;
 
-            const respFlags = data.flags?.[MODULE_ID];
-            if (respFlags?.spoilsAfter !== null && !respFlags.harvestedDate) {
-                data.flags = data.flags ?? {};
-                data.flags[MODULE_ID] = { ...respFlags, harvestedDate };
+                const respFlags = data.flags?.[MODULE_ID];
+                if (respFlags?.spoilsAfter !== null && !respFlags.harvestedDate) {
+                    data.flags = data.flags ?? {};
+                    data.flags[MODULE_ID] = { ...respFlags, harvestedDate };
+                }
+
+                await ItemOutcomeHandler.grantItemsToActor(actor, [{
+                    name: data.name,
+                    type: data.type ?? "loot",
+                    img: data.img ?? "icons/svg/item-bag.svg",
+                    quantity: data.system.quantity,
+                    system: data.system,
+                    flags: data.flags ?? {}
+                }]);
             }
+        };
 
-            await ItemOutcomeHandler.grantItemsToActor(actor, [{
-                name: data.name,
-                type: data.type ?? "loot",
-                img: data.img ?? "icons/svg/item-bag.svg",
-                quantity: data.system.quantity,
-                system: data.system,
-                flags: data.flags ?? {}
-            }]);
+        if (ledger && slotKey) {
+            await ledger.grantOnce(slotKey, performGrant);
+            return;
         }
+
+        await performGrant();
     }
 
     /**

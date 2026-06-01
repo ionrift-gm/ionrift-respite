@@ -3,7 +3,8 @@ import { RestFlowEngine } from "../services/RestFlowEngine.js";
 import {
     executePlayerRoll, rollForPlayer, pickBestSkill, SKILL_DISPLAY_NAMES, waitForDiceSoNice, getNatD20FromRoll
 } from "../services/RollRequestManager.js";
-import { buildEventPlayerRollContext, buildRollTargetLabel, buildEventGmRollContext, centerRollRequestRoster } from "../services/RollRequestView.js";
+import { buildEventPlayerRollContext, buildRollTargetLabel, buildEventGmRollContext, centerRollRequestRoster, buildTreePlayerRollContext, buildCampActivityRollContext, buildTravelActivityRollContext, buildCopySpellRollContext } from "../services/RollRequestView.js";
+import { ensureDcPulseAnimation } from "../services/RollRequestDcPulse.js";
 import { TerrainRegistry } from "../services/TerrainRegistry.js";
 import { ActivityResolver } from "../services/ActivityResolver.js";
 import { EventResolver } from "../services/EventResolver.js";
@@ -14,6 +15,7 @@ import { DecisionTreeResolver } from "../services/DecisionTreeResolver.js";
 import { CraftingEngine } from "../services/CraftingEngine.js";
 import { ResourcePoolRoller } from "../services/ResourcePoolRoller.js";
 import { ItemOutcomeHandler } from "../services/ItemOutcomeHandler.js";
+import { GrantLedger } from "../services/GrantLedger.js";
 import { RecoveryHandler } from "../services/RecoveryHandler.js";
 import { CalendarHandler } from "../services/CalendarHandler.js";
 import { CopySpellHandler } from "../services/CopySpellHandler.js";
@@ -455,8 +457,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._gmFollowUps = new Map();
         this._lockedCharacters = new Set();
 
-        // Party discovery item grants: key = "eventId:itemRef", value = { actorName, rolled, itemName }
-        this._grantedDiscoveries = new Map();
+        /** Per-rest idempotent reward grants (travel, crafting, discoveries, meals). */
+        this._grantLedger = new GrantLedger();
 
         // Delegates
         this._crafting = new CraftingDelegate(this);
@@ -481,6 +483,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     this._craftingEngine.load(profId, recipeList);
                 }
             }
+            // Create a minimal engine so comfort/fire/shelter state is available
+            // on the player side (prevents fallback to terrain defaults).
+            this._engine = new RestFlowEngine({
+                restType: restData.restType ?? "long",
+                terrainTag: restData.terrainTag ?? "forest",
+                comfort: restData.comfort ?? "rough",
+                safeRestSpot: restData.safeRestSpot ?? false
+            });
             // Identify this player's characters
             this._myCharacterIds = new Set(
                 game.actors.filter(a => a.hasPlayerOwner && a.isOwner && a.type === "character")
@@ -1185,6 +1195,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             daysSinceLastRest: this._daysSinceLastRest ?? 1,
             campfireSnapshot: RestSetupApp._campfireSnapshotFromFireLevel(this._fireLevel),
             travelState: this._travel?.serialize() ?? null,
+            grantLedger: this._grantLedger?.serialize() ?? null,
             magicScanComplete: this._magicScanComplete ?? false,
             magicScanResults: this._magicScanResults ?? null,
             timestamp: Date.now()
@@ -1248,6 +1259,28 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         this._magicScanResults = state.magicScanResults ?? null;
         this._magicScanComplete = state.magicScanComplete ?? false;
+
+        if (!this._grantLedger) this._grantLedger = new GrantLedger();
+        this._grantLedger.deserialize(state.grantLedger ?? null);
+
+        if (state.travelState) {
+            this._travel.deserialize(state.travelState);
+        }
+
+        const legacyDiscoveries = state.grantedDiscoveries;
+        if (legacyDiscoveries?.length) {
+            for (const [grantKey, result] of legacyDiscoveries) {
+                const colon = grantKey.indexOf(":");
+                if (colon < 0) continue;
+                const slotKey = GrantLedger.discoverySlotKey(
+                    grantKey.slice(0, colon),
+                    grantKey.slice(colon + 1)
+                );
+                if (!this._grantLedger.has(slotKey)) {
+                    this._grantLedger.record(slotKey, result);
+                }
+            }
+        }
 
         // Ensure _loadData has finished so resolvers and _activities are available
         if (this._dataReady) await this._dataReady;
@@ -1348,8 +1381,25 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /**
      * Clears persisted rest state. Called on rest completion or cancellation.
      */
+    _hasDiscoveryGrant(grantKey) {
+        const colon = grantKey?.indexOf?.(":") ?? -1;
+        if (colon < 0) return false;
+        return this._grantLedger?.has(
+            GrantLedger.discoverySlotKey(grantKey.slice(0, colon), grantKey.slice(colon + 1))
+        ) ?? false;
+    }
+
+    _getDiscoveryGrant(grantKey) {
+        const colon = grantKey?.indexOf?.(":") ?? -1;
+        if (colon < 0) return null;
+        return this._grantLedger?.get(
+            GrantLedger.discoverySlotKey(grantKey.slice(0, colon), grantKey.slice(colon + 1))
+        ) ?? null;
+    }
+
     async _clearRestState() {
         if (!game.user.isGM) return;
+        this._grantLedger?.reset();
         try {
             await game.settings.set(MODULE_ID, "activeRest", {});
         } catch (e) {
@@ -1591,7 +1641,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (this._phase === "resolve" && !this._restApplied && !options.resolved) {
                 // Check for ungranted discoveries
                 let ungrantedCount = 0;
-                if (this._grantedDiscoveries && this._outcomes?.length) {
+                if (this._grantLedger && this._outcomes?.length) {
                     const seenEvents = new Set();
                     for (const o of this._outcomes) {
                         for (const sub of (o.outcomes ?? [])) {
@@ -1599,7 +1649,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                                 seenEvents.add(sub.eventId);
                                 for (const item of sub.items) {
                                     const key = `${sub.eventId}:${item.itemRef ?? item.name}`;
-                                    if (!this._grantedDiscoveries.has(key)) ungrantedCount++;
+                                    if (!this._hasDiscoveryGrant(key)) ungrantedCount++;
                                 }
                             }
                         }
@@ -2761,7 +2811,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         seenEvents.add(sub.eventId);
                         for (const item of sub.items) {
                             const grantKey = `${sub.eventId}:${item.itemRef ?? item.name}`;
-                            const grantInfo = this._grantedDiscoveries.get(grantKey);
+                            const grantInfo = this._getDiscoveryGrant(grantKey);
                             partyDiscoveries.push({
                                 eventName: sub.eventName ?? "Event",
                                 itemRef: item.itemRef ?? item.name ?? "Unknown",
@@ -3195,6 +3245,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             trackFood: trackFoodSetting,
             gmCopySpellProposal: this._gmCopySpellProposal ?? null,
             copySpellRollPrompt: this._copySpellRollPrompt ?? null,
+            copySpellRollRequest: buildCopySpellRollContext(this._copySpellRollPrompt),
             phase: this._phase,
             postStationChoiceReview: !this._isGM && this._phase === "activity" && !!this._postStationChoiceReview,
             activitySubTab: null,
@@ -3244,9 +3295,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         const confirmed = a.isOwner
                             ? !!(this._playerTravelConfirmed?.[day]?.[a.id])
                             : !!(syncedDecl[day]?._confirmed?.[a.id] ?? daySynced._confirmed?.[a.id]);
-                        const rolled = a.isOwner
-                            ? !!(this._playerTravelRolled?.[day]?.[a.id])
-                            : false;
+                        const rolled = !!(this._playerTravelRolled?.[day]?.[a.id]
+                            || this._syncedTravelRolled?.[day]?.[a.id]
+                            || this._syncedTravelResolved?.[day]?.[a.id]);
                         const forageDC = this._travelForageDC ?? 12;
                         const huntDC = this._travelHuntDC ?? 14;
                         return {
@@ -3287,13 +3338,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const days = [];
                 for (let d = 1; d <= totalDays; d++) {
                     const isFinalDay = d === totalDays;
+                    const chars = buildChars(d);
+                    const owned = chars.filter(c => c.isOwner);
                     days.push({
                         day: d,
                         label: totalDays === 1 ? null : `Day ${d}`,
                         isFinalDay,
                         canScout: isFinalDay && canScout,
                         isActive: d === activeDay,
-                        characters: buildChars(d)
+                        characters: chars,
+                        playerDone: owned.length > 0 && owned.every(c => c.confirmed || c.rolled)
                     });
                 }
 
@@ -3327,7 +3381,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     const actor = game.actors.get(a.actorId);
                     const isOwner = actor?.isOwner ?? false;
                     const rolled = this._pendingTravelRoll.rolledCharacters?.has(a.actorId) ?? false;
-                    return { ...a, isOwner, rolled, actorName: actor?.name ?? a.actorId, activityLabel: a.activityLabel ?? a.activity };
+                    const enriched = { ...a, isOwner, rolled, actorName: actor?.name ?? a.actorId, activityLabel: a.activityLabel ?? a.activity };
+                    return {
+                        ...enriched,
+                        rollRequest: buildTravelActivityRollContext(enriched, this._pendingTravelRoll.rolledCharacters)
+                    };
                 });
                 return { activities };
             })() : null,
@@ -3497,25 +3555,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     rollRequest: buildEventPlayerRollContext(merged, triggeredEvent)
                 };
             })() : null,
-            pendingTreeRoll: this._pendingTreeRoll ? (() => {
-                const rollModes = this._pendingTreeRoll.rollModes ?? {};
-                const ownedTargets = (this._pendingTreeRoll.targets ?? [])
-                    .map(id => game.actors.get(id))
-                    .filter(a => a?.isOwner)
-                    .map(a => {
-                        const rolled = this._pendingTreeRoll.rolledCharacters?.has(a.id) ?? false;
-                        const result = this._pendingTreeRoll.rolledResults?.get(a.id);
-                        return {
-                            id: a.id,
-                            name: a.name,
-                            rolled,
-                            total: result?.total ?? null,
-                            passed: result?.passed ?? null,
-                            rollMode: rollModes[a.id] ?? "normal"
-                        };
-                    });
-                return { ...this._pendingTreeRoll, ownedTargets };
-            })() : null,
+            pendingTreeRoll: this._pendingTreeRoll ? {
+                ...this._pendingTreeRoll,
+                rollRequest: buildTreePlayerRollContext(this._pendingTreeRoll)
+            } : null,
             actorLookup: (() => {
                 const lookup = {};
                 for (const a of getPartyActors()) {
@@ -3534,7 +3577,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     ...a,
                     rolled: this._pendingCampRoll.rolledCharacters?.has(a.characterId) ?? false,
                     status: a.status ?? "pending",
-                    total: a.total ?? null
+                    total: a.total ?? null,
+                    rollRequest: (a.status === "pass" || a.status === "fail")
+                        ? null
+                        : buildCampActivityRollContext(a, this._pendingCampRoll.rolledCharacters)
                 }))
             } : null,
             disasterChoice: this._disasterChoice ? {
@@ -5182,40 +5228,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const actor = game.actors.get(characterId);
         if (!actor || !actor.isOwner) return;
 
-        // Already rolled?
         if (pending.rolledCharacters?.has(characterId)) return;
 
-        // Build roll using the actor's actual skill modifier (bypasses Midi-QoL wrapper issues)
-        const skillData = actor.system?.skills?.[activityEntry.skill];
-        const modifier = skillData?.total ?? 0;
-        console.log(`[Respite:CampRoll] ${actor.name} rolling ${activityEntry.skillName} (${activityEntry.skill}), modifier: ${modifier}`);
-        const roll = await new Roll(`1d20 + ${modifier}`).evaluate();
-        const total = roll.total;
-        await roll.toMessage({
-            speaker: ChatMessage.getSpeaker({ actor }),
-            flavor: `<strong>${actor.name}</strong> - ${activityEntry.activityName} (${activityEntry.skillName}) DC ${activityEntry.dc}`
-        });
+        const flavor = `<strong>${actor.name}</strong> - ${activityEntry.activityName} (${activityEntry.skillName}) DC ${activityEntry.dc}`;
+        const { total } = await executePlayerRoll(
+            actor,
+            activityEntry.skill,
+            activityEntry.dc,
+            flavor,
+            target
+        );
 
-        // Disable roll button
-        target.disabled = true;
-        target.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Rolling...`;
-
-        // Wait for Dice So Nice
-        if (game.modules.get("dice-so-nice")?.active) {
-            await new Promise(resolve => {
-                const timeout = setTimeout(resolve, 5000);
-                Hooks.once("diceSoNiceRollComplete", () => {
-                    clearTimeout(timeout);
-                    resolve();
-                });
-            });
-        }
-
-        // Mark as rolled locally
         if (!pending.rolledCharacters) pending.rolledCharacters = new Set();
         pending.rolledCharacters.add(characterId);
 
-        // Send result to GM
         emitCampRollResult({
                     characterId,
                     characterName: actor.name,
@@ -5455,7 +5481,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     targets: pendingRolls,
                     rollModes: triggeredEvent.rollModes ?? {},
                     eventTitle: triggeredEvent.title ?? "Event",
-                    checkContext: triggeredEvent.checkContext ?? null,
                     targetLabel: buildRollTargetLabel(triggeredEvent.mechanical)
                 });
 
@@ -5692,6 +5717,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         super._onRender?.(context, options);
         this._onRenderBindings(context, options);
         centerRollRequestRoster(this.element);
+        ensureDcPulseAnimation(this.element);
 
         const titleEl =
             this.element?.querySelector(".window-header .window-title")
@@ -5742,8 +5768,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onIonriftRoll(event, target) {
         event.preventDefault?.();
         const flow = target.dataset.flow ?? "event";
-        if (flow === "event") {
-            return RestSetupApp.#onRollEventCheck(event, target);
+        switch (flow) {
+            case "event":
+                return RestSetupApp.#onRollEventCheck(event, target);
+            case "tree":
+                return RestSetupApp.#onRollTreeCheck(event, target);
+            case "camp":
+                return RestSetupApp.#onRollCampCheck(event, target);
+            case "travel":
+                return RestSetupApp.#onRollTravelCheck(event, target);
+            case "copySpell":
+                return RestSetupApp.#onRollCopySpellArcana(event, target);
+            default:
+                return undefined;
         }
     }
 
@@ -5829,10 +5866,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         try {
             const { ItemOutcomeHandler } = await import("../services/ItemOutcomeHandler.js");
-            const result = await ItemOutcomeHandler.grantToActor(actorId, itemRef, quantity);
-
-            // Track the grant
-            this._grantedDiscoveries.set(grantKey, result);
+            const colon = grantKey.indexOf(":");
+            const eventId = colon >= 0 ? grantKey.slice(0, colon) : grantKey;
+            const ref = colon >= 0 ? grantKey.slice(colon + 1) : itemRef;
+            const result = await ItemOutcomeHandler.grantToActor(actorId, itemRef, quantity, {
+                ledger: this._grantLedger,
+                slotKey: GrantLedger.discoverySlotKey(eventId, ref)
+            });
             ui.notifications.info(`Granted ${result.rolled}x ${result.itemName} to ${result.actorName}.`);
             this.render();
         } catch (e) {
@@ -5858,7 +5898,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     seenEvents.add(sub.eventId);
                     for (const item of sub.items) {
                         const grantKey = `${sub.eventId}:${item.itemRef ?? item.name}`;
-                        if (!this._grantedDiscoveries.has(grantKey)) {
+                        if (!this._hasDiscoveryGrant(grantKey)) {
                             discoveries.push({
                                 grantKey,
                                 itemRef: item.itemRef ?? item.name,
@@ -5896,8 +5936,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 : shuffled[i % shuffled.length];
 
             try {
-                const result = await ItemOutcomeHandler.grantToActor(actorId, disc.itemRef, disc.quantity);
-                this._grantedDiscoveries.set(disc.grantKey, result);
+                const colon = disc.grantKey.indexOf(":");
+                const eventId = colon >= 0 ? disc.grantKey.slice(0, colon) : disc.grantKey;
+                const ref = colon >= 0 ? disc.grantKey.slice(colon + 1) : disc.itemRef;
+                const result = await ItemOutcomeHandler.grantToActor(actorId, disc.itemRef, disc.quantity, {
+                    ledger: this._grantLedger,
+                    slotKey: GrantLedger.discoverySlotKey(eventId, ref)
+                });
                 console.log(`${MODULE_ID} | Auto-granted ${result.rolled}x ${result.itemName} to ${result.actorName}`);
             } catch (e) {
                 console.warn(`${MODULE_ID} | Auto-grant failed for ${disc.itemRef}:`, e);
@@ -6199,7 +6244,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const picker = new CraftingPickerApp(
             actor, profession, this._craftingEngine,
             (result) => {
-                // Completion callback â€” commit the crafting result
+                // Completion callback: commit the crafting result
                 app._craftingInProgress?.delete(characterId);
                 if (!result) {
                     // Crafting cancelled or no result â€” re-enable selection
@@ -6242,7 +6287,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
                 if (app.rendered) app.render();
             },
-            terrainTag
+            terrainTag,
+            this._grantLedger
         );
         picker.render({ force: true });
     }
@@ -8568,7 +8614,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #onFinalize(event, target) {
         // Warn if there are ungranted party discoveries
-        if (this._grantedDiscoveries && this._outcomes?.length) {
+        if (this._grantLedger && this._outcomes?.length) {
             const seenEvents = new Set();
             let ungrantedCount = 0;
             for (const o of this._outcomes) {
@@ -8577,7 +8623,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         seenEvents.add(sub.eventId);
                         for (const item of sub.items) {
                             const key = `${sub.eventId}:${item.itemRef ?? item.name}`;
-                            if (!this._grantedDiscoveries.has(key)) ungrantedCount++;
+                            if (!this._hasDiscoveryGrant(key)) ungrantedCount++;
                         }
                     }
                 }
@@ -8616,6 +8662,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     receivePlayerChoices(userId, choices, craftingResults = null, followUps = null, earlyResults = null) {
         Logger.log(`[SYNC] receivePlayerChoices: userId=${userId}, choiceKeys=${Object.keys(choices ?? {}).join(",") || "none"}`, choices);
+        console.log(`ionrift-respite | receivePlayerChoices DEBUG`, {
+            userId,
+            choices,
+            activitiesCount: this._activities?.length ?? "no-activities",
+            activityIds: (this._activities ?? []).map(a => a.id)
+        });
         const user = game.users.get(userId);
         this._playerSubmissions.set(userId, {
             choices,
@@ -9777,6 +9829,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             coldCampDecided: this._coldCampDecided ?? false,
             campStep2Entered: this._campStep2Entered ?? false,
             safeRestSpot: !!this._engine?.safeRestSpot,
+            comfort: this._engine?.comfort ?? "rough",
+            activeShelters: this._engine?.activeShelters ?? [],
             // Include the activity list so late-joining players can load their resolver.
             activities: this._activities ?? []
         };
@@ -9816,6 +9870,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const enc = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[phaseData.fireLevel] ?? 0;
                 this._engine.fireRollModifier = enc;
             }
+        }
+        if (phaseData.comfort && this._engine) {
+            this._engine.comfort = phaseData.comfort;
+        }
+        if (phaseData.activeShelters && this._engine) {
+            this._engine.activeShelters = phaseData.activeShelters;
             if (!game.user.isGM) {
                 const fl = phaseData.fireLevel;
                 void CampfireTokenLinker.setLightState(
@@ -10077,6 +10137,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this._engine.fireRollModifier = enc;
             }
         }
+        if (snapshot.comfort && this._engine) {
+            this._engine.comfort = snapshot.comfort;
+        }
+        if (snapshot.activeShelters && this._engine) {
+            this._engine.activeShelters = snapshot.activeShelters;
+        }
+        if (snapshot.safeRestSpot !== undefined && this._engine) {
+            this._engine.safeRestSpot = !!snapshot.safeRestSpot;
+        }
         if (snapshot.fireLitBy !== undefined) this._fireLitBy = snapshot.fireLitBy ?? null;
         if (snapshot.firewoodPledges !== undefined) {
             this._firewoodPledges = new Map(snapshot.firewoodPledges ?? []);
@@ -10325,7 +10394,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #onRollTravelCheck(event, target) {
         event.preventDefault?.();
-        const actorId = target.dataset.actorId;
+        const actorId = target.dataset.characterId ?? target.dataset.actorId;
         const day = parseInt(target.dataset.day) || 1;
         if (!actorId) return;
 
@@ -10338,43 +10407,24 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!entry) return;
         if (pending.rolledCharacters?.has(actorId)) return;
 
-        let modifier, flavor;
+        let skillKey = entry.skill ?? "sur";
+        let flavor;
+        const dc = entry.dc ?? 0;
+
         if (entry.activity === "scout") {
-            const prc = actor.system?.skills?.prc?.total ?? 0;
-            const sur = actor.system?.skills?.sur?.total ?? 0;
-            modifier = Math.max(prc, sur);
-            const skillLabel = prc >= sur ? "Perception" : "Survival";
+            skillKey = pickBestSkill(actor, ["prc", "sur"]);
+            const skillLabel = skillKey === "prc" ? "Perception" : "Survival";
             flavor = `<strong>${actor.name}</strong> - Scout (${skillLabel})`;
         } else if (entry.activity === "other") {
-            const skillKey = entry.skill ?? "sur";
-            modifier = actor.system?.skills?.[skillKey]?.total ?? 0;
+            skillKey = entry.skill ?? "sur";
             flavor = `<strong>${actor.name}</strong> - ${entry.skillName ?? "Survival"} DC ${entry.dc}`;
         } else {
-            const surData = actor.system?.skills?.sur?.total ?? 0;
-            const natData = actor.system?.skills?.nat?.total ?? 0;
-            modifier = Math.max(surData, natData);
+            skillKey = pickBestSkill(actor, ["sur", "nat"]);
             const actLabel = entry.activity === "forage" ? "Forage" : "Hunt";
             flavor = `<strong>${actor.name}</strong> - ${actLabel} (Survival) DC ${entry.dc}`;
         }
 
-        const roll = await new Roll(`1d20 + ${modifier}`).evaluate();
-        await roll.toMessage({
-            speaker: ChatMessage.getSpeaker({ actor }),
-            flavor
-        });
-
-        target.disabled = true;
-        target.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Rolling...`;
-
-        if (game.modules.get("dice-so-nice")?.active) {
-            await new Promise(resolve => {
-                const timeout = setTimeout(resolve, 5000);
-                Hooks.once("diceSoNiceRollComplete", () => {
-                    clearTimeout(timeout);
-                    resolve();
-                });
-            });
-        }
+        const { total, roll } = await executePlayerRoll(actor, skillKey, dc, flavor, target);
 
         if (!pending.rolledCharacters) pending.rolledCharacters = new Set();
         pending.rolledCharacters.add(actorId);
@@ -10382,12 +10432,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         emitTravelRollResult({
                     actorId,
                     actorName: actor.name,
-                    total: roll.total,
+                    total,
                     natD20: getNatD20FromRoll(roll),
                     day
                 });
 
-        ui.notifications.info(`${actor.name} rolled ${roll.total}.`);
+        ui.notifications.info(`${actor.name} rolled ${total}.`);
         this.render();
     }
 
@@ -10407,6 +10457,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!actor || !actor.isOwner) return;
 
         if (this._playerTravelRolled?.[day]?.[actorId]) return;
+        if (this._syncedTravelRolled?.[day]?.[actorId]) return;
+        if (this._syncedTravelResolved?.[day]?.[actorId]) return;
 
         if (activity === "forage") {
             const terrainTag = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
@@ -10529,7 +10581,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     receiveTravelRollResult(data) {
         const day = data.day ?? this._travel.activeDay;
-        this._travel.receiveRollResult(data.actorId, data.total, day, data.natD20 ?? null);
+        const accepted = this._travel.receiveRollResult(
+            data.actorId, data.total, day, data.natD20 ?? null
+        );
+        if (!accepted) return;
 
         emitPhaseChanged("travel", {
                 travelRollUpdate: {
@@ -10738,6 +10793,26 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     _broadcastTravelDeclarations() {
         const allDayDeclarations = {};
+        const rolledByDay = {};
+        const resolvedByDay = {};
+        const travelEntries = this._travel.serialize()?.entries ?? {};
+
+        for (const [key, entry] of Object.entries(travelEntries)) {
+            const colon = key.indexOf(":");
+            if (colon < 0) continue;
+            const day = parseInt(key.slice(0, colon), 10);
+            const actorId = key.slice(colon + 1);
+            if (!day || !actorId) continue;
+            if (entry.status === "rolled" || entry.status === "resolved") {
+                rolledByDay[day] ??= {};
+                rolledByDay[day][actorId] = true;
+            }
+            if (entry.status === "resolved") {
+                resolvedByDay[day] ??= {};
+                resolvedByDay[day][actorId] = true;
+            }
+        }
+
         for (let d = 1; d <= this._travel.totalDays; d++) {
             const decl = this._travel.getDayDeclarations(d);
             const confirmed = {};
@@ -10749,6 +10824,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         emitTravelDeclarationsSync({
                     declarations: allDayDeclarations,
+                    rolled: rolledByDay,
+                    resolved: resolvedByDay,
                     activeDay: this._travel.activeDay,
                     totalDays: this._travel.totalDays,
                     scoutingAllowed: this._travel.scoutingAllowed,
@@ -10907,6 +10984,77 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // so the GM runs changeFireLevelDuringActivity (which confirms cost deltas).
         if (this._phase === "activity" && this._isTotM) {
             if (!game.user.isGM) {
+                // Player-side pre-validation with modal dialogs
+                const cur = this._fireLevel ?? "unlit";
+                if (level === cur) return;
+
+                const F = CampGearScanner.FIREWOOD_COST_BY_LEVEL;
+                const costOf = (l) => (l === "unlit" ? 0 : (F[l] ?? 0));
+                const curCost = costOf(cur);
+                const newCost = costOf(level);
+                const levelLabel = level.charAt(0).toUpperCase() + level.slice(1);
+
+                if (newCost > curCost) {
+                    // Promoting fire: check kindling locally
+                    const actors = getPartyActors();
+                    const hasTinderbox = cur !== "unlit" || actors.some(a => a.items.some(i => {
+                        const n = i.name?.toLowerCase() ?? "";
+                        return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
+                    }));
+                    if (cur === "unlit" && !hasTinderbox) {
+                        await game.ionrift.library.confirm({
+                            title: "Cannot Light Fire",
+                            content: "<p>No one in the party has a tinderbox or flint and steel. You cannot start a fire.</p>",
+                            yesLabel: "OK",
+                            noLabel: null,
+                            yesIcon: "fas fa-check",
+                            defaultYes: true
+                        });
+                        return;
+                    }
+                    const need = newCost - curCost;
+                    const totalFirewood = actors.reduce((sum, a) => {
+                        const it = a.items.find(i => {
+                            const n = i.name?.toLowerCase() ?? "";
+                            return n.includes("firewood") || n === "kindling";
+                        });
+                        return sum + (it?.system?.quantity ?? 0);
+                    }, 0);
+                    if (need > 0 && totalFirewood < need) {
+                        await game.ionrift.library.confirm({
+                            title: "Not Enough Firewood",
+                            content: `<p>Raising the fire to <strong>${levelLabel}</strong> requires ${need} firewood, but the party only has ${totalFirewood}.</p>`,
+                            yesLabel: "OK",
+                            noLabel: null,
+                            yesIcon: "fas fa-check",
+                            defaultYes: true
+                        });
+                        return;
+                    }
+                    // Confirm firewood consumption
+                    const confirmed = await game.ionrift.library.confirm({
+                        title: `Raise Fire to ${levelLabel}`,
+                        content: `<p>This will consume <strong>${need} firewood</strong> from party stock. Continue?</p>`,
+                        yesLabel: "Light It",
+                        noLabel: "Cancel",
+                        yesIcon: "fas fa-fire",
+                        noIcon: "fas fa-times",
+                        defaultYes: true
+                    });
+                    if (!confirmed) return;
+                } else if (newCost < curCost) {
+                    // Reducing fire: player can do this directly, just confirm no refund
+                    const confirmed = await game.ionrift.library.confirm({
+                        title: `Lower Fire to ${levelLabel}`,
+                        content: "<p>Reducing the fire discards spent firewood. There is no refund. Continue?</p>",
+                        yesLabel: "Lower Fire",
+                        noLabel: "Cancel",
+                        yesIcon: "fas fa-arrow-down",
+                        noIcon: "fas fa-times",
+                        defaultYes: false
+                    });
+                    if (!confirmed) return;
+                }
                 emitActivityFireLevelRequest(level);
             } else {
                 await this.changeFireLevelDuringActivity(level);
@@ -11982,7 +12130,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {string} level - embers | campfire | bonfire
      * @returns {Promise<{ ok: boolean, error?: string, cancelled?: boolean }>}
      */
-    async changeFireLevelDuringActivity(level) {
+    async changeFireLevelDuringActivity(level, { fromPlayer = false } = {}) {
         if (!game.user.isGM) return { ok: false, error: "GM only" };
         if (this._phase !== "activity") return { ok: false, error: "Wrong phase" };
         const restType = this._engine?.restType
@@ -12011,14 +12159,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }));
 
         if (newCost < curCost) {
-            const confirmed = await Dialog.confirm({
-                title: "Lower the fire",
-                content: "<p>Reducing the fire discards spent firewood. There is no refund. Continue?</p>",
-                yes: () => true,
-                no: () => false,
-                defaultYes: false
-            });
-            if (!confirmed) return { ok: false, cancelled: true };
+            // Skip GM confirmation for player-initiated reductions (player already confirmed)
+            if (!fromPlayer) {
+                const confirmed = await Dialog.confirm({
+                    title: "Lower the fire",
+                    content: "<p>Reducing the fire discards spent firewood. There is no refund. Continue?</p>",
+                    yes: () => true,
+                    no: () => false,
+                    defaultYes: false
+                });
+                if (!confirmed) return { ok: false, cancelled: true };
+            }
         } else if (newCost > curCost) {
             const need = newCost - curCost;
             if (cur === "unlit" && !hasTinderbox) {
@@ -12068,7 +12219,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 fireLevel: level,
                 fireLitBy: this._fireLitBy ?? null,
                 firewoodPledges: Array.from(this._firewoodPledges?.entries() ?? []),
-                selectedTerrain: this._selectedTerrain ?? null
+                selectedTerrain: this._selectedTerrain ?? null,
+                comfort: this._engine?.comfort ?? null,
+                activeShelters: this._engine?.activeShelters ?? []
             });
 
         await this._saveRestState();

@@ -14,6 +14,39 @@ import { ItemClassifier } from "./ItemClassifier.js";
 import { CalendarHandler } from "./CalendarHandler.js";
 import { SpoilageClock } from "./SpoilageClock.js";
 import { guardEmbedItems } from "./MintGuard.js";
+import { GrantLedger } from "./GrantLedger.js";
+import { ItemOutcomeHandler } from "./ItemOutcomeHandler.js";
+
+function _activeGrantLedger() {
+    return game.ionrift?.respite?.getActiveApp?.()?._grantLedger ?? null;
+}
+
+/**
+ * Idempotent item grant for meal-phase inventory changes.
+ * @param {Actor} actor
+ * @param {object} itemData
+ * @param {string} slotRef
+ */
+async function _grantMealItem(actor, itemData, slotRef) {
+    const ledger = _activeGrantLedger();
+    const slotKey = GrantLedger.mealSlotKey(actor.id, slotRef);
+    const qty = itemData.system?.quantity ?? 1;
+    const grant = [{
+        name: itemData.name,
+        type: itemData.type ?? "loot",
+        img: itemData.img ?? "icons/svg/item-bag.svg",
+        quantity: qty,
+        system: { ...(itemData.system ?? {}), quantity: qty },
+        flags: itemData.flags ?? {}
+    }];
+    guardEmbedItems(grant);
+    const perform = () => ItemOutcomeHandler.grantItemsToActor(actor, grant);
+    if (ledger) {
+        await ledger.grantOnce(slotKey, perform);
+    } else {
+        await perform();
+    }
+}
 
 /**
  * Compute per-actor food/water slot counts. Essence actors always need at
@@ -262,8 +295,7 @@ export class MealPhaseHandler {
             } else {
                 const data = foundry.utils.deepClone(SPOILED_FOOD_TEMPLATE);
                 data.system.quantity = spoiledQty;
-                guardEmbedItems([data]);
-                await actor.createEmbeddedDocuments("Item", [data]);
+                await _grantMealItem(actor, data, "spoiled_food");
             }
         }
 
@@ -788,8 +820,8 @@ export class MealPhaseHandler {
                 const alreadyWellFed = member.effects?.some(e => e.flags?.[MODULE_ID]?.wellFed === true) ?? false;
                 if (alreadyWellFed) {
                     const doc = MealPhaseHandler._mealSnapshotAsSingleLeftover(itemSnapshot);
-                    guardEmbedItems([doc]);
-                    await member.createEmbeddedDocuments("Item", [doc]);
+                    const ref = doc.flags?.[MODULE_ID]?.itemRef ?? doc.name ?? itemName;
+                    await _grantMealItem(member, doc, ref);
                     summaries.push(`<strong>${member.name}</strong>: packed serving (already Well Fed)`);
                 } else {
                     const part = await MealPhaseHandler._applyWellFedEffect(member, itemSnapshot);
@@ -806,8 +838,8 @@ export class MealPhaseHandler {
             const alreadyWellFed = consumerActor.effects?.some(e => e.flags?.[MODULE_ID]?.wellFed === true) ?? false;
             if (alreadyWellFed) {
                 const doc = MealPhaseHandler._mealSnapshotAsSingleLeftover(itemSnapshot);
-                guardEmbedItems([doc]);
-                await consumerActor.createEmbeddedDocuments("Item", [doc]);
+                const ref = doc.flags?.[MODULE_ID]?.itemRef ?? doc.name ?? itemName;
+                await _grantMealItem(consumerActor, doc, ref);
                 await ChatMessage.create({
                     content: `<div class="respite-recovery-chat"><p><i class="fas fa-box-open"></i> <strong>${consumerActor.name}</strong> could not eat another full meal yet. <strong>${itemName}</strong> was packed away.</p></div>`,
                     speaker: ChatMessage.getSpeaker({ actor: consumerActor })

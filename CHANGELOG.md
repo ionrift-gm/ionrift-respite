@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- Travel forage and hunt no longer grant duplicate loot after a browser refresh or a repeated roll. Rewards for a given character, day, and activity are recorded once per rest.
+
+### Changed
+- Cooking, party discoveries, feast servings, and meal leftovers use the same per-rest grant ledger as travel, so those rewards cannot be claimed twice by refreshing or resubmitting.
+
 ## [2.4.0] - 2026-05-26
 
 ### Changed
