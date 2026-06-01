@@ -268,6 +268,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             encounterAdjUp: RestSetupApp.#onEncounterAdjUp,
             encounterAdjDown: RestSetupApp.#onEncounterAdjDown,
             resolveSkillCheck: RestSetupApp.#onResolveSkillCheck,
+            adjustEventDc: RestSetupApp.#onAdjustEventDc,
             rollEventCheck: RestSetupApp.#onRollEventCheck,
             disasterChoice: RestSetupApp.#onDisasterChoice,
             rollCampCheck: RestSetupApp.#onRollCampCheck,
@@ -3433,18 +3434,32 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             resolutionCards,
             triggeredEvents: (this._triggeredEvents ?? []).map(e => {
                 // Resolve target IDs to actor names for the template
-                const targetNames = (e.targets ?? [])
-                    .map(id => game.actors.get(id)?.name)
-                    .filter(Boolean);
+                const targetActors = (e.targets ?? [])
+                    .map(id => game.actors.get(id))
+                    .filter(Boolean)
+                    .map(a => ({ name: a.name, img: a.img || "icons/svg/mystery-man.svg" }));
+                const targetNames = targetActors.map(a => a.name);
                 const skillName = e.mechanical?.skill
                     ? (SKILL_NAMES[e.mechanical.skill] ?? e.mechanical.skill)
                     : null;
+                // Backfill GM narration from the live catalog by id. Events persisted
+                // before these fields existed (or built by inline paths) carry only an
+                // id, so rehydrate the authored copy. GM-only: players get a stripped
+                // copy and must not regain this content via the catalog.
+                const catalog = this._isGM ? this._eventResolver?.events?.get(e.id) : null;
+                const gmPrompt = e.gmPrompt ?? catalog?.gmPrompt ?? null;
+                const gmGuidance = e.gmGuidance ?? catalog?.gmGuidance ?? null;
+                const description = e.description ?? catalog?.description ?? null;
+                const targetScope = e.mechanical?.targets === "all" ? "the whole party" : "the watch";
+                const checkContext = e.checkContext ?? catalog?.checkContext
+                    ?? (skillName ? `${skillName} check for ${targetScope}.` : null);
+                const readAloud = gmPrompt || description || e.narrative || null;
                 // Enrich resolved rolls with ownership for player-side filtering
                 const resolvedRolls = (e.resolvedRolls ?? []).map(r => ({
                     ...r,
                     isOwner: game.actors.get(r.characterId)?.isOwner ?? false
                 }));
-                return { ...e, targetNames, skillName, resolvedRolls };
+                return { ...e, targetNames, targetActors, skillName, gmPrompt, gmGuidance, description, checkContext, readAloud, resolvedRolls };
             }),
             allEventChecksResolved: !(this._triggeredEvents ?? []).some(
                 e => e.mechanical?.type === "skill_check" && (!e.resolvedOutcome || e.awaitingRolls)
@@ -5316,6 +5331,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Resolve a skill check event. Auto-rolls using the best watcher's modifier,
      * or force-sets the outcome if GM overrides.
      */
+    /**
+     * GM nudges an event check DC before requesting rolls. Local-only until the
+     * roll request is broadcast, so players never see the DC change mid-adjust.
+     */
+    static #onAdjustEventDc(event, target) {
+        event.preventDefault?.();
+        if (!game.user.isGM) return;
+
+        const eventIndex = parseInt(target.dataset.eventIndex ?? target.closest("[data-event-index]")?.dataset.eventIndex);
+        const delta = parseInt(target.dataset.delta) || 0;
+        const triggeredEvent = this._triggeredEvents?.[eventIndex];
+        if (!triggeredEvent?.mechanical || !delta || triggeredEvent.awaitingRolls || triggeredEvent.resolvedOutcome) return;
+
+        triggeredEvent.mechanical.dc = Math.max(1, (triggeredEvent.mechanical.dc ?? 10) + delta);
+        this.render();
+    }
+
     static async #onResolveSkillCheck(event, target) {
         if (!game.user.isGM) return;
         event.preventDefault?.();
@@ -9682,7 +9714,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._phase = phase;
         if (phaseData.triggeredEvents) {
             this._triggeredEvents = this._isGM ? phaseData.triggeredEvents
-                : phaseData.triggeredEvents.map(e => ({ ...e, name: undefined, narrative: undefined }));
+                : phaseData.triggeredEvents.map(e => ({ ...e, name: undefined, narrative: undefined, description: undefined, gmPrompt: undefined, checkContext: undefined, gmGuidance: undefined, readAloud: undefined }));
         }
         if (phaseData.activeTreeState) this._activeTreeState = phaseData.activeTreeState;
         if (phaseData.eventsRolled !== undefined) this._eventsRolled = phaseData.eventsRolled;
@@ -9915,7 +9947,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         if (snapshot.triggeredEvents) {
             this._triggeredEvents = this._isGM ? snapshot.triggeredEvents
-                : snapshot.triggeredEvents.map(e => ({ ...e, name: undefined, narrative: undefined }));
+                : snapshot.triggeredEvents.map(e => ({ ...e, name: undefined, narrative: undefined, description: undefined, gmPrompt: undefined, checkContext: undefined, gmGuidance: undefined, readAloud: undefined }));
         }
         if (snapshot.activeTreeState) {
             this._activeTreeState = snapshot.activeTreeState;
