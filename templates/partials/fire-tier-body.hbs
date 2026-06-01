@@ -1,0 +1,2 @@
+{{!-- Fire tier description copy (static markup; do not pass HTML via context body) --}}
+{{#if (eq id "embers")}}No cooking. No comfort change.{{else if (eq id "campfire")}}Cooking and warmth. <span class="fire-risk">Draws attention (higher encounter chance).</span>{{else if (eq id "bonfire")}}<span class="fire-benefit">+1 camp comfort.</span> <span class="fire-risk">Beacon in the dark (much higher encounter chance).</span>{{/if}}

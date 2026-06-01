@@ -547,7 +547,7 @@
                     <span class="camp-fire-tier-watermark" aria-hidden="true"><i class="fas fa-fire"></i></span>
                     <span class="camp-fire-tier-label">{{label}}</span>
                     <span class="camp-fire-tier-cost">({{costLabel}})</span>
-                    <span class="camp-fire-tier-body">{{{body}}}</span>
+                    <span class="camp-fire-tier-body">{{> fireTierBody}}</span>
                     <span class="camp-fire-tier-comfort{{#if comfortChanged}} comfort-changed{{/if}}">{{comfortHint}}</span>
                     <div class="station-fire-set-row">
                         {{#if active}}
@@ -883,7 +883,7 @@
                 </div>
                 <div class="water-pool-status">
                     {{#if waterSufficient}}
-                    <span class="pool-status-ok"><i class="fas fa-check"></i> {{waterFilledCount}}/{{waterRequired}} pints — Hydrated</span>
+                    <span class="pool-status-ok"><i class="fas fa-check"></i> {{waterFilledCount}}/{{waterRequired}} pints. Hydrated</span>
                     {{else if waterFilledCount}}
                     <span class="pool-status-partial">{{waterFilledCount}} of {{waterRequired}} pints</span>
                     {{else}}

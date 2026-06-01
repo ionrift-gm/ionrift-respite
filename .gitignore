@@ -12,7 +12,7 @@ data/terrains/*/
 !data/terrains/tavern/
 !data/terrains/urban/
 
-# !! CONTENT PACKS — PATREON ONLY !!
+# !! CONTENT PACKS: PATREON ONLY !!
 # These paths contain proprietary content distributed through Patreon.
 # DO NOT remove these exclusions. DO NOT commit content pack data to this repo.
 # See DEV_PROTOCOLS.md Section 28: Content Pack Safety.
@@ -30,13 +30,13 @@ package-lock.json
 pack-items.mjs
 pack-actors.mjs
 
-# Dev scripts & test suites (IP-sensitive — hosted in private ionrift-tests repo)
+# Dev scripts & test suites (IP-sensitive, hosted in private ionrift-tests repo)
 scripts/tests/
 scripts/utils/
 scripts/dev-link-packs.ps1
 macros/
 
-# LevelDB compiled packs (build artifacts — compiled from packs/src/ at release time)
+# LevelDB compiled packs (build artifacts, compiled from packs/src/ at release time)
 # JSON source files in packs/src/ are the canonical data.
 packs/respite-items/
 packs/respite-actors/
@@ -49,7 +49,7 @@ audit_*.txt
 audit_*.js
 packs/src/archive/
 
-# Agent handoff specs (ephemeral — see DEV_PROTOCOLS.md §30)
+# Agent handoff specs (ephemeral, see DEV_PROTOCOLS.md §30)
 .cursor/
 CURSOR_TASK_*
 CURSOR_SPEC_*

@@ -3,38 +3,16 @@
 
 <form class="respite-form">
 
-    {{!-- Phase Indicator --}}
+    {{!-- Phase Indicator: pips and label come from phaseSteps, which only --}}
+    {{!-- includes phases that actually run this rest (skipped travel/meal/events --}}
+    {{!-- drop out so the dot count matches the real flow). --}}
     <div class="respite-phase-header">
         <div class="phase-indicator">
-            <div
-                class="phase-dot {{#if (eq phase 'setup')}}active{{/if}} {{#if (or (eq phase 'travel') (eq phase 'camp') (eq phase 'activity') (eq phase 'meal') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
-            </div>
-            <div
-                class="phase-dot {{#if (eq phase 'travel')}}active{{/if}} {{#if (or (eq phase 'camp') (eq phase 'activity') (eq phase 'meal') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
-            </div>
-            <div
-                class="phase-dot {{#if (eq phase 'camp')}}active{{/if}} {{#if (or (eq phase 'activity') (eq phase 'meal') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
-            </div>
-            <div
-                class="phase-dot {{#if (eq phase 'activity')}}active{{/if}} {{#if (or (eq phase 'meal') (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
-            </div>
-            {{#if showMealStep}}
-            <div class="phase-dot {{#if (eq phase 'meal')}}active{{/if}} {{#if (or (eq phase 'events') (eq phase 'resolve'))}}complete{{/if}}">
-            </div>
-            {{/if}}
-            <div class="phase-dot {{#if (eq phase 'events')}}active{{/if}} {{#if (eq phase 'resolve')}}complete{{/if}}">
-            </div>
-            <div class="phase-dot {{#if (eq phase 'resolve')}}active{{/if}}"></div>
+            {{#each phaseSteps}}
+            <div class="phase-dot {{#if active}}active{{/if}} {{#if complete}}complete{{/if}}"></div>
+            {{/each}}
         </div>
-        <span class="phase-label">
-            {{#if (eq phase 'setup')}}Setup{{/if}}
-            {{#if (eq phase 'travel')}}Travel{{/if}}
-            {{#if (eq phase 'camp')}}Make Camp{{/if}}
-            {{#if (eq phase 'activity')}}Activities{{/if}}
-            {{#if (eq phase 'meal')}}Meal{{/if}}
-            {{#if (eq phase 'events')}}Events{{/if}}
-            {{#if (eq phase 'resolve')}}Resolution{{/if}}
-        </span>
+        <span class="phase-label">{{phaseLabel}}</span>
 
         {{#if isGM}}
         <button type="button" class="btn-abandon-rest" data-action="abandonRest" title="Cancel this rest for all players">
@@ -63,11 +41,11 @@
         {{/each}}
         {{#unless campStatus.hasTent}}
         {{#unless safeRestSpot}}
-        <span class="camp-status-chip shelter-chip absent" title="No tent pitched — the whole camp is exposed to weather penalties and lower encounter safety">
+        <span class="camp-status-chip shelter-chip absent" title="No tent pitched. The whole camp is exposed to weather penalties and lower encounter safety.">
             <i class="fas fa-campground"></i> No Tent
         </span>
         {{else}}
-        <span class="camp-status-chip shelter-chip absent" title="No tent pitched — weather flavor only in a safe rest spot">
+        <span class="camp-status-chip shelter-chip absent" title="No tent pitched. Weather flavor only in a safe rest spot.">
             <i class="fas fa-campground"></i> No Tent
         </span>
         {{/unless}}
@@ -103,31 +81,33 @@
         <div class="scene-grid">
             <div class="form-group scene-rest-type">
                 <label>Rest Type</label>
-                <div class="rest-type-toggle">
-                    <button type="button" class="rest-type-btn {{#unless (eq selectedRestType 'short')}}active{{/unless}}"
-                        data-rest-type="long">
-                        <i class="fas fa-moon"></i> Long Rest
-                    </button>
-                    <button type="button" class="rest-type-btn {{#if (eq selectedRestType 'short')}}active{{/if}}"
-                        data-rest-type="short">
-                        <i class="fas fa-mug-hot"></i> Short Rest
-                    </button>
-                    <input type="hidden" name="restType" value="{{#if (eq selectedRestType 'short')}}short{{else}}long{{/if}}">
-                </div>
-                {{#unless isShortRest}}
-                <div class="safe-rest-spot-row {{#if safeRestSpot}}is-active{{/if}}">
-                    <label class="safe-rest-spot-toggle" title="No encounter risk. Skips night events, comfort penalties, and camp defense. Activities, cooking, and identification only.">
+                <div class="rest-type-row">
+                    <div class="rest-type-toggle">
+                        <button type="button" class="rest-type-btn {{#unless (eq selectedRestType 'short')}}active{{/unless}}"
+                            data-rest-type="long">
+                            <i class="fas fa-moon"></i> Long Rest
+                        </button>
+                        <button type="button" class="rest-type-btn {{#if (eq selectedRestType 'short')}}active{{/if}}"
+                            data-rest-type="short">
+                            <i class="fas fa-mug-hot"></i> Short Rest
+                        </button>
+                        <input type="hidden" name="restType" value="{{#if (eq selectedRestType 'short')}}short{{else}}long{{/if}}">
+                    </div>
+                    {{#unless isShortRest}}
+                    <label class="safe-rest-spot-toggle {{#if safeRestSpot}}is-active{{/if}}" title="No encounter risk. Skips night events, comfort penalties, and camp defense. Activities, cooking, and identification only.">
                         <i class="fas fa-shield-halved" aria-hidden="true"></i>
-                        <span class="safe-rest-spot-label">Safe Rest Spot</span>
-                        <input type="checkbox" name="safeRestSpot" value="1" {{#if safeRestSpot}}checked{{/if}}>
+                        <span class="safe-rest-spot-label">Safe Rest</span>
+                        <span class="safe-rest-switch"><input type="checkbox" name="safeRestSpot" value="1" {{#if safeRestSpot}}checked{{/if}}><span class="safe-rest-slider"></span></span>
                     </label>
-                    <span class="safe-rest-spot-hint">Disables encounter rolls, night events, and comfort penalties.</span>
+                    {{/unless}}
                 </div>
-                {{/unless}}
             </div>
+
             {{#unless isShortRest}}
+            <hr class="setup-divider scene-grid-full">
+
             <div class="form-group scene-environment">
-                <label>Environment</label>
+                <label title="{{terrainPreview}}">Environment:</label>
                 <select name="terrain">
                     {{#each terrainOptionGroups}}
                     <optgroup label="{{group}}">
@@ -137,37 +117,24 @@
                     </optgroup>
                     {{/each}}
                 </select>
-                <span class="terrain-hint" id="terrain-hint">{{terrainPreview}}</span>
             </div>
             {{/unless}}
             {{#unless isShortRest}}
-            {{#unless safeRestSpot}}
-            <div class="form-group scene-weather">
-                <label>Weather</label>
+            <div class="form-group scene-weather {{#if safeRestSpot}}scene-weather-flavor{{/if}}">
+                <label>Weather:</label>
                 <select name="weather">
                     {{#each weatherOptions}}
                     <option value="{{value}}" title="{{hint}}" {{#if (eq value ../defaultWeather)}}selected{{/if}}>{{label}}</option>
                     {{/each}}
                 </select>
-                {{#each weatherOptions}}
-                {{#if (eq value ../defaultWeather)}}
-                <span class="weather-hint">{{hint}}</span>
-                {{/if}}
-                {{/each}}
             </div>
-            {{else}}
-            <div class="form-group scene-weather scene-weather-flavor">
-                <label>Weather (flavor)</label>
-                <select name="weather">
-                    {{#each weatherOptions}}
-                    <option value="{{value}}" title="{{hint}}" {{#if (eq value ../defaultWeather)}}selected{{/if}}>{{label}}</option>
-                    {{/each}}
-                </select>
-                <span class="weather-hint">Narrative only in a safe rest spot. No comfort or encounter modifiers.</span>
-            </div>
-            {{/unless}}
             {{/unless}}
         </div>
+
+        {{#unless isShortRest}}
+        <div class="setup-status-line" title="Summary of terrain and weather effects">{{setupStatusLine}}</div>
+        <hr class="setup-divider">
+        {{/unless}}
 
         {{#if restConfigBadges.length}}
         {{#unless isShortRest}}
@@ -220,26 +187,15 @@
                     {{/if}}
                 </div>
                 {{/if}}
-                {{#unless safeRestSpot}}
-                {{#if scoutingAvailable}}
-                <div class="scouting-block">
-                    <div class="scouting-guidance">
-                        <i class="fas fa-binoculars"></i>
-                        <span>Scouting runs during travel</span>
-                    </div>
-                    <span class="scouting-toggle-hint">Characters can scout for a campsite during the travel phase. A good scout lowers encounter risk and can raise comfort; a poor scout does the opposite.</span>
-                </div>
-                {{/if}}
-                <div class="form-group scene-comfort-override">
-                    <label>Comfort Override</label>
-                    <select name="comfort">
-                        {{#each comfortOptions}}
-                        <option value="{{value}}" title="{{hint}}" {{#if (eq value ../defaultComfort)}}selected{{/if}}>{{label}}</option>
+                <div class="form-group scene-rest-mode-override">
+                    <label>Rest Interface</label>
+                    <select name="restInterfaceMode">
+                        {{#each restModeOptions}}
+                        <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
                         {{/each}}
                     </select>
-                    <span class="comfort-hint">Override the comfort derived from player gear. Leave at terrain default unless you have a reason to change it.</span>
+                    <span class="comfort-hint">How the table runs this rest. One window keeps everything in this panel; camp stations drops pieces on the scene for players to move tokens to.</span>
                 </div>
-                {{/unless}}
             </div>
         </details>
 
@@ -477,13 +433,16 @@
                 <span class="travel-day-resolved-label"><i class="fas fa-check"></i> Day {{day}} resolved</span>
                 {{else}}
                 <div class="travel-resolve-day-wrap">
-                <button type="button" class="btn-primary travel-resolve-day-btn" data-action="resolveTravelDay" data-day="{{day}}"
-                    {{#unless allRollsIn}}disabled title="Unlocks when every party member has rolled or confirmed."{{/unless}}>
+                {{#if allRollsIn}}
+                <button type="button" class="btn-primary travel-resolve-day-btn" data-action="resolveTravelDay" data-day="{{day}}">
                     <i class="fas fa-check"></i> Resolve Day {{day}}
                 </button>
-                {{#unless allRollsIn}}
-                <span class="travel-waiting-label travel-resolve-pending-hint"><i class="fas fa-hourglass-half"></i> Still pending</span>
-                {{/unless}}
+                {{else}}
+                <button type="button" class="btn-primary travel-resolve-day-btn disabled" data-day="{{day}}" disabled
+                    title="Unlocks when every party member has rolled or confirmed.">
+                    <i class="fas fa-lock"></i> Waiting on travel rolls
+                </button>
+                {{/if}}
                 </div>
                 {{#unless allRollsIn}}
                 <button type="button" class="travel-skip-link" data-action="skipTravelPhase" title="Skip remaining travel and continue">
@@ -825,7 +784,7 @@
                     {{/if}}
                 </div>
                 <div class="totm-factor-tile fire {{#if campFireIsLit}}present{{else if campColdCampDecided}}cold{{else}}missing{{/if}}"
-                     title="{{#if campFireIsLit}}{{#each campFirePickerLevels}}{{#if selected}}{{label}}: {{body}}{{/if}}{{/each}}{{else if campColdCampDecided}}Cold camp — no fire, −1 comfort, −2 encounter DC{{else}}No fire lit yet{{/if}}">
+                     title="{{#if campFireIsLit}}{{#each campFirePickerLevels}}{{#if selected}}{{label}}: {{fireTierPlain id}}{{/if}}{{/each}}{{else if campColdCampDecided}}Cold camp: no fire, −1 comfort, −2 encounter DC{{else}}No fire lit yet{{/if}}">
                     <i class="fas fa-fire totm-factor-tile-icon" aria-hidden="true"></i>
                     <span class="totm-factor-tile-label">Fire</span>
                     {{#if campFireIsLit}}
@@ -909,7 +868,7 @@
             {{!-- Fire is committed: show only the tier description --}}
             {{#each campFirePickerLevels}}
             {{#if selected}}
-            <p class="totm-fire-segment-desc">{{body}}</p>
+            <p class="totm-fire-segment-desc">{{> fireTierBody}}</p>
             {{/if}}
             {{/each}}
             {{else}}
@@ -952,7 +911,7 @@
                 {{!-- Show selected tier description --}}
                 {{#each campFirePickerLevels}}
                 {{#if selected}}
-                <p class="totm-fire-segment-desc">{{{body}}}</p>
+                <p class="totm-fire-segment-desc">{{> fireTierBody}}</p>
                 {{/if}}
                 {{/each}}
                 {{!-- Cold camp description --}}
@@ -1165,21 +1124,8 @@
     {{/if}}
     {{/unless}}
 
-    {{!-- Collapsed camp summary: no comfort or fire here (banner and map; chips often disagreed). Encounter DC and tent when relevant. --}}
-    {{#if (or encounterBar campStatus.hasTent)}}
-    <div class="camp-status-summary camp-collapsed-bar">
-        <div class="camp-collapsed-chips">
-            {{#if encounterBar}}
-            <span class="camp-collapsed-chip" title="Encounter DC">
-                <i class="fas fa-shield-alt"></i> DC {{encounterBar.effectiveDC}}
-            </span>
-            {{/if}}
-            {{#if campStatus.hasTent}}
-            <span class="camp-collapsed-chip gear-present" title="Tent pitched"><i class="fas fa-campground"></i></span>
-            {{/if}}
-        </div>
-    </div>
-    {{/if}}
+    {{!-- Subtle separator between roster and tabs (DC shown in footer for GM) --}}
+    <div class="roster-tab-fade"></div>
 
     {{!-- TotM: either the detail view (activity inspected) or the tabbed interface --}}
     {{#if isTheaterMode}}
@@ -1203,7 +1149,7 @@
         </div>
 
         {{#if totmDetailPanel.isCrafting}}
-        {{!-- ═══════════ INLINE CRAFTING (TotM) — uses station split-panel layout ═══════════ --}}
+        {{!-- ═══════════ INLINE CRAFTING (TotM): uses station split-panel layout ═══════════ --}}
         {{#with totmDetailPanel.crafting}}
         <div class="crafting-picker station-crafting-panel crafting-split totm-crafting-embed{{#if rollPending}} station-crafting-panel--roll-pending{{/if}}">
             {{#if rollPending}}
@@ -1652,10 +1598,12 @@
             <i class="fas fa-search" aria-hidden="true"></i> Identify
         </button>
         {{#unless safeRestSpot}}
+        {{#if comfortEnabled}}
         <button type="button" class="totm-tab {{#if (eq totmActiveTab 'fire')}}active{{/if}}"
                 data-action="switchTotmTab" data-totm-tab="fire">
             <i class="fas fa-fire" aria-hidden="true"></i> Fire
         </button>
+        {{/if}}
         {{/unless}}
     </div>
 
@@ -1733,8 +1681,9 @@
     </div>
     {{/if}}
 
-    {{!-- ── Fire Tab (not used at a safe rest spot; fire is treated as lit) ── --}}
+    {{!-- ── Fire Tab (not used at a safe rest spot or when comfort is off) ── --}}
     {{#if (eq totmActiveTab 'fire')}}
+    {{#if comfortEnabled}}
     {{#unless safeRestSpot}}
     <div class="totm-fire-panel">
         <div class="totm-fire-current">
@@ -1746,7 +1695,7 @@
             {{else if campColdCampDecided}}
             <div class="totm-fire-current-level cold-camp">
                 <i class="fas fa-snowflake" aria-hidden="true"></i>
-                <span>Cold camp — no fire</span>
+                <span>Cold camp, no fire</span>
             </div>
             {{else}}
             <div class="totm-fire-current-level unlit">
@@ -1763,6 +1712,7 @@
         {{/unless}}
     </div>
     {{/unless}}
+    {{/if}}
     {{/if}}
 
     {{/if}}
@@ -1791,6 +1741,11 @@
         {{else}}
         <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Waiting on GM</span>
         {{/if}}
+        {{else if isGM}}
+        <button type="button" class="btn-primary totm-footer-proceed disabled" disabled
+                title="{{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}} activities assigned. All must be assigned to proceed.">
+            <i class="fas fa-lock" aria-hidden="true"></i> Proceed to Rations
+        </button>
         {{else if activityPhasePlayerOverview.viewerHasSubmitted}}
         <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Waiting for others</span>
         {{/if}}
@@ -1835,6 +1790,13 @@
             {{else}}
             <p class="player-overview-note"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Everyone has an activity. Waiting on the GM to advance.</p>
             {{/if}}
+            {{else if isGM}}
+            <div class="respite-action-bar">
+                <button type="button" class="btn-primary disabled" disabled
+                        title="{{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}} activities assigned. All must be assigned to proceed.">
+                    <i class="fas fa-lock"></i> Proceed to Rations
+                </button>
+            </div>
             {{/if}}
         </div>
     </div>
@@ -1956,7 +1918,7 @@
                 {{!-- Feast advisory: shown when a TotM Serve Now feast pre-covered this character --}}
                 {{#if feastAdvisory}}
                 <div class="meal-advisory ok">
-                    <i class="fas fa-utensils"></i> A feast was served — food and water are covered for the party.
+                    <i class="fas fa-utensils"></i> A feast was served. Food and water are covered for the party.
                 </div>
                 {{/if}}
 
@@ -2068,7 +2030,7 @@
                         </div>
                         <div class="water-pool-status">
                             {{#if waterSufficient}}
-                            <span class="pool-status-ok"><i class="fas fa-check"></i> {{waterFilledCount}}/{{waterRequired}} pints — Hydrated</span>
+                            <span class="pool-status-ok"><i class="fas fa-check"></i> {{waterFilledCount}}/{{waterRequired}} pints. Hydrated</span>
                             {{else if waterFilledCount}}
                             <span class="pool-status-partial">{{waterFilledCount}} of {{waterRequired}} pints</span>
                             {{else}}
@@ -2217,7 +2179,7 @@
         {{/if}}
 
     </div>
-    {{!-- Campfire drawer: spatial mode only — TotM handles fire in the Activities tab --}}
+    {{!-- Campfire drawer: spatial mode only. TotM handles fire in the Activities tab. --}}
     {{#unless isTheaterMode}}
     <div class="campfire-drawer">
         <div class="campfire-drawer-content"></div>
@@ -2978,46 +2940,102 @@
         {{#if showEventPoolNudge}}
         <div class="art-nudge-banner event-pool-nudge-banner">
             <div class="art-nudge-content">
-                <i class="fas fa-book-open art-nudge-icon"></i>
                 <div class="art-nudge-text">
-                    <span class="art-nudge-title">No events in your pool for {{eventPoolTerrainLabel}}.</span>
-                    <span class="art-nudge-subtitle">Pick which camp events can occur. Until then, Roll for Events still runs a normal night check; a low roll will not draw from an empty pool.</span>
+                    <span class="art-nudge-title">Event Pool: {{eventPoolTerrainLabel}} - {{eventPoolCount}} events curated</span>
                 </div>
             </div>
             <div class="art-nudge-actions">
                 <button type="button" data-action="openEventPoolCurator" class="art-nudge-btn primary">
-                    <i class="fas fa-book-open"></i> Curate Pool
-                </button>
-                <button type="button" data-action="dismissEventPoolNudge" class="art-nudge-dismiss" title="Dismiss for now">
-                    <i class="fas fa-times"></i>
+                    Curate Pool
                 </button>
             </div>
         </div>
         {{/if}}
 
-        <div class="respite-event-card ambient event-roll-prompt">
-            <div class="event-name"><i class="fas fa-dice-d20"></i> Night Watch</div>
+        <div class="respite-event-card ambient event-roll-prompt nw-mode-{{eventsMode}}">
+            <div class="event-name">Night Watch</div>
+
+            <div class="nw-mode-selector" role="tablist" aria-label="How does the night unfold?">
+                <button type="button" class="nw-mode-tab {{#if eventsModeIsRandom}}is-active{{/if}}"
+                    role="tab" aria-selected="{{#if eventsModeIsRandom}}true{{else}}false{{/if}}"
+                    data-action="setEventsMode" data-mode="random"
+                    title="Roll a d20 against the encounter threshold. High rolls will trigger a random event from the terrain event pool.">
+                    <i class="fas fa-dice-d20 nw-mode-icon"></i>
+                    <span class="nw-mode-label">Random</span>
+                </button>
+                <button type="button" class="nw-mode-tab {{#if eventsModeIsImprovise}}is-active{{/if}}"
+                    role="tab" aria-selected="{{#if eventsModeIsImprovise}}true{{else}}false{{/if}}"
+                    data-action="setEventsMode" data-mode="improvise"
+                    title="Skip the dice and narrate your own night event on the spot.">
+                    <i class="fas fa-hat-wizard nw-mode-icon"></i>
+                    <span class="nw-mode-label">Improvise</span>
+                </button>
+                <button type="button" class="nw-mode-tab {{#if eventsModeIsPick}}is-active{{/if}}"
+                    role="tab" aria-selected="{{#if eventsModeIsPick}}true{{else}}false{{/if}}"
+                    data-action="setEventsMode" data-mode="pick"
+                    title="{{#if eventsModePickAvailable}}Choose a specific event from your curated pool. Bypasses the encounter threshold; the event runs as written.{{else}}No events in the curated pool for this terrain. Curate the pool first.{{/if}}"
+                    {{#unless eventsModePickAvailable}}disabled{{/unless}}>
+                    <i class="fas fa-book-open nw-mode-icon"></i>
+                    <span class="nw-mode-label">Pick from pool</span>
+                </button>
+            </div>
+
+            {{#if eventsModeIsRandom}}
             <div class="event-description">
                 {{#if pendingCampRolls.length}}Camp preparations complete. {{/if}}Roll a d20 against the encounter threshold to see what the night brings.
             </div>
             {{#if encounterBar}}
-            <div class="event-check-header">
-                <div class="event-dc-badge">
-                    <span class="dc-label">DC</span>
-                    <span class="dc-value">{{encounterBar.effectiveDC}}</span>
-                </div>
-                <div class="event-check-info">
-                    <strong class="check-skill-name">Encounter Threshold</strong>
-                    <span class="event-check-direction event-outcome-advisory">
+            <details class="encounter-details">
+                <summary class="encounter-summary">
+                    <span class="encounter-summary-badge">DC {{encounterBar.effectiveDC}}</span>
+                    <span class="encounter-summary-label">Encounter Threshold</span>
+                    <i class="fas fa-chevron-down encounter-chevron"></i>
+                </summary>
+                <div class="encounter-breakdown">
+                    <span class="event-outcome-advisory">
                         <i class="fas fa-moon"></i> Roll {{encounterBar.effectiveDC}}+: quiet night
                     </span>
-                    <span class="event-check-direction event-outcome-advisory warn">
+                    <span class="event-outcome-advisory warn">
                         <i class="fas fa-exclamation-triangle"></i> Roll below {{encounterBar.effectiveDC}}: event triggers
                     </span>
-                    <span class="event-check-direction event-outcome-advisory disaster">
+                    <span class="event-outcome-advisory disaster">
                         <i class="fas fa-skull"></i> Natural 1: Disaster!
                     </span>
                 </div>
+            </details>
+            {{/if}}
+            {{/if}}
+
+            {{#if eventsModeIsImprovise}}
+            <div class="event-description">
+                Roll the night check. If an event triggers, run your own scenario at the table.
+            </div>
+            {{#if encounterBar}}
+            <details class="encounter-details">
+                <summary class="encounter-summary">
+                    <span class="encounter-summary-badge">DC {{encounterBar.effectiveDC}}</span>
+                    <span class="encounter-summary-label">Encounter Threshold</span>
+                    <i class="fas fa-chevron-down encounter-chevron"></i>
+                </summary>
+                <div class="encounter-breakdown">
+                    <span class="event-outcome-advisory">
+                        <i class="fas fa-moon"></i> Roll {{encounterBar.effectiveDC}}+: quiet night
+                    </span>
+                    <span class="event-outcome-advisory warn">
+                        <i class="fas fa-exclamation-triangle"></i> Roll below {{encounterBar.effectiveDC}}: your scenario triggers
+                    </span>
+                </div>
+            </details>
+            {{/if}}
+            {{/if}}
+
+            {{#if eventsModeIsPick}}
+            <div class="event-description">
+                Choose a specific event from the curated pool. The encounter threshold is bypassed; the event runs as written.
+            </div>
+            <div class="nw-pick-summary">
+                <i class="fas fa-book-open"></i>
+                <span>{{eventPoolCount}} event{{#unless (eq eventPoolCount 1)}}s{{/unless}} available for {{eventPoolTerrainLabel}}.</span>
             </div>
             {{/if}}
         </div>
@@ -3143,9 +3161,13 @@
             {{/unless}}
             {{/if}}
         {{else}}
-        <button type="button" class="btn-primary btn-roll-events" data-action="rollEvents"
+        <button type="button" class="btn-primary btn-roll-events" data-action="commitEventsMode"
             {{#unless campPrepsResolved}}disabled title="Awaiting camp activity rolls"{{/unless}}>
+            {{#if eventsModeIsPick}}
+            <i class="fas fa-book-open"></i> Choose event
+            {{else}}
             <i class="fas fa-dice-d20"></i> Roll for Events
+            {{/if}}
         </button>
         {{/if}}
     </div>

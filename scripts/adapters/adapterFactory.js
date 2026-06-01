@@ -25,7 +25,7 @@ export function createAdapter() {
             return new PF2eAdapter();
 
         case "daggerheart":
-            console.warn(`${MODULE_ID} | System adapter: Daggerheart (stub – limited support)`);
+            console.warn(`${MODULE_ID} | System adapter: Daggerheart (stub, limited support)`);
             return new DaggerheartAdapter();
 
         default:

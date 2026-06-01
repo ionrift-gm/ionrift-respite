@@ -40,7 +40,7 @@ export class CampGearScanner {
     /**
      * Encounter modifier from fire size.
      *
-     * DESIGN RULE — DO NOT CHANGE WITHOUT A FAILING TEST:
+     * DESIGN RULE, DO NOT CHANGE WITHOUT A FAILING TEST:
      * Fire is a BEACON. A campfire attracts wandering monsters; a bonfire more so.
      * These values are NEGATIVE so that, in the RestFlowEngine formula
      *   effectiveDC = baseDC − campMods   (where campMods = shelter + weather + scouting + fire)
@@ -48,15 +48,15 @@ export class CampGearScanner {
      * Higher effectiveDC = harder to roll over = more encounters. That is correct.
      *
      * Mnemonic: "fire raises the DC, fire raises the danger."
-     * If you think it should be positive (safety angle), you are wrong — see RestFlowEngine.test.js
+     * If you think it should be positive (safety angle), you are wrong. See RestFlowEngine.test.js.
      * "fire is a beacon" suite.
      */
     static FIRE_ENCOUNTER_MOD_BY_LEVEL = Object.freeze({
-        cold_camp: 2,  // dark camp — stealth bonus, LOWERS effectiveDC (fewer encounters)
-        unlit:     0,   // undecided — no modifier
-        embers:    0,   // barely visible — no encounter change
-        campfire: -1,  // visible glow — +1 encounter DC (harder to avoid encounters)
-        bonfire:  -2   // obvious beacon — +2 encounter DC (significantly harder to avoid encounters)
+        cold_camp: 2,  // dark camp: stealth bonus, LOWERS effectiveDC (fewer encounters)
+        unlit:     0,   // undecided, no modifier
+        embers:    0,   // barely visible, no encounter change
+        campfire: -1,  // visible glow: +1 encounter DC (harder to avoid encounters)
+        bonfire:  -2   // obvious beacon: +2 encounter DC (significantly harder to avoid encounters)
     });
 
     /**
@@ -289,7 +289,7 @@ export class CampGearScanner {
                 campComfort,
                 campComfortPreFire: campComfort,
                 campComfortLabel: rules.label,
-                comfortTooltip: "Comfort rules disabled — full recovery",
+                comfortTooltip: "Comfort rules disabled, full recovery",
                 campBreakdown: [{ label: terrainLabel || "Base (terrain)", value: "safe", delta: 0 }],
                 comfortReason,
                 terrainLabel,
@@ -365,7 +365,7 @@ export class CampGearScanner {
 
             const rules = this.getRules(personalComfort);
 
-            // Recovery preview (approximate — final numbers come from RestFlowEngine)
+            // Recovery preview (approximate; final numbers come from RestFlowEngine)
             const actor = actors.find(a => a.id === m.actorId);
             const totalHd = actor?.system?.attributes?.hd?.max ?? actor?.system?.details?.level ?? 0;
             const rawHdRecovery = Math.max(1, Math.floor(totalHd / 2));

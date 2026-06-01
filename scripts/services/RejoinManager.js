@@ -1,7 +1,7 @@
 /**
  * @module RejoinManager
  * @description Manages persistent notification bars for rest rejoin, prep, and GM indicators.
- * Extracted from module.js (Phase 2.4). Pure DOM helpers — no module-level state dependencies.
+ * Extracted from module.js (Phase 2.4). Pure DOM helpers, no module-level state dependencies.
  *
  * Stateful handlers (_handleRequestShortRestState, _resumeGmShortRest) remain in module.js
  * because they mutate module-scoped variables (activeShortRestApp, respiteFlowActive).
@@ -195,7 +195,7 @@ export function removeGmRestIndicator() {
 /**
  * Updates the task-count span in the existing GM rest indicator bar.
  * Call whenever _characterChoices or _activityMealRationsSubmitted changes.
- * Safe to call even if the bar isn't visible — no-ops cleanly.
+ * Safe to call even if the bar isn't visible. No-ops cleanly.
  * @param {object} app - The active RestSetupApp instance.
  */
 export function refreshGmRestIndicator(app) {
@@ -231,7 +231,7 @@ export function refreshRejoinBar(app) {
     const span = bar.querySelector(".respite-bar-progress");
     if (!span) return;
     const trackFood = game.settings.get(MODULE_ID, "trackFood");
-    // TotM: rations collected in meal phase, not activity phase — bypass ration requirement.
+    // TotM: rations collected in meal phase, not activity phase; bypass ration requirement.
     const isTotM = (() => {
         try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; }
     })();

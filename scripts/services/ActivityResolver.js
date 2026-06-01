@@ -170,7 +170,7 @@ export class ActivityResolver {
                 if (followUpSkill && actor.system?.skills?.[followUpSkill]) {
                     chosenSkillKey = followUpSkill;
                 } else {
-                    // No followUp or invalid key — pick the actor's best skill
+                    // No followUp or invalid key, pick the actor's best skill
                     const skills = actor.system?.skills ?? {};
                     let bestKey = null;
                     let bestTotal = -99;

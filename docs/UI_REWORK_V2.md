@@ -1,4 +1,4 @@
-# Respite UI Rework v2 — Design Sketch
+# Respite UI Rework v2: Design Sketch
 
 > Branch: `ui-rework-v2` (from `cooking-wip`)
 > Goal: Break the current 7-phase wizard into a flow that feels natural, teaches
@@ -11,8 +11,8 @@
 The current flow is GM-centric: the GM configures everything up front, players
 wait, then players pick an activity. The rework flips this:
 
-- **The GM sets the scene** (terrain + weather — one screen, smart defaults).
-- **The players set up camp** (tent, fire, gear — this is where comfort comes from).
+- **The GM sets the scene** (terrain + weather; one screen, smart defaults).
+- **The players set up camp** (tent, fire, gear; this is where comfort comes from).
 - **The system explains itself through gear** ("You have a bedroll → +1 comfort").
 - **Advanced options exist but don't block the flow.**
 
@@ -21,13 +21,13 @@ wait, then players pick an activity. The rework flips this:
 ## Revised Phase Sequence
 
 ```
-1. Scene        (GM — quick or advanced)
-2. Travel       (GM + Players — if applicable)
-3. Make Camp    (Players — tent, fire, gear → comfort)
-4. Activities   (Players — what do you do tonight?)
-5. Nightfall    (Reflection + Sleep — merged, campfire-first)
-6. Encounters   (GM — event roll, complications, combat)
-7. Morning      (Resolution — recovery, outcomes)
+1. Scene        (GM: quick or advanced)
+2. Travel       (GM + Players, if applicable)
+3. Make Camp    (Players: tent, fire, gear → comfort)
+4. Activities   (Players: what do you do tonight?)
+5. Nightfall    (Reflection + Sleep, merged, campfire-first)
+6. Encounters   (GM: event roll, complications, combat)
+7. Morning      (Resolution: recovery, outcomes)
 ```
 
 ### Phase Count: Still 7, but feels like 4
@@ -46,12 +46,12 @@ Scene (2 picks + begin) → Make Camp → Activities → Encounters → Morning
 
 ### Core Decisions
 
-Two things the GM *must* pick — rest type and environment. Neither can be
+Two things the GM *must* pick: rest type and environment. Neither can be
 assumed. But they share a single screen, not a multi-step accordion.
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  RESPITE — Set the Scene                        │
+│  RESPITE: Set the Scene                         │
 │                                                 │
 │  Rest Type                                      │
 │  [ 🌙 Long Rest ]  [ ☕ Short Rest ]            │
@@ -71,7 +71,7 @@ assumed. But they share a single screen, not a multi-step accordion.
 
 - **Rest type** is a toggle, not a dropdown. Long Rest is default (highlighted).
   Short Rest changes the downstream flow (skip travel, simplified activities).
-- **Environment** is a dropdown — the GM picks the terrain. Can't be guessed.
+- **Environment** is a dropdown. The GM picks the terrain. Can't be guessed.
   The terrain hint below the dropdown explains what it means in plain language.
   Last-used terrain is remembered as the default for convenience.
 - **Weather** defaults to Clear. One-click dropdown override. Only shown for
@@ -80,14 +80,14 @@ assumed. But they share a single screen, not a multi-step accordion.
   The GM doesn't need to think about comfort at this point.
 - **"Advanced"** expands: scouting toggle, days-since-rest stepper,
   comfort override, shelter spell toggles.
-- **Encounter DC adjustment** is NOT here — it lives at the actual encounter
+- **Encounter DC adjustment** is NOT here. It lives at the actual encounter
   roll (Phase 6) where the GM has context from activities, fire, and table talk.
 - **No shelter step.** Shelter is inferred from player gear in Phase 3.
 
 ### What changes from current
 - Environment + Rest Type + Weather on one screen (no accordion)
-- Comfort removed from setup — derived from gear later
-- Shelter removed from setup — inferred from inventory
+- Comfort removed from setup, derived from gear later
+- Shelter removed from setup, inferred from inventory
 - Short Rest path is a toggle, not a separate flow
 
 ---
@@ -102,14 +102,14 @@ Skipped entirely for inn/tavern/city terrains.
 ### Simple Mode (default)
 ```
 ┌─────────────────────────────────────────────┐
-│  🥾 Travel — Forest (1 day)                │
+│  🥾 Travel: Forest (1 day)                 │
 │                                             │
 │  What did you do while travelling?          │
 │                                             │
 │  🧝 Elandril    [ Forage ▾ ] [✓]           │
 │  🧔 Randal      [ Hunt   ▾ ] [✓]           │
 │  🧙 Mira        [ Scout  ▾ ] [✓]           │
-│  ⚔️ Korrin      [ —      ▾ ] [✓]           │
+│  ⚔️ Korrin      [ -      ▾ ] [✓]           │
 │                                             │
 │  [ Roll All ▶ ]                             │
 └─────────────────────────────────────────────┘
@@ -117,7 +117,7 @@ Skipped entirely for inn/tavern/city terrains.
 
 - Players can pick from their own client (socket-driven).
 - GM sees all choices, can override, clicks "Roll All" when ready.
-- Results appear inline — no separate resolve step per day.
+- Results appear inline. No separate resolve step per day.
 - **Advanced** expands: per-day tabs, DC adjustments, custom "Other" rolls.
 
 ### What changes from current
@@ -137,16 +137,16 @@ what comfort means through their own inventory.
 
 The UI shows **camp comfort** (shared) and **personal comfort** (per-PC):
 
-- **Camp Comfort** — determined by terrain baseline, fire, and shelter spells.
+- **Camp Comfort**: determined by terrain baseline, fire, and shelter spells.
   This is the floor for everyone.
-- **Personal Comfort** — camp comfort + individual gear (bedroll, tent).
+- **Personal Comfort**: camp comfort + individual gear (bedroll, tent).
   Each PC can be different depending on what they carry.
 
 ### Wireframe
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  ⛺ Make Camp — Forest                                  │
+│  ⛺ Make Camp: Forest                                   │
 │                                                         │
 │  ┌────────────────────────────────────────────────┐     │
 │  │  🔥 CAMPFIRE                                   │     │
@@ -219,10 +219,10 @@ The UI shows **camp comfort** (shared) and **personal comfort** (per-PC):
    protection and high base comfort. It's a genuine choice, not auto-applied.
 
 4. **Tent replaces Shelter step.** If a PC has a tent, they get weather
-   protection and +1 comfort. No radio buttons, no GM selection — just
+   protection and +1 comfort. No radio buttons, no GM selection. Just
    inventory scanning.
 
-5. **Fire lifecycle.** The campfire is **fully expanded** during Make Camp —
+5. **Fire lifecycle.** The campfire is **fully expanded** during Make Camp.
    it's the centrepiece of this phase. Once camp is established:
    - **Activities phase:** fire shrinks to a compact sidebar on the right
      (just the fire icon + state label, no controls).
@@ -237,14 +237,14 @@ The UI shows **camp comfort** (shared) and **personal comfort** (per-PC):
    If you have a mess kit and the fire is lit, "Cook a Meal" appears
    in Activities. Without either, you eat raw rations.
 
-### Scouting — Simplified
+### Scouting: Simplified
 
 Scouting is a Travel activity (Phase 2), not a Make Camp feature.
 In the current system, scout results feed into a debrief panel that
 adjusts comfort. This adds UI complexity to Make Camp for a subtle bonus.
 
 **Rework:** Scouting results feed directly into the encounter DC in Phase 6.
-- **Best-of, not stacking.** Multiple scouts don't multiply the bonus —
+- **Best-of, not stacking.** Multiple scouts don't multiply the bonus.
   the system takes the single best scout roll. More scouts improve the
   odds of a good roll, but the DC adjustment is capped at one scout's
   contribution. (Narratively: they all find the same campsite, the best
@@ -258,12 +258,12 @@ The payoff is immediate and visible where it matters.
 
 ### What changes from current
 - Shelter step eliminated from Setup
-- Comfort dropdown eliminated — derived from gear
+- Comfort dropdown eliminated, derived from gear
 - Comfort shown as dual-layer breakdown (camp vs personal)
 - Leomund's Tiny Hut is a player toggle with trade-off, not auto-applied
 - Fire moved from Activities sidebar to Make Camp (expanded)
 - Fire controls simplified to lit/unlit (drop levels, firewood tracking, emotes)
-- Scouting outcome removed from Make Camp — feeds encounter DC only
+- Scouting outcome removed from Make Camp, feeds encounter DC only
 - Players understand what their gear does through the UI
 - GM only intervenes if they want to override (Advanced in Scene)
 
@@ -324,7 +324,7 @@ on the right (carried forward from Make Camp).
 
 ---
 
-## Phase 5: NIGHTFALL (Reflection + Sleep — merged)
+## Phase 5: NIGHTFALL (Reflection + Sleep, merged)
 
 Replaces the current separate Campfire and transition-to-events phases.
 
@@ -359,10 +359,10 @@ Replaces the current separate Campfire and transition-to-events phases.
 
 ## Phase 6: ENCOUNTERS (GM)
 
-Mostly unchanged — this is the strongest phase in the current flow.
+Mostly unchanged. This is the strongest phase in the current flow.
 Minor tweaks:
 
-- Rename from "Events" to "Encounters" — clearer for new GMs.
+- Rename from "Events" to "Encounters" for clarity to new GMs.
 - **Encounter DC adjustment lives here**, not in Setup. By this point the GM
   knows: who kept watch, whether defenses were set, fire state, scouting
   results, and anything the players discussed. The +/- buttons sit next
@@ -405,21 +405,21 @@ Power users lose nothing.
 ## Migration Notes
 
 ### What can be reused from current code
-- `RestFlowEngine` — core resolution logic, untouched
-- `EventResolver`, `DecisionTreeResolver` — encounters phase, untouched
-- `ActivityResolver` — activity definitions, mostly reused
-- `MealPhaseHandler` — rations auto-consume logic exists, just needs a toggle
-- `CampfireTokenLinker` — fire state management, reused in Make Camp
-- `RecoveryHandler` — resolution, untouched
+- `RestFlowEngine`: core resolution logic, untouched
+- `EventResolver`, `DecisionTreeResolver`: encounters phase, untouched
+- `ActivityResolver`: activity definitions, mostly reused
+- `MealPhaseHandler`: rations auto-consume logic exists, just needs a toggle
+- `CampfireTokenLinker`: fire state management, reused in Make Camp
+- `RecoveryHandler`: resolution, untouched
 
 ### What needs significant rework
-- `RestSetupApp._prepareContext()` — the context builder for templates
-- `rest-setup.hbs` — template is 3000 lines and phase-monolithic
+- `RestSetupApp._prepareContext()`: the context builder for templates
+- `rest-setup.hbs`: template is 3000 lines and phase-monolithic
 - Phase state machine (`this._phase` transitions)
 - Socket sync payloads (phase names change)
 
 ### What's new
-- `MakeCampPhase` — gear scanning, comfort derivation, fire interaction
+- `MakeCampPhase`: gear scanning, comfort derivation, fire interaction
 - Rations auto-consume toggle (simple toggle, not drag-drop default)
 - Activity pre-selection logic
 - Phase auto-skip logic

@@ -22,6 +22,10 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
     #pendingSelection = {};
     /** Whether pending selection differs from saved setting. */
     #dirty = false;
+    /** Index shown on the previous render, used to decide detail scroll reset. */
+    #renderedIndex = -1;
+    /** When true, the next render resets scroll to the top (terrain switch). */
+    #resetScroll = false;
 
     static DEFAULT_OPTIONS = {
         id: "respite-event-browser",
@@ -31,7 +35,7 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
             resizable: true
         },
         position: { width: 720, height: 560 },
-        classes: ["ionrift-window"]
+        classes: ["ionrift-window", "glass-ui", "ionrift-respite-app"]
     };
 
     constructor(options = {}) {
@@ -121,14 +125,22 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
         <p class="event-pool-intro">Tick events you are willing to run at camp. Only selected events can appear on a night check roll.</p>`;
 
         if (context.hasEvents) {
+            let disasterDividerShown = false;
             const checklistHtml = this.#events.map((evt, idx) => {
                 const checked = context.pendingSelection[evt.id] ? "checked" : "";
                 const active = idx === context.index ? " active" : "";
-                const tierHint = evt.tier === "disaster" ? " · disaster" : "";
-                return `
-                <label class="event-pool-check-item${active}" data-index="${idx}">
+                const isDisaster = evt.tier === "disaster";
+                let divider = "";
+                if (isDisaster && !disasterDividerShown) {
+                    disasterDividerShown = true;
+                    divider = `
+                <div class="event-pool-group-divider"><i class="fas fa-triangle-exclamation"></i> Disasters</div>`;
+                }
+                const disasterClass = isDisaster ? " disaster" : "";
+                return `${divider}
+                <label class="event-pool-check-item${disasterClass}${active}" data-index="${idx}">
                     <input type="checkbox" class="event-pool-check" data-event-id="${evt.id}" ${checked} />
-                    <span class="event-pool-check-name">${evt.name ?? evt.id}${tierHint}</span>
+                    <span class="event-pool-check-name">${evt.name ?? evt.id}</span>
                 </label>`;
             }).join("");
 
@@ -164,6 +176,7 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
         el.querySelector(".event-terrain-select")?.addEventListener("change", (e) => {
             this.#terrainFilter = e.target.value || null;
             this.#index = 0;
+            this.#resetScroll = true;
             this.render({ force: true });
         });
 
@@ -254,7 +267,13 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
                     </div>`;
             }
             outcomesHtml += `</div>`;
+        } else if (mech.type === "decision_tree") {
+            outcomesHtml = this.#renderDecisionTree(mech);
         }
+
+        const guidanceHtml = evt.gmGuidance
+            ? `<div class="event-gm-guidance"><span class="event-gm-guidance-label"><i class="fas fa-user-secret"></i> GM notes</span><p>${evt.gmGuidance}</p></div>`
+            : "";
 
         const checked = inPool ? "checked" : "";
 
@@ -275,12 +294,61 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
             <div class="event-card-body">
                 <p class="event-description">${evt.description ?? ""}</p>
                 ${outcomesHtml}
+                ${guidanceHtml}
             </div>
             <div class="event-card-footer">
                 <span class="event-category"><i class="${categoryIcon}"></i> ${evt.category ?? "general"}</span>
                 ${mech.groupCheck ? `<span class="event-dc"><i class="fas fa-dice-d20"></i> DC ${mech.groupCheck.dc ?? "?"} ${mech.groupCheck.skill ?? ""}</span>` : ""}
             </div>
         </div>`;
+    }
+
+    /**
+     * Renders a decision-tree disaster as a prompt plus its top-level options,
+     * so the curator sees what the event actually asks of the table.
+     *
+     * @param {object} mech
+     * @returns {string}
+     */
+    #renderDecisionTree(mech) {
+        const options = mech.options ?? [];
+        if (!options.length) return "";
+
+        const promptHtml = mech.prompt
+            ? `<p class="event-decision-prompt">${mech.prompt}</p>`
+            : "";
+
+        const optionRows = options.map(opt => {
+            const check = opt.check ?? {};
+            const skills = Array.isArray(check.skills)
+                ? check.skills.join(" / ")
+                : (check.skill ?? "");
+            const dcHtml = check.dc != null
+                ? `<span class="event-decision-dc"><i class="fas fa-dice-d20"></i> ${skills ? skills.toUpperCase() + " " : ""}DC ${check.dc}</span>`
+                : "";
+            const descHtml = opt.description
+                ? `<span class="event-decision-option-desc">${opt.description}</span>`
+                : "";
+            const branchHtml = opt.onFailure?.options?.length
+                ? `<span class="event-decision-branch"><i class="fas fa-code-branch"></i> Failure leads to a follow-up choice.</span>`
+                : "";
+            return `
+                <div class="event-decision-option">
+                    <div class="event-decision-option-head">
+                        <span class="event-decision-option-label">${opt.label ?? opt.id ?? "Option"}</span>
+                        ${dcHtml}
+                    </div>
+                    ${descHtml}
+                    ${branchHtml}
+                </div>`;
+        }).join("");
+
+        return `
+            <div class="event-decision-tree">
+                <div class="event-decision-header"><i class="fas fa-code-branch"></i> Decision</div>
+                ${promptHtml}
+                <div class="event-decision-options">${optionRows}</div>
+            </div>`;
     }
 
     /** Persists pending selection to world settings. */
@@ -307,7 +375,25 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
 
     /** @override */
     _replaceHTML(result, content, options) {
+        const prevChecklist = content.querySelector(".event-pool-checklist");
+        const prevDetail = content.querySelector(".event-pool-detail");
+        const checklistScroll = prevChecklist?.scrollTop ?? 0;
+        const detailScroll = prevDetail?.scrollTop ?? 0;
+        const sameEvent = this.#renderedIndex === this.#index;
+
         content.replaceChildren(result);
+
+        const newChecklist = content.querySelector(".event-pool-checklist");
+        if (newChecklist) {
+            newChecklist.scrollTop = this.#resetScroll ? 0 : checklistScroll;
+        }
+        const newDetail = content.querySelector(".event-pool-detail");
+        if (newDetail) {
+            newDetail.scrollTop = (this.#resetScroll || !sameEvent) ? 0 : detailScroll;
+        }
+
+        this.#renderedIndex = this.#index;
+        this.#resetScroll = false;
     }
 
     /** Loads all catalog events for browsing and curation. */
@@ -324,6 +410,14 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
         } else {
             this.#events = [...this.#allEvents];
         }
+        // Keep disasters grouped at the bottom so they read as a separate class
+        // of event, then alphabetical within each group.
+        this.#events.sort((a, b) => {
+            const aDisaster = a.tier === "disaster" ? 1 : 0;
+            const bDisaster = b.tier === "disaster" ? 1 : 0;
+            if (aDisaster !== bDisaster) return aDisaster - bDisaster;
+            return (a.name ?? "").localeCompare(b.name ?? "");
+        });
         if (this.#index >= this.#events.length) {
             this.#index = Math.max(0, this.#events.length - 1);
         }

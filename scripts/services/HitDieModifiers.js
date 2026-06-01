@@ -22,7 +22,7 @@ export class HitDieModifiers {
     }
 
     /**
-     * PHB "Durable" only — not compound names like "Durable Summons".
+     * PHB "Durable" only, not compound names like "Durable Summons".
      * @param {string} [name]
      * @returns {boolean}
      */
@@ -45,7 +45,7 @@ export class HitDieModifiers {
 
     /**
      * dnd5e v4+: {@code system.attuned} is a boolean (the actual attunement state).
-     * {@code system.attunement} is a string ("required"/"optional"/"") — the requirement, not the state.
+     * {@code system.attunement} is a string ("required"/"optional"/""); the requirement, not the state.
      * Legacy builds used numeric {@code system.attunement} (ATTUNED=2) or string {@code "attuned"}.
      * @param {Item} item
      * @returns {boolean}

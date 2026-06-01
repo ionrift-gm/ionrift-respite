@@ -1,5 +1,5 @@
 /**
- * SocketRouter — inbound socket message dispatcher.
+ * SocketRouter: inbound socket message dispatcher.
  * Extracted from module.js (Phase 2.2).
  *
  * Receives raw socket data and routes to handler functions.
@@ -100,7 +100,7 @@ export function dispatch(data, ctx) {
             } else if (ctx.playerRestActive) {
                 // Client is in a rest but has no app open (canvas-only phase, or dismissed sheet).
                 // Re-request the full rest state so we stay in sync.
-                console.log(`${MODULE_ID} | PHASE_CHANGED received but no player app — requesting state resync`);
+                console.log(`${MODULE_ID} | PHASE_CHANGED received but no player app, requesting state resync`);
                 emitRequestRestState(game.user.id);
             }
             break;
@@ -268,7 +268,7 @@ export function dispatch(data, ctx) {
                 const actor = game.actors.get(actorId);
                 const item = actor?.items?.get(itemId);
                 if (!item) {
-                    console.warn(`[Respite] WB-IDENTIFY GM: item not found — actor=${actorId} item=${itemId}`);
+                    console.warn(`[Respite] WB-IDENTIFY GM: item not found. actor=${actorId} item=${itemId}`);
                     emitWorkbenchIdentifyResult({ requestId, success: false, targetUserId });
                     return;
                 }
@@ -292,7 +292,7 @@ export function dispatch(data, ctx) {
                     }
                 }
                 if (!success) {
-                    console.log(`[Respite] WB-IDENTIFY GM: QM did not identify — trying curseBypass update`);
+                    console.log(`[Respite] WB-IDENTIFY GM: QM did not identify, trying curseBypass update`);
                     try {
                         await item.update({ "system.identified": true }, { curseBypass: true });
                         success = true;

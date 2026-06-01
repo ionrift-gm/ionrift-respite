@@ -193,7 +193,7 @@ function main() {
   console.log(
     coverageOk
       ? `✅ Coverage: ${fileTotal}/${fileTotal} files signed off`
-      : `❌ Coverage: ${coverageFailCount} problem(s) — ${coverageErrors.join(", ")}`
+      : `❌ Coverage: ${coverageFailCount} problem(s): ${coverageErrors.join(", ")}`
   );
 
   if (statusErrors.length > 0) {
@@ -253,7 +253,7 @@ function main() {
       parts.push(`${stubErrors.length} stub description error(s)`);
     }
     console.log(
-      `Pack validation FAILED — ${parts.join(", ")}. Promote items to "approved" in packs/src/SIGNOFF.json to release.`
+      `Pack validation FAILED: ${parts.join(", ")}. Promote items to "approved" in packs/src/SIGNOFF.json to release.`
     );
     process.exit(1);
   }

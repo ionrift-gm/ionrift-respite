@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * lint-hbs.mjs — Offline Handlebars template validator
+ * lint-hbs.mjs: Offline Handlebars template validator
  *
  * Catches parse errors (unclosed blocks, bad helpers, typos) before
  * Foundry discovers them at runtime. Runs Handlebars.precompile()
@@ -12,8 +12,8 @@
  *   node tools/lint-hbs.mjs path/to/file   # lint a single file
  *
  * Exit code:
- *   0 — all templates parse successfully
- *   1 — one or more parse errors found
+ *   0: all templates parse successfully
+ *   1: one or more parse errors found
  */
 
 import { readFileSync, readdirSync, statSync, watch } from "node:fs";
@@ -84,7 +84,7 @@ function checkBlockBalance(source, filePath) {
             } else if (m[2]) {
                 // Closing block
                 if (stack.length === 0) {
-                    issues.push(`  L${i + 1}: Unexpected {{/${m[2]}}} — no matching opening block`);
+                    issues.push(`  L${i + 1}: Unexpected {{/${m[2]}}}, no matching opening block`);
                 } else {
                     const top = stack.pop();
                     if (top.type !== m[2]) {

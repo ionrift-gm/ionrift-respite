@@ -138,7 +138,7 @@ export function computeCanShowDetectMagicScanButton(partyActors) {
 
 /**
  * Returns a human-readable tooltip string explaining why this player can
- * trigger the Detect Magic scan — e.g. "Lyra has Detect Magic as a cantrip."
+ * trigger the Detect Magic scan, e.g. "Lyra has Detect Magic as a cantrip."
  * Returns null for GMs (they have their own static title) and for players
  * with no access.
  * @param {Actor[]} partyActors

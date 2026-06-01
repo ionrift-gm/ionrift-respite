@@ -1,7 +1,7 @@
 import { SystemAdapter } from "./SystemAdapter.js";
 
 /**
- * DnD5eAdapter – Full implementation for Dungeons & Dragons 5th Edition.
+ * DnD5eAdapter: Full implementation for Dungeons & Dragons 5th Edition.
  *
  * Maps all Respite adapter methods to the dnd5e system data model.
  * Tested against dnd5e system v3+ (Foundry V12+).

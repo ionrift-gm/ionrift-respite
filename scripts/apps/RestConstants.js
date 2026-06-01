@@ -411,7 +411,7 @@ export const STATION_RANGE_SQUARES = 3;
 export const PLACEHOLDER_CAMP_STATION = {
     name: "Build site",
     path: "icons/svg/circle.svg",
-    /** Half-grid footprint — small supply bundle, not a full station. */
+    /** Half-grid footprint. Small supply bundle, not a full station. */
     width: 0.5,
     height: 0.5
 };
@@ -431,7 +431,7 @@ export const SHELTER_SPELLS = [
 
 /** Comfort tier tooltips for the camp status bar */
 export function getComfortTip(tier) {
-    if (!isComfortEnabled()) return "Comfort rules disabled — full recovery";
+    if (!isComfortEnabled()) return "Comfort rules disabled, full recovery";
     const tips = {
         hostile: "Hostile: 75% HP, -2 HD, CON DC 15 or +1 exhaustion",
         rough: "Rough: full HP, -1 HD, CON DC 10 or +1 exhaustion",

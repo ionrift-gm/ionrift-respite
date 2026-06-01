@@ -37,18 +37,18 @@ jobs:
             fi
             echo "OK: dev is an ancestor of HEAD"
           else
-            echo "INFO: No dev branch found — skipping sync check"
+            echo "INFO: No dev branch found, skipping sync check"
           fi
 
       - name: Validate Assets
         run: |
           FIRST_PNG=$(find assets -name '*.png' -type f | head -1)
           if [ -z "$FIRST_PNG" ]; then
-            echo "WARNING: No PNG files found in assets/ — skipping validation"
+            echo "WARNING: No PNG files found in assets/, skipping validation"
           else
             SIZE=$(wc -c < "$FIRST_PNG")
             if [ "$SIZE" -lt 1000 ]; then
-              echo "ERROR: $FIRST_PNG is only ${SIZE} bytes — likely an LFS pointer, not an image"
+              echo "ERROR: $FIRST_PNG is only ${SIZE} bytes, likely an LFS pointer, not an image"
               exit 1
             fi
             echo "OK: Asset files are real images (first file: $FIRST_PNG, ${SIZE} bytes)"
@@ -56,11 +56,11 @@ jobs:
 
           FIRST_WEBM=$(find assets -name '*.webm' -type f | head -1)
           if [ -z "$FIRST_WEBM" ]; then
-            echo "INFO: No WebM files found in assets/ — skipping"
+            echo "INFO: No WebM files found in assets/, skipping"
           else
             SIZE=$(wc -c < "$FIRST_WEBM")
             if [ "$SIZE" -lt 1000 ]; then
-              echo "ERROR: $FIRST_WEBM is only ${SIZE} bytes — likely an LFS pointer"
+              echo "ERROR: $FIRST_WEBM is only ${SIZE} bytes, likely an LFS pointer"
               exit 1
             fi
             echo "OK: WebM files are real assets (first file: $FIRST_WEBM, ${SIZE} bytes)"
@@ -242,7 +242,7 @@ jobs:
             const tag = process.env.GITHUB_REF_NAME;
             const payload = {
               embeds: [{
-                title: `🔥 Ionrift Respite — v${version}`,
+                title: `🔥 Ionrift Respite v${version}`,
                 description: desc,
                 color: 0xC9952A,
                 url: `https://github.com/${repo}/releases/tag/${tag}`,
@@ -252,7 +252,7 @@ jobs:
 
             const webhook = process.env.DISCORD_WEBHOOK;
             if (!webhook) {
-              core.warning('DISCORD_WEBHOOK_URL secret is not set — skipping Discord notification');
+              core.warning('DISCORD_WEBHOOK_URL secret is not set, skipping Discord notification');
               return;
             }
 

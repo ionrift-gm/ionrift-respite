@@ -75,6 +75,21 @@ export class RestFlowEngine {
     }
 
     /**
+     * Effective encounter threshold for the current rest (same math as the
+     * encounter bar and resolveEvents). Positive camp modifiers lower the DC.
+     * @returns {number}
+     */
+    getEffectiveEncounterDC() {
+        const campMods = (this.fireRollModifier ?? 0)
+            + (this.shelterEncounterMod ?? 0)
+            + (this._encounterBreakdown?.scouting ?? 0)
+            + (this._encounterBreakdown?.defenses ?? 0)
+            + (this._encounterBreakdown?.travelMishap ?? 0);
+        const baseDC = this._baseDC ?? 15;
+        return Math.max(1, baseDC - campMods + (this.gmEncounterAdj ?? 0));
+    }
+
+    /**
      * Phase 3: Resolve events. Rolls against the terrain event table.
      * @param {EventResolver} eventResolver
      * @param {string} [scoutTier] - Scouting result tier (nat1, poor, average, good, nat20, none)
@@ -88,18 +103,8 @@ export class RestFlowEngine {
 
         this._phase = "events";
 
-        // All modifiers adjust the THRESHOLD (DC), not the roll.
-        // Positive shelter+weather (shelterEncounterMod), scouting, fire, and defenses each
-        // increase campMods so effectiveDC drops (easier quiet night). Positive gmEncounterAdj
-        // raises effectiveDC (harder quiet night). Must match RestSetupApp encounter bar total.
-        const campMods = (this.fireRollModifier ?? 0)
-            + (this.shelterEncounterMod ?? 0)
-            + (this._encounterBreakdown?.scouting ?? 0)
-            + (this._encounterBreakdown?.defenses ?? 0)
-            + (this._encounterBreakdown?.travelMishap ?? 0);
-        const baseDC = this._baseDC ?? 15; // Set during setup from terrain table
-        const effectiveDC = Math.max(1, baseDC - campMods + (this.gmEncounterAdj ?? 0));
-        console.log(`[Respite:Engine] resolveEvents — baseDC=${baseDC}, shelterEncounterMod=${this.shelterEncounterMod ?? 0}, fireRollModifier=${this.fireRollModifier ?? 0}, breakdownDefenses=${this._encounterBreakdown?.defenses ?? 0}, campMods=${campMods}, gmAdj=${this.gmEncounterAdj ?? 0} → effectiveDC=${effectiveDC}, scoutTier=${scoutTier}`);
+        const effectiveDC = this.getEffectiveEncounterDC();
+        console.log(`[Respite:Engine] resolveEvents: effectiveDC=${effectiveDC}, scoutTier=${scoutTier}`);
         const events = await eventResolver.roll(this.terrainTag, this.watchRoster, effectiveDC, scoutTier);
         return events;
     }
@@ -233,7 +238,7 @@ export class RestFlowEngine {
         const rawHdRecovery = Math.max(1, Math.floor(totalHd / 2));
 
         // Safe rest spot: full HP cap, no comfort tier penalties, no exhaustion risk.
-        // Armor sleep penalty is waived — characters in a safe haven are assumed to
+        // Armor sleep penalty is waived. Characters in a safe haven are assumed to
         // manage their own armor (doff at the inn, etc.) without mechanical penalty.
         if (this.safeRestSpot) {
             const effectiveComfort = "safe";
@@ -298,7 +303,7 @@ export class RestFlowEngine {
         // Effective comfort: start with camp comfort, boost if activity has comfort_boost
         let effectiveComfort = this.comfort;
 
-        // When comfort is disabled, force safe — skip all comfort tier logic
+        // When comfort is disabled, force safe; skip all comfort tier logic
         const comfortEnabled = isComfortEnabled();
         if (!comfortEnabled) {
             effectiveComfort = "safe";
@@ -380,7 +385,7 @@ export class RestFlowEngine {
             ?.filter(e => e.type === "bonus_hd")
             ?.reduce((sum, e) => sum + (e.value ?? 0), 0) ?? 0;
 
-        // Gear bonuses — bedroll and mess kit effects are part of comfort rules
+        // Gear bonuses: bedroll and mess kit effects are part of comfort rules
         const gearBonusHd = (comfortEnabled && hasBedroll) ? 1 : 0;
         // Mess Kit / Cook's Utensils: advantage on exhaustion save when fire is lit
         const fireIsLit = this.fireLevel && this.fireLevel !== "unlit";

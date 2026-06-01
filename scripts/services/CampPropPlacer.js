@@ -8,19 +8,19 @@
  *   2. Perimeter Ring: select a campfire token → places a ring of torch pairs
  *
  * Usage from Foundry console:
- *   game.ionrift.respite.placeCampfire()      — place campfire (base + fire overlay)
- *   game.ionrift.respite.placeTorch()         — single torch placement mode
- *   game.ionrift.respite.placePerimeter()     — ring around selected campfire
- *   game.ionrift.respite.placeCamp()          — full camp: campfire + perimeter ring
- *   game.ionrift.respite.clearTorches()       — remove all torch pairs from scene
- *   game.ionrift.respite.toggleTorches()      — toggle all torch lights on/off
+ *   game.ionrift.respite.placeCampfire()      : place campfire (base + fire overlay)
+ *   game.ionrift.respite.placeTorch()         : single torch placement mode
+ *   game.ionrift.respite.placePerimeter()     : ring around selected campfire
+ *   game.ionrift.respite.placeCamp()          : full camp: campfire + perimeter ring
+ *   game.ionrift.respite.clearTorches()       : remove all torch pairs from scene
+ *   game.ionrift.respite.toggleTorches()      : toggle all torch lights on/off
  */
 
 import { CAMPFIRE_FLAME_FLOOR_SORT, CAMPFIRE_PIT_SORT } from "./CompoundCampPlacer.js";
 
 const MODULE_ID = "ionrift-respite";
 
-// Asset paths — Foundry core icons (premium art overridden via ImageResolver when art pack present)
+// Asset paths: Foundry core icons (premium art overridden via ImageResolver when art pack present)
 const TORCH_STAKES = [
     "icons/svg/light.svg",
 ];
@@ -198,7 +198,7 @@ async function createCampfirePair(x, y) {
 
     const linkId = foundry.utils.randomID(8);
 
-    // Campfire base token (always visible, no light — the charred logs)
+    // Campfire base token (always visible, no light: the charred logs)
     const baseData = {
         name: "Campfire Base",
         texture: { src: randomCampfireBase() },
@@ -361,7 +361,7 @@ export async function placePerimeter({ count = 4, radius = 3 } = {}) {
         return;
     }
 
-    // No selection — ask GM to click a center point
+    // No selection. Ask GM to click a center point.
     ui.notifications.info("Select a campfire token first, or click a center point for the perimeter.");
     try {
         const position = await _pickCanvasPoint();

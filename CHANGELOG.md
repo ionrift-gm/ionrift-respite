@@ -51,7 +51,7 @@
 ## [2.2.2] - 2026-05-14
 
 ### Fixed
-- **Fresh installs now load all compendium data.** Installing Respite for the first time (or reinstalling) resulted in empty compendiums — no campfire actor, no forage items, no guide journal. Camp stations would not place, and foraging was greyed out with a "requires content pack" tooltip. Existing installs that had been updated in-place were unaffected. This has been broken since v2.0.3.
+- **Fresh installs now load all compendium data.** Installing Respite for the first time (or reinstalling) resulted in empty compendiums: no campfire actor, no forage items, no guide journal. Camp stations would not place, and foraging was greyed out with a "requires content pack" tooltip. Existing installs that had been updated in-place were unaffected. This has been broken since v2.0.3.
 - All camp station actors are now present in the Respite Actors compendium: Campfire, Arcane Workbench, Medical Bedding, Weapon Rack, Cooking Station, Bedroll, Tent, and Mess Kit. Previously only the Workbench survived the packaging step.
 
 ## [2.2.0] - 2026-05-13
@@ -135,7 +135,7 @@
 ## [2.0.4] - 2026-05-03
 
 ### Fixed
-- Construct (and other essence-based) characters now correctly see their custom essence items in the Rations picker. Items listed in the Essence Items field of the Diet Configuration were not appearing because the classifier wasn't checking the character's diet when scanning inventory — only the built-in essence name list. Scrap Metal, Iron Filings, and any other custom essence items now show up as expected.
+- Construct (and other essence-based) characters now correctly see their custom essence items in the Rations picker. Items listed in the Essence Items field of the Diet Configuration were not appearing because the classifier wasn't checking the character's diet when scanning inventory, only the built-in essence name list. Scrap Metal, Iron Filings, and any other custom essence items now show up as expected.
 
 ## [2.0.3] - 2026-05-03
 
@@ -153,7 +153,7 @@
 ## [2.0.2] - 2026-05-03
 
 ### Fixed
-- The art pack nudge and Content Packs screen incorrectly linked to a Patreon-gated collection. The core art pack is free — all download links now point to the public post.
+- The art pack nudge and Content Packs screen incorrectly linked to a Patreon-gated collection. The core art pack is free; all download links now point to the public post.
 - Pack registry marked the core art pack as Acolyte tier. Corrected to Free.
 
 ## [2.0.1] - 2026-05-03
@@ -277,7 +277,7 @@
 ### Added
 - Two-phase disaster roll workflow. The GM now configures roll modifiers before dispatching a roll request to players. Phase 1 shows a \"Configure\" header with per-character selectors. Phase 2 shows a dispatched confirmation so the GM knows the request is live.
 - Per-character roll modifier selectors in the disaster decision tree. GMs can set Normal, Advantage, Disadvantage, Force Pass, or Force Fail per character before sending the roll.
-- Force Pass / Force Fail outcomes. When forced, no dice are rolled — the result is synthetic, posted immediately, and shown to the player as a confirmed outcome rather than a standard roll.
+- Force Pass / Force Fail outcomes. When forced, no dice are rolled. The result is synthetic, posted immediately, and shown to the player as a confirmed outcome rather than a standard roll.
 - GM Guidance flyout. A body-level panel opens alongside the disaster tree showing GM-only scene-setting notes and tactical guidance. Tears down cleanly when the rest window closes.
 - `random` effect scope in disaster JSON. Effects with `"scope": "random"` now resolve to a single consistent target across all character outcome calculations. Stable per effect key; re-rolls are deterministic within a single rest.
 - Stall penalty hint text. A permanent muted label lists common stall triggers (repeating questions, third option bids) so the GM knows when to apply a stall.

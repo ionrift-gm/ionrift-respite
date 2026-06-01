@@ -8,7 +8,7 @@
 
 const MODULE_ID = "ionrift-respite";
 
-/** Player restriction definitions — order = display order. */
+/** Player restriction definitions. Order = display order. */
 const RESTRICTION_TOGGLES = [
     {
         key: "interceptRests",

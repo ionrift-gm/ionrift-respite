@@ -9,13 +9,13 @@
 
 const MODULE_ID = "ionrift-respite";
 
-/** Activity toggle definitions — order = display order in the dialog. */
+/** Activity toggle definitions. Order = display order in the dialog. */
 const ACTIVITY_TOGGLES = [
     {
         key: "enableProfessions",
         label: "Crafting Professions",
         icon: "fas fa-hammer",
-        hint: "Cooking, brewing, tailoring, and crafting activities. Also controls the travel phase — disabling this auto-skips travel."
+        hint: "Cooking, brewing, tailoring, and crafting activities. Also controls the travel phase: disabling this auto-skips travel."
     },
     {
         key: "enableFletching",

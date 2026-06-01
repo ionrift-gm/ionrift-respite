@@ -1,5 +1,5 @@
 /**
- * playerClosePolicy — pure close-option resolution helpers.
+ * playerClosePolicy: pure close-option resolution helpers.
  *
  * Extracted from the player RSA close override in SocketRouterHandlers.js
  * so the activity-phase retain rule can be unit-tested without pulling

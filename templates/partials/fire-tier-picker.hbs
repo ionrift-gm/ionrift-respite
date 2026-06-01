@@ -6,7 +6,7 @@
             <span class="totm-fire-tier-name">{{label}}</span>
             <span class="totm-fire-tier-cost">{{costLabel}}</span>
         </div>
-        <p class="totm-fire-tier-body">{{body}}</p>
+        <p class="totm-fire-tier-body">{{> fireTierBody}}</p>
         {{#if ../campFireIsLit}}
             {{#if selected}}
             <span class="totm-fire-tier-current">CURRENT</span>

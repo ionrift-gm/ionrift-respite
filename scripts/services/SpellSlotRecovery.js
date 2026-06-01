@@ -16,7 +16,7 @@ export class SpellSlotRecovery {
         const uses = item.system?.uses ?? {};
         const recharge = item.system?.recharge ?? {};
         // Mirror dnd5e AbilityUseDialog: when recharge.value is set, availability is
-        // `recharge.charged`, not uses.value. Feat `recharge.value` is the d6 face (1–6), not a use counter.
+        // `recharge.charged`, not uses.value. Feat `recharge.value` is the d6 face (1-6), not a use counter.
         const recharges = !!recharge.value;
         const rawVal = uses.value;
         const usesVal = Number(rawVal ?? 0);

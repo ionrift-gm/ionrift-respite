@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // validate-changelog.mjs
 // Validates the latest CHANGELOG.md entry against Ionrift formatting rules.
-// Exits 1 if any violations are found — intended to run in CI before release.
+// Exits 1 if any violations are found; intended to run in CI before release.
 
 import { readFileSync } from 'fs';
 
@@ -37,14 +37,14 @@ for (let i = 0; i < entryLines.length; i++) {
   const lineNum = i + 2; // +2 accounts for the ## heading line
 
   // Soft-wrap check: a line starting with 2+ spaces that is not a sub-bullet
-  // indicates a continuation of the previous bullet — not allowed.
+  // indicates a continuation of the previous bullet, not allowed.
   if (/^ {2,}\S/.test(line) && !line.trimStart().startsWith('-')) {
     errors.push(`  Line ${lineNum}: soft-wrapped continuation (bullets must be single unwrapped lines)\n    > ${line.trimEnd()}`);
   }
 }
 
 if (errors.length > 0) {
-  console.error(`\nCHANGELOG validation FAILED — ${errors.length} issue(s):\n`);
+  console.error(`\nCHANGELOG validation FAILED: ${errors.length} issue(s):\n`);
   for (const e of errors) console.error(e);
   process.exit(1);
 } else {
