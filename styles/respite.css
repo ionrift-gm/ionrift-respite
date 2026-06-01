@@ -4532,6 +4532,23 @@ button.is-processing {
     border-left-color: #3498db;
 }
 
+/* Active challenge card (unresolved, needs GM adjudication) gets subtle elevation
+   so it reads as the thing to act on, distinct from resolved/ambient cards. */
+.respite-event-card.encounter:not(.resolved-event),
+.respite-event-card.complication:not(.resolved-event),
+.respite-event-card.discovery:not(.resolved-event) {
+    background: rgba(255, 255, 255, 0.025);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 14px rgba(0, 0, 0, 0.22);
+}
+
+/* Multi-event nights: while one check is being adjudicated, the others are
+   gated (their Request Rolls is disabled). Recede them so the active card leads. */
+.respite-event-card:has(.btn-resolve-check:disabled) {
+    opacity: 0.5;
+    box-shadow: none;
+    transition: opacity 0.2s ease;
+}
+
 /* ---- Event Card Expanded Details ---- */
 
 .respite-event-card .event-header {
@@ -4656,6 +4673,19 @@ button.is-processing {
     font-size: 0.65rem;
     font-style: italic;
     color: rgba(255, 255, 255, 0.35);
+}
+.event-check-roster {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.55);
+    margin-top: 0.1rem;
+}
+.event-check-roster i {
+    font-size: 0.6rem;
+    color: var(--ionrift-accent, #9b59b6);
+    opacity: 0.6;
 }
 .event-gm-hint {
     font-size: 0.65rem;
@@ -4988,6 +5018,16 @@ button.is-processing {
     opacity: 0.6;
 }
 
+/* Lead variant: the narrate-first beat of the GM workflow, given more presence */
+.event-narration-advisory.lead {
+    color: rgba(255, 255, 255, 0.7);
+    background: rgba(155, 89, 182, 0.1);
+    border-left: 3px solid rgba(155, 89, 182, 0.5);
+    border-radius: 0 4px 4px 0;
+    padding: 0.4rem 0.55rem;
+}
+.event-narration-advisory.lead i { opacity: 0.85; }
+
 .event-narration-hint {
     display: flex;
     align-items: center;
@@ -5004,30 +5044,41 @@ button.is-processing {
 
 /* Event outcome preview (GM pre-roll context) */
 .event-outcome-preview {
-    margin: 0.4rem 0;
-    padding: 0.4rem 0.5rem;
-    background: rgba(255, 255, 255, 0.03);
+    margin: 0.5rem 0;
     border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .outcome-preview-row {
-    display: flex; align-items: baseline; gap: 0.35rem;
-    font-size: 0.8rem; padding: 0.15rem 0;
+    display: flex; align-items: baseline; gap: 0.4rem;
+    font-size: 0.8rem; padding: 0.4rem 0.55rem;
+    border-left: 3px solid transparent;
+}
+.outcome-preview-row.pass {
+    background: rgba(46, 204, 113, 0.06);
+    border-left-color: rgba(46, 204, 113, 0.55);
+}
+.outcome-preview-row.fail {
+    background: rgba(231, 76, 60, 0.06);
+    border-left-color: rgba(231, 76, 60, 0.55);
 }
 .outcome-preview-label {
-    font-weight: 600; white-space: nowrap; min-width: 50px;
+    font-weight: 600; white-space: nowrap; min-width: 44px;
+    display: flex; align-items: center; gap: 0.3rem;
 }
-.outcome-preview-row.pass .outcome-preview-label { color: rgba(46, 204, 113, 0.8); }
-.outcome-preview-row.fail .outcome-preview-label { color: rgba(231, 76, 60, 0.8); }
+.outcome-preview-row.pass .outcome-preview-label { color: rgba(46, 204, 113, 0.95); }
+.outcome-preview-row.fail .outcome-preview-label { color: rgba(231, 76, 60, 0.95); }
 .outcome-preview-text {
-    font-style: italic; color: rgba(255, 255, 255, 0.55);
+    font-style: italic; color: rgba(255, 255, 255, 0.7); line-height: 1.35;
 }
 .outcome-preview-effect {
-    font-size: 0.72rem; padding: 0.1rem 0 0.1rem 1.5rem;
-    color: rgba(147, 51, 234, 0.7);
+    font-size: 0.72rem; padding: 0.05rem 0.55rem 0.3rem 1.85rem;
+    color: rgba(255, 255, 255, 0.55);
+    border-left: 3px solid transparent;
 }
-.outcome-preview-effect i { margin-right: 0.25rem; opacity: 0.5; }
-.outcome-preview-effect.fail { color: rgba(231, 76, 60, 0.6); }
+.outcome-preview-effect.pass { background: rgba(46, 204, 113, 0.06); border-left-color: rgba(46, 204, 113, 0.55); color: rgba(46, 204, 113, 0.75); }
+.outcome-preview-effect.fail { background: rgba(231, 76, 60, 0.06); border-left-color: rgba(231, 76, 60, 0.55); color: rgba(231, 76, 60, 0.75); }
+.outcome-preview-effect i { margin-right: 0.25rem; opacity: 0.6; font-size: 0.6rem; }
 
 .event-watch-roster {
     display: flex;
@@ -5118,9 +5169,18 @@ button.is-processing {
 .event-adjudicate-buttons {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 0.3rem;
-    margin-top: 0.4rem;
+    align-items: stretch;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+/* GM override cluster: divider so skipping the roll reads as a deliberate secondary path */
+.event-adjudicate-buttons .event-override-links {
+    justify-content: center;
+    gap: 0.5rem;
+    padding-top: 0.55rem;
+    margin-top: 0.1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .btn-resolve-check {
@@ -15145,19 +15205,22 @@ button.is-processing {
 }
 
 .btn-override-link {
-    background: none;
-    border: none;
-    padding: 0.15rem 0.25rem;
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 0.7rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.72rem;
     cursor: pointer;
     text-decoration: none;
-    transition: color 0.2s ease;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
 
 .btn-override-link:hover {
-    color: rgba(255, 255, 255, 0.7);
-    text-decoration: underline;
+    color: rgba(255, 255, 255, 0.85);
+    border-color: rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.07);
+    text-decoration: none;
 }
 
 .btn-override-link:disabled {
