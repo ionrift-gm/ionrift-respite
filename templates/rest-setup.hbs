@@ -2561,7 +2561,7 @@
                 {{#if (eq result "scouting_hazard")}}<span class="event-badge hazard">Scouting Hazard</span>{{/if}}
                 {{#if (eq result "scouting_bonus")}}<span class="event-badge bonus">Scouting Bonus</span>{{/if}}
             </div>
-            {{#if @root.isGM}}<div class="event-description">{{narrative}}</div>{{/if}}
+            {{#if @root.isGM}}{{#if resolvedOutcome}}<div class="event-description">{{narrative}}</div>{{/if}}{{/if}}
 
             {{!-- Skill Check Details --}}
             {{#if mechanical}}
@@ -2705,52 +2705,64 @@
                 {{else}}
                 {{!-- GM: Pre-request state --}}
 
-                {{!-- 1. Narrate prompt (lead) --}}
+                {{!-- 1. Read-aloud narration (the scene to relate to players) --}}
                 <div class="event-narration-advisory lead">
                     <i class="fas fa-theater-masks"></i>
-                    <em>Narrate this for the party, then resolve below.</em>
+                    {{#if readAloud}}<span class="narration-read-aloud">{{readAloud}}</span>{{else}}<em>Set the scene for the party, then resolve below.</em>{{/if}}
                 </div>
 
-                {{!-- 2. The check: DC + skill + who rolls, in one strip --}}
-                <div class="event-check-header">
-                    <div class="event-dc-badge">
-                        <span class="dc-label">DC</span>
-                        <span class="dc-value">{{mechanical.dc}}</span>
+                {{!-- 2. The check: centered module, nudgeable DC, watch avatars --}}
+                <div class="event-check-module">
+                    <div class="check-module-skill">{{skillName}}</div>
+                    <div class="check-module-dc-row">
+                        <button type="button" class="dc-nudge" data-action="adjustEventDc" data-event-index="{{@index}}" data-delta="-1" title="Lower the DC"><i class="fas fa-minus"></i></button>
+                        <div class="event-dc-badge circular">
+                            <span class="dc-label">DC</span>
+                            <span class="dc-value">{{mechanical.dc}}</span>
+                        </div>
+                        <button type="button" class="dc-nudge" data-action="adjustEventDc" data-event-index="{{@index}}" data-delta="1" title="Raise the DC"><i class="fas fa-plus"></i></button>
                     </div>
-                    <div class="event-check-info">
-                        <strong class="check-skill-name">{{skillName}}</strong>
-                        <span class="event-check-target">
-                            {{#if (eq mechanical.targets "watch")}}Watch only{{else if (eq mechanical.targets "all")}}Entire party{{else}}Watch{{/if}}
-                            · Group Check (averaged)
-                        </span>
-                        {{#if targetNames.length}}
-                        <span class="event-check-roster">
-                            <i class="fas fa-eye"></i>{{join targetNames ", "}}
-                        </span>
-                        {{/if}}
+                    <div class="check-module-target">
+                        {{#if (eq mechanical.targets "watch")}}Watch only{{else if (eq mechanical.targets "all")}}Entire party{{else}}Watch{{/if}} · Group Check (averaged)
                     </div>
+                    {{#if targetActors.length}}
+                    <div class="check-module-avatars">
+                        {{#each targetActors}}
+                        <img class="check-avatar" src="{{img}}" alt="{{name}}" title="{{name}}" />
+                        {{/each}}
+                    </div>
+                    {{/if}}
                 </div>
+                {{#if checkContext}}
+                <div class="event-check-context">
+                    <i class="fas fa-dice-d20"></i> {{checkContext}}
+                </div>
+                {{/if}}
                 <div class="event-gm-hint">
                     <i class="fas fa-info-circle"></i>
                     Averaged rolls trend toward ~10. DCs above 13 are harder, below 8 are easier than individual checks.
                 </div>
+                <details class="event-gm-guidance-box">
+                    <summary><i class="fas fa-user-secret"></i> GM Notes</summary>
+                    <div class="event-gm-guidance-text">{{#if gmGuidance}}{{gmGuidance}}{{else}}<span class="gm-guidance-empty">No extra notes for this event. Run it as written.</span>{{/if}}</div>
+                </details>
 
-                {{!-- 3. Stakes preview --}}
-                <div class="event-outcome-preview">
-                    <div class="outcome-preview-row pass">
-                        <span class="outcome-preview-label"><i class="fas fa-check-circle"></i> Pass:</span>
-                        <span class="outcome-preview-text">{{mechanical.onSuccess.narrative}}</span>
+                {{!-- 3. Stakes preview: side-by-side pass/fail --}}
+                <div class="event-outcome-preview two-col">
+                    <div class="outcome-preview-col pass">
+                        <div class="outcome-preview-head"><i class="fas fa-check-circle"></i> Pass</div>
+                        <div class="outcome-preview-text">{{mechanical.onSuccess.narrative}}</div>
+                        {{#each mechanical.onSuccess.effects}}{{#if description}}
+                        <div class="outcome-preview-effect pass"><i class="fas fa-circle"></i> {{description}}</div>
+                        {{/if}}{{/each}}
                     </div>
-                    {{#each mechanical.onSuccess.effects}}
-                    <div class="outcome-preview-effect pass"><i class="fas fa-circle"></i> {{description}}</div>
-                    {{/each}}
-                    <div class="outcome-preview-row fail">
-                        <span class="outcome-preview-label"><i class="fas fa-times-circle"></i> Fail:</span>
-                        <span class="outcome-preview-text">{{mechanical.onFailure.narrative}}</span>
+                    <div class="outcome-preview-col fail">
+                        <div class="outcome-preview-head"><i class="fas fa-times-circle"></i> Fail</div>
+                        <div class="outcome-preview-text">{{mechanical.onFailure.narrative}}</div>
+                        {{#each mechanical.onFailure.effects}}{{#if description}}
+                        <div class="outcome-preview-effect fail"><i class="fas fa-circle"></i> {{description}}</div>
+                        {{/if}}{{/each}}
                     </div>
-                    {{#each mechanical.onFailure.effects}}
-                    <div class="outcome-preview-effect fail"><i class="fas fa-circle"></i> {{description}}</div>
-                    {{/each}}
                 </div>
 
                 {{!-- 4. Action buttons --}}

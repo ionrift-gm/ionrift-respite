@@ -4458,10 +4458,8 @@ button.is-processing {
     min-height: 0;
     overflow-y: auto;
     width: 100%;
-    max-width: 540px !important;
-    margin-left: auto;
-    margin-right: auto;
-    align-self: center;
+    max-width: none !important;
+    align-self: stretch;
 }
 
 /* Events phase: compact roster strip — sleeping party, no interaction */
@@ -4532,6 +4530,15 @@ button.is-processing {
     border-left-color: #3498db;
 }
 
+/* Challenge cards: drop the colored left bar for a clean rounded panel.
+   Category identity now reads from the centered icon/title, not a side rule. */
+.respite-event-card.encounter,
+.respite-event-card.complication,
+.respite-event-card.discovery {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+}
+
 /* Active challenge card (unresolved, needs GM adjudication) gets subtle elevation
    so it reads as the thing to act on, distinct from resolved/ambient cards. */
 .respite-event-card.encounter:not(.resolved-event),
@@ -4547,6 +4554,115 @@ button.is-processing {
     opacity: 0.5;
     box-shadow: none;
     transition: opacity 0.2s ease;
+}
+
+/* ---- Active challenge card: centered title with the category icon as a
+   faint watermark behind the text, so it adds no vertical height ---- */
+.respite-event-card:not(.resolved-event) .event-header {
+    position: relative;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0;
+    margin-bottom: 0.5rem;
+    padding: 0.45rem 0;
+}
+.respite-event-card:not(.resolved-event) .event-name {
+    position: relative;
+    z-index: 1;
+    font-size: 1.35rem;
+    line-height: 1.2;
+}
+.respite-event-card:not(.resolved-event) .event-name i {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    font-size: 3.6rem;
+    opacity: 0.07;
+    z-index: -1;
+    pointer-events: none;
+}
+.respite-event-card:not(.resolved-event) .event-description {
+    font-size: 0.83rem;
+    color: rgba(255, 255, 255, 0.72);
+    line-height: 1.45;
+    margin-bottom: 0.5rem;
+}
+
+/* ---- Centered check module: skill, circular nudgeable DC, watch avatars ---- */
+.event-check-module {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.5rem auto;
+    padding: 0.7rem 1rem;
+    max-width: 320px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+}
+.check-module-skill {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.9);
+}
+.check-module-dc-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+.event-dc-badge.circular {
+    width: 3.4rem;
+    height: 3.4rem;
+    min-width: 0;
+    padding: 0;
+    gap: 0;
+    border-radius: 50%;
+    justify-content: center;
+    background: radial-gradient(circle at 50% 35%, rgba(155, 89, 182, 0.35), rgba(155, 89, 182, 0.16));
+    border: 2px solid rgba(155, 89, 182, 0.5);
+}
+.event-dc-badge.circular .dc-value { font-size: 1.4rem; }
+.dc-nudge {
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.dc-nudge:hover {
+    background: rgba(155, 89, 182, 0.25);
+    border-color: rgba(155, 89, 182, 0.5);
+    color: #fff;
+}
+.check-module-target {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+}
+.check-module-avatars {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem;
+}
+.check-avatar {
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.3);
 }
 
 /* ---- Event Card Expanded Details ---- */
@@ -5024,9 +5140,72 @@ button.is-processing {
     background: rgba(155, 89, 182, 0.1);
     border-left: 3px solid rgba(155, 89, 182, 0.5);
     border-radius: 0 4px 4px 0;
-    padding: 0.4rem 0.55rem;
+    padding: 0.45rem 0.6rem;
+    align-items: flex-start;
 }
-.event-narration-advisory.lead i { opacity: 0.85; }
+.event-narration-advisory.lead i { opacity: 0.85; margin-top: 0.15rem; }
+.narration-read-aloud {
+    font-style: italic;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* What the check represents, in player-relatable terms */
+.event-check-context {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.65);
+    text-align: center;
+    justify-content: center;
+    margin: 0 auto 0.4rem;
+    max-width: 420px;
+}
+.event-check-context i { color: var(--ionrift-accent, #9b59b6); opacity: 0.6; font-size: 0.7rem; }
+
+/* GM-only running notes, collapsed by default so they cost no height */
+.event-gm-guidance-box {
+    margin: 0.4rem 0;
+    border: 1px solid rgba(155, 89, 182, 0.2);
+    border-radius: 6px;
+    background: rgba(155, 89, 182, 0.05);
+}
+.event-gm-guidance-box > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: rgba(195, 155, 220, 0.85);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.event-gm-guidance-box > summary::-webkit-details-marker { display: none; }
+.event-gm-guidance-box > summary::after {
+    content: "\f078";
+    font-family: "Font Awesome 6 Free", "Font Awesome 5 Free";
+    font-weight: 900;
+    font-size: 0.6rem;
+    margin-left: auto;
+    opacity: 0.6;
+    transition: transform 0.2s ease;
+}
+.event-gm-guidance-box[open] > summary::after { transform: rotate(180deg); }
+.event-gm-guidance-text {
+    padding: 0 0.6rem 0.5rem;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.65);
+}
+.gm-guidance-empty {
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.35);
+}
 
 .event-narration-hint {
     display: flex;
@@ -5042,43 +5221,46 @@ button.is-processing {
     opacity: 0.5;
 }
 
-/* Event outcome preview (GM pre-roll context) */
-.event-outcome-preview {
+/* Event outcome preview (GM pre-roll context): side-by-side pass/fail columns */
+.event-outcome-preview.two-col {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     margin: 0.5rem 0;
-    border-radius: 6px;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.08);
 }
-.outcome-preview-row {
-    display: flex; align-items: baseline; gap: 0.4rem;
-    font-size: 0.8rem; padding: 0.4rem 0.55rem;
-    border-left: 3px solid transparent;
+.outcome-preview-col {
+    flex: 1 1 160px;
+    min-width: 0;
+    padding: 0.5rem 0.6rem;
+    border-radius: 8px;
+    border: 1px solid transparent;
 }
-.outcome-preview-row.pass {
+.outcome-preview-col.pass {
     background: rgba(46, 204, 113, 0.06);
-    border-left-color: rgba(46, 204, 113, 0.55);
+    border-color: rgba(46, 204, 113, 0.35);
 }
-.outcome-preview-row.fail {
+.outcome-preview-col.fail {
     background: rgba(231, 76, 60, 0.06);
-    border-left-color: rgba(231, 76, 60, 0.55);
+    border-color: rgba(231, 76, 60, 0.35);
 }
-.outcome-preview-label {
-    font-weight: 600; white-space: nowrap; min-width: 44px;
-    display: flex; align-items: center; gap: 0.3rem;
+.outcome-preview-head {
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-bottom: 0.3rem;
+    display: flex; align-items: center; gap: 0.35rem;
 }
-.outcome-preview-row.pass .outcome-preview-label { color: rgba(46, 204, 113, 0.95); }
-.outcome-preview-row.fail .outcome-preview-label { color: rgba(231, 76, 60, 0.95); }
+.outcome-preview-col.pass .outcome-preview-head { color: rgba(46, 204, 113, 0.95); }
+.outcome-preview-col.fail .outcome-preview-head { color: rgba(231, 76, 60, 0.95); }
 .outcome-preview-text {
-    font-style: italic; color: rgba(255, 255, 255, 0.7); line-height: 1.35;
+    font-size: 0.78rem; color: rgba(255, 255, 255, 0.72); line-height: 1.4;
 }
 .outcome-preview-effect {
-    font-size: 0.72rem; padding: 0.05rem 0.55rem 0.3rem 1.85rem;
+    font-size: 0.72rem; padding: 0.25rem 0 0;
     color: rgba(255, 255, 255, 0.55);
-    border-left: 3px solid transparent;
 }
-.outcome-preview-effect.pass { background: rgba(46, 204, 113, 0.06); border-left-color: rgba(46, 204, 113, 0.55); color: rgba(46, 204, 113, 0.75); }
-.outcome-preview-effect.fail { background: rgba(231, 76, 60, 0.06); border-left-color: rgba(231, 76, 60, 0.55); color: rgba(231, 76, 60, 0.75); }
-.outcome-preview-effect i { margin-right: 0.25rem; opacity: 0.6; font-size: 0.6rem; }
+.outcome-preview-effect.pass { color: rgba(46, 204, 113, 0.8); }
+.outcome-preview-effect.fail { color: rgba(231, 76, 60, 0.8); }
+.outcome-preview-effect i { margin-right: 0.25rem; opacity: 0.6; font-size: 0.55rem; }
 
 .event-watch-roster {
     display: flex;
@@ -5187,22 +5369,26 @@ button.is-processing {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.4rem;
+    gap: 0.5rem;
     width: 100%;
-    padding: 0.4rem 0.8rem;
-    background: var(--ionrift-accent, #9b59b6);
+    padding: 0.65rem 1rem;
+    background: linear-gradient(135deg, #9b59b6, #7d3c98);
     color: #fff;
     border: none;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 0.8rem;
-    font-weight: 600;
-    transition: background 0.2s;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    box-shadow: 0 4px 14px rgba(155, 89, 182, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
 }
 
 .btn-resolve-check:hover {
-    background: #8e44ad;
+    background: linear-gradient(135deg, #a96ac4, #8e44ad);
+    box-shadow: 0 6px 18px rgba(155, 89, 182, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
+.btn-resolve-check:active { transform: translateY(1px); }
 
 .event-override-links {
     display: flex;
