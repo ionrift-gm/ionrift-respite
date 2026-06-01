@@ -315,6 +315,34 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         this._partyMealOutcomeResolved = false;
         /** Prevents double-submit while feast serve awaits async work. */
         this._feastServeInFlight = false;
+
+        this._hydrateCraftStateFromRest();
+    }
+
+    /**
+     * Restore inline crafting UI after refresh when this rest already recorded a craft.
+     */
+    _hydrateCraftStateFromRest() {
+        const actorId = this._actor?.id;
+        const restApp = this._restApp;
+        if (!actorId || !restApp) return;
+
+        const prior = restApp._craftingResults?.get(actorId);
+        if (!prior && !restApp.hasCompletedCrafting?.(actorId)) return;
+
+        this._craftResult = prior ?? { success: true, narrative: "Craft already completed this rest." };
+        this._craftHasCrafted = true;
+        this._craftCommitted = true;
+        this._craftRecipeId = prior?.recipeId ?? null;
+        if (prior?.recipeId && restApp._craftingEngine) {
+            for (const [profId, recipes] of restApp._craftingEngine.recipes ?? []) {
+                if (recipes?.some(r => r.id === prior.recipeId)) {
+                    this._craftProfession = profId;
+                    break;
+                }
+            }
+        }
+        if (!this._craftProfession) this._craftProfession = "cooking";
     }
 
     async _prepareContext(options) {
@@ -993,7 +1021,20 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         if (this._craftRollPending || this._craftHasCrafted || !this._craftRecipeId) return;
         const engine = this._restApp?._craftingEngine;
         const actor = this._actor;
+        const restApp = this._restApp;
         if (!engine || !actor) return;
+
+        if (restApp?.hasCompletedCrafting?.(actor.id, this._craftProfession)) {
+            ui.notifications.warn(`${actor.name} has already crafted during this rest.`);
+            return;
+        }
+
+        const ledger = restApp?._grantLedger;
+        const slotKey = GrantLedger.craftingSlotKey(actor.id, this._craftProfession, this._craftRecipeId);
+        if (ledger?.has(slotKey)) {
+            ui.notifications.warn("That recipe was already crafted this rest.");
+            return;
+        }
 
         this._partyMealOutcomeResolved = false;
 
@@ -1008,9 +1049,14 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         this.render();
         try {
             this._craftResult = await engine.resolve(
-                actor, this._craftRecipeId, this._craftProfession, this._craftRisk, terrainTag, partySize
+                actor, this._craftRecipeId, this._craftProfession, this._craftRisk, terrainTag, partySize,
+                { ledger }
             );
             this._craftHasCrafted = true;
+            if (this._craftResult?.success) {
+                await this._autoCommitCraftResult();
+                this._resyncStationActivitiesFromRestApp();
+            }
         } finally {
             this._craftRollPending = false;
             this.render();
@@ -1117,7 +1163,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         // If a craft already resolved this session, keep result state so Rations ↔ Cooking
         // tab switches do not wipe the finished craft before Close commits the activity.
         const canEnterCookingCraft = (this._cookingAvailable?.length ?? 0) > 0;
-        if (tab === "cooking" && this._actorHasCookingUtensils && !this._actorChoiceLocked && canEnterCookingCraft) {
+        const craftBlocked = this._restApp?.hasCompletedCrafting?.(this._actor?.id);
+        if (tab === "cooking" && this._actorHasCookingUtensils && !this._actorChoiceLocked && canEnterCookingCraft && !craftBlocked) {
             this._dialogState = "crafting";
             if (!this._craftHasCrafted) {
                 const cookId = "act_cook";
@@ -1749,8 +1796,10 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         let faded = allFaded.filter(a => stationIds.has(a.id));
 
         let actorChoiceLocked = null;
-        if (actor?.id && restApp?._characterChoices?.has(actor.id)) {
-            const chosenId = restApp._characterChoices.get(actor.id);
+        const craftDone = actor?.id && restApp?.hasCompletedCrafting?.(actor.id);
+        if (actor?.id && (restApp?._characterChoices?.has(actor.id) || craftDone)) {
+            const chosenId = restApp._characterChoices.get(actor.id)
+                ?? (craftDone ? "act_cook" : null);
             const resolver = restApp._activityResolver;
             const chosenAct = resolver?.activities?.get(chosenId);
             actorChoiceLocked = chosenAct?.name ?? chosenId;

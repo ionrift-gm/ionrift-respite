@@ -108,6 +108,7 @@ import {
     emitRestAbandoned, emitPhaseChanged, emitSubmissionUpdate,
     emitActivityChoice, emitArmorToggle,
     emitCampLightFire, emitCampFireLevelRequest, emitActivityFireLevelRequest,
+    emitCampColdCampRequest, emitActivityColdCampRequest,
     emitCampFirewoodPledge, emitCampFirewoodReclaim,
     emitCampGearPlace, emitCampGearPlaced, emitCampGearClearPlayer,
     emitCampGearReclaim, emitCampStationPlace, emitCampStationPlaced,
@@ -285,6 +286,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             detectMagicScan: RestSetupApp.#onDetectMagicScan,
             identifyScannedItem: RestSetupApp.#onIdentifyScannedItem,
             abandonRest: RestSetupApp.#onAbandonRest,
+            openGuide: RestSetupApp.#onOpenGuide,
             approveCopySpell: RestSetupApp.#onApproveCopySpell,
             declineCopySpell: RestSetupApp.#onDeclineCopySpell,
             processGmCopySpell: RestSetupApp.#onProcessGmCopySpell,
@@ -323,6 +325,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campPledgeFirewood: RestSetupApp.#onCampPledgeFirewood,
             campReclaimFirewood: RestSetupApp.#onCampReclaimFirewood,
             selectCampFireLevel: RestSetupApp.#onSelectCampFireLevel,
+            selectCampColdCamp: RestSetupApp.#onSelectCampColdCamp,
             previewCampFireLevel: RestSetupApp.#onPreviewCampFireLevel,
             campColdCamp: RestSetupApp.#onCampColdCamp,
             continueToCampLayout: RestSetupApp.#onContinueToCampLayout,
@@ -1178,7 +1181,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             selectedTerrain: this._selectedTerrain,
             selectedRestType: this._selectedRestType,
             selectedWeather: this._selectedWeather,
-            selectedScout: this._selectedScout,
             characterChoices: Array.from(this._characterChoices.entries()),
             earlyResults: Array.from(this._earlyResults.entries()),
             gmOverrides: Array.from(this._gmOverrides.entries()),
@@ -1224,7 +1226,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._selectedTerrain = state.selectedTerrain;
         this._selectedRestType = state.selectedRestType;
         this._selectedWeather = state.selectedWeather;
-        this._selectedScout = state.selectedScout;
         this._characterChoices = new Map(state.characterChoices ?? []);
         this._earlyResults = new Map(state.earlyResults ?? []);
         this._gmOverrides = new Map(state.gmOverrides ?? []);
@@ -1395,6 +1396,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return this._grantLedger?.get(
             GrantLedger.discoverySlotKey(grantKey.slice(0, colon), grantKey.slice(colon + 1))
         ) ?? null;
+    }
+
+    /**
+     * @param {string} actorId
+     * @param {string} [professionId]
+     * @returns {boolean}
+     */
+    hasCompletedCrafting(actorId, professionId = null) {
+        if (!actorId) return false;
+        if (this._craftingResults?.has(actorId)) return true;
+        return this._grantLedger?.hasCraftingForActor(actorId, professionId) ?? false;
     }
 
     async _clearRestState() {
@@ -1604,6 +1616,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     render(options = {}) {
+        if (this._terminated) {
+            console.log(`ionrift-respite | [CLOSE-DEBUG] render blocked by _terminated flag`);
+            return;
+        }
         if (this._isGM) {
             if (options.force) {
                 this._gmMinimizedToFooter = false;
@@ -1634,6 +1650,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     async close(options = {}) {
+        console.log(`ionrift-respite | [CLOSE-DEBUG] RestSetupApp.close entered: isGM=${this._isGM}, phase=${this._phase}, rendered=${this.rendered}`);
         CampfireMakeCampDialog.closeIfOpen();
         await closeOpenStationDialog();
         if (this._isGM) {
@@ -1718,6 +1735,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         // Tear down the body-level GM guidance flyout so it doesn't linger over the canvas
         document.getElementById("ionrift-gm-guidance-flyout")?.remove();
+        console.log(`ionrift-respite | [CLOSE-DEBUG] calling super.close(), element=${!!this.element}`);
         return super.close(options);
     }
 
@@ -1740,25 +1758,25 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ? SHELTER_SPELLS[(this._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none")]?.label ?? null
                 : null;
             const campfirePlacedGate = hasCampfirePlaced();
-            const fireCommitted = !!this._fireLitBy || !!this._coldCampDecided;
+            const fireCommitted = (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided;
             campColdCampDecided = !!this._coldCampDecided;
             // When fire hasn't been committed, preview defaults to "embers" (the
             // default highlighted tab), NOT "unlit" which applies a no-fire penalty.
             const effectiveScanLevel = (campfirePlacedGate && fireCommitted)
-                ? (this._fireLevel ?? "unlit")
+                ? (this._coldCampDecided ? "cold_camp" : (this._fireLevel ?? "unlit"))
                 : (this._campFirePreviewLevel ?? (this._fireLevel !== "unlit" ? this._fireLevel : "embers"));
             console.log(`[CAMP-DIAG] buildCampfireDrawerContextForMapDialog: pitGate=${campfirePlacedGate}, fireCommitted=${fireCommitted}, _fireLevel=${this._fireLevel}, _campFirePreviewLevel=${this._campFirePreviewLevel}, effectiveScanLevel=${effectiveScanLevel}`);
             const encMod = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[effectiveScanLevel] ?? 0;
             if (effectiveScanLevel === "cold_camp") {
-                campFireEncounterHint = "Cold camp: harder to detect (lower encounter chance).";
+                campFireEncounterHint = "Cold camp: harder for enemies to spot (lower encounter chance).";
             } else if (effectiveScanLevel === "unlit") {
                 campFireEncounterHint = "Choose a fire level or go cold camp.";
             } else if (effectiveScanLevel === "embers") {
                 campFireEncounterHint = "Embers: no change to encounter chance.";
             } else if (effectiveScanLevel === "campfire") {
-                campFireEncounterHint = "Campfire: light draws attention (higher encounter chance).";
+                campFireEncounterHint = "Campfire: light makes the camp easier for enemies to spot.";
             } else if (effectiveScanLevel === "bonfire") {
-                campFireEncounterHint = "Bonfire: beacon in the dark (much higher encounter chance).";
+                campFireEncounterHint = "Bonfire: visible from far off; enemies spot the camp easily.";
             } else {
                 campFireEncounterHint = "";
             }
@@ -1777,6 +1795,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const fs = campScanData.fireSelection ?? {};
             const cur = this._fireLevel ?? "unlit";
             const preview = this._campFirePreviewLevel ?? "embers";
+            const coldSelected = !!this._coldCampDecided;
             campFirePickerLevels = [
                 {
                     id: "embers",
@@ -1784,7 +1803,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     costLabel: "0 firewood",
                     disabled: !fs.canPickEmbers,
                     disabledReason: fs.canPickEmbers ? "" : "Someone needs a tinderbox or flint and steel.",
-                    selected: cur !== "unlit" ? cur === "embers" : preview === "embers"
+                    selected: !coldSelected && (cur !== "unlit" ? cur === "embers" : preview === "embers")
                 },
                 {
                     id: "campfire",
@@ -1794,7 +1813,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     disabledReason: !fs.canPickCampfire
                         ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 1 firewood in the party.")
                         : "",
-                    selected: cur !== "unlit" ? cur === "campfire" : preview === "campfire"
+                    selected: !coldSelected && (cur !== "unlit" ? cur === "campfire" : preview === "campfire")
                 },
                 {
                     id: "bonfire",
@@ -1804,7 +1823,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     disabledReason: !fs.canPickBonfire
                         ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 2 firewood in the party.")
                         : "",
-                    selected: cur !== "unlit" ? cur === "bonfire" : preview === "bonfire"
+                    selected: !coldSelected && (cur !== "unlit" ? cur === "bonfire" : preview === "bonfire")
                 }
             ];
         }
@@ -1822,7 +1841,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         let campFireOtherLighterCount = 0;
         let campFireLighterNames = "";
         if (this._phase === "camp" && campScanData) {
-            campFireIsLit = !!this._fireLitBy;
+            campFireIsLit = (this._fireLevel ?? "unlit") !== "unlit";
             campFireLitBy = this._fireLitBy ?? null;
             campFireTotalPledged = Array.from(this._firewoodPledges.values()).reduce((s, p) => s + p.count, 0);
 
@@ -1960,7 +1979,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     runMakeCampColdFromUi() {
-        return RestSetupApp.#onCampColdCamp.call(this, new Event("click"), null);
+        return RestSetupApp.#onSelectCampColdCamp.call(this, new Event("click"), null);
+    }
+
+    runMakeCampSelectFireLevelFromUi(event, target) {
+        return RestSetupApp.#onSelectCampFireLevel.call(this, event, target);
     }
 
     async _prepareContext(options) {
@@ -2861,7 +2884,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 : null;
             const campfirePlacedGate = hasCampfirePlaced();
             // Gate: fire is lit, OR table decided cold camp (no fire)
-            const fireCommitted = !!this._fireLitBy || !!this._coldCampDecided;
+            const fireCommitted = (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided;
             campColdCampDecided = !!this._coldCampDecided;
             const campGatesReady = campfirePlacedGate && fireCommitted;
             campMakeCampPlacementUnlocked = false;
@@ -2871,22 +2894,24 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campFireGateLevel = fireCommitted;
             // When fire hasn't been committed, preview defaults to "embers" (the
             // default highlighted tab), NOT "unlit" which applies a no-fire penalty.
-            const effectiveScanLevel = (campfirePlacedGate && fireCommitted)
-                ? (this._fireLevel ?? "unlit")
+            const effectiveScanLevel = (fireCommitted && (campfirePlacedGate || this._isTotM))
+                ? (this._coldCampDecided ? "cold_camp" : (this._fireLevel ?? "unlit"))
                 : (this._campFirePreviewLevel ?? (this._fireLevel !== "unlit" ? this._fireLevel : "embers"));
             console.log(`[CAMP-DIAG] _prepareContext: phase=${this._phase}, isTotM=${this._isTotM}, pitGate=${campfirePlacedGate}, fireCommitted=${fireCommitted}, _fireLevel=${this._fireLevel}, _campFirePreviewLevel=${this._campFirePreviewLevel}, effectiveScanLevel=${effectiveScanLevel}, baseComfort=${this._engine?.comfort ?? 'engine-null'}`);
             const encMod = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[effectiveScanLevel] ?? 0;
             // RestFlowEngine: effectiveDC = baseDC - campMods. Negative fireRollModifier
             // subtracts a negative, RAISING effectiveDC (harder to avoid encounters).
             // "Fire is a beacon"; see CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL.
-            if (effectiveScanLevel === "unlit") {
+            if (effectiveScanLevel === "cold_camp") {
+                campFireEncounterHint = "Cold camp: harder for enemies to spot (lower encounter chance).";
+            } else if (effectiveScanLevel === "unlit") {
                 campFireEncounterHint = "No fire is lit yet. The tier row shows what each level would do.";
             } else if (effectiveScanLevel === "embers") {
                 campFireEncounterHint = "Embers: no change to encounter chance.";
             } else if (effectiveScanLevel === "campfire") {
-                campFireEncounterHint = "Campfire: light draws attention (higher encounter chance).";
+                campFireEncounterHint = "Campfire: light makes the camp easier for enemies to spot.";
             } else if (effectiveScanLevel === "bonfire") {
-                campFireEncounterHint = "Bonfire: beacon in the dark (much higher encounter chance).";
+                campFireEncounterHint = "Bonfire: visible from far off; enemies spot the camp easily.";
             } else {
                 campFireEncounterHint = "";
             }
@@ -2906,6 +2931,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const fs = campScanData.fireSelection ?? {};
             const cur = this._fireLevel ?? "unlit";
             const preview = this._campFirePreviewLevel ?? "embers";
+            const coldSelected = !!this._coldCampDecided;
             campFirePickerLevels = [
                 {
                     id: "embers",
@@ -2913,7 +2939,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     costLabel: "0 firewood",
                     disabled: !fs.canPickEmbers,
                     disabledReason: fs.canPickEmbers ? "" : "Someone needs a tinderbox or flint and steel.",
-                    selected: cur !== "unlit" ? cur === "embers" : preview === "embers"
+                    selected: !coldSelected && (cur !== "unlit" ? cur === "embers" : preview === "embers")
                 },
                 {
                     id: "campfire",
@@ -2923,7 +2949,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     disabledReason: !fs.canPickCampfire
                         ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 1 firewood in the party.")
                         : "",
-                    selected: cur !== "unlit" ? cur === "campfire" : preview === "campfire"
+                    selected: !coldSelected && (cur !== "unlit" ? cur === "campfire" : preview === "campfire")
                 },
                 {
                     id: "bonfire",
@@ -2933,7 +2959,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     disabledReason: !fs.canPickBonfire
                         ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 2 firewood in the party.")
                         : "",
-                    selected: cur !== "unlit" ? cur === "bonfire" : preview === "bonfire"
+                    selected: !coldSelected && (cur !== "unlit" ? cur === "bonfire" : preview === "bonfire")
                 }
             ];
         }
@@ -2942,7 +2968,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         let campFireIsLit = false;
 
         // ── Fire bill: itemized requirements for the selected/previewed tier ──
-        const _fireBillLevel = this._campFirePreviewLevel ?? "embers";
+        const _fireBillLevel = (this._fireLevel ?? "unlit") !== "unlit"
+            ? this._fireLevel
+            : (this._campFirePreviewLevel ?? "embers");
         const _COST_MAP = CampGearScanner.FIREWOOD_COST_BY_LEVEL;
         const campSelectedFirewoodCost = _COST_MAP[_fireBillLevel] ?? 0;
         const campPartyFirewood = campScanData?.totalFirewood ?? 0;
@@ -2960,7 +2988,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         let campFireOtherLighterCount = 0;
         let campFireLighterNames = "";
         if (_needsFireData && campScanData) {
-            campFireIsLit = !!this._fireLitBy;
+            campFireIsLit = (this._fireLevel ?? "unlit") !== "unlit";
             campFireLitBy = this._fireLitBy ?? null;
             campFireTotalPledged = Array.from(this._firewoodPledges.values()).reduce((s, p) => s + p.count, 0);
 
@@ -3017,8 +3045,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
             }
 
-            // Read-only tier cards shown when fire is lit
-            if (campFireIsLit) {
+            // Tier cards for map campfire dialog and camp context
+            if (this._phase === "camp") {
                 const TIER_BODIES = {
                     embers: "No cooking. No comfort change.",
                     campfire: "Cooking and warmth. Encounter threshold âˆ’1.",
@@ -3409,10 +3437,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const t = this._selectedTerrain ?? "forest";
                 const d = TerrainRegistry.getDefaults(t);
                 const comfort = (d.comfort ?? "sheltered").charAt(0).toUpperCase() + (d.comfort ?? "sheltered").slice(1);
-                const scout = safeRestSpot
-                    ? "Travel scouting is not used for a safe rest spot."
-                    : (d.scoutingAvailable !== false ? "Scouting available." : "No scouting.");
-                return `Implied comfort: ${comfort}. ${scout}`;
+                const travel = safeRestSpot
+                    ? "Travel activities are skipped for a safe rest spot."
+                    : (d.travelAvailable ? "Travel available (forage, hunt, scout)." : "No travel activities.");
+                return `Implied comfort: ${comfort}. ${travel}`;
             })(),
             setupStatusLine: (() => {
                 const t = this._selectedTerrain ?? "forest";
@@ -3428,7 +3456,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     if (wData.encounterDC < 0) fx.push(`encounter DC ${wData.encounterDC}`);
                     parts.push(fx.join(", "));
                 }
-                if (!safeRestSpot && d.scoutingAvailable !== false) parts.push("travel available");
+                if (!safeRestSpot && d.travelAvailable) parts.push("travel available");
                 return parts.join(" · ");
             })(),
             weatherOptions: (() => {
@@ -3476,7 +3504,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             isShortRest: (this._selectedRestType ?? "long") === "short",
             safeRestSpot,
             selectedWeatherLabel: WEATHER_TABLE[this._selectedWeather]?.label ?? "Clear",
-            selectedScoutLabel: this._selectedScout ?? "None",
             shelterNeeded: (this._selectedTerrain ?? "forest") !== "tavern",
             defaultComfort,
             shelterOptions,
@@ -4281,21 +4308,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /**
      * Activity phase: camp comfort line for the campfire station dialog (matches Make Camp advisory).
-     * @returns {{ mapComfortLabel: string, mapComfortLine: string, mapComfortTierClass: string }|null}
+     * @returns {{ mapComfortTier: string, mapComfortLabel: string, mapComfortLine: string, mapComfortTierClass: string }|null}
      */
     getCampComfortAdvisoryForStationDialog() {
         const campScanData = this._getCampScanDataForActivityStationDialog();
         if (!campScanData) return null;
+        const mapComfortTier = campScanData.campComfort ?? "rough";
         const mapComfortLabel = campScanData.campComfortLabel ?? "";
         const mapComfortLine = campScanData.comfortReason
             ? `${campScanData.terrainLabel ? `${campScanData.terrainLabel}: ` : ""}${campScanData.comfortReason}`
             : (campScanData.terrainLabel
                 ? `${campScanData.terrainLabel} (${mapComfortLabel})`
                 : `Camp comfort: ${mapComfortLabel}`);
-        const mapComfortTierClass = campScanData.campComfort
-            ? `comfort-${campScanData.campComfort}`
-            : "comfort-rough";
-        return { mapComfortLabel, mapComfortLine, mapComfortTierClass };
+        const mapComfortTierClass = `comfort-${mapComfortTier}`;
+        return { mapComfortTier, mapComfortLabel, mapComfortLine, mapComfortTierClass };
     }
 
     /**
@@ -4307,17 +4333,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!campScanData) return null;
 
         const coldCamp = !!this._coldCampDecided;
-        const effectiveScanLevel = this._fireLevel ?? "unlit";
+        const effectiveScanLevel = coldCamp ? "cold_camp" : (this._fireLevel ?? "unlit");
 
         let campFireEncounterHint = "";
-        if (effectiveScanLevel === "unlit") {
+        if (effectiveScanLevel === "cold_camp") {
+            campFireEncounterHint = "Cold camp: harder for enemies to spot (lower encounter chance).";
+        } else if (effectiveScanLevel === "unlit") {
             campFireEncounterHint = "No fire is lit. The tier row shows what each level would do.";
         } else if (effectiveScanLevel === "embers") {
             campFireEncounterHint = "Embers: no change to encounter chance.";
         } else if (effectiveScanLevel === "campfire") {
-            campFireEncounterHint = "Campfire: light draws attention (higher encounter chance).";
+            campFireEncounterHint = "Campfire: light makes the camp easier for enemies to spot.";
         } else if (effectiveScanLevel === "bonfire") {
-            campFireEncounterHint = "Bonfire: beacon in the dark (much higher encounter chance).";
+            campFireEncounterHint = "Bonfire: visible from far off; enemies spot the camp easily.";
         }
 
         const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
@@ -5155,8 +5183,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         } else if (step === 2) {
             this._selectedWeather = formData.weather ?? "clear";
             this._selectedComfort = formData.comfort ?? "sheltered";
-            this._selectedScoutingValue = formData.scouting ?? "none";
-            this._selectedScout = this.element.querySelector('[name="scouting"] option:checked')?.textContent?.trim() ?? "None";
             // Skip shelter for tavern
             if (this._selectedTerrain === "tavern") {
                 this._setupStep = 3;
@@ -5194,8 +5220,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._terrainLabel = terrainOpt?.textContent?.trim() ?? this._selectedTerrain;
         this._selectedWeather = "clear";
         this._selectedComfort = "sheltered";
-        this._selectedScoutingValue = "none";
-        this._selectedScout = "None";
         this._setupStep = 3;
         this.render();
     }
@@ -5421,9 +5445,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const button = target.closest(".check-avatar") ?? target;
         button.classList.toggle("adv", next === "advantage");
         button.classList.toggle("dis", next === "disadvantage");
-        const name = button.getAttribute("title")?.split(" \u00b7 ")[0] ?? "";
+        const name = button.getAttribute("data-tooltip")?.split(" \u00b7 ")[0] ?? "";
         const modeLabel = next === "advantage" ? "Advantage" : next === "disadvantage" ? "Disadvantage" : "Normal";
-        button.setAttribute("title", `${name} \u00b7 ${modeLabel} (click to change)`);
+        button.setAttribute("data-tooltip", `${name} \u00b7 ${modeLabel} (click to change)`);
         button.querySelector(".check-avatar-mode")?.remove();
         if (next !== "normal") {
             const badge = document.createElement("span");
@@ -6013,24 +6037,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             effectiveComfort = shelterComfortFloor;
         }
 
-        // Scouting: adjust comfort and encounter DC
-        const scouting = this._selectedScoutingValue ?? formData.scouting ?? "none";
-        const SCOUTING_EFFECTS = {
-            none:    { comfortBonus: 0, encounterDC: 0, complication: false },
-            nat1:    { comfortBonus: 0, encounterDC: 0, complication: true },
-            poor:    { comfortBonus: 0, encounterDC: 0, complication: false },
-            average: { comfortBonus: 1, encounterDC: 0, complication: false },
-            good:    { comfortBonus: 1, encounterDC: 1, complication: false },
-            nat20:   { comfortBonus: 2, encounterDC: 0, complication: false }
-        };
-        const scout = SCOUTING_EFFECTS[scouting] ?? SCOUTING_EFFECTS.none;
-        if (scout.comfortBonus > 0) {
-            let rank = COMFORT_RANK[effectiveComfort] ?? 2;
-            rank = Math.min(3, rank + scout.comfortBonus);
-            effectiveComfort = RestSetupApp.RANK_TO_KEY[rank];
-        }
-
-        // Weather penalty: reduce comfort unless shelter cancels
+        // Scout comfort and encounter mods come from travel resolution, not setup.
         const weather = this._selectedWeather ?? formData.weather ?? "clear";
         const wx = WEATHER_TABLE[weather] ?? WEATHER_TABLE.clear;
         const hasTentActive = activeShelters.includes("tent");
@@ -6059,7 +6066,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Add weather encounter DC modifier
         const weatherEncounterMod = weatherCancelled ? 0 : (wx.encounterDC ?? 0);
-        const scoutEncounterMod = scout.encounterDC ?? 0;
 
         const safeRestSpot = !!(formData.safeRestSpot === "on" || formData.safeRestSpot === true || formData.safeRestSpot === "1");
         try {
@@ -6074,20 +6080,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             comfort: effectiveComfort,
             safeRestSpot
         });
-        this._engine.shelterEncounterMod = shelterEncounterMod + weatherEncounterMod + scoutEncounterMod;
+        this._engine.shelterEncounterMod = shelterEncounterMod + weatherEncounterMod;
         // Store individual modifiers for encounter bar breakdown
         this._engine._encounterBreakdown = {
             shelter: shelterEncounterMod,
             weather: weatherEncounterMod,
-            scouting: scoutEncounterMod,
+            scouting: 0,
             weatherName: weather,
-            scoutingResult: scouting
+            scoutingResult: "none"
         };
         this._engine.gmEncounterAdj = this._engine.gmEncounterAdj ?? 0;
         this._engine.activeShelters = activeShelters;
         this._engine.weather = weather;
-        this._engine.scoutingResult = scouting;
-        this._engine.scoutingComplication = scout.complication;
+        this._engine.scoutingResult = "none";
+        this._engine.scoutingComplication = false;
         // Store base DC from terrain table on engine for event roll threshold calculation
         const terrainTable = this._eventResolver?.tables?.get(terrainTag);
         this._engine._baseDC = terrainTable?.noEventThreshold ?? 15;
@@ -6223,9 +6229,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const profession = target.dataset.profession;
         if (!characterId || !profession) return;
 
-        // Block re-crafting for locked characters
-        if (this._lockedCharacters?.has(characterId)) {
-            ui.notifications.warn("This character has already submitted their activity.");
+        if (this._lockedCharacters?.has(characterId) || this.hasCompletedCrafting(characterId, profession)) {
+            ui.notifications.warn("This character has already completed crafting for this rest.");
             return;
         }
 
@@ -8679,7 +8684,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Merge crafting results from the player
         if (craftingResults) {
             for (const [charId, result] of Object.entries(craftingResults)) {
-                if (result) this._craftingResults.set(charId, result);
+                if (!result) continue;
+                this._craftingResults.set(charId, result);
+                this._lockedCharacters.add(charId);
             }
         }
 
@@ -8718,6 +8725,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             submissions[charId] = { activityId: actId, activityName: act?.name ?? actId, source: "gm" };
         }
         emitSubmissionUpdate(submissions);
+
+        const snapshot = this.getRestSnapshot?.();
+        if (snapshot) emitRestSnapshot(snapshot);
     }
 
     /**
@@ -9832,7 +9842,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             comfort: this._engine?.comfort ?? "rough",
             activeShelters: this._engine?.activeShelters ?? [],
             // Include the activity list so late-joining players can load their resolver.
-            activities: this._activities ?? []
+            activities: this._activities ?? [],
+            lockedCharacters: Array.from(this._lockedCharacters ?? []),
+            craftingResults: Object.fromEntries(this._craftingResults ?? [])
         };
     }
 
@@ -9870,6 +9882,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const enc = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[phaseData.fireLevel] ?? 0;
                 this._engine.fireRollModifier = enc;
             }
+            if (phase === "camp") {
+                const fl = phaseData.fireLevel;
+                if (!game.user.isGM) {
+                    void CampfireTokenLinker.setLightState(
+                        fl !== "unlit",
+                        fl && fl !== "unlit" ? fl : undefined
+                    );
+                }
+                CampfireMakeCampDialog.refreshIfOpen(this);
+            }
         }
         if (phaseData.comfort && this._engine) {
             this._engine.comfort = phaseData.comfort;
@@ -9887,7 +9909,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         if (phaseData.fireLitBy !== undefined) this._fireLitBy = phaseData.fireLitBy ?? null;
         if (phaseData.firewoodPledges !== undefined) this._firewoodPledges = new Map(phaseData.firewoodPledges ?? []);
-        if (phaseData.coldCampDecided !== undefined) this._coldCampDecided = !!phaseData.coldCampDecided;
+        if (phaseData.coldCampDecided !== undefined) {
+            this._coldCampDecided = !!phaseData.coldCampDecided;
+            if (phaseData.coldCampDecided) {
+                this._campFirePreviewLevel = null;
+                if (phase === "camp" && !game.user.isGM) {
+                    void CampfireTokenLinker.setLightState(false);
+                }
+                CampfireMakeCampDialog.refreshIfOpen(this);
+            }
+        }
         if (phaseData.campStep2Entered) this._campStep2Entered = true;
         if (phaseData.campStatus) this._campStatus = phaseData.campStatus;
         if (phaseData.outcomes) this._outcomes = phaseData.outcomes;
@@ -10047,6 +10078,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         for (const [charId, info] of Object.entries(submissions)) {
             if (info?.activityId) {
                 this._characterChoices.set(charId, info.activityId);
+                this._lockedCharacters.add(charId);
             }
         }
         this._updateRestBarProgress();
@@ -10223,6 +10255,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const _resolverSizeBefore = this._activityResolver?.activities?.size ?? 0;
         // eslint-disable-next-line no-console
         console.debug(`${MODULE_ID} | [SYNC-BISECT] receiveRestSnapshot: resolverSize=${_resolverSizeBefore}, snapshotActivities=${snapshot.activities?.length ?? 0}, phase=${this._phase}, isGM=${this._isGM}`);
+        if (snapshot.lockedCharacters?.length) {
+            this._lockedCharacters = new Set(snapshot.lockedCharacters);
+        }
+        if (snapshot.craftingResults && typeof snapshot.craftingResults === "object") {
+            this._craftingResults = new Map(Object.entries(snapshot.craftingResults));
+            for (const charId of this._craftingResults.keys()) {
+                this._lockedCharacters.add(charId);
+            }
+        }
+
         if (Array.isArray(snapshot.activities) && snapshot.activities.length > 0
             && !(this._activityResolver?.activities?.size)) {
             this._activities = snapshot.activities;
@@ -10977,8 +11019,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const root = target?.closest?.("[data-action=\"selectCampFireLevel\"]") ?? target;
         const level = root?.dataset?.fireLevel;
         if (!level || !["embers", "campfire", "bonfire"].includes(level)) return;
-        // Block changes on the camp strip once fire is lit (players use fire tab after)
-        if (this._phase === "camp" && this._fireLitBy) return;
 
         // Activity-phase fire changes use a separate socket + handler
         // so the GM runs changeFireLevelDuringActivity (which confirms cost deltas).
@@ -10995,9 +11035,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const levelLabel = level.charAt(0).toUpperCase() + level.slice(1);
 
                 if (newCost > curCost) {
-                    // Promoting fire: check kindling locally
-                    const actors = getPartyActors();
-                    const hasTinderbox = cur !== "unlit" || actors.some(a => a.items.some(i => {
+                    // Promoting fire: check kindling locally (any party member can have tinderbox)
+                    const allActors = getPartyActors();
+                    const hasTinderbox = cur !== "unlit" || allActors.some(a => a.items.some(i => {
                         const n = i.name?.toLowerCase() ?? "";
                         return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
                     }));
@@ -11012,18 +11052,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         });
                         return;
                     }
+                    // Only count firewood from the player's own characters
+                    const myActors = allActors.filter(a => a.isOwner);
                     const need = newCost - curCost;
-                    const totalFirewood = actors.reduce((sum, a) => {
+                    const myFirewood = myActors.reduce((sum, a) => {
                         const it = a.items.find(i => {
                             const n = i.name?.toLowerCase() ?? "";
                             return n.includes("firewood") || n === "kindling";
                         });
                         return sum + (it?.system?.quantity ?? 0);
                     }, 0);
-                    if (need > 0 && totalFirewood < need) {
+                    if (need > 0 && myFirewood < need) {
                         await game.ionrift.library.confirm({
                             title: "Not Enough Firewood",
-                            content: `<p>Raising the fire to <strong>${levelLabel}</strong> requires ${need} firewood, but the party only has ${totalFirewood}.</p>`,
+                            content: `<p>Raising the fire to <strong>${levelLabel}</strong> requires ${need} firewood, but your characters only have ${myFirewood}.</p>`,
                             yesLabel: "OK",
                             noLabel: null,
                             yesIcon: "fas fa-check",
@@ -11031,10 +11073,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         });
                         return;
                     }
-                    // Confirm firewood consumption
+                    // Confirm firewood consumption from the player's own stock
                     const confirmed = await game.ionrift.library.confirm({
                         title: `Raise Fire to ${levelLabel}`,
-                        content: `<p>This will consume <strong>${need} firewood</strong> from party stock. Continue?</p>`,
+                        content: `<p>This will consume <strong>${need} firewood</strong> from your inventory. Continue?</p>`,
                         yesLabel: "Light It",
                         noLabel: "Cancel",
                         yesIcon: "fas fa-fire",
@@ -11055,7 +11097,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     });
                     if (!confirmed) return;
                 }
-                emitActivityFireLevelRequest(level);
+                emitActivityFireLevelRequest(level, game.user.id);
             } else {
                 await this.changeFireLevelDuringActivity(level);
             }
@@ -11547,6 +11589,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onRetryCampPitPlacement() {
         this._campPitPlacementCancelled = false;
         await this._startCampPitCursorFlow();
+    }
+
+    /**
+     * Opens the in-Foundry Respite guide for the clicking user. Players default
+     * to the Player Quick Reference; GMs land on the GM Reference.
+     */
+    static async #onOpenGuide(event, _target) {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+        const pageId = game.user?.isGM ? "dvr4TYdYmX88MCCf" : "aQc3PtQPrYDi9Mlx";
+        await game.ionrift?.respite?.openPlayerGuide?.(pageId);
     }
 
     static async #onDismissArtNudge(event, target) {
@@ -12087,6 +12140,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         if (level === (this._fireLevel ?? "unlit")) return;
 
+        this._coldCampDecided = false;
         this._campFireWoodSpendUserId = requestingUserId ?? null;
 
         const FIRE_ENCOUNTER_MOD = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL;
@@ -12099,16 +12153,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         await CampfireTokenLinker.setLightState(true, level);
 
-        const label = level.charAt(0).toUpperCase() + level.slice(1);
-        if (cost > 0) {
-            ui.notifications.info(`${label} selected. ${cost} firewood will be spent when you proceed to activities.`);
-        } else {
-            ui.notifications.info(`${label} selected.`);
-        }
-
         emitPhaseChanged("camp", {
                 fireLevel: level,
                 fireLitBy: this._fireLitBy ?? null,
+                coldCampDecided: false,
                 firewoodPledges: Array.from(this._firewoodPledges?.entries() ?? []),
                 selectedTerrain: this._selectedTerrain ?? null
             });
@@ -12130,7 +12178,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {string} level - embers | campfire | bonfire
      * @returns {Promise<{ ok: boolean, error?: string, cancelled?: boolean }>}
      */
-    async changeFireLevelDuringActivity(level, { fromPlayer = false } = {}) {
+    async changeFireLevelDuringActivity(level, { fromPlayer = false, requestingUserId = null } = {}) {
         if (!game.user.isGM) return { ok: false, error: "GM only" };
         if (this._phase !== "activity") return { ok: false, error: "Wrong phase" };
         const restType = this._engine?.restType
@@ -12139,10 +12187,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             ?? "long";
         if (restType === "short") return { ok: false, error: "Short rest" };
         if (!["embers", "campfire", "bonfire"].includes(level)) return { ok: false, error: "Invalid level" };
-        if (this._coldCampDecided) {
-            ui.notifications.warn("Cold camp is set. End the rest or adjust from setup if the table allows it.");
-            return { ok: false, error: "Cold camp" };
-        }
 
         const cur = this._fireLevel ?? "unlit";
         if (level === cur) return { ok: true };
@@ -12176,7 +12220,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ui.notifications.warn("No one has a tinderbox or flint and steel to start a fire.");
                 return { ok: false, error: "No tinderbox" };
             }
-            const totalFirewood = actors.reduce((sum, a) => {
+            // When a player requests the change, only their actors' firewood counts
+            const OWNER = CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
+            const spendActors = requestingUserId
+                ? actors.filter(a => (a.ownership?.[requestingUserId] ?? 0) >= OWNER)
+                : actors;
+            const totalFirewood = spendActors.reduce((sum, a) => {
                 const it = a.items.find(i => {
                     const n = i.name?.toLowerCase() ?? "";
                     return n.includes("firewood") || n === "kindling";
@@ -12188,7 +12237,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 return { ok: false, error: "Not enough wood" };
             }
             if (need > 0) {
-                const spend = await this._spendPartyFirewoodForMakeCamp(need, null);
+                const spend = await this._spendPartyFirewoodForMakeCamp(need, requestingUserId);
                 if (!spend.ok) {
                     ui.notifications.warn(spend.error ?? "Could not spend firewood.");
                     return { ok: false, error: spend.error };
@@ -12197,6 +12246,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         this._fireLevel = level;
+        this._coldCampDecided = false;
         this._campFirePreviewLevel = null;
         const FIRE_ENCOUNTER_MOD = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL;
         if (this._engine) {
@@ -12218,6 +12268,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         emitPhaseChanged("activity", {
                 fireLevel: level,
                 fireLitBy: this._fireLitBy ?? null,
+                coldCampDecided: false,
                 firewoodPledges: Array.from(this._firewoodPledges?.entries() ?? []),
                 selectedTerrain: this._selectedTerrain ?? null,
                 comfort: this._engine?.comfort ?? null,
@@ -12231,12 +12282,70 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Activity phase: GM sets cold camp (no fire, stealth bonus).
+     * @returns {Promise<{ ok: boolean }>}
+     */
+    async setColdCampDuringActivity({ fromPlayer = false } = {}) {
+        if (!game.user.isGM) return { ok: false };
+        if (this._phase !== "activity") return { ok: false };
+        if (this._coldCampDecided && (this._fireLevel ?? "unlit") === "unlit") return { ok: true };
+
+        this._coldCampDecided = true;
+        this._fireLitBy = null;
+        this._fireLevel = "unlit";
+        this._campFirePreviewLevel = null;
+        const FIRE_MOD = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL;
+        if (this._engine) {
+            this._engine.fireLevel = "unlit";
+            this._engine.fireRollModifier = FIRE_MOD.cold_camp ?? 0;
+        }
+        await CampfireTokenLinker.setLightState(false);
+
+        emitPhaseChanged("activity", {
+            coldCampDecided: true,
+            fireLevel: "unlit",
+            fireLitBy: null,
+            selectedTerrain: this._selectedTerrain ?? null,
+            comfort: this._engine?.comfort ?? null,
+            activeShelters: this._engine?.activeShelters ?? []
+        });
+
+        await this._saveRestState();
+        this.render();
+        void refreshOpenStationDialog();
+        if (!fromPlayer) {
+            ui.notifications.info("Cold camp set.");
+        }
+        return { ok: true };
+    }
+
+    /**
      * GM records that the table decided to sleep cold (no fire).
-     * Satisfies the fire gate without lighting, broadcasts to all clients.
+     * Map-mode legacy path: selects cold camp and may advance to activities.
      */
     static async #onCampColdCamp(event, target) {
         if (!game.user.isGM) return;
         await this._campCeremony.decideColdCamp();
+    }
+
+    /** Synced cold camp pick during Make Camp or the activity Fire tab. */
+    static async #onSelectCampColdCamp(event, target) {
+        if (this._phase === "activity" && this._isTotM) {
+            if (!game.user.isGM) {
+                emitActivityColdCampRequest(game.user.id);
+                return;
+            }
+            await this.setColdCampDuringActivity();
+            return;
+        }
+        if (this._phase !== "camp") return;
+        if (this._coldCampDecided) return;
+        if (!game.user.isGM) {
+            emitCampColdCampRequest(game.user.id);
+            return;
+        }
+        await this._campCeremony.selectColdCamp();
+        CampfireMakeCampDialog.refreshIfOpen(this);
     }
 
     /**
@@ -12248,8 +12357,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const root = target?.closest?.("[data-action=\"previewCampFireLevel\"]") ?? target;
         const level = root?.dataset?.fireLevel;
         if (!level || !["cold_camp", "embers", "campfire", "bonfire"].includes(level)) return;
-        // Block preview changes once fire is committed
-        if (this._fireLitBy) return;
+        if (this._coldCampDecided) return;
         if (this._campFirePreviewLevel === level) return;
         this._campFirePreviewLevel = level;
         this.render();

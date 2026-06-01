@@ -2,10 +2,18 @@
 
 ## [Unreleased]
 
-### Fixed
-- Travel forage and hunt no longer grant duplicate loot after a browser refresh or a repeated roll. Rewards for a given character, day, and activity are recorded once per rest.
+### Added
+- A new question-mark button sits in the rest window header. Click it any time to open the Respite guide. Players land on the Player Quick Reference; the GM lands on the GM Reference.
+- The settings panel now carries an **Open Player Guide** button at the top of the Start here group, plus an inline shortcut on the Quick Setup card.
 
 ### Changed
+- The Respite guide journal has been rewritten and trimmed. Five pages collapse to three: a short Player Quick Reference for the table, a single GM Reference that consolidates the old settings and terrain pages, and a Cooking page that no longer leaks dev-only authoring notes.
+- Comfort, terrain, and phase indicators now use the theme-styled tooltip on hover across every rest dialog. Players hovering a comfort badge now see what the tier costs them; the rest window's phase dots name each phase. Previously several dialogs left these badges with no hover at all.
+- The Wiki link in module settings now points at the Respite wiki directly.
+
+### Fixed
+- Travel forage and hunt no longer grant duplicate loot after a browser refresh or a repeated roll. Rewards for a given character, day, and activity are recorded once per rest.
+- Cooking at a station locks in the activity when the craft succeeds, not only when the dialog closes. Refreshing after a cook no longer leaves cooking open for another attempt on the same recipe.
 - Cooking, party discoveries, feast servings, and meal leftovers use the same per-rest grant ledger as travel, so those rewards cannot be claimed twice by refreshing or resubmitting.
 
 ## [2.4.0] - 2026-05-26

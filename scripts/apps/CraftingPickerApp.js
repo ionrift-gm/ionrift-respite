@@ -1,4 +1,5 @@
 import { CraftingEngine } from "../services/CraftingEngine.js";
+import { GrantLedger } from "../services/GrantLedger.js";
 
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -47,7 +48,7 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         this._selectedRisk = "standard";
         this._selectedRecipeId = null;
         this._craftingResult = null;
-        this._hasCrafted = false;
+        this._hasCrafted = ledger?.hasCraftingForActor(actor.id, professionId) ?? false;
         this._showMissing = false;
     }
 
@@ -173,6 +174,14 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
 
     static async #onCraftRecipe(event, target) {
         if (this._hasCrafted || !this._selectedRecipeId) return;
+
+        const slotKey = this._ledger
+            ? GrantLedger.craftingSlotKey(this._actor.id, this._professionId, this._selectedRecipeId)
+            : null;
+        if (this._ledger && slotKey && this._ledger.has(slotKey)) {
+            ui.notifications.warn("That recipe was already crafted this rest.");
+            return;
+        }
 
         this._craftingResult = await this._engine.resolve(
             this._actor, this._selectedRecipeId, this._professionId, this._selectedRisk, this._terrainTag,
