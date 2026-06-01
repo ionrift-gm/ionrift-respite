@@ -389,7 +389,7 @@ export class MealDelegate {
                 return;
             }
         }
-        console.log(`[Respite:Meal] #onProceedFromMeal — starting`);
+        console.log(`[Respite:Meal] #onProceedFromMeal: starting`);
 
         const rosterIds = new Set(getPartyActors().map(a => a.id));
         const characterIds = app._engine?.characterChoices
@@ -397,38 +397,41 @@ export class MealDelegate {
             : [];
         if (!app._mealChoices) app._mealChoices = new Map();
 
-        // Check for unsubmitted player characters
-        const unsubmitted = [];
+        // Process Rations runs for the whole party, but the GM only ever sees one
+        // character's card at a time. Flag every roster character that still has no
+        // food or water assigned so the GM doesn't process with empties they forgot
+        // to populate. Player-owned characters whose owner already submitted are fine.
+        const missing = [];
         for (const charId of characterIds) {
             const actor = game.actors.get(charId);
             if (!actor) continue;
-            const isPlayerOwned = game.users.some(u => !u.isGM && actor.testUserPermission(u, "OWNER"));
-            if (!isPlayerOwned) continue;
 
             const choice = app._mealChoices.get(charId);
             const hasConsumed = choice?.consumedDays?.length > 0;
             const hasSelections = (choice?.food?.some(id => id && id !== "skip")) || (choice?.water?.some(id => id && id !== "skip"));
+            if (hasConsumed || hasSelections) continue;
+
             const ownerUser = game.users.find(u => !u.isGM && actor.testUserPermission(u, "OWNER"));
             const ownerSubmitted = ownerUser && app._mealSubmissions?.has(ownerUser.id);
+            if (ownerSubmitted) continue;
 
-            if (!hasConsumed && !hasSelections && !ownerSubmitted) {
-                unsubmitted.push(actor.name);
-            }
+            missing.push({ name: actor.name, playerOwned: !!ownerUser });
         }
 
-        if (unsubmitted.length > 0) {
+        if (missing.length > 0) {
+            const anyPlayer = missing.some(m => m.playerOwned);
             const confirmed = await new Promise(resolve => {
                 const overlay = document.createElement("div");
                 overlay.classList.add("ionrift-armor-modal-overlay");
                 overlay.innerHTML = `
                     <div class="ionrift-armor-modal">
-                        <h3><i class="fas fa-exclamation-triangle"></i> Not All Players Ready</h3>
-                        <p>These characters haven't submitted their meal choices:</p>
-                        <ul>${unsubmitted.map(n => `<li>${n}</li>`).join("")}</ul>
-                        <p>Proceeding now treats them as having skipped all meals.</p>
+                        <h3><i class="fas fa-exclamation-triangle"></i> Characters Without Rations</h3>
+                        <p>These characters have no food or water assigned:</p>
+                        <ul>${missing.map(m => `<li>${m.name}${m.playerOwned ? ' <span style="opacity:0.6">(awaiting player)</span>' : ""}</li>`).join("")}</ul>
+                        <p>Processing now treats them as skipping all meals${anyPlayer ? ", even if a player is still choosing" : ""}, applying any starvation and dehydration.</p>
                         <div class="ionrift-armor-modal-buttons">
-                            <button class="btn-armor-confirm"><i class="fas fa-forward"></i> Proceed Anyway</button>
-                            <button class="btn-armor-cancel"><i class="fas fa-clock"></i> Wait</button>
+                            <button class="btn-armor-confirm"><i class="fas fa-forward"></i> Process Anyway</button>
+                            <button class="btn-armor-cancel"><i class="fas fa-clock"></i> Go Back</button>
                         </div>
                     </div>`;
                 document.body.appendChild(overlay);
@@ -436,6 +439,16 @@ export class MealDelegate {
                 overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => { overlay.remove(); resolve(false); });
             });
             if (!confirmed) return;
+        }
+
+        // Processing runs socket exchanges and actor updates for the whole party,
+        // which can take a beat. Lock the button into a spinner so the UI shows it
+        // is working rather than appearing hung. The re-render at the end replaces it.
+        const procBtn = target?.closest?.("button") ?? null;
+        if (procBtn) {
+            procBtn.disabled = true;
+            procBtn.classList.add("is-processing");
+            procBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Processing...`;
         }
 
         // Auto-fill missing choices
@@ -640,7 +653,7 @@ export class MealDelegate {
             }
         }
 
-        // Reflection phase skipped (v2.1) — advance straight to events.
+        // Reflection phase skipped (v2.1); advance straight to events.
         await app._applyBeddingDown();
         console.log(`[Respite:Meal] Reflection skipped, advancing to events`);
         await app._advanceToEvents();
@@ -756,7 +769,7 @@ export class MealDelegate {
             if (!actor) continue;
             if (requestingUser && !requestingUser.isGM) {
                 if (!actor.testUserPermission(requestingUser, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)) {
-                    console.warn(`[Respite:Meal] mealDayConsumeRequest rejected — ${charId} not owned by user ${userId}`);
+                    console.warn(`[Respite:Meal] mealDayConsumeRequest rejected: ${charId} not owned by user ${userId}`);
                     continue;
                 }
             }

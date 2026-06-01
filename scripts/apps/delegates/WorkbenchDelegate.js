@@ -34,7 +34,7 @@ function itemIsWorkbenchUnidentified(actor, item) {
     const quartermasterLatent = summarise?.(item);
     // Only treat as QM-masked if QM says it is NOT yet identified.
     // Cursed items that have already had their lure promoted (system.identified=true)
-    // must not appear as workbench candidates — QM has nothing left to reveal.
+    // must not appear as workbench candidates; QM has nothing left to reveal.
     const isQmMasked = !!quartermasterLatent
         && !quartermasterLatent.identified
         && quartermasterLatent.kind !== "mundane";
@@ -190,7 +190,7 @@ export class WorkbenchDelegate {
             const owner = gearActorId ? game.actors.get(gearActorId) : actor;
             const item = owner?.items.get(itemId);
             if (!item) return null;
-            // Allow any item to display in the chip — the identify logic handles
+            // Allow any item to display in the chip; the identify logic handles
             // "already identified" gracefully. This prevents metagame information
             // leak (player can't tell mundane vs magical by what the zone accepts).
             const isUnidentified = itemIsWorkbenchUnidentified(owner, item);
@@ -380,7 +380,7 @@ export class WorkbenchDelegate {
             );
             const qmActive = game.modules?.get("ionrift-quartermaster")?.active;
             if (hasQmPayload || qmActive) {
-                // Route through GM via socket — QM's guardIdentify blocks player
+                // Route through GM via socket; QM's guardIdentify blocks player
                 // writes on managed items. GM runs IdentificationService directly.
                 const requestId = foundry.utils.randomID();
                 const targetUserId = game.user.id;
@@ -486,7 +486,7 @@ export class WorkbenchDelegate {
             const itemOwner = itemActorId ? game.actors.get(itemActorId) : game.actors.get(actorId);
             if (!itemOwner) return { ok: false, msg: "Item owner not found." };
             // For own items, check ownership; for shared pool items, the caster
-            // identifies on behalf of the owner — no ownership gate needed.
+            // identifies on behalf of the owner; no ownership gate needed.
             const isOwnItem = !itemActorId || itemActorId === actorId;
             if (isOwnItem) {
                 const casterActor = game.actors.get(actorId);
@@ -499,7 +499,7 @@ export class WorkbenchDelegate {
             const isPotion = itemIsDnD5ePotionType(item);
             if (zone === "gear") {
                 if (isPotion) return { ok: false, msg: "Drop potions onto the potion circle." };
-                // Allow any item — if already identified, the submit handler
+                // Allow any item. If already identified, the submit handler
                 // will report "already identified" gracefully. Blocking here
                 // would leak metagame info (mundane vs magical).
             }

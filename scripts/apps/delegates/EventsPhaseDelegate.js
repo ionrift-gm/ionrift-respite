@@ -55,7 +55,7 @@ export class EventsPhaseDelegate {
     get combatBuffs() { return this._app._combatBuffs ?? null; }
     set combatBuffs(v) { this._app._combatBuffs = v; }
 
-    /** @returns {boolean} Encounter is active — GM is running combat. */
+    /** @returns {boolean} Encounter is active. GM is running combat. */
     get awaitingCombat() { return !!this._app._awaitingCombat; }
     set awaitingCombat(v) { this._app._awaitingCombat = v; }
 
@@ -283,7 +283,7 @@ export class EventsPhaseDelegate {
         const prepared = DecisionTreeResolver.prepareChoice(this.activeTreeState, choiceId);
         if (!prepared) return;
 
-        // Enter pending-roll state — but do NOT dispatch to players yet
+        // Enter pending-roll state, but do NOT dispatch to players yet
         this.activeTreeState.awaitingRolls = true;
         this.activeTreeState.rollRequestSent = false;
         this.activeTreeState.pendingChoice = choiceId;

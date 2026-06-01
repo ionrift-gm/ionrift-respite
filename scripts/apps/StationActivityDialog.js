@@ -88,7 +88,7 @@ function _creditFeastMealState(restApp, partyIds, satiates) {
     const wpd = terrainMealRules.waterPerDay ?? 2;
 
     for (const pid of partyIds) {
-        // Skip characters already submitted — feast credit is additive, not overwriting
+        // Skip characters already submitted; feast credit is additive, not overwriting
         if (restApp._activityMealRationsSubmitted.has(pid)) continue;
 
         const existing = restApp._mealChoices.get(pid) ?? {};
@@ -149,7 +149,7 @@ function _creditFeastMealState(restApp, partyIds, satiates) {
         if (typeof restApp._saveRestState === "function") restApp._saveRestState();
     } catch (e) { console.warn(`${MODULE_ID} | _creditFeastMealState: save failed`, e); }
 
-    // Feast covers the whole party — mark meal as submitted so the snapshot
+    // Feast covers the whole party; mark meal as submitted so the snapshot
     // carries mealSubmitted:true to players, replacing "Submit Meals" with
     // "Waiting for GM to proceed".
     restApp._mealSubmitted = true;
@@ -404,9 +404,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             }
         } else if (hubEligible && this._station.id === "workbench") {
             if (hasAnyGeneral) stationTabs.push({ id: "activity", label: "Activities" });
-            // Examine tab: Focus/Potion self-service — available to all players.
+            // Examine tab: Focus/Potion self-service, available to all players.
             stationTabs.push({ id: "examine", label: "Examine" });
-            // Identify tab: click-to-identify party list — GM or Identify casters only.
+            // Identify tab: click-to-identify party list, GM or Identify casters only.
             // canSeeSharedPool is computed early so the tab can be conditionally added.
             if (this._canSeeSharedPool) {
                 stationTabs.push({ id: "identify", label: "Identify" });
@@ -609,7 +609,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         };
     }
 
-    /** Compute station tab definitions — shared by list and crafting contexts. */
+    /** Compute station tab definitions. Shared by list and crafting contexts. */
     _buildStationTabs() {
         if (!this._showStationTabs) return [];
         const stationTabs = [];
@@ -629,9 +629,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         } else if (this._station.id === "workbench") {
             const hasGeneral = this._available.length > 0;
             if (hasGeneral) stationTabs.push({ id: "activity", label: "Activities" });
-            // Examine tab: Focus/Potion self-service — available to all players.
+            // Examine tab: Focus/Potion self-service, available to all players.
             stationTabs.push({ id: "examine", label: "Examine" });
-            // Identify tab: click-to-identify party list — GM or Identify casters only.
+            // Identify tab: click-to-identify party list, GM or Identify casters only.
             if (this._canSeeSharedPool) {
                 stationTabs.push({ id: "identify", label: "Identify" });
             }
@@ -856,7 +856,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         this._selectedActivityId = activityId;
         this._followUpValue = null;
 
-        // Cooking activities skip the detail/confirm step — go straight to crafting
+        // Cooking activities skip the detail/confirm step. Go straight to crafting.
         if (COOK_ACTIVITY_IDS.has(activityId)) {
             const resolver = this._restApp?._activityResolver;
             const activity = resolver?.activities?.get(activityId)
@@ -1250,7 +1250,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const recipients = partyActors.slice(0, servings);
 
         if (servings < partyActors.length) {
-            console.warn(`[Respite:Serve] Only ${servings} serving${servings !== 1 ? "s" : ""} available — not enough for the full party (${partyActors.length} members).`);
+            console.warn(`[Respite:Serve] Only ${servings} serving${servings !== 1 ? "s" : ""} available, not enough for the full party (${partyActors.length} members).`);
             ui.notifications.warn(`Only ${servings} serving${servings !== 1 ? "s" : ""} available. Not enough for the full party.`);
         }
 
@@ -1401,7 +1401,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             header._ionriftDragBound = true;
             header.addEventListener("pointerdown", () => { this._userDragged = true; });
         }
-        // Force width on DOM — Foundry's setPosition doesn't reliably expand beyond content width
+        // Force width on DOM. Foundry's setPosition doesn't reliably expand beyond content width.
         if (this._station?.id === "cooking_station" && this._stationHasCooking) {
             const el = this.element;
             if (el) {
@@ -1869,7 +1869,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         _openDialog = dialog;
         console.log(`ionrift-respite | openForStation width`, { requested: dialogWidth, defaultWidth: DIALOG_WIDTH });
         await dialog.render(true);
-        // Force width — ApplicationV2 DEFAULT_OPTIONS may cap the constructor-passed position
+        // Force width. ApplicationV2 DEFAULT_OPTIONS may cap the constructor-passed position.
         if (dialogWidth !== DIALOG_WIDTH) {
             dialog.setPosition({ width: dialogWidth });
             console.log(`ionrift-respite | openForStation setPosition forced`, { width: dialogWidth, actual: dialog.position?.width });

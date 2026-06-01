@@ -95,7 +95,7 @@ export function _fileSource() {
 // Add entries here as bundled art is committed to the module.
 // Format: "terrain/filename" e.g. "forest/banner.png"
 const KNOWN_BASE_IMAGES = new Set([
-    // No bundled art yet — all terrain art ships via the Ionrift art pack.
+    // No bundled art yet. All terrain art ships via the Ionrift art pack.
 ]);
 
 export class ImageResolver {

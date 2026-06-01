@@ -3,7 +3,7 @@
 <div class="roster-strip">
     <div class="roster-players">
         {{#each roster}}
-        <div class="roster-chip {{#if isSelected}}selected{{/if}} {{source}} {{#unless isOwner}}not-owned{{/unless}} {{#if isAfk}}afk{{/if}}"
+        <div class="roster-chip {{#if isSelected}}selected{{/if}} {{source}} {{#unless isOwner}}not-owned{{/unless}} {{#if isAfk}}afk{{/if}} {{#if mealStatus}}meal-{{mealStatus.state}}{{/if}}"
             data-roster-id="{{id}}" title="{{fullName}}">
             <span class="roster-portrait-wrap">
                 <img class="roster-portrait" src="{{img}}" alt="{{name}}">
@@ -27,6 +27,16 @@
                 <i class="fas fa-clock roster-waiting" title="Waiting"></i>
                 {{/if}}
             </span>
+            {{#if mealStatus}}
+            <span class="roster-meal-status {{mealStatus.state}}" title="{{mealStatus.tooltip}}">
+                {{#if mealStatus.submitted}}
+                <i class="fas fa-check-circle" aria-hidden="true"></i><span class="rms-label">sent</span>
+                {{else}}
+                <i class="fas fa-drumstick-bite {{#if mealStatus.foodOk}}ok{{else}}miss{{/if}}" aria-hidden="true"></i>
+                <i class="fas fa-tint {{#if mealStatus.waterOk}}ok{{else}}miss{{/if}}" aria-hidden="true"></i>
+                {{/if}}
+            </span>
+            {{/if}}
         </div>
         {{/each}}
     </div>

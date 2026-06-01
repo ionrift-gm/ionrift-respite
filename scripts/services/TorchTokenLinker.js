@@ -5,7 +5,7 @@
  * multiple tokens simultaneously.
  *
  * Light config source (in priority order):
- *   1. A world Actor whose name matches the setting — reads prototypeToken.light
+ *   1. A world Actor whose name matches the setting. Reads prototypeToken.light.
  *   2. Built-in defaults (warm torch glow, smaller than campfire)
  *
  * Token name comes from the world `torchTokenName` setting (no module UI; default "Perimeter Torch").
@@ -19,7 +19,7 @@ const MODULE_ID = "ionrift-respite";
 /** Path to the shipped torch flame sprite (placeholder, scaled campfire glow). */
 export const TORCH_FLAME_IMG = `modules/${MODULE_ID}/assets/tokens/torches/torch_flame_128x128.webm`;
 
-/** Sensible fallback if no template actor exists — smaller/tighter than campfire. */
+/** Sensible fallback if no template actor exists. Smaller/tighter than campfire. */
 const DEFAULT_LIGHT = {
     bright: 10,
     dim: 20,

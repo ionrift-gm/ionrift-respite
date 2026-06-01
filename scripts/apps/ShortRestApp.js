@@ -614,7 +614,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         maxBudget: recoveryInfo.maxBudget,
                         maxSlotLevel: recoveryInfo.maxSlotLevel,
                         noSlotsExplain:
-                            `No expended spell slots of levels 1–${recoveryInfo.maxSlotLevel} to recover (or all are full). ${recoveryInfo.featureName} still has uses if you need it later this long rest.`,
+                            `No expended spell slots of levels 1-${recoveryInfo.maxSlotLevel} to recover (or all are full). ${recoveryInfo.featureName} still has uses if you need it later this long rest.`,
                     };
                 } else {
                     const staleFlag = a.getFlag(MODULE_ID, SPELL_RECOVERY_FLAG);

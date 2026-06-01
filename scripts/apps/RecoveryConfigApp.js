@@ -9,7 +9,7 @@
 
 const MODULE_ID = "ionrift-respite";
 
-/** Recovery setting definitions — order = display order. */
+/** Recovery setting definitions. Order = display order. */
 const RECOVERY_SETTINGS = [
     {
         key: "enableComfort",

@@ -1,5 +1,5 @@
 /**
- * SystemAdapter – Abstract base class for system-specific data access.
+ * SystemAdapter: Abstract base class for system-specific data access.
  *
  * Respite's core logic (rest flow, activities, crafting, recovery) calls
  * adapter methods instead of touching actor.system directly.  Each game
@@ -51,7 +51,7 @@ export class SystemAdapter {
     // ── Equipment & Inventory ────────────────────────────────
 
     /**
-     * @param {string} name – item name to search (case-insensitive)
+     * @param {string} name - item name to search (case-insensitive)
      * @returns {Object|null} The found item, or null
      */
     findItemByName(actor, name) { this._notImpl("findItemByName"); }

@@ -162,10 +162,10 @@ export class RecoveryHandler {
      * damage dispatcher and the condition advisory both route by the same set.
      *
      * Pool semantics:
-     *   "sleeping" — characters not on watch (falls back to whole party if
+     *   "sleeping": characters not on watch (falls back to whole party if
      *                everyone is on watch).
-     *   "awake"    — characters on watch (falls back to whole party).
-     *   "all"      — every character with an outcome (default).
+     *   "awake":    characters on watch (falls back to whole party).
+     *   "all":      every character with an outcome (default).
      *
      * Count may be a number, numeric string, or a dice formula (e.g. "1d2").
      * The resolved count is clamped to the pool size.

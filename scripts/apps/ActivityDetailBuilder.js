@@ -4,7 +4,7 @@
  * Single source of truth for activity card and detail panel data.
  *
  * Both the TotM mode and the spatial StationActivityDialog call these
- * functions — nothing is computed in two places any more.
+ * functions; nothing is computed in two places any more.
  *
  * Exports:
  *   buildActivityListItem(activityId, activity, actor, partyState, isAvailable)
@@ -23,7 +23,7 @@ import {
 /**
  * Resolve the armour sleep hint for an actor doing a given activity.
  * Returns { text, type: "warning"|"positive" } or null.
- * Pure — no Foundry globals needed (actor.items is passed in).
+ * Pure. No Foundry globals needed (actor.items is passed in).
  *
  * @param {object} actor
  * @param {object} activity

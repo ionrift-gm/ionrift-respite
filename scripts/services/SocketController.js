@@ -1,9 +1,9 @@
 /**
- * SocketController — centralised socket emit helpers and message type constants.
+ * SocketController: centralised socket emit helpers and message type constants.
  *
  * Phase 1.1 extraction from RestSetupApp.js (God class decomposition).
  * Provides:
- *  1. SOCKET_TYPES — frozen object of all socket message type strings
+ *  1. SOCKET_TYPES: frozen object of all socket message type strings
  *  2. Typed emit helpers wrapping `game.socket.emit(`module.${MODULE_ID}`, ...)`
  *
  * The dispatch handler (_onSocketMessage) remains in module.js since it routes
@@ -204,7 +204,7 @@ export function emitPhaseChanged(phase, phaseData = {}) {
  */
 export function emitSubmissionUpdate(submissions) {
     if (!submissions || typeof submissions !== "object") {
-        console.warn(`${MODULE_ID} | emitSubmissionUpdate called with invalid submissions payload — dropped.`);
+        console.warn(`${MODULE_ID} | emitSubmissionUpdate called with invalid submissions payload, dropped.`);
         return;
     }
     // eslint-disable-next-line no-console

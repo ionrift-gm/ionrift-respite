@@ -173,7 +173,7 @@ export class TerrainRegistry {
      * Terrain category for UI grouping and cross-module spine flags.
      * Reads "category" from the terrain's own terrain.json. Falls back to
      * a comfort-based heuristic for terrain.json files without a category field.
-     * Never uses hardcoded terrain ID lists — callers must not either.
+     * Never uses hardcoded terrain ID lists. Callers must not either.
      * @param {string} id
      * @returns {"dungeon"|"safe-haven"|"wilderness"}
      */

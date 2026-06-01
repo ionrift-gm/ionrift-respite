@@ -499,7 +499,7 @@ export function registerItemEnrichments() {
         "bedroll": {
             html: comfortOn
                 ? `<hr><p><strong>Respite:</strong> A character carrying a bedroll recovers <strong>+1 Hit Die</strong> during a long rest, regardless of camp comfort level. This bonus stacks with normal HD recovery.</p>`
-                : `<hr><p><strong>Respite:</strong> Bedroll tracked for rest flavour. <em>Comfort rules disabled — no HD bonus applied.</em></p>`,
+                : `<hr><p><strong>Respite:</strong> Bedroll tracked for rest flavour. <em>Comfort rules disabled. No HD bonus applied.</em></p>`,
             tags: comfortOn ? ["+1 HD Recovery"] : ["Comfort Off"]
         },
 
@@ -525,7 +525,7 @@ export function registerItemEnrichments() {
         "mess kit": {
             html: comfortOn
                 ? `<hr><p><strong>Respite:</strong> A character carrying a mess kit gains <strong>advantage on the exhaustion save</strong> during rest, but only when the campfire is lit. Without a fire, the mess kit provides no mechanical benefit. Functions identically to Cook's Utensils for this purpose.</p>`
-                : `<hr><p><strong>Respite:</strong> Mess kit tracked for rest flavour. <em>Comfort rules disabled — no exhaustion advantage applied.</em></p>`,
+                : `<hr><p><strong>Respite:</strong> Mess kit tracked for rest flavour. <em>Comfort rules disabled. No exhaustion advantage applied.</em></p>`,
             tags: comfortOn ? ["Exhaustion Advantage (with fire)"] : ["Comfort Off"]
         },
 
@@ -533,7 +533,7 @@ export function registerItemEnrichments() {
         "cook's utensils": {
             html: comfortOn
                 ? `<hr><p><strong>Respite:</strong> A character carrying Cook's Utensils gains <strong>advantage on the exhaustion save</strong> during rest when the campfire is lit. Also qualifies for the <strong>Cooking</strong> crafting profession, allowing the character to prepare meals that grant temporary buffs.</p>`
-                : `<hr><p><strong>Respite:</strong> Qualifies for the <strong>Cooking</strong> crafting profession during rest. <em>Comfort rules disabled — no exhaustion advantage applied.</em></p>`,
+                : `<hr><p><strong>Respite:</strong> Qualifies for the <strong>Cooking</strong> crafting profession during rest. <em>Comfort rules disabled. No exhaustion advantage applied.</em></p>`,
             tags: comfortOn ? ["Exhaustion Advantage (with fire)", "Cooking Profession"] : ["Cooking Profession", "Comfort Off"]
         },
 
@@ -582,7 +582,7 @@ export function registerItemEnrichments() {
         "tinderbox": {
             html: comfortOn
                 ? `<hr><p><strong>Respite:</strong> Required to <strong>light the campfire</strong> during the Camp phase. Without a tinderbox (or equivalent), the party cannot start a fire, losing access to cooking, warmth bonuses, and campfire-dependent activities. One tinderbox serves the whole party.</p>`
-                : `<hr><p><strong>Respite:</strong> Tinderbox tracked for rest flavour. <em>Comfort rules disabled — fire phase is bypassed.</em></p>`,
+                : `<hr><p><strong>Respite:</strong> Tinderbox tracked for rest flavour. <em>Comfort rules disabled. Fire phase is bypassed.</em></p>`,
             tags: comfortOn ? ["Campfire (required)"] : ["Comfort Off"]
         },
 

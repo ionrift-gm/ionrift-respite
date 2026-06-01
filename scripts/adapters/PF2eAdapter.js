@@ -1,7 +1,7 @@
 import { SystemAdapter } from "./SystemAdapter.js";
 
 /**
- * PF2eAdapter – Early support for Pathfinder 2nd Edition.
+ * PF2eAdapter: Early support for Pathfinder 2nd Edition.
  *
  * Implements the SystemAdapter contract against the pf2e system data model.
  * Core rest flow (activities, campfire, events, comfort recovery) is functional.
@@ -108,7 +108,7 @@ export class PF2eAdapter extends SystemAdapter {
                 if (fatigued?.length > 0) return 1;
             }
         } catch {
-            // noop — fall through to item scan
+            // noop, fall through to item scan
         }
 
         // Fallback: scan items for condition type
@@ -197,7 +197,7 @@ export class PF2eAdapter extends SystemAdapter {
     // ── Hooks ────────────────────────────────────────────────
 
     getRestHookNames() {
-        // PF2e rest hooks — the system fires these but the exact names
+        // PF2e rest hooks: the system fires these but the exact names
         // may vary by pf2e version. These are best-effort matches.
         return {
             preShort: "pf2e.preShortRest",
@@ -207,7 +207,7 @@ export class PF2eAdapter extends SystemAdapter {
     }
 
     suppressDefaultRecovery(result) {
-        // PF2e rest recovery suppression — best-effort.
+        // PF2e rest recovery suppression: best-effort.
         // The pf2e system may not use the same result structure as dnd5e.
         // Suppress what we can; log if structure is unexpected.
         if (result?.updateData) {

@@ -201,7 +201,7 @@ export class CampCeremonyDelegate {
         this.coldCampDecided = true;
         this.fireLitBy = null;
         this.fireLevel = "unlit";
-        // Cold camp stealth bonus — no light = harder for monsters to find camp
+        // Cold camp stealth bonus: no light = harder for monsters to find camp
         const FIRE_MOD = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL;
         if (this._app._engine) {
             this._app._engine.fireLevel = "unlit";

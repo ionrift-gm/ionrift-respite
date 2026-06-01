@@ -138,14 +138,14 @@ export function clearActiveRestApp() {
 
 /**
  * Keeps the GM RestSetupApp ref alive when the app closes to the footer indicator
- * during the activity phase. The rest is still active — the ref is needed for
+ * during the activity phase. The rest is still active; the ref is needed for
  * handleRequestRestState to build snapshots for late-joining players.
  *
  * Does not clear activeRestData or activeRestSetupApp.
  * Only called from RestSetupApp.close({ retainGmRestApp: true }).
  */
 export function retainGmRestAppFooter() {
-    // respiteFlowActive stays true — rest is still running.
+    // respiteFlowActive stays true; rest is still running.
     // activeRestSetupApp and activeRestData are intentionally left intact.
     _removeGmRestIndicator();
 }
@@ -305,6 +305,14 @@ Hooks.once("init", async () => {
         };
         return map[typeof tier === "string" ? tier.toLowerCase() : tier] ?? "Rest comfort affects HP and Hit Die recovery.";
     });
+    Handlebars.registerHelper("fireTierPlain", (id) => {
+        const map = {
+            embers: "No cooking. No comfort change.",
+            campfire: "Cooking and warmth. Draws attention (higher encounter chance).",
+            bonfire: "+1 camp comfort. Beacon in the dark (much higher encounter chance)."
+        };
+        return map[typeof id === "string" ? id : ""] ?? "";
+    });
 
     // Register partials
     foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/roster-strip.hbs"]);
@@ -330,6 +338,12 @@ Hooks.once("init", async () => {
         .then(r => r.text())
         .then(t => Handlebars.registerPartial("fireTierPicker", t))
         .catch(e => console.warn(`${MODULE_ID} | Failed to load fire-tier-picker partial:`, e));
+
+    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/fire-tier-body.hbs"]);
+    fetch("modules/ionrift-respite/templates/partials/fire-tier-body.hbs")
+        .then(r => r.text())
+        .then(t => Handlebars.registerPartial("fireTierBody", t))
+        .catch(e => console.warn(`${MODULE_ID} | Failed to load fire-tier-body partial:`, e));
 
     // Expose API
     const adapter = createAdapter();
@@ -558,7 +572,7 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
         return;
     }
 
-    // Event/content overlay — invalidate cached event data
+    // Event/content overlay: invalidate cached event data
     // The next rest start or browser open will re-scan overlays
     try {
         const { OverlayEventLoader } = await import("./services/OverlayEventLoader.js");
@@ -671,7 +685,7 @@ registerInventoryContextMenu();
 }
 
 // â”€â”€ Monster Cooking: Chat Card Button Wiring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// [CARVED OUT — WS-6] Monster Cooking chat card wiring removed for v2.0.
+// [CARVED OUT, WS-6] Monster Cooking chat card wiring removed for v2.0.
 // Archived: ionrift-brand/Assets/Archived/butcher_system/REINTEGRATION.md
 // [CARVED OUT - WS-6] Monster Cooking chat card wiring removed for v2.0.
 // See: ionrift-brand/Assets/Archived/butcher_system/REINTEGRATION.md
@@ -1135,6 +1149,36 @@ Hooks.on("dnd5e.preShortRest", _blockPlayerRest);
 Hooks.on("dnd5e.preLongRest", _blockPlayerRest);
 
 /**
+ * Funnel a rest initiated on the primary party group actor into the Respite
+ * flow instead of the system's native group rest. From Foundry v14 the party
+ * is a native group actor whose sheet exposes Short/Long Rest buttons; those
+ * call initiateRest on the group, firing dnd5e.preShortRest / preLongRest.
+ * Returning false there cancels the native group rest. Only the designated
+ * primary party is intercepted, and only for the GM (players are handled by
+ * _blockPlayerRest). Individual actor rests are left to the system.
+ * @param {Actor} actor - The actor being rested.
+ * @param {"short"|"long"} type - Rest length.
+ * @returns {boolean} false to cancel the native rest.
+ */
+function _interceptPartyRest(actor, type) {
+    if (actor?.type !== "group") return true;
+    const party = game.actors?.party;
+    if (!party || actor.id !== party.id) return true;
+    if (!game.user.isGM) return true;
+    if (!game.settings.get(MODULE_ID, "interceptRests")) return true;
+
+    // Cancel the native group rest regardless; only launch when one can start.
+    if (_canStartRest()) {
+        if (type === "long") new RestSetupApp().render({ force: true });
+        else new ShortRestApp().render({ force: true });
+    }
+    return false;
+}
+
+Hooks.on("dnd5e.preShortRest", (actor) => _interceptPartyRest(actor, "short"));
+Hooks.on("dnd5e.preLongRest", (actor) => _interceptPartyRest(actor, "long"));
+
+/**
  * DnD5e rest hook: suppress default HP/HD recovery when Respite is managing it.
  * This fires BEFORE the system applies its own recovery.
  * We zero out HP and HD restoration so the system doesn't double-apply.
@@ -1269,13 +1313,13 @@ export function _refreshRejoinBar(app) {
 export function _ensureRejoinBar(app) {
     const existing = document.getElementById("respite-rejoin-bar");
     if (existing) {
-        // Bar exists — update the phase label and progress
+        // Bar exists; update the phase label and progress
         const phaseSpan = existing.querySelector("span:not(.respite-bar-progress)");
         if (phaseSpan) phaseSpan.textContent = `Rest in progress (Phase: ${app?._phase ?? "active"})`;
         refreshRejoinBar(app);
         return;
     }
-    // Bar doesn't exist — create it
+    // Bar doesn't exist; create it
     showRejoinNotification(app, _rejoinRest);
 }
 

@@ -7,7 +7,7 @@ const path = require('path');
 const TARGET_DIR = process.argv[2] || path.resolve(__dirname, '../scripts');
 const REPO_ROOT = path.resolve(__dirname, '..');
 
-// Files exempt from scanning — contain legitimate matches for domain vocabulary.
+// Files exempt from scanning; contain legitimate matches for domain vocabulary.
 const ALLOWLIST_PATHS = new Set([
     path.normalize('scripts/apps/RestConstants.js'),           // rpPrompt: data schema field for shelter roleplay prompts
     path.normalize('scripts/apps/RestSetupApp.js'),            // rpPrompt: data schema field; copySpellRollPrompt: spell mechanic field

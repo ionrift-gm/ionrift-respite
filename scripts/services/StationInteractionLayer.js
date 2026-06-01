@@ -1100,7 +1100,7 @@ function _onRefreshTokenForOverlays(token) {
  * @param {string}  [options.terrainTag] - Current terrain tag for station filtering (hides campfire/weapon rack in tavern, etc.)
  */
 export function activateStationLayer(actorMap, onStationClick, options = {}) {
-    // Theater of the Mind: skip canvas overlays entirely (camp-pit notice is exempt —
+    // Theater of the Mind: skip canvas overlays entirely (camp-pit notice is exempt;
     // fire lighting is a setup step that runs in both modes).
     if (!options.campPitModeOnly) {
         try {
@@ -1108,7 +1108,7 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
                 console.log(`${MODULE_ID} | StationInteractionLayer.activate skipped (theater mode)`);
                 return;
             }
-        } catch { /* setting not registered yet — default to allowing activation */ }
+        } catch { /* setting not registered yet; default to allowing activation */ }
     }
 
     deactivateStationLayer();

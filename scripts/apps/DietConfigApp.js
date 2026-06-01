@@ -8,7 +8,7 @@ const MODULE_ID = "ionrift-respite";
  * Each row shows a character with a preset dropdown and expandable
  * detail fields for fine-tuning canEatTags, canDrink, exclusions, etc.
  *
- * Sustenance type is derived from the preset — food presets need food/water,
+ * Sustenance type is derived from the preset. Food presets need food/water,
  * essence presets (Construct, Undead, Celestial, Elemental) need essence items.
  * No separate sustenance toggle; the preset IS the declaration.
  */
@@ -231,7 +231,7 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
                     </div>`;
 
                 if (row.isEssence) {
-                    // Essence characters always show their custom items — that's the whole point
+                    // Essence characters always show their custom items. That's the whole point.
                     const essenceItems = (row.diet.customFoodNames ?? []).join(", ");
                     html += `
                     <div class="diet-essence-section">

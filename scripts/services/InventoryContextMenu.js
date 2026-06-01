@@ -28,7 +28,7 @@ export function registerInventoryContextMenu() {
         const actor = item.parent;
         if (!actor || actor.type !== "character") return;
 
-        // Check party membership — only show for rostered characters
+        // Check party membership: only show for rostered characters
         try {
             const libParty = game.ionrift?.library?.party;
             if (libParty) {
@@ -165,7 +165,7 @@ async function _syncWithRestMealState(actor, itemId, isFood, itemSnapshot) {
         arr.push(itemId);
     }
 
-    // Mark this slot as locked — the item has already been consumed from
+    // Mark this slot as locked. The item has already been consumed from
     // inventory and cannot be removed or swapped in the rations UI.
     const lockedKey = slot === "food" ? "foodLockedSlots" : "waterLockedSlots";
     const lockedArr = Array.isArray(existing[lockedKey]) ? [...existing[lockedKey]] : [];
@@ -191,7 +191,7 @@ async function _syncWithRestMealState(actor, itemId, isFood, itemSnapshot) {
     }
 
     // Auto-trim excess water if eating food that satiates water
-    // (handles: player drank via right-click, then eats porridge — trim the redundant water)
+    // (handles: player drank via right-click, then eats porridge; trim the redundant water)
     if (isFood && typeof restApp._autoTrimExcessWater === "function") {
         restApp._autoTrimExcessWater(charId);
     }

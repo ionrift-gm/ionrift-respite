@@ -9,7 +9,7 @@
  * Design notes:
  *   - The canonical tier list uses four tiers: hostile → rough → sheltered → safe.
  *   - CampGearScanner's five-tier list (which includes "comfortable") is an
- *     aliased display concern — "comfortable" maps to "sheltered" mechanically.
+ *     aliased display concern: "comfortable" maps to "sheltered" mechanically.
  *   - Tier-stepping clamps to array bounds (hostile floor, safe ceiling).
  */
 
@@ -59,7 +59,7 @@ export const EXHAUSTION_DC = Object.freeze({ safe: null, sheltered: null, rough:
 export function boostComfort(tier, steps = 1) {
     if (!isComfortEnabled()) return "safe";
     const idx = COMFORT_TIERS.indexOf(tier);
-    if (idx < 0) return tier; // unknown tier — pass through
+    if (idx < 0) return tier; // unknown tier, pass through
     const clamped = Math.max(0, Math.min(COMFORT_TIERS.length - 1, idx + steps));
     return COMFORT_TIERS[clamped];
 }

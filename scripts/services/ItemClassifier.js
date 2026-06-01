@@ -38,7 +38,7 @@ const FUEL_NAMES = new Set([
     "tinderbox", "firewood", "dry firewood", "kindling"
 ]);
 
-/** Built-in essence item names (lowercase) — recharge items for non-biological characters. */
+/** Built-in essence item names (lowercase). Recharge items for non-biological characters. */
 const ESSENCE_NAMES = new Set([
     "oil flask", "lamp oil", "arcane crystal", "soul fragment",
     "ether shard", "residuum"
@@ -96,7 +96,7 @@ const FOOD_TAG_NAMES = {
 };
 
 /**
- * Items that are cooking/crafting ingredients — not edible raw rations.
+ * Items that are cooking/crafting ingredients, not edible raw rations.
  * These classify as "ingredient" even though their DnD5e subtype is "food".
  * Goodberries are intentionally excluded: they are edible as-is.
  */
@@ -105,10 +105,10 @@ const INGREDIENT_NAMES = new Set([
 ]);
 
 /**
- * Sustenance types — determines what a character needs to survive.
- *   "food"    — standard biological: needs food + water (default)
- *   "essence" — magical/construct: needs essence items (oil, crystals, etc.)
- *   "none"    — truly needs nothing (GM override, rare)
+ * Sustenance types: determines what a character needs to survive.
+ *   "food":    standard biological. Needs food + water (default).
+ *   "essence": magical/construct. Needs essence items (oil, crystals, etc.).
+ *   "none":    truly needs nothing (GM override, rare).
  */
 const SUSTENANCE_TYPES = new Set(["food", "essence", "none"]);
 

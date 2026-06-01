@@ -31,8 +31,33 @@ export async function loadAllCatalogEvents() {
         console.warn(`${MODULE_ID} | EventCatalogLoader: overlay loading failed:`, e);
     }
 
-    events.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
-    return events;
+    const deduped = dedupeById(events);
+    deduped.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+    return deduped;
+}
+
+/**
+ * Collapses events that share an id, keeping the first occurrence.
+ * The same pack can reach the catalog from more than one source (an active
+ * overlay and an imported copy), which would otherwise list every event twice.
+ *
+ * @param {object[]} events
+ * @returns {object[]}
+ */
+function dedupeById(events) {
+    const byId = new Map();
+    const result = [];
+    for (const evt of events) {
+        const id = evt?.id;
+        if (id == null) {
+            result.push(evt);
+            continue;
+        }
+        if (byId.has(id)) continue;
+        byId.set(id, true);
+        result.push(evt);
+    }
+    return result;
 }
 
 /**
@@ -83,4 +108,20 @@ export function countPoolEventsForTerrain(resolver, terrainTag) {
         if (event.terrainTags?.includes(terrainTag)) count++;
     }
     return count;
+}
+
+/**
+ * Lists events in the resolver pool for a terrain tag (curated selection only).
+ *
+ * @param {import("./EventResolver.js").EventResolver} resolver
+ * @param {string} terrainTag
+ * @returns {object[]}
+ */
+export function listPoolEventsForTerrain(resolver, terrainTag) {
+    const events = [];
+    for (const event of resolver.events.values()) {
+        if (event.terrainTags?.includes(terrainTag)) events.push(event);
+    }
+    events.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+    return events;
 }

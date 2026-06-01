@@ -71,7 +71,7 @@ async function main() {
 
     const batch = [];
 
-    // Journal parent document — pages array lists page IDs
+    // Journal parent document. Pages array lists page IDs.
     const journalKey = `!journal!${parent._id}`;
     const pageIds = pages.map(p => p._id);
     batch.push({

@@ -1,7 +1,7 @@
 import { SystemAdapter } from "./SystemAdapter.js";
 
 /**
- * DaggerheartAdapter – Stub for Daggerheart by Darrington Press.
+ * DaggerheartAdapter: Stub for Daggerheart by Darrington Press.
  *
  * ┌─────────────────────────────────────────────────────────────────┐
  * │  IMPLEMENTATION NOTES (from compatibility analysis)            │
@@ -20,7 +20,7 @@ import { SystemAdapter } from "./SystemAdapter.js";
  * │  Proficiency ........ Not applicable (domain-based)            │
  * │  Spell Slots ........ None (Fear + Hope economy instead)       │
  * │  Armor Sleep ........ No equivalent                            │
- * │  Rest Hooks ......... TBD – Daggerheart system hooks unknown   │
+ * │  Rest Hooks ......... TBD, Daggerheart system hooks unknown    │
  * │                                                                │
  * │  INCOMPATIBLE ACTIVITIES (hide these):                         │
  * │  ─────────────────────────────────────                         │

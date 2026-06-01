@@ -873,7 +873,7 @@ export class MealPhaseHandler {
             const ceActive = !!game.modules?.get?.("dfreds-convenient-effects")?.active;
             if (!ceActive && aeChanges.length) {
                 aeDescriptions.push(
-                    "Convenient Effects is not installed. This effect applies basic roll mode changes only — "
+                    "Convenient Effects is not installed. This effect applies basic roll mode changes only. "
                     + "conditional automation (Midi-QoL triggers, advantage reminders) will not function."
                 );
             }
@@ -909,7 +909,7 @@ export class MealPhaseHandler {
                 const gmIds = game.users?.filter(u => u.isGM).map(u => u.id) ?? [];
                 if (gmIds.length) {
                     await ChatMessage.create({
-                        content: `<div class="respite-recovery-chat"><p><i class="fas fa-exclamation-triangle"></i> <strong>Well Fed: ${itemName}</strong> applied to <strong>${actor.name}</strong> with basic AE changes. <em>Convenient Effects</em> is not installed — conditional triggers (expire on next save, advantage reminders) require CE + DAE/Midi-QoL.</p></div>`,
+                        content: `<div class="respite-recovery-chat"><p><i class="fas fa-exclamation-triangle"></i> <strong>Well Fed: ${itemName}</strong> applied to <strong>${actor.name}</strong> with basic AE changes. <em>Convenient Effects</em> is not installed. Conditional triggers (expire on next save, advantage reminders) require CE + DAE/Midi-QoL.</p></div>`,
                         whisper: gmIds,
                         speaker: { alias: "Respite" }
                     });
@@ -1006,7 +1006,7 @@ export class MealPhaseHandler {
                 }
                 const detail = `1d20 + ${conSaveBonus} = ${total} vs DC ${dc} (${pass ? "pass" : "fail"})`;
                 await ChatMessage.create({
-                    content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>Meal Buff — Exhaustion Save</strong></p><p><i class="fas fa-dice-d20"></i> <strong>${actor.name}</strong> ${detail}. ${pass ? "Removes 1 exhaustion." : "No exhaustion removed."}</p></div>`,
+                    content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>Meal Buff: Exhaustion Save</strong></p><p><i class="fas fa-dice-d20"></i> <strong>${actor.name}</strong> ${detail}. ${pass ? "Removes 1 exhaustion." : "No exhaustion removed."}</p></div>`,
                     rolls: [roll],
                     speaker: ChatMessage.getSpeaker({ actor })
                 });
@@ -1084,7 +1084,7 @@ export class MealPhaseHandler {
      *
      * specialDuration is intentionally omitted here. Eating happens before native
      * longRest()/shortRest() runs, so setting specialDuration at creation time would
-     * cause DAE to strip the AE the moment the rest fires — before recovery is
+     * cause DAE to strip the AE the moment the rest fires, before recovery is
      * visible to the player. stampWellFedDuration() adds the correct DAE specialDuration
      * after longRest() completes, so it only triggers on the NEXT rest.
      */
@@ -1279,7 +1279,7 @@ export class MealPhaseHandler {
             if (qty <= 0) continue;
 
             // Only skip items stored inside a water-source container
-            // (e.g. Water Pints inside a Waterskin container) — their
+            // (e.g. Water Pints inside a Waterskin container); their
             // pints are accounted for by the parent container entry.
             // Items inside mundane containers (backpacks) pass through.
             const parentId = _getContainerParentId(item);

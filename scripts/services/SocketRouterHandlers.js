@@ -1,5 +1,5 @@
 /**
- * SocketRouterHandlers — handler functions for inbound socket messages.
+ * SocketRouterHandlers: handler functions for inbound socket messages.
  * Extracted from module.js (Phase 2.2).
  *
  * Each handler receives (data, ctx) where ctx is a live context accessor

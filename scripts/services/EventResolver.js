@@ -359,6 +359,17 @@ export class EventResolver {
         };
     }
 
+    /**
+     * Builds a triggered-event result from a catalog event (manual pool pick).
+     * @param {Object} event
+     * @param {Object[]} watchRoster
+     * @param {Object} [options]
+     * @returns {Object}
+     */
+    buildManualResult(event, watchRoster, options = {}) {
+        return this._buildResult(event, watchRoster, options);
+    }
+
     // ── Legacy Compatibility ────────────────────────────────────────────
 
     /**
