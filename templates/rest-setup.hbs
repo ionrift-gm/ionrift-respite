@@ -2705,31 +2705,13 @@
                 {{else}}
                 {{!-- GM: Pre-request state --}}
 
-                {{!-- 1. Narrate prompt --}}
-                <div class="event-narration-advisory">
+                {{!-- 1. Narrate prompt (lead) --}}
+                <div class="event-narration-advisory lead">
                     <i class="fas fa-theater-masks"></i>
                     <em>Narrate this for the party, then resolve below.</em>
                 </div>
 
-                {{!-- 2. Stakes preview --}}
-                <div class="event-outcome-preview">
-                    <div class="outcome-preview-row pass">
-                        <span class="outcome-preview-label"><i class="fas fa-check-circle"></i> Pass:</span>
-                        <span class="outcome-preview-text">{{mechanical.onSuccess.narrative}}</span>
-                    </div>
-                    {{#each mechanical.onSuccess.effects}}
-                    <div class="outcome-preview-effect pass"><i class="fas fa-cog"></i> {{description}}</div>
-                    {{/each}}
-                    <div class="outcome-preview-row fail">
-                        <span class="outcome-preview-label"><i class="fas fa-times-circle"></i> Fail:</span>
-                        <span class="outcome-preview-text">{{mechanical.onFailure.narrative}}</span>
-                    </div>
-                    {{#each mechanical.onFailure.effects}}
-                    <div class="outcome-preview-effect fail"><i class="fas fa-cog"></i> {{description}}</div>
-                    {{/each}}
-                </div>
-
-                {{!-- 3. DC + skill check details --}}
+                {{!-- 2. The check: DC + skill + who rolls, in one strip --}}
                 <div class="event-check-header">
                     <div class="event-dc-badge">
                         <span class="dc-label">DC</span>
@@ -2741,25 +2723,37 @@
                             {{#if (eq mechanical.targets "watch")}}Watch only{{else if (eq mechanical.targets "all")}}Entire party{{else}}Watch{{/if}}
                             · Group Check (averaged)
                         </span>
-                        <span class="event-check-direction">All rolls averaged against DC</span>
+                        {{#if targetNames.length}}
+                        <span class="event-check-roster">
+                            <i class="fas fa-eye"></i>{{join targetNames ", "}}
+                        </span>
+                        {{/if}}
                     </div>
                 </div>
-                {{#if @root.isGM}}
                 <div class="event-gm-hint">
                     <i class="fas fa-info-circle"></i>
                     Averaged rolls trend toward ~10. DCs above 13 are harder, below 8 are easier than individual checks.
                 </div>
-                {{/if}}
 
-                {{!-- 4. Watch roster --}}
-                {{#if targetNames.length}}
-                <div class="event-watch-roster">
-                    <i class="fas fa-eye"></i>
-                    <strong>{{#if (eq mechanical.targets "all")}}Targets:{{else}}Watch:{{/if}}</strong> {{join targetNames ", "}}
+                {{!-- 3. Stakes preview --}}
+                <div class="event-outcome-preview">
+                    <div class="outcome-preview-row pass">
+                        <span class="outcome-preview-label"><i class="fas fa-check-circle"></i> Pass:</span>
+                        <span class="outcome-preview-text">{{mechanical.onSuccess.narrative}}</span>
+                    </div>
+                    {{#each mechanical.onSuccess.effects}}
+                    <div class="outcome-preview-effect pass"><i class="fas fa-circle"></i> {{description}}</div>
+                    {{/each}}
+                    <div class="outcome-preview-row fail">
+                        <span class="outcome-preview-label"><i class="fas fa-times-circle"></i> Fail:</span>
+                        <span class="outcome-preview-text">{{mechanical.onFailure.narrative}}</span>
+                    </div>
+                    {{#each mechanical.onFailure.effects}}
+                    <div class="outcome-preview-effect fail"><i class="fas fa-circle"></i> {{description}}</div>
+                    {{/each}}
                 </div>
-                {{/if}}
 
-                {{!-- 5. Action buttons --}}
+                {{!-- 4. Action buttons --}}
                 <div class="event-adjudicate-buttons">
                     <button type="button" class="btn-resolve-check" data-action="resolveSkillCheck" data-event-index="{{@index}}" data-outcome="auto"
                         {{#if @root.anyEventAwaitingRolls}}{{#unless awaitingRolls}}disabled title="Resolve the current event first"{{/unless}}{{/if}}>
