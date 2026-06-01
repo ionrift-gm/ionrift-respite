@@ -67,6 +67,20 @@ import {
 } from "./services/SocketController.js";
 import { registerAllSettings, registerItemEnrichments } from "./services/SettingsRegistrar.js";
 import "./services/SettingsPanelLayout.js";
+import {
+    buildRollRequestContext,
+    buildEventPlayerRollContext,
+    buildEventGmRollContext,
+    buildMockRollRequestContext,
+    buildRollParticipants,
+    buildRollTargetLabel,
+    sortRollParticipants,
+    layoutRollParticipants,
+    findPreviewPlayerActor,
+    centerRollRequestRoster,
+    ROLL_REQUEST_PREVIEW_VARIANTS
+} from "./services/RollRequestView.js";
+import { RollRequestPreviewApp } from "./apps/RollRequestPreviewApp.js";
 import { registerUiHooks, refreshZzzOverlay } from "./services/UiInjections.js";
 import { registerSpoilageMergeGuard } from "./services/SpoilageMergeGuard.js";
 import { registerInventoryContextMenu } from "./services/InventoryContextMenu.js";
@@ -345,11 +359,32 @@ Hooks.once("init", async () => {
         .then(t => Handlebars.registerPartial("fireTierBody", t))
         .catch(e => console.warn(`${MODULE_ID} | Failed to load fire-tier-body partial:`, e));
 
+    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/_roll-request.hbs"]);
+    fetch("modules/ionrift-respite/templates/partials/_roll-request.hbs")
+        .then(r => r.text())
+        .then(t => Handlebars.registerPartial("rollRequest", t))
+        .catch(e => console.warn(`${MODULE_ID} | Failed to load roll-request partial:`, e));
+
     // Expose API
     const adapter = createAdapter();
     game.ionrift = game.ionrift || {};
     game.ionrift.respite = {
         adapter,
+        rollRequest: {
+            buildContext: buildRollRequestContext,
+            buildEventPlayerContext: buildEventPlayerRollContext,
+            buildEventGmContext: buildEventGmRollContext,
+            buildParticipants: buildRollParticipants,
+            sortParticipants: sortRollParticipants,
+            layoutParticipants: layoutRollParticipants,
+            centerRoster: centerRollRequestRoster,
+            findPreviewPlayerActor,
+            buildTargetLabel: buildRollTargetLabel,
+            buildMockContext: buildMockRollRequestContext,
+            variants: ROLL_REQUEST_PREVIEW_VARIANTS,
+            partial: "rollRequest",
+            openPreview: (options) => RollRequestPreviewApp.open(options)
+        },
         RestFlowEngine,
         ActivityResolver,
         EventResolver,
@@ -1128,6 +1163,9 @@ Hooks.once("ready", async () => {
     initAfkBridge();
 
     console.log(`${MODULE_ID} | Boot complete.`);
+    if (game.user.isGM) {
+        console.log("  → game.ionrift.respite.rollRequest.openPreview()");
+    }
 });
 
 /**

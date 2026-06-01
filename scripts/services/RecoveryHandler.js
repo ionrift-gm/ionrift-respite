@@ -410,8 +410,10 @@ export class RecoveryHandler {
     /**
      * Calculates the exhaustion change for this rest.
      * Long rest: -1 by default (dnd5e rules).
-     * Hostile comfort: no reduction (0).
-     * 'Rest Fully' activity: extra -1.
+     * Hostile comfort: blocks exhaustion reduction.
+     * No food/water: blocks exhaustion reduction (PHB p.185).
+     * Sleeping in armor: blocks exhaustion reduction (Xanathar's).
+     * 'Rest Fully' activity: extra -1 (blocked by deprivation).
      * Rough/Hostile: CON save against exhaustionDC or gain +1 exhaustion.
      * Mess Kit + fire: advantage on the exhaustion save.
      * Events may add exhaustion (+N).
@@ -431,7 +433,8 @@ export class RecoveryHandler {
             exhaustionDC: recovery.exhaustionDC,
             exhaustionAdvantage: recovery.exhaustionAdvantage,
             exhaustionGain: recovery.exhaustionGain,
-            armorSleepPenalty: recovery.armorSleepPenalty
+            armorSleepPenalty: recovery.armorSleepPenalty,
+            noFoodOrWater: recovery.noFoodOrWater
         });
 
         if (currentExhaustion === 0 && !(recovery.exhaustionGain > 0) && !recovery.exhaustionDC) return 0;
@@ -440,20 +443,26 @@ export class RecoveryHandler {
         let restRecovery = 0;
 
         // Long rest base reduction (matches dnd5e default: -1 per long rest)
+        // PHB p.185: "Finishing a long rest reduces a creature's exhaustion
+        // level by 1, provided that the creature has also ingested some food
+        // and drink." When the character skipped meals or water, the rest
+        // grants no natural exhaustion recovery.
         if (recovery.restType === "long") {
             if (recovery.comfortLevel === "hostile") {
-                // Hostile conditions: no natural exhaustion reduction
                 restRecovery = 0;
             } else if (recovery.armorSleepPenalty) {
-                // Xanathar's: sleeping in medium/heavy armor blocks exhaustion reduction
+                restRecovery = 0;
+            } else if (recovery.noFoodOrWater) {
                 restRecovery = 0;
             } else {
                 restRecovery = -1;
             }
         }
 
-        // 'Rest Fully' activity bonus: extra -1 for choosing to rest instead of craft/watch
-        if (recovery.restedFully) {
+        // 'Rest Fully' activity bonus: extra -1 for choosing to rest instead of craft/watch.
+        // Blocked when character has no food/water: RAW does not allow any
+        // exhaustion reduction without adequate sustenance.
+        if (recovery.restedFully && !recovery.noFoodOrWater) {
             restRecovery -= 1;
         }
 
@@ -528,6 +537,8 @@ export class RecoveryHandler {
             exhaustionNote = "Hostile conditions prevent natural exhaustion recovery.";
         } else if (recovery.armorSleepPenalty && recovery.restType === "long" && exhaustionDelta >= 0) {
             exhaustionNote = "Sleeping in armor prevents exhaustion recovery.";
+        } else if (recovery.noFoodOrWater && recovery.restType === "long" && exhaustionDelta >= 0) {
+            exhaustionNote = "Lack of food or water prevents exhaustion recovery.";
         }
 
         // Skip chat if nothing was restored or changed and no advisory

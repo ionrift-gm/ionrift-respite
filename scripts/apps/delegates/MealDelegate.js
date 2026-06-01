@@ -397,25 +397,27 @@ export class MealDelegate {
             : [];
         if (!app._mealChoices) app._mealChoices = new Map();
 
-        // Process Rations runs for the whole party, but the GM only ever sees one
-        // character's card at a time. Flag every roster character that still has no
-        // food or water assigned so the GM doesn't process with empties they forgot
-        // to populate. Player-owned characters whose owner already submitted are fine.
+        // Skip the missing-characters confirmation if meals were already
+        // processed. The modal is only useful before first processing;
+        // on subsequent clicks (e.g. after dehydration saves resolve)
+        // the choices are already locked in.
         const missing = [];
-        for (const charId of characterIds) {
-            const actor = game.actors.get(charId);
-            if (!actor) continue;
+        if (!app._mealProcessed) {
+            for (const charId of characterIds) {
+                const actor = game.actors.get(charId);
+                if (!actor) continue;
 
-            const choice = app._mealChoices.get(charId);
-            const hasConsumed = choice?.consumedDays?.length > 0;
-            const hasSelections = (choice?.food?.some(id => id && id !== "skip")) || (choice?.water?.some(id => id && id !== "skip"));
-            if (hasConsumed || hasSelections) continue;
+                const choice = app._mealChoices.get(charId);
+                const hasConsumed = choice?.consumedDays?.length > 0;
+                const hasSelections = (choice?.food?.some(id => id && id !== "skip")) || (choice?.water?.some(id => id && id !== "skip"));
+                if (hasConsumed || hasSelections) continue;
 
-            const ownerUser = game.users.find(u => !u.isGM && actor.testUserPermission(u, "OWNER"));
-            const ownerSubmitted = ownerUser && app._mealSubmissions?.has(ownerUser.id);
-            if (ownerSubmitted) continue;
+                const ownerUser = game.users.find(u => !u.isGM && actor.testUserPermission(u, "OWNER"));
+                const ownerSubmitted = ownerUser && app._mealSubmissions?.has(ownerUser.id);
+                if (ownerSubmitted) continue;
 
-            missing.push({ name: actor.name, playerOwned: !!ownerUser });
+                missing.push({ name: actor.name, playerOwned: !!ownerUser });
+            }
         }
 
         if (missing.length > 0) {
@@ -479,6 +481,7 @@ export class MealDelegate {
                 const totalDays = app._daysSinceLastRest ?? 1;
                 const outcome = await MealPhaseHandler.processAndApply(app._mealChoices, totalDays, terrainMealRules);
                 mealResults = outcome.results;
+                app._mealResults = mealResults;
                 console.log(`[Respite:Meal] Consumption results:`, mealResults);
             } catch (err) {
                 console.error(`[Respite:Meal] Error applying meal choices:`, err);

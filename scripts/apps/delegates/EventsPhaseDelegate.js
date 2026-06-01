@@ -245,7 +245,10 @@ export class EventsPhaseDelegate {
             skillName: data.skillName,
             dc: data.dc,
             targets: data.targets ?? [],
+            rollModes: data.rollModes ?? {},
             eventTitle: data.eventTitle,
+            checkContext: data.checkContext ?? "",
+            targetLabel: data.targetLabel ?? "",
             rolledCharacters: new Set()
         };
         this._app.render();
