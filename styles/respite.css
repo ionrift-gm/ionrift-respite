@@ -1416,6 +1416,20 @@
     text-align: center;
 }
 
+.camp-fire-change-hint {
+    margin: 0.25rem 0 0;
+    font-size: 0.58rem;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.35);
+    font-style: italic;
+    text-align: center;
+}
+
+.camp-fire-change-hint i {
+    margin-right: 0.2rem;
+    opacity: 0.6;
+}
+
 .camp-fire-encounter-hint {
     margin: 0;
     padding-top: 0.35rem;
@@ -1658,6 +1672,22 @@
 /* Campfire station dialog: Fire tab (mid-rest tier review, GM Set) */
 .ionrift-station-dialog .station-fire-tab {
     margin-top: 0.35rem;
+}
+
+.ionrift-station-dialog .station-fire-tab-scroll.ionrift-list,
+.ionrift-station-dialog .station-fire-tab-scroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    max-height: clamp(10rem, calc(80vh - 14rem), 24rem);
+    padding: 0.15rem 0.35rem 0.35rem;
+    gap: 0;
+    box-sizing: border-box;
+}
+
+.ionrift-station-dialog .station-fire-tab-scroll > * {
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .ionrift-station-dialog .station-fire-encounter-hint {
@@ -6345,8 +6375,32 @@ button.is-processing {
 }
 
 /* Abandon rest button - top-right, subtle */
-.btn-abandon-rest {
+.btn-phase-guide {
     margin-left: auto;
+    flex-shrink: 0;
+    background: none;
+    border: 1px solid rgba(200, 160, 60, 0.25);
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    color: rgba(220, 190, 110, 0.7);
+    font-size: 0.85rem;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+.btn-phase-guide:hover {
+    color: rgba(240, 210, 130, 0.95);
+    border-color: rgba(200, 160, 60, 0.55);
+    background: rgba(200, 160, 60, 0.1);
+}
+.btn-phase-guide i { margin: 0; }
+
+.btn-abandon-rest {
     flex-shrink: 0;
     background: none;
     border: 1px solid rgba(220, 80, 80, 0.2);
@@ -6610,10 +6664,12 @@ button.is-processing {
 
 .station-crafting-panel {
     max-height: 65vh;
-    overflow-y: auto;
+    overflow: hidden;
     padding: 0.5rem;
     scrollbar-width: thin;
     scrollbar-color: rgba(126, 184, 218, 0.25) transparent;
+    display: flex;
+    flex-direction: column;
 }
 
 .station-crafting-panel.station-crafting-panel--roll-pending {
@@ -6649,8 +6705,50 @@ button.is-processing {
 .crafting-split .crafting-split-body {
     display: flex;
     gap: 0.75rem;
-    min-height: 280px;
     overflow: hidden;
+}
+
+.crafting-split:not(.station-crafting-panel) .crafting-split-body {
+    min-height: 280px;
+}
+
+.crafting-split .crafting-footer {
+    flex-shrink: 0;
+    margin-top: auto;
+}
+
+/* Small-window responsive: stack crafting panels vertically */
+@container station-dialog (max-width: 520px) {
+    .crafting-split .crafting-split-body {
+        flex-direction: column;
+    }
+
+    .station-crafting-panel.crafting-split .crafting-list-panel {
+        flex: none;
+        width: 100%;
+        max-width: 100%;
+        max-height: 200px;
+        overflow-y: auto;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        padding-right: 0;
+        padding-bottom: 0.4rem;
+    }
+
+    .station-crafting-panel.crafting-split .crafting-detail-panel {
+        max-height: none;
+    }
+}
+
+@media (max-height: 700px) {
+    .station-crafting-panel {
+        max-height: 55vh;
+    }
+
+    .crafting-split:not(.station-crafting-panel) .crafting-list-panel,
+    .crafting-split:not(.station-crafting-panel) .crafting-detail-panel {
+        max-height: 40vh;
+    }
 }
 
 .crafting-split .crafting-list-panel {
@@ -7071,6 +7169,10 @@ button.is-processing {
     opacity: 0.8;
 }
 
+.recipe-hero-ambitious--reserved {
+    visibility: hidden;
+}
+
 /* ---- Hero Empty State ---- */
 
 .recipe-hero-empty {
@@ -7111,12 +7213,19 @@ button.is-processing {
 }
 
 .crafting-split .risk-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
     gap: 0.25rem;
 }
 
 .crafting-split .btn-risk {
     padding: 0.3rem 0.25rem;
     min-width: 0;
+    width: 100%;
+    min-height: 3.1rem;
+    flex: none;
+    box-sizing: border-box;
 }
 
 .crafting-split .risk-label {
@@ -7166,18 +7275,26 @@ button.is-processing {
 }
 
 .station-crafting-panel .risk-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
     gap: 0.25rem;
 }
 
 .station-crafting-panel .btn-risk {
     padding: 0.35rem 0.3rem;
     min-width: 0;
+    width: 100%;
+    min-height: 3.1rem;
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 .station-crafting-panel .risk-label {
     font-size: 0.75rem;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .station-crafting-panel .risk-hint {
@@ -7185,8 +7302,9 @@ button.is-processing {
     line-height: 1.2;
     color: rgba(255, 255, 255, 0.35);
     margin-top: 0.15rem;
-    word-break: break-word;
-    hyphens: auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .station-crafting-panel .crafting-footer {
@@ -7210,6 +7328,48 @@ button.is-processing {
     background: rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.85);
     border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Station embed: detail panel keeps the scroll bar, fills height, room at bottom */
+.station-crafting-panel.crafting-split .crafting-split-body {
+    flex: 1;
+    min-height: 0;
+    overflow: visible;
+    padding-bottom: 0.65rem;
+    box-sizing: border-box;
+}
+
+.station-crafting-panel.crafting-split .crafting-list-panel {
+    max-height: none;
+    align-self: stretch;
+}
+
+.station-crafting-panel.crafting-split .crafting-detail-panel {
+    max-height: none;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 2rem;
+    padding-right: 0.35rem;
+    box-sizing: border-box;
+    scroll-padding-bottom: 1.5rem;
+}
+
+.station-crafting-panel.crafting-split .crafting-detail-panel::after {
+    content: "";
+    display: block;
+    height: 1.25rem;
+    flex-shrink: 0;
+}
+
+.station-crafting-panel.crafting-split .craft-commit-panel {
+    overflow: visible;
+    margin-bottom: 0.35rem;
+}
+
+.station-crafting-panel.crafting-split .btn-hero-craft {
+    position: static;
 }
 
 .crafting-picker {
@@ -9196,6 +9356,8 @@ button.is-processing {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
+    container-type: inline-size;
+    container-name: station-dialog;
 }
 
 .ionrift-station-dialog .station-dialog-wrap .station-header {
@@ -10835,31 +10997,26 @@ button.is-processing {
 }
 
 
-/* ── TotM Fire Player Hint ────────────────────────────────── */
-
-.totm-fire-player-hint {
-    font-size: 0.62rem;
-    color: rgba(255, 255, 255, 0.35);
-    text-align: center;
-    padding: 0.3rem 0.5rem;
-    margin-top: 0.35rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.3rem;
-}
-
-.totm-fire-player-hint i {
-    color: rgba(255, 160, 50, 0.5);
-}
-
 /* ── TotM Fire Panel ──────────────────────────────────────── */
 
+/* .ionrift-list in markup for purple-thumb scrollbar (design guide §18). Override list padding/gap. */
+.totm-fire-panel.ionrift-list,
 .totm-fire-panel {
     padding: 0.5rem;
+    gap: 0;
     max-width: 680px;
     margin-left: auto;
     margin-right: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    max-height: clamp(10rem, calc(80vh - 16rem), 26.25rem);
+    box-sizing: border-box;
+}
+
+.totm-fire-panel > * {
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .totm-fire-current {
@@ -11220,7 +11377,28 @@ button.is-processing {
 
 /* Crafting / profession panels need the full width for their split layout */
 .totm-detail-view:has(.totm-crafting-embed) {
-    max-width: none;
+    max-width: min(760px, 100%);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.totm-crafting-embed .risk-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    gap: 0.25rem;
+}
+
+.totm-crafting-embed .btn-risk {
+    width: 100%;
+    min-height: 3.1rem;
+    box-sizing: border-box;
+}
+
+.totm-crafting-embed .risk-hint {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .totm-detail-header {
@@ -11377,8 +11555,15 @@ button.is-processing {
     gap: 0.4rem;
 }
 
+/* Neutral state indicator: not a success outcome, not a check to be made.
+   Muted to sit quietly below the description without competing with the
+   success-green outcome chevrons or the blue advisory pill. */
 .totm-detail-nocheck {
-    color: rgba(74, 222, 128, 0.8);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.totm-detail-nocheck i {
+    color: rgba(255, 255, 255, 0.35);
 }
 
 .totm-detail-followup {
@@ -22020,6 +22205,11 @@ button.is-processing {
 .ionrift-respite-app.ionrift-camp-dock .phase-label {
     font-size: 0.72rem;
 }
+.ionrift-respite-app.ionrift-camp-dock .btn-phase-guide {
+    width: 18px;
+    height: 18px;
+    font-size: 0.7rem;
+}
 .ionrift-respite-app .camp-minimal-lead {
     font-size: 0.85rem;
     line-height: 1.45;
@@ -23644,6 +23834,19 @@ button.is-processing {
     color: rgba(248, 113, 113, 0.85);
 }
 
+.ionrift-respite-app .totm-fire-change-hint {
+    margin: 0.25rem 0 0;
+    font-size: 0.6rem;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.35);
+    font-style: italic;
+}
+
+.ionrift-respite-app .totm-fire-change-hint i {
+    margin-right: 0.2rem;
+    opacity: 0.6;
+}
+
 .ionrift-respite-app .totm-fire-segment-locked {
     display: flex;
     align-items: center;
@@ -23958,8 +24161,15 @@ button.is-processing {
 .respite-quick-setup-head {
     display: flex;
     flex-direction: column;
-    gap: 0.1rem;
+    gap: 0.45rem;
     margin-bottom: 0.5rem;
+}
+
+.respite-quick-setup-head-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
 }
 
 .respite-quick-setup-title {
@@ -23975,6 +24185,30 @@ button.is-processing {
 .respite-quick-setup-sub {
     font-size: 0.72rem;
     opacity: 0.6;
+    line-height: 1.45;
+    padding-right: 0.15rem;
+}
+
+.respite-quick-setup-guide-link {
+    flex-shrink: 0;
+    background: rgba(200, 160, 60, 0.12);
+    border: 1px solid rgba(200, 160, 60, 0.35);
+    color: rgba(220, 190, 110, 0.95);
+    font-size: 0.72rem;
+    padding: 0.18rem 0.55rem;
+    border-radius: 4px;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.respite-quick-setup-guide-link:hover {
+    background: rgba(200, 160, 60, 0.22);
+    border-color: rgba(200, 160, 60, 0.6);
+}
+
+.respite-quick-setup-guide-link i {
+    margin-right: 0.3rem;
 }
 
 .respite-quick-setup-options {
@@ -24198,15 +24432,15 @@ button.is-processing {
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    border: 2px solid rgba(167, 139, 250, 0.85);
+    border: 1px solid rgba(167, 139, 250, 0.38);
     pointer-events: none;
     transform-origin: center center;
-    animation: ionrift-dc-ripple 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+    opacity: 0;
     will-change: transform, opacity;
 }
 
 .ionrift-dc-ripple--b {
-    animation-delay: 1.2s;
+    /* stagger handled in RollRequestDcPulse.js */
 }
 
 .ionrift-roll-request .event-dc-badge.circular.ionrift-dc-badge--live {
@@ -24216,7 +24450,6 @@ button.is-processing {
     height: 4.75rem;
     border-width: 2px;
     transform-origin: center center;
-    animation: ionrift-dc-breathe 2.4s ease-in-out infinite;
     will-change: box-shadow, transform, border-color;
 }
 
@@ -24233,54 +24466,6 @@ button.is-processing {
     line-height: 1;
     position: relative;
     z-index: 1;
-    animation: ionrift-dc-value 2.4s ease-in-out infinite;
-}
-
-@keyframes ionrift-dc-ripple {
-    0% {
-        transform: scale(1);
-        opacity: 0.85;
-    }
-    70%, 100% {
-        transform: scale(2.15);
-        opacity: 0;
-    }
-}
-
-@keyframes ionrift-dc-breathe {
-    0%, 100% {
-        transform: scale(1);
-        border-color: rgba(167, 139, 250, 0.55);
-        box-shadow: 0 0 10px rgba(139, 92, 246, 0.35), 0 0 22px rgba(139, 92, 246, 0.15);
-    }
-    50% {
-        transform: scale(1.08);
-        border-color: rgba(221, 214, 254, 0.95);
-        box-shadow: 0 0 18px rgba(167, 139, 250, 0.75), 0 0 36px rgba(139, 92, 246, 0.45);
-    }
-}
-
-@keyframes ionrift-dc-value {
-    0%, 100% {
-        color: #f5f3ff;
-        text-shadow: 0 0 6px rgba(167, 139, 250, 0.35);
-    }
-    50% {
-        color: #ffffff;
-        text-shadow: 0 0 16px rgba(196, 181, 253, 0.95), 0 0 28px rgba(139, 92, 246, 0.55);
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .ionrift-dc-ripple,
-    .ionrift-roll-request .event-dc-badge.circular.ionrift-dc-badge--live,
-    .ionrift-roll-request .event-dc-badge.circular.ionrift-dc-badge--live .dc-value {
-        animation: none;
-    }
-
-    .ionrift-dc-ripple {
-        display: none;
-    }
 }
 
 .ionrift-roll-request__event-title {
@@ -24297,6 +24482,16 @@ button.is-processing {
     margin-top: 0.35rem;
     padding: 0.55rem 0 0.15rem;
     background: linear-gradient(to top, rgba(10, 8, 16, 0.98) 55%, rgba(10, 8, 16, 0));
+}
+
+.ionrift-roll-request .btn-resolve-check--force-pass {
+    border-color: rgba(52, 211, 153, 0.45);
+    background: rgba(52, 211, 153, 0.12);
+}
+
+.ionrift-roll-request .btn-resolve-check--force-fail {
+    border-color: rgba(248, 113, 113, 0.45);
+    background: rgba(248, 113, 113, 0.12);
 }
 
 .ionrift-roll-request__progress {

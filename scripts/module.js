@@ -71,6 +71,10 @@ import {
     buildRollRequestContext,
     buildEventPlayerRollContext,
     buildEventGmRollContext,
+    buildTreePlayerRollContext,
+    buildCampActivityRollContext,
+    buildTravelActivityRollContext,
+    buildCopySpellRollContext,
     buildMockRollRequestContext,
     buildRollParticipants,
     buildRollTargetLabel,
@@ -80,6 +84,12 @@ import {
     centerRollRequestRoster,
     ROLL_REQUEST_PREVIEW_VARIANTS
 } from "./services/RollRequestView.js";
+import {
+    ensureDcPulseAnimation,
+    inspectDcAnimation,
+    watchDcAnimation,
+    forceDcPulseTest
+} from "./services/RollRequestDcPulse.js";
 import { RollRequestPreviewApp } from "./apps/RollRequestPreviewApp.js";
 import { registerUiHooks, refreshZzzOverlay } from "./services/UiInjections.js";
 import { registerSpoilageMergeGuard } from "./services/SpoilageMergeGuard.js";
@@ -312,18 +322,18 @@ Hooks.once("init", async () => {
     // renders, so the mechanical meaning travels with the label.
     Handlebars.registerHelper("comfortHint", (tier) => {
         const map = {
-            safe: "Safe: full HP and Hit Die recovery. No exhaustion save from terrain.",
-            sheltered: "Sheltered: normal recovery. No exhaustion save from terrain.",
-            rough: "Rough: reduced recovery. Each character makes a CON save or gains exhaustion.",
-            hostile: "Hostile: poor recovery, existing exhaustion cannot be cleared, and a CON save is required to avoid gaining more."
+            safe: "Safe: full HP and Hit Dice back. No risk of a night event.",
+            sheltered: "Sheltered: full HP and Hit Dice back. A normal night.",
+            rough: "Rough: full HP, 1 fewer Hit Die back. CON save DC 10 or +1 exhaustion.",
+            hostile: "Hostile: regain 75% of max HP from the rest, 2 fewer Hit Dice back. Existing exhaustion sticks. CON save DC 15 or +1 exhaustion."
         };
-        return map[typeof tier === "string" ? tier.toLowerCase() : tier] ?? "Rest comfort affects HP and Hit Die recovery.";
+        return map[typeof tier === "string" ? tier.toLowerCase() : tier] ?? "Rest comfort affects HP and Hit Dice recovery.";
     });
     Handlebars.registerHelper("fireTierPlain", (id) => {
         const map = {
             embers: "No cooking. No comfort change.",
-            campfire: "Cooking and warmth. Draws attention (higher encounter chance).",
-            bonfire: "+1 camp comfort. Beacon in the dark (much higher encounter chance)."
+            campfire: "Cooking and warmth. Easier for enemies to spot (higher encounter chance).",
+            bonfire: "+1 camp comfort. Visible from far off; enemies spot the camp easily."
         };
         return map[typeof id === "string" ? id : ""] ?? "";
     });
@@ -374,6 +384,10 @@ Hooks.once("init", async () => {
             buildContext: buildRollRequestContext,
             buildEventPlayerContext: buildEventPlayerRollContext,
             buildEventGmContext: buildEventGmRollContext,
+            buildTreePlayerContext: buildTreePlayerRollContext,
+            buildCampActivityContext: buildCampActivityRollContext,
+            buildTravelActivityContext: buildTravelActivityRollContext,
+            buildCopySpellContext: buildCopySpellRollContext,
             buildParticipants: buildRollParticipants,
             sortParticipants: sortRollParticipants,
             layoutParticipants: layoutRollParticipants,
@@ -383,7 +397,11 @@ Hooks.once("init", async () => {
             buildMockContext: buildMockRollRequestContext,
             variants: ROLL_REQUEST_PREVIEW_VARIANTS,
             partial: "rollRequest",
-            openPreview: (options) => RollRequestPreviewApp.open(options)
+            openPreview: (options) => RollRequestPreviewApp.open(options),
+            ensureDcPulse: ensureDcPulseAnimation,
+            debugAnimation: inspectDcAnimation,
+            watchAnimation: watchDcAnimation,
+            forceDcPulseTest
         },
         RestFlowEngine,
         ActivityResolver,
@@ -392,6 +410,64 @@ Hooks.once("init", async () => {
         openRestSetup: () => {
             if (!game.user.isGM) return;
             new RestSetupApp().render({ force: true });
+        },
+        /**
+         * Opens a Respite guide journal from compendium packs.
+         * Player and cooking pages live in respite-guide (PLAYER: OBSERVER).
+         * GM reference lives in respite-guide-gm (GAMEMASTER: OWNER).
+         *
+         * @param {string} [pageId] - Optional page _id to jump to.
+         * @returns {Promise<void>}
+         */
+        openPlayerGuide: async (pageId) => {
+            const GUIDE_PAGES = {
+                player: "aQc3PtQPrYDi9Mlx",
+                gm: "dvr4TYdYmX88MCCf",
+                cooking: "cK8pRQdW2nFb4Xvj",
+            };
+            const GUIDE_JOURNALS = {
+                player: "1Zh2gDQ1xOLFUrhW",
+                gm: "hG4mR3fRespGuide01",
+            };
+
+            const isGM = game.user?.isGM;
+            let packName;
+            let journalId;
+            let focusPageId;
+
+            if (!isGM) {
+                packName = `${MODULE_ID}.respite-guide`;
+                journalId = GUIDE_JOURNALS.player;
+                focusPageId = pageId === GUIDE_PAGES.cooking
+                    ? GUIDE_PAGES.cooking
+                    : GUIDE_PAGES.player;
+            } else if (!pageId || pageId === GUIDE_PAGES.gm) {
+                packName = `${MODULE_ID}.respite-guide-gm`;
+                journalId = GUIDE_JOURNALS.gm;
+                focusPageId = GUIDE_PAGES.gm;
+            } else {
+                packName = `${MODULE_ID}.respite-guide`;
+                journalId = GUIDE_JOURNALS.player;
+                focusPageId = pageId;
+            }
+
+            const pack = game.packs.get(packName);
+            if (!pack) {
+                ui.notifications?.warn("Respite: guide compendium not available.");
+                return;
+            }
+            try {
+                const journal = await pack.getDocument(journalId);
+                if (!journal) {
+                    ui.notifications?.warn("Respite: guide journal not found in compendium.");
+                    return;
+                }
+                const opts = focusPageId ? { pageId: focusPageId } : {};
+                journal.sheet.render(true, opts);
+            } catch (e) {
+                console.warn(`${MODULE_ID} | Failed to open player guide:`, e);
+                ui.notifications?.error("Respite: failed to open the player guide. See console.");
+            }
         },
         /** Debug: force the next event roll to always trigger an encounter. */
         forceEncounter: () => {
@@ -1165,6 +1241,9 @@ Hooks.once("ready", async () => {
     console.log(`${MODULE_ID} | Boot complete.`);
     if (game.user.isGM) {
         console.log("  → game.ionrift.respite.rollRequest.openPreview()");
+        console.log("  → game.ionrift.respite.rollRequest.debugAnimation()");
+        console.log("  → game.ionrift.respite.rollRequest.watchAnimation()");
+        console.log("  → game.ionrift.respite.rollRequest.forceDcPulseTest()");
     }
 });
 

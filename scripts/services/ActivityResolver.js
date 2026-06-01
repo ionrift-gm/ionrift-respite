@@ -8,11 +8,40 @@ export const SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS = new Set([
     "act_tend_wounds"
 ]);
 
-/** Activities hidden when the comfort subsystem is disabled (no comfort tiers = no benefit). */
+/**
+ * Activities hidden when the comfort subsystem is disabled. These are the soft
+ * recovery and morale activities: full rest, tending wounds, prayer for temp HP,
+ * and fireside tales for Inspiration. With comfort off the rest stays close to
+ * RAW, leaving Other as the only open-ended evening choice.
+ */
 const COMFORT_EXCLUDED_ACTIVITY_IDS = new Set([
     "act_rest_fully",
-    "act_tend_wounds"
+    "act_tend_wounds",
+    "act_pray",
+    "act_tell_tales"
 ]);
+
+/** Activities that only exist to feed the night encounter layer; hidden when encounters are off. */
+const ENCOUNTER_ACTIVITY_IDS = new Set([
+    "act_keep_watch",
+    "act_defenses",
+    "act_scout"
+]);
+
+/**
+ * Whether the night encounter layer is on. When off, the watch/defenses/scout
+ * activities and the encounter threshold roll are suppressed for a rest closer
+ * to RAW. Defaults to true if the setting is not yet registered.
+ * @returns {boolean}
+ */
+function areEncountersEnabled() {
+    try {
+        const value = game.settings.get("ionrift-respite", "enableEncounters");
+        return value === undefined || value === null ? true : !!value;
+    } catch (e) {
+        return true;
+    }
+}
 
 /**
  * ActivityResolver
@@ -50,6 +79,7 @@ export class ActivityResolver {
             if (activity.disabled) continue;
             if (options.safeRestSpot && SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
             if (!isComfortEnabled() && COMFORT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
+            if (!areEncountersEnabled() && ENCOUNTER_ACTIVITY_IDS.has(activity.id)) continue;
 
             // Gate Training behind module setting
             if (activity.id === "act_train") {
@@ -527,6 +557,7 @@ export class ActivityResolver {
             if (!activity.restTypes.includes(restType)) continue;
             if (options.safeRestSpot && SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
             if (!isComfortEnabled() && COMFORT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
+            if (!areEncountersEnabled() && ENCOUNTER_ACTIVITY_IDS.has(activity.id)) continue;
 
             // Gate Training behind module setting
             if (activity.id === "act_train") {

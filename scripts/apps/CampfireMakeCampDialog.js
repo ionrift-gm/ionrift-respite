@@ -32,7 +32,9 @@ export class CampfireMakeCampDialog extends HandlebarsApplicationMixin(Applicati
             campLightFireMap: CampfireMakeCampDialog.#onCampLightFire,
             campPledgeFirewoodMap: CampfireMakeCampDialog.#onCampPledge,
             campReclaimFirewoodMap: CampfireMakeCampDialog.#onCampReclaim,
-            campColdCampMap: CampfireMakeCampDialog.#onCampCold
+            campColdCampMap: CampfireMakeCampDialog.#onCampCold,
+            selectCampFireLevelMap: CampfireMakeCampDialog.#onSelectCampFireLevel,
+            selectCampColdCampMap: CampfireMakeCampDialog.#onSelectCampColdCamp
         }
     };
 
@@ -156,6 +158,16 @@ export class CampfireMakeCampDialog extends HandlebarsApplicationMixin(Applicati
     }
 
     static async #onCampCold() {
+        await this._restApp?.runMakeCampColdFromUi?.();
+        await this._afterRestAction();
+    }
+
+    static async #onSelectCampFireLevel(event, target) {
+        await this._restApp?.runMakeCampSelectFireLevelFromUi?.(event, target);
+        await this._afterRestAction();
+    }
+
+    static async #onSelectCampColdCamp() {
         await this._restApp?.runMakeCampColdFromUi?.();
         await this._afterRestAction();
     }

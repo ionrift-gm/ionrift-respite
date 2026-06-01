@@ -207,6 +207,16 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         restricted: true
     });
 
+    game.settings.register(MODULE_ID, "enableEncounters", {
+        name: "Night Encounters (Homebrew)",
+        hint: "Run the night encounter layer: Keep Watch, Set Up Defenses, scouting, and the encounter threshold roll. Disable for a rest closer to RAW, where the night passes on its own and the GM can still improvise an event by hand.",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: true,
+        restricted: true
+    });
+
     // Surfaced in the Food & Diet dialog (DietConfigApp), not the native panel.
     // Default off so a fresh world matches the Standard Quick Setup profile;
     // the Survival profile turns meal tracking on.
@@ -428,7 +438,9 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     // ── Footer (Discord + Wiki via ionrift-library) ──────────────────
     const SettingsLayout = game.ionrift?.library?.SettingsLayout;
-    SettingsLayout?.registerFooter(MODULE_ID);
+    SettingsLayout?.registerFooter(MODULE_ID, {
+        wiki: "https://github.com/ionrift-gm/ionrift-respite/wiki"
+    });
 
 
     // ── Ambient AFK HUD ──────────────────────────────────────────────

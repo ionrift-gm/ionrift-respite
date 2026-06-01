@@ -5,8 +5,6 @@
     "icon": "fas fa-city",
     "comfort": "sheltered",
     "comfortReason": "Buildings and infrastructure provide ready-made cover. Safety varies by neighborhood.",
-    "scoutingAvailable": true,
-    "scoutGuidance": "Investigation check. Poor: 2-7 | Average: 8-12 | Good: 13+. Rogue or bard has advantage. Druid or outsiders have disadvantage.",
     "scoutFlavor": {
         "nat1":    ["An abandoned warehouse. Spacious, dry, door still locks.", "A quiet alley tucked behind a row of shops. Out of sight.", "An empty shop with shuttered windows. Private."],
         "poor":    ["A doorway. Drafty, exposed.", "Under a bridge. Company likely.", "An alley between buildings. Cramped."],

@@ -90,10 +90,11 @@ export function handleRestStarted(data, ctx) {
             // the canvas station layer stays wired and choices aren't lost.
             // See: scripts/services/playerClosePolicy.js for the rule + unit tests.
             options = resolvePlayerCloseOptions(options, app._phase);
-            // eslint-disable-next-line no-console
-            console.debug(`${MODULE_ID} | [REJOIN] playerRSA.close: retain=${options.retainPlayerApp ?? false}, phase=${app._phase}, rendered=${app.rendered}`);
+            console.log(`${MODULE_ID} | [CLOSE-DEBUG] patched close entered: retain=${options.retainPlayerApp ?? false}, skipRejoin=${options.skipRejoin ?? false}, phase=${app._phase}, rendered=${app.rendered}, terminated=${app._terminated}`);
             try {
+                console.log(`${MODULE_ID} | [CLOSE-DEBUG] calling origClose...`);
                 await origClose(options);
+                console.log(`${MODULE_ID} | [CLOSE-DEBUG] origClose resolved`);
             } finally {
                 if (options.retainPlayerApp) {
                     if (ctx.playerRestActive && !options.skipRejoin) {
@@ -140,6 +141,7 @@ export function handleActivityChoice(data, ctx) {
 }
 
 export function handleRestResolved(data, ctx) {
+    console.log(`${MODULE_ID} | [CLOSE-DEBUG] handleRestResolved entered`);
     ctx.setPlayerRestActive(false);
     removeRejoinNotification();
     removeGmRestIndicator();
@@ -148,9 +150,21 @@ export function handleRestResolved(data, ctx) {
     try {
         deactivateStationLayer();
     } catch { /* canvas may not be ready */ }
-    const app = ctx.activePlayerRestApp;
+    let app = ctx.activePlayerRestApp;
+    if (!app) {
+        app = foundry.applications.instances.get("ionrift-respite-setup") ?? null;
+        console.log(`${MODULE_ID} | [CLOSE-DEBUG] ref was null, registry lookup=${!!app}`);
+    }
+    console.log(`${MODULE_ID} | [CLOSE-DEBUG] activePlayerRestApp=${!!app}, rendered=${app?.rendered}, element=${!!app?.element}`);
     if (app) {
-        app.close({ skipRejoin: true });
+        app._terminated = true;
+        console.log(`${MODULE_ID} | [CLOSE-DEBUG] calling app.close({ skipRejoin: true })`);
+        app.close({ skipRejoin: true }).then(() => {
+            console.log(`${MODULE_ID} | [CLOSE-DEBUG] app.close() resolved, element still in DOM=${!!app.element && document.body.contains(app.element)}`);
+        }).catch(err => {
+            console.warn(`${MODULE_ID} | [CLOSE-DEBUG] app.close() REJECTED:`, err);
+            try { app.element?.remove(); } catch { /* best effort */ }
+        });
         ctx.setActivePlayerRestApp(null);
     }
     ctx.hideAfkPanelAfterRest();
@@ -164,8 +178,11 @@ export function handleSubmissionUpdate(data, ctx) {
 
 export function handleRequestRestState(data, ctx) {
     if (!ctx.activeRestData) return;
-    const snapshot = ctx.activeRestSetupApp?.getRestSnapshot?.() ?? null;
-    emitRestStarted(ctx.activeRestData, { snapshot, targetUserId: data.userId ?? null });
+    const userId = data.userId ?? null;
+    const snapshot = (userId && ctx.activeRestSetupApp?.getRestSnapshotForUser)
+        ? ctx.activeRestSetupApp.getRestSnapshotForUser(userId)
+        : (ctx.activeRestSetupApp?.getRestSnapshot?.() ?? null);
+    emitRestStarted(ctx.activeRestData, { snapshot, targetUserId: userId });
 }
 
 // ── Short Rest ──────────────────────────────────────────────────────────────

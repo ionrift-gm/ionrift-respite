@@ -20,7 +20,7 @@ const SCOUTING_EFFECTS = {
  * TravelResolutionDelegate
  * Manages the Travel Resolution phase with multi-day support.
  * Entries are keyed by "day:actorId" for per-day per-character tracking.
- * Scouting is available on the final day only, and not during a safe rest spot.
+ * Scouting is available on the final travel day only, and not during a safe rest spot.
  *
  * States per entry:
  *   "idle"      - GM is configuring (activity select)

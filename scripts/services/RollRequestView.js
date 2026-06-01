@@ -171,7 +171,8 @@ export function buildRollRequestContext(opts = {}) {
         allRolled,
         rosterScroll: totalCount >= 6,
         rosterFocusCenter: hasFocus && !(opts.gmView ?? false),
-        gmRollAction: opts.gmRollAction ?? "rollEventForPlayer"
+        gmRollAction: opts.gmRollAction ?? "rollEventForPlayer",
+        dcPulseActive: opts.dcPulseActive ?? (!(opts.gmView ?? false) && actionTargets.length > 0)
     };
 }
 
@@ -199,8 +200,7 @@ export function buildEventPlayerRollContext(pendingEventRoll, triggeredEvent = n
         participants,
         flow: "event",
         meta: { eventIndex: pendingEventRoll.eventIndex },
-        targetLabel: pendingEventRoll.targetLabel ?? "",
-        checkContext: pendingEventRoll.checkContext ?? ""
+        targetLabel: pendingEventRoll.targetLabel ?? ""
     });
 }
 
@@ -249,6 +249,177 @@ export function buildEventGmRollContext(event, eventIndex) {
     });
 }
 
+function mapRolledResults(rolledResults) {
+    if (!rolledResults) return [];
+    if (rolledResults instanceof Map) {
+        return [...rolledResults.entries()].map(([characterId, result]) => ({
+            characterId,
+            total: result?.total ?? null,
+            passed: result?.passed ?? null
+        }));
+    }
+    return rolledResults;
+}
+
+/**
+ * Map a player-side pending decision tree roll into the shared component context.
+ * @param {object|null} pendingTreeRoll
+ * @returns {object|null}
+ */
+export function buildTreePlayerRollContext(pendingTreeRoll) {
+    if (!pendingTreeRoll) return null;
+
+    const targetIds = pendingTreeRoll.targets?.length
+        ? pendingTreeRoll.targets
+        : [...new Set([
+            ...(pendingTreeRoll.ownedTargets?.map((entry) => entry.id) ?? []),
+            ...mapRolledResults(pendingTreeRoll.rolledResults).map((entry) => entry.characterId)
+        ])];
+
+    const participants = buildRollParticipants(targetIds, {
+        rollModes: pendingTreeRoll.rollModes ?? {},
+        resolvedRolls: mapRolledResults(pendingTreeRoll.rolledResults),
+        rolledCharacters: pendingTreeRoll.rolledCharacters ?? new Set()
+    });
+
+    return buildRollRequestContext({
+        title: pendingTreeRoll.eventName ?? "Decision Check",
+        skillKey: pendingTreeRoll.skills?.[0] ?? "sur",
+        skillName: pendingTreeRoll.skillName ?? "Skill",
+        dc: pendingTreeRoll.dc ?? 12,
+        participants,
+        flow: "tree",
+        meta: { choiceId: pendingTreeRoll.choiceId ?? null },
+        targetLabel: pendingTreeRoll.skills?.length > 1 ? "Best-of skill check" : ""
+    });
+}
+
+/**
+ * Map one pending camp activity roll into the shared component context.
+ * @param {object|null} activity
+ * @param {Set<string>} [rolledCharacters]
+ * @returns {object|null}
+ */
+export function buildCampActivityRollContext(activity, rolledCharacters = new Set()) {
+    if (!activity) return null;
+
+    const actor = game.actors.get(activity.characterId);
+    if (!actor?.isOwner) return null;
+
+    const rolled = rolledCharacters.has?.(activity.characterId)
+        ?? rolledCharacters.includes?.(activity.characterId)
+        ?? false;
+    const resolved = activity.status === "pass" || activity.status === "fail";
+
+    const participants = [{
+        id: activity.characterId,
+        name: actor.name,
+        img: actor.img ?? "",
+        rollMode: "normal",
+        rolled: rolled || resolved,
+        total: activity.total ?? null,
+        passed: activity.total != null && activity.dc != null ? activity.total >= activity.dc : null,
+        isOwner: true,
+        canRoll: !rolled && !resolved
+    }];
+
+    return buildRollRequestContext({
+        title: activity.activityName ?? "Camp Activity",
+        skillKey: activity.skill ?? "sur",
+        skillName: activity.skillName ?? "Survival",
+        dc: activity.dc ?? 10,
+        participants,
+        flow: "camp",
+        meta: {
+            activityId: activity.activityId,
+            characterId: activity.characterId
+        }
+    });
+}
+
+/**
+ * Map one pending travel activity roll into the shared component context.
+ * @param {object|null} activity
+ * @param {Set<string>} [rolledCharacters]
+ * @returns {object|null}
+ */
+export function buildTravelActivityRollContext(activity, rolledCharacters = new Set()) {
+    if (!activity?.isOwner) return null;
+
+    const actor = game.actors.get(activity.actorId);
+    if (!actor) return null;
+
+    const rolled = rolledCharacters.has?.(activity.actorId)
+        ?? rolledCharacters.includes?.(activity.actorId)
+        ?? activity.rolled
+        ?? false;
+
+    const participants = [{
+        id: activity.actorId,
+        name: actor.name,
+        img: actor.img ?? "",
+        rollMode: "normal",
+        rolled,
+        total: null,
+        passed: null,
+        isOwner: true,
+        canRoll: !rolled
+    }];
+
+    const scoutNoDc = activity.activity === "scout" && !activity.dc;
+
+    return buildRollRequestContext({
+        title: `${activity.activityLabel ?? activity.activity ?? "Travel"} · Day ${activity.day ?? 1}`,
+        skillKey: activity.skill ?? "sur",
+        skillName: activity.skillName ?? "Survival",
+        dc: activity.dc ?? 0,
+        participants,
+        flow: "travel",
+        meta: {
+            actorId: activity.actorId,
+            day: activity.day ?? 1,
+            activity: activity.activity ?? null,
+            noDc: scoutNoDc
+        },
+        targetLabel: scoutNoDc ? "Scouting · no fixed DC" : ""
+    });
+}
+
+/**
+ * Map a copy-spell Arcana prompt into the shared component context.
+ * @param {object|null} prompt
+ * @returns {object|null}
+ */
+export function buildCopySpellRollContext(prompt) {
+    if (!prompt) return null;
+
+    const actor = game.actors.get(prompt.actorId);
+    if (!actor?.isOwner) return null;
+
+    const participants = [{
+        id: prompt.actorId,
+        name: actor.name,
+        img: actor.img ?? "",
+        rollMode: "normal",
+        rolled: false,
+        total: null,
+        passed: null,
+        isOwner: true,
+        canRoll: true
+    }];
+
+    return buildRollRequestContext({
+        title: "Copy Spell",
+        skillKey: "arc",
+        skillName: "Arcana",
+        dc: prompt.dc ?? 10,
+        participants,
+        flow: "copySpell",
+        meta: { actorId: prompt.actorId },
+        targetLabel: `Level ${prompt.spellLevel} · ${prompt.cost}gp charged · ${prompt.remainingGold}gp left`
+    });
+}
+
 /** Preview harness variant ids. */
 export const ROLL_REQUEST_PREVIEW_VARIANTS = [
     { id: "pending-single", label: "Pending (single)" },
@@ -276,6 +447,7 @@ const MOCK_PARTY = [
  * @returns {object}
  */
 export function buildMockRollRequestContext(variantId = "pending-single") {
+    const gmCheckContext = "Perception check. High roll means the watcher caught it early and scared it off before it got much. Low roll means it had all night.";
     const base = {
         title: "Night Watch Check",
         skillKey: "prc",
@@ -283,8 +455,7 @@ export function buildMockRollRequestContext(variantId = "pending-single") {
         dc: 12,
         flow: "preview",
         meta: { eventIndex: 0 },
-        targetLabel: "Watch only · Group Check (averaged)",
-        checkContext: "Perception check. High roll means the watcher caught it early and scared it off before it got much. Low roll means it had all night."
+        targetLabel: "Watch only · Group Check (averaged)"
     };
 
     switch (variantId) {
@@ -344,6 +515,7 @@ export function buildMockRollRequestContext(variantId = "pending-single") {
             return buildRollRequestContext({
                 ...base,
                 gmView: true,
+                checkContext: gmCheckContext,
                 participants: MOCK_PARTY.map((member, index) => ({
                     id: member.id,
                     name: member.name,

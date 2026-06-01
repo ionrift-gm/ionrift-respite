@@ -7,8 +7,11 @@
     <div class="respite-picker-header">
         <div class="picker-context">
             <span class="rest-type-badge">{{restType}}</span>
-            <span class="terrain-badge"><i class="fas fa-map-marker-alt"></i> {{terrain}}</span>
-            <span class="comfort-indicator {{comfort}}">{{comfortLabel}}</span>
+            <span class="terrain-badge"
+                  data-tooltip="Terrain sets the night's event pool and the baseline encounter chance.">
+                <i class="fas fa-map-marker-alt"></i> {{terrain}}
+            </span>
+            <span class="comfort-indicator {{comfort}}" data-tooltip="{{comfortHint comfort}}">{{comfortLabel}}</span>
         </div>
         {{#if comfortWarning}}
         <div class="picker-warning">

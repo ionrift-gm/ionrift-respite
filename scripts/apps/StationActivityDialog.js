@@ -311,6 +311,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         this._craftRollPending = false;
         /** Width before entering crafting, restored on close. */
         this._preCraftWidth    = null;
+        /** Detail panel scroll position preserved across crafting re-renders. */
+        this._craftDetailScrollTop = 0;
         /** Party feast: Serve Now finished successfully; hide repeat serve / keep actions. */
         this._partyMealOutcomeResolved = false;
         /** Prevents double-submit while feast serve awaits async work. */
@@ -343,6 +345,28 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             }
         }
         if (!this._craftProfession) this._craftProfession = "cooking";
+    }
+
+    async render(options = {}) {
+        const preserveCraftScroll = this._dialogState === "crafting"
+            && this.rendered
+            && !options.resetCraftScroll;
+        if (preserveCraftScroll) {
+            const scrollEl = this.element?.querySelector(
+                ".station-crafting-panel.crafting-split .crafting-detail-panel"
+            );
+            this._craftDetailScrollTop = scrollEl?.scrollTop ?? 0;
+        }
+        const result = await super.render(options);
+        if (preserveCraftScroll && this._craftDetailScrollTop > 0) {
+            queueMicrotask(() => {
+                const scrollEl = this.element?.querySelector(
+                    ".station-crafting-panel.crafting-split .crafting-detail-panel"
+                );
+                if (scrollEl) scrollEl.scrollTop = this._craftDetailScrollTop;
+            });
+        }
+        return result;
     }
 
     async _prepareContext(options) {
@@ -902,8 +926,10 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             this._partyMealOutcomeResolved = false;
             this._dialogState      = "crafting";
             this._preCraftWidth    = this.position?.width ?? DIALOG_WIDTH;
+            this._craftDetailScrollTop = 0;
             console.log(`ionrift-respite | cooking shortcut → crafting state`, { profession: this._craftProfession, width: this.position?.width });
-            this.render();
+            this.setPosition({ width: CRAFT_SPLIT_WIDTH });
+            this.render({ resetCraftScroll: true });
             return;
         }
 
@@ -967,9 +993,10 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             this._dialogState      = "crafting";
             // Widen for the split-panel crafting layout
             this._preCraftWidth = this.position?.width ?? DIALOG_WIDTH;
+            this._craftDetailScrollTop = 0;
             console.log(`ionrift-respite | entering crafting state`, { profession: this._craftProfession, preCraftWidth: this._preCraftWidth, newWidth: CRAFT_SPLIT_WIDTH });
             this.setPosition({ width: CRAFT_SPLIT_WIDTH });
-            this.render();
+            this.render({ resetCraftScroll: true });
             return;
         }
 
@@ -1481,11 +1508,13 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             header.addEventListener("pointerdown", () => { this._userDragged = true; });
         }
         // Force width on DOM. Foundry's setPosition doesn't reliably expand beyond content width.
-        if (this._station?.id === "cooking_station" && this._stationHasCooking) {
+        if (this._dialogState === "crafting"
+            || (this._station?.id === "cooking_station" && this._stationHasCooking)) {
             const el = this.element;
             if (el) {
                 el.style.width = `${CRAFT_SPLIT_WIDTH}px`;
                 el.style.maxWidth = `${CRAFT_SPLIT_WIDTH}px`;
+                el.style.minWidth = `${CRAFT_SPLIT_WIDTH}px`;
             }
         }
         queueMicrotask(() => this._bindStationMealIfNeeded());

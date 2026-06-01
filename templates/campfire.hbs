@@ -43,7 +43,7 @@
                 {{!-- Step 1: Place kindling --}}
                 {{#if firewoodCount}}
                 <div class="campfire-guided-step">
-                    <div class="firewood-log" draggable="true" title="Drag kindling to the fire pit">
+                    <div class="firewood-log" draggable="true" data-tooltip="Drag kindling to the fire pit">
                         <i class="fas fa-grip-lines-vertical"></i>
                     </div>
                     <span class="guided-label">Drag firewood to start a fire</span>
@@ -86,7 +86,7 @@
             {{!-- Firewood + Emotes: combined row --}}
             <div class="campfire-tool-row combined-row">
                 {{#if firewoodCount}}
-                    <div class="firewood-log" draggable="true" title="Drag to fire ({{firewoodCount}} remaining)">
+                    <div class="firewood-log" draggable="true" data-tooltip="Drag to fire ({{firewoodCount}} remaining)">
                         <i class="fas fa-grip-lines-vertical"></i>
                     </div>
                     <span class="firewood-count">&times;{{firewoodCount}}</span>
@@ -95,7 +95,7 @@
                 {{/if}}
                 <span class="tool-row-sep"></span>
                 {{#each emotes}}
-                    <button type="button" class="emote-btn" data-action="emote" data-emote-id="{{this.id}}" title="{{this.label}}">
+                    <button type="button" class="emote-btn" data-action="emote" data-emote-id="{{this.id}}" data-tooltip="{{this.label}}">
                         <i class="{{this.icon}}"></i>
                     </button>
                 {{/each}}
@@ -121,9 +121,9 @@
         <div class="fire-meter-track">
             <div class="fire-meter-fill"></div>
             <div class="fire-meter-needle"></div>
-            <div class="fire-meter-zone zone-embers" title="Dim and cold, but harder to spot.">Embers</div>
-            <div class="fire-meter-zone zone-campfire" title="Steady warmth. A fair balance of comfort and caution.">Campfire</div>
-            <div class="fire-meter-zone zone-bonfire" title="Raises comfort, but the light carries far.">Bonfire</div>
+            <div class="fire-meter-zone zone-embers" data-tooltip="Dim and cold, but harder for enemies to spot.">Embers</div>
+            <div class="fire-meter-zone zone-campfire" data-tooltip="Steady warmth. A fair balance of comfort and caution.">Campfire</div>
+            <div class="fire-meter-zone zone-bonfire" data-tooltip="Raises comfort, but visible from far off; enemies spot the camp easily.">Bonfire</div>
         </div>
     </div>
     {{/if}}

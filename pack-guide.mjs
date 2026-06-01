@@ -1,19 +1,17 @@
 /**
  * pack-guide.mjs
- * Rebuilds the Respite Guide LevelDB compendium from source JSON.
+ * Rebuilds Respite Guide LevelDB compendiums from source JSON.
  * Usage (Foundry must be closed): node pack-guide.mjs
  * Requires: npm install classic-level (already installed)
- *
- * Reads ALL *.json files from the source directory:
- *   - The parent journal document (contains _key starting with "!journal!")
- *   - Individual page documents (contain _key starting with "!journal.pages!")
  */
 import { ClassicLevel } from 'classic-level';
 import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 
-const SRC_DIR = 'packs/src/respite-guide';
-const PACK_DIR = 'packs/respite-guide';
+const PACKS = [
+    { src: 'packs/src/respite-guide', out: 'packs/respite-guide' },
+    { src: 'packs/src/respite-guide-gm', out: 'packs/respite-guide-gm' },
+];
 
 function makeStats() {
     return {
@@ -28,20 +26,17 @@ function makeStats() {
     };
 }
 
-async function main() {
-    // Read all JSON files from the source directory
-    const files = readdirSync(SRC_DIR).filter(f => f.endsWith('.json'));
+function loadSource(srcDir) {
+    const files = readdirSync(srcDir).filter(f => f.endsWith('.json'));
     if (!files.length) {
-        console.error(`No JSON files found in ${SRC_DIR}`);
-        process.exit(1);
+        throw new Error(`No JSON files found in ${srcDir}`);
     }
 
-    // Separate parent journal from page documents
     let parent = null;
     const pages = [];
 
     for (const file of files) {
-        const data = JSON.parse(readFileSync(join(SRC_DIR, file), 'utf8'));
+        const data = JSON.parse(readFileSync(join(srcDir, file), 'utf8'));
         const key = data._key ?? '';
 
         if (key.startsWith('!journal.pages!')) {
@@ -49,31 +44,26 @@ async function main() {
         } else if (key.startsWith('!journal!') || data.pages !== undefined) {
             parent = data;
         } else {
-            console.warn(`Skipping unrecognised file: ${file}`);
+            console.warn(`Skipping unrecognised file: ${join(srcDir, file)}`);
         }
     }
 
     if (!parent) {
-        console.error('No parent journal document found in source directory');
-        process.exit(1);
+        throw new Error(`No parent journal document found in ${srcDir}`);
     }
-
     if (!pages.length) {
-        console.error('No page documents found in source directory');
-        process.exit(1);
+        throw new Error(`No page documents found in ${srcDir}`);
     }
 
-    // Sort pages by sort order for deterministic output
     pages.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+    return { parent, pages };
+}
 
-    const db = new ClassicLevel(PACK_DIR, { valueEncoding: 'json', createIfMissing: true });
-    await db.open();
-
+function buildBatch(parent, pages) {
     const batch = [];
-
-    // Journal parent document. Pages array lists page IDs.
     const journalKey = `!journal!${parent._id}`;
     const pageIds = pages.map(p => p._id);
+
     batch.push({
         type: 'put',
         key: journalKey,
@@ -91,7 +81,6 @@ async function main() {
         }
     });
 
-    // Journal page documents
     for (const page of pages) {
         const pageKey = `!journal.pages!${parent._id}.${page._id}`;
         batch.push({
@@ -120,9 +109,41 @@ async function main() {
         });
     }
 
-    await db.batch(batch);
-    await db.close();
-    console.log(`Packed ${batch.length} entries (1 journal + ${pages.length} pages) into ${PACK_DIR}`);
+    return batch;
 }
 
-main().catch(console.error);
+async function packOne(srcDir, packDir) {
+    const { parent, pages } = loadSource(srcDir);
+    const batch = buildBatch(parent, pages);
+    const expectedKeys = new Set(batch.map(entry => entry.key));
+
+    const db = new ClassicLevel(packDir, { valueEncoding: 'json', createIfMissing: true });
+    await db.open();
+
+    const orphanKeys = [];
+    for await (const key of db.keys()) {
+        if (!expectedKeys.has(key)) {
+            orphanKeys.push(key);
+        }
+    }
+
+    if (orphanKeys.length) {
+        await db.batch(orphanKeys.map(key => ({ type: 'del', key })));
+        console.log(`  Removed ${orphanKeys.length} stale key(s) from ${packDir}`);
+    }
+
+    await db.batch(batch);
+    await db.close();
+    console.log(`Packed ${batch.length} entries (1 journal + ${pages.length} pages) into ${packDir}`);
+}
+
+async function main() {
+    for (const { src, out } of PACKS) {
+        await packOne(src, out);
+    }
+}
+
+main().catch(err => {
+    console.error(err);
+    process.exit(1);
+});

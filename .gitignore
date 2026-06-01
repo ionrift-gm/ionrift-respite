@@ -41,6 +41,7 @@ macros/
 packs/respite-items/
 packs/respite-actors/
 packs/respite-guide/
+packs/respite-guide-gm/
 
 # Dev artifacts
 *.bak

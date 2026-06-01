@@ -230,13 +230,28 @@ export class TerrainRegistry {
     }
 
     /**
-     * Get terrain defaults (comfort, scouting, mealRules, etc).
+     * Whether this terrain supports travel resolution (forage, hunt, scout on the road).
+     * Prefer explicit {@link travelActivities}; legacy {@link scoutingAvailable} is honoured for older packs.
+     * @param {string} tag
+     * @returns {boolean}
+     */
+    static isTravelAvailable(tag) {
+        const t = this.get(tag);
+        if (!t) return false;
+        if (Array.isArray(t.travelActivities)) return t.travelActivities.length > 0;
+        if (t.travelAvailable !== undefined) return !!t.travelAvailable;
+        if (t.scoutingAvailable !== undefined) return !!t.scoutingAvailable;
+        return true;
+    }
+
+    /**
+     * Get terrain defaults (comfort, mealRules, scout flavor, etc).
      * @param {string} tag
      * @returns {object}
      */
     static getDefaults(tag) {
         const t = this.get(tag);
-        if (!t) return { comfort: "sheltered", scoutingAvailable: false, mealRules: { waterPerDay: 2, foodPerDay: 1 } };
+        if (!t) return { comfort: "sheltered", travelAvailable: false, mealRules: { waterPerDay: 2, foodPerDay: 1 } };
         const rawComfort = t.comfort ?? "sheltered";
         const comfort = VALID_COMFORT.has(rawComfort) ? rawComfort : "rough";
         if (!VALID_COMFORT.has(rawComfort)) {
@@ -244,8 +259,7 @@ export class TerrainRegistry {
         }
         return {
             comfort,
-            scoutingAvailable: t.scoutingAvailable ?? false,
-            scoutGuidance: t.scoutGuidance ?? null,
+            travelAvailable: TerrainRegistry.isTravelAvailable(tag),
             scoutFlavor: t.scoutFlavor ?? null,
             mealRules: t.mealRules ?? { waterPerDay: 2, foodPerDay: 1 }
         };

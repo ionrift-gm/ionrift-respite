@@ -58,10 +58,19 @@ const EXPECTED = {
         },
     },
     "respite-guide": {
-        minEntries: 6,  // 1 journal parent + 5 pages
+        minEntries: 3,
         requiredKeys: [
             "!journal!1Zh2gDQ1xOLFUrhW",
             "!journal.pages!1Zh2gDQ1xOLFUrhW.aQc3PtQPrYDi9Mlx",
+            "!journal.pages!1Zh2gDQ1xOLFUrhW.cK8pRQdW2nFb4Xvj",
+        ],
+        requiredFlags: {},
+    },
+    "respite-guide-gm": {
+        minEntries: 2,
+        requiredKeys: [
+            "!journal!hG4mR3fRespGuide01",
+            "!journal.pages!hG4mR3fRespGuide01.dvr4TYdYmX88MCCf",
         ],
         requiredFlags: {},
     },
