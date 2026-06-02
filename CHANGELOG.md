@@ -23,6 +23,9 @@
 - After you submit a travel activity or see your forage or hunt results, refreshing the browser no longer resets the travel panel to an empty choice. Rejoin and world state restore your declaration, roll status, and debrief.
 - Cooking at a station locks in the activity when the craft succeeds, not only when the dialog closes. Refreshing after a cook no longer leaves cooking open for another attempt on the same recipe.
 - Cooking, party discoveries, feast servings, and meal leftovers use the same per-rest grant ledger as travel, so those rewards cannot be claimed twice by refreshing or resubmitting.
+- Cooking in the one-window rest mode no longer hands out a second helping when the same recipe is crafted again after a browser refresh. The one-window flow now uses the same once-per-rest safeguard that camp stations already had.
+- Party feast recipes now scale to the whole party from every cooking screen. One of the crafting screens always cooked a single serving, so a feast started there fed only the cook. Party size now follows the system's party on Foundry v14 and the configured roster on v13.
+- Station badge icons on the map now render the full, correct icon again. On some Font Awesome installs they showed only half the icon (a screwdriver with no wrench, half a shield).
 
 ## [2.4.0] - 2026-05-26
 

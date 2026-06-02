@@ -19,6 +19,7 @@ import { waitForDiceSoNice } from "./RollRequestManager.js";
 import { SpoilageClock } from "./SpoilageClock.js";
 import { ItemClassifier } from "./ItemClassifier.js";
 import { GrantLedger } from "./GrantLedger.js";
+import { getPartyActors } from "./partyActors.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -44,6 +45,21 @@ export class CraftingEngine {
      */
     getProfessions() {
         return [...this.recipes.keys()];
+    }
+
+    /**
+     * Party size used when scaling a craft. Party-meal recipes scale to the
+     * whole party; every other recipe is a single serving. Membership comes
+     * from the library roster service, which defers to the system's native
+     * party on Foundry v14 and falls back to the curated roster on v13.
+     * @param {string} recipeId
+     * @param {string} professionId
+     * @returns {number}
+     */
+    getRecipePartySize(recipeId, professionId) {
+        const recipe = this.recipes.get(professionId)?.find(r => r.id === recipeId);
+        const isPartyMeal = !!recipe?.outputFlags?.[MODULE_ID]?.partyMeal;
+        return isPartyMeal ? Math.max(1, getPartyActors().length) : 1;
     }
 
     /**

@@ -142,9 +142,10 @@ export class CraftingDelegate {
         if (!actor) return;
 
         const terrainTag = app._engine?.terrainTag ?? app._restData?.terrainTag ?? null;
+        const partySize = app._craftingEngine.getRecipePartySize(app._craftingDrawerRecipeId, app._craftingDrawerProfession);
         app._craftingDrawerResult = await app._craftingEngine.resolve(
             actor, app._craftingDrawerRecipeId, app._craftingDrawerProfession, app._craftingDrawerRisk, terrainTag,
-            1, { ledger: app._grantLedger }
+            partySize, { ledger: app._grantLedger }
         );
         app._craftingDrawerHasCrafted = true;
         app.render();

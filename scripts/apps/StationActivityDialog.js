@@ -1066,11 +1066,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         this._partyMealOutcomeResolved = false;
 
         const terrainTag = this._restApp?._engine?.terrainTag ?? this._restApp?._restData?.terrainTag ?? null;
-        const allRecipes = engine.recipes?.get(this._craftProfession) ?? [];
-        const craftRecipe = allRecipes.find(r => r.id === this._craftRecipeId);
-        const partySize = craftRecipe?.outputFlags?.["ionrift-respite"]?.partyMeal
-            ? getPartyActors().length
-            : 1;
+        const partySize = engine.getRecipePartySize(this._craftRecipeId, this._craftProfession);
 
         this._craftRollPending = true;
         this.render();

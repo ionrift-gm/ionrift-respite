@@ -709,21 +709,27 @@ Hooks.on("getSceneControlButtons", (controls) => {
         : controls.tokens;
     if (!tokenGroup) return;
 
+    const startRest = () => {
+        if (!_canStartRest()) return;
+        new RestSetupApp().render({ force: true });
+    };
+
     const toolDef = {
         name: "respite",
         title: "Begin Rest (Respite)",
         icon: "fas fa-campground",
-        button: true,
-        onClick: () => {
-            if (!_canStartRest()) return;
-            new RestSetupApp().render({ force: true });
-        }
+        button: true
     };
 
-    // v13 uses an object map for tools, v12 uses an array
+    // v13 uses an object map for tools with onChange(event, active); v12 uses
+    // an array with onClick.
     if (Array.isArray(tokenGroup.tools)) {
+        toolDef.onClick = startRest;
         tokenGroup.tools.push(toolDef);
     } else {
+        toolDef.order = Object.keys(tokenGroup.tools).length;
+        toolDef.visible = true;
+        toolDef.onChange = startRest;
         tokenGroup.tools[toolDef.name] = toolDef;
     }
 });

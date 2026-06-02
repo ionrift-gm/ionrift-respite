@@ -183,9 +183,10 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
             return;
         }
 
+        const partySize = this._engine.getRecipePartySize(this._selectedRecipeId, this._professionId);
         this._craftingResult = await this._engine.resolve(
             this._actor, this._selectedRecipeId, this._professionId, this._selectedRisk, this._terrainTag,
-            1, { ledger: this._ledger }
+            partySize, { ledger: this._ledger }
         );
         this._hasCrafted = true;
         this.render();
