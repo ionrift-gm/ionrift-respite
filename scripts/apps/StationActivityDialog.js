@@ -512,6 +512,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             workbenchGearChip: null,
             workbenchPotionChip: null,
             workbenchSubmitLocked: true,
+            workbenchSubmitPending: false,
             workbenchIdentifyAcknowledgement: null,
             workbenchAckRevealReady: true,
             workbenchFocusExhausted: false

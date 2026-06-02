@@ -132,6 +132,14 @@ export class WorkbenchDelegate {
         return this._app._workbenchFocusUsed;
     }
 
+    /** @returns {Set<string>} actorIds with an in-flight focus/potion submit */
+    get submitPending() {
+        if (!this._app._workbenchIdentifySubmitPending) {
+            this._app._workbenchIdentifySubmitPending = new Set();
+        }
+        return this._app._workbenchIdentifySubmitPending;
+    }
+
     // ── Staging Read/Write ──────────────────────────────────────────────
 
     /**
@@ -221,6 +229,7 @@ export class WorkbenchDelegate {
             workbenchGearChip: null,
             workbenchPotionChip: null,
             workbenchSubmitLocked: true,
+            workbenchSubmitPending: false,
             workbenchIdentifyAcknowledgement: null,
             workbenchAckRevealReady: true,
             workbenchFocusExhausted: false
@@ -257,7 +266,8 @@ export class WorkbenchDelegate {
         };
         const workbenchGearChip = st.gearItemId ? resolveGearChip(st.gearItemId, st.gearActorId) : null;
         const workbenchPotionChip = st.potionItemId ? resolvePotionChip(st.potionItemId) : null;
-        const workbenchSubmitLocked = !workbenchGearChip && !workbenchPotionChip;
+        const workbenchSubmitPending = this.submitPending.has(actorId);
+        const workbenchSubmitLocked = workbenchSubmitPending || (!workbenchGearChip && !workbenchPotionChip);
         const ack = this.acknowledge?.get(actorId) ?? null;
         const workbenchIdentifyAcknowledgement = ack ? { items: ack.items } : null;
         const workbenchAckRevealReady = !ack || Date.now() >= ack.revealAt;
@@ -267,6 +277,7 @@ export class WorkbenchDelegate {
             workbenchGearChip,
             workbenchPotionChip,
             workbenchSubmitLocked,
+            workbenchSubmitPending,
             workbenchIdentifyAcknowledgement,
             workbenchAckRevealReady,
             workbenchFocusExhausted
@@ -310,66 +321,86 @@ export class WorkbenchDelegate {
             ui.notifications.warn("You can only submit identify choices for characters you control.");
             return;
         }
+        if (this.submitPending.has(actorId)) return;
         const st = this.getStaging(actorId);
         if (!st.gearItemId && !st.potionItemId) {
             ui.notifications.warn("Drag at least one item onto the circles, then submit.");
             return;
         }
-        // Build identify order: potions first (always own actor), then gear
-        // (may belong to a different actor in shared pool mode)
-        const order = [];
-        if (st.potionItemId) order.push({ itemId: st.potionItemId, ownerActorId: actorId });
-        if (st.gearItemId) order.push({ itemId: st.gearItemId, ownerActorId: st.gearActorId || actorId });
-        const revealed = [];
-        for (const { itemId, ownerActorId } of order) {
-            const ownerActor = game.actors.get(ownerActorId);
-            if (!ownerActor) continue;
-            const itemBefore = ownerActor.items.get(itemId);
-            if (!itemBefore) continue;
-            const did = await this.identifyItem(ownerActorId, itemId, { deferNotify: true, deferRender: true });
-            if (!did) continue;
-            const itemAfter = ownerActor.items.get(itemId);
-            const trueName = resolveTrueName(ownerActor, itemId, itemBefore.name);
-            revealed.push({
-                itemId,
-                ownerActorId,
-                name: trueName,
-                img: itemAfter?.img ?? itemBefore.img ?? "icons/svg/mystery-man.svg",
-                requiresAttunement: (att => att === "required" || att === 1)(itemAfter?.system?.attunement)
-            });
-            // Notify the item owner when a different caster identifies their item
-            if (ownerActorId !== actorId) {
-                const ownerUsers = game.users.filter(
-                    u => !u.isGM && ownerActor.testUserPermission(u, "OWNER")
-                );
-                if (ownerUsers.length > 0) {
-                    ChatMessage.create({
-                        content: `<div class="ionrift-identify-reveal"><i class="fas fa-hat-wizard"></i> <strong>${actor.name}</strong> identified your <strong>${trueName}</strong>.</div>`,
-                        speaker: ChatMessage.getSpeaker({ alias: "Respite" }),
-                        whisper: ownerUsers.map(u => u.id)
-                    });
+        this.submitPending.add(actorId);
+        this._notifySubmitPendingChange();
+        try {
+            // Build identify order: potions first (always own actor), then gear
+            // (may belong to a different actor in shared pool mode)
+            const order = [];
+            if (st.potionItemId) order.push({ itemId: st.potionItemId, ownerActorId: actorId });
+            if (st.gearItemId) order.push({ itemId: st.gearItemId, ownerActorId: st.gearActorId || actorId });
+            const revealed = [];
+            for (const { itemId, ownerActorId } of order) {
+                const ownerActor = game.actors.get(ownerActorId);
+                if (!ownerActor) continue;
+                const itemBefore = ownerActor.items.get(itemId);
+                if (!itemBefore) continue;
+                const did = await this.identifyItem(ownerActorId, itemId, { deferNotify: true, deferRender: true });
+                if (!did) continue;
+                const itemAfter = ownerActor.items.get(itemId);
+                const trueName = resolveTrueName(ownerActor, itemId, itemBefore.name);
+                revealed.push({
+                    itemId,
+                    ownerActorId,
+                    name: trueName,
+                    img: itemAfter?.img ?? itemBefore.img ?? "icons/svg/mystery-man.svg",
+                    requiresAttunement: (att => att === "required" || att === 1)(itemAfter?.system?.attunement)
+                });
+                // Notify the item owner when a different caster identifies their item
+                if (ownerActorId !== actorId) {
+                    const ownerUsers = game.users.filter(
+                        u => !u.isGM && ownerActor.testUserPermission(u, "OWNER")
+                    );
+                    if (ownerUsers.length > 0) {
+                        ChatMessage.create({
+                            content: `<div class="ionrift-identify-reveal"><i class="fas fa-hat-wizard"></i> <strong>${actor.name}</strong> identified your <strong>${trueName}</strong>.</div>`,
+                            speaker: ChatMessage.getSpeaker({ alias: "Respite" }),
+                            whisper: ownerUsers.map(u => u.id)
+                        });
+                    }
                 }
             }
+            if (!revealed.length) {
+                if (!game.user.isGM) {
+                    ui.notifications.error("Identify failed. Try again or ask the GM.");
+                }
+                return;
+            }
+            this._app._workbenchIdentifyStaging.delete(actorId);
+            this._app._workbenchIdentifyAcknowledge.set(actorId, {
+                items: revealed,
+                revealAt: Date.now() + 900
+            });
+            if (st.gearItemId) {
+                this.focusUsed.add(actorId);
+            }
+            notifyWorkbenchIdentifyStagingTouched();
+            if (this._app.rendered) this._app.render();
+            // Schedule a follow-up render after the reveal delay so the
+            // "Wait..." button transitions to "Continue" automatically.
+            const REVEAL_MS = 950;
+            setTimeout(() => {
+                if (this._app.rendered && this.acknowledge?.has(actorId)) {
+                    this._app.render();
+                }
+            }, REVEAL_MS);
+        } finally {
+            if (this.submitPending.delete(actorId)) {
+                this._notifySubmitPendingChange();
+            }
         }
-        if (!revealed.length) return;
-        this._app._workbenchIdentifyStaging.delete(actorId);
-        this._app._workbenchIdentifyAcknowledge.set(actorId, {
-            items: revealed,
-            revealAt: Date.now() + 900
-        });
-        if (st.gearItemId) {
-            this.focusUsed.add(actorId);
-        }
+    }
+
+    /** Re-render open workbench UIs when submit pending toggles. */
+    _notifySubmitPendingChange() {
         notifyWorkbenchIdentifyStagingTouched();
         if (this._app.rendered) this._app.render();
-        // Schedule a follow-up render after the reveal delay so the
-        // "Wait..." button transitions to "Continue" automatically.
-        const REVEAL_MS = 950;
-        setTimeout(() => {
-            if (this._app.rendered && this.acknowledge?.has(actorId)) {
-                this._app.render();
-            }
-        }, REVEAL_MS);
     }
 
     /**
@@ -492,6 +523,7 @@ export class WorkbenchDelegate {
         this.staging?.clear();
         this.acknowledge?.clear();
         this.focusUsed.clear();
+        this.submitPending.clear();
     }
 
     // ── Drag-Drop Binding ───────────────────────────────────────────────
@@ -508,6 +540,7 @@ export class WorkbenchDelegate {
         if (embed.querySelector(".wb-ident-ack-overlay")) { console.log(`[Respite:Workbench] bindDragDrop: ack overlay active, skipping`); return; }
         const actorId = embed.dataset.workbenchActorId;
         if (!actorId) { console.warn(`[Respite:Workbench] bindDragDrop: no actorId on embed`); return; }
+        if (this.submitPending.has(actorId)) { console.log(`[Respite:Workbench] bindDragDrop: submit pending, skipping`); return; }
 
         console.log(`[Respite:Workbench] bindDragDrop: binding for actor ${actorId}`);
 

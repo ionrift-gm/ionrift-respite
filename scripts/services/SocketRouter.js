@@ -299,6 +299,7 @@ export function dispatch(data, ctx) {
                 clrApp._magicScanComplete = false;
                 clrApp._workbenchIdentifyStaging?.clear();
                 clrApp._workbenchIdentifyAcknowledge?.clear();
+                clrApp._workbenchIdentifySubmitPending?.clear();
                 if (clrApp.rendered && !clrApp._terminated) void clrApp.render(false);
             }
             Hooks.callAll(`${MODULE_ID}.workbenchIdentifyStagingTouched`);
