@@ -134,12 +134,15 @@ export function dispatch(data, ctx) {
         case SOCKET_TYPES.CAMP_FIRE_LEVEL_REQUEST:
             if (!game.user.isGM) return;
             if (ctx.activeRestSetupApp) {
-                // Set preview level and broadcast to all clients (preview, not commit)
+                // Set preview level and broadcast to all clients (preview, not commit).
+                // Picking a fire tier also clears any committed cold camp.
                 ctx.activeRestSetupApp._campFirePreviewLevel = data.fireLevel;
                 ctx.activeRestSetupApp._coldCampPreview = false;
+                ctx.activeRestSetupApp._coldCampDecided = false;
                 emitPhaseChanged(ctx.activeRestSetupApp._phase, {
                     campFirePreviewLevel: data.fireLevel,
                     coldCampPreview: false,
+                    coldCampDecided: false,
                     selectedTerrain: ctx.activeRestSetupApp._selectedTerrain ?? null
                 });
                 ctx.activeRestSetupApp.render();
@@ -158,6 +161,15 @@ export function dispatch(data, ctx) {
                     selectedTerrain: ctx.activeRestSetupApp._selectedTerrain ?? null
                 });
                 ctx.activeRestSetupApp.render();
+            } else { ui.notifications.warn("Open the rest session on the GM client first."); }
+            break;
+
+        case SOCKET_TYPES.CAMP_COLD_CAMP_COMMIT:
+            if (!game.user.isGM) return;
+            if (ctx.activeRestSetupApp?._campCeremony) {
+                void ctx.activeRestSetupApp._campCeremony.selectColdCamp().catch(err => {
+                    console.error(`${MODULE_ID} | campColdCampCommit:`, err);
+                });
             } else { ui.notifications.warn("Open the rest session on the GM client first."); }
             break;
 
@@ -190,22 +202,13 @@ export function dispatch(data, ctx) {
                 previewLevel: data.previewLevel
             });
             if (ctx.activeRestSetupApp?._campCeremony) {
-                // Apply the player's previewed fire level so the post-light commit
-                // uses the tier the player selected, not the GM's local preview.
-                if (data.previewLevel) {
-                    ctx.activeRestSetupApp._campFirePreviewLevel = data.previewLevel;
-                }
-                const previewLevel = data.previewLevel ?? "embers";
-                void (async () => {
-                    await ctx.activeRestSetupApp._campCeremony.lightFire(data.userId, data.actorId, data.method ?? "Tinderbox");
-                    // Commit the player's chosen fire level (mirrors #onCampLightFire post-light logic)
-                    const isTotm = ctx.activeRestSetupApp._isTotM;
-                    if (isTotm && previewLevel !== "cold_camp" && previewLevel !== "embers") {
-                        await ctx.activeRestSetupApp._runSetCampFireLevelForGm(previewLevel, data.userId ?? null, true);
-                    }
-                })().catch(err => {
-                    console.error(`${MODULE_ID} | campLightFire:`, err);
-                });
+                // Light at the tier the player selected, in one motion (no re-engage).
+                const chosenLevel = ["embers", "campfire", "bonfire"].includes(data.previewLevel)
+                    ? data.previewLevel
+                    : "embers";
+                void ctx.activeRestSetupApp._campCeremony
+                    .lightFire(data.userId, data.actorId, data.method ?? "Tinderbox", chosenLevel)
+                    .catch(err => console.error(`${MODULE_ID} | campLightFire:`, err));
             } else { ui.notifications.warn("Open the rest session on the GM client first."); }
             break;
 
