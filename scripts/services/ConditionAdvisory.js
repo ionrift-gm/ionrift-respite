@@ -303,7 +303,7 @@ export class ConditionAdvisory {
 
         const aeData = {
             name: effect.label ?? entry.label,
-            icon: entry.icon,
+            img: entry.icon,
             origin: actor.uuid,
             statuses: new Set([entry.id]),
             changes: (entry.changes ?? []).map(c => ({

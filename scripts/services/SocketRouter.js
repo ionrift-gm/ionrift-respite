@@ -199,7 +199,7 @@ export function dispatch(data, ctx) {
                 void (async () => {
                     await ctx.activeRestSetupApp._campCeremony.lightFire(data.userId, data.actorId, data.method ?? "Tinderbox");
                     // Commit the player's chosen fire level (mirrors #onCampLightFire post-light logic)
-                    const isTotm = (() => { try { return game.settings.get("ionrift-respite", "restInterfaceMode") === "theater"; } catch { return false; } })();
+                    const isTotm = ctx.activeRestSetupApp._isTotM;
                     if (isTotm && previewLevel !== "cold_camp" && previewLevel !== "embers") {
                         await ctx.activeRestSetupApp._runSetCampFireLevelForGm(previewLevel, data.userId ?? null, true);
                     }

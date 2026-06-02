@@ -152,9 +152,7 @@ export function showGmRestIndicator(app) {
     const trackFood = isActivity && game.settings.get(MODULE_ID, "trackFood");
     // TotM: rations are collected in the dedicated meal phase, not the activity phase.
     // Mirror the allRationsSubmitted bypass used in the template context builder.
-    const isTotM = isActivity && (() => {
-        try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; }
-    })();
+    const isTotM = isActivity && app._isTotM;
     const membersReady = isActivity ? (() => {
         let count = 0;
         const actors = getPartyActors();
@@ -204,9 +202,7 @@ export function refreshGmRestIndicator(app) {
     const span = bar.querySelector(".respite-bar-progress");
     if (!span) return;
     const trackFood = game.settings.get(MODULE_ID, "trackFood");
-    const isTotM = (() => {
-        try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; }
-    })();
+    const isTotM = app._isTotM;
     const actors = getPartyActors();
     let membersReady = 0;
     for (const a of actors) {
@@ -232,9 +228,7 @@ export function refreshRejoinBar(app) {
     if (!span) return;
     const trackFood = game.settings.get(MODULE_ID, "trackFood");
     // TotM: rations collected in meal phase, not activity phase; bypass ration requirement.
-    const isTotM = (() => {
-        try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; }
-    })();
+    const isTotM = app._isTotM;
     const actors = getPartyActors();
     let membersReady = 0;
     for (const a of actors) {

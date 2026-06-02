@@ -227,7 +227,7 @@ export class CampCeremonyDelegate {
     async decideColdCamp() {
         if (!game.user.isGM) return;
         await this.selectColdCamp();
-        const _isTotmCold = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; } })();
+        const _isTotmCold = this._app._isTotM;
         if (!_isTotmCold && this._app._phase === "camp" && !this._app._campToActivityDone) {
             await this._app._advanceCampToActivity();
         }
@@ -254,7 +254,7 @@ export class CampCeremonyDelegate {
             selectedTerrain: this._app._selectedTerrain ?? null
         });
         await this._app._saveRestState();
-        const _isTotm = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; } })();
+        const _isTotm = this._app._isTotM;
         const willAdvance =
             !_isTotm &&
             this._app._phase === "camp" && !this._app._campToActivityDone && this.fireLevel !== "unlit";

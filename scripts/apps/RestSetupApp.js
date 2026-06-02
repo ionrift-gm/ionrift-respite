@@ -542,12 +542,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /**
      * Whether the rest is running in Theater of the Mind mode.
-     * Single source of truth. Replaces the repeated IIFE checks.
+     * Single source of truth for the mode check. The fallback matches the
+     * registered default ("theater") so a not-yet-ready setting read resolves
+     * to the same mode a fresh world starts in.
      * @returns {boolean}
      */
     get _isTotM() {
         try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; }
-        catch { return false; }
+        catch { return true; }
     }
 
     /**
@@ -1359,7 +1361,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     async applyRestoredPhaseUi() {
         if (this._phase !== "activity") return;
         await this.render({ force: true });
-        const isTheater = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return true; } })();
+        const isTheater = this._isTotM;
         if (!isTheater) {
             this._attachActivityPhaseCanvasChrome();
             await this.close({});
@@ -2446,9 +2448,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // ── TotM station cards (global, not per-character) ─────────────────
         const totmStationCards = (() => {
-            try {
-                if (game.settings.get(MODULE_ID, "restInterfaceMode") !== "theater") return [];
-            } catch { return []; }
+            if (!this._isTotM) return [];
             if (this._phase !== "activity") return [];
 
             // Gather the union of available + faded activity IDs across all party members
@@ -2536,7 +2536,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const totmDetailPanel = (() => {
             const expanded = this._totmFollowUpExpanded;
             if (!expanded || this._phase !== "activity") return null;
-            try { if (game.settings.get(MODULE_ID, "restInterfaceMode") !== "theater") return null; } catch { return null; }
+            if (!this._isTotM) return null;
             const expandActor = game.actors.get(expanded.characterId);
             if (!expandActor) return null;
 
@@ -11088,7 +11088,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Activity phase: canvas station overlays for all clients; players minimise to the rest bar
         if (phase === "activity") {
-            const isTheater = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return true; } })();
+            const isTheater = this._isTotM;
             if (!this._isGM) {
                 _removeGmRestIndicator();
             }
@@ -11438,7 +11438,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._closeCampfire();
 
         // Activity phase: same as receivePhaseChange (F5 rejoin after GM already advanced)
-        const _isTheaterRestore = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return true; } })();
+        const _isTheaterRestore = this._isTotM;
         if (this._phase === "activity" && !this._isGM) {
             // eslint-disable-next-line no-console
             console.debug(`${MODULE_ID} | [REJOIN] receiveRestSnapshot: activity phase â†’ choices=${this._characterChoices?.size ?? 0}, theater=${_isTheaterRestore}`);
@@ -12135,7 +12135,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         // Capture the preview level BEFORE lightFire (which resets it via pledge sync to "embers")
         const previewLevel = this._campFirePreviewLevel ?? "embers";
-        const _isTotm = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; } })();
+        const _isTotm = this._isTotM;
 
         console.log(`[FIRE-DIAG] PRE-LIGHT: _campFirePreviewLevel=${JSON.stringify(this._campFirePreviewLevel)}, previewLevel=${previewLevel}, _fireLevel=${this._fireLevel}, isTotm=${_isTotm}`);
 
@@ -12462,7 +12462,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._totmCampPositioned = false;
         this._applyLoseActivityTravelLocks();
 
-        const isTheater = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return true; } })();
+        const isTheater = this._isTotM;
         if (!isTheater) {
             await this.close({});
         }
@@ -12527,7 +12527,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._applyLoseActivityTravelLocks();
         _logGmRestSheet("_advanceCampToActivity", "phase -> activity, closing window");
 
-        const isTheater = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return true; } })();
+        const isTheater = this._isTotM;
         if (!isTheater) {
             await this.close({});
         }
@@ -12847,8 +12847,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this._totmFollowUpExpanded = null;
                 this._resetTotmCraftState();
             } else {
-                // Reset crafting state for a fresh session
+                // Reset crafting state, then restore a prior craft so a refresh
+                // mid-rest shows the finished result instead of a fresh roll.
                 this._resetTotmCraftState();
+                this._hydrateTotmCraftStateFromRest(characterId, craftingProfession);
                 this._totmFollowUpExpanded = { activityId, characterId, isCrafting: true, profession: craftingProfession };
             }
             this.render();
@@ -13022,6 +13024,25 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._totmFeastInFlight = false;
     }
 
+    /**
+     * Restore the inline crafting result after a refresh when this rest already
+     * recorded a craft for the character. Mirrors
+     * {@link StationActivityDialog._hydrateCraftStateFromRest} so the TotM panel
+     * shows the finished craft as read-only instead of inviting a second roll.
+     * @param {string} characterId
+     * @param {string} profession
+     * @returns {boolean} true when prior craft state was restored
+     */
+    _hydrateTotmCraftStateFromRest(characterId, profession) {
+        if (!characterId) return false;
+        const prior = this._craftingResults?.get(characterId);
+        if (!prior && !this.hasCompletedCrafting(characterId, profession)) return false;
+        this._totmCraftResult = prior ?? { success: true, narrative: "Craft already completed this rest." };
+        this._totmCraftHasCrafted = true;
+        this._totmCraftRecipeId = prior?.recipeId ?? null;
+        return true;
+    }
+
     /** TotM inline crafting: select a recipe. */
     static #onTotmCraftSelectRecipe(event, target) {
         if (this._totmCraftRollPending || this._totmCraftHasCrafted) return;
@@ -13045,19 +13066,28 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const actor = game.actors.get(expanded.characterId);
         if (!actor) return;
 
+        if (this.hasCompletedCrafting(actor.id, expanded.profession)) {
+            ui.notifications.warn(`${actor.name} has already crafted during this rest.`);
+            return;
+        }
+
+        const ledger = this._grantLedger;
+        const slotKey = GrantLedger.craftingSlotKey(actor.id, expanded.profession, this._totmCraftRecipeId);
+        if (ledger?.has(slotKey)) {
+            ui.notifications.warn("That recipe was already crafted this rest.");
+            return;
+        }
+
         const terrainTag = this._engine?.terrainTag ?? this._restData?.terrainTag ?? null;
         const engine = this._craftingEngine;
-        const allRecipes = engine.recipes?.get(expanded.profession) ?? [];
-        const craftRecipe = allRecipes.find(r => r.id === this._totmCraftRecipeId);
-        const partySize = craftRecipe?.outputFlags?.["ionrift-respite"]?.partyMeal
-            ? getPartyActors().length
-            : 1;
+        const partySize = engine.getRecipePartySize(this._totmCraftRecipeId, expanded.profession);
 
         this._totmCraftRollPending = true;
         this.render();
         try {
             this._totmCraftResult = await engine.resolve(
-                actor, this._totmCraftRecipeId, expanded.profession, this._totmCraftRisk, terrainTag, partySize
+                actor, this._totmCraftRecipeId, expanded.profession, this._totmCraftRisk, terrainTag, partySize,
+                { ledger }
             );
             this._totmCraftHasCrafted = true;
         } finally {
@@ -13339,7 +13369,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             });
 
         await this._saveRestState();
-        const isTotmMode = (() => { try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; } catch { return false; } })();
+        const isTotmMode = this._isTotM;
         const willAdvance =
             !isTotmMode &&
             this._phase === "camp" && !this._campToActivityDone && (this._fireLevel ?? "unlit") !== "unlit";

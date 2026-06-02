@@ -40,114 +40,197 @@ function _faGlyphFromIconClass(iconClass) {
     const faName = parts.find(p => p.startsWith("fa-"));
     if (!faName) return "";
     const cp = FA_SOLID_CODEPOINT[faName];
-    return cp !== null ? String.fromCodePoint(cp) : "";
+    return cp != null ? String.fromCodePoint(cp) : "";
 }
 
-const _faRasterCache = new Map();
+let _activateGeneration = 0;
+
+/** Matches `--ionrift-font-stack` in ionrift-library (PIXI.Text does not inherit app CSS). */
+const UI_FONT_STACK = "Signika, sans-serif";
+
+let _solidFamilyCache = null;
+
+/**
+ * Resolve the Font Awesome SOLID family for the current install.
+ *
+ * "First weight-900 FA family" is not enough: Duotone also ships a 900 face,
+ * and Duotone splits every icon into two layers, so a single codepoint renders
+ * only one layer (the half-glyph / missing-wrench artifact). Brands is its own
+ * icon set entirely. Probe the live `.fa-solid` computed family first, since
+ * that is exactly what the page uses for solid icons; fall back to a weight-900
+ * face that is neither Duotone nor Brands. Resolved once fonts are ready, then
+ * cached for the session.
+ * @returns {string}
+ */
+function _faSolidFamily() {
+    if (_solidFamilyCache) return _solidFamilyCache;
+    try {
+        const probe = document.createElement("i");
+        probe.className = "fas fa-solid fa-fire";
+        probe.style.cssText = "position:absolute;left:-9999px;top:0;opacity:0;";
+        document.body.appendChild(probe);
+        const famCss = window.getComputedStyle(probe, "::before").fontFamily
+            || window.getComputedStyle(probe).fontFamily;
+        probe.remove();
+        const primary = (famCss || "").split(",")[0]?.trim().replace(/^['"]|['"]$/g, "") ?? "";
+        if (/font\s*awesome/i.test(primary) && !/duotone|brands/i.test(primary)) {
+            _solidFamilyCache = primary;
+            return primary;
+        }
+    } catch { /* probe unsupported */ }
+    try {
+        for (const face of document.fonts) {
+            if (!/font\s*awesome/i.test(face.family)) continue;
+            if (/duotone|brands/i.test(face.family)) continue;
+            const w = Number(String(face.weight).split(/\s+/)[0]) || 400;
+            if (w === 900) {
+                _solidFamilyCache = face.family.replace(/^['"]|['"]$/g, "");
+                return _solidFamilyCache;
+            }
+        }
+    } catch { /* iteration unsupported */ }
+    return "Font Awesome 6 Free";
+}
+
+/**
+ * Force-load every Font Awesome face the page registered.
+ * @returns {Promise<void>}
+ */
+function ensureIconFontsLoaded() {
+    const fontApi = document.fonts;
+    if (!fontApi?.load) return Promise.resolve();
+    const work = async () => {
+        await fontApi.ready;
+        const pending = [];
+        for (const face of fontApi) {
+            if (/font\s*awesome/i.test(face.family)) {
+                pending.push(face.load().catch(() => {}));
+            }
+        }
+        pending.push(
+            fontApi.load(`900 ${OV.ICON_TEX_PX}px "Font Awesome 6 Free"`, "\uf06d").catch(() => {}),
+            fontApi.load(`900 ${OV.ICON_TEX_PX}px "Font Awesome 5 Free"`, "\uf06d").catch(() => {})
+        );
+        await Promise.allSettled(pending);
+        await fontApi.ready;
+    };
+    return work().catch(() => undefined);
+}
 
 function _hexRgb(n) {
     return `#${(n >>> 0).toString(16).padStart(6, "0")}`;
 }
 
-/** Matches `--ionrift-font-stack` in ionrift-library (PIXI.Text does not inherit app CSS). */
-const UI_FONT_STACK = "Signika, sans-serif";
-
-/**
- * Parse getComputedStyle(..., "::before").content into a single glyph (FA PUA).
- */
-function _parseCssContentToGlyph(content) {
-    if (!content || content === "none" || content === "normal") return null;
-    let s = String(content).trim();
-    if (s.length >= 2
-        && ((s[0] === "\"" && s[s.length - 1] === "\"")
-            || (s[0] === "'" && s[s.length - 1] === "'"))) {
-        s = s.slice(1, -1);
-    }
-    if (s.length === 1) return s;
-    if (s.length === 2 && s.charCodeAt(0) >= 0xd800 && s.charCodeAt(0) <= 0xdbff) return s;
-    if (s[0] === "\\") {
-        const hexMatch = /^\\([0-9a-fA-F]{1,6})/i.exec(s);
-        if (hexMatch) {
-            const cp = parseInt(hexMatch[1], 16);
-            if (cp > 0 && cp <= 0x10ffff) return String.fromCodePoint(cp);
+/** Pixel bounding box of opaque ink in a context, or null if empty. */
+function _scanInkBounds(ctx, w, h) {
+    const data = ctx.getImageData(0, 0, w, h).data;
+    let minX = w, minY = h, maxX = -1, maxY = -1;
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            if (data[(y * w + x) * 4 + 3] > 12) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
         }
     }
-    return null;
+    if (maxX < 0) return null;
+    return { minX, minY, maxX, maxY };
 }
 
 /**
- * Same approach as CampfirePhysics._getCachedIcon: probe a real <i class="fas ..."> so
- * Canvas2D uses the same ::before glyph and font stack the DOM uses. Hard-coded FA
- * codepoints often miss version renames (e.g. fa-shield-alt), which reads as an empty box.
+ * Rasterize a station's FA glyph onto a tightly cropped, centered canvas.
+ *
+ * Draws the glyph on a generous canvas and crops to scanned ink bounds, so the
+ * full glyph always survives regardless of the font's reported metric box (FA
+ * icons draw ink outside it). Render large for crispness; the sprite is scaled
+ * down to badge size by _layoutIconSprite. The font family must be solid, not
+ * Duotone; see _faSolidFamily.
+ * @param {Object} station - CAMP_STATIONS entry
+ * @param {number} fill    - glyph color
+ * @param {number} px      - raster font size
+ * @returns {HTMLCanvasElement|null}
  */
-function _glyphFontFromFaProbe(iconClass, pixelSize) {
-    if (!iconClass || typeof iconClass !== "string") return { glyph: null, fontCss: null };
-    try {
-        const probe = document.createElement("i");
-        probe.className = iconClass.trim();
-        probe.style.cssText = "position:absolute;left:-9999px;top:-9999px;visibility:hidden;font-size:16px;";
-        document.body.appendChild(probe);
-        const computed = window.getComputedStyle(probe, "::before");
-        const content = computed.content;
-        const fontFamily = computed.fontFamily;
-        const fontWeight = computed.fontWeight || "900";
-        document.body.removeChild(probe);
-        const glyph = _parseCssContentToGlyph(content);
-        if (!glyph || !fontFamily) return { glyph: null, fontCss: null };
-        return { glyph, fontCss: `${fontWeight} ${pixelSize}px ${fontFamily}` };
-    } catch {
-        return { glyph: null, fontCss: null };
-    }
+function _rasterIconCanvas(station, fill, px) {
+    const glyph = _faGlyphFromIconClass(station.icon);
+    if (!glyph) return null;
+    const family = _faSolidFamily();
+    const fontCss = `900 ${px}px "${family.replace(/"/g, '\\"')}"`;
+    const big = Math.max(64, px * 4);
+    const scratch = document.createElement("canvas");
+    scratch.width = big;
+    scratch.height = big;
+    const sctx = scratch.getContext("2d");
+    sctx.clearRect(0, 0, big, big);
+    sctx.fillStyle = _hexRgb(fill);
+    sctx.font = fontCss;
+    sctx.textAlign = "center";
+    sctx.textBaseline = "middle";
+    sctx.fillText(glyph, big / 2, big / 2);
+
+    const bb = _scanInkBounds(sctx, big, big);
+    if (!bb) return null;
+    const gW = bb.maxX - bb.minX + 1;
+    const gH = bb.maxY - bb.minY + 1;
+    const pad = Math.max(2, Math.round(px * 0.12));
+    const size = Math.max(gW, gH) + pad * 2;
+    const out = document.createElement("canvas");
+    out.width = size;
+    out.height = size;
+    out.getContext("2d").drawImage(
+        scratch,
+        bb.minX, bb.minY, gW, gH,
+        Math.round((size - gW) / 2), Math.round((size - gH) / 2), gW, gH
+    );
+    return out;
 }
 
+const _iconTexCache = new Map();
+
 /**
- * FA or initial letter drawn to a texture via Canvas2D (WebGL PIXI.Text cannot embed FA).
+ * PIXI texture for a station icon, via the cropped Canvas2D raster. Canvas2D
+ * rasters can upload blank through PIXI.Texture.from(canvas) on some WebGL
+ * paths; a PNG data URL routed through an Image decodes reliably.
+ * @returns {Promise<PIXI.Texture|null>}
  */
-function _textureFromStationIcon(station, fillColor, pixelSize) {
-    const fallback = (station.label ?? "?").trim().charAt(0).toUpperCase() || "?";
-    const { glyph: probedGlyph, fontCss } = _glyphFontFromFaProbe(station.icon, pixelSize);
-    const mapGlyph = probedGlyph ? null : _faGlyphFromIconClass(station.icon);
-    const key = `${station.id}|${fillColor}|${pixelSize}|${probedGlyph ? "p" : mapGlyph ? "m" : "f"}`;
-    if (_faRasterCache.has(key)) return _faRasterCache.get(key);
+function _iconTextureAsync(station, fill, px) {
+    const glyph = _faGlyphFromIconClass(station.icon);
+    const key = `${station.id}|${fill}|${px}|${glyph ? glyph.codePointAt(0).toString(16) : "none"}`;
+    if (_iconTexCache.has(key)) return Promise.resolve(_iconTexCache.get(key));
+    const cvs = _rasterIconCanvas(station, fill, px);
+    if (!cvs) return Promise.resolve(null);
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            let tex = null;
+            try {
+                tex = PIXI.Texture.from(img);
+                tex?.baseTexture?.update?.();
+            } catch {
+                tex = null;
+            }
+            if (tex) _iconTexCache.set(key, tex);
+            resolve(tex);
+        };
+        img.onerror = () => resolve(null);
+        img.src = cvs.toDataURL("image/png");
+    });
+}
 
-    const pad  = 4;
-    const size = Math.ceil(pixelSize + pad * 2);
-    const cvs  = document.createElement("canvas");
-    cvs.width = size;
-    cvs.height = size;
-    const ctx = cvs.getContext("2d");
-    if (!ctx) return null;
+const _ICON_SPRITE_MAX = 22;
+// Rasterize larger than display size, then scale the sprite down for a crisp icon.
+const ICON_RASTER_PX = 44;
 
-    ctx.clearRect(0, 0, size, size);
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = _hexRgb(fillColor);
-
-    let glyph = probedGlyph;
-    let fontCssUse = fontCss;
-    if (!glyph && mapGlyph) {
-        glyph = mapGlyph;
-        fontCssUse = `900 ${pixelSize}px "Font Awesome 5 Free", "Font Awesome 6 Free", sans-serif`;
-    }
-    if (!glyph) {
-        glyph = fallback;
-        fontCssUse = `bold ${pixelSize}px ${UI_FONT_STACK}`;
-    }
-    ctx.font = fontCssUse;
-    ctx.fillText(glyph, size / 2, size / 2);
-    if (probedGlyph || mapGlyph) {
-        const w = ctx.measureText(glyph).width;
-        if (w < 0.5) {
-            ctx.clearRect(0, 0, size, size);
-            ctx.fillStyle = _hexRgb(fillColor);
-            ctx.font = `bold ${pixelSize}px ${UI_FONT_STACK}`;
-            ctx.fillText(fallback, size / 2, size / 2);
-        }
-    }
-
-    const tex = PIXI.Texture.from(cvs);
-    _faRasterCache.set(key, tex);
-    return tex;
+/** @param {PIXI.Sprite} spr @param {PIXI.Texture} tex */
+function _layoutIconSprite(spr, tex) {
+    spr.anchor.set(0.5, 0.5);
+    spr.x = 0;
+    spr.y = 0;
+    const w = tex.width || _ICON_SPRITE_MAX;
+    const h = tex.height || _ICON_SPRITE_MAX;
+    const sc = Math.min(_ICON_SPRITE_MAX / w, _ICON_SPRITE_MAX / h, 1.5);
+    spr.scale.set(sc);
 }
 
 // V2: circular icon badge with floating portrait bubbles
@@ -321,22 +404,6 @@ class StationOverlay {
         bodyRoot.addChild(iconRing);
         this._iconRing = iconRing;
 
-        const tex = _textureFromStationIcon(this.station, 0xffffff, OV.ICON_TEX_PX);
-        if (tex) {
-            const spr = new PIXI.Sprite(tex);
-            spr.anchor.set(0.5, 0.5);
-            spr.x = 0;
-            spr.y = 0;
-            const maxD = 20;
-            const sc = Math.min(maxD / spr.texture.width, maxD / spr.texture.height, 1.2);
-            spr.scale.set(sc);
-            if ("eventMode" in spr) spr.eventMode = "none";
-            bodyRoot.addChild(spr);
-            this._iconSprite = spr;
-        } else {
-            this._iconSprite = null;
-        }
-
         const labelText = this._displayOverride?.title ?? this.station.label;
         const hoverLabel = new PIXI.Text(labelText, OV.FONT_TOOLTIP);
         hoverLabel.anchor.set(0.5, 0);
@@ -391,6 +458,30 @@ class StationOverlay {
     }
 
     /**
+     * Build (or refresh) the station icon once Font Awesome faces are loaded.
+     * Rasterizes the glyph through Canvas2D and uploads it as a sprite texture.
+     * @returns {Promise<void>}
+     */
+    async refreshIcon() {
+        const tex = await _iconTextureAsync(this.station, 0xffffff, ICON_RASTER_PX);
+        if (!tex || this._container?.destroyed || !this._bodyRoot) return;
+        if (this._iconSprite) {
+            const prevTint = this._iconSprite.tint;
+            this._iconSprite.texture = tex;
+            _layoutIconSprite(this._iconSprite, tex);
+            this._iconSprite.tint = prevTint;
+            return;
+        }
+        const spr = new PIXI.Sprite(tex);
+        _layoutIconSprite(spr, tex);
+        if ("eventMode" in spr) spr.eventMode = "none";
+        this._bodyRoot.addChild(spr);
+        this._iconSprite = spr;
+        if (this._emptyNoticeFade || this._dimmed) this._applyEmptyNoticePalette();
+        else this._applyDefaultNoticePalette();
+    }
+
+    /**
      * Repositions the badge for token size. Badge center sits above the token top edge.
      * Also adjusts right-side bubble rows so portraits and meals don't overlap.
      */
@@ -435,18 +526,14 @@ class StationOverlay {
     }
 
     _applyEmptyNoticePalette() {
-        if (this._iconSprite) {
-            this._iconSprite.tint = 0xa8a8b8;
-        }
+        if (this._iconSprite) this._iconSprite.tint = 0xa8a8b8;
         const lineColor = this._mealOnly ? OV.BORDER_MEAL : OV.BORDER_GLASS;
         const outline = this._mealOnly ? OV.OUTLINE_MEAL : OV.OUTLINE_IDLE * 0.55;
         this._drawBg(this._bg, lineColor, OV.BG_ALPHA * 0.88, outline);
     }
 
     _applyDefaultNoticePalette() {
-        if (this._iconSprite) {
-            this._iconSprite.tint = 0xffffff;
-        }
+        if (this._iconSprite) this._iconSprite.tint = 0xffffff;
     }
 
     /**
@@ -649,6 +736,7 @@ class StationOverlay {
             if (this._bodyRoot) this._bodyRoot.alpha = OV.MEAL_BODY_ALPHA;
             this._drawBg(this._bg, OV.BORDER_MEAL, OV.BG_ALPHA, OV.OUTLINE_MEAL);
             this._drawIconRing(this._iconRing, 0, 0, "meal");
+            if (this._iconSprite) this._iconSprite.tint = 0xffffff;
         } else {
             this._dimmed = true;
             this._hoverHighlight = false;
@@ -659,6 +747,7 @@ class StationOverlay {
             }
             if (this._bodyRoot) this._bodyRoot.alpha = OV.DIM_ALPHA;
         }
+        if (this._iconSprite && !mealOnly) this._iconSprite.tint = 0xa8a8b8;
         this._syncMealRowAlpha();
     }
 
@@ -1125,6 +1214,7 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
     const campPitModeOnly = !!options.campPitModeOnly;
     const campPitUnlit    = options.campPitUnlit !== false;
     const terrainTag      = options.terrainTag ?? null;
+    const activateGen     = ++_activateGeneration;
 
     // Parent to TokensLayer so notices draw above furniture tokens; high zIndex
     // keeps the whole tray above per-token elevation sorting.
@@ -1158,7 +1248,26 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
         actorMapKeys:    Object.keys(_actorMap)
     });
 
-    // Use terrain-filtered stations so hidden stations (e.g. campfire in tavern) don't get overlays.
+    ensureIconFontsLoaded().then(async () => {
+        if (!_active || activateGen !== _activateGeneration) return;
+        _spawnStationOverlays({
+            sceneTokens,
+            terrainTag,
+            emptyFadeMap,
+            campPitModeOnly,
+            campPitUnlit
+        });
+        await Promise.all(_overlays.map(ov => ov.refreshIcon()));
+        if (!_active || activateGen !== _activateGeneration) return;
+        _attachStationLayerRuntime();
+    });
+}
+
+/**
+ * Attach interactive overlays after Font Awesome faces are ready for Canvas2D.
+ * @param {object} params
+ */
+function _spawnStationOverlays({ sceneTokens, terrainTag, emptyFadeMap, campPitModeOnly, campPitUnlit }) {
     const effectiveStations = terrainTag ? getStationsForTerrain(terrainTag) : CAMP_STATIONS;
 
     for (const station of effectiveStations) {
@@ -1200,7 +1309,6 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
         if (campPitModeOnly) break;
     }
 
-    // Player bedroll tokens (named per owner)
     const bedrollStation = effectiveStations.find(s => s.id === "bedroll");
     if (bedrollStation && !campPitModeOnly) {
         for (const actorId of Object.keys(_actorMap)) {
@@ -1230,13 +1338,15 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
             }
         }
     }
+}
 
+/** Hooks, ticker, and DOM hit-testing for the active station layer. */
+function _attachStationLayerRuntime() {
     if (!_tokenUpdateHook) {
         _tokenUpdateHook = _onRefreshTokenForOverlays;
         Hooks.on("refreshToken", _tokenUpdateHook);
     }
 
-    // Ticker for pulse animation
     _tickerFn = (delta) => {
         for (const ov of _overlays) ov.tick(delta);
     };
@@ -1297,8 +1407,8 @@ export function deactivateStationLayer() {
     }
     for (const ov of _overlays) ov.destroy();
     _overlays = [];
-    for (const tex of _faRasterCache.values()) tex?.destroy?.(true);
-    _faRasterCache.clear();
+    for (const tex of _iconTexCache.values()) tex?.destroy?.(true);
+    _iconTexCache.clear();
 
     if (_overlayContainer) {
         if (!_overlayContainer.destroyed) {
