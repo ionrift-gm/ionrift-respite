@@ -11038,6 +11038,68 @@ button.is-processing {
     cursor: not-allowed;
 }
 
+.ionrift-station-dialog .wb-ident-submit-row .wb-ident-submit-btn--pending:disabled {
+    opacity: 0.85;
+    cursor: wait;
+}
+
+.ionrift-station-dialog .station-workbench-identify-embed.wb-ident-submit-pending .wb-ident-scroll {
+    position: relative;
+}
+
+.ionrift-station-dialog .station-workbench-identify-embed.wb-ident-submit-pending .wb-ident-drop-columns,
+.ionrift-station-dialog .station-workbench-identify-embed.wb-ident-submit-pending .wb-ident-footer-toolbar {
+    pointer-events: none;
+    opacity: 0.55;
+}
+
+.ionrift-station-dialog .wb-ident-pending-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    margin: 0 0 0.45rem;
+    padding: 0.4rem 0.55rem;
+    font-size: 0.72rem;
+    color: rgba(196, 181, 253, 0.92);
+    background: rgba(88, 28, 135, 0.22);
+    border: 1px solid rgba(167, 139, 250, 0.28);
+    border-radius: 6px;
+}
+
+.ionrift-station-dialog .wb-ident-pending-status .fa-spinner {
+    color: rgba(196, 181, 253, 0.85);
+}
+
+.workbench-identify-panel .wb-ident-submit-row .wb-ident-submit-btn--pending:disabled {
+    opacity: 0.85;
+    cursor: wait;
+}
+
+.workbench-identify-panel .station-workbench-identify-embed.wb-ident-submit-pending .wb-ident-drop-columns,
+.workbench-identify-panel .station-workbench-identify-embed.wb-ident-submit-pending .wb-ident-footer-toolbar {
+    pointer-events: none;
+    opacity: 0.55;
+}
+
+.workbench-identify-panel .wb-ident-pending-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    margin: 0 0 0.45rem;
+    padding: 0.4rem 0.55rem;
+    font-size: 0.72rem;
+    color: rgba(196, 181, 253, 0.92);
+    background: rgba(88, 28, 135, 0.22);
+    border: 1px solid rgba(167, 139, 250, 0.28);
+    border-radius: 6px;
+}
+
+.workbench-identify-panel .wb-ident-pending-status .fa-spinner {
+    color: rgba(196, 181, 253, 0.85);
+}
+
 .ionrift-station-dialog .station-essence-hint {
     flex-shrink: 0;
     font-size: 0.62rem;

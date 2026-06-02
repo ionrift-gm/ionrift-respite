@@ -1,5 +1,5 @@
 {{!-- Workbench Examine: Detect Magic, casters, scan, focus/taste, submit, acknowledgement (station dialog + short rest) --}}
-<div class="station-workbench-identify-embed station-identify-embed identify-tab"
+<div class="station-workbench-identify-embed station-identify-embed identify-tab{{#if workbenchSubmitPending}} wb-ident-submit-pending{{/if}}"
      data-workbench-actor-id="{{workbenchIdentifyActorId}}">
     {{!-- Caster advisories (compact, above zones) --}}
     {{#if identifyCasters.length}}
@@ -12,6 +12,11 @@
     <p class="wb-ident-hint">DMG p.136 (Identifying a Magic Item): focus on 1 item per rest, or taste a potion, to learn properties without Identify. Use Detect Magic to reveal auras.</p>
     {{!-- Drop zones: hero position --}}
     <div class="identify-scroll-area station-identify-scroll wb-ident-scroll">
+    {{#if workbenchSubmitPending}}
+    <p class="wb-ident-pending-status" role="status" aria-live="polite">
+        <i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Identifying. Waiting on the table...
+    </p>
+    {{/if}}
     <div class="meal-drop-columns wb-ident-drop-columns">
         <div class="meal-panel wb-ident-gear-panel{{#if workbenchFocusExhausted}} wb-ident-exhausted{{/if}}">
             <span class="panel-label">Focus
@@ -53,13 +58,21 @@
         <button type="button" class="btn-detect-magic{{#if magicScanActive}} is-active{{/if}}"
             data-action="stationDetectMagicScan"
             {{#unless canTriggerDetectMagicScan}}disabled{{/unless}}
-            data-tooltip="{{#if magicScanActive}}Dismiss scan{{else}}{{#if canTriggerDetectMagicScan}}{{#if isGmUser}}Cast Detect Magic for the party{{else}}Cast Detect Magic{{/if}}{{else}}No Detect Magic caster in party{{/if}}{{/if}}">
+            {{#if workbenchSubmitPending}}disabled aria-disabled="true"{{/if}}
+            data-tooltip="{{#if workbenchSubmitPending}}Wait for identify to finish{{else}}{{#if magicScanActive}}Dismiss scan{{else}}{{#if canTriggerDetectMagicScan}}{{#if isGmUser}}Cast Detect Magic for the party{{else}}Cast Detect Magic{{/if}}{{else}}No Detect Magic caster in party{{/if}}{{/if}}{{/if}}">
             <i class="fas {{#if magicScanActive}}fa-eye-slash{{else}}fa-eye{{/if}}" aria-hidden="true"></i>
             <span class="btn-detect-magic-text">{{#if magicScanActive}}Dismiss{{else}}Detect Magic{{/if}}</span>
         </button>
-        <button type="button" class="station-meal-submit-btn" data-action="submitWorkbenchIdentify"
+        <button type="button" class="station-meal-submit-btn{{#if workbenchSubmitPending}} wb-ident-submit-btn--pending{{/if}}" data-action="submitWorkbenchIdentify"
             data-workbench-actor-id="{{workbenchIdentifyActorId}}"
-            {{#if workbenchSubmitLocked}}disabled{{/if}}>Submit identify</button>
+            {{#if workbenchSubmitLocked}}disabled{{/if}}
+            {{#if workbenchSubmitPending}}aria-busy="true" data-tooltip="Identify in progress"{{/if}}>
+            {{#if workbenchSubmitPending}}
+            <i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Identifying...
+            {{else}}
+            Submit identify
+            {{/if}}
+        </button>
     </div>
     {{#unless magicScanActive}}
     <p class="wb-detect-magic-attribution">{{#if isGmUser}}GM override - cast Detect Magic on behalf of the party.{{else}}{{detectMagicScanButtonTitle}}{{/if}}</p>

@@ -254,6 +254,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._finishedUsers.clear();
             this._workbenchIdentifyStaging?.clear();
             this._workbenchIdentifyAcknowledge?.clear();
+            this._workbenchIdentifySubmitPending?.clear();
             this._workbenchFocusUsed?.clear();
             this._magicScanResults = null;
             this._magicScanComplete = false;

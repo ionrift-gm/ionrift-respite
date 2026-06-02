@@ -111,7 +111,7 @@
                 class="btn-roll-for-player"
                 data-action="{{../rollRequest.gmRollAction}}"
                 data-character-id="{{id}}"
-                {{#if ../rollRequest.meta.eventIndex}}data-event-index="{{../rollRequest.meta.eventIndex}}"{{/if}}
+                data-event-index="{{../rollRequest.meta.eventIndex}}"
                 data-tooltip="Roll on their behalf">
                 <i class="fas fa-dice"></i> Roll for them
             </button>
@@ -145,7 +145,7 @@
             data-action="ionriftRoll"
             data-flow="{{../rollRequest.flow}}"
             data-character-id="{{id}}"
-            {{#if ../rollRequest.meta.eventIndex}}data-event-index="{{../rollRequest.meta.eventIndex}}"{{/if}}
+            data-event-index="{{../rollRequest.meta.eventIndex}}"
             {{#if ../rollRequest.meta.activityId}}data-activity-id="{{../rollRequest.meta.activityId}}"{{/if}}
             {{#if ../rollRequest.meta.day}}data-day="{{../rollRequest.meta.day}}"{{/if}}>
             <i class="fas fa-dice-d20"></i>

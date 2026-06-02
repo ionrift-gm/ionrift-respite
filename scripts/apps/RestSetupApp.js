@@ -1,7 +1,7 @@
 import { Logger } from "../lib/Logger.js";
 import { RestFlowEngine } from "../services/RestFlowEngine.js";
 import {
-    executePlayerRoll, rollForPlayer, pickBestSkill, SKILL_DISPLAY_NAMES, waitForDiceSoNice, getNatD20FromRoll
+    executePlayerRoll, rollForPlayer, pickBestSkill, SKILL_DISPLAY_NAMES, waitForDiceSoNice, getNatD20FromRoll, disableRollButton
 } from "../services/RollRequestManager.js";
 import { buildEventPlayerRollContext, buildRollTargetLabel, buildEventGmRollContext, centerRollRequestRoster, buildTreePlayerRollContext, buildCampActivityRollContext, buildTravelActivityRollContext, buildCopySpellRollContext } from "../services/RollRequestView.js";
 import { ensureDcPulseAnimation } from "../services/RollRequestDcPulse.js";
@@ -8922,29 +8922,55 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #onRollEventForPlayer(event, target) {
         if (!game.user.isGM) return;
-        const characterId = target.dataset.characterId;
-        const eventIndex = parseInt(target.dataset.eventIndex);
+        const button = target.closest(".btn-roll-for-player") ?? target;
+        const characterId = button.dataset.characterId;
+        const eventIndex = Number.parseInt(button.dataset.eventIndex, 10);
+        if (!Number.isFinite(eventIndex)) {
+            ui.notifications.warn("Could not resolve which event check to roll for.");
+            return;
+        }
+        const pendingKey = `${eventIndex}:${characterId}`;
+        if (!this._eventGmRollPending) this._eventGmRollPending = new Set();
+        if (this._eventGmRollPending.has(pendingKey)) return;
+
         const triggeredEvent = this._triggeredEvents?.[eventIndex];
-        if (!triggeredEvent?.awaitingRolls || !characterId) return;
+        if (!triggeredEvent?.awaitingRolls || !characterId) {
+            ui.notifications.warn("This event is not waiting for that roll.");
+            return;
+        }
+        if (triggeredEvent.resolvedRolls?.some(r => r.characterId === characterId)) {
+            ui.notifications.info(`${triggeredEvent.resolvedRolls.find(r => r.characterId === characterId)?.name ?? "That character"} already rolled.`);
+            return;
+        }
 
         const actor = game.actors.get(characterId);
         if (!actor) return;
 
-        const skill = triggeredEvent.mechanical?.skill ?? "sur";
-        const dc = triggeredEvent.mechanical?.dc ?? 10;
-        const skillName = SKILL_DISPLAY_NAMES[skill] ?? skill;
-        const context = `${triggeredEvent.name ?? "Event"} (${skillName})`;
-        const rollMode = triggeredEvent.rollModes?.[characterId] ?? "normal";
+        this._eventGmRollPending.add(pendingKey);
+        disableRollButton(button);
 
-        const result = await rollForPlayer(actor, [skill], dc, context, rollMode);
+        try {
+            const skill = triggeredEvent.mechanical?.skill ?? "sur";
+            const dc = triggeredEvent.mechanical?.dc ?? 10;
+            const skillName = SKILL_DISPLAY_NAMES[skill] ?? skill;
+            const context = `${triggeredEvent.name ?? "Event"} (${skillName})`;
+            const rollMode = triggeredEvent.rollModes?.[characterId] ?? "normal";
 
-        // Feed through the normal collection path
-        await this.receiveRollResult({
-            eventIndex,
-            characterId,
-            characterName: actor.name,
-            total: result.total
-        });
+            const result = await rollForPlayer(actor, [skill], dc, context, rollMode);
+
+            await this.receiveRollResult({
+                eventIndex,
+                characterId,
+                characterName: actor.name,
+                total: result.total
+            });
+        } catch (err) {
+            console.error("[Respite] GM event roll for player failed:", err);
+            ui.notifications.error(`Failed to roll for ${actor.name}.`);
+            this.render();
+        } finally {
+            this._eventGmRollPending.delete(pendingKey);
+        }
     }
 
     /**
@@ -9734,6 +9760,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 } else if (recovery.exhaustionDelta > 0) {
                     const reason = recovery.exhaustionDC ? `failed CON save DC ${recovery.exhaustionDC}` : "rest conditions";
                     lines.push(`<p><i class="fas fa-arrow-up" style="color:#f1948a;"></i> <span style="color:#f1948a;">+${recovery.exhaustionDelta} exhaustion (${reason})</span></p>`);
+                } else if (recovery.exhaustionDelta === 0 && recovery.exhaustionSaveResult === "failed") {
+                    lines.push(`<p><i class="fas fa-arrow-right" style="color:#f9d77e;"></i> <span style="color:#f9d77e;">Failed CON save DC ${recovery.exhaustionDC} (+1 exhaustion, offset by rest recovery -1)</span></p>`);
                 }
                 if (recovery.comfortLevel === "hostile") {
                     lines.push(`<p style="font-size:0.85em;color:#f9d77e;"><i class="fas fa-skull"></i> Hostile conditions prevent natural exhaustion recovery</p>`);
