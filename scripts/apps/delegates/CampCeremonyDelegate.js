@@ -114,15 +114,15 @@ export class CampCeremonyDelegate {
      * @param {string} actorId
      * @param {string} method - Item or cantrip name used (display string).
      */
-    async lightFire(userId, actorId, method) {
-        console.log(`ionrift-respite | [DBG] lightFire called`, { userId, actorId, method, isGM: game.user.isGM });
-        if (!game.user.isGM) { console.warn(`ionrift-respite | [DBG] lightFire: not GM, returning`); return; }
+    async lightFire(userId, actorId, method, desiredLevel = null) {
+        if (!game.user.isGM) return;
         const actor = game.actors.get(actorId);
-        if (!actor) { console.warn(`ionrift-respite | [DBG] lightFire: actor not found`, { actorId }); return; }
-        console.log(`ionrift-respite | [DBG] lightFire: setting fireLitBy and syncing pledges`);
+        if (!actor) return;
         this.fireLitBy = { userId, actorId, actorName: actor.name, method };
-        await this._syncFireLevelFromPledges();
-        console.log(`ionrift-respite | [DBG] lightFire: complete. level=${this.fireLevel}`);
+        // Light at the chosen tier in one motion so the picker is the commit; falls back
+        // to pledge-derived level (embers with no wood) when no tier was selected.
+        const override = ["embers", "campfire", "bonfire"].includes(desiredLevel) ? desiredLevel : null;
+        await this._syncFireLevelFromPledges(override);
     }
 
     /**
@@ -237,8 +237,10 @@ export class CampCeremonyDelegate {
      * Sync _fireLevel, engine, and campfire token light state from current pledge data.
      * Broadcasts phase update and may auto-advance from camp → activity.
      */
-    async _syncFireLevelFromPledges() {
-        const level = this.deriveCampFireLevel();
+    async _syncFireLevelFromPledges(overrideLevel = null) {
+        const level = ["embers", "campfire", "bonfire"].includes(overrideLevel)
+            ? overrideLevel
+            : this.deriveCampFireLevel();
         this.fireLevel = level;
         this.campFirePreviewLevel = null;
         const FIRE_MOD = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL;

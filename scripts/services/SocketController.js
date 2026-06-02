@@ -44,6 +44,7 @@ export const SOCKET_TYPES = Object.freeze({
     CAMP_FIREWOOD_PLEDGE:  "campFirewoodPledge",
     CAMP_FIREWOOD_RECLAIM: "campFirewoodReclaim",
     CAMP_COLD_CAMP:        "campColdCamp",
+    CAMP_COLD_CAMP_COMMIT: "campColdCampCommit",
     ACTIVITY_COLD_CAMP_REQUEST: "activityColdCampRequest",
 
     // ── Camp gear & stations ──
@@ -266,6 +267,14 @@ export function emitCampFireLevelRequest(fireLevel, userId) {
  */
 export function emitCampColdCampRequest(userId) {
     _emit(SOCKET_TYPES.CAMP_COLD_CAMP, { userId });
+}
+
+/**
+ * Player → GM: commit cold camp during Make Camp (no fire starter needed).
+ * @param {string} [userId]
+ */
+export function emitCampColdCampCommit(userId) {
+    _emit(SOCKET_TYPES.CAMP_COLD_CAMP_COMMIT, { userId });
 }
 
 /**

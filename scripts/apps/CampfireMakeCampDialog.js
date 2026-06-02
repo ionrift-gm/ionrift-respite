@@ -7,7 +7,7 @@ import { StationActivityDialog } from "./StationActivityDialog.js";
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
-const DIALOG_WIDTH = 380;
+const DIALOG_WIDTH = 580;
 const EST_HEIGHT = 420;
 const PAN_TRIGGER_RATIO = 0.55;
 
@@ -33,6 +33,7 @@ export class CampfireMakeCampDialog extends HandlebarsApplicationMixin(Applicati
             campPledgeFirewoodMap: CampfireMakeCampDialog.#onCampPledge,
             campReclaimFirewoodMap: CampfireMakeCampDialog.#onCampReclaim,
             campColdCampMap: CampfireMakeCampDialog.#onCampCold,
+            campConfirmColdCampMap: CampfireMakeCampDialog.#onConfirmCampCold,
             selectCampFireLevelMap: CampfireMakeCampDialog.#onSelectCampFireLevel,
             selectCampColdCampMap: CampfireMakeCampDialog.#onSelectCampColdCamp
         }
@@ -159,6 +160,11 @@ export class CampfireMakeCampDialog extends HandlebarsApplicationMixin(Applicati
 
     static async #onCampCold() {
         await this._restApp?.runMakeCampColdFromUi?.();
+        await this._afterRestAction();
+    }
+
+    static async #onConfirmCampCold() {
+        await this._restApp?.runMakeCampConfirmColdFromUi?.();
         await this._afterRestAction();
     }
 

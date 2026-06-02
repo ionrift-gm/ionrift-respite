@@ -30,6 +30,35 @@
         {{/if}}
     </div>
 
+    {{!-- Make Camp: persistent terrain / comfort / weather badges --}}
+    {{#if campConditionsBar}}
+    <div class="camp-conditions-bar" role="status" aria-label="Camp conditions">
+        <span class="camp-conditions-bar-label">Conditions</span>
+        <span class="camp-status-chip terrain-chip" data-tooltip="Environment chosen during setup.">
+            <i class="{{campConditionsBar.terrainIcon}}" aria-hidden="true"></i> {{campConditionsBar.terrainLabel}}
+        </span>
+        {{#if campConditionsBar.safeRestSpot}}
+        <span class="camp-status-chip comfort-safe" data-tooltip="No comfort penalties or night events.">
+            <i class="fas fa-shield-halved" aria-hidden="true"></i> Safe rest spot
+        </span>
+        {{else}}
+        <span class="camp-status-chip comfort-{{campConditionsBar.campComfort}}"
+              data-tooltip="{{campConditionsBar.campComfortTooltip}}{{#if campConditionsBar.comfortContext}} · {{campConditionsBar.comfortContext}}{{/if}}">
+            <i class="fas fa-temperature-half" aria-hidden="true"></i> {{campConditionsBar.campComfortLabel}} camp
+        </span>
+        <span class="camp-status-chip weather-chip {{#if campConditionsBar.weatherIsNeutral}}weather-neutral{{/if}}"
+              data-tooltip="{{campConditionsBar.weatherTooltip}}{{#if campConditionsBar.weatherShieldNote}} · {{campConditionsBar.weatherShieldNote}}{{/if}}">
+            <i class="fas fa-cloud-sun-rain" aria-hidden="true"></i> {{campConditionsBar.weatherLabel}}{{#if campConditionsBar.weatherImpact}} · {{campConditionsBar.weatherImpact}}{{/if}}
+        </span>
+        {{#if campConditionsBar.weatherShieldNote}}
+        <span class="camp-conditions-shield-note">
+            <i class="fas fa-campground" aria-hidden="true"></i> {{campConditionsBar.weatherShieldNote}}
+        </span>
+        {{/if}}
+        {{/if}}
+    </div>
+    {{/if}}
+
     {{!-- Camp Status Bar: persistent across all phases post-setup --}}
     {{#if campStatus}}
     {{#unless (eq phase 'activity')}}
@@ -133,7 +162,7 @@
                 <label>Weather:</label>
                 <select name="weather">
                     {{#each weatherOptions}}
-                    <option value="{{value}}" title="{{hint}}" {{#if (eq value ../defaultWeather)}}selected{{/if}}>{{label}}</option>
+                    <option value="{{value}}" title="{{hint}}" {{#if (eq value ../selectedWeather)}}selected{{/if}}>{{label}}</option>
                     {{/each}}
                 </select>
             </div>
@@ -3012,9 +3041,14 @@
 
             {{#if eventsModeIsRandom}}
             <div class="event-description">
+                {{#if isGM}}
                 {{#if pendingCampRolls.length}}Camp preparations complete. {{/if}}Roll a d20 against the encounter threshold to see what the night brings.
+                {{else}}
+                {{#if pendingCampRolls.length}}Camp preparations complete. {{/if}}The GM will call for a night check when ready.
+                {{/if}}
             </div>
             {{#if encounterBar}}
+            {{#if isGM}}
             <details class="encounter-details">
                 <summary class="encounter-summary">
                     <span class="encounter-summary-badge">DC {{encounterBar.effectiveDC}}</span>
@@ -3033,14 +3067,28 @@
                     </span>
                 </div>
             </details>
+            {{else if encounterBar.playerFactors.length}}
+            <div class="encounter-details-player">
+                <span class="encounter-details-player-label">Camp exposure</span>
+                <span class="encounter-bar-chips encounter-bar-chips--player">
+                    {{#each encounterBar.playerFactors}}
+                    {{#unless @first}}<span class="encounter-factor-sep" aria-hidden="true">|</span>{{/unless}}
+                    <span class="encounter-chip encounter-chip--{{tone}}"{{#if tooltip}} data-tooltip="{{tooltip}}"{{/if}}>
+                        {{#if icon}}<i class="{{icon}}" aria-hidden="true"></i>{{/if}}{{label}}
+                    </span>
+                    {{/each}}
+                </span>
+            </div>
+            {{/if}}
             {{/if}}
             {{/if}}
 
             {{#if eventsModeIsImprovise}}
             <div class="event-description">
-                Roll the night check. If an event triggers, run your own scenario at the table.
+                {{#if isGM}}Roll the night check. If an event triggers, run your own scenario at the table.{{else}}The GM will narrate what the night brings.{{/if}}
             </div>
             {{#if encounterBar}}
+            {{#if isGM}}
             <details class="encounter-details">
                 <summary class="encounter-summary">
                     <span class="encounter-summary-badge">DC {{encounterBar.effectiveDC}}</span>
@@ -3056,6 +3104,19 @@
                     </span>
                 </div>
             </details>
+            {{else if encounterBar.playerFactors.length}}
+            <div class="encounter-details-player">
+                <span class="encounter-details-player-label">Camp exposure</span>
+                <span class="encounter-bar-chips encounter-bar-chips--player">
+                    {{#each encounterBar.playerFactors}}
+                    {{#unless @first}}<span class="encounter-factor-sep" aria-hidden="true">|</span>{{/unless}}
+                    <span class="encounter-chip encounter-chip--{{tone}}"{{#if tooltip}} data-tooltip="{{tooltip}}"{{/if}}>
+                        {{#if icon}}<i class="{{icon}}" aria-hidden="true"></i>{{/if}}{{label}}
+                    </span>
+                    {{/each}}
+                </span>
+            </div>
+            {{/if}}
             {{/if}}
             {{/if}}
 
@@ -3561,7 +3622,8 @@
 
     {{!-- Encounter Status Bar: persistent footer --}}
     {{#if encounterBar}}
-    <div class="encounter-bar">
+    <div class="encounter-bar {{#unless encounterBar.isGM}}encounter-bar--player{{/unless}}">
+        {{#if encounterBar.isGM}}
         <span class="encounter-bar-label-wrap">
             <span class="encounter-bar-label">
                 <i class="fas fa-dice-d20"></i>
@@ -3580,11 +3642,26 @@
             {{/each}}
         </span>
         {{/if}}
-        {{#if encounterBar.isGM}}
         <span class="encounter-gm-adj">
             <button type="button" class="encounter-adj-btn" data-action="encounterAdjDown" data-tooltip="Reduce DC">−</button>
             <button type="button" class="encounter-adj-btn" data-action="encounterAdjUp" data-tooltip="Increase DC">+</button>
         </span>
+        {{else}}
+        <span class="encounter-bar-label-wrap">
+            <span class="encounter-bar-label" data-tooltip="Exposure factors for tonight. The GM runs the night check; exact numbers stay on their screen.">
+                <i class="fas fa-moon"></i> Camp exposure
+            </span>
+        </span>
+        {{#if encounterBar.playerFactors.length}}
+        <span class="encounter-bar-chips encounter-bar-chips--player">
+            {{#each encounterBar.playerFactors}}
+            {{#unless @first}}<span class="encounter-factor-sep" aria-hidden="true">|</span>{{/unless}}
+            <span class="encounter-chip encounter-chip--{{tone}}"{{#if tooltip}} data-tooltip="{{tooltip}}"{{/if}}>
+                {{#if icon}}<i class="{{icon}}" aria-hidden="true"></i>{{/if}}{{label}}
+            </span>
+            {{/each}}
+        </span>
+        {{/if}}
         {{/if}}
     </div>
     {{/if}}

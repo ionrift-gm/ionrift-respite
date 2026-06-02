@@ -281,6 +281,49 @@
 
 /* ---- Camp Status Bar ---- */
 
+.camp-conditions-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(0, 0, 0, 0.35);
+    border-bottom: 1px solid rgba(139, 92, 246, 0.22);
+}
+
+.camp-conditions-bar-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(200, 195, 220, 0.45);
+    margin-right: 0.1rem;
+}
+
+.camp-status-chip.terrain-chip {
+    background: rgba(180, 140, 90, 0.12);
+    color: rgba(220, 190, 140, 0.9);
+    border: 1px solid rgba(180, 140, 90, 0.25);
+}
+
+.camp-status-chip.weather-chip.weather-neutral {
+    opacity: 0.65;
+}
+
+.camp-conditions-shield-note {
+    flex: 1 1 100%;
+    font-size: 0.65rem;
+    color: rgba(120, 200, 180, 0.85);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding-left: 0.15rem;
+}
+
+.camp-conditions-shield-note i {
+    font-size: 0.6rem;
+}
+
 .camp-status-bar {
     display: flex;
     gap: 0.4rem;
@@ -1763,6 +1806,28 @@
 .ionrift-station-dialog .camp-fire-tier-card--set-disabled .station-fire-set-btn {
     opacity: 0.45;
     cursor: not-allowed;
+}
+
+/* Tier cards are click-to-preview on the activity Fire tab. */
+.ionrift-station-dialog .station-campfire-tier-strip .camp-fire-tier-card[data-action="previewFireLevel"] {
+    cursor: pointer;
+}
+
+.ionrift-station-dialog .station-campfire-tier-strip .camp-fire-tier-card[data-action="previewFireLevel"]:hover {
+    border-color: rgba(251, 191, 36, 0.55);
+}
+
+.ionrift-station-dialog .station-campfire-tier-strip .camp-fire-tier-card.previewing {
+    border-color: rgba(251, 191, 36, 0.9);
+    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.55), 0 0 14px rgba(251, 191, 36, 0.25);
+    background: rgba(251, 191, 36, 0.08);
+}
+
+.ionrift-station-dialog .station-fire-set-btn--preview {
+    border-color: rgba(251, 191, 36, 0.95);
+    background: rgba(251, 191, 36, 0.22);
+    color: rgba(254, 243, 199, 1);
+    font-weight: 600;
 }
 
 .ionrift-station-dialog .station-fire-current-label {
@@ -9327,6 +9392,67 @@ button.is-processing {
     color: #e55;
 }
 
+.encounter-bar--player {
+    justify-content: flex-start;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.encounter-bar-chips--player {
+    flex-wrap: wrap;
+}
+
+.encounter-factor-sep {
+    margin: 0 0.2rem;
+    color: rgba(255, 255, 255, 0.2);
+    font-weight: 400;
+    user-select: none;
+}
+
+.encounter-chip--help {
+    color: rgba(80, 200, 120, 0.92);
+    background: rgba(80, 200, 120, 0.1);
+    border: 1px solid rgba(80, 200, 120, 0.22);
+}
+
+.encounter-chip--risk {
+    color: rgba(240, 120, 110, 0.92);
+    background: rgba(220, 70, 70, 0.1);
+    border: 1px solid rgba(220, 70, 70, 0.22);
+}
+
+.encounter-chip--pending {
+    color: rgba(220, 170, 50, 0.9);
+    background: rgba(220, 170, 50, 0.08);
+    border: 1px solid rgba(220, 170, 50, 0.2);
+}
+
+.encounter-chip--neutral {
+    color: rgba(200, 195, 220, 0.75);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.encounter-details-player {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 0.5rem;
+    padding: 0.45rem 0.55rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.encounter-details-player-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(200, 195, 220, 0.45);
+}
+
 .encounter-gm-adj {
     display: flex;
     gap: 0.15rem;
@@ -9756,6 +9882,21 @@ button.is-processing {
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: rgba(255, 255, 255, 0.5);
+}
+.ionrift-station-dialog .station-camp-comfort-preview-tag {
+    margin-left: auto;
+    font-size: 0.58rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(251, 191, 36, 0.95);
+    border: 1px solid rgba(251, 191, 36, 0.45);
+    border-radius: 2px;
+    padding: 0.05rem 0.3rem;
+}
+.ionrift-station-dialog .comfort-tier.comfort-tier--previewing {
+    outline: 1px dashed rgba(251, 191, 36, 0.7);
+    outline-offset: 2px;
 }
 .ionrift-station-dialog .station-camp-comfort-line {
     margin: 0;
@@ -22533,6 +22674,164 @@ button.is-processing {
 }
 .application.ionrift-campfire-map-dialog .camp-fire-tier-cost {
     font-size: 0.58rem;
+}
+
+/* Wider lighting menu fits all four tiers on a single row, matching the TotM picker. */
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.4rem;
+}
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip .camp-fire-tier-card .camp-fire-tier-body {
+    line-height: 1.32;
+}
+
+/* Lighting menu: tiers are a live picker, not a read-only display. Override the
+   read-only .camp-fire-tier-strip rule (pointer-events:none, dimmed) so the table
+   can click a tier, preview its comfort, and light at that level in one motion. */
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip .camp-fire-tier-card {
+    pointer-events: auto;
+    cursor: pointer;
+    opacity: 0.85;
+    text-align: left;
+    transition: opacity 0.12s, border-color 0.12s, box-shadow 0.12s, background 0.12s;
+}
+
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip .camp-fire-tier-card:hover {
+    opacity: 1;
+    border-color: rgba(251, 191, 36, 0.55);
+    background: rgba(251, 191, 36, 0.06);
+}
+
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip .camp-fire-tier-card.active,
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip .camp-fire-tier-card.selected {
+    opacity: 1;
+    border-color: rgba(251, 191, 36, 0.9);
+    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.5), 0 0 14px rgba(251, 191, 36, 0.22);
+    background: rgba(251, 191, 36, 0.1);
+}
+
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip .camp-fire-tier-card.cold-camp.active,
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip .camp-fire-tier-card.cold-camp.selected {
+    border-color: rgba(129, 178, 255, 0.85);
+    box-shadow: 0 0 0 1px rgba(129, 178, 255, 0.45), 0 0 14px rgba(129, 178, 255, 0.2);
+    background: rgba(129, 178, 255, 0.1);
+}
+
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip .camp-fire-tier-card:focus-visible {
+    outline: 2px solid rgba(251, 191, 36, 0.7);
+    outline-offset: 2px;
+}
+
+/* Lighting menu: personal rest outcome, color-coded, updates as tiers are previewed. */
+.application.ionrift-campfire-map-dialog .campfire-map-rest {
+    margin-top: 0.4rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.22);
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.2rem;
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest-label {
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.5);
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest .recovery-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    font-size: 0.62rem;
+    line-height: 1.35;
+    color: rgba(220, 215, 235, 0.9);
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest .recovery-line i {
+    margin-top: 0.08rem;
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest .recovery-line.success {
+    color: rgba(134, 239, 172, 0.95);
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest .recovery-line.success i {
+    color: rgba(134, 239, 172, 0.9);
+    opacity: 0.95;
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest .recovery-line.warning {
+    color: rgba(251, 191, 36, 0.95);
+    background: rgba(251, 191, 36, 0.06);
+    border-left: 2px solid rgba(251, 191, 36, 0.4);
+    border-radius: 4px;
+    padding: 0.15rem 0.35rem;
+    margin: 0.05rem -0.35rem 0;
+    font-weight: 600;
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest .recovery-line.warning i {
+    color: rgba(251, 191, 36, 0.9);
+    opacity: 0.95;
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest .recovery-line.danger {
+    color: rgba(220, 70, 60, 0.95);
+    background: rgba(220, 70, 60, 0.08);
+    border-left: 2px solid rgba(220, 70, 60, 0.5);
+    border-radius: 4px;
+    padding: 0.15rem 0.35rem;
+    margin: 0.05rem -0.35rem 0;
+    font-weight: 600;
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest .recovery-line.danger i {
+    color: rgba(220, 70, 60, 0.95);
+    opacity: 0.95;
+}
+
+/* Cold camp confirmation: the no-fire counterpart to the tinderbox light button. */
+.application.ionrift-campfire-map-dialog .camp-cold-confirm-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.application.ionrift-campfire-map-dialog .camp-fire-cold-note {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+    color: rgba(150, 185, 235, 0.85);
+}
+.application.ionrift-campfire-map-dialog .camp-fire-cold-note i {
+    color: rgba(129, 178, 255, 0.9);
+}
+.application.ionrift-campfire-map-dialog .camp-cold-confirm-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.7rem;
+    border-radius: 6px;
+    border: 1px solid rgba(129, 178, 255, 0.45);
+    background: rgba(129, 178, 255, 0.12);
+    color: rgba(220, 232, 255, 0.95);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.application.ionrift-campfire-map-dialog .camp-cold-confirm-btn:hover {
+    border-color: rgba(129, 178, 255, 0.8);
+    background: rgba(129, 178, 255, 0.2);
+    box-shadow: 0 0 12px rgba(129, 178, 255, 0.25);
+}
+.application.ionrift-campfire-map-dialog .camp-cold-confirm-btn i {
+    color: rgba(150, 195, 255, 0.95);
 }
 
 /* ═══════════════════════════════════════════════════════════════════

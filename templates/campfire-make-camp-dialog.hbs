@@ -13,15 +13,38 @@
             <p class="camp-comfort-reason campfire-map-comfort-line">{{mapComfortLine}}</p>
         </div>
         {{/if}}
+        {{#if mapRestCard}}
+        <div class="campfire-map-rest tier-{{mapRestCard.personalComfort}}">
+            <div class="campfire-map-rest-head">
+                <span class="campfire-map-rest-label">{{#if mapRestActorName}}{{mapRestActorName}}'s rest{{else}}Your rest{{/if}}</span>
+                <span class="comfort-tier comfort-{{mapRestCard.personalComfort}}" data-tooltip="{{comfortHint mapRestCard.personalComfort}}">{{mapRestCard.personalComfortLabel}}</span>
+            </div>
+            <div class="recovery-line recovery-hp {{#if mapRestCard.recovery.hpSeverity}}{{mapRestCard.recovery.hpSeverity}}{{else}}success{{/if}}">
+                <i class="fas fa-heart" aria-hidden="true"></i> {{mapRestCard.recovery.hpLabel}}
+            </div>
+            <div class="recovery-line recovery-hd {{#if mapRestCard.recovery.hdSeverity}}{{mapRestCard.recovery.hdSeverity}}{{else}}success{{/if}}">
+                <i class="fas fa-dice-d6" aria-hidden="true"></i> {{mapRestCard.recovery.hdLabel}}
+            </div>
+            {{#if mapRestCard.recovery.exhaustionDC}}
+            <div class="recovery-line recovery-exhaustion {{mapRestCard.recovery.exhaustionSeverity}}">
+                <i class="fas fa-exclamation-triangle" aria-hidden="true"></i> {{mapRestCard.recovery.exhaustionLabel}}
+            </div>
+            {{else}}
+            <div class="recovery-line recovery-exhaustion success">
+                <i class="fas fa-shield-alt" aria-hidden="true"></i> No exhaustion risk
+            </div>
+            {{/if}}
+        </div>
+        {{/if}}
         {{#if campFireTierCards.length}}
         <div class="campfire-map-fire-levels">
             <h4 class="campfire-map-section-title">Fire levels</h4>
             <div class="camp-fire-tier-strip" role="list" aria-label="Fire intensity tiers">
                 <button type="button"
-                        class="camp-fire-tier-card cold-camp{{#if campColdCampDecided}} active selected{{/if}}"
+                        class="camp-fire-tier-card cold-camp{{#if campColdCampDecided}} active selected{{else if campPreviewIsColdCamp}} active selected{{/if}}"
                         data-action="selectCampColdCampMap"
                         role="listitem"
-                        {{#if campColdCampDecided}}aria-current="true"{{/if}}>
+                        {{#if campColdCampDecided}}aria-current="true"{{else if campPreviewIsColdCamp}}aria-current="true"{{/if}}>
                     <span class="camp-fire-tier-watermark" aria-hidden="true"><i class="fas fa-moon"></i></span>
                     <span class="camp-fire-tier-label">Cold Camp</span>
                     <span class="camp-fire-tier-cost">(No fire)</span>
@@ -38,7 +61,6 @@
                     <span class="camp-fire-tier-label">{{label}}</span>
                     <span class="camp-fire-tier-cost">({{costLabel}})</span>
                     <span class="camp-fire-tier-body">{{body}}</span>
-                    <span class="camp-fire-tier-comfort{{#if comfortChanged}} comfort-changed{{/if}}">{{comfortHint}}</span>
                 </button>
                 {{/each}}
             </div>
@@ -58,6 +80,11 @@
         <div class="camp-fuel-controls">
             <button type="button" class="camp-pledge-btn" data-action="campPledgeFirewoodMap" data-actor-id="{{campMyFirewoodActorId}}" {{#unless campCanAddFirewood}}disabled{{/unless}}><i class="fas fa-plus"></i> Add Firewood</button>
             <button type="button" class="camp-reclaim-btn" data-action="campReclaimFirewoodMap" {{#unless campMyPledge}}disabled{{/unless}}><i class="fas fa-undo"></i> Take Back</button>
+        </div>
+        {{else if campPreviewIsColdCamp}}
+        <div class="camp-cold-confirm-row">
+            <p class="camp-fire-cold-note"><i class="fas fa-moon"></i> No fire. Lock in cold camp to settle.</p>
+            <button type="button" class="camp-cold-confirm-btn" data-action="campConfirmColdCampMap"><i class="fas fa-check"></i> Confirm cold camp</button>
         </div>
         {{else}}
         {{#if isGM}}

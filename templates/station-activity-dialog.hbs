@@ -9,7 +9,10 @@
     <div class="station-camp-comfort glass-ui" data-station-camp-comfort="1">
         <div class="station-camp-comfort-row">
             <span class="station-camp-comfort-label">Camp comfort</span>
-            <span class="comfort-tier {{campComfortAtFire.mapComfortTierClass}}"
+            {{#if (and (eq stationPanelTab "fire") fireTabContext.campFirePreviewLevel)}}
+            <span class="station-camp-comfort-preview-tag" data-tooltip="Preview only. Press Set or Request to commit.">preview: {{fireTabContext.campFirePreviewLabel}}</span>
+            {{/if}}
+            <span class="comfort-tier {{campComfortAtFire.mapComfortTierClass}}{{#if (and (eq stationPanelTab "fire") fireTabContext.campFirePreviewLevel)}} comfort-tier--previewing{{/if}}"
                   data-tooltip="{{comfortHint campComfortAtFire.mapComfortTier}}">{{campComfortAtFire.mapComfortLabel}}</span>
         </div>
         {{#unless (and campPersonalCard (eq stationPanelTab "camp"))}}
@@ -542,7 +545,9 @@
             <h4 class="station-fire-tier-heading">Fire levels</h4>
             <div class="camp-fire-tier-strip station-campfire-tier-strip" role="list" aria-label="Fire intensity tiers">
                 {{#each fireTabContext.campFireTierCards}}
-                <div class="camp-fire-tier-card{{#if active}} active{{/if}}{{#if actionBlocked}} camp-fire-tier-card--set-disabled{{/if}}" data-fire-level="{{id}}" role="listitem">
+                <div class="camp-fire-tier-card{{#if active}} active{{/if}}{{#if previewActive}} previewing{{/if}}{{#if actionBlocked}} camp-fire-tier-card--set-disabled{{/if}}"
+                     data-fire-level="{{id}}" role="listitem"
+                     {{#unless active}}data-action="previewFireLevel" data-tooltip="Preview this fire size"{{/unless}}>
                     <span class="camp-fire-tier-watermark" aria-hidden="true"><i class="fas fa-fire"></i></span>
                     <span class="camp-fire-tier-label">{{label}}</span>
                     <span class="camp-fire-tier-cost">({{costLabel}})</span>
@@ -552,9 +557,9 @@
                         {{#if active}}
                         <span class="station-fire-current-label">Current</span>
                         {{else if @root.isGmUser}}
-                        <button type="button" class="station-fire-set-btn" data-action="setFireLevel" data-fire-level="{{id}}" {{#if setDisabled}}disabled data-tooltip="Not enough firewood"{{/if}}>Set</button>
+                        <button type="button" class="station-fire-set-btn{{#if previewActive}} station-fire-set-btn--preview{{/if}}" data-action="setFireLevel" data-fire-level="{{id}}" {{#if setDisabled}}disabled data-tooltip="Not enough firewood"{{/if}}>{{#if previewActive}}Set to {{label}}{{else}}Set{{/if}}</button>
                         {{else}}
-                        <button type="button" class="station-fire-set-btn" data-action="requestFireLevel" data-fire-level="{{id}}" {{#if requestDisabled}}disabled data-tooltip="Not enough party firewood"{{/if}}>Request</button>
+                        <button type="button" class="station-fire-set-btn{{#if previewActive}} station-fire-set-btn--preview{{/if}}" data-action="requestFireLevel" data-fire-level="{{id}}" {{#if requestDisabled}}disabled data-tooltip="Not enough party firewood"{{/if}}>{{#if previewActive}}Request {{label}}{{else}}Request{{/if}}</button>
                         {{/if}}
                     </div>
                 </div>

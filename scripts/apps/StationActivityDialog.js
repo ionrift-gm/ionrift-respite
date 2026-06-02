@@ -205,6 +205,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             switchStationPanelTab: StationActivityDialog.#onSwitchStationPanelTab,
             setFireLevel: StationActivityDialog.#onSetFireLevel,
             requestFireLevel: StationActivityDialog.#onRequestFireLevel,
+            previewFireLevel: StationActivityDialog.#onPreviewFireLevel,
             submitStationRations: StationActivityDialog.#onSubmitStationRations,
             stationDetectMagicScan: StationActivityDialog.#onStationDetectMagicScan,
             stationIdentifyScannedItem: StationActivityDialog.#onStationIdentifyScannedItem,
@@ -1181,6 +1182,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         if (target.disabled || target.getAttribute("aria-disabled") === "true") return;
         if (this._craftRollPending) return;
         this._stationPanelTab = tab;
+        if (tab !== "fire") this._restApp?.setStationFirePreviewLevel?.(null);
 
         // Cooking tab with utensils → auto-enter crafting split panel (fresh session only).
         // If a craft already resolved this session, keep result state so Rations ↔ Cooking
@@ -1242,7 +1244,23 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             userId: game.user.id,
             fireLevel: level
         });
+        this._restApp?.setStationFirePreviewLevel?.(null);
         ui.notifications.info("Fire change sent to the GM.");
+    }
+
+    /**
+     * Activity-phase campfire station: select a fire tier to preview its comfort and
+     * encounter impact on the header before committing with Set or Request. Re-clicking
+     * the previewed tier clears the preview. Local only; never broadcast.
+     */
+    static #onPreviewFireLevel(event, target) {
+        const level = target?.dataset?.fireLevel
+            ?? target?.closest?.("[data-fire-level]")?.dataset?.fireLevel;
+        if (!level || !["embers", "campfire", "bonfire"].includes(level)) return;
+        if (!this._restApp?.setStationFirePreviewLevel) return;
+        const cur = this._restApp._stationFirePreviewLevel ?? null;
+        this._restApp.setStationFirePreviewLevel(cur === level ? null : level);
+        void this.render(true);
     }
 
     static async #onSubmitStationRations() {
@@ -1767,6 +1785,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             await this._autoCommitCraftResult();
         }
         this._stopTokenTracking();
+        this._restApp?.setStationFirePreviewLevel?.(null);
         _openDialog = null;
         return super.close(options);
     }
