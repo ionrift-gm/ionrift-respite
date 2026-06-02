@@ -211,12 +211,25 @@ export class EventsPhaseDelegate {
             if (this.activeTreeState.resolved) {
                 const idx = this.triggeredEvents.findIndex(e => e.id === this.activeTreeState.eventId);
                 if (idx >= 0) {
+                    const fx = this.activeTreeState.finalEffects ?? [];
+                    const te = this.triggeredEvents[idx];
                     this.triggeredEvents[idx] = {
-                        ...this.triggeredEvents[idx],
+                        ...te,
                         narrative: this.activeTreeState.finalNarrative,
-                        effects: this.activeTreeState.finalEffects,
+                        effects: fx,
                         isDecisionTree: false,
                         resolved: true,
+                        // Mark the resolved disaster so the consequence pipeline
+                        // (lock gate, resolution) treats its effects like a failed
+                        // event tier. The synthetic onFailure tier lets the existing
+                        // lock handler find each effect by index. Both references
+                        // point at the same array so a lock lands everywhere.
+                        treeOutcome: true,
+                        treeOutcomeSuccess: !!checkResult.success,
+                        mechanical: {
+                            ...(te.mechanical ?? {}),
+                            onFailure: { effects: fx, narrative: this.activeTreeState.finalNarrative }
+                        },
                         treeHistory: this.activeTreeState.history
                     };
                 }
@@ -258,6 +271,16 @@ export class EventsPhaseDelegate {
      * @param {object} data
      */
     receiveTreeRollRequest(data) {
+        const rolledCharacters = new Set();
+        for (const r of data.resolvedRolls ?? []) {
+            rolledCharacters.add(r.characterId ?? r.actorId);
+        }
+        const rolledResults = new Map(
+            (data.resolvedRolls ?? []).map(r => [
+                r.characterId ?? r.actorId,
+                { total: r.total, passed: r.passed }
+            ])
+        );
         this.pendingTreeRoll = {
             choiceId: data.choiceId,
             skills: data.skills ?? [],
@@ -266,7 +289,8 @@ export class EventsPhaseDelegate {
             targets: data.targets ?? [],
             eventName: data.eventName,
             rollModes: data.rollModes ?? {},
-            rolledCharacters: new Set()
+            rolledCharacters,
+            rolledResults
         };
         this._app.render();
     }
@@ -293,6 +317,7 @@ export class EventsPhaseDelegate {
         this.activeTreeState.pendingCheck = prepared.check;
         this.activeTreeState.pendingRollModes = {};
         this.activeTreeState.pendingChoiceSpellRulings = prepared.option.spellRulings ?? null;
+        this.activeTreeState.pendingCheckContext = prepared.check?.checkContext ?? null;
 
         // Determine skill name for display
         const skillKey = pickBestSkill(

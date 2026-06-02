@@ -216,19 +216,19 @@ export function getActivityAdvisory(activityId, actor, partyState) {
             const xp = actor.system?.details?.xp ?? {};
             const gap = (xp.max && xp.value !== null && xp.value !== undefined) ? (xp.max - xp.value) : null;
             const streak = actor.getFlag?.("ionrift-respite", "trainingStreak") ?? 0;
-            const baseXP = 45;
+            const baseXP = 30;
             const reduction = streak * 5;
             const effectiveXP = Math.max(baseXP - reduction, 0);
-            const effectiveFailXP = Math.max(15 - reduction, 0);
+            const effectiveFailXP = Math.max(9 - reduction, 0);
             if (effectiveXP <= 0)
                 return { text: "Diminishing returns: no XP gain this rest. Try something else", urgent: false, nonViable: true };
             if (gap !== null && gap > 0 && gap <= effectiveXP)
                 return { text: `${gap} XP to level up. Training can close that gap this rest`, urgent: true };
             if (streak >= 2)
-                return { text: `Training streak (${streak}): XP reduced to ${effectiveXP} success / ${effectiveFailXP} fail`, urgent: false };
+                return { text: `Training streak (${streak}): three sets, up to ${effectiveXP} XP, as low as ${effectiveFailXP}`, urgent: false };
             if (gap !== null && gap > 0)
-                return { text: `${gap} XP to next level. ${effectiveXP} XP on success, ${effectiveFailXP} on fail`, urgent: false };
-            return { text: `${effectiveXP} XP on success, ${effectiveFailXP} on fail`, urgent: false };
+                return { text: `${gap} XP to next level. Three sets, up to ${effectiveXP} XP, as low as ${effectiveFailXP}`, urgent: false };
+            return { text: `Three sets, up to ${effectiveXP} XP, as low as ${effectiveFailXP}`, urgent: false };
         }
         case "act_scribe":
             return { text: "50gp per spell level. Scroll consumed regardless of success", urgent: false };

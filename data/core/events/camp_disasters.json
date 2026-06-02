@@ -149,6 +149,12 @@
                                                 "description": "Camp flooded, supplies lost."
                                             },
                                             {
+                                                "type": "item_at_risk",
+                                                "filter": ["disaster"],
+                                                "severity": 4,
+                                                "narrative": "Gear torn from your packs as you swam."
+                                            },
+                                            {
                                                 "type": "condition",
                                                 "condition": "exhaustion",
                                                 "level": 1,
@@ -163,6 +169,12 @@
                                                 "type": "supply_loss",
                                                 "formula": "1d20 * 5",
                                                 "description": "Total camp loss."
+                                            },
+                                            {
+                                                "type": "item_at_risk",
+                                                "filter": ["disaster"],
+                                                "severity": 5,
+                                                "narrative": "Everything in your packs lost to the rapids."
                                             },
                                             {
                                                 "type": "condition",
@@ -237,6 +249,12 @@
                                                 "description": "Partial recovery."
                                             },
                                             {
+                                                "type": "item_at_risk",
+                                                "filter": ["disaster"],
+                                                "severity": 2,
+                                                "narrative": "A few items slipped away before you could grab them."
+                                            },
+                                            {
                                                 "type": "condition",
                                                 "condition": "exhaustion",
                                                 "level": 1,
@@ -251,6 +269,12 @@
                                                 "type": "supply_loss",
                                                 "formula": "1d20 * 5",
                                                 "description": "Total camp loss."
+                                            },
+                                            {
+                                                "type": "item_at_risk",
+                                                "filter": ["disaster"],
+                                                "severity": 5,
+                                                "narrative": "Everything torn from your hands by the current."
                                             },
                                             {
                                                 "type": "condition",
@@ -281,6 +305,12 @@
                                                 "type": "supply_loss",
                                                 "formula": "1d20 * 4",
                                                 "description": "Camp lost."
+                                            },
+                                            {
+                                                "type": "item_at_risk",
+                                                "filter": ["disaster"],
+                                                "severity": 5,
+                                                "narrative": "The gear you left behind is gone for good."
                                             }
                                         ]
                                     },
@@ -291,6 +321,12 @@
                                                 "type": "supply_loss",
                                                 "formula": "1d20 * 4",
                                                 "description": "Camp destroyed."
+                                            },
+                                            {
+                                                "type": "item_at_risk",
+                                                "filter": ["disaster"],
+                                                "severity": 5,
+                                                "narrative": "Camp gear smashed and scattered by the debris."
                                             },
                                             {
                                                 "type": "damage",

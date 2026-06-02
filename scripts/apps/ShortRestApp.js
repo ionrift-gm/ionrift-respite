@@ -35,19 +35,10 @@ import { ImageResolver } from "../util/ImageResolver.js";
 import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
 import {
     collectPartyIdentifyEmbedData,
-    computeCanShowDetectMagicScanButton,
-    computeCanTriggerDetectMagicScan,
     DetectMagicDelegate,
-    getDetectMagicPlayerAccessReason,
     purgeDetectMagicEffects,
     spawnDetectMagicCastRipple
 } from "./delegates/DetectMagicDelegate.js";
-import {
-    DETECT_MAGIC_BTN_LABEL_GM,
-    DETECT_MAGIC_BTN_LABEL_PLAYER,
-    DETECT_MAGIC_BTN_LABEL_DISMISS,
-    DETECT_MAGIC_BTN_TITLE_GM
-} from "./RestConstants.js";
 import { getShortRestRechargeLabels } from "../services/ShortRestRecharge.js";
 import { setNativeShortRestUnsuppressed } from "../services/NativeRestPass.js";
 import {
@@ -350,10 +341,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return collectPartyIdentifyEmbedData(getPartyActors(), options);
     }
 
-    canShowDetectMagicScanButtonFromParty() {
-        return computeCanShowDetectMagicScanButton(getPartyActors());
-    }
-
     getWorkbenchIdentifyDragContext(actorId) {
         return this._workbench.getDragContext(actorId, collectPartyIdentifyEmbedData, getPartyActors);
     }
@@ -394,65 +381,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     _getWorkbenchEmbedContext() {
-        const focus = this._resolveWorkbenchActorIdForEmbed();
-        if (!focus) {
-            return {
-                identifyCasters: [],
-                detectMagicCasters: [],
-                isGmUser: !!game.user?.isGM,
-                canShowDetectMagicScanButton: false,
-                canTriggerDetectMagicScan: false,
-                detectMagicScanButtonLabel: DETECT_MAGIC_BTN_LABEL_PLAYER,
-                detectMagicScanButtonTitle: "",
-                magicScanResults: [],
-                magicScanComplete: false,
-                magicScanActive: false,
-                workbenchIdentifyActorId: null,
-                workbenchGearChip: null,
-                workbenchPotionChip: null,
-                workbenchSubmitLocked: true,
-                workbenchIdentifyAcknowledgement: null,
-                workbenchAckRevealReady: true,
-                workbenchFocusExhausted: false,
-                isShortRestWorkbench: true,
-            };
-        }
-        // ── Shared Pool gating (same logic as StationActivityDialog) ──
-        const embedFull = this.getStationIdentifyEmbedContext({});
-        const isIdentifyCaster = embedFull.identifyCasters?.some(c => c.id === focus);
-        const canSeeSharedPool = !!game.user?.isGM || !!isIdentifyCaster;
-        const poolItems = canSeeSharedPool
-            ? (embedFull.unidentifiedItems ?? [])
-            : (embedFull.unidentifiedItems ?? []).filter(it => it.actorId === focus);
-        // Group gear items (not potions) by owner
-        const _byOwner = new Map();
-        for (const item of poolItems.filter(it => !it.isPotion)) {
-            if (!_byOwner.has(item.actorId)) {
-                _byOwner.set(item.actorId, { ownerName: item.actorName, ownerId: item.actorId, items: [] });
-            }
-            _byOwner.get(item.actorId).items.push(item);
-        }
-        const emb = { ...embedFull, unidentifiedItems: poolItems };
-        const wb = this.getWorkbenchIdentifyDragContext(focus);
-        return {
-            ...emb,
-            ...wb,
-            unidentifiedItemsByOwner: [..._byOwner.values()],
-            canSeeSharedPool,
-            isGmUser: !!game.user?.isGM,
-            canShowDetectMagicScanButton: this.canShowDetectMagicScanButtonFromParty(),
-            canTriggerDetectMagicScan: computeCanTriggerDetectMagicScan(getPartyActors()),
-            detectMagicScanButtonLabel: this._magicScanComplete
-                ? DETECT_MAGIC_BTN_LABEL_DISMISS
-                : (game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER),
-            detectMagicScanButtonTitle: game.user?.isGM
-                ? DETECT_MAGIC_BTN_TITLE_GM
-                : (getDetectMagicPlayerAccessReason(getPartyActors()) ?? ""),
-            magicScanResults: this._magicScanResults ?? [],
-            magicScanComplete: !!this._magicScanComplete,
-            magicScanActive: !!this._magicScanComplete,
-            isShortRestWorkbench: true,
-        };
+        const actorId = this._resolveWorkbenchActorIdForEmbed();
+        return this._workbench.buildEmbedContext(actorId, getPartyActors);
     }
 
     // ── Context ────────────────────────────────────────────────

@@ -26,7 +26,7 @@
             "noWatchAmplifier": 2,
             "gmPrompt": "Low growling from multiple directions. Eyes glint at the edge of the firelight, circling closer.",
             "checkContext": "Animal Handling check to stare down the pack before they rush camp.",
-            "gmGuidance": "The pack likely scatters if confronted aggressively. GM can absolutely set a proper fight here if it suits the table. Hook: generateEncounter(forest, tier, [beast, pack]). Fallback: provide a CR-appropriate wolf pack. At higher levels the wolves are not a real danger. Describe the eyes, the circling, the growl, and let the party handle it without a roll if the table would find the fight trivial. The scene is about the wildness of the forest, not the combat. Speak with Animals: the alpha communicates territory, hunger, and pack size. It is not interested in negotiation. The pack wants food or it wants to leave.",
+            "gmGuidance": "The pack likely scatters if confronted aggressively. GM can absolutely set a proper fight here if it suits the table. If a compatible encounter generator is installed, use it to build a beast pack. Otherwise provide a CR-appropriate wolf pack. At higher levels the wolves are not a real danger. Describe the eyes, the circling, the growl, and let the party handle it without a roll if the table would find the fight trivial. The scene is about the wildness of the forest, not the combat. Speak with Animals: the alpha communicates territory, hunger, and pack size. It is not interested in negotiation. The pack wants food or it wants to leave.",
             "description": "Low growling from multiple directions. Eyes glint at the edge of the firelight, circling.",
             "mechanical": {
                 "type": "skill_check",

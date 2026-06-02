@@ -36,17 +36,21 @@ export function buildRollParticipants(participantIds, options = {}) {
         const resolved = resolvedById.get(id);
         const rolled = (rolledLocal.has?.(id) ?? rolledLocal.includes?.(id) ?? false) || !!resolved;
         const isOwner = actor?.isOwner ?? false;
+        const rollMode = rollModes[id] ?? "normal";
+        // A GM force override is resolved GM-side; the player never rolls or confirms.
+        const forced = rollMode === "force-pass" || rollMode === "force-fail";
 
         return {
             id,
             name: actor?.name ?? resolved?.name ?? "Unknown",
             img: actor?.img ?? "",
-            rollMode: rollModes[id] ?? "normal",
+            rollMode,
+            forced,
             rolled,
             total: resolved?.total ?? null,
             passed: resolved?.passed ?? null,
             isOwner,
-            canRoll: isOwner && !rolled
+            canRoll: isOwner && !rolled && !forced
         };
     });
 }
@@ -139,9 +143,23 @@ export function buildRollRequestContext(opts = {}) {
         gmView: opts.gmView ?? false
     });
     const actionTargets = opts.actionTargets ?? participants.filter((entry) => entry.canRoll);
-    const rolledCount = participants.filter((entry) => entry.rolled).length;
+    const isDone = (entry) => entry.rolled || entry.forced;
+    const rolledCount = participants.filter(isDone).length;
     const totalCount = participants.length;
     const allRolled = totalCount > 0 && rolledCount === totalCount;
+    const ownerEntry = participants.find((entry) => entry.isOwner);
+    const ownerSettled = !!(ownerEntry?.forced && !ownerEntry.canRoll);
+
+    // Acknowledge the player's own result on the DC badge once they have rolled (or
+    // the GM forced their outcome). Only meaningful when a pass/fail is known.
+    let ownerOutcome = null;
+    let ownerTotal = null;
+    if (ownerEntry && (ownerEntry.rolled || ownerEntry.forced)) {
+        if (ownerEntry.rollMode === "force-pass") ownerOutcome = "pass";
+        else if (ownerEntry.rollMode === "force-fail") ownerOutcome = "fail";
+        else if (typeof ownerEntry.passed === "boolean") ownerOutcome = ownerEntry.passed ? "pass" : "fail";
+        if (typeof ownerEntry.total === "number") ownerTotal = ownerEntry.total;
+    }
 
     let state = opts.state ?? "pending";
     if (!opts.state) {
@@ -149,8 +167,13 @@ export function buildRollRequestContext(opts = {}) {
         else if (rolledCount > 0) state = "partial";
     }
 
+    const showTitle = opts.showTitle !== false;
+    const showRoster = opts.showRoster !== false;
+
     return {
         title: opts.title ?? "Skill Check",
+        showTitle,
+        showRoster,
         skillKey: opts.skillKey ?? "sur",
         skillName: opts.skillName ?? "Survival",
         dc: opts.dc ?? 10,
@@ -169,6 +192,9 @@ export function buildRollRequestContext(opts = {}) {
         rolledCount,
         totalCount,
         allRolled,
+        ownerSettled,
+        ownerOutcome,
+        ownerTotal,
         rosterScroll: totalCount >= 6,
         rosterFocusCenter: hasFocus && !(opts.gmView ?? false),
         gmRollAction: opts.gmRollAction ?? "rollEventForPlayer",
@@ -186,14 +212,28 @@ export function buildEventPlayerRollContext(pendingEventRoll, triggeredEvent = n
     if (!pendingEventRoll) return null;
 
     const targetIds = pendingEventRoll.targets ?? [];
+    // Prefer the GM-resolved rolls; fall back to the roller's own locally stored
+    // result so their DC badge can show pass/fail before the snapshot round-trips.
+    const localResults = pendingEventRoll.rolledResults instanceof Map
+        ? [...pendingEventRoll.rolledResults.entries()].map(([characterId, r]) => ({
+            characterId,
+            total: r?.total ?? null,
+            passed: r?.passed ?? null
+        }))
+        : [];
+    const resolvedRolls = (triggeredEvent?.resolvedRolls?.length)
+        ? triggeredEvent.resolvedRolls
+        : localResults;
     const participants = buildRollParticipants(targetIds, {
         rollModes: pendingEventRoll.rollModes ?? {},
-        resolvedRolls: triggeredEvent?.resolvedRolls ?? [],
+        resolvedRolls,
         rolledCharacters: pendingEventRoll.rolledCharacters ?? new Set()
     });
 
     return buildRollRequestContext({
         title: pendingEventRoll.eventTitle ?? "Skill Check",
+        showTitle: false,
+        showRoster: false,
         skillKey: pendingEventRoll.skill ?? "sur",
         skillName: pendingEventRoll.skillName ?? "Survival",
         dc: pendingEventRoll.dc ?? 10,
@@ -231,6 +271,8 @@ export function buildEventGmRollContext(event, eventIndex) {
 
     return buildRollRequestContext({
         title: event.title ?? event.name ?? "Skill Check",
+        showTitle: false,
+        showRoster: false,
         skillKey,
         skillName: event.skillName ?? skillKey.toUpperCase(),
         dc: event.mechanical?.dc ?? 10,
@@ -284,6 +326,8 @@ export function buildTreePlayerRollContext(pendingTreeRoll) {
 
     return buildRollRequestContext({
         title: pendingTreeRoll.eventName ?? "Decision Check",
+        showTitle: false,
+        showRoster: false,
         skillKey: pendingTreeRoll.skills?.[0] ?? "sur",
         skillName: pendingTreeRoll.skillName ?? "Skill",
         dc: pendingTreeRoll.dc ?? 12,

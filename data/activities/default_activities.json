@@ -685,7 +685,7 @@
         "name": "Training",
         "professions": [],
         "category": "active",
-        "description": "Drill, study, or practice during a rest. Make an ability check (using your highest score) against DC 13. Consecutive rests training yield diminishing returns. Ineffective beyond level 5.",
+        "description": "Drill, study, or practice during a rest. Run through three sets, each a separate ability check (using your highest score) against DC 13. Every set that lands earns XP, and partial credit on the sets you miss. Consecutive rests spent training yield diminishing returns. Ineffective beyond level 5.",
         "restTypes": [
             "long"
         ],
@@ -695,6 +695,7 @@
         "check": {
             "ability": "best",
             "dc": 13,
+            "rolls": 3,
             "advantageIf": []
         },
         "outcomes": {
@@ -704,8 +705,8 @@
                 "effects": [
                     {
                         "type": "training_xp",
-                        "value": 45,
-                        "description": "Gain 45 XP. Reduced by 5 XP for each consecutive rest spent training. Resets when you choose a different activity."
+                        "value": 10,
+                        "description": "Gain 10 XP per set you land. Reduced by 5 XP for each consecutive rest spent training. Resets when you choose a different activity."
                     }
                 ]
             },
@@ -715,8 +716,8 @@
                 "effects": [
                     {
                         "type": "training_xp",
-                        "value": 15,
-                        "description": "Gain 15 XP. Partial gains despite falling short."
+                        "value": 3,
+                        "description": "Gain 3 XP for a set you fall short on. Partial gains despite missing the mark."
                     }
                 ]
             }

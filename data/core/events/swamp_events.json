@@ -70,7 +70,7 @@
             "noWatchAmplifier": 1,
             "gmPrompt": "Ripples in still water. No wind, no current, but something is displacing the surface twenty yards out. It moves without sound, and it is getting closer.",
             "checkContext": "Perception check to spot the approach before the creatures reach the camp perimeter.",
-            "gmGuidance": "The creatures are territorial, not hunting the party specifically. They approach because the camp is in their territory. Perception to spot them early gives the party time to prepare or deter. If the watch fails, the creatures rise from the water at the camp edge. Use generateEncounter(swamp, tier, [beast, humanoid]) or provide lizardfolk, bullywugs, or grung appropriate to the dungeon level. Speak with Animals: if the creatures are beasts, they communicate territorial aggression. They want the camp gone, not a conversation.",
+            "gmGuidance": "The creatures are territorial, not hunting the party specifically. They approach because the camp is in their territory. Perception to spot them early gives the party time to prepare or deter. If the watch fails, the creatures rise from the water at the camp edge. If a compatible encounter generator is installed, use it. Otherwise provide lizardfolk, bullywugs, or grung appropriate to the dungeon level. Speak with Animals: if the creatures are beasts, they communicate territorial aggression. They want the camp gone, not a conversation.",
             "description": "Ripples in still water. Something is approaching camp from the marshes. It moves without sound.",
             "mechanical": {
                 "type": "skill_check",
@@ -145,7 +145,7 @@
             "noWatchAmplifier": 1,
             "gmPrompt": "The damp ground is alive with leeches. Small, dark, and relentless. They find every gap in clothing and armour during the night, drawn by warmth and the smell of blood.",
             "checkContext": "Medicine check to remove the leeches properly and treat the bites before infection sets in.",
-            "gmGuidance": "Not a combat encounter. These are mundane leeches, individually harmless but collectively draining. The threat is blood loss and infection, not death. Medicine to remove them properly (heat or salt, not pulling). Pulling tears the skin and leaves mouthparts embedded. escalate without a watch because nobody notices until morning. Speak with Animals: leeches have no conversation in them. Single-minded feeders.",
+            "gmGuidance": "Not a combat encounter. These are mundane leeches, individually harmless but collectively draining. The threat is blood loss and infection, not death. Medicine to remove them properly (heat or salt, not pulling). Pulling tears the skin and leaves mouthparts embedded. With nobody on watch, nobody notices until morning. Speak with Animals: leeches have no conversation in them. Single-minded feeders.",
             "description": "The damp ground is alive with leeches. They find every gap in clothing and armour during the night.",
             "mechanical": {
                 "type": "skill_check",
@@ -217,7 +217,7 @@
             "noWatchAmplifier": 1,
             "gmPrompt": "A putrid fog rolls in from deeper in the swamp. The stench is overwhelming, thick enough to taste. It settles low to the ground and clings to everything.",
             "checkContext": "Survival check to manage the exposure before the nausea sets in.",
-            "gmGuidance": "Bog gas, not magical effect. The solution is physical: wet cloth over the mouth, move upwind if possible, keep low and breathe shallow. escalate without a watch because nobody notices until the nausea wakes them. The fog lasts 2-3 hours and dissipates before dawn.",
+            "gmGuidance": "Bog gas, not magical effect. The solution is physical: wet cloth over the mouth, move upwind if possible, keep low and breathe shallow. With nobody on watch, nobody notices until the nausea wakes them. The fog lasts 2-3 hours and dissipates before dawn.",
             "description": "A putrid fog rolls in from deeper in the swamp. The stench is overwhelming, thick enough to taste.",
             "mechanical": {
                 "type": "skill_check",
@@ -288,7 +288,7 @@
             "noWatchAmplifier": 1,
             "gmPrompt": "The moisture seeps into everything. Scratches from the day's march that seemed minor are now angry red and warm to the touch. The swamp is working on them.",
             "checkContext": "Medicine check to clean and dress the wounds before infection takes hold.",
-            "gmGuidance": "Bog rot targets existing wounds, not fresh ones. If the party took no damage during the day, the GM can skip this event or reframe it as blisters and abrasions from wet boots. The check is per-character because each person's wounds are different. escalate without a watch because nobody checks their wounds in the dark.",
+            "gmGuidance": "Bog rot targets existing wounds, not fresh ones. If the party took no damage during the day, the GM can skip this event or reframe it as blisters and abrasions from wet boots. The check is per-character because each person's wounds are different. With nobody on watch, nobody checks their wounds in the dark.",
             "description": "The moisture seeps into wounds and scratches. Infections bloom overnight.",
             "mechanical": {
                 "type": "skill_check",

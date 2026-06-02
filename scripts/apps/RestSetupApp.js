@@ -7,6 +7,7 @@ import { buildEventPlayerRollContext, buildRollTargetLabel, buildEventGmRollCont
 import { ensureDcPulseAnimation } from "../services/RollRequestDcPulse.js";
 import { TerrainRegistry } from "../services/TerrainRegistry.js";
 import { ActivityResolver } from "../services/ActivityResolver.js";
+import { TrainingActivityDialog } from "./TrainingActivityDialog.js";
 import { EventResolver } from "../services/EventResolver.js";
 import { countPoolEventsForTerrain, listPoolEventsForTerrain } from "../services/EventCatalogLoader.js";
 import { pickPoolEvent } from "./AdHocEventDialogs.js";
@@ -274,6 +275,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             encounterAdjUp: RestSetupApp.#onEncounterAdjUp,
             encounterAdjDown: RestSetupApp.#onEncounterAdjDown,
             resolveSkillCheck: RestSetupApp.#onResolveSkillCheck,
+            lockEventConsequence: RestSetupApp.#onLockEventConsequence,
             adjustEventDc: RestSetupApp.#onAdjustEventDc,
             cycleEventRollMode: RestSetupApp.#onCycleEventRollMode,
             rollEventCheck: RestSetupApp.#onRollEventCheck,
@@ -282,7 +284,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             rollCampCheck: RestSetupApp.#onRollCampCheck,
             adjustCampDC: RestSetupApp.#onAdjustCampDC,
             requestCampRoll: RestSetupApp.#onRequestCampRoll,
-            toggleResolvedEvent: RestSetupApp.#onToggleResolvedEvent,
             grantDiscoveryItem: RestSetupApp.#onGrantDiscoveryItem,
             completeEncounter: RestSetupApp.#onCompleteEncounter,
             detectMagicScan: RestSetupApp.#onDetectMagicScan,
@@ -305,6 +306,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             skipPendingSaves: RestSetupApp.#onSkipPendingSaves,
             hideWindow: RestSetupApp.#onHideWindow,
             rollTreeForPlayer: RestSetupApp.#onRollTreeForPlayer,
+            cycleTreeRollMode: RestSetupApp.#onCycleTreeRollMode,
             resendTreeRollRequest: RestSetupApp.#onResendTreeRollRequest,
             rollEventForPlayer: RestSetupApp.#onRollEventForPlayer,
             rollCampForPlayer: RestSetupApp.#onRollCampForPlayer,
@@ -392,6 +394,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._activeTreeState = null;
         /** Events phase: which mode the GM is about to commit. "random" | "improvise" | "pick". */
         this._eventsMode = "random";
+        /** Events phase: night check / pool pick in flight (blocks UI until resolve). */
+        this._eventsCommitPending = false;
         this._craftingResults = new Map();
         this._fireLevel = "unlit";
         /** Make Camp step 1: hover preview for fire tier comfort (embers | campfire | bonfire). */
@@ -581,8 +585,56 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * When Other is the only evening activity left (Simple profile and similar),
+     * pre-assign it so the activity gate opens without a manual pick per character.
+     * @returns {boolean} True if any new assignments were made.
+     */
+    _applyAutoOtherWhenSoleActivity() {
+        if (this._phase !== "activity" || !this._isGM) return false;
+
+        const partyActors = getPartyActors();
+        if (!partyActors.length) return false;
+
+        const restType = this._engine?.restType ?? "long";
+        const safeRestSpot = this._effectiveSafeRestSpot();
+        const fireLevel = this._fireLevel ?? "unlit";
+        const isFireLit = !!(this._fireLevel && this._fireLevel !== "unlit");
+        const resolverOpts = { isFireLit, fireLevel, safeRestSpot, ...this._forageResolverOpts() };
+
+        let changed = false;
+        for (const actor of partyActors) {
+            if (this._characterChoices.has(actor.id)) continue;
+            if (this._gmOverrides.has(actor.id)) continue;
+            if (this._getPlayerChoiceForCharacter(actor.id)?.activityId) continue;
+
+            const { available } = this._activityResolver.getAvailableActivitiesWithFaded(
+                actor, restType, resolverOpts
+            );
+            if (available.length !== 1 || available[0].id !== "act_other") continue;
+
+            this._characterChoices.set(actor.id, "act_other");
+            changed = true;
+        }
+
+        if (!changed) return false;
+
+        const submissions = {};
+        for (const [charId, actId] of this._characterChoices) {
+            const act = this._activities?.find(a => a.id === actId);
+            submissions[charId] = {
+                activityId: actId,
+                activityName: act?.name ?? actId,
+                source: this._gmOverrides.has(charId) ? "gm" : "player"
+            };
+        }
+        emitSubmissionUpdate(submissions);
+        _refreshGmRestIndicator(this);
+        return true;
+    }
+
+    /**
      * Debug: Jump to events phase with exactly one resolved event.
-     * Validates single-event auto-expand (no collapsed class).
+     * Validates a single resolved event card renders fully expanded.
      * Usage: game.ionrift.respite.jumpToSingleEvent()
      */
     async _debugJumpToSingleEvent() {
@@ -627,8 +679,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         registerActiveRestApp(this);
 
         this.render(true);
-        console.log("[Respite:Debug] Single event injected. Card should be expanded (not collapsed).");
-        ui.notifications.info("Single event loaded. Verify the card is expanded.");
+        console.log("[Respite:Debug] Single event injected.");
+        ui.notifications.info("Single event loaded.");
     }
 
     /**
@@ -2016,6 +2068,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         if (this._phase === "activity") {
             this._applyLoseActivityTravelLocks();
+            this._applyAutoOtherWhenSoleActivity();
         }
 
         const partyActors = getPartyActors();
@@ -2668,9 +2721,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             closeStationDialogIfDifferentActor(this._selectedCharacterId);
         }
         const roster = characterStatuses.map(c => {
-            // Check event roll status for this character
+            // Check event/tree roll status for this character. The roster strip is the
+            // shared status surface: when an event or decision-tree roll is in flight the
+            // roll-request component suppresses its own avatar list and delegates the
+            // pending/rolled/forced state here so every client sees the same picture.
             let pendingRoll = false;
             let rolledResult = null;
+            let rollMode = null;
 
             if (this._isGM) {
                 // GM: check triggeredEvents for awaiting rolls
@@ -2679,6 +2736,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     if (awaitingEvent.pendingRolls?.includes(c.id)) pendingRoll = true;
                     const resolved = awaitingEvent.resolvedRolls?.find(r => r.characterId === c.id);
                     if (resolved) rolledResult = resolved.total;
+                    rollMode = awaitingEvent.rollModes?.[c.id] ?? rollMode;
+                }
+                // Decision-tree rolls dispatched from the active tree state
+                if (!pendingRoll && !rolledResult) {
+                    const ts = this._activeTreeState;
+                    if (ts?.awaitingRolls) {
+                        const resolved = (ts.resolvedRolls ?? []).find(r => (r.characterId ?? r.actorId) === c.id);
+                        if (resolved) rolledResult = resolved.total ?? "done";
+                        else if (ts.pendingRolls?.includes(c.id)) pendingRoll = true;
+                        if (pendingRoll || rolledResult) rollMode = ts.pendingRollModes?.[c.id] ?? rollMode;
+                    }
                 }
                 // Also check camp activity rolls
                 if (!pendingRoll && !rolledResult && this._pendingCampRolls?.length) {
@@ -2698,6 +2766,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         } else {
                             pendingRoll = true;
                         }
+                        rollMode = this._pendingEventRoll.rollModes?.[c.id] ?? rollMode;
+                    }
+                }
+                // Decision-tree rolls dispatched to the player
+                if (!pendingRoll && !rolledResult && this._pendingTreeRoll) {
+                    const targets = this._pendingTreeRoll.targets ?? [];
+                    if (targets.includes(c.id)) {
+                        if (this._pendingTreeRoll.rolledCharacters?.has(c.id)) {
+                            const res = this._pendingTreeRoll.rolledResults?.get?.(c.id);
+                            rolledResult = res?.total ?? "done";
+                        } else {
+                            pendingRoll = true;
+                        }
+                        rollMode = this._pendingTreeRoll.rollModes?.[c.id] ?? rollMode;
                     }
                 }
                 // Also check camp activity rolls
@@ -2711,6 +2793,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         }
                     }
                 }
+            }
+
+            // Forced outcomes resolve without a roll; surface them as settled, not pending.
+            if (pendingRoll && (rollMode === "force-pass" || rollMode === "force-fail")) {
+                pendingRoll = false;
             }
 
             // Look up assigned activity for roster label (all phases once chosen)
@@ -2774,6 +2861,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 exhaustion: c.exhaustion,
                 pendingRoll,
                 rolledResult,
+                rollMode,
                 activityLabel,
                 isBeddedDown,
                 mealStatus
@@ -3300,15 +3388,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // TotM Identify tab context
             ...(this._isTotM && this._phase === "activity" && this._totmActiveTab === "identify" ? (() => {
                 const rosterSelected = this._selectedCharacterId || getPartyActors()[0]?.id || null;
-                const wbCtx = this._workbench.getDragContext(rosterSelected, collectPartyIdentifyEmbedData, getPartyActors);
-                const dmScan = this._detectMagic;
-                return {
-                    ...wbCtx,
-                    identifyCasters: collectPartyIdentifyEmbedData(getPartyActors()),
-                    canTriggerDetectMagicScan: computeCanTriggerDetectMagicScan(getPartyActors()),
-                    magicScanActive: dmScan?.scanComplete ?? false,
-                    isGmUser: this._isGM
-                };
+                return this._workbench.buildEmbedContext(rosterSelected, getPartyActors);
             })() : {}),
             emptyParty,
             rosterInfo: (() => {
@@ -3636,13 +3716,69 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     ...r,
                     isOwner: game.actors.get(r.characterId)?.isOwner ?? false
                 }));
-                return { ...e, targetNames, targetActors, skillName, gmPrompt, gmGuidance, description, checkContext, readAloud, resolvedRolls,
+                // Player-facing forewarning of locked consequences. Once the GM
+                // locks a hit or a loss, each affected player sees what is coming
+                // on the far side of the rest, phrased without GM mechanics.
+                const playerConsequences = [];
+                if (e.resolvedOutcome && !["success", "triumph"].includes(e.resolvedOutcome)) {
+                    const consTierKey = { mixed: "onMixed", failure: "onFailure" }[e.resolvedOutcome] ?? "onFailure";
+                    const consEffects = e.mechanical?.[consTierKey]?.effects ?? e.mechanical?.onFailure?.effects ?? [];
+                    for (const eff of consEffects) {
+                        if (!eff._locked) continue;
+                        if (eff.type === "damage" && Array.isArray(eff._lockedTargets)) {
+                            for (const t of eff._lockedTargets) {
+                                if (!(this._isGM || this._myCharacterIds?.has(t.id))) continue;
+                                if (!(t.amount > 0)) continue;
+                                playerConsequences.push({ icon: "fa-heart-broken", text: `${t.name} takes ${t.amount} damage after the rest.` });
+                            }
+                        } else if (eff.type === "consume_resource" && eff._lockedLoss) {
+                            const loss = eff._lockedLoss;
+                            for (const grp of (loss.provisionGroups ?? [])) {
+                                playerConsequences.push({ icon: "fa-box-open", text: `The party loses ${grp.total} ${grp.kind} after the rest.` });
+                            }
+                            for (const g of (loss.gear ?? [])) {
+                                if (!(this._isGM || this._myCharacterIds?.has(g.actorId))) continue;
+                                const label = g.lossQty > 1 ? `${g.itemName} x${g.lossQty}` : g.itemName;
+                                playerConsequences.push({ icon: "fa-times-circle", text: `${g.actorName} loses ${label} after the rest.` });
+                            }
+                        } else if (eff.type === "item_at_risk" && Array.isArray(eff._lockedItems)) {
+                            // The specific haul stays hidden until it is committed at
+                            // resolution. Players only learn that gear will go missing,
+                            // so the GM can re-roll the selection without spoiling it.
+                            const affectsMe = eff._lockedItems.some(li => this._isGM || this._myCharacterIds?.has(li.actorId));
+                            if (affectsMe && eff._lockedItems.length) {
+                                playerConsequences.push({ icon: "fa-mask", text: `A thief is going through the packs. Some gear will be missing after the rest.` });
+                            }
+                        } else if (eff.type === "consume_gold" && eff._lockedGold) {
+                            const affectsMe = (eff._lockedGold.breakdown ?? []).some(b => (this._isGM || this._myCharacterIds?.has(b.actorId)) && b.lossGp > 0);
+                            if (affectsMe && eff._lockedGold.totalLoss > 0) {
+                                playerConsequences.push({ icon: "fa-coins", text: `Coin will be lighter after the rest.` });
+                            }
+                        }
+                    }
+                }
+                return { ...e, targetNames, targetActors, skillName, gmPrompt, gmGuidance, description, checkContext, readAloud, resolvedRolls, playerConsequences,
                     gmRollRequest: e.awaitingRolls && this._isGM ? buildEventGmRollContext({ ...e, skillName, checkContext }, eventIndex) : null
                 };
             }),
+            // A skill-check event blocks resolution only until it has an outcome.
+            // Once resolvedOutcome is set the check is done; a lingering
+            // awaitingRolls flag (e.g. from a force-resolve on stale state) must
+            // not re-lock Proceed.
             allEventChecksResolved: !(this._triggeredEvents ?? []).some(
-                e => e.mechanical?.type === "skill_check" && (!e.resolvedOutcome || e.awaitingRolls)
+                e => e.mechanical?.type === "skill_check" && !e.resolvedOutcome
             ),
+            // Every failed-event damage/loss consequence must be GM-locked before
+            // the rest can proceed, so each lands deliberately on the far side.
+            allConsequencesResolved: !(this._triggeredEvents ?? []).some(e => {
+                // Resolved disaster trees carry no resolvedOutcome but still gate
+                // on their committed losses (read from the synthetic onFailure tier).
+                const isTree = e.treeOutcome === true;
+                if (!isTree && (!e.resolvedOutcome || ["success", "triumph"].includes(e.resolvedOutcome))) return false;
+                const tierKey = { mixed: "onMixed", failure: "onFailure" }[e.resolvedOutcome] ?? "onFailure";
+                const effects = e.mechanical?.[tierKey]?.effects ?? e.mechanical?.onFailure?.effects ?? [];
+                return effects.some(eff => (eff.type === "damage" || eff.type === "consume_resource" || eff.type === "item_at_risk" || eff.type === "consume_gold" || eff.type === "supply_loss") && !eff._locked);
+            }),
             anyEventAwaitingRolls: (this._triggeredEvents ?? []).some(e => e.awaitingRolls),
             pendingEventRoll: this._pendingEventRoll ? (() => {
                 const ownedTargets = (this._pendingEventRoll.targets ?? [])
@@ -3672,6 +3808,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 return lookup;
             })(),
             eventsRolled: this._eventsRolled ?? false,
+            eventsCommitPending: this._eventsCommitPending ?? false,
             pendingCampRolls: this._pendingCampRolls ?? [],
             campPrepsResolved: !this._pendingCampRolls?.length || this._pendingCampRolls.every(p => p.status !== "pending"),
             pendingCampRoll: this._pendingCampRoll ? {
@@ -3688,12 +3825,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         : buildCampActivityRollContext(a, this._pendingCampRoll.rolledCharacters)
                 }))
             } : null,
-            disasterChoice: this._disasterChoice ? {
-                ...this._disasterChoice,
-                normalsLabel: (this._disasterChoice.normals?.length ?? 0) > 1
-                    ? "Two Complications"
-                    : "One Complication"
-            } : null,
+            disasterChoice: this._disasterChoice ? (() => {
+                const dc = this._disasterChoice;
+                const normalsLabel = (dc.normals?.length ?? 0) > 1
+                    ? "Two Complications" : "One Complication";
+                let n = 1;
+                const treeNum = dc.tree ? n++ : 0;
+                const encounterNum = dc.encounter ? n++ : 0;
+                const normalsNum = dc.normals?.length ? n++ : 0;
+                return {
+                    ...dc,
+                    normalsLabel,
+                    treeNum, encounterNum, normalsNum,
+                    optionCount: n - 1
+                };
+            })() : null,
             hasEncounterEvent: (this._triggeredEvents ?? []).some(e => e.category === "encounter" && !["success", "triumph"].includes(e.resolvedOutcome)) && !this._awaitingCombat && !this._combatAcknowledged,
             combatBuffs: this._combatBuffs ?? null,
             awaitingCombat: this._awaitingCombat ?? false,
@@ -3711,12 +3857,66 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (!ts) return null;
                 // Enrich pending rolls with actor name and rollMode for clean template iteration
                 const rollModes = ts.pendingRollModes ?? {};
-                const pendingRollsEnriched = (ts.pendingRolls ?? []).map(id => ({
-                    id,
-                    name: game.actors.get(id)?.name ?? id,
-                    rollMode: rollModes[id] ?? "normal"
-                }));
-                return { ...ts, pendingRollsEnriched };
+                const pendingRollsEnriched = (ts.pendingRolls ?? []).map(id => {
+                    const actor = game.actors.get(id);
+                    const rollMode = rollModes[id] ?? "normal";
+                    return {
+                        id,
+                        name: actor?.name ?? id,
+                        img: actor?.img || "icons/svg/mystery-man.svg",
+                        rollMode,
+                        rollModeAdvantage: rollMode === "advantage",
+                        rollModeDisadvantage: rollMode === "disadvantage",
+                        rollModeForcePass: rollMode === "force-pass",
+                        rollModeForceFail: rollMode === "force-fail"
+                    };
+                });
+                // Once resolved, bind the consequence list to the canonical copy on
+                // the triggered event so Roll & lock state stays live, and expose
+                // the event index the lock buttons need.
+                let finalEffects = ts.finalEffects;
+                let eventIndex = -1;
+                if (ts.resolved) {
+                    eventIndex = (this._triggeredEvents ?? []).findIndex(e => e.id === ts.eventId);
+                    const te = this._triggeredEvents?.[eventIndex];
+                    if (te?.mechanical?.onFailure?.effects) finalEffects = te.mechanical.onFailure.effects;
+                }
+                // Number the options for the choice cards (Option 1, Option 2, ...).
+                const options = (ts.options ?? []).map((o, i) => ({ ...o, optionNum: i + 1 }));
+                const treeEvent = (this._triggeredEvents ?? []).find(e => e.id === ts.eventId);
+                const gmPrompt = ts.gmPrompt ?? treeEvent?.gmPrompt ?? "";
+                const checkContext = ts.checkContext ?? treeEvent?.checkContext ?? null;
+                let readAloud = ts.readAloud;
+                let showDecisionPrompt = ts.showDecisionPrompt;
+                if (!readAloud) {
+                    const narration = DecisionTreeResolver.computeNarrationFields(
+                        { gmPrompt, description: ts.description },
+                        { prompt: ts.prompt },
+                        ts.depth ?? 0
+                    );
+                    readAloud = narration.readAloud;
+                    showDecisionPrompt = narration.showDecisionPrompt;
+                }
+                let treeDcAdjNote = null;
+                const treeDcAdj = ts.treeDcAdj ?? 0;
+                if (treeDcAdj !== 0) {
+                    const mag = Math.abs(treeDcAdj);
+                    const tier = treeDcAdj > 0 ? "higher" : "lower";
+                    const who = (ts.options?.length === 2) ? "Both choices" : "Every choice";
+                    treeDcAdjNote = `${who} are ${mag} DC ${tier}`;
+                }
+                return {
+                    ...ts,
+                    gmPrompt,
+                    checkContext,
+                    readAloud,
+                    showDecisionPrompt: !!showDecisionPrompt,
+                    treeDcAdjNote,
+                    options,
+                    pendingRollsEnriched,
+                    finalEffects,
+                    eventIndex
+                };
             })(),
             engine: this._engine,
             recoverySummary,
@@ -3857,24 +4057,52 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const gmAdj = this._engine.gmEncounterAdj ?? 0;
                 const complication = this._engine.scoutingComplication ?? false;
                 const defenses = bd.defenses ?? 0;
+                // Include early defense results (resolved during Activities phase)
+                let earlyDefenseBonus = 0;
+                if (defenses === 0) {
+                    for (const [, er] of (this._earlyResults ?? [])) {
+                        if (er.activityId === "act_defenses" && (er.result === "success" || er.result === "exceptional")) {
+                            earlyDefenseBonus += 2;
+                        }
+                    }
+                }
+                const totalDefenses = defenses + earlyDefenseBonus;
                 const total = shelter + weather + scouting + fire;
                 const terrainTable = this._eventResolver?.tables?.get(this._engine.terrainTag);
                 const baseDC = terrainTable?.noEventThreshold ?? 15;
-                const effectiveDC = Math.max(1, baseDC - total + gmAdj - defenses);
-                console.log(`[Respite:UI] encounterBar: baseDC=${baseDC}, shelter=${shelter}, weather=${weather}, scouting=${scouting}, fire=${fire}, total=${total}, defenses=${defenses}, gmAdj=${gmAdj}, effectiveDC=${effectiveDC}`);
+                const effectiveDC = Math.max(1, baseDC - total + gmAdj - totalDefenses);
+                console.log(`[Respite:UI] encounterBar: baseDC=${baseDC}, shelter=${shelter}, weather=${weather}, scouting=${scouting}, fire=${fire}, total=${total}, defenses=${defenses}, earlyDefenseBonus=${earlyDefenseBonus}, gmAdj=${gmAdj}, effectiveDC=${effectiveDC}`);
                 const fmt = (v) => v > 0 ? `+${v}` : `${v}`;
+                const terrainObj = TerrainRegistry.get(this._engine.terrainTag);
+                const terrainLabel = terrainObj?.label ?? this._engine.terrainTag ?? "Terrain";
                 const chips = [];
                 if (weather !== 0) chips.push({ label: bd.weatherName ?? "Weather", value: fmt(weather), icon: "fas fa-cloud-sun-rain", tooltip: "Weather shifts the night check. Rough weather makes a camp event more likely. The value is this factor's effect on the DC." });
                 if (shelter !== 0) chips.push({ label: "Shelter", value: fmt(shelter), icon: "fas fa-campground", tooltip: "A tent or shelter spell hides the camp and lowers the chance of a night event." });
                 if (scouting !== 0) chips.push({ label: `Scout: ${bd.scoutingResult ?? "?"}`, value: fmt(scouting), icon: "fas fa-binoculars", tooltip: "Scouting result during travel. A good scout lowers the event chance; a poor scout raises it." });
                 if (complication) chips.push({ label: "Complication", value: "", icon: "fas fa-exclamation-triangle", warn: true, tooltip: "A failed scout left a hidden complication that will trigger during events." });
                 if (fire !== 0) chips.push({ label: this._fireLevel ?? "Fire", value: fmt(-fire), icon: "fas fa-fire", tooltip: "A lit fire is a beacon. A larger fire raises the encounter DC and draws attention." });
-                if (defenses !== 0) chips.push({ label: "Defenses", value: fmt(defenses), icon: "fas fa-shield-alt", tooltip: "Camp defenses (Set Defenses, perimeter watch) lower the chance of a night event." });
+                const defensesAttempted = this._pendingCampRolls?.some(p => p.activityId === "act_defenses");
+                const defensesChosen = [...(this._characterChoices?.values() ?? [])].includes("act_defenses");
+                if (totalDefenses !== 0) {
+                    chips.push({ label: "Defenses", value: `-${totalDefenses}`, icon: "fas fa-shield-alt", tooltip: `${totalDefenses / 2} defender(s) passed. Each lowers the threshold by 2.` });
+                } else if (defensesAttempted || defensesChosen) {
+                    // Check if any early results exist for defenses
+                    let earlyDefenseCount = 0;
+                    for (const [, er] of (this._earlyResults ?? [])) {
+                        if (er.activityId === "act_defenses") earlyDefenseCount++;
+                    }
+                    if (earlyDefenseCount > 0 || defensesAttempted) {
+                        chips.push({ label: "Defenses", value: "0", icon: "fas fa-shield-alt", warn: true, tooltip: "Defenses were attempted but failed. No reduction applied." });
+                    } else {
+                        chips.push({ label: "Defenses", value: "pending", icon: "fas fa-shield-alt", tooltip: "Defenders assigned. Reduction applies after a successful roll." });
+                    }
+                }
                 if (gmAdj !== 0) chips.push({ label: "GM", value: fmt(gmAdj), icon: "fas fa-gavel", tooltip: "Manual GM adjustment to the encounter DC, set with the plus and minus buttons." });
                 return {
                     total,
                     baseDC,
                     effectiveDC,
+                    terrainLabel,
                     totalLabel: `Encounter DC ${effectiveDC}`,
                     chips,
                     complication,
@@ -4677,6 +4905,48 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         };
 
+        // Locked consequences live on the triggered events, keyed by event id.
+        // Pulled from the tier that actually resolved so the conclusion names
+        // who took the hit and what each pack lost, rather than echoing the raw
+        // formula as if the card's owner took it.
+        const LOCK_TIER_MAP = { triumph: "onTriumph", success: "onSuccess", mixed: "onMixed", failure: "onFailure" };
+        const lockedByEvent = new Map();
+        for (const te of (this._triggeredEvents ?? [])) {
+            if (!te.resolvedOutcome || ["success", "triumph"].includes(te.resolvedOutcome)) continue;
+            const tierKey = LOCK_TIER_MAP[te.resolvedOutcome] ?? "onFailure";
+            const block = te.mechanical?.[tierKey] ?? te.mechanical?.onFailure ?? {};
+            const lockedDamage = [];
+            const lockedLosses = [];
+            const lockedItems = [];
+            const lockedGold = [];
+            const lockedSupply = [];
+            for (const eff of (block.effects ?? [])) {
+                if (!eff._locked) continue;
+                if (eff.type === "damage" && Array.isArray(eff._lockedTargets)) {
+                    for (const t of eff._lockedTargets) {
+                        if (t.amount > 0) lockedDamage.push({ name: t.name, amount: t.amount, damageType: eff.damageType ?? "" });
+                    }
+                } else if (eff.type === "consume_resource" && eff._lockedLoss) {
+                    lockedLosses.push(eff._lockedLoss);
+                } else if (eff.type === "item_at_risk" && Array.isArray(eff._lockedItems)) {
+                    for (const li of eff._lockedItems) {
+                        lockedItems.push({ actorId: li.actorId, actorName: li.actorName, itemName: li.itemName, lossQty: li.lossQty });
+                    }
+                } else if (eff.type === "consume_gold" && eff._lockedGold) {
+                    for (const b of (eff._lockedGold.breakdown ?? [])) {
+                        if (b.lossGp > 0) lockedGold.push({ actorId: b.actorId, actorName: b.actorName, lossGp: b.lossGp });
+                    }
+                } else if (eff.type === "supply_loss" && eff._lockedSupply) {
+                    for (const b of (eff._lockedSupply.breakdown ?? [])) {
+                        if (b.lossQty > 0) lockedSupply.push({ actorId: b.actorId, actorName: b.actorName, itemName: b.itemName, lossQty: b.lossQty });
+                    }
+                }
+            }
+            if (lockedDamage.length || lockedLosses.length || lockedItems.length || lockedGold.length || lockedSupply.length) {
+                lockedByEvent.set(te.eventId, { lockedDamage, lockedLosses, lockedItems, lockedGold, lockedSupply });
+            }
+        }
+
         return (outcomes ?? []).map(o => {
             const recovery = o.recovery ?? {};
             const positives = [];
@@ -4690,12 +4960,26 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     if (cls.valence === "neutral" && (sub.items?.length || sub.effects?.length === 0)) {
                         cls.valence = sub.items?.length ? "positive" : "neutral";
                     }
+                    const locked = lockedByEvent.get(sub.eventId) ?? {};
+                    // Scope itemised losses to this card's owner so each player sees
+                    // what they lost ("Lost 1 Rations"), not the whole party's tally.
+                    const allSupply = locked.lockedSupply ?? [];
+                    const mine = (entry) => entry.actorId === o.characterId;
                     const enriched = {
                         ...sub,
                         displayName: sub.eventName ?? "Event",
                         verdictLabel: cls.label,
                         verdictIcon: cls.icon,
-                        valence: cls.valence
+                        valence: cls.valence,
+                        lockedDamage: locked.lockedDamage ?? [],
+                        lockedLosses: locked.lockedLosses ?? [],
+                        lockedItems: locked.lockedItems ?? [],
+                        lockedGold: locked.lockedGold ?? [],
+                        lockedSupply: allSupply.filter(mine),
+                        // Suppress the generic "Minor supply losses." line on every card
+                        // once the GM has rolled the specifics, even for players who
+                        // happened to lose nothing in the spread.
+                        supplyLocked: allSupply.length > 0
                     };
                     if (cls.valence === "positive") positives.push(enriched);
                     else if (cls.valence === "neutral") neutrals.push(enriched);
@@ -5087,7 +5371,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Bind confirm buttons (player only)
         const confirmBtns = this.element.querySelectorAll(".btn-confirm-activity");
         for (const btn of confirmBtns) {
-            btn.addEventListener("click", () => {
+            btn.addEventListener("click", async () => {
                 const characterId = btn.dataset.characterId;
                 const activityId = this._pendingSelections?.get(characterId);
                 if (!characterId || !activityId) return;
@@ -5141,6 +5425,26 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         result: "pending_approval",
                         narrative: `Level ${spellLevel} spell (${cost}gp, DC ${dc}). Awaiting transaction.`
                     });
+                    this.render();
+                } else if (activityId === "act_train" && actor && this._engine) {
+                    // Player rolls their own training sets in an interactive dialog.
+                    const result = await TrainingActivityDialog.run({
+                        actor,
+                        activity,
+                        activityId,
+                        resolver: this._activityResolver,
+                        comfort: this._engine.comfort,
+                        safeRestSpot: !!this._engine.safeRestSpot
+                    });
+                    if (!result) {
+                        // Cancelled: release the lock so the player can choose again.
+                        this._characterChoices.delete(characterId);
+                        this._lockedCharacters.delete(characterId);
+                        this.render();
+                        return;
+                    }
+                    this._earlyResults.set(characterId, result);
+                    ui.notifications.info(`${actor.name}: Training - +${result.training?.awardedXP ?? 0} XP`);
                     this.render();
                 } else if (actor && this._engine) {
                     const followUpValue = this._gmFollowUps?.get(characterId) ?? this._getFollowUpForCharacter(characterId);
@@ -5442,7 +5746,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (entry.status === "pass" && entry.activityId === "act_defenses") {
             const defenseMod = 2; // encounter_reduction value from activity data
             if (this._engine?._encounterBreakdown) {
-                this._engine._encounterBreakdown.defenses = defenseMod;
+                this._engine._encounterBreakdown.defenses = (this._engine._encounterBreakdown.defenses ?? 0) + defenseMod;
             }
         }
 
@@ -5599,8 +5903,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return; // Wait for player results via receiveRollResult
         }
 
-        // Force Pass/Fail: resolve immediately
+        // Force Pass/Fail: resolve immediately. Clear any awaiting-roll state so
+        // allEventChecksResolved flips true (Proceed unblocks) and players stop
+        // showing roll buttons on the next broadcast.
         triggeredEvent.resolvedOutcome = outcome;
+        triggeredEvent.awaitingRolls = false;
+        triggeredEvent.pendingRolls = [];
 
         // Broadcast to players
         emitPhaseChanged("events", {
@@ -5612,6 +5920,235 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         await this._saveRestState();
         this.render();
+    }
+
+    /**
+     * GM locks a single failed-event consequence ahead of resolution.
+     *
+     * Damage effects roll their target(s) and amount now, but the HP loss is
+     * applied on the far side of the rest (after recovery) so the night's
+     * healing cannot erase it. Resource losses are locked for the same pass.
+     * Rolled values are stamped on the shared effect object so RecoveryHandler
+     * skips its own auto-roll and #onResolveEvents applies them post-recovery.
+     * Re-invoking on an already locked effect re-rolls it.
+     */
+    static async #onLockEventConsequence(event, target) {
+        if (!game.user.isGM) return;
+        event.preventDefault?.();
+
+        const eventIndex = parseInt(target.dataset.eventIndex);
+        const effectIndex = parseInt(target.dataset.effectIndex);
+        const te = this._triggeredEvents?.[eventIndex];
+        if (!te || !te.mechanical) return;
+
+        const TIER_MAP = { triumph: "onTriumph", success: "onSuccess", mixed: "onMixed", failure: "onFailure" };
+        const tierKey = TIER_MAP[te.resolvedOutcome] ?? "onFailure";
+        const block = te.mechanical[tierKey] ?? te.mechanical.onFailure ?? {};
+        const effect = block.effects?.[effectIndex];
+        if (!effect) return;
+
+        if (effect.type === "damage") {
+            // Build the target pool with the same watch/sleeping semantics as
+            // RecoveryHandler._resolveEventScopes, using the live watch roster.
+            const party = getPartyActors();
+            const allIds = party.map(a => a.id);
+            const watchIds = new Set((this._engine?.watchRoster ?? []).map(w => w.characterId));
+            const awakeIds = allIds.filter(id => watchIds.has(id));
+            const sleepingIds = allIds.filter(id => !watchIds.has(id));
+            const poolFor = (pool) => pool === "awake" ? (awakeIds.length ? awakeIds : allIds)
+                : pool === "sleeping" ? (sleepingIds.length ? sleepingIds : allIds)
+                    : allIds;
+
+            const scope = effect.scope ?? "all";
+            let targetIds = [];
+            if (scope === "random" || scope === "randomTarget") {
+                const spec = effect.randomTarget ?? {};
+                const pool = poolFor(spec.pool ?? "all");
+                const count = await RestSetupApp.#evaluateLockCount(spec.count, pool.length);
+                targetIds = RestSetupApp.#pickRandomN(pool, count);
+            } else if (scope === "failed") {
+                targetIds = (te.resolvedRolls ?? [])
+                    .filter(r => r && r.passed === false)
+                    .map(r => r.characterId)
+                    .filter(Boolean);
+            } else {
+                targetIds = allIds;
+            }
+
+            const lockedTargets = [];
+            for (const id of targetIds) {
+                const actor = game.actors.get(id);
+                if (!actor) continue;
+                let amount = 0;
+                try {
+                    const roll = await new Roll(effect.formula ?? "0").evaluate();
+                    amount = roll.total;
+                    await roll.toMessage({
+                        speaker: { alias: te.name ?? "Rest Event" },
+                        flavor: `<strong>${actor.name}</strong>: ${effect.formula} ${effect.damageType ?? ""} damage (applied after the rest)`,
+                        whisper: game.users.filter(u => u.isGM).map(u => u.id)
+                    });
+                } catch (e) {
+                    console.warn(`${MODULE_ID} | Failed to roll locked consequence damage:`, e);
+                }
+                lockedTargets.push({ id, name: actor.name, amount });
+            }
+
+            effect._resolvedTargetIds = targetIds;
+            effect._lockedDamage = Object.fromEntries(lockedTargets.map(t => [t.id, t.amount]));
+            effect._lockedTargets = lockedTargets;
+            effect._locked = true;
+        } else if (effect.type === "consume_resource") {
+            // Roll and freeze the exact loss now so the locked breakdown is what
+            // actually lands after the rest (no re-roll at resolution). The
+            // abstract "supplies" resource expands into a composite proposal
+            // (provisions + gear at risk); concrete keys (rations/water) stay
+            // a simple bulk loss.
+            const proposal = effect.resource === "supplies"
+                ? await ResourceSink.proposeSuppliesLoss(effect, { characters: getPartyActors() })
+                : await ResourceSink.proposeConsumeResource(effect, { characters: getPartyActors() });
+            effect._lockedLoss = proposal;
+            effect._locked = true;
+
+            const parts = [];
+            for (const grp of (proposal.provisionGroups ?? [])) {
+                const lines = grp.entries
+                    .map(e => `${e.actorName} &times;${e.lossQty}`)
+                    .join(", ");
+                parts.push(`<p><strong>${grp.total}</strong> ${grp.kind} lost: ${lines}</p>`);
+            }
+            if (proposal.gear?.length) {
+                const gearLines = proposal.gear
+                    .map(g => `${g.actorName}: ${g.itemName}${g.lossQty > 1 ? ` &times;${g.lossQty}` : ""}`)
+                    .join("<br>");
+                parts.push(`<p><strong>Gear lost from the pack:</strong></p><p>${gearLines}</p>`);
+            }
+            if (parts.length) {
+                await ChatMessage.create({
+                    speaker: { alias: te.name ?? "Rest Event" },
+                    whisper: game.users.filter(u => u.isGM).map(u => u.id),
+                    content: `${parts.join("")}<p><em>Applied after the rest.</em></p>`
+                });
+            }
+        } else if (effect.type === "item_at_risk") {
+            // Roll which specific items go missing now and freeze them to ids, so
+            // the same items leave the packs at resolution regardless of inventory
+            // churn. Re-invoking re-rolls the selection.
+            const proposal = await ResourceSink._resolveItemAtRisk(effect, { characters: getPartyActors() });
+            const lockedItems = (proposal.candidates ?? []).map(c => ({
+                actorId: c.actor.id,
+                actorName: c.actor.name,
+                itemId: c.item.id,
+                itemName: c.item.name,
+                itemImg: c.item.img ?? "icons/svg/mystery-man.svg",
+                currentQty: c.currentQty,
+                lossQty: c.lossQty
+            }));
+            effect._lockedItems = lockedItems;
+            effect._locked = true;
+
+            if (lockedItems.length) {
+                const lines = lockedItems
+                    .map(i => `${i.actorName}: ${i.itemName}${i.lossQty > 1 ? ` &times;${i.lossQty}` : ""}`)
+                    .join("<br>");
+                await ChatMessage.create({
+                    speaker: { alias: te.name ?? "Rest Event" },
+                    whisper: game.users.filter(u => u.isGM).map(u => u.id),
+                    content: `<p><strong>Taken from the packs:</strong></p><p>${lines}</p><p><em>Applied after the rest.</em></p>`
+                });
+            } else {
+                await ChatMessage.create({
+                    speaker: { alias: te.name ?? "Rest Event" },
+                    whisper: game.users.filter(u => u.isGM).map(u => u.id),
+                    content: `<p><em>Nothing worth taking was within reach.</em></p>`
+                });
+            }
+        } else if (effect.type === "consume_gold") {
+            // Roll and freeze the coin taken now so the locked amount is what
+            // leaves the purses at resolution. Re-invoking re-rolls it.
+            const proposal = await ResourceSink.proposeGoldLoss(effect, { characters: getPartyActors() });
+            effect._lockedGold = proposal;
+            effect._locked = true;
+
+            if (proposal.totalLoss > 0) {
+                const lines = (proposal.breakdown ?? [])
+                    .map(b => `${b.actorName}: &minus;${b.lossGp} gp`)
+                    .join("<br>");
+                await ChatMessage.create({
+                    speaker: { alias: te.name ?? "Rest Event" },
+                    whisper: game.users.filter(u => u.isGM).map(u => u.id),
+                    content: `<p><strong>Coin lifted:</strong> ${proposal.totalLoss} gp</p><p>${lines}</p><p><em>Applied after the rest.</em></p>`
+                });
+            } else {
+                await ChatMessage.create({
+                    speaker: { alias: te.name ?? "Rest Event" },
+                    whisper: game.users.filter(u => u.isGM).map(u => u.id),
+                    content: `<p><em>No coin in the purses to lift.</em></p>`
+                });
+            }
+        } else if (effect.type === "supply_loss") {
+            // Roll and freeze how much of the supply pool is swept away now, so
+            // the locked breakdown is what actually leaves the packs at
+            // resolution. Re-invoking re-rolls it. Used by disaster outcomes.
+            const proposal = await ResourceSink.proposeSupplyLoss(effect, { characters: getPartyActors() });
+            effect._lockedSupply = proposal;
+            effect._locked = true;
+
+            if (proposal.totalLoss > 0) {
+                const lines = (proposal.breakdown ?? [])
+                    .map(b => `${b.actorName}: ${b.itemName ?? "supplies"}${b.lossQty > 1 ? ` &times;${b.lossQty}` : ""}`)
+                    .join("<br>");
+                await ChatMessage.create({
+                    speaker: { alias: te.name ?? "Rest Event" },
+                    whisper: game.users.filter(u => u.isGM).map(u => u.id),
+                    content: `<p><strong>Lost to the disaster:</strong></p><p>${lines}</p><p><em>Applied after the rest.</em></p>`
+                });
+            } else {
+                await ChatMessage.create({
+                    speaker: { alias: te.name ?? "Rest Event" },
+                    whisper: game.users.filter(u => u.isGM).map(u => u.id),
+                    content: `<p><em>No supplies on hand to lose.</em></p>`
+                });
+            }
+        } else {
+            return;
+        }
+
+        await this._saveRestState();
+        emitPhaseChanged("events", {
+            triggeredEvents: this._triggeredEvents,
+            activeTreeState: this._activeTreeState,
+            eventsRolled: true,
+            campStatus: this._campStatus
+        });
+        this.render();
+    }
+
+    /** Evaluate a randomTarget count spec (number, numeric string, or dice formula). */
+    static async #evaluateLockCount(countSpec, poolSize) {
+        if (poolSize === 0) return 0;
+        if (countSpec == null) return Math.min(1, poolSize);
+        if (typeof countSpec === "number") return Math.max(0, Math.min(Math.floor(countSpec), poolSize));
+        const s = String(countSpec).trim();
+        if (/^\d+$/.test(s)) return Math.max(0, Math.min(parseInt(s, 10), poolSize));
+        try {
+            const roll = await new Roll(s).evaluate();
+            return Math.max(0, Math.min(Math.floor(roll.total), poolSize));
+        } catch (e) {
+            return Math.min(1, poolSize);
+        }
+    }
+
+    /** Fisher-Yates pick of N distinct entries from a pool. */
+    static #pickRandomN(pool, n) {
+        if (n <= 0 || pool.length === 0) return [];
+        if (n >= pool.length) return [...pool];
+        const shuffled = [...pool];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled.slice(0, n);
     }
 
     /**
@@ -5821,6 +6358,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         centerRollRequestRoster(this.element);
         ensureDcPulseAnimation(this.element);
 
+        // Belt-and-braces: the rejoin bar's only job is to reopen this window.
+        // If we just rendered, the bar is by definition stale. Clear it to
+        // prevent the "main UI + collapsed footer" double state during F5
+        // rejoin races. Stations + activity phase doesn't render the player
+        // RSA, so this only fires in modes/phases where the bar is wrong.
+        if (!this._isGM) {
+            _removeRejoinBar();
+        }
+
         const titleEl =
             this.element?.querySelector(".window-header .window-title")
             ?? this.element?.querySelector(".window-title")
@@ -5838,30 +6384,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             else this._removeGmStationTokenSyncHook();
         }
 
-        // Roll mode selects: update state + broadcast without re-rendering (preserves scroll).
-        if (game.user.isGM) {
-            for (const sel of this.element.querySelectorAll(".select-roll-mode")) {
-                sel.addEventListener("change", () => {
-                    const characterId = sel.dataset.characterId;
-                    const mode = sel.value;
-                    if (!characterId || !this._activeTreeState?.awaitingRolls) return;
-
-                    if (!this._activeTreeState.pendingRollModes) this._activeTreeState.pendingRollModes = {};
-                    this._activeTreeState.pendingRollModes[characterId] = mode;
-
-                    // Update this select's colour class in-place (no render)
-                    sel.className = sel.className.replace(/roll-mode--\S+/, "") + ` roll-mode--${mode}`;
-
-                    // Broadcast updated rollModes to players
-                    emitPhaseChanged("events", {
-                            triggeredEvents: this._triggeredEvents,
-                            activeTreeState: this._activeTreeState,
-                            eventsRolled: true,
-                            campStatus: this._campStatus
-                        });
-                });
-            }
-        }
     }
 
     /**
@@ -5870,17 +6392,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onIonriftRoll(event, target) {
         event.preventDefault?.();
         const flow = target.dataset.flow ?? "event";
+        // Preserve the application instance as `this`; these sub-handlers read
+        // per-instance pending-roll state (this._pendingTreeRoll, etc.).
         switch (flow) {
             case "event":
-                return RestSetupApp.#onRollEventCheck(event, target);
+                return RestSetupApp.#onRollEventCheck.call(this, event, target);
             case "tree":
-                return RestSetupApp.#onRollTreeCheck(event, target);
+                return RestSetupApp.#onRollTreeCheck.call(this, event, target);
             case "camp":
-                return RestSetupApp.#onRollCampCheck(event, target);
+                return RestSetupApp.#onRollCampCheck.call(this, event, target);
             case "travel":
-                return RestSetupApp.#onRollTravelCheck(event, target);
+                return RestSetupApp.#onRollTravelCheck.call(this, event, target);
             case "copySpell":
-                return RestSetupApp.#onRollCopySpellArcana(event, target);
+                return RestSetupApp.#onRollCopySpellArcana.call(this, event, target);
             default:
                 return undefined;
         }
@@ -5921,9 +6445,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             rollMode
         );
 
-        // Mark as rolled locally
+        // Mark as rolled locally and store the result so the player's own DC badge can
+        // acknowledge pass/fail immediately, before the GM's resolved snapshot syncs back.
         if (!pending.rolledCharacters) pending.rolledCharacters = new Set();
         pending.rolledCharacters.add(characterId);
+        if (!pending.rolledResults) pending.rolledResults = new Map();
+        pending.rolledResults.set(characterId, { total, passed: total >= pending.dc });
 
         // Send result to GM
         emitEventRollResult({
@@ -5935,14 +6462,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         ui.notifications.info(`${actor.name} rolled ${total} for ${pending.skillName}.`);
         this.render();
-    }
-
-    /**
-     * Toggle expand/collapse on a resolved event card.
-     */
-    static #onToggleResolvedEvent(event, target) {
-        const card = target.closest(".respite-event-card");
-        if (card) card.classList.toggle("collapsed");
     }
 
     /**
@@ -5981,6 +6500,64 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             console.error(`[Respite] Failed to grant item:`, e);
             ui.notifications.error(`Failed to grant ${itemRef}: ${e.message}`);
         }
+    }
+
+    /**
+     * Writes training XP onto each actor's sheet. Scans resolved outcomes for
+     * `training_xp` effects and adds the already-reduced value to the dnd5e XP
+     * track. Runs GM-side so updates to any party member are permitted.
+     *
+     * @param {Object[]} outcomes Resolved per-character outcome records.
+     */
+    static async _applyTrainingXP(outcomes) {
+        if (!Array.isArray(outcomes) || !outcomes.length) return;
+
+        for (const outcome of outcomes) {
+            const award = (outcome.outcomes ?? [])
+                .filter(sub => sub.source === "activity")
+                .flatMap(sub => sub.effects ?? [])
+                .filter(eff => eff.type === "training_xp")
+                .reduce((sum, eff) => sum + (eff.value ?? 0), 0);
+            if (award <= 0) continue;
+
+            const actor = game.actors.get(outcome.characterId);
+            if (!actor) continue;
+
+            const current = actor.system?.details?.xp?.value ?? 0;
+            try {
+                await actor.update({ "system.details.xp.value": current + award });
+            } catch (e) {
+                console.warn(`${MODULE_ID} | Failed to apply ${award} training XP to ${actor.name}:`, e);
+            }
+        }
+    }
+
+    /**
+     * Builds a segmented training progress bar for chat summaries. One segment
+     * per set, filled when the set landed, plus the XP gained and any
+     * diminishing-returns note.
+     *
+     * @param {Object} training The `training` payload from a training outcome.
+     * @returns {string} HTML markup.
+     */
+    static _buildTrainingProgressBar(training) {
+        const rolls = training.rolls ?? [];
+        const segments = rolls.map(r => {
+            const fill = r.passed ? "#1c6ea4" : "rgba(0,0,0,0.14)";
+            return `<span title="Set ${r.set}: rolled ${r.total} vs DC ${training.dc}" style="flex:1;height:10px;border-radius:3px;background:${fill};"></span>`;
+        }).join("");
+
+        const xpLabel = training.awardedXP > 0
+            ? `<i class="fas fa-dumbbell" style="color:#6b4f00;"></i> <strong style="color:#6b4f00;">+${training.awardedXP} XP</strong> (${training.successes}/${training.numRolls} sets landed)`
+            : `<i class="fas fa-dumbbell" style="opacity:0.6;"></i> No XP this rest`;
+        const reductionNote = training.xpReduction > 0
+            ? `<br><span style="font-size:0.82em;opacity:0.75;">Diminishing returns: ${training.xpReduction} XP held back this rest.</span>`
+            : "";
+
+        return `<div style="margin:4px 0;">`
+            + `<div style="display:flex;gap:4px;margin-bottom:3px;">${segments}</div>`
+            + `<p style="margin:0;">${xpLabel}${reductionNote}</p>`
+            + `</div>`;
     }
 
     /**
@@ -7339,6 +7916,25 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onSkipPendingSaves(event, target) { await this._meals.onSkipPendingSaves(event, target); }
 
     /**
+     * Lock the events-phase UI while a night check or pool pick resolves.
+     * @returns {boolean} false if a commit is already in flight or the phase is closed.
+     */
+    static #beginEventsCommit() {
+        if (this._eventsCommitPending || this._eventsRolled) return false;
+        if (!this._engine || this._phase !== "events") return false;
+        this._eventsCommitPending = true;
+        this.render();
+        return true;
+    }
+
+    /** Clear the events-phase commit lock and re-render if still pre-roll. */
+    static #endEventsCommit() {
+        if (!this._eventsCommitPending) return;
+        this._eventsCommitPending = false;
+        if (!this._eventsRolled) this.render();
+    }
+
+    /**
      * Phase 3: GM rolls for events. Performs the actual event table roll
      * and displays results.
      */
@@ -7438,7 +8034,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /**
      * GM rolls the night check but runs their own off-the-cuff scenario on a
-     * trigger instead of drawing from the pool. Nat 1 triggers (no disaster fork).
+     * trigger instead of drawing from the pool. Nat 1 triggers (no disaster pool picker).
      */
     static async #onImproviseEvent(event, target) {
         if (!game.user.isGM) return;
@@ -7483,20 +8079,24 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Encounters-off night: the GM declares a quiet night. No dice, no DC,
-     * just close out the events phase and move to resolution.
+     * GM override: declare a quiet night with no event. No dice, no DC.
+     * Available when encounters are on (footer link) or off (primary button).
      */
     static async #onNightPasses(event, target) {
         if (!game.user.isGM) return;
-        if (!this._engine || this._phase !== "events" || this._eventsRolled) return;
-        await ChatMessage.create({
-            speaker: { alias: "Night Watch" },
-            content: `<div style="border-left:3px solid #7eb8da;padding-left:8px;"><strong>Night Watch</strong><br>The night passes without incident.</div>`,
-            whisper: game.users.filter(u => u.isGM).map(u => u.id)
-        });
-        this._triggeredEvents = [];
-        this._eventsRolled = true;
-        await RestSetupApp.#finalizeEventsRoll.call(this);
+        if (!RestSetupApp.#beginEventsCommit.call(this)) return;
+        try {
+            await ChatMessage.create({
+                speaker: { alias: "Night Watch" },
+                content: `<div style="border-left:3px solid #7eb8da;padding-left:8px;"><strong>Night Watch</strong><br>The night passes without incident.</div>`,
+                whisper: game.users.filter(u => u.isGM).map(u => u.id)
+            });
+            this._triggeredEvents = [];
+            this._eventsRolled = true;
+            await RestSetupApp.#finalizeEventsRoll.call(this);
+        } finally {
+            RestSetupApp.#endEventsCommit.call(this);
+        }
     }
 
     /**
@@ -7563,6 +8163,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #onSetEventsMode(event, target) {
         if (!game.user.isGM) return;
+        if (this._eventsCommitPending) return;
         if (this._phase !== "events" || this._eventsRolled) return;
         const mode = target?.dataset?.mode;
         if (!["random", "improvise", "pick"].includes(mode)) return;
@@ -7577,11 +8178,22 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #onCommitEventsMode(event, target) {
         if (!game.user.isGM) return;
-        switch (this._eventsMode) {
-            case "improvise": return RestSetupApp.#onImproviseEvent.call(this, event, target);
-            case "pick":      return RestSetupApp.#onPickPoolEvent.call(this, event, target);
-            case "random":
-            default:          return RestSetupApp.#onRollEvents.call(this, event, target);
+        if (!RestSetupApp.#beginEventsCommit.call(this)) return;
+        try {
+            switch (this._eventsMode) {
+                case "improvise":
+                    await RestSetupApp.#onImproviseEvent.call(this, event, target);
+                    break;
+                case "pick":
+                    await RestSetupApp.#onPickPoolEvent.call(this, event, target);
+                    break;
+                case "random":
+                default:
+                    await RestSetupApp.#onRollEvents.call(this, event, target);
+                    break;
+            }
+        } finally {
+            RestSetupApp.#endEventsCommit.call(this);
         }
     }
 
@@ -7683,6 +8295,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #onAbandonRest(event, target) {
         if (!game.user.isGM) return;
+        if (this._eventsCommitPending) return;
 
         const confirmed = await new Promise(resolve => {
             const overlay = document.createElement("div");
@@ -7834,6 +8447,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._activeTreeState.pendingRollModes = {};
         // Spell rulings advisory for the awaiting panel
         this._activeTreeState.pendingChoiceSpellRulings = prepared.option.spellRulings ?? null;
+        this._activeTreeState.pendingCheckContext = prepared.check?.checkContext ?? null;
 
         // Determine skill name for display
         const skillKey = pickBestSkill(
@@ -7859,15 +8473,38 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         this._activeTreeState.rollRequestSent = true;
 
-        // Broadcast roll request to players
+        // A force override is the GM's decision, not the player's. Resolve those
+        // characters here so the player is never asked to confirm an outcome the
+        // GM already set. Snapshot the ids first since receiveTreeRollResult
+        // mutates pendingRolls as each result lands.
+        const modes = this._activeTreeState.pendingRollModes ?? {};
+        const dc = this._activeTreeState.pendingDC ?? 12;
+        const forcedIds = (this._activeTreeState.pendingRolls ?? []).filter(
+            id => modes[id] === "force-pass" || modes[id] === "force-fail"
+        );
+        for (const characterId of forcedIds) {
+            const actor = game.actors.get(characterId);
+            const total = modes[characterId] === "force-pass" ? dc : 0;
+            await this.receiveTreeRollResult({ characterId, characterName: actor?.name ?? "Unknown", total });
+        }
+
+        // If forcing resolved every participant, the tree is done; nothing to dispatch.
+        if (!this._activeTreeState?.awaitingRolls) return;
+
+        // Broadcast roll request to the remaining (non-forced) players
+        const resolvedRolls = this._activeTreeState.resolvedRolls ?? [];
         emitTreeRollRequest({
                     choiceId: this._activeTreeState.pendingChoice,
                     skills: this._activeTreeState.pendingCheck?.skills ?? [],
                     skillName: this._activeTreeState.pendingSkillName ?? "Skill",
                     dc: this._activeTreeState.pendingDC ?? 12,
-                    targets: this._activeTreeState.pendingRolls ?? [],
+                    targets: [
+                        ...(this._activeTreeState.pendingRolls ?? []),
+                        ...resolvedRolls.map(r => r.characterId ?? r.actorId)
+                    ],
                     eventName: this._activeTreeState.eventName,
-                    rollModes: this._activeTreeState.pendingRollModes ?? {}
+                    rollModes: this._activeTreeState.pendingRollModes ?? {},
+                    resolvedRolls
                 });
 
         // Broadcast updated tree state so players see roll buttons
@@ -7935,23 +8572,27 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!game.user.isGM) return;
         if (!this._activeTreeState?.awaitingRolls) return;
 
+        const resolvedRolls = this._activeTreeState.resolvedRolls ?? [];
         emitTreeRollRequest({
                     choiceId: this._activeTreeState.pendingChoice,
                     skills: this._activeTreeState.pendingCheck?.skills ?? [],
                     skillName: this._activeTreeState.pendingSkillName ?? "Skill",
                     dc: this._activeTreeState.pendingDC ?? 12,
-                    targets: this._activeTreeState.pendingRolls ?? [],
+                    targets: [
+                        ...(this._activeTreeState.pendingRolls ?? []),
+                        ...resolvedRolls.map(r => r.characterId ?? r.actorId)
+                    ],
                     eventName: this._activeTreeState.eventName,
-                    rollModes: this._activeTreeState.pendingRollModes ?? {}
+                    rollModes: this._activeTreeState.pendingRollModes ?? {},
+                    resolvedRolls
                 });
 
         ui.notifications.info("Tree roll request re-sent to players.");
     }
 
     /**
-     * GM cycles the roll mode for a specific character in the pending tree roll.
-     * Order: normal â†’ advantage â†’ disadvantage â†’ force-pass â†’ force-fail â†’ normal
-     * Broadcasts updated tree state so player badges update immediately.
+     * GM cycles roll modifier for one character: normal, advantage, disadvantage,
+     * auto-pass, auto-fail. One click target (the portrait) keeps the axis unambiguous.
      */
     static #onCycleTreeRollMode(event, target) {
         event.preventDefault?.();
@@ -7960,19 +8601,30 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!characterId || !this._activeTreeState?.awaitingRolls) return;
 
         if (!this._activeTreeState.pendingRollModes) this._activeTreeState.pendingRollModes = {};
-        const CYCLE = { "normal": "advantage", "advantage": "disadvantage", "disadvantage": "force-pass", "force-pass": "force-fail", "force-fail": "normal" };
+        const CYCLE = {
+            normal: "advantage",
+            advantage: "disadvantage",
+            disadvantage: "force-pass",
+            "force-pass": "force-fail",
+            "force-fail": "normal"
+        };
         const current = this._activeTreeState.pendingRollModes[characterId] ?? "normal";
         this._activeTreeState.pendingRollModes[characterId] = CYCLE[current] ?? "normal";
 
-        // Push updated rollModes to players so their badge refreshes live
+        RestSetupApp.#broadcastTreeRollModes.call(this);
+        this.render();
+    }
+
+    /**
+     * Push current tree roll modes to players so their badges refresh live.
+     */
+    static #broadcastTreeRollModes() {
         emitPhaseChanged("events", {
                 triggeredEvents: this._triggeredEvents,
                 activeTreeState: this._activeTreeState,
                 eventsRolled: true,
                 campStatus: this._campStatus
             });
-
-        this.render();
     }
 
     /**
@@ -8289,16 +8941,55 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Rebuild an item_at_risk approval proposal from a GM-locked selection.
+     * Re-fetches each actor and item by id so the modal renders and applies the
+     * exact items the GM previewed. Items that have since left the sheet are
+     * dropped silently.
+     *
+     * @param {Object} eff - A locked item_at_risk effect with `_lockedItems`.
+     * @returns {Object} Proposal shaped like ResourceSink._resolveItemAtRisk.
+     */
+    static #rehydrateItemLossProposal(eff) {
+        const candidates = [];
+        for (const li of (eff._lockedItems ?? [])) {
+            const actor = game.actors.get(li.actorId);
+            const item = actor?.items?.get(li.itemId);
+            if (!actor || !item) continue;
+            candidates.push({
+                actor,
+                item,
+                currentQty: item.system?.quantity ?? li.currentQty ?? 1,
+                lossQty: li.lossQty
+            });
+        }
+        return {
+            type: "item_at_risk",
+            candidates,
+            narrative: eff.narrative ?? "Some items were lost.",
+            severity: eff.severity ?? 1
+        };
+    }
+
+    /**
      * Phase 3 -> 4: Resolve rest outcomes.
      * Injects stored crafting results into activity outcomes.
      */
     static async #onResolveEvents(event, target) {
-        // Collect ALL resource-loss effects from resolved tree and stall penalties
+        // Collect ALL resource-loss effects from resolved tree and stall penalties.
+        // Pull from the resolved tier (onMixed/onFailure) so a partial success
+        // applies its own lighter losses rather than the failure set, and a
+        // passed check applies nothing. Decision-tree events deliver their
+        // losses through stallEffects and the tree resolution, not here.
         const allEffects = [];
+        const LOSS_TYPES = ["supply_loss", "item_at_risk", "consume_gold"];
+        const RESOLVED_TIER = { mixed: "onMixed", failure: "onFailure" };
         for (const evt of (this._triggeredEvents ?? [])) {
-            if (!evt.effects) continue;
-            for (const eff of evt.effects) {
-                if (["supply_loss", "item_at_risk", "consume_gold"].includes(eff.type)) {
+            if (evt.isDecisionTree) continue;
+            if (evt.resolvedOutcome && ["success", "triumph"].includes(evt.resolvedOutcome)) continue;
+            const tierKey = RESOLVED_TIER[evt.resolvedOutcome] ?? "onFailure";
+            const tierEffects = evt.mechanical?.[tierKey]?.effects ?? evt.effects ?? [];
+            for (const eff of tierEffects) {
+                if (LOSS_TYPES.includes(eff.type)) {
                     allEffects.push(eff);
                 }
             }
@@ -8321,11 +9012,30 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
             for (const eff of allEffects) {
                 if (eff.type === "supply_loss") {
-                    unified.supplyProposals.push(await ResourceSink.proposeSupplyLoss(eff, context));
+                    // Use the GM's locked roll if present, so the approval modal
+                    // matches the amount previewed on the disaster outcome card.
+                    unified.supplyProposals.push(
+                        eff._locked && eff._lockedSupply
+                            ? eff._lockedSupply
+                            : await ResourceSink.proposeSupplyLoss(eff, context)
+                    );
                 } else if (eff.type === "item_at_risk") {
-                    unified.itemAtRiskProposals.push(await ResourceSink._resolveItemAtRisk(eff, context));
+                    // If the GM already rolled and locked the exact items on the
+                    // event card, apply that frozen selection instead of rolling
+                    // a fresh one, so the approval modal matches the preview.
+                    unified.itemAtRiskProposals.push(
+                        eff._locked
+                            ? RestSetupApp.#rehydrateItemLossProposal(eff)
+                            : await ResourceSink._resolveItemAtRisk(eff, context)
+                    );
                 } else if (eff.type === "consume_gold") {
-                    unified.goldProposals.push(await ResourceSink.proposeGoldLoss(eff, context));
+                    // Use the GM's locked roll if present, so the approval modal
+                    // matches the amount previewed on the event card.
+                    unified.goldProposals.push(
+                        eff._locked && eff._lockedGold
+                            ? eff._lockedGold
+                            : await ResourceSink.proposeGoldLoss(eff, context)
+                    );
                 }
             }
 
@@ -8564,6 +9274,54 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
+        // Apply GM-locked event consequences AFTER recovery so morning wounds and
+        // resource losses survive the night's healing. RecoveryHandler skips any
+        // effect flagged `_locked`, so this is the sole application of these.
+        {
+            const LOCK_TIER_MAP = { triumph: "onTriumph", success: "onSuccess", mixed: "onMixed", failure: "onFailure" };
+            const lockedConsumeEffects = [];
+            const lockedDamageByActor = new Map();
+            for (const te of (this._triggeredEvents ?? [])) {
+                if (!te.resolvedOutcome || ["success", "triumph"].includes(te.resolvedOutcome)) continue;
+                const tierKey = LOCK_TIER_MAP[te.resolvedOutcome] ?? "onFailure";
+                const block = te.mechanical?.[tierKey] ?? te.mechanical?.onFailure ?? {};
+                for (const eff of (block.effects ?? [])) {
+                    if (!eff._locked) continue;
+                    if (eff.type === "damage" && eff._lockedDamage) {
+                        for (const [actorId, amount] of Object.entries(eff._lockedDamage)) {
+                            if (amount > 0) lockedDamageByActor.set(actorId, (lockedDamageByActor.get(actorId) ?? 0) + amount);
+                        }
+                    } else if (eff.type === "consume_resource" && eff._lockedLoss) {
+                        lockedConsumeEffects.push(eff);
+                    }
+                }
+            }
+
+            for (const [actorId, totalDamage] of lockedDamageByActor) {
+                const actor = game.actors.get(actorId);
+                if (!actor || totalDamage <= 0) continue;
+                const hp = actor.system?.attributes?.hp;
+                if (!hp) continue;
+                const newHp = Math.max(0, (hp.value ?? 0) - totalDamage);
+                await actor.update({ "system.attributes.hp.value": newHp });
+                const outcome = this._outcomes.find(o => o.characterId === actorId);
+                if (outcome?.recovery) {
+                    outcome.recovery.eventDamage = (outcome.recovery.eventDamage ?? 0) + totalDamage;
+                }
+            }
+
+            for (const eff of lockedConsumeEffects) {
+                try {
+                    await ResourceSink.applyResourceLossBreakdown(eff._lockedLoss.breakdown);
+                    if (eff._lockedLoss.gear?.length) {
+                        await ResourceSink.applyResourceLossBreakdown(eff._lockedLoss.gear);
+                    }
+                } catch (e) {
+                    console.warn(`${MODULE_ID} | Failed to apply locked resource loss:`, e);
+                }
+            }
+        }
+
         // Trigger DnD5e native rest for spell slots, class features, item uses.
         // HP/HD/Exhaustion already handled by RecoveryHandler above;
         // the preRestCompleted hook in module.js suppresses those from the
@@ -8621,6 +9379,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             ui.notifications.info("Rest complete.");
         }
 
+        // Write training XP onto the sheet. Runs GM-side where this resolution
+        // path executes, so the GM has permission to update every actor.
+        try {
+            await RestSetupApp._applyTrainingXP(this._outcomes);
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Training XP application failed:`, e);
+        }
+
         // Auto-grant party discoveries (event loot) to watch roster members
         try {
             await this._autoGrantPartyDiscoveries();
@@ -8653,6 +9419,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const lines = [`<h3>${actor.name}'s Rest</h3>`];
             for (const sub of (outcome.outcomes ?? [])) {
                 lines.push(`<p><em>${sub.narrative}</em></p>`);
+                if (sub.training?.rolls?.length) {
+                    lines.push(RestSetupApp._buildTrainingProgressBar(sub.training));
+                }
                 if (sub.items?.length) {
                     for (const item of sub.items) {
                         const qty = item.quantity > 1 ? ` x${item.quantity}` : "";
@@ -8957,6 +9726,27 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 narrative: `Level ${spellLevel} spell (${cost}gp, DC ${dc}). Awaiting transaction.`
             };
             this._earlyResults.set(characterId, activityResult);
+            if (this.rendered) this.render();
+        } else if (activityId === "act_train" && actor && this._engine) {
+            // Player rolls their own training sets in an interactive dialog.
+            const result = await TrainingActivityDialog.run({
+                actor,
+                activity,
+                activityId,
+                resolver: this._activityResolver,
+                comfort: this._engine.comfort,
+                safeRestSpot: !!this._engine.safeRestSpot
+            });
+            if (!result) {
+                // Cancelled: release the lock so the character can be reassigned.
+                this._characterChoices.delete(characterId);
+                this._lockedCharacters.delete(characterId);
+                if (this.rendered) this.render();
+                return null;
+            }
+            activityResult = result;
+            this._earlyResults.set(characterId, activityResult);
+            ui.notifications.info(`${actor.name}: Training - +${result.training?.awardedXP ?? 0} XP`);
             if (this.rendered) this.render();
         } else if (actor && this._engine) {
             const followUpValue = options.followUpValue ?? this._gmFollowUps?.get(characterId) ?? this._getFollowUpForCharacter(characterId);
@@ -10350,19 +11140,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 top: Math.max(0, (window.innerHeight - 600) / 2)
             });
         }
-        this.render({ force: true });
+        const phaseRenderPromise = Promise.resolve(this.render({ force: true }));
 
-        // Safety net: if the player RSA is not rendered after the phase transition
-        // (e.g., the app was retained-but-closed during activity phase and render()
-        // didn't produce a visible window), ensure the rejoin bar is visible so the
-        // player can see the current phase and resume the rest UI.
+        // If the player RSA render fails outright, fall back to the rejoin bar
+        // so the player can still see the current phase and resume manually.
+        // The previous 300ms setTimeout was a guess; on a slow refresh it
+        // could fire before render finished and leave both the bar and the
+        // RSA visible.
         if (!this._isGM) {
-            setTimeout(() => {
-                if (!this.rendered) {
-                    console.log(`${MODULE_ID} | Phase ${phase}: player RSA not rendered after 300ms â€” ensuring rejoin bar`);
-                    _ensureRejoinBar(this);
-                }
-            }, 300);
+            phaseRenderPromise.catch((err) => {
+                console.log(`${MODULE_ID} | Phase ${phase}: player RSA render failed, falling back to rejoin bar`, err);
+                _ensureRejoinBar(this);
+            });
         }
     }
 
@@ -10440,8 +11229,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         if (snapshot.activeTreeState) {
             this._activeTreeState = snapshot.activeTreeState;
-            // Reconstruct player-side tree roll request from tree state
-            if (!this._isGM && snapshot.activeTreeState.awaitingRolls) {
+            // Reconstruct player-side tree roll request from tree state, but only
+            // once the GM has explicitly dispatched it. Between picking an option
+            // and pressing Send the GM is still configuring modifiers, so players
+            // must not see a roll prompt yet.
+            if (!this._isGM && snapshot.activeTreeState.awaitingRolls && snapshot.activeTreeState.rollRequestSent) {
                 const alreadyRolled = new Set(
                     (snapshot.activeTreeState.resolvedRolls ?? []).map(r => r.characterId ?? r.actorId)
                 );
@@ -10464,6 +11256,43 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         ])
                     )
                 };
+            } else if (!this._isGM) {
+                // Not yet dispatched (GM still configuring) or already resolved:
+                // drop any stale prompt so the player UI stays in step.
+                this._pendingTreeRoll = null;
+            }
+        }
+        // Reconstruct player-side event roll request from triggered events.
+        // The event roll request lives only in _pendingEventRoll (set via socket) and
+        // is not otherwise in the snapshot, so an alt-tab resync would drop it and the
+        // player would fall back to "The GM is adjudicating...". Rebuild it here.
+        if (!this._isGM) {
+            const awaitingIndex = (this._triggeredEvents ?? []).findIndex(e => e?.awaitingRolls);
+            if (awaitingIndex >= 0) {
+                const evt = this._triggeredEvents[awaitingIndex];
+                const resolved = evt.resolvedRolls ?? [];
+                const skillKey = evt.mechanical?.skill ?? "sur";
+                const targetIds = evt.targets?.length
+                    ? evt.targets
+                    : [...(evt.pendingRolls ?? []), ...resolved.map(r => r.characterId)];
+                const priorRolled = (this._pendingEventRoll?.eventIndex === awaitingIndex)
+                    ? this._pendingEventRoll.rolledCharacters
+                    : null;
+                const rolledCharacters = priorRolled ?? new Set();
+                for (const r of resolved) rolledCharacters.add(r.characterId ?? r.id);
+                this._pendingEventRoll = {
+                    eventIndex: awaitingIndex,
+                    skill: skillKey,
+                    skillName: SKILL_NAMES[skillKey] ?? skillKey,
+                    dc: evt.mechanical?.dc ?? 10,
+                    targets: [...new Set(targetIds.filter(Boolean))],
+                    rollModes: evt.rollModes ?? {},
+                    eventTitle: evt.title ?? "Event",
+                    targetLabel: buildRollTargetLabel(evt.mechanical),
+                    rolledCharacters
+                };
+            } else if (this._pendingEventRoll) {
+                this._pendingEventRoll = null;
             }
         }
         if (snapshot.outcomes?.length) this._outcomes = snapshot.outcomes;
@@ -10615,7 +11444,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             console.debug(`${MODULE_ID} | [REJOIN] receiveRestSnapshot: activity phase â†’ choices=${this._characterChoices?.size ?? 0}, theater=${_isTheaterRestore}`);
             if (!_isTheaterRestore) {
                 this._attachActivityPhaseCanvasChrome();
-                void this.close({ retainPlayerApp: true });
+                if (this.rendered) {
+                    // Mirror the GM guard above: only close when there's a
+                    // rendered window to dismiss. Closing an unrendered app
+                    // races with any pending force-render and leaves both
+                    // the RSA and the rejoin bar visible.
+                    void this.close({ retainPlayerApp: true });
+                } else {
+                    // Stations + activity wants the canvas-only surface;
+                    // skip the render and put up the rejoin bar directly.
+                    _ensureRejoinBar(this);
+                }
                 return;
             }
         }
@@ -10631,19 +11470,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
-        // Single render with all state applied
-        this.render();
+        // Single render with all state applied. Force-render so the first
+        // pass works on a fresh app (handleRestStarted now defers to us when
+        // a snapshot is included; without force, ApplicationV2 may no-op on
+        // a state-NONE or state-CLOSED app).
+        const snapshotRenderPromise = Promise.resolve(this.render({ force: true }));
 
-        // Safety net: ensure rejoin bar if player RSA fails to render.
-        // ApplicationV2 render is async, so use a 300ms timeout instead of rAF
-        // to give the pipeline time to finish.
+        // If render fails, fall back to the rejoin bar so the player can
+        // still resume manually. Replaces the previous 300ms setTimeout
+        // guess, which mis-fired on slow refreshes and left the bar visible
+        // alongside a successfully rendered RSA.
         if (!this._isGM) {
-            setTimeout(() => {
-                if (!this.rendered) {
-                    console.log(`${MODULE_ID} | receiveRestSnapshot: player RSA not rendered after 300ms â€” ensuring rejoin bar`);
-                    _ensureRejoinBar(this);
-                }
-            }, 300);
+            snapshotRenderPromise.catch((err) => {
+                console.log(`${MODULE_ID} | receiveRestSnapshot: player RSA render failed, falling back to rejoin bar`, err);
+                _ensureRejoinBar(this);
+            });
         }
     }
 
@@ -11368,9 +12209,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         await game.ionrift.library.confirm({
                             title: "Cannot Light Fire",
                             content: "<p>No one in the party has a tinderbox or flint and steel. You cannot start a fire.</p>",
-                            yesLabel: "OK",
+                            yesLabel: "Close",
                             noLabel: null,
-                            yesIcon: "fas fa-check",
+                            yesIcon: "fas fa-times",
                             defaultYes: true
                         });
                         return;
@@ -11389,9 +12230,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         await game.ionrift.library.confirm({
                             title: "Not Enough Firewood",
                             content: `<p>Raising the fire to <strong>${levelLabel}</strong> requires ${need} firewood, but your characters only have ${myFirewood}.</p>`,
-                            yesLabel: "OK",
+                            yesLabel: "Close",
                             noLabel: null,
-                            yesIcon: "fas fa-check",
+                            yesIcon: "fas fa-times",
                             defaultYes: true
                         });
                         return;

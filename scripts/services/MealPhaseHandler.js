@@ -814,6 +814,7 @@ export class MealPhaseHandler {
         const itemName = itemSnapshot.name ?? "Meal";
         if (rf.partyMeal) {
             const summaries = [];
+            const partyRolls = [];
             for (const pid of partyIds) {
                 const member = game.actors.get(pid);
                 if (!member) continue;
@@ -825,12 +826,14 @@ export class MealPhaseHandler {
                     summaries.push(`<strong>${member.name}</strong>: packed serving (already Well Fed)`);
                 } else {
                     const part = await MealPhaseHandler._applyWellFedEffect(member, itemSnapshot);
-                    if (part?.length) summaries.push(`<strong>${member.name}</strong>: ${part.join("; ")}`);
+                    if (part.lines?.length) summaries.push(`<strong>${member.name}</strong>: ${part.lines.join("; ")}`);
+                    if (part.rolls?.length) partyRolls.push(...part.rolls);
                 }
             }
             if (summaries.length) {
                 await ChatMessage.create({
                     content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>${consumerActor.name}</strong>'s <strong>${itemName}</strong> feeds the whole party.</p><p>${summaries.join("<br>")}</p></div>`,
+                    rolls: partyRolls,
                     speaker: ChatMessage.getSpeaker({ actor: consumerActor })
                 });
             }
@@ -845,10 +848,11 @@ export class MealPhaseHandler {
                     speaker: ChatMessage.getSpeaker({ actor: consumerActor })
                 });
             } else {
-                const lines = await MealPhaseHandler._applyWellFedEffect(consumerActor, itemSnapshot);
+                const { lines, rolls } = await MealPhaseHandler._applyWellFedEffect(consumerActor, itemSnapshot);
                 if (lines?.length) {
                     await ChatMessage.create({
                         content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>${consumerActor.name}</strong> eats <strong>${itemName}</strong>. Well Fed: ${lines.join("; ")}</p></div>`,
+                        rolls: rolls ?? [],
                         speaker: ChatMessage.getSpeaker({ actor: consumerActor })
                     });
                 }
@@ -860,27 +864,29 @@ export class MealPhaseHandler {
      * Well Fed exclusive slot: remove prior AE, resolve buffs, create replacement AE when needed.
      * @param {Actor} actor
      * @param {Item|object} item - Item document or plain item data (e.g. toObject snapshot)
-     * @returns {Promise<string[]>} Chat lines for buff summaries (empty if skipped)
+     * @returns {Promise<{ lines: string[], rolls: Roll[] }>} Chat lines and dice rolls for chat/DSN
      */
     static async _applyWellFedEffect(actor, item) {
         const flags = item?.flags?.[MODULE_ID] ?? {};
 
-        if (flags.wellFed !== true) return [];
+        if (flags.wellFed !== true) return { lines: [], rolls: [] };
         const buffRaw = flags.buff;
-        if (buffRaw === null) return [];
+        if (buffRaw === null) return { lines: [], rolls: [] };
 
         const buffs = Array.isArray(buffRaw) ? buffRaw : [buffRaw];
         await MealPhaseHandler._removeWellFedEffects(actor);
 
         const immediateLines = [];
+        const buffRolls = [];
         const deferredBuffs = [];
         for (const buff of buffs) {
             if (!buff?.type) continue;
             const duration = buff.duration ?? "untilLongRest";
             const forceImmediate = buff.type === "heal";
             if (duration === "immediate" || forceImmediate) {
-                const line = await MealPhaseHandler._resolveBuff(actor, buff, { chatDetail: true });
-                if (line) immediateLines.push(line);
+                const resolved = await MealPhaseHandler._resolveBuff(actor, buff, { chatDetail: true });
+                if (resolved?.summary) immediateLines.push(resolved.summary);
+                if (resolved?.roll) buffRolls.push(resolved.roll);
             } else {
                 deferredBuffs.push(buff);
             }
@@ -889,11 +895,14 @@ export class MealPhaseHandler {
         const aeChanges = [];
         const aeDescriptions = [];
         const aeDaeSpecials = [];
+        const deferredSummaries = [];
         for (const buff of deferredBuffs) {
             const built = await MealPhaseHandler._buffToActiveEffectPartsAsync(actor, buff);
             if (built.changes?.length) aeChanges.push(...built.changes);
             if (built.description) aeDescriptions.push(built.description);
             if (built.daeSpecialDuration?.length) aeDaeSpecials.push(...built.daeSpecialDuration);
+            if (built.summaryLine) deferredSummaries.push(built.summaryLine);
+            if (built.roll) buffRolls.push(built.roll);
         }
 
         const itemName = item.name ?? "Meal";
@@ -949,8 +958,7 @@ export class MealPhaseHandler {
             }
         }
 
-        const deferredSummaries = deferredBuffs.map(b => MealPhaseHandler._buffSummaryLabel(b)).filter(Boolean);
-        return [...immediateLines, ...deferredSummaries];
+        return { lines: [...immediateLines, ...deferredSummaries], rolls: buffRolls };
     }
 
     static async _removeWellFedEffects(actor) {
@@ -987,24 +995,25 @@ export class MealPhaseHandler {
     }
 
     /**
-     * @returns {Promise<string|null>}
+     * @returns {Promise<{ summary: string|null, roll: Roll|null }|null>}
      */
     static async _resolveBuff(actor, buff, { chatDetail = false } = {}) {
         if (!buff?.type) return null;
 
         switch (buff.type) {
             case "temp_hp": {
-                const total = await MealPhaseHandler._rollBuffFormula(actor, buff.formula);
+                const { total, roll } = await MealPhaseHandler._rollBuffFormula(actor, buff.formula);
                 if (total <= 0) return null;
                 if (game.system.id === "dnd5e") {
                     const cur = foundry.utils.getProperty(actor, "system.attributes.hp.temp") ?? 0;
                     const next = Math.max(cur, total);
                     await actor.update({ "system.attributes.hp.temp": next });
                 }
-                return chatDetail ? `temp HP +${total}` : `temp HP +${total}`;
+                const summary = chatDetail ? `temp HP +${total}` : `temp HP +${total}`;
+                return { summary, roll: MealPhaseHandler._rollForChat(roll) };
             }
             case "heal": {
-                const heal = await MealPhaseHandler._rollBuffFormula(actor, buff.formula);
+                const { total: heal, roll } = await MealPhaseHandler._rollBuffFormula(actor, buff.formula);
                 if (heal <= 0) return null;
                 if (game.system.id === "dnd5e") {
                     const hp = foundry.utils.getProperty(actor, "system.attributes.hp.value") ?? 0;
@@ -1012,7 +1021,8 @@ export class MealPhaseHandler {
                         ?? foundry.utils.getProperty(actor, "system.attributes.hp.max") ?? hp;
                     await actor.update({ "system.attributes.hp.value": Math.min(max, hp + heal) });
                 }
-                return chatDetail ? `healing +${heal}` : `healing +${heal}`;
+                const summary = chatDetail ? `healing +${heal}` : `healing +${heal}`;
+                return { summary, roll: MealPhaseHandler._rollForChat(roll) };
             }
             case "exhaustion_save": {
                 const dc = Number(buff.save?.dc ?? buff.formula ?? 15);
@@ -1042,7 +1052,8 @@ export class MealPhaseHandler {
                     rolls: [roll],
                     speaker: ChatMessage.getSpeaker({ actor })
                 });
-                return chatDetail ? `exhaustion save (${detail})` : `exhaustion save (${pass ? "pass" : "fail"})`;
+                const summary = chatDetail ? `exhaustion save (${detail})` : `exhaustion save (${pass ? "pass" : "fail"})`;
+                return { summary, roll };
             }
             case "hit_die": {
                 const raw = buff.formula ?? "1";
@@ -1058,7 +1069,8 @@ export class MealPhaseHandler {
                         speaker: ChatMessage.getSpeaker({ actor })
                     });
                 }
-                return chatDetail ? `hit die +${restored}` : `hit die +${restored}`;
+                const summary = chatDetail ? `hit die +${restored}` : `hit die +${restored}`;
+                return { summary, roll: null };
             }
             case "advantage":
             case "resistance":
@@ -1066,6 +1078,14 @@ export class MealPhaseHandler {
             default:
                 return null;
         }
+    }
+
+    /** Include roll on chat only when the formula contains dice (Dice So Nice, inline breakdown). */
+    static _rollForChat(roll) {
+        if (!roll) return null;
+        const formula = String(roll.formula ?? "");
+        if (roll.dice?.length > 0 || /(^|[^0-9])d\d+/i.test(formula)) return roll;
+        return null;
     }
 
     static _buffSummaryLabel(buff) {
@@ -1084,12 +1104,13 @@ export class MealPhaseHandler {
     }
 
     static async _rollBuffFormula(actor, formula) {
-        if (!formula) return 0;
+        if (!formula) return { total: 0, roll: null };
         try {
-            const roll = await new Roll(String(formula), actor.getRollData?.() ?? {}).evaluate();
-            return Math.floor(Number(roll.total) || 0);
+            const roll = new Roll(String(formula), actor.getRollData?.() ?? {});
+            await roll.evaluate();
+            return { total: Math.floor(Number(roll.total) || 0), roll };
         } catch {
-            return 0;
+            return { total: 0, roll: null };
         }
     }
 
@@ -1172,7 +1193,7 @@ export class MealPhaseHandler {
         if (!buff?.type) return { changes, description: "" };
 
         if (buff.type === "temp_hp") {
-            const total = await MealPhaseHandler._rollBuffFormula(actor, buff.formula);
+            const { total, roll } = await MealPhaseHandler._rollBuffFormula(actor, buff.formula);
             if (total <= 0) return { changes, description: "" };
             if (game.system.id === "dnd5e") {
                 changes.push({
@@ -1183,7 +1204,12 @@ export class MealPhaseHandler {
                 });
                 descriptions.push(`Temporary hit points: ${total}.`);
             }
-            return { changes, description: descriptions.join(" ") };
+            return {
+                changes,
+                description: descriptions.join(" "),
+                summaryLine: `temp HP +${total}`,
+                roll: MealPhaseHandler._rollForChat(roll)
+            };
         }
 
         if (buff.type === "advantage") {

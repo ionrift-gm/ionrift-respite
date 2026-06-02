@@ -7,11 +7,18 @@
 - The settings panel now carries an **Open Player Guide** button at the top of the Start here group, plus an inline shortcut on the Quick Setup card.
 
 ### Changed
+- When a rest event puts gear or coin at risk, the GM can roll and lock exactly which items go missing and how much coin is lifted right on the event card, the same as event damage and supply losses. While the rest is still being worked out, players only see that something will go missing, so the GM can re-roll the haul without spoiling it. The committed list of stolen gear and coin then appears in the rest conclusion, where the loss is final.
+- Training now runs as three separate sets in one rest. The player rolls each set themselves, filling a progress bar as they go. Every set landed earns 10 XP and a missed set still earns 3, anywhere from 9 to 30 XP in a rest. The rest summary shows a small bar marking which sets landed.
 - The Respite guide journal has been rewritten and trimmed. Five pages collapse to three: a short Player Quick Reference for the table, a single GM Reference that consolidates the old settings and terrain pages, and a Cooking page that no longer leaks dev-only authoring notes.
 - Comfort, terrain, and phase indicators now use the theme-styled tooltip on hover across every rest dialog. Players hovering a comfort badge now see what the tier costs them; the rest window's phase dots name each phase. Previously several dialogs left these badges with no hover at all.
 - The Wiki link in module settings now points at the Respite wiki directly.
 
 ### Fixed
+- Theft events no longer pilfer ammunition. A pickpocket grabbing arrows or sling bullets never read right, so quivers and ammo stacks are now off the table for theft (a full disaster can still scatter them). Item selection also no longer fixates on the single cheapest stack in a pack, so the loot taken is more believable.
+- A partial success on a rest event now applies its own lighter consequences instead of the full failure result, and a passed event check no longer risks any resource or item loss.
+- Two rest events that are explicitly not fights, Light Fingers (urban) and Scorpion Nest (desert), no longer open the combat tracker. Both are spot-and-react hazards, so they resolve as complications; a GM who wants to escalate to a fight can still start one manually.
+- GM guidance on rest events now reads as plain instructions. Several entries surfaced internal rule names in the text the GM was shown.
+- Training XP is now actually awarded. The XP from a training rest is written to the character sheet, and the diminishing-returns penalty for training on consecutive rests reduces that award as intended. Previously the tally was shown but never applied.
 - Travel forage and hunt no longer grant duplicate loot after a browser refresh or a repeated roll. Rewards for a given character, day, and activity are recorded once per rest.
 - After you submit a travel activity or see your forage or hunt results, refreshing the browser no longer resets the travel panel to an empty choice. Rejoin and world state restore your declaration, roll status, and debrief.
 - Cooking at a station locks in the activity when the craft succeeds, not only when the dialog closes. Refreshing after a cook no longer leaves cooking open for another attempt on the same recipe.

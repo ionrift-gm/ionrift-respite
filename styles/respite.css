@@ -1922,10 +1922,16 @@
     border-radius: 6px;
 }
 
-.respite-action-bar .btn-primary:disabled {
-    opacity: 0.45;
+.respite-action-bar .btn-primary:disabled,
+.respite-action-bar .btn-primary.disabled {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: rgba(200, 195, 220, 0.4) !important;
     cursor: not-allowed;
-    filter: grayscale(0.25);
+    box-shadow: none !important;
+    border: 1px dashed rgba(200, 195, 220, 0.15) !important;
+    opacity: 1;
+    filter: none;
+    transform: none !important;
 }
 
 .respite-action-bar .btn-primary.btn-dimmed {
@@ -3704,6 +3710,10 @@ button.is-processing {
     animation: pulse-dice 1.2s ease-in-out infinite;
 }
 .roster-roll-done { color: #2ecc71 !important; }
+.roster-roll-force-pass { color: #2ecc71 !important; }
+.roster-roll-force-fail { color: #e74c3c !important; }
+.roster-roll-adv { color: #2ecc71 !important; margin-left: 1px; }
+.roster-roll-dis { color: #e74c3c !important; margin-left: 1px; }
 @keyframes pulse-dice {
     0%, 100% { opacity: 0.4; transform: scale(1); }
     50% { opacity: 1; transform: scale(1.2); }
@@ -4482,6 +4492,43 @@ button.is-processing {
 
 /* ---- Event Panel ---- */
 
+.events-phase-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    position: relative;
+}
+
+.events-phase-body.is-commit-pending .respite-events,
+.events-phase-body.is-commit-pending .respite-action-bar {
+    pointer-events: none;
+    user-select: none;
+}
+
+.events-commit-shield {
+    position: absolute;
+    inset: 0;
+    z-index: 25;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 1rem;
+    text-align: center;
+    background: rgba(12, 10, 18, 0.78);
+    pointer-events: auto;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.events-commit-shield .fa-spinner {
+    font-size: 1.35rem;
+    color: rgba(140, 190, 255, 0.9);
+}
+
 .respite-events {
     padding: 0.6rem 0.75rem;
     flex: 1;
@@ -4742,6 +4789,46 @@ button.is-processing {
 }
 .check-avatar-mode.adv { background: #6ee78e; }
 .check-avatar-mode.dis { background: #f37a7a; }
+.check-avatar-mode.force-pass { background: #7fd4ff; }
+.check-avatar-mode.force-fail { background: #c79bff; }
+
+/* ---- Disaster tree roll grid: portrait cycle + force toggle ---- */
+
+.tree-roll-avatars {
+    margin-top: 0.4rem;
+}
+.tree-roll-avatar-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+}
+.check-avatar.forced-pass {
+    border-color: rgba(127, 212, 255, 0.85);
+    box-shadow: 0 0 0 1px rgba(127, 212, 255, 0.55), 0 0 6px rgba(127, 212, 255, 0.35);
+}
+.check-avatar.forced-fail {
+    border-color: rgba(199, 155, 255, 0.85);
+    box-shadow: 0 0 0 1px rgba(199, 155, 255, 0.55), 0 0 6px rgba(199, 155, 255, 0.35);
+}
+.tree-roll-for-player {
+    width: 1.3rem;
+    height: 1.3rem;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(0, 0, 0, 0.35);
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.6rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+
+.tree-roll-for-player:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.9);
+}
 
 /* ---- Event Card Expanded Details ---- */
 
@@ -4752,11 +4839,6 @@ button.is-processing {
     gap: 0.5rem;
     margin-bottom: 0.25rem;
 }
-/* Resolved event collapse */
-.respite-event-card.resolved-event { cursor: pointer; }
-.respite-event-card.resolved-event.collapsed > *:not(.event-header) { display: none; }
-.respite-event-card.resolved-event.collapsed { padding: 0.5rem 0.6rem; margin-bottom: 0.25rem; }
-.respite-event-card.resolved-event.collapsed .event-header { margin-bottom: 0; }
 .event-verdict-inline {
     font-size: 0.7rem;
     font-weight: 600;
@@ -4767,13 +4849,6 @@ button.is-processing {
 .event-verdict-inline.pass { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
 .event-verdict-inline.partial { background: rgba(241, 196, 15, 0.2); color: #f1c40f; }
 .event-verdict-inline.fail { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
-.event-expand-toggle {
-    font-size: 0.6rem;
-    opacity: 0.4;
-    transition: transform 0.2s ease;
-    margin-left: auto;
-}
-.respite-event-card.resolved-event:not(.collapsed) .event-expand-toggle { transform: rotate(180deg); }
 
 .respite-event-card .event-name i {
     margin-right: 0.35rem;
@@ -4988,7 +5063,7 @@ button.is-processing {
 }
 .camp-roll-done { color: #2ecc71; font-size: 0.85rem; }
 
-/* Disaster choice card */
+/* Disaster choice card (outer wrapper) */
 .disaster-choice-card { border-left-color: #e74c3c !important; }
 .disaster-guidance {
     font-size: 0.72rem;
@@ -4996,41 +5071,139 @@ button.is-processing {
     color: rgba(255, 255, 255, 0.55);
     margin: 0.4rem 0 0.1rem;
 }
-.disaster-buttons {
+
+/* Disaster option cards grid */
+.disaster-options {
+    display: flex;
+    gap: 0.65rem;
+    margin-top: 0.75rem;
+}
+
+.disaster-option-card {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-}
-.btn-disaster {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    padding: 0.7rem 0.75rem 0.6rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.04);
-    color: rgba(255, 255, 255, 0.85);
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: left;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    min-width: 0;
 }
-.btn-disaster:hover { background: rgba(255, 255, 255, 0.08); }
-.btn-disaster.tree { border-color: rgba(231, 76, 60, 0.4); }
-.btn-disaster.tree:hover { background: rgba(231, 76, 60, 0.15); }
-.btn-disaster.tree > i { color: #e74c3c; font-size: 1.1rem; }
-.btn-disaster.encounter { border-color: rgba(220, 100, 50, 0.4); }
-.btn-disaster.encounter:hover { background: rgba(220, 100, 50, 0.15); }
-.btn-disaster.encounter > i { color: #dc6432; font-size: 1.1rem; }
-.btn-disaster.normals { border-color: rgba(245, 158, 11, 0.4); }
-.btn-disaster.normals:hover { background: rgba(245, 158, 11, 0.15); }
-.btn-disaster.normals > i { color: #f59e0b; font-size: 1.1rem; }
-.disaster-btn-content { display: flex; flex-direction: column; }
-.disaster-btn-content strong { font-size: 0.85rem; }
-.disaster-preview { font-size: 0.7rem; color: rgba(255, 255, 255, 0.45); font-style: italic; }
-.disaster-dismiss { text-align: center; margin-top: 0.3rem; }
-.disaster-dismiss a { font-size: 0.7rem; color: rgba(255, 255, 255, 0.3); text-decoration: none; }
-.disaster-dismiss a:hover { color: rgba(255, 255, 255, 0.6); text-decoration: underline; }
+
+/* Tree (disaster) card: deep red */
+.disaster-option-card.tree {
+    background: linear-gradient(
+        170deg,
+        rgba(140, 30, 30, 0.35) 0%,
+        rgba(80, 15, 15, 0.25) 100%
+    );
+    border-color: rgba(200, 50, 50, 0.35);
+}
+.disaster-option-card.tree:hover {
+    border-color: rgba(220, 70, 60, 0.55);
+    box-shadow: 0 0 12px rgba(220, 60, 50, 0.12);
+}
+
+/* Encounter card: burnt orange */
+.disaster-option-card.encounter {
+    background: linear-gradient(
+        170deg,
+        rgba(160, 80, 20, 0.3) 0%,
+        rgba(90, 45, 10, 0.22) 100%
+    );
+    border-color: rgba(200, 110, 40, 0.35);
+}
+.disaster-option-card.encounter:hover {
+    border-color: rgba(220, 130, 50, 0.55);
+    box-shadow: 0 0 12px rgba(220, 120, 40, 0.12);
+}
+
+/* Normals (complications) card: amber/gold */
+.disaster-option-card.normals {
+    background: linear-gradient(
+        170deg,
+        rgba(160, 130, 20, 0.28) 0%,
+        rgba(90, 70, 10, 0.2) 100%
+    );
+    border-color: rgba(200, 170, 30, 0.35);
+}
+.disaster-option-card.normals:hover {
+    border-color: rgba(220, 190, 40, 0.55);
+    box-shadow: 0 0 12px rgba(220, 180, 30, 0.12);
+}
+
+/* "Option N" label */
+.disaster-option-label {
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.45rem;
+}
+.disaster-option-card.tree .disaster-option-label { color: rgba(255, 110, 90, 0.75); }
+.disaster-option-card.encounter .disaster-option-label { color: rgba(230, 160, 80, 0.75); }
+.disaster-option-card.normals .disaster-option-label { color: rgba(230, 200, 60, 0.75); }
+
+/* Category icon */
+.disaster-option-icon {
+    font-size: 1.4rem;
+    margin-bottom: 0.35rem;
+}
+.disaster-option-card.tree .disaster-option-icon { color: rgba(230, 75, 60, 0.85); }
+.disaster-option-card.encounter .disaster-option-icon { color: rgba(220, 120, 50, 0.85); }
+.disaster-option-card.normals .disaster-option-icon { color: rgba(245, 180, 30, 0.85); }
+
+/* Title + preview */
+.disaster-option-title {
+    display: block;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.92);
+    margin-bottom: 0.2rem;
+}
+.disaster-option-preview {
+    display: block;
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-style: italic;
+    flex: 1;
+    min-height: 1rem;
+}
+
+/* Select button */
+.disaster-option-select {
+    margin-top: 0.6rem;
+    padding: 0.35rem 0;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    width: 100%;
+}
+.disaster-option-select:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+.disaster-option-card.tree .disaster-option-select:hover {
+    background: rgba(220, 60, 50, 0.18);
+    border-color: rgba(220, 70, 60, 0.4);
+}
+.disaster-option-card.encounter .disaster-option-select:hover {
+    background: rgba(200, 110, 40, 0.18);
+    border-color: rgba(220, 130, 50, 0.4);
+}
+.disaster-option-card.normals .disaster-option-select:hover {
+    background: rgba(200, 170, 30, 0.18);
+    border-color: rgba(220, 190, 40, 0.4);
+}
+
+/* Dismiss link */
+.disaster-dismiss { margin-top: 0.6rem; }
+.disaster-dismiss .btn-override-link { font-size: 0.7rem; }
 
 /* Camp roll effect feedback (player side) */
 .camp-roll-effect {
@@ -5165,6 +5338,187 @@ button.is-processing {
     text-align: center;
 }
 
+/* ---- Consolidated resolution block ----
+   One bordered card holding the verdict, narrative, and GM-only consequences,
+   so a failed check reads as a single unit instead of three stacked banners. */
+.event-resolution {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 6px;
+    border-left: 3px solid;
+}
+.event-resolution.pass {
+    background: rgba(46, 204, 113, 0.1);
+    border-left-color: #2ecc71;
+}
+.event-resolution.partial {
+    background: rgba(241, 196, 15, 0.1);
+    border-left-color: #f1c40f;
+}
+.event-resolution.fail {
+    background: rgba(231, 76, 60, 0.1);
+    border-left-color: #e74c3c;
+}
+.event-resolution-verdict {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.event-resolution.pass .event-resolution-verdict { color: #2ecc71; }
+.event-resolution.partial .event-resolution-verdict { color: #f1c40f; }
+.event-resolution.fail .event-resolution-verdict { color: #e74c3c; }
+.event-resolution-narrative {
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+/* Each consequence is its own full-width row beneath the narrative, so a long
+   description can never crush the controls against the right edge. */
+.event-effects {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding-top: 0.4rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+.event-effects .event-effect {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin: 0;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.72);
+    background: rgba(0, 0, 0, 0.22);
+    border-radius: 3px;
+}
+.event-effects .event-effect.locked {
+    background: rgba(46, 204, 113, 0.08);
+}
+/* Head row: label on the left, the lock/reroll control pinned to the right. */
+.event-effects .event-effect .effect-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.event-effects .event-effect .effect-label {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.event-effects .event-effect .effect-label i {
+    margin-right: 0.25rem;
+    width: auto;
+    opacity: 0.7;
+}
+
+/* Locked result: the rolled outcome, one line per target / resource / item,
+   right-aligned beneath the label and held for the far side of the rest. */
+.event-effects .event-effect .effect-result {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.1rem;
+    padding-left: 1.1rem;
+    text-align: right;
+    color: #2ecc71;
+    font-weight: 600;
+}
+.event-effects .event-effect .effect-result-line {
+    font-size: 0.7rem;
+}
+.event-effects .event-effect .effect-result-detail {
+    color: rgba(46, 204, 113, 0.7);
+    font-weight: 400;
+}
+.event-effects .event-effect .effect-result-foot {
+    margin-top: 0.05rem;
+    font-size: 0.62rem;
+    font-weight: 400;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* Roll & lock / Lock loss buttons: the GM resolves the consequence here. */
+.btn-lock-consequence {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #fff;
+    background: rgba(155, 89, 182, 0.85);
+    border: 1px solid rgba(155, 89, 182, 0.6);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.btn-lock-consequence:hover {
+    background: rgba(155, 89, 182, 1);
+}
+.btn-lock-consequence i {
+    font-size: 0.65rem;
+}
+
+.effect-reroll {
+    flex: 0 0 auto;
+    padding: 0.15rem 0.35rem;
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.55);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+.effect-reroll:hover {
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+/* Player-facing forewarning of locked consequences: what lands after the rest,
+   phrased without GM mechanics. Players see only their own hits and party loss. */
+.event-player-consequences {
+    margin-top: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    background: rgba(231, 76, 60, 0.08);
+    border: 1px solid rgba(231, 76, 60, 0.22);
+    border-left: 3px solid rgba(231, 76, 60, 0.6);
+    border-radius: 4px;
+}
+.event-player-consequences-head {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(231, 76, 60, 0.95);
+    margin-bottom: 0.3rem;
+}
+.event-player-consequence {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.82);
+}
+.event-player-consequence i {
+    margin-top: 0.15rem;
+    font-size: 0.7rem;
+    color: rgba(231, 76, 60, 0.85);
+}
+
 .event-encounter-hints {
     margin-top: 0.5rem;
     padding: 0.5rem;
@@ -5218,7 +5572,8 @@ button.is-processing {
     background: rgba(155, 89, 182, 0.1);
     border-left: 3px solid rgba(155, 89, 182, 0.5);
     border-radius: 0 4px 4px 0;
-    padding: 0.5rem 0.6rem;
+    padding: 0.4rem 0.55rem;
+    margin: 0.3rem 0;
     flex-direction: column;
     align-items: stretch;
     gap: 0;
@@ -5811,6 +6166,7 @@ button.is-processing {
 .outcome-effect-line.outcome-gain i { color: #2ecc71; }
 .outcome-effect-line.outcome-loss { color: #e74c3c; }
 .outcome-effect-line.outcome-loss i { color: #e74c3c; }
+.outcome-effect-line .loss-detail { color: rgba(231, 76, 60, 0.65); font-weight: 400; }
 
 /* Partial recovery: when HP or HD didn't reach max */
 .outcome-effect-line.outcome-partial { color: rgba(251, 191, 36, 0.9); }
@@ -5956,13 +6312,15 @@ button.is-processing {
 }
 
 .respite-action-bar .btn-primary {
-    background: var(--ionrift-accent, #9b59b6);
-    color: white;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.85) 0%, rgba(109, 40, 217, 0.9) 100%);
+    color: rgba(255, 255, 255, 0.95);
     border: none;
+    box-shadow: 0 0 12px rgba(139, 92, 246, 0.3);
 }
 
-.respite-action-bar .btn-primary:hover {
-    background: var(--ionrift-accent-hover, #8e44ad);
+.respite-action-bar .btn-primary:hover:not(:disabled):not(.disabled) {
+    background: linear-gradient(135deg, rgba(167, 139, 250, 0.9) 0%, rgba(139, 92, 246, 0.95) 100%);
+    box-shadow: 0 0 18px rgba(139, 92, 246, 0.45);
     transform: translateY(-1px);
 }
 
@@ -10745,21 +11103,29 @@ button.is-processing {
     font-size: 0.68rem;
 }
 
-/* ── TotM Identify Panel ──────────────────────────────────── */
+/* ── Workbench Identify Panel (long rest, short rest) ─────── */
 
-.totm-identify-panel {
+.workbench-identify-panel {
     padding: 0.5rem;
+    position: relative;
 }
 
-.totm-identify-panel .station-workbench-identify-embed {
+.workbench-identify-panel .wb-ident-hint {
+    font-size: 0.68rem;
+    line-height: 1.4;
+    color: rgba(200, 210, 255, 0.65);
+    margin: 0 0 0.4rem;
+}
+
+.workbench-identify-panel .station-workbench-identify-embed {
     padding: 0.35rem;
 }
 
-.totm-identify-panel .wb-ident-drop-columns {
+.workbench-identify-panel .wb-ident-drop-columns {
     gap: 0.5rem;
 }
 
-.totm-identify-panel .identify-caster-advisory {
+.workbench-identify-panel .identify-caster-advisory {
     font-size: 0.65rem;
     color: rgba(196, 181, 253, 0.75);
     padding: 0.3rem 0.45rem;
@@ -10772,7 +11138,7 @@ button.is-processing {
     gap: 0.35rem;
 }
 
-.totm-identify-panel .wb-ident-footer-toolbar {
+.workbench-identify-panel .wb-ident-footer-toolbar {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -10781,7 +11147,7 @@ button.is-processing {
     border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.totm-identify-panel .btn-detect-magic {
+.workbench-identify-panel .btn-detect-magic {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
@@ -10797,28 +11163,28 @@ button.is-processing {
     box-shadow: none !important;
 }
 
-.totm-identify-panel .btn-detect-magic:hover:not(:disabled) {
+.workbench-identify-panel .btn-detect-magic:hover:not(:disabled) {
     background: rgba(196, 181, 253, 0.12);
     border-color: rgba(196, 181, 253, 0.4);
 }
 
-.totm-identify-panel .btn-detect-magic:disabled {
+.workbench-identify-panel .btn-detect-magic:disabled {
     opacity: 0.35;
     cursor: not-allowed;
 }
 
-.totm-identify-panel .btn-detect-magic.is-active {
+.workbench-identify-panel .btn-detect-magic.is-active {
     background: rgba(196, 181, 253, 0.15);
     border-color: rgba(196, 181, 253, 0.5);
     color: rgba(196, 181, 253, 1);
 }
 
-.totm-identify-panel .station-meal-submit-btn {
+.workbench-identify-panel .station-meal-submit-btn {
     flex: 1;
 }
 
 /* Reuse workbench CSS from station dialog within TotM panel */
-.totm-identify-panel .meal-drop-zone {
+.workbench-identify-panel .meal-drop-zone {
     width: 72px;
     height: 72px;
     border-radius: 8px;
@@ -10829,31 +11195,43 @@ button.is-processing {
     cursor: pointer;
 }
 
-.totm-identify-panel .gear-focus-drop-zone {
+.workbench-identify-panel .gear-focus-drop-zone {
     border: 2px dashed rgba(196, 181, 253, 0.35);
     background: rgba(196, 181, 253, 0.04);
 }
 
-.totm-identify-panel .gear-focus-drop-zone.filled {
+.workbench-identify-panel .gear-focus-drop-zone.filled {
     border-style: solid;
     border-color: rgba(196, 181, 253, 0.55);
     background: rgba(196, 181, 253, 0.1);
     box-shadow: 0 0 14px rgba(196, 181, 253, 0.18);
 }
 
-.totm-identify-panel .potion-taste-drop-zone {
+.workbench-identify-panel .gear-focus-drop-zone.drop-hover {
+    border-color: rgba(196, 181, 253, 0.85);
+    background: rgba(196, 181, 253, 0.14);
+    transform: scale(1.06);
+}
+
+.workbench-identify-panel .potion-taste-drop-zone {
     border: 2px dashed rgba(100, 200, 150, 0.35);
     background: rgba(100, 200, 150, 0.04);
 }
 
-.totm-identify-panel .potion-taste-drop-zone.filled {
+.workbench-identify-panel .potion-taste-drop-zone.filled {
     border-style: solid;
     border-color: rgba(100, 200, 150, 0.55);
     background: rgba(100, 200, 150, 0.1);
     box-shadow: 0 0 14px rgba(100, 200, 150, 0.18);
 }
 
-.totm-identify-panel .drop-zone-silhouette {
+.workbench-identify-panel .potion-taste-drop-zone.drop-hover {
+    border-color: rgba(130, 230, 170, 0.9);
+    background: rgba(100, 200, 150, 0.14);
+    transform: scale(1.06);
+}
+
+.workbench-identify-panel .drop-zone-silhouette {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -10861,31 +11239,31 @@ button.is-processing {
     height: 100%;
 }
 
-.totm-identify-panel .drop-zone-gear-sil {
+.workbench-identify-panel .drop-zone-gear-sil {
     font-size: 1.45rem;
     color: rgba(196, 181, 253, 0.22);
 }
 
-.totm-identify-panel .drop-zone-potion-sil {
+.workbench-identify-panel .drop-zone-potion-sil {
     font-size: 1.45rem;
     color: rgba(100, 200, 150, 0.22);
 }
 
-.totm-identify-panel .drop-zone-item-icon {
+.workbench-identify-panel .drop-zone-item-icon {
     width: 48px;
     height: 48px;
     object-fit: contain;
     border-radius: 4px;
 }
 
-.totm-identify-panel .wb-ident-gear-slot-wrap,
-.totm-identify-panel .wb-ident-potion-slot-wrap {
+.workbench-identify-panel .wb-ident-gear-slot-wrap,
+.workbench-identify-panel .wb-ident-potion-slot-wrap {
     display: flex;
     justify-content: center;
     margin-bottom: 0.15rem;
 }
 
-.totm-identify-panel .panel-label {
+.workbench-identify-panel .panel-label {
     font-size: 0.65rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -10895,13 +11273,13 @@ button.is-processing {
     text-align: center;
 }
 
-.totm-identify-panel .wb-ident-exhausted {
+.workbench-identify-panel .wb-ident-exhausted {
     opacity: 0.45;
     pointer-events: none;
     filter: grayscale(60%);
 }
 
-.totm-identify-panel .wb-ident-used-badge {
+.workbench-identify-panel .wb-ident-used-badge {
     font-size: 0.6em;
     font-weight: 600;
     letter-spacing: 0.06em;
@@ -10910,14 +11288,14 @@ button.is-processing {
     text-transform: uppercase;
 }
 
-.totm-identify-panel .wb-ident-scroll {
+.workbench-identify-panel .wb-ident-scroll {
     max-height: 320px;
     overflow-y: auto;
 }
 
-/* ── TotM Identify Acknowledgement Overlay ─────────────── */
+/* ── Workbench Identify Acknowledgement Overlay ─────────── */
 
-.totm-identify-panel .wb-ident-ack-overlay {
+.workbench-identify-panel .wb-ident-ack-overlay {
     position: absolute;
     inset: 0;
     z-index: 20;
@@ -10929,7 +11307,7 @@ button.is-processing {
     border-radius: 8px;
 }
 
-.totm-identify-panel .wb-ident-ack-card {
+.workbench-identify-panel .wb-ident-ack-card {
     background: rgba(30, 22, 44, 0.92);
     border: 1px solid rgba(196, 181, 253, 0.25);
     border-radius: 8px;
@@ -10939,20 +11317,20 @@ button.is-processing {
     text-align: center;
 }
 
-.totm-identify-panel .wb-ident-ack-title {
+.workbench-identify-panel .wb-ident-ack-title {
     font-size: 0.85rem;
     font-weight: 600;
     color: rgba(196, 181, 253, 0.95);
     margin-bottom: 0.25rem;
 }
 
-.totm-identify-panel .wb-ident-ack-lead {
+.workbench-identify-panel .wb-ident-ack-lead {
     font-size: 0.72rem;
     color: rgba(255, 255, 255, 0.55);
     margin-bottom: 0.5rem;
 }
 
-.totm-identify-panel .wb-ident-ack-row {
+.workbench-identify-panel .wb-ident-ack-row {
     display: flex;
     align-items: center;
     gap: 0.45rem;
@@ -10961,11 +11339,11 @@ button.is-processing {
     text-align: left;
 }
 
-.totm-identify-panel .wb-ident-ack-row:first-of-type {
+.workbench-identify-panel .wb-ident-ack-row:first-of-type {
     border-top: none;
 }
 
-.totm-identify-panel .wb-ident-ack-img {
+.workbench-identify-panel .wb-ident-ack-img {
     width: 36px;
     height: 36px;
     object-fit: contain;
@@ -10974,26 +11352,21 @@ button.is-processing {
     flex-shrink: 0;
 }
 
-.totm-identify-panel .wb-ident-ack-meta {
+.workbench-identify-panel .wb-ident-ack-meta {
     display: flex;
     flex-direction: column;
     gap: 0.1rem;
 }
 
-.totm-identify-panel .wb-ident-ack-name {
+.workbench-identify-panel .wb-ident-ack-name {
     font-size: 0.82rem;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.92);
 }
 
-.totm-identify-panel .wb-ident-ack-btn {
+.workbench-identify-panel .wb-ident-ack-btn {
     margin-top: 0.5rem;
     width: 100%;
-}
-
-/* Ensure the panel is positioned for the absolute overlay */
-.totm-identify-panel {
-    position: relative;
 }
 
 
@@ -11681,15 +12054,29 @@ button.is-processing {
 .totm-footer-proceed {
     padding: 0.35rem 0.85rem;
     font-size: 0.75rem;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.85) 0%, rgba(109, 40, 217, 0.9) 100%) !important;
+    color: rgba(255, 255, 255, 0.95) !important;
+    border: none !important;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 0 12px rgba(139, 92, 246, 0.3);
+    transition: all 0.2s ease;
+}
+
+.totm-footer-proceed:hover:not(:disabled):not(.disabled) {
+    background: linear-gradient(135deg, rgba(167, 139, 250, 0.9) 0%, rgba(139, 92, 246, 0.95) 100%) !important;
+    box-shadow: 0 0 18px rgba(139, 92, 246, 0.45);
+    transform: translateY(-1px);
 }
 
 .totm-footer-proceed.disabled,
 .totm-footer-proceed:disabled {
-    background: rgba(255, 255, 255, 0.06);
-    color: rgba(200, 195, 220, 0.4);
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: rgba(200, 195, 220, 0.4) !important;
     cursor: not-allowed;
-    box-shadow: none;
-    border: 1px dashed rgba(200, 195, 220, 0.15);
+    box-shadow: none !important;
+    border: 1px dashed rgba(200, 195, 220, 0.15) !important;
+    transform: none !important;
 }
 
 .totm-footer-waiting {
@@ -16335,7 +16722,6 @@ button.is-processing {
 }
 
 .sr-workbench-body { padding: 0.35rem 0.4rem; }
-.sr-wb-hint { font-size: 0.72rem; line-height: 1.4; color: rgba(200, 210, 255, 0.65); margin: 0 0 0.5rem; }
 
 .short-rest-container .sr-roster-strip .roster-chip.sr-wb-roster-pickable {
     cursor: pointer;
@@ -16348,281 +16734,6 @@ button.is-processing {
     border-radius: 10px;
 }
 
-/* Short rest workbench: match station dialog identify embed (circles, ack, chips) */
-.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed {
-    position: relative;
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-ack-overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 6;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.35rem;
-    background: rgba(8, 10, 18, 0.72);
-    backdrop-filter: blur(4px);
-    border-radius: 6px;
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-ack-card {
-    position: relative;
-    width: 100%;
-    max-width: 280px;
-    padding: 0.55rem 0.6rem 0.5rem;
-    border-radius: 10px;
-    border: 1px solid rgba(196, 181, 253, 0.35);
-    background: linear-gradient(165deg, rgba(40, 36, 58, 0.95), rgba(18, 20, 32, 0.98));
-    box-shadow: 0 0 24px rgba(99, 102, 241, 0.15), inset 0 0 40px rgba(255, 255, 255, 0.03);
-    overflow: hidden;
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-ack-fx::before {
-    content: "";
-    position: absolute;
-    inset: -25%;
-    pointer-events: none;
-    background:
-        radial-gradient(circle at 18% 22%, rgba(180, 160, 255, 0.22) 0%, transparent 42%),
-        radial-gradient(circle at 82% 78%, rgba(120, 210, 190, 0.18) 0%, transparent 38%),
-        radial-gradient(circle at 50% 8%, rgba(255, 220, 160, 0.12) 0%, transparent 30%);
-    animation: wb-ident-ack-shimmer 1.4s ease-in-out infinite;
-    opacity: 0.85;
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-ack-title {
-    position: relative;
-    z-index: 1;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: rgba(230, 224, 255, 0.95);
-    margin: 0 0 0.2rem;
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-ack-title i {
-    margin-right: 0.35rem;
-    color: rgba(196, 181, 253, 0.9);
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-ack-lead {
-    position: relative;
-    z-index: 1;
-    font-size: 0.58rem;
-    color: rgba(255, 255, 255, 0.45);
-    margin: 0 0 0.4rem;
-    line-height: 1.35;
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-ack-row {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    padding: 0.25rem 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-ack-row:first-of-type {
-    border-top: none;
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-ack-img {
-    width: 36px;
-    height: 36px;
-    object-fit: contain;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    flex-shrink: 0;
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-ack-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
-    min-width: 0;
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-ack-name {
-    font-size: 0.68rem;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.92);
-    word-break: break-word;
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-ack-btn {
-    position: relative;
-    z-index: 1;
-    width: 100%;
-    margin-top: 0.45rem;
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-ack-btn:disabled {
-    opacity: 0.45;
-    cursor: wait;
-}
-
-.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-hint {
-    font-size: 0.62rem;
-    color: rgba(255, 255, 255, 0.52);
-    margin: 0 0 0.35rem;
-    line-height: 1.35;
-}
-
-.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-drop-columns {
-    gap: 0.35rem;
-}
-
-.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-drop-columns .meal-panel {
-    min-width: 0;
-    padding-bottom: 0.65rem;
-}
-
-.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-gear-panel .panel-label {
-    color: rgba(196, 181, 253, 0.65);
-}
-
-.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-exhausted {
-    opacity: 0.45;
-    pointer-events: none;
-    filter: grayscale(60%);
-}
-
-.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-used-badge {
-    font-size: 0.65em;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    color: var(--color-text-dark-secondary, #888);
-    margin-left: 0.4rem;
-    text-transform: uppercase;
-}
-
-.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-zone-blocked {
-    cursor: not-allowed;
-}
-
-.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-potion-panel .panel-label {
-    color: rgba(130, 220, 160, 0.65);
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-gear-slot-wrap,
-.short-rest-container .sr-workbench-identify-host .wb-ident-potion-slot-wrap {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 0.35rem;
-    padding-bottom: 0.15rem;
-}
-
-.short-rest-container .sr-workbench-identify-host .gear-focus-drop-zone {
-    width: 72px;
-    height: 72px;
-    border: 2px dashed rgba(196, 181, 253, 0.35);
-    background: rgba(196, 181, 253, 0.04);
-}
-
-.short-rest-container .sr-workbench-identify-host .gear-focus-drop-zone.filled {
-    border-style: solid;
-    border-color: rgba(196, 181, 253, 0.55);
-    background: rgba(196, 181, 253, 0.1);
-    box-shadow: 0 0 14px rgba(196, 181, 253, 0.18);
-}
-
-.short-rest-container .sr-workbench-identify-host .gear-focus-drop-zone.drop-hover {
-    border-color: rgba(196, 181, 253, 0.85);
-    background: rgba(196, 181, 253, 0.14);
-    transform: scale(1.06);
-}
-
-.short-rest-container .sr-workbench-identify-host .potion-taste-drop-zone {
-    width: 72px;
-    height: 72px;
-    border: 2px dashed rgba(100, 200, 150, 0.35);
-    background: rgba(100, 200, 150, 0.04);
-}
-
-.short-rest-container .sr-workbench-identify-host .potion-taste-drop-zone.filled {
-    border-style: solid;
-    border-color: rgba(100, 200, 150, 0.55);
-    background: rgba(100, 200, 150, 0.1);
-    box-shadow: 0 0 14px rgba(100, 200, 150, 0.18);
-}
-
-.short-rest-container .sr-workbench-identify-host .potion-taste-drop-zone.drop-hover {
-    border-color: rgba(130, 230, 170, 0.9);
-    background: rgba(100, 200, 150, 0.14);
-    transform: scale(1.06);
-}
-
-.short-rest-container .sr-workbench-identify-host .drop-zone-gear-sil {
-    font-size: 1.45rem;
-    color: rgba(196, 181, 253, 0.22);
-}
-
-.short-rest-container .sr-workbench-identify-host .drop-zone-potion-sil {
-    font-size: 1.45rem;
-    color: rgba(100, 200, 150, 0.22);
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-potion-count {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: rgba(150, 240, 190, 0.95);
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-chip-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-    justify-content: center;
-    margin: 0.15rem 0 0.25rem;
-    max-width: 100%;
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-chip-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.12rem 0.35rem 0.12rem 0.2rem;
-    border-radius: 8px;
-    font-size: 0.58rem;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(0, 0, 0, 0.25);
-    color: rgba(255, 255, 255, 0.78);
-    cursor: pointer;
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-chip-btn:hover {
-    border-color: rgba(196, 181, 253, 0.35);
-    background: rgba(99, 102, 241, 0.12);
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-chip-img {
-    width: 16px;
-    height: 16px;
-    object-fit: contain;
-    border-radius: 2px;
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-chip-x {
-    font-size: 0.55rem;
-    opacity: 0.55;
-    margin-left: 0.05rem;
-}
-
-.short-rest-container .sr-workbench-identify-host .station-workbench-identify-embed .wb-ident-scroll {
-    max-height: 320px;
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-submit-row {
-    margin-top: 0.35rem;
-    padding-top: 0.3rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.short-rest-container .sr-workbench-identify-host .wb-ident-submit-row .station-meal-submit-btn:disabled {
     opacity: 0.35;
     cursor: not-allowed;
 }
@@ -16643,6 +16754,16 @@ button.is-processing {
     padding: 0 0.5rem;
 }
 
+/* Tree event title: trim the header box so the roll button clears the fold */
+.respite-event-card.tree-active {
+    padding: 0.4rem 0.65rem;
+    margin-bottom: 0.25rem;
+}
+.respite-event-card.tree-active .event-name {
+    font-size: 1.1rem;
+    margin-bottom: 0;
+}
+
 /* Fix 2: scrollable events area */
 .respite-events {
     overflow-y: auto;
@@ -16655,74 +16776,6 @@ button.is-processing {
     grid-template-columns: 1fr 1fr;
     gap: 0.5rem;
     margin-top: 0.4rem;
-}
-
-.btn-tree-choice {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.1rem;
-    min-height: 5rem;
-    padding: 0.5rem 0.6rem;
-    background: rgba(0, 0, 0, 0.35);
-    border: 1px solid rgba(220, 80, 50, 0.2);
-    border-top: 2px solid rgba(220, 80, 50, 0.6);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: left;
-    color: rgba(255, 255, 255, 0.85);
-    overflow: hidden;
-}
-
-.btn-tree-choice:hover {
-    background: rgba(0, 0, 0, 0.45);
-    border-color: rgba(220, 80, 50, 0.4);
-    border-top-color: rgba(220, 80, 50, 0.9);
-    box-shadow: 0 2px 12px rgba(220, 80, 50, 0.15);
-    transform: translateY(-1px);
-}
-
-.btn-tree-choice:hover .choice-action-icon {
-    color: rgba(255, 220, 130, 0.9);
-    transform: translateX(2px);
-}
-
-/* Fix 4: disaster-tier red/danger tint */
-.tree-active .btn-tree-choice {
-    border-color: rgba(220, 80, 50, 0.2);
-    border-top-color: rgba(220, 80, 50, 0.6);
-}
-
-.tree-active .btn-tree-choice:hover {
-    border-color: rgba(220, 80, 50, 0.4);
-    border-top-color: rgba(220, 80, 50, 0.9);
-    box-shadow: 0 2px 12px rgba(220, 80, 50, 0.15);
-}
-
-/* Fix 3: choice header row with action icon */
-.choice-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    width: 100%;
-    gap: 0.3rem;
-}
-
-.choice-label {
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.95);
-    line-height: 1.25;
-    flex: 1;
-}
-
-.choice-action-icon {
-    color: rgba(255, 255, 255, 0.3);
-    font-size: 0.7rem;
-    margin-top: 0.15rem;
-    transition: all 0.2s ease;
-    flex-shrink: 0;
 }
 
 .choice-description {
@@ -16795,60 +16848,166 @@ button.is-processing {
     font-weight: 400;
 }
 
-.choice-check .choice-dc {
-    margin-left: 0.15rem;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.85);
+/* Disaster tree: one narration card; prompt is the read-aloud line */
+.tree-narration-block .narration-read-aloud {
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-style: normal;
+    line-height: 1.35;
 }
 
-/* Fix 1: decision prompt. Dominant visual anchor. */
-.tree-prompt {
-    margin: 0.4rem 0 0.6rem;
-    padding: 0.55rem 0.65rem 0.6rem;
-    background: rgba(255, 190, 80, 0.04);
-    border: 1px solid rgba(255, 190, 80, 0.12);
-    border-left: 3px solid rgba(255, 190, 80, 0.45);
-    border-radius: 0 5px 5px 0;
+.tree-narration-block .narration-read-aloud > span {
+    color: rgba(255, 255, 255, 0.92);
 }
 
-.tree-prompt p {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: rgba(255, 240, 200, 0.95);
-    line-height: 1.45;
-    margin: 0;
-    letter-spacing: 0.01em;
+.tree-narration-block .tree-decision-prompt {
+    display: flex;
+    gap: 0.4rem;
+    align-items: flex-start;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed rgba(155, 89, 182, 0.22);
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.88);
 }
 
-/* Scene -> Options phase divider */
-.tree-phase-divider {
+.tree-narration-block .tree-decision-prompt > i {
+    color: rgba(155, 89, 182, 0.65);
+    margin-top: 0.12rem;
+    flex-shrink: 0;
+    font-size: 0.75rem;
+}
+
+.tree-narration-block .tree-event-check-context {
+    margin-top: 0.45rem;
+    text-align: left;
+}
+
+.tree-gm-steer-expand {
+    margin-top: 0.45rem;
+    border-top: 1px dashed rgba(155, 89, 182, 0.18);
+    padding-top: 0.35rem;
+}
+
+.tree-gm-steer-expand > summary {
     display: flex;
     align-items: center;
-    gap: 0;
-    margin: 1.1rem 0 0.8rem;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(200, 170, 240, 0.75);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
 }
 
-.tree-phase-divider::before,
-.tree-phase-divider::after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    background: linear-gradient(
-        to var(--dir, right),
-        transparent,
-        rgba(255, 190, 80, 0.2) 40%,
-        rgba(255, 190, 80, 0.1)
-    );
+.tree-gm-steer-expand > summary::-webkit-details-marker {
+    display: none;
 }
 
-.tree-phase-divider::before { --dir: right; }
-.tree-phase-divider::after  { --dir: left; }
+.tree-gm-steer-expand > summary::after {
+    content: "\f078";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 0.55rem;
+    margin-left: auto;
+    opacity: 0.45;
+    transition: transform 0.15s ease;
+}
 
-.tree-phase-divider-icon {
-    font-size: 1rem;
-    color: rgba(255, 190, 80, 0.3);
-    padding: 0 0.6rem;
-    filter: drop-shadow(0 0 4px rgba(255, 190, 80, 0.15));
+.tree-gm-steer-expand[open] > summary::after {
+    transform: rotate(180deg);
+}
+
+.tree-gm-steer-expand > summary > i {
+    opacity: 0.7;
+}
+
+.tree-gm-steer-body {
+    margin-top: 0.35rem;
+    padding: 0.4rem 0.45rem;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.62);
+    white-space: pre-wrap;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    max-height: 12rem;
+    overflow-y: auto;
+}
+
+.choice-check-hint {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 0.2rem;
+    color: rgba(155, 89, 182, 0.55);
+    font-size: 0.72rem;
+    cursor: help;
+    vertical-align: middle;
+}
+
+.choice-check-hint:hover {
+    color: rgba(200, 170, 240, 0.9);
+}
+
+.tree-roll-header--configure .choice-check-hint {
+    margin-left: 0.35rem;
+    font-size: 0.78rem;
+}
+
+/* Choice card: skills row + circular DC with nudge buttons */
+.tree-choice-card .choice-dc-module {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0.35rem 0 0.45rem;
+}
+
+.tree-choice-card .choice-dc-module--readonly {
+    margin: 0.35rem 0 0.45rem;
+}
+
+.tree-choice-card .tree-choice-dc-row {
+    justify-content: center;
+    gap: 0.45rem;
+}
+
+.tree-choice-card .tree-choice-dc-badge {
+    width: 3.75rem;
+    height: 3.75rem;
+    border-color: rgba(220, 70, 60, 0.45);
+    background: radial-gradient(circle at 50% 35%, rgba(180, 45, 40, 0.35), rgba(80, 20, 20, 0.2));
+}
+
+.tree-choice-card .tree-choice-dc-badge .dc-value {
+    font-size: 1.55rem;
+    font-weight: 800;
+}
+
+.tree-choice-card .tree-choice-dc-badge .dc-label {
+    font-size: 0.58rem;
+}
+
+.tree-dc-adj-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.35rem;
+    margin: 0.35rem 0 0.15rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+    text-align: center;
+}
+
+.tree-dc-adj-note > i {
+    font-size: 0.62rem;
+    color: rgba(155, 89, 182, 0.55);
 }
 
 /* GM Narration Hint */
@@ -17075,16 +17234,16 @@ button.is-processing {
     border-color: rgba(255, 200, 100, 0.15);
 }
 
-/* Stall Penalty Area */
+/* Stall Penalty Area (below option cards) */
 .tree-stall-area {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 0.4rem 0.6rem;
-    margin: 0.5rem 0;
-    padding: 0.5rem 0.6rem;
-    background: rgba(255, 80, 50, 0.06);
-    border: 1px solid rgba(255, 80, 50, 0.15);
+    margin: 0.65rem 0 0.25rem;
+    padding: 0.45rem 0.55rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 6px;
 }
 
@@ -17147,25 +17306,6 @@ button.is-processing {
     border-radius: 5px;
     font-size: 0.7rem;
     color: rgba(255, 120, 80, 0.85);
-}
-
-/* Choice card wrapper for DC adj */
-.tree-choice-card {
-    display: flex;
-    flex-direction: column;
-}
-
-.tree-choice-card .btn-tree-choice {
-    flex: 1;
-}
-
-/* Tree DC Adjustment (matches encounter DC adj pattern) */
-.tree-dc-adj {
-    display: flex;
-    align-items: center;
-    gap: 0.2rem;
-    justify-content: flex-end;
-    padding: 0.2rem 0.3rem 0;
 }
 
 .tree-dc-adj-label {
@@ -17258,6 +17398,24 @@ button.is-processing {
     margin-bottom: 0.1rem;
 }
 
+.tree-effects-player-note {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.55rem;
+    margin-bottom: 0.4rem;
+    font-size: 0.82rem;
+    color: rgba(220, 230, 245, 0.75);
+    background: rgba(90, 140, 200, 0.08);
+    border-left: 2px solid rgba(120, 170, 220, 0.35);
+    border-radius: 0 4px 4px 0;
+}
+
+.tree-effects-player-note i {
+    flex-shrink: 0;
+    color: rgba(120, 170, 220, 0.6);
+}
+
 .tree-effect {
     display: flex;
     align-items: center;
@@ -17308,6 +17466,21 @@ button.is-processing {
     font-size: 0.65rem;
     color: rgba(255, 255, 255, 0.4);
     font-style: italic;
+}
+
+/* Conditions (exhaustion, etc.) are serious, lasting consequences: flag them red
+   so they read as heavier than a supply dent in the disaster outcome list. */
+.effect-condition-severe {
+    color: #e74c3c;
+    font-weight: 600;
+}
+
+.effect-condition-severe i {
+    color: #e74c3c;
+}
+
+.effect-condition-severe .effect-scope {
+    color: rgba(231, 76, 60, 0.7);
 }
 
 .tree-waiting {
@@ -17631,45 +17804,6 @@ button.is-processing {
 }
 
 .btn-send-roll-request i { font-size: 0.65rem; }
-
-.select-roll-mode {
-    width: 5.5rem;
-    flex-shrink: 0;
-    padding: 0.15rem 0.25rem;
-    border-radius: 4px;
-    font-size: 0.68rem;
-    font-weight: 600;
-    cursor: pointer;
-    background: rgba(0, 0, 0, 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    color: rgba(255, 255, 255, 0.55);
-    transition: border-color 0.15s ease, color 0.15s ease;
-}
-
-.select-roll-mode:focus {
-    outline: none;
-    border-color: rgba(255, 255, 255, 0.3);
-}
-
-.select-roll-mode.roll-mode--advantage {
-    border-color: rgba(255, 200, 80, 0.5);
-    color: rgba(255, 220, 120, 0.95);
-}
-
-.select-roll-mode.roll-mode--disadvantage {
-    border-color: rgba(255, 120, 80, 0.5);
-    color: rgba(255, 150, 110, 0.95);
-}
-
-.select-roll-mode.roll-mode--force-pass {
-    border-color: rgba(80, 220, 120, 0.5);
-    color: rgba(100, 230, 140, 0.95);
-}
-
-.select-roll-mode.roll-mode--force-fail {
-    border-color: rgba(220, 50, 60, 0.5);
-    color: rgba(240, 90, 90, 0.95);
-}
 
 /* ---- Spell Rulings Advisory (GM: awaiting-rolls panel) ---- */
 
@@ -19531,6 +19665,12 @@ button.is-processing {
 
 .respite-action-bar .travel-skip-link i {
     font-size: 0.52rem;
+}
+
+.respite-action-bar .travel-skip-link:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
 }
 
 .travel-result.scout {
@@ -24379,12 +24519,12 @@ button.is-processing {
 .ionrift-roll-request {
     display: flex;
     flex-direction: column;
-    gap: 0.45rem;
-    margin: 0.35rem 0;
+    gap: 0.25rem;
+    margin: 0.1rem 0;
     max-height: min(70vh, 640px);
     overflow-x: visible;
     overflow-y: auto;
-    padding: 0.35rem 0.15rem 0.15rem 0;
+    padding: 0.2rem 0.15rem 0.1rem 0;
     scrollbar-width: thin;
     scrollbar-color: rgba(139, 92, 246, 0.45) rgba(255, 255, 255, 0.06);
 }
@@ -24404,27 +24544,28 @@ button.is-processing {
 }
 
 .ionrift-roll-request .event-check-module {
-    max-width: min(100%, 540px);
+    max-width: min(100%, 420px);
     width: 100%;
-    padding: 0.85rem 1.1rem;
+    padding: 0.4rem 0.85rem;
+    gap: 0.25rem;
 }
 
 .ionrift-roll-request .check-module-skill {
-    font-size: 1.05rem;
+    font-size: 0.92rem;
     letter-spacing: 0.02em;
 }
 
 .ionrift-roll-request .check-module-dc-row {
     overflow: visible;
-    padding: 1.1rem 0;
+    padding: 0.3rem 0;
 }
 
 .ionrift-dc-stage {
     position: relative;
     display: grid;
     place-items: center;
-    width: 4.75rem;
-    height: 4.75rem;
+    width: 3.1rem;
+    height: 3.1rem;
     flex: 0 0 auto;
 }
 
@@ -24443,30 +24584,79 @@ button.is-processing {
     /* stagger handled in RollRequestDcPulse.js */
 }
 
+.ionrift-roll-request .event-dc-badge.circular {
+    width: 3.1rem;
+    height: 3.1rem;
+}
+
 .ionrift-roll-request .event-dc-badge.circular.ionrift-dc-badge--live {
     position: relative;
     z-index: 2;
-    width: 4.75rem;
-    height: 4.75rem;
     border-width: 2px;
     transform-origin: center center;
     will-change: box-shadow, transform, border-color;
 }
 
-.ionrift-roll-request .event-dc-badge.circular.ionrift-dc-badge--live .dc-label {
-    font-size: 0.58rem;
+.ionrift-roll-request .event-dc-badge.circular .dc-label {
+    font-size: 0.5rem;
     letter-spacing: 0.1em;
     position: relative;
     z-index: 1;
 }
 
-.ionrift-roll-request .event-dc-badge.circular.ionrift-dc-badge--live .dc-value {
-    font-size: 1.95rem;
+.ionrift-roll-request .event-dc-badge.circular .dc-value {
+    font-size: 1.3rem;
     font-weight: 800;
     line-height: 1;
     position: relative;
     z-index: 1;
 }
+
+/* ── Owner result acknowledgement on the DC badge ── */
+.ionrift-roll-request .event-dc-badge.circular.event-dc-badge--pass {
+    border-color: rgba(46, 204, 113, 0.85);
+    background: radial-gradient(circle at 50% 35%, rgba(46, 204, 113, 0.35), rgba(46, 204, 113, 0.14));
+    box-shadow: 0 0 10px rgba(46, 204, 113, 0.4);
+}
+
+.ionrift-roll-request .event-dc-badge.circular.event-dc-badge--fail {
+    border-color: rgba(231, 76, 60, 0.85);
+    background: radial-gradient(circle at 50% 35%, rgba(231, 76, 60, 0.32), rgba(231, 76, 60, 0.13));
+    box-shadow: 0 0 10px rgba(231, 76, 60, 0.38);
+}
+
+.ionrift-dc-outcome {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 50%;
+    font-size: 0.7rem;
+    color: #fff;
+    border: 2px solid rgba(20, 18, 28, 0.95);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.ionrift-dc-outcome--pass { background: #2ecc71; }
+.ionrift-dc-outcome--fail { background: #e74c3c; }
+
+.ionrift-roll-request__outcome {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    margin-top: 0.1rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.ionrift-roll-request__outcome--pass { color: #2ecc71; }
+.ionrift-roll-request__outcome--fail { color: #e74c3c; }
 
 .ionrift-roll-request__event-title {
     font-size: 0.78rem;
@@ -24644,6 +24834,31 @@ button.is-processing {
 
 .ionrift-roll-participant.is-yours.is-waiting .ionrift-roll-participant__status {
     color: var(--ionrift-accent, #8b5cf6);
+}
+
+.ionrift-roll-participant.is-settled .ionrift-roll-participant__status {
+    color: rgba(127, 212, 255, 0.95);
+}
+
+.event-roll-settled-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    background: rgba(127, 212, 255, 0.08);
+    border: 1px solid rgba(127, 212, 255, 0.25);
+    border-radius: 6px;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: rgba(220, 240, 255, 0.9);
+    text-align: left;
+}
+
+.event-roll-settled-note > i {
+    margin-top: 0.1rem;
+    color: rgba(127, 212, 255, 0.85);
+    flex-shrink: 0;
 }
 
 .ionrift-roll-participant__badge {
