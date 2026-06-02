@@ -58,8 +58,10 @@ CURSOR_PLAN_*
 BACKLOG.md
 ITEM_DESIGN_GUIDE.md
 
+!tests/double-consumption.test.js
+!tests/setup.js
+!tests/vitest.config.js
 tests/
-vitest.config.*
 
 # Build output (filtered manifest for release)
 .build/

@@ -566,6 +566,7 @@ export class MealPhaseHandler {
 
             const foodUsage = new Map();
             for (const day of (choice.consumedDays ?? [])) {
+                if (day.itemsConsumed) continue;
                 for (const id of (day.food ?? [])) {
                     if (id && id !== "skip" && !id.startsWith("__")) foodUsage.set(id, (foodUsage.get(id) ?? 0) + 1);
                 }
@@ -637,6 +638,7 @@ export class MealPhaseHandler {
                 const snapMap = mealSnapshotsByChar.get(charId)?.snapMap ?? new Map();
                 const waterUsage = new Map();
                 for (const day of consumedDays) {
+                    if (day.itemsConsumed) continue;
                     for (const id of (day.water ?? [])) {
                         if (id && id !== "skip" && !id.startsWith("__")) waterUsage.set(id, (waterUsage.get(id) ?? 0) + 1);
                     }
