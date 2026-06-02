@@ -1,31 +1,26 @@
 # Changelog
 
-## [Unreleased]
+## [3.0.0] - 2026-06-02
 
 ### Added
-- A new question-mark button sits in the rest window header. Click it any time to open the Respite guide. Players land on the Player Quick Reference; the GM lands on the GM Reference.
-- The settings panel now carries an **Open Player Guide** button at the top of the Start here group, plus an inline shortcut on the Quick Setup card.
+- **Foundry v14 compatible.** Party roster uses the native v14 party system on DnD5e. Existing v13 worlds are unaffected.
+- **Rest setup profiles.** Three presets - Simple, Standard, and Survival - replace the wall of checkboxes when starting a rest. Pick a profile that matches how much detail your table wants and the rest configures itself. A custom card is there for anything that deviates. Settings are reorganized into Rest Activities, Recovery Rules, and Player Restrictions submenus so the full configuration is reachable without being in your face.
+- **Built-in help.** A question-mark button in the rest header opens the Respite guide at any time. Players land on the quick reference, the GM on the full reference. The guide has been rewritten from five pages to three. Comfort badges, terrain indicators, and phase dots now show context on hover across every dialog.
 
 ### Changed
-- When a rest event puts gear or coin at risk, the GM can roll and lock exactly which items go missing and how much coin is lifted right on the event card, the same as event damage and supply losses. While the rest is still being worked out, players only see that something will go missing, so the GM can re-roll the haul without spoiling it. The committed list of stolen gear and coin then appears in the rest conclusion, where the loss is final.
-- Training now runs as three separate sets in one rest. The player rolls each set themselves, filling a progress bar as they go. Every set landed earns 10 XP and a missed set still earns 3, anywhere from 9 to 30 XP in a rest. The rest summary shows a small bar marking which sets landed.
-- The Respite guide journal has been rewritten and trimmed. Five pages collapse to three: a short Player Quick Reference for the table, a single GM Reference that consolidates the old settings and terrain pages, and a Cooking page that no longer leaks dev-only authoring notes.
-- Comfort, terrain, and phase indicators now use the theme-styled tooltip on hover across every rest dialog. Players hovering a comfort badge now see what the tier costs them; the rest window's phase dots name each phase. Previously several dialogs left these badges with no hover at all.
-- The Wiki link in module settings now points at the Respite wiki directly.
+- **Event cards reworked.** When an event puts gear or coin at risk, the GM rolls which items are affected, can re-roll if the result doesn't fit, and confirms before anything is actually removed. Nothing leaves a character sheet without GM sign-off. Narration and guidance now read as plain instructions instead of surfacing internal rule names. Non-combat events no longer open the combat tracker.
+- **UI pass for readability.** Every panel in the rest flow has been revisited for spacing, hierarchy, and legibility. Nothing has moved or been renamed - the layout is the same flow you know, just easier to read and less cluttered at a glance.
+- **Training redesigned.** Training runs as three separate sets per rest. The player rolls each set, filling a progress bar - every landed set earns 10 XP, a missed set earns 3. XP is now actually written to the character sheet, and the diminishing-returns penalty for consecutive training rests works as intended.
+- **Rest summary split into recovered and setbacks.** What went well and what went wrong show separately instead of mixing into a single list.
+- Comfort rules are now a homebrew toggle that can be disabled entirely.
+- Reflection phase removed from the rest flow.
 
 ### Fixed
-- Theft events no longer pilfer ammunition. A pickpocket grabbing arrows or sling bullets never read right, so quivers and ammo stacks are now off the table for theft (a full disaster can still scatter them). Item selection also no longer fixates on the single cheapest stack in a pack, so the loot taken is more believable.
-- A partial success on a rest event now applies its own lighter consequences instead of the full failure result, and a passed event check no longer risks any resource or item loss.
-- Two rest events that are explicitly not fights, Light Fingers (urban) and Scorpion Nest (desert), no longer open the combat tracker. Both are spot-and-react hazards, so they resolve as complications; a GM who wants to escalate to a fight can still start one manually.
-- GM guidance on rest events now reads as plain instructions. Several entries surfaced internal rule names in the text the GM was shown.
-- Training XP is now actually awarded. The XP from a training rest is written to the character sheet, and the diminishing-returns penalty for training on consecutive rests reduces that award as intended. Previously the tally was shown but never applied.
-- Travel forage and hunt no longer grant duplicate loot after a browser refresh or a repeated roll. Rewards for a given character, day, and activity are recorded once per rest.
-- After you submit a travel activity or see your forage or hunt results, refreshing the browser no longer resets the travel panel to an empty choice. Rejoin and world state restore your declaration, roll status, and debrief.
-- Cooking at a station locks in the activity when the craft succeeds, not only when the dialog closes. Refreshing after a cook no longer leaves cooking open for another attempt on the same recipe.
-- Cooking, party discoveries, feast servings, and meal leftovers use the same per-rest grant ledger as travel, so those rewards cannot be claimed twice by refreshing or resubmitting.
-- Cooking in the one-window rest mode no longer hands out a second helping when the same recipe is crafted again after a browser refresh. The one-window flow now uses the same once-per-rest safeguard that camp stations already had.
-- Party feast recipes now scale to the whole party from every cooking screen. One of the crafting screens always cooked a single serving, so a feast started there fed only the cook. Party size now follows the system's party on Foundry v14 and the configured roster on v13.
-- Station badge icons on the map now render the full, correct icon again. On some Font Awesome installs they showed only half the icon (a screwdriver with no wrench, half a shield).
+- Theft events no longer take ammunition. Item selection no longer fixates on the cheapest stack, so the loot taken is more believable.
+- A partial success on a rest event now applies its own lighter consequences instead of the full failure result.
+- Cooking, foraging, feast servings, and party discoveries use a per-rest grant ledger, so no reward can be claimed twice by refreshing or resubmitting. Travel declarations and forage results also survive browser refreshes.
+- Party feast recipes now scale to the whole party from every cooking screen.
+- Safe rest spots waive meals - no dehydration or starvation saves at a non-tavern safe location.
 
 ## [2.4.0] - 2026-05-26
 
