@@ -11,6 +11,18 @@ import {
     notifyWorkbenchIdentifyStagingTouched
 } from "../StationActivityDialog.js";
 import { emitWorkbenchIdentifyRequest } from "../../services/SocketController.js";
+import {
+    collectPartyIdentifyEmbedData,
+    computeCanShowDetectMagicScanButton,
+    computeCanTriggerDetectMagicScan,
+    getDetectMagicPlayerAccessReason
+} from "./DetectMagicDelegate.js";
+import {
+    DETECT_MAGIC_BTN_LABEL_DISMISS,
+    DETECT_MAGIC_BTN_LABEL_GM,
+    DETECT_MAGIC_BTN_LABEL_PLAYER,
+    DETECT_MAGIC_BTN_TITLE_GM
+} from "../RestConstants.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -164,6 +176,37 @@ export class WorkbenchDelegate {
     }
 
     // ── Context Builder ─────────────────────────────────────────────────
+
+    /**
+     * Full Handlebars context for workbenchIdentifyEmbed / workbenchIdentifyPanel.
+     * @param {string|null} actorId
+     * @param {() => Actor[]} getPartyActors
+     * @returns {object}
+     */
+    buildEmbedContext(actorId, getPartyActors) {
+        const party = getPartyActors();
+        const partyData = collectPartyIdentifyEmbedData(party);
+        const wb = this.getDragContext(actorId, collectPartyIdentifyEmbedData, getPartyActors);
+        const app = this._app;
+        const isGmUser = !!(game.user?.isGM || app._isGM);
+        const scanComplete = !!app._magicScanComplete;
+        return {
+            ...partyData,
+            ...wb,
+            isGmUser,
+            canShowDetectMagicScanButton: computeCanShowDetectMagicScanButton(party),
+            canTriggerDetectMagicScan: computeCanTriggerDetectMagicScan(party),
+            detectMagicScanButtonLabel: scanComplete
+                ? DETECT_MAGIC_BTN_LABEL_DISMISS
+                : (isGmUser ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER),
+            detectMagicScanButtonTitle: isGmUser
+                ? DETECT_MAGIC_BTN_TITLE_GM
+                : (getDetectMagicPlayerAccessReason(party) ?? ""),
+            magicScanResults: app._magicScanResults ?? [],
+            magicScanComplete: scanComplete,
+            magicScanActive: scanComplete
+        };
+    }
 
     /**
      * Builds the drag-context payload for the workbench identify station embed.

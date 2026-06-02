@@ -351,6 +351,12 @@ Hooks.once("init", async () => {
         .then(t => Handlebars.registerPartial("workbenchIdentifyEmbed", t))
         .catch(e => console.warn(`${MODULE_ID} | Failed to load workbench identify partial:`, e));
 
+    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/workbench-identify-panel.hbs"]);
+    fetch("modules/ionrift-respite/templates/partials/workbench-identify-panel.hbs")
+        .then(r => r.text())
+        .then(t => Handlebars.registerPartial("workbenchIdentifyPanel", t))
+        .catch(e => console.warn(`${MODULE_ID} | Failed to load workbench identify panel partial:`, e));
+
     foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/activity-portraits.hbs"]);
     fetch("modules/ionrift-respite/templates/partials/activity-portraits.hbs")
         .then(r => r.text())

@@ -219,6 +219,16 @@ export class RecoveryHandler {
                     }
                     visited.add(effect);
 
+                    // GM pre-locked this consequence during the Events phase: keep
+                    // its chosen targets (so `stung` conditions still inherit them)
+                    // and let #applyLockedConsequences own the HP application.
+                    if (effect._locked) {
+                        if (effect.type === "damage" && Array.isArray(effect._resolvedTargetIds)) {
+                            lastResolvedIds = effect._resolvedTargetIds;
+                        }
+                        continue;
+                    }
+
                     const scope = effect.scope ?? "all";
 
                     if (effect.type === "damage" && (scope === "random" || scope === "randomTarget")) {
@@ -313,6 +323,8 @@ export class RecoveryHandler {
                     if (scope !== "random" && scope !== "randomTarget" && scope !== "failed") continue;
                     if (visited.has(effect)) continue;
                     visited.add(effect);
+                    // Locked consequences are applied post-recovery elsewhere.
+                    if (effect._locked) continue;
 
                     const targetIds = Array.isArray(effect._resolvedTargetIds)
                         ? effect._resolvedTargetIds
@@ -582,6 +594,8 @@ export class RecoveryHandler {
 
             for (const effect of (sub.effects ?? [])) {
                 if (effect.type !== "damage" || !effect.formula) continue;
+                // Locked consequences are applied post-recovery elsewhere.
+                if (effect._locked) continue;
 
                 const scope = effect.scope ?? "all";
                 if (scope === "random" || scope === "randomTarget" || scope === "failed") continue;

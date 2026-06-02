@@ -26,7 +26,7 @@
             "noWatchAmplifier": 1,
             "gmPrompt": "The evening wind picks up without warning. Within minutes it is a blinding, howling gale. Sand stings exposed skin and piles against anything that stays still. Everything not tied down is moving.",
             "checkContext": "Survival check to secure the camp before the storm buries it.",
-            "gmGuidance": "This is wind and sand, not a magical storm. The solution is physical: lash gear down, cover packs with tarps, weight tent stakes. escalate without a watch because nobody notices the wind building until it is too late. The storm lasts 2-3 hours.",
+            "gmGuidance": "This is wind and sand, not a magical storm. The solution is physical: lash gear down, cover packs with tarps, weight tent stakes. With nobody on watch, nobody notices the wind building until it is too late. The storm lasts 2-3 hours.",
             "description": "The evening wind picks up without warning, quickly howling into a blinding gale. A violent sandstorm threatens to bury everything in camp.",
             "mechanical": {
                 "type": "skill_check",
@@ -92,7 +92,7 @@
         {
             "id": "evt_desert_scorpions",
             "name": "Scorpion Nest",
-            "category": "encounter",
+            "category": "complication",
             "terrainTags": [
                 "desert"
             ],
@@ -106,7 +106,7 @@
             "noWatchAmplifier": 1,
             "gmPrompt": "The sandy ground crunches strangely underfoot. As the firelight catches the shifting sand, pale shapes are moving. The camp was pitched directly over a nest of desert scorpions, and they are emerging to hunt in the cool night air.",
             "checkContext": "Perception check to spot the swarm and relocate the camp before anyone is stung.",
-            "gmGuidance": "Not a combat encounter unless the GM escalates. These are mundane scorpions, not giant ones. The threat is a sting to a sleeping character, not a fight. Perception to spot them, then a quick relocation. auto_fail without a watch because nobody sees them until someone gets stung. Speak with Animals: scorpions are instinctual. No conversation. Hunt and flee only.",
+            "gmGuidance": "Not a combat encounter unless the GM escalates. These are mundane scorpions, not giant ones. The threat is a sting to a sleeping character, not a fight. Perception to spot them, then a quick relocation. With nobody on watch the first warning is someone getting stung in their sleep. Speak with Animals: scorpions are instinctual. No conversation. Hunt and flee only.",
             "description": "The camp was pitched over a scorpion nest. Pale shapes are emerging from the sand.",
             "mechanical": {
                 "type": "skill_check",
@@ -191,7 +191,7 @@
             "noWatchAmplifier": 1,
             "gmPrompt": "The heat has not broken. Even hours after sunset the rocks are still radiating warmth like a furnace. The air is thick and wet. Sweat does not evaporate, it just sits on the skin. Drinking more water barely helps. It is warm before it reaches the mouth.",
             "checkContext": "Survival check to manage the extreme heat and reduce exposure.",
-            "gmGuidance": "An unusually hot night, not a supply management failure. The threat is heat and humidity, not water rationing. The air is too humid for sweat to evaporate, so the body cannot cool itself. Drinking more water just means pouring warm water through yourself. The survival check is about reducing heat exposure (shelter, shade, ground contact), not rationing supplies. It works whether the party has two waterskins or twenty. Create Water or Goodberry cancels outright. A windbreak (defenses) mitigates (downgrades the outcome by one tier) but does not cancel -- shelter reduces exposure but does not replace cooling. The consume_resource effect goes through ResourceSink. If the party has no water, the noResourceFallback triggers exhaustion instead.",
+            "gmGuidance": "An unusually hot night, not a supply management failure. The threat is heat and humidity, not water rationing. The air is too humid for sweat to evaporate, so the body cannot cool itself. Drinking more water just means pouring warm water through yourself. The survival check is about reducing heat exposure (shelter, shade, ground contact), not rationing supplies. It works whether the party has two waterskins or twenty. Create Water or Goodberry cancels outright. A windbreak or camp defenses downgrade the outcome by one tier but do not cancel it, since shelter reduces exposure without replacing cooling. The water cost is applied automatically. If the party has no water left, that becomes exhaustion instead.",
             "description": "The heat has not broken. The rocks are still radiating warmth hours after sunset.",
             "dutyRelevance": {
                 "defenses": {

@@ -12,7 +12,7 @@
         {
             "id": "evt_urban_thieves",
             "name": "Light Fingers",
-            "category": "encounter",
+            "category": "complication",
             "terrainTags": [
                 "urban"
             ],
@@ -26,7 +26,7 @@
             "noWatchAmplifier": 1,
             "gmPrompt": "A shadow detaches itself from the alley wall. Soft, barely audible fabric against fabric. Someone is testing whether the camp is watched.",
             "checkContext": "Perception check to spot the thief before they reach the packs.",
-            "gmGuidance": "Urban pickpocket, not a combat threat. They flee if spotted. The check is spotting them before they start, not fighting. auto_fail without a watch because nobody is awake to notice. item_at_risk targets consumables and gold. Severity 2/5 on mixed, 3/5 on failure. Never takes weapons or armour.",
+            "gmGuidance": "An urban pickpocket, not a fighter. They flee the moment they are spotted, so the check is about catching them before they reach the packs, not about a fight. With nobody on watch the camp never notices and the theft lands on its own. A mixed result costs a couple of small consumables and a little coin; a failure means several consumables gone and more coin missing. They never touch weapons or armour.",
             "description": "Someone is testing whether the camp is watched.",
             "mechanical": {
                 "type": "skill_check",
@@ -219,7 +219,7 @@
             "noWatchAmplifier": 2,
             "gmPrompt": "The sweeping glow of a bullseye lantern and the clink of chainmail. The city watch is making aggressive neighbourhood rounds tonight.",
             "checkContext": "Charisma check to handle the patrol without waking the rest of the party.",
-            "gmGuidance": "Charisma to talk your way through it. The watch is not hostile, just suspicious. Triumph gets a friendly exchange. Failure gets an hour of interrogation. escalate without a watch because an unattended camp in a city looks suspicious. noWatchAmplifier 2 because the watch will wake everyone and search everything.",
+            "gmGuidance": "Charisma to talk your way through it. The watch is not hostile, just suspicious. Triumph gets a friendly exchange. Failure gets an hour of interrogation. With nobody on watch, an unattended camp in a city looks suspicious, and the watch wakes everyone and searches everything.",
             "description": "The city watch is making rounds. Lanterns and chainmail approaching.",
             "mechanical": {
                 "type": "skill_check",

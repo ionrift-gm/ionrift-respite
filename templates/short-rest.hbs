@@ -274,12 +274,9 @@
     </div>{{!-- /sr-scroll-body --}}
     {{else}}
     <div class="sr-scroll-body sr-workbench-body">
-        <p class="sr-wb-hint">Focus on 1 magic item per rest to learn its properties (DMG p.136). Taste potions to identify them. Use Detect Magic to reveal auras.</p>
-        <div class="sr-workbench-identify-host">
         {{#with workbenchEmbed}}
-        {{> workbenchIdentifyEmbed}}
+        {{> workbenchIdentifyPanel}}
         {{/with}}
-        </div>
     </div>
     {{/if}}
 

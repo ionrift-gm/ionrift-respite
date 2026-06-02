@@ -159,6 +159,13 @@ export class ActivityResolver {
             };
         }
 
+        // Multi-roll activities (Training) run several independent checks and
+        // aggregate the reward. Handled in a dedicated path so the single-roll
+        // flow below stays untouched.
+        if ((activity.check.rolls ?? 1) > 1) {
+            return await this._resolveMultiRoll(activity, activityId, actor, comfort, safeRestSpot);
+        }
+
         // Calculate DC with comfort friction (safe rest spot: none)
         const baseDc = activity.check.dc ?? 12;
         const comfortForDc = safeRestSpot ? "safe" : comfort;
@@ -450,6 +457,163 @@ export class ActivityResolver {
             effects: outcome.effects ?? [],
             narrative: outcome.narrative ?? "",
             xpReduction
+        };
+    }
+
+    /**
+     * Resolves a multi-roll activity (Training): N independent ability checks
+     * against the same DC. Each landed set awards the success XP value, each
+     * missed set the failure value. The rest's total is then reduced by the
+     * diminishing-returns streak and floored at zero. Returns a single outcome
+     * carrying the per-set breakdown so the UI can draw a progress bar and the
+     * resolution step can write the XP to the sheet.
+     *
+     * @param {Object} activity
+     * @param {string} activityId
+     * @param {Actor} actor
+     * @param {string} comfort
+     * @param {boolean} safeRestSpot
+     * @returns {Object} Activity outcome fragment.
+     */
+    async _resolveMultiRoll(activity, activityId, actor, comfort, safeRestSpot) {
+        const context = this.getTrainingContext(activity, actor, comfort, safeRestSpot);
+        const rolls = [];
+        for (let i = 0; i < context.numRolls; i++) {
+            rolls.push(await this.rollTrainingSet(i + 1, context));
+        }
+        return await this.finalizeTraining(activity, activityId, actor, rolls, context);
+    }
+
+    /**
+     * Builds the static roll context for a training rest: adjusted DC, the
+     * actor's best ability modifier, per-set XP values, and the current
+     * diminishing-returns reduction. Reads state only; does not roll or mutate.
+     *
+     * @param {Object} activity
+     * @param {Actor} actor
+     * @param {string} comfort
+     * @param {boolean} safeRestSpot
+     * @returns {Object}
+     */
+    getTrainingContext(activity, actor, comfort, safeRestSpot) {
+        const baseDc = activity.check?.dc ?? 13;
+        const comfortForDc = safeRestSpot ? "safe" : comfort;
+        const adjustedDc = baseDc + getComfortDcMod(comfortForDc);
+        const numRolls = Math.max(1, activity.check?.rolls ?? 1);
+
+        let abilityKey = activity.check?.ability ?? "best";
+        if (abilityKey === "best") {
+            const abilities = actor.system?.abilities ?? {};
+            let bestKey = "str";
+            let bestMod = -99;
+            for (const [key, data] of Object.entries(abilities)) {
+                const mod = data.mod ?? 0;
+                if (mod > bestMod) { bestMod = mod; bestKey = key; }
+            }
+            abilityKey = bestKey;
+        }
+        const modifier = actor.system?.abilities?.[abilityKey]?.mod ?? 0;
+        const rollLabel = String(abilityKey).toUpperCase();
+
+        const successXP = activity.outcomes?.success?.effects
+            ?.find(e => e.type === "training_xp")?.value ?? 15;
+        const failXP = activity.outcomes?.failure?.effects
+            ?.find(e => e.type === "training_xp")?.value ?? 5;
+
+        const flagKey = activity.diminishingReturns?.actorFlag ?? "trainingStreak";
+        const streak = activity.diminishingReturns ? (actor.getFlag("ionrift-respite", flagKey) ?? 0) : 0;
+        const xpReduction = activity.diminishingReturns
+            ? streak * Math.abs(activity.diminishingReturns.perConsecutiveRest ?? 5)
+            : 0;
+
+        return { adjustedDc, numRolls, abilityKey, modifier, rollLabel, successXP, failXP, flagKey, streak, xpReduction };
+    }
+
+    /**
+     * Rolls one training set against the context DC.
+     *
+     * @param {number} setNumber 1-based set index.
+     * @param {Object} context Output of {@link getTrainingContext}.
+     * @returns {Promise<{set:number,total:number,passed:boolean,roll:Roll}>}
+     */
+    async rollTrainingSet(setNumber, context) {
+        const roll = await new Roll(`1d20 + ${context.modifier}`).evaluate();
+        return { set: setNumber, total: roll.total, passed: roll.total >= context.adjustedDc, roll };
+    }
+
+    /**
+     * Aggregates the rolled sets into an XP award, applies diminishing returns,
+     * bumps the streak flag, posts the result whisper, and returns the activity
+     * outcome fragment. Call once per training rest.
+     *
+     * @param {Object} activity
+     * @param {string} activityId
+     * @param {Actor} actor
+     * @param {Array<{set:number,total:number,passed:boolean}>} rolls
+     * @param {Object} context Output of {@link getTrainingContext}.
+     * @param {Object} [opts]
+     * @param {boolean} [opts.whisper=true] Post the chat whisper.
+     * @returns {Promise<Object>}
+     */
+    async finalizeTraining(activity, activityId, actor, rolls, context, opts = {}) {
+        const { whisper = true } = opts;
+        const cleanRolls = rolls.map(r => ({ set: r.set, total: r.total, passed: r.passed }));
+        const successes = cleanRolls.filter(r => r.passed).length;
+        const baseXP = cleanRolls.reduce(
+            (sum, r) => sum + (r.passed ? context.successXP : context.failXP), 0
+        );
+
+        if (activity.diminishingReturns) {
+            await actor.setFlag("ionrift-respite", context.flagKey, context.streak + 1);
+        }
+        const xpReduction = context.xpReduction ?? 0;
+        const awardedXP = Math.max(0, baseXP - xpReduction);
+
+        const numRolls = context.numRolls ?? cleanRolls.length;
+        const tier = successes > 0 ? "success" : "failure";
+        const narrative = activity.outcomes?.[tier]?.narrative ?? "";
+
+        if (whisper) {
+            try {
+                const ownerIds = game.users
+                    .filter(u => actor.testUserPermission(u, "OWNER") || u.isGM)
+                    .map(u => u.id);
+                const segments = cleanRolls
+                    .map(r => `<strong style="color:${r.passed ? "#1c6ea4" : "#a83232"};">${r.total}${r.passed ? "" : " (miss)"}</strong>`)
+                    .join(" &bull; ");
+                const reductionNote = xpReduction > 0
+                    ? `<br><span style="opacity:0.8;font-size:0.9em;">Diminishing returns reduced the haul by ${xpReduction} XP.</span>`
+                    : "";
+                await ChatMessage.create({
+                    speaker: ChatMessage.getSpeaker({ actor }),
+                    whisper: ownerIds,
+                    flavor: `<strong>${activity.name}</strong> (${context.rollLabel}) - DC ${context.adjustedDc}<br>Sets: ${segments}<br><strong style="color:#6b4f00;">${successes}/${numRolls} landed. +${awardedXP} XP.</strong>${reductionNote}`,
+                    flags: { "ionrift-respite": { type: "trainingResult" } }
+                });
+            } catch (e) {
+                console.warn("ionrift-respite | Training whisper failed:", e);
+            }
+        }
+
+        return {
+            source: "activity",
+            activityId,
+            result: tier,
+            items: [],
+            effects: [
+                {
+                    type: "training_xp",
+                    value: awardedXP,
+                    baseValue: baseXP,
+                    reduction: xpReduction,
+                    description: awardedXP > 0
+                        ? `Gained ${awardedXP} XP from training (${successes}/${numRolls} sets landed).`
+                        : `No XP this rest. Diminishing returns have caught up; try a different activity.`
+                }
+            ],
+            narrative,
+            xpReduction,
+            training: { rolls: cleanRolls, successes, numRolls, baseXP, xpReduction, awardedXP, dc: context.adjustedDc, rollLabel: context.rollLabel }
         };
     }
 

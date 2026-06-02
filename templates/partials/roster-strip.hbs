@@ -13,8 +13,14 @@
             <span class="roster-name">{{name}}</span>
             {{#if activityLabel}}<span class="roster-activity-label" data-tooltip="{{activityLabel}}">{{activityLabel}}</span>{{/if}}
             <span class="roster-status">
-                {{#if pendingRoll}}
-                <i class="fas fa-dice-d20 roster-roll-pending" data-tooltip="Awaiting roll"></i>
+                {{#if (eq rollMode 'force-pass')}}
+                <i class="fas fa-check roster-roll-force-pass" data-tooltip="Auto-pass (no roll needed)"></i>
+                {{else if (eq rollMode 'force-fail')}}
+                <i class="fas fa-times roster-roll-force-fail" data-tooltip="Auto-fail (no roll needed)"></i>
+                {{else if pendingRoll}}
+                <i class="fas fa-dice-d20 roster-roll-pending" data-tooltip="Awaiting roll{{#if (eq rollMode 'advantage')}} · Advantage{{else if (eq rollMode 'disadvantage')}} · Disadvantage{{/if}}"></i>
+                {{#if (eq rollMode 'advantage')}}<i class="fas fa-angle-up roster-roll-adv" aria-hidden="true"></i>{{/if}}
+                {{#if (eq rollMode 'disadvantage')}}<i class="fas fa-angle-down roster-roll-dis" aria-hidden="true"></i>{{/if}}
                 {{else if rolledResult}}
                 <i class="fas fa-check-circle roster-roll-done" data-tooltip="Rolled: {{rolledResult}}"></i>
                 {{else if exhaustion}}

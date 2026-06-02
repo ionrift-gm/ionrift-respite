@@ -22,7 +22,9 @@
         </button>
 
         {{#if isGM}}
-        <button type="button" class="btn-abandon-rest" data-action="abandonRest" data-tooltip="Cancel this rest for all players">
+        <button type="button" class="btn-abandon-rest" data-action="abandonRest"
+                data-tooltip="{{#if eventsCommitPending}}Wait for the night check to finish.{{else}}Cancel this rest for all players{{/if}}"
+                {{#if eventsCommitPending}}disabled{{/if}}>
             <i class="fas fa-times"></i> Abandon Rest
         </button>
         {{/if}}
@@ -1630,9 +1632,7 @@
 
     {{!-- ── Identify Tab ── --}}
     {{#if (eq totmActiveTab 'identify')}}
-    <div class="totm-identify-panel">
-        {{> workbenchIdentifyEmbed}}
-    </div>
+    {{> workbenchIdentifyPanel}}
     {{/if}}
 
     {{!-- ── Fire Tab (not used at a safe rest spot or when comfort is off) ── --}}
@@ -2143,6 +2143,13 @@
         <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
     {{> rosterStrip}}
+    <div class="events-phase-body{{#if (and eventsCommitPending (not eventsRolled))}} is-commit-pending{{/if}}">
+        {{#if (and eventsCommitPending (not eventsRolled))}}
+        <div class="events-commit-shield" role="status" aria-live="polite">
+            <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+            <span>{{#if eventsModeIsPick}}Opening event pool...{{else}}Rolling night check...{{/if}}</span>
+        </div>
+        {{/if}}
     <div class="respite-events">
 
         {{#if eventsRolled}}
@@ -2151,45 +2158,45 @@
         {{!-- Disaster Choice: nat 1 GM pick --}}
         {{#if disasterChoice}}
         <div class="respite-event-card encounter disaster-choice-card">
-            <div class="event-name"><i class="fas fa-skull"></i> Natural 1 - Disaster!</div>
+            <div class="event-name"><i class="fas fa-skull"></i> Natural 1: disaster pool</div>
             <div class="event-description">
                 A terrible omen. Choose how the night unfolds.
             </div>
             {{#if isGM}}
             <p class="disaster-guidance">Pick one outcome. A disaster event is a branching scene of skill checks, a combat encounter pulls a monster into camp, and the lighter option runs one or more ordinary events. Dismiss if the night should simply pass.</p>
-            <div class="disaster-buttons">
+            <div class="disaster-options count-{{disasterChoice.optionCount}}">
                 {{#if disasterChoice.tree}}
-                <button type="button" class="btn-disaster tree" data-action="disasterChoice" data-pick="tree" data-tooltip="Run a branching disaster scene: a sequence of skill checks with consequences.">
-                    <i class="fas fa-skull"></i>
-                    <div class="disaster-btn-content">
-                        <strong>Disaster Event</strong>
-                        <span class="disaster-preview">{{disasterChoice.tree.name}}</span>
-                    </div>
-                </button>
+                <div class="disaster-option-card tree">
+                    <span class="disaster-option-label">Option {{disasterChoice.treeNum}}</span>
+                    <i class="fas fa-skull disaster-option-icon"></i>
+                    <strong class="disaster-option-title">Disaster Event</strong>
+                    <span class="disaster-option-preview">{{disasterChoice.tree.name}}</span>
+                    <button type="button" class="disaster-option-select" data-action="disasterChoice" data-pick="tree" data-tooltip="Run a branching disaster scene: a sequence of skill checks with consequences.">Select</button>
+                </div>
                 {{/if}}
                 {{#if disasterChoice.encounter}}
-                <button type="button" class="btn-disaster encounter" data-action="disasterChoice" data-pick="encounter" data-tooltip="Drop a combat encounter into the camp.">
-                    <i class="fas fa-swords"></i>
-                    <div class="disaster-btn-content">
-                        <strong>Combat Encounter</strong>
-                        <span class="disaster-preview">{{disasterChoice.encounter.name}}</span>
-                    </div>
-                </button>
+                <div class="disaster-option-card encounter">
+                    <span class="disaster-option-label">Option {{disasterChoice.encounterNum}}</span>
+                    <i class="fas fa-swords disaster-option-icon"></i>
+                    <strong class="disaster-option-title">Combat Encounter</strong>
+                    <span class="disaster-option-preview">{{disasterChoice.encounter.name}}</span>
+                    <button type="button" class="disaster-option-select" data-action="disasterChoice" data-pick="encounter" data-tooltip="Drop a combat encounter into the camp.">Select</button>
+                </div>
                 {{/if}}
                 {{#if disasterChoice.normals.length}}
-                <button type="button" class="btn-disaster normals" data-action="disasterChoice" data-pick="normals" data-tooltip="Run one or more ordinary camp events instead of a full disaster.">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <div class="disaster-btn-content">
-                        <strong>{{disasterChoice.normalsLabel}}</strong>
-                        <span class="disaster-preview">
-                            {{#each disasterChoice.normals}}{{name}}{{#unless @last}}, {{/unless}}{{/each}}
-                        </span>
-                    </div>
-                </button>
-                {{/if}}
-                <div class="disaster-dismiss">
-                    <button type="button" class="btn-override-link" data-action="disasterChoice" data-pick="dismiss" data-tooltip="Skip the disaster: the night passes with no event.">Dismiss and continue</button>
+                <div class="disaster-option-card normals">
+                    <span class="disaster-option-label">Option {{disasterChoice.normalsNum}}</span>
+                    <i class="fas fa-exclamation-triangle disaster-option-icon"></i>
+                    <strong class="disaster-option-title">{{disasterChoice.normalsLabel}}</strong>
+                    <span class="disaster-option-preview">
+                        {{#each disasterChoice.normals}}{{name}}{{#unless @last}}, {{/unless}}{{/each}}
+                    </span>
+                    <button type="button" class="disaster-option-select" data-action="disasterChoice" data-pick="normals" data-tooltip="Run one or more ordinary camp events instead of a full disaster.">Select</button>
                 </div>
+                {{/if}}
+            </div>
+            <div class="disaster-dismiss">
+                <button type="button" class="btn-override-link" data-action="disasterChoice" data-pick="dismiss" data-tooltip="Skip the disaster: the night passes with no event.">Dismiss and continue</button>
             </div>
             {{else}}
             <div class="event-check-waiting">
@@ -2202,31 +2209,11 @@
         {{!-- Decision Tree: Interactive choices (GM only controls, players see read-only) --}}
         {{#if activeTreeState}}
         <div class="respite-decision-tree">
-            {{!-- Hidden data holder for gmGuidance text (GM only) --}}
-            {{#if isGM}}
-            {{#if activeTreeState.gmGuidance}}
-            <div class="tree-gm-sidebar" aria-hidden="true">
-                <div class="tree-gm-sidebar-body">{{activeTreeState.gmGuidance}}</div>
-            </div>
-            {{/if}}
-            {{/if}}
             <div class="respite-event-card complication tree-active">
                 <div class="event-name">
                     <span class="event-name-text"><i class="fas fa-exclamation-triangle"></i> {{activeTreeState.eventName}}</span>
-                    {{#if isGM}}
-                    {{#if activeTreeState.gmGuidance}}
-                    <button type="button" class="tree-gm-notes-btn" data-action="toggleGmGuidance" data-tooltip="GM Guidance">
-                        <i class="fas fa-book-reader"></i> GM Notes
-                    </button>
-                    {{/if}}
-                    {{/if}}
                 </div>
-                {{!-- Description: suppress if gmPrompt present (avoids duplicate scene-setting) --}}
-                {{#unless activeTreeState.gmPrompt}}
-                <div class="event-description">{{activeTreeState.description}}</div>
-                {{/unless}}
             </div>
-
 
             {{!-- Tree History (previous choices) --}}
             {{#each activeTreeState.history}}
@@ -2245,40 +2232,40 @@
             {{!-- Current Prompt and Choices (GM can interact, players see read-only) --}}
             {{#unless activeTreeState.resolved}}
 
-            {{!-- GM Narration Hint --}}
-            {{#if isGM}}
-            <div class="tree-narration-hint">
-                <i class="fas fa-theater-masks"></i>
-                <span>Set the scene for your players. Use the prompt as a guide, present the two options, and let them decide. The DCs are for your eyes only.</span>
-            </div>
-            {{/if}}
-
-            <div class="tree-prompt">
-                <p>{{activeTreeState.prompt}}</p>
-            </div>
-
-            {{!-- Scene / Options divider --}}
-            <div class="tree-phase-divider">
-                <i class="fas fa-campground tree-phase-divider-icon"></i>
-            </div>
-
-            {{#if isGM}}
-            {{!-- Stall Penalty Button (between prompt and cards) --}}
-            {{#if activeTreeState.hasStallPenalty}}
-            <div class="tree-stall-area">
-                <button type="button" class="btn-stall-penalty" data-action="applyStallPenalty"
-                    data-tooltip="The mountain does not negotiate. DCs +{{activeTreeState.stallPenalty.dcBump}}, supplies lost to the delay. Can be applied multiple times.">
-                    <i class="fas fa-hourglass-half"></i> Players Stalling
-                </button>
-                <span class="stall-hint-text">Third option bid &middot; negotiating between choices &middot; repeating answered questions</span>
-                {{#if activeTreeState.stallCount}}
-                <span class="stall-applied-count">
-                    <i class="fas fa-exclamation-triangle"></i> Applied {{activeTreeState.stallCount}}x. DCs +{{activeTreeState.totalStallBump}}, supplies lost
-                </span>
+            {{!-- Read-aloud: gmPrompt, then prompt, then description (see DecisionTreeResolver).
+                 Decision question is a second line when scene and prompt differ.
+                 GM steer and event checkContext stay collapsed for the GM. --}}
+            <div class="event-narration-advisory lead tree-narration-block">
+                <div class="narration-read-aloud">
+                    <i class="fas fa-theater-masks"></i>
+                    {{#if activeTreeState.readAloud}}
+                    <span>{{activeTreeState.readAloud}}</span>
+                    {{else}}
+                    <em>Set the scene, then present the options below.</em>
+                    {{/if}}
+                </div>
+                {{#if activeTreeState.showDecisionPrompt}}
+                <div class="tree-decision-prompt">
+                    <i class="fas fa-question-circle"></i>
+                    <span>{{activeTreeState.prompt}}</span>
+                </div>
+                {{/if}}
+                {{#if isGM}}
+                {{#if activeTreeState.checkContext}}
+                <div class="event-check-context tree-event-check-context">
+                    <i class="fas fa-dice-d20"></i> {{activeTreeState.checkContext}}
+                </div>
+                {{/if}}
+                {{#if activeTreeState.gmGuidance}}
+                <details class="tree-gm-steer-expand">
+                    <summary data-tooltip="Expand for pacing, option notes, and stall rules">
+                        <i class="fas fa-chess-rook"></i> GM steer
+                    </summary>
+                    <div class="tree-gm-steer-body">{{activeTreeState.gmGuidance}}</div>
+                </details>
+                {{/if}}
                 {{/if}}
             </div>
-            {{/if}}
-            {{/if}}
 
             {{#if activeTreeState.awaitingRolls}}
             {{!-- GM: Waiting for player rolls --}}
@@ -2298,6 +2285,9 @@
                 <div class="tree-roll-header tree-roll-header--configure">
                     <i class="fas fa-sliders-h"></i>
                     Configure Roll Modifiers: {{activeTreeState.pendingSkillName}} DC {{activeTreeState.pendingDC}}
+                    {{#if activeTreeState.pendingCheckContext}}
+                    <span class="choice-check-hint" data-tooltip="{{activeTreeState.pendingCheckContext}}"><i class="fas fa-circle-info"></i></span>
+                    {{/if}}
                 </div>
                 <div class="tree-roll-configure-note">
                     <i class="fas fa-info-circle"></i> Set modifiers per character, then send the roll request to players.
@@ -2310,6 +2300,8 @@
                     <span>{{activeTreeState.pendingChoiceSpellRulings}}</span>
                 </div>
                 {{/if}}
+                {{!-- Resolved rolls: compact result line, unchanged --}}
+                {{#if activeTreeState.resolvedRolls.length}}
                 <div class="tree-roll-tracker">
                     {{#each activeTreeState.resolvedRolls}}
                     <div class="tree-roll-entry resolved">
@@ -2318,27 +2310,33 @@
                         <i class="fas {{#if passed}}fa-check-circle{{else}}fa-times-circle{{/if}}"></i>
                     </div>
                     {{/each}}
+                </div>
+                {{/if}}
+                {{!-- Pending rolls: click portrait to cycle normal, adv, dis, auto-pass, auto-fail --}}
+                {{#if activeTreeState.pendingRollsEnriched.length}}
+                <div class="check-module-avatars tree-roll-avatars">
                     {{#each activeTreeState.pendingRollsEnriched}}
-                    <div class="tree-roll-entry pending">
-                        <span class="roll-name">{{name}}</span>
-                        {{!-- Roll mode selector --}}
-                        <select class="select-roll-mode roll-mode--{{rollMode}}"
+                    <div class="tree-roll-avatar-cell">
+                        <button type="button"
+                            class="check-avatar{{#if rollModeAdvantage}} adv{{/if}}{{#if rollModeDisadvantage}} dis{{/if}}{{#if rollModeForcePass}} forced-pass{{/if}}{{#if rollModeForceFail}} forced-fail{{/if}}"
+                            data-action="cycleTreeRollMode"
                             data-character-id="{{id}}"
-                            data-tooltip="Set roll modifier for this player">
-                            <option value="normal"       {{#if (eq rollMode "normal")}}selected{{/if}}>Normal</option>
-                            <option value="advantage"    {{#if (eq rollMode "advantage")}}selected{{/if}}>↑ Adv</option>
-                            <option value="disadvantage" {{#if (eq rollMode "disadvantage")}}selected{{/if}}>↓ Dis</option>
-                            <option value="force-pass"   {{#if (eq rollMode "force-pass")}}selected{{/if}}>✓ Pass</option>
-                            <option value="force-fail"   {{#if (eq rollMode "force-fail")}}selected{{/if}}>✗ Fail</option>
-                        </select>
+                            data-tooltip="{{name}} · {{#if rollModeForcePass}}Auto-pass{{else if rollModeForceFail}}Auto-fail{{else if rollModeAdvantage}}Advantage{{else if rollModeDisadvantage}}Disadvantage{{else}}Normal{{/if}} · click to cycle">
+                            <img src="{{img}}" alt="{{name}}" />
+                            {{#if rollModeAdvantage}}<span class="check-avatar-mode adv"><i class="fas fa-angle-up"></i></span>{{/if}}
+                            {{#if rollModeDisadvantage}}<span class="check-avatar-mode dis"><i class="fas fa-angle-down"></i></span>{{/if}}
+                            {{#if rollModeForcePass}}<span class="check-avatar-mode force-pass"><i class="fas fa-check"></i></span>{{/if}}
+                            {{#if rollModeForceFail}}<span class="check-avatar-mode force-fail"><i class="fas fa-times"></i></span>{{/if}}
+                        </button>
                         {{#if @root.activeTreeState.rollRequestSent}}
-                        <button type="button" class="btn-roll-for-player" data-action="rollTreeForPlayer" data-character-id="{{id}}" data-tooltip="Roll on their behalf">
+                        <button type="button" class="btn-roll-for-player tree-roll-for-player" data-action="rollTreeForPlayer" data-character-id="{{id}}" data-tooltip="Roll on their behalf">
                             <i class="fas fa-dice"></i>
                         </button>
                         {{/if}}
                     </div>
                     {{/each}}
                 </div>
+                {{/if}}
                 <div class="tree-roll-actions">
                     {{#if activeTreeState.rollRequestSent}}
                     <button type="button" class="btn-resend-roll" data-action="resendTreeRollRequest" data-tooltip="Re-send the roll request to players">
@@ -2372,12 +2370,9 @@
 
             <div class="tree-choices">
                 {{#each activeTreeState.options}}
-                <div class="tree-choice-card">
-                <button type="button" class="btn-tree-choice" data-action="resolveTreeChoice" data-choice-id="{{id}}">
-                    <div class="choice-header">
-                        <div class="choice-label">{{label}}</div>
-                        <i class="fas fa-chevron-right choice-action-icon"></i>
-                    </div>
+                <div class="tree-choice-card disaster-option-card tree">
+                    <span class="disaster-option-label">Option {{optionNum}}</span>
+                    <strong class="disaster-option-title">{{label}}</strong>
                     {{#if description}}<div class="choice-description">{{description}}</div>{{/if}}
                     {{#if spellRulings}}<div class="choice-spell-rulings"><i class="fas fa-hat-wizard"></i>{{spellRulings}}</div>{{/if}}
                     <div class="choice-check">
@@ -2386,20 +2381,58 @@
                         {{#if @index}}<span class="skill-sep">/</span>{{/if}}
                         <span class="skill-tag">{{this}}</span>
                         {{/each}}
-                        <span class="skill-sep">·</span>
-                        <span class="choice-dc">DC {{check.dc}}</span>
+                        {{#if check.checkContext}}
+                        <span class="choice-check-hint" data-tooltip="{{check.checkContext}}"><i class="fas fa-circle-info"></i></span>
+                        {{/if}}
                     </div>
-                </button>
-                {{#if @root.isGM}}
-                <div class="tree-dc-adj">
-                    <button type="button" class="encounter-adj-btn" data-action="treeDcAdjDown" data-tooltip="Reduce DC">−</button>
-                    <button type="button" class="encounter-adj-btn" data-action="treeDcAdjUp" data-tooltip="Increase DC">+</button>
-                    {{#if @root.activeTreeState.treeDcAdj}}<span class="tree-dc-adj-label">GM adj: {{@root.activeTreeState.treeDcAdj}}</span>{{/if}}
-                </div>
-                {{/if}}
+                    {{#if @root.isGM}}
+                    <div class="choice-dc-module">
+                        <div class="check-module-dc-row tree-choice-dc-row">
+                            <button type="button" class="dc-nudge" data-action="treeDcAdjDown" data-tooltip="Lower the DC on both choices">−</button>
+                            <div class="event-dc-badge circular tree-choice-dc-badge">
+                                <span class="dc-label">DC</span>
+                                <span class="dc-value">{{check.dc}}</span>
+                            </div>
+                            <button type="button" class="dc-nudge" data-action="treeDcAdjUp" data-tooltip="Raise the DC on both choices">+</button>
+                        </div>
+                    </div>
+                    {{else}}
+                    <div class="choice-dc-module choice-dc-module--readonly">
+                        <div class="event-dc-badge circular tree-choice-dc-badge">
+                            <span class="dc-label">DC</span>
+                            <span class="dc-value">{{check.dc}}</span>
+                        </div>
+                    </div>
+                    {{/if}}
+                    <button type="button" class="disaster-option-select" data-action="resolveTreeChoice" data-choice-id="{{id}}" data-tooltip="Commit to this approach, then configure and roll the check.">
+                        Select <i class="fas fa-chevron-right"></i>
+                    </button>
                 </div>
                 {{/each}}
             </div>
+            {{#if activeTreeState.treeDcAdjNote}}
+            <div class="tree-dc-adj-note">
+                <i class="fas fa-sliders-h"></i> {{activeTreeState.treeDcAdjNote}}
+            </div>
+            {{/if}}
+
+            {{#if isGM}}
+            {{#if activeTreeState.hasStallPenalty}}
+            <div class="tree-stall-area">
+                <button type="button" class="btn-stall-penalty" data-action="applyStallPenalty"
+                    data-tooltip="Apply when players stall or bargain for a third option. DCs +{{activeTreeState.stallPenalty.dcBump}}, supplies lost to the delay. Can be applied multiple times.">
+                    <i class="fas fa-hourglass-half"></i> Players Stalling
+                </button>
+                <span class="stall-hint-text">Third option bid &middot; negotiating between choices &middot; repeating answered questions</span>
+                {{#if activeTreeState.stallCount}}
+                <span class="stall-applied-count">
+                    <i class="fas fa-exclamation-triangle"></i> Applied {{activeTreeState.stallCount}}x. DCs +{{activeTreeState.totalStallBump}}, supplies lost
+                </span>
+                {{/if}}
+            </div>
+            {{/if}}
+            {{/if}}
+
             {{else}}
             {{!-- Player: Waiting for GM to pick a choice --}}
             <div class="tree-waiting">
@@ -2417,36 +2450,61 @@
                 </div>
                 <div class="tree-final-narrative">{{activeTreeState.finalNarrative}}</div>
                 {{#if activeTreeState.finalEffects.length}}
-                <div class="tree-effects">
+                {{#if isGM}}
+                {{!-- GM: roll and lock each consequence; specifics stay GM-side until the conclusion --}}
+                <div class="tree-effects event-effects">
                     <div class="tree-effects-header">Consequences</div>
                     {{#each activeTreeState.finalEffects}}
-                    <div class="tree-effect effect-{{type}}">
-                        {{#if (eq type "supply_loss")}}
-                        <i class="fas fa-box-open"></i>
-                        <span class="effect-label">Supply Loss</span>
-                        <span class="effect-detail">{{formula}}</span>
-                        {{#if description}}<span class="effect-desc">{{description}}</span>{{/if}}
-                        {{else if (eq type "condition")}}
-                        <i class="fas fa-skull-crossbones"></i>
-                        <span class="effect-label">{{condition}}</span>
-                        {{#if level}}<span class="effect-detail">level {{level}}</span>{{/if}}
-                        {{#if scope}}<span class="effect-scope">({{scope}})</span>{{/if}}
-                        {{else if (eq type "damage")}}
-                        <i class="fas fa-heart-broken"></i>
-                        <span class="effect-label">{{formula}} {{damageType}}</span>
-                        {{#if description}}<span class="effect-desc">{{description}}</span>{{/if}}
-                        {{else}}
-                        <i class="fas fa-bolt"></i>
-                        <span class="effect-label">{{description}}</span>
+                    <div class="event-effect{{#if _locked}} locked{{/if}}">
+                        <div class="effect-head">
+                            <span class="effect-label">
+                            {{#if (eq type "damage")}}<i class="fas fa-heart-broken"></i> {{formula}} {{damageType}}
+                            {{else if (eq type "condition")}}<span class="effect-condition-severe"><i class="fas fa-skull-crossbones"></i> {{condition}}{{#if level}} (level {{level}}){{/if}}{{#if scope}} <span class="effect-scope">({{scope}})</span>{{/if}}</span>
+                            {{else if (eq type "supply_loss")}}<i class="fas fa-box-open"></i> {{#if description}}{{description}}{{else}}Supplies swept away{{/if}}
+                            {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{#if narrative}}{{narrative}}{{else}}Gear lost in the chaos{{/if}}
+                            {{else if (eq type "consume_gold")}}<i class="fas fa-coins"></i> {{#if description}}{{description}}{{else}}Coin swept away{{/if}}
+                            {{else}}<i class="fas fa-bolt"></i> {{description}}
+                            {{/if}}
+                            </span>
+                            {{#if (eq type "damage")}}
+                            {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="Re-roll target and damage"><i class="fas fa-rotate"></i></button>
+                            {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="Roll the target and damage now and lock it in. The hit lands after the rest, so the night's recovery can't heal it away."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                            {{else if (eq type "supply_loss")}}
+                            {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="Re-roll how much is swept away"><i class="fas fa-rotate"></i></button>
+                            {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="Roll how much is swept away now and lock it in. It leaves the packs when the rest resolves."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                            {{else if (eq type "item_at_risk")}}
+                            {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="Re-roll which gear is lost"><i class="fas fa-rotate"></i></button>
+                            {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="Roll which gear is lost now and lock it in. It leaves the packs when the rest resolves."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                            {{else if (eq type "consume_gold")}}
+                            {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="Re-roll the coin lost"><i class="fas fa-rotate"></i></button>
+                            {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@root.activeTreeState.eventIndex}}" data-effect-index="{{@index}}" data-tooltip="Roll how much coin is lost now and lock it in. It leaves the purses when the rest resolves."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                            {{/if}}
+                        </div>
+                        {{#if _locked}}
+                        {{#if (eq type "damage")}}
+                        <div class="effect-result">{{#each _lockedTargets}}<span class="effect-result-line">{{name}} &minus;{{amount}}</span>{{/each}}<span class="effect-result-foot">after rest</span></div>
+                        {{else if (eq type "supply_loss")}}
+                        <div class="effect-result">{{#each _lockedSupply.breakdown}}<span class="effect-result-line">{{itemName}}{{#unless (eq lossQty 1)}} &times;{{lossQty}}{{/unless}} <span class="effect-result-detail">({{actorName}})</span></span>{{/each}}{{#unless _lockedSupply.breakdown.length}}<span class="effect-result-line">nothing in packs</span>{{/unless}}<span class="effect-result-foot">after rest</span></div>
+                        {{else if (eq type "item_at_risk")}}
+                        <div class="effect-result">{{#each _lockedItems}}<span class="effect-result-line">{{itemName}}{{#unless (eq lossQty 1)}} &times;{{lossQty}}{{/unless}} <span class="effect-result-detail">({{actorName}})</span></span>{{/each}}{{#unless _lockedItems.length}}<span class="effect-result-line">nothing worth taking</span>{{/unless}}<span class="effect-result-foot">after rest</span></div>
+                        {{else if (eq type "consume_gold")}}
+                        <div class="effect-result">{{#each _lockedGold.breakdown}}<span class="effect-result-line">&minus;{{lossGp}} gp <span class="effect-result-detail">({{actorName}})</span></span>{{/each}}{{#unless _lockedGold.breakdown.length}}<span class="effect-result-line">no coin to lift</span>{{/unless}}<span class="effect-result-foot">after rest</span></div>
+                        {{/if}}
                         {{/if}}
                     </div>
                     {{/each}}
                 </div>
+                {{else}}
+                {{!-- Players: kept generic; the committed losses surface in the rest conclusion --}}
+                <div class="tree-effects-player-note">
+                    <i class="fas fa-water"></i> The camp took losses in the chaos. The full reckoning comes once the night settles.
+                </div>
+                {{/if}}
                 {{/if}}
                 {{#if isGM}}
                 <div class="tree-narration-hint">
                     <i class="fas fa-theater-masks"></i>
-                    <span>Describe the outcome to your players before proceeding.</span>
+                    <span>Roll and lock each consequence, then describe the outcome to your players before proceeding.</span>
                 </div>
                 {{/if}}
             </div>
@@ -2457,7 +2515,7 @@
         {{!-- Regular Events --}}
         {{#if triggeredEvents.length}}
         {{#each triggeredEvents}}
-        <div class="respite-event-card {{category}} {{#if resolvedOutcome}}resolved-event {{#if (gt @root.triggeredEvents.length 1)}}collapsed{{/if}}{{/if}} {{#if (eq result 'scouting_hazard')}}scouting-hazard{{/if}} {{#if (eq result 'scouting_bonus')}}scouting-bonus{{/if}}" {{#if resolvedOutcome}}data-action="toggleResolvedEvent"{{/if}}>
+        <div class="respite-event-card {{category}} {{#if resolvedOutcome}}resolved-event{{/if}} {{#if (eq result 'scouting_hazard')}}scouting-hazard{{/if}} {{#if (eq result 'scouting_bonus')}}scouting-bonus{{/if}}">
             <div class="event-header">
                 <div class="event-name">
                     {{#if (eq category "encounter")}}<i class="fas fa-swords"></i>
@@ -2468,10 +2526,9 @@
                     {{#if name}}{{name}}{{else}}{{#if (eq category "encounter")}}Something stirs...{{else if (eq category "complication")}}A complication arises...{{else if (eq category "discovery")}}Something catches your eye...{{else}}The night passes...{{/if}}{{/if}}
                 </div>
                 {{#if resolvedOutcome}}
-                <span class="event-verdict-inline {{#if (eq resolvedOutcome "triumph")}}pass{{else if (eq resolvedOutcome "success")}}pass{{else if (eq resolvedOutcome "partial")}}partial{{else}}fail{{/if}}">
-                    {{#if (eq resolvedOutcome "triumph")}}<i class="fas fa-check"></i> Passed{{else if (eq resolvedOutcome "success")}}<i class="fas fa-check"></i> Passed{{else if (eq resolvedOutcome "partial")}}<i class="fas fa-exclamation-triangle"></i> Partial{{else}}<i class="fas fa-times"></i> Failed{{/if}}
+                <span class="event-verdict-inline {{#if (eq resolvedOutcome "triumph")}}pass{{else if (eq resolvedOutcome "success")}}pass{{else if (eq resolvedOutcome "mixed")}}partial{{else}}fail{{/if}}">
+                    {{#if (eq resolvedOutcome "triumph")}}<i class="fas fa-check"></i> Passed{{else if (eq resolvedOutcome "success")}}<i class="fas fa-check"></i> Passed{{else if (eq resolvedOutcome "mixed")}}<i class="fas fa-exclamation-triangle"></i> Partial{{else}}<i class="fas fa-times"></i> Failed{{/if}}
                 </span>
-                <i class="fas fa-chevron-down event-expand-toggle"></i>
                 {{/if}}
                 {{#if (eq result "scouting_hazard")}}<span class="event-badge hazard">Scouting Hazard</span>{{/if}}
                 {{#if (eq result "scouting_bonus")}}<span class="event-badge bonus">Scouting Bonus</span>{{/if}}
@@ -2484,7 +2541,9 @@
             <div class="event-mechanical">
 
                 {{#if resolvedOutcome}}
-                {{!-- RESOLVED: DC at top as context for the rolls --}}
+                {{!-- RESOLVED --}}
+                {{#if @root.isGM}}
+                {{!-- DC and check framing are GM adjudication context, not for players --}}
                 <div class="event-check-header">
                     <div class="event-dc-badge">
                         <span class="dc-label">DC</span>
@@ -2499,8 +2558,9 @@
                         <span class="event-check-direction">All rolls averaged against DC</span>
                     </div>
                 </div>
+                {{/if}}
 
-                {{!-- Per-character results (visible to all clients) --}}
+                {{!-- Per-character results: shown to everyone, but the DC comparison stays GM-only --}}
                 {{#if resolvedRolls}}
                 <div class="event-roll-results">
                     {{#each resolvedRolls}}
@@ -2512,71 +2572,135 @@
                         </span>
                     </div>
                     {{/each}}
-                    {{!-- Group average summary (group policy only) --}}
-                    {{#if groupAverage}}
+                    {{#if @root.isGM}}{{#if groupAverage}}
                     <div class="event-roll-average">
                         <span class="avg-label">Group Average:</span>
                         <strong>{{groupAverage}}</strong>
                         <span class="avg-vs">vs DC</span>
                         <strong>{{mechanical.dc}}</strong>
                     </div>
-                    {{/if}}
+                    {{/if}}{{/if}}
                 </div>
                 {{/if}}
-                <div class="event-verdict {{#if (eq resolvedOutcome "triumph")}}pass{{else if (eq resolvedOutcome "success")}}pass{{else if (eq resolvedOutcome "partial")}}partial{{else}}fail{{/if}}">
-                    {{#if (eq resolvedOutcome "triumph")}}
-                    <i class="fas fa-shield-alt"></i> Check Passed
-                    {{else if (eq resolvedOutcome "success")}}
-                    <i class="fas fa-shield-alt"></i> Check Passed
-                    {{else if (eq resolvedOutcome "partial")}}
-                    <i class="fas fa-exclamation-triangle"></i> Partial Success
-                    {{else}}
-                    <i class="fas fa-skull-crossbones"></i> Check Failed
-                    {{/if}}
-                </div>
 
+                {{!-- Consolidated resolution block: verdict, narrative, and GM-only consequences in one card --}}
                 {{#if (eq resolvedOutcome "triumph")}}
-                <div class="event-outcome success resolved">
-                    <i class="fas fa-check-circle"></i>
-                    {{#if @root.isGM}}<span>{{mechanical.onTriumph.narrative}}</span>{{else}}<span>The party rises to the occasion.</span>{{/if}}
+                <div class="event-resolution pass">
+                    <div class="event-resolution-verdict"><i class="fas fa-shield-alt"></i> Check Passed</div>
+                    <div class="event-resolution-narrative">{{#if @root.isGM}}{{mechanical.onTriumph.narrative}}{{else}}The party rises to the occasion.{{/if}}</div>
                 </div>
                 {{else if (eq resolvedOutcome "success")}}
-                <div class="event-outcome success resolved">
-                    <i class="fas fa-check-circle"></i>
-                    {{#if @root.isGM}}<span>{{mechanical.onSuccess.narrative}}</span>{{else}}<span>The party weathers the challenge.</span>{{/if}}
+                <div class="event-resolution pass">
+                    <div class="event-resolution-verdict"><i class="fas fa-shield-alt"></i> Check Passed</div>
+                    <div class="event-resolution-narrative">{{#if @root.isGM}}{{mechanical.onSuccess.narrative}}{{else}}The party weathers the challenge.{{/if}}</div>
                 </div>
-                {{else if (eq resolvedOutcome "partial")}}
-                <div class="event-outcome partial resolved">
-                    <i class="fas fa-exclamation-circle"></i>
-                    {{#if @root.isGM}}<span>{{mechanical.onPartial.narrative}}</span>{{else}}<span>Things could have gone better.</span>{{/if}}
-                    {{#each mechanical.onPartial.effects}}
-                    <div class="event-effect">
-                        {{#if (eq type "damage")}}<i class="fas fa-heart-broken"></i> {{formula}} {{damageType}} ({{scope}})
-                        {{else if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> Recovery x{{hpMultiplier}}
-                        {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> {{condition}}{{#if checks.length}} on {{#each checks}}{{#if @index}}, {{/if}}{{upper this}}{{/each}} checks{{/if}} {{#if duration}}({{humanDuration duration}}){{/if}}
-                        {{else if (eq type "consume_resource")}}<i class="fas fa-box-open"></i> Lose {{amount}} {{resource}}
-                        {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{narrative}}
-                        {{/if}}
+                {{else if (eq resolvedOutcome "mixed")}}
+                <div class="event-resolution partial">
+                    <div class="event-resolution-verdict"><i class="fas fa-exclamation-triangle"></i> Partial Success</div>
+                    <div class="event-resolution-narrative">{{#if @root.isGM}}{{mechanical.onMixed.narrative}}{{else}}Things could have gone better.{{/if}}</div>
+                    {{#if @root.isGM}}{{#if mechanical.onMixed.effects.length}}
+                    <div class="event-effects">
+                        {{#each mechanical.onMixed.effects}}
+                        <div class="event-effect{{#if _locked}} locked{{/if}}">
+                            <div class="effect-head">
+                                <span class="effect-label">
+                                {{#if (eq type "damage")}}<i class="fas fa-heart-broken"></i> {{formula}} {{damageType}}
+                                {{else if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> Recovery x{{hpMultiplier}}
+                                {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> {{condition}}{{#if checks.length}} on {{#each checks}}{{#if @index}}, {{/if}}{{upper this}}{{/each}} checks{{/if}} {{#if duration}}({{humanDuration duration}}){{/if}}
+                                {{else if (eq type "consume_resource")}}<i class="fas fa-box-open"></i> Lose {{resource}}
+                                {{else if (eq type "consume_gold")}}<i class="fas fa-coins"></i> {{#if description}}{{description}}{{else}}Coin lifted from the packs{{/if}}
+                                {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{narrative}}
+                                {{/if}}
+                                </span>
+                                {{#if (eq type "damage")}}
+                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Re-roll target and damage"><i class="fas fa-rotate"></i></button>
+                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Roll the target and damage now and lock it in. The hit lands after the rest, so the night's recovery can't heal it away."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                                {{else if (eq type "consume_resource")}}
+                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Re-roll the amount lost"><i class="fas fa-rotate"></i></button>
+                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Roll how much is lost now and lock it in. It's applied when the rest resolves, not before, so the GM sees exactly what goes."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                                {{else if (eq type "item_at_risk")}}
+                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Re-roll which items are taken"><i class="fas fa-rotate"></i></button>
+                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Roll which items go missing now and lock it in. They leave the packs when the rest resolves, so the GM sees exactly what was taken."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                                {{else if (eq type "consume_gold")}}
+                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Re-roll the coin taken"><i class="fas fa-rotate"></i></button>
+                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Roll how much coin is lifted now and lock it in. It leaves the purses when the rest resolves."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                                {{/if}}
+                            </div>
+                            {{#if _locked}}
+                            {{#if (eq type "damage")}}
+                            <div class="effect-result">{{#each _lockedTargets}}<span class="effect-result-line">{{name}} &minus;{{amount}}</span>{{/each}}<span class="effect-result-foot">after rest</span></div>
+                            {{else if (eq type "consume_resource")}}
+                            <div class="effect-result">{{#each _lockedLoss.provisionGroups}}<span class="effect-result-line">{{total}} {{kind}} <span class="effect-result-detail">({{#each entries}}{{actorName}} &minus;{{lossQty}}{{#unless @last}}, {{/unless}}{{/each}})</span></span>{{/each}}{{#each _lockedLoss.gear}}<span class="effect-result-line">{{itemName}}{{#unless (eq lossQty 1)}} &times;{{lossQty}}{{/unless}} <span class="effect-result-detail">({{actorName}})</span></span>{{/each}}{{#unless _lockedLoss.provisionGroups.length}}{{#unless _lockedLoss.gear.length}}<span class="effect-result-line">nothing in packs</span>{{/unless}}{{/unless}}<span class="effect-result-foot">after rest</span></div>
+                            {{else if (eq type "item_at_risk")}}
+                            <div class="effect-result">{{#each _lockedItems}}<span class="effect-result-line">{{itemName}}{{#unless (eq lossQty 1)}} &times;{{lossQty}}{{/unless}} <span class="effect-result-detail">({{actorName}})</span></span>{{/each}}{{#unless _lockedItems.length}}<span class="effect-result-line">nothing worth taking</span>{{/unless}}<span class="effect-result-foot">after rest</span></div>
+                            {{else if (eq type "consume_gold")}}
+                            <div class="effect-result">{{#each _lockedGold.breakdown}}<span class="effect-result-line">&minus;{{lossGp}} gp <span class="effect-result-detail">({{actorName}})</span></span>{{/each}}{{#unless _lockedGold.breakdown.length}}<span class="effect-result-line">no coin to lift</span>{{/unless}}<span class="effect-result-foot">after rest</span></div>
+                            {{/if}}
+                            {{/if}}
+                        </div>
+                        {{/each}}
                     </div>
-                    {{/each}}
+                    {{/if}}{{/if}}
                 </div>
                 {{else}}
-                <div class="event-outcome failure resolved">
-                    <i class="fas fa-times-circle"></i>
-                    {{#if @root.isGM}}<span>{{mechanical.onFailure.narrative}}</span>{{else}}<span>The situation takes a turn for the worse.</span>{{/if}}
-                    {{#each mechanical.onFailure.effects}}
-                    <div class="event-effect">
-                        {{#if (eq type "damage")}}<i class="fas fa-heart-broken"></i> {{formula}} {{damageType}} ({{scope}})
-                        {{else if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> Recovery x{{hpMultiplier}}
-                        {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> {{condition}}{{#if checks.length}} on {{#each checks}}{{#if @index}}, {{/if}}{{upper this}}{{/each}} checks{{/if}} {{#if duration}}({{humanDuration duration}}){{/if}}
-                        {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{narrative}}
-                        {{else if (eq type "encounter")}}<i class="fas fa-swords"></i> {{description}}
-                        {{else if (eq type "consume_resource")}}<i class="fas fa-box-open"></i> Lose {{amount}} {{resource}}
-                        {{/if}}
+                <div class="event-resolution fail">
+                    <div class="event-resolution-verdict"><i class="fas fa-skull-crossbones"></i> Check Failed</div>
+                    <div class="event-resolution-narrative">{{#if @root.isGM}}{{mechanical.onFailure.narrative}}{{else}}The situation takes a turn for the worse.{{/if}}</div>
+                    {{#if @root.isGM}}{{#if mechanical.onFailure.effects.length}}
+                    <div class="event-effects">
+                        {{#each mechanical.onFailure.effects}}
+                        <div class="event-effect{{#if _locked}} locked{{/if}}">
+                            <div class="effect-head">
+                                <span class="effect-label">
+                                {{#if (eq type "damage")}}<i class="fas fa-heart-broken"></i> {{formula}} {{damageType}}
+                                {{else if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> Recovery x{{hpMultiplier}}
+                                {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> {{condition}}{{#if checks.length}} on {{#each checks}}{{#if @index}}, {{/if}}{{upper this}}{{/each}} checks{{/if}} {{#if duration}}({{humanDuration duration}}){{/if}}
+                                {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{narrative}}
+                                {{else if (eq type "encounter")}}<i class="fas fa-swords"></i> {{description}}
+                                {{else if (eq type "consume_resource")}}<i class="fas fa-box-open"></i> Lose {{resource}}
+                                {{else if (eq type "consume_gold")}}<i class="fas fa-coins"></i> {{#if description}}{{description}}{{else}}Coin lifted from the packs{{/if}}
+                                {{/if}}
+                                </span>
+                                {{#if (eq type "damage")}}
+                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Re-roll target and damage"><i class="fas fa-rotate"></i></button>
+                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Roll the target and damage now and lock it in. The hit lands after the rest, so the night's recovery can't heal it away."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                                {{else if (eq type "consume_resource")}}
+                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Re-roll the amount lost"><i class="fas fa-rotate"></i></button>
+                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Roll how much is lost now and lock it in. It's applied when the rest resolves, not before, so the GM sees exactly what goes."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                                {{else if (eq type "item_at_risk")}}
+                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Re-roll which items are taken"><i class="fas fa-rotate"></i></button>
+                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Roll which items go missing now and lock it in. They leave the packs when the rest resolves, so the GM sees exactly what was taken."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                                {{else if (eq type "consume_gold")}}
+                                {{#if _locked}}<button type="button" class="effect-reroll" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Re-roll the coin taken"><i class="fas fa-rotate"></i></button>
+                                {{else}}<button type="button" class="btn-lock-consequence" data-action="lockEventConsequence" data-event-index="{{@../index}}" data-effect-index="{{@index}}" data-tooltip="Roll how much coin is lifted now and lock it in. It leaves the purses when the rest resolves."><i class="fas fa-dice-d20"></i> Roll &amp; lock</button>{{/if}}
+                                {{/if}}
+                            </div>
+                            {{#if _locked}}
+                            {{#if (eq type "damage")}}
+                            <div class="effect-result">{{#each _lockedTargets}}<span class="effect-result-line">{{name}} &minus;{{amount}}</span>{{/each}}<span class="effect-result-foot">after rest</span></div>
+                            {{else if (eq type "consume_resource")}}
+                            <div class="effect-result">{{#each _lockedLoss.provisionGroups}}<span class="effect-result-line">{{total}} {{kind}} <span class="effect-result-detail">({{#each entries}}{{actorName}} &minus;{{lossQty}}{{#unless @last}}, {{/unless}}{{/each}})</span></span>{{/each}}{{#each _lockedLoss.gear}}<span class="effect-result-line">{{itemName}}{{#unless (eq lossQty 1)}} &times;{{lossQty}}{{/unless}} <span class="effect-result-detail">({{actorName}})</span></span>{{/each}}{{#unless _lockedLoss.provisionGroups.length}}{{#unless _lockedLoss.gear.length}}<span class="effect-result-line">nothing in packs</span>{{/unless}}{{/unless}}<span class="effect-result-foot">after rest</span></div>
+                            {{else if (eq type "item_at_risk")}}
+                            <div class="effect-result">{{#each _lockedItems}}<span class="effect-result-line">{{itemName}}{{#unless (eq lossQty 1)}} &times;{{lossQty}}{{/unless}} <span class="effect-result-detail">({{actorName}})</span></span>{{/each}}{{#unless _lockedItems.length}}<span class="effect-result-line">nothing worth taking</span>{{/unless}}<span class="effect-result-foot">after rest</span></div>
+                            {{else if (eq type "consume_gold")}}
+                            <div class="effect-result">{{#each _lockedGold.breakdown}}<span class="effect-result-line">&minus;{{lossGp}} gp <span class="effect-result-detail">({{actorName}})</span></span>{{/each}}{{#unless _lockedGold.breakdown.length}}<span class="effect-result-line">no coin to lift</span>{{/unless}}<span class="effect-result-foot">after rest</span></div>
+                            {{/if}}
+                            {{/if}}
+                        </div>
+                        {{/each}}
                     </div>
-                    {{/each}}
+                    {{/if}}{{/if}}
                 </div>
                 {{/if}}
+
+                {{#unless @root.isGM}}{{#if playerConsequences.length}}
+                <div class="event-player-consequences">
+                    <div class="event-player-consequences-head"><i class="fas fa-hourglass-half"></i> After the rest</div>
+                    {{#each playerConsequences}}
+                    <div class="event-player-consequence"><i class="fas {{icon}}"></i> {{text}}</div>
+                    {{/each}}
+                </div>
+                {{/if}}{{/unless}}
 
                 {{else}}
                 {{!-- PENDING: scene > stakes > check > action --}}
@@ -2862,13 +2986,15 @@
                 <button type="button" class="nw-mode-tab {{#if eventsModeIsRandom}}is-active{{/if}}"
                     role="tab" aria-selected="{{#if eventsModeIsRandom}}true{{else}}false{{/if}}"
                     data-action="setEventsMode" data-mode="random"
-                    data-tooltip="Roll a d20 against the encounter threshold. High rolls will trigger a random event from the terrain event pool.">
+                    {{#if eventsCommitPending}}disabled{{/if}}
+                    data-tooltip="Roll a d20 against the encounter threshold. Meet or beat it for a quiet night. Rolls below pull a random event from the terrain pool. Natural 1 pulls from the disaster pool.">
                     <i class="fas fa-dice-d20 nw-mode-icon"></i>
                     <span class="nw-mode-label">Random</span>
                 </button>
                 <button type="button" class="nw-mode-tab {{#if eventsModeIsImprovise}}is-active{{/if}}"
                     role="tab" aria-selected="{{#if eventsModeIsImprovise}}true{{else}}false{{/if}}"
                     data-action="setEventsMode" data-mode="improvise"
+                    {{#if eventsCommitPending}}disabled{{/if}}
                     data-tooltip="Skip the dice and narrate your own night event on the spot.">
                     <i class="fas fa-hat-wizard nw-mode-icon"></i>
                     <span class="nw-mode-label">Improvise</span>
@@ -2876,6 +3002,7 @@
                 <button type="button" class="nw-mode-tab {{#if eventsModeIsPick}}is-active{{/if}}"
                     role="tab" aria-selected="{{#if eventsModeIsPick}}true{{else}}false{{/if}}"
                     data-action="setEventsMode" data-mode="pick"
+                    {{#if eventsCommitPending}}disabled{{/if}}
                     data-tooltip="{{#if eventsModePickAvailable}}Choose a specific event from your curated pool. Bypasses the encounter threshold; the event runs as written.{{else}}No events in the curated pool for this terrain. Curate the pool first.{{/if}}"
                     {{#unless eventsModePickAvailable}}disabled{{/unless}}>
                     <i class="fas fa-book-open nw-mode-icon"></i>
@@ -2902,7 +3029,7 @@
                         <i class="fas fa-exclamation-triangle"></i> Roll below {{encounterBar.effectiveDC}}: event triggers
                     </span>
                     <span class="event-outcome-advisory disaster">
-                        <i class="fas fa-skull"></i> Natural 1: Disaster!
+                        <i class="fas fa-skull"></i> Natural 1: disaster pool
                     </span>
                 </div>
             </details>
@@ -3062,27 +3189,44 @@
             {{#unless (and activeTreeState (not activeTreeState.resolved))}}
             <button type="button" class="btn-primary" data-action="resolveEvents"
                 {{#if disasterChoice}}disabled data-tooltip="Choose a disaster outcome first"{{/if}}
-                {{#unless allEventChecksResolved}}disabled data-tooltip="Resolve all event skill checks first"{{/unless}}>
+                {{#unless allEventChecksResolved}}disabled data-tooltip="Resolve all event skill checks first"{{/unless}}
+                {{#unless allConsequencesResolved}}disabled data-tooltip="Roll and lock every consequence first"{{/unless}}>
                 <i class="fas fa-arrow-right"></i> Proceed to Resolution
             </button>
             {{/unless}}
             {{/if}}
         {{else}}
         {{#if encountersEnabled}}
+        <button type="button" class="travel-skip-link nw-no-event-link" data-action="nightPasses"
+            {{#if eventsCommitPending}}disabled{{/if}}
+            {{#unless campPrepsResolved}}disabled{{/unless}}
+            data-tooltip="{{#if eventsCommitPending}}Waiting for the night check...{{else if campPrepsResolved}}GM override: skip the night check and run no event.{{else}}Awaiting camp activity rolls{{/if}}">
+            <i class="fas fa-moon"></i> No event
+        </button>
         <button type="button" class="btn-primary btn-roll-events" data-action="commitEventsMode"
+            {{#if eventsCommitPending}}disabled{{/if}}
             {{#unless campPrepsResolved}}disabled data-tooltip="Awaiting camp activity rolls"{{/unless}}>
-            {{#if eventsModeIsPick}}
+            {{#if eventsCommitPending}}
+            <i class="fas fa-circle-notch fa-spin"></i>
+            {{#if eventsModeIsPick}}Opening pool...{{else}}Rolling...{{/if}}
+            {{else if eventsModeIsPick}}
             <i class="fas fa-book-open"></i> Choose event
             {{else}}
             <i class="fas fa-dice-d20"></i> Roll for Events
             {{/if}}
         </button>
         {{else}}
-        <button type="button" class="btn-secondary btn-improvise-night" data-action="improviseNight">
+        <button type="button" class="btn-secondary btn-improvise-night" data-action="improviseNight"
+            {{#if eventsCommitPending}}disabled{{/if}}>
             <i class="fas fa-hat-wizard"></i> Improvise an event
         </button>
-        <button type="button" class="btn-primary btn-night-passes" data-action="nightPasses">
+        <button type="button" class="btn-primary btn-night-passes" data-action="nightPasses"
+            {{#if eventsCommitPending}}disabled{{/if}}>
+            {{#if eventsCommitPending}}
+            <i class="fas fa-circle-notch fa-spin"></i> Continuing...
+            {{else}}
             <i class="fas fa-moon"></i> The night passes
+            {{/if}}
         </button>
         {{/if}}
         {{/if}}
@@ -3096,6 +3240,7 @@
         {{/if}}
     </div>
     {{/if}}
+    </div>{{!-- /events-phase-body --}}
     {{/if}}
 
     {{!-- =============== RESOLUTION PHASE =============== --}}
@@ -3117,17 +3262,52 @@
         {{#if effects.length}}
         <div class="outcome-effects">
             {{#each effects}}
+            {{#if (eq type "damage")}}{{#unless ../lockedDamage.length}}<div class="outcome-effect-line"><i class="fas fa-heart-broken"></i> {{formula}} {{damageType}} damage</div>{{/unless}}
+            {{else if (eq type "consume_resource")}}{{#unless ../lockedLosses.length}}<div class="outcome-effect-line"><i class="fas fa-box-open"></i> Lose {{resource}}</div>{{/unless}}
+            {{else if (eq type "supply_loss")}}{{#unless ../supplyLocked}}<div class="outcome-effect-line"><i class="fas fa-box-open"></i> {{#if description}}{{description}}{{else}}Supplies lost{{/if}}</div>{{/unless}}
+            {{else if (eq type "item_at_risk")}}{{#unless ../lockedItems.length}}<div class="outcome-effect-line"><i class="fas fa-box-open"></i> {{narrative}}</div>{{/unless}}
+            {{else if (eq type "consume_gold")}}{{#unless ../lockedGold.length}}<div class="outcome-effect-line"><i class="fas fa-coins"></i> {{#if description}}{{description}}{{else}}{{narrative}}{{/if}}</div>{{/unless}}
+            {{else}}
             <div class="outcome-effect-line">
-                {{#if (eq type "damage")}}<i class="fas fa-heart-broken"></i> {{formula}} {{damageType}} damage
-                {{else if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> Recovery reduced (x{{hpMultiplier}})
+                {{#if (eq type "recovery_penalty")}}<i class="fas fa-bed"></i> Recovery reduced (x{{hpMultiplier}})
                 {{else if (eq type "condition")}}<i class="fas fa-skull-crossbones"></i> Gained {{condition}}{{#if checks.length}} on {{#each checks}}{{#if @index}}, {{/if}}{{upper this}}{{/each}} checks{{/if}} {{#if duration}}({{humanDuration duration}}){{/if}}
-                {{else if (eq type "item_at_risk")}}<i class="fas fa-box-open"></i> {{narrative}}
                 {{else if (eq type "encounter")}}<i class="fas fa-swords"></i> Combat encounter
                 {{else if description}}<i class="fas fa-cog"></i> {{description}}
                 {{else}}{{narrative}}
                 {{/if}}
             </div>
+            {{/if}}
             {{/each}}
+        </div>
+        {{/if}}
+        {{#if lockedDamage.length}}
+        <div class="outcome-effects">
+            {{#each lockedDamage}}
+            <div class="outcome-effect-line outcome-loss"><i class="fas fa-heart-broken"></i> {{name}} took {{amount}}{{#if damageType}} {{damageType}}{{/if}} damage</div>
+            {{/each}}
+        </div>
+        {{/if}}
+        {{#if lockedLosses.length}}
+        <div class="outcome-effects">
+            {{#each lockedLosses}}
+            {{#each provisionGroups}}<div class="outcome-effect-line outcome-loss"><i class="fas fa-box-open"></i> Lost {{total}} {{kind}} <span class="loss-detail">({{#each entries}}{{actorName}} &times;{{lossQty}}{{#unless @last}}, {{/unless}}{{/each}})</span></div>{{/each}}
+            {{#each gear}}<div class="outcome-effect-line outcome-loss"><i class="fas fa-times-circle"></i> {{actorName}} lost {{itemName}}{{#unless (eq lossQty 1)}} &times;{{lossQty}}{{/unless}}</div>{{/each}}
+            {{/each}}
+        </div>
+        {{/if}}
+        {{#if lockedSupply.length}}
+        <div class="outcome-effects">
+            {{#each lockedSupply}}<div class="outcome-effect-line outcome-loss"><i class="fas fa-box-open"></i> Lost {{itemName}}{{#unless (eq lossQty 1)}} &times;{{lossQty}}{{/unless}}</div>{{/each}}
+        </div>
+        {{/if}}
+        {{#if lockedItems.length}}
+        <div class="outcome-effects">
+            {{#each lockedItems}}<div class="outcome-effect-line outcome-loss"><i class="fas fa-times-circle"></i> {{actorName}} lost {{itemName}}{{#unless (eq lossQty 1)}} &times;{{lossQty}}{{/unless}}</div>{{/each}}
+        </div>
+        {{/if}}
+        {{#if lockedGold.length}}
+        <div class="outcome-effects">
+            {{#each lockedGold}}<div class="outcome-effect-line outcome-loss"><i class="fas fa-coins"></i> {{actorName}} lost {{lossGp}} gp</div>{{/each}}
         </div>
         {{/if}}
         {{#if craftingResult}}
@@ -3388,7 +3568,7 @@
                 {{encounterBar.totalLabel}}
             </span>
             <div class="encounter-bar-tooltip" role="tooltip">
-                Roll a d20. Meet or beat this value for a quiet night; fall short and a camp event is drawn. Natural 1 always triggers the disaster fork. Higher DC means a harder night. Shelter, fire, defenses, and scouting all shift this number.
+                Base threshold: {{encounterBar.terrainLabel}} ({{encounterBar.baseDC}}). Roll a d20; meet or beat the final DC for a quiet night. Shelter, fire, defenses, and scouting shift this number.
             </div>
         </span>
         {{#if encounterBar.chips.length}}

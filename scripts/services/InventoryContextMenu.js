@@ -104,8 +104,11 @@ async function _consumeFromInventory(actor, item, isFood) {
     // Check for Well Fed buff and apply if present
     const flags = itemSnapshot.flags?.[MODULE_ID] ?? {};
     let buffLines = [];
+    let buffRolls = [];
     if (flags.wellFed === true && flags.buff !== null) {
-        buffLines = await MealPhaseHandler._applyWellFedEffect(actor, itemSnapshot);
+        const wellFed = await MealPhaseHandler._applyWellFedEffect(actor, itemSnapshot);
+        buffLines = wellFed.lines ?? [];
+        buffRolls = wellFed.rolls ?? [];
     }
 
     // Build chat content
@@ -118,6 +121,7 @@ async function _consumeFromInventory(actor, item, isFood) {
             <p><i class="fas ${icon}"></i> <strong>${actor.name}</strong> ${verb} <strong>${itemName}</strong>.</p>
             ${buffSummary}
         </div>`,
+        rolls: buffRolls,
         speaker: ChatMessage.getSpeaker({ actor })
     });
 

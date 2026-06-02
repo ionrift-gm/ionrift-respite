@@ -16,11 +16,13 @@
 
 const MODULE_ID = "ionrift-respite";
 
+import { normalizeTerrainCategory } from "../../../ionrift-library/scripts/services/TerrainRegistry.js";
+
 /** Camp comfort keys used by RestSetupApp and RestFlowEngine */
 const VALID_COMFORT = new Set(["safe", "sheltered", "rough", "hostile"]);
 
 /** Valid terrain category values. Declared in each terrain.json as "category". */
-const VALID_CATEGORIES = new Set(["dungeon", "safe-haven", "wilderness"]);
+const VALID_CATEGORIES = new Set(["built", "safe-haven", "wilderness"]);
 
 /**
  * Comfort → category fallback for terrain.json files that predate the category field.
@@ -175,24 +177,25 @@ export class TerrainRegistry {
      * a comfort-based heuristic for terrain.json files without a category field.
      * Never uses hardcoded terrain ID lists. Callers must not either.
      * @param {string} id
-     * @returns {"dungeon"|"safe-haven"|"wilderness"}
+     * @returns {"built"|"safe-haven"|"wilderness"}
      */
     static getCategory(id) {
         const t = this._terrains.get(id);
         if (!t) return "wilderness";
-        if (t.category && VALID_CATEGORIES.has(t.category)) return t.category;
+        const normalized = normalizeTerrainCategory(t.category);
+        if (normalized && VALID_CATEGORIES.has(normalized)) return normalized;
         // Fallback: derive from comfort field for legacy terrain.json files
         return COMFORT_CATEGORY_FALLBACK[t.comfort] ?? "wilderness";
     }
 
     /**
-     * Environment dropdown groups (Dungeon, Safe Haven, Wilderness).
+     * Environment dropdown groups (Built, Safe Haven, Wilderness).
      * @param {{ lastTerrain?: string }} [options]
      * @returns {{ group: string, options: { value: string, label: string }[] }[]}
      */
     static getOptionGroups(options = {}) {
         const { lastTerrain } = options;
-        const dungeon = [];
+        const built = [];
         const safeHaven = [];
         const wilderness = [];
         for (const t of this.getAll()) {
@@ -201,12 +204,12 @@ export class TerrainRegistry {
                 label: (t.label ?? t.id) + (lastTerrain && t.id === lastTerrain ? " (last used)" : "")
             };
             const category = this.getCategory(t.id);
-            if (category === "dungeon") dungeon.push(opt);
+            if (category === "built") built.push(opt);
             else if (category === "safe-haven") safeHaven.push(opt);
             else wilderness.push(opt);
         }
         const groups = [];
-        if (dungeon.length) groups.push({ group: "Dungeon", options: dungeon });
+        if (built.length) groups.push({ group: "Built", options: built });
         if (safeHaven.length) groups.push({ group: "Safe Haven", options: safeHaven });
         if (wilderness.length) groups.push({ group: "Wilderness", options: wilderness });
         return groups;

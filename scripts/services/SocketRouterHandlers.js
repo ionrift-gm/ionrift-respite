@@ -115,12 +115,19 @@ export function handleRestStarted(data, ctx) {
             }
         };
         ctx.setActivePlayerRestApp(app);
-        console.log(`${MODULE_ID} | RestSetupApp created in player mode, rendering...`);
-        app.render({ force: true });
         ctx.showAfkPanel();
 
         if (data.snapshot && app.receiveRestSnapshot) {
+            // Defer the initial render to receiveRestSnapshot so it can decide
+            // whether to render (theater / non-activity phases) or stay closed
+            // and show the rejoin bar (stations + activity phase) without
+            // racing a force-render. A pre-render here would land DOM after
+            // receiveRestSnapshot's close, leaving both the RSA and bar visible.
+            console.log(`${MODULE_ID} | RestSetupApp created in player mode, deferring render to snapshot handler`);
             Promise.resolve().then(() => { app.receiveRestSnapshot(data.snapshot); });
+        } else {
+            console.log(`${MODULE_ID} | RestSetupApp created in player mode, rendering...`);
+            app.render({ force: true });
         }
         setTimeout(() => {
             const phase = ctx.activePlayerRestApp?._phase;

@@ -29,6 +29,30 @@ export class DecisionTreeResolver {
     }
 
     /**
+     * Picks read-aloud copy and whether the decision question is a separate line.
+     * Depth 0: gmPrompt (scene) first; prompt follows when it differs from the scene.
+     * Deeper branches: the branch prompt is the read-aloud.
+     * @param {{ gmPrompt?: string, description?: string }} eventFields
+     * @param {{ prompt?: string, description?: string }} treeFields
+     * @param {number} [depth]
+     * @returns {{ readAloud: string, showDecisionPrompt: boolean }}
+     */
+    static computeNarrationFields(eventFields, treeFields, depth = 0) {
+        const prompt = (treeFields.prompt ?? "").trim();
+        const gmPrompt = (eventFields.gmPrompt ?? "").trim();
+        const description = (eventFields.description ?? treeFields.description ?? "").trim();
+
+        if (depth > 0) {
+            const readAloud = prompt || description || "";
+            return { readAloud, showDecisionPrompt: false };
+        }
+
+        const readAloud = gmPrompt || prompt || description || "";
+        const showDecisionPrompt = !!(gmPrompt && prompt && gmPrompt !== prompt);
+        return { readAloud, showDecisionPrompt };
+    }
+
+    /**
      * Creates the initial tree state for a decision tree event.
      * This is the starting point that the GM UI will render.
      * @param {Object} event - The full event object.
@@ -37,11 +61,16 @@ export class DecisionTreeResolver {
      */
     static createTreeState(event, targetIds) {
         const tree = event.mechanical;
+        const narration = DecisionTreeResolver.computeNarrationFields(event, tree, 0);
         return {
             eventId: event.id,
             eventName: event.name,
-            description: event.description,
+            description: event.description ?? "",
+            gmPrompt: event.gmPrompt ?? "",
+            checkContext: event.checkContext ?? null,
             prompt: tree.prompt,
+            readAloud: narration.readAloud,
+            showDecisionPrompt: narration.showDecisionPrompt,
             options: tree.options,
             stallPenalty: tree.stallPenalty ?? null,
             hasStallPenalty: !!tree.stallPenalty,
@@ -127,13 +156,16 @@ export class DecisionTreeResolver {
         } else {
             const failure = option.onFailure;
             if (failure.options && treeState.depth < treeState.maxDepth) {
-                // Branch deeper
+                // Branch deeper: new prompt is the read-aloud; event gmPrompt stays in state for GM steer only
+                const branchPrompt = failure.prompt ?? failure.narrative ?? "";
                 return {
                     ...state,
                     depth: treeState.depth + 1,
-                    prompt: failure.prompt ?? failure.narrative,
+                    prompt: branchPrompt,
                     options: failure.options,
-                    description: failure.narrative
+                    description: failure.narrative,
+                    readAloud: branchPrompt || failure.narrative || treeState.readAloud,
+                    showDecisionPrompt: false
                 };
             } else {
                 return this._resolveOutcome(state, failure);

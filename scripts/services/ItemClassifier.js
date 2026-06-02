@@ -600,6 +600,10 @@ export class ItemClassifier {
         const name = item.name?.toLowerCase().trim();
         if (!name) return false;
         if (FOOD_NAMES.has(name)) return true;
+        // Any ration-named variant (seasoned, fortified, well-seasoned, ...) is
+        // food. Keeps cooked/preserved rations in the provisions cohort even
+        // when they carry no explicit flag or DnD5e food subtype.
+        if (name.includes("rations")) return true;
         if (this.getCustomNames("customFoodNames").has(name)) return true;
         return false;
     }

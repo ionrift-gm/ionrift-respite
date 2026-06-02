@@ -95,17 +95,6 @@ export async function waitForDiceSoNice(timeoutMs = 5000) {
 }
 
 /**
- * Show a roll in Dice So Nice and await the animation.
- * @param {Roll} roll - Evaluated roll.
- * @param {User} [user=game.user]
- * @returns {Promise<void>}
- */
-export async function showDiceSoNiceRoll(roll, user = game.user) {
-    if (!game.modules?.get?.("dice-so-nice")?.active || !game.dice3d) return;
-    await game.dice3d.showForRoll(roll, user, true);
-}
-
-/**
  * Disables a roll button and shows a spinner.
  * @param {HTMLElement} target - The button element.
  */
@@ -150,8 +139,8 @@ export async function rollForPlayer(actor, skills, dc, context = "Skill check", 
     const modeLabel = rollMode === "advantage" ? " [Advantage]" : rollMode === "disadvantage" ? " [Disadvantage]" : "";
     const flavor = `<strong>${actor.name}</strong> - ${context} (${skillName}, DC ${dc}) [GM roll]${modeLabel}`;
 
-    await showDiceSoNiceRoll(roll);
     await postRollToChat(actor, roll, flavor);
+    await waitForDiceSoNice();
 
     return { total: roll.total, passed, skill, modifier, natD20: getNatD20FromRoll(roll) };
 }
@@ -174,8 +163,11 @@ export async function executePlayerRoll(actor, skillKey, dc, flavorText, buttonT
 
     if (buttonTarget) disableRollButton(buttonTarget);
 
-    await showDiceSoNiceRoll(roll);
+    // Dice So Nice animates automatically from the chat message; posting and then
+    // awaiting completion gives a single throw, not the double animation that an
+    // explicit showForRoll call would add on top.
     await postRollToChat(actor, roll, flavorText);
+    await waitForDiceSoNice();
 
     return { total: roll.total, passed: roll.total >= dc, roll };
 }
