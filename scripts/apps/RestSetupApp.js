@@ -4347,7 +4347,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const shelter = bd.shelter ?? 0;
                 const weather = bd.weather ?? 0;
                 const scouting = bd.scouting ?? 0;
-                const fire = this._engine.fireRollModifier ?? 0;
+                const fireUncommitted = (this._fireLevel ?? "unlit") === "unlit" && !this._coldCampDecided;
+                const fire = (this._phase === "camp" && fireUncommitted)
+                    ? (CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[this._campFirePreviewLevel ?? "embers"] ?? 0)
+                    : (this._engine.fireRollModifier ?? 0);
                 const gmAdj = this._engine.gmEncounterAdj ?? 0;
                 const complication = this._engine.scoutingComplication ?? false;
                 const defenses = bd.defenses ?? 0;
