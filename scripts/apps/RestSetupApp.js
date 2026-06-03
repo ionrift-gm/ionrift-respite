@@ -4765,13 +4765,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         if (check.ability === "best" && character?.id) {
             const actor = game.actors.get(character.id);
-            if (actor?.system?.abilities) {
-                const abilities = actor.system.abilities;
+            if (actor) {
+                const fmtAdapter = game.ionrift?.respite?.adapter;
+                const abilityKeys = ["str", "dex", "con", "int", "wis", "cha"];
                 let bestKey = null;
                 let bestVal = -1;
-                for (const [key, data] of Object.entries(abilities)) {
-                    const val = data.value ?? 0;
-                    if (val > bestVal) { bestVal = val; bestKey = key; }
+                for (const key of abilityKeys) {
+                    const mod = fmtAdapter ? fmtAdapter.getAbilityMod(actor, key) : (actor.system?.abilities?.[key]?.mod ?? 0);
+                    if (mod > bestVal) { bestVal = mod; bestKey = key; }
                 }
                 if (bestKey) abilityLabel = `${bestKey.toUpperCase()} (${bestVal})`;
             }
@@ -9613,13 +9614,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
             }
 
+            const dmgAdapter = game.ionrift?.respite?.adapter;
             for (const [actorId, totalDamage] of lockedDamageByActor) {
                 const actor = game.actors.get(actorId);
                 if (!actor || totalDamage <= 0) continue;
-                const hp = actor.system?.attributes?.hp;
-                if (!hp) continue;
-                const newHp = Math.max(0, (hp.value ?? 0) - totalDamage);
-                await actor.update({ "system.attributes.hp.value": newHp });
+                if (dmgAdapter) {
+                    await dmgAdapter.applyHPDamage(actor, totalDamage);
+                } else {
+                    const hp = actor.system?.attributes?.hp;
+                    if (!hp) continue;
+                    const newHp = Math.max(0, (hp.value ?? 0) - totalDamage);
+                    await actor.update({ "system.attributes.hp.value": newHp });
+                }
                 const outcome = this._outcomes.find(o => o.characterId === actorId);
                 if (outcome?.recovery) {
                     outcome.recovery.eventDamage = (outcome.recovery.eventDamage ?? 0) + totalDamage;
@@ -9638,29 +9644,32 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
-        // Trigger DnD5e native rest for spell slots, class features, item uses.
-        // HP/HD/Exhaustion already handled by RecoveryHandler above;
-        // the preRestCompleted hook in module.js suppresses those from the
-        // system's own recovery so there is no double-dipping.
-        // When rest-recovery module is active it handles everything, so we skip.
-        // PF2e has no actor.longRest(); skip for non-5e systems.
-        if (!skipRecovery && game.system.id === "dnd5e") {
+        // Trigger native rest for spell slots, class features, item uses.
+        // HP/HD/Exhaustion already handled by RecoveryHandler above.
+        // For hookable systems (DnD5e), preRestCompleted suppresses double-dipping.
+        // For non-hookable systems (PF2e), the adapter calls the native rest API directly.
+        if (!skipRecovery) {
+            const nativeAdapter = game.ionrift?.respite?.adapter;
             const restType = this._engine?.restType ?? "long";
             for (const outcome of this._outcomes) {
                 const actor = game.actors.get(outcome.characterId);
                 if (!actor) continue;
                 try {
-                    if (restType === "long") {
-                        await actor.longRest({ dialog: false, chat: false, advanceTime: false });
-                    } else {
-                        await actor.shortRest({ dialog: false, chat: false, advanceTime: false });
+                    if (nativeAdapter) {
+                        await nativeAdapter.triggerNativeRest(actor, restType);
+                    } else if (game.system.id === "dnd5e") {
+                        if (restType === "long") {
+                            await actor.longRest({ dialog: false, chat: false, advanceTime: false });
+                        } else {
+                            await actor.shortRest({ dialog: false, chat: false, advanceTime: false });
+                        }
                     }
-                    console.log(`${MODULE_ID} | Native ${restType} rest applied for ${actor.name} (spell slots, features, item uses).`);
+                    console.log(`${MODULE_ID} | Native ${restType} rest applied for ${actor.name}.`);
                 } catch (e) {
                     console.warn(`${MODULE_ID} | Native rest failed for ${actor.name}:`, e);
                 }
             }
-        } else if (!skipRecovery && game.system.id !== "dnd5e") {
+        } else if (!skipRecovery) {
             console.log(`${MODULE_ID} | Skipping native rest call (system: ${game.system.id} â€” no longRest/shortRest API).`);
         }
 

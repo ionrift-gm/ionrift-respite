@@ -44,17 +44,17 @@ export class RecoveryHandler {
             armorSleepPenalty: recovery.armorSleepPenalty
         });
 
-        const hp = actor.system?.attributes?.hp;
-        if (!hp) {
+        const adapter = game.ionrift?.respite?.adapter;
+        const hpData = adapter ? adapter.getHP(actor) : { value: actor.system?.attributes?.hp?.value ?? 0, max: actor.system?.attributes?.hp?.max ?? 0 };
+        if (!hpData.max) {
             console.warn(`[Respite:Recovery] ${actor.name}: no HP data, skipping`);
             return { hp: 0, hd: 0, exhaustion: 0 };
         }
 
         // --- HP Recovery ---
-        const currentHp = hp.value ?? 0;
-        const maxHp = hp.max ?? 0;
+        const currentHp = hpData.value;
+        const maxHp = hpData.max;
         const hpToRestore = Math.min(recovery.hpRestored, maxHp - currentHp);
-        const newHp = Math.min(currentHp + hpToRestore, maxHp);
 
         // --- Hit Dice Recovery ---
         const hdRecovered = this._recoverHitDice(actor, recovery.hdRestored);
@@ -63,18 +63,20 @@ export class RecoveryHandler {
         const exhaustionDelta = await this._calculateExhaustionDelta(actor, recovery);
         recovery.exhaustionDelta = exhaustionDelta;
 
-        // Apply HP update
-        if (newHp !== currentHp) {
-            await actor.update({ "system.attributes.hp.value": newHp });
+        // Apply HP update via adapter
+        if (hpToRestore > 0) {
+            if (adapter) {
+                await adapter.applyHPRestore(actor, hpToRestore);
+            } else {
+                await actor.update({ "system.attributes.hp.value": currentHp + hpToRestore });
+            }
         }
 
-        // Apply exhaustion update (route through adapter for system compatibility)
+        // Apply exhaustion update via adapter
         if (exhaustionDelta !== 0) {
-            const adapter = game.ionrift?.respite?.adapter;
             if (adapter) {
                 await adapter.applyExhaustionDelta(actor, exhaustionDelta);
             } else {
-                // Fallback: direct 5e path
                 const currentExhaustion = actor.system?.attributes?.exhaustion ?? 0;
                 const newExhaustion = Math.max(0, Math.min(6, currentExhaustion + exhaustionDelta));
                 if (newExhaustion !== currentExhaustion) {
@@ -350,14 +352,19 @@ export class RecoveryHandler {
             }
         }
 
+        const adapter = game.ionrift?.respite?.adapter;
         for (const [actorId, totalDamage] of damageByActor) {
             if (totalDamage <= 0) continue;
             const actor = game.actors.get(actorId);
             if (!actor) continue;
-            const hp = actor.system?.attributes?.hp;
-            if (hp) {
-                const newHp = Math.max(0, (hp.value ?? 0) - totalDamage);
-                await actor.update({ "system.attributes.hp.value": newHp });
+            if (adapter) {
+                await adapter.applyHPDamage(actor, totalDamage);
+            } else {
+                const hp = actor.system?.attributes?.hp;
+                if (hp) {
+                    const newHp = Math.max(0, (hp.value ?? 0) - totalDamage);
+                    await actor.update({ "system.attributes.hp.value": newHp });
+                }
             }
         }
 
@@ -618,10 +625,15 @@ export class RecoveryHandler {
         }
 
         if (totalDamage > 0) {
-            const hp = actor.system?.attributes?.hp;
-            if (hp) {
-                const newHp = Math.max(0, (hp.value ?? 0) - totalDamage);
-                await actor.update({ "system.attributes.hp.value": newHp });
+            const dmgAdapter = game.ionrift?.respite?.adapter;
+            if (dmgAdapter) {
+                await dmgAdapter.applyHPDamage(actor, totalDamage);
+            } else {
+                const hp = actor.system?.attributes?.hp;
+                if (hp) {
+                    const newHp = Math.max(0, (hp.value ?? 0) - totalDamage);
+                    await actor.update({ "system.attributes.hp.value": newHp });
+                }
             }
         }
 

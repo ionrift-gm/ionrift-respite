@@ -39,6 +39,13 @@ export function pickBestSkill(actor, skills) {
  * @returns {number}
  */
 export function getSkillMod(actor, key) {
+    const adapter = game.ionrift?.respite?.adapter;
+    if (adapter) {
+        const normalizedKey = adapter.normalizeSkillKey(key);
+        const skillTotal = adapter.getSkillTotal(actor, normalizedKey);
+        if (skillTotal !== 0) return skillTotal;
+        return adapter.getAbilityMod(actor, key);
+    }
     const skill = actor.system?.skills?.[key];
     if (skill) return skill.total ?? skill.mod ?? 0;
     const ability = actor.system?.abilities?.[key];
