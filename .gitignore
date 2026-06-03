@@ -59,8 +59,11 @@ CURSOR_PLAN_*
 BACKLOG.md
 ITEM_DESIGN_GUIDE.md
 
-tests/
-vitest.config.*
+## tests/ and vitest.config.* are un-ignored so regression tests
+## can be committed on coverage branches. The private ionrift-testharness
+## still runs its own suite; these are complementary.
+# tests/
+# vitest.config.*
 
 # Build output (filtered manifest for release)
 .build/
