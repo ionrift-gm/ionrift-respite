@@ -127,7 +127,7 @@ export class MealDelegate {
                 }
             }
 
-            consumedDays.push({ food, water, bonusWater: dayBonusWater });
+            consumedDays.push({ food, water, bonusWater: dayBonusWater, itemsConsumed: true });
             app._mealChoices.set(charId, {
                 food: [],
                 water: [],
@@ -148,7 +148,7 @@ export class MealDelegate {
             });
             for (const [charId, pack] of Object.entries(consumeByCharacter)) {
                 const consumedDays = [...(pack.consumedDays ?? [])];
-                consumedDays.push({ food: pack.food, water: pack.water, bonusWater: pack.bonusWater ?? 0 });
+                consumedDays.push({ food: pack.food, water: pack.water, bonusWater: pack.bonusWater ?? 0, itemsConsumed: true });
                 const priorDay = pack.currentDay ?? (pack.consumedDays?.length ?? 0);
                 app._mealChoices.set(charId, {
                     food: [],
@@ -812,7 +812,7 @@ export class MealDelegate {
             }
 
             const consumedDays = [...(pack.consumedDays ?? [])];
-            consumedDays.push({ food, water });
+            consumedDays.push({ food, water, itemsConsumed: true });
             const priorDay = pack.currentDay ?? (pack.consumedDays?.length ?? 0);
             app._mealChoices.set(charId, {
                 food: [],
