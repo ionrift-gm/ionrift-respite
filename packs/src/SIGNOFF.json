@@ -210,6 +210,13 @@
       "approvedDate": "2026-06-01",
       "assetSource": "none",
       "assetSourceNote": "GM Reference page, references modules/ionrift-respite/assets/screenshots/pure/event_browser.png"
+    },
+    "Respite_GM_Training.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-06-03",
+      "assetSource": "none",
+      "assetSourceNote": "GM Training guide page, no images"
     }
   }
 }
