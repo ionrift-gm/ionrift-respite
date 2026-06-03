@@ -382,6 +382,12 @@ Hooks.once("init", async () => {
         .then(t => Handlebars.registerPartial("rollRequest", t))
         .catch(e => console.warn(`${MODULE_ID} | Failed to load roll-request partial:`, e));
 
+    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/_training-panel.hbs"]);
+    fetch("modules/ionrift-respite/templates/partials/_training-panel.hbs")
+        .then(r => r.text())
+        .then(t => Handlebars.registerPartial("trainingPanel", t))
+        .catch(e => console.warn(`${MODULE_ID} | Failed to load training-panel partial:`, e));
+
     // Expose API
     const adapter = createAdapter();
     game.ionrift = game.ionrift || {};
@@ -431,6 +437,7 @@ Hooks.once("init", async () => {
                 player: "aQc3PtQPrYDi9Mlx",
                 gm: "dvr4TYdYmX88MCCf",
                 cooking: "cK8pRQdW2nFb4Xvj",
+                training: "mN8kTrXpGmRef001",
             };
             const GUIDE_JOURNALS = {
                 player: "1Zh2gDQ1xOLFUrhW",
@@ -448,10 +455,10 @@ Hooks.once("init", async () => {
                 focusPageId = pageId === GUIDE_PAGES.cooking
                     ? GUIDE_PAGES.cooking
                     : GUIDE_PAGES.player;
-            } else if (!pageId || pageId === GUIDE_PAGES.gm) {
+            } else if (!pageId || pageId === GUIDE_PAGES.gm || pageId === GUIDE_PAGES.training) {
                 packName = `${MODULE_ID}.respite-guide-gm`;
                 journalId = GUIDE_JOURNALS.gm;
-                focusPageId = GUIDE_PAGES.gm;
+                focusPageId = pageId === GUIDE_PAGES.training ? GUIDE_PAGES.training : GUIDE_PAGES.gm;
             } else {
                 packName = `${MODULE_ID}.respite-guide`;
                 journalId = GUIDE_JOURNALS.player;

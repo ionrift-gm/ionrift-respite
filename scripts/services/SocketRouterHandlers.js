@@ -1,4 +1,5 @@
 import { Logger } from "../lib/Logger.js";
+import { _refreshGmRestIndicator } from "../module.js";
 /**
  * SocketRouterHandlers: handler functions for inbound socket messages.
  * Extracted from module.js (Phase 2.2).
@@ -531,4 +532,26 @@ export async function handleFeastServeRequest(data, ctx) {
 
         console.error("ionrift-respite | feastServeRequest handler error", err);
     }
+}
+
+export function handleTrainingStateUpdate(data, ctx) {
+    if (!game.user.isGM || !ctx.activeRestSetupApp) return;
+    const { characterId, trainingState } = data;
+    if (!characterId || !trainingState) return;
+    ctx.activeRestSetupApp._trainingStates = ctx.activeRestSetupApp._trainingStates ?? new Map();
+    ctx.activeRestSetupApp._trainingStates.set(characterId, { ...trainingState, rolling: false });
+    void ctx.activeRestSetupApp._saveRestState?.();
+    ctx.activeRestSetupApp.render();
+}
+
+export function handleTrainingComplete(data, ctx) {
+    if (!game.user.isGM || !ctx.activeRestSetupApp) return;
+    const { characterId, earlyResult } = data;
+    if (!characterId || !earlyResult) return;
+    ctx.activeRestSetupApp._earlyResults = ctx.activeRestSetupApp._earlyResults ?? new Map();
+    ctx.activeRestSetupApp._earlyResults.set(characterId, earlyResult);
+    ctx.activeRestSetupApp._trainingStates?.delete(characterId);
+    void ctx.activeRestSetupApp._saveRestState?.();
+    ctx.activeRestSetupApp.render();
+    _refreshGmRestIndicator(ctx.activeRestSetupApp);
 }

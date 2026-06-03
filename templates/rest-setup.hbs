@@ -339,7 +339,7 @@
             {{#each travelContext.days}}
             <button type="button" class="travel-day-tab {{#if isActive}}active{{/if}} {{#if resolved}}resolved{{/if}}" data-action="switchTravelDay" data-day="{{day}}">
                 {{#if resolved}}<i class="fas fa-check"></i>{{/if}}
-                Day {{day}}{{#if isFinalDay}} <i class="fas fa-campground" data-tooltip="Arrival day. Travel activities available (forage, hunt, scout)."></i>{{/if}}
+                Day {{day}}{{#if isFinalDay}} <i class="fas fa-campground" data-tooltip="Arrival day. Travel activities available{{#if canScout}} (forage, hunt, scout){{else}} (forage, hunt){{/if}}."></i>{{/if}}
             </button>
             {{/each}}
         </div>
@@ -1120,11 +1120,13 @@
     {{!-- Detail view: full-width, replaces the grid while an activity is being confirmed --}}
     <div class="totm-detail-view">
         <div class="totm-detail-header">
+            {{#unless totmDetailPanel.isTrainingRolling}}
             <button type="button" class="totm-detail-back"
                     data-action="{{#if totmDetailPanel.isCrafting}}craftClose{{else}}cancelTotmFollowUp{{/if}}"
                     aria-label="Back to activities">
                 <i class="fas fa-arrow-left" aria-hidden="true"></i>
             </button>
+            {{/unless}}
             <i class="{{totmDetailPanel.icon}} totm-detail-icon" aria-hidden="true"></i>
             <div class="totm-detail-titles">
                 <span class="totm-detail-name">{{totmDetailPanel.name}}</span>
@@ -1564,11 +1566,15 @@
             </button>
         </div>
         {{/if}}
+        {{#if totmDetailPanel.trainingPanel}}
+        {{> trainingPanel trainingPanel=totmDetailPanel.trainingPanel}}
+        {{else}}
         <div class="totm-detail-actions">
             <button type="button" class="totm-detail-confirm-btn" data-action="confirmTotmFollowUp">
                 <i class="fas fa-check" aria-hidden="true"></i> Confirm Activity
             </button>
         </div>
+        {{/if}}
         {{/if}} {{!-- /isCrafting --}}
     </div>
     {{else}}

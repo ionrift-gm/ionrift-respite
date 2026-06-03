@@ -15,7 +15,7 @@ const RECOVERY_SETTINGS = [
         key: "enableComfort",
         label: "Comfort Rules",
         icon: "fas fa-thermometer-half",
-        hint: "Terrain comfort tiers, fire mechanics, and gear-driven recovery modifiers. Disable for simplified rests with no comfort penalties, no fire phase, and no exhaustion saves.",
+        hint: "Terrain comfort tiers, fire mechanics, and gear-driven recovery modifiers. Off in Standard; Survival Quick Setup turns this on. When off: no comfort penalties, no fire phase, no terrain exhaustion saves.",
         type: "boolean"
     },
     {

@@ -180,6 +180,34 @@ export async function executePlayerRoll(actor, skillKey, dc, flavorText, buttonT
 }
 
 /**
+ * Executes a player-side ability check (training, etc.): evaluate, post to chat,
+ * wait for Dice So Nice, disable button, and return the result.
+ *
+ * @param {Actor} actor
+ * @param {string} abilityKey - Ability abbreviation (str, dex, etc.).
+ * @param {number} modifier - Precomputed ability modifier.
+ * @param {number} dc
+ * @param {string} flavorText
+ * @param {HTMLElement} [buttonTarget]
+ * @param {'normal'|'advantage'|'disadvantage'} [rollMode='normal']
+ * @returns {Promise<{ total: number, passed: boolean, roll: Roll }>}
+ */
+export async function executeAbilityRoll(actor, abilityKey, modifier, dc, flavorText, buttonTarget, rollMode = "normal") {
+    const formula = rollMode === "advantage"    ? `2d20kh1 + ${modifier}`
+                  : rollMode === "disadvantage" ? `2d20kl1 + ${modifier}`
+                  : `1d20 + ${modifier}`;
+    const roll = new Roll(formula);
+    await roll.evaluate();
+
+    if (buttonTarget) disableRollButton(buttonTarget);
+
+    await postRollToChat(actor, roll, flavorText);
+    await waitForDiceSoNice();
+
+    return { total: roll.total, passed: roll.total >= dc, roll };
+}
+
+/**
  * Display name lookup for skill abbreviations.
  * Used by rollForPlayer to label chat messages.
  */
