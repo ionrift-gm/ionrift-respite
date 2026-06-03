@@ -1820,10 +1820,16 @@
     <div class="respite-meal-phase">
         <div class="meal-phase-header">
             <h3><i class="fas fa-utensils"></i> Rations</h3>
-            {{#if mealTerrainNote}}
-            <div class="meal-terrain-note"><i class="fas fa-info-circle"></i> {{mealTerrainNote}}</div>
-            {{/if}}
         </div>
+
+        {{#with (lookup mealCards 0)}}
+        {{#if terrainNote}}
+        <div class="meal-terrain-alert {{terrainAlertClass}}">
+            <i class="{{terrainAlertIcon}}" aria-hidden="true"></i>
+            <span>{{terrainNote}}</span>
+        </div>
+        {{/if}}
+        {{/with}}
 
         {{#if isGM}}
         <div class="meal-days-info">
@@ -1945,12 +1951,6 @@
                 </div>
                 {{else}}
                 <div class="station-meal-embed-scroll">
-                {{#if terrainNote}}
-                <div class="meal-terrain-alert {{terrainAlertClass}}">
-                    <i class="{{terrainAlertIcon}}" aria-hidden="true"></i>
-                    <span>{{terrainNote}}</span>
-                </div>
-                {{/if}}
                 <div class="meal-drop-columns">
                     <div class="meal-panel food-panel {{#unless hasFood}}panel-empty{{/unless}}">
                         <div class="meal-panel-heading meal-panel-heading--food">
