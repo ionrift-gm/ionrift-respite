@@ -706,7 +706,7 @@
                     {
                         "type": "training_xp",
                         "value": 10,
-                        "description": "Gain 10 XP per set you land. Reduced by 5 XP for each consecutive rest spent training. Resets when you choose a different activity."
+                        "description": "Gain 10 XP per set you land. Diminishing returns escalate on consecutive training rests; pick another activity to reset."
                     }
                 ]
             },
@@ -727,7 +727,8 @@
             "description": "+2 initiative. Already warmed up and physically active."
         },
         "diminishingReturns": {
-            "perConsecutiveRest": -5,
+            "perConsecutiveRest": -15,
+            "scale": "triangular",
             "actorFlag": "trainingStreak",
             "resetsOnDifferentActivity": true
         }
