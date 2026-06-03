@@ -9,18 +9,40 @@
  *
  * Usage:
  *   node tools/compile-packs.mjs
+ *
+ * Post-compile gate: after each compilePack() call the script opens the
+ * resulting LevelDB and counts entries. If the DB is empty the script fails
+ * with a non-zero exit code so CI cannot zip and ship a blank compendium.
  */
 
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { compilePack } from "@foundryvtt/foundryvtt-cli";
+import { ClassicLevel } from "classic-level";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MODULE_ROOT = path.resolve(__dirname, "..");
 const SHIPPING_PATH = path.join(MODULE_ROOT, "packs", "SHIPPING.json");
 const SRC_ROOT = path.join(MODULE_ROOT, "packs", "src");
 const OUT_ROOT = path.join(MODULE_ROOT, "packs");
+
+async function countEntries(outDir) {
+    const db = new ClassicLevel(outDir, {
+        keyEncoding: "utf8",
+        valueEncoding: "json",
+        createIfMissing: false,
+    });
+    let count = 0;
+    try {
+        for await (const _key of db.keys()) {
+            count++;
+        }
+    } finally {
+        await db.close();
+    }
+    return count;
+}
 
 async function main() {
     if (!fs.existsSync(SHIPPING_PATH)) {
@@ -48,7 +70,7 @@ async function main() {
             process.exit(1);
         }
 
-        // Ensure output directory exists and is clean
+        // Ensure output directory is clean before compile
         if (fs.existsSync(outDir)) {
             fs.rmSync(outDir, { recursive: true, force: true });
         }
@@ -56,6 +78,30 @@ async function main() {
 
         console.log(`  compile: packs/src/${name} → packs/${name}`);
         await compilePack(srcDir, outDir, { log: true });
+
+        // ── Post-compile gate ─────────────────────────────────────────────
+        // compilePack() does not throw if it writes 0 entries (malformed JSON,
+        // empty src dir, or internal CLI failure can all produce a structurally
+        // valid but empty LevelDB). Foundry will silently show a blank compendium.
+        // Verify the output here so the failure surfaces before the zip step.
+
+        const ldbFiles = fs.readdirSync(outDir).filter(f => f.endsWith(".ldb"));
+        if (ldbFiles.length === 0) {
+            console.error(`compile-packs: FATAL — packs/${name} contains no .ldb files after compile`);
+            console.error(`  compilePack() produced an empty database.`);
+            console.error(`  Check packs/src/${name}/ for malformed or missing JSON files.`);
+            process.exit(1);
+        }
+
+        const entryCount = await countEntries(outDir);
+        if (entryCount === 0) {
+            console.error(`compile-packs: FATAL — packs/${name} compiled to 0 entries`);
+            console.error(`  .ldb files exist but the database is empty.`);
+            console.error(`  Check packs/src/${name}/ for malformed or missing JSON files.`);
+            process.exit(1);
+        }
+
+        console.log(`  verified: packs/${name} — ${entryCount} entr${entryCount === 1 ? "y" : "ies"} ✓`);
     }
 
     console.log(`compile-packs: compiled ${names.length} pack(s) successfully`);
