@@ -1,3 +1,4 @@
+import { Logger as RespiteLog } from "./lib/Logger.js";
 import { RestFlowEngine } from "./services/RestFlowEngine.js";
 import { ActivityResolver } from "./services/ActivityResolver.js";
 import { EventResolver } from "./services/EventResolver.js";
@@ -305,7 +306,7 @@ function _canStartRest() {
 
 
 Hooks.once("init", async () => {
-    console.log(`${MODULE_ID} | Initializing...`);
+    RespiteLog.log(`${MODULE_ID} | Initializing...`);
     Logger = game.ionrift?.library?.Logger ?? console;
     Logger.log?.(MODULE_LABEL, "Initializing...");
 
@@ -530,7 +531,7 @@ Hooks.once("init", async () => {
         reloadAll: () => {
             if (!game.user.isGM) return;
             emitForceReload();
-            console.log(`${MODULE_ID} | Sent forceReload to all clients. GM reloading in 500ms...`);
+            RespiteLog.log(`${MODULE_ID} | Sent forceReload to all clients. GM reloading in 500ms...`);
             setTimeout(() => window.location.reload(), 500);
         },
         /** Debug: Add supplies to all party actors. Usage: game.ionrift.respite.addSupplies(50) */
@@ -554,7 +555,7 @@ Hooks.once("init", async () => {
                     results[t] = resp.ok ? "LINKED" : "MISSING";
                 } catch { results[t] = "MISSING"; }
             }
-            console.table(results);
+            RespiteLog.log(results);
             return results;
         },
         /** Write LINK_PACKS to cmd.txt for the DevTools CommandListener. */
@@ -584,7 +585,7 @@ Hooks.once("init", async () => {
             try {
                 const removed = await clearCampTokens();
                 if (removed > 0) {
-                    console.log(`${MODULE_ID} | resetFlowState removed ${removed} camp or torch token(s) from the active scene.`);
+                    RespiteLog.log(`${MODULE_ID} | resetFlowState removed ${removed} camp or torch token(s) from the active scene.`);
                 }
             } catch (e) {
                 console.warn(`${MODULE_ID} | resetFlowState camp cleanup failed:`, e);
@@ -695,7 +696,7 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
         const { OverlayEventLoader } = await import("./services/OverlayEventLoader.js");
         OverlayEventLoader.invalidate();
     } catch { /* loader not available */ }
-    console.log(`${MODULE_ID} | Overlay content changed: ${detail.overlayId} (active=${detail.active})`);
+    RespiteLog.log(`${MODULE_ID} | Overlay content changed: ${detail.overlayId} (active=${detail.active})`);
 });
 
 // Scene Controls: Campfire button in the token controls group
@@ -821,7 +822,7 @@ registerInventoryContextMenu();
 // _refreshZzzOverlay is imported at the top of this file.
 
 Hooks.once("ready", async () => {
-    console.log(`${MODULE_ID} | Ready hook firing...`);
+    RespiteLog.log(`${MODULE_ID} | Ready hook firing...`);
     Logger.log?.(MODULE_LABEL, "Ready.");
 
     // â”€â”€ Register adapter contract tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -875,7 +876,7 @@ Hooks.once("ready", async () => {
             const huntCount = [...(idx ?? [])].filter(
                 e => e.flags?.["ionrift-respite"]?.category === "hunt"
             ).length;
-            console.log(`${MODULE_ID} | Base pool index: ${idx?.size ?? 0} items, ${forageCount} forage, ${huntCount} hunt`);
+            RespiteLog.log(`${MODULE_ID} | Base pool index: ${idx?.size ?? 0} items, ${forageCount} forage, ${huntCount} hunt`);
             if (forageCount === 0) {
                 console.warn(`${MODULE_ID} | No forage items in respite-items compendium. Camp forage will rely on content pack pools only.`);
             }
@@ -973,7 +974,7 @@ Hooks.once("ready", async () => {
     // Player: request current rest state in case a rest is already active (GM may still be resuming after F5)
     if (!game.user.isGM) {
         const requestRestAndShortRestState = (label) => {
-            console.log(`${MODULE_ID} | Player requesting rest state (${label})...`);
+            RespiteLog.log(`${MODULE_ID} | Player requesting rest state (${label})...`);
             emitRequestRestState(game.user.id);
             emitRequestShortRestState(game.user.id);
         };
@@ -992,11 +993,11 @@ Hooks.once("ready", async () => {
                 if (now - _lastResyncTime < 500) return;
                 _lastResyncTime = now;
                 if (_playerRestActive && activePlayerRestApp) {
-                    console.log(`${MODULE_ID} | Tab visible, resyncing rest state...`);
+                    RespiteLog.log(`${MODULE_ID} | Tab visible, resyncing rest state...`);
                     emitRequestRestState(game.user.id);
                 }
                 if (activeShortRestApp) {
-                    console.log(`${MODULE_ID} | Tab visible, resyncing short rest state...`);
+                    RespiteLog.log(`${MODULE_ID} | Tab visible, resyncing short rest state...`);
                     emitRequestShortRestState(game.user.id);
                 }
             }
@@ -1250,12 +1251,12 @@ Hooks.once("ready", async () => {
 
     initAfkBridge();
 
-    console.log(`${MODULE_ID} | Boot complete.`);
+    RespiteLog.log(`${MODULE_ID} | Boot complete.`);
     if (game.user.isGM) {
-        console.log("  → game.ionrift.respite.rollRequest.openPreview()");
-        console.log("  → game.ionrift.respite.rollRequest.debugAnimation()");
-        console.log("  → game.ionrift.respite.rollRequest.watchAnimation()");
-        console.log("  → game.ionrift.respite.rollRequest.forceDcPulseTest()");
+        RespiteLog.log("  → game.ionrift.respite.rollRequest.openPreview()");
+        RespiteLog.log("  → game.ionrift.respite.rollRequest.debugAnimation()");
+        RespiteLog.log("  → game.ionrift.respite.rollRequest.watchAnimation()");
+        RespiteLog.log("  → game.ionrift.respite.rollRequest.forceDcPulseTest()");
     }
 });
 

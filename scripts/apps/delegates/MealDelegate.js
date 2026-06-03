@@ -1,3 +1,4 @@
+import { Logger } from "../../lib/Logger.js";
 /**
  * MealDelegate.js
  * Handles the meal phase UI within RestSetupApp: food/water selection,
@@ -389,7 +390,7 @@ export class MealDelegate {
                 return;
             }
         }
-        console.log(`[Respite:Meal] #onProceedFromMeal: starting`);
+        Logger.log(`[Respite:Meal] #onProceedFromMeal: starting`);
 
         const rosterIds = new Set(getPartyActors().map(a => a.id));
         const characterIds = app._engine?.characterChoices
@@ -482,7 +483,7 @@ export class MealDelegate {
                 const outcome = await MealPhaseHandler.processAndApply(app._mealChoices, totalDays, terrainMealRules);
                 mealResults = outcome.results;
                 app._mealResults = mealResults;
-                console.log(`[Respite:Meal] Consumption results:`, mealResults);
+                Logger.log(`[Respite:Meal] Consumption results:`, mealResults);
             } catch (err) {
                 console.error(`[Respite:Meal] Error applying meal choices:`, err);
             }
@@ -573,7 +574,7 @@ export class MealDelegate {
                             dc: r.dehydrationSaveDC,
                             targetUserId: ownerUser.id
                         });
-                        console.log(`[Respite:Meal] Sent dehydration save request for ${r.actorName} to user ${ownerUser.name}`);
+                        Logger.log(`[Respite:Meal] Sent dehydration save request for ${r.actorName} to user ${ownerUser.name}`);
                     } else {
                         // GM-owned character: roll directly
                         const saveAdapter = game.ionrift?.respite?.adapter;
@@ -642,7 +643,7 @@ export class MealDelegate {
         if (app._pendingDehydrationSaves?.length > 0) {
             const allResolved = app._pendingDehydrationSaves.every(s => s.resolved);
             if (!allResolved) {
-                console.log(`[Respite:Meal] Waiting for dehydration save(s) to resolve...`);
+                Logger.log(`[Respite:Meal] Waiting for dehydration save(s) to resolve...`);
                 ui.notifications.info(`Waiting for dehydration save(s) to resolve before proceeding.`);
                 await app._saveRestState();
                 app.render();
@@ -660,7 +661,7 @@ export class MealDelegate {
 
         // Reflection phase skipped (v2.1); advance straight to events.
         await app._applyBeddingDown();
-        console.log(`[Respite:Meal] Reflection skipped, advancing to events`);
+        Logger.log(`[Respite:Meal] Reflection skipped, advancing to events`);
         await app._advanceToEvents();
     }
 
@@ -742,7 +743,7 @@ export class MealDelegate {
             app._activityMealRationsSubmitted.add(charId);
         }
 
-        console.log(`[Respite:Meal] Received meal choices from user ${userId}:`, choices);
+        Logger.log(`[Respite:Meal] Received meal choices from user ${userId}:`, choices);
         await app._saveRestState();
         const snapshot = app.getRestSnapshot?.();
         if (snapshot) {
@@ -856,7 +857,7 @@ export class MealDelegate {
             });
         }
 
-        console.log(`[Respite:Meal] Received meal day consumed from user ${userId}:`, clientChoices);
+        Logger.log(`[Respite:Meal] Received meal day consumed from user ${userId}:`, clientChoices);
         await app._saveRestState();
         app.render();
     }

@@ -3131,7 +3131,7 @@
             {{/if}}
             {{else}}
             <div class="event-description">
-                Encounters are off for this rest. The night passes on its own. Run an event by hand only if you want one.
+                Encounters are off for this rest. The night passes without a check.
             </div>
             {{/if}}
         </div>
@@ -3277,10 +3277,6 @@
             {{/if}}
         </button>
         {{else}}
-        <button type="button" class="btn-secondary btn-improvise-night" data-action="improviseNight"
-            {{#if eventsCommitPending}}disabled{{/if}}>
-            <i class="fas fa-hat-wizard"></i> Improvise an event
-        </button>
         <button type="button" class="btn-primary btn-night-passes" data-action="nightPasses"
             {{#if eventsCommitPending}}disabled{{/if}}>
             {{#if eventsCommitPending}}

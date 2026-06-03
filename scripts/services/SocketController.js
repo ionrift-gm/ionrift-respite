@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 /**
  * SocketController: centralised socket emit helpers and message type constants.
  *
@@ -153,6 +154,7 @@ export function emitRestStarted(restData, opts = {}) {
     // The signature expects the payload directly; wrapping adds a spurious nesting layer
     // that strips activities from what players receive, causing all stations to render faded.
     if (restData && typeof restData === "object" && "restData" in restData && !("activities" in restData)) {
+
         console.error(
             `${MODULE_ID} | emitRestStarted called with double-wrapped payload { restData: ... }. ` +
             `Pass the payload directly: emitRestStarted(payload). Station resolver will be empty on player clients.`
@@ -206,11 +208,10 @@ export function emitPhaseChanged(phase, phaseData = {}) {
  */
 export function emitSubmissionUpdate(submissions) {
     if (!submissions || typeof submissions !== "object") {
+
         console.warn(`${MODULE_ID} | emitSubmissionUpdate called with invalid submissions payload, dropped.`);
         return;
     }
-    // eslint-disable-next-line no-console
-    console.debug(`${MODULE_ID} | [SYNC] emitSubmissionUpdate: keys=${Object.keys(submissions).join(",") || "none"}, sample=`, Object.values(submissions)[0] ?? "(empty)");
     _emit(SOCKET_TYPES.SUBMISSION_UPDATE, { submissions });
 }
 

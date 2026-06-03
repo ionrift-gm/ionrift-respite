@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 /**
  * SocketRouterHandlers: handler functions for inbound socket messages.
  * Extracted from module.js (Phase 2.2).
@@ -51,14 +52,10 @@ export function handleRestStarted(data, ctx) {
         ctx.setPlayerRestActive(true);
         removeRejoinNotification();
         removeGmRestIndicator();
-        // eslint-disable-next-line no-console
-        console.debug(`${MODULE_ID} | [REJOIN] handleRestStarted: targetUserId=${data.targetUserId ?? "all"}, hasExisting=${!!ctx.activePlayerRestApp}`);
 
         const existing = ctx.activePlayerRestApp;
         if (existing) {
             const isNewRest = !data.restData?.restId || existing._restId !== data.restData.restId;
-            // eslint-disable-next-line no-console
-            console.debug(`${MODULE_ID} | [SYNC-BISECT] handleRestStarted: isNewRest=${isNewRest}, existingResolverSize=${existing._activityResolver?.activities?.size ?? 0}, incomingActivities=${data.restData?.activities?.length ?? 0}`);
             if (!isNewRest) {
                 // Re-hydrate resolver if GM is advancing the same rest (e.g. to activity phase)
                 // but the existing player RSA has an empty resolver (built before activities arrived).
@@ -66,8 +63,6 @@ export function handleRestStarted(data, ctx) {
                     && !(existing._activityResolver?.activities?.size)) {
                     existing._activities = data.restData.activities;
                     existing._activityResolver.load(existing._activities);
-                    // eslint-disable-next-line no-console
-                    console.debug(`${MODULE_ID} | [SYNC-BISECT] handleRestStarted: hydrated existing resolver from restData (${existing._activityResolver.activities.size} activities)`);
                 }
                 if (data.snapshot && existing.receiveRestSnapshot) {
                     existing.receiveRestSnapshot(data.snapshot);
@@ -77,7 +72,8 @@ export function handleRestStarted(data, ctx) {
                 ctx.showAfkPanel();
                 return;
             }
-            console.log(`${MODULE_ID} | Closing stale rest window for new rest`);
+
+            Logger.log(`${MODULE_ID} | Closing stale rest window for new rest`);
             ui.notifications.info("The GM has started a new rest. Refreshing your window.");
             existing.close({ skipRejoin: true });
             ctx.setActivePlayerRestApp(null);
@@ -90,11 +86,9 @@ export function handleRestStarted(data, ctx) {
             // the canvas station layer stays wired and choices aren't lost.
             // See: scripts/services/playerClosePolicy.js for the rule + unit tests.
             options = resolvePlayerCloseOptions(options, app._phase);
-            console.log(`${MODULE_ID} | [CLOSE-DEBUG] patched close entered: retain=${options.retainPlayerApp ?? false}, skipRejoin=${options.skipRejoin ?? false}, phase=${app._phase}, rendered=${app.rendered}, terminated=${app._terminated}`);
             try {
-                console.log(`${MODULE_ID} | [CLOSE-DEBUG] calling origClose...`);
+
                 await origClose(options);
-                console.log(`${MODULE_ID} | [CLOSE-DEBUG] origClose resolved`);
             } finally {
                 if (options.retainPlayerApp) {
                     if (ctx.playerRestActive && !options.skipRejoin) {
@@ -123,20 +117,24 @@ export function handleRestStarted(data, ctx) {
             // and show the rejoin bar (stations + activity phase) without
             // racing a force-render. A pre-render here would land DOM after
             // receiveRestSnapshot's close, leaving both the RSA and bar visible.
-            console.log(`${MODULE_ID} | RestSetupApp created in player mode, deferring render to snapshot handler`);
+
+            Logger.log(`${MODULE_ID} | RestSetupApp created in player mode, deferring render to snapshot handler`);
             Promise.resolve().then(() => { app.receiveRestSnapshot(data.snapshot); });
         } else {
-            console.log(`${MODULE_ID} | RestSetupApp created in player mode, rendering...`);
+
+            Logger.log(`${MODULE_ID} | RestSetupApp created in player mode, rendering...`);
             app.render({ force: true });
         }
         setTimeout(() => {
             const phase = ctx.activePlayerRestApp?._phase;
             if (ctx.activePlayerRestApp?._openCampfire && (phase === "meal" || phase === "activity")) {
-                console.log(`${MODULE_ID} | Opening campfire for player on rest start`);
+
+                Logger.log(`${MODULE_ID} | Opening campfire for player on rest start`);
                 ctx.activePlayerRestApp._openCampfire();
             }
         }, 500);
     } catch (err) {
+
         console.error(`${MODULE_ID} | Error in handleRestStarted:`, err);
     }
 }
@@ -148,7 +146,7 @@ export function handleActivityChoice(data, ctx) {
 }
 
 export function handleRestResolved(data, ctx) {
-    console.log(`${MODULE_ID} | [CLOSE-DEBUG] handleRestResolved entered`);
+
     ctx.setPlayerRestActive(false);
     removeRejoinNotification();
     removeGmRestIndicator();
@@ -160,16 +158,15 @@ export function handleRestResolved(data, ctx) {
     let app = ctx.activePlayerRestApp;
     if (!app) {
         app = foundry.applications.instances.get("ionrift-respite-setup") ?? null;
-        console.log(`${MODULE_ID} | [CLOSE-DEBUG] ref was null, registry lookup=${!!app}`);
     }
-    console.log(`${MODULE_ID} | [CLOSE-DEBUG] activePlayerRestApp=${!!app}, rendered=${app?.rendered}, element=${!!app?.element}`);
+
     if (app) {
         app._terminated = true;
-        console.log(`${MODULE_ID} | [CLOSE-DEBUG] calling app.close({ skipRejoin: true })`);
         app.close({ skipRejoin: true }).then(() => {
-            console.log(`${MODULE_ID} | [CLOSE-DEBUG] app.close() resolved, element still in DOM=${!!app.element && document.body.contains(app.element)}`);
+
         }).catch(err => {
-            console.warn(`${MODULE_ID} | [CLOSE-DEBUG] app.close() REJECTED:`, err);
+
+            console.warn(`${MODULE_ID} | app.close() REJECTED:`, err);
             try { app.element?.remove(); } catch { /* best effort */ }
         });
         ctx.setActivePlayerRestApp(null);
@@ -178,8 +175,6 @@ export function handleRestResolved(data, ctx) {
 }
 
 export function handleSubmissionUpdate(data, ctx) {
-    // eslint-disable-next-line no-console
-    console.debug(`${MODULE_ID} | [SYNC] handleSubmissionUpdate: hasApp=${!!ctx.activePlayerRestApp}, keys=${Object.keys(data.submissions ?? {}).join(",") || "none"}`);
     ctx.activePlayerRestApp?.receiveSubmissionUpdate?.(data.submissions);
 }
 
@@ -350,7 +345,8 @@ export async function handleConsumeFirewood(data) {
     const qty = firewood.system?.quantity ?? 1;
     if (qty <= 1) { await firewood.delete(); }
     else { await firewood.update({ "system.quantity": qty - 1 }); }
-    console.log(`${MODULE_ID} | GM consumed firewood for ${actor.name} (remaining: ${qty - 1})`);
+
+    Logger.log(`${MODULE_ID} | GM consumed firewood for ${actor.name} (remaining: ${qty - 1})`);
 }
 
 // ── Camp Gear / Stations ────────────────────────────────────────────────────
@@ -375,6 +371,7 @@ export async function handleCampStationPlace(data, ctx) {
     const user = game.users.get(userId);
     if (!actor || !user) return;
     if (!actor.testUserPermission(user, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)) {
+
         console.warn(`${MODULE_ID} | campStationPlace rejected (not owner)`);
         return;
     }
@@ -400,6 +397,7 @@ export async function handleCampGearReclaim(data, ctx) {
     const user = game.users.get(userId);
     if (!actor || !user) return;
     if (!actor.testUserPermission(user, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)) {
+
         console.warn(`${MODULE_ID} | campGearReclaim rejected (not owner)`);
         return;
     }
@@ -416,6 +414,7 @@ export async function handleCampStationReclaim(data, ctx) {
     const user = game.users.get(userId);
     if (!actor || !user) return;
     if (!actor.testUserPermission(user, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)) {
+
         console.warn(`${MODULE_ID} | campStationReclaim rejected (not owner)`);
         return;
     }
@@ -437,6 +436,7 @@ export async function handleCampGearClearPlayer(data, ctx) {
     const user = game.users.get(userId);
     if (!actor || !user) return;
     if (!actor.testUserPermission(user, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)) {
+
         console.warn(`${MODULE_ID} | campGearClearPlayer rejected (not owner)`);
         return;
     }
@@ -482,6 +482,7 @@ export async function handleFeastServeRequest(data, ctx) {
     const { cookActorId, itemSnapshot, partyIds, feastMode } = data;
     const cookActor = game.actors.get(cookActorId);
     if (!cookActor) {
+
         console.warn(`ionrift-respite | feastServeRequest: cook actor ${cookActorId} not found`);
         return;
     }
@@ -527,6 +528,7 @@ export async function handleFeastServeRequest(data, ctx) {
             });
         }
     } catch (err) {
+
         console.error("ionrift-respite | feastServeRequest handler error", err);
     }
 }

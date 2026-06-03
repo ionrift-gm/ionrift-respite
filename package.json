@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "test": "vitest run --config tests/vitest.config.js",
+    "lint": "eslint scripts --ext .js --max-warnings 250",
+    "lint:debug": "node tools/lint-debug-logging.mjs",
     "validate:events": "node tools/validate-event-schema.mjs",
     "lint:hbs": "node tools/lint-hbs.mjs",
     "lint:hbs:watch": "node tools/lint-hbs.mjs --watch",

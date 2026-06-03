@@ -1,4 +1,5 @@
 import { EventBrowserApp } from "../apps/EventBrowserApp.js";
+import { Logger } from "../lib/Logger.js";
 import { filterByEnabledPacks, loadAllCatalogEvents } from "./EventCatalogLoader.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -46,7 +47,7 @@ export async function initializeEventPoolIfNeeded() {
             if (evt.id) selection[evt.id] = true;
         }
         await game.settings.set(MODULE_ID, "eventPoolSelection", selection);
-        console.log(`${MODULE_ID} | Seeded event pool with ${Object.keys(selection).length} events (existing world migration).`);
+        Logger.log(`${MODULE_ID} | Seeded event pool with ${Object.keys(selection).length} events (existing world migration).`);
     }
 
     await game.settings.set(MODULE_ID, "eventPoolInitialized", true);

@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 import { DnD5eAdapter } from "./DnD5eAdapter.js";
 import { PF2eAdapter } from "./PF2eAdapter.js";
 import { DaggerheartAdapter } from "./DaggerheartAdapter.js";
@@ -17,11 +18,11 @@ export function createAdapter() {
 
     switch (systemId) {
         case "dnd5e":
-            console.log(`${MODULE_ID} | System adapter: DnD5e`);
+            Logger.log(`${MODULE_ID} | System adapter: DnD5e`);
             return new DnD5eAdapter();
 
         case "pf2e":
-            console.log(`${MODULE_ID} | System adapter: PF2e (early support)`);
+            Logger.log(`${MODULE_ID} | System adapter: PF2e (early support)`);
             return new PF2eAdapter();
 
         case "daggerheart":

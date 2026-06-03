@@ -297,7 +297,7 @@ export const CAMP_STATIONS = [
         label: "Workbench",
         icon: "fas fa-tools",
         furnitureKey: "table",
-        tagline: "Identify, scribe",
+        tagline: "Identify & scribe",
         activities: ["act_identify", "act_scribe"]
     },
     {

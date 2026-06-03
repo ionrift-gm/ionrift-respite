@@ -1,2 +1,4 @@
 # Archived/dead code, retained for reference only, not loaded at runtime.
 scripts/_archived/
+# Test runner and dev-only scripts are not shipped in module.zip.
+scripts/tests/

@@ -1,3 +1,4 @@
+import { Logger } from "../../lib/Logger.js";
 /**
  * WorkbenchDelegate.js
  * Handles workbench identify staging, drag-drop, item reveal, and ritual
@@ -427,7 +428,7 @@ export class WorkbenchDelegate {
                     );
                     const result = await IdentificationService.identify(item, { silent: true });
                     identified = result.identified;
-                    console.log(`[Respite] WorkbenchDelegate GM identify: QM result →`, result);
+                    Logger.log(`[Respite] WorkbenchDelegate GM identify: QM result →`, result);
                 } catch (err) {
                     console.error("[Respite] WorkbenchDelegate: QM import/identify failed", err);
                     // fall through to raw update
@@ -537,12 +538,12 @@ export class WorkbenchDelegate {
         if (!el) { console.warn(`[Respite:Workbench] bindDragDrop: no element`); return; }
         const embed = el.querySelector(".station-workbench-identify-embed[data-workbench-actor-id]");
         if (!embed) { console.warn(`[Respite:Workbench] bindDragDrop: no embed element found in`, el); return; }
-        if (embed.querySelector(".wb-ident-ack-overlay")) { console.log(`[Respite:Workbench] bindDragDrop: ack overlay active, skipping`); return; }
+        if (embed.querySelector(".wb-ident-ack-overlay")) { Logger.log(`[Respite:Workbench] bindDragDrop: ack overlay active, skipping`); return; }
         const actorId = embed.dataset.workbenchActorId;
         if (!actorId) { console.warn(`[Respite:Workbench] bindDragDrop: no actorId on embed`); return; }
-        if (this.submitPending.has(actorId)) { console.log(`[Respite:Workbench] bindDragDrop: submit pending, skipping`); return; }
+        if (this.submitPending.has(actorId)) { Logger.log(`[Respite:Workbench] bindDragDrop: submit pending, skipping`); return; }
 
-        console.log(`[Respite:Workbench] bindDragDrop: binding for actor ${actorId}`);
+        Logger.log(`[Respite:Workbench] bindDragDrop: binding for actor ${actorId}`);
 
         embed.querySelectorAll(".dragging").forEach(n => n.classList.remove("dragging"));
         embed.querySelectorAll(".drop-hover").forEach(n => n.classList.remove("drop-hover"));
@@ -637,7 +638,7 @@ export class WorkbenchDelegate {
                 e.preventDefault();
                 zone.classList.remove("drop-hover");
                 const raw = e.dataTransfer?.getData("text/plain") ?? "";
-                console.log(`[Respite:Workbench] drop event on zone=${zoneType}`, { raw: raw.substring(0, 80), actorId });
+                Logger.log(`[Respite:Workbench] drop event on zone=${zoneType}`, { raw: raw.substring(0, 80), actorId });
 
                 if (raw.startsWith("wbident:")) {
                     const parts = raw.split(":");
@@ -656,7 +657,7 @@ export class WorkbenchDelegate {
                     return;
                 }
                 const item = await resolveItemFromDropEvent(e);
-                console.log(`[Respite:Workbench] resolveItemFromDropEvent =>`, { found: !!item, itemName: item?.name, parentId: item?.parent?.id, expectedActorId: actorId });
+                Logger.log(`[Respite:Workbench] resolveItemFromDropEvent =>`, { found: !!item, itemName: item?.name, parentId: item?.parent?.id, expectedActorId: actorId });
                 if (!item) {
                     ui.notifications.warn("Could not read that drop. Drag from this character's inventory on the sheet.");
                     return;

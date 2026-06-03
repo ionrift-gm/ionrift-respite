@@ -134,8 +134,7 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 function _logGmRestSheet(phase, msg, extra = null) {
     try {
         if (typeof globalThis !== "undefined" && globalThis.DEBUG_IONRIFT_RESITE_SHEET) {
-            // eslint-disable-next-line no-console
-            console.log(`${MODULE_ID} | respite GM sheet [${phase}]`, msg, extra ?? "");
+            Logger.log(`${MODULE_ID} | respite GM sheet [${phase}]`, msg, extra ?? "");
         }
     } catch { /* ignore */ }
 }
@@ -217,8 +216,7 @@ async function resolveItemFromDropEvent(event) {
  */
 function _noteEngineFreePath(methodName, app) {
     if (app._engine) return;
-    // eslint-disable-next-line no-console
-    console.debug(`ionrift-respite | [engine-free] ${methodName} â€” no engine (player client, OK)`);
+        Logger.log(`ionrift-respite | [engine-free] ${methodName} â€” no engine (player client, OK)`);
 }
 
 /**
@@ -529,7 +527,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (this._phase !== "meal") return;
             if (this._inventoryDebounce) clearTimeout(this._inventoryDebounce);
             this._inventoryDebounce = setTimeout(() => {
-                console.log(`${MODULE_ID} | Inventory changed (${item?.name}), refreshing meal panel`);
+
+                Logger.log(`${MODULE_ID} | Inventory changed (${item?.name}), refreshing meal panel`);
                 this.render();
             }, 500);
         };
@@ -683,7 +682,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         registerActiveRestApp(this);
 
         this.render(true);
-        console.log("[Respite:Debug] Single event injected.");
+        Logger.log("[Respite:Debug] Single event injected.");
         ui.notifications.info("Single event loaded.");
     }
 
@@ -754,7 +753,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }, 200);
 
         this.render(true);
-        console.log("[Respite:Debug] Jumped to resolution with Hidden Grove discovery");
+        Logger.log("[Respite:Debug] Jumped to resolution with Hidden Grove discovery");
     }
 
     /**
@@ -821,7 +820,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }, 200);
 
         this.render(true);
-        console.log("[Respite:Debug] Jumped to events phase with mock encounter and combat readiness report.");
+        Logger.log("[Respite:Debug] Jumped to events phase with mock encounter and combat readiness report.");
     }
 
     /**
@@ -891,7 +890,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }, 200);
 
         this.render(true);
-        console.log("[Respite:Debug] Jumped to events phase with Flash Flood decision tree.");
+        Logger.log("[Respite:Debug] Jumped to events phase with Flash Flood decision tree.");
         ui.notifications.info("Flash Flood disaster injected. Decision tree active.");
     }
 
@@ -923,7 +922,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const maxHp = actor.system?.attributes?.hp?.max ?? 0;
             const halfHp = Math.floor(maxHp / 2);
             await actor.update({ "system.attributes.hp.value": halfHp });
-            console.log(`[Respite:Debug] ${actor.name}: HP set to ${halfHp}/${maxHp}`);
+        Logger.log(`[Respite:Debug] ${actor.name}: HP set to ${halfHp}/${maxHp}`);
         }
 
         // Create engine at rough comfort (so base recovery is normal, penalty comes from event)
@@ -987,9 +986,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const curHp = actor?.system?.attributes?.hp?.value ?? 0;
             const gap = maxHp - curHp;
             const expected = Math.floor(gap * 0.5);
-            console.log(`[Respite:Debug] ${o.characterName}: gap=${gap}, expected recovery=${expected}, actual recovery=${o.recovery?.hpRestored ?? "?"}`);
+        Logger.log(`[Respite:Debug] ${o.characterName}: gap=${gap}, expected recovery=${expected}, actual recovery=${o.recovery?.hpRestored ?? "?"}`);
         }
-        console.log("[Respite:Debug] Jumped to resolution with Bog Rot 0.5x hpMultiplier penalty.");
+
+        Logger.log("[Respite:Debug] Jumped to resolution with Bog Rot 0.5x hpMultiplier penalty.");
         ui.notifications.info("Recovery penalty scenario loaded. Check the resolution screen.");
     }
 
@@ -1019,7 +1019,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const maxHp = actor.system?.attributes?.hp?.max ?? 0;
             const startHp = Math.min(5, maxHp);
             await actor.update({ "system.attributes.hp.value": startHp });
-            console.log(`[Respite:Debug] ${actor.name}: HP set to ${startHp}/${maxHp}`);
+        Logger.log(`[Respite:Debug] ${actor.name}: HP set to ${startHp}/${maxHp}`);
         }
 
         // Create engine at sheltered comfort (standard recovery)
@@ -1096,15 +1096,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         for (const o of this._outcomes) {
             const actor = game.actors.get(o.characterId);
             const maxHp = actor?.system?.attributes?.hp?.max ?? 0;
-            console.log(`[Respite:Debug] ${o.characterName}: maxHp=${maxHp}, recovery=${o.recovery?.hpRestored ?? "?"}, expected final=${maxHp} - 10 = ${maxHp - 10}`);
+        Logger.log(`[Respite:Debug] ${o.characterName}: maxHp=${maxHp}, recovery=${o.recovery?.hpRestored ?? "?"}, expected final=${maxHp} - 10 = ${maxHp - 10}`);
             // Check if damage effects came through
             for (const sub of (o.outcomes ?? [])) {
                 if (sub.source === "event") {
-                    console.log(`  Event outcome: ${sub.eventName}, resolvedOutcome=${sub.resolvedOutcome}, effects=${JSON.stringify(sub.effects)}`);
+
+                    Logger.log(`  Event outcome: ${sub.eventName}, resolvedOutcome=${sub.resolvedOutcome}, effects=${JSON.stringify(sub.effects)}`);
                 }
             }
         }
-        console.log("[Respite:Debug] Jumped to resolution with 10 bludgeoning damage event.");
+
+        Logger.log("[Respite:Debug] Jumped to resolution with 10 bludgeoning damage event.");
         ui.notifications.info("Damage test scenario loaded. Click 'Apply Results' to apply.");
     }
 
@@ -1135,7 +1137,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const maxHp = actor.system?.attributes?.hp?.max ?? 0;
             const halfHp = Math.floor(maxHp / 2);
             await actor.update({ "system.attributes.hp.value": halfHp });
-            console.log(`[Respite:Debug] ${actor.name}: HP set to ${halfHp}/${maxHp}`);
+        Logger.log(`[Respite:Debug] ${actor.name}: HP set to ${halfHp}/${maxHp}`);
         }
 
         // Hostile camp comfort
@@ -1182,9 +1184,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         for (const o of this._outcomes) {
             const eff = o.recovery?.comfortLevel ?? "?";
             const camp = o.recovery?.campComfort ?? "?";
-            console.log(`[Respite:Debug] ${o.characterName}: camp=${camp}, effective=${eff}, exhaustionDC=${o.recovery?.exhaustionDC ?? "none"}`);
+        Logger.log(`[Respite:Debug] ${o.characterName}: camp=${camp}, effective=${eff}, exhaustionDC=${o.recovery?.exhaustionDC ?? "none"}`);
         }
-        console.log("[Respite:Debug] Hostile comfort scenario loaded.");
+
+        Logger.log("[Respite:Debug] Hostile comfort scenario loaded.");
         ui.notifications.info("Hostile comfort scenario loaded. Check exhaustion advisories.");
     }
 
@@ -1205,7 +1208,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 await actor.updateEmbeddedDocuments("Item", [
                     { _id: existing.id, "system.quantity": (existing.system?.quantity ?? 0) + qty }
                 ]);
-                console.log(`[Respite:Debug] ${actor.name}: added ${qty} to existing ${existing.name} (now ${(existing.system?.quantity ?? 0) + qty})`);
+        Logger.log(`[Respite:Debug] ${actor.name}: added ${qty} to existing ${existing.name} (now ${(existing.system?.quantity ?? 0) + qty})`);
             } else {
                 await actor.createEmbeddedDocuments("Item", [{
                     name: "Supplies",
@@ -1213,7 +1216,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     img: "icons/containers/bags/pack-leather-brown.webp",
                     system: { quantity: qty, weight: { value: 0.5 }, price: { value: 1, denomination: "gp" } }
                 }]);
-                console.log(`[Respite:Debug] ${actor.name}: created Supplies x${qty}`);
+        Logger.log(`[Respite:Debug] ${actor.name}: created Supplies x${qty}`);
             }
         }
         ui.notifications.info(`Added ${qty} supplies to ${actors.length} party members.`);
@@ -1261,7 +1264,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             timestamp: Date.now()
         };
         await game.settings.set(MODULE_ID, "activeRest", state);
-        Logger.log(`[SYNC] _saveRestState: playerSubmissions=${state.playerSubmissions.length}, characterChoices=${state.characterChoices.length}, phase=${state.phase}`);
     }
 
     /**
@@ -1276,7 +1278,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._phase = state.phase ?? "setup";
         this._triggeredEvents = state.triggeredEvents ?? [];
         this._eventsRolled = state.eventsRolled ?? false;
-        console.log(`[Respite:State] _loadRestState â€” phase=${this._phase}, eventsRolled=${this._eventsRolled}, hasEngine=${!!this._engine}`);
         this._activeTreeState = state.activeTreeState ?? null;
         this._campCeremony.restore(state);
         this._campFireWoodSpendUserId = state.campFireWoodSpendUserId ?? null;
@@ -1302,6 +1303,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
         if (pruned > 0) {
+
             Logger.warn(`[state-restore] Pruned ${pruned} invalid (non-userId) entries from _playerSubmissions. This indicates a prior schema corruption that has now been fixed.`);
         }
         this._lockedCharacters = new Set(state.lockedCharacters ?? []);
@@ -1347,8 +1349,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Rebuild _characterChoices from the restored submissions and overrides
         this._rebuildCharacterChoices();
 
-        Logger.log(`[SYNC] _loadRestState restored: characterChoices=${this._characterChoices.size}, playerSubmissions=${this._playerSubmissions.size}, gmOverrides=${this._gmOverrides.size}, submissionKeys=[${[...this._playerSubmissions.keys()].join(",")}], choiceKeys=[${[...this._characterChoices.keys()].join(",")}]`);
-
         if (this._magicScanComplete) {
             notifyDetectMagicScanApplied(this, getPartyActors().map(a => a.id));
         }
@@ -1378,6 +1378,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             try {
                 this._activateCanvasStationLayer();
             } catch (err) {
+
                 console.error(`${MODULE_ID} | _activateCanvasStationLayer failed`, err);
             }
         };
@@ -1517,6 +1518,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
             }
         } catch (e) {
+
             console.error(`${MODULE_ID} | Failed to load seed data:`, e);
         }
     }
@@ -1534,7 +1536,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         for (const [packId, packData] of Object.entries(importedPacks)) {
             if (enabledPacks[packId] === false) {
-                console.log(`${MODULE_ID} | Pack ${packId}: disabled`);
+
+                Logger.log(`${MODULE_ID} | Pack ${packId}: disabled`);
                 continue;
             }
 
@@ -1565,9 +1568,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
 
                 if (loaded.length) {
-                    console.log(`${MODULE_ID} | Pack ${packId}: loaded ${loaded.join(", ")}`);
+
+                    Logger.log(`${MODULE_ID} | Pack ${packId}: loaded ${loaded.join(", ")}`);
                 }
             } catch (e) {
+
                 console.warn(`${MODULE_ID} | Failed to load pack ${packId}:`, e);
             }
         }
@@ -1577,7 +1582,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             for (const [profId, recipeList] of Object.entries(STUB_RECIPES)) {
                 this._craftingEngine.load(profId, recipeList);
             }
-            console.log(`${MODULE_ID} | Using built-in stub recipes`);
+
+            Logger.log(`${MODULE_ID} | Using built-in stub recipes`);
         }
     }
 
@@ -1637,6 +1643,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 // Try overlay-delivered events (Patreon Library content packs)
                 const loaded = await this._loadTerrainEventsFromOverlay(terrainTag);
                 if (!loaded) {
+
                     console.warn(`${MODULE_ID} | No event file for terrain: ${terrainTag}`);
                 }
                 return;
@@ -1644,6 +1651,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const data = await resp.json();
             this._eventResolver.load(data.tables, data.events);
         } catch (e) {
+
             console.warn(`${MODULE_ID} | Failed to load events for ${terrainTag}:`, e);
         }
     }
@@ -1663,11 +1671,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 );
                 if (hasMatchingEvents) {
                     this._eventResolver.load(data.tables, data.events);
-                    console.log(`${MODULE_ID} | Loaded overlay events for terrain: ${terrainTag}`);
+        Logger.log(`${MODULE_ID} | Loaded overlay events for terrain: ${terrainTag}`);
                     return true;
                 }
             }
         } catch (e) {
+
             console.warn(`${MODULE_ID} | Overlay event lookup failed for ${terrainTag}:`, e);
         }
         return false;
@@ -1675,7 +1684,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     render(options = {}) {
         if (this._terminated) {
-            console.log(`ionrift-respite | [CLOSE-DEBUG] render blocked by _terminated flag`);
+
             return;
         }
         const preserveTotmCraftScroll = this._totmFollowUpExpanded?.isCrafting
@@ -1711,11 +1720,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     showAfkPanel();
                 })
                 .catch((err) => {
+
                     console.error(`${MODULE_ID} | RestSetupApp render failed:`, err);
                     if (this._isGM) clearActiveRestApp();
                 });
             return out;
         } catch (err) {
+
             console.error(`${MODULE_ID} | RestSetupApp render failed:`, err);
             if (this._isGM) clearActiveRestApp();
             throw err;
@@ -1723,7 +1734,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     async close(options = {}) {
-        console.log(`ionrift-respite | [CLOSE-DEBUG] RestSetupApp.close entered: isGM=${this._isGM}, phase=${this._phase}, rendered=${this.rendered}`);
+
         CampfireMakeCampDialog.closeIfOpen();
         await closeOpenStationDialog();
         if (this._isGM) {
@@ -1808,7 +1819,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         // Tear down the body-level GM guidance flyout so it doesn't linger over the canvas
         document.getElementById("ionrift-gm-guidance-flyout")?.remove();
-        console.log(`ionrift-respite | [CLOSE-DEBUG] calling super.close(), element=${!!this.element}`);
         return super.close(options);
     }
 
@@ -1838,7 +1848,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const effectiveScanLevel = (campfirePlacedGate && fireCommitted)
                 ? (this._coldCampDecided ? "cold_camp" : (this._fireLevel ?? "unlit"))
                 : (this._campFirePreviewLevel ?? (this._fireLevel !== "unlit" ? this._fireLevel : "embers"));
-            console.log(`[CAMP-DIAG] buildCampfireDrawerContextForMapDialog: pitGate=${campfirePlacedGate}, fireCommitted=${fireCommitted}, _fireLevel=${this._fireLevel}, _campFirePreviewLevel=${this._campFirePreviewLevel}, effectiveScanLevel=${effectiveScanLevel}`);
             const encMod = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[effectiveScanLevel] ?? 0;
             if (effectiveScanLevel === "cold_camp") {
                 campFireEncounterHint = "Cold camp: harder for enemies to spot (lower encounter chance).";
@@ -3258,7 +3267,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const effectiveScanLevel = (fireCommitted && (campfirePlacedGate || this._isTotM))
                 ? (this._coldCampDecided ? "cold_camp" : (this._fireLevel ?? "unlit"))
                 : (this._campFirePreviewLevel ?? (this._fireLevel !== "unlit" ? this._fireLevel : "embers"));
-            console.log(`[CAMP-DIAG] _prepareContext: phase=${this._phase}, isTotM=${this._isTotM}, pitGate=${campfirePlacedGate}, fireCommitted=${fireCommitted}, _fireLevel=${this._fireLevel}, _campFirePreviewLevel=${this._campFirePreviewLevel}, effectiveScanLevel=${effectiveScanLevel}, baseComfort=${this._engine?.comfort ?? 'engine-null'}`);
             const encMod = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[effectiveScanLevel] ?? 0;
             // RestFlowEngine: effectiveDC = baseDC - campMods. Negative fireRollModifier
             // subtracts a negative, RAISING effectiveDC (harder to avoid encounters).
@@ -3288,7 +3296,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 encMod,
                 !!this._engine?.safeRestSpot
             );
-            console.log(`[CAMP-DIAG] scan result: campComfort=${campScanData?.campComfort}, campComfortPreFire=${campScanData?.campComfortPreFire}, campComfortLabel=${campScanData?.campComfortLabel}, baseTerrainComfort=${baseTerrainComfort}`);
             const fs = campScanData.fireSelection ?? {};
             const cur = this._fireLevel ?? "unlit";
             const preview = this._campFirePreviewLevel ?? "embers";
@@ -4307,7 +4314,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const terrainTable = this._eventResolver?.tables?.get(this._engine.terrainTag);
                 const baseDC = terrainTable?.noEventThreshold ?? 15;
                 const effectiveDC = Math.max(1, baseDC - total + gmAdj - totalDefenses);
-                console.log(`[Respite:UI] encounterBar: baseDC=${baseDC}, shelter=${shelter}, weather=${weather}, scouting=${scouting}, fire=${fire}, total=${total}, defenses=${defenses}, earlyDefenseBonus=${earlyDefenseBonus}, gmAdj=${gmAdj}, effectiveDC=${effectiveDC}`);
+        Logger.log(`[Respite:UI] encounterBar: baseDC=${baseDC}, shelter=${shelter}, weather=${weather}, scouting=${scouting}, fire=${fire}, total=${total}, defenses=${defenses}, earlyDefenseBonus=${earlyDefenseBonus}, gmAdj=${gmAdj}, effectiveDC=${effectiveDC}`);
                 const fmt = (v) => v > 0 ? `+${v}` : `${v}`;
                 const terrainObj = TerrainRegistry.get(this._engine.terrainTag);
                 const terrainLabel = terrainObj?.label ?? this._engine.terrainTag ?? "Terrain";
@@ -5574,6 +5581,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 try {
                     await game.settings.set(MODULE_ID, "safeRestSpot", !!safeRestSpotCb.checked);
                 } catch (e) {
+
                     console.warn(`${MODULE_ID} | safeRestSpot setting`, e);
                 }
                 this.render();
@@ -5588,6 +5596,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 try {
                     await game.settings.set(MODULE_ID, "restInterfaceMode", restModeSelect.value);
                 } catch (e) {
+
                     console.warn(`${MODULE_ID} | restInterfaceMode setting`, e);
                 }
                 this.render();
@@ -6277,6 +6286,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         whisper: game.users.filter(u => u.isGM).map(u => u.id)
                     });
                 } catch (e) {
+
                     console.warn(`${MODULE_ID} | Failed to roll locked consequence damage:`, e);
                 }
                 lockedTargets.push({ id, name: actor.name, amount });
@@ -6785,6 +6795,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             ui.notifications.info(`Granted ${result.rolled}x ${result.itemName} to ${result.actorName}.`);
             this.render();
         } catch (e) {
+
             console.error(`[Respite] Failed to grant item:`, e);
             ui.notifications.error(`Failed to grant ${itemRef}: ${e.message}`);
         }
@@ -6815,6 +6826,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             try {
                 await actor.update({ "system.details.xp.value": current + award });
             } catch (e) {
+
                 console.warn(`${MODULE_ID} | Failed to apply ${award} training XP to ${actor.name}:`, e);
             }
         }
@@ -6910,8 +6922,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     ledger: this._grantLedger,
                     slotKey: GrantLedger.discoverySlotKey(eventId, ref)
                 });
-                console.log(`${MODULE_ID} | Auto-granted ${result.rolled}x ${result.itemName} to ${result.actorName}`);
+        Logger.log(`${MODULE_ID} | Auto-granted ${result.rolled}x ${result.itemName} to ${result.actorName}`);
             } catch (e) {
+
                 console.warn(`${MODULE_ID} | Auto-grant failed for ${disc.itemRef}:`, e);
             }
         }
@@ -7017,6 +7030,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         try {
             await game.settings.set(MODULE_ID, "safeRestSpot", safeRestSpot);
         } catch (e) {
+
             console.warn(`${MODULE_ID} | Could not persist safeRestSpot`, e);
         }
 
@@ -7447,6 +7461,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     await actor.toggleStatusEffect(id, { active: true });
                 }
             } catch (err) {
+
                 console.warn(`[Respite] Could not apply sleep effects to ${actor.name}:`, err);
             }
             // Mark tokens on the active scene so the Zzz hook can render.
@@ -7473,6 +7488,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 try {
                     await actor.toggleStatusEffect(id, { active: false });
                 } catch (err) {
+
                     console.warn(`[Respite] Could not remove ${id} from ${actor.name}:`, err);
                 }
             }
@@ -7523,6 +7539,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             try {
                 await MealPhaseHandler.resolveSpoilage(characterIds, totalDays);
             } catch (err) {
+
                 console.error(`[Respite:Meal] Auto-process spoilage error:`, err);
             }
         }
@@ -7534,8 +7551,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const outcome = await MealPhaseHandler.processAndApply(this._mealChoices, totalDays, terrainMealRules);
                 mealResults = outcome.results;
                 this._mealResults = mealResults;
-                console.log(`[Respite:Meal] Auto-process consumption results:`, mealResults);
+        Logger.log(`[Respite:Meal] Auto-process consumption results:`, mealResults);
             } catch (err) {
+
                 console.error(`[Respite:Meal] Auto-process consumption error:`, err);
             }
 
@@ -7710,12 +7728,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             .filter(([, v]) => v)
             .map(([id]) => id);
         if (activeShelterIds.some(id => magicalShelters.includes(id))) {
-            console.log(`${MODULE_ID} | Campfire drawer skipped: magical shelter active`);
+
+            Logger.log(`${MODULE_ID} | Campfire drawer skipped: magical shelter active`);
             return;
         }
 
         const drawerContainer = this.element?.querySelector(".campfire-drawer-content");
         if (!drawerContainer) {
+
             console.warn(`${MODULE_ID} | No .campfire-drawer-content found in DOM`);
             return;
         }
@@ -8050,6 +8070,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     receiveMealChoices(userId, choices) {
         void this._meals.receiveMealChoices(userId, choices).catch(err => {
+
             console.warn(`${MODULE_ID} | receiveMealChoices`, err);
         });
     }
@@ -8104,7 +8125,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._closeCampfire();
 
         this._eventsRolled = false;
-        console.log(`[Respite:State] _advanceToEvents: eventsRolled reset to false`);
         this._phase = "events";
         this._eventPoolQuietNightBypass = false;
 
@@ -8274,7 +8294,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         this._eventsRolled = true;
-        console.log(`[Respite:State] #onRollEvents: eventsRolled set to true, events=${this._triggeredEvents?.length ?? 0}`);
 
         await RestSetupApp.#finalizeEventsRoll.call(this);
     }
@@ -8397,6 +8416,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onImproviseNight(event, target) {
         if (!game.user.isGM) return;
         if (!this._engine || this._phase !== "events" || this._eventsRolled) return;
+        try {
+            if (!game.settings.get(MODULE_ID, "enableEncounters")) return;
+        } catch { /* settings not ready */ }
         this._triggeredEvents = [{
             id: `adhoc_${Date.now()}`,
             name: "Improvised Encounter",
@@ -8966,6 +8988,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 total: result.total
             });
         } catch (err) {
+
             console.error("[Respite] GM event roll for player failed:", err);
             ui.notifications.error(`Failed to roll for ${actor.name}.`);
             this.render();
@@ -9415,6 +9438,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         flags: { [MODULE_ID]: { type: "disasterLoss" } }
                     });
                 } catch (e) {
+
                     console.warn(`${MODULE_ID} | Failed to whisper disaster loss to ${data.name}:`, e);
                 }
             }
@@ -9546,7 +9570,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         if (item) {
                             await item.update({ "system.equipped": true });
                             reequippedArmor.set(actorId, item.name);
-                            console.log(`${MODULE_ID} | Auto re-equipped ${item.name} on ${actor.name}`);
+        Logger.log(`${MODULE_ID} | Auto re-equipped ${item.name} on ${actor.name}`);
 
                             // Also inject narrative note into the outcome
                             const outcome = this._outcomes.find(o => o.characterId === actorId);
@@ -9560,6 +9584,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                             }
                         }
                     } catch (e) {
+
                         console.warn(`${MODULE_ID} | Failed to re-equip armor:`, e);
                     }
                 }
@@ -9639,6 +9664,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         await ResourceSink.applyResourceLossBreakdown(eff._lockedLoss.gear);
                     }
                 } catch (e) {
+
                     console.warn(`${MODULE_ID} | Failed to apply locked resource loss:`, e);
                 }
             }
@@ -9664,19 +9690,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                             await actor.shortRest({ dialog: false, chat: false, advanceTime: false });
                         }
                     }
-                    console.log(`${MODULE_ID} | Native ${restType} rest applied for ${actor.name}.`);
+
+                    Logger.log(`${MODULE_ID} | Native ${restType} rest applied for ${actor.name}.`);
                 } catch (e) {
+
                     console.warn(`${MODULE_ID} | Native rest failed for ${actor.name}:`, e);
                 }
             }
         } else if (!skipRecovery) {
-            console.log(`${MODULE_ID} | Skipping native rest call (system: ${game.system.id} â€” no longRest/shortRest API).`);
+
+            Logger.log(`${MODULE_ID} | Skipping native rest call (system: ${game.system.id} â€” no longRest/shortRest API).`);
         }
 
         // Strip any Detect Magic active effects left on party actors from the rest scan.
         try {
             await purgeDetectMagicEffects(getPartyActors());
         } catch (e) {
+
             console.warn(`${MODULE_ID} | Failed to purge Detect Magic effects:`, e);
         }
 
@@ -9687,6 +9717,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         try {
             await MealPhaseHandler.stampWellFedDuration(getPartyActors());
         } catch (e) {
+
             console.warn(`${MODULE_ID} | Well Fed duration stamp failed:`, e);
         }
 
@@ -9700,6 +9731,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ui.notifications.info("Rest complete.");
             }
         } catch (e) {
+
             console.warn(`${MODULE_ID} | Item processing failed:`, e);
             ui.notifications.info("Rest complete.");
         }
@@ -9709,6 +9741,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         try {
             await RestSetupApp._applyTrainingXP(this._outcomes);
         } catch (e) {
+
             console.warn(`${MODULE_ID} | Training XP application failed:`, e);
         }
 
@@ -9716,6 +9749,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         try {
             await this._autoGrantPartyDiscoveries();
         } catch (e) {
+
             console.warn(`${MODULE_ID} | Auto-grant party discoveries failed:`, e);
         }
 
@@ -9727,6 +9761,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 preApplied: this._preAppliedConditions ?? new Set()
             });
         } catch (e) {
+
             console.warn(`${MODULE_ID} | Condition advisory failed:`, e);
         }
         this._preAppliedConditions = null;
@@ -9807,6 +9842,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     flags: { [MODULE_ID]: { type: "restSummary" } }
                 });
             } catch (e) {
+
                 console.warn(`${MODULE_ID} | Failed to whisper rest summary to ${ownerUser.name}:`, e);
             }
         }
@@ -9881,13 +9917,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Receives player-submitted choices from the socket handler.
      */
     receivePlayerChoices(userId, choices, craftingResults = null, followUps = null, earlyResults = null) {
-        Logger.log(`[SYNC] receivePlayerChoices: userId=${userId}, choiceKeys=${Object.keys(choices ?? {}).join(",") || "none"}`, choices);
-        console.log(`ionrift-respite | receivePlayerChoices DEBUG`, {
-            userId,
-            choices,
-            activitiesCount: this._activities?.length ?? "no-activities",
-            activityIds: (this._activities ?? []).map(a => a.id)
-        });
         const user = game.users.get(userId);
         this._playerSubmissions.set(userId, {
             choices,
@@ -10249,8 +10278,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const safeRestSpot = !!(this._engine?.safeRestSpot ?? this._restData?.safeRestSpot);
         const choices = this._characterChoices;
         const unchosen = partyActors.filter(a => a?.id && !choices?.has(a.id));
-        // eslint-disable-next-line no-console
-        console.debug(`${MODULE_ID} | [SYNC-BISECT] _buildStationEmptyNoticeMap: resolverSize=${this._activityResolver?.activities?.size ?? 0}, partyCount=${partyActors.length}, unchosenCount=${unchosen.length}, choicesSize=${choices?.size ?? 0}, restType=${restType}, isFireLit=${isFireLit}, fireLevel=${fireLevel}, isGM=${this._isGM}`);
 
         // For GM: any unchosen party member who owes rations keeps the cooking station bright.
         // For players: only the viewer's own actor matters â€” other players' ration debts are
@@ -10267,8 +10294,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 && unchosen.some(a => a.id === viewer.id)
                 && this._actorOwesActivityPhaseMealRations(viewer.id);
         }
+
         Logger.log(
-            `[station-fade] mealBrightParty=${mealBrightParty}`,
             `viewer=${viewer?.name ?? "none"}`,
             `isGM=${this._isGM}`,
             `unchosenCount=${unchosen.length}`
@@ -10366,8 +10393,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!canvas?.ready) return;
         // Make Camp pit dialog is camp-phase only; close any stray instance before activity station UI.
         CampfireMakeCampDialog.closeIfOpen();
-        // eslint-disable-next-line no-console
-        console.debug(`${MODULE_ID} | [SYNC-BISECT] _activateCanvasStationLayer: resolverSize=${this._activityResolver?.activities?.size ?? 0}, phase=${this._phase}, isGM=${this._isGM}`);
 
         const partyActors = getPartyActors();
         const actorMap = {};
@@ -10408,6 +10433,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const roster = getPartyActors();
             const actor = RestSetupApp._resolveStationActorForUser(roster, app);
             if (!actor) {
+
                 console.warn(`${MODULE_ID} | Station click: no party actor for this user (assign a character or fix roster)`, {
                     userId: game.user.id,
                     partyIds: roster.map(a => a.id)
@@ -10434,7 +10460,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
             }
 
-            console.log(`${MODULE_ID} | Station overlay click`, { stationId, actorId: actor.id, tokenId: token?.id });
+
+            Logger.log(`${MODULE_ID} | Station overlay click`, { stationId, actorId: actor.id, tokenId: token?.id });
             app._canvasFocusedStationId = stationId;
             app._activitySubTab = "activity";
 
@@ -10466,6 +10493,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     dialogStation, actor, app._activityResolver, restSession, token, app, stationId
                 );
             } catch (e) {
+
                 console.warn(`${MODULE_ID} | Station activity dialog`, e);
             }
         }, { ...proximityOpts, stationEmptyNoticeFade, terrainTag: this._selectedTerrain ?? this._engine?.terrainTag ?? "forest" });
@@ -10794,6 +10822,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             await item.update({ "system.attuned": true });
             ui.notifications.info(`${actor.name} attunes to ${item.name}.`);
         } catch (e) {
+
             console.warn(`${MODULE_ID} | attuneWorkbenchItemForActor:`, e);
             ui.notifications.error("Could not attune that item.");
             return;
@@ -11184,7 +11213,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const act = this._activities?.find(a => a.id === actId);
             submissions[charId] = { activityId: actId, activityName: act?.name ?? actId, source: "snapshot" };
         }
-        Logger.log(`[SYNC] getRestSnapshot: characterChoices=${this._characterChoices.size}, submissionKeys=${Object.keys(submissions).join(",") || "none"}`, Object.values(submissions)[0] ?? "(empty)");
+
 
         return {
             phase: this._phase,
@@ -11422,7 +11451,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (!isTheater) {
                 this._attachActivityPhaseCanvasChrome();
                 if (!this._isGM) {
-                    console.log(`${MODULE_ID} | Activity phase (player): minimise rest window, retain app for station sockets`);
+
+                    Logger.log(`${MODULE_ID} | Activity phase (player): minimise rest window, retain app for station sockets`);
                     await this.close({ retainPlayerApp: true });
                     return;
                 }
@@ -11434,7 +11464,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // see the current rest phase (events, meal, reflection, etc.)
             if (!this._isGM) {
                 _removeRejoinBar();
-                console.log(`${MODULE_ID} | Phase ${prevPhase}â†’${phase} (player): removing rejoin bar, auto-opening RSA`);
+        Logger.log(`${MODULE_ID} | Phase ${prevPhase}â†’${phase} (player): removing rejoin bar, auto-opening RSA`);
             }
         }
 
@@ -11476,7 +11506,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // RSA visible.
         if (!this._isGM) {
             phaseRenderPromise.catch((err) => {
-                console.log(`${MODULE_ID} | Phase ${phase}: player RSA render failed, falling back to rejoin bar`, err);
+
+                Logger.log(`${MODULE_ID} | Phase ${phase}: player RSA render failed, falling back to rejoin bar`, err);
                 _ensureRejoinBar(this);
             });
         }
@@ -11487,10 +11518,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     receiveSubmissionUpdate(submissions) {
         if (!submissions || typeof submissions !== "object") {
+
             Logger.warn("[receiveSubmissionUpdate] received null/undefined submissions â€” ignored.");
             return;
         }
-        Logger.log(`[SYNC] receiveSubmissionUpdate: keys=${Object.keys(submissions).join(",") || "none"}`, Object.values(submissions)[0] ?? "(empty)");
+
         // Store submission status for display (non-owned characters).
         this._submissionStatus = submissions;
 
@@ -11523,8 +11555,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!this._isGM) {
             _removeGmRestIndicator();
         }
-        // eslint-disable-next-line no-console
-        console.debug(`${MODULE_ID} | [REJOIN] receiveRestSnapshot: phase=${snapshot.phase}, submissionKeys=${Object.keys(snapshot.submissions ?? {}).join(",") || "none"}, choices=${this._characterChoices?.size ?? 0}`);
         // Apply submissions
         if (snapshot.submissions) {
             // Apply canonical choices directly to _characterChoices.
@@ -11534,8 +11564,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const actId = info?.activityId ?? info?.activityName;
                 if (actId) this._characterChoices.set(charId, actId);
             }
-            // eslint-disable-next-line no-console
-            console.debug(`${MODULE_ID} | [REJOIN] receiveRestSnapshot: choices after apply=${this._characterChoices?.size ?? 0}`);
         }
 
         if (snapshot.afkCharacters !== undefined) {
@@ -11715,9 +11743,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Reload activity resolver from snapshot if it arrives without one.
         // This covers late-joining players who missed the initial emitRestStarted.
-        const _resolverSizeBefore = this._activityResolver?.activities?.size ?? 0;
-        // eslint-disable-next-line no-console
-        console.debug(`${MODULE_ID} | [SYNC-BISECT] receiveRestSnapshot: resolverSize=${_resolverSizeBefore}, snapshotActivities=${snapshot.activities?.length ?? 0}, phase=${this._phase}, isGM=${this._isGM}`);
         if (snapshot.lockedCharacters?.length) {
             this._lockedCharacters = new Set(snapshot.lockedCharacters);
         }
@@ -11747,11 +11772,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             && !(this._activityResolver?.activities?.size)) {
             this._activities = snapshot.activities;
             this._activityResolver.load(this._activities);
-            // eslint-disable-next-line no-console
-            console.debug(`${MODULE_ID} | [SYNC-BISECT] receiveRestSnapshot: resolver hydrated from snapshot (${this._activityResolver.activities.size} activities)`);
-        } else {
-            // eslint-disable-next-line no-console
-            console.debug(`${MODULE_ID} | [SYNC-BISECT] receiveRestSnapshot: resolver NOT hydrated â€” resolverSize=${_resolverSizeBefore}, snapshotActivities=${snapshot.activities?.length ?? 0}`);
         }
 
         if (this._phase === "activity" && isStationLayerActive()) {
@@ -11767,8 +11787,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Activity phase: same as receivePhaseChange (F5 rejoin after GM already advanced)
         const _isTheaterRestore = this._isTotM;
         if (this._phase === "activity" && !this._isGM) {
-            // eslint-disable-next-line no-console
-            console.debug(`${MODULE_ID} | [REJOIN] receiveRestSnapshot: activity phase â†’ choices=${this._characterChoices?.size ?? 0}, theater=${_isTheaterRestore}`);
             if (!_isTheaterRestore) {
                 this._attachActivityPhaseCanvasChrome();
                 if (this.rendered) {
@@ -11809,7 +11827,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // alongside a successfully rendered RSA.
         if (!this._isGM) {
             snapshotRenderPromise.catch((err) => {
-                console.log(`${MODULE_ID} | receiveRestSnapshot: player RSA render failed, falling back to rejoin bar`, err);
+
+                Logger.log(`${MODULE_ID} | receiveRestSnapshot: player RSA render failed, falling back to rejoin bar`, err);
                 _ensureRejoinBar(this);
             });
         }
@@ -12147,6 +12166,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     }
                 }
             } catch (e) {
+
                 console.error("[Respite] resolveIndividualResult", e);
             } finally {
                 await this._saveRestState();
@@ -13031,6 +13051,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this.render({ force: true });
             await this._refreshCampPitNoticeLayer();
         } catch (e) {
+
             console.error(`${MODULE_ID} | _startCampPitCursorFlow`, e);
         } finally {
             this._campPitCursorInFlight = false;

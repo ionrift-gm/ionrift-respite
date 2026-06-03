@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 import { getPartyActors } from "./partyActors.js";
 import { boostComfort, getHdPenalty, getExhaustionDC, HP_FRACTION, isComfortEnabled } from "./ComfortCalculator.js";
 
@@ -104,7 +105,7 @@ export class RestFlowEngine {
         this._phase = "events";
 
         const effectiveDC = this.getEffectiveEncounterDC();
-        console.log(`[Respite:Engine] resolveEvents: effectiveDC=${effectiveDC}, scoutTier=${scoutTier}`);
+        Logger.log(`[Respite:Engine] resolveEvents: effectiveDC=${effectiveDC}, scoutTier=${scoutTier}`);
         const events = await eventResolver.roll(this.terrainTag, this.watchRoster, effectiveDC, scoutTier);
         return events;
     }

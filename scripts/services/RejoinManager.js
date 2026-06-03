@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 /**
  * @module RejoinManager
  * @description Manages persistent notification bars for rest rejoin, prep, and GM indicators.
@@ -20,8 +21,6 @@ const MODULE_ID = "ionrift-respite";
  */
 export function showRejoinNotification(app, rejoinFn) {
     removeRejoinNotification();
-    // eslint-disable-next-line no-console
-    console.debug(`ionrift-respite | [REJOIN] showRejoinNotification: hasApp=${!!app}, phase=${app?._phase ?? "none"}, choices=${app?._characterChoices?.size ?? "none"}`);
     const el = document.createElement("div");
     el.id = "respite-rejoin-bar";
     const phaseLabel = app?._phase ? `Phase: ${app._phase}` : "active";
@@ -62,8 +61,6 @@ export function showRejoinNotification(app, rejoinFn) {
         <button type="button" id="respite-rejoin-btn"${allDone ? ' class="respite-resume-ready"' : ""}>Resume</button>
     `;
     el.querySelector("#respite-rejoin-btn").addEventListener("click", () => {
-        // eslint-disable-next-line no-console
-        console.debug(`ionrift-respite | [REJOIN] Resume clicked: hasApp=${!!app}, rendered=${app?.rendered ?? "none"}`);
         removeRejoinNotification();
         if (app && !app.rendered) {
             app.render({ force: true });

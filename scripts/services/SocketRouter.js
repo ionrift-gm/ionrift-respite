@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 /**
  * SocketRouter: inbound socket message dispatcher.
  * Extracted from module.js (Phase 2.2).
@@ -60,7 +61,7 @@ const MODULE_ID = "ionrift-respite";
  */
 export function dispatch(data, ctx) {
     if (!data?.type) return;
-    console.log(`${MODULE_ID} | Socket received:`, data.type, `isGM=${game.user.isGM}`);
+        Logger.log(`${MODULE_ID} | Socket received:`, data.type, `isGM=${game.user.isGM}`);
 
     switch (data.type) {
         // ── Rest Lifecycle ───────────────────────────────────────────
@@ -95,12 +96,14 @@ export function dispatch(data, ctx) {
             if (game.user.isGM) return;
             if (ctx.activePlayerRestApp?.receivePhaseChange) {
                 void ctx.activePlayerRestApp.receivePhaseChange(data.phase, data.phaseData ?? {}).catch(err => {
+
                     console.error(`${MODULE_ID} | receivePhaseChange failed`, err);
                 });
             } else if (ctx.playerRestActive) {
                 // Client is in a rest but has no app open (canvas-only phase, or dismissed sheet).
                 // Re-request the full rest state so we stay in sync.
-                console.log(`${MODULE_ID} | PHASE_CHANGED received but no player app, requesting state resync`);
+
+                Logger.log(`${MODULE_ID} | PHASE_CHANGED received but no player app, requesting state resync`);
                 emitRequestRestState(game.user.id);
             }
             break;
@@ -125,6 +128,7 @@ export function dispatch(data, ctx) {
             if (!game.user.isGM) return;
             if (ctx.activeRestSetupApp?._runSetCampFireLevelForGm) {
                 void ctx.activeRestSetupApp._runSetCampFireLevelForGm("campfire", data.userId ?? null).catch(err => {
+
                     console.error(`${MODULE_ID} | campLightFireRequest:`, err);
                     ui.notifications.error("Could not set fire level. Check the console.");
                 });
@@ -168,6 +172,7 @@ export function dispatch(data, ctx) {
             if (!game.user.isGM) return;
             if (ctx.activeRestSetupApp?._campCeremony) {
                 void ctx.activeRestSetupApp._campCeremony.selectColdCamp().catch(err => {
+
                     console.error(`${MODULE_ID} | campColdCampCommit:`, err);
                 });
             } else { ui.notifications.warn("Open the rest session on the GM client first."); }
@@ -177,6 +182,7 @@ export function dispatch(data, ctx) {
             if (!game.user.isGM) return;
             if (ctx.activeRestSetupApp?.setColdCampDuringActivity) {
                 void ctx.activeRestSetupApp.setColdCampDuringActivity({ fromPlayer: true }).catch(err => {
+
                     console.error(`${MODULE_ID} | activityColdCampRequest:`, err);
                 });
             } else { ui.notifications.warn("Open the rest session on the GM client first."); }
@@ -186,6 +192,7 @@ export function dispatch(data, ctx) {
             if (!game.user.isGM) return;
             if (ctx.activeRestSetupApp?.changeFireLevelDuringActivity) {
                 void ctx.activeRestSetupApp.changeFireLevelDuringActivity(data.fireLevel, { fromPlayer: true, requestingUserId: data.userId ?? null }).catch(err => {
+
                     console.error(`${MODULE_ID} | activityFireLevelRequest:`, err);
                 });
             } else { ui.notifications.warn("Open the rest session on the GM client first."); }
@@ -193,14 +200,6 @@ export function dispatch(data, ctx) {
 
         case SOCKET_TYPES.CAMP_LIGHT_FIRE:
             if (!game.user.isGM) return;
-            console.log(`${MODULE_ID} | [DBG] campLightFire handler`, {
-                hasApp: !!ctx.activeRestSetupApp,
-                hasCeremony: !!ctx.activeRestSetupApp?._campCeremony,
-                userId: data.userId,
-                actorId: data.actorId,
-                method: data.method,
-                previewLevel: data.previewLevel
-            });
             if (ctx.activeRestSetupApp?._campCeremony) {
                 // Light at the tier the player selected, in one motion (no re-engage).
                 const chosenLevel = ["embers", "campfire", "bonfire"].includes(data.previewLevel)
@@ -216,6 +215,7 @@ export function dispatch(data, ctx) {
             if (!game.user.isGM) return;
             if (ctx.activeRestSetupApp?._campCeremony) {
                 void ctx.activeRestSetupApp._campCeremony.addFirewoodPledge(data.userId, data.actorId).catch(err => {
+
                     console.error(`${MODULE_ID} | campFirewoodPledge:`, err);
                 });
             } else { ui.notifications.warn("Open the rest session on the GM client first."); }
@@ -225,6 +225,7 @@ export function dispatch(data, ctx) {
             if (!game.user.isGM) return;
             if (ctx.activeRestSetupApp?._campCeremony) {
                 void ctx.activeRestSetupApp._campCeremony.removeFirewoodPledge(data.userId).catch(err => {
+
                     console.error(`${MODULE_ID} | campFirewoodReclaim:`, err);
                 });
             } else { ui.notifications.warn("Open the rest session on the GM client first."); }
@@ -245,6 +246,7 @@ export function dispatch(data, ctx) {
             if (!game.user.isGM) return;
             void ctx.activeRestSetupApp?.receiveMealDayConsumeRequest?.(data.userId, data.consumeByCharacter)
                 .catch(err => {
+
                     console.error(`${MODULE_ID} | mealDayConsumeRequest`, err);
                 });
             break;
@@ -310,45 +312,50 @@ export function dispatch(data, ctx) {
         case SOCKET_TYPES.WORKBENCH_IDENTIFY_REQUEST: {
             if (!game.user.isGM) break;
             const { actorId, itemId, requestId, targetUserId } = data;
-            console.log(`[Respite] WB-IDENTIFY GM received req=${requestId} actor=${actorId} item=${itemId} target=${targetUserId}`);
+        Logger.log(`[Respite] WB-IDENTIFY GM received req=${requestId} actor=${actorId} item=${itemId} target=${targetUserId}`);
             void (async () => {
                 const actor = game.actors.get(actorId);
                 const item = actor?.items?.get(itemId);
                 if (!item) {
+
                     console.warn(`[Respite] WB-IDENTIFY GM: item not found. actor=${actorId} item=${itemId}`);
                     emitWorkbenchIdentifyResult({ requestId, success: false, targetUserId });
                     return;
                 }
                 const qmActive = game.modules?.get("ionrift-quartermaster")?.active;
-                console.log(`[Respite] WB-IDENTIFY GM: qmActive=${qmActive} item.name=${item.name} identified=${item.system?.identified}`);
+        Logger.log(`[Respite] WB-IDENTIFY GM: qmActive=${qmActive} item.name=${item.name} identified=${item.system?.identified}`);
                 const latentFlag = item.getFlag?.("ionrift-quartermaster", "latentMagic");
                 const cursedFlag = item.getFlag?.("ionrift-quartermaster", "cursedMeta");
-                console.log(`[Respite] WB-IDENTIFY GM: latentMagic=${!!latentFlag} cursedMeta=${!!cursedFlag}`);
+        Logger.log(`[Respite] WB-IDENTIFY GM: latentMagic=${!!latentFlag} cursedMeta=${!!cursedFlag}`);
                 let success = false;
                 if (qmActive) {
                     try {
                         const { IdentificationService } = await import(
                             "/modules/ionrift-quartermaster/scripts/services/IdentificationService.js"
                         );
-                        console.log(`[Respite] WB-IDENTIFY GM: calling IdentificationService.identify`);
+        Logger.log(`[Respite] WB-IDENTIFY GM: calling IdentificationService.identify`);
                         const result = await IdentificationService.identify(item, { silent: true });
-                        console.log(`[Respite] WB-IDENTIFY GM: QM result →`, result);
+        Logger.log(`[Respite] WB-IDENTIFY GM: QM result →`, result);
                         success = result.identified;
                     } catch (err) {
+
                         console.error("[Respite] WB-IDENTIFY GM: QM import/identify failed", err);
                     }
                 }
                 if (!success) {
-                    console.log(`[Respite] WB-IDENTIFY GM: QM did not identify, trying curseBypass update`);
+
+                    Logger.log(`[Respite] WB-IDENTIFY GM: QM did not identify, trying curseBypass update`);
                     try {
                         await item.update({ "system.identified": true }, { curseBypass: true });
                         success = true;
-                        console.log(`[Respite] WB-IDENTIFY GM: curseBypass update succeeded`);
+        Logger.log(`[Respite] WB-IDENTIFY GM: curseBypass update succeeded`);
                     } catch (err) {
+
                         console.error("[Respite] WB-IDENTIFY GM: raw update failed", err);
                     }
                 }
-                console.log(`[Respite] WB-IDENTIFY GM: emitting result success=${success} req=${requestId}`);
+
+                Logger.log(`[Respite] WB-IDENTIFY GM: emitting result success=${success} req=${requestId}`);
                 emitWorkbenchIdentifyResult({ requestId, success, targetUserId });
             })();
             break;
@@ -358,7 +365,7 @@ export function dispatch(data, ctx) {
             if (data.targetUserId !== null && data.targetUserId !== game.user.id) break;
             const { requestId, success } = data;
             const pendingCount = WorkbenchDelegate._pendingIdentifyRequests?.size ?? -1;
-            console.log(`[Respite] WB-IDENTIFY player: result received success=${success} req=${requestId} pendingMapSize=${pendingCount}`);
+        Logger.log(`[Respite] WB-IDENTIFY player: result received success=${success} req=${requestId} pendingMapSize=${pendingCount}`);
             WorkbenchDelegate._resolveIdentifyRequest(requestId, success);
             break;
         }
@@ -540,7 +547,8 @@ export function dispatch(data, ctx) {
             break;
 
         case SOCKET_TYPES.FORCE_RELOAD:
-            console.log(`${MODULE_ID} | Received forceReload, refreshing page...`);
+
+            Logger.log(`${MODULE_ID} | Received forceReload, refreshing page...`);
             setTimeout(() => window.location.reload(), 200);
             break;
 

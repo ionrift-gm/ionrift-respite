@@ -8,6 +8,7 @@ jobs:
     uses: ionrift-gm/ionrift-ci/.github/workflows/pre-release.yml@main
     with:
       eslint_max_warnings: 200
+      eslint_extra_args: "--ignore-pattern 'scripts/tests/**'"
       testharness_repo: 'ionrift-gm/ionrift-testharness'
       testharness_config: 'vitest/respite/vitest.config.js'
     secrets:

@@ -102,6 +102,13 @@ export class ActivityResolver {
                 } catch (e) { /* setting may not exist yet */ }
             }
 
+            // Gate Copy Spell behind module setting
+            if (activity.id === "act_scribe") {
+                try {
+                    if (!game.settings.get("ionrift-respite", "enableCopySpell")) continue;
+                } catch (e) { /* setting may not exist yet */ }
+            }
+
             if (this._meetsPrerequisites(actor, activity.prerequisites)) {
                 available.push(activity);
             }
@@ -758,6 +765,13 @@ export class ActivityResolver {
             if (activity.id === "act_fletch") {
                 try {
                     if (!game.settings.get("ionrift-respite", "enableFletching")) continue;
+                } catch (e) { /* setting may not exist yet */ }
+            }
+
+            // Gate Copy Spell behind module setting
+            if (activity.id === "act_scribe") {
+                try {
+                    if (!game.settings.get("ionrift-respite", "enableCopySpell")) continue;
                 } catch (e) { /* setting may not exist yet */ }
             }
 
