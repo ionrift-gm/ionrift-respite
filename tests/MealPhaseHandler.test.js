@@ -413,6 +413,81 @@ describe("MealPhaseHandler", () => {
         });
     });
 
+    // ── _buffToActiveEffectPartsAsync (Well Fed regression) ─────
+
+    describe("_buffToActiveEffectPartsAsync", () => {
+        const stubActor = makeActor();
+
+        it("returns summaryLine for advantage buff", async () => {
+            const buff = { type: "advantage", save: { ability: "con" }, duration: "nextSave" };
+            const result = await MealPhaseHandler._buffToActiveEffectPartsAsync(stubActor, buff);
+            expect(result.summaryLine).toBe("advantage on CON saves (nextSave)");
+            expect(result.changes).toHaveLength(1);
+            expect(result.daeSpecialDuration).toContain("isSave.con");
+        });
+
+        it("returns summaryLine for resistance buff", async () => {
+            const buff = { type: "resistance", damageType: "poison" };
+            const result = await MealPhaseHandler._buffToActiveEffectPartsAsync(stubActor, buff);
+            expect(result.summaryLine).toBe("resistance (poison)");
+            expect(result.changes).toHaveLength(1);
+            expect(result.daeSpecialDuration).toEqual([]);
+        });
+
+        it("returns summaryLine for temp_hp buff with positive roll", async () => {
+            globalThis.Roll = class Roll {
+                constructor(formula) { this.formula = formula; this.total = 5; this.dice = []; }
+                async evaluate() { return this; }
+            };
+            const buff = { type: "temp_hp", formula: "1d8" };
+            const result = await MealPhaseHandler._buffToActiveEffectPartsAsync(stubActor, buff);
+            expect(result.summaryLine).toBe("temp HP +5");
+            expect(result.changes.length).toBeGreaterThanOrEqual(1);
+        });
+
+        it("returns empty for temp_hp with zero total", async () => {
+            globalThis.Roll = class Roll {
+                constructor(formula) { this.formula = formula; this.total = 0; this.dice = []; }
+                async evaluate() { return this; }
+            };
+            const buff = { type: "temp_hp", formula: "0" };
+            const result = await MealPhaseHandler._buffToActiveEffectPartsAsync(stubActor, buff);
+            expect(result.summaryLine).toBeUndefined();
+            expect(result.changes).toHaveLength(0);
+        });
+
+        it("returns empty for null buff", async () => {
+            const result = await MealPhaseHandler._buffToActiveEffectPartsAsync(stubActor, null);
+            expect(result.changes).toHaveLength(0);
+            expect(result.description).toBe("");
+        });
+
+        it("returns empty for unknown buff type", async () => {
+            const buff = { type: "exotic_thing" };
+            const result = await MealPhaseHandler._buffToActiveEffectPartsAsync(stubActor, buff);
+            expect(result.changes).toHaveLength(0);
+            expect(result.daeSpecialDuration).toEqual([]);
+        });
+
+        it("defaults advantage ability to con when save.ability is missing", async () => {
+            const buff = { type: "advantage", duration: "nextSave" };
+            const result = await MealPhaseHandler._buffToActiveEffectPartsAsync(stubActor, buff);
+            expect(result.summaryLine).toContain("CON");
+        });
+
+        it("uses formula as ability fallback for advantage", async () => {
+            const buff = { type: "advantage", formula: "wis", duration: "untilLongRest" };
+            const result = await MealPhaseHandler._buffToActiveEffectPartsAsync(stubActor, buff);
+            expect(result.summaryLine).toBe("advantage on WIS saves (untilLongRest)");
+        });
+
+        it("uses formula as damageType fallback for resistance", async () => {
+            const buff = { type: "resistance", formula: "fire" };
+            const result = await MealPhaseHandler._buffToActiveEffectPartsAsync(stubActor, buff);
+            expect(result.summaryLine).toBe("resistance (fire)");
+        });
+    });
+
     // ── _mealSnapshotAsSingleLeftover ───────────────────────────
 
     describe("_mealSnapshotAsSingleLeftover", () => {
