@@ -1,5 +1,5 @@
 import { getComfortDcMod, isComfortEnabled } from "./ComfortCalculator.js";
-import { getTrainingXpValues, isTrainingEnabled } from "./TrainingSettings.js";
+import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "./TrainingSettings.js";
 
 /** Activities hidden when the GM marks a safe rest spot (no encounter risk; no redundant camp duties). */
 export const SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS = new Set([
@@ -452,7 +452,7 @@ export class ActivityResolver {
         if (activity.diminishingReturns) {
             const flagKey = activity.diminishingReturns.actorFlag ?? "trainingStreak";
             const streak = actor.getFlag("ionrift-respite", flagKey) ?? 0;
-            xpReduction = streak * Math.abs(activity.diminishingReturns.perConsecutiveRest ?? 5);
+            xpReduction = getTrainingXpReduction(streak);
 
             // Update streak for next rest
             await actor.setFlag("ionrift-respite", flagKey, streak + 1);
@@ -535,7 +535,7 @@ export class ActivityResolver {
         const flagKey = activity.diminishingReturns?.actorFlag ?? "trainingStreak";
         const streak = activity.diminishingReturns ? (actor.getFlag("ionrift-respite", flagKey) ?? 0) : 0;
         const xpReduction = activity.diminishingReturns
-            ? streak * Math.abs(activity.diminishingReturns.perConsecutiveRest ?? 5)
+            ? getTrainingXpReduction(streak)
             : 0;
 
         return { adjustedDc, numRolls, abilityKey, modifier, rollLabel, successXP, failXP, flagKey, streak, xpReduction };

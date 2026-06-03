@@ -6,7 +6,7 @@
 
 import { isGearDeployed } from "../services/CompoundCampPlacer.js";
 import { HD_PENALTY, boostComfort, isComfortEnabled, getComfortDcMod } from "../services/ComfortCalculator.js";
-import { getTrainingXpValues, isTrainingEnabled } from "../services/TrainingSettings.js";
+import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "../services/TrainingSettings.js";
 
 /** Activities hidden when the GM marks a safe rest spot (no encounter risk; no redundant camp duties). */
 export const SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS = new Set([
@@ -224,14 +224,14 @@ export function getActivityAdvisory(activityId, actor, partyState) {
             const streak = actor.getFlag?.("ionrift-respite", "trainingStreak") ?? 0;
             const baseXP = 3 * passXp;
             const effectiveFailXP = 3 * failXp;
-            const reduction = streak * 5;
+            const reduction = getTrainingXpReduction(streak);
             const effectiveXP = Math.max(baseXP - reduction, 0);
             const effectiveFailTotal = Math.max(effectiveFailXP - reduction, 0);
             if (effectiveXP <= 0)
                 return { text: "Diminishing returns: no XP gain this rest. Try something else", urgent: false, nonViable: true };
             if (gap !== null && gap > 0 && gap <= effectiveXP)
                 return { text: `${gap} XP to level up. Training can close that gap this rest`, urgent: true };
-            if (streak >= 2)
+            if (streak >= 1)
                 return { text: `Training streak (${streak}): three sets, up to ${effectiveXP} XP, as low as ${effectiveFailTotal}`, urgent: false };
             if (gap !== null && gap > 0)
                 return { text: `${gap} XP to next level. Three sets, up to ${effectiveXP} XP, as low as ${effectiveFailTotal}`, urgent: false };
