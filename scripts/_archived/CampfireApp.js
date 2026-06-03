@@ -7,7 +7,7 @@
  */
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
-import { CampfirePhysics } from "./CampfirePhysics.js";
+import { CampfirePhysics } from "../services/CampfirePhysics.js";
 import { CampfireTokenLinker } from "../services/CampfireTokenLinker.js";
 import { SoundDelegate } from "./delegates/SoundDelegate.js";
 

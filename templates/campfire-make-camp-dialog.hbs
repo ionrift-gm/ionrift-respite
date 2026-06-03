@@ -48,7 +48,7 @@
                     <span class="camp-fire-tier-watermark" aria-hidden="true"><i class="fas fa-moon"></i></span>
                     <span class="camp-fire-tier-label">Cold Camp</span>
                     <span class="camp-fire-tier-cost">(No fire)</span>
-                    <span class="camp-fire-tier-body">No cooking. Harder for enemies to spot.</span>
+                    <span class="camp-fire-tier-body">No fire tonight. <span class="fire-penalty">−1 comfort.</span> <span class="fire-benefit">Harder for enemies to spot (lower encounter chance).</span> No cooking.</span>
                 </button>
                 {{#each campFireTierCards}}
                 <button type="button"
@@ -60,14 +60,13 @@
                     <span class="camp-fire-tier-watermark" aria-hidden="true"><i class="fas fa-fire"></i></span>
                     <span class="camp-fire-tier-label">{{label}}</span>
                     <span class="camp-fire-tier-cost">({{costLabel}})</span>
-                    <span class="camp-fire-tier-body">{{body}}</span>
+                    <span class="camp-fire-tier-body">{{> fireTierBody}}</span>
                 </button>
                 {{/each}}
             </div>
             <p class="campfire-map-tier-footnote">Anyone at the table can pick a tier. Cold camp and fire tiers stay editable until the GM proceeds.</p>
         </div>
         {{/if}}
-        <p class="camp-fire-encounter-hint campfire-map-encounter-preview"><i class="fas fa-eye"></i> {{campFireEncounterHint}}</p>
         {{#if campColdCampDecided}}
         <p class="camp-fire-cold-banner glass-ui"><i class="fas fa-moon"></i> Cold camp selected</p>
         {{else if campFireIsLit}}

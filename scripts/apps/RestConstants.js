@@ -77,15 +77,15 @@ export const ACTIVITY_ICONS = {
     act_other: "fas fa-comments"
 };
 
-/**
- * When false, workbench identify UI (TotM tab, station Examine/Identify tabs) is hidden.
- * Identification is handled via spellcasting at the table.
- */
-export const WORKBENCH_IDENTIFY_UI_ENABLED = false;
+const MODULE_ID = "ionrift-respite";
 
-/** @returns {boolean} */
+/** @returns {boolean} TotM Identify tab and workbench identify station UI. */
 export function isWorkbenchIdentifyUiEnabled() {
-    return WORKBENCH_IDENTIFY_UI_ENABLED;
+    try {
+        return !!game.settings.get(MODULE_ID, "enableWorkbenchIdentify");
+    } catch {
+        return true;
+    }
 }
 
 /** Focus identify and potion tasting at the workbench station (always available). */
@@ -466,6 +466,21 @@ export function inferCanvasStationForActivity(activityId, actorId = null) {
 
 /** Maximum distance (grid squares) a player token may be from a station to interact with it. */
 export const STATION_RANGE_SQUARES = 3;
+
+/** Max assignment portraits on an activity card before showing a +N overflow badge. */
+export const ACTIVITY_PORTRAIT_DISPLAY_CAP = 3;
+
+/**
+ * Attach portrait bubbles and overflow count to an activity list item.
+ * @param {object} item
+ * @param {object[]} assigned
+ */
+export function applyActivityPortraitAssignments(item, assigned) {
+    const cap = ACTIVITY_PORTRAIT_DISPLAY_CAP;
+    item.assignedPortraits = assigned.slice(0, cap);
+    item.assignedOverflow = Math.max(0, assigned.length - cap);
+    item.hasAssignments = assigned.length > 0;
+}
 
 /**
  * Camp station placeholder (build site) before the fire is lit. Swapped in-place when promoted.

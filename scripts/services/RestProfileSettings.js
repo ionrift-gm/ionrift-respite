@@ -48,3 +48,15 @@ export function isSimpleStationsMode() {
 export function requiresMapCampFire() {
     return isSimpleStationsMode();
 }
+
+/**
+ * TotM Activities: whittling campfire panel (requires comfort rules and Theater mode).
+ * @returns {boolean}
+ */
+export function isCampfireMinigameEnabled() {
+    try {
+        return !!game.settings.get(MODULE_ID, "enableCampfireMinigame");
+    } catch {
+        return false;
+    }
+}
