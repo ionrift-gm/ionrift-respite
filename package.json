@@ -13,7 +13,6 @@
   "devDependencies": {
     "@foundryvtt/foundryvtt-cli": "^1.1.0",
     "handlebars": "^4.7.9",
-    "sharp": "^0.34.5",
-    "vitest": "^3.0.0"
+    "sharp": "^0.34.5"
   }
 }
