@@ -359,6 +359,12 @@ export class TravelResolver {
     }
 
     _getSurvivalMod(actor) {
+        const adapter = game.ionrift?.respite?.adapter;
+        if (adapter) {
+            const surMod = adapter.getSkillTotal(actor, adapter.normalizeSkillKey("sur"));
+            const natMod = adapter.getSkillTotal(actor, adapter.normalizeSkillKey("nat"));
+            return Math.max(surMod, natMod);
+        }
         const sur = actor.system?.skills?.sur;
         const nat = actor.system?.skills?.nat;
         const surMod = sur?.total ?? 0;

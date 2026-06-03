@@ -232,9 +232,12 @@ export class RestFlowEngine {
      * @returns {Object}
      */
     _calculateRecovery(actor, activitySchema = null, eventOutcomes = []) {
-        const maxHp = actor.system?.attributes?.hp?.max ?? 0;
-        const currentHp = actor.system?.attributes?.hp?.value ?? 0;
-        const totalHd = actor.system?.attributes?.hd?.max ?? actor.system?.details?.level ?? 0;
+        const adapter = game.ionrift?.respite?.adapter;
+        const hp = adapter ? adapter.getHP(actor) : { value: actor.system?.attributes?.hp?.value ?? 0, max: actor.system?.attributes?.hp?.max ?? 0 };
+        const maxHp = hp.max;
+        const currentHp = hp.value;
+        const hd = adapter ? adapter.getHitDice(actor) : { current: 0, max: 0 };
+        const totalHd = hd.max || (adapter ? adapter.getLevel(actor) : (actor.system?.details?.level ?? 0));
         const rawHdRecovery = Math.max(1, Math.floor(totalHd / 2));
 
         // Safe rest spot: full HP cap, no comfort tier penalties, no exhaustion risk.

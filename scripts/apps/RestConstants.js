@@ -605,21 +605,24 @@ export function buildCheckLabelForActivity(activity, actor, comfort = "sheltered
         baseDc = 10 + spellLevel;
     }
 
+    const rcAdapter = game.ionrift?.respite?.adapter;
     let checkKind = "";
     if (activity.check.skill) {
         let chosenSkill = activity.check.skill;
         if (activity.check.altSkill && actor) {
-            const primary = actor.system?.skills?.[activity.check.skill]?.total ?? 0;
-            const alt = actor.system?.skills?.[activity.check.altSkill]?.total ?? 0;
+            const primary = rcAdapter ? rcAdapter.getSkillTotal(actor, rcAdapter.normalizeSkillKey(activity.check.skill)) : (actor.system?.skills?.[activity.check.skill]?.total ?? 0);
+            const alt = rcAdapter ? rcAdapter.getSkillTotal(actor, rcAdapter.normalizeSkillKey(activity.check.altSkill)) : (actor.system?.skills?.[activity.check.altSkill]?.total ?? 0);
             if (alt > primary) chosenSkill = activity.check.altSkill;
         }
         checkKind = chosenSkill.charAt(0).toUpperCase() + chosenSkill.slice(1);
     } else if (activity.check.ability) {
         let abilityKey = activity.check.ability;
-        if (abilityKey === "best" && actor?.system?.abilities) {
+        if (abilityKey === "best" && actor) {
             let bestKey = "str"; let bestMod = -99;
-            for (const [key, data] of Object.entries(actor.system.abilities)) {
-                if ((data.mod ?? 0) > bestMod) { bestMod = data.mod; bestKey = key; }
+            const abilityKeys = ["str", "dex", "con", "int", "wis", "cha"];
+            for (const key of abilityKeys) {
+                const mod = rcAdapter ? rcAdapter.getAbilityMod(actor, key) : (actor.system?.abilities?.[key]?.mod ?? 0);
+                if (mod > bestMod) { bestMod = mod; bestKey = key; }
             }
             abilityKey = bestKey;
         }

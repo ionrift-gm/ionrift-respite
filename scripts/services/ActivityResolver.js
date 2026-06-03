@@ -389,7 +389,12 @@ export class ActivityResolver {
                     }
 
                     if (healed > 0) {
-                        await target.update({ "system.attributes.hp.value": currentHp + healed });
+                        const healAdapter = game.ionrift?.respite?.adapter;
+                        if (healAdapter) {
+                            await healAdapter.applyHPRestore(target, healed);
+                        } else {
+                            await target.update({ "system.attributes.hp.value": currentHp + healed });
+                        }
                         const suffix = chatParts.length ? ` (${chatParts.join(", ")})` : "";
                         const chatWhisper = game.users.filter(u => u.isGM || target.testUserPermission(u, "OWNER")).map(u => u.id);
                         await ChatMessage.create({
@@ -634,21 +639,29 @@ export class ActivityResolver {
 
         // Check skill proficiencies
         if (prereqs.proficiencies?.length > 0) {
-            const actorSkills = Object.keys(actor.system?.skills ?? {}).filter(
-                s => actor.system.skills[s]?.proficient > 0
-            );
-            if (!prereqs.proficiencies.some(p => actorSkills.includes(p))) return false;
+            const prereqAdapter = game.ionrift?.respite?.adapter;
+            const actorSkills = prereqAdapter
+                ? prereqAdapter.getProficientSkillKeys(actor)
+                : Object.keys(actor.system?.skills ?? {}).filter(s => actor.system.skills[s]?.proficient > 0);
+            // Also check with normalized keys for cross-system compatibility
+            const normalizedPrereqs = prereqAdapter
+                ? prereqs.proficiencies.map(p => prereqAdapter.normalizeSkillKey(p))
+                : prereqs.proficiencies;
+            if (!normalizedPrereqs.some(p => actorSkills.includes(p)) &&
+                !prereqs.proficiencies.some(p => actorSkills.includes(p))) return false;
         }
 
         // Check minimum level
         if (prereqs.minimumLevel) {
-            const level = actor.system?.details?.level ?? 0;
+            const prereqAdapter = game.ionrift?.respite?.adapter;
+            const level = prereqAdapter ? prereqAdapter.getLevel(actor) : (actor.system?.details?.level ?? 0);
             if (level < prereqs.minimumLevel) return false;
         }
 
         // Check maximum level (e.g. Training capped at level 5)
         if (prereqs.maximumLevel) {
-            const level = actor.system?.details?.level ?? 0;
+            const prereqAdapter = game.ionrift?.respite?.adapter;
+            const level = prereqAdapter ? prereqAdapter.getLevel(actor) : (actor.system?.details?.level ?? 0);
             if (level > prereqs.maximumLevel) return false;
         }
 
@@ -660,28 +673,32 @@ export class ActivityResolver {
 
         // Check isSpellcaster (actor must have at least one spell slot level)
         if (prereqs.isSpellcaster) {
-            const spells = actor.system?.spells ?? {};
-            const hasSlots = Object.keys(spells).some(k => {
-                const slot = spells[k];
-                return (slot?.max ?? 0) > 0;
-            });
+            const prereqAdapter = game.ionrift?.respite?.adapter;
+            const hasSlots = prereqAdapter ? prereqAdapter.isSpellcaster(actor) : (() => {
+                const spells = actor.system?.spells ?? {};
+                return Object.keys(spells).some(k => (spells[k]?.max ?? 0) > 0);
+            })();
             if (!hasSlots) return false;
         }
 
         // Check requiresSpellbook (Wizard class, or Warlock with Book of Shadows)
-        // Artificers are explicitly excluded: they prepare spells but do not use a spellbook.
         if (prereqs.requiresSpellbook) {
-            const classEntries = actor.classes ?? {};
-            const classNames = new Set(
-                Object.values(classEntries).map(c => c.name?.toLowerCase().trim())
-            );
-            const isWizard = !!classEntries.wizard || classNames.has("wizard");
-            const isArtificer = !!classEntries.artificer || classNames.has("artificer");
-            if (isArtificer && !isWizard) return false;
-            const hasSpellbook = (actor.items ?? []).some(i =>
-                i.name?.toLowerCase().includes("spellbook") || i.name?.toLowerCase().includes("book of shadows")
-            );
-            if (!isWizard && !hasSpellbook) return false;
+            const prereqAdapter = game.ionrift?.respite?.adapter;
+            if (prereqAdapter) {
+                if (!prereqAdapter.hasSpellbook(actor)) return false;
+            } else {
+                const classEntries = actor.classes ?? {};
+                const classNames = new Set(
+                    Object.values(classEntries).map(c => c.name?.toLowerCase().trim())
+                );
+                const isWizard = !!classEntries.wizard || classNames.has("wizard");
+                const isArtificer = !!classEntries.artificer || classNames.has("artificer");
+                if (isArtificer && !isWizard) return false;
+                const hasSpellbook = (actor.items ?? []).some(i =>
+                    i.name?.toLowerCase().includes("spellbook") || i.name?.toLowerCase().includes("book of shadows")
+                );
+                if (!isWizard && !hasSpellbook) return false;
+            }
         }
 
         // Runtime checks (checked separately, not from JSON prereqs)
@@ -850,32 +867,29 @@ export class ActivityResolver {
 
     /**
      * Extracts tool proficiency keys from an actor.
-     * Checks both system.tools proficiency entries and tool items in inventory.
+     * Routes through the adapter when available.
      * @param {Actor} actor
      * @returns {string[]}
      */
     _getActorToolProficiencies(actor) {
+        const toolAdapter = game.ionrift?.respite?.adapter;
+        if (toolAdapter?.getToolProficiencies) {
+            return toolAdapter.getToolProficiencies(actor);
+        }
+
         const profKeys = new Set();
 
-        // Check system.tools (dnd5e stores proficiency here)
         const tools = actor.system?.tools ?? {};
         for (const [key, data] of Object.entries(tools)) {
-            // dnd5e v3 uses effectValue, older versions use value
             if ((data?.value ?? 0) > 0 || (data?.effectValue ?? 0) > 0) {
                 profKeys.add(key);
             }
         }
 
-        // Also check for physical tool items in inventory
-        // dnd5e tool items have system.type.value = "art" or "music" or tool key
-        // and system.type.baseItem matching the config key (e.g. "cook", "herb")
-        // NOTE: DnD5e v5+ may normalise tool items to a different type,
-        // so we scan ALL items for baseItem and name-based indicators.
         for (const item of actor.items ?? []) {
             const baseItem = item.system?.type?.baseItem;
             if (baseItem) profKeys.add(baseItem);
 
-            // Fallback: match by name for common tools
             const nameLower = (item.name ?? "").toLowerCase();
             if (nameLower.includes("cook")) profKeys.add("cook");
             if (nameLower.includes("herbalism")) profKeys.add("herb");
