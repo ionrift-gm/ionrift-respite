@@ -1,11 +1,21 @@
 /**
  * validate-packs-local.mjs
  *
- * Simulates a clean CI build: compiles JSON sources into fresh LevelDB databases,
- * then opens them and verifies every expected entry is present. Run locally to
- * validate the release pipeline without needing a clean machine.
+ * Two modes:
  *
- * Usage: node tools/validate-packs-local.mjs
+ *   Default (no flags): simulates a clean CI build by compiling JSON sources
+ *   into a temporary staging directory, then verifying every expected entry.
+ *   Use this locally to validate source data without a full release run.
+ *
+ *   --verify-only: skips compilation and reads from the already-compiled
+ *   packs/ directories directly. Use this in CI immediately after
+ *   compile-packs.mjs to confirm that the output going into the release zip
+ *   is correct. This closes the gap where the default mode would recompile
+ *   into staging but never verify the actual shipped output.
+ *
+ * Usage:
+ *   node tools/validate-packs-local.mjs            # full compile + verify (local)
+ *   node tools/validate-packs-local.mjs --verify-only  # verify compiled output (CI)
  */
 
 import fs from "fs";
@@ -18,7 +28,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MODULE_ROOT = path.resolve(__dirname, "..");
 const SHIPPING_PATH = path.join(MODULE_ROOT, "packs", "SHIPPING.json");
 const SRC_ROOT = path.join(MODULE_ROOT, "packs", "src");
+const OUT_ROOT = path.join(MODULE_ROOT, "packs");
 const STAGING = path.join(MODULE_ROOT, "packs", ".validation-staging");
+
+const VERIFY_ONLY = process.argv.includes("--verify-only");
 
 // ── Expected pack contents ──────────────────────────────────────────────
 const EXPECTED = {
@@ -94,15 +107,19 @@ function fail(msg) {
 }
 
 async function main() {
+    const modeLabel = VERIFY_ONLY ? "verify compiled output (--verify-only)" : "simulated clean CI build";
     console.log("\n══════════════════════════════════════════════════════");
-    console.log("  Pack Validation (simulated clean CI build)");
+    console.log(`  Pack Validation (${modeLabel})`);
     console.log("══════════════════════════════════════════════════════\n");
 
-    // Clean staging area
-    if (fs.existsSync(STAGING)) {
-        fs.rmSync(STAGING, { recursive: true, force: true });
+    // In default mode, prepare a clean staging area for fresh compilation.
+    // In --verify-only mode, read from the actual packs/ output directories.
+    if (!VERIFY_ONLY) {
+        if (fs.existsSync(STAGING)) {
+            fs.rmSync(STAGING, { recursive: true, force: true });
+        }
+        fs.mkdirSync(STAGING, { recursive: true });
     }
-    fs.mkdirSync(STAGING, { recursive: true });
 
     // Load shipping manifest
     const shipping = JSON.parse(fs.readFileSync(SHIPPING_PATH, "utf8"));
@@ -117,24 +134,37 @@ async function main() {
         console.log(`── ${name} ${"─".repeat(50 - name.length)}`);
 
         const srcDir = path.join(SRC_ROOT, name);
-        const outDir = path.join(STAGING, name);
+        // In --verify-only mode use the already-compiled packs/ dir (what the zip contains).
+        // In default mode compile fresh into staging.
+        const outDir = VERIFY_ONLY
+            ? path.join(OUT_ROOT, name)
+            : path.join(STAGING, name);
 
-        // 1. Source directory exists?
-        if (!fs.existsSync(srcDir)) {
-            fail(`Source directory missing: packs/src/${name}`);
-            continue;
-        }
+        if (VERIFY_ONLY) {
+            // Skip compilation; verify that the compiled output directory exists.
+            if (!fs.existsSync(outDir)) {
+                fail(`Compiled pack directory missing: packs/${name} (was compile-packs.mjs run first?)`);
+                continue;
+            }
+            pass(`Using compiled output: packs/${name}`);
+        } else {
+            // 1. Source directory exists?
+            if (!fs.existsSync(srcDir)) {
+                fail(`Source directory missing: packs/src/${name}`);
+                continue;
+            }
 
-        const sourceFiles = fs.readdirSync(srcDir).filter(f => f.endsWith(".json"));
-        pass(`Source directory: ${sourceFiles.length} JSON file(s)`);
+            const sourceFiles = fs.readdirSync(srcDir).filter(f => f.endsWith(".json"));
+            pass(`Source directory: ${sourceFiles.length} JSON file(s)`);
 
-        // 2. Compile
-        try {
-            await compilePack(srcDir, outDir, { log: false });
-            pass("Compiled successfully");
-        } catch (e) {
-            fail(`Compilation failed: ${e.message}`);
-            continue;
+            // 2. Compile
+            try {
+                await compilePack(srcDir, outDir, { log: false });
+                pass("Compiled successfully");
+            } catch (e) {
+                fail(`Compilation failed: ${e.message}`);
+                continue;
+            }
         }
 
         // 3. Bootstrap files present?
@@ -220,8 +250,10 @@ async function main() {
         console.log();
     }
 
-    // Cleanup
-    fs.rmSync(STAGING, { recursive: true, force: true });
+    // Cleanup staging area (only used in default mode)
+    if (!VERIFY_ONLY && fs.existsSync(STAGING)) {
+        fs.rmSync(STAGING, { recursive: true, force: true });
+    }
 
     // Summary
     console.log("══════════════════════════════════════════════════════");
