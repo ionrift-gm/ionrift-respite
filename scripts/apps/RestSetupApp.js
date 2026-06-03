@@ -4649,11 +4649,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 return minDay === Infinity ? 1 : minDay;
             })(),
             mealProcessed: this._mealProcessed ?? false,
-            mealTerrainNote: (() => {
-                if (this._phase !== "meal") return null;
-                const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
-                return TerrainRegistry.getDefaults(terrainTag)?.mealRules?.note ?? null;
-            })(),
             campPlaced: hasCampPlaced()
         };
     }

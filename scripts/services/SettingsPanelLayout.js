@@ -27,6 +27,7 @@ const MODULE_ID = "ionrift-respite";
  */
 const COMPLEXITY_KEYS = [
     "enableComfort",
+    "enableCampfireMinigame",
     "enableProfessions",
     "trainingXpTier",
     "enableFletching",
@@ -48,6 +49,7 @@ const PROFILE_KEYS = [...COMPLEXITY_KEYS, ...PLAYER_KEYS];
 
 const KEY_LABELS = {
     enableComfort: "Comfort rules",
+    enableCampfireMinigame: "Campfire minigame (TotM)",
     enableProfessions: "Crafting professions (and travel phase)",
     trainingXpTier: "Training activity",
     enableFletching: "Fletching activity",
@@ -74,6 +76,7 @@ const PROFILES = [
         desc: "Bare-bones rest. No comfort, professions, food, encounters, or extra activities.",
         values: {
             enableComfort: false,
+            enableCampfireMinigame: false,
             enableProfessions: false,
             trainingXpTier: 0,
             enableFletching: false,
@@ -95,6 +98,7 @@ const PROFILES = [
         desc: "Full camp: professions, training, fletching, and night encounters. No comfort tiers, food, or scouting.",
         values: {
             enableComfort: false,
+            enableCampfireMinigame: true,
             enableProfessions: true,
             trainingXpTier: 1,
             enableFletching: true,
@@ -116,6 +120,7 @@ const PROFILES = [
         desc: "Standard plus comfort tiers, food, water, and travel scouting. Strict rations, locked quantities.",
         values: {
             enableComfort: true,
+            enableCampfireMinigame: true,
             enableProfessions: true,
             trainingXpTier: 1,
             enableFletching: true,

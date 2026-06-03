@@ -145,11 +145,11 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     game.settings.register(MODULE_ID, "enableCampfireMinigame", {
         name: "Campfire Minigame (Theater of the Mind)",
-        hint: "TotM Make Camp and Activities use the campfire minigame when on. Tier segments still preview comfort before you light the pit.",
+        hint: "TotM Make Camp and Activities use the campfire minigame when on. Tier segments still preview comfort before you light the pit. On by default; Survival Quick Setup keeps it on.",
         scope: "world",
         config: false,
         type: Boolean,
-        default: false,
+        default: true,
         restricted: true
     });
 
