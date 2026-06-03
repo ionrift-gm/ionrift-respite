@@ -280,11 +280,11 @@ export class CopySpellHandler {
 
         const cost = data.cost;
         const dc = data.dc;
-        const currentGold = actor.system?.currency?.gp ?? 0;
+        const currAdapter = game.ionrift?.respite?.adapter;
+        const currentGold = currAdapter ? currAdapter.getCurrency(actor) : (actor.system?.currency?.gp ?? 0);
 
         if (currentGold < cost) {
             ui.notifications.warn(`${actor.name} only has ${currentGold}gp. Cannot charge ${cost}gp.`);
-            // Notify player
             game.socket.emit(`module.${MODULE_ID}`, {
                 type: "copySpellResult",
                 actorId: data.actorId,
@@ -295,8 +295,11 @@ export class CopySpellHandler {
             return;
         }
 
-        // Deduct gold
-        await actor.update({ "system.currency.gp": currentGold - cost });
+        if (currAdapter) {
+            await currAdapter.deductCurrency(actor, cost);
+        } else {
+            await actor.update({ "system.currency.gp": currentGold - cost });
+        }
 
         ui.notifications.info(`${actor.name}: Charged ${cost}gp. Waiting for Arcana roll...`);
 

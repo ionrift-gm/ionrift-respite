@@ -174,8 +174,9 @@ export class TravelResolutionDelegate {
     static get SCOUTING_EFFECTS() { return SCOUTING_EFFECTS; }
 
     _getScoutSkillDisplay(actor) {
-        const prc = actor.system?.skills?.prc?.total ?? 0;
-        const sur = actor.system?.skills?.sur?.total ?? 0;
+        const trdAdapter = game.ionrift?.respite?.adapter;
+        const prc = trdAdapter ? trdAdapter.getSkillTotal(actor, trdAdapter.normalizeSkillKey("prc")) : (actor.system?.skills?.prc?.total ?? 0);
+        const sur = trdAdapter ? trdAdapter.getSkillTotal(actor, trdAdapter.normalizeSkillKey("sur")) : (actor.system?.skills?.sur?.total ?? 0);
         const best = Math.max(prc, sur);
         const skill = prc >= sur ? "Perception" : "Survival";
         const sign = best >= 0 ? "+" : "";
@@ -943,9 +944,10 @@ export class TravelResolutionDelegate {
     }
 
     _getSurvivalDisplay(actor) {
-        const sur = actor.system?.skills?.sur;
-        const nat = actor.system?.skills?.nat;
-        const best = Math.max(sur?.total ?? 0, nat?.total ?? 0);
+        const survAdapter = game.ionrift?.respite?.adapter;
+        const surTotal = survAdapter ? survAdapter.getSkillTotal(actor, survAdapter.normalizeSkillKey("sur")) : (actor.system?.skills?.sur?.total ?? 0);
+        const natTotal = survAdapter ? survAdapter.getSkillTotal(actor, survAdapter.normalizeSkillKey("nat")) : (actor.system?.skills?.nat?.total ?? 0);
+        const best = Math.max(surTotal, natTotal);
         const sign = best >= 0 ? "+" : "";
         return `${sign}${best}`;
     }

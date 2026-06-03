@@ -576,10 +576,13 @@ export class MealDelegate {
                         console.log(`[Respite:Meal] Sent dehydration save request for ${r.actorName} to user ${ownerUser.name}`);
                     } else {
                         // GM-owned character: roll directly
-                        const conMod = actor.system?.abilities?.con?.mod ?? 0;
-                        const profBonus = actor.system?.abilities?.con?.save
-                            ? (actor.system?.attributes?.prof ?? 0) : 0;
-                        const roll = await new Roll(`1d20 + ${conMod} + ${profBonus}`).evaluate();
+                        const saveAdapter = game.ionrift?.respite?.adapter;
+                        const conSave = saveAdapter ? saveAdapter.getSaveBonus(actor, "con") : (() => {
+                            const conMod = actor.system?.abilities?.con?.mod ?? 0;
+                            const profBonus = actor.system?.abilities?.con?.save ? (actor.system?.attributes?.prof ?? 0) : 0;
+                            return conMod + profBonus;
+                        })();
+                        const roll = await new Roll(`1d20 + ${conSave}`).evaluate();
                         const total = roll.total;
                         const passed = total >= r.dehydrationSaveDC;
 
@@ -587,9 +590,8 @@ export class MealDelegate {
                             await game.dice3d.showForRoll(roll, game.user, true);
                         }
                         if (!passed) {
-                            const adapter = game.ionrift?.respite?.adapter;
-                            if (adapter) {
-                                await adapter.applyExhaustionDelta(actor, 1);
+                            if (saveAdapter) {
+                                await saveAdapter.applyExhaustionDelta(actor, 1);
                             } else {
                                 const current = actor.system?.attributes?.exhaustion ?? 0;
                                 const newLevel = Math.min(6, current + 1);
@@ -881,10 +883,13 @@ export class MealDelegate {
             let total = 0;
             let passed = false;
             try {
-                const conMod = actor.system?.abilities?.con?.mod ?? 0;
-                const profBonus = actor.system?.abilities?.con?.save
-                    ? (actor.system?.attributes?.prof ?? 0) : 0;
-                const roll = await new Roll(`1d20 + ${conMod} + ${profBonus}`).evaluate();
+                const playerSaveAdapter = game.ionrift?.respite?.adapter;
+                const playerConSave = playerSaveAdapter ? playerSaveAdapter.getSaveBonus(actor, "con") : (() => {
+                    const conMod = actor.system?.abilities?.con?.mod ?? 0;
+                    const profBonus = actor.system?.abilities?.con?.save ? (actor.system?.attributes?.prof ?? 0) : 0;
+                    return conMod + profBonus;
+                })();
+                const roll = await new Roll(`1d20 + ${playerConSave}`).evaluate();
                 total = roll.total;
                 passed = total >= dc;
 
