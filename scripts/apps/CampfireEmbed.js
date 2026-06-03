@@ -7,8 +7,17 @@
  * All socket events route through the same module.js handlers.
  */
 const MODULE_ID = "ionrift-respite";
-import { CampfirePhysics } from "./CampfirePhysics.js";
+import { CampfirePhysics } from "../services/CampfirePhysics.js";
 import { CampfireTokenLinker } from "../services/CampfireTokenLinker.js";
+import {
+    CampGearScanner,
+    actorHasTinderbox,
+    countActorFirewood,
+    findConsumableFirewoodItem
+} from "../services/CampGearScanner.js";
+
+/** Default kindling art (matches respite-items/kindling.json). */
+const DEFAULT_KINDLING_IMG = "icons/commodities/wood/kindling-sticks-brown.webp";
 
 const TRINKETS = [
     { id: "pinecone", icon: "fas fa-tree", label: "Pinecone", color: "#4ade80" },
@@ -53,6 +62,11 @@ export class CampfireEmbed {
         this._onFireLevelChange = options.onFireLevelChange ?? null;
         this._partyCharacterIds = options.partyCharacterIds ?? [];
         this._terrainTag = options.terrainTag ?? null;
+        /** @type {string|null} Roster-selected actor (TotM context character). */
+        this._contextActorId = options.contextActorId ?? null;
+        /** When true, heat does not decay over time; tier changes come from rest sync, fuel, or douse. */
+        this._disableDecay = options.disableDecay ?? false;
+        this._showDouseBtn = options.showDouseBtn ?? this._disableDecay;
         this._whittleProgress = 0;
         this._whittleTarget = 12;
         this._lastWhittledFigure = null;
@@ -63,6 +77,19 @@ export class CampfireEmbed {
         this._physics = null;
         this._emberInterval = null;
         this._lastFireLevel = "unlit";
+        /** Last rest ceremony fire key applied in syncFromRestFireLevel. */
+        this._lastSyncedRestCeremonyKey = null;
+        /** TotM Make Camp: pit visuals follow segment preview, not live heat. */
+        this._makeCampCeremony = options.makeCampCeremony ?? false;
+        this._makeCampPreviewLevel = "embers";
+        this._makeCampPartyFirewood = 0;
+        this._makeCampRequirementSlots = [];
+        this._ceremonyReadyToLight = false;
+        this._onStageCeremonyWood = options.onStageCeremonyWood ?? null;
+        this._onUnstageCeremonyWood = options.onUnstageCeremonyWood ?? null;
+        this._onGiftCeremonyWood = options.onGiftCeremonyWood ?? null;
+        /** TotM Make Camp: first successful strike commits preview tier and advances rest phase. */
+        this._onCeremonyIgnited = options.onCeremonyIgnited ?? null;
         this._pendingKindlingBanner = null;
         this._templatePath = `modules/${MODULE_ID}/templates/campfire.hbs`;
         /** @type {ReturnType<typeof setTimeout>|null} */
@@ -127,8 +154,53 @@ export class CampfireEmbed {
         return tag === "tavern" || tag?.startsWith("tavern_");
     }
 
+    /**
+     * Align Make Camp pit art with the segment preview (tier icons or cold moon).
+     * @param {string} previewLevel - cold_camp | embers | campfire | bonfire
+     * @param {number} partyFirewood - party-wide firewood count for shortfall marks
+     */
+    syncMakeCampPreview(previewLevel, partyFirewood = 0, requirementSlots = [], ceremonyReady = false) {
+        if (!this._makeCampCeremony) return;
+        const level = ["cold_camp", "embers", "campfire", "bonfire"].includes(previewLevel)
+            ? previewLevel
+            : "embers";
+        const fw = Math.max(0, Number(partyFirewood) || 0);
+        const slotsJson = JSON.stringify(requirementSlots ?? []);
+        const prevJson = JSON.stringify(this._makeCampRequirementSlots ?? []);
+        const changed = level !== this._makeCampPreviewLevel
+            || fw !== this._makeCampPartyFirewood
+            || slotsJson !== prevJson
+            || ceremonyReady !== this._ceremonyReadyToLight;
+        if (!changed) return;
+        this._makeCampPreviewLevel = level;
+        this._makeCampPartyFirewood = fw;
+        this._makeCampRequirementSlots = requirementSlots ?? [];
+        this._ceremonyReadyToLight = !!ceremonyReady;
+        if (level === "cold_camp") {
+            this._kindlingPlaced = false;
+        } else {
+            this._kindlingPlaced = this._ceremonyReadyToLight;
+        }
+        if (this._container) void this.render();
+    }
+
+    _buildMakeCampPreviewVisual() {
+        const level = this._makeCampPreviewLevel ?? "embers";
+        if (level === "cold_camp") {
+            return {
+                previewColdCamp: true,
+                previewRequirementSlots: []
+            };
+        }
+        return {
+            previewColdCamp: false,
+            previewRequirementSlots: this._makeCampRequirementSlots ?? []
+        };
+    }
+
     _prepareContext() {
         const fireCantrip = this._findFireCantrip();
+        const previewVisual = this._makeCampCeremony ? this._buildMakeCampPreviewVisual() : null;
         return {
             lit: this._lit,
             litBy: this._litBy,
@@ -148,8 +220,123 @@ export class CampfireEmbed {
             whittleProgress: this._whittleProgress,
             whittleTarget: this._whittleTarget,
             whittlePct: Math.round((this._whittleProgress / this._whittleTarget) * 100),
-            lastWhittledFigure: this._lastWhittledFigure
+            lastWhittledFigure: this._lastWhittledFigure,
+            showDouseBtn: this._showDouseBtn && this._lit,
+            kindlingDragImg: this._getKindlingDragImg(),
+            makeCampCeremony: this._makeCampCeremony,
+            previewColdCamp: previewVisual?.previewColdCamp ?? false,
+            previewRequirementSlots: previewVisual?.previewRequirementSlots ?? [],
+            previewFirewoodShortfall: (previewVisual?.previewRequirementSlots ?? [])
+                .some(s => !s.filled && s.insufficient),
+            ceremonyWoodStaged: (previewVisual?.previewRequirementSlots ?? []).filter(s => s.filled).length,
+            ceremonyWoodRequired: (previewVisual?.previewRequirementSlots ?? []).length,
+            ceremonyCanStageMore: (() => {
+                const req = previewVisual?.previewRequirementSlots ?? [];
+                const filled = req.filter(s => s.filled).length;
+                return filled < req.length && this._getFirewoodCount() > 0;
+            })(),
+            showGiftKindlingBtn: this._makeCampCeremony
+                && !!game.user?.isGM
+                && this._getFirewoodCount() <= 0,
+            giftKindlingTargetName: this._getPlayerActor()?.name ?? "player"
         };
+    }
+
+    /** @returns {string} */
+    _getKindlingDragImg() {
+        const item = findConsumableFirewoodItem(this._getPlayerActor());
+        return item?.img || DEFAULT_KINDLING_IMG;
+    }
+
+    /**
+     * Aim drops into the fire zone so kindling gets the same catch-fire animation as whittled figures.
+     * @param {number} x - normalized 0-1
+     * @param {number} y - normalized 0-1
+     * @returns {{ x: number, y: number }}
+     */
+    _normalizeKindlingDrop(x, y) {
+        return {
+            x: Math.max(0.32, Math.min(0.68, x)),
+            y: Math.max(0.45, Math.min(0.72, y ?? 0.55))
+        };
+    }
+
+    /**
+     * @param {number} x - normalized 0-1
+     * @param {number} y - normalized 0-1
+     * @param {object} [opts]
+     */
+    _dropKindlingOnFire(x, y, opts = {}) {
+        const drop = this._normalizeKindlingDrop(x, y);
+        this._physics?.addFallingItem(drop.x, drop.y, null, "#b48240", {
+            img: this._getKindlingDragImg(),
+            catchFire: true,
+            ...opts
+        });
+    }
+
+    setContextActorId(actorId) {
+        this._contextActorId = actorId ?? null;
+    }
+
+    /**
+     * Point at a new host element after RestSetupApp re-rendered the template.
+     * @param {HTMLElement} container
+     */
+    rebindContainer(container) {
+        if (!container || container === this._container) return;
+        if (this._decayInterval) {
+            clearInterval(this._decayInterval);
+            this._decayInterval = null;
+        }
+        if (this._emberInterval) {
+            clearInterval(this._emberInterval);
+            this._emberInterval = null;
+        }
+        if (this._physics) {
+            this._physics.destroy();
+            this._physics = null;
+        }
+        this._container = container;
+    }
+
+    /**
+     * Align local heat and lit state with rest ceremony fire level (no decay drift).
+     * @param {string} level - unlit | embers | campfire | bonfire
+     * @param {boolean} [coldCamp]
+     */
+    syncFromRestFireLevel(level, coldCamp = false) {
+        const ceremonyKey = coldCamp ? "cold_camp" : level;
+        if (ceremonyKey === this._lastSyncedRestCeremonyKey) return;
+
+        const wasLitBefore = ["embers", "campfire", "bonfire"].includes(
+            this._lastSyncedRestCeremonyKey ?? ""
+        );
+
+        if (coldCamp || level === "unlit") {
+            this._lit = false;
+            this._litBy = null;
+            this._heat = 0;
+            this._peakHeat = 0;
+            if (wasLitBefore) this._kindlingPlaced = false;
+            this._lastFireLevel = "unlit";
+        } else {
+            this._lit = true;
+            this._heat = level === "bonfire" ? 75 : level === "campfire" ? 50 : 30;
+            this._peakHeat = this._heat;
+            this._kindlingPlaced = true;
+            this._lastFireLevel = level;
+        }
+        this._lastSyncedRestCeremonyKey = ceremonyKey;
+        const el = this._container;
+        if (el) {
+            const area = el.querySelector(".campfire-fire-area");
+            if (area) {
+                area.classList.remove("fire-level-unlit", "fire-level-embers", "fire-level-campfire", "fire-level-bonfire");
+                if (this._lit) area.classList.add(`fire-level-${this.fireLevel}`);
+            }
+            this._updateMeter(el);
+        }
     }
 
     _onRender() {
@@ -161,10 +348,19 @@ export class CampfireEmbed {
         if (canvas) {
             if (this._physics) this._physics.destroy();
             this._physics = new CampfirePhysics(canvas);
-            this._physics.onItemBurned = () => {
-                this._heat = Math.min(100, this._heat + 1);
-                this._updateMeter(el);
-                this._notifyFireLevel();
+            this._physics.preloadImage(this._getKindlingDragImg());
+            this._physics.onItemBurned = (item) => {
+                if (item?.label === "Firewood" && this._lit) {
+                    this._heat = Math.min(100, this._heat + 18);
+                    this._updateMeter(el);
+                    this._notifyFireLevel();
+                    return;
+                }
+                if (!this._disableDecay) {
+                    this._heat = Math.min(100, this._heat + 1);
+                    this._updateMeter(el);
+                    this._notifyFireLevel();
+                }
             };
             if (this._lit) this._startEmbers();
         }
@@ -176,7 +372,7 @@ export class CampfireEmbed {
         if (this._lit) {
             this._bindTrinketDragDrop(el);
             this._bindWhittlePileDrop(el);
-            this._startDecay();
+            if (!this._disableDecay) this._startDecay();
         }
 
         // Bind action buttons
@@ -210,6 +406,28 @@ export class CampfireEmbed {
             cantripBtn.addEventListener("click", () => this._onCantripIgnite());
         }
 
+        const giftBtn = el.querySelector('[data-action="giftCeremonyWood"]');
+        if (giftBtn && !giftBtn._bound) {
+            giftBtn._bound = true;
+            giftBtn.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (this._onGiftCeremonyWood) void this._onGiftCeremonyWood();
+            });
+        }
+
+        // Reclaim staged ceremony kindling
+        for (const btn of el.querySelectorAll('[data-action="unstageCeremonyWood"]')) {
+            if (btn._bound) continue;
+            btn._bound = true;
+            btn.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const slotId = btn.dataset.slotId;
+                if (slotId && this._onUnstageCeremonyWood) void this._onUnstageCeremonyWood(slotId);
+            });
+        }
+
         // Poke Fire
         const fireArea = el.querySelector('[data-action="pokeFire"]');
         if (fireArea && !fireArea._pokeBound) {
@@ -241,6 +459,31 @@ export class CampfireEmbed {
             whittleBtn._bound = true;
             whittleBtn.addEventListener("click", () => this._onWhittle());
         }
+
+        const douseBtn = el.querySelector('[data-action="douseFire"]');
+        if (douseBtn && !douseBtn._bound) {
+            douseBtn._bound = true;
+            douseBtn.addEventListener("click", () => this._onDouseFire());
+        }
+    }
+
+    _onDouseFire() {
+        if (!this._lit) return;
+        const level = this.fireLevel;
+        if (level === "bonfire") {
+            this._heat = 50;
+        } else if (level === "campfire") {
+            this._heat = 28;
+        } else if (level === "embers") {
+            this._lit = false;
+            this._heat = 0;
+            this._kindlingPlaced = false;
+        } else {
+            return;
+        }
+        this._updateMeter(this._container);
+        this._notifyFireLevel();
+        void this.render();
     }
 
     // ──────── Ambient Embers ────────
@@ -262,8 +505,10 @@ export class CampfireEmbed {
         const y = (event.clientY - rect.top) / rect.height;
         const color = this._getPlayerColor(game.user.name);
         this._physics?.emitSparks(x, y, color, 10);
-        this._heat = Math.min(100, this._heat + 1);
-        this._updateMeter(this._container);
+        if (!this._disableDecay) {
+            this._heat = Math.min(100, this._heat + 1);
+            this._updateMeter(this._container);
+        }
         game.socket.emit(`module.${MODULE_ID}`, {
             type: "campfirePoke", userName: game.user.name, x, y, color
         });
@@ -271,8 +516,10 @@ export class CampfireEmbed {
 
     receivePoke(data) {
         this._physics?.emitSparks(data.x ?? 0.5, data.y ?? 0.6, data.color ?? "#ffcc33", 10);
-        this._heat = Math.min(100, this._heat + 1);
-        this._updateMeter(this._container);
+        if (!this._disableDecay) {
+            this._heat = Math.min(100, this._heat + 1);
+            this._updateMeter(this._container);
+        }
     }
 
     // ──────── Trinkets ────────
@@ -525,8 +772,8 @@ export class CampfireEmbed {
             ui.notifications.warn("You need a Tinderbox to light the fire.");
             return;
         }
-        if (!this._kindlingPlaced) {
-            ui.notifications.warn("Place some kindling first.");
+        if (!this._kindlingPlaced && !this._ceremonyReadyToLight) {
+            ui.notifications.warn("Place enough kindling for this tier first.");
             return;
         }
         this._strikeCount++;
@@ -571,6 +818,14 @@ export class CampfireEmbed {
             this._showLitBanner = false;
             this.render();
         }, 3000);
+
+        if (this._makeCampCeremony && this._onCeremonyIgnited) {
+            void this._onCeremonyIgnited({
+                actorName: playerName,
+                readyToLight: !!(this._ceremonyReadyToLight || this._kindlingPlaced)
+            });
+            return;
+        }
         this._notifyFireLevel();
     }
 
@@ -588,6 +843,10 @@ export class CampfireEmbed {
     }
 
     _getPlayerActor() {
+        if (this._contextActorId) {
+            const ctx = game.actors.get(this._contextActorId);
+            if (ctx) return ctx;
+        }
         return game.user?.character
             ?? canvas?.tokens?.controlled?.[0]?.actor
             ?? this._partyCharacterIds
@@ -598,28 +857,29 @@ export class CampfireEmbed {
     }
 
     _hasTinderbox() {
+        const ctx = this._getPlayerActor();
+        if (actorHasTinderbox(ctx)) return true;
         if (game.user?.isGM) return false;
         for (const id of this._partyCharacterIds) {
-            const actor = game.actors.get(id);
-            if (!actor) continue;
-            const found = actor.items.find(i => {
-                const n = i.name?.toLowerCase() ?? "";
-                return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
-            });
-            if (found) return true;
+            if (actorHasTinderbox(game.actors.get(id))) return true;
         }
         return false;
     }
 
     _findFireCantrip() {
-        // Campfire lighting is a player action; GM observes only
-        if (game.user?.isGM) return null;
         const fireCantrips = game.ionrift?.respite?.adapter?.getFireCantrips() ?? [];
         if (fireCantrips.length === 0) return null;
-        for (const id of this._partyCharacterIds) {
-            const actor = game.actors.get(id);
-            if (!actor) continue;
-            const cantrip = actor.items.find(i =>
+        const actors = [];
+        const ctx = this._getPlayerActor();
+        if (ctx) actors.push(ctx);
+        else {
+            for (const id of this._partyCharacterIds) {
+                const a = game.actors.get(id);
+                if (a) actors.push(a);
+            }
+        }
+        for (const actor of actors) {
+            const cantrip = actor.items?.find(i =>
                 i.type === "spell"
                 && (i.system?.level === 0)
                 && fireCantrips.includes(i.name)
@@ -635,8 +895,8 @@ export class CampfireEmbed {
             ui.notifications.warn("No fire cantrip available.");
             return;
         }
-        if (!this._kindlingPlaced) {
-            ui.notifications.warn("Place some kindling first.");
+        if (!this._kindlingPlaced && !this._ceremonyReadyToLight) {
+            ui.notifications.warn("Place enough kindling for this tier first.");
             return;
         }
         const actorName = this._getPlayerActor()?.name ?? game.user.name;
@@ -658,19 +918,14 @@ export class CampfireEmbed {
     }
 
     _getFirewoodCount() {
-        // Firewood is a player-facing interaction; GM doesn't drag kindling
-        if (game.user?.isGM) return 0;
         const actor = this._getPlayerActor();
-        if (!actor) return 0;
-        return actor.items
-            .filter(i => i.name?.toLowerCase() === "kindling")
-            .reduce((sum, i) => sum + (i.system?.quantity ?? 1), 0);
+        return countActorFirewood(actor);
     }
 
     async _consumeFirewood() {
         const actor = this._getPlayerActor();
         if (!actor) return false;
-        const firewood = actor.items.find(i => i.name?.toLowerCase() === "kindling" && (i.system?.quantity ?? 1) > 0);
+        const firewood = findConsumableFirewoodItem(actor);
         if (!firewood) return false;
 
         // Check if current user can modify this actor's items
@@ -718,22 +973,25 @@ export class CampfireEmbed {
                 e.preventDefault();
                 dropZone.classList.remove("drop-hover");
 
+                const rect = dropZone.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / rect.width;
+                const y = (e.clientY - rect.top) / rect.height;
+
+                if (this._makeCampCeremony && !this._lit) {
+                    if (!this._onStageCeremonyWood) return;
+                    const staged = await this._onStageCeremonyWood();
+                    if (!staged) return;
+                    this._dropKindlingOnFire(x, y, { label: "Kindling" });
+                    const actorName = this._getPlayerActor()?.name ?? game.user.name;
+                    this._pendingKindlingBanner = actorName;
+                    return;
+                }
+
                 const consumed = await this._consumeFirewood();
                 if (!consumed) return;
 
-                const rect = dropZone.getBoundingClientRect();
-                const x = (e.clientX - rect.left) / rect.width;
-                const y = Math.min((e.clientY - rect.top) / rect.height, 0.3);
-
                 if (this._lit) {
-                    this._physics?.addFallingItem(x, y, "fas fa-grip-lines-vertical", "#b48240", {
-                        label: "Firewood", burstOnSettle: true,
-                        onSettle: () => {
-                            this._heat = Math.min(100, this._heat + 18);
-                            this._updateMeter(this._container);
-                            this._notifyFireLevel();
-                        }
-                    });
+                    this._dropKindlingOnFire(x, y, { label: "Firewood" });
                     const countEl = this._container?.querySelector(".firewood-count");
                     const newCount = this._getFirewoodCount();
                     if (countEl) countEl.textContent = `\u00d7${newCount}`;
@@ -745,7 +1003,7 @@ export class CampfireEmbed {
                 } else {
                     if (this._kindlingPlaced) return;
                     this._kindlingPlaced = true;
-                    this._physics?.addFallingItem(x, y, "fas fa-grip-lines-vertical", "#b48240", {
+                    this._dropKindlingOnFire(x, y, {
                         label: "Kindling"
                     });
                     const actorName = this._getPlayerActor()?.name ?? game.user.name;
@@ -780,14 +1038,7 @@ export class CampfireEmbed {
             this.render();
             return;
         }
-        this._physics?.addFallingItem(data.x ?? 0.5, data.y ?? 0.1, "fas fa-grip-lines-vertical", "#b48240", {
-            burstOnSettle: true,
-            onSettle: () => {
-                this._heat = Math.min(100, this._heat + 18);
-                this._updateMeter(this._container);
-                this._notifyFireLevel();
-            }
-        });
+        this._dropKindlingOnFire(data.x ?? 0.5, data.y ?? 0.55, { label: "Firewood" });
     }
 
     _playSpark() {

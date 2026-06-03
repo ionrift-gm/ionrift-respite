@@ -24,7 +24,11 @@ import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
 import { ConditionAdvisory } from "../services/ConditionAdvisory.js";
 import { ResourceSink } from "../services/ResourceSink.js";
 import { CampfireTokenLinker } from "../services/CampfireTokenLinker.js";
-import { CampGearScanner } from "../services/CampGearScanner.js";
+import {
+    CampGearScanner,
+    countActorFirewood,
+    findConsumableFirewoodItem
+} from "../services/CampGearScanner.js";
 import {
     placeCampfire,
     placeStation,
@@ -64,9 +68,9 @@ import { CampCeremonyDelegate } from "./delegates/CampCeremonyDelegate.js";
 import { EventsPhaseDelegate } from "./delegates/EventsPhaseDelegate.js";
 import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
 import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple, purgeDetectMagicRestArtifacts } from "./delegates/DetectMagicDelegate.js";
-import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, getComfortTip, CAMP_STATIONS, getStationsForTerrain, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments, isWorkbenchExamineUiEnabled, isWorkbenchIdentifyUiEnabled } from "./RestConstants.js";
+import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, getComfortTip, CAMP_STATIONS, getStationsForTerrain, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments, applyActivityPortraitAssignments, isWorkbenchExamineUiEnabled, isWorkbenchIdentifyUiEnabled } from "./RestConstants.js";
 import { isComfortEnabled } from "../services/ComfortCalculator.js";
-import { isSimpleStationsMode, requiresMapCampFire } from "../services/RestProfileSettings.js";
+import { isSimpleStationsMode, requiresMapCampFire, isCampfireMinigameEnabled } from "../services/RestProfileSettings.js";
 import { isScoutingEnabled } from "../services/ScoutingSettings.js";
 import { buildActivityListItem, buildActivityDetailContext } from "./ActivityDetailBuilder.js";
 import {
@@ -89,12 +93,15 @@ import {
     StationActivityDialog
 } from "./StationActivityDialog.js";
 import { CampfireMakeCampDialog } from "./CampfireMakeCampDialog.js";
+import { CampfireEmbed } from "./CampfireEmbed.js";
 
 import { STUB_RECIPES } from "../data/stub-content.js";
 import { ShortRestApp } from "./ShortRestApp.js";
 import {
     registerActiveRestApp,
     clearActiveRestApp,
+    registerCampfireEmbed,
+    clearCampfireEmbed,
     retainGmRestAppFooter,
     setActiveRestData,
     _showGmRestIndicator,
@@ -413,6 +420,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._fireLitBy = null;
         /** Make Camp: firewood pledged per user before proceeding. userId -> { actorId, actorName, count } */
         this._firewoodPledges = new Map();
+        /** TotM ceremony: staged kindling in the pit (not spent until Proceed). */
+        this._makeCampStagedWood = [];
+        /** Tracks last preview tier cost to clear staged wood when tier drops. */
+        this._makeCampStagedWoodTier = null;
         /** Make Camp: table decided to skip fire and sleep cold. Satisfies the fire gate without lighting. */
         this._coldCampDecided = false;
         this._campPitCursorInFlight = false;
@@ -462,6 +473,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // TotM inline follow-up panel state: { activityId, characterId } or null
         this._totmFollowUpExpanded = null;
+        /** ResizeObserver + rAF debounce for TotM window recenter when content height changes. */
+        this._restWindowResizeObserver = null;
+        this._restWindowRecenterPending = false;
+        /** Guards duplicate ceremony commit from ignite + heat notify. */
+        this._commitMakeCampCeremonyInFlight = false;
 
         // Dual-track: GM overrides and player submissions
         this._characterChoices = new Map();
@@ -1769,6 +1785,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     async close(options = {}) {
 
         CampfireMakeCampDialog.closeIfOpen();
+        this._tearDownCampfireEmbed();
         await closeOpenStationDialog();
         if (this._isGM) {
             // If rest is in resolution phase but auto-apply hasn't completed, confirm
@@ -1852,7 +1869,77 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         // Tear down the body-level GM guidance flyout so it doesn't linger over the canvas
         document.getElementById("ionrift-gm-guidance-flyout")?.remove();
+        this._disposeRestWindowResizeObserver();
         return super.close(options);
+    }
+
+    _disposeRestWindowResizeObserver() {
+        if (!this._restWindowResizeObserver) return;
+        this._restWindowResizeObserver.disconnect();
+        this._restWindowResizeObserver = null;
+    }
+
+    _bindRestWindowResizeObserver() {
+        const el = this.element;
+        if (!el || this._restWindowResizeObserver) return;
+        if (!this._isTotM) return;
+        const watchCamp = this._phase === "camp";
+        const watchActivityCampfire = this._phase === "activity" && this._totmCampfireMinigamePanelEnabled();
+        if (!watchCamp && !watchActivityCampfire) return;
+
+        this._restWindowResizeObserver = new ResizeObserver(() => {
+            this._scheduleRestWindowRecenter();
+        });
+        this._restWindowResizeObserver.observe(el);
+    }
+
+    /** Re-center after layout settles (banner, minigame embed, async images). */
+    _scheduleRestWindowRecenter() {
+        if (this._restWindowRecenterPending) return;
+        this._restWindowRecenterPending = true;
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                this._restWindowRecenterPending = false;
+                if (!this.rendered) return;
+                this._recenterRestSetupWindow();
+            });
+        });
+    }
+
+    _recenterRestSetupWindow() {
+        const el = this.element;
+        if (!el) return;
+        const h = el.offsetHeight;
+        if (h < 1) return;
+
+        if (this._phase === "camp" && !this._isTotM) {
+            el.classList.add("ionrift-camp-dock");
+            const w = el.offsetWidth;
+            this.setPosition({
+                top: 64,
+                left: Math.max(8, window.innerWidth - w - 16)
+            });
+            return;
+        }
+
+        el.classList.remove("ionrift-camp-dock");
+        const top = Math.max(10, Math.round((window.innerHeight - h) / 2));
+        const pos = { top };
+
+        if (this._isTotM && this._phase === "camp") {
+            const targetW = 720;
+            pos.width = targetW;
+            pos.left = Math.max(20, Math.round((window.innerWidth - targetW) / 2));
+        } else if (this._isTotM && this._phase === "activity" && this._totmCampfireMinigamePanelEnabled()) {
+            const targetW = Math.min(780, Math.round(window.innerWidth * 0.92));
+            pos.width = targetW;
+            pos.left = Math.max(20, Math.round((window.innerWidth - targetW) / 2));
+        } else {
+            const w = el.offsetWidth;
+            pos.left = Math.max(10, Math.round((window.innerWidth - w) / 2));
+        }
+
+        this.setPosition(pos);
     }
 
     /**
@@ -1911,33 +1998,35 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const cur = this._fireLevel ?? "unlit";
             const preview = this._campFirePreviewLevel ?? "embers";
             const coldSelected = !!this._coldCampDecided || (preview === "cold_camp");
+            const hasTinder = campScanData?.canLightFire ?? false;
+            const tierDisabledReason = (canPick, cost) => {
+                if (canPick) return "";
+                if (!hasTinder) return "Someone needs a tinderbox or flint and steel.";
+                return `Need at least ${cost} firewood in the party.`;
+            };
             campFirePickerLevels = [
                 {
                     id: "embers",
                     label: "Embers",
-                    costLabel: "0 firewood",
+                    costLabel: CampGearScanner.firewoodCostLabel("embers"),
                     disabled: !fs.canPickEmbers,
-                    disabledReason: fs.canPickEmbers ? "" : "Someone needs a tinderbox or flint and steel.",
+                    disabledReason: tierDisabledReason(fs.canPickEmbers, fs.costEmbers ?? 1),
                     selected: !coldSelected && (cur !== "unlit" ? cur === "embers" : preview === "embers")
                 },
                 {
                     id: "campfire",
                     label: "Campfire",
-                    costLabel: "1 firewood",
+                    costLabel: CampGearScanner.firewoodCostLabel("campfire"),
                     disabled: !fs.canPickCampfire,
-                    disabledReason: !fs.canPickCampfire
-                        ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 1 firewood in the party.")
-                        : "",
+                    disabledReason: tierDisabledReason(fs.canPickCampfire, fs.costCampfire ?? 2),
                     selected: !coldSelected && (cur !== "unlit" ? cur === "campfire" : preview === "campfire")
                 },
                 {
                     id: "bonfire",
                     label: "Bonfire",
-                    costLabel: "2 firewood",
+                    costLabel: CampGearScanner.firewoodCostLabel("bonfire"),
                     disabled: !fs.canPickBonfire,
-                    disabledReason: !fs.canPickBonfire
-                        ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 2 firewood in the party.")
-                        : "",
+                    disabledReason: tierDisabledReason(fs.canPickBonfire, fs.costBonfire ?? 3),
                     selected: !coldSelected && (cur !== "unlit" ? cur === "bonfire" : preview === "bonfire")
                 }
             ];
@@ -2035,7 +2124,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 return {
                     id,
                     label: id.charAt(0).toUpperCase() + id.slice(1),
-                    costLabel: id === "embers" ? "0 firewood" : id === "campfire" ? "1 firewood" : "2 firewood",
+                    costLabel: CampGearScanner.firewoodCostLabel(id),
                     body: TIER_BODIES[id],
                     comfortHint,
                     comfortChanged: delta !== 0,
@@ -2097,7 +2186,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campScanData,
             campFirePickerLevels,
             campFirePreviewLevel: this._campFirePreviewLevel ?? "embers",
-            campPreviewIsColdCamp: (this._campFirePreviewLevel ?? "embers") === "cold_camp",
+            campPreviewIsColdCamp: this._isCampColdCampPreview(),
             campViewerCanLight,
             campFireOtherLighterCount,
             campFireLighterNames,
@@ -2373,11 +2462,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             encountersEnabled = !!game.settings.get(MODULE_ID, "enableEncounters");
         } catch { /* settings not ready */ }
 
-        if ((safeRestSpot || !isComfortEnabled()) && this._isTotM && this._phase === "activity" && this._totmActiveTab === "fire") {
+        if ((safeRestSpot || !isComfortEnabled() || !this._totmFireTabVisible())
+            && this._isTotM && this._phase === "activity" && this._totmActiveTab === "fire") {
             this._totmActiveTab = "activities";
         }
-
         if (!isWorkbenchIdentifyUiEnabled() && this._isTotM && this._phase === "activity" && this._totmActiveTab === "identify") {
+            this._totmActiveTab = "activities";
+        }
+        if (this._isTotM && this._phase === "activity" && this._totmActiveTab === "campfire") {
             this._totmActiveTab = "activities";
         }
 
@@ -2752,10 +2844,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // Portrait assignments
             const assignments = buildActivityAssignments(this._characterChoices, this._earlyResults);
             for (const tile of unionTiles) {
-                const assigned = assignments[tile.id] ?? [];
-                tile.assignedPortraits = assigned.slice(0, 3);
-                tile.assignedOverflow = Math.max(0, assigned.length - 3);
-                tile.hasAssignments = assigned.length > 0;
+                applyActivityPortraitAssignments(tile, assignments[tile.id] ?? []);
             }
 
             // If the selected character already has a locked activity, downgrade all tiles to faded
@@ -3313,7 +3402,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         let campColdCampDecided = false;
         let campComfortIsHostile = false;
         let canContinueToCampLayout = false;
-        const _needsFireData = this._phase === "camp" || (this._phase === "activity" && this._isTotM && this._totmActiveTab === "fire");
+        const _needsFireData = this._phase === "camp"
+            || (this._phase === "activity" && this._isTotM && this._totmFireTabVisible());
         if (_needsFireData) {
             const terrainTagCamp = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
             const terrainCamp = TerrainRegistry.get(terrainTagCamp);
@@ -3368,33 +3458,35 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const cur = this._fireLevel ?? "unlit";
             const preview = this._campFirePreviewLevel ?? "embers";
             const coldSelected = !!this._coldCampDecided || (preview === "cold_camp");
+            const hasTinder = campScanData?.canLightFire ?? false;
+            const tierDisabledReason = (canPick, cost) => {
+                if (canPick) return "";
+                if (!hasTinder) return "Someone needs a tinderbox or flint and steel.";
+                return `Need at least ${cost} firewood in the party.`;
+            };
             campFirePickerLevels = [
                 {
                     id: "embers",
                     label: "Embers",
-                    costLabel: "0 firewood",
+                    costLabel: CampGearScanner.firewoodCostLabel("embers"),
                     disabled: !fs.canPickEmbers,
-                    disabledReason: fs.canPickEmbers ? "" : "Someone needs a tinderbox or flint and steel.",
+                    disabledReason: tierDisabledReason(fs.canPickEmbers, fs.costEmbers ?? 1),
                     selected: !coldSelected && (cur !== "unlit" ? cur === "embers" : preview === "embers")
                 },
                 {
                     id: "campfire",
                     label: "Campfire",
-                    costLabel: "1 firewood",
+                    costLabel: CampGearScanner.firewoodCostLabel("campfire"),
                     disabled: !fs.canPickCampfire,
-                    disabledReason: !fs.canPickCampfire
-                        ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 1 firewood in the party.")
-                        : "",
+                    disabledReason: tierDisabledReason(fs.canPickCampfire, fs.costCampfire ?? 2),
                     selected: !coldSelected && (cur !== "unlit" ? cur === "campfire" : preview === "campfire")
                 },
                 {
                     id: "bonfire",
                     label: "Bonfire",
-                    costLabel: "2 firewood",
+                    costLabel: CampGearScanner.firewoodCostLabel("bonfire"),
                     disabled: !fs.canPickBonfire,
-                    disabledReason: !fs.canPickBonfire
-                        ? (!fs.canPickEmbers ? "Someone needs a tinderbox or flint and steel." : "Need at least 2 firewood in the party.")
-                        : "",
+                    disabledReason: tierDisabledReason(fs.canPickBonfire, fs.costBonfire ?? 3),
                     selected: !coldSelected && (cur !== "unlit" ? cur === "bonfire" : preview === "bonfire")
                 }
             ];
@@ -3512,7 +3604,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     return {
                         id,
                         label: id.charAt(0).toUpperCase() + id.slice(1),
-                        costLabel: id === "embers" ? "0 firewood" : id === "campfire" ? "1 firewood" : "2 firewood",
+                        costLabel: CampGearScanner.firewoodCostLabel(id),
                         body: TIER_BODIES[id],
                         comfortHint,
                         comfortChanged: delta !== 0,
@@ -3689,6 +3781,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             activityProceed,
             restConfigBadges,
             totmActiveTab: this._totmActiveTab,
+            showTotmCampfirePanel: this._totmCampfireMinigamePanelEnabled(),
+            totmFireTabVisible: this._totmFireTabVisible(),
             totmStationCards,
             totmDetailPanel,
             totmCharacterLocked: (() => {
@@ -4330,9 +4424,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             showCampfireCanvasPanel: !!this._showCampfireCanvasPanel,
             campMakeCampStep,
             campFireEncounterHint,
+            showCampCeremonyMinigame: this._campCeremonyMinigameEnabled(),
+            campFirePreviewLabel: (() => {
+                if (this._coldCampDecided || this._isCampColdCampPreview()) return "Cold camp";
+                const p = this._campFirePreviewLevel ?? "embers";
+                return p.charAt(0).toUpperCase() + p.slice(1);
+            })(),
             campFirePickerLevels,
             campFirePreviewLevel: this._campFirePreviewLevel ?? "embers",
-            campPreviewIsColdCamp: (this._campFirePreviewLevel ?? "embers") === "cold_camp",
+            campPreviewIsColdCamp: this._isCampColdCampPreview(),
             campFireGatePit,
             campFireGateLevel,
             campFireIsLit,
@@ -5047,7 +5147,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return {
                 id,
                 label: id.charAt(0).toUpperCase() + id.slice(1),
-                costLabel: id === "embers" ? "0 firewood" : id === "campfire" ? "1 firewood" : "2 firewood",
+                    costLabel: CampGearScanner.firewoodCostLabel(id),
                 comfortHint,
                 comfortChanged: delta !== 0,
                 active: isActive,
@@ -5426,26 +5526,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     _onRenderBindings(context, options) {
-        // Re-center after content changes; dock Make Camp top-right so the map stays clear
-        requestAnimationFrame(() => {
-            const el = this.element;
-            if (!el) return;
-            const h = el.offsetHeight;
-            if (this._phase === "camp" && !this._isTotM) {
-                // Spatial: dock narrow panel top-right so the canvas map is visible.
-                const w = el.offsetWidth;
-                el.classList.add("ionrift-camp-dock");
-                this.setPosition({
-                    top: 64,
-                    left: Math.max(8, window.innerWidth - w - 16)
-                });
-            } else {
-                // Activity / Meal / TotM camp: center vertically, leave width as-is.
-                el.classList.remove("ionrift-camp-dock");
-                const top = Math.max(10, (window.innerHeight - h) / 2);
-                this.setPosition({ top });
-            }
-        });
+        const showTotmCampfirePanelEarly = this._totmCampfireMinigamePanelEnabled();
+        if (this._isTotM && (this._phase === "camp" || (this._phase === "activity" && showTotmCampfirePanelEarly))) {
+            this._bindRestWindowResizeObserver();
+        } else {
+            this._disposeRestWindowResizeObserver();
+        }
+        this._scheduleRestWindowRecenter();
 
         // Bind meal drag-drop when in meal phase
         if (this._phase === "meal") {
@@ -5457,25 +5544,32 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._workbench.bindDragDrop(this.element);
         }
 
+        // TotM Activity: campfire minigame in the permanent right-hand panel
+        const showTotmCampfirePanel = this._totmCampfireMinigamePanelEnabled();
+        if (this.element) {
+            this.element.classList.toggle("totm-activity-campfire-panel", showTotmCampfirePanel);
+        }
+        if (showTotmCampfirePanel) {
+            this._mountCampfireEmbed("activity");
+        } else if (this._phase !== "camp" || !this._campCeremonyMinigameEnabled()) {
+            this._tearDownCampfireEmbed();
+        }
+
         // Camp: crosshair pit (GM), map notice for all clients, optional canvas panel (gear drag)
         if (this._phase === "camp") {
+            if (this._campCeremonyMinigameEnabled()) {
+                this._mountCampfireEmbed("camp");
+                this._syncCampCeremonyPreviewToEmbed();
+            } else {
+                this._tearDownCampfireEmbed();
+            }
             if (!this._isTotM && this._isGM && !hasCampfirePlaced() && !this._campPitCursorInFlight && !this._campPitPlacementCancelled) {
                 void this._startCampPitCursorFlow();
             } else if (!this._isTotM && hasCampfirePlaced() && !this._campToActivityDone && !isStationLayerActive()) {
                 void this._refreshCampPitNoticeLayer();
             }
-            // TotM camp: mark the window so CSS enforces min-width on the container.
+            // TotM camp: mark the window so CSS can target Make Camp layout.
             if (this.element) this.element.classList.toggle("totm-camp-active", this._isTotM);
-            // One-shot center + widen when first entering TotM camp phase.
-            // Subsequent renders (tab clicks, re-renders) skip this entirely.
-            if (this._isTotM && !this._totmCampPositioned) {
-                this._totmCampPositioned = true;
-                const w = 720;
-                this.setPosition({
-                    width: w,
-                    left: Math.max(20, Math.round((window.innerWidth - w) / 2))
-                });
-            }
             const picker = this.element?.querySelector(".camp-fire-tier-picker");
             if (picker && !picker.dataset.ionriftPreviewBound) {
                 picker.dataset.ionriftPreviewBound = "1";
@@ -5566,7 +5660,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
-        if (this._phase === "meal" || this._phase === "activity") {
+        if (this._phase === "activity" && this._isTotM) {
+            // Campfire embed mounts via showTotmCampfirePanel block above.
+        } else if (this._phase === "meal" || this._phase === "activity") {
             const drawerContainer = this.element?.querySelector(".campfire-drawer-content");
             if (drawerContainer) {
                 this._openCampfire();
@@ -7822,19 +7918,493 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     _closeCampfire() {
-        const hadLegacyEmbed = !!this._campfireApp;
-        if (this._campfireApp) {
-            this._campfireApp.destroy();
-            this._campfireApp = null;
-        }
+        this._tearDownCampfireEmbed();
         const drawerContent = this.element?.querySelector(".campfire-drawer-content");
         if (drawerContent) drawerContent.innerHTML = "";
         const drawer = this.element?.querySelector(".campfire-drawer");
         if (drawer) drawer.classList.remove("open");
+    }
 
-        if (hadLegacyEmbed) {
-            CampfireTokenLinker.setLightState(false);
+    /**
+     * Shared gates for TotM fire UI (comfort on, not safe rest, no sealed shelter).
+     * @returns {boolean}
+     */
+    _totmFireUiEnabled() {
+        if (!this._isTotM || this._phase !== "activity") return false;
+        if (!isComfortEnabled()) return false;
+        let safeFromSetting = false;
+        try {
+            safeFromSetting = !!game.settings.get(MODULE_ID, "safeRestSpot");
+        } catch { /* noop */ }
+        const effectiveSafe = !!(this._engine?.safeRestSpot ?? this._restData?.safeRestSpot ?? safeFromSetting);
+        if (effectiveSafe) return false;
+        const magicalShelters = ["tiny_hut", "rope_trick", "magnificent_mansion"];
+        const activeShelterIds = Object.entries(this._shelterOverrides ?? {})
+            .filter(([, v]) => v)
+            .map(([id]) => id);
+        if (activeShelterIds.some(id => magicalShelters.includes(id))) return false;
+        return true;
+    }
+
+    /** @returns {boolean} */
+    _totmCampfireMinigamePanelEnabled() {
+        return isCampfireMinigameEnabled() && this._totmFireUiEnabled();
+    }
+
+    /** Fire tier tab only when the minigame side panel is off (minigame supplants it). */
+    _totmFireTabVisible() {
+        return this._totmFireUiEnabled() && !isCampfireMinigameEnabled();
+    }
+
+    _isCampColdCampPreview() {
+        return !!this._coldCampPreview || this._campFirePreviewLevel === "cold_camp";
+    }
+
+    _partyFirewoodTotal() {
+        return getPartyActors().reduce((sum, a) => sum + countActorFirewood(a), 0);
+    }
+
+    _campPreviewFirewoodCost(level = null) {
+        const lv = level ?? this._campFirePreviewLevel ?? "embers";
+        if (lv === "cold_camp") return 0;
+        return CampGearScanner.FIREWOOD_COST_BY_LEVEL[lv] ?? 0;
+    }
+
+    _portraitForCeremonyActor(actorId, userId) {
+        const actor = game.actors.get(actorId);
+        if (actor?.img) return actor.img;
+        const user = game.users.get(userId);
+        return user?.avatar ?? "";
+    }
+
+    _stagedWoodCountForActor(actorId) {
+        return (this._makeCampStagedWood ?? []).filter(s => s.actorId === actorId).length;
+    }
+
+    _canReclaimCeremonyStagedSlot(slot) {
+        if (!slot) return false;
+        return game.user.isGM || slot.userId === game.user.id;
+    }
+
+    _buildMakeCampCeremonyRequirementSlots() {
+        const level = this._isCampColdCampPreview() ? null : (this._campFirePreviewLevel ?? "embers");
+        const cost = level ? this._campPreviewFirewoodCost(level) : 0;
+        const actor = this._selectedCharacterId ? game.actors.get(this._selectedCharacterId) : null;
+        const kindlingImg = findConsumableFirewoodItem(actor)?.img
+            ?? "icons/commodities/wood/kindling-sticks-brown.webp";
+        const party = this._partyFirewoodTotal();
+        const staged = this._makeCampStagedWood ?? [];
+        const slots = [];
+        for (let i = 0; i < cost; i++) {
+            const s = staged[i];
+            if (s) {
+                slots.push({
+                    filled: true,
+                    id: s.id,
+                    kindlingImg,
+                    portrait: s.portrait ?? "",
+                    actorName: s.actorName ?? "",
+                    canReclaim: this._canReclaimCeremonyStagedSlot(s),
+                    tooltip: `${s.actorName}: click to return kindling`
+                });
+            } else {
+                slots.push({
+                    filled: false,
+                    kindlingImg,
+                    insufficient: (i + 1) > party,
+                    tooltip: "Drag kindling here"
+                });
+            }
         }
+        return slots;
+    }
+
+    _maybeClearStagedWoodOnTierChange(newLevel) {
+        const newCost = this._campPreviewFirewoodCost(newLevel);
+        const prev = this._makeCampStagedWoodTier;
+        if (prev !== null && newCost < prev && (this._makeCampStagedWood?.length ?? 0) > 0) {
+            this.clearCeremonyStagedWood({ silent: true });
+        }
+        this._makeCampStagedWoodTier = newCost;
+    }
+
+    async clearCeremonyStagedWood({ silent = false } = {}) {
+        if (!this._makeCampStagedWood?.length) return;
+        this._makeCampStagedWood = [];
+        if (game.user.isGM) {
+            emitPhaseChanged(this._phase, {
+                makeCampStagedWood: [],
+                selectedTerrain: this._selectedTerrain ?? null
+            });
+            this._syncCampCeremonyPreviewToEmbed();
+            if (this._campfireApp) void this._campfireApp.render();
+            else this.render();
+        } else if (!silent) {
+            ui.notifications.info("Tier changed: placed kindling returned to owners.");
+        }
+    }
+
+    async stageCeremonyWood(userId, actorId) {
+        const cost = this._campPreviewFirewoodCost();
+        if (this._isCampColdCampPreview() || cost <= 0) return false;
+        if ((this._makeCampStagedWood?.length ?? 0) >= cost) {
+            ui.notifications.warn("Enough kindling is placed for this tier.");
+            return false;
+        }
+        const actor = game.actors.get(actorId);
+        if (!actor) return false;
+        const available = countActorFirewood(actor) - this._stagedWoodCountForActor(actorId);
+        if (available <= 0) {
+            ui.notifications.warn(`${actor.name} has no kindling left to place.`);
+            return false;
+        }
+        const slot = {
+            id: foundry.utils.randomID(),
+            userId,
+            actorId,
+            actorName: actor.name,
+            portrait: this._portraitForCeremonyActor(actorId, userId)
+        };
+        if (!game.user.isGM) {
+            game.socket.emit(`module.${MODULE_ID}`, {
+                type: "campCeremonyStageWood",
+                userId,
+                actorId,
+                slot
+            });
+            return true;
+        }
+        this._makeCampStagedWood = [...(this._makeCampStagedWood ?? []), slot];
+        emitPhaseChanged(this._phase, {
+            makeCampStagedWood: [...this._makeCampStagedWood],
+            selectedTerrain: this._selectedTerrain ?? null
+        });
+        this._syncCampCeremonyPreviewToEmbed();
+        if (this._campfireApp) void this._campfireApp.render();
+        else this.render();
+        return true;
+    }
+
+    /** GM: grant one kindling to the roster-selected character (preview only, not staged). */
+    async giftCeremonyWoodToFocusedActor() {
+        if (!game.user.isGM) return;
+        const actor = this._selectedCharacterId ? game.actors.get(this._selectedCharacterId) : null;
+        if (!actor) {
+            ui.notifications.warn("Select a character in the roster first.");
+            return;
+        }
+        try {
+            const result = await ItemOutcomeHandler.grantToActor(actor.id, "kindling", 1);
+            ui.notifications.info(`Gifted kindling to ${result.actorName}.`);
+            this._syncCampCeremonyPreviewToEmbed();
+            if (this._campfireApp) void this._campfireApp.render();
+            else this.render();
+        } catch (err) {
+            console.error(`${MODULE_ID} | giftCeremonyWood:`, err);
+            ui.notifications.warn("Could not gift kindling to that character.");
+        }
+    }
+
+    async unstageCeremonyWood(slotId) {
+        const slot = (this._makeCampStagedWood ?? []).find(s => s.id === slotId);
+        if (!slot) return;
+        if (!this._canReclaimCeremonyStagedSlot(slot)) {
+            ui.notifications.warn("Only the contributor or GM can reclaim that kindling.");
+            return;
+        }
+        if (!game.user.isGM) {
+            game.socket.emit(`module.${MODULE_ID}`, {
+                type: "campCeremonyUnstageWood",
+                userId: game.user.id,
+                slotId
+            });
+            return;
+        }
+        this._makeCampStagedWood = this._makeCampStagedWood.filter(s => s.id !== slotId);
+        emitPhaseChanged(this._phase, {
+            makeCampStagedWood: [...this._makeCampStagedWood],
+            selectedTerrain: this._selectedTerrain ?? null
+        });
+        this._syncCampCeremonyPreviewToEmbed();
+        if (this._campfireApp) void this._campfireApp.render();
+        else this.render();
+    }
+
+    async _spendCeremonyStagedWood(cost) {
+        const spendNames = [];
+        if (cost <= 0) return { ok: true, spendNames };
+        const staged = (this._makeCampStagedWood ?? []).slice(0, cost);
+        if (staged.length < cost) {
+            return { ok: false, spendNames, error: "Not enough kindling placed for this fire tier." };
+        }
+        for (const slot of staged) {
+            const actor = game.actors.get(slot.actorId);
+            if (!actor) return { ok: false, spendNames, error: "Placed kindling actor missing." };
+            const item = findConsumableFirewoodItem(actor);
+            if (!item || (item.system?.quantity ?? 0) <= 0) {
+                return { ok: false, spendNames, error: `${slot.actorName} no longer has that kindling.` };
+            }
+            const qty = item.system?.quantity ?? 1;
+            if (qty <= 1) await item.delete();
+            else await item.update({ "system.quantity": qty - 1 });
+            spendNames.push(slot.actorName);
+        }
+        this._makeCampStagedWood = [];
+        return { ok: true, spendNames };
+    }
+
+    _syncCampCeremonyPreviewToEmbed() {
+        if (!this._campfireApp || !this._campCeremonyMinigameEnabled()) return;
+        const preview = this._isCampColdCampPreview()
+            ? "cold_camp"
+            : (this._campFirePreviewLevel ?? "embers");
+        const slots = this._buildMakeCampCeremonyRequirementSlots();
+        const cost = this._campPreviewFirewoodCost();
+        const ceremonyReady = (this._makeCampStagedWood?.length ?? 0) >= cost && cost > 0;
+        this._campfireApp.syncMakeCampPreview(
+            preview,
+            this._partyFirewoodTotal(),
+            slots,
+            ceremonyReady
+        );
+    }
+
+    /** Make Camp (TotM): minigame ceremony before fire is committed. */
+    _campCeremonyMinigameEnabled() {
+        if (!isCampfireMinigameEnabled() || !this._isTotM || this._phase !== "camp") return false;
+        if (!isComfortEnabled()) return false;
+        let safeFromSetting = false;
+        try {
+            safeFromSetting = !!game.settings.get(MODULE_ID, "safeRestSpot");
+        } catch { /* noop */ }
+        const effectiveSafe = !!(this._engine?.safeRestSpot ?? this._restData?.safeRestSpot ?? safeFromSetting);
+        if (effectiveSafe) return false;
+        if ((this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided) return false;
+        return true;
+    }
+
+    /**
+     * First successful minigame ignite during Make Camp commits the previewed tier (segment picker).
+     * @param {{ readyToLight?: boolean }} [opts]
+     */
+    async _commitMakeCampCeremonyIgnite(opts = {}) {
+        if (this._commitMakeCampCeremonyInFlight) return;
+        if (this._phase !== "camp" || this._campToActivityDone) return;
+        if (!isCampfireMinigameEnabled() || !this._isTotM) return;
+        if (this._isCampColdCampPreview()) return;
+
+        const chosenLevel = ["embers", "campfire", "bonfire"].includes(this._campFirePreviewLevel)
+            ? this._campFirePreviewLevel
+            : "embers";
+        const cost = this._campPreviewFirewoodCost(chosenLevel);
+        const staged = this._makeCampStagedWood?.length ?? 0;
+        const readyToLight = opts.readyToLight
+            ?? this._campfireApp?._ceremonyReadyToLight
+            ?? staged >= cost;
+        if (!readyToLight && staged < cost && this._partyFirewoodTotal() < cost) {
+            ui.notifications.warn(`Place ${cost} kindling for ${chosenLevel} before lighting.`);
+            return;
+        }
+
+        const actor = this._selectedCharacterId
+            ? game.actors.get(this._selectedCharacterId)
+            : null;
+        const actorId = actor?.id ?? getPartyActors()[0]?.id;
+        if (!actorId) return;
+
+        if ((this._fireLevel ?? "unlit") !== "unlit") {
+            if (game.user.isGM) await this._totmAdvanceCampAfterCeremonyIgnite();
+            return;
+        }
+
+        if (!game.user.isGM) {
+            emitCampLightFire(game.user.id, actorId, "Minigame", chosenLevel);
+            return;
+        }
+
+        this._commitMakeCampCeremonyInFlight = true;
+        try {
+            await this._campCeremony.lightFire(
+                game.user.id,
+                actorId,
+                "Minigame",
+                chosenLevel,
+                { autoAdvanceTotm: true }
+            );
+            if (this._phase === "camp" && !this._campToActivityDone) {
+                await this._totmAdvanceCampAfterCeremonyIgnite();
+            }
+        } finally {
+            this._commitMakeCampCeremonyInFlight = false;
+        }
+    }
+
+    /** @deprecated Use _commitMakeCampCeremonyIgnite via onCeremonyIgnited. */
+    async applyCampFireFromMinigameCeremony() {
+        if (!this._campCeremonyMinigameEnabled()) return;
+        await this._commitMakeCampCeremonyIgnite();
+    }
+
+    /**
+     * TotM + campfire minigame: after ceremony ignite, spend placed kindling and advance
+     * to Activities (skips the redundant post-light tier picker step).
+     */
+    async _totmAdvanceCampAfterCeremonyIgnite() {
+        if (!game.user.isGM) return;
+        if (!isCampfireMinigameEnabled() || !this._isTotM || this._phase !== "camp" || this._campToActivityDone) {
+            return;
+        }
+        this._tearDownCampfireEmbed();
+        await this._totmSpendMakeCampFirewood();
+        await this._advanceCampToActivity();
+    }
+
+    /** Spend firewood for the committed Make Camp fire (TotM, non-pledge path). */
+    async _totmSpendMakeCampFirewood() {
+        if (!!this._engine?.safeRestSpot) return;
+
+        const cost = CampGearScanner.FIREWOOD_COST_BY_LEVEL[this._fireLevel ?? "unlit"] ?? 0;
+        if (cost <= 0) return;
+
+        const lighterUserId = this._fireLitBy?.userId ?? null;
+        const spend = (this._makeCampStagedWood?.length ?? 0) >= cost
+            ? await this._spendCeremonyStagedWood(cost)
+            : await this._spendPartyFirewoodForMakeCamp(cost, lighterUserId);
+
+        const level = this._fireLevel ?? "campfire";
+        const label = level.charAt(0).toUpperCase() + level.slice(1);
+        const lighterName = this._fireLitBy?.actorName ?? null;
+        const donors = spend.spendNames.join(" and ");
+
+        if (!spend.spendNames.length) {
+            ui.notifications.info(`Firewood for the ${label} is provided.`);
+        } else if (!spend.ok) {
+            ui.notifications.info(`Firewood for ${label} taken from ${donors}; the rest is provided.`);
+        } else {
+            const allFromLighter = lighterName && spend.spendNames.every(n => n === lighterName);
+            if (allFromLighter) {
+                ui.notifications.info(`${donors} provides firewood for the ${label}.`);
+            } else {
+                ui.notifications.info(`Firewood for ${label} taken from ${donors}.`);
+            }
+        }
+    }
+
+    _syncTotmCampfireEmbedFromRest() {
+        this._campfireApp?.syncFromRestFireLevel?.(
+            this._fireLevel ?? "unlit",
+            !!this._coldCampDecided
+        );
+    }
+
+    /**
+     * Apply a fire tier change from the minigame meter (douse, fuel). Uses the same spend rules as the Fire tab.
+     * @param {string} level - embers | campfire | bonfire | unlit
+     */
+    async applyTotmFireLevelFromMinigame(level) {
+        if (!this._totmFireUiEnabled()) return;
+        const cur = this._fireLevel ?? "unlit";
+        if (level === cur) return;
+
+        if (level === "unlit") {
+            if (!game.user.isGM) {
+                ui.notifications.warn("Only the GM can fully extinguish the fire.");
+                this._syncTotmCampfireEmbedFromRest();
+                return;
+            }
+            await this.setColdCampDuringActivity();
+            this.render();
+            return;
+        }
+
+        if (!["embers", "campfire", "bonfire"].includes(level)) return;
+        if (game.user.isGM) {
+            await this.changeFireLevelDuringActivity(level, { fromMinigame: true });
+        } else {
+            emitActivityFireLevelRequest(level, game.user.id);
+        }
+        this._syncTotmCampfireEmbedFromRest();
+    }
+
+    /**
+     * Mount campfire minigame embed (Make Camp ceremony or Activities side panel).
+     * @param {"camp"|"activity"} mode
+     */
+    _mountCampfireEmbed(mode) {
+        const forCamp = mode === "camp";
+        if (forCamp && !this._campCeremonyMinigameEnabled()) return;
+        if (!forCamp && !this._totmCampfireMinigamePanelEnabled()) return;
+
+        const hostSelector = forCamp
+            ? ".totm-camp-minigame-host"
+            : ".totm-campfire-minigame-host";
+        const host = this.element?.querySelector(hostSelector);
+        if (!host) return;
+
+        if (this._campfireApp) {
+            this._campfireApp.rebindContainer(host);
+            this._campfireApp.setContextActorId(this._selectedCharacterId);
+            if (forCamp) {
+                this._campfireApp.syncFromRestFireLevel("unlit", false);
+                this._syncCampCeremonyPreviewToEmbed();
+            } else {
+                this._syncTotmCampfireEmbedFromRest();
+            }
+            void this._campfireApp.render().then(() => {
+                this._scheduleRestWindowRecenter();
+            });
+            return;
+        }
+
+        const restApp = this;
+        const partyCharacterIds = getPartyActors().map(a => a.id);
+        const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
+
+        this._campfireApp = new CampfireEmbed(host, {
+            partyCharacterIds,
+            terrainTag,
+            contextActorId: this._selectedCharacterId,
+            disableDecay: true,
+            showDouseBtn: !forCamp,
+            makeCampCeremony: forCamp,
+            onStageCeremonyWood: () => {
+                const a = restApp._selectedCharacterId
+                    ? game.actors.get(restApp._selectedCharacterId)
+                    : null;
+                const actorId = a?.id ?? getPartyActors()[0]?.id;
+                if (!actorId) return Promise.resolve(false);
+                return restApp.stageCeremonyWood(game.user.id, actorId);
+            },
+            onUnstageCeremonyWood: (slotId) => restApp.unstageCeremonyWood(slotId),
+            onGiftCeremonyWood: () => restApp.giftCeremonyWoodToFocusedActor(),
+            onCeremonyIgnited: (data) => restApp._commitMakeCampCeremonyIgnite({
+                readyToLight: data?.readyToLight
+            }),
+            onFireLevelChange: (level) => {
+                if (!forCamp) void restApp.applyTotmFireLevelFromMinigame(level);
+            }
+        });
+
+        if (forCamp) {
+            this._campfireApp.syncFromRestFireLevel("unlit", false);
+            this._syncCampCeremonyPreviewToEmbed();
+        } else {
+            this._syncTotmCampfireEmbedFromRest();
+        }
+
+        registerCampfireEmbed(this._campfireApp);
+        void this._campfireApp.render()
+            .then(() => this._scheduleRestWindowRecenter())
+            .catch(err => {
+                console.error(`${MODULE_ID} | CampfireEmbed render failed:`, err);
+            });
+    }
+
+    _tearDownCampfireEmbed() {
+        if (!this._campfireApp) return;
+        this._campfireApp.destroy();
+        this._campfireApp = null;
+        clearCampfireEmbed();
     }
 
     /**
@@ -11564,6 +12134,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             fireLevel: this._fireLevel ?? "unlit",
             fireLitBy: this._fireLitBy ?? null,
             firewoodPledges: Array.from(this._firewoodPledges?.entries() ?? []),
+            makeCampStagedWood: [...(this._makeCampStagedWood ?? [])],
             campfireSnapshot: RestSetupApp._campfireSnapshotFromFireLevel(this._fireLevel),
             campStatus: this._campStatus ?? null,
             daysSinceLastRest: this._daysSinceLastRest ?? 1,
@@ -11632,6 +12203,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (prevPhase === "activity" && phase !== "activity") {
             void this._detectMagic?.cleanupCastArtifactsOnPhaseExit(getPartyActors());
         }
+        const enteringTotmCamp = this._isTotM && phase === "camp" && prevPhase !== "camp";
         this._phase = phase;
         if (phaseData.triggeredEvents) {
             this._triggeredEvents = this._isGM ? phaseData.triggeredEvents
@@ -11686,6 +12258,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         if (phaseData.fireLitBy !== undefined) this._fireLitBy = phaseData.fireLitBy ?? null;
         if (phaseData.firewoodPledges !== undefined) this._firewoodPledges = new Map(phaseData.firewoodPledges ?? []);
+        if (phaseData.makeCampStagedWood !== undefined) {
+            this._makeCampStagedWood = [...(phaseData.makeCampStagedWood ?? [])];
+            this._makeCampStagedWoodTier = this._campPreviewFirewoodCost();
+        }
         if (phaseData.coldCampDecided !== undefined) {
             this._coldCampDecided = !!phaseData.coldCampDecided;
             if (phaseData.coldCampDecided) {
@@ -11706,6 +12282,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (this._coldCampPreview) {
                 this._campFirePreviewLevel = "cold_camp";
             }
+        }
+        if (phaseData.campFirePreviewLevel !== undefined) {
+            this._maybeClearStagedWoodOnTierChange(phaseData.campFirePreviewLevel);
+        }
+        if (phaseData.coldCampPreview) {
+            this._makeCampStagedWood = [];
+            this._makeCampStagedWoodTier = 0;
+        }
+        if (
+            phase === "camp"
+            && (phaseData.campFirePreviewLevel !== undefined
+                || phaseData.coldCampPreview !== undefined
+                || phaseData.makeCampStagedWood !== undefined)
+        ) {
+            this._syncCampCeremonyPreviewToEmbed();
         }
         if (phaseData.campStep2Entered) this._campStep2Entered = true;
         if (phaseData.campStatus) this._campStatus = phaseData.campStatus;
@@ -11833,6 +12424,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             });
         }
         const phaseRenderPromise = Promise.resolve(this.render({ force: true }));
+        if (enteringTotmCamp) {
+            phaseRenderPromise.then(() => this._scheduleRestWindowRecenter());
+        }
 
         // If the player RSA render fails outright, fall back to the rejoin bar
         // so the player can still see the current phase and resume manually.
@@ -12007,6 +12601,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (snapshot.fireLitBy !== undefined) this._fireLitBy = snapshot.fireLitBy ?? null;
         if (snapshot.firewoodPledges !== undefined) {
             this._firewoodPledges = new Map(snapshot.firewoodPledges ?? []);
+        }
+        if (snapshot.makeCampStagedWood !== undefined) {
+            this._makeCampStagedWood = [...(snapshot.makeCampStagedWood ?? [])];
+            this._makeCampStagedWoodTier = this._campPreviewFirewoodCost();
         }
         if (snapshot.coldCampDecided !== undefined) {
             this._coldCampDecided = !!snapshot.coldCampDecided;
@@ -12960,6 +13558,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         // GM: set local preview and broadcast to all clients. Picking a fire tier
         // also clears any committed cold camp so the table can switch back.
+        this._maybeClearStagedWoodOnTierChange(level);
         this._campFirePreviewLevel = level;
         this._coldCampPreview = false;
         this._coldCampDecided = false;
@@ -12967,8 +13566,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campFirePreviewLevel: level,
             coldCampPreview: false,
             coldCampDecided: false,
+            makeCampStagedWood: [...(this._makeCampStagedWood ?? [])],
             selectedTerrain: this._selectedTerrain ?? null
         });
+        this._syncCampCeremonyPreviewToEmbed();
         this.render();
     }
 
@@ -13148,7 +13749,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         _logGmRestSheet("_skipCampForComfortOff", "comfort off, waiving Make Camp fire phase");
 
         this._phase = "activity";
-        this._totmCampPositioned = false;
         this._applyLoseActivityTravelLocks();
 
         const isTheater = this._isTotM;
@@ -13231,7 +13831,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._campFireWoodSpendUserId = null;
 
         this._phase = "activity";
-        this._totmCampPositioned = false; // allow re-center if camp is re-entered
         this._applyLoseActivityTravelLocks();
         this._applyAutoOtherWhenSoleActivity();
         _logGmRestSheet("_advanceCampToActivity", "phase -> activity, closing window");
@@ -13691,7 +14290,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Remember the manual choice so the encounters-off default does not
         // override a GM who deliberately opened the Activities tab.
         this._totmTabUserSet = true;
-        if (tab === "fire" && effectiveSafe) {
+        if (tab === "fire" && (effectiveSafe || isCampfireMinigameEnabled())) {
             this._totmActiveTab = "activities";
         } else {
             this._totmActiveTab = tab;
@@ -14116,7 +14715,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {string} level - embers | campfire | bonfire
      * @returns {Promise<{ ok: boolean, error?: string, cancelled?: boolean }>}
      */
-    async changeFireLevelDuringActivity(level, { fromPlayer = false, requestingUserId = null } = {}) {
+    async changeFireLevelDuringActivity(level, { fromPlayer = false, requestingUserId = null, fromMinigame = false } = {}) {
         if (!game.user.isGM) return { ok: false, error: "GM only" };
         if (this._phase !== "activity") return { ok: false, error: "Wrong phase" };
         const restType = this._engine?.restType
@@ -14141,8 +14740,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }));
 
         if (newCost < curCost) {
-            // Skip GM confirmation for player-initiated reductions (player already confirmed)
-            if (!fromPlayer) {
+            // Player request or minigame douse: deliberate action, no extra GM prompt
+            if (!fromPlayer && !fromMinigame) {
                 const confirmed = await Dialog.confirm({
                     title: "Lower the fire",
                     content: "<p>Reducing the fire discards spent firewood. There is no refund. Continue?</p>",
@@ -14215,6 +14814,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             });
 
         await this._saveRestState();
+        this._syncTotmCampfireEmbedFromRest();
         this.render();
         void refreshOpenStationDialog();
         return { ok: true };
@@ -14250,6 +14850,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         });
 
         await this._saveRestState();
+        this._syncTotmCampfireEmbedFromRest();
         this.render();
         void refreshOpenStationDialog();
         if (!fromPlayer) {
@@ -14285,13 +14886,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
         // GM: toggle cold camp preview and broadcast
+        this._maybeClearStagedWoodOnTierChange("cold_camp");
         this._coldCampPreview = true;
         this._campFirePreviewLevel = "cold_camp";
+        void this.clearCeremonyStagedWood({ silent: true });
         emitPhaseChanged(this._phase, {
             coldCampPreview: true,
             campFirePreviewLevel: "cold_camp",
+            makeCampStagedWood: [],
             selectedTerrain: this._selectedTerrain ?? null
         });
+        this._syncCampCeremonyPreviewToEmbed();
         this.render();
     }
 
@@ -14383,41 +14988,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             await this._campCeremony.selectColdCamp();
         }
 
-        const safeRestSpot = !!this._engine?.safeRestSpot;
-
-        if (!safeRestSpot) {
-            // -- Firewood spend (TotM path; no pledge system) --
-            const cost = CampGearScanner.FIREWOOD_COST_BY_LEVEL[this._fireLevel ?? "unlit"] ?? 0;
-            if (cost > 0) {
-                // Prefer spending from whoever lit the fire.
-                const lighterUserId = this._fireLitBy?.userId ?? null;
-                const spend = await this._spendPartyFirewoodForMakeCamp(cost, lighterUserId);
-
-                // The fire is already lit and committed at this point. Lighting it
-                // requires a GM override when the party lacks firewood, so any
-                // shortfall here is GM-provided rather than a block: the GM chose to
-                // grant the fire. Honour it and proceed instead of gating.
-                const level = this._fireLevel ?? "campfire";
-                const label = level.charAt(0).toUpperCase() + level.slice(1);
-                const lighterName = this._fireLitBy?.actorName ?? null;
-                const donors = spend.spendNames.join(" and ");
-
-                if (!spend.spendNames.length) {
-                    ui.notifications.info(`Firewood for the ${label} is provided.`);
-                } else if (!spend.ok) {
-                    ui.notifications.info(`Firewood for ${label} taken from ${donors}; the rest is provided.`);
-                } else {
-                    const allFromLighter = lighterName && spend.spendNames.every(n => n === lighterName);
-                    if (allFromLighter) {
-                        ui.notifications.info(`${donors} provides firewood for the ${label}.`);
-                    } else {
-                        ui.notifications.info(`Firewood for ${label} taken from ${donors}.`);
-                    }
-                }
-            }
-            // ─────────────────────────────────────────────────────────────────
-        }
-
+        await this._totmSpendMakeCampFirewood();
         await this._advanceCampToActivity();
     }
 
@@ -14441,6 +15012,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._campFireWoodSpendUserId = null;
         this._fireLitBy = null;
         this._firewoodPledges = new Map();
+        this._makeCampStagedWood = [];
+        this._makeCampStagedWoodTier = null;
         this._coldCampDecided = false;
         this._campStep2Entered = false;
         this._campPitPlacementCancelled = false;

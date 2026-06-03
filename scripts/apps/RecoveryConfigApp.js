@@ -19,6 +19,20 @@ const RECOVERY_SETTINGS = [
         type: "boolean"
     },
     {
+        key: "enableCampfireMinigame",
+        label: "Campfire Minigame (TotM)",
+        icon: "fas fa-fire",
+        hint: "TotM only. Make Camp uses the minigame as the lighting ceremony (tier segments still preview comfort). Activities uses the side panel and hides the Fire tab.",
+        type: "boolean"
+    },
+    {
+        key: "enableWorkbenchIdentify",
+        label: "Workbench Identify (TotM)",
+        icon: "fas fa-search",
+        hint: "Theater of the Mind only. Shows the Identify tab during Activities for the workbench station.",
+        type: "boolean"
+    },
+    {
         key: "armorDoffRule",
         label: "Armor Sleep Penalties",
         icon: "fas fa-shield-alt",

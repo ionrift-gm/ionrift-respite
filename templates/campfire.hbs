@@ -15,6 +15,41 @@
             </div>
             <div class="campfire-coals"></div>
         {{else}}
+            {{#if makeCampCeremony}}
+            <div class="campfire-kindling campfire-preview-pit {{#if previewColdCamp}}campfire-preview-cold{{else}}campfire-preview-setup{{/if}}">
+                <div class="campfire-preview-center">
+                    {{#if previewColdCamp}}
+                    <i class="fas fa-moon" aria-hidden="true"></i>
+                    {{else}}
+                    <i class="fas fa-campground" aria-hidden="true"></i>
+                    {{/if}}
+                </div>
+                {{#if previewRequirementSlots.length}}
+                <div class="campfire-preview-requirements-row" aria-label="Firewood required for this tier">
+                    {{#each previewRequirementSlots}}
+                    {{#if filled}}
+                    <button type="button"
+                            class="campfire-preview-req-piece is-filled"
+                            data-action="unstageCeremonyWood"
+                            data-slot-id="{{id}}"
+                            data-tooltip="{{tooltip}}"
+                            {{#unless canReclaim}}disabled{{/unless}}>
+                        <img class="campfire-preview-req-img is-filled-img" src="{{kindlingImg}}" alt="" draggable="false">
+                        {{#if portrait}}
+                        <img class="ceremony-slot-avatar" src="{{portrait}}" alt="{{actorName}}" draggable="false">
+                        {{/if}}
+                    </button>
+                    {{else}}
+                    <span class="campfire-preview-req-piece is-empty {{#if insufficient}}is-short{{/if}}"
+                          data-tooltip="{{tooltip}}">
+                        <img class="campfire-preview-req-img" src="{{kindlingImg}}" alt="" draggable="false">
+                    </span>
+                    {{/if}}
+                    {{/each}}
+                </div>
+                {{/if}}
+            </div>
+            {{else}}
             <div class="campfire-kindling {{#if kindlingPlaced}}has-kindling{{/if}}">
                 {{#if kindlingPlaced}}
                     <i class="fas fa-fire-alt"></i>
@@ -24,6 +59,7 @@
                     <span>Kindling pile</span>
                 {{/if}}
             </div>
+            {{/if}}
         {{/if}}
 
         {{!-- Lit banner (fades) --}}
@@ -38,13 +74,82 @@
     <div class="campfire-interactions">
 
         {{#unless lit}}
+            {{#if makeCampCeremony}}
+            {{#if previewColdCamp}}
+            <div class="campfire-ceremony-action-area">
+                <p class="ceremony-cold-hint guided-label">Pick a fire tier above to light, or confirm cold camp below.</p>
+            </div>
+            {{else}}
+            {{#unless kindlingPlaced}}
+            {{!-- Step 1: Drag kindling into requirement slots --}}
+            <div class="campfire-ceremony-action-area">
+                {{#if firewoodCount}}
+                <div class="campfire-ceremony-kindling-step">
+                    <div class="firewood-log" draggable="true" data-tooltip="Drag kindling to a slot under the pit">
+                        <img class="firewood-log-icon" src="{{kindlingDragImg}}" alt="" draggable="false">
+                    </div>
+                    <span class="ceremony-kindling-count">&times;{{firewoodCount}}</span>
+                    <span class="guided-label">Drag kindling ({{ceremonyWoodStaged}}/{{ceremonyWoodRequired}} placed)</span>
+                </div>
+                {{else}}
+                <div class="campfire-ceremony-kindling-step dimmed ceremony-no-wood-step">
+                    <span class="ceremony-no-wood-label"><i class="fas fa-fire" aria-hidden="true"></i> No firewood in inventory</span>
+                    {{#if showGiftKindlingBtn}}
+                    <button type="button" class="campfire-btn ceremony-gift-wood-btn" data-action="giftCeremonyWood"
+                            data-tooltip="Add kindling to {{giftKindlingTargetName}}'s sheet">
+                        <i class="fas fa-gift" aria-hidden="true"></i> Gift wood to {{giftKindlingTargetName}}
+                    </button>
+                    {{/if}}
+                </div>
+                {{/if}}
+            </div>
+            {{else}}
+            {{!-- Step 2: Strike / cantrip row --}}
+            <div class="campfire-ceremony-strike-row">
+                <div class="ceremony-row-left">
+                    {{#if firewoodCount}}
+                    <div class="firewood-log" draggable="true" data-tooltip="Drag more kindling to fire">
+                        <img class="firewood-log-icon" src="{{kindlingDragImg}}" alt="" draggable="false">
+                    </div>
+                    <span class="ceremony-kindling-count">&times;{{firewoodCount}}</span>
+                    {{else}}
+                    <span class="ceremony-no-kindling guided-label">No wood left</span>
+                    {{/if}}
+                </div>
+                <div class="ceremony-row-center">
+                    <span class="strike-hint">Attempt {{strikeCount}}</span>
+                </div>
+                <div class="ceremony-row-right">
+                    {{#if hasFireCantrip}}
+                    <button type="button" data-action="cantripIgnite" class="campfire-btn strike-btn cantrip-btn">
+                        <i class="fas fa-hat-wizard"></i> {{fireCantrip}}
+                    </button>
+                    {{/if}}
+                    {{#if hasTinderbox}}
+                    <button type="button" data-action="strikeFlint" class="campfire-btn strike-btn">
+                        <i class="fas fa-hand-sparkles"></i> Strike Flint
+                    </button>
+                    {{/if}}
+                    {{#unless hasTinderbox}}
+                    {{#unless hasFireCantrip}}
+                    <span class="guided-label">Needs tinderbox or fire cantrip</span>
+                    {{/unless}}
+                    {{/unless}}
+                </div>
+            </div>
+            {{/unless}}
+            {{#if previewFirewoodShortfall}}
+            <p class="campfire-preview-shortfall-hint">Party is short on firewood for this tier.</p>
+            {{/if}}
+            {{/if}}
+            {{else}}
             {{!-- Unlit: guided sequence - show only the current step --}}
             {{#unless kindlingPlaced}}
                 {{!-- Step 1: Place kindling --}}
                 {{#if firewoodCount}}
                 <div class="campfire-guided-step">
                     <div class="firewood-log" draggable="true" data-tooltip="Drag kindling to the fire pit">
-                        <i class="fas fa-grip-lines-vertical"></i>
+                        <img class="firewood-log-icon" src="{{kindlingDragImg}}" alt="" draggable="false">
                     </div>
                     <span class="guided-label">Drag firewood to start a fire</span>
                 </div>
@@ -80,14 +185,15 @@
                 {{/unless}}
                 {{/unless}}
             {{/unless}}
+            {{/if}}
         {{else}}
             {{!-- Lit: compact vertical stack --}}
 
             {{!-- Firewood + Emotes: combined row --}}
             <div class="campfire-tool-row combined-row">
                 {{#if firewoodCount}}
-                    <div class="firewood-log" draggable="true" data-tooltip="Drag to fire ({{firewoodCount}} remaining)">
-                        <i class="fas fa-grip-lines-vertical"></i>
+                    <div class="firewood-log" draggable="true" data-tooltip="Drag kindling to fire">
+                        <img class="firewood-log-icon" src="{{kindlingDragImg}}" alt="" draggable="false">
                     </div>
                     <span class="firewood-count">&times;{{firewoodCount}}</span>
                 {{else}}
@@ -126,5 +232,14 @@
             <div class="fire-meter-zone zone-bonfire" data-tooltip="Raises comfort, but visible from far off; enemies spot the camp easily.">Bonfire</div>
         </div>
     </div>
+    {{#if showDouseBtn}}
+    <div class="campfire-tool-row campfire-douse-row">
+        <button type="button" data-action="douseFire" class="campfire-btn douse-btn"
+                data-tooltip="Stomp the fire down one tier. From embers, goes cold camp.">
+            <i class="fas fa-shoe-prints" aria-hidden="true"></i>
+            <span class="douse-btn-label">Douse</span>
+        </button>
+    </div>
+    {{/if}}
     {{/if}}
 </section>
