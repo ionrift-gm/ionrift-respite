@@ -128,6 +128,11 @@ jobs:
         # Without this flag the script recompiles into a staging directory and
         # never checks the actual output, so a silent empty compile would pass.
         run: node tools/validate-packs-local.mjs --verify-only
+        # Post-mortem (Respite v3.0.1): A user reported blank compendiums after install.
+        # Root cause: compilePack() can silently produce an empty-but-valid LevelDB.
+        # The prior validate step recompiled into .validation-staging and never read
+        # from packs/, so the empty output went into the zip undetected.
+        # compile-packs.mjs now fails on 0 entries; this step verifies the same output.
 
       - name: Zip Module
         run: |
