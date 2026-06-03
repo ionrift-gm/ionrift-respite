@@ -12,6 +12,7 @@ import { ActivityConfigApp } from "../apps/ActivityConfigApp.js";
 import { RecoveryConfigApp } from "../apps/RecoveryConfigApp.js";
 import { isComfortEnabled } from "./ComfortCalculator.js";
 import { PlayerRestrictionsApp } from "../apps/PlayerRestrictionsApp.js";
+import { migrateTrainingXpTier } from "./TrainingSettings.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -69,7 +70,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
     game.settings.registerMenu(MODULE_ID, "activityConfig", {
         name: "Rest Activities",
         label: "Configure Activities",
-        hint: "Toggle crafting, fletching, and training activities on or off.",
+        hint: "Toggle activities on or off. Training uses an XP tier slider (Off through five reward rates).",
         icon: "fas fa-campground",
         type: ActivityConfigApp,
         restricted: true
@@ -133,11 +134,11 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     game.settings.register(MODULE_ID, "enableComfort", {
         name: "Comfort Rules (Homebrew)",
-        hint: "Enable terrain comfort tiers, fire mechanics, and gear-driven recovery modifiers. Disable for simplified rests with no comfort penalties, no fire phase, and no exhaustion saves from terrain.",
+        hint: "Terrain comfort tiers, fire mechanics, and gear-driven recovery modifiers. Off by default (Standard profile). Survival Quick Setup turns this on. When off: no comfort penalties, no fire phase, no terrain exhaustion saves.",
         scope: "world",
         config: false,
         type: Boolean,
-        default: true,
+        default: false,
         restricted: true,
         onChange: () => registerItemEnrichments()
     });
@@ -178,13 +179,30 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
     });
 
     game.settings.register(MODULE_ID, "enableTraining", {
-        name: "Training Activity",
-        hint: "Allow the Training activity during long rests. Characters level 5 and below can train to earn XP.",
+        name: "Training Activity (legacy)",
+        hint: "Legacy boolean. Migrated to trainingXpTier on first load.",
         scope: "world",
         config: false,
         type: Boolean,
         default: true,
         restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "trainingXpTier", {
+        name: "Training XP Tier",
+        hint: "0 disables Training. 1–5 set fail/pass XP per set (3/10 through 10/50).",
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 1,
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "trainingXpTierMigrated", {
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false
     });
 
     game.settings.register(MODULE_ID, "enableProfessions", {
@@ -224,6 +242,16 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         config: false,
         type: Boolean,
         default: true,
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "enableScouting", {
+        name: "Travel Scouting",
+        hint: "Scout activity on the final travel day before camp. Perception or Survival sets comfort and the night check. Off hides scouting from travel (Survival profile turns this on).",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false,
         restricted: true
     });
 
@@ -510,6 +538,8 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
     });
 }
 
+Hooks.once("ready", () => migrateTrainingXpTier());
+
 /**
  * Registers Respite-specific item enrichments with the shared library engine.
  * Called during init, after the library is available.
@@ -670,10 +700,13 @@ export const SETTING_KEYS = [
     "songOfRestTiming",
     "maxValueHitDice",
     "enableTraining",
+    "trainingXpTier",
+    "trainingXpTierMigrated",
     "enableProfessions",
     "enableFletching",
     "enableEncounters",
     "enableCopySpell",
+    "enableScouting",
     "trackFood",
     "partialSustenance",
     "lockPlayerQuantity",
