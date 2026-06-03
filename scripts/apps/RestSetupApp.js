@@ -42,6 +42,7 @@ import {
     validatePlayerGearDrop,
     validateStationEquipmentDrop,
     CAMP_STATION_PLACEMENT_KEYS,
+    getCampStationPlacementKeys,
     resetCampSession,
     placeStationPlaceholders,
     promoteAllPlaceholders,
@@ -62,9 +63,10 @@ import { TravelResolutionDelegate } from "./delegates/TravelResolutionDelegate.j
 import { CampCeremonyDelegate } from "./delegates/CampCeremonyDelegate.js";
 import { EventsPhaseDelegate } from "./delegates/EventsPhaseDelegate.js";
 import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
-import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple, purgeDetectMagicEffects } from "./delegates/DetectMagicDelegate.js";
-import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, getComfortTip, CAMP_STATIONS, getStationsForTerrain, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments } from "./RestConstants.js";
+import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple, purgeDetectMagicRestArtifacts } from "./delegates/DetectMagicDelegate.js";
+import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, getComfortTip, CAMP_STATIONS, getStationsForTerrain, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments, isWorkbenchExamineUiEnabled, isWorkbenchIdentifyUiEnabled } from "./RestConstants.js";
 import { isComfortEnabled } from "../services/ComfortCalculator.js";
+import { isSimpleStationsMode, requiresMapCampFire } from "../services/RestProfileSettings.js";
 import { isScoutingEnabled } from "../services/ScoutingSettings.js";
 import { buildActivityListItem, buildActivityDetailContext } from "./ActivityDetailBuilder.js";
 import {
@@ -72,6 +74,7 @@ import {
     deactivateStationLayer,
     isStationLayerActive,
     refreshStationEmptyNoticeFade,
+    refreshStationDetectMagicGlow,
     refreshStationMealPortraits,
     refreshStationPortraitsFromChoices,
     resetStationOverlaysLocal,
@@ -596,11 +599,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /**
      * When Other is the only evening activity left (Simple profile and similar),
      * pre-assign it so the activity gate opens without a manual pick per character.
+     * Simple + camp stations: always assign Other for the whole party (same as TotM).
      * @returns {boolean} True if any new assignments were made.
      */
     _applyAutoOtherWhenSoleActivity() {
         if (this._phase !== "activity" || !this._isGM) return false;
 
+        const forceOtherForAll = isSimpleStationsMode();
         const partyActors = getPartyActors();
         if (!partyActors.length) return false;
 
@@ -619,9 +624,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const { available } = this._activityResolver.getAvailableActivitiesWithFaded(
                 actor, restType, resolverOpts
             );
-            if (available.length !== 1 || available[0].id !== "act_other") continue;
+
+            const shouldAssign = forceOtherForAll
+                ? available.some(a => a.id === "act_other")
+                : (available.length === 1 && available[0].id === "act_other");
+
+            if (!shouldAssign) continue;
 
             this._characterChoices.set(actor.id, "act_other");
+            this._lockedCharacters.add(actor.id);
+            if (!this._stationCanvasIdByCharacter) this._stationCanvasIdByCharacter = new Map();
+            this._stationCanvasIdByCharacter.set(actor.id, "bedroll");
             changed = true;
         }
 
@@ -633,11 +646,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             submissions[charId] = {
                 activityId: actId,
                 activityName: act?.name ?? actId,
-                source: this._gmOverrides.has(charId) ? "gm" : "player"
+                source: forceOtherForAll || this._gmOverrides.has(charId) ? "gm" : "player"
             };
         }
         emitSubmissionUpdate(submissions);
         _refreshGmRestIndicator(this);
+
+        if (this._phase === "activity" && isStationLayerActive()) {
+            refreshStationEmptyNoticeFade(this);
+            refreshStationPortraitsFromChoices(this._characterChoices, this._stationCanvasIdByCharacter);
+            this._refreshStationOverlayMeals();
+        }
         return true;
     }
 
@@ -2358,11 +2377,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._totmActiveTab = "activities";
         }
 
-        // With the encounter layer off, the activity phase is mostly empty (only
-        // Other survives), so lead with Identify, the one structured interaction.
-        if (!encountersEnabled && this._isTotM && this._phase === "activity"
-            && !this._totmTabUserSet && this._totmActiveTab === "activities") {
-            this._totmActiveTab = "identify";
+        if (!isWorkbenchIdentifyUiEnabled() && this._isTotM && this._phase === "activity" && this._totmActiveTab === "identify") {
+            this._totmActiveTab = "activities";
         }
 
         // Detect tents from party inventory
@@ -3181,6 +3197,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                       allResolved,
                       viewerHasSubmitted,
                       trackFood: !!trackFoodSetting,
+                      simpleStations: isSimpleStationsMode(),
                       mealRationsSubmitted: this._activityMealRationsSubmitted?.size ?? 0,
                       activityProgressPercent:
                           totalCharacters > 0
@@ -3563,7 +3580,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (this._phase !== "camp") return [];
             const actor = this._selectedCharacterId ? game.actors.get(this._selectedCharacterId) : null;
             const rosterSelected = !!actor;
-            return CAMP_STATION_PLACEMENT_KEYS.map(key => {
+            const placementKeys = getCampStationPlacementKeys(!!this._engine?.safeRestSpot, {
+                simpleStations: isSimpleStationsMode()
+            });
+            return placementKeys.map(key => {
                 const st = CAMP_STATIONS.find(s => s.furnitureKey === key);
                 const deployed = isStationDeployed(key);
                 const meetsRequirement = actor ? canPlaceStation(actor, key) : false;
@@ -3660,6 +3680,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return {
             isGM: this._isGM,
             isTheaterMode: this._isTotM,
+            simpleStationsMode: isSimpleStationsMode(),
+            workbenchIdentifyUiEnabled: isWorkbenchIdentifyUiEnabled(),
             encountersEnabled,
             showMealStep,
             phaseSteps,
@@ -3679,8 +3701,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const act = actId ? this._activityResolver?.activities?.get(actId) : null;
                 return act?.name ?? actId ?? "an activity";
             })(),
-            // TotM Identify tab context
-            ...(this._isTotM && this._phase === "activity" && this._totmActiveTab === "identify" ? (() => {
+            ...(this._isTotM && this._phase === "activity" && this._totmActiveTab === "identify" && isWorkbenchIdentifyUiEnabled() ? (() => {
                 const rosterSelected = this._selectedCharacterId || getPartyActors()[0]?.id || null;
                 return this._workbench.buildEmbedContext(rosterSelected, getPartyActors);
             })() : {}),
@@ -5432,7 +5453,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // TotM Activity: bind workbench drag-drop when Identify tab is active
-        if (this._phase === "activity" && this._isTotM && this._totmActiveTab === "identify") {
+        if (this._phase === "activity" && this._isTotM && this._totmActiveTab === "identify" && isWorkbenchIdentifyUiEnabled()) {
             this._workbench.bindDragDrop(this.element);
         }
 
@@ -7694,6 +7715,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onSubmitActivities(event, target) {
         await closeOpenStationDialog();
         this._tearDownStationLayerCanvas();
+        if (this._phase === "activity") {
+            void this._detectMagic?.cleanupCastArtifactsOnPhaseExit(getPartyActors());
+        }
         for (const [characterId, activityId] of this._characterChoices) {
             const followUpValue = this._gmFollowUps?.get(characterId) ?? this._getFollowUpForCharacter(characterId);
             this._engine.registerChoice(characterId, activityId, { followUpValue });
@@ -8119,6 +8143,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * requests, and broadcasts the phase change.
      */
     async _advanceToEvents() {
+        if (this._phase === "activity") {
+            void this._detectMagic?.cleanupCastArtifactsOnPhaseExit(getPartyActors());
+        }
         // Bedding / Zzz persist through events until resolve or encounter interrupt.
 
         // Restore default window size and center on screen so the full events
@@ -9742,7 +9769,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Strip any Detect Magic active effects left on party actors from the rest scan.
         try {
-            await purgeDetectMagicEffects(getPartyActors());
+            await purgeDetectMagicRestArtifacts(getPartyActors());
         } catch (e) {
 
             console.warn(`${MODULE_ID} | Failed to purge Detect Magic effects:`, e);
@@ -10629,7 +10656,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (empty && mealBrightParty && station.id === "cooking_station") {
                 empty = false;
             }
-            if (station.id === "workbench") {
+            if (station.id === "workbench" && isWorkbenchExamineUiEnabled()) {
                 empty = false;
             }
             map[station.id] = empty;
@@ -10737,8 +10764,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const station = effectiveStations.find(s => s.id === stationId);
             if (!station) return;
 
-            if (stationId === "bedroll") {
-                const bedrollOwnerActorId = token?.document?.flags?.[MODULE_ID]?.ownerActorId;
+            const tokenFlags = token?.document?.flags?.[MODULE_ID];
+            const isSharedBedroll = tokenFlags?.furnitureKey === "sharedBedroll";
+
+            if (stationId === "bedroll" && !isSharedBedroll) {
+                const bedrollOwnerActorId = tokenFlags?.ownerActorId;
                 if (bedrollOwnerActorId !== actor.id) {
                     if (!game.user.isGM) {
                         const ownerName = bedrollOwnerActorId
@@ -10748,6 +10778,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     }
                     return;
                 }
+            }
+
+            if (stationId === "campfire" && isSimpleStationsMode()) {
+                return;
             }
 
 
@@ -10761,7 +10795,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ?? app._restData?.restType
                 ?? "long";
 
-            const dialogStation = stationId === "bedroll"
+            const dialogStation = (stationId === "bedroll" && !isSharedBedroll)
                 ? { ...station, label: `${actor.name}'s ${station.label}` }
                 : station;
 
@@ -10786,17 +10820,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
                 console.warn(`${MODULE_ID} | Station activity dialog`, e);
             }
-        }, { ...proximityOpts, stationEmptyNoticeFade, terrainTag: this._selectedTerrain ?? this._engine?.terrainTag ?? "forest" });
+        }, {
+            ...proximityOpts,
+            stationEmptyNoticeFade,
+            terrainTag: this._selectedTerrain ?? this._engine?.terrainTag ?? "forest",
+            onLayerReady: () => {
+                this._refreshStationOverlayMeals();
+                refreshStationDetectMagicGlow(this);
+                if (this._characterChoices?.size) {
+                    refreshStationPortraitsFromChoices(this._characterChoices, this._stationCanvasIdByCharacter);
+                    refreshStationEmptyNoticeFade(this);
+                }
+            }
+        });
 
         this._installGmStationTokenSyncHook();
-        this._refreshStationOverlayMeals();
-
-        // On resume (or re-activate), apply portraits and empty-notice fade for
-        // characters that already committed before the layer was torn down.
-        if (this._characterChoices?.size) {
-            refreshStationPortraitsFromChoices(this._characterChoices, this._stationCanvasIdByCharacter);
-            refreshStationEmptyNoticeFade(this);
-        }
     }
 
     /**
@@ -11591,6 +11629,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     async receivePhaseChange(phase, phaseData = {}) {
         const prevPhase = this._phase;
+        if (prevPhase === "activity" && phase !== "activity") {
+            void this._detectMagic?.cleanupCastArtifactsOnPhaseExit(getPartyActors());
+        }
         this._phase = phase;
         if (phaseData.triggeredEvents) {
             this._triggeredEvents = this._isGM ? phaseData.triggeredEvents
@@ -13096,6 +13137,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (isComfortEnabled()) return false;
         if (!game.user.isGM) return false;
         if (this._engine?.safeRestSpot) return false;
+        // Simple + camp stations still needs the map camp (fire, workbench, bedrolls).
+        if (!this._isTotM) return false;
 
         this._fireLevel = "unlit";
         this._coldCampDecided = true;
@@ -13127,6 +13170,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Simple + camp stations: light the fire at campfire tier without firewood
+     * and advance to the activity phase (stations promote on advance).
+     * @returns {Promise<void>}
+     */
+    async _autoLightCampfireForSimpleStations() {
+        if (!game.user.isGM) return;
+        if (!isSimpleStationsMode()) return;
+        if (this._phase !== "camp" || this._campToActivityDone) return;
+        if ((this._fireLevel ?? "unlit") !== "unlit" || this._coldCampDecided) return;
+
+        const actorId = getPartyActors()[0]?.id;
+        if (!actorId) return;
+
+        await this._campCeremony.lightFire(game.user.id, actorId, "Campfire", "campfire");
+    }
+
+    /**
      * After the fire is committed (lit tiers or cold camp), spend fuel, go to activity.
      * @returns {Promise<void>}
      */
@@ -13138,7 +13198,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._campToActivityDone = true;
         this._campStep2Entered = true;
 
-        await promoteAllPlaceholders(!!this._engine?.safeRestSpot);
+        await promoteAllPlaceholders(!!this._engine?.safeRestSpot, {
+            simpleStations: isSimpleStationsMode()
+        });
 
         if (!this._engine?.safeRestSpot) {
             const pledges = Array.from(this._firewoodPledges.entries());
@@ -13171,6 +13233,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._phase = "activity";
         this._totmCampPositioned = false; // allow re-center if camp is re-entered
         this._applyLoseActivityTravelLocks();
+        this._applyAutoOtherWhenSoleActivity();
         _logGmRestSheet("_advanceCampToActivity", "phase -> activity, closing window");
 
         const isTheater = this._isTotM;
@@ -13227,11 +13290,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             phRoot.name = "ionrift-camp-stub-previews";
             container.addChild(phRoot);
             const phSprites = [];
-            const maxStub = safeRestSpot ? 3 : 4;
+            const simpleStations = isSimpleStationsMode();
+            const maxStub = simpleStations ? 2 : (safeRestSpot ? 3 : 4);
 
             const updateStubGhosts = (pitCX, pitCY) => {
                 if (!container.parent) return;
-                const slots = getStationPlaceholderPreviewsForPitCenter(pitCX, pitCY, safeRestSpot);
+                const slots = getStationPlaceholderPreviewsForPitCenter(pitCX, pitCY, safeRestSpot, {
+                    simpleStations
+                });
                 for (let i = 0; i < maxStub; i++) {
                     if (i >= slots.length) {
                         if (phSprites[i]) phSprites[i].visible = false;
@@ -13355,8 +13421,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
             const res = await placeCampfire(pos.x, pos.y, { pitBaseTextureSrc });
             if (!res) return;
+            await placeStationPlaceholders(!!this._engine?.safeRestSpot, {
+                simpleStations: isSimpleStationsMode()
+            });
+            if (isSimpleStationsMode()) {
+                await this._autoLightCampfireForSimpleStations();
+                return;
+            }
             await CampfireTokenLinker.setLightState(false, "unlit");
-            await placeStationPlaceholders(!!this._engine?.safeRestSpot);
             await this._saveRestState();
             emitPhaseChanged("camp", { campPitCursorDone: true });
             this.render({ force: true });
@@ -14272,8 +14344,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
         const comfortOn = isComfortEnabled();
-        const pit = comfortOn ? hasCampfirePlaced() : true;
-        const fireOk = !comfortOn || (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided;
+        const mapCampFire = requiresMapCampFire();
+        const pit = (comfortOn || mapCampFire) ? hasCampfirePlaced() : true;
+        const fireOk = (comfortOn || mapCampFire)
+            ? ((this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided)
+            : true;
         if (!pit || !fireOk) {
             ui.notifications?.warn("Place the pit and light the fire (or choose cold camp) from the map.");
             return;
@@ -14644,10 +14719,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 fireIsLit ? (this._fireLevel ?? "campfire") : null
             );
             if (this._phase === "camp") {
-                await placeStationPlaceholders(!!this._engine?.safeRestSpot);
-                emitPhaseChanged("camp", { campPitCursorDone: true });
-                await this._saveRestState();
-                void this._refreshCampPitNoticeLayer();
+                await placeStationPlaceholders(!!this._engine?.safeRestSpot, {
+                    simpleStations: isSimpleStationsMode()
+                });
+                if (isSimpleStationsMode()) {
+                    await this._autoLightCampfireForSimpleStations();
+                } else {
+                    emitPhaseChanged("camp", { campPitCursorDone: true });
+                    await this._saveRestState();
+                    void this._refreshCampPitNoticeLayer();
+                }
             }
             this.render();
             return;

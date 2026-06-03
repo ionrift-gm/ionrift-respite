@@ -36,7 +36,7 @@ import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
 import {
     collectPartyIdentifyEmbedData,
     DetectMagicDelegate,
-    purgeDetectMagicEffects,
+    purgeDetectMagicRestArtifacts,
     spawnDetectMagicCastRipple
 } from "./delegates/DetectMagicDelegate.js";
 import { getShortRestRechargeLabels } from "../services/ShortRestRecharge.js";
@@ -1470,7 +1470,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
             // Strip any Detect Magic active effects left on party actors from the scan.
             try {
-                await purgeDetectMagicEffects(partyActors);
+                await purgeDetectMagicRestArtifacts(partyActors);
             } catch (e) {
                 console.warn(`${MODULE_ID} | Failed to purge Detect Magic effects:`, e);
             }

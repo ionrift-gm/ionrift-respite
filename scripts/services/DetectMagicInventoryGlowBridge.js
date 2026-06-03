@@ -16,6 +16,7 @@
  */
 
 import { DetectMagicScanner } from "./DetectMagicScanner.js";
+import { refreshStationDetectMagicGlow } from "./StationInteractionLayer.js";
 
 const R = "ionrift-respite";
 
@@ -399,6 +400,7 @@ export function notifyDetectMagicScanApplied(restApp, partyActorIds) {
         magicScanComplete: !!restApp?._magicScanComplete,
         partyActorIds: partyActorIds ?? []
     });
+    refreshStationDetectMagicGlow(restApp);
 }
 
 /** Called when the rest session clears Detect Magic state (new rest, close, or reset). */
@@ -408,4 +410,5 @@ export function notifyDetectMagicScanCleared() {
     _dmGlowRefreshTimers.clear();
     getDetectMagicInventoryGlowAdapter().onScanCleared?.();
     _dmGlowPartyActorIds.clear();
+    refreshStationDetectMagicGlow(null);
 }

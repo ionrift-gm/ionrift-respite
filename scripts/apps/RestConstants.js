@@ -6,6 +6,7 @@
 
 import { isGearDeployed } from "../services/CompoundCampPlacer.js";
 import { HD_PENALTY, boostComfort, isComfortEnabled, getComfortDcMod } from "../services/ComfortCalculator.js";
+import { isSimpleStationsMode } from "../services/RestProfileSettings.js";
 import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "../services/TrainingSettings.js";
 
 /** Activities hidden when the GM marks a safe rest spot (no encounter risk; no redundant camp duties). */
@@ -75,6 +76,22 @@ export const ACTIVITY_ICONS = {
     act_identify: "fas fa-search", act_scribe: "fas fa-scroll",
     act_other: "fas fa-comments"
 };
+
+/**
+ * When false, workbench identify UI (TotM tab, station Examine/Identify tabs) is hidden.
+ * Identification is handled via spellcasting at the table.
+ */
+export const WORKBENCH_IDENTIFY_UI_ENABLED = false;
+
+/** @returns {boolean} */
+export function isWorkbenchIdentifyUiEnabled() {
+    return WORKBENCH_IDENTIFY_UI_ENABLED;
+}
+
+/** Focus identify and potion tasting at the workbench station (always available). */
+export function isWorkbenchExamineUiEnabled() {
+    return true;
+}
 
 /**
  * Static fallback hints surfaced on the activity card and the detail-panel advisory pill.
@@ -360,9 +377,11 @@ export const CAMP_STATIONS = [
  * Labels are overridden per terrainLabel where defined.
  * @param {string} terrainTag
  * @param {boolean} [safeRestSpot] - Hides medical bed and relabels weapon rack for safe rest flow
+ * @param {{ simpleStations?: boolean }} [options]
  * @returns {Object[]}
  */
-export function getStationsForTerrain(terrainTag, safeRestSpot = false) {
+export function getStationsForTerrain(terrainTag, safeRestSpot = false, options = {}) {
+    const simpleStations = options.simpleStations ?? isSimpleStationsMode();
     const hidden = new Set();
     /** Activities orphaned by hidden stations that should migrate to bedroll. */
     const MIGRATING_ACTIVITIES = new Set(["act_keep_watch", "act_other"]);
@@ -397,7 +416,30 @@ export function getStationsForTerrain(terrainTag, safeRestSpot = false) {
             : activities;
         result.push({ ...station, label, activities: mergedActivities, tagline });
     }
-    return result;
+
+    if (!simpleStations) return result;
+
+    return result
+        .filter(s => ["workbench", "bedroll"].includes(s.id))
+        .map(s => {
+            if (s.id === "bedroll") {
+                return {
+                    ...s,
+                    label: "Bedrolls",
+                    furnitureKey: "sharedBedroll",
+                    tagline: "Rest by the fire",
+                    activities: ["act_other"]
+                };
+            }
+            if (s.id === "workbench") {
+                return {
+                    ...s,
+                    tagline: "Workbench",
+                    activities: (s.activities ?? []).filter(id => id !== "act_scribe")
+                };
+            }
+            return s;
+        });
 }
 
 /**
@@ -410,6 +452,7 @@ export function getStationsForTerrain(terrainTag, safeRestSpot = false) {
  */
 export function inferCanvasStationForActivity(activityId, actorId = null) {
     if (!activityId) return "campfire";
+    if (activityId === "act_other" && isSimpleStationsMode()) return "bedroll";
     const hits = CAMP_STATIONS.filter(s => (s.activities ?? []).includes(activityId));
     if (!hits.length) return "campfire";
     if (hits.length === 1) return hits[0].id;

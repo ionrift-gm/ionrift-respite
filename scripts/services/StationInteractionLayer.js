@@ -13,6 +13,7 @@ import { Logger } from "../lib/Logger.js";
  */
 
 import { CAMP_STATIONS, getStationsForTerrain, STATION_RANGE_SQUARES, inferCanvasStationForActivity } from "../apps/RestConstants.js";
+import { isSimpleStationsMode } from "./RestProfileSettings.js";
 import { isGearDeployed, measureWorldDistanceFeet } from "./CompoundCampPlacer.js";
 import { getPartyActors } from "./partyActors.js";
 
@@ -245,10 +246,12 @@ const OV = {
     BORDER_GLASS:  0xffffff,
     BORDER_HOVER:  0xc4b5fd,
     BORDER_MEAL:   0xfbbf24,
+    BORDER_DM:     0xc4a0ff,
     BORDER_FAR:    0xf43f5e,
     OUTLINE_IDLE:  0.11,
     OUTLINE_HOVER: 0.24,
     OUTLINE_MEAL:  0.42,
+    OUTLINE_DM:    0.58,
     OUTLINE_FAR:   0.55,
     FONT_TOOLTIP:  { fontFamily: UI_FONT_STACK, fontSize: 11, fill: 0xffffff, fontWeight: "bold" },
     FONT_FAR:      { fontFamily: UI_FONT_STACK, fontSize: 10, fill: 0xfca5a5 },
@@ -258,6 +261,18 @@ const OV = {
     PULSE_MAX:     1.0,
     EMPTY_PULSE_MIN: 0.4,
     EMPTY_PULSE_MAX: 0.58,
+    DM_PULSE_MIN:    0.82,
+    DM_PULSE_MAX:    1.0,
+    DM_ICON_TINT:    0xe0c8ff,
+    /** Expanding ripple rings while Detect Magic is active (ms-scaled ticker delta). */
+    DM_EMANATION_SPEED: 0.00185,
+    DM_EMANATION_EXTRA: 22,
+    DM_EMANATION_RINGS: 3,
+    DM_EMANATION_ALPHA: 0.72,
+    /** Fraction of each ring cycle spent fading in at spawn (0..1). */
+    DM_EMANATION_BIRTH: 0.08,
+    /** Whole-aura fade when scan glow first turns on (ms). */
+    DM_EMANATION_INTRO_MS: 140,
     DIM_ALPHA:     0.22,
     MEAL_BODY_ALPHA: 0.92,
     PORTRAIT_R:    17,
@@ -339,6 +354,9 @@ class StationOverlay {
         this._pulseT     = Math.random() * Math.PI * 2;
         this._dimmed     = false;
         this._mealOnly   = false;
+        this._detectMagicGlow = false;
+        this._dmEmanationT = 0;
+        this._dmGlowIntroT = 0;
         this._permanentlyDimmed = false;
         this._farTimeout = null;
         this._hoverHighlight = false;
@@ -347,6 +365,7 @@ class StationOverlay {
         this._portraitLoadToken = null;
         this._mealRowRoot = null;
         this._mealPortraitLoadToken = null;
+        this._dmAura = null;
 
         this._build();
         if (this._emptyNoticeFade) {
@@ -381,6 +400,13 @@ class StationOverlay {
         else portraitRoot.interactive = false;
         container.addChild(portraitRoot);
         this._portraitRoot = portraitRoot;
+
+        const dmAura = new PIXI.Graphics();
+        dmAura.visible = false;
+        if ("eventMode" in dmAura) dmAura.eventMode = "none";
+        else dmAura.interactive = false;
+        container.addChild(dmAura);
+        this._dmAura = dmAura;
 
         const bodyRoot = new PIXI.Container();
         this._bodyRoot = bodyRoot;
@@ -545,6 +571,7 @@ class StationOverlay {
         const next = !!enabled;
         if (this._emptyNoticeFade === next) return;
         this._emptyNoticeFade = next;
+        if (this._detectMagicGlow) return;
         if (this._mealOnly) {
             this._syncMealRowAlpha();
             return;
@@ -596,15 +623,112 @@ class StationOverlay {
         } else if (mode === "meal") {
             g.lineStyle(1.2, OV.BORDER_MEAL, 0.88);
             g.drawCircle(cx, cy, r);
+        } else if (mode === "detectMagic") {
+            g.lineStyle(1.4, OV.BORDER_DM, 0.88);
+            g.drawCircle(cx, cy, r);
         } else if (mode === "far") {
             g.lineStyle(1.2, OV.BORDER_FAR, 1);
             g.drawCircle(cx, cy, r);
         }
     }
 
+    _drawDetectMagicEmanation() {
+        const g = this._dmAura;
+        if (!g || !this._detectMagicGlow) return;
+        g.clear();
+        const baseR = OV.BADGE_R;
+        const maxExtra = OV.DM_EMANATION_EXTRA;
+        const intro = OV.DM_EMANATION_INTRO_MS > 0
+            ? Math.min(1, this._dmGlowIntroT / OV.DM_EMANATION_INTRO_MS)
+            : 1;
+        const birthSpan = OV.DM_EMANATION_BIRTH;
+
+        for (let i = 0; i < OV.DM_EMANATION_RINGS; i++) {
+            const phase = (this._dmEmanationT + i / OV.DM_EMANATION_RINGS) % 1;
+            const ease = 1 - (1 - phase) * (1 - phase);
+            const birthT = birthSpan > 0 ? Math.min(1, phase / birthSpan) : 1;
+            const birthFade = birthT * birthT;
+            const radius = baseR + maxExtra * ease;
+            const alpha = (1 - phase) * OV.DM_EMANATION_ALPHA * birthFade * intro;
+            if (alpha < 0.04) continue;
+            g.lineStyle(1.1 + (1 - phase) * 1.4, OV.BORDER_DM, alpha);
+            g.drawCircle(0, 0, radius);
+        }
+    }
+
+    /** Purple badge tint without a static ring (emanation carries the motion). */
+    _applyDetectMagicBadgeBase() {
+        if (this._iconSprite) this._iconSprite.tint = OV.DM_ICON_TINT;
+        this._drawBg(this._bg, OV.BORDER_DM, OV.BG_ALPHA, 0);
+        this._drawIconRing(this._iconRing, 0, 0, "idle");
+    }
+
+    _applyDetectMagicPalette() {
+        this._applyDetectMagicBadgeBase();
+        if (this._dmAura) this._dmAura.visible = true;
+        this._drawDetectMagicEmanation();
+        if (this._bodyRoot) {
+            this._bodyRoot.alpha = (OV.DM_PULSE_MIN + OV.DM_PULSE_MAX) / 2;
+        }
+    }
+
+    /**
+     * Purple pulse on the workbench badge while a Detect Magic scan is active.
+     * @param {boolean} enabled
+     */
+    setDetectMagicGlow(enabled) {
+        const next = !!enabled;
+        if (this._detectMagicGlow === next) {
+            if (next && !this._mealOnly && !this._dimmed) {
+                this._applyDetectMagicPalette();
+            }
+            return;
+        }
+        this._detectMagicGlow = next;
+        if (this._dimmed && !this._mealOnly) return;
+        if (this._mealOnly) return;
+        if (next) {
+            this._dmEmanationT = 0;
+            this._dmGlowIntroT = 0;
+            this._applyDetectMagicPalette();
+        } else {
+            this._dmGlowIntroT = 0;
+            if (this._dmAura) {
+                this._dmAura.clear();
+                this._dmAura.visible = false;
+            }
+            if (this._emptyNoticeFade) {
+                this._applyEmptyNoticePalette();
+                if (this._bodyRoot) {
+                    this._bodyRoot.alpha = (OV.EMPTY_PULSE_MIN + OV.EMPTY_PULSE_MAX) / 2;
+                }
+                this._drawIconRing(this._iconRing, 0, 0, "idle");
+            } else {
+                this._applyDefaultNoticePalette();
+                this._drawBg(this._bg, OV.BORDER_GLASS, OV.BG_ALPHA, OV.OUTLINE_IDLE);
+                this._drawIconRing(this._iconRing, 0, 0, "idle");
+                if (this._bodyRoot) this._bodyRoot.alpha = OV.PULSE_MAX;
+            }
+        }
+        this._syncMealRowAlpha();
+    }
+
     _onHover(over) {
         if (this._dimmed) return;
         this._hoverHighlight = over;
+        if (this._detectMagicGlow && !this._mealOnly) {
+            this._applyDetectMagicBadgeBase();
+            if (this._hoverLabel) {
+                this._hoverLabel.visible = over && !this._farText?.visible;
+            }
+            if (this._bodyRoot) {
+                this._bodyRoot.alpha = over
+                    ? OV.DM_PULSE_MAX
+                    : OV.DM_PULSE_MIN + (OV.DM_PULSE_MAX - OV.DM_PULSE_MIN) * 0.5;
+            }
+            this._syncMealRowAlpha();
+            return;
+        }
         const lineColor = this._mealOnly ? OV.BORDER_MEAL
             : over ? OV.BORDER_HOVER : OV.BORDER_GLASS;
         const outline = this._mealOnly ? OV.OUTLINE_MEAL
@@ -704,6 +828,9 @@ class StationOverlay {
                     0, 0,
                     this._mealOnly ? "meal" : "idle"
                 );
+                if (this._detectMagicGlow) {
+                    this._applyDetectMagicPalette();
+                }
             }
             this._farText.visible = false;
         }, 2500);
@@ -711,7 +838,22 @@ class StationOverlay {
 
     /** Called each ticker tick. Returns the updated pulse phase. */
     tick(delta) {
-        if (this._dimmed || this._mealOnly || this._hoverHighlight) return;
+        if (this._detectMagicGlow && !this._dimmed && !this._mealOnly) {
+            this._pulseT += OV.PULSE_SPEED * delta;
+            this._dmGlowIntroT += delta;
+            this._dmEmanationT += OV.DM_EMANATION_SPEED * delta;
+            if (this._dmEmanationT >= 1) this._dmEmanationT -= Math.floor(this._dmEmanationT);
+            this._drawDetectMagicEmanation();
+            const t = (Math.sin(this._pulseT) + 1) / 2;
+            if (this._bodyRoot && !this._hoverHighlight) {
+                this._bodyRoot.alpha = OV.DM_PULSE_MIN + (OV.DM_PULSE_MAX - OV.DM_PULSE_MIN) * t;
+            }
+            this._syncMealRowAlpha();
+            return;
+        }
+
+        if (this._dimmed || this._mealOnly) return;
+        if (this._hoverHighlight) return;
         this._pulseT += OV.PULSE_SPEED * delta;
         const t = (Math.sin(this._pulseT) + 1) / 2; // 0..1
         if (this._bodyRoot) {
@@ -762,7 +904,9 @@ class StationOverlay {
         else this._container.interactive = true;
         this._farText.visible = false;
         if (this._hoverLabel) this._hoverLabel.visible = false;
-        if (this._emptyNoticeFade) {
+        if (this._detectMagicGlow) {
+            this._applyDetectMagicPalette();
+        } else if (this._emptyNoticeFade) {
             this._applyEmptyNoticePalette();
             if (this._bodyRoot) {
                 this._bodyRoot.alpha = (OV.EMPTY_PULSE_MIN + OV.EMPTY_PULSE_MAX) / 2;
@@ -1188,6 +1332,7 @@ function _onRefreshTokenForOverlays(token) {
  * @param {boolean} [options.campPitModeOnly] - Only the campfire pit token, with Make Camp copy (all clients)
  * @param {boolean} [options.campPitUnlit] - "Light the fire" vs "Campfire" label
  * @param {string}  [options.terrainTag] - Current terrain tag for station filtering (hides campfire/weapon rack in tavern, etc.)
+ * @param {() => void} [options.onLayerReady] - After overlays spawn and the ticker is running
  */
 export function activateStationLayer(actorMap, onStationClick, options = {}) {
     // Theater of the Mind: skip canvas overlays entirely (camp-pit notice is exempt;
@@ -1260,7 +1405,7 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
         });
         await Promise.all(_overlays.map(ov => ov.refreshIcon()));
         if (!_active || activateGen !== _activateGeneration) return;
-        _attachStationLayerRuntime();
+        _attachStationLayerRuntime(options.onLayerReady);
     });
 }
 
@@ -1276,6 +1421,8 @@ function _spawnStationOverlays({ sceneTokens, terrainTag, emptyFadeMap, campPitM
             if (station.furnitureKey !== "campfire") continue;
         } else if (!station.furnitureKey) {
             continue; // bedroll: separate pass
+        } else if (isSimpleStationsMode() && station.id === "campfire") {
+            continue; // simple stations: fire is visual only during activity
         }
 
         const token = sceneTokens.find(t => {
@@ -1312,37 +1459,58 @@ function _spawnStationOverlays({ sceneTokens, terrainTag, emptyFadeMap, campPitM
 
     const bedrollStation = effectiveStations.find(s => s.id === "bedroll");
     if (bedrollStation && !campPitModeOnly) {
-        for (const actorId of Object.keys(_actorMap)) {
-            if (!isGearDeployed(actorId, "bedroll")) continue;
-            const token = sceneTokens.find(t => {
+        const sharedToken = isSimpleStationsMode()
+            ? sceneTokens.find(t => {
                 const f = t.document.flags?.[MODULE_ID];
-                return f?.isPlayerGear && f?.furnitureKey === "bedroll" && f?.ownerActorId === actorId;
-            });
-            if (!token) continue;
-            const ownerActor = game.actors.get(actorId);
-            const ownerName = ownerActor?.name ?? "Bedroll";
+                return f?.isCampFurniture && f?.furnitureKey === "sharedBedroll";
+            })
+            : null;
+
+        if (sharedToken) {
             const overlay = new StationOverlay(
-                token,
+                sharedToken,
                 bedrollStation,
                 _actorMap,
                 _clickCallback,
                 {
                     emptyNoticeFade: !!emptyFadeMap.bedroll,
-                    displayOverride: { title: `${ownerName}'s ${bedrollStation.label}` }
+                    displayOverride: { title: bedrollStation.label, tagline: bedrollStation.tagline ?? "" }
                 }
             );
             _overlays.push(overlay);
-            const me = _currentUserPartyActorId();
-            if (me !== null && actorId !== me) {
-                overlay._permanentlyDimmed = true;
-                overlay.setDimmed();
+        } else {
+            for (const actorId of Object.keys(_actorMap)) {
+                if (!isGearDeployed(actorId, "bedroll")) continue;
+                const token = sceneTokens.find(t => {
+                    const f = t.document.flags?.[MODULE_ID];
+                    return f?.isPlayerGear && f?.furnitureKey === "bedroll" && f?.ownerActorId === actorId;
+                });
+                if (!token) continue;
+                const ownerActor = game.actors.get(actorId);
+                const ownerName = ownerActor?.name ?? "Bedroll";
+                const overlay = new StationOverlay(
+                    token,
+                    bedrollStation,
+                    _actorMap,
+                    _clickCallback,
+                    {
+                        emptyNoticeFade: !!emptyFadeMap.bedroll,
+                        displayOverride: { title: `${ownerName}'s ${bedrollStation.label}` }
+                    }
+                );
+                _overlays.push(overlay);
+                const me = _currentUserPartyActorId();
+                if (me !== null && actorId !== me) {
+                    overlay._permanentlyDimmed = true;
+                    overlay.setDimmed();
+                }
             }
         }
     }
 }
 
 /** Hooks, ticker, and DOM hit-testing for the active station layer. */
-function _attachStationLayerRuntime() {
+function _attachStationLayerRuntime(onLayerReady) {
     if (!_tokenUpdateHook) {
         _tokenUpdateHook = _onRefreshTokenForOverlays;
         Hooks.on("refreshToken", _tokenUpdateHook);
@@ -1392,6 +1560,16 @@ function _attachStationLayerRuntime() {
     }
 
     Logger.log(`${MODULE_ID} | StationInteractionLayer: ${_overlays.length} overlay(s) attached, DOM handlers registered`);
+
+    refreshStationDetectMagicGlow();
+
+    if (typeof onLayerReady === "function") {
+        try {
+            onLayerReady();
+        } catch (err) {
+            console.warn(`${MODULE_ID} | StationInteractionLayer onLayerReady`, err);
+        }
+    }
 }
 
 /**
@@ -1545,6 +1723,32 @@ export function refreshStationMealPortraits(restApp) {
         } else {
             ov.clearMealPortraits();
         }
+    }
+}
+
+/**
+ * @param {object|null} [restApp]
+ * @returns {object|null}
+ */
+function _resolveRestAppForDetectMagicGlow(restApp) {
+    if (restApp) return restApp;
+    const respite = game.ionrift?.respite;
+    return respite?.activeRestSetupApp
+        ?? respite?.activePlayerRestApp
+        ?? respite?.activeShortRestApp
+        ?? null;
+}
+
+/**
+ * Purple badge glow on the workbench token while Detect Magic scan is active.
+ * @param {{ _magicScanComplete?: boolean }|null} [restApp]
+ */
+export function refreshStationDetectMagicGlow(restApp = null) {
+    if (!_active) return;
+    const app = _resolveRestAppForDetectMagicGlow(restApp);
+    const active = !!app?._magicScanComplete;
+    for (const ov of _overlays) {
+        ov.setDetectMagicGlow(ov.station.id === "workbench" && active);
     }
 }
 
