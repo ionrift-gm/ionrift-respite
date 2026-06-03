@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 /**
  * StationInteractionLayer
  *
@@ -631,7 +632,7 @@ class StationOverlay {
 
     _onClick() {
         if (!_stationTokenStillOnScene(this.token)) return;
-        console.log(`${MODULE_ID} | Station overlay _onClick`, { stationId: this.station.id, dimmed: this._dimmed });
+        Logger.log(`${MODULE_ID} | Station overlay _onClick`, { stationId: this.station.id, dimmed: this._dimmed });
         if (this._skipProximity) {
             this.onClickFn(this.station.id, this.token, this);
             return;
@@ -666,7 +667,7 @@ class StationOverlay {
                 const maxDist = STATION_RANGE_SQUARES * (canvas.grid?.distance ?? 5);
 
                 if (dist > maxDist) {
-                    console.log(`${MODULE_ID} | Station too far`, { dist, maxDist, playerActorId });
+                    Logger.log(`${MODULE_ID} | Station too far`, { dist, maxDist, playerActorId });
                     this._showFarWarning(Math.round(dist));
                     return;
                 }
@@ -677,7 +678,7 @@ class StationOverlay {
             console.warn(`${MODULE_ID} | Station proximity: no owned actor in actorMap`, { actorIds });
         }
 
-        console.log(`${MODULE_ID} | Station opening picker`, { stationId: this.station.id });
+        Logger.log(`${MODULE_ID} | Station opening picker`, { stationId: this.station.id });
         this.onClickFn(this.station.id, this.token, this);
     }
 
@@ -1194,7 +1195,7 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
     if (!options.campPitModeOnly) {
         try {
             if (game.settings.get(MODULE_ID, "restInterfaceMode") === "theater") {
-                console.log(`${MODULE_ID} | StationInteractionLayer.activate skipped (theater mode)`);
+                Logger.log(`${MODULE_ID} | StationInteractionLayer.activate skipped (theater mode)`);
                 return;
             }
         } catch { /* setting not registered yet; default to allowing activation */ }
@@ -1239,10 +1240,10 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
         _savedTokensSortable = false;
     }
     host.addChild(_overlayContainer);
-    console.log(`${MODULE_ID} | StationInteractionLayer: overlay container added to`, host.constructor?.name ?? "stage");
+    Logger.log(`${MODULE_ID} | StationInteractionLayer: overlay container added to`, host.constructor?.name ?? "stage");
 
     const sceneTokens = canvas.tokens?.placeables ?? [];
-    console.log(`${MODULE_ID} | StationInteractionLayer.activate`, {
+    Logger.log(`${MODULE_ID} | StationInteractionLayer.activate`, {
         isGM: game.user.isGM,
         sceneTokenCount: sceneTokens.length,
         actorMapKeys:    Object.keys(_actorMap)
@@ -1363,7 +1364,7 @@ function _attachStationLayerRuntime() {
                 if (_hitTestOverlayScreen(ov, event.clientX, event.clientY)) {
                     event.stopPropagation();
                     event.preventDefault();
-                    console.log(`${MODULE_ID} | DOM pointerdown hit`, { stationId: ov.station.id });
+                    Logger.log(`${MODULE_ID} | DOM pointerdown hit`, { stationId: ov.station.id });
                     ov._onClick();
                     return;
                 }
@@ -1390,7 +1391,7 @@ function _attachStationLayerRuntime() {
         console.warn(`${MODULE_ID} | #board element not found; overlay clicks will not work`);
     }
 
-    console.log(`${MODULE_ID} | StationInteractionLayer: ${_overlays.length} overlay(s) attached, DOM handlers registered`);
+    Logger.log(`${MODULE_ID} | StationInteractionLayer: ${_overlays.length} overlay(s) attached, DOM handlers registered`);
 }
 
 /**

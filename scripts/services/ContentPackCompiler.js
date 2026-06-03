@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 /**
  * ContentPackCompiler
  *
@@ -23,7 +24,7 @@ export class ContentPackCompiler {
 
         const items = this._extractItems(packData);
         if (!items.length) {
-            console.log(`${MODULE_ID} | ContentPackCompiler: No items to compile for "${packId}".`);
+            Logger.log(`${MODULE_ID} | ContentPackCompiler: No items to compile for "${packId}".`);
             return;
         }
 
@@ -72,7 +73,7 @@ export class ContentPackCompiler {
         // Place under Ionrift/Respite sidebar folder
         await this._assignSidebarFolder(freshPack);
 
-        console.log(`${MODULE_ID} | ContentPackCompiler: Compiled "${packId}", ${preparedItems.length} items.`);
+        Logger.log(`${MODULE_ID} | ContentPackCompiler: Compiled "${packId}", ${preparedItems.length} items.`);
         return preparedItems.length;
     }
 

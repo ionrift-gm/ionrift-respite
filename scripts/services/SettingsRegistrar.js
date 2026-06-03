@@ -209,7 +209,17 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     game.settings.register(MODULE_ID, "enableEncounters", {
         name: "Night Encounters (Homebrew)",
-        hint: "Run the night encounter layer: Keep Watch, Set Up Defenses, scouting, and the encounter threshold roll. Disable for a rest closer to RAW, where the night passes on its own and the GM can still improvise an event by hand.",
+        hint: "Run the night encounter layer: Keep Watch, Set Up Defenses, scouting, and the encounter threshold roll. Disable for a rest closer to RAW; the night passes without a check.",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: true,
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "enableCopySpell", {
+        name: "Copy Spell Activity",
+        hint: "Show the Copy Spell activity during long rests for wizards with a spellbook. Disable for a simpler rest without spell scribing.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -662,6 +672,8 @@ export const SETTING_KEYS = [
     "enableTraining",
     "enableProfessions",
     "enableFletching",
+    "enableEncounters",
+    "enableCopySpell",
     "trackFood",
     "partialSustenance",
     "lockPlayerQuantity",

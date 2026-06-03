@@ -9,6 +9,7 @@
  *
  * Caches loaded data per session; invalidated on `ionrift.overlayContentChanged`.
  */
+import { Logger } from "../lib/Logger.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -71,7 +72,7 @@ export class OverlayEventLoader {
 
         if (results.length > 0) {
             const totalEvents = results.reduce((s, r) => s + (r.data.events?.length ?? 0), 0);
-            console.log(`${MODULE_ID} | OverlayEventLoader: Loaded ${totalEvents} events from ${results.length} overlay pack(s)`);
+            Logger.log(`${MODULE_ID} | OverlayEventLoader: Loaded ${totalEvents} events from ${results.length} overlay pack(s)`);
         }
 
         return results;

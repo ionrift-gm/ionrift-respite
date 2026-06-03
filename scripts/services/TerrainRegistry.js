@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 /**
  * TerrainRegistry
  * Centralized, data-driven terrain configuration for Respite.
@@ -54,7 +55,7 @@ export class TerrainRegistry {
         this._ready = true;
 
         const sorted = [...this._terrains.keys()].sort().join(", ");
-        console.log(`${MODULE_ID} | TerrainRegistry: Loaded ${this._terrains.size} terrains: ${sorted}`);
+        Logger.log(`${MODULE_ID} | TerrainRegistry: Loaded ${this._terrains.size} terrains: ${sorted}`);
     }
 
     /**

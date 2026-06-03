@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 import { getPartyActors } from "./partyActors.js";
 
 /**
@@ -106,7 +107,7 @@ export class EventResolver {
         const roll = await new Roll(rollFormula).evaluate();
         const rawDie = roll.total;
 
-        console.log(`[Respite:EventResolver] roll - terrain=${terrainTag}, rawDie=${rawDie}, effectiveDC=${effectiveDC}, passesThreshold=${rawDie >= effectiveDC}`);
+        Logger.log(`[Respite:EventResolver] roll - terrain=${terrainTag}, rawDie=${rawDie}, effectiveDC=${effectiveDC}, passesThreshold=${rawDie >= effectiveDC}`);
 
         // ── Nat 1: Disaster roll (only actual nat 1 on the die) ──
         if (rawDie === 1) {

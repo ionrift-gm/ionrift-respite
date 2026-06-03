@@ -1,6 +1,7 @@
 /**
  * DC badge pulse via Web Animations API (works when OS prefers-reduced-motion disables CSS).
  */
+import { Logger } from "../lib/Logger.js";
 
 const RIPPLE_KEYFRAMES = Object.freeze([
     { transform: "scale(1)", opacity: 0.42 },
@@ -177,7 +178,7 @@ export function inspectDcAnimation(root) {
     };
 
     console.group("Ionrift roll-request DC animation");
-    console.log(report);
+    Logger.log(report);
     if (report.elements.length) console.table(report.elements);
     if (!report.stageFound) {
         console.warn("Open preview first: game.ionrift.respite.rollRequest.openPreview()");
@@ -209,7 +210,7 @@ export function watchDcAnimation(root, ms = 4000) {
 
     const samples = [];
     const started = performance.now();
-    console.log(`Ionrift DC watch: sampling every 250ms for ${ms}ms...`);
+    Logger.log(`Ionrift DC watch: sampling every 250ms for ${ms}ms...`);
 
     const timer = window.setInterval(() => {
         const cs = getComputedStyle(ripple);
@@ -276,6 +277,6 @@ export function forceDcPulseTest(root) {
         { duration: 1200, iterations: Infinity, easing: "ease-in-out" }
     );
 
-    console.log("Ionrift DC test: green debug pulse running. Call inspectDcAnimation() to verify.");
+    Logger.log("Ionrift DC test: green debug pulse running. Call inspectDcAnimation() to verify.");
     return stage;
 }

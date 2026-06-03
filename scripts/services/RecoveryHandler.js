@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 /**
  * RecoveryHandler
  * Applies comfort-modified HP, Hit Dice, and exhaustion recovery to actors.
@@ -31,7 +32,7 @@ export class RecoveryHandler {
     static async apply(actor, recovery) {
         if (!actor || !recovery) return { hp: 0, hd: 0, exhaustion: 0 };
 
-        console.log(`[Respite:Recovery] ── apply() START for ${actor.name} (${actor.id}) ──`, {
+        Logger.log(`[Respite:Recovery] ── apply() START for ${actor.name} (${actor.id}) ──`, {
             comfortLevel: recovery.comfortLevel,
             restType: recovery.restType,
             hpRestored: recovery.hpRestored,
@@ -55,6 +56,7 @@ export class RecoveryHandler {
         const currentHp = hpData.value;
         const maxHp = hpData.max;
         const hpToRestore = Math.min(recovery.hpRestored, maxHp - currentHp);
+        const newHp = Math.min(currentHp + hpToRestore, maxHp);
 
         // --- Hit Dice Recovery ---
         const hdRecovered = this._recoverHitDice(actor, recovery.hdRestored);
@@ -88,7 +90,7 @@ export class RecoveryHandler {
         // Post recovery summary to chat
         await this._postRecoveryChat(actor, recovery, hpToRestore, hdRecovered, exhaustionDelta);
 
-        console.log(`[Respite:Recovery] ── apply() END for ${actor.name} ──`, {
+        Logger.log(`[Respite:Recovery] ── apply() END for ${actor.name} ──`, {
             hpBefore: currentHp, hpAfter: newHp, hpToRestore,
             hdRecovered,
             exhaustionDelta,
@@ -105,7 +107,7 @@ export class RecoveryHandler {
      * @returns {Object[]} Per-character recovery summaries
      */
     static async applyAll(outcomes, skipIfRestRecovery = false) {
-        console.log(`[Respite:Recovery] ── applyAll() START ──`, {
+        Logger.log(`[Respite:Recovery] ── applyAll() START ──`, {
             outcomeCount: outcomes?.length ?? 0,
             skipIfRestRecovery,
             characters: outcomes?.map(o => {
@@ -122,7 +124,7 @@ export class RecoveryHandler {
         });
 
         if (skipIfRestRecovery) {
-            console.log(`${MODULE_ID} | Skipping HP/HD recovery (rest-recovery module active)`);
+            Logger.log(`${MODULE_ID} | Skipping HP/HD recovery (rest-recovery module active)`);
             return outcomes.map(o => ({ characterId: o.characterId, hp: 0, hd: 0, deferred: true }));
         }
 
@@ -444,7 +446,7 @@ export class RecoveryHandler {
         const adapter = game.ionrift?.respite?.adapter;
         const currentExhaustion = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
 
-        console.log(`[Respite:Recovery] _calculateExhaustionDelta ${actor.name}:`, {
+        Logger.log(`[Respite:Recovery] _calculateExhaustionDelta ${actor.name}:`, {
             currentExhaustion,
             comfortLevel: recovery.comfortLevel,
             restType: recovery.restType,
@@ -512,10 +514,10 @@ export class RecoveryHandler {
             if (!passed) {
                 penalty += 1;
                 recovery.exhaustionSaveResult = "failed";
-                console.log(`[Respite:Recovery] ${actor.name} failed exhaustion save (${roll.total} vs DC ${recovery.exhaustionDC}), +1 exhaustion`);
+                Logger.log(`[Respite:Recovery] ${actor.name} failed exhaustion save (${roll.total} vs DC ${recovery.exhaustionDC}), +1 exhaustion`);
             } else {
                 recovery.exhaustionSaveResult = "passed";
-                console.log(`[Respite:Recovery] ${actor.name} passed exhaustion save (${roll.total} vs DC ${recovery.exhaustionDC})`);
+                Logger.log(`[Respite:Recovery] ${actor.name} passed exhaustion save (${roll.total} vs DC ${recovery.exhaustionDC})`);
             }
         }
 

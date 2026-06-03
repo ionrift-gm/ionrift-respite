@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 import { CalendarHandler } from "./CalendarHandler.js";
 import { ItemClassifier } from "./ItemClassifier.js";
 import { SpoilageClock } from "./SpoilageClock.js";
@@ -326,7 +327,7 @@ export class ItemOutcomeHandler {
         // 5. Built-in fallback for refs without compendium entries yet
         const fallback = FALLBACK_ITEMS[ref];
         if (fallback) {
-            console.log(`ItemOutcomeHandler | Resolved "${ref}" via built-in fallback`);
+            Logger.log(`ItemOutcomeHandler | Resolved "${ref}" via built-in fallback`);
             return { ...fallback };
         }
 

@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 /**
  * ImageResolver
  *
@@ -166,7 +167,7 @@ export class ImageResolver {
         // Check for GM disable flag
         const disabled = game.settings.get(MODULE_ID, "artPackDisabled") ?? false;
         if (disabled) {
-            console.log(`${MODULE_ID} | ImageResolver: artPack=disabled (GM override)`);
+            Logger.log(`${MODULE_ID} | ImageResolver: artPack=disabled (GM override)`);
             return;
         }
 
@@ -191,7 +192,7 @@ export class ImageResolver {
                     Object.entries(cache.terrainRootsByTag ?? {})
                 );
             }
-            console.log(`${MODULE_ID} | ImageResolver (player): artPack=${this.#artPackActive}${this.#artPackActive ? ` (${this.#importedArtPath}, ${this.#artTerrains.length} terrains, tokens=${this.#hasStationTokens})` : ""}`);
+            Logger.log(`${MODULE_ID} | ImageResolver (player): artPack=${this.#artPackActive}${this.#artPackActive ? ` (${this.#importedArtPath}, ${this.#artTerrains.length} terrains, tokens=${this.#hasStationTokens})` : ""}`);
             return;
         }
 
@@ -338,7 +339,7 @@ export class ImageResolver {
                             this.#stationTokenFiles = new Set(files);
                             this.#stationTokenBasePath = probePath;
                             this.#tokensRoot = tokenDir;
-                            console.log(`${MODULE_ID} | ImageResolver: found station tokens in secondary path: ${tokenDir}`);
+                            Logger.log(`${MODULE_ID} | ImageResolver: found station tokens in secondary path: ${tokenDir}`);
                             found = true;
                             break;
                         }
@@ -365,9 +366,9 @@ export class ImageResolver {
             console.warn(`${MODULE_ID} | ImageResolver: failed to persist art pack cache:`, e);
         }
 
-        console.log(`${MODULE_ID} | ImageResolver: artPack=${this.#artPackActive}${this.#artPackActive ? ` (${this.#importedArtPath}, terrains via ${this.#terrainsRoot ?? "(none)"}, tokens=${this.#hasStationTokens}${this.#tokensRoot ? ` via ${this.#tokensRoot}` : ""})` : ""}`);
+        Logger.log(`${MODULE_ID} | ImageResolver: artPack=${this.#artPackActive}${this.#artPackActive ? ` (${this.#importedArtPath}, terrains via ${this.#terrainsRoot ?? "(none)"}, tokens=${this.#hasStationTokens}${this.#tokensRoot ? ` via ${this.#tokensRoot}` : ""})` : ""}`);
         if (this.#hasStationTokens) {
-            console.log(`${MODULE_ID} | ImageResolver: station tokens: [${[...this.#stationTokenFiles].join(", ")}]`);
+            Logger.log(`${MODULE_ID} | ImageResolver: station tokens: [${[...this.#stationTokenFiles].join(", ")}]`);
         }
     }
 

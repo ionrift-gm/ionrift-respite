@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 /**
  * CampfireTokenLinker
  * Finds a campfire token on the active scene and toggles its light source
@@ -102,11 +103,11 @@ export class CampfireTokenLinker {
             if (proto && (proto.bright > 0 || proto.dim > 0)) {
                 // Clone to avoid mutating the actor data
                 const light = foundry.utils.deepClone(proto.toObject?.() ?? proto);
-                console.log(`${MODULE_ID} | CampfireTokenLinker: using template from actor "${actor.name}"`, light);
+                Logger.log(`${MODULE_ID} | CampfireTokenLinker: using template from actor "${actor.name}"`, light);
                 return light;
             }
         }
-        console.log(`${MODULE_ID} | CampfireTokenLinker: no template actor with light config, using defaults`);
+        Logger.log(`${MODULE_ID} | CampfireTokenLinker: no template actor with light config, using defaults`);
         return foundry.utils.deepClone(DEFAULT_LIGHT);
     }
 
@@ -173,7 +174,7 @@ export class CampfireTokenLinker {
 
         const token = CampfireTokenLinker.findCampfireToken();
         if (!token) {
-            console.log(`${MODULE_ID} | CampfireTokenLinker: no campfire token found on scene`);
+            Logger.log(`${MODULE_ID} | CampfireTokenLinker: no campfire token found on scene`);
             return;
         }
 
@@ -199,7 +200,7 @@ export class CampfireTokenLinker {
                 "texture.scaleX": scale,
                 "texture.scaleY": scale
             });
-            console.log(`${MODULE_ID} | CampfireTokenLinker: light ON (${tierKey}), token visible`);
+            Logger.log(`${MODULE_ID} | CampfireTokenLinker: light ON (${tierKey}), token visible`);
         } else {
             const { x, y, width, height } = CampfireTokenLinker.#patchCenterPreserving(token, 1, 1);
             await token.update({
@@ -213,7 +214,7 @@ export class CampfireTokenLinker {
                 "light.bright": 0,
                 "light.dim": 0
             });
-            console.log(`${MODULE_ID} | CampfireTokenLinker: light OFF, token hidden`);
+            Logger.log(`${MODULE_ID} | CampfireTokenLinker: light OFF, token hidden`);
         }
     }
 

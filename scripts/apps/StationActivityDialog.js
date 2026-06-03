@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 /**
  * StationActivityDialog
  *
@@ -166,7 +167,7 @@ function _creditFeastMealState(restApp, partyIds, satiates) {
     _refreshGmRestIndicator(restApp);
     if (typeof restApp._refreshStationOverlayMeals === "function") restApp._refreshStationOverlayMeals();
     if (isStationLayerActive()) refreshStationEmptyNoticeFade(restApp);
-    console.log(`${MODULE_ID} | _creditFeastMealState: credited ${partyIds.length} party members`, { satiates });
+    Logger.log(`${MODULE_ID} | _creditFeastMealState: credited ${partyIds.length} party members`, { satiates });
 }
 
 export const COOK_ACTIVITY_IDS = new Set(["act_cook", "act_brew"]);
@@ -371,7 +372,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
     }
 
     async _prepareContext(options) {
-        console.log(`ionrift-respite | _prepareContext`, { state: this._dialogState, width: this.position?.width, actor: this._actor?.name });
+        Logger.log(`ionrift-respite | _prepareContext`, { state: this._dialogState, width: this.position?.width, actor: this._actor?.name });
         const base = {
             station:    this._station,
             actorName:  this._actor?.name ?? "Unknown",
@@ -755,7 +756,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
     _buildCraftingContext() {
         const actor = this._actor;
         const engine = this._restApp?._craftingEngine;
-        console.log(`ionrift-respite | _buildCraftingContext`, { hasActor: !!actor, hasEngine: !!engine, profession: this._craftProfession });
+        Logger.log(`ionrift-respite | _buildCraftingContext`, { hasActor: !!actor, hasEngine: !!engine, profession: this._craftProfession });
         if (!actor || !engine) return { crafting: null };
 
         const professionId = this._craftProfession;
@@ -907,7 +908,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
     static #onSelectActivity(event, target) {
         const activityId = target.dataset.activityId;
-        console.log(`ionrift-respite | #onSelectActivity`, { activityId, target: target?.outerHTML?.slice(0,120) });
+        Logger.log(`ionrift-respite | #onSelectActivity`, { activityId, target: target?.outerHTML?.slice(0,120) });
         if (!activityId) return;
         this._selectedActivityId = activityId;
         this._followUpValue = null;
@@ -929,7 +930,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             this._dialogState      = "crafting";
             this._preCraftWidth    = this.position?.width ?? DIALOG_WIDTH;
             this._craftDetailScrollTop = 0;
-            console.log(`ionrift-respite | cooking shortcut → crafting state`, { profession: this._craftProfession, width: this.position?.width });
+            Logger.log(`ionrift-respite | cooking shortcut → crafting state`, { profession: this._craftProfession, width: this.position?.width });
             this.setPosition({ width: CRAFT_SPLIT_WIDTH });
             this.render({ resetCraftScroll: true });
             return;
@@ -944,13 +945,13 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const activityId = this._selectedActivityId;
         if (!activityId || !this._restApp?.finalizeActivityChoiceFromStation) return;
 
-        console.log(`ionrift-respite | #onConfirm`, { activityId, hasRestApp: !!this._restApp?.finalizeActivityChoiceFromStation });
+        Logger.log(`ionrift-respite | #onConfirm`, { activityId, hasRestApp: !!this._restApp?.finalizeActivityChoiceFromStation });
         const resolver = this._restApp._activityResolver;
         const activity = resolver?.activities?.get(activityId)
             // Cooking activities live in _cookingAvailable, not the resolver
             ?? this._cookingAvailable?.find(a => a.id === activityId)
             ?? this._available?.find(a => a.id === activityId);
-        console.log(`ionrift-respite | #onConfirm activity`, { activity: activity?.id, isCrafting: !!activity?.crafting?.enabled, isCookId: !!COOK_ACTIVITY_IDS.has(activityId) });
+        Logger.log(`ionrift-respite | #onConfirm activity`, { activity: activity?.id, isCrafting: !!activity?.crafting?.enabled, isCookId: !!COOK_ACTIVITY_IDS.has(activityId) });
 
         // Armor penalty gate: warn before locking an activity that penalises sleeping in armor.
         const effectiveSafe = !!(this._restApp?._engine?.safeRestSpot ?? this._restApp?._restData?.safeRestSpot)
@@ -996,7 +997,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             // Widen for the split-panel crafting layout
             this._preCraftWidth = this.position?.width ?? DIALOG_WIDTH;
             this._craftDetailScrollTop = 0;
-            console.log(`ionrift-respite | entering crafting state`, { profession: this._craftProfession, preCraftWidth: this._preCraftWidth, newWidth: CRAFT_SPLIT_WIDTH });
+            Logger.log(`ionrift-respite | entering crafting state`, { profession: this._craftProfession, preCraftWidth: this._preCraftWidth, newWidth: CRAFT_SPLIT_WIDTH });
             this.setPosition({ width: CRAFT_SPLIT_WIDTH });
             this.render({ resetCraftScroll: true });
             return;
@@ -1118,7 +1119,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             ? [...resolver.activities.values()].find(a => a.crafting?.profession === profession)
             : null;
         const activityId = craftAct?.id ?? this._selectedActivityId;
-        console.log(`ionrift-respite | _autoCommitCraftResult DEBUG`, {
+        Logger.log(`ionrift-respite | _autoCommitCraftResult DEBUG`, {
             profession,
             resolverSize: resolver?.activities?.size ?? "no-resolver",
             craftActId: craftAct?.id ?? null,
@@ -1145,7 +1146,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             restApp._lockedCharacters = restApp._lockedCharacters ?? new Set();
             restApp._lockedCharacters.add(characterId);
             const choicesPayload = Object.fromEntries(restApp._characterChoices);
-            console.log(`ionrift-respite | _autoCommitCraftResult EMIT`, {
+            Logger.log(`ionrift-respite | _autoCommitCraftResult EMIT`, {
                 activityId,
                 choicesPayload,
                 characterId
@@ -1641,7 +1642,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 // Only swap if this actor is in the party
                 const partyIds = new Set(getPartyActors().map(a => a.id));
                 if (!partyIds.has(newActor.id)) return;
-                console.log(`ionrift-respite | Station dialog: GM token switch ${this._actor?.name} → ${newActor.name}`);
+                Logger.log(`ionrift-respite | Station dialog: GM token switch ${this._actor?.name} → ${newActor.name}`);
                 this._actor = newActor;
                 // Rebuild utensil state for the new actor
                 this._actorHasCookingUtensils = this._stationHasCooking && this._station?.id === "cooking_station"
@@ -1993,12 +1994,12 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             }
         );
         _openDialog = dialog;
-        console.log(`ionrift-respite | openForStation width`, { requested: dialogWidth, defaultWidth: DIALOG_WIDTH });
+        Logger.log(`ionrift-respite | openForStation width`, { requested: dialogWidth, defaultWidth: DIALOG_WIDTH });
         await dialog.render(true);
         // Force width. ApplicationV2 DEFAULT_OPTIONS may cap the constructor-passed position.
         if (dialogWidth !== DIALOG_WIDTH) {
             dialog.setPosition({ width: dialogWidth });
-            console.log(`ionrift-respite | openForStation setPosition forced`, { width: dialogWidth, actual: dialog.position?.width });
+            Logger.log(`ionrift-respite | openForStation setPosition forced`, { width: dialogWidth, actual: dialog.position?.width });
         }
         dialog._attachTrackers();
         dialog._syncTrackPosition();

@@ -10,7 +10,7 @@
   "rules": {
     "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
     "no-undef": "error",
-    "no-console": "off",
+    "no-console": ["error", { "allow": ["warn", "error"] }],
     "eqeqeq": ["error", "always"],
     "no-var": "error",
     "prefer-const": "warn",
@@ -19,6 +19,20 @@
     "no-unreachable": "error",
     "no-constant-condition": "warn"
   },
+  "overrides": [
+    {
+      "files": ["scripts/lib/Logger.js"],
+      "rules": {
+        "no-console": "off"
+      }
+    },
+    {
+      "files": ["scripts/services/RollRequestDcPulse.js"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ],
   "globals": {
     "game": "readonly",
     "ui": "readonly",

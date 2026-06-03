@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 /**
  * CampPropPlacer
  * GM-only utility that places paired camp prop tokens (stake + fire overlay)
@@ -174,7 +175,7 @@ async function createTorchPair(x, y, stakeImg) {
 
     // Batch create both tokens
     await scene.createEmbeddedDocuments("Token", [stakeData, flameData]);
-    console.log(`${MODULE_ID} | CampPropPlacer: created torch pair at (${sx}, ${sy}), link: ${linkId}`);
+    Logger.log(`${MODULE_ID} | CampPropPlacer: created torch pair at (${sx}, ${sy}), link: ${linkId}`);
 }
 
 /**
@@ -265,7 +266,7 @@ async function createCampfirePair(x, y) {
     };
 
     await scene.createEmbeddedDocuments("Token", [baseData, flameData]);
-    console.log(`${MODULE_ID} | CampPropPlacer: created campfire pair at (${sx}, ${sy}), link: ${linkId}`);
+    Logger.log(`${MODULE_ID} | CampPropPlacer: created campfire pair at (${sx}, ${sy}), link: ${linkId}`);
     return { x: sx, y: sy };
 }
 

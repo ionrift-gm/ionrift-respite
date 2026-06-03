@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 /**
  * MealPhaseHandler
  * Manages food and water consumption during the Meal phase of a long rest.
@@ -678,7 +679,7 @@ export class MealPhaseHandler {
                 for (const [itemId, amount] of foodUsage) {
                     const snapshot = snapMap.get(itemId);
                     const consumed = await this._consumeItem(actor, itemId, amount);
-                    console.log(`[Respite:Meal] Consumed ${consumed}x food item ${itemId} from ${actor.name}`);
+                    Logger.log(`[Respite:Meal] Consumed ${consumed}x food item ${itemId} from ${actor.name}`);
                     if (snapshot && consumed > 0) {
                         for (let u = 0; u < consumed; u++) {
                             await MealPhaseHandler._dispatchWellFedMealServing({
@@ -691,7 +692,7 @@ export class MealPhaseHandler {
                 }
                 for (const [itemId, amount] of waterUsage) {
                     const consumed = await this._consumeItem(actor, itemId, amount);
-                    console.log(`[Respite:Meal] Consumed ${consumed} pint(s) from water item ${itemId} from ${actor.name}`);
+                    Logger.log(`[Respite:Meal] Consumed ${consumed} pint(s) from water item ${itemId} from ${actor.name}`);
                 }
             }
 
@@ -765,7 +766,7 @@ export class MealPhaseHandler {
                     food: [],
                     water: []
                 });
-                console.log(`[Respite:Meal] Auto-consumed active selections for ${charId} (day ${consumed.length})`);
+                Logger.log(`[Respite:Meal] Auto-consumed active selections for ${charId} (day ${consumed.length})`);
             }
         }
 
@@ -991,7 +992,7 @@ export class MealPhaseHandler {
             }
         }
         if (removed > 0) {
-            console.log(`[Respite:Meal] Cleaned ${removed} Well Fed effect(s) at rest start`);
+            Logger.log(`[Respite:Meal] Cleaned ${removed} Well Fed effect(s) at rest start`);
         }
         return removed;
     }

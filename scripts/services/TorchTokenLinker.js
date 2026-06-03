@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 /**
  * TorchTokenLinker
  * Finds all perimeter torch tokens on the active scene and toggles their
@@ -93,11 +94,11 @@ export class TorchTokenLinker {
             const proto = actor.prototypeToken?.light;
             if (proto && (proto.bright > 0 || proto.dim > 0)) {
                 const light = foundry.utils.deepClone(proto.toObject?.() ?? proto);
-                console.log(`${MODULE_ID} | TorchTokenLinker: using template from actor "${actor.name}"`, light);
+                Logger.log(`${MODULE_ID} | TorchTokenLinker: using template from actor "${actor.name}"`, light);
                 return light;
             }
         }
-        console.log(`${MODULE_ID} | TorchTokenLinker: no template actor with light config, using defaults`);
+        Logger.log(`${MODULE_ID} | TorchTokenLinker: no template actor with light config, using defaults`);
         return foundry.utils.deepClone(DEFAULT_LIGHT);
     }
 
@@ -118,7 +119,7 @@ export class TorchTokenLinker {
 
         const torches = TorchTokenLinker.findAllTorchTokens();
         if (!torches.length) {
-            console.log(`${MODULE_ID} | TorchTokenLinker: no perimeter torch tokens found on scene`);
+            Logger.log(`${MODULE_ID} | TorchTokenLinker: no perimeter torch tokens found on scene`);
             return;
         }
 
@@ -130,7 +131,7 @@ export class TorchTokenLinker {
                 light: lightData
             }));
             await canvas.scene.updateEmbeddedDocuments("Token", updates);
-            console.log(`${MODULE_ID} | TorchTokenLinker: ${torches.length} torch(es) light ON, visible`);
+            Logger.log(`${MODULE_ID} | TorchTokenLinker: ${torches.length} torch(es) light ON, visible`);
         } else {
             const updates = torches.map(t => ({
                 _id: t.id,
@@ -139,7 +140,7 @@ export class TorchTokenLinker {
                 "light.dim": 0
             }));
             await canvas.scene.updateEmbeddedDocuments("Token", updates);
-            console.log(`${MODULE_ID} | TorchTokenLinker: ${torches.length} torch(es) light OFF, hidden`);
+            Logger.log(`${MODULE_ID} | TorchTokenLinker: ${torches.length} torch(es) light OFF, hidden`);
         }
     }
 

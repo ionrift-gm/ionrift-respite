@@ -19,9 +19,8 @@ jobs:
   lint:
     uses: ionrift-gm/ionrift-ci/.github/workflows/lint.yml@main
     with:
-      # Respite uses .js, scans lang/ for inclusion check.
-      # Ratchet max-warnings down from 250 as violations are resolved.
       eslint_max_warnings: 250
+      eslint_extra_args: "--ignore-pattern 'scripts/tests/**'"
       # Test runner imports (./tests/RespiteTestRunner.js) are runtime-probe-gated.
       # fetch HEAD check + try/catch ensures graceful no-op in production.
       # The static checker can't evaluate those guards, so skip it.
@@ -105,3 +104,18 @@ jobs:
 
       - name: Validate core event JSON
         run: node tools/validate-event-schema.mjs
+
+  debug-logging:
+    name: Debug logging gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Block residual debug traces
+        run: node tools/lint-debug-logging.mjs

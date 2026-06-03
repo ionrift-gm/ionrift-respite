@@ -33,7 +33,13 @@ const ACTIVITY_TOGGLES = [
         key: "enableEncounters",
         label: "Night Encounters & Watch",
         icon: "fas fa-shield-alt",
-        hint: "Keep Watch, Set Up Defenses, scouting, and the night encounter roll. Off keeps the night closer to RAW; the GM can still improvise an event by hand."
+        hint: "Keep Watch, Set Up Defenses, scouting, and the night encounter roll. Off skips the encounter layer; the night passes without a check."
+    },
+    {
+        key: "enableCopySpell",
+        label: "Copy Spell",
+        icon: "fas fa-scroll",
+        hint: "Copy Spell activity during long rests for wizards with a spellbook."
     }
 ];
 

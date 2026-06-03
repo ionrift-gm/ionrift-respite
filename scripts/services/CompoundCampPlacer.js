@@ -1,3 +1,4 @@
+import { Logger } from "../lib/Logger.js";
 /**
  * CompoundCampPlacer
  * Places the campfire pit (base + flame tokens) on the active scene. Shared
@@ -537,7 +538,7 @@ export async function placeCampfire(worldX, worldY, options = {}) {
 
     await scene.createEmbeddedDocuments("Token", [baseData, flameData]);
 
-    console.log(`${MODULE_ID} | CompoundCampPlacer: placed campfire at (${cx}, ${cy}), session: ${sessionId}`);
+    Logger.log(`${MODULE_ID} | CompoundCampPlacer: placed campfire at (${cx}, ${cy}), session: ${sessionId}`);
     ui.notifications.info("Campfire placed on scene.");
 
     return { sessionId, center: { x: cx, y: cy } };
@@ -598,7 +599,7 @@ export async function placeStation(worldX, worldY, stationKey) {
     });
 
     await scene.createEmbeddedDocuments("Token", [tokenData]);
-    console.log(`${MODULE_ID} | CompoundCampPlacer: placed station ${stationKey} at (${tx}, ${ty})`);
+    Logger.log(`${MODULE_ID} | CompoundCampPlacer: placed station ${stationKey} at (${tx}, ${ty})`);
     return true;
 }
 
@@ -622,7 +623,7 @@ export async function clearSharedCampStation(stationKey) {
     if (!matches.length) return 0;
 
     await scene.deleteEmbeddedDocuments("Token", matches.map(t => t.id));
-    console.log(`${MODULE_ID} | CompoundCampPlacer: cleared station ${stationKey} (${matches.length} token(s))`);
+    Logger.log(`${MODULE_ID} | CompoundCampPlacer: cleared station ${stationKey} (${matches.length} token(s))`);
     return matches.length;
 }
 
@@ -680,7 +681,7 @@ export async function placePlayerGear(worldX, worldY, gearType, actorId) {
         await item.setFlag(MODULE_ID, "deployedInCamp", true);
     }
 
-    console.log(`${MODULE_ID} | CompoundCampPlacer: placed ${gearType} for ${actor.name} at (${tx}, ${ty})`);
+    Logger.log(`${MODULE_ID} | CompoundCampPlacer: placed ${gearType} for ${actor.name} at (${tx}, ${ty})`);
     return true;
 }
 
@@ -719,7 +720,7 @@ export async function clearPlayerCampGearType(actorId, gearType, sceneId = null)
     }
 
     await scene.deleteEmbeddedDocuments("Token", mine.map(t => t.id));
-    console.log(`${MODULE_ID} | CompoundCampPlacer: cleared ${mine.length} ${gearType} token(s) for actor ${actorId}`);
+    Logger.log(`${MODULE_ID} | CompoundCampPlacer: cleared ${mine.length} ${gearType} token(s) for actor ${actorId}`);
     return mine.length;
 }
 
@@ -778,7 +779,7 @@ export async function clearCampTokens() {
     const ids = campTokens.map(t => t.id);
     await scene.deleteEmbeddedDocuments("Token", ids);
 
-    console.log(`${MODULE_ID} | CompoundCampPlacer: cleared ${ids.length} camp tokens`);
+    Logger.log(`${MODULE_ID} | CompoundCampPlacer: cleared ${ids.length} camp tokens`);
     _campSessionId = null;
 
     return ids.length;
@@ -824,7 +825,7 @@ export async function clearPlayerCampGear(actorId, sceneId = null) {
     }
 
     await scene.deleteEmbeddedDocuments("Token", mine.map(t => t.id));
-    console.log(`${MODULE_ID} | CompoundCampPlacer: cleared ${mine.length} player gear token(s) for actor ${actorId}`);
+    Logger.log(`${MODULE_ID} | CompoundCampPlacer: cleared ${mine.length} player gear token(s) for actor ${actorId}`);
     return mine.length;
 }
 
@@ -939,7 +940,7 @@ export function getCampStationLayoutOffsets(offset, safeRestSpot = false) {
  */
 export async function autoPlaceStations(safeRestSpot = false) {
     if (!AUTO_PLACE_STATIONS) {
-        console.log(`${MODULE_ID} | autoPlaceStations: feature flag disabled`);
+        Logger.log(`${MODULE_ID} | autoPlaceStations: feature flag disabled`);
         return [];
     }
     if (!game.user.isGM) return [];
@@ -947,7 +948,7 @@ export async function autoPlaceStations(safeRestSpot = false) {
     hydrateCampSessionFromScene();
     const center = pitCenterWorld();
     if (!center) {
-        console.log(`${MODULE_ID} | autoPlaceStations: no campfire center found`);
+        Logger.log(`${MODULE_ID} | autoPlaceStations: no campfire center found`);
         return [];
     }
 
@@ -981,7 +982,7 @@ export async function autoPlaceStations(safeRestSpot = false) {
 
         const v = validateStationEquipmentDrop(worldX, worldY, slot.key);
         if (!v.ok) {
-            console.log(`${MODULE_ID} | autoPlaceStations: skipping ${slot.key}, validation failed: ${v.reason}`);
+            Logger.log(`${MODULE_ID} | autoPlaceStations: skipping ${slot.key}, validation failed: ${v.reason}`);
             continue;
         }
 
@@ -992,7 +993,7 @@ export async function autoPlaceStations(safeRestSpot = false) {
         placed.push(slot.key);
     }
 
-    console.log(`${MODULE_ID} | autoPlaceStations: placed ${placed.length}/${layout.length} stations: [${placed.join(", ")}]`);
+    Logger.log(`${MODULE_ID} | autoPlaceStations: placed ${placed.length}/${layout.length} stations: [${placed.join(", ")}]`);
     return placed;
 }
 
@@ -1158,7 +1159,7 @@ export async function placeStationPlaceholders(safeRestSpot = false) {
     hydrateCampSessionFromScene();
     const center = pitCenterWorld();
     if (!center) {
-        console.log(`${MODULE_ID} | placeStationPlaceholders: no pit center`);
+        Logger.log(`${MODULE_ID} | placeStationPlaceholders: no pit center`);
         return [];
     }
 
@@ -1194,20 +1195,20 @@ export async function placeStationPlaceholders(safeRestSpot = false) {
                     for (const blocker of blockers) {
                         const moved = await nudgeTokenTowardCenter(blocker, center, scene);
                         if (!moved) {
-                            console.log(`${MODULE_ID} | placeStationPlaceholders: could not nudge ${blocker.id} off ${slot.key} slot`);
+                            Logger.log(`${MODULE_ID} | placeStationPlaceholders: could not nudge ${blocker.id} off ${slot.key} slot`);
                         }
                     }
                     continue;
                 }
             }
-            console.log(`${MODULE_ID} | placeStationPlaceholders: skip ${slot.key} (${v.reason})`);
+            Logger.log(`${MODULE_ID} | placeStationPlaceholders: skip ${slot.key} (${v.reason})`);
             continue;
         }
         const tokenData = buildPlaceholderToken(slot.key, v.tx, v.ty);
         await scene.createEmbeddedDocuments("Token", [tokenData]);
         placed.push(slot.key);
     }
-    console.log(`${MODULE_ID} | placeStationPlaceholders: [${placed.join(", ")}]`);
+    Logger.log(`${MODULE_ID} | placeStationPlaceholders: [${placed.join(", ")}]`);
     return placed;
 }
 
@@ -1289,7 +1290,7 @@ export async function promoteAllPlaceholders(safeRestSpot = false) {
     }
     if (updates.length) {
         await scene.updateEmbeddedDocuments("Token", updates);
-        console.log(`${MODULE_ID} | promoteAllPlaceholders: ${updates.length} token(s) updated`);
+        Logger.log(`${MODULE_ID} | promoteAllPlaceholders: ${updates.length} token(s) updated`);
     }
     return toPromote.map(t => t.flags?.[MODULE_ID]?.targetStationKey).filter(Boolean);
 }
