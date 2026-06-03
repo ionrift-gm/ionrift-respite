@@ -11,6 +11,7 @@ import { CampGearScanner } from "../../services/CampGearScanner.js";
 import { CampfireTokenLinker } from "../../services/CampfireTokenLinker.js";
 import { emitPhaseChanged } from "../../services/SocketController.js";
 import { isComfortEnabled } from "../../services/ComfortCalculator.js";
+import { requiresMapCampFire } from "../../services/RestProfileSettings.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -83,7 +84,7 @@ export class CampCeremonyDelegate {
      * @returns {boolean}
      */
     isFireCommitted() {
-        if (!isComfortEnabled()) return true; // no fire phase when comfort disabled
+        if (!isComfortEnabled() && !requiresMapCampFire()) return true;
         return !!this.fireLitBy || this.coldCampDecided;
     }
 
@@ -197,7 +198,7 @@ export class CampCeremonyDelegate {
      */
     async selectColdCamp() {
         if (!game.user.isGM) return;
-        if (!isComfortEnabled()) return;
+        if (!isComfortEnabled() && !requiresMapCampFire()) return;
         if (this.coldCampDecided && (this.fireLevel ?? "unlit") === "unlit") return;
 
         this.coldCampDecided = true;

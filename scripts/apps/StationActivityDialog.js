@@ -14,7 +14,9 @@ import {
     DETECT_MAGIC_BTN_LABEL_GM,
     DETECT_MAGIC_BTN_LABEL_PLAYER,
     DETECT_MAGIC_BTN_LABEL_DISMISS,
-    DETECT_MAGIC_BTN_TITLE_GM
+    DETECT_MAGIC_BTN_TITLE_GM,
+    isWorkbenchExamineUiEnabled,
+    isWorkbenchIdentifyUiEnabled
 } from "./RestConstants.js";
 import { buildActivityListItem, buildActivityDetailContext } from "./ActivityDetailBuilder.js";
 import { computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, getDetectMagicPlayerAccessReason, spawnDetectMagicCastRipple } from "./delegates/DetectMagicDelegate.js";
@@ -424,7 +426,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         // ── Shared pool gating (must be before tab building) ──────────────
         // Determine early whether this viewer can see the party-wide Identify tab.
         // GM and actors with the Identify spell prepared can see it.
-        const _identifyGateData = (hubEligible && this._station?.id === "workbench" && this._restApp?.getStationIdentifyEmbedContext)
+        const _identifyGateData = (hubEligible && isWorkbenchIdentifyUiEnabled() && this._station?.id === "workbench" && this._restApp?.getStationIdentifyEmbedContext)
             ? this._restApp.getStationIdentifyEmbedContext({})
             : { identifyCasters: [], unidentifiedItems: [] };
         const isIdentifyCaster = _identifyGateData.identifyCasters?.some(c => c.id === this._actor?.id);
@@ -459,12 +461,13 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 });
             }
         } else if (hubEligible && this._station.id === "workbench") {
-            if (hasAnyGeneral) stationTabs.push({ id: "activity", label: "Activities" });
-            // Examine tab: Focus/Potion self-service, available to all players.
-            stationTabs.push({ id: "examine", label: "Examine" });
-            // Identify tab: click-to-identify party list, GM or Identify casters only.
-            // canSeeSharedPool is computed early so the tab can be conditionally added.
-            if (this._canSeeSharedPool) {
+            if (hasAnyGeneral && !this._actorChoiceLocked) {
+                stationTabs.push({ id: "activity", label: "Activities" });
+            }
+            if (isWorkbenchExamineUiEnabled()) {
+                stationTabs.push({ id: "examine", label: "Examine" });
+            }
+            if (isWorkbenchIdentifyUiEnabled() && this._canSeeSharedPool) {
                 stationTabs.push({ id: "identify", label: "Identify" });
             }
         } else if (hubEligible && this._station.id === "campfire") {
@@ -501,7 +504,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         // Identify embed context: Examine tab uses own-only; Identify tab uses party-wide.
         // canSeeSharedPool was pre-computed at construction in _buildListContext preamble.
-        const identifyEmbedOwn = (this._station?.id === "workbench" && this._restApp?.getStationIdentifyEmbedContext)
+        const identifyEmbedOwn = (isWorkbenchExamineUiEnabled()
+            && this._station?.id === "workbench"
+            && this._restApp?.getStationIdentifyEmbedContext)
             ? this._restApp.getStationIdentifyEmbedContext({
                 restrictUnidentifiedToActorId: this._actor?.id ?? null
             })
@@ -518,7 +523,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             workbenchAckRevealReady: true,
             workbenchFocusExhausted: false
         };
-        const wbCtx = (this._station?.id === "workbench" && this._restApp?.getWorkbenchIdentifyDragContext)
+        const wbCtx = (isWorkbenchExamineUiEnabled()
+            && this._station?.id === "workbench"
+            && this._restApp?.getWorkbenchIdentifyDragContext)
             ? this._restApp.getWorkbenchIdentifyDragContext(this._actor?.id ?? null)
             : wbWorkbenchDefaults;
 
@@ -536,7 +543,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             stationPanelTab:  this._stationPanelTab,
             mealCard,
             mealCardNeedsEssence: !!(mealCard?.needsEssence),
-            stationIdentifyHub: this._station?.id === "workbench",
+            workbenchExamineEnabled: this._station?.id === "workbench" && isWorkbenchExamineUiEnabled(),
+            workbenchIdentifyUiEnabled: isWorkbenchIdentifyUiEnabled(),
             unidentifiedItems: identifyEmbed.unidentifiedItems ?? [],
             unidentifiedItemsByOwner,
             canSeeSharedPool: this._canSeeSharedPool,
@@ -685,11 +693,13 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             }
         } else if (this._station.id === "workbench") {
             const hasGeneral = this._available.length > 0;
-            if (hasGeneral) stationTabs.push({ id: "activity", label: "Activities" });
-            // Examine tab: Focus/Potion self-service, available to all players.
-            stationTabs.push({ id: "examine", label: "Examine" });
-            // Identify tab: click-to-identify party list, GM or Identify casters only.
-            if (this._canSeeSharedPool) {
+            if (hasGeneral && !this._actorChoiceLocked) {
+                stationTabs.push({ id: "activity", label: "Activities" });
+            }
+            if (isWorkbenchExamineUiEnabled()) {
+                stationTabs.push({ id: "examine", label: "Examine" });
+            }
+            if (isWorkbenchIdentifyUiEnabled() && this._canSeeSharedPool) {
                 stationTabs.push({ id: "identify", label: "Identify" });
             }
         } else if (this._station.id === "campfire") {
@@ -1910,7 +1920,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const cookingFaded = lists.cookingFaded;
 
         const trackFood = game.settings.get(MODULE_ID, "trackFood");
-        const workbenchHub = station.id === "workbench";
+        const workbenchHub = station.id === "workbench" && isWorkbenchExamineUiEnabled();
         const longRest = (restSession?.restType ?? "long") !== "short";
         const campfireHub = station.id === "campfire"
             && longRest
@@ -1929,8 +1939,12 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             const rationsDoneOpen = !!(mealCardOpen?.allDaysConsumed || mealCardOpen?.playerSubmitted);
             initialStationTab = (rationsDoneOpen && stationHasCooking) ? "cooking" : "meal";
         }
-        if (workbenchHub && generalAvailable.length === 0) {
-            initialStationTab = "identify";
+        if (workbenchHub) {
+            if (actorChoiceLocked || generalAvailable.length === 0) {
+                initialStationTab = "examine";
+            } else if (isWorkbenchIdentifyUiEnabled() && generalAvailable.length === 0) {
+                initialStationTab = "identify";
+            }
         }
         if (campfireHub) initialStationTab = "camp";
 
