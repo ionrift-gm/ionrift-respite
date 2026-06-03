@@ -909,9 +909,9 @@
                     {{/each}}
                 </div>
                 {{#if campColdCampDecided}}
-                <p class="totm-fire-segment-desc">No fire tonight. <span class="fire-penalty">−1 comfort.</span> <span class="fire-benefit">Harder for enemies to spot.</span> No cooking.</p>
+                <p class="totm-fire-segment-desc">No fire tonight. <span class="fire-penalty">−1 comfort.</span> <span class="fire-benefit">Harder for enemies to spot (lower encounter chance).</span> No cooking.</p>
                 {{else if campPreviewIsColdCamp}}
-                <p class="totm-fire-segment-desc">No fire tonight. <span class="fire-penalty">−1 comfort.</span> <span class="fire-benefit">Harder for enemies to spot.</span> No cooking.</p>
+                <p class="totm-fire-segment-desc">No fire tonight. <span class="fire-penalty">−1 comfort.</span> <span class="fire-benefit">Harder for enemies to spot (lower encounter chance).</span> No cooking.</p>
                 {{else}}
                 {{#each campFirePickerLevels}}
                 {{#if selected}}
@@ -920,6 +920,9 @@
                 {{/each}}
                 {{/if}}
 
+                {{#if showCampCeremonyMinigame}}
+                <div class="totm-camp-minigame-host"></div>
+                {{else}}
                 {{#unless campFireIsLit}}
                 {{#unless campColdCampDecided}}
                 {{#unless campPreviewIsColdCamp}}
@@ -975,6 +978,7 @@
                 {{/unless}}
                 {{/unless}}
                 {{/unless}}
+                {{/if}}
             </div>
 
             {{!-- Firewood pledges (after fire is lit) --}}
@@ -1118,8 +1122,10 @@
     {{!-- Subtle separator between roster and tabs (DC shown in footer for GM) --}}
     <div class="roster-tab-fade"></div>
 
-    {{!-- TotM: either the detail view (activity inspected) or the tabbed interface --}}
+    {{!-- TotM: main column + permanent campfire panel (activity phase) --}}
     {{#if isTheaterMode}}
+    <div class="totm-activity-layout{{#unless showTotmCampfirePanel}} totm-activity-layout--no-panel{{/unless}}">
+    <div class="totm-activity-main">
     {{#if totmDetailPanel}}
     {{!-- Detail view: full-width, replaces the grid while an activity is being confirmed --}}
     <div class="totm-detail-view">
@@ -1594,14 +1600,12 @@
             <i class="fas fa-search" aria-hidden="true"></i> Identify
         </button>
         {{/if}}
-        {{#unless safeRestSpot}}
-        {{#if comfortEnabled}}
+        {{#if totmFireTabVisible}}
         <button type="button" class="totm-tab {{#if (eq totmActiveTab 'fire')}}active{{/if}}"
                 data-action="switchTotmTab" data-totm-tab="fire">
             <i class="fas fa-fire" aria-hidden="true"></i> Fire
         </button>
         {{/if}}
-        {{/unless}}
     </div>
 
     {{!-- ── Activities Tab ── --}}
@@ -1678,10 +1682,9 @@
     {{/if}}
     {{/if}}
 
-    {{!-- ── Fire Tab (not used at a safe rest spot or when comfort is off) ── --}}
+    {{!-- ── Fire Tab (tier picker when campfire minigame is off) ── --}}
+    {{#if totmFireTabVisible}}
     {{#if (eq totmActiveTab 'fire')}}
-    {{#if comfortEnabled}}
-    {{#unless safeRestSpot}}
     <div class="totm-fire-panel ionrift-list">
         <div class="totm-fire-current">
             {{#if campFireIsLit}}
@@ -1703,11 +1706,22 @@
         </div>
         {{> fireTierPicker}}
     </div>
-    {{/unless}}
     {{/if}}
     {{/if}}
 
     {{/if}}
+
+    </div>{{!-- /totm-activity-main --}}
+    {{#if showTotmCampfirePanel}}
+    <aside class="totm-campfire-side-panel" aria-label="Campfire minigame">
+        <div class="totm-campfire-side-header">
+            <i class="fas fa-fire" aria-hidden="true"></i>
+            <span>Campfire</span>
+        </div>
+        <div class="totm-campfire-minigame-host"></div>
+    </aside>
+    {{/if}}
+    </div>{{!-- /totm-activity-layout --}}
 
     {{/if}} {{!-- /isTheaterMode --}}
 
@@ -2171,7 +2185,7 @@
         {{/if}}
 
     </div>
-    {{!-- Campfire drawer: spatial mode only. TotM handles fire in the Activities tab. --}}
+    {{!-- Campfire drawer: spatial mode only. TotM uses the activity-phase side panel. --}}
     {{#unless isTheaterMode}}
     <div class="campfire-drawer">
         <div class="campfire-drawer-content"></div>

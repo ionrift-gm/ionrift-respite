@@ -9,6 +9,7 @@ import { Logger } from "../lib/Logger.js";
 
 import {
     ACTIVITY_ICONS,
+    applyActivityPortraitAssignments,
     buildPartyState,
     getActivityAdvisory,
     DETECT_MAGIC_BTN_LABEL_GM,
@@ -404,11 +405,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const assignments = this._buildActivityAssignments();
         const _injectAssignments = (items) => {
             for (const item of items) {
-                const assigned = assignments[item.id] ?? [];
-                // Show up to 3 portraits; extra count as "+N"
-                item.assignedPortraits = assigned.slice(0, 3);
-                item.assignedOverflow = Math.max(0, assigned.length - 3);
-                item.hasAssignments = assigned.length > 0;
+                applyActivityPortraitAssignments(item, assignments[item.id] ?? []);
             }
         };
         _injectAssignments(activityItems);

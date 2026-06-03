@@ -1,4 +1,18 @@
 import { getPartyActors } from "./partyActors.js";
+
+const MODULE_ID = "ionrift-respite";
+
+/**
+ * @param {Item} item
+ * @returns {boolean}
+ */
+export function isActorFirewoodItem(item) {
+    if (!item) return false;
+    const n = (item.name ?? "").toLowerCase();
+    const firewoodType = item.flags?.[MODULE_ID]?.firewoodType;
+    if (firewoodType === "kindling" || firewoodType === "firewood") return true;
+    return n.includes("firewood") || n === "kindling";
+}
 import {
     COMFORT_TIERS,
     boostComfort,
@@ -19,6 +33,39 @@ import {
  * Also provides recovery previews (HP/HD/exhaustion) so the Make Camp
  * phase can show players the mechanical impact of their gear and fire state.
  */
+
+/**
+ * @param {Actor} actor
+ * @returns {number}
+ */
+export function countActorFirewood(actor) {
+    if (!actor) return 0;
+    return (actor.items ?? [])
+        .filter(i => isActorFirewoodItem(i))
+        .reduce((sum, i) => sum + (i.system?.quantity ?? 1), 0);
+}
+
+/**
+ * First stack with firewood or kindling and quantity remaining.
+ * @param {Actor} actor
+ * @returns {Item|null}
+ */
+export function findConsumableFirewoodItem(actor) {
+    if (!actor) return null;
+    return (actor.items ?? []).find(i =>
+        isActorFirewoodItem(i) && (i.system?.quantity ?? 1) > 0
+    ) ?? null;
+}
+
+/** @param {Actor} actor @returns {boolean} */
+export function actorHasTinderbox(actor) {
+    if (!actor) return false;
+    return (actor.items ?? []).some(i => {
+        const n = i.name?.toLowerCase() ?? "";
+        return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
+    });
+}
+
 export class CampGearScanner {
 
     static getRules(tier) {
@@ -32,10 +79,16 @@ export class CampGearScanner {
 
     /** Firewood spent when the party commits this fire level during Make Camp. */
     static FIREWOOD_COST_BY_LEVEL = Object.freeze({
-        embers: 0,
-        campfire: 1,
-        bonfire: 2
+        embers: 1,
+        campfire: 2,
+        bonfire: 3
     });
+
+    /** @param {string} level - embers | campfire | bonfire */
+    static firewoodCostLabel(level) {
+        const n = this.FIREWOOD_COST_BY_LEVEL[level] ?? 0;
+        return `${n} firewood`;
+    }
 
     /**
      * Encounter modifier from fire size.
@@ -138,10 +191,7 @@ export class CampGearScanner {
             i.name.includes("flint & steel")
         );
 
-        const firewoodItem = items.find(i =>
-            i.name.includes("firewood") || i.name === "kindling"
-        );
-        const firewoodCount = firewoodItem?.quantity ?? 0;
+        const firewoodCount = countActorFirewood(actor);
 
         return {
             actorId: actor.id,
@@ -300,7 +350,14 @@ export class CampGearScanner {
                 firewoodHolders: [],
                 totalFirewood: 0,
                 canLightFire: false,
-                fireSelection: { canPickEmbers: false, canPickCampfire: false, canPickBonfire: false, costEmbers: 0, costCampfire: 1, costBonfire: 2 },
+                fireSelection: {
+                    canPickEmbers: false,
+                    canPickCampfire: false,
+                    canPickBonfire: false,
+                    costEmbers: this.FIREWOOD_COST_BY_LEVEL.embers,
+                    costCampfire: this.FIREWOOD_COST_BY_LEVEL.campfire,
+                    costBonfire: this.FIREWOOD_COST_BY_LEVEL.bonfire
+                },
                 fireIsLit: false,
                 fireLevel: "unlit",
                 shelterSpell,
@@ -436,7 +493,7 @@ export class CampGearScanner {
         const costBonfire = this.FIREWOOD_COST_BY_LEVEL.bonfire ?? 2;
         const canTinder = fireLighters.length > 0;
         const fireSelection = {
-            canPickEmbers: true,  // embers just needs any fire starter; disabled state handled by UI
+            canPickEmbers: canTinder && totalFirewood >= costEmbers,
             canPickCampfire: canTinder && totalFirewood >= costCampfire,
             canPickBonfire: canTinder && totalFirewood >= costBonfire,
             costEmbers,

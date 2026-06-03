@@ -143,6 +143,26 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         onChange: () => registerItemEnrichments()
     });
 
+    game.settings.register(MODULE_ID, "enableCampfireMinigame", {
+        name: "Campfire Minigame (Theater of the Mind)",
+        hint: "TotM Make Camp and Activities use the campfire minigame when on. Tier segments still preview comfort before you light the pit.",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false,
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "enableWorkbenchIdentify", {
+        name: "Workbench Identify Tab (TotM)",
+        hint: "During TotM Activities, show the Identify tab for the workbench station. Off hides in-rest identification UI (use spellcasting at the table instead).",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: true,
+        restricted: true
+    });
+
     game.settings.register(MODULE_ID, "spellRecoveryMaxLevel", {
         name: "Spell Recovery Max Level",
         hint: "Maximum spell slot level recoverable via Arcane Recovery and Natural Recovery. The default matches the 2014 rules cap of 5. Increase for homebrew.",
@@ -696,6 +716,8 @@ export const SETTING_KEYS = [
     "interceptRests",
     "armorDoffRule",
     "enableComfort",
+    "enableCampfireMinigame",
+    "enableWorkbenchIdentify",
     "spellRecoveryMaxLevel",
     "songOfRestTiming",
     "maxValueHitDice",

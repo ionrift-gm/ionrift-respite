@@ -56,6 +56,8 @@ const SPREAD_INTERVAL = 0.3;  // seconds between fire spread checks per burning 
  * @property {number} angularVel - rotation speed in rad/s
  * @property {boolean} settled - has come to rest on ground
  * @property {string} [icon] - FontAwesome class for items
+ * @property {string} [img] - Item image path for kindling/firewood drops
+ * @property {boolean} [catchFire] - Always run ignite delay and burn animation
  * @property {string} [label] - tooltip label
  * @property {string} [owner] - player who created this
  * @property {Function} [onSettle] - callback when item settles
@@ -84,6 +86,10 @@ export class CampfirePhysics {
     onItemBurned = null;
     /** @type {Map<string, Map<string, OffscreenCanvas>>} icon class -> color -> rendered canvas */
     _iconCache = new Map();
+    /** @type {Map<string, HTMLCanvasElement>} src@size -> rendered canvas */
+    _imageCache = new Map();
+    /** @type {Set<string>} */
+    _imageLoadPending = new Set();
     /** Whether icon font is ready */
     _fontReady = false;
 
@@ -177,9 +183,9 @@ export class CampfirePhysics {
      * Drop an item (stick or whittled figure) with gravity physics.
      * @param {number} x - drop x (0-1 normalized)
      * @param {number} y - drop y (0-1 normalized)
-     * @param {string} icon - FontAwesome class
+     * @param {string|null} icon - FontAwesome class (omit when opts.img is set)
      * @param {string} color - CSS color
-     * @param {object} [opts] - {label, owner, onSettle, burstOnSettle}
+     * @param {object} [opts] - {label, owner, onSettle, burstOnSettle, img, catchFire}
      */
     addFallingItem(x, y, icon, color, opts = {}) {
         const px = x * this._displayWidth;
@@ -200,11 +206,13 @@ export class CampfirePhysics {
             rotation: (Math.random() - 0.5) * 0.5,
             angularVel: centerBias + spinVariance,
             settled: false,
-            icon,
+            icon: opts.img ? null : icon,
+            img: opts.img ?? null,
             label: opts.label ?? "",
             owner: opts.owner ?? "",
             onSettle: opts.onSettle ?? null,
-            burstOnSettle: opts.burstOnSettle ?? false
+            burstOnSettle: opts.burstOnSettle ?? false,
+            catchFire: opts.catchFire ?? false
         });
     }
 
@@ -319,20 +327,23 @@ export class CampfirePhysics {
 
         this._settledPile.push(item);
 
-        // Fire zone check
-        if (this._isInFireZone(item.x, item.y)) {
-            item.igniteDelay = BURN_IGNITE_DELAY;
+        this._applyCatchFireOnSettle(item);
+    }
+
+    /** Ignite delay, neighbor spread, and burn lifecycle (whittled figures and kindling). */
+    _applyCatchFireOnSettle(obj) {
+        if (obj.catchFire || this._isInFireZone(obj.x, obj.y)) {
+            obj.igniteDelay = BURN_IGNITE_DELAY;
         }
 
-        // Catch fire if adjacent to burning item
         for (const neighbor of this._settledPile) {
-            if (!neighbor.burning || neighbor === item) continue;
-            const dx = item.x - neighbor.x;
-            const dy = item.y - neighbor.y;
+            if (!neighbor.burning || neighbor === obj) continue;
+            const dx = obj.x - neighbor.x;
+            const dy = obj.y - neighbor.y;
             if (Math.sqrt(dx * dx + dy * dy) < FIRE_SPREAD_DIST) {
-                item.burning = true;
-                item.burnTimer = 0;
-                item.spreadTimer = 0;
+                obj.burning = true;
+                obj.burnTimer = 0;
+                obj.spreadTimer = 0;
                 break;
             }
         }
@@ -462,8 +473,13 @@ export class CampfirePhysics {
         for (let i = this._settledPile.length - 1; i >= 0; i--) {
             const item = this._settledPile[i];
 
-            // Ignition delay countdown for fire-zone items
+            // Ignition delay countdown for fire-zone / kindling items
             if (item.igniteDelay !== undefined && item.igniteDelay > 0 && !item.burning) {
+                if (item.catchFire && Math.random() < dt * 10) {
+                    const nx = item.x / this._displayWidth;
+                    const ny = item.y / this._displayHeight;
+                    this.emitSparks(nx, ny, item.color ?? "#ffaa33", 2);
+                }
                 item.igniteDelay -= dt;
                 if (item.igniteDelay <= 0) {
                     item.burning = true;
@@ -587,23 +603,7 @@ export class CampfirePhysics {
         this._settledPile.push(obj);
         this._objects.splice(index, 1);
 
-        // Check if settled in or near fire zone
-        if (this._isInFireZone(obj.x, obj.y)) {
-            obj.igniteDelay = BURN_IGNITE_DELAY;
-        }
-
-        // Also catch fire if adjacent to something already burning
-        for (const neighbor of this._settledPile) {
-            if (!neighbor.burning || neighbor === obj) continue;
-            const dx = obj.x - neighbor.x;
-            const dy = obj.y - neighbor.y;
-            if (Math.sqrt(dx * dx + dy * dy) < FIRE_SPREAD_DIST) {
-                obj.burning = true;
-                obj.burnTimer = 0;
-                obj.spreadTimer = 0;
-                break;
-            }
-        }
+        this._applyCatchFireOnSettle(obj);
 
         // Burst on settle (sticks)
         if (obj.burstOnSettle) {
@@ -695,8 +695,6 @@ export class CampfirePhysics {
 
     /** Render a physics item icon using cached pre-rendered images. */
     _renderIcon(ctx, obj) {
-        if (!obj.icon || !this._fontReady) return;
-
         // Determine color and size
         let renderSize = obj.size;
         let alpha = 1;
@@ -709,8 +707,13 @@ export class CampfirePhysics {
             color = this._burnColor(obj.color, obj.burnTimer);
         }
 
-        // Get or create cached icon for this class+color combo
-        const cached = this._getCachedIcon(obj.icon, color, obj.size);
+        let cached = null;
+        if (obj.img) {
+            cached = this._getCachedImage(obj.img, obj.size);
+        } else {
+            if (!obj.icon || !this._fontReady) return;
+            cached = this._getCachedIcon(obj.icon, color, obj.size);
+        }
         if (!cached) return;
 
         ctx.save();
@@ -718,11 +721,15 @@ export class CampfirePhysics {
         ctx.rotate(obj.rotation);
         ctx.globalAlpha = alpha;
 
-        // Burning glow
+        // Burning glow (and smoulder during ignite delay for kindling)
         if (obj.burning && obj.burnTimer !== undefined) {
             const flicker = 6 + Math.sin(obj.burnTimer * 15) * 4;
             ctx.shadowColor = `rgba(255, ${100 + Math.random() * 50|0}, 0, 0.8)`;
             ctx.shadowBlur = flicker;
+        } else if (obj.catchFire && obj.igniteDelay !== undefined && obj.igniteDelay > 0) {
+            const smolder = 1 - (obj.igniteDelay / BURN_IGNITE_DELAY);
+            ctx.shadowColor = `rgba(255, 150, 50, ${0.35 + smolder * 0.45})`;
+            ctx.shadowBlur = 4 + smolder * 8;
         } else {
             ctx.shadowColor = "rgba(0,0,0,0.6)";
             ctx.shadowBlur = 4;
@@ -735,6 +742,37 @@ export class CampfirePhysics {
         ctx.shadowBlur = 0;
         ctx.globalAlpha = 1;
         ctx.restore();
+    }
+
+    /** Warm the image cache before the first kindling drop. */
+    preloadImage(src, size = 24) {
+        if (src) this._getCachedImage(src, size);
+    }
+
+    /** @param {string} src @param {number} size @returns {HTMLCanvasElement|null} */
+    _getCachedImage(src, size) {
+        const key = `${src}@${size}`;
+        if (this._imageCache.has(key)) return this._imageCache.get(key);
+        if (this._imageLoadPending.has(key)) return null;
+
+        this._imageLoadPending.add(key);
+        const img = new Image();
+        img.addEventListener("load", () => {
+            const padding = 4;
+            const canvasSize = size + padding * 2;
+            const offscreen = document.createElement("canvas");
+            offscreen.width = canvasSize;
+            offscreen.height = canvasSize;
+            const octx = offscreen.getContext("2d");
+            octx.drawImage(img, padding, padding, size, size);
+            this._imageCache.set(key, offscreen);
+            this._imageLoadPending.delete(key);
+        }, { once: true });
+        img.addEventListener("error", () => {
+            this._imageLoadPending.delete(key);
+        }, { once: true });
+        img.src = src;
+        return null;
     }
 
     /** Get or create a cached icon rendering by probing the DOM for the actual FA glyph. */
