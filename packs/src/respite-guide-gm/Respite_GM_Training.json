@@ -1,0 +1,20 @@
+{
+    "_id": "mN8kTrXpGmRef001",
+    "_key": "!journal.pages!hG4mR3fRespGuide01.mN8kTrXpGmRef001",
+    "name": "Training",
+    "type": "text",
+    "title": { "show": true, "level": 1 },
+    "image": {},
+    "video": { "controls": true, "volume": 0.5 },
+    "src": null,
+    "system": {},
+    "text": {
+        "content": "<p>Training is a long-rest activity for characters at <strong>level 5 or below</strong>. Each character who picks it runs three ability checks using their <strong>highest ability modifier</strong> against DC 13 (adjusted by comfort when comfort rules are on). Every set pays XP whether it passes or fails.</p><h2>XP tier slider</h2><p>Set the reward rate under <strong>Module Settings &gt; Ionrift Respite &gt; Configure Activities &gt; Training</strong>. Slide to <strong>Off</strong> to remove the activity from camp. Otherwise snap to one of five tiers:</p><table><thead><tr><th>Tier</th><th>Fail (per set)</th><th>Pass (per set)</th><th>Best case (3 passes)</th></tr></thead><tbody><tr><td>Light</td><td>3 XP</td><td>10 XP</td><td>30 XP</td></tr><tr><td>Moderate</td><td>5 XP</td><td>20 XP</td><td>60 XP</td></tr><tr><td>Standard</td><td>7 XP</td><td>30 XP</td><td>90 XP</td></tr><tr><td>Heavy</td><td>8 XP</td><td>40 XP</td><td>120 XP</td></tr><tr><td>Intense</td><td>10 XP</td><td>50 XP</td><td>150 XP</td></tr></tbody></table><p><em>Light</em> matches the original default. Higher tiers speed low-level advancement; use sparingly if you want training to feel like a small bump rather than a level engine.</p><h2>Diminishing returns</h2><p>Each consecutive long rest spent on Training holds back <strong>5 XP</strong> from the total award (same streak flag as before). The streak resets when the character picks a different activity. At extreme streaks the award can reach zero; the activity card will mark training as non-viable for that rest.</p><h2>Quick Setup</h2><p><strong>Simple</strong> sets Training to Off. <strong>Standard</strong> and <strong>Survival</strong> use the Light tier (3 / 10). Change the slider after applying a profile if you want a different rate.</p>",
+        "format": 1,
+        "markdown": ""
+    },
+    "sort": 200000,
+    "ownership": { "default": 0 },
+    "flags": {},
+    "_stats": { "compendiumSource": null, "duplicateSource": null, "coreVersion": "12.331", "systemId": null, "systemVersion": null, "createdTime": null, "modifiedTime": null, "lastModifiedBy": null }
+}

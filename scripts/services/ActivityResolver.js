@@ -1,4 +1,5 @@
 import { getComfortDcMod, isComfortEnabled } from "./ComfortCalculator.js";
+import { getTrainingXpValues, isTrainingEnabled } from "./TrainingSettings.js";
 
 /** Activities hidden when the GM marks a safe rest spot (no encounter risk; no redundant camp duties). */
 export const SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS = new Set([
@@ -81,12 +82,8 @@ export class ActivityResolver {
             if (!isComfortEnabled() && COMFORT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
             if (!areEncountersEnabled() && ENCOUNTER_ACTIVITY_IDS.has(activity.id)) continue;
 
-            // Gate Training behind module setting
-            if (activity.id === "act_train") {
-                try {
-                    if (!game.settings.get("ionrift-respite", "enableTraining")) continue;
-                } catch (e) { /* setting may not exist yet */ }
-            }
+            // Gate Training behind XP tier (0 = off)
+            if (activity.id === "act_train" && !isTrainingEnabled()) continue;
 
             // Gate Professions (cook, brew, tailor, craft) behind module setting
             if (activity.category === "profession") {
@@ -527,10 +524,13 @@ export class ActivityResolver {
         const modifier = actor.system?.abilities?.[abilityKey]?.mod ?? 0;
         const rollLabel = String(abilityKey).toUpperCase();
 
-        const successXP = activity.outcomes?.success?.effects
-            ?.find(e => e.type === "training_xp")?.value ?? 15;
-        const failXP = activity.outcomes?.failure?.effects
-            ?.find(e => e.type === "training_xp")?.value ?? 5;
+        const tierXp = getTrainingXpValues();
+        const successXP = tierXp?.passXp
+            ?? activity.outcomes?.success?.effects?.find(e => e.type === "training_xp")?.value
+            ?? 10;
+        const failXP = tierXp?.failXp
+            ?? activity.outcomes?.failure?.effects?.find(e => e.type === "training_xp")?.value
+            ?? 3;
 
         const flagKey = activity.diminishingReturns?.actorFlag ?? "trainingStreak";
         const streak = activity.diminishingReturns ? (actor.getFlag("ionrift-respite", flagKey) ?? 0) : 0;
@@ -747,12 +747,8 @@ export class ActivityResolver {
             if (!isComfortEnabled() && COMFORT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
             if (!areEncountersEnabled() && ENCOUNTER_ACTIVITY_IDS.has(activity.id)) continue;
 
-            // Gate Training behind module setting
-            if (activity.id === "act_train") {
-                try {
-                    if (!game.settings.get("ionrift-respite", "enableTraining")) continue;
-                } catch (e) { /* setting may not exist yet */ }
-            }
+            // Gate Training behind XP tier (0 = off)
+            if (activity.id === "act_train" && !isTrainingEnabled()) continue;
 
             // Gate Professions (cook, brew, tailor, craft) behind module setting
             if (activity.category === "profession") {

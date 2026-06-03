@@ -88,6 +88,10 @@ export const SOCKET_TYPES = Object.freeze({
     // ── Camp activity rolls ──
     CAMP_ROLL_RESULT:      "campRollResult",
 
+    // ── Training ──
+    TRAINING_STATE_UPDATE: "trainingStateUpdate",
+    TRAINING_COMPLETE:     "trainingComplete",
+
     // ── Travel ──
     TRAVEL_DECLARATION:        "travelDeclaration",
     TRAVEL_DECLARATIONS_SYNC:  "travelDeclarationsSync",
@@ -241,6 +245,24 @@ export function emitForceReload() {
  */
 export function emitActivityChoice(userId, choices, craftingResults = null, followUps = null, earlyResults = null) {
     _emit(SOCKET_TYPES.ACTIVITY_CHOICE, { userId, choices, craftingResults, followUps, earlyResults });
+}
+
+/**
+ * Player → GM: training roll progress for one character.
+ * @param {string} characterId
+ * @param {object} trainingState
+ */
+export function emitTrainingStateUpdate(characterId, trainingState) {
+    _emit(SOCKET_TYPES.TRAINING_STATE_UPDATE, { characterId, trainingState });
+}
+
+/**
+ * Player → GM: training finished; includes the early result payload.
+ * @param {string} characterId
+ * @param {object} earlyResult
+ */
+export function emitTrainingComplete(characterId, earlyResult) {
+    _emit(SOCKET_TYPES.TRAINING_COMPLETE, { characterId, earlyResult });
 }
 
 // ── Camp Fire Emitters ──────────────────────────────────────────────────────

@@ -14,6 +14,8 @@
  * section without touching kernel internals.
  */
 
+import { getTrainingTierLabel } from "./TrainingSettings.js";
+
 const MODULE_ID = "ionrift-respite";
 
 /**
@@ -26,10 +28,11 @@ const MODULE_ID = "ionrift-respite";
 const COMPLEXITY_KEYS = [
     "enableComfort",
     "enableProfessions",
-    "enableTraining",
+    "trainingXpTier",
     "enableFletching",
     "enableEncounters",
     "enableCopySpell",
+    "enableScouting",
     "trackFood",
     "partialSustenance",
     "armorDoffRule"
@@ -46,10 +49,11 @@ const PROFILE_KEYS = [...COMPLEXITY_KEYS, ...PLAYER_KEYS];
 const KEY_LABELS = {
     enableComfort: "Comfort rules",
     enableProfessions: "Crafting professions (and travel phase)",
-    enableTraining: "Training activity",
+    trainingXpTier: "Training activity",
     enableFletching: "Fletching activity",
     enableEncounters: "Night encounters & watch",
     enableCopySpell: "Copy Spell activity",
+    enableScouting: "Travel scouting",
     trackFood: "Meal tracking",
     partialSustenance: "Partial sustenance",
     armorDoffRule: "Armor sleep penalties",
@@ -71,10 +75,11 @@ const PROFILES = [
         values: {
             enableComfort: false,
             enableProfessions: false,
-            enableTraining: false,
+            trainingXpTier: 0,
             enableFletching: false,
             enableEncounters: false,
             enableCopySpell: false,
+            enableScouting: false,
             trackFood: false,
             partialSustenance: false,
             armorDoffRule: false,
@@ -87,14 +92,15 @@ const PROFILES = [
         id: "standard",
         label: "Standard",
         icon: "fas fa-campground",
-        desc: "Full camp: comfort, professions, training, fletching, and night encounters. No food tracking.",
+        desc: "Full camp: professions, training, fletching, and night encounters. No comfort tiers, food, or scouting.",
         values: {
-            enableComfort: true,
+            enableComfort: false,
             enableProfessions: true,
-            enableTraining: true,
+            trainingXpTier: 1,
             enableFletching: true,
             enableEncounters: true,
             enableCopySpell: true,
+            enableScouting: false,
             trackFood: false,
             partialSustenance: false,
             armorDoffRule: true,
@@ -107,14 +113,15 @@ const PROFILES = [
         id: "survival",
         label: "Survival",
         icon: "fas fa-mountain-sun",
-        desc: "Standard plus food and water. Strict rations, locked quantities.",
+        desc: "Standard plus comfort tiers, food, water, and travel scouting. Strict rations, locked quantities.",
         values: {
             enableComfort: true,
             enableProfessions: true,
-            enableTraining: true,
+            trainingXpTier: 1,
             enableFletching: true,
             enableEncounters: true,
             enableCopySpell: true,
+            enableScouting: true,
             trackFood: true,
             partialSustenance: true,
             armorDoffRule: true,
@@ -178,6 +185,21 @@ function markActiveProfile(scope = document) {
 }
 
 /**
+ * Formats a profile value for the Quick Setup confirm table.
+ * @param {string} key
+ * @param {*} value
+ * @returns {{ text: string, cssClass: string }}
+ */
+function formatProfileCell(key, value) {
+    if (key === "trainingXpTier") {
+        const tier = Number(value) || 0;
+        const text = getTrainingTierLabel(tier);
+        return { text, cssClass: tier > 0 ? "on" : "off" };
+    }
+    return { text: value ? "On" : "Off", cssClass: value ? "on" : "off" };
+}
+
+/**
  * Confirms and applies a Quick Setup profile to world settings.
  * @param {string} id
  */
@@ -186,11 +208,11 @@ async function applyProfile(id) {
     if (!profile) return;
 
     const rows = PROFILE_KEYS.map(k => {
-        const on = profile.values[k];
+        const cell = formatProfileCell(k, profile.values[k]);
         const groupLabel = k === PLAYER_KEYS[0]
             ? `<tr class="rp-group"><td colspan="2">Player rules</td></tr>`
             : "";
-        return `${groupLabel}<tr><td>${KEY_LABELS[k]}</td><td class="${on ? "on" : "off"}">${on ? "On" : "Off"}</td></tr>`;
+        return `${groupLabel}<tr><td>${KEY_LABELS[k]}</td><td class="${cell.cssClass}">${cell.text}</td></tr>`;
     }).join("");
 
     const content = `
@@ -217,6 +239,20 @@ async function applyProfile(id) {
     }
     markActiveProfile();
     ui.notifications?.info(`Respite: ${profile.label} setup applied.`);
+}
+
+/**
+ * Renders one Quick Setup profile button.
+ * @param {Object} p
+ * @returns {string}
+ */
+function renderProfileButton(p) {
+    return `
+                <button type="button" class="respite-profile-btn" data-profile="${p.id}">
+                    <span class="rp-name"><i class="${p.icon}"></i> ${p.label}</span>
+                    <span class="rp-desc">${p.desc}</span>
+                    <span class="rp-active"><i class="fas fa-circle-check"></i> Active</span>
+                </button>`;
 }
 
 /**
@@ -272,16 +308,15 @@ export function enhanceRespiteSettings(root) {
             <span class="respite-quick-setup-sub">Pick a starting point for the table. Every option stays adjustable in the panels below.</span>
         </div>
         <div class="respite-quick-setup-options">
-            ${PROFILES.map(p => `
-                <button type="button" class="respite-profile-btn" data-profile="${p.id}">
-                    <span class="rp-name"><i class="${p.icon}"></i> ${p.label}</span>
-                    <span class="rp-desc">${p.desc}</span>
-                    <span class="rp-active"><i class="fas fa-circle-check"></i> Active</span>
-                </button>`).join("")}
+            <div class="respite-quick-setup-row">
+            ${PROFILES.map(renderProfileButton).join("")}
+            </div>
+            <div class="respite-quick-setup-row respite-quick-setup-row-secondary">
             <div class="respite-profile-btn respite-profile-custom" data-profile="custom">
                 <span class="rp-name"><i class="fas fa-pen-to-square"></i> Custom</span>
                 <span class="rp-desc">Your own mix of the options below.</span>
                 <span class="rp-active"><i class="fas fa-circle-check"></i> Active</span>
+            </div>
             </div>
         </div>`;
     quick.querySelectorAll(".respite-profile-btn:not(.respite-profile-custom)").forEach(btn => {

@@ -1,0 +1,42 @@
+<div class="ionrift-training-panel">
+    <div class="ionrift-training-panel__header">
+        <i class="fas fa-dumbbell" aria-hidden="true"></i>
+        Training ({{trainingPanel.rollLabel}}) · DC {{trainingPanel.dc}}
+    </div>
+    {{#if trainingPanel.diminishHint}}
+    <div class="ionrift-training-panel__diminish">
+        <i class="fas fa-arrow-trend-down" aria-hidden="true"></i> {{trainingPanel.diminishHint}}
+    </div>
+    {{/if}}
+    <div class="ionrift-training-panel__bar">
+        {{#each trainingPanel.segments}}
+        <div class="ionrift-training-panel__seg ionrift-training-panel__seg--{{this.state}}"></div>
+        {{/each}}
+    </div>
+    {{#if trainingPanel.rolls.length}}
+    <div class="ionrift-training-panel__results">
+        {{#each trainingPanel.rolls}}
+        <span class="ionrift-training-panel__result {{#if passed}}pass{{else}}fail{{/if}}">
+            {{#if passed}}✓{{else}}✗{{/if}} {{total}}
+        </span>
+        {{/each}}
+    </div>
+    {{/if}}
+    {{#if trainingPanel.canRoll}}
+    <button type="button"
+            class="ionrift-training-panel__roll"
+            data-action="trainingRoll"
+            data-character-id="{{trainingPanel.characterId}}"
+            {{#if trainingPanel.rolling}}disabled{{/if}}>
+        {{#if trainingPanel.rolling}}
+        <i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Rolling...
+        {{else}}
+        <i class="fas fa-dice-d20" aria-hidden="true"></i> Roll set {{trainingPanel.nextRollNumber}} of {{trainingPanel.numRolls}}
+        {{/if}}
+    </button>
+    {{else if trainingPanel.rolling}}
+    <div class="ionrift-training-panel__waiting">
+        <i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Waiting on dice...
+    </div>
+    {{/if}}
+</div>
