@@ -1230,7 +1230,8 @@ export class MealPhaseHandler {
             if (buff.duration === "nextSave") {
                 daeSpecialDuration.push(`isSave.${ab}`);
             }
-            return { changes, description: descriptions.join(" "), daeSpecialDuration };
+            const summaryLine = `advantage on ${ab.toUpperCase()} saves (${buff.duration ?? "nextSave"})`;
+            return { changes, description: descriptions.join(" "), daeSpecialDuration, summaryLine };
         }
 
         if (buff.type === "resistance") {
@@ -1246,7 +1247,8 @@ export class MealPhaseHandler {
             descriptions.push(
                 `Damage resistance (${dtype}).`
             );
-            return { changes, description: descriptions.join(" "), daeSpecialDuration: [] };
+            const summaryLine = `resistance (${dtype})`;
+            return { changes, description: descriptions.join(" "), daeSpecialDuration: [], summaryLine };
         }
 
         return { changes, description: "", daeSpecialDuration: [] };
