@@ -29,7 +29,19 @@ export class DnD5eAdapter extends SystemAdapter {
         return actor.system?.attributes?.prof ?? 2;
     }
 
+    getSaveBonus(actor, saveKey) {
+        const rollData = actor.getRollData?.() ?? {};
+        const fromRollData = rollData?.abilities?.[saveKey]?.save;
+        if (typeof fromRollData === "number") return fromRollData;
+        const mod = actor.system?.abilities?.[saveKey]?.mod ?? 0;
+        const prof = actor.system?.attributes?.prof ?? 0;
+        const proficient = actor.system?.abilities?.[saveKey]?.proficient ?? 0;
+        return mod + (proficient > 0 ? prof : 0);
+    }
+
     // ── Skills & Checks ──────────────────────────────────────
+
+    normalizeSkillKey(skillKey) { return skillKey; }
 
     getSkillTotal(actor, skillKey) {
         return actor.system?.skills?.[skillKey]?.total ?? 0;
@@ -43,12 +55,31 @@ export class DnD5eAdapter extends SystemAdapter {
         return Object.keys(actor.system?.skills ?? {});
     }
 
+    getToolProficiencies(actor) {
+        const profKeys = new Set();
+        const tools = actor.system?.tools ?? {};
+        for (const [key, data] of Object.entries(tools)) {
+            if ((data?.value ?? 0) > 0 || (data?.effectValue ?? 0) > 0) {
+                profKeys.add(key);
+            }
+        }
+        for (const item of actor.items ?? []) {
+            const baseItem = item.system?.type?.baseItem;
+            if (baseItem) profKeys.add(baseItem);
+            const nameLower = (item.name ?? "").toLowerCase();
+            if (item.type === "tool" && nameLower) {
+                const match = nameLower.match(/^(\w+)/);
+                if (match) profKeys.add(match[1]);
+            }
+        }
+        return [...profKeys];
+    }
+
     // ── Resources ────────────────────────────────────────────
 
     getHitDice(actor) {
         const hd = actor.system?.attributes?.hd;
         if (hd) return { current: hd.value ?? 0, max: hd.max ?? 0 };
-        // Fallback: derive from level
         const level = this.getLevel(actor);
         return { current: level, max: level };
     }
@@ -63,6 +94,19 @@ export class DnD5eAdapter extends SystemAdapter {
 
     getExhaustion(actor) {
         return actor.system?.attributes?.exhaustion ?? 0;
+    }
+
+    hasSpellbook(actor) {
+        const classEntries = actor.classes ?? {};
+        const classNames = new Set(
+            Object.values(classEntries).map(c => c.name?.toLowerCase().trim())
+        );
+        const isWizard = !!classEntries.wizard || classNames.has("wizard");
+        if (isWizard) return true;
+        return (actor.items ?? []).some(i =>
+            i.name?.toLowerCase().includes("spellbook") ||
+            i.name?.toLowerCase().includes("book of shadows")
+        );
     }
 
     // ── Equipment & Inventory ────────────────────────────────
@@ -87,14 +131,27 @@ export class DnD5eAdapter extends SystemAdapter {
     }
 
     isToolProficient(actor, toolKey) {
-        // Check system.tools first (dnd5e native)
         const toolData = actor.system?.tools?.[toolKey];
         if (toolData && (toolData.proficient ?? 0) > 0) return true;
-        // Fallback: scan items for matching tool
+        if (toolData && ((toolData.value ?? 0) > 0 || (toolData.effectValue ?? 0) > 0)) return true;
         return (actor.items ?? []).some(i =>
             i.type === "tool" &&
-            (i.system?.type?.value === toolKey || i.name?.toLowerCase().includes(toolKey))
+            (i.system?.type?.value === toolKey ||
+             i.system?.type?.baseItem === toolKey ||
+             i.name?.toLowerCase().includes(toolKey))
         );
+    }
+
+    // ── Currency ──────────────────────────────────────────────
+
+    getCurrency(actor) {
+        return actor.system?.currency?.gp ?? 0;
+    }
+
+    async deductCurrency(actor, amount) {
+        const current = this.getCurrency(actor);
+        const next = Math.max(0, current - amount);
+        await actor.update({ "system.currency.gp": next });
     }
 
     // ── Recovery (write-side) ────────────────────────────────
@@ -106,8 +163,13 @@ export class DnD5eAdapter extends SystemAdapter {
         await actor.update({ "system.attributes.hp.value": newHp });
     }
 
+    async applyTempHP(actor, amount) {
+        const current = actor.system?.attributes?.hp?.temp ?? 0;
+        const next = Math.max(current, amount);
+        await actor.update({ "system.attributes.hp.temp": next });
+    }
+
     async applyHDRestore(actor, count) {
-        // dnd5e v3+: HD restoration is managed per-class
         const classes = (actor.items ?? []).filter(i => i.type === "class");
         let remaining = count;
         for (const cls of classes) {
@@ -129,7 +191,9 @@ export class DnD5eAdapter extends SystemAdapter {
         }
     }
 
-    // ── Hooks ────────────────────────────────────────────────
+    // ── Native Rest ───────────────────────────────────────────
+
+    get hasHookableRest() { return true; }
 
     getRestHookNames() {
         return {
@@ -140,7 +204,6 @@ export class DnD5eAdapter extends SystemAdapter {
     }
 
     suppressDefaultRecovery(result) {
-        // Prevent dnd5e from applying its own HP/HD/exhaustion recovery
         if (result.updateData) {
             delete result.updateData["system.attributes.hp.value"];
             delete result.updateData["system.attributes.exhaustion"];
@@ -150,10 +213,49 @@ export class DnD5eAdapter extends SystemAdapter {
         }
     }
 
+    async triggerNativeRest(actor, restType) {
+        if (restType === "long") {
+            await actor.longRest({ dialog: false, chat: false, advanceTime: false });
+        } else {
+            await actor.shortRest({ dialog: false, chat: false, advanceTime: false });
+        }
+    }
+
+    // ── Active Effects ────────────────────────────────────────
+
+    getActiveEffectChanges(buffType, params) {
+        if (buffType === "temp_hp") {
+            return [{
+                key: "system.attributes.hp.temp",
+                mode: 4, // CONST.ACTIVE_EFFECT_MODES.OVERRIDE
+                value: String(params.value ?? 0),
+                priority: 20
+            }];
+        }
+        if (buffType === "advantage") {
+            const ab = (params.ability ?? "con").toLowerCase();
+            return [{
+                key: `system.abilities.${ab}.save.roll.mode`,
+                mode: 2, // CONST.ACTIVE_EFFECT_MODES.ADD
+                value: "1",
+                priority: 20
+            }];
+        }
+        if (buffType === "resistance") {
+            const dtype = String(params.damageType ?? "poison").toLowerCase();
+            return [{
+                key: "system.traits.dr.value",
+                mode: 2, // CONST.ACTIVE_EFFECT_MODES.ADD
+                value: dtype,
+                priority: 20
+            }];
+        }
+        return [];
+    }
+
     // ── Activity Filtering ───────────────────────────────────
 
     filterActivities(activities) {
-        // All 17 activities are valid for DnD5e
         return activities;
     }
 

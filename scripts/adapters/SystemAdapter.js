@@ -26,7 +26,24 @@ export class SystemAdapter {
     /** @returns {number} Proficiency bonus */
     getProficiencyBonus(actor) { this._notImpl("getProficiencyBonus"); }
 
+    /**
+     * Total saving throw bonus for a given save key.
+     * DnD5e: "con", "dex", etc. PF2e: "fortitude", "reflex", "will".
+     * @param {Actor} actor
+     * @param {string} saveKey
+     * @returns {number}
+     */
+    getSaveBonus(actor, saveKey) { this._notImpl("getSaveBonus"); }
+
     // ── Skills & Checks ──────────────────────────────────────
+
+    /**
+     * Translate a system-agnostic or DnD5e skill abbreviation into the
+     * key used by the active system. Pass-through if already native.
+     * @param {string} skillKey - e.g. "sur", "survival", "prc"
+     * @returns {string} The native skill key for the active system
+     */
+    normalizeSkillKey(skillKey) { return skillKey; }
 
     /** @returns {number} Total skill modifier */
     getSkillTotal(actor, skillKey) { this._notImpl("getSkillTotal"); }
@@ -48,6 +65,16 @@ export class SystemAdapter {
     /** @returns {number} Exhaustion level (0-6 for 5e, or equivalent) */
     getExhaustion(actor) { this._notImpl("getExhaustion"); }
 
+    /**
+     * @returns {{ value: number, max: number }} Focus points (PF2e) or { 0, 0 } if N/A.
+     */
+    getFocusPoints(actor) { return { value: 0, max: 0 }; }
+
+    /**
+     * @returns {number} Drained condition level (PF2e), or 0 if N/A.
+     */
+    getDrainedLevel(actor) { return 0; }
+
     // ── Equipment & Inventory ────────────────────────────────
 
     /**
@@ -68,10 +95,37 @@ export class SystemAdapter {
     /** @returns {boolean} Whether the actor is proficient with the given tool */
     isToolProficient(actor, toolKey) { this._notImpl("isToolProficient"); }
 
+    // ── Currency ──────────────────────────────────────────────
+
+    /**
+     * @returns {number} Gold pieces (or equivalent primary currency).
+     */
+    getCurrency(actor) { this._notImpl("getCurrency"); }
+
+    /**
+     * Deduct gold (or equivalent) from the actor.
+     * @param {Actor} actor
+     * @param {number} amount
+     * @returns {Promise}
+     */
+    async deductCurrency(actor, amount) { this._notImpl("deductCurrency"); }
+
     // ── Recovery (write-side) ────────────────────────────────
 
     /** @returns {Promise} */
     async applyHPRestore(actor, amount) { this._notImpl("applyHPRestore"); }
+
+    /**
+     * Apply HP damage (reduce HP by amount, floor at 0).
+     * @param {Actor} actor
+     * @param {number} amount - positive damage value
+     * @returns {Promise}
+     */
+    async applyHPDamage(actor, amount) {
+        const hp = this.getHP(actor);
+        const delta = -Math.min(amount, hp.value);
+        if (delta !== 0) await this.applyHPRestore(actor, delta);
+    }
 
     /** @returns {Promise} */
     async applyHDRestore(actor, count) { this._notImpl("applyHDRestore"); }
@@ -79,13 +133,46 @@ export class SystemAdapter {
     /** @returns {Promise} */
     async applyExhaustionDelta(actor, delta) { this._notImpl("applyExhaustionDelta"); }
 
-    // ── Hooks ────────────────────────────────────────────────
+    /**
+     * Apply temporary HP to the actor. Only sets if new value exceeds current.
+     * @param {Actor} actor
+     * @param {number} amount
+     * @returns {Promise}
+     */
+    async applyTempHP(actor, amount) { this._notImpl("applyTempHP"); }
 
-    /** @returns {{ preShort: string, preLong: string, preCompleted: string }} */
+    // ── Native Rest ───────────────────────────────────────────
+
+    /** @returns {{ preShort: string|null, preLong: string|null, preCompleted: string|null }} */
     getRestHookNames() { this._notImpl("getRestHookNames"); }
 
     /** Mutate the system rest result to prevent default HP/HD recovery */
     suppressDefaultRecovery(result) { this._notImpl("suppressDefaultRecovery"); }
+
+    /**
+     * Whether the system exposes hookable rest events that Respite can intercept.
+     * If false, Respite skips hook-based suppression and calls triggerNativeRest() directly.
+     * @returns {boolean}
+     */
+    get hasHookableRest() { return true; }
+
+    /**
+     * Trigger the system's native rest for spell slots, feature recovery, etc.
+     * @param {Actor} actor
+     * @param {"long"|"short"} restType
+     * @returns {Promise}
+     */
+    async triggerNativeRest(actor, restType) { this._notImpl("triggerNativeRest"); }
+
+    // ── Active Effects ────────────────────────────────────────
+
+    /**
+     * Build system-appropriate ActiveEffect changes for a buff type.
+     * @param {"temp_hp"|"advantage"|"resistance"} buffType
+     * @param {Object} params - buff-specific parameters
+     * @returns {Object[]} Array of AE change objects { key, mode, value, priority }
+     */
+    getActiveEffectChanges(buffType, params) { return []; }
 
     // ── Activity Filtering ───────────────────────────────────
 
@@ -95,6 +182,37 @@ export class SystemAdapter {
      * @returns {Object[]}
      */
     filterActivities(activities) { return activities; }
+
+    /**
+     * Whether the actor has a spellbook (Wizard) or equivalent.
+     * Used to gate spell-copying activities.
+     * @param {Actor} actor
+     * @returns {boolean}
+     */
+    hasSpellbook(actor) { return false; }
+
+    /**
+     * Whether the actor is a spellcaster (has any spell slots or casting entries).
+     * @param {Actor} actor
+     * @returns {boolean}
+     */
+    isSpellcaster(actor) { return this.hasSpellSlots(actor); }
+
+    /**
+     * Returns proficient skill keys for the actor.
+     * @param {Actor} actor
+     * @returns {string[]}
+     */
+    getProficientSkillKeys(actor) {
+        return this.getSkillKeys(actor).filter(k => this.isSkillProficient(actor, k));
+    }
+
+    /**
+     * Returns tool proficiency keys for the actor.
+     * @param {Actor} actor
+     * @returns {string[]}
+     */
+    getToolProficiencies(actor) { return []; }
 
     // ── Campfire ─────────────────────────────────────────────
 
