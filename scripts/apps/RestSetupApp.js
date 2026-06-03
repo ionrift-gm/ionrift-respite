@@ -1,13 +1,13 @@
 import { Logger } from "../lib/Logger.js";
 import { RestFlowEngine } from "../services/RestFlowEngine.js";
 import {
-    executePlayerRoll, rollForPlayer, pickBestSkill, SKILL_DISPLAY_NAMES, waitForDiceSoNice, getNatD20FromRoll, disableRollButton
+    executePlayerRoll, executeAbilityRoll, rollForPlayer, pickBestSkill, SKILL_DISPLAY_NAMES,
+    waitForDiceSoNice, getNatD20FromRoll, disableRollButton, postRollToChat
 } from "../services/RollRequestManager.js";
 import { buildEventPlayerRollContext, buildRollTargetLabel, buildEventGmRollContext, centerRollRequestRoster, buildTreePlayerRollContext, buildCampActivityRollContext, buildTravelActivityRollContext, buildCopySpellRollContext } from "../services/RollRequestView.js";
 import { ensureDcPulseAnimation } from "../services/RollRequestDcPulse.js";
 import { TerrainRegistry } from "../services/TerrainRegistry.js";
 import { ActivityResolver } from "../services/ActivityResolver.js";
-import { TrainingActivityDialog } from "./TrainingActivityDialog.js";
 import { EventResolver } from "../services/EventResolver.js";
 import { countPoolEventsForTerrain, listPoolEventsForTerrain } from "../services/EventCatalogLoader.js";
 import { pickPoolEvent } from "./AdHocEventDialogs.js";
@@ -65,6 +65,7 @@ import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
 import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple, purgeDetectMagicEffects } from "./delegates/DetectMagicDelegate.js";
 import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, getComfortTip, CAMP_STATIONS, getStationsForTerrain, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments } from "./RestConstants.js";
 import { isComfortEnabled } from "../services/ComfortCalculator.js";
+import { isScoutingEnabled } from "../services/ScoutingSettings.js";
 import { buildActivityListItem, buildActivityDetailContext } from "./ActivityDetailBuilder.js";
 import {
     activateStationLayer,
@@ -121,7 +122,9 @@ import {
     emitTravelRollRequest, emitTravelRollResult,
     emitTravelDebrief, emitTravelIndividualDebrief,
     emitCopySpellProposal,
-    emitFeastServeRequest
+    emitFeastServeRequest,
+    emitTrainingStateUpdate,
+    emitTrainingComplete
 } from "../services/SocketController.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -357,7 +360,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             craftCommit: RestSetupApp.#onTotmCraftCommit,
             craftToggleMissing: RestSetupApp.#onTotmCraftToggleMissing,
             craftClose: RestSetupApp.#onTotmCraftClose,
-            feastServeNow: RestSetupApp.#onTotmFeastServeNow
+            feastServeNow: RestSetupApp.#onTotmFeastServeNow,
+            trainingRoll: RestSetupApp.#onTrainingRoll
         }
     };
 
@@ -461,6 +465,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         /** Activity phase: character id -> canvas station id after a station pick (player multi-PC dim sync). */
         this._stationCanvasIdByCharacter = new Map();
         this._earlyResults = new Map();
+        /** @type {Map<string, object>} In-progress training roll state keyed by character id. */
+        this._trainingStates = new Map();
         this._playerSubmissions = new Map();
         this._gmOverrides = new Map();
         this._gmFollowUps = new Map();
@@ -1249,6 +1255,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             lockedCharacters: Array.from(this._lockedCharacters),
             gmFollowUps: Array.from(this._gmFollowUps.entries()),
             craftingResults: Array.from(this._craftingResults.entries()),
+            trainingStates: this._trainingStates?.size
+                ? Array.from(this._trainingStates.entries()).map(([id, s]) => [id, { ...s, rolling: false }])
+                : [],
             awaitingCombat: this._awaitingCombat ?? false,
             gmCopySpellProposal: this._gmCopySpellProposal?.charged ? this._gmCopySpellProposal : null,
             mealChoices: this._mealChoices ? Array.from(this._mealChoices.entries()) : [],
@@ -1309,6 +1318,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._lockedCharacters = new Set(state.lockedCharacters ?? []);
         this._gmFollowUps = new Map(state.gmFollowUps ?? []);
         this._craftingResults = new Map(state.craftingResults ?? []);
+        this._trainingStates = new Map(state.trainingStates ?? []);
+        this._clearStaleTrainingRollingFlags();
         this._awaitingCombat = state.awaitingCombat ?? false;
         this._gmCopySpellProposal = state.gmCopySpellProposal ?? null;
         this._mealChoices = new Map(state.mealChoices ?? []);
@@ -1353,6 +1364,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             notifyDetectMagicScanApplied(this, getPartyActors().map(a => a.id));
         }
 
+        this._syncIncompleteTrainingView();
+
         return true;
     }
 
@@ -1362,6 +1375,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     async applyRestoredPhaseUi() {
         if (this._phase !== "activity") return;
+        this._syncIncompleteTrainingView();
         await this.render({ force: true });
         const isTheater = this._isTotM;
         if (!isTheater) {
@@ -2307,6 +2321,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (this._phase === "activity") {
             this._applyLoseActivityTravelLocks();
             this._applyAutoOtherWhenSoleActivity();
+            this._ensureTrainingStateForLockedChoices();
         }
 
         const partyActors = getPartyActors();
@@ -2686,6 +2701,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
+        if (this._phase === "activity") {
+            this._syncIncompleteTrainingView();
+        }
+
         // ── TotM station cards (global, not per-character) ─────────────────
         const totmStationCards = (() => {
             if (!this._isTotM) return [];
@@ -2774,9 +2793,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // TotM detail panel: full-width view replacing the grid when an activity is being inspected.
         // Single authoritative source: buildActivityDetailContext() from ActivityDetailBuilder.
         const totmDetailPanel = (() => {
-            const expanded = this._totmFollowUpExpanded;
-            if (!expanded || this._phase !== "activity") return null;
+            if (this._phase !== "activity") return null;
             if (!this._isTotM) return null;
+
+            let expanded = this._totmFollowUpExpanded;
+            const selectedId = this._selectedCharacterId;
+
+            // After Training is confirmed, keep the detail view open until all sets are rolled.
+            if (!expanded && selectedId
+                && this._trainingStates?.has(selectedId)
+                && !this._earlyResults?.has(selectedId)
+                && this._characterChoices?.get(selectedId) === "act_train") {
+                expanded = { activityId: "act_train", characterId: selectedId, trainingActive: true };
+            }
+
+            if (!expanded) return null;
             const expandActor = game.actors.get(expanded.characterId);
             if (!expandActor) return null;
 
@@ -2939,10 +2970,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         : null
                 }
             );
+            const trainingPending = expanded.activityId === "act_train"
+                && this._trainingStates?.has(expanded.characterId)
+                && !this._earlyResults?.has(expanded.characterId);
+            const trainingPanel = trainingPending
+                ? this._buildTrainingViewContext(expanded.characterId)
+                : null;
             return {
                 ...detail,
                 actorName:    expandActor.name,
-                actorPortrait: expandActor.img ?? expandActor.prototypeToken?.texture?.src ?? "icons/svg/mystery-man.svg"
+                actorPortrait: expandActor.img ?? expandActor.prototypeToken?.texture?.src ?? "icons/svg/mystery-man.svg",
+                trainingPanel,
+                isTrainingRolling: !!trainingPanel
             };
         })();
 
@@ -3035,6 +3074,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
             }
 
+            // Training: activity locked but the three sets are not finished yet.
+            if (!pendingRoll && !rolledResult
+                && this._trainingStates?.has(c.id)
+                && !this._earlyResults?.has(c.id)) {
+                pendingRoll = true;
+            }
+
             // Forced outcomes resolve without a roll; surface them as settled, not pending.
             if (pendingRoll && (rollMode === "force-pass" || rollMode === "force-fail")) {
                 pendingRoll = false;
@@ -3116,9 +3162,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const allRationsSubmitted = !trackFoodSetting
             || this._isTotM  // TotM: rations are collected in the dedicated Meal phase, not activity-phase station tabs
             || (this._activityMealRationsSubmitted?.size ?? 0) >= totalCharacters;
+        const hasPendingTraining = (this._trainingStates?.size > 0)
+            || [...(this._characterChoices?.entries() ?? [])].some(
+                ([charId, actId]) => actId === "act_train" && !this._earlyResults?.has(charId)
+            );
         const allResolved = resolvedCount === totalCharacters
             && !this._gmCopySpellProposal
-            && allRationsSubmitted;
+            && allRationsSubmitted
+            && !hasPendingTraining;
         const viewerHasSubmitted = !this._isGM && characterStatuses
             .filter(c => c.isOwner)
             .every(c => c.source !== "pending");
@@ -3664,7 +3715,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const allowed = terrain?.travelActivities ?? ["forage", "hunt", "scout"];
                 const canForage = allowed.includes("forage");
                 const canHunt = allowed.includes("hunt");
-                const scoutAllowed = this._travelScoutingAllowed ?? true;
+                const scoutAllowed = isScoutingEnabled() && (this._travelScoutingAllowed ?? true);
                 const canScout = !safeRestSpot && allowed.includes("scout") && scoutAllowed;
                 const hasTravelOptions = canForage || canHunt || canScout;
                 let disabledReason = null;
@@ -5724,24 +5775,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     });
                     this.render();
                 } else if (activityId === "act_train" && actor && this._engine) {
-                    // Player rolls their own training sets in an interactive dialog.
-                    const result = await TrainingActivityDialog.run({
-                        actor,
-                        activity,
-                        activityId,
-                        resolver: this._activityResolver,
-                        comfort: this._engine.comfort,
-                        safeRestSpot: !!this._engine.safeRestSpot
-                    });
-                    if (!result) {
-                        // Cancelled: release the lock so the player can choose again.
-                        this._characterChoices.delete(characterId);
-                        this._lockedCharacters.delete(characterId);
-                        this.render();
-                        return;
-                    }
-                    this._earlyResults.set(characterId, result);
-                    ui.notifications.info(`${actor.name}: Training - +${result.training?.awardedXP ?? 0} XP`);
+                    this._initTrainingState(characterId, activityId, actor);
+                    ui.notifications.info(`${actor.name}: Training started. Roll your sets in the rest window.`);
                     this.render();
                 } else if (actor && this._engine) {
                     const followUpValue = this._gmFollowUps?.get(characterId) ?? this._getFollowUpForCharacter(characterId);
@@ -7105,7 +7140,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             } else {
                 this._phase = "travel";
                 this._travel.setTotalDays(this._daysSinceLastRest ?? 1);
-                this._travel.scoutingAllowed = this._scoutingAllowed ?? true;
+                this._travel.scoutingAllowed = isScoutingEnabled() && (this._scoutingAllowed ?? true);
 
                 setTimeout(() => {
                     emitPhaseChanged("travel", {
@@ -9998,6 +10033,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._characterChoices.delete(characterId);
         this._lockedCharacters.delete(characterId);
         this._earlyResults.delete(characterId);
+        this._trainingStates?.delete(characterId);
         this._stationCanvasIdByCharacter?.delete(characterId);
 
         const mySub = this._playerSubmissions.get(game.user.id);
@@ -10026,6 +10062,274 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
         this._updateRestBarProgress();
+    }
+
+    /**
+     * Player clients: rebuild training roll state when a locked act_train choice
+     * arrives from the GM without a matching local state (snapshot / resync).
+     */
+    _ensureTrainingStateForLockedChoices() {
+        if (this._isGM) return;
+        for (const charId of this._lockedCharacters ?? []) {
+            if (this._characterChoices.get(charId) !== "act_train") continue;
+            if (this._earlyResults?.has(charId)) continue;
+            if (this._trainingStates?.has(charId)) continue;
+            const actor = game.actors.get(charId);
+            if (!actor?.isOwner) continue;
+            this._initTrainingState(charId, "act_train", actor);
+        }
+    }
+
+    /**
+     * Character id with Training locked but sets not finished. Prefers owned
+     * characters on player clients.
+     * @returns {string|null}
+     */
+    _findIncompleteTrainingCharacterId() {
+        const seen = new Set();
+        const candidates = [];
+
+        for (const charId of this._trainingStates?.keys() ?? []) {
+            if (seen.has(charId)) continue;
+            seen.add(charId);
+            if (this._earlyResults?.has(charId)) continue;
+            if (this._characterChoices?.get(charId) !== "act_train") continue;
+            candidates.push(charId);
+        }
+        for (const charId of this._lockedCharacters ?? []) {
+            if (seen.has(charId)) continue;
+            if (this._characterChoices?.get(charId) !== "act_train") continue;
+            if (this._earlyResults?.has(charId)) continue;
+            candidates.push(charId);
+        }
+
+        if (!candidates.length) return null;
+
+        if (!this._isGM) {
+            return candidates.find(id => game.actors.get(id)?.isOwner) ?? null;
+        }
+        if (this._selectedCharacterId && candidates.includes(this._selectedCharacterId)) {
+            return this._selectedCharacterId;
+        }
+        return candidates[0];
+    }
+
+    /**
+     * Keeps the TotM detail view on incomplete Training after refresh or resync.
+     * Without this, the activities grid shows with all tiles faded and no way back in.
+     */
+    _syncIncompleteTrainingView() {
+        if (this._phase !== "activity" || !this._isTotM) return;
+
+        const characterId = this._findIncompleteTrainingCharacterId();
+        if (!characterId) return;
+
+        this._selectedCharacterId = characterId;
+        this._totmFollowUpExpanded = { activityId: "act_train", characterId, trainingActive: true };
+
+        if (!this._trainingStates?.has(characterId)) {
+            const actor = game.actors.get(characterId);
+            if (actor) this._initTrainingState(characterId, "act_train", actor);
+        }
+
+        this._clearStaleTrainingRollingFlags();
+    }
+
+    /**
+     * Clears transient rolling flags restored from persistence or socket sync.
+     */
+    _clearStaleTrainingRollingFlags() {
+        for (const state of this._trainingStates?.values() ?? []) {
+            state.rolling = false;
+        }
+    }
+
+    /**
+     * Sets up in-panel training roll state for one character.
+     * @param {string} characterId
+     * @param {string} activityId
+     * @param {Actor} actor
+     */
+    _initTrainingState(characterId, activityId, actor) {
+        const activity = this._activityResolver?.activities?.get(activityId)
+            ?? this._activities?.find(a => a.id === activityId);
+        if (!activity || !actor) return;
+
+        const comfort = this._engine?.comfort ?? "rough";
+        const safeRestSpot = !!this._engine?.safeRestSpot;
+        const context = this._activityResolver.getTrainingContext(activity, actor, comfort, safeRestSpot);
+
+        this._trainingStates = this._trainingStates ?? new Map();
+        const state = {
+            activityId,
+            context,
+            rolls: [],
+            rolling: false
+        };
+        this._trainingStates.set(characterId, state);
+
+        if (!game.user.isGM) {
+            emitTrainingStateUpdate(characterId, state);
+        } else {
+            void this._saveRestState();
+        }
+    }
+
+    /**
+     * Template context for the inline training panel.
+     * @param {string} characterId
+     * @returns {object|null}
+     */
+    _buildTrainingViewContext(characterId) {
+        const ts = this._trainingStates?.get(characterId);
+        if (!ts) return null;
+
+        // rolling is transient UI state; a mid-roll save must not block the next set.
+        if (ts.rolling) ts.rolling = false;
+
+        const ctx = ts.context ?? {};
+        const numRolls = ctx.numRolls ?? 3;
+        const rolled = ts.rolls?.length ?? 0;
+        const actor = game.actors.get(characterId);
+
+        const segments = [];
+        for (let i = 0; i < numRolls; i++) {
+            const r = ts.rolls[i];
+            let state = "pending";
+            if (r) state = r.passed ? "pass" : "fail";
+            else if (i === rolled) state = "current";
+            segments.push({ state });
+        }
+
+        const xpReduction = ctx.xpReduction ?? 0;
+        let diminishHint = null;
+        if (xpReduction > 0) {
+            diminishHint = `Streak ${ctx.streak ?? 0}: up to ${xpReduction} XP held back this rest.`;
+        }
+
+        const canRoll = !!actor
+            && rolled < numRolls
+            && !ts.rolling
+            && (actor.isOwner || game.user.isGM);
+
+        return {
+            characterId,
+            actorName: actor?.name ?? "",
+            rollLabel: ctx.rollLabel ?? "",
+            dc: ctx.adjustedDc ?? 13,
+            numRolls,
+            rolls: ts.rolls ?? [],
+            segments,
+            nextRollNumber: rolled + 1,
+            canRoll,
+            rolling: !!ts.rolling,
+            diminishHint
+        };
+    }
+
+    /**
+     * One training set roll from the inline panel. Posts to chat, waits for Dice So Nice,
+     * then finalizes into _earlyResults when all sets are done.
+     */
+    static async #onTrainingRoll(event, target) {
+        const characterId = target?.dataset?.characterId;
+        if (!characterId) return;
+
+        const state = this._trainingStates?.get(characterId);
+        if (!state || state.rolling) return;
+
+        const ctx = state.context ?? {};
+        const numRolls = ctx.numRolls ?? 3;
+        if ((state.rolls?.length ?? 0) >= numRolls) return;
+
+        const actor = game.actors.get(characterId);
+        if (!actor) return;
+        if (!actor.isOwner && !game.user.isGM) {
+            ui.notifications.warn("Only the character's owner can roll training checks.");
+            return;
+        }
+
+        const activity = this._activityResolver?.activities?.get(state.activityId)
+            ?? this._activities?.find(a => a.id === state.activityId);
+        if (!activity) return;
+
+        state.rolling = true;
+        this.render();
+
+        const setNumber = state.rolls.length + 1;
+        const abilityName = SKILL_DISPLAY_NAMES[ctx.abilityKey] ?? ctx.rollLabel ?? "Ability";
+
+        try {
+            let total;
+            let passed;
+
+            if (game.user.isGM && !actor.isOwner) {
+                const roll = await new Roll(`1d20 + ${ctx.modifier ?? 0}`).evaluate();
+                const flavor = `<strong>Training</strong> Set ${setNumber}/${numRolls} (${abilityName}) · DC ${ctx.adjustedDc} [GM roll]`;
+                await postRollToChat(actor, roll, flavor);
+                await waitForDiceSoNice();
+                total = roll.total;
+                passed = total >= ctx.adjustedDc;
+            } else {
+                const flavor = `<strong>Training</strong> Set ${setNumber}/${numRolls} (${abilityName}) · DC ${ctx.adjustedDc}`;
+                const result = await executeAbilityRoll(
+                    actor,
+                    ctx.abilityKey ?? "str",
+                    ctx.modifier ?? 0,
+                    ctx.adjustedDc ?? 13,
+                    flavor,
+                    target
+                );
+                total = result.total;
+                passed = result.passed;
+            }
+
+            state.rolls.push({ set: setNumber, total, passed });
+            state.rolling = false;
+
+            if (state.rolls.length >= numRolls) {
+                const outcome = await this._activityResolver.finalizeTraining(
+                    activity,
+                    state.activityId,
+                    actor,
+                    state.rolls,
+                    ctx,
+                    { whisper: true }
+                );
+                this._earlyResults.set(characterId, outcome);
+                this._trainingStates.delete(characterId);
+                this._totmFollowUpExpanded = null;
+
+                const award = outcome.training?.awardedXP ?? 0;
+                ui.notifications.info(`${actor.name}: Training complete · +${award} XP`);
+
+                if (!game.user.isGM) {
+                    emitTrainingComplete(characterId, outcome);
+                    emitActivityChoice(
+                        game.user.id,
+                        Object.fromEntries(this._characterChoices),
+                        null,
+                        null,
+                        Object.fromEntries(this._earlyResults)
+                    );
+                } else {
+                    this._saveRestState();
+                }
+            } else if (!game.user.isGM) {
+                emitTrainingStateUpdate(characterId, state);
+            } else {
+                this._saveRestState();
+            }
+        } catch (err) {
+            console.warn(`${MODULE_ID} | Training roll failed:`, err);
+            ui.notifications.error("Training roll failed. Try again.");
+        } finally {
+            state.rolling = false;
+            this.render();
+            if (this._phase === "activity" && isStationLayerActive()) {
+                refreshStationPortraitsFromChoices(this._characterChoices, this._stationCanvasIdByCharacter);
+            }
+        }
     }
 
     /**
@@ -10084,25 +10388,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._earlyResults.set(characterId, activityResult);
             if (this.rendered) this.render();
         } else if (activityId === "act_train" && actor && this._engine) {
-            // Player rolls their own training sets in an interactive dialog.
-            const result = await TrainingActivityDialog.run({
-                actor,
-                activity,
-                activityId,
-                resolver: this._activityResolver,
-                comfort: this._engine.comfort,
-                safeRestSpot: !!this._engine.safeRestSpot
-            });
-            if (!result) {
-                // Cancelled: release the lock so the character can be reassigned.
-                this._characterChoices.delete(characterId);
-                this._lockedCharacters.delete(characterId);
-                if (this.rendered) this.render();
-                return null;
-            }
-            activityResult = result;
-            this._earlyResults.set(characterId, activityResult);
-            ui.notifications.info(`${actor.name}: Training - +${result.training?.awardedXP ?? 0} XP`);
+            this._initTrainingState(characterId, activityId, actor);
+            ui.notifications.info(`${actor.name}: Training started. Roll your sets in the rest window.`);
             if (this.rendered) this.render();
         } else if (actor && this._engine) {
             const followUpValue = options.followUpValue ?? this._gmFollowUps?.get(characterId) ?? this._getFollowUpForCharacter(characterId);
@@ -11273,7 +11560,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // Include the activity list so late-joining players can load their resolver.
             activities: this._activities ?? [],
             lockedCharacters: Array.from(this._lockedCharacters ?? []),
-            craftingResults: Object.fromEntries(this._craftingResults ?? [])
+            craftingResults: Object.fromEntries(this._craftingResults ?? []),
+            earlyResults: Object.fromEntries(this._earlyResults ?? []),
+            trainingStates: Object.fromEntries(
+                [...(this._trainingStates ?? [])].map(([id, s]) => [id, { ...s, rolling: false }])
+            )
         };
     }
 
@@ -11751,6 +12042,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             for (const charId of this._craftingResults.keys()) {
                 this._lockedCharacters.add(charId);
             }
+        }
+        if (snapshot.earlyResults && typeof snapshot.earlyResults === "object") {
+            this._earlyResults = this._earlyResults ?? new Map();
+            for (const [charId, result] of Object.entries(snapshot.earlyResults)) {
+                if (result && !this._earlyResults.has(charId)) {
+                    this._earlyResults.set(charId, result);
+                }
+            }
+        }
+        if (snapshot.trainingStates && typeof snapshot.trainingStates === "object") {
+            this._trainingStates = new Map(Object.entries(snapshot.trainingStates));
+            this._clearStaleTrainingRollingFlags();
+        }
+
+        if (this._phase === "activity") {
+            this._ensureTrainingStateForLockedChoices();
+            this._syncIncompleteTrainingView();
         }
 
         if (snapshot.playerTravel) {
@@ -12420,7 +12728,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     _applyScoutingFromTravel() {
         if (!this._engine) return;
-        if (this._travel?.isEffectiveSafeRestSpot?.()) {
+        if (!isScoutingEnabled() || this._travel?.isEffectiveSafeRestSpot?.()) {
             this._engine.scoutingResult = "none";
             this._engine.scoutingComplication = false;
             if (!this._engine._encounterBreakdown) this._engine._encounterBreakdown = {};
@@ -13269,6 +13577,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         this._totmFollowUpExpanded = null;
         await this.finalizeActivityChoiceFromStation(characterId, activityId, null, { followUpValue });
+
+        // Training stays in the detail panel until all three sets are rolled.
+        if (activityId === "act_train") {
+            this._totmFollowUpExpanded = { activityId, characterId, trainingActive: true };
+        }
+        this.render();
     }
 
     /**
@@ -13276,6 +13590,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Collapses the panel without finalizing.
      */
     static #onCancelTotmFollowUp() {
+        const expanded = this._totmFollowUpExpanded;
+        const cid = expanded?.characterId ?? this._selectedCharacterId;
+        if (cid && this._trainingStates?.has(cid) && !this._earlyResults?.has(cid)) {
+            ui.notifications.warn("Finish your training sets before going back.");
+            return;
+        }
         this._totmFollowUpExpanded = null;
         this.render();
     }

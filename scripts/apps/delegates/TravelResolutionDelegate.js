@@ -3,6 +3,7 @@ import { TravelMishapHandler } from "../../services/TravelMishapHandler.js";
 import { TerrainRegistry } from "../../services/TerrainRegistry.js";
 import { ForageActivityValidator } from "../../services/ForageActivityValidator.js";
 import { GrantLedger } from "../../services/GrantLedger.js";
+import { isScoutingEnabled } from "../../services/ScoutingSettings.js";
 
 const MODULE_ID = "ionrift-respite";
 const MAX_TRAVEL_DAYS = 3;
@@ -271,6 +272,7 @@ export class TravelResolutionDelegate {
             return;
         }
         if (activity === "scout") {
+            if (!isScoutingEnabled()) return;
             if (this.#effectiveSafeRestSpot()) return;
             if (!this.#scoutingAllowed) return;
             if (d !== this.#totalDays) return;
@@ -479,7 +481,7 @@ export class TravelResolutionDelegate {
         const canForage = allowed.includes("forage");
         const canHunt = allowed.includes("hunt");
         const safeRest = this.#effectiveSafeRestSpot();
-        const canScout = !safeRest && allowed.includes("scout") && this.#scoutingAllowed;
+        const canScout = !safeRest && allowed.includes("scout") && isScoutingEnabled() && this.#scoutingAllowed;
         const hasTravelOptions = canForage || canHunt || canScout;
 
         let disabledReason = null;
@@ -819,6 +821,7 @@ export class TravelResolutionDelegate {
      * Build the GM scouting debrief panel data.
      */
     getScoutingDebrief(terrainTag) {
+        if (!isScoutingEnabled()) return null;
         if (this.#effectiveSafeRestSpot()) return null;
         if (!this.#scoutingResult) return null;
 

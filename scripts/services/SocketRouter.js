@@ -34,7 +34,8 @@ import {
     handleCampGearPlace, handleCampStationPlace,
     handleCampGearReclaim, handleCampStationReclaim, handleCampGearClearPlayer,
     handleCopySpellProposal, handleCopySpellBusy,
-    handleFeastServeRequest
+    handleFeastServeRequest,
+    handleTrainingStateUpdate, handleTrainingComplete
 } from "./SocketRouterHandlers.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -79,6 +80,16 @@ export function dispatch(data, ctx) {
         case SOCKET_TYPES.ACTIVITY_CHOICE:
             if (!game.user.isGM) return;
             handleActivityChoice(data, ctx);
+            break;
+
+        case SOCKET_TYPES.TRAINING_STATE_UPDATE:
+            if (!game.user.isGM) return;
+            handleTrainingStateUpdate(data, ctx);
+            break;
+
+        case SOCKET_TYPES.TRAINING_COMPLETE:
+            if (!game.user.isGM) return;
+            handleTrainingComplete(data, ctx);
             break;
 
         case SOCKET_TYPES.REST_RESOLVED:
