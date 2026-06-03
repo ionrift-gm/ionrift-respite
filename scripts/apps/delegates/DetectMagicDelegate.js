@@ -15,6 +15,16 @@ import {
     emitDetectMagicScanBroadcast,
     emitDetectMagicScanCleared
 } from "../../services/SocketController.js";
+import { getPartyActors } from "../../services/partyActors.js";
+
+/** Measured templates from rest-scan casts are removed after this delay (ms). */
+const DETECT_MAGIC_TEMPLATE_CLEANUP_MS = 5000;
+
+/** @type {Set<number>} */
+const pendingTemplateCleanupTimers = new Set();
+
+/** @type {Set<string>} */
+const trackedDetectMagicTemplateUuids = new Set();
 
 // ── Free-function helpers (copied from RSA module scope) ────────────────────
 
@@ -59,8 +69,164 @@ function actorHasNamedSpellAccess(actor, spellNameLower) {
     return false;
 }
 
+/**
+ * @returns {Set<string>}
+ */
+function snapshotSceneTemplateIds() {
+    const ids = new Set();
+    for (const doc of canvas.scene?.templates?.contents ?? []) {
+        if (doc?.id) ids.add(doc.id);
+    }
+    return ids;
+}
 
+/**
+ * @param {string} uuid
+ * @returns {Promise<void>}
+ */
+async function deleteMeasuredTemplateUuid(uuid) {
+    if (!uuid) return;
+    try {
+        const doc = typeof fromUuid === "function" ? await fromUuid(uuid) : null;
+        if (doc?.documentName !== "MeasuredTemplate") return;
+        if (doc.canUser?.("DELETE", game.user) || game.user?.isGM) {
+            await doc.delete();
+        }
+    } catch {
+        // Non-fatal: template may already be gone or owned by another client.
+    }
+}
 
+/**
+ * @param {string[]} templateUuids
+ * @param {number} delayMs
+ */
+function scheduleDetectMagicTemplateCleanup(templateUuids, delayMs = DETECT_MAGIC_TEMPLATE_CLEANUP_MS) {
+    for (const uuid of templateUuids ?? []) {
+        if (!uuid) continue;
+        trackedDetectMagicTemplateUuids.add(uuid);
+    }
+    if (!templateUuids?.length) return;
+
+    const timerId = setTimeout(() => {
+        pendingTemplateCleanupTimers.delete(timerId);
+        for (const uuid of templateUuids) {
+            trackedDetectMagicTemplateUuids.delete(uuid);
+            void deleteMeasuredTemplateUuid(uuid);
+        }
+    }, delayMs);
+    pendingTemplateCleanupTimers.add(timerId);
+}
+
+export function cancelPendingDetectMagicTemplateCleanups() {
+    for (const timerId of pendingTemplateCleanupTimers) clearTimeout(timerId);
+    pendingTemplateCleanupTimers.clear();
+}
+
+/**
+ * @param {ActiveEffect} effect
+ * @returns {boolean}
+ */
+function isDetectMagicRestEffect(effect) {
+    if (!effect) return false;
+    const name = (effect.name ?? "").toLowerCase();
+    if (name.includes("detect magic")) return true;
+
+    const flagItem = effect.flags?.dnd5e?.item;
+    const flaggedName = flagItem?.data?.name ?? flagItem?.name ?? "";
+    if (flaggedName.toLowerCase() === "detect magic") return true;
+
+    if (typeof fromUuidSync === "function" && effect.origin) {
+        try {
+            const origin = fromUuidSync(effect.origin);
+            if (origin?.name?.toLowerCase() === "detect magic") return true;
+        } catch {
+            // ignore bad origin uuid
+        }
+    }
+    return false;
+}
+
+/**
+ * @param {Actor[]} actors
+ * @returns {Promise<void>}
+ */
+async function purgeTrackedDetectMagicTemplates() {
+    const uuids = [...trackedDetectMagicTemplateUuids];
+    trackedDetectMagicTemplateUuids.clear();
+    cancelPendingDetectMagicTemplateCleanups();
+    await Promise.allSettled(uuids.map(uuid => deleteMeasuredTemplateUuid(uuid)));
+}
+
+/**
+ * Cast Detect Magic for the rest/workbench scan without slot use or concentration.
+ * dnd5e v4 expects usage/dialog/message; legacy configureDialog on item.use is ignored.
+ * @param {Item5e} spellItem
+ * @returns {Promise<void>}
+ */
+async function castDetectMagicForRestScan(spellItem) {
+    if (!spellItem?.isOwner) return;
+
+    const usage = {
+        scaling: false,
+        consume: false,
+        concentration: { begin: false },
+        midiOptions: {
+            configureDialog: false,
+            workflowOptions: {
+                autoConsumeResource: "none",
+                noConcentrationCheck: true
+            }
+        }
+    };
+    const dialog = { configure: false };
+    const message = { create: true };
+
+    const templateIdsBefore = snapshotSceneTemplateIds();
+    const capturedTemplateUuids = new Set();
+    const onPostUseActivity = (activity, _usageConfig, results) => {
+        if (activity.item?.name?.toLowerCase() !== "detect magic") return;
+        for (const templateDoc of results?.templates ?? []) {
+            const uuid = templateDoc?.uuid ?? templateDoc?.document?.uuid;
+            if (uuid) capturedTemplateUuids.add(uuid);
+        }
+    };
+    const postUseHookId = Hooks.on("dnd5e.postUseActivity", onPostUseActivity);
+
+    try {
+        const midi = globalThis.MidiQOL;
+        let workflow;
+        if (midi?.completeItemUse) {
+            workflow = await midi.completeItemUse(spellItem, usage, dialog, message);
+        } else if (typeof spellItem.use === "function") {
+            await spellItem.use(usage, dialog, message);
+        }
+        for (const uuid of workflow?.templateUuids ?? []) {
+            if (uuid) capturedTemplateUuids.add(uuid);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 300));
+        for (const doc of canvas.scene?.templates?.contents ?? []) {
+            if (doc?.id && !templateIdsBefore.has(doc.id) && doc.uuid) {
+                capturedTemplateUuids.add(doc.uuid);
+            }
+        }
+    } finally {
+        Hooks.off("dnd5e.postUseActivity", postUseHookId);
+    }
+
+    scheduleDetectMagicTemplateCleanup([...capturedTemplateUuids]);
+}
+
+/**
+ * Removes Detect Magic templates and active effects applied during a rest scan.
+ * @param {Actor[]} actors
+ * @returns {Promise<void>}
+ */
+export async function purgeDetectMagicRestArtifacts(actors) {
+    await purgeTrackedDetectMagicTemplates();
+    await purgeDetectMagicEffects(actors);
+}
 
 /**
  * Party unidentified items plus ritual Identify vs Detect Magic casters.
@@ -179,19 +345,26 @@ export function getDetectMagicPlayerAccessReason(partyActors) {
 }
 
 /**
- * Deletes any "Detect Magic" active effects from the given actors.
- * Called at rest conclusion (short and long) so timed spell effects
- * left over from the scan don't persist past the rest window.
+ * Deletes Detect Magic spell and concentration effects from the given actors.
+ * Called when the scan is dismissed, activity ends, or rest concludes.
  * @param {Actor[]} actors
  * @returns {Promise<void>}
  */
 export async function purgeDetectMagicEffects(actors) {
     const toDelete = [];
     for (const actor of actors ?? []) {
-        for (const effect of actor.effects ?? []) {
-            if (effect.name?.toLowerCase() === "detect magic") {
-                toDelete.push(effect);
+        const spellItem = actor.items?.find(
+            i => i.type === "spell" && i.name?.toLowerCase() === "detect magic"
+        );
+        if (spellItem && typeof actor.endConcentration === "function") {
+            try {
+                await actor.endConcentration(spellItem);
+            } catch {
+                // Non-fatal: concentration may already be cleared.
             }
+        }
+        for (const effect of actor.effects ?? []) {
+            if (isDetectMagicRestEffect(effect)) toDelete.push(effect);
         }
     }
     if (!toDelete.length) return;
@@ -244,6 +417,7 @@ export class DetectMagicDelegate {
      */
     clearScanSession(opts = {}) {
         const skipSave = !!opts.skipSave;
+        void purgeDetectMagicRestArtifacts(this._resolvePartyActors());
         this._app._magicScanResults = null;
         this._app._magicScanComplete = false;
         this._app._workbench?.clearAll();
@@ -285,6 +459,32 @@ export class DetectMagicDelegate {
         }
     }
 
+    /**
+     * Party actors for this rest session (long or short).
+     * @returns {Actor[]}
+     */
+    _resolvePartyActors() {
+        if (typeof this._app._getPartyActorsForRest === "function") {
+            return this._app._getPartyActorsForRest();
+        }
+        return getPartyActors();
+    }
+
+    /**
+     * Strip spell templates and actor effects when leaving activity or dismissing the scan.
+     * @param {Actor[]} partyActors
+     * @param {{ clearUi?: boolean }} [opts]
+     * @returns {Promise<void>}
+     */
+    async cleanupCastArtifactsOnPhaseExit(partyActors, opts = {}) {
+        const clearUi = opts.clearUi !== false;
+        await purgeDetectMagicRestArtifacts(partyActors);
+        if (!clearUi || !this.scanComplete) return;
+        this._app._magicScanResults = null;
+        this._app._magicScanComplete = false;
+        notifyDetectMagicScanCleared();
+    }
+
     // ── Scan ─────────────────────────────────────────────────────────────
 
     /**
@@ -310,9 +510,9 @@ export class DetectMagicDelegate {
                 const spellItem = caster.items.find(
                     i => i.type === "spell" && i.name?.toLowerCase() === "detect magic"
                 );
-                if (spellItem && typeof spellItem.use === "function") {
+                if (spellItem) {
                     try {
-                        await spellItem.use({ configureDialog: false });
+                        await castDetectMagicForRestScan(spellItem);
                     } catch {
                         // Non-fatal: proceed to scan even if the item use flow fails.
                     }

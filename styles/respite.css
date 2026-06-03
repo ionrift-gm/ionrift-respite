@@ -22274,130 +22274,140 @@ button.is-processing {
     background: transparent;
 }
 
-/* Detect Magic: inventory rows. Run classes (ionrift-dm-run-*) come from JS: dnd5e rows are
-   not always adjacent siblings, so CSS + / :has(+) cannot merge outlines reliably. */
+/* Detect Magic: inventory rows. Tinted band per row; soft outer glow; bg tint breathes. */
+@keyframes ionrift-dm-row-tint {
+    0%,
+    100% {
+        opacity: 0.78;
+        filter: brightness(0.94);
+    }
+    50% {
+        opacity: 1;
+        filter: brightness(1.06);
+    }
+}
+
 @keyframes ionrift-dm-glow-pulse {
     0%,
     100% {
-        opacity: 0.62;
+        opacity: 0.58;
     }
     50% {
-        opacity: 0.96;
+        opacity: 0.92;
     }
 }
 
 .sheet [data-item-id].ionrift-detect-magic-glow {
     --ionrift-dm-glow-c: rgba(186, 104, 255, 0.88);
-    --ionrift-dm-glow-soft: color-mix(in srgb, var(--ionrift-dm-glow-c) 52%, transparent);
-    --ionrift-dm-glow-fill: color-mix(in srgb, var(--ionrift-dm-glow-c) 16%, transparent);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 18%, rgba(8, 6, 18, 0.88));
+    --ionrift-dm-row-edge: color-mix(in srgb, var(--ionrift-dm-glow-c) 42%, transparent);
+    --ionrift-dm-glow-soft: color-mix(in srgb, var(--ionrift-dm-glow-c) 40%, transparent);
+    --ionrift-dm-glow-halo: color-mix(in srgb, var(--ionrift-dm-glow-c) 20%, transparent);
     position: relative;
     z-index: 0;
     isolation: isolate;
 }
 
+.sheet [data-item-id].ionrift-detect-magic-glow::before {
+    content: "";
+    position: absolute;
+    inset: 1px 3px;
+    pointer-events: none;
+    z-index: -2;
+    border-radius: 4px;
+    background: var(--ionrift-dm-row-bg);
+    box-shadow:
+        inset 3px 0 0 0 var(--ionrift-dm-glow-c),
+        inset 0 0 0 1px var(--ionrift-dm-row-edge);
+    animation: ionrift-dm-row-tint 3.1s ease-in-out infinite;
+}
+
 .sheet [data-item-id].ionrift-detect-magic-glow::after {
     content: "";
     position: absolute;
-    inset: 0;
+    inset: 1px 3px;
     pointer-events: none;
     z-index: -1;
     border: none;
-    border-radius: 0;
+    border-radius: 4px;
     box-shadow:
-        inset 0 0 28px 0 var(--ionrift-dm-glow-fill),
-        inset 0 0 12px 0 color-mix(in srgb, var(--ionrift-dm-glow-c) 10%, transparent),
-        0 0 18px 3px var(--ionrift-dm-glow-soft),
-        0 0 36px 8px color-mix(in srgb, var(--ionrift-dm-glow-c) 28%, transparent);
+        inset 0 0 16px 0 color-mix(in srgb, var(--ionrift-dm-glow-c) 18%, transparent),
+        inset 0 0 6px 0 color-mix(in srgb, var(--ionrift-dm-glow-c) 10%, transparent),
+        0 0 10px 2px var(--ionrift-dm-glow-soft),
+        0 0 22px 5px var(--ionrift-dm-glow-halo);
     animation: ionrift-dm-glow-pulse 2.75s ease-in-out infinite;
 }
 
-/* Item portrait: extra read at a glance */
+/* Item portrait: soft school-colored halo */
 .sheet [data-item-id].ionrift-detect-magic-glow .item-image img,
 .sheet [data-item-id].ionrift-detect-magic-glow .item .item-image img,
 .sheet [data-item-id].ionrift-detect-magic-glow figure img {
-    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ionrift-dm-glow-c) 65%, transparent))
-        drop-shadow(0 0 10px color-mix(in srgb, var(--ionrift-dm-glow-c) 35%, transparent));
-}
-
-.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-run-only::after {
-    border: 1px solid var(--ionrift-dm-glow-c);
-    border-radius: 6px;
-}
-
-.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-run-start::after {
-    border-top: 1px solid var(--ionrift-dm-glow-c);
-    border-left: 1px solid var(--ionrift-dm-glow-c);
-    border-right: 1px solid var(--ionrift-dm-glow-c);
-    border-bottom: 1px solid var(--ionrift-dm-glow-c);
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-}
-
-.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-run-mid::after {
-    border-left: 1px solid var(--ionrift-dm-glow-c);
-    border-right: 1px solid var(--ionrift-dm-glow-c);
-    border-bottom: 1px solid var(--ionrift-dm-glow-c);
-    border-top: none;
-}
-
-.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-run-end::after {
-    border-left: 1px solid var(--ionrift-dm-glow-c);
-    border-right: 1px solid var(--ionrift-dm-glow-c);
-    border-bottom: 1px solid var(--ionrift-dm-glow-c);
-    border-top: none;
-    border-bottom-left-radius: 6px;
-    border-bottom-right-radius: 6px;
+    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ionrift-dm-glow-c) 60%, transparent))
+        drop-shadow(0 0 8px color-mix(in srgb, var(--ionrift-dm-glow-c) 28%, transparent));
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .sheet [data-item-id].ionrift-detect-magic-glow::before {
+        animation: none;
+        opacity: 0.9;
+        filter: none;
+    }
+
     .sheet [data-item-id].ionrift-detect-magic-glow::after {
         animation: none;
-        opacity: 0.85;
+        opacity: 0.78;
     }
 
     .sheet [data-item-id].ionrift-detect-magic-glow .item-image img,
     .sheet [data-item-id].ionrift-detect-magic-glow .item .item-image img,
     .sheet [data-item-id].ionrift-detect-magic-glow figure img {
-        filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ionrift-dm-glow-c) 50%, transparent));
+        filter: drop-shadow(0 0 5px color-mix(in srgb, var(--ionrift-dm-glow-c) 48%, transparent));
     }
 }
 
 .sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-abj {
     --ionrift-dm-glow-c: rgba(200, 210, 255, 0.95);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 16%, rgba(10, 12, 24, 0.9));
 }
 
 .sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-con {
     --ionrift-dm-glow-c: rgba(255, 165, 70, 0.9);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 16%, rgba(18, 10, 6, 0.9));
 }
 
 .sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-div {
     --ionrift-dm-glow-c: rgba(120, 200, 255, 0.9);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 16%, rgba(6, 12, 18, 0.9));
 }
 
 .sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-enc {
     --ionrift-dm-glow-c: rgba(255, 120, 200, 0.88);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 16%, rgba(16, 8, 14, 0.9));
 }
 
 .sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-evo {
     --ionrift-dm-glow-c: rgba(255, 100, 60, 0.92);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 16%, rgba(18, 8, 6, 0.9));
 }
 
 .sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-ill {
     --ionrift-dm-glow-c: rgba(180, 140, 255, 0.9);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 18%, rgba(10, 8, 18, 0.9));
 }
 
 .sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-nec {
     --ionrift-dm-glow-c: rgba(80, 200, 120, 0.88);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 16%, rgba(6, 14, 10, 0.9));
 }
 
 .sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-trs {
     --ionrift-dm-glow-c: rgba(255, 210, 80, 0.9);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 16%, rgba(16, 14, 6, 0.9));
 }
 
 .sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-unknown {
     --ionrift-dm-glow-c: rgba(186, 104, 255, 0.88);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 18%, rgba(8, 6, 18, 0.88));
 }
 
 /* Detect Magic: inventory tab (dnd5e nav.tabs). In-tab CSS only, no overlay nodes. */

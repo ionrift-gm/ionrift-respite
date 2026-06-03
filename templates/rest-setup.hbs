@@ -1068,10 +1068,14 @@
     </div>
     {{/if}}
     {{#if campfirePlaced}}
+    {{#if simpleStationsMode}}
+    <p class="camp-minimal-lead glass-ui">Setting up camp...</p>
+    {{else}}
     <p class="camp-minimal-lead glass-ui">Use the <strong>campfire</strong> on the map: light the fire, cold camp, or add fuel. Supply tokens show where stations appear after the fire is going.</p>
+    {{/if}}
     {{else}}
     <p class="camp-minimal-lead glass-ui">
-        {{#if isGM}}A preview follows the pointer. Click the map to drop the pit, or right-click / <kbd>Esc</kbd> to cancel.{{else}}The GM is placing the campfire.{{/if}}
+        {{#if isGM}}{{#if simpleStationsMode}}Click the map to drop the pit. The fire lights itself and the workbench and bedrolls appear beside it.{{else}}A preview follows the pointer. Click the map to drop the pit, or right-click / <kbd>Esc</kbd> to cancel.{{/if}}{{else}}The GM is placing the campfire.{{/if}}
     </p>
     {{/if}}
     {{#if isGM}}
@@ -1584,10 +1588,12 @@
                 data-action="switchTotmTab" data-totm-tab="activities">
             <i class="fas fa-running" aria-hidden="true"></i> Activities
         </button>
+        {{#if workbenchIdentifyUiEnabled}}
         <button type="button" class="totm-tab {{#if (eq totmActiveTab 'identify')}}active{{/if}}"
                 data-action="switchTotmTab" data-totm-tab="identify">
             <i class="fas fa-search" aria-hidden="true"></i> Identify
         </button>
+        {{/if}}
         {{#unless safeRestSpot}}
         {{#if comfortEnabled}}
         <button type="button" class="totm-tab {{#if (eq totmActiveTab 'fire')}}active{{/if}}"
@@ -1666,8 +1672,10 @@
     {{/if}}
 
     {{!-- ── Identify Tab ── --}}
+    {{#if workbenchIdentifyUiEnabled}}
     {{#if (eq totmActiveTab 'identify')}}
     {{> workbenchIdentifyPanel}}
+    {{/if}}
     {{/if}}
 
     {{!-- ── Fire Tab (not used at a safe rest spot or when comfort is off) ── --}}
@@ -1741,7 +1749,7 @@
                 <i class="fas fa-users" aria-hidden="true"></i>
                 <span>Party progress</span>
             </div>
-            <p class="player-overview-lead">Use camp map stations to choose activities{{#if activityPhasePlayerOverview.trackFood}} and meal rations{{/if}}.</p>
+            <p class="player-overview-lead">{{#if activityPhasePlayerOverview.simpleStations}}Wander the camp. Everyone is on Other tonight.{{else}}Use camp map stations to choose activities{{#if activityPhasePlayerOverview.trackFood}} and meal rations{{/if}}.{{/if}}</p>
             <div class="player-overview-stat">
                 <span class="player-overview-label">Party members with an activity</span>
                 <span class="player-overview-value">{{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}}</span>
