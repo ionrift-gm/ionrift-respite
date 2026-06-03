@@ -19,6 +19,28 @@ export const TRAINING_XP_TIERS = [
 export const TRAINING_XP_TIER_MAX = TRAINING_XP_TIERS.length - 1;
 
 /**
+ * Base step for triangular diminishing returns. With the default Light tier
+ * (30 XP best case), one prior training rest withholds 15 XP; two prior rests
+ * withhold 45 XP (zero award). Spacing training across other camp activities
+ * resets the streak and avoids the penalty.
+ */
+export const TRAINING_DR_STEP = 15;
+
+/**
+ * XP withheld from a training award based on prior consecutive training rests.
+ * Escalates triangularly: step, 3×step, 6×step, … so spamming training pays
+ * far less than alternating with other activities.
+ *
+ * @param {number} streak Prior consecutive training rests (flag value before this rest).
+ * @returns {number}
+ */
+export function getTrainingXpReduction(streak) {
+    const s = Math.max(0, Math.round(streak));
+    if (s <= 0) return 0;
+    return TRAINING_DR_STEP * (s * (s + 1)) / 2;
+}
+
+/**
  * @returns {number} Current tier (0 = off, 1–5 = reward rate).
  */
 export function getTrainingTier() {
