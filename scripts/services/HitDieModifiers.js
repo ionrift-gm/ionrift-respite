@@ -10,7 +10,8 @@ export class HitDieModifiers {
      */
     static scan(actor) {
         const items = actor.items ?? [];
-        const conMod = actor.system?.abilities?.con?.mod ?? 0;
+        const hdAdapter = game.ionrift?.respite?.adapter;
+        const conMod = hdAdapter ? hdAdapter.getAbilityMod(actor, "con") : (actor.system?.abilities?.con?.mod ?? 0);
 
         const hasDurable = items.some(i =>
             i.type === "feat" && HitDieModifiers.#isDurableFeatName(i.name)

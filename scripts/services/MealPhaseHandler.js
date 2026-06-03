@@ -1004,7 +1004,10 @@ export class MealPhaseHandler {
             case "temp_hp": {
                 const { total, roll } = await MealPhaseHandler._rollBuffFormula(actor, buff.formula);
                 if (total <= 0) return null;
-                if (game.system.id === "dnd5e") {
+                const buffAdapter = game.ionrift?.respite?.adapter;
+                if (buffAdapter) {
+                    await buffAdapter.applyTempHP(actor, total);
+                } else {
                     const cur = foundry.utils.getProperty(actor, "system.attributes.hp.temp") ?? 0;
                     const next = Math.max(cur, total);
                     await actor.update({ "system.attributes.hp.temp": next });
@@ -1015,7 +1018,10 @@ export class MealPhaseHandler {
             case "heal": {
                 const { total: heal, roll } = await MealPhaseHandler._rollBuffFormula(actor, buff.formula);
                 if (heal <= 0) return null;
-                if (game.system.id === "dnd5e") {
+                const healAdapter = game.ionrift?.respite?.adapter;
+                if (healAdapter) {
+                    await healAdapter.applyHPRestore(actor, heal);
+                } else {
                     const hp = foundry.utils.getProperty(actor, "system.attributes.hp.value") ?? 0;
                     const max = foundry.utils.getProperty(actor, "system.attributes.hp.effectivemax")
                         ?? foundry.utils.getProperty(actor, "system.attributes.hp.max") ?? hp;
@@ -1026,25 +1032,28 @@ export class MealPhaseHandler {
             }
             case "exhaustion_save": {
                 const dc = Number(buff.save?.dc ?? buff.formula ?? 15);
-                // Compute CON save bonus as a literal to avoid @abilities.con.save
-                // resolving to a non-numeric StringTerm in newer system versions.
-                const rollData = actor.getRollData?.() ?? {};
-                const conSaveBonus = (() => {
-                    // DnD5e: rollData.abilities.con.save is the total save bonus
-                    const fromRollData = rollData?.abilities?.con?.save;
-                    if (typeof fromRollData === "number") return fromRollData;
-                    // Fallback: mod + prof if CON save is proficient, else just mod
-                    const conMod = actor.system?.abilities?.con?.mod ?? 0;
-                    const profBonus = actor.system?.attributes?.prof ?? 0;
-                    const proficient = actor.system?.abilities?.con?.proficient ?? 0;
-                    return conMod + (proficient > 0 ? Math.floor(profBonus * proficient) : 0);
-                })();
+                const exAdapter = game.ionrift?.respite?.adapter;
+                const conSaveBonus = exAdapter
+                    ? exAdapter.getSaveBonus(actor, "con")
+                    : (() => {
+                        const rollData = actor.getRollData?.() ?? {};
+                        const fromRollData = rollData?.abilities?.con?.save;
+                        if (typeof fromRollData === "number") return fromRollData;
+                        const conMod = actor.system?.abilities?.con?.mod ?? 0;
+                        const profBonus = actor.system?.attributes?.prof ?? 0;
+                        const proficient = actor.system?.abilities?.con?.proficient ?? 0;
+                        return conMod + (proficient > 0 ? Math.floor(profBonus * proficient) : 0);
+                    })();
                 const roll = await new Roll(`1d20 + ${conSaveBonus}`).evaluate();
                 const total = roll.total;
                 const pass = total >= dc;
-                if (pass && game.system.id === "dnd5e") {
-                    const ex = foundry.utils.getProperty(actor, "system.attributes.exhaustion") ?? 0;
-                    if (ex > 0) await actor.update({ "system.attributes.exhaustion": ex - 1 });
+                if (pass) {
+                    if (exAdapter) {
+                        await exAdapter.applyExhaustionDelta(actor, -1);
+                    } else {
+                        const ex = foundry.utils.getProperty(actor, "system.attributes.exhaustion") ?? 0;
+                        if (ex > 0) await actor.update({ "system.attributes.exhaustion": ex - 1 });
+                    }
                 }
                 const detail = `1d20 + ${conSaveBonus} = ${total} vs DC ${dc} (${pass ? "pass" : "fail"})`;
                 await ChatMessage.create({
@@ -1115,7 +1124,13 @@ export class MealPhaseHandler {
     }
 
     static async _restoreHitDice(actor, amount) {
-        if (amount <= 0 || game.system.id !== "dnd5e") return 0;
+        if (amount <= 0) return 0;
+        const hdAdapter = game.ionrift?.respite?.adapter;
+        if (hdAdapter) {
+            await hdAdapter.applyHDRestore(actor, amount);
+            return amount;
+        }
+        if (game.system.id !== "dnd5e") return 0;
         let remaining = amount;
         const classes = actor.items.filter(i => i.type === "class");
         classes.sort((a, b) => (b.system?.levels ?? 0) - (a.system?.levels ?? 0));
@@ -1143,7 +1158,8 @@ export class MealPhaseHandler {
      */
     static _wellFedDnd5eDurationFlags(durationTag) {
         const out = { duration: {}, effectFlags: {}, manualNote: "" };
-        if (game.system.id !== "dnd5e") {
+        const durationAdapter = game.ionrift?.respite?.adapter;
+        if ((durationAdapter && durationAdapter.id !== "dnd5e") || (!durationAdapter && game.system.id !== "dnd5e")) {
             out.manualNote = "Remove this Well Fed effect when the listed rest ends (or replace with another meal).";
             return out;
         }
@@ -1195,15 +1211,12 @@ export class MealPhaseHandler {
         if (buff.type === "temp_hp") {
             const { total, roll } = await MealPhaseHandler._rollBuffFormula(actor, buff.formula);
             if (total <= 0) return { changes, description: "" };
-            if (game.system.id === "dnd5e") {
-                changes.push({
-                    key: "system.attributes.hp.temp",
-                    mode: CONST.ACTIVE_EFFECT_MODES.OVERRIDE,
-                    value: String(total),
-                    priority: 20
-                });
-                descriptions.push(`Temporary hit points: ${total}.`);
-            }
+            const aeAdapter = game.ionrift?.respite?.adapter;
+            const aeChanges = aeAdapter
+                ? aeAdapter.getActiveEffectChanges("temp_hp", { value: total })
+                : [{ key: "system.attributes.hp.temp", mode: CONST.ACTIVE_EFFECT_MODES.OVERRIDE, value: String(total), priority: 20 }];
+            changes.push(...aeChanges);
+            if (aeChanges.length) descriptions.push(`Temporary hit points: ${total}.`);
             return {
                 changes,
                 description: descriptions.join(" "),
@@ -1214,18 +1227,14 @@ export class MealPhaseHandler {
 
         if (buff.type === "advantage") {
             const ab = (buff.save?.ability ?? buff.formula ?? "con").toLowerCase();
-            if (game.system.id === "dnd5e") {
-                changes.push({
-                    key: `system.abilities.${ab}.save.roll.mode`,
-                    mode: CONST.ACTIVE_EFFECT_MODES.ADD,
-                    value: "1",
-                    priority: 20
-                });
-            }
+            const aeAdapter = game.ionrift?.respite?.adapter;
+            const aeChanges = aeAdapter
+                ? aeAdapter.getActiveEffectChanges("advantage", { ability: ab })
+                : [{ key: `system.abilities.${ab}.save.roll.mode`, mode: CONST.ACTIVE_EFFECT_MODES.ADD, value: "1", priority: 20 }];
+            changes.push(...aeChanges);
             descriptions.push(
                 `Advantage on ${ab.toUpperCase()} saving throws (${buff.duration ?? "nextSave"}).`
             );
-            // DAE specialDuration for auto-expiry on next qualifying save
             const daeSpecialDuration = [];
             if (buff.duration === "nextSave") {
                 daeSpecialDuration.push(`isSave.${ab}`);
@@ -1236,14 +1245,11 @@ export class MealPhaseHandler {
 
         if (buff.type === "resistance") {
             const dtype = String(buff.damageType ?? buff.formula ?? "poison").toLowerCase();
-            if (game.system.id === "dnd5e") {
-                changes.push({
-                    key: `system.traits.dr.value`,
-                    mode: CONST.ACTIVE_EFFECT_MODES.ADD,
-                    value: dtype,
-                    priority: 20
-                });
-            }
+            const aeAdapter = game.ionrift?.respite?.adapter;
+            const aeChanges = aeAdapter
+                ? aeAdapter.getActiveEffectChanges("resistance", { damageType: dtype })
+                : [{ key: "system.traits.dr.value", mode: CONST.ACTIVE_EFFECT_MODES.ADD, value: dtype, priority: 20 }];
+            changes.push(...aeChanges);
             descriptions.push(
                 `Damage resistance (${dtype}).`
             );

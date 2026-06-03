@@ -1152,9 +1152,17 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // roll already did the right thing, but overwriting with the same value is harmless).
         if (adjustedTotal !== rollTotal) {
             const targetHp = Math.min(hpSnapshot + adjustedTotal, hpMax);
-            const hp = actor.system?.attributes?.hp;
-            if (hp && targetHp !== (hp.value ?? 0)) {
-                await actor.update({ "system.attributes.hp.value": targetHp });
+            const hpAdapter = game.ionrift?.respite?.adapter;
+            const hpData = hpAdapter ? hpAdapter.getHP(actor) : { value: actor.system?.attributes?.hp?.value ?? 0 };
+            if (targetHp !== hpData.value) {
+                const hpDelta = targetHp - hpData.value;
+                if (hpAdapter && hpDelta > 0) {
+                    await hpAdapter.applyHPRestore(actor, hpDelta);
+                } else if (hpAdapter && hpDelta < 0) {
+                    await hpAdapter.applyHPDamage(actor, -hpDelta);
+                } else {
+                    await actor.update({ "system.attributes.hp.value": targetHp });
+                }
             }
             try {
                 await ChatMessage.create({
@@ -1186,10 +1194,17 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         if (songTiming === "withFirstHitDie" && this._rolls.get(actorId).length === 1 && this._songVolunteer?.songDie) {
             const songRoll = await HitDieModifiers.rollSongBonus(this._songVolunteer.songDie, this._songVolunteer.bardName);
-            const hpNow = actor.system?.attributes?.hp;
-            if (hpNow) {
-                const newHp = Math.min((hpNow.value ?? 0) + songRoll.total, hpNow.max ?? 0);
-                await actor.update({ "system.attributes.hp.value": newHp });
+            const songAdapter = game.ionrift?.respite?.adapter;
+            if (songRoll.total > 0) {
+                if (songAdapter) {
+                    await songAdapter.applyHPRestore(actor, songRoll.total);
+                } else {
+                    const hpNow = actor.system?.attributes?.hp;
+                    if (hpNow) {
+                        const newHp = Math.min((hpNow.value ?? 0) + songRoll.total, hpNow.max ?? 0);
+                        await actor.update({ "system.attributes.hp.value": newHp });
+                    }
+                }
             }
             this._songBonusByActor.set(actorId, {
                 total: songRoll.total,
@@ -1311,10 +1326,17 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             for (const actor of partyActors) {
                 if (!this._rolls.has(actor.id) || this._rolls.get(actor.id).length === 0) continue;
                 const songRoll = await HitDieModifiers.rollSongBonus(this._songVolunteer.songDie, this._songVolunteer.bardName);
-                const hp = actor.system?.attributes?.hp;
-                if (hp) {
-                    const newHp = Math.min((hp.value ?? 0) + songRoll.total, hp.max ?? 0);
-                    await actor.update({ "system.attributes.hp.value": newHp });
+                if (songRoll.total > 0) {
+                    const endSongAdapter = game.ionrift?.respite?.adapter;
+                    if (endSongAdapter) {
+                        await endSongAdapter.applyHPRestore(actor, songRoll.total);
+                    } else {
+                        const hp = actor.system?.attributes?.hp;
+                        if (hp) {
+                            const newHp = Math.min((hp.value ?? 0) + songRoll.total, hp.max ?? 0);
+                            await actor.update({ "system.attributes.hp.value": newHp });
+                        }
+                    }
                 }
                 entries.push({ name: actor.name, formula: songRoll.formula, total: songRoll.total });
             }
@@ -1401,9 +1423,12 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         try {
             setNativeShortRestUnsuppressed(true);
             try {
+                const shortAdapter = game.ionrift?.respite?.adapter;
                 for (const actor of partyActors) {
                     try {
-                        if (game.system.id === "dnd5e") {
+                        if (shortAdapter) {
+                            await shortAdapter.triggerNativeRest(actor, "short");
+                        } else if (game.system.id === "dnd5e") {
                             await actor.shortRest({ dialog: false, chat: true });
                         }
                     } catch (e) {
@@ -1415,12 +1440,17 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
 
             const chef = ShortRestApp.#findChefActor(partyActors);
-            if (chef && game.system.id === "dnd5e") {
-                const pb = Number(chef.system?.attributes?.prof) || 2;
+            if (chef) {
+                const chefAdapter = game.ionrift?.respite?.adapter;
+                const pb = chefAdapter ? chefAdapter.getProficiencyBonus(chef) || 2 : (Number(chef.system?.attributes?.prof) || 2);
                 const targets = partyActors.slice(0, 4);
                 for (const t of targets) {
                     try {
-                        await t.update({ "system.attributes.hp.temp": pb });
+                        if (chefAdapter) {
+                            await chefAdapter.applyTempHP(t, pb);
+                        } else {
+                            await t.update({ "system.attributes.hp.temp": pb });
+                        }
                     } catch (e) {
                         Logger.warn(`${MODULE_ID} | Chef temp HP:`, e);
                     }

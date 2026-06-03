@@ -796,10 +796,16 @@ export class ResourceSink {
         for (const entry of proposal.breakdown) {
             const actor = game.actors.get(entry.actorId);
             if (!actor) continue;
-            const currentGp = actor.system?.currency?.gp ?? 0;
-            const newGp = Math.max(0, currentGp - entry.lossGp);
-            await actor.update({ "system.currency.gp": newGp });
-            Logger.log(`gold: deducted ${entry.lossGp}gp from ${entry.actorName} (${newGp}gp remaining)`);
+            const goldAdapter = game.ionrift?.respite?.adapter;
+            if (goldAdapter) {
+                await goldAdapter.deductCurrency(actor, entry.lossGp);
+            } else {
+                const currentGp = actor.system?.currency?.gp ?? 0;
+                const newGp = Math.max(0, currentGp - entry.lossGp);
+                await actor.update({ "system.currency.gp": newGp });
+            }
+            const remainingGp = goldAdapter ? goldAdapter.getCurrency(actor) : (actor.system?.currency?.gp ?? 0);
+            Logger.log(`gold: deducted ${entry.lossGp}gp from ${entry.actorName} (${remainingGp}gp remaining)`);
         }
     }
 

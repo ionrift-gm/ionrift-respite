@@ -595,16 +595,15 @@ export class CraftingEngine {
      * @returns {boolean}
      */
     _hasToolProficiency(actor, toolKey) {
-        // Check system.tools proficiency
+        const toolAdapter = game.ionrift?.respite?.adapter;
+        if (toolAdapter) return toolAdapter.isToolProficient(actor, toolKey);
+
         const toolData = actor.system?.tools?.[toolKey];
         if ((toolData?.value ?? 0) > 0 || (toolData?.effectValue ?? 0) > 0) return true;
 
-        // Check for physical tool item in inventory
         for (const item of actor.items ?? []) {
             if (item.type !== "tool") continue;
-            // Check baseItem key (e.g. "cook" for Cook's Utensils)
             if (item.system?.type?.baseItem === toolKey) return true;
-            // Fallback: name match
             const nameLower = item.name.toLowerCase();
             if (nameLower.includes(toolKey)) return true;
         }
