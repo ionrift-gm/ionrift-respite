@@ -1,41 +1,75 @@
 import { SystemAdapter } from "./SystemAdapter.js";
 
 /**
- * PF2eAdapter: Early support for Pathfinder 2nd Edition.
+ * PF2eAdapter: Pathfinder 2nd Edition support.
  *
  * Implements the SystemAdapter contract against the pf2e system data model.
- * Core rest flow (activities, campfire, events, comfort recovery) is functional.
- * PF2e-unique mechanics (Treat Wounds, Refocus, Repair) are on the backlog.
+ * Audited against pf2e system v8.x (Foundry V14).
  *
  * ┌─────────────────────────────────────────────────────────────────┐
  * │  MECHANIC MAPPING                                              │
  * ├─────────────────────────────────────────────────────────────────┤
  * │  HP ................. actor.system.attributes.hp (same shape)  │
- * │  Recovery Resource .. Focus Points (not Hit Dice)              │
- * │                       actor.system.resources.focus             │
- * │  Fatigue ............ Conditions: "fatigued", "drained"        │
- * │                       (binary, not a numeric 0-6 scale)        │
+ * │  Focus Points ....... actor.system.resources.focus             │
+ * │  Fatigue ............ Conditions: "fatigued" (binary)          │
+ * │  Drained ............ Condition: "drained" (valued 1-4)        │
  * │  Skills ............. actor.system.skills[key].totalModifier   │
- * │  Proficiency ........ Tiered: untrained/trained/expert/        │
- * │                       master/legendary (rank 0-4)              │
+ * │  Proficiency ........ Tiered: rank 0-4 (untrained→legendary)  │
+ * │  Saves .............. actor.saves.fortitude/reflex/will        │
  * │  Spell Slots ........ actor.spellcasting entries               │
  * │  Armor Sleep ........ No Xanathar equivalent in PF2e           │
- * │  Rest Hooks ......... pf2e system rest hooks                   │
+ * │  Rest ............... game.pf2e.actions.restForTheNight()      │
+ * │                       (no hookable rest flow)                  │
  * │                                                                │
  * │  INCOMPATIBLE ACTIVITIES (hidden):                             │
  * │  act_attune ......... PF2e uses "Invest" (daily, 10 limit)    │
  * │  act_scribe ......... PF2e uses "Learn a Spell" instead       │
- * │                                                                │
- * │  PF2e-UNIQUE ACTIVITIES (future):                              │
- * │  Refocus ............ Regain 1-3 focus points (feat-dependent) │
- * │  Treat Wounds ....... Medicine check with scaled DC            │
- * │  Repair ............. Shield/equipment repair (Crafting check) │
- * │  Subsist ............ Earn a living / find food                │
  * └─────────────────────────────────────────────────────────────────┘
  */
 export class PF2eAdapter extends SystemAdapter {
 
     get id() { return "pf2e"; }
+
+    // ── Skill Key Mapping ─────────────────────────────────────
+    // DnD5e uses 3-letter abbreviations; PF2e uses full names.
+
+    static SKILL_KEY_MAP = {
+        acr: "acrobatics",
+        ani: "nature",
+        arc: "arcana",
+        ath: "athletics",
+        dec: "deception",
+        his: "society",
+        ins: "perception",
+        itm: "intimidation",
+        inv: "perception",
+        med: "medicine",
+        nat: "nature",
+        prc: "perception",
+        prf: "performance",
+        per: "diplomacy",
+        rel: "religion",
+        slt: "thievery",
+        ste: "stealth",
+        sur: "survival",
+    };
+
+    // DnD5e save keys → PF2e save keys
+    static SAVE_KEY_MAP = {
+        str: "fortitude",
+        dex: "reflex",
+        con: "fortitude",
+        int: "will",
+        wis: "will",
+        cha: "will",
+        fortitude: "fortitude",
+        reflex: "reflex",
+        will: "will",
+    };
+
+    normalizeSkillKey(skillKey) {
+        return PF2eAdapter.SKILL_KEY_MAP[skillKey] ?? skillKey;
+    }
 
     // ── Actor Stats ──────────────────────────────────────────
 
@@ -53,43 +87,78 @@ export class PF2eAdapter extends SystemAdapter {
     }
 
     getProficiencyBonus(actor) {
-        // PF2e does not have a single proficiency bonus.
-        // Return 0; callers should use skill totals directly.
-        return 0;
+        // PF2e proficiency bonus = level + proficiency rank bonus (2/4/6/8).
+        // Since there's no single prof bonus, return level as a baseline.
+        // Callers needing per-skill proficiency should use getSkillTotal() instead.
+        return this.getLevel(actor);
+    }
+
+    getSaveBonus(actor, saveKey) {
+        const pf2eKey = PF2eAdapter.SAVE_KEY_MAP[saveKey] ?? saveKey;
+        try {
+            const stat = actor.saves?.[pf2eKey];
+            if (stat) return stat.totalModifier ?? stat.mod ?? 0;
+        } catch { /* fall through */ }
+        // Fallback: ability mod only
+        const abilityMap = { fortitude: "con", reflex: "dex", will: "wis" };
+        return this.getAbilityMod(actor, abilityMap[pf2eKey] ?? saveKey);
     }
 
     // ── Skills & Checks ──────────────────────────────────────
 
     getSkillTotal(actor, skillKey) {
-        return actor.system?.skills?.[skillKey]?.totalModifier ?? 0;
+        const key = this.normalizeSkillKey(skillKey);
+        return actor.system?.skills?.[key]?.totalModifier ?? 0;
     }
 
     isSkillProficient(actor, skillKey) {
-        // PF2e proficiency: rank 0 = untrained, 1 = trained, 2+ = expert/master/legendary
-        return (actor.system?.skills?.[skillKey]?.rank ?? 0) >= 1;
+        const key = this.normalizeSkillKey(skillKey);
+        return (actor.system?.skills?.[key]?.rank ?? 0) >= 1;
     }
 
     getSkillKeys(actor) {
         return Object.keys(actor.system?.skills ?? {});
     }
 
+    getProficientSkillKeys(actor) {
+        return this.getSkillKeys(actor).filter(k =>
+            (actor.system?.skills?.[k]?.rank ?? 0) >= 1
+        );
+    }
+
+    getToolProficiencies(actor) {
+        const profKeys = [];
+        if (this.isSkillProficient(actor, "crafting")) {
+            profKeys.push("crafting", "cook", "herb", "alchemist", "smith");
+        }
+        for (const item of actor.items ?? []) {
+            if (item.type === "lore") {
+                profKeys.push(item.name?.toLowerCase().replace(/\s+lore$/i, "") ?? "");
+            }
+        }
+        return profKeys.filter(Boolean);
+    }
+
     // ── Resources ────────────────────────────────────────────
 
     getHitDice(actor) {
-        // PF2e has no Hit Dice. Map to Focus Points as the primary recovery resource.
+        // PF2e has no Hit Dice. Return level-based recovery resource
+        // to keep the recovery math functional (half-level HD on long rest).
+        const level = this.getLevel(actor);
+        return { current: level, max: level };
+    }
+
+    getFocusPoints(actor) {
         const focus = actor.system?.resources?.focus;
-        if (focus) return { current: focus.value ?? 0, max: focus.max ?? 0 };
-        return { current: 0, max: 0 };
+        if (focus) return { value: focus.value ?? 0, max: focus.max ?? 0 };
+        return { value: 0, max: 0 };
     }
 
     hasSpellSlots(actor) {
-        // PF2e spellcasting is managed through spellcasting entries, not a flat slots object.
-        // Check if any spellcasting entry exists with prepared/spontaneous slots.
         try {
             const entries = actor.spellcasting?.contents ?? [];
             return entries.length > 0;
         } catch {
-            // Fallback: check system.spells if spellcasting API unavailable
             const spells = actor.system?.spells ?? {};
             for (const key of Object.keys(spells)) {
                 if (key.startsWith("spell") && (spells[key]?.max ?? 0) > 0) return true;
@@ -99,23 +168,40 @@ export class PF2eAdapter extends SystemAdapter {
     }
 
     getExhaustion(actor) {
-        // PF2e uses the "fatigued" condition (binary, not tiered like 5e).
-        // Return 1 if fatigued, 0 if not. Respite treats this as a boolean gate.
         try {
-            // pf2e actor.conditions API (preferred)
             if (actor.conditions) {
                 const fatigued = actor.conditions.bySlug("fatigued");
                 if (fatigued?.length > 0) return 1;
             }
-        } catch {
-            // noop, fall through to item scan
-        }
-
-        // Fallback: scan items for condition type
+        } catch { /* fall through */ }
         const hasFatigued = (actor.items ?? []).some(i =>
             i.type === "condition" && i.system?.slug === "fatigued"
         );
         return hasFatigued ? 1 : 0;
+    }
+
+    getDrainedLevel(actor) {
+        try {
+            if (actor.conditions) {
+                const drained = actor.conditions.bySlug("drained");
+                if (drained?.length > 0) return drained[0].value ?? 1;
+            }
+        } catch { /* fall through */ }
+        const drainedItem = (actor.items ?? []).find(i =>
+            i.type === "condition" && i.system?.slug === "drained"
+        );
+        return drainedItem?.system?.value?.value ?? drainedItem?.badge?.value ?? 0;
+    }
+
+    hasSpellbook(actor) {
+        // PF2e prepared casters (Wizard, Witch, Magus) have spell preparation.
+        // Check for a prepared spellcasting entry.
+        try {
+            const entries = actor.spellcasting?.contents ?? [];
+            return entries.some(e =>
+                e.system?.prepared?.value === "prepared"
+            );
+        } catch { return false; }
     }
 
     // ── Equipment & Inventory ────────────────────────────────
@@ -130,13 +216,10 @@ export class PF2eAdapter extends SystemAdapter {
     }
 
     getEquippedArmor(actor) {
-        // PF2e stores equipped armor via the AC attribute
         const armorItem = (actor.items ?? []).find(i =>
             i.type === "armor" && i.isEquipped
         );
         if (!armorItem) return null;
-
-        // PF2e armor categories: unarmored, light, medium, heavy
         const category = armorItem.system?.category ?? "unarmored";
         const weight = category === "heavy" ? "heavy"
                      : category === "medium" ? "medium"
@@ -145,16 +228,24 @@ export class PF2eAdapter extends SystemAdapter {
     }
 
     isToolProficient(actor, toolKey) {
-        // PF2e uses Lore skills and Crafting proficiency instead of tool proficiencies.
-        // Check for Crafting proficiency as a general proxy.
         if (toolKey === "cook" || toolKey === "cook's utensils") {
-            // Check for Cooking Lore or Crafting trained+
             return this.isSkillProficient(actor, "crafting");
         }
-        // General tool check: look for a matching Lore skill
         return (actor.items ?? []).some(i =>
             i.type === "lore" && i.name?.toLowerCase().includes(toolKey.toLowerCase())
         );
+    }
+
+    // ── Currency ──────────────────────────────────────────────
+
+    getCurrency(actor) {
+        return actor.system?.currency?.gp ?? 0;
+    }
+
+    async deductCurrency(actor, amount) {
+        const current = this.getCurrency(actor);
+        const next = Math.max(0, current - amount);
+        await actor.update({ "system.currency.gp": next });
     }
 
     // ── Recovery (write-side) ────────────────────────────────
@@ -166,25 +257,24 @@ export class PF2eAdapter extends SystemAdapter {
         await actor.update({ "system.attributes.hp.value": newHp });
     }
 
+    async applyTempHP(actor, amount) {
+        const current = actor.system?.attributes?.hp?.temp ?? 0;
+        const next = Math.max(current, amount);
+        await actor.update({ "system.attributes.hp.temp": next });
+    }
+
     async applyHDRestore(actor, count) {
-        // PF2e: restore Focus Points instead of Hit Dice.
-        const focus = actor.system?.resources?.focus;
-        if (!focus) return;
-        const newValue = Math.min(focus.max, focus.value + count);
-        await actor.update({ "system.resources.focus.value": newValue });
+        // PF2e has no Hit Dice to restore. No-op.
+        // Focus Point restoration is handled by triggerNativeRest().
     }
 
     async applyExhaustionDelta(actor, delta) {
-        // PF2e: toggle the "fatigued" condition.
-        // delta > 0 = add fatigued, delta < 0 = remove fatigued.
         try {
             if (delta > 0) {
-                // Add fatigued if not already present
                 if (this.getExhaustion(actor) === 0) {
                     await actor.toggleCondition?.("fatigued");
                 }
             } else if (delta < 0) {
-                // Remove fatigued if present
                 if (this.getExhaustion(actor) > 0) {
                     await actor.toggleCondition?.("fatigued");
                 }
@@ -194,33 +284,53 @@ export class PF2eAdapter extends SystemAdapter {
         }
     }
 
-    // ── Hooks ────────────────────────────────────────────────
+    // ── Native Rest ───────────────────────────────────────────
+
+    get hasHookableRest() { return false; }
 
     getRestHookNames() {
-        // PF2e rest hooks: the system fires these but the exact names
-        // may vary by pf2e version. These are best-effort matches.
-        return {
-            preShort: "pf2e.preShortRest",
-            preLong: "pf2e.preLongRest",
-            preCompleted: "pf2e.preRestCompleted"
-        };
+        // PF2e does not fire rest hooks. Return nulls so the hook
+        // registration code in module.js can skip registration.
+        return { preShort: null, preLong: null, preCompleted: null };
     }
 
-    suppressDefaultRecovery(result) {
-        // PF2e rest recovery suppression: best-effort.
-        // The pf2e system may not use the same result structure as dnd5e.
-        // Suppress what we can; log if structure is unexpected.
-        if (result?.updateData) {
-            delete result.updateData["system.attributes.hp.value"];
+    suppressDefaultRecovery(_result) {
+        // No-op: PF2e does not use a suppressible rest result.
+        // Recovery suppression is handled by not calling restForTheNight()
+        // until Respite is ready, then calling it via triggerNativeRest().
+    }
+
+    async triggerNativeRest(actor, restType) {
+        if (restType !== "long") return;
+        try {
+            if (game.pf2e?.actions?.restForTheNight) {
+                await game.pf2e.actions.restForTheNight({ actors: actor });
+            }
+        } catch (err) {
+            console.warn("ionrift-respite | PF2eAdapter: restForTheNight() failed:", err);
         }
-        if (result?.updateItems) {
-            result.updateItems.length = 0;
+    }
+
+    // ── Active Effects ────────────────────────────────────────
+
+    getActiveEffectChanges(buffType, params) {
+        // PF2e uses Rule Elements rather than AE change keys for most bonuses.
+        // Return minimal AE changes that work within PF2e's AE system.
+        if (buffType === "temp_hp") {
+            return [{
+                key: "system.attributes.hp.temp",
+                mode: 4, // OVERRIDE
+                value: String(params.value ?? 0),
+                priority: 20
+            }];
         }
+        // advantage and resistance don't map cleanly to PF2e AE keys.
+        // Return empty and rely on descriptive text in the AE.
+        return [];
     }
 
     // ── Activity Filtering ───────────────────────────────────
 
-    /** IDs that are D&D-specific and have no direct PF2e equivalent yet */
     static INCOMPATIBLE = ["act_attune", "act_scribe"];
 
     filterActivities(activities) {
