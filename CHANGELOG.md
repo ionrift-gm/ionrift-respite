@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.0.1] - 2026-06-03
+
+### Added
+- **Travel scouting toggle.** GMs can enable a scouting phase during travel, accessible from Quick Setup and the Advanced drawer.
+- **Copy Spell setting.** Copy Spell can now be enabled or disabled independently in Activity Config and respects Quick Setup profiles.
+
+### Changed
+- **Comfort rules now live in the Survival profile.** Simple and Standard rests no longer surface comfort mechanics - comfort tracking, terrain penalties, and the exhaustion save are Survival-only. Tables that want the full ruleset pick Survival; everyone else gets a cleaner setup screen.
+- **Simple profile has no event phase.** The rest moves straight from activities to resolution. No rolls, no encounters, no decision trees - just the party asleep and a continue button.
+
+### Fixed
+- Training rolls now run inline in the rest panel with correct state persistence across page refreshes. XP awards, the tier slider, and diminishing returns for back-to-back sessions all work as intended.
+- Food and water are no longer consumed twice when using day-by-day meal tracking across a multi-day rest.
+- Well Fed chat summaries now appear correctly for advantage and resistance buffs.
+- HP, skill checks, level reads, Hit Die spending, short rest recovery, currency, and tool proficiency lookups all route through the system adapter - removing hardcoded 5e paths that would have silently broken on PF2e and Daggerheart.
+
 ## [3.0.0] - 2026-06-02
 
 ### Added
