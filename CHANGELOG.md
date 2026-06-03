@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.0.2] - 2026-06-03
+
+### Added
+- **Campfire ceremony.** Lighting a fire in Theater of the Mind mode is now a hands-on moment - players place kindling, choose their fire tier, and light it via tinderbox strike or a fire cantrip before the rest advances to activities. The campfire panel stays open in the activities sidebar while the rest is running.
+- The campfire minigame setting is on by default for Standard and Survival profiles and can be toggled from Quick Setup.
+
+### Changed
+- **Simple profile with map stations limits the camp layout.** When running the Simple profile with canvas stations enabled, only the bedroll and workbench are placed. Other activities are auto-assigned.
+- The meal phase now shows one terrain alert at the top rather than repeating it per slot.
+
+### Fixed
+- Detect Magic at rest no longer prompts for spell slots or concentration, cleans up its template and effects when dismissed or when the phase changes, and shows animated workbench cues during the scan.
+- Encounter DC preview now updates live as you pick a fire tier during Make Camp.
+
 ## [3.0.1] - 2026-06-03
 
 ### Added
