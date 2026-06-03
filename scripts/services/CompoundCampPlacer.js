@@ -12,6 +12,7 @@ import { Logger } from "../lib/Logger.js";
 
 import { getPartyActors } from "./partyActors.js";
 import { PLACEHOLDER_CAMP_STATION } from "../apps/RestConstants.js";
+import { isSimpleStationsMode } from "./RestProfileSettings.js";
 import { ImageResolver } from "../util/ImageResolver.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -25,11 +26,26 @@ const FURNITURE = {
         name: "Cooking Station",
         basicName: "Food Station",
         width: 1, height: 1
-    }
+    },
+    /** Shared party bedrolls (Simple profile + camp stations). */
+    sharedBedroll: { name: "Bedrolls", width: 1, height: 1 }
 };
 
 /** Furniture keys that can be placed from the Camp Stations panel (order = UI order). */
 export const CAMP_STATION_PLACEMENT_KEYS = ["weaponRack", "table", "medicalBed", "cookingArea"];
+
+/**
+ * Placement keys for the current rest configuration.
+ * @param {boolean} [safeRestSpot]
+ * @param {{ simpleStations?: boolean }} [options]
+ * @returns {string[]}
+ */
+export function getCampStationPlacementKeys(safeRestSpot = false, options = {}) {
+    const simpleStations = options.simpleStations ?? isSimpleStationsMode();
+    if (simpleStations) return ["table"];
+    if (safeRestSpot) return ["weaponRack", "table", "cookingArea"];
+    return CAMP_STATION_PLACEMENT_KEYS;
+}
 
 /** Code-only feature flag: auto-place stations when entering step 2. */
 const AUTO_PLACE_STATIONS = true;
@@ -403,7 +419,9 @@ export function partyHasCookingUtensils() {
  */
 export function canPlaceStation(actor, stationKey) {
     if (!actor) return false;
-    if (stationKey === "weaponRack" || stationKey === "table" || stationKey === "medicalBed") return true;
+    if (stationKey === "weaponRack" || stationKey === "table" || stationKey === "medicalBed" || stationKey === "sharedBedroll") {
+        return true;
+    }
     if (stationKey === "cookingArea") {
         return (actor.items ?? []).some(i => {
             const n = i.name?.toLowerCase() ?? "";
@@ -611,7 +629,8 @@ export async function placeStation(worldX, worldY, stationKey) {
  */
 export async function clearSharedCampStation(stationKey) {
     if (!game.user.isGM) return 0;
-    if (!CAMP_STATION_PLACEMENT_KEYS.includes(stationKey)) return 0;
+    const allowed = [...CAMP_STATION_PLACEMENT_KEYS, "sharedBedroll"];
+    if (!allowed.includes(stationKey)) return 0;
 
     const scene = canvas.scene;
     if (!scene) return 0;
@@ -907,9 +926,17 @@ export function resetCampSession() {
  * Cardinal offsets for auto station placement (2 grid from pit center by default).
  * @param {number} offset - Grid distance from pit center
  * @param {boolean} [safeRestSpot] - Omit medical bed (3 stations only)
+ * @param {{ simpleStations?: boolean }} [options]
  * @returns {{ key: string, dx: number, dy: number }[]}
  */
-export function getCampStationLayoutOffsets(offset, safeRestSpot = false) {
+export function getCampStationLayoutOffsets(offset, safeRestSpot = false, options = {}) {
+    const simpleStations = options.simpleStations ?? isSimpleStationsMode();
+    if (simpleStations) {
+        return [
+            { key: "table", dx: -offset, dy: 0 },
+            { key: "sharedBedroll", dx: offset, dy: 0 }
+        ];
+    }
     if (safeRestSpot) {
         return [
             { key: "table", dx: -offset, dy: 0 },
@@ -938,7 +965,7 @@ export function getCampStationLayoutOffsets(offset, safeRestSpot = false) {
  * @param {boolean} [safeRestSpot]
  * @returns {Promise<string[]>} keys of stations placed
  */
-export async function autoPlaceStations(safeRestSpot = false) {
+export async function autoPlaceStations(safeRestSpot = false, options = {}) {
     if (!AUTO_PLACE_STATIONS) {
         Logger.log(`${MODULE_ID} | autoPlaceStations: feature flag disabled`);
         return [];
@@ -960,7 +987,7 @@ export async function autoPlaceStations(safeRestSpot = false) {
 
     const partyActors = getPartyActors();
 
-    const layout = getCampStationLayoutOffsets(offset, safeRestSpot);
+    const layout = getCampStationLayoutOffsets(offset, safeRestSpot, options);
 
     const placed = [];
     for (const slot of layout) {
@@ -1043,13 +1070,13 @@ function buildPlaceholderToken(targetKey, x, y) {
  * @param {boolean} [safeRestSpot]
  * @returns {{ key: string, tx: number, ty: number, gridW: number, gridH: number, textureSrc: string, valid: boolean }[]}
  */
-export function getStationPlaceholderPreviewsForPitCenter(pitCenterX, pitCenterY, safeRestSpot = false) {
+export function getStationPlaceholderPreviewsForPitCenter(pitCenterX, pitCenterY, safeRestSpot = false, options = {}) {
     if (!canvas?.scene || !canvas?.grid) return [];
 
     const gs = gridSize();
     const offset = 2 * gs;
     const pitCenter = { x: pitCenterX, y: pitCenterY };
-    const layout = getCampStationLayoutOffsets(offset, safeRestSpot);
+    const layout = getCampStationLayoutOffsets(offset, safeRestSpot, options);
     const gridW = PLACEHOLDER_CAMP_STATION.width ?? 1;
     const gridH = PLACEHOLDER_CAMP_STATION.height ?? 1;
     const textureSrc = resolveStationIcon("buildSite");
@@ -1154,7 +1181,7 @@ async function nudgeTokenTowardCenter(doc, pitCenter, scene) {
     return false;
 }
 
-export async function placeStationPlaceholders(safeRestSpot = false) {
+export async function placeStationPlaceholders(safeRestSpot = false, options = {}) {
     if (!game.user.isGM) return [];
     hydrateCampSessionFromScene();
     const center = pitCenterWorld();
@@ -1168,7 +1195,7 @@ export async function placeStationPlaceholders(safeRestSpot = false) {
 
     const gs = gridSize();
     const offset = 2 * gs;
-    const layout = getCampStationLayoutOffsets(offset, safeRestSpot);
+    const layout = getCampStationLayoutOffsets(offset, safeRestSpot, options);
     const phW = PLACEHOLDER_CAMP_STATION.width ?? 1;
     const phH = PLACEHOLDER_CAMP_STATION.height ?? 1;
 
@@ -1218,7 +1245,7 @@ export async function placeStationPlaceholders(safeRestSpot = false) {
  * @param {boolean} [safeRestSpot] - Relabel weapon rack token to Supply Table
  * @returns {Promise<string[]>} promoted target keys
  */
-export async function promoteAllPlaceholders(safeRestSpot = false) {
+export async function promoteAllPlaceholders(safeRestSpot = false, options = {}) {
     if (!game.user.isGM) return [];
 
     const scene = canvas?.scene;
@@ -1258,7 +1285,9 @@ export async function promoteAllPlaceholders(safeRestSpot = false) {
         const cy = doc.y + (doc.height * gs) / 2;
         const placement = validateCampEquipmentDrop(cx, cy, w, h, null, doc.id);
 
-        const displayName = key === "cookingArea"
+        const displayName = key === "sharedBedroll"
+            ? "Bedrolls"
+            : key === "cookingArea"
             ? (partyHasCookingUtensils() ? def.name : (def.basicName ?? def.name))
             : (key === "weaponRack" && safeRestSpot)
                 ? "Supply Table"

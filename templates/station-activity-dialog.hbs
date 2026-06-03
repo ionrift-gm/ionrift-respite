@@ -1005,7 +1005,7 @@
 
     {{!-- Workbench: Examine tab (Focus/Potion self-service, all players) --}}
     {{#if showStationTabs}}
-    {{#if stationIdentifyHub}}
+    {{#if workbenchExamineEnabled}}
     {{#if (eq stationPanelTab "examine")}}
     {{> workbenchIdentifyEmbed}}
     {{/if}}
@@ -1014,6 +1014,7 @@
 
     {{!-- Workbench: Identify tab (click-to-identify party list, GM + Identify casters) --}}
     {{#if showStationTabs}}
+    {{#if workbenchIdentifyUiEnabled}}
     {{#if canSeeSharedPool}}
     {{#if (eq stationPanelTab "identify")}}
     <div class="station-identify-embed wb-ident-party-list-tab">
@@ -1044,6 +1045,7 @@
         </div>
         {{/if}}
     </div>
+    {{/if}}
     {{/if}}
     {{/if}}
     {{/if}}
