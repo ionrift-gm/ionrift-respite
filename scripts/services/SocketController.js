@@ -110,6 +110,17 @@ export const SOCKET_TYPES = Object.freeze({
     CAMPFIRE_TOKEN_SYNC:   "campfireTokenSync",
     TORCH_TOKEN_SYNC:      "torchTokenSync",
 
+    // ── Campfire minigame (TotM embed) ──
+    CAMPFIRE_STRIKE:          "campfireStrike",
+    CAMPFIRE_STICK:           "campfireStick",
+    CAMPFIRE_POKE:            "campfirePoke",
+    CAMPFIRE_TRINKET:         "campfireTrinket",
+    CAMPFIRE_EMOTE:           "campfireEmote",
+    CAMPFIRE_WHITTLE:         "campfireWhittle",
+    CAMPFIRE_WHITTLE_DROP:    "campfireWhittleDrop",
+    CAMPFIRE_PILE_IGNITE:     "campfirePileIgnite",
+    CAMPFIRE_WHITTLE_SETTLE:  "campfireWhittleSettle",
+
     // ── Copy Spell ──
     COPY_SPELL_PROPOSAL:   "copySpellProposal",
     COPY_SPELL_APPROVED:   "copySpellApproved",

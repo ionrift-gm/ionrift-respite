@@ -11,6 +11,7 @@ import { Logger } from "../lib/Logger.js";
  */
 
 import { SOCKET_TYPES, emitRequestRestState, emitWorkbenchIdentifyResult, emitPhaseChanged } from "./SocketController.js";
+import { isCampfireMinigameEnabled } from "./RestProfileSettings.js";
 import { WorkbenchDelegate } from "../apps/delegates/WorkbenchDelegate.js";
 import { CopySpellHandler } from "./CopySpellHandler.js";
 import { CampfireTokenLinker } from "./CampfireTokenLinker.js";
@@ -45,6 +46,7 @@ const MODULE_ID = "ionrift-respite";
  * @property {object|null} activeRestSetupApp
  * @property {object|null} activePlayerRestApp
  * @property {object|null} activeShortRestApp
+ * @property {object|null} activeCampfireEmbed
  * @property {boolean} playerRestActive
  * @property {object|null} activeRestData
  * @property {function} setActivePlayerRestApp
@@ -149,8 +151,7 @@ export function dispatch(data, ctx) {
         case SOCKET_TYPES.CAMP_FIRE_LEVEL_REQUEST:
             if (!game.user.isGM) return;
             if (ctx.activeRestSetupApp) {
-                // Set preview level and broadcast to all clients (preview, not commit).
-                // Picking a fire tier also clears any committed cold camp.
+                ctx.activeRestSetupApp._maybeClearStagedWoodOnTierChange(data.fireLevel);
                 ctx.activeRestSetupApp._campFirePreviewLevel = data.fireLevel;
                 ctx.activeRestSetupApp._coldCampPreview = false;
                 ctx.activeRestSetupApp._coldCampDecided = false;
@@ -158,8 +159,10 @@ export function dispatch(data, ctx) {
                     campFirePreviewLevel: data.fireLevel,
                     coldCampPreview: false,
                     coldCampDecided: false,
+                    makeCampStagedWood: [...(ctx.activeRestSetupApp._makeCampStagedWood ?? [])],
                     selectedTerrain: ctx.activeRestSetupApp._selectedTerrain ?? null
                 });
+                ctx.activeRestSetupApp._syncCampCeremonyPreviewToEmbed?.();
                 ctx.activeRestSetupApp.render();
             } else { ui.notifications.warn("Open the rest session on the GM client first."); }
             break;
@@ -167,16 +170,51 @@ export function dispatch(data, ctx) {
         case SOCKET_TYPES.CAMP_COLD_CAMP:
             if (!game.user.isGM) return;
             if (ctx.activeRestSetupApp) {
-                // Set cold camp preview and broadcast to all clients (preview, not commit)
+                ctx.activeRestSetupApp._maybeClearStagedWoodOnTierChange("cold_camp");
                 ctx.activeRestSetupApp._coldCampPreview = true;
                 ctx.activeRestSetupApp._campFirePreviewLevel = "cold_camp";
+                ctx.activeRestSetupApp._makeCampStagedWood = [];
                 emitPhaseChanged(ctx.activeRestSetupApp._phase, {
                     coldCampPreview: true,
                     campFirePreviewLevel: "cold_camp",
+                    makeCampStagedWood: [],
                     selectedTerrain: ctx.activeRestSetupApp._selectedTerrain ?? null
                 });
+                ctx.activeRestSetupApp._syncCampCeremonyPreviewToEmbed?.();
                 ctx.activeRestSetupApp.render();
             } else { ui.notifications.warn("Open the rest session on the GM client first."); }
+            break;
+
+        case "campCeremonyStageWood":
+            if (!game.user.isGM) return;
+            if (ctx.activeRestSetupApp && data.slot) {
+                const app = ctx.activeRestSetupApp;
+                const cost = app._campPreviewFirewoodCost?.() ?? 0;
+                if ((app._makeCampStagedWood?.length ?? 0) >= cost) break;
+                app._makeCampStagedWood = [...(app._makeCampStagedWood ?? []), data.slot];
+                emitPhaseChanged(app._phase, {
+                    makeCampStagedWood: [...app._makeCampStagedWood],
+                    selectedTerrain: app._selectedTerrain ?? null
+                });
+                app._syncCampCeremonyPreviewToEmbed?.();
+                if (app._campfireApp) void app._campfireApp.render();
+                else app.render();
+            }
+            break;
+
+        case "campCeremonyUnstageWood":
+            if (!game.user.isGM) return;
+            if (ctx.activeRestSetupApp && data.slotId) {
+                const app = ctx.activeRestSetupApp;
+                app._makeCampStagedWood = (app._makeCampStagedWood ?? []).filter(s => s.id !== data.slotId);
+                emitPhaseChanged(app._phase, {
+                    makeCampStagedWood: [...app._makeCampStagedWood],
+                    selectedTerrain: app._selectedTerrain ?? null
+                });
+                app._syncCampCeremonyPreviewToEmbed?.();
+                if (app._campfireApp) void app._campfireApp.render();
+                else app.render();
+            }
             break;
 
         case SOCKET_TYPES.CAMP_COLD_CAMP_COMMIT:
@@ -209,18 +247,27 @@ export function dispatch(data, ctx) {
             } else { ui.notifications.warn("Open the rest session on the GM client first."); }
             break;
 
-        case SOCKET_TYPES.CAMP_LIGHT_FIRE:
+        case SOCKET_TYPES.CAMP_LIGHT_FIRE: {
             if (!game.user.isGM) return;
-            if (ctx.activeRestSetupApp?._campCeremony) {
-                // Light at the tier the player selected, in one motion (no re-engage).
-                const chosenLevel = ["embers", "campfire", "bonfire"].includes(data.previewLevel)
-                    ? data.previewLevel
-                    : "embers";
-                void ctx.activeRestSetupApp._campCeremony
-                    .lightFire(data.userId, data.actorId, data.method ?? "Tinderbox", chosenLevel)
-                    .catch(err => console.error(`${MODULE_ID} | campLightFire:`, err));
-            } else { ui.notifications.warn("Open the rest session on the GM client first."); }
+            if (!ctx.activeRestSetupApp?._campCeremony) {
+                ui.notifications.warn("Open the rest session on the GM client first.");
+                break;
+            }
+            const chosenLevel = ["embers", "campfire", "bonfire"].includes(data.previewLevel)
+                ? data.previewLevel
+                : "embers";
+            const method = data.method ?? "Tinderbox";
+            const app = ctx.activeRestSetupApp;
+            if (method === "Minigame" && isCampfireMinigameEnabled() && app._isTotM) {
+                void app._commitMakeCampCeremonyIgnite()
+                    .catch(err => console.error(`${MODULE_ID} | campCeremonyIgnite:`, err));
+                break;
+            }
+            void app._campCeremony
+                .lightFire(data.userId, data.actorId, method, chosenLevel)
+                .catch(err => console.error(`${MODULE_ID} | campLightFire:`, err));
             break;
+        }
 
         case SOCKET_TYPES.CAMP_FIREWOOD_PLEDGE:
             if (!game.user.isGM) return;
@@ -550,6 +597,43 @@ export function dispatch(data, ctx) {
         case SOCKET_TYPES.CAMPFIRE_TOKEN_SYNC:
             if (!game.user.isGM) return;
             CampfireTokenLinker.setLightState(data.lit, data.fireLevel ?? null);
+            break;
+
+        // ── Campfire minigame (TotM embed) ─────────────────────────────
+        case SOCKET_TYPES.CAMPFIRE_STRIKE:
+            ctx.activeCampfireEmbed?.receiveStrike?.(data);
+            break;
+
+        case SOCKET_TYPES.CAMPFIRE_STICK:
+            ctx.activeCampfireEmbed?.receiveStick?.(data);
+            break;
+
+        case SOCKET_TYPES.CAMPFIRE_POKE:
+            ctx.activeCampfireEmbed?.receivePoke?.(data);
+            break;
+
+        case SOCKET_TYPES.CAMPFIRE_TRINKET:
+            ctx.activeCampfireEmbed?.receiveTrinket?.(data);
+            break;
+
+        case SOCKET_TYPES.CAMPFIRE_EMOTE:
+            ctx.activeCampfireEmbed?.receiveEmote?.(data);
+            break;
+
+        case SOCKET_TYPES.CAMPFIRE_WHITTLE:
+            ctx.activeCampfireEmbed?.receiveWhittle?.(data);
+            break;
+
+        case SOCKET_TYPES.CAMPFIRE_WHITTLE_DROP:
+            ctx.activeCampfireEmbed?.receiveWhittleDrop?.(data);
+            break;
+
+        case SOCKET_TYPES.CAMPFIRE_PILE_IGNITE:
+            ctx.activeCampfireEmbed?.receivePileIgnite?.(data);
+            break;
+
+        case SOCKET_TYPES.CAMPFIRE_WHITTLE_SETTLE:
+            ctx.activeCampfireEmbed?.receiveWhittleSettle?.(data);
             break;
 
         case SOCKET_TYPES.TORCH_TOKEN_SYNC:

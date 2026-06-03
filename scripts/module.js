@@ -130,8 +130,24 @@ let activeShortRestApp = null;
 // Active player rest app reference for socket routing.
 let activePlayerRestApp = null;
 
+/** Active TotM campfire minigame embed (socket sync for whittle, sticks, emotes). */
+let activeCampfireEmbed = null;
+
 // Tracks whether a player-side rest flow is currently active.
 let _playerRestActive = false;
+
+/**
+ * Registers the active CampfireEmbed for socket routing.
+ * @param {import("./apps/CampfireEmbed.js").CampfireEmbed|null} embed
+ */
+export function registerCampfireEmbed(embed) {
+    activeCampfireEmbed = embed;
+}
+
+/** Clears the active CampfireEmbed reference. */
+export function clearCampfireEmbed() {
+    activeCampfireEmbed = null;
+}
 
 /**
  * Registers the active RestSetupApp so the socket handler can route to it.
@@ -156,6 +172,7 @@ export function setActiveRestData(data) {
 export function clearActiveRestApp() {
     activeRestSetupApp = null;
     activeRestData = null;
+    clearCampfireEmbed();
     respiteFlowActive = false;
     _removeGmRestIndicator();
     hideAfkPanelAfterRest();
@@ -897,6 +914,7 @@ Hooks.once("ready", async () => {
         get activeRestSetupApp() { return activeRestSetupApp; },
         get activePlayerRestApp() { return activePlayerRestApp; },
         get activeShortRestApp() { return activeShortRestApp; },
+        get activeCampfireEmbed() { return activeCampfireEmbed; },
         get playerRestActive() { return _playerRestActive; },
         get activeRestData() { return activeRestData; },
         setActivePlayerRestApp(v) { activePlayerRestApp = v; },

@@ -11,7 +11,7 @@ import { CampGearScanner } from "../../services/CampGearScanner.js";
 import { CampfireTokenLinker } from "../../services/CampfireTokenLinker.js";
 import { emitPhaseChanged } from "../../services/SocketController.js";
 import { isComfortEnabled } from "../../services/ComfortCalculator.js";
-import { requiresMapCampFire } from "../../services/RestProfileSettings.js";
+import { isCampfireMinigameEnabled, requiresMapCampFire } from "../../services/RestProfileSettings.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -115,7 +115,7 @@ export class CampCeremonyDelegate {
      * @param {string} actorId
      * @param {string} method - Item or cantrip name used (display string).
      */
-    async lightFire(userId, actorId, method, desiredLevel = null) {
+    async lightFire(userId, actorId, method, desiredLevel = null, options = {}) {
         if (!game.user.isGM) return;
         const actor = game.actors.get(actorId);
         if (!actor) return;
@@ -123,7 +123,16 @@ export class CampCeremonyDelegate {
         // Light at the chosen tier in one motion so the picker is the commit; falls back
         // to pledge-derived level (embers with no wood) when no tier was selected.
         const override = ["embers", "campfire", "bonfire"].includes(desiredLevel) ? desiredLevel : null;
-        await this._syncFireLevelFromPledges(override);
+        await this._syncFireLevelFromPledges(override, { skipRender: !!options.autoAdvanceTotm });
+        const shouldAdvanceTotm = options.autoAdvanceTotm
+            || (this._app._isTotM
+                && isCampfireMinigameEnabled()
+                && this.fireLitBy?.method === "Minigame"
+                && this._app._phase === "camp"
+                && !this._app._campToActivityDone);
+        if (shouldAdvanceTotm) {
+            await this._app._totmAdvanceCampAfterCeremonyIgnite();
+        }
     }
 
     /**
@@ -238,7 +247,7 @@ export class CampCeremonyDelegate {
      * Sync _fireLevel, engine, and campfire token light state from current pledge data.
      * Broadcasts phase update and may auto-advance from camp → activity.
      */
-    async _syncFireLevelFromPledges(overrideLevel = null) {
+    async _syncFireLevelFromPledges(overrideLevel = null, options = {}) {
         const level = ["embers", "campfire", "bonfire"].includes(overrideLevel)
             ? overrideLevel
             : this.deriveCampFireLevel();
@@ -263,7 +272,7 @@ export class CampCeremonyDelegate {
             this._app._phase === "camp" && !this._app._campToActivityDone && this.fireLevel !== "unlit";
         if (willAdvance) {
             await this._app._advanceCampToActivity();
-        } else if (!this._app._campToActivityDone) {
+        } else if (!this._app._campToActivityDone && !options.skipRender) {
             this._app.render();
         }
     }
