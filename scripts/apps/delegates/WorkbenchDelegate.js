@@ -24,10 +24,11 @@ import {
     DETECT_MAGIC_BTN_LABEL_PLAYER,
     DETECT_MAGIC_BTN_TITLE_GM
 } from "../RestConstants.js";
+import { itemIsDnD5ePotionType, resolveItemFromDropEvent } from "../../util/itemDropUtils.js";
 
 const MODULE_ID = "ionrift-respite";
 
-// ── Utility helpers (pure, imported from RSA scope) ─────────────────────────
+// ── Utility helpers ─────────────────────────
 
 /**
  * Whether an item qualifies as unidentified for the workbench station.
@@ -55,11 +56,6 @@ function itemIsWorkbenchUnidentified(actor, item) {
     return isQmMasked || isNativeUnidentified;
 }
 
-/** @param {Item} item @returns {boolean} */
-function itemIsDnD5ePotionType(item) {
-    return item?.type === "consumable" && item.system?.type?.value === "potion";
-}
-
 /**
  * True display name after identify (fresh actor item + Quartermaster latent if any).
  * @param {Actor} actor
@@ -73,42 +69,6 @@ function resolveTrueName(actor, itemId, fallbackName) {
     const qmSummary = game.ionrift?.workshop?.getLatentSummary?.(fresh);
     if (qmSummary?.trueName) return qmSummary.trueName;
     return fresh.name || fallbackName;
-}
-
-/**
- * Resolve an Item from a browser drop event (character sheet, sidebar, etc.).
- * @param {DragEvent} event
- * @returns {Promise<Item|null>}
- */
-async function resolveItemFromDropEvent(event) {
-    const TE = globalThis.foundry?.applications?.ux?.TextEditor ?? globalThis.TextEditor;
-    let data = null;
-    if (typeof TE?.getDragEventData === "function") {
-        data = TE.getDragEventData(event);
-    } else if (TE?.implementation && typeof TE.implementation.getDragEventData === "function") {
-        data = TE.implementation.getDragEventData(event);
-    }
-    if (!data?.type) {
-        try {
-            data = JSON.parse(event.dataTransfer?.getData("text/plain") || "{}");
-        } catch {
-            data = null;
-        }
-    }
-    if (!data?.type || data.type !== "Item") return null;
-    if (data.uuid) {
-        const doc = fromUuidSync(data.uuid);
-        return doc instanceof Item ? doc : null;
-    }
-    if (typeof Item.implementation?.fromDropData === "function") {
-        try {
-            const doc = await Item.implementation.fromDropData(data);
-            return doc instanceof Item ? doc : null;
-        } catch {
-            return null;
-        }
-    }
-    return null;
 }
 
 
