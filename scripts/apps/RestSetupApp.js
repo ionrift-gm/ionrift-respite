@@ -3814,8 +3814,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                             lastActivity: lastLabel,
                             showLastHint: !!(lastLabel && lastAct !== decl),
                             survivalMod: (() => {
-                                const sur = a.system?.skills?.sur?.total ?? 0;
-                                const nat = a.system?.skills?.nat?.total ?? 0;
+                                const _adapter = game.ionrift?.respite?.adapter;
+                                const sur = _adapter ? _adapter.getSkillTotal(a, "sur") : (a.system?.skills?.sur?.total ?? 0);
+                                const nat = _adapter ? _adapter.getSkillTotal(a, "nat") : (a.system?.skills?.nat?.total ?? 0);
                                 const best = Math.max(sur, nat);
                                 return (best >= 0 ? "+" : "") + best;
                             })(),
@@ -7699,10 +7700,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 } else if (r.dehydrationSaveDC > 0) {
                     const actor = game.actors.get(r.characterId);
                     if (!actor) continue;
-                    const conMod = actor.system?.abilities?.con?.mod ?? 0;
-                    const profBonus = actor.system?.abilities?.con?.save
-                        ? (actor.system?.attributes?.prof ?? 0) : 0;
-                    const roll = await new Roll(`1d20 + ${conMod} + ${profBonus}`).evaluate();
+                    const _adapter = game.ionrift?.respite?.adapter;
+                    const saveBonus = _adapter
+                        ? _adapter.getSaveBonus(actor, "con")
+                        : (() => {
+                            const conMod = actor.system?.abilities?.con?.mod ?? 0;
+                            const profBonus = actor.system?.abilities?.con?.save
+                                ? (actor.system?.attributes?.prof ?? 0) : 0;
+                            return conMod + profBonus;
+                        })();
+                    const roll = await new Roll(`1d20 + ${saveBonus}`).evaluate();
                     if (game.dice3d) {
                         await game.dice3d.showForRoll(roll, game.user, true);
                     }
@@ -12915,15 +12922,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._playerTravelConfirmed[day][actorId] = true;
 
         let modifier, flavor;
+        const _adapter = game.ionrift?.respite?.adapter;
         if (activity === "scout") {
-            const prc = actor.system?.skills?.prc?.total ?? 0;
-            const sur = actor.system?.skills?.sur?.total ?? 0;
+            const prc = _adapter ? _adapter.getSkillTotal(actor, "prc") : (actor.system?.skills?.prc?.total ?? 0);
+            const sur = _adapter ? _adapter.getSkillTotal(actor, "sur") : (actor.system?.skills?.sur?.total ?? 0);
             modifier = Math.max(prc, sur);
             const skillLabel = prc >= sur ? "Perception" : "Survival";
             flavor = `<strong>${actor.name}</strong> - Scout (${skillLabel})`;
         } else {
-            const sur = actor.system?.skills?.sur?.total ?? 0;
-            const nat = actor.system?.skills?.nat?.total ?? 0;
+            const sur = _adapter ? _adapter.getSkillTotal(actor, "sur") : (actor.system?.skills?.sur?.total ?? 0);
+            const nat = _adapter ? _adapter.getSkillTotal(actor, "nat") : (actor.system?.skills?.nat?.total ?? 0);
             modifier = Math.max(sur, nat);
             const actLabel = activity === "forage" ? "Forage" : "Hunt";
             flavor = `<strong>${actor.name}</strong> - ${actLabel} (Survival)${dc ? ` DC ${dc}` : ""}`;
