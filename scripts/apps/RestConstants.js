@@ -9,14 +9,6 @@ import { HD_PENALTY, boostComfort, isComfortEnabled, getComfortDcMod } from "../
 import { isSimpleStationsMode } from "../services/RestProfileSettings.js";
 import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "../services/TrainingSettings.js";
 
-/** Activities hidden when the GM marks a safe rest spot (no encounter risk; no redundant camp duties). */
-export const SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS = new Set([
-    "act_keep_watch",
-    "act_defenses",
-    "act_scout",
-    "act_tend_wounds"
-]);
-
 /**
  * Weather master table. Each entry defines comfort penalty, encounter DC modifier,
  * and tent interaction. `tentReduces` means tent lowers penalty by 1 (partial help).
