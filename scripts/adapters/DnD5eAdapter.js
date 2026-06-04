@@ -171,14 +171,25 @@ export class DnD5eAdapter extends SystemAdapter {
 
     async applyHDRestore(actor, count) {
         const classes = (actor.items ?? []).filter(i => i.type === "class");
+        if (!classes.length) return;
+        const useNewField = classes[0]?.system?.hd !== undefined;
+        const sorted = [...classes]
+            .map(cls => ({
+                item: cls,
+                spent: useNewField
+                    ? (cls.system?.hd?.spent ?? 0)
+                    : (cls.system?.hitDiceUsed ?? 0)
+            }))
+            .filter(c => c.spent > 0);
         let remaining = count;
-        for (const cls of classes) {
+        for (const cls of sorted) {
             if (remaining <= 0) break;
-            const hd = cls.system?.hitDice ?? {};
-            const spent = hd.spent ?? 0;
-            if (spent <= 0) continue;
-            const restore = Math.min(spent, remaining);
-            await cls.update({ "system.hitDice.spent": spent - restore });
+            const restore = Math.min(cls.spent, remaining);
+            if (useNewField) {
+                await cls.item.update({ "system.hd.spent": cls.spent - restore });
+            } else {
+                await cls.item.update({ "system.hitDiceUsed": cls.spent - restore });
+            }
             remaining -= restore;
         }
     }
