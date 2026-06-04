@@ -482,19 +482,6 @@ export function applyActivityPortraitAssignments(item, assigned) {
     item.hasAssignments = assigned.length > 0;
 }
 
-/**
- * Camp station placeholder (build site) before the fire is lit. Swapped in-place when promoted.
- * World Data path (same root as FURNITURE draft art in CompoundCampPlacer).
- * @type {{ name: string, path: string, width: number, height: number }}
- */
-export const PLACEHOLDER_CAMP_STATION = {
-    name: "Build site",
-    path: "icons/svg/circle.svg",
-    /** Half-grid footprint. Small supply bundle, not a full station. */
-    width: 0.5,
-    height: 0.5
-};
-
 /** Shelter spell definitions. Used in setup phase for shelter detection. */
 export const SHELTER_SPELLS = [
     { id: "tiny_hut", name: "Tiny Hut", altNames: ["leomund's tiny hut", "tiny hut", "cozy cabin"], icon: "fas fa-igloo", comfortFloor: "sheltered", encounterMod: 5, restTypes: ["long"], blocksFire: true,
