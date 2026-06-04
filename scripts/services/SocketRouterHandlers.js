@@ -1,5 +1,5 @@
 import { Logger } from "../lib/Logger.js";
-import { _refreshGmRestIndicator } from "../module.js";
+import { refreshGmRestIndicator } from "./RejoinManager.js";
 /**
  * SocketRouterHandlers: handler functions for inbound socket messages.
  * Extracted from module.js (Phase 2.2).
@@ -553,5 +553,5 @@ export function handleTrainingComplete(data, ctx) {
     ctx.activeRestSetupApp._trainingStates?.delete(characterId);
     void ctx.activeRestSetupApp._saveRestState?.();
     ctx.activeRestSetupApp.render();
-    _refreshGmRestIndicator(ctx.activeRestSetupApp);
+    refreshGmRestIndicator(ctx.activeRestSetupApp);
 }

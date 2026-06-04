@@ -30,7 +30,7 @@ import { TerrainRegistry } from "../services/TerrainRegistry.js";
 import { guardEmbedItems } from "../services/MintGuard.js";
 import { GrantLedger } from "../services/GrantLedger.js";
 import { ItemOutcomeHandler } from "../services/ItemOutcomeHandler.js";
-import { _refreshGmRestIndicator } from "../module.js";
+import { refreshGmRestIndicator } from "../services/RejoinManager.js";
 
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -167,7 +167,7 @@ function _creditFeastMealState(restApp, partyIds, satiates) {
 
     notifyStationMealChoicesUpdated();
     if (restApp.rendered) restApp.render();
-    _refreshGmRestIndicator(restApp);
+    refreshGmRestIndicator(restApp);
     if (typeof restApp._refreshStationOverlayMeals === "function") restApp._refreshStationOverlayMeals();
     if (isStationLayerActive()) refreshStationEmptyNoticeFade(restApp);
     Logger.log(`${MODULE_ID} | _creditFeastMealState: credited ${partyIds.length} party members`, { satiates });
