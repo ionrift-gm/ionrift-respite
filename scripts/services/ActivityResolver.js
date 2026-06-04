@@ -1,4 +1,10 @@
 import { getComfortDcMod, isComfortEnabled } from "./ComfortCalculator.js";
+import {
+    applyFletchingYieldFloor,
+    getFletchingTier,
+    getFletchingYieldFormula,
+    isFletchingEnabled
+} from "./FletchingSettings.js";
 import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "./TrainingSettings.js";
 
 /** Activities hidden when the GM marks a safe rest spot (no encounter risk; no redundant camp duties). */
@@ -92,12 +98,8 @@ export class ActivityResolver {
                 } catch (e) { /* setting may not exist yet */ }
             }
 
-            // Gate Fletching behind module setting
-            if (activity.id === "act_fletch") {
-                try {
-                    if (!game.settings.get("ionrift-respite", "enableFletching")) continue;
-                } catch (e) { /* setting may not exist yet */ }
-            }
+            // Gate Fletching behind yield tier (0 = off)
+            if (activity.id === "act_fletch" && !isFletchingEnabled()) continue;
 
             // Gate Copy Spell behind module setting
             if (activity.id === "act_scribe") {
@@ -417,12 +419,20 @@ export class ActivityResolver {
             let qty = itemRef.quantity ?? 1;
             if (typeof qty === "string") {
                 const prof = actor.system?.attributes?.prof ?? 2;
-                const formula = qty.replace(/prof/gi, prof);
+                let expr = qty;
+                if (activity.id === "act_fletch") {
+                    const tierFormula = getFletchingYieldFormula();
+                    if (tierFormula) expr = tierFormula;
+                }
+                const formula = expr.replace(/prof/gi, prof);
                 try {
                     const roll = await new Roll(formula).evaluate();
                     qty = roll.total;
+                    if (activity.id === "act_fletch") {
+                        qty = applyFletchingYieldFloor(qty, getFletchingTier(), prof);
+                    }
                 } catch (e) {
-                    console.error("Respite | Failed to roll item quantity:", qty, e);
+                    console.error("Respite | Failed to roll item quantity:", expr, e);
                     qty = 1;
                 }
             }
@@ -757,12 +767,8 @@ export class ActivityResolver {
                 } catch (e) { /* setting may not exist yet */ }
             }
 
-            // Gate Fletching behind module setting
-            if (activity.id === "act_fletch") {
-                try {
-                    if (!game.settings.get("ionrift-respite", "enableFletching")) continue;
-                } catch (e) { /* setting may not exist yet */ }
-            }
+            // Gate Fletching behind yield tier (0 = off)
+            if (activity.id === "act_fletch" && !isFletchingEnabled()) continue;
 
             // Gate Copy Spell behind module setting
             if (activity.id === "act_scribe") {

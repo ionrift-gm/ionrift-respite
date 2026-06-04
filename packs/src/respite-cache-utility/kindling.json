@@ -15,12 +15,12 @@
             "denomination": "cp"
         }
     },
-    "folder": "f0ra6e0000000001",
     "flags": {
         "ionrift-respite": {
             "itemRef": "kindling",
             "terrain": "any",
-            "firewoodType": "kindling"
+            "firewoodType": "kindling",
+            "cacheEligible": true
         }
     },
     "effects": [],

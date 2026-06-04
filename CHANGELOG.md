@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- **Kindling moved to Respite Cache Utility compendium.** Forage, hunt, and cooking items stay in Respite Items. Camp utility loot (starting with kindling) lives in the new Respite Cache Utility pack for Quartermaster cache pools.
+
 ## [3.0.2] - 2026-06-03
 
 ### Added

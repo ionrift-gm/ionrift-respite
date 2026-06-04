@@ -1,4 +1,4 @@
-/**
+﻿/**
  * TrainingActivityDialog
  *
  * Interactive roll surface for the Training activity. Once a character commits
@@ -64,7 +64,7 @@ export class TrainingActivityDialog extends HandlebarsApplicationMixin(Applicati
     }
 
     get title() {
-        return `Training — ${this._actor?.name ?? "Character"}`;
+        return `Training - ${this._actor?.name ?? "Character"}`;
     }
 
     async _prepareContext() {

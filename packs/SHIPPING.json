@@ -6,7 +6,14 @@
       "approvedBy": "ionrift",
       "approvedDate": "2026-04-01",
       "assetPolicy": "foundry-core-only",
-      "note": "Rest consumables and camp items"
+      "note": "Forage, hunt, and cooking items (not for Quartermaster loot pools)"
+    },
+    "respite-cache-utility": {
+      "status": "approved",
+      "approvedBy": "ionrift",
+      "approvedDate": "2026-06-04",
+      "assetPolicy": "foundry-core-only",
+      "note": "Camp utility items eligible for Quartermaster cache loot"
     },
     "respite-guide": {
       "status": "approved",

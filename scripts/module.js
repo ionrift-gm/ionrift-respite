@@ -67,7 +67,6 @@ import {
     emitAfkUpdate,
 } from "./services/SocketController.js";
 import { registerAllSettings, registerItemEnrichments } from "./services/SettingsRegistrar.js";
-import "./services/SettingsPanelLayout.js";
 import {
     buildRollRequestContext,
     buildEventPlayerRollContext,

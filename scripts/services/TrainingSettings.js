@@ -1,10 +1,10 @@
-const MODULE_ID = "ionrift-respite";
+﻿const MODULE_ID = "ionrift-respite";
 
 /** Compendium page _id for the GM Training guide entry. */
 export const TRAINING_GUIDE_PAGE_ID = "mN8kTrXpGmRef001";
 
 /**
- * Discrete training XP tiers. Index 0 is Off; indices 1–5 are reward rates per set.
+ * Discrete training XP tiers. Index 0 is Off; indices 1-5 are reward rates per set.
  * @type {Array<{label: string, failXp: number, passXp: number}|null>}
  */
 export const TRAINING_XP_TIERS = [
@@ -41,7 +41,7 @@ export function getTrainingXpReduction(streak) {
 }
 
 /**
- * @returns {number} Current tier (0 = off, 1–5 = reward rate).
+ * @returns {number} Current tier (0 = off, 1-5 = reward rate).
  */
 export function getTrainingTier() {
     try {

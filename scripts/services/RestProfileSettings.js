@@ -3,6 +3,8 @@
  * @description Detects Quick Setup profile alignment and derived rest modes.
  */
 
+import { isFletchingEnabled } from "./FletchingSettings.js";
+
 const MODULE_ID = "ionrift-respite";
 
 /**
@@ -14,7 +16,7 @@ export function isSimpleRestProfile() {
         return !game.settings.get(MODULE_ID, "enableComfort")
             && !game.settings.get(MODULE_ID, "enableProfessions")
             && !game.settings.get(MODULE_ID, "enableEncounters")
-            && !game.settings.get(MODULE_ID, "enableFletching")
+            && !isFletchingEnabled()
             && (game.settings.get(MODULE_ID, "trainingXpTier") ?? 0) === 0
             && !game.settings.get(MODULE_ID, "enableCopySpell");
     } catch {

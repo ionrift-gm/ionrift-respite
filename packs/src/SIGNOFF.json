@@ -58,13 +58,6 @@
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/consumables/food/bowl-stew-brown.webp"
     },
-    "kindling.json": {
-      "status": "approved",
-      "approvedBy": "geoff",
-      "approvedDate": "2026-05-01",
-      "assetSource": "foundry-core",
-      "assetSourceNote": "icons/commodities/wood/kindling-sticks-brown.webp"
-    },
     "prickly-pear.json": {
       "status": "approved",
       "approvedBy": "geoff",
@@ -106,6 +99,15 @@
       "approvedDate": "2026-05-01",
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/consumables/plants/leaf-herb-green.webp"
+    }
+  },
+  "cacheUtility": {
+    "kindling.json": {
+      "status": "approved",
+      "approvedBy": "geoff",
+      "approvedDate": "2026-06-04",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/commodities/wood/kindling-sticks-brown.webp"
     }
   },
   "actors": {

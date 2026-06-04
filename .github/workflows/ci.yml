@@ -75,6 +75,9 @@ jobs:
       - name: Validate shipping manifest
         run: node tools/validate-shipping.mjs
 
+      - name: Validate string literals (no typographic dashes)
+        run: node tools/validate-strings.mjs
+
   fallback-parity:
     name: GM/player fallback parity
     runs-on: ubuntu-latest
