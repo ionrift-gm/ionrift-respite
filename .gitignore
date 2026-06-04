@@ -72,3 +72,7 @@ ITEM_DESIGN_GUIDE.md
 dev-profiles.json
 packs/.staging/
 ionrift-respite.lock
+
+# Internal brand/workspace content - must never be committed to public module repos
+ionrift-brand/
+
