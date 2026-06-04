@@ -159,8 +159,10 @@ export class CopySpellHandler {
         const cost = proposal.cost;
 
         // GM rolls Arcana on behalf of the player
-        const arcana = actor.system?.skills?.arc;
-        const modifier = arcana?.total ?? arcana?.mod ?? 0;
+        const _adapter = game.ionrift?.respite?.adapter;
+        const modifier = _adapter
+            ? _adapter.getSkillTotal(actor, "arc")
+            : (actor.system?.skills?.arc?.total ?? actor.system?.skills?.arc?.mod ?? 0);
         const roll = await new Roll(`1d20 + ${modifier}`).evaluate();
         const total = roll.total;
         const success = total >= dc;
@@ -356,8 +358,10 @@ export class CopySpellHandler {
         const cost = data.cost;
 
         // Player rolls Arcana
-        const arcana = actor.system?.skills?.arc;
-        const modifier = arcana?.total ?? arcana?.mod ?? 0;
+        const _adapter = game.ionrift?.respite?.adapter;
+        const modifier = _adapter
+            ? _adapter.getSkillTotal(actor, "arc")
+            : (actor.system?.skills?.arc?.total ?? actor.system?.skills?.arc?.mod ?? 0);
         const roll = await new Roll(`1d20 + ${modifier}`).evaluate();
         const total = roll.total;
         const success = total >= dc;
