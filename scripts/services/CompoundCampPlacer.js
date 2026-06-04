@@ -11,9 +11,16 @@ import { Logger } from "../lib/Logger.js";
  */
 
 import { getPartyActors } from "./partyActors.js";
-import { PLACEHOLDER_CAMP_STATION } from "../apps/RestConstants.js";
 import { isSimpleStationsMode } from "./RestProfileSettings.js";
 import { ImageResolver } from "../util/ImageResolver.js";
+
+/** Placeholder token definition for station build-sites before equipment is assigned. */
+const PLACEHOLDER_CAMP_STATION = {
+    name: "Build site",
+    path: "icons/svg/circle.svg",
+    width: 0.5,
+    height: 0.5
+};
 
 const MODULE_ID = "ionrift-respite";
 
