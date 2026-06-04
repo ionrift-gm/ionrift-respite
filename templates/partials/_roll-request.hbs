@@ -1,4 +1,4 @@
-{{!-- Shared roll-request component. Reuses event-check-module styling from the events DC challenge UI. --}}
+﻿{{!-- Shared roll-request component. Reuses event-check-module styling from the events DC challenge UI. --}}
 <div class="ionrift-roll-request{{#if rollRequest.gmView}} ionrift-roll-request--gm{{/if}}">
     {{#if rollRequest.showTitle}}
     {{#if rollRequest.title}}
@@ -16,7 +16,7 @@
                 {{/if}}
                 <div class="event-dc-badge circular{{#if rollRequest.dcPulseActive}} ionrift-dc-badge--live{{/if}}{{#if rollRequest.ownerOutcome}} event-dc-badge--{{rollRequest.ownerOutcome}}{{/if}}">
                     <span class="dc-label">DC</span>
-                    <span class="dc-value">{{#if rollRequest.meta.noDc}}—{{else}}{{rollRequest.dc}}{{/if}}</span>
+                    <span class="dc-value">{{#if rollRequest.meta.noDc}}-{{else}}{{rollRequest.dc}}{{/if}}</span>
                 </div>
                 {{#if rollRequest.ownerOutcome}}
                 <span class="ionrift-dc-outcome ionrift-dc-outcome--{{rollRequest.ownerOutcome}}"

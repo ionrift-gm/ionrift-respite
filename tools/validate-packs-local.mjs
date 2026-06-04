@@ -36,11 +36,10 @@ const VERIFY_ONLY = process.argv.includes("--verify-only");
 // ── Expected pack contents ──────────────────────────────────────────────
 const EXPECTED = {
     "respite-items": {
-        minEntries: 18,
+        minEntries: 17,
         requiredKeys: [
             "!items!a1b2c3d4e5f60001",   // Wild Herbs
             "!items!a1b2c3d4e5f60002",   // Wild Berries
-            "!items!4f8a1b2c3d4e5f60",   // Kindling
             "!folders!f0ra6e0000000001",  // Forage folder
             "!folders!c00ked0000000001",  // Cooking Outputs folder
         ],
@@ -48,6 +47,17 @@ const EXPECTED = {
             // At least one item must have forage category for base pool gating
             forage: (entries) => entries.some(
                 ([, v]) => v?.flags?.["ionrift-respite"]?.category === "forage"
+            ),
+        },
+    },
+    "respite-cache-utility": {
+        minEntries: 1,
+        requiredKeys: [
+            "!items!4f8a1b2c3d4e5f60",   // Kindling
+        ],
+        requiredFlags: {
+            cacheEligible: (entries) => entries.some(
+                ([, v]) => v?.flags?.["ionrift-respite"]?.cacheEligible === true
             ),
         },
     },

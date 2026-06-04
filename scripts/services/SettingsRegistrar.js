@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @module SettingsRegistrar
  * @description Registers all module settings, menus, and item enrichments for ionrift-respite.
  * Extracted from module.js to reduce monolith size (Phase 2.1).
@@ -12,7 +12,9 @@ import { ActivityConfigApp } from "../apps/ActivityConfigApp.js";
 import { RecoveryConfigApp } from "../apps/RecoveryConfigApp.js";
 import { isComfortEnabled } from "./ComfortCalculator.js";
 import { PlayerRestrictionsApp } from "../apps/PlayerRestrictionsApp.js";
+import { migrateFletchingYieldTier } from "./FletchingSettings.js";
 import { migrateTrainingXpTier } from "./TrainingSettings.js";
+import { registerRespiteSettingsPanel } from "./SettingsPanelLayout.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -70,7 +72,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
     game.settings.registerMenu(MODULE_ID, "activityConfig", {
         name: "Rest Activities",
         label: "Configure Activities",
-        hint: "Toggle activities on or off. Training uses an XP tier slider (Off through five reward rates).",
+        hint: "Toggle activities on or off. Training and fletching use tier sliders (Off through five rates).",
         icon: "fas fa-campground",
         type: ActivityConfigApp,
         restricted: true
@@ -210,7 +212,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     game.settings.register(MODULE_ID, "trainingXpTier", {
         name: "Training XP Tier",
-        hint: "0 disables Training. 1–5 set fail/pass XP per set (3/10 through 10/50).",
+        hint: "0 disables Training. 1-5 set fail/pass XP per set (3/10 through 10/50).",
         scope: "world",
         config: false,
         type: Number,
@@ -236,13 +238,30 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
     });
 
     game.settings.register(MODULE_ID, "enableFletching", {
-        name: "Fletching Activity",
-        hint: "Show the Fletch Arrows activity during long rests. Available to all characters.",
+        name: "Fletching Activity (legacy)",
+        hint: "Legacy boolean. Migrated to fletchingYieldTier on first load.",
         scope: "world",
         config: false,
         type: Boolean,
         default: true,
         restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "fletchingYieldTier", {
+        name: "Fletching Yield Tier",
+        hint: "0 disables Fletching. 1-5 set success yield dice (2d4+prof through 2d20+prof).",
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 1,
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "fletchingYieldTierMigrated", {
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false
     });
 
     game.settings.register(MODULE_ID, "enableEncounters", {
@@ -556,9 +575,14 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         },
         restricted: true
     });
+
+    registerRespiteSettingsPanel();
 }
 
-Hooks.once("ready", () => migrateTrainingXpTier());
+Hooks.once("ready", () => {
+    migrateTrainingXpTier();
+    migrateFletchingYieldTier();
+});
 
 /**
  * Registers Respite-specific item enrichments with the shared library engine.
@@ -726,6 +750,8 @@ export const SETTING_KEYS = [
     "trainingXpTierMigrated",
     "enableProfessions",
     "enableFletching",
+    "fletchingYieldTier",
+    "fletchingYieldTierMigrated",
     "enableEncounters",
     "enableCopySpell",
     "enableScouting",

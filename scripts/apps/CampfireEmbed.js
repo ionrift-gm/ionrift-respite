@@ -16,7 +16,7 @@ import {
     findConsumableFirewoodItem
 } from "../services/CampGearScanner.js";
 
-/** Default kindling art (matches respite-items/kindling.json). */
+/** Default kindling art (matches respite-cache-utility/kindling.json). */
 const DEFAULT_KINDLING_IMG = "icons/commodities/wood/kindling-sticks-brown.webp";
 
 const TRINKETS = [

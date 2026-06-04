@@ -39,6 +39,7 @@ macros/
 # LevelDB compiled packs (build artifacts, compiled from packs/src/ at release time)
 # JSON source files in packs/src/ are the canonical data.
 packs/respite-items/
+packs/respite-cache-utility/
 packs/respite-actors/
 packs/respite-guide/
 packs/respite-guide-gm/

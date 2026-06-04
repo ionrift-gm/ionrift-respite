@@ -342,28 +342,31 @@ export class ItemOutcomeHandler {
     }
 
     /**
-     * Looks up an item from the module's own compendium by itemRef flag.
-     * Caches the pack reference on first call.
+     * Looks up an item from module compendiums by itemRef flag.
      * @param {string} itemRef
      * @returns {Object|null} Item data object, or null if not found.
      */
     static async _fromCompendium(itemRef) {
-        if (!this._pack) {
-            // Try module-level pack first, then search by label
-            this._pack = game.packs.get("ionrift-respite.respite-items")
-                ?? game.packs.find(p => p.metadata.label === "Respite: Rest Items");
+        const packIds = [
+            "ionrift-respite.respite-items",
+            "ionrift-respite.respite-cache-utility"
+        ];
+
+        for (const packId of packIds) {
+            const pack = game.packs.get(packId);
+            if (!pack) continue;
+
+            const index = await pack.getIndex({ fields: ["flags"] });
+            const entry = index.find(
+                e => e.flags?.["ionrift-respite"]?.itemRef === itemRef
+            );
+            if (!entry) continue;
+
+            const doc = await pack.getDocument(entry._id);
+            return doc?.toObject() ?? null;
         }
-        if (!this._pack) return null;
 
-        // Load index if needed (lightweight, metadata only)
-        const index = await this._pack.getIndex({ fields: ["flags"] });
-        const entry = index.find(
-            e => e.flags?.["ionrift-respite"]?.itemRef === itemRef
-        );
-        if (!entry) return null;
-
-        const doc = await this._pack.getDocument(entry._id);
-        return doc?.toObject() ?? null;
+        return null;
     }
 
     /**

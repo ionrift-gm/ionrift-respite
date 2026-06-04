@@ -7,6 +7,7 @@
 import { isGearDeployed } from "../services/CompoundCampPlacer.js";
 import { HD_PENALTY, boostComfort, isComfortEnabled, getComfortDcMod } from "../services/ComfortCalculator.js";
 import { isSimpleStationsMode } from "../services/RestProfileSettings.js";
+import { getFletchingYieldHint, isFletchingEnabled } from "../services/FletchingSettings.js";
 import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "../services/TrainingSettings.js";
 
 /**
@@ -213,11 +214,14 @@ export function getActivityAdvisory(activityId, actor, partyState) {
             return { text: `+${prof} temp HP on success`, urgent: false };
         }
         case "act_fletch": {
+            if (!isFletchingEnabled())
+                return { text: "Fletching is off for this world", urgent: false, nonViable: true };
             const ammo = _countAmmo(actor);
             const prof = actor.system?.attributes?.prof ?? 2;
+            const yieldHint = getFletchingYieldHint(undefined, prof);
             if (ammo !== null && ammo < 10)
-                return { text: `Low ammo: ${ammo} remaining. Yields 1d4+${prof} on success`, urgent: true };
-            return { text: `Craft arrows or bolts. Yields 1d4+${prof} on success`, urgent: false };
+                return { text: `Low ammo: ${ammo} remaining. ${yieldHint}`, urgent: true };
+            return { text: `Craft arrows or bolts. ${yieldHint}`, urgent: false };
         }
         case "act_train": {
             if (!isTrainingEnabled())

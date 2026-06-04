@@ -26,6 +26,14 @@
             "ownership": { "GAMEMASTER": "OWNER" }
         },
         {
+            "name": "respite-cache-utility",
+            "label": "Respite Cache Utility",
+            "type": "Item",
+            "system": "dnd5e",
+            "path": "packs/respite-cache-utility",
+            "ownership": { "GAMEMASTER": "OWNER" }
+        },
+        {
             "name": "respite-guide",
             "label": "Respite Guide",
             "type": "JournalEntry",
@@ -55,7 +63,7 @@
             "folders": [
                 {
                     "name": "Respite",
-                    "packs": ["respite-actors", "respite-guide", "respite-guide-gm", "respite-items"]
+                    "packs": ["respite-actors", "respite-guide", "respite-guide-gm", "respite-items", "respite-cache-utility"]
                 }
             ]
         }
@@ -77,7 +85,7 @@
                 "id": "ionrift-library",
                 "type": "module",
                 "compatibility": {
-                    "minimum": "2.3.0"
+                    "minimum": "2.3.2"
                 }
             }
         ]

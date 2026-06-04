@@ -24869,15 +24869,15 @@ button.is-processing {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    padding: 0.5rem 0.6rem;
+    padding: 0.5rem 0.65rem 0.7rem;
     flex: 1;
     min-height: 0;
 }
 
 /* Intro lead: the window title bar already names the panel, so the body
    shows only a short description and lets the option cards carry the weight. */
-.settings-config-lead,
-.activity-config-lead {
+.respite-settings-config .settings-config-lead,
+.respite-activity-config .activity-config-lead {
     margin: 0.1rem 0.2rem 0.4rem;
     padding: 0;
     font-size: 0.72rem;
@@ -24886,16 +24886,16 @@ button.is-processing {
 }
 
 /* Toggle list */
-.settings-config-list,
-.activity-config-list {
+.respite-settings-config .settings-config-list,
+.respite-activity-config .activity-config-list {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
 }
 
 /* Each setting row */
-.settings-config-row,
-.activity-config-row {
+.respite-settings-config .settings-config-row,
+.respite-activity-config .activity-config-row {
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -24906,13 +24906,13 @@ button.is-processing {
     transition: border-color 0.15s;
 }
 
-.settings-config-row:hover,
-.activity-config-row:hover {
+.respite-settings-config .settings-config-row:hover,
+.respite-activity-config .activity-config-row:hover {
     border-color: rgba(255, 255, 255, 0.12);
 }
 
-.settings-config-info,
-.activity-config-info {
+.respite-settings-config .settings-config-info,
+.respite-activity-config .activity-config-info {
     flex: 1;
     min-width: 0;
     display: flex;
@@ -24920,15 +24920,15 @@ button.is-processing {
     gap: 0.1rem;
 }
 
-.settings-config-label,
-.activity-config-label {
+.respite-settings-config .settings-config-label,
+.respite-activity-config .activity-config-label {
     font-size: 0.86rem;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.92);
 }
 
-.settings-config-icon,
-.activity-config-icon {
+.respite-settings-config .settings-config-icon,
+.respite-activity-config .activity-config-icon {
     width: 1.1rem;
     text-align: center;
     color: rgba(155, 89, 182, 0.85);
@@ -24936,66 +24936,67 @@ button.is-processing {
     font-size: 0.8rem;
 }
 
-.settings-config-hint,
-.activity-config-hint {
+.respite-settings-config .settings-config-hint,
+.respite-activity-config .activity-config-hint {
     font-size: 0.65rem;
     color: rgba(255, 255, 255, 0.35);
     line-height: 1.35;
 }
 
 /* Toggle switch (boolean) */
-.settings-config-toggle,
-.activity-config-toggle {
+.respite-settings-config .settings-config-toggle,
+.respite-activity-config .activity-config-toggle {
     position: relative;
     display: inline-block;
-    width: 38px;
+    width: 36px;
     height: 20px;
     flex-shrink: 0;
     cursor: pointer;
 }
 
-.settings-config-toggle input,
-.activity-config-toggle input {
+.respite-settings-config .settings-config-toggle input,
+.respite-activity-config .activity-config-toggle input {
     position: absolute;
     opacity: 0;
     width: 0;
     height: 0;
 }
 
-.settings-config-slider,
-.activity-config-slider {
+.respite-settings-config .settings-config-slider,
+.respite-activity-config .activity-config-slider {
     position: absolute;
     inset: 0;
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    transition: all 0.2s ease;
+    overflow: hidden;
+    transition: background 0.2s ease, border-color 0.2s ease;
 }
 
-.settings-config-slider::before,
-.activity-config-slider::before {
+.respite-settings-config .settings-config-slider::before,
+.respite-activity-config .activity-config-slider::before {
     content: "";
     position: absolute;
     width: 14px;
     height: 14px;
     border-radius: 50%;
+    top: 2px;
     left: 2px;
-    bottom: 2px;
     background: rgba(255, 255, 255, 0.35);
-    transition: all 0.2s ease;
+    transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
-.settings-config-toggle input:checked + .settings-config-slider,
-.activity-config-toggle input:checked + .activity-config-slider {
+.respite-settings-config .settings-config-toggle input:checked + .settings-config-slider,
+.respite-activity-config .activity-config-toggle input:checked + .activity-config-slider {
     background: rgba(155, 89, 182, 0.2);
     border-color: rgba(155, 89, 182, 0.4);
 }
 
-.settings-config-toggle input:checked + .settings-config-slider::before,
-.activity-config-toggle input:checked + .activity-config-slider::before {
-    transform: translateX(18px);
+.respite-settings-config .settings-config-toggle input:checked + .settings-config-slider::before,
+.respite-activity-config .activity-config-toggle input:checked + .activity-config-slider::before {
+    transform: translateX(16px);
     background: var(--ionrift-accent, #9b59b6);
-    box-shadow: 0 0 6px rgba(155, 89, 182, 0.4);
+    box-shadow: 0 0 5px rgba(155, 89, 182, 0.35);
 }
 
 .activity-config-row--training {
@@ -25062,7 +25063,7 @@ button.is-processing {
 }
 
 /* Select dropdown (Song of Rest, etc.) */
-.settings-config-select {
+.respite-settings-config .settings-config-select {
     width: 200px;
     flex-shrink: 0;
     padding: 0.3rem 0.45rem;
@@ -25074,25 +25075,25 @@ button.is-processing {
     cursor: pointer;
 }
 
-.settings-config-select:focus {
+.respite-settings-config .settings-config-select:focus {
     outline: none;
     border-color: rgba(155, 89, 182, 0.4);
 }
 
-.settings-config-select option {
+.respite-settings-config .settings-config-select option {
     background: #1a1a2e;
     color: rgba(255, 255, 255, 0.85);
 }
 
 /* Range slider (Spell Recovery Max Level, etc.) */
-.settings-config-range-wrap {
+.respite-settings-config .settings-config-range-wrap {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     flex-shrink: 0;
 }
 
-.settings-config-range {
+.respite-settings-config .settings-config-range {
     width: 100px;
     height: 4px;
     -webkit-appearance: none;
@@ -25103,7 +25104,7 @@ button.is-processing {
     cursor: pointer;
 }
 
-.settings-config-range::-webkit-slider-thumb {
+.respite-settings-config .settings-config-range::-webkit-slider-thumb {
     -webkit-appearance: none;
     width: 14px;
     height: 14px;
@@ -25114,7 +25115,7 @@ button.is-processing {
     cursor: pointer;
 }
 
-.settings-config-range::-moz-range-thumb {
+.respite-settings-config .settings-config-range::-moz-range-thumb {
     width: 14px;
     height: 14px;
     border-radius: 50%;
@@ -25124,7 +25125,7 @@ button.is-processing {
     cursor: pointer;
 }
 
-.settings-config-range-val {
+.respite-settings-config .settings-config-range-val {
     font-size: 0.78rem;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.75);
@@ -25133,16 +25134,17 @@ button.is-processing {
 }
 
 /* Save button */
-.settings-config-actions,
-.activity-config-actions {
+.respite-settings-config .settings-config-actions,
+.respite-activity-config .activity-config-actions {
     display: flex;
     justify-content: flex-end;
-    padding: 0.4rem 0 0;
+    margin-top: 0.15rem;
+    padding: 0.45rem 0.05rem 0;
     border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.settings-config-save-btn,
-.activity-config-save-btn {
+.respite-settings-config .settings-config-save-btn,
+.respite-activity-config .activity-config-save-btn {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
@@ -25157,237 +25159,19 @@ button.is-processing {
     color: rgba(155, 89, 182, 0.9);
 }
 
-.settings-config-save-btn:hover,
-.activity-config-save-btn:hover {
+.respite-settings-config .settings-config-save-btn:hover,
+.respite-activity-config .activity-config-save-btn:hover {
     background: rgba(155, 89, 182, 0.25);
     border-color: rgba(155, 89, 182, 0.5);
     box-shadow: 0 0 10px rgba(155, 89, 182, 0.15);
 }
 
-.settings-config-save-btn i,
-.activity-config-save-btn i {
+.respite-settings-config .settings-config-save-btn i,
+.respite-activity-config .activity-config-save-btn i {
     font-size: 0.7rem;
 }
 
-/* ─────────────────────────────────────────────────────────────────── */
-/*  Settings panel: Respite Quick Setup card and group headers         */
-/*  Injected into Foundry's native Settings window by                  */
-/*  SettingsPanelLayout.js. Tuned to sit alongside the kernel's amber  */
-/*  divider rather than the dark-glass module windows.                 */
-/* ─────────────────────────────────────────────────────────────────── */
-/* Quick Setup card: one-click play-style profiles in the hero slot */
-.respite-quick-setup {
-    margin: 0 0 0.7rem;
-    padding: 0.6rem 0.7rem;
-    border: 1px solid rgba(200, 160, 60, 0.28);
-    border-radius: 6px;
-    background: rgba(200, 160, 60, 0.06);
-}
-
-.respite-quick-setup-head {
-    display: flex;
-    flex-direction: column;
-    gap: 0.45rem;
-    margin-bottom: 0.5rem;
-}
-
-.respite-quick-setup-head-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-}
-
-.respite-quick-setup-title {
-    font-size: 0.82rem;
-    font-weight: 600;
-}
-
-.respite-quick-setup-title i {
-    color: rgba(200, 160, 60, 0.9);
-    margin-right: 0.35rem;
-}
-
-.respite-quick-setup-sub {
-    font-size: 0.72rem;
-    opacity: 0.6;
-    line-height: 1.45;
-    padding-right: 0.15rem;
-}
-
-.respite-quick-setup-guide-link {
-    flex-shrink: 0;
-    background: rgba(200, 160, 60, 0.12);
-    border: 1px solid rgba(200, 160, 60, 0.35);
-    color: rgba(220, 190, 110, 0.95);
-    font-size: 0.72rem;
-    padding: 0.18rem 0.55rem;
-    border-radius: 4px;
-    line-height: 1.4;
-    cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.respite-quick-setup-guide-link:hover {
-    background: rgba(200, 160, 60, 0.22);
-    border-color: rgba(200, 160, 60, 0.6);
-}
-
-.respite-quick-setup-guide-link i {
-    margin-right: 0.3rem;
-}
-
-.respite-quick-setup-options {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.respite-quick-setup-row {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.respite-quick-setup-row-secondary .respite-profile-btn {
-    flex: 1;
-}
-
-.respite-profile-btn {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.2rem;
-    width: auto;
-    height: auto;
-    padding: 0.5rem 0.6rem;
-    line-height: 1.3;
-    text-align: left;
-    border: 1px solid rgba(200, 160, 60, 0.28);
-    border-radius: 6px;
-    background: rgba(0, 0, 0, 0.15);
-}
-
-.respite-profile-btn:hover {
-    border-color: rgba(200, 160, 60, 0.6);
-}
-
-.respite-profile-btn .rp-name {
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
-.respite-profile-btn .rp-name i {
-    color: rgba(200, 160, 60, 0.9);
-    margin-right: 0.3rem;
-}
-
-.respite-profile-btn .rp-desc {
-    font-size: 0.68rem;
-    opacity: 0.6;
-    white-space: normal;
-}
-
-.respite-profile-custom {
-    cursor: default;
-    border-style: dashed;
-}
-
-.respite-profile-custom:not(.is-active) {
-    opacity: 0.5;
-}
-
-.respite-profile-custom:hover {
-    border-color: rgba(200, 160, 60, 0.28);
-}
-
-.respite-profile-btn .rp-active {
-    display: none;
-    margin-top: 0.15rem;
-    font-size: 0.66rem;
-    font-weight: 600;
-    color: #7ddc8f;
-    letter-spacing: 0.02em;
-}
-
-.respite-profile-btn .rp-active i {
-    margin-right: 0.25rem;
-}
-
-.respite-profile-btn.is-active {
-    border-color: rgba(125, 220, 143, 0.7);
-    box-shadow: 0 0 0 1px rgba(125, 220, 143, 0.35), 0 0 10px rgba(125, 220, 143, 0.18);
-    background: rgba(125, 220, 143, 0.06);
-}
-
-.respite-profile-btn.is-active:hover {
-    border-color: rgba(125, 220, 143, 0.85);
-}
-
-.respite-profile-btn.is-active .rp-active {
-    display: inline-flex;
-    align-items: center;
-}
-
-/* Profile confirm dialog (Ionrift glass) */
-.respite-profile-confirm tr.rp-group td {
-    padding-top: 0.5rem;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    opacity: 0.55;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.respite-profile-confirm table {
-    width: 100%;
-    margin: 0.4rem 0;
-    border-collapse: collapse;
-    font-size: 0.82rem;
-}
-
-.respite-profile-confirm td {
-    padding: 0.15rem 0.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.respite-profile-confirm td:last-child {
-    text-align: right;
-    font-weight: 600;
-}
-
-.respite-profile-confirm td.on {
-    color: #7ddc8f;
-}
-
-.respite-profile-confirm td.off {
-    color: rgba(255, 255, 255, 0.45);
-}
-
-.respite-profile-note {
-    font-size: 0.72rem;
-    opacity: 0.6;
-    margin-top: 0.4rem;
-}
-
-.respite-settings-group-header {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    margin: 0.75rem 0 0.25rem;
-    padding-bottom: 0.2rem;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    opacity: 0.75;
-    border-bottom: 1px solid rgba(200, 160, 60, 0.22);
-}
-
-.respite-settings-group-header i {
-    color: rgba(200, 160, 60, 0.85);
-}
+/* Settings Quick Setup / group headers: ionrift-library (ModuleConfigProfiles) */
 
 /* ── Standardized roll-request component (reuses event-check-module styling) ── */
 

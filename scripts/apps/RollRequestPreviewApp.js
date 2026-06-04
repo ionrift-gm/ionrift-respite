@@ -1,5 +1,5 @@
-/**
- * RollRequestPreviewApp — GM-side harness for iterating on the shared roll-request UI.
+﻿/**
+ * RollRequestPreviewApp - GM-side harness for iterating on the shared roll-request UI.
  * Renders the rollRequest partial with mock payloads (player POV from the host client).
  */
 
