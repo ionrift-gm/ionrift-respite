@@ -11,6 +11,7 @@
 - **Travel & Activities settings panel.** The dialog is split into Travel and Activities columns with matching group headers. Module settings menu renamed from Rest Activities.
 - **Arcane / Natural Recovery max level** moved to the Short Rest column in Recovery Rules. Both features resolve at the end of a short rest in 5e.
 - **Tavern setup locks Safe Rest on.** The toggle stays visible, checked, and faded while tavern is selected. Leaving tavern clears Safe Rest and pulses the control to flag the change.
+- **Tavern rests force one-window mode** when camp stations are configured. No map station placement for the rest; the saved interface preference is unchanged afterward.
 - **Tavern rests now include an activity phase.** The party can visit workbench and room stations after skipping camp setup. Watch, defenses, first aid, Rest Fully, profession crafting, and the campfire station are withheld; recovery stays automatic and night encounters do not run.
 - **Setup badges fade for tavern terrain.** Choosing Tavern dims Comfort, Professions, and Meals on the setup screen, matching the safe-rest treatment for comfort and reflecting what actually runs at an inn.
 - **Tavern activity phase hides the campfire panel** and auto-assigns Other when that is the only station activity offered, same as Simple mode.
