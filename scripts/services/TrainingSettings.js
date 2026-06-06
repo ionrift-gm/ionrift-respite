@@ -1,4 +1,4 @@
-﻿const MODULE_ID = "ionrift-respite";
+const MODULE_ID = "ionrift-respite";
 
 /** Compendium page _id for the GM Training guide entry. */
 export const TRAINING_GUIDE_PAGE_ID = "mN8kTrXpGmRef001";
