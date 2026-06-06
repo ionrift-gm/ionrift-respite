@@ -4,9 +4,9 @@
 ![Foundry Version](https://img.shields.io/badge/Foundry-v12-333333?style=flat&logo=foundryvirtualtabletop)
 ![Systems](https://img.shields.io/badge/system-dnd5e%20%7C%20pf2e-blue)
 
-**Structured rest phases for DnD 5e and Pathfinder 2e.**
+**Structured long and short rest phases for DnD 5e and Pathfinder 2e.**
 
-[![Watch the trailer](https://img.youtube.com/vi/-juG6sDkabU/maxresdefault.jpg)](https://youtu.be/-juG6sDkabU)
+[![Watch the trailer](https://img.youtube.com/vi/nKByCDttG3M/maxresdefault.jpg)](https://youtu.be/nKByCDttG3M)
 
 ### Support Ionrift
 
@@ -15,82 +15,112 @@
 
 > Documentation, setup guides, and troubleshooting: **[Ionrift Wiki](https://github.com/ionrift-gm/ionrift-library/wiki)**
 
-Long rests have a bottleneck. Everyone wants to do something - identify that ring, copy a spell, attune new gear - but the GM has to manage each request one by one or cut things short to keep the session moving. The GM is already overloaded, and breaking out of character to manage rest logistics one player at a time is a problem most tables solve by just skipping the interesting parts.
+Long rests have a bottleneck. Everyone wants to do something during downtime: identify a ring, copy a spell, attune new gear, cook for the party. The GM has to field each request one at a time or cut the whole thing short to keep the session moving.
 
-Respite replaces the default long rest dialog with a phased flow. Players pick their own activities and handle their own downtime. The GM runs the encounter roll and events. The bookkeeping that can eat the better part of an hour gets handled by the module.
+Breaking out of character to run rest logistics player by player is the problem most tables solve by skipping the interesting parts entirely.
 
-![Activity selection with campfire and self-serve options](assets/screenshots/pure/13_activities_caster.png)
+Respite replaces the default rest dialog with a guided flow. Players pick their own activities and handle their own downtime. The GM runs the encounter roll and the events. The bookkeeping that can eat the better part of an hour is handled by the module.
+
+---
+
+## Rest profiles
+
+Starting a rest opens one of three presets instead of a configuration screen. Pick the one that matches how much detail the table wants and the rest configures itself.
+
+![Simple, Standard, and Survival rest profile cards](https://media.githubusercontent.com/media/ionrift-gm/ionrift-respite/master/assets/screenshots/pure/promo/profiles.png)
+
+- **Simple.** Activities then recovery. No rolls, no encounters, no decision trees. Just the party asleep and a continue button.
+- **Standard.** The full phased flow with events and the campfire, without the survival bookkeeping.
+- **Survival.** Adds comfort tiers, terrain penalties, the exhaustion save, and meal tracking for tables that want the whole ruleset.
+
+A custom card covers anything that deviates. Full settings live in three tidy submenus: Rest Activities, Recovery Rules, and Player Restrictions.
+
+---
 
 ## How it works
 
-1. **Environment** - Terrain, weather, shelter. The module calculates an encounter DC and shows the breakdown.
-2. **Activities** - Each player picks what they're doing. Camp duties, personal activities, or spell-gated options like Identify and Copy Spell.
-3. **Events** - GM rolls against the encounter threshold. Events pull from terrain-specific pools with narrative outcomes, skill checks, and decision trees.
-4. **Resolution** - HP/HD recovery based on comfort level. Each player is presented with the full results of their rest privately.
+1. **Setup.** The GM picks terrain, weather, and shelter. The module calculates an encounter DC and shows the breakdown.
+2. **Activities.** Each player picks what they are doing. Keep watch, rest fully, or specialist options like Attune, Identify, and Copy Spell.
+3. **Events.** The GM rolls against the encounter threshold. Events pull from terrain-specific pools with four outcome tiers, or suggest a combat outcome with surprise and initiative.
+4. **Resolution.** HP and Hit Die recovery scale with comfort level. Each player sees the full results of their rest privately.
 
-There's a tension between guarding the camp and getting rest. Someone on watch is safe if combat breaks out but recovers less. Someone resting fully recovers better but wakes up groggy. Sleeping in armor avoids the scramble to gear up but costs recovery (optional Xanathar's rules). These tradeoffs are shown to the player up front so the GM doesn't have to explain them.
+There is tension between guarding the camp and getting rest. Someone on watch is ready if combat breaks out but recovers less. Someone resting fully recovers better but wakes up groggy. Sleeping in armor avoids the scramble to gear up but costs recovery (optional Xanathar's rule). These tradeoffs are shown to the player with buttons to decide, so the GM does not have to explain or manage them.
 
-## Activities
+---
 
-Players pick from a grid and it handles the mechanics. Most activities are fully self-serve; Copy Spell still needs some GM interaction with an agreement/transaction flow, but the spell level, gold cost, and Arcana DC are calculated and deducted for you.
+## Identify and attune without the GM running each request
 
-Camp duties (Keep Watch, Scout, Set Defenses, Tend Wounds) protect the party. Personal activities (Train, Rest Fully, Forage, Fletch Arrows) are for your own character. Spell-gated activities (Identify, Attune, Copy Spell) only show up if you have the right spells.
+Casters scan the party's gear from the workbench. Detect Magic sweeps inventory with animated cues. Identify resolves names and properties in a Revelation card. Copy Spell runs the full gold cost, Arcana DC, and approval flow. Most of this is self-serve; the GM only steps in where the rules require it.
 
-![Copy Spell - full PHB workflow with gold cost, Arcana DC, and GM approval](assets/screenshots/pure/activities/activity_copy_spell.png)
+<video src="https://media.githubusercontent.com/media/ionrift-gm/ionrift-respite/master/assets/screenshots/pure/promo/identify.web.mp4" width="640" controls muted loop playsinline poster="https://media.githubusercontent.com/media/ionrift-gm/ionrift-respite/master/assets/screenshots/pure/promo/identify_poster.png"></video>
 
-Copy Spell runs the full PHB workflow. Pick a spell level, the system works out the gold cost, rolls Arcana, and sends the GM an approval request. Identify lets casters ritual-scan the party's gear without using up their activity slot. Attune shows un-attuned items with slot tracking.
-
-**[See all activities with screenshots](assets/screenshots/pure/activities/README.md)**
-
+---
 
 ## Events
 
-30+ events across 6 terrains (forest, desert, swamp, urban, dungeon, tavern), each with multiple outcome tiers. Collected over years of running a primitive version of this module at the table. Events have weighted probability and narrative branching. The GM can Force Pass or Force Fail any outcome.
+Hand-written rest events across forest, desert, swamp, urban, dungeon, and tavern, collected over years of running a primitive version of this module at the table. Events have tiers, weighted probability, and narrative branching. The GM chooses how events are picked: random roll, improvise, or pick from the pool.
 
-![Vermin Nest event with group Nature check](assets/screenshots/pure/12_events_vermin.png)
+| ![Night Watch event picker](https://media.githubusercontent.com/media/ionrift-gm/ionrift-respite/master/assets/screenshots/pure/promo/event_picker.png) | ![Light Fingers event](https://media.githubusercontent.com/media/ionrift-gm/ionrift-respite/master/assets/screenshots/pure/promo/event_card.png) |
+|---|---|
+
+When an event puts gear or coin at risk, the module rolls which items are affected and proposes the loss. The GM reviews, can re-roll a result that does not fit, and confirms before anything is removed. Nothing leaves a character sheet without GM sign-off. Force Pass or Force Fail is always available.
+
+![Disaster Loss Approval modal](https://media.githubusercontent.com/media/ionrift-gm/ionrift-respite/master/assets/screenshots/pure/promo/loss_modal.png)
+
+---
 
 ## Meals
 
-![Rations phase with drag-and-drop food and water](assets/screenshots/pure/06_rations.png)
+When meal tracking is enabled in the Survival profile, players drag rations from inventory to fill plates and pour water from a shared pool. Missing meals trigger CON saves, and exhaustion stacks following the standard 5e variant rules.
 
-When meal tracking is enabled, drag rations from inventory to fill plates - water and food can now be self-served, if you'll forgive the pun 😬
-
-Missing meals trigger CON saves. Exhaustion stacks following the standard 5e variant rules.
+---
 
 ## Camp systems
 
-- **Encounter DC** - Terrain baseline + shelter + fire + scouting + defenses + weather. Visible breakdown in the UI.
-- **Comfort tiers** - Hostile, Rough, Sheltered, Safe. Drives HP/HD recovery scaling.
-- **Shelter spells** - Tiny Hut, Rope Trick, Mansion auto-detected from party spell lists.
-- **Gear badges** - Bedroll (+1 HD), Mess Kit (advantage on exhaustion saves with fire), Tent (weather shield) detected from inventory.
-- **Campfire** - Interactive fire panel with whittle mechanic and three stages (embers, campfire, bonfire).
+- **Encounter DC.** Terrain baseline plus shelter, fire, scouting, defenses, and weather, with a visible breakdown in the UI.
+- **Comfort tiers.** Hostile, Rough, Sheltered, Safe. Drives HP and Hit Die recovery scaling.
+- **Safe Rest Spot.** Mark a tavern or allied fortress as safe to skip encounters, comfort penalties, and meals while activities still work.
+- **Shelter spells.** Tiny Hut, Rope Trick, and Mansion auto-detected from party spell lists.
+- **Gear badges.** Bedroll, Mess Kit, and Tent benefits detected from inventory.
+- **Campfire.** Interactive fire panel with a whittle mechanic and three stages: embers, campfire, bonfire.
+
+---
+
+## Short rest
+
+A separate single-screen flow with per-die Hit Die spending and live HP tracking. Bards can volunteer Song of Rest, wizards and druids get an Arcane or Natural Recovery picker, and supported feats and items (Durable, Periapt of Wound Closure) are detected from the sheet.
+
+---
 
 ## System support
 
 | System | Status | What works |
 |---|---|---|
-| DnD 5e | Full | All activities, recovery, events, campfire, professions, short rest |
-| Pathfinder 2e | Early | Core rest flow, campfire, events, activity grid, HP/focus recovery. PF2e-specific activities (Treat Wounds, Refocus) and condition automation are coming. |
-- **Armor penalty** - Xanathar's sleeping-in-armor rule. Warns players before they commit.
+| DnD 5e | Full | Activities, recovery, events, campfire, cooking, and short rest. Verified on Foundry v14, compatible back to v12. |
+| Pathfinder 2e | Early | Core rest flow, campfire, events, activity grid, and HP/Focus recovery. PF2e-specific activities and condition automation are in progress. |
 
-## Short rest
-
-Separate single-screen wizard. Per-die HD spending, shelter detection, RP prompt.
+---
 
 ## Dependencies
 
-- **[Ionrift Library](https://github.com/ionrift-gm/ionrift-library)** - Required.
-- **[Simple Calendar](https://foundryvtt.com/packages/foundryvtt-simple-calendar)** - Optional. Date tracking and "already rested today" checks.
+- **[Ionrift Library](https://github.com/ionrift-gm/ionrift-library)**: Required dependency.
+- **[Simple Calendar](https://foundryvtt.com/packages/foundryvtt-simple-calendar)** (optional): Date tracking and "already rested today" checks.
+
+---
 
 ## Settings
 
 All under **Game Settings > Module Settings > Ionrift Respite**: default comfort level, rest interception, armor advisory, meal tracking, content packs, debug logging.
+
+---
 
 ## Bug reports
 
 1. **[Ionrift Wiki](https://github.com/ionrift-gm/ionrift-library/wiki)** for common fixes.
 2. **[Ionrift Discord](https://discord.gg/vFGXf7Fncj)** with Foundry version, module versions, and console errors.
 3. **[GitHub Issues](https://github.com/ionrift-gm/ionrift-respite/issues)**.
+
+---
 
 ## License
 
@@ -103,4 +133,3 @@ Event narratives, terrain data, and item descriptions in `data/` are copyright I
 **Part of the [Ionrift Module Suite](https://github.com/ionrift-gm)**
 
 [Wiki](https://github.com/ionrift-gm/ionrift-library/wiki) · [Discord](https://discord.gg/vFGXf7Fncj) · [Patreon](https://patreon.com/ionrift)
-
