@@ -1339,6 +1339,12 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
     // fire lighting is a setup step that runs in both modes).
     if (!options.campPitModeOnly) {
         try {
+            const respite = game.ionrift?.respite;
+            const restApp = respite?.activeRestSetupApp ?? respite?.activePlayerRestApp;
+            if (restApp?._isTotM) {
+                Logger.log(`${MODULE_ID} | StationInteractionLayer.activate skipped (theater mode)`);
+                return;
+            }
             if (game.settings.get(MODULE_ID, "restInterfaceMode") === "theater") {
                 Logger.log(`${MODULE_ID} | StationInteractionLayer.activate skipped (theater mode)`);
                 return;

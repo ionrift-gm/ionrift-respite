@@ -417,6 +417,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._restWindowRecenterSuppressed = 0;
         /** One-shot pulse on Safe Rest after leaving tavern terrain in setup. */
         this._safeRestPulseAlert = false;
+        /** Tavern + camp stations: force TotM for this rest only (never writes restInterfaceMode). */
+        this._tavernTotmOverride = false;
         /** Guards duplicate ceremony commit from ignite + heat notify. */
         this._commitMakeCampCeremonyInFlight = false;
 
@@ -471,6 +473,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 comfort: restData.comfort ?? "rough",
                 safeRestSpot: restData.safeRestSpot ?? false
             });
+            if (restData.tavernTotmOverride) {
+                this._tavernTotmOverride = true;
+            } else if (restData.terrainTag === "tavern") {
+                this._applyTavernTotmOverrideForRestStart("tavern");
+            }
             if (restData.fireLevel) {
                 this._engine.fireLevel = restData.fireLevel;
             }
@@ -520,11 +527,37 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Single source of truth for the mode check. The fallback matches the
      * registered default ("theater") so a not-yet-ready setting read resolves
      * to the same mode a fresh world starts in.
+     * Tavern rests temporarily force TotM when camp stations are configured;
+     * the world setting is restored when the rest ends.
      * @returns {boolean}
      */
     get _isTotM() {
+        if (this._tavernTotmOverride) return true;
         try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; }
         catch { return true; }
+    }
+
+    /**
+     * Camp stations cannot run tavern rests on the canvas. When the saved
+     * interface mode is stations and terrain is tavern, use TotM for this
+     * rest only. Does not write restInterfaceMode.
+     * @param {string} terrainTag
+     */
+    _applyTavernTotmOverrideForRestStart(terrainTag) {
+        if (terrainTag !== "tavern") {
+            this._tavernTotmOverride = false;
+            return;
+        }
+        try {
+            this._tavernTotmOverride = game.settings.get(MODULE_ID, "restInterfaceMode") === "stations";
+        } catch {
+            this._tavernTotmOverride = false;
+        }
+    }
+
+    /** Clears the tavern TotM override after the rest ends or is abandoned. */
+    _clearTavernTotmOverride() {
+        this._tavernTotmOverride = false;
     }
 
     /**
@@ -1268,6 +1301,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             grantLedger: this._grantLedger?.serialize() ?? null,
             magicScanComplete: this._magicScanComplete ?? false,
             magicScanResults: this._magicScanResults ?? null,
+            tavernTotmOverride: !!this._tavernTotmOverride,
             timestamp: Date.now()
         };
         await game.settings.set(MODULE_ID, "activeRest", state);
@@ -1336,6 +1370,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         if (state.travelState) {
             this._travel.deserialize(state.travelState);
+        }
+
+        if (state.tavernTotmOverride !== undefined) {
+            this._tavernTotmOverride = !!state.tavernTotmOverride;
+        } else if (state.selectedTerrain === "tavern" || this._engine?.terrainTag === "tavern") {
+            this._applyTavernTotmOverrideForRestStart("tavern");
+        } else {
+            this._clearTavernTotmOverride();
         }
 
         const legacyDiscoveries = state.grantedDiscoveries;
@@ -1483,6 +1525,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     async _clearRestState() {
         if (!game.user.isGM) return;
+        this._clearTavernTotmOverride();
         this._grantLedger?.reset();
         try {
             await game.settings.set(MODULE_ID, "activeRest", {});
@@ -2510,6 +2553,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const safeRestSpot = !!(this._engine?.safeRestSpot ?? this._restData?.safeRestSpot ?? safeRestSpotFromSetting);
         const isTavernSetup = (this._selectedTerrain ?? "forest") === "tavern";
         const setupSafeHaven = safeRestSpot || isTavernSetup;
+        let tavernForcesTotm = false;
+        try {
+            tavernForcesTotm = isTavernSetup
+                && game.settings.get(MODULE_ID, "restInterfaceMode") === "stations";
+        } catch { /* settings not ready */ }
 
         let encountersEnabled = true;
         try {
@@ -4084,6 +4132,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     parts.push(fx.join(", "));
                 }
                 if (!setupSafeHaven && d.travelAvailable) parts.push("travel available");
+                if (tavernForcesTotm) parts.push("one-window flow for tavern");
                 return parts.join(" · ");
             })(),
             weatherOptions: (() => {
@@ -4151,6 +4200,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 : "No encounter risk. Skips night events, comfort penalties, and camp defense. Activities, cooking, and identification only.",
             setupSafeHaven,
             isTavernSetup,
+            tavernForcesTotm,
             selectedWeatherLabel: WEATHER_TABLE[this._resolveSetupWeather(this._selectedTerrain ?? "forest")]?.label ?? "Clear",
             shelterNeeded: (this._selectedTerrain ?? "forest") !== "tavern",
             defaultComfort,
@@ -7312,6 +7362,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             console.warn(`${MODULE_ID} | Could not persist safeRestSpot`, e);
         }
 
+        this._applyTavernTotmOverrideForRestStart(terrainTag);
+
         this._engine = new RestFlowEngine({
             restType: formData.restType ?? "long",
             terrainTag,
@@ -7362,6 +7414,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             comfort: this._engine.comfort,
             restType: this._engine.restType,
             safeRestSpot: this._engine.safeRestSpot,
+            tavernTotmOverride: !!this._tavernTotmOverride,
             activities: this._activities ?? [],
             recipes: Object.fromEntries(this._craftingEngine.recipes)
         };
@@ -9574,6 +9627,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Clear persisted rest state
         await game.settings.set(MODULE_ID, "activeRest", {});
+        this._clearTavernTotmOverride();
 
         // Detect Magic + workbench staging (skip save: activeRest already cleared)
         this._clearDetectMagicScanSession({ skipSave: true });
@@ -11578,6 +11632,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Attaches interactive overlays to campsite station tokens (GM and players).
      */
     _activateCanvasStationLayer() {
+        if (this._isTotM) return;
         if (!canvas?.ready) return;
         // Make Camp pit dialog is camp-phase only; close any stray instance before activity station UI.
         CampfireMakeCampDialog.closeIfOpen();
@@ -11709,6 +11764,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     refreshCanvasStationOverlaysIfActivity() {
         if (this._phase !== "activity") return;
+        if (this._isTotM) return;
         if (canvas?.ready) {
             this._activateCanvasStationLayer();
         } else {

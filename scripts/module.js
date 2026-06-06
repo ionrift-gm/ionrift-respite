@@ -1143,6 +1143,7 @@ Hooks.once("ready", async () => {
                         fireLevel: app._fireLevel ?? "unlit",
                         coldCampDecided: !!app._coldCampDecided,
                         safeRestSpot: !!app._engine?.safeRestSpot,
+                        tavernTotmOverride: !!app._tavernTotmOverride,
                         activities: app._activities ?? [],
                         recipes: app._craftingEngine?.recipes
                             ? Object.fromEntries(app._craftingEngine.recipes)

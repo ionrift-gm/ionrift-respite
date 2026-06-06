@@ -91,6 +91,11 @@ export function handleRestStarted(data, ctx) {
                     existing._activities = data.restData.activities;
                     existing._activityResolver.load(existing._activities);
                 }
+                if (data.restData?.tavernTotmOverride !== undefined) {
+                    existing._tavernTotmOverride = !!data.restData.tavernTotmOverride;
+                } else if (data.restData?.terrainTag === "tavern") {
+                    existing._applyTavernTotmOverrideForRestStart?.("tavern");
+                }
                 if (data.snapshot && existing.receiveRestSnapshot) {
                     logCampfireReconnect("handleRestStarted:receiveRestSnapshot", {
                         snapshotFireLevel: data.snapshot?.fireLevel ?? null
