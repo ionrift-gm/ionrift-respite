@@ -378,9 +378,12 @@ export const CAMP_STATIONS = [
  */
 export function getStationsForTerrain(terrainTag, safeRestSpot = false, options = {}) {
     const simpleStations = options.simpleStations ?? isSimpleStationsMode();
+    const isTavern = terrainTag === "tavern";
     const hidden = new Set();
     /** Activities orphaned by hidden stations that should migrate to bedroll. */
-    const MIGRATING_ACTIVITIES = new Set(["act_keep_watch", "act_other"]);
+    const MIGRATING_ACTIVITIES = isTavern
+        ? new Set([])
+        : new Set(["act_keep_watch", "act_other"]);
     const orphanedActivities = [];
 
     // First pass: collect hidden station ids and their migrating activities.
@@ -397,10 +400,14 @@ export function getStationsForTerrain(terrainTag, safeRestSpot = false, options 
     const result = [];
     for (const station of CAMP_STATIONS) {
         if (hidden.has(station.id)) continue;
-        if (safeRestSpot && station.id === "medical_bed") continue;
+        if (isTavern && station.id === "cooking_station") continue;
+        if ((safeRestSpot || isTavern) && station.id === "medical_bed") continue;
         let label = station.terrainLabel?.[terrainTag] ?? station.label;
         let activities = [...(station.activities ?? [])];
         let tagline = station.tagline;
+        if (isTavern && station.id === "bedroll") {
+            activities = activities.filter(id => id !== "act_rest_fully");
+        }
         if (safeRestSpot && station.id === "weapon_rack") {
             label = "Supply Table";
             tagline = "Fletch, other";
@@ -550,6 +557,31 @@ export function buildActivityAssignments(characterChoices, earlyResults, filterA
         });
     }
     return assignments;
+}
+
+/**
+ * Fold portrait assignments for activities not visible on this client's cards
+ * onto act_other so party picks (e.g. scribe, cook) stay visible to everyone.
+ *
+ * @param {Object<string, object[]>} assignments
+ * @param {Set<string>|Iterable<string>} visibleActivityIds
+ * @param {string} [fallbackActivityId='act_other']
+ */
+export function foldOrphanedAssignmentsOntoOther(assignments, visibleActivityIds, fallbackActivityId = "act_other") {
+    const visible = visibleActivityIds instanceof Set ? visibleActivityIds : new Set(visibleActivityIds);
+    const folded = [];
+    for (const [actId, assigned] of Object.entries(assignments)) {
+        if (actId === fallbackActivityId || visible.has(actId)) continue;
+        if (assigned?.length) folded.push(...assigned);
+    }
+    if (!folded.length) return;
+    const target = assignments[fallbackActivityId] ??= [];
+    const seen = new Set(target.map(entry => entry.actorId));
+    for (const entry of folded) {
+        if (seen.has(entry.actorId)) continue;
+        target.push(entry);
+        seen.add(entry.actorId);
+    }
 }
 
 /**

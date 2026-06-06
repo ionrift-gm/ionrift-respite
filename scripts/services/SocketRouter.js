@@ -10,6 +10,7 @@ import { Logger } from "../lib/Logger.js";
  * @module SocketRouter
  */
 
+import { logCampfireReconnect } from "./CampfireReconnectLog.js";
 import { SOCKET_TYPES, emitRequestRestState, emitWorkbenchIdentifyResult, emitPhaseChanged } from "./SocketController.js";
 import { isCampfireMinigameEnabled } from "./RestProfileSettings.js";
 import { WorkbenchDelegate } from "../apps/delegates/WorkbenchDelegate.js";
@@ -133,6 +134,12 @@ export function dispatch(data, ctx) {
 
         case SOCKET_TYPES.REST_SNAPSHOT:
             if (game.user.isGM) return;
+            logCampfireReconnect("socket:REST_SNAPSHOT", {
+                hasApp: !!ctx.activePlayerRestApp,
+                snapshotPhase: data.snapshot?.phase ?? null,
+                snapshotFireLevel: data.snapshot?.fireLevel ?? null,
+                snapshotRestId: data.snapshot?.restId ?? null
+            });
             ctx.activePlayerRestApp?.receiveRestSnapshot?.(data.snapshot);
             break;
 

@@ -24911,6 +24911,124 @@ button.is-processing {
     border-color: rgba(255, 255, 255, 0.12);
 }
 
+.respite-settings-config .settings-config-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0.55rem 0.65rem 0.45rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    transition: border-color 0.15s;
+}
+
+.respite-settings-config .settings-config-section:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.respite-settings-config .settings-config-section-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding-bottom: 0.45rem;
+    margin-bottom: 0.35rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.respite-settings-config .settings-config-section-heading {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.respite-settings-config .settings-config-section-label {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.respite-settings-config .settings-config-section-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.respite-settings-config .settings-config-row--sub {
+    padding: 0.4rem 0.35rem 0.4rem 0.5rem;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+}
+
+.respite-settings-config .settings-config-row--sub:hover {
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.respite-activity-config .activity-config-row--disabled {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.respite-activity-config .activity-config-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0.55rem 0.65rem 0.45rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    transition: border-color 0.15s;
+}
+
+.respite-activity-config .activity-config-group:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.respite-activity-config .activity-config-group--disabled {
+    opacity: 0.45;
+}
+
+.respite-activity-config .activity-config-group-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding-bottom: 0.45rem;
+    margin-bottom: 0.35rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.respite-activity-config .activity-config-group-heading {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.respite-activity-config .activity-config-group-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.respite-activity-config .activity-config-row--sub {
+    padding: 0.4rem 0.35rem 0.4rem 0.5rem;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+}
+
+.respite-activity-config .activity-config-row--sub:hover {
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.respite-activity-config .activity-config-label--sub {
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
 .respite-settings-config .settings-config-info,
 .respite-activity-config .activity-config-info {
     flex: 1;

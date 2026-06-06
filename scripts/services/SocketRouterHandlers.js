@@ -33,7 +33,7 @@ import {
 import {
     emitShortRestStarted, emitRestStarted, emitShortRestWorkbenchSync,
     emitCampGearPlaced, emitCampStationPlaced, emitCampSceneCleared,
-    emitRequestRestState, emitRequestShortRestState
+    emitRequestRestState, emitRequestShortRestState, emitRestSnapshot
 } from "./SocketController.js";
 import {
     showRejoinNotification, removeRejoinNotification,
@@ -42,6 +42,7 @@ import {
     removeGmRestIndicator
 } from "./RejoinManager.js";
 import { resolvePlayerCloseOptions } from "./playerClosePolicy.js";
+import { logCampfireReconnect } from "./CampfireReconnectLog.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -50,14 +51,39 @@ const MODULE_ID = "ionrift-respite";
 export function handleRestStarted(data, ctx) {
     if (data.targetUserId && data.targetUserId !== game.user.id) return;
     try {
+        logCampfireReconnect("handleRestStarted:enter", {
+            targetUserId: data.targetUserId ?? null,
+            hasSnapshot: !!data.snapshot,
+            snapshotPhase: data.snapshot?.phase ?? null,
+            snapshotFireLevel: data.snapshot?.fireLevel ?? null,
+            incomingRestId: data.restData?.restId ?? null,
+            restDataPhase: data.restData?.phase ?? null,
+            hasExistingApp: !!ctx.activePlayerRestApp,
+            existingRestId: ctx.activePlayerRestApp?._restId ?? null,
+            existingPhase: ctx.activePlayerRestApp?._phase ?? null,
+            existingFireLevel: ctx.activePlayerRestApp?._fireLevel ?? null
+        });
         ctx.setPlayerRestActive(true);
         removeRejoinNotification();
         removeGmRestIndicator();
 
         const existing = ctx.activePlayerRestApp;
         if (existing) {
-            const isNewRest = !data.restData?.restId || existing._restId !== data.restData.restId;
+            const incomingId = data.restData?.restId ?? null;
+            const existingId = existing._restId ?? null;
+            // Missing restId on a broadcast is a resync, not a new session. Treating
+            // it as new rest closed the player app and destroyed the campfire embed.
+            const isNewRest = !!(incomingId && existingId && incomingId !== existingId);
+            logCampfireReconnect("handleRestStarted:existingApp", {
+                incomingId,
+                existingId,
+                isNewRest,
+                hasSnapshot: !!data.snapshot
+            });
             if (!isNewRest) {
+                if (incomingId && !existingId) {
+                    existing._restId = incomingId;
+                }
                 // Re-hydrate resolver if GM is advancing the same rest (e.g. to activity phase)
                 // but the existing player RSA has an empty resolver (built before activities arrived).
                 if (Array.isArray(data.restData?.activities) && data.restData.activities.length > 0
@@ -66,14 +92,27 @@ export function handleRestStarted(data, ctx) {
                     existing._activityResolver.load(existing._activities);
                 }
                 if (data.snapshot && existing.receiveRestSnapshot) {
+                    logCampfireReconnect("handleRestStarted:receiveRestSnapshot", {
+                        snapshotFireLevel: data.snapshot?.fireLevel ?? null
+                    });
                     existing.receiveRestSnapshot(data.snapshot);
                 } else {
-                    existing.render({ force: true });
+                    logCampfireReconnect("handleRestStarted:requestState", {
+                        reason: "no snapshot on REST_STARTED for existing app"
+                    });
+                    emitRequestRestState(game.user.id);
+                    if (existing.rendered) {
+                        existing.render({ force: true });
+                    }
                 }
                 ctx.showAfkPanel();
                 return;
             }
 
+            logCampfireReconnect("handleRestStarted:closeForNewRest", {
+                incomingId,
+                existingId
+            });
             Logger.log(`${MODULE_ID} | Closing stale rest window for new rest`);
             ui.notifications.info("The GM has started a new rest. Refreshing your window.");
             existing.close({ skipRejoin: true });
@@ -113,25 +152,30 @@ export function handleRestStarted(data, ctx) {
         ctx.showAfkPanel();
 
         if (data.snapshot && app.receiveRestSnapshot) {
-            // Defer the initial render to receiveRestSnapshot so it can decide
-            // whether to render (theater / non-activity phases) or stay closed
-            // and show the rejoin bar (stations + activity phase) without
-            // racing a force-render. A pre-render here would land DOM after
-            // receiveRestSnapshot's close, leaving both the RSA and bar visible.
-
+            logCampfireReconnect("handleRestStarted:newAppDeferredSnapshot", {
+                restId: data.restData?.restId ?? null,
+                snapshotFireLevel: data.snapshot?.fireLevel ?? null
+            });
             Logger.log(`${MODULE_ID} | RestSetupApp created in player mode, deferring render to snapshot handler`);
             Promise.resolve().then(() => { app.receiveRestSnapshot(data.snapshot); });
         } else {
-
-            Logger.log(`${MODULE_ID} | RestSetupApp created in player mode, rendering...`);
-            app.render({ force: true });
+            logCampfireReconnect("handleRestStarted:awaitSnapshot", {
+                restId: data.restData?.restId ?? null,
+                restDataPhase: data.restData?.phase ?? null,
+                restDataFireLevel: data.restData?.fireLevel ?? null
+            });
+            Logger.log(`${MODULE_ID} | RestSetupApp created in player mode, awaiting snapshot before render`);
+            emitRequestRestState(game.user.id);
         }
         setTimeout(() => {
             const phase = ctx.activePlayerRestApp?._phase;
-            if (ctx.activePlayerRestApp?._openCampfire && (phase === "meal" || phase === "activity")) {
-
+            const app = ctx.activePlayerRestApp;
+            if (!app || phase !== "meal" && phase !== "activity") return;
+            // TotM uses the side-panel embed, not the legacy drawer.
+            if (app._isTotM) return;
+            if (app._openCampfire) {
                 Logger.log(`${MODULE_ID} | Opening campfire for player on rest start`);
-                ctx.activePlayerRestApp._openCampfire();
+                app._openCampfire();
             }
         }, 500);
     } catch (err) {
@@ -180,12 +224,27 @@ export function handleSubmissionUpdate(data, ctx) {
 }
 
 export function handleRequestRestState(data, ctx) {
-    if (!ctx.activeRestData) return;
+    if (!ctx.activeRestData) {
+        logCampfireReconnect("handleRequestRestState:skip", { reason: "no activeRestData" });
+        return;
+    }
     const userId = data.userId ?? null;
     const snapshot = (userId && ctx.activeRestSetupApp?.getRestSnapshotForUser)
         ? ctx.activeRestSetupApp.getRestSnapshotForUser(userId)
         : (ctx.activeRestSetupApp?.getRestSnapshot?.() ?? null);
+    logCampfireReconnect("handleRequestRestState:emit", {
+        targetUserId: userId,
+        hasSnapshot: !!snapshot,
+        snapshotPhase: snapshot?.phase ?? null,
+        snapshotFireLevel: snapshot?.fireLevel ?? null,
+        snapshotRestId: snapshot?.restId ?? null,
+        gmPhase: ctx.activeRestSetupApp?._phase ?? null,
+        gmFireLevel: ctx.activeRestSetupApp?._fireLevel ?? null
+    });
     emitRestStarted(ctx.activeRestData, { snapshot, targetUserId: userId });
+    if (snapshot) {
+        setTimeout(() => emitRestSnapshot(snapshot), 150);
+    }
 }
 
 // ── Short Rest ──────────────────────────────────────────────────────────────

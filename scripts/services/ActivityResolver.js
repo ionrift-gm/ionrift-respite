@@ -15,6 +15,27 @@ export const SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS = new Set([
     "act_tend_wounds"
 ]);
 
+/** Extra exclusions for tavern terrain (full recovery is automatic; no profession crafting). */
+export const TAVERN_REST_EXCLUDED_ACTIVITY_IDS = new Set([
+    "act_rest_fully"
+]);
+
+/**
+ * @param {Object} activity
+ * @param {{ safeRestSpot?: boolean, tavernRest?: boolean }} options
+ * @returns {boolean}
+ */
+export function isActivityExcludedForRestOptions(activity, options = {}) {
+    if (options.tavernRest) {
+        if (SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) return true;
+        if (TAVERN_REST_EXCLUDED_ACTIVITY_IDS.has(activity.id)) return true;
+        if (activity.category === "profession") return true;
+        return false;
+    }
+    if (options.safeRestSpot && SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) return true;
+    return false;
+}
+
 /**
  * Activities hidden when the comfort subsystem is disabled. These are the soft
  * recovery and morale activities: full rest, tending wounds, prayer for temp HP,
@@ -84,7 +105,7 @@ export class ActivityResolver {
         for (const activity of this.activities.values()) {
             if (!activity.restTypes.includes(restType)) continue;
             if (activity.disabled) continue;
-            if (options.safeRestSpot && SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
+            if (isActivityExcludedForRestOptions(activity, options)) continue;
             if (!isComfortEnabled() && COMFORT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
             if (!areEncountersEnabled() && ENCOUNTER_ACTIVITY_IDS.has(activity.id)) continue;
 
@@ -753,7 +774,7 @@ export class ActivityResolver {
         for (const activity of this.activities.values()) {
             if (activity.disabled) continue;
             if (!activity.restTypes.includes(restType)) continue;
-            if (options.safeRestSpot && SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
+            if (isActivityExcludedForRestOptions(activity, options)) continue;
             if (!isComfortEnabled() && COMFORT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
             if (!areEncountersEnabled() && ENCOUNTER_ACTIVITY_IDS.has(activity.id)) continue;
 

@@ -10,7 +10,9 @@ import { Logger } from "../lib/Logger.js";
 import {
     ACTIVITY_ICONS,
     applyActivityPortraitAssignments,
+    buildActivityAssignments,
     buildPartyState,
+    foldOrphanedAssignmentsOntoOther,
     getActivityAdvisory,
     DETECT_MAGIC_BTN_LABEL_GM,
     DETECT_MAGIC_BTN_LABEL_PLAYER,
@@ -353,6 +355,16 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
     }
 
     async render(options = {}) {
+        const preservePos = this._userDragged && this.rendered && this.element;
+        let savedPos = null;
+        if (preservePos) {
+            const rect = this.element.getBoundingClientRect();
+            savedPos = {
+                left: Math.round(rect.left),
+                top: Math.round(rect.top),
+                width: this.element.offsetWidth || this.position?.width
+            };
+        }
         const preserveCraftScroll = this._dialogState === "crafting"
             && this.rendered
             && !options.resetCraftScroll;
@@ -363,6 +375,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             this._craftDetailScrollTop = scrollEl?.scrollTop ?? 0;
         }
         const result = await super.render(options);
+        if (savedPos && Number.isFinite(savedPos.left) && Number.isFinite(savedPos.top)) {
+            this.setPosition(savedPos);
+        }
         if (preserveCraftScroll && this._craftDetailScrollTop > 0) {
             queueMicrotask(() => {
                 const scrollEl = this.element?.querySelector(
@@ -718,11 +733,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
      *   { actorId, actorName, portraitImg, status: 'pending'|'success'|'fail' }
      */
     _buildActivityAssignments() {
-        const assignments = {};
         const restApp = this._restApp;
-        if (!restApp?._characterChoices?.size) return assignments;
+        if (!restApp?._characterChoices?.size) return {};
 
-        // Activity IDs visible at this station (available + faded)
         const stationActIds = new Set([
             ...this._available.map(a => a.id),
             ...this._faded.map(a => a.id),
@@ -730,33 +743,11 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             ...this._cookingFaded.map(a => a.id)
         ]);
 
-        for (const [charId, actId] of restApp._characterChoices) {
-            if (!stationActIds.has(actId)) continue;
-
-            const actor = game.actors.get(charId);
-            if (!actor) continue;
-
-            // Derive status from early results
-            let status = "pending";
-            const earlyResult = restApp._earlyResults?.get(charId);
-            if (earlyResult) {
-                if (earlyResult.result === "success" || earlyResult.result === "exceptional") {
-                    status = "success";
-                } else if (earlyResult.result === "failure" || earlyResult.result === "failure_complication") {
-                    status = "fail";
-                }
-                // pending_approval stays as "pending"
-            }
-
-            if (!assignments[actId]) assignments[actId] = [];
-            assignments[actId].push({
-                actorId: charId,
-                actorName: actor.name,
-                portraitImg: actor.img ?? actor.prototypeToken?.texture?.src ?? "icons/svg/mystery-man.svg",
-                status
-            });
-        }
-
+        const assignments = buildActivityAssignments(
+            restApp._characterChoices,
+            restApp._earlyResults
+        );
+        foldOrphanedAssignmentsOntoOther(assignments, stationActIds);
         return assignments;
     }
 
@@ -1840,9 +1831,10 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const restType = restSession?.restType ?? "long";
         const fireLevel = restApp?._fireLevel ?? restSession?.fireLevel ?? "unlit";
         const isFireLit = !!(fireLevel && fireLevel !== "unlit");
-        const forageOpts = restApp?._forageResolverOpts?.() ?? {};
+        const resolverOpts = restApp?._activityResolverOpts?.({ isFireLit, fireLevel })
+            ?? { isFireLit, fireLevel, ...(restApp?._forageResolverOpts?.() ?? {}) };
         const { available: allAvail, faded: allFaded } = activityResolver
-            .getAvailableActivitiesWithFaded(actor, restType, { isFireLit, fireLevel, ...forageOpts });
+            .getAvailableActivitiesWithFaded(actor, restType, resolverOpts);
 
         const stationIds = new Set(station?.activities ?? []);
         let available = allAvail.filter(a => stationIds.has(a.id));
