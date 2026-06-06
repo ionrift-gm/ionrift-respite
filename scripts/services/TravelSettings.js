@@ -28,6 +28,45 @@ export function isTravelPhaseUsed() {
 }
 
 /**
+ * Whether foraging is offered during the travel phase.
+ * @returns {boolean}
+ */
+export function isForagingEnabled() {
+    try {
+        const value = game.settings.get(MODULE_ID, "enableForaging");
+        return value === undefined || value === null ? true : !!value;
+    } catch {
+        return true;
+    }
+}
+
+/**
+ * Whether hunting (prey) is offered during the travel phase.
+ * @returns {boolean}
+ */
+export function isHuntingEnabled() {
+    try {
+        const value = game.settings.get(MODULE_ID, "enableHunting");
+        return value === undefined || value === null ? true : !!value;
+    } catch {
+        return true;
+    }
+}
+
+/**
+ * Terrain travel activities filtered by world toggles (forage / hunt only).
+ * @param {string[]|undefined} terrainActivities
+ * @returns {{ canForage: boolean, canHunt: boolean }}
+ */
+export function getTravelGatherAvailability(terrainActivities) {
+    const allowed = terrainActivities ?? ["forage", "hunt", "scout"];
+    return {
+        canForage: allowed.includes("forage") && isForagingEnabled(),
+        canHunt: allowed.includes("hunt") && isHuntingEnabled()
+    };
+}
+
+/**
  * Whether the travel resolution phase should run this long rest.
  * Requires professions (forage/hunt activities) and Use Travel.
  * @returns {boolean}

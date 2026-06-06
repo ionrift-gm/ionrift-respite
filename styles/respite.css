@@ -24893,6 +24893,94 @@ button.is-processing {
     gap: 0.35rem;
 }
 
+.respite-activity-config .activity-config-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0.55rem;
+}
+
+.respite-activity-config .activity-config-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.respite-activity-config .activity-config-column--travel {
+    flex: 1 1 0;
+    padding-right: 0.55rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.respite-activity-config .activity-config-column--activities {
+    flex: 1 1 0;
+}
+
+.respite-activity-config .activity-config-column--travel .activity-config-group,
+.respite-activity-config .activity-config-column--activities .activity-config-group {
+    flex: 1 1 auto;
+    height: 100%;
+}
+
+.respite-settings-config .settings-config-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0.55rem;
+}
+
+.respite-settings-config .settings-config-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.respite-settings-config .settings-config-column--long {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-right: 0.55rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.respite-settings-config .settings-config-column--short {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.respite-settings-config .settings-config-column .settings-config-section {
+    flex: 1 1 auto;
+    height: 100%;
+}
+
+.respite-settings-config .settings-config-layout .settings-config-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.4rem;
+}
+
+.respite-settings-config .settings-config-layout .settings-config-toggle,
+.respite-settings-config .settings-config-layout .settings-config-range-wrap {
+    align-self: flex-end;
+}
+
+.respite-settings-config .settings-config-layout .settings-config-select {
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+}
+
+.respite-settings-config .settings-config-layout .settings-config-range-wrap {
+    width: 100%;
+    justify-content: flex-end;
+}
+
+.respite-settings-config .settings-config-layout .settings-config-range {
+    flex: 1 1 auto;
+    max-width: 10rem;
+}
+
 /* Each setting row */
 .respite-settings-config .settings-config-row,
 .respite-activity-config .activity-config-row {

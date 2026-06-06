@@ -51,7 +51,7 @@ export function getTrainingTier() {
         }
         return Math.max(0, Math.min(TRAINING_XP_TIER_MAX, Math.round(tier)));
     } catch {
-        return 1;
+        return 0;
     }
 }
 

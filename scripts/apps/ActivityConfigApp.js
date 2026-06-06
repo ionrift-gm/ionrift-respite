@@ -40,6 +40,13 @@ const TIER_SLIDER_META = {
     }
 };
 
+const ACTIVITIES_GROUP = {
+    id: "activities",
+    label: "Activities",
+    icon: "fas fa-campground",
+    hint: "Evening camp options: professions, training, pray, fletching, night encounters, and copy spell."
+};
+
 /** Boolean activity toggles and tier sliders. Order = display order in the dialog. */
 const ACTIVITY_TOGGLES = [
     {
@@ -47,6 +54,13 @@ const ACTIVITY_TOGGLES = [
         label: "Crafting Professions",
         icon: "fas fa-hammer",
         hint: "Cooking, brewing, tailoring, and crafting activities. Also controls the travel phase: disabling this auto-skips travel.",
+        type: "boolean"
+    },
+    {
+        key: "enableEncounters",
+        label: "Night Encounters & Watch",
+        icon: "fas fa-shield-alt",
+        hint: "Keep Watch, Set Up Defenses, scouting, and the night encounter roll. Off skips the encounter layer; the night passes without a check.",
         type: "boolean"
     },
     {
@@ -64,10 +78,10 @@ const ACTIVITY_TOGGLES = [
         type: "tierSlider"
     },
     {
-        key: "enableEncounters",
-        label: "Night Encounters & Watch",
-        icon: "fas fa-shield-alt",
-        hint: "Keep Watch, Set Up Defenses, scouting, and the night encounter roll. Off skips the encounter layer; the night passes without a check.",
+        key: "enablePrayMeditate",
+        label: "Pray / Meditate",
+        icon: "fas fa-pray",
+        hint: "Religion or Insight check during rests for temporary HP on success. Off removes the activity from the bedroll station.",
         type: "boolean"
     },
     {
@@ -91,6 +105,18 @@ const ACTIVITY_TOGGLES = [
                 hint: "Include the travel phase during long rests. Off skips travel entirely and goes straight to camp."
             },
             {
+                key: "enableForaging",
+                label: "Travel Foraging",
+                hint: "Forage activity on travel days. Off removes foraging from the declaration list.",
+                requiresUseTravel: true
+            },
+            {
+                key: "enableHunting",
+                label: "Travel Hunting",
+                hint: "Hunt activity on travel days. Off removes hunting prey from the declaration list.",
+                requiresUseTravel: true
+            },
+            {
                 key: "enableScouting",
                 label: "Travel Scouting",
                 hint: "Scout option on the final travel day. Perception or Survival sets camp comfort and the night check.",
@@ -105,11 +131,11 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
     static DEFAULT_OPTIONS = {
         id: "respite-activity-config",
         window: {
-            title: "Rest Activities",
+            title: "Travel & Activities",
             icon: "fas fa-campground",
             resizable: false
         },
-        position: { width: 440, height: "auto" },
+        position: { width: 720, height: "auto" },
         classes: ["ionrift-window"]
     };
 
@@ -156,38 +182,47 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
         const el = document.createElement("div");
         el.classList.add("respite-activity-config");
 
+        const mainRows = context.rows.filter(row => row.type !== "group");
+        const travelGroup = context.rows.find(row => row.type === "group" && row.id === "travel");
+
         let html = `
-        <p class="activity-config-lead">Turn rest activities on or off for this world. Training and fletching use tier sliders (Off plus five rates).</p>
-        <div class="activity-config-list">`;
+        <p class="activity-config-lead">Configure pre-camp travel and evening activities for this world. Training and fletching use tier sliders (Off plus five rates).</p>
+        <div class="activity-config-layout">
+            <div class="activity-config-column activity-config-column--travel">`;
 
-        for (const row of context.rows) {
-            if (row.type === "group") {
-                const disabledClass = row.disabled ? " activity-config-group--disabled" : "";
-                html += `
-            <div class="activity-config-group${disabledClass}" data-group="${row.id}">
-                <div class="activity-config-group-header">
-                    <i class="${row.icon} activity-config-icon"></i>
-                    <div class="activity-config-group-heading">
-                        <div class="activity-config-label">${row.label}</div>
-                        <div class="activity-config-hint">${row.hint}</div>
-                    </div>
-                </div>
-                <div class="activity-config-group-body">`;
-                for (const child of row.children) {
-                    html += this._renderGroupChildRow(child);
-                }
-                html += `
-                </div>
-            </div>`;
-                continue;
-            }
+        if (travelGroup) {
+            html += this._renderTravelGroup(travelGroup);
+        }
 
-            const tierRowClass = row.rowClass ? ` ${row.rowClass}` : "";
-            html += `
-            <div class="activity-config-row${row.type === "tierSlider" ? ` activity-config-row--tier${tierRowClass}` : ""}" data-key="${row.key}">
+        html += `
+            </div>
+            <div class="activity-config-column activity-config-column--activities">`;
+
+        html += this._renderActivitiesGroup(mainRows);
+
+        html += `
+            </div>
+        </div>
+        <div class="activity-config-actions">
+            <button type="button" class="activity-config-save-btn">
+                <i class="fas fa-save"></i> Save
+            </button>
+        </div>`;
+
+        el.innerHTML = html;
+        this._wireEvents(el);
+        return el;
+    }
+
+    _renderSettingRow(row, { asSub = false } = {}) {
+        const tierRowClass = row.rowClass ? ` ${row.rowClass}` : "";
+        const subClass = asSub ? " activity-config-row--sub" : "";
+        const labelClass = asSub ? " activity-config-label--sub" : "";
+        return `
+            <div class="activity-config-row${subClass}${row.type === "tierSlider" ? ` activity-config-row--tier${tierRowClass}` : ""}" data-key="${row.key}">
                 <div class="activity-config-info">
-                    <div class="activity-config-label">
-                        <i class="${row.icon} activity-config-icon"></i>
+                    <div class="activity-config-label${labelClass}">
+                        ${asSub ? "" : `<i class="${row.icon} activity-config-icon"></i>`}
                         ${row.label}
                         ${row.guideAction === "openTrainingGuide" ? `
                         <a href="#" class="activity-config-guide-link" data-action="openTrainingGuide" title="Open Training guide">
@@ -198,18 +233,47 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
                 </div>
                 ${this._renderControl(row)}
             </div>`;
+    }
+
+    _renderActivitiesGroup(rows) {
+        let html = `
+            <div class="activity-config-group" data-group="${ACTIVITIES_GROUP.id}">
+                <div class="activity-config-group-header">
+                    <i class="${ACTIVITIES_GROUP.icon} activity-config-icon"></i>
+                    <div class="activity-config-group-heading">
+                        <div class="activity-config-label">${ACTIVITIES_GROUP.label}</div>
+                        <div class="activity-config-hint">${ACTIVITIES_GROUP.hint}</div>
+                    </div>
+                </div>
+                <div class="activity-config-group-body">`;
+        for (const row of rows) {
+            html += this._renderSettingRow(row, { asSub: true });
         }
+        html += `
+                </div>
+            </div>`;
+        return html;
+    }
 
-        html += `</div>
-        <div class="activity-config-actions">
-            <button type="button" class="activity-config-save-btn">
-                <i class="fas fa-save"></i> Save
-            </button>
-        </div>`;
-
-        el.innerHTML = html;
-        this._wireEvents(el);
-        return el;
+    _renderTravelGroup(row) {
+        const disabledClass = row.disabled ? " activity-config-group--disabled" : "";
+        let html = `
+            <div class="activity-config-group${disabledClass}" data-group="${row.id}">
+                <div class="activity-config-group-header">
+                    <i class="${row.icon} activity-config-icon"></i>
+                    <div class="activity-config-group-heading">
+                        <div class="activity-config-label">${row.label}</div>
+                        <div class="activity-config-hint">${row.hint}</div>
+                    </div>
+                </div>
+                <div class="activity-config-group-body">`;
+        for (const child of row.children) {
+            html += this._renderGroupChildRow(child);
+        }
+        html += `
+                </div>
+            </div>`;
+        return html;
     }
 
     _renderGroupChildRow(row) {
@@ -277,12 +341,14 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
                 useTravelRow.classList.toggle("activity-config-row--disabled", !professionsOn);
                 useTravelInput.disabled = !professionsOn;
             }
-            const scoutingRow = el.querySelector('.activity-config-row[data-key="enableScouting"]');
-            const scoutingInput = scoutingRow?.querySelector(".activity-config-cb");
-            if (scoutingRow && scoutingInput) {
-                const scoutingDisabled = !professionsOn || !useTravelOn;
-                scoutingRow.classList.toggle("activity-config-row--disabled", scoutingDisabled);
-                scoutingInput.disabled = scoutingDisabled;
+            for (const travelChildKey of ["enableForaging", "enableHunting", "enableScouting"]) {
+                const childRow = el.querySelector(`.activity-config-row[data-key="${travelChildKey}"]`);
+                const childInput = childRow?.querySelector(".activity-config-cb");
+                if (childRow && childInput) {
+                    const childDisabled = !professionsOn || !useTravelOn;
+                    childRow.classList.toggle("activity-config-row--disabled", childDisabled);
+                    childInput.disabled = childDisabled;
+                }
             }
         };
 
@@ -318,7 +384,7 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
                 if (range) await game.settings.set(MODULE_ID, row.key, Number(range.value));
             }
         }
-        ui.notifications.info("Rest activity settings saved.");
+        ui.notifications.info("Travel and activity settings saved.");
         this.close();
     }
 }

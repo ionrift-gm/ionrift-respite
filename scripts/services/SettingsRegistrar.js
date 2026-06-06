@@ -69,11 +69,11 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         restricted: true
     });
 
-    // ── Rest Activities submenu ──────────────────────────────────────
+    // ── Travel & Activities submenu ──────────────────────────────────
     game.settings.registerMenu(MODULE_ID, "activityConfig", {
-        name: "Rest Activities",
-        label: "Configure Activities",
-        hint: "Toggle activities on or off. Training and fletching use tier sliders (Off through five rates).",
+        name: "Travel & Activities",
+        label: "Configure Travel & Activities",
+        hint: "Pre-camp travel and evening camp activities. Training and fletching use tier sliders (Off through five rates).",
         icon: "fas fa-campground",
         type: ActivityConfigApp,
         restricted: true
@@ -217,7 +217,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         scope: "world",
         config: false,
         type: Number,
-        default: 1,
+        default: 0,
         restricted: true
     });
 
@@ -285,6 +285,16 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         restricted: true
     });
 
+    game.settings.register(MODULE_ID, "enablePrayMeditate", {
+        name: "Pray / Meditate Activity",
+        hint: "Show the Pray / Meditate activity during rests. Religion or Insight check for temporary HP on success.",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false,
+        restricted: true
+    });
+
     game.settings.register(MODULE_ID, "enableScouting", {
         name: "Travel Scouting",
         hint: "Scout activity on the final travel day before camp. Requires Use Travel. Off hides scouting when the travel phase is not used.",
@@ -292,6 +302,26 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         config: false,
         type: Boolean,
         default: false,
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "enableForaging", {
+        name: "Travel Foraging",
+        hint: "Forage activity during the travel phase. Off removes foraging from travel day choices.",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: true,
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "enableHunting", {
+        name: "Travel Hunting",
+        hint: "Hunt activity during the travel phase. Off removes hunting prey from travel day choices.",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: true,
         restricted: true
     });
 
@@ -789,7 +819,10 @@ export const SETTING_KEYS = [
     "fletchingYieldTierMigrated",
     "enableEncounters",
     "enableCopySpell",
+    "enablePrayMeditate",
     "enableScouting",
+    "enableForaging",
+    "enableHunting",
     "useTravel",
     "useTravelPhaseSemanticsMigrated",
     "trackFood",
