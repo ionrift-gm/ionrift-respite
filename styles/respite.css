@@ -476,6 +476,41 @@
     color: rgba(220, 166, 62, 0.95);
 }
 
+.safe-rest-spot-toggle.is-locked {
+    opacity: 0.62;
+    cursor: help;
+    pointer-events: auto;
+    border-color: rgba(200, 146, 42, 0.35);
+    background: rgba(200, 146, 42, 0.06);
+}
+
+.safe-rest-spot-toggle.is-locked.is-active {
+    color: rgba(220, 166, 62, 0.72);
+}
+
+.safe-rest-spot-toggle.is-locked .safe-rest-switch {
+    opacity: 0.75;
+}
+
+.safe-rest-spot-toggle.is-locked .safe-rest-slider {
+    cursor: not-allowed;
+}
+
+.safe-rest-spot-toggle.is-pulse {
+    animation: safe-rest-alert-pulse 0.55s ease-in-out 1;
+}
+
+@keyframes safe-rest-alert-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(220, 166, 62, 0);
+        border-color: rgba(200, 146, 42, 0.25);
+    }
+    50% {
+        box-shadow: 0 0 0 4px rgba(220, 166, 62, 0.35);
+        border-color: rgba(220, 166, 62, 0.85);
+    }
+}
+
 .safe-rest-spot-toggle input {
     position: absolute;
     opacity: 0;

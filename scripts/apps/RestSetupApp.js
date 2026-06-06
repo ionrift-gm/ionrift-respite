@@ -415,6 +415,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._restWindowUserPositioned = false;
         /** Suppress recenter during batched TotM camp → activity transition. */
         this._restWindowRecenterSuppressed = 0;
+        /** One-shot pulse on Safe Rest after leaving tavern terrain in setup. */
+        this._safeRestPulseAlert = false;
         /** Guards duplicate ceremony commit from ignite + heat notify. */
         this._commitMakeCampCeremonyInFlight = false;
 
@@ -1615,6 +1617,28 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /** @returns {boolean} */
     _isTavernTerrain() {
         return (this._selectedTerrain ?? this._engine?.terrainTag ?? this._restData?.terrainTag ?? "") === "tavern";
+    }
+
+    /**
+     * Setup-phase terrain change: weather sync, tavern safe-rest lock, pulse alert
+     * when leaving a tavern.
+     * @param {string} prevTerrain
+     * @param {string} nextTerrain
+     */
+    async _onSetupTerrainChanged(prevTerrain, nextTerrain) {
+        this._selectedTerrain = nextTerrain;
+        this._selectedWeather = this._resolveSetupWeather(nextTerrain);
+        if (prevTerrain === "tavern" && nextTerrain !== "tavern") {
+            this._safeRestPulseAlert = true;
+            try {
+                await game.settings.set(MODULE_ID, "safeRestSpot", false);
+            } catch (e) {
+                console.warn(`${MODULE_ID} | safeRestSpot setting`, e);
+            }
+        } else if (nextTerrain === "tavern") {
+            this._safeRestPulseAlert = false;
+        }
+        this.render();
     }
 
     /**
@@ -4119,6 +4143,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             selectedRestTypeLabel: this._selectedRestType === "short" ? "Short Rest" : "Long Rest",
             isShortRest: (this._selectedRestType ?? "long") === "short",
             safeRestSpot,
+            safeRestSpotDisplay: setupSafeHaven,
+            safeRestLocked: isTavernSetup,
+            safeRestPulse: !!this._safeRestPulseAlert,
+            safeRestTooltip: isTavernSetup
+                ? "Tavern rests are always safe: no encounters, automatic recovery, and no comfort pressure. Safe Rest cannot be turned off here."
+                : "No encounter risk. Skips night events, comfort penalties, and camp defense. Activities, cooking, and identification only.",
             setupSafeHaven,
             isTavernSetup,
             selectedWeatherLabel: WEATHER_TABLE[this._resolveSetupWeather(this._selectedTerrain ?? "forest")]?.label ?? "Clear",
@@ -5810,6 +5840,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const safeRestSpotCb = this.element.querySelector('input[name="safeRestSpot"]');
         if (safeRestSpotCb && game.user.isGM) {
             safeRestSpotCb.addEventListener("change", async () => {
+                if (safeRestSpotCb.disabled) return;
                 try {
                     await game.settings.set(MODULE_ID, "safeRestSpot", !!safeRestSpotCb.checked);
                 } catch (e) {
@@ -5818,6 +5849,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
                 this.render();
             });
+        }
+
+        if (this._safeRestPulseAlert && game.user.isGM) {
+            window.setTimeout(() => {
+                this.element?.querySelector(".safe-rest-spot-toggle")?.classList.remove("is-pulse");
+                this._safeRestPulseAlert = false;
+            }, 600);
         }
 
         // Rest interface override: writes the world setting so players and the
@@ -5839,9 +5877,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const terrainSelect = this.element.querySelector('[name="terrain"]');
         if (terrainSelect) {
             terrainSelect.addEventListener("change", () => {
-                this._selectedTerrain = terrainSelect.value;
-                this._selectedWeather = this._resolveSetupWeather(this._selectedTerrain);
-                this.render();
+                const prevTerrain = this._selectedTerrain ?? terrainSelect.value;
+                const nextTerrain = terrainSelect.value;
+                if (prevTerrain === nextTerrain) return;
+                void this._onSetupTerrainChanged(prevTerrain, nextTerrain);
             });
         }
 

@@ -132,10 +132,10 @@
                         <input type="hidden" name="restType" value="{{#if (eq selectedRestType 'short')}}short{{else}}long{{/if}}">
                     </div>
                     {{#unless isShortRest}}
-                    <label class="safe-rest-spot-toggle {{#if safeRestSpot}}is-active{{/if}}" data-tooltip="No encounter risk. Skips night events, comfort penalties, and camp defense. Activities, cooking, and identification only.">
+                    <label class="safe-rest-spot-toggle {{#if safeRestSpotDisplay}}is-active{{/if}}{{#if safeRestLocked}} is-locked{{/if}}{{#if safeRestPulse}} is-pulse{{/if}}" data-tooltip="{{safeRestTooltip}}">
                         <i class="fas fa-shield-halved" aria-hidden="true"></i>
                         <span class="safe-rest-spot-label">Safe Rest</span>
-                        <span class="safe-rest-switch"><input type="checkbox" name="safeRestSpot" value="1" {{#if safeRestSpot}}checked{{/if}}><span class="safe-rest-slider"></span></span>
+                        <span class="safe-rest-switch"><input type="checkbox" name="safeRestSpot" value="1" {{#if safeRestSpotDisplay}}checked{{/if}}{{#if safeRestLocked}} disabled{{/if}}><span class="safe-rest-slider"></span></span>
                     </label>
                     {{/unless}}
                 </div>
