@@ -15,7 +15,7 @@ const RECOVERY_SECTIONS = [
         id: "longRest",
         label: "Long Rest",
         icon: "fas fa-moon",
-        hint: "Camp comfort, armor at sleep, spell slot recovery, and TotM ceremony options.",
+        hint: "Camp comfort, armor at sleep, and TotM ceremony options.",
         settings: [
             {
                 key: "enableComfort",
@@ -44,16 +44,6 @@ const RECOVERY_SECTIONS = [
                 icon: "fas fa-shield-alt",
                 hint: "Characters sleeping in medium or heavy armor recover fewer Hit Dice and cannot reduce exhaustion (Xanathar's). Characters on watch are exempt.",
                 type: "boolean"
-            },
-            {
-                key: "spellRecoveryMaxLevel",
-                label: "Spell Recovery Max Level",
-                icon: "fas fa-hat-wizard",
-                hint: "Maximum spell slot level recoverable via Arcane Recovery and Natural Recovery. Default 5 matches 2014 rules. Increase for homebrew.",
-                type: "range",
-                min: 1,
-                max: 9,
-                step: 1
             }
         ]
     },
@@ -61,8 +51,18 @@ const RECOVERY_SECTIONS = [
         id: "shortRest",
         label: "Short Rest",
         icon: "fas fa-hourglass-half",
-        hint: "Hit Die spending and Bard Song of Rest during short rests.",
+        hint: "Hit Die spending, Bard Song of Rest, and wizard or druid spell slot recovery.",
         settings: [
+            {
+                key: "spellRecoveryMaxLevel",
+                label: "Arcane / Natural Recovery Max Level",
+                icon: "fas fa-hat-wizard",
+                hint: "Maximum spell slot level recoverable when a wizard or land druid finishes a short rest (Arcane Recovery / Natural Recovery). Default 5 matches 2014 rules. Increase for homebrew.",
+                type: "range",
+                min: 1,
+                max: 9,
+                step: 1
+            },
             {
                 key: "songOfRestTiming",
                 label: "Song of Rest Timing",
@@ -99,7 +99,7 @@ export class RecoveryConfigApp extends foundry.applications.api.ApplicationV2 {
             icon: "fas fa-heart-pulse",
             resizable: false
         },
-        position: { width: 440, height: "auto" },
+        position: { width: 720, height: "auto" },
         classes: ["ionrift-window"]
     };
 
@@ -123,12 +123,42 @@ export class RecoveryConfigApp extends foundry.applications.api.ApplicationV2 {
         const el = document.createElement("div");
         el.classList.add("respite-settings-config");
 
+        const longRestSection = context.sections.find(s => s.id === "longRest");
+        const shortRestSection = context.sections.find(s => s.id === "shortRest");
+
         let html = `
         <p class="settings-config-lead">Control how rest mechanically resolves for this world.</p>
-        <div class="settings-config-list">`;
+        <div class="settings-config-layout">
+            <div class="settings-config-column settings-config-column--long">`;
 
-        for (const section of context.sections) {
-            html += `
+        if (longRestSection) {
+            html += this._renderSection(longRestSection);
+        }
+
+        html += `
+            </div>
+            <div class="settings-config-column settings-config-column--short">`;
+
+        if (shortRestSection) {
+            html += this._renderSection(shortRestSection);
+        }
+
+        html += `
+            </div>
+        </div>
+        <div class="settings-config-actions">
+            <button type="button" class="settings-config-save-btn">
+                <i class="fas fa-save"></i> Save
+            </button>
+        </div>`;
+
+        el.innerHTML = html;
+        this._wireEvents(el);
+        return el;
+    }
+
+    _renderSection(section) {
+        let html = `
             <div class="settings-config-section" data-section="${section.id}">
                 <div class="settings-config-section-header">
                     <i class="${section.icon} settings-config-icon"></i>
@@ -139,8 +169,8 @@ export class RecoveryConfigApp extends foundry.applications.api.ApplicationV2 {
                 </div>
                 <div class="settings-config-section-body">`;
 
-            for (const setting of section.settings) {
-                html += `
+        for (const setting of section.settings) {
+            html += `
                 <div class="settings-config-row settings-config-row--sub" data-key="${setting.key}">
                     <div class="settings-config-info">
                         <div class="settings-config-label">
@@ -151,23 +181,12 @@ export class RecoveryConfigApp extends foundry.applications.api.ApplicationV2 {
                     </div>
                     ${this._renderControl(setting)}
                 </div>`;
-            }
-
-            html += `
-                </div>
-            </div>`;
         }
 
-        html += `</div>
-        <div class="settings-config-actions">
-            <button type="button" class="settings-config-save-btn">
-                <i class="fas fa-save"></i> Save
-            </button>
-        </div>`;
-
-        el.innerHTML = html;
-        this._wireEvents(el);
-        return el;
+        html += `
+                </div>
+            </div>`;
+        return html;
     }
 
     _renderControl(setting) {

@@ -2,8 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+- **Travel Foraging and Travel Hunting toggles** in Travel & Activities. Each can be turned off independently under the Travel group while keeping the travel phase and scouting.
+- **Pray / Meditate toggle** in Travel & Activities. Turn the bedroll activity on or off independently of comfort rules.
+
 ### Changed
+- **Training and Pray / Meditate default off** for new worlds and all Quick Setup profiles (Simple, Standard, Survival). Turn them on under Travel & Activities when wanted.
+- **Travel & Activities settings panel.** The dialog is split into Travel and Activities columns with matching group headers. Module settings menu renamed from Rest Activities.
+- **Arcane / Natural Recovery max level** moved to the Short Rest column in Recovery Rules. Both features resolve at the end of a short rest in 5e.
 - **Tavern rests now include an activity phase.** The party can visit workbench and room stations after skipping camp setup. Watch, defenses, first aid, Rest Fully, profession crafting, and the campfire station are withheld; recovery stays automatic and night encounters do not run.
+- **Setup badges fade for tavern terrain.** Choosing Tavern dims Comfort, Professions, and Meals on the setup screen, matching the safe-rest treatment for comfort and reflecting what actually runs at an inn.
+- **Tavern activity phase hides the campfire panel** and auto-assigns Other when that is the only station activity offered, same as Simple mode.
 - **Kindling moved to Respite Cache Utility compendium.** Forage, hunt, and cooking items stay in Respite Items. Camp utility loot (starting with kindling) lives in the new Respite Cache Utility pack for Quartermaster cache pools.
 
 ## [3.0.2] - 2026-06-03

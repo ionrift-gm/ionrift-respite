@@ -9,6 +9,7 @@ import { HD_PENALTY, boostComfort, isComfortEnabled, getComfortDcMod } from "../
 import { isSimpleStationsMode } from "../services/RestProfileSettings.js";
 import { getFletchingYieldHint, isFletchingEnabled } from "../services/FletchingSettings.js";
 import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "../services/TrainingSettings.js";
+import { isPrayMeditateEnabled } from "../services/ActivityResolver.js";
 
 /**
  * Weather master table. Each entry defines comfort penalty, encounter DC modifier,
@@ -210,6 +211,8 @@ export function getActivityAdvisory(activityId, actor, partyState) {
             return { text: "All HD and HP full. No recovery benefit", urgent: false, nonViable: true };
         }
         case "act_pray": {
+            if (!isPrayMeditateEnabled())
+                return { text: "Pray / Meditate is off for this world", urgent: false, nonViable: true };
             const prof = actor.system?.attributes?.prof ?? 2;
             return { text: `+${prof} temp HP on success`, urgent: false };
         }
@@ -443,6 +446,31 @@ export function getStationsForTerrain(terrainTag, safeRestSpot = false, options 
             }
             return s;
         });
+}
+
+/**
+ * Activity ids a character can pick from visible TotM station sections (excludes
+ * campfire and Identify-tab-only activities).
+ * @param {string} terrainTag
+ * @param {boolean} safeRestSpot
+ * @param {Set<string>|Iterable<string>} availableIds
+ * @param {{ simpleStations?: boolean }} [options]
+ * @returns {Set<string>}
+ */
+export function getStationOfferedActivityIds(terrainTag, safeRestSpot, availableIds, options = {}) {
+    const available = availableIds instanceof Set ? availableIds : new Set(availableIds);
+    const stations = getStationsForTerrain(terrainTag, safeRestSpot, options);
+    const skipStations = new Set(["campfire"]);
+    const identifyTabIds = new Set(["act_identify"]);
+    const offered = new Set();
+    for (const station of stations) {
+        if (skipStations.has(station.id)) continue;
+        for (const id of station.activities ?? []) {
+            if (identifyTabIds.has(id)) continue;
+            if (available.has(id)) offered.add(id);
+        }
+    }
+    return offered;
 }
 
 /**

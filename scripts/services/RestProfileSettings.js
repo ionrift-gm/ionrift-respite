@@ -18,7 +18,8 @@ export function isSimpleRestProfile() {
             && !game.settings.get(MODULE_ID, "enableEncounters")
             && !isFletchingEnabled()
             && (game.settings.get(MODULE_ID, "trainingXpTier") ?? 0) === 0
-            && !game.settings.get(MODULE_ID, "enableCopySpell");
+            && !game.settings.get(MODULE_ID, "enableCopySpell")
+            && !game.settings.get(MODULE_ID, "enablePrayMeditate");
     } catch {
         return false;
     }

@@ -4,6 +4,11 @@ import { TerrainRegistry } from "../../services/TerrainRegistry.js";
 import { ForageActivityValidator } from "../../services/ForageActivityValidator.js";
 import { GrantLedger } from "../../services/GrantLedger.js";
 import { isScoutingEnabled } from "../../services/ScoutingSettings.js";
+import {
+    getTravelGatherAvailability,
+    isForagingEnabled,
+    isHuntingEnabled
+} from "../../services/TravelSettings.js";
 
 const MODULE_ID = "ionrift-respite";
 const MAX_TRAVEL_DAYS = 3;
@@ -268,9 +273,11 @@ export class TravelResolutionDelegate {
 
     setDeclaration(actorId, activity, day = null) {
         const d = day ?? this.#activeDay;
-        if (activity === "forage" && this.getForageGate(this._terrainTagForForageGate()).disabled) {
-            return;
+        if (activity === "forage") {
+            if (!isForagingEnabled()) return;
+            if (this.getForageGate(this._terrainTagForForageGate()).disabled) return;
         }
+        if (activity === "hunt" && !isHuntingEnabled()) return;
         if (activity === "scout") {
             if (!isScoutingEnabled()) return;
             if (this.#effectiveSafeRestSpot()) return;
@@ -477,9 +484,7 @@ export class TravelResolutionDelegate {
 
     buildContext(partyActors, terrainTag) {
         const terrain = TerrainRegistry.get(terrainTag);
-        const allowed = terrain?.travelActivities ?? ["forage", "hunt", "scout"];
-        const canForage = allowed.includes("forage");
-        const canHunt = allowed.includes("hunt");
+        const { canForage, canHunt } = getTravelGatherAvailability(terrain?.travelActivities);
         const safeRest = this.#effectiveSafeRestSpot();
         const canScout = !safeRest && allowed.includes("scout") && isScoutingEnabled() && this.#scoutingAllowed;
         const hasTravelOptions = canForage || canHunt || canScout;

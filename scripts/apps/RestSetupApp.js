@@ -68,12 +68,12 @@ import { CampCeremonyDelegate } from "./delegates/CampCeremonyDelegate.js";
 import { EventsPhaseDelegate } from "./delegates/EventsPhaseDelegate.js";
 import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
 import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple, purgeDetectMagicRestArtifacts } from "./delegates/DetectMagicDelegate.js";
-import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, getComfortTip, CAMP_STATIONS, getStationsForTerrain, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments, applyActivityPortraitAssignments, foldOrphanedAssignmentsOntoOther, isWorkbenchExamineUiEnabled, isWorkbenchIdentifyUiEnabled } from "./RestConstants.js";
+import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, getComfortTip, CAMP_STATIONS, getStationsForTerrain, getStationOfferedActivityIds, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments, applyActivityPortraitAssignments, foldOrphanedAssignmentsOntoOther, isWorkbenchExamineUiEnabled, isWorkbenchIdentifyUiEnabled } from "./RestConstants.js";
 import { isComfortEnabled } from "../services/ComfortCalculator.js";
 import { logCampfireReconnect } from "../services/CampfireReconnectLog.js";
 import { isSimpleStationsMode, requiresMapCampFire, isCampfireMinigameEnabled } from "../services/RestProfileSettings.js";
 import { isScoutingEnabled } from "../services/ScoutingSettings.js";
-import { shouldRunTravelPhase } from "../services/TravelSettings.js";
+import { shouldRunTravelPhase, getTravelGatherAvailability } from "../services/TravelSettings.js";
 import { buildActivityListItem, buildActivityDetailContext } from "./ActivityDetailBuilder.js";
 import {
     activateStationLayer,
@@ -563,17 +563,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * When Other is the only evening activity left (Simple profile and similar),
      * pre-assign it so the activity gate opens without a manual pick per character.
      * Simple + camp stations: always assign Other for the whole party (same as TotM).
+     * Tavern: auto-assign when Other is the only activity offered at visible stations.
      * @returns {boolean} True if any new assignments were made.
      */
     _applyAutoOtherWhenSoleActivity() {
         if (this._phase !== "activity" || !this._isGM) return false;
 
         const forceOtherForAll = isSimpleStationsMode();
+        const isTavern = this._isTavernTerrain();
         const partyActors = getPartyActors();
         if (!partyActors.length) return false;
 
         const restType = this._engine?.restType ?? "long";
         const resolverOpts = this._activityResolverOpts();
+        const terrainTag = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
+        const safeRestSpot = resolverOpts.safeRestSpot;
 
         let changed = false;
         for (const actor of partyActors) {
@@ -585,13 +589,25 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 actor, restType, resolverOpts
             );
 
-            const shouldAssign = forceOtherForAll
-                ? available.some(a => a.id === "act_other")
-                : (available.length === 1 && available[0].id === "act_other");
+            let shouldAssign = false;
+            if (forceOtherForAll) {
+                shouldAssign = available.some(a => a.id === "act_other");
+            } else if (isTavern) {
+                const offered = getStationOfferedActivityIds(
+                    terrainTag,
+                    safeRestSpot,
+                    new Set(available.map(a => a.id)),
+                    { simpleStations: isSimpleStationsMode() }
+                );
+                shouldAssign = offered.size === 1 && offered.has("act_other");
+            } else {
+                shouldAssign = available.length === 1 && available[0]?.id === "act_other";
+            }
 
             if (!shouldAssign) continue;
 
             this._characterChoices.set(actor.id, "act_other");
+            this._engine?.registerChoice(actor.id, "act_other", {});
             this._lockedCharacters.add(actor.id);
             if (!this._stationCanvasIdByCharacter) this._stationCanvasIdByCharacter = new Map();
             this._stationCanvasIdByCharacter.set(actor.id, "bedroll");
@@ -2468,6 +2484,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             safeRestSpotFromSetting = !!game.settings.get(MODULE_ID, "safeRestSpot");
         } catch { /* settings not ready */ }
         const safeRestSpot = !!(this._engine?.safeRestSpot ?? this._restData?.safeRestSpot ?? safeRestSpotFromSetting);
+        const isTavernSetup = (this._selectedTerrain ?? "forest") === "tavern";
+        const setupSafeHaven = safeRestSpot || isTavernSetup;
 
         let encountersEnabled = true;
         try {
@@ -3735,7 +3753,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         let _useTravel = true;
         try { _useTravel = !!game.settings.get(MODULE_ID, "useTravel"); } catch (e) { /* */ }
         const _includeTravelStep = _stepRestType === "long" && _enableProfessions && _useTravel;
-        const _includeEventsStep = _stepRestType !== "short" && !safeRestSpot;
+        const _includeEventsStep = _stepRestType !== "short" && !setupSafeHaven;
         const _phaseStepDefs = [
             { key: "setup", label: "Setup", include: true },
             { key: "travel", label: "Travel", include: _includeTravelStep },
@@ -3772,11 +3790,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const comfort = g("enableComfort");
                 const professions = g("enableProfessions");
                 const meals = g("trackFood");
-                const comfortActive = comfort && !safeRestSpot;
+                const comfortActive = comfort && !setupSafeHaven;
+                const professionsActive = professions && !isTavernSetup;
+                const mealsActive = meals && !isTavernSetup;
+                const comfortBypassTooltip = isTavernSetup
+                    ? "Comfort bypassed: tavern rest is fully safe with automatic recovery."
+                    : "Comfort bypassed: safe rest spot negates comfort penalties, fire, and exhaustion saves.";
                 return [
-                    { on: comfortActive, icon: "fas fa-temperature-half", label: "Comfort", tooltip: safeRestSpot ? "Comfort bypassed: safe rest spot negates comfort penalties, fire, and exhaustion saves." : comfort ? "Comfort tiers, fire, and exhaustion saves are on. Change under Recovery Rules." : "Comfort off: no fire phase and no terrain exhaustion saves. Change under Recovery Rules." },
-                    { on: professions, icon: "fas fa-hammer", label: "Professions", tooltip: professions ? "Crafting professions and the travel phase are on. Change under Rest Activities." : "Professions off: the travel phase is skipped. Change under Rest Activities." },
-                    { on: meals, icon: "fas fa-drumstick-bite", label: "Meals", tooltip: meals ? "Food and water tracking is on; the Meal phase runs." : "Meal tracking off: no rations or dehydration saves. Change in module settings." }
+                    { on: comfortActive, icon: "fas fa-temperature-half", label: "Comfort", tooltip: setupSafeHaven ? comfortBypassTooltip : comfort ? "Comfort tiers, fire, and exhaustion saves are on. Change under Recovery Rules." : "Comfort off: no fire phase and no terrain exhaustion saves. Change under Recovery Rules." },
+                    { on: professionsActive, icon: "fas fa-hammer", label: "Professions", tooltip: isTavernSetup ? "Professions not offered at a tavern; personal activities only." : professions ? "Crafting professions and the travel phase are on. Change under Travel & Activities." : "Professions off: the travel phase is skipped. Change under Travel & Activities." },
+                    { on: mealsActive, icon: "fas fa-drumstick-bite", label: "Meals", tooltip: isTavernSetup ? "Meals provided by the establishment; no ration tracking at a tavern." : meals ? "Food and water tracking is on; the Meal phase runs." : "Meal tracking off: no rations or dehydration saves. Change in module settings." }
                 ];
             })()
             : [];
@@ -3839,9 +3862,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
                 // Player-side context: multi-day aware
                 const terrain = TerrainRegistry.get(terrainTag);
-                const allowed = terrain?.travelActivities ?? ["forage", "hunt", "scout"];
-                const canForage = allowed.includes("forage");
-                const canHunt = allowed.includes("hunt");
+                const { canForage, canHunt } = getTravelGatherAvailability(terrain?.travelActivities);
                 const scoutAllowed = isScoutingEnabled() && (this._travelScoutingAllowed ?? true);
                 const canScout = !safeRestSpot && allowed.includes("scout") && scoutAllowed;
                 const hasTravelOptions = canForage || canHunt || canScout;
@@ -4017,8 +4038,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const t = this._selectedTerrain ?? "forest";
                 const d = TerrainRegistry.getDefaults(t);
                 const comfort = (d.comfort ?? "sheltered").charAt(0).toUpperCase() + (d.comfort ?? "sheltered").slice(1);
-                const travel = safeRestSpot
-                    ? "Travel activities are skipped for a safe rest spot."
+                const travel = setupSafeHaven
+                    ? (isTavernSetup
+                        ? "Tavern rest: no travel activities."
+                        : "Travel activities are skipped for a safe rest spot.")
                     : (d.travelAvailable ? "Travel available (forage, hunt, scout)." : "No travel activities.");
                 return `Implied comfort: ${comfort}. ${travel}`;
             })(),
@@ -4036,7 +4059,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     if (wData.encounterDC < 0) fx.push(`encounter DC ${wData.encounterDC}`);
                     parts.push(fx.join(", "));
                 }
-                if (!safeRestSpot && d.travelAvailable) parts.push("travel available");
+                if (!setupSafeHaven && d.travelAvailable) parts.push("travel available");
                 return parts.join(" · ");
             })(),
             weatherOptions: (() => {
@@ -4096,6 +4119,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             selectedRestTypeLabel: this._selectedRestType === "short" ? "Short Rest" : "Long Rest",
             isShortRest: (this._selectedRestType ?? "long") === "short",
             safeRestSpot,
+            setupSafeHaven,
+            isTavernSetup,
             selectedWeatherLabel: WEATHER_TABLE[this._resolveSetupWeather(this._selectedTerrain ?? "forest")]?.label ?? "Clear",
             shelterNeeded: (this._selectedTerrain ?? "forest") !== "tavern",
             defaultComfort,
@@ -5546,6 +5571,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     _onRenderBindings(context, options) {
+        if (game.user.isGM && this._phase === "activity" && this._isTavernTerrain()) {
+            if (this._applyAutoOtherWhenSoleActivity()) {
+                void this._saveRestState();
+            }
+        }
+
         const showTotmCampfirePanelEarly = this._shouldShowTotmCampfirePanel();
         this._bindRestWindowUserMoveTracking();
         if (this._isTotM && (this._phase === "camp" || (this._phase === "activity" && showTotmCampfirePanelEarly))) {
@@ -8082,7 +8113,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             safeFromSetting = !!game.settings.get(MODULE_ID, "safeRestSpot");
         } catch { /* noop */ }
         const effectiveSafe = !!(this._engine?.safeRestSpot ?? this._restData?.safeRestSpot ?? safeFromSetting);
-        if (effectiveSafe) return false;
+        if (effectiveSafe || this._isTavernTerrain()) return false;
         const magicalShelters = ["tiny_hut", "rope_trick", "magnificent_mansion"];
         const activeShelterIds = Object.entries(this._shelterOverrides ?? {})
             .filter(([, v]) => v)
@@ -8104,6 +8135,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     _shouldShowTotmCampfirePanel() {
         if (this._phase !== "activity" || !this._isTotM || !isCampfireMinigameEnabled()) return false;
+        if (!this._totmFireUiEnabled()) return false;
         if (this._totmCampfireMinigamePanelEnabled()) return true;
         return (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided;
     }
@@ -13939,6 +13971,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         this._phase = "activity";
         this._applyLoseActivityTravelLocks();
+        this._closeCampfire();
         this._applyAutoOtherWhenSoleActivity();
 
         const isTheater = this._isTotM;

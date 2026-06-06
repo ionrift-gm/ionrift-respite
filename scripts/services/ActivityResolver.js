@@ -38,14 +38,14 @@ export function isActivityExcludedForRestOptions(activity, options = {}) {
 
 /**
  * Activities hidden when the comfort subsystem is disabled. These are the soft
- * recovery and morale activities: full rest, tending wounds, prayer for temp HP,
- * and fireside tales for Inspiration. With comfort off the rest stays close to
- * RAW, leaving Other as the only open-ended evening choice.
+ * recovery and morale activities: full rest, tending wounds, and fireside
+ * tales for Inspiration. With comfort off the rest stays close to RAW,
+ * leaving Other as the open-ended evening choice. Pray / Meditate is gated
+ * separately via enablePrayMeditate.
  */
 const COMFORT_EXCLUDED_ACTIVITY_IDS = new Set([
     "act_rest_fully",
     "act_tend_wounds",
-    "act_pray",
     "act_tell_tales"
 ]);
 
@@ -68,6 +68,19 @@ function areEncountersEnabled() {
         return value === undefined || value === null ? true : !!value;
     } catch (e) {
         return true;
+    }
+}
+
+/**
+ * Whether Pray / Meditate is offered during rests. Defaults to true if unset.
+ * @returns {boolean}
+ */
+export function isPrayMeditateEnabled() {
+    try {
+        const value = game.settings.get("ionrift-respite", "enablePrayMeditate");
+        return value === undefined || value === null ? false : !!value;
+    } catch (e) {
+        return false;
     }
 }
 
@@ -128,6 +141,9 @@ export class ActivityResolver {
                     if (!game.settings.get("ionrift-respite", "enableCopySpell")) continue;
                 } catch (e) { /* setting may not exist yet */ }
             }
+
+            // Gate Pray / Meditate behind module setting
+            if (activity.id === "act_pray" && !isPrayMeditateEnabled()) continue;
 
             if (this._meetsPrerequisites(actor, activity.prerequisites)) {
                 available.push(activity);
@@ -797,6 +813,9 @@ export class ActivityResolver {
                     if (!game.settings.get("ionrift-respite", "enableCopySpell")) continue;
                 } catch (e) { /* setting may not exist yet */ }
             }
+
+            // Gate Pray / Meditate behind module setting
+            if (activity.id === "act_pray" && !isPrayMeditateEnabled()) continue;
 
             // Runtime attunement check
             if (activity.id === "act_attune" && !this._hasAttuneableItems(actor)) {
