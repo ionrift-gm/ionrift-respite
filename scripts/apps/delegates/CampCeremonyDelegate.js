@@ -123,7 +123,10 @@ export class CampCeremonyDelegate {
         // Light at the chosen tier in one motion so the picker is the commit; falls back
         // to pledge-derived level (embers with no wood) when no tier was selected.
         const override = ["embers", "campfire", "bonfire"].includes(desiredLevel) ? desiredLevel : null;
-        await this._syncFireLevelFromPledges(override, { skipRender: !!options.autoAdvanceTotm });
+        await this._syncFireLevelFromPledges(override, {
+            skipRender: !!options.autoAdvanceTotm,
+            skipBroadcast: !!options.autoAdvanceTotm
+        });
         const shouldAdvanceTotm = options.autoAdvanceTotm
             || (this._app._isTotM
                 && isCampfireMinigameEnabled()
@@ -259,13 +262,15 @@ export class CampCeremonyDelegate {
             this._app._engine.fireRollModifier = FIRE_MOD[level] ?? 0;
         }
         await CampfireTokenLinker.setLightState(level !== "unlit", level !== "unlit" ? level : undefined);
-        emitPhaseChanged("camp", {
-            fireLevel: level,
-            fireLitBy: this.fireLitBy,
-            firewoodPledges: Array.from(this.firewoodPledges.entries()),
-            selectedTerrain: this._app._selectedTerrain ?? null
-        });
-        await this._app._saveRestState();
+        if (!options.skipBroadcast) {
+            emitPhaseChanged("camp", {
+                fireLevel: level,
+                fireLitBy: this.fireLitBy,
+                firewoodPledges: Array.from(this.firewoodPledges.entries()),
+                selectedTerrain: this._app._selectedTerrain ?? null
+            });
+            await this._app._saveRestState();
+        }
         const _isTotm = this._app._isTotM;
         const willAdvance =
             !_isTotm &&

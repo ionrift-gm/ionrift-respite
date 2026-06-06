@@ -79,12 +79,59 @@ const MODULE_ID = "ionrift-respite";
  * @returns {string|null}
  */
 function _getContainerParentId(item) {
+    if (!item) return null;
+
     const dnd = item.system?.container;
     if (typeof dnd === "string" && dnd) return dnd;
+    if (dnd && typeof dnd === "object") {
+        const id = dnd.id ?? dnd._id ?? dnd.value;
+        if (typeof id === "string" && id) return id;
+    }
+
     const pf2 = item.system?.containerId;
     if (typeof pf2 === "string" && pf2) return pf2;
-    if (pf2 && typeof pf2.value === "string" && pf2.value) return pf2.value;
+    if (pf2 && typeof pf2 === "object") {
+        const id = pf2.value ?? pf2.id ?? pf2._id;
+        if (typeof id === "string" && id) return id;
+    }
+
+    try {
+        const container = item.container;
+        if (container?.id) return container.id;
+    } catch { /* Item5e getter unavailable in tests */ }
+
     return null;
+}
+
+/**
+ * Flatten embedded inventory items. All contained items remain on actor.items;
+ * this avoids relying on collection-specific iterators.
+ * @param {Actor} actor
+ * @returns {Item[]}
+ */
+function _iterInventoryItems(actor) {
+    return actor?.items ? [...actor.items] : [];
+}
+
+/**
+ * Container IDs whose contents are rolled up on the parent water entry
+ * (waterskin-style containers, not mundane backpacks).
+ * @param {Iterable<Item>} items
+ * @param {Actor} actor
+ * @returns {Set<string>}
+ */
+function _collectWaterSourceContainerIds(items, actor) {
+    const containerIds = _collectContainerIds(items);
+    const waterContainerIds = new Set();
+    for (const item of items) {
+        if (!_isContainerType(item)) continue;
+        if (!containerIds.has(item.id)) continue;
+        const flaggedWater = item.flags?.[MODULE_ID]?.resourceType === "water";
+        if (flaggedWater || ItemClassifier.isWater(item, actor)) {
+            waterContainerIds.add(item.id);
+        }
+    }
+    return waterContainerIds;
 }
 
 /** DnD5e uses "container"; PF2e uses "backpack". */
@@ -1284,13 +1331,12 @@ export class MealPhaseHandler {
             ? "icons/commodities/gems/gem-rough-white-blue.webp"
             : "icons/consumables/food/bread-loaf-round-white.webp";
 
-        for (const item of actor.items) {
+        for (const item of _iterInventoryItems(actor)) {
             const qty = item.system?.quantity ?? 1;
             if (qty <= 0) continue;
 
             // Food inside any container (backpack, bag of holding, etc.)
             // is accessible and should appear in the meal tray.
-            // No container exclusion for food items.
 
             const allowed = useEssenceTray
                 ? ItemClassifier.isEssenceMealFoodOption(item, actor)
@@ -1325,25 +1371,10 @@ export class MealPhaseHandler {
      */
     static _buildWaterOptions(actor, rules) {
         const options = [];
-        const containerIds = _collectContainerIds(actor.items);
+        const inventoryItems = _iterInventoryItems(actor);
+        const waterContainerIds = _collectWaterSourceContainerIds(inventoryItems, actor);
 
-        // Build a set of container IDs that are water sources (Waterskin
-        // containers). Items inside these are accounted for via the
-        // parent entry; items inside mundane containers (backpacks)
-        // should still appear as standalone options.
-        const waterContainerIds = new Set();
-        for (const item of actor.items) {
-            if (!_isContainerType(item)) continue;
-            if (!containerIds.has(item.id)) continue;
-            // A container is a water source if it's classified as water
-            // or has the resourceType: "water" flag.
-            const flaggedWater = item.flags?.[MODULE_ID]?.resourceType === "water";
-            if (flaggedWater || ItemClassifier.isWater(item, actor)) {
-                waterContainerIds.add(item.id);
-            }
-        }
-
-        for (const item of actor.items) {
+        for (const item of inventoryItems) {
             const qty = item.system?.quantity ?? 1;
             if (qty <= 0) continue;
 
@@ -1387,7 +1418,7 @@ export class MealPhaseHandler {
             // contained water items instead of the container's own quantity.
             if (_isContainerType(item) && rawMax <= 0) {
                 let containedPints = 0;
-                for (const child of actor.items) {
+                for (const child of inventoryItems) {
                     if (_getContainerParentId(child) !== item.id) continue;
                     if (!ItemClassifier.isWater(child, actor)) continue;
                     containedPints += child.system?.quantity ?? 1;
@@ -1537,7 +1568,7 @@ export class MealPhaseHandler {
         if (_isContainerType(item)) {
             let consumed = 0;
             let remaining = amount;
-            const children = [...actor.items].filter(
+            const children = _iterInventoryItems(actor).filter(
                 c => _getContainerParentId(c) === itemId && ItemClassifier.isWater(c, actor)
             );
             for (const child of children) {
@@ -1618,5 +1649,20 @@ export class MealPhaseHandler {
             await actor.deleteEmbeddedDocuments("Item", [item.id]);
         }
         return consumed;
+    }
+
+    /** @see _getContainerParentId */
+    static getContainerParentId(item) {
+        return _getContainerParentId(item);
+    }
+
+    /** @see _collectWaterSourceContainerIds */
+    static collectWaterSourceContainerIds(items, actor) {
+        return _collectWaterSourceContainerIds(items, actor);
+    }
+
+    /** @see _iterInventoryItems */
+    static iterInventoryItems(actor) {
+        return _iterInventoryItems(actor);
     }
 }

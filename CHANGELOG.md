@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- **Tavern rests now include an activity phase.** The party can visit workbench and room stations after skipping camp setup. Watch, defenses, first aid, Rest Fully, profession crafting, and the campfire station are withheld; recovery stays automatic and night encounters do not run.
 - **Kindling moved to Respite Cache Utility compendium.** Forage, hunt, and cooking items stay in Respite Items. Camp utility loot (starting with kindling) lives in the new Respite Cache Utility pack for Quartermaster cache pools.
 
 ## [3.0.2] - 2026-06-03

@@ -1,5 +1,6 @@
 import { Logger } from "../lib/Logger.js";
 import { ItemClassifier } from "./ItemClassifier.js";
+import { MealPhaseHandler } from "./MealPhaseHandler.js";
 
 /**
  * ResourceSink
@@ -688,20 +689,37 @@ export class ResourceSink {
      * @returns {Object[]} Array of { actor, item, qty }
      */
     static _findResourceItems(actors, resourceKey) {
-        const candidateNames = this.RESOURCE_NAMES[resourceKey] ?? [resourceKey];
         const holdings = [];
+        const classifyAsFood = resourceKey === "rations";
+        const classifyAsWater = resourceKey === "water";
 
         for (const actor of actors) {
             if (!actor?.items) continue;
-            for (const item of actor.items) {
+            const items = MealPhaseHandler.iterInventoryItems(actor);
+            const waterContainerIds = classifyAsWater
+                ? MealPhaseHandler.collectWaterSourceContainerIds(items, actor)
+                : new Set();
+
+            for (const item of items) {
+                const parentId = MealPhaseHandler.getContainerParentId(item);
+                if (classifyAsWater && parentId && waterContainerIds.has(parentId)) continue;
+
                 const flagMatch = item.flags?.["ionrift-respite"]?.resourceType === resourceKey;
+                const candidateNames = this.RESOURCE_NAMES[resourceKey] ?? [resourceKey];
                 const nameMatch = candidateNames.includes(item.name?.toLowerCase().trim());
 
-                if (flagMatch || nameMatch) {
-                    const qty = item.system?.quantity ?? 1;
-                    if (qty > 0) {
-                        holdings.push({ actor, item, qty });
-                    }
+                let match = flagMatch || nameMatch;
+                if (classifyAsFood) {
+                    match = ItemClassifier.isFood(item, actor) && !ItemClassifier.isWater(item, actor);
+                } else if (classifyAsWater) {
+                    match = ItemClassifier.isWater(item, actor);
+                }
+
+                if (!match) continue;
+
+                const qty = item.system?.quantity ?? 1;
+                if (qty > 0) {
+                    holdings.push({ actor, item, qty });
                 }
             }
         }
@@ -908,16 +926,21 @@ export class ResourceSink {
         const holdings = [];
         for (const actor of (actors ?? [])) {
             if (!actor?.items) continue;
-            for (const item of actor.items) {
+            const items = MealPhaseHandler.iterInventoryItems(actor);
+            const waterContainerIds = MealPhaseHandler.collectWaterSourceContainerIds(items, actor);
+
+            for (const item of items) {
                 const qty = item.system?.quantity ?? 1;
                 if (qty <= 0) continue;
+
+                const parentId = MealPhaseHandler.getContainerParentId(item);
+                if (parentId && waterContainerIds.has(parentId) && ItemClassifier.isWater(item, actor)) {
+                    continue;
+                }
+
                 const isWater = ItemClassifier.isWater(item, actor);
                 const isFood = !isWater && ItemClassifier.isFood(item, actor);
                 if (!isWater && !isFood) continue;
-                // Label by the actual item so the loss reads truthfully
-                // (Seasoned Rations, Dried Fruit, Canteen, Lamp Oil) instead of
-                // collapsing everything to a generic rations/water lump. `class`
-                // keeps the food/drink split for any consumer that still needs it.
                 holdings.push({ actor, item, qty, kind: item.name, class: isWater ? "water" : "food" });
             }
         }

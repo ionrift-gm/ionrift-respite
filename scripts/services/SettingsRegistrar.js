@@ -14,6 +14,7 @@ import { isComfortEnabled } from "./ComfortCalculator.js";
 import { PlayerRestrictionsApp } from "../apps/PlayerRestrictionsApp.js";
 import { migrateFletchingYieldTier } from "./FletchingSettings.js";
 import { migrateTrainingXpTier } from "./TrainingSettings.js";
+import { migrateUseTravel } from "./TravelSettings.js";
 import { registerRespiteSettingsPanel } from "./SettingsPanelLayout.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -286,7 +287,33 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     game.settings.register(MODULE_ID, "enableScouting", {
         name: "Travel Scouting",
-        hint: "Scout activity on the final travel day before camp. Perception or Survival sets comfort and the night check. Off hides scouting from travel (Survival profile turns this on).",
+        hint: "Scout activity on the final travel day before camp. Requires Use Travel. Off hides scouting when the travel phase is not used.",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false,
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "useTravel", {
+        name: "Use Travel",
+        hint: "Include the travel phase during long rests when professions are on. Off skips travel entirely and goes straight to camp.",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: true,
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "useTravelMigrated", {
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false,
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "useTravelPhaseSemanticsMigrated", {
         scope: "world",
         config: false,
         type: Boolean,
@@ -415,6 +442,13 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
     });
 
     game.settings.register(MODULE_ID, "lastTerrain", {
+        scope: "world",
+        config: false,
+        type: String,
+        default: ""
+    });
+
+    game.settings.register(MODULE_ID, "lastWeather", {
         scope: "world",
         config: false,
         type: String,
@@ -582,6 +616,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 Hooks.once("ready", () => {
     migrateTrainingXpTier();
     migrateFletchingYieldTier();
+    migrateUseTravel();
 });
 
 /**
@@ -755,6 +790,8 @@ export const SETTING_KEYS = [
     "enableEncounters",
     "enableCopySpell",
     "enableScouting",
+    "useTravel",
+    "useTravelPhaseSemanticsMigrated",
     "trackFood",
     "partialSustenance",
     "lockPlayerQuantity",
@@ -768,6 +805,7 @@ export const SETTING_KEYS = [
     "restRecoveryDetected",
     "lastRestDate",
     "lastTerrain",
+    "lastWeather",
     "activeRest",
     "activeShortRest",
     "enabledPacks",

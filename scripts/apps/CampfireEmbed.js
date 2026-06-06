@@ -15,6 +15,7 @@ import {
     countActorFirewood,
     findConsumableFirewoodItem
 } from "../services/CampGearScanner.js";
+import { logCampfireReconnect } from "../services/CampfireReconnectLog.js";
 
 /** Default kindling art (matches respite-cache-utility/kindling.json). */
 const DEFAULT_KINDLING_IMG = "icons/commodities/wood/kindling-sticks-brown.webp";
@@ -280,6 +281,15 @@ export class CampfireEmbed {
     }
 
     /**
+     * Switch between Make Camp ceremony host and Activities side panel host.
+     * @param {{ makeCampCeremony?: boolean, showDouseBtn?: boolean }} mode
+     */
+    setPanelMode({ makeCampCeremony = false, showDouseBtn = false } = {}) {
+        this._makeCampCeremony = !!makeCampCeremony;
+        this._showDouseBtn = !!showDouseBtn;
+    }
+
+    /**
      * Point at a new host element after RestSetupApp re-rendered the template.
      * @param {HTMLElement} container
      */
@@ -304,10 +314,30 @@ export class CampfireEmbed {
      * Align local heat and lit state with rest ceremony fire level (no decay drift).
      * @param {string} level - unlit | embers | campfire | bonfire
      * @param {boolean} [coldCamp]
+     * @param {{ force?: boolean }} [options]
      */
-    syncFromRestFireLevel(level, coldCamp = false) {
+    syncFromRestFireLevel(level, coldCamp = false, options = {}) {
+        const force = !!options.force;
         const ceremonyKey = coldCamp ? "cold_camp" : level;
-        if (ceremonyKey === this._lastSyncedRestCeremonyKey) return;
+        if (!force && ceremonyKey === this._lastSyncedRestCeremonyKey) {
+            logCampfireReconnect("embed:syncFromRestFireLevel:skip", {
+                level,
+                coldCamp,
+                ceremonyKey,
+                reason: "already synced"
+            });
+            return;
+        }
+
+        logCampfireReconnect("embed:syncFromRestFireLevel", {
+            level,
+            coldCamp,
+            force,
+            priorLit: this._lit,
+            priorHeat: this._heat,
+            priorKey: this._lastSyncedRestCeremonyKey ?? null,
+            hasContainer: !!this._container
+        });
 
         const wasLitBefore = ["embers", "campfire", "bonfire"].includes(
             this._lastSyncedRestCeremonyKey ?? ""
@@ -328,15 +358,33 @@ export class CampfireEmbed {
             this._lastFireLevel = level;
         }
         this._lastSyncedRestCeremonyKey = ceremonyKey;
-        const el = this._container;
-        if (el) {
-            const area = el.querySelector(".campfire-fire-area");
-            if (area) {
-                area.classList.remove("fire-level-unlit", "fire-level-embers", "fire-level-campfire", "fire-level-bonfire");
-                if (this._lit) area.classList.add(`fire-level-${this.fireLevel}`);
-            }
-            this._updateMeter(el);
+        this._applyFireAreaVisualState(this._container);
+        logCampfireReconnect("embed:syncFromRestFireLevel:done", {
+            lit: this._lit,
+            heat: this._heat,
+            fireLevel: this.fireLevel,
+            ceremonyKey
+        });
+    }
+
+    /** Apply fire tier CSS classes and meter after render or rest sync. */
+    _applyFireAreaVisualState(el) {
+        if (!el) {
+            logCampfireReconnect("embed:applyFireAreaVisualState:skip", { reason: "no container" });
+            return;
         }
+        const area = el.querySelector(".campfire-fire-area");
+        if (area) {
+            area.classList.remove("fire-level-unlit", "fire-level-embers", "fire-level-campfire", "fire-level-bonfire");
+            if (this._lit) area.classList.add(`fire-level-${this.fireLevel}`);
+        }
+        this._updateMeter(el);
+        logCampfireReconnect("embed:applyFireAreaVisualState", {
+            lit: this._lit,
+            fireLevel: this.fireLevel,
+            areaFound: !!area,
+            areaClasses: area?.className ?? null
+        });
     }
 
     _onRender() {
@@ -378,8 +426,15 @@ export class CampfireEmbed {
         // Bind action buttons
         this._bindActions(el);
 
-        // Update meter
-        this._updateMeter(el);
+        this._applyFireAreaVisualState(el);
+
+        logCampfireReconnect("embed:onRender", {
+            lit: this._lit,
+            fireLevel: this.fireLevel,
+            heat: this._heat,
+            hasCanvas: !!canvas,
+            containerConnected: el.isConnected
+        });
 
         // Deferred kindling banner
         if (this._pendingKindlingBanner) {

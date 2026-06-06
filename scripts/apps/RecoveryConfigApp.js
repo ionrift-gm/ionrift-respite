@@ -9,65 +9,86 @@
 
 const MODULE_ID = "ionrift-respite";
 
-/** Recovery setting definitions. Order = display order. */
-const RECOVERY_SETTINGS = [
+/** Recovery sections and settings. Order = display order. */
+const RECOVERY_SECTIONS = [
     {
-        key: "enableComfort",
-        label: "Comfort Rules",
-        icon: "fas fa-thermometer-half",
-        hint: "Terrain comfort tiers, fire mechanics, and gear-driven recovery modifiers. Off in Standard; Survival Quick Setup turns this on. When off: no comfort penalties, no fire phase, no terrain exhaustion saves.",
-        type: "boolean"
+        id: "longRest",
+        label: "Long Rest",
+        icon: "fas fa-moon",
+        hint: "Camp comfort, armor at sleep, spell slot recovery, and TotM ceremony options.",
+        settings: [
+            {
+                key: "enableComfort",
+                label: "Comfort Rules",
+                icon: "fas fa-thermometer-half",
+                hint: "Terrain comfort tiers, fire mechanics, and gear-driven recovery modifiers. Off in Standard; Survival Quick Setup turns this on. When off: no comfort penalties, no fire phase, no terrain exhaustion saves.",
+                type: "boolean"
+            },
+            {
+                key: "enableCampfireMinigame",
+                label: "Campfire Minigame (TotM)",
+                icon: "fas fa-fire",
+                hint: "TotM only. Make Camp uses the minigame as the lighting ceremony (tier segments still preview comfort). Activities uses the side panel and hides the Fire tab.",
+                type: "boolean"
+            },
+            {
+                key: "enableWorkbenchIdentify",
+                label: "Workbench Identify (TotM)",
+                icon: "fas fa-search",
+                hint: "Theater of the Mind only. Shows the Identify tab during Activities for the workbench station.",
+                type: "boolean"
+            },
+            {
+                key: "armorDoffRule",
+                label: "Armor Sleep Penalties",
+                icon: "fas fa-shield-alt",
+                hint: "Characters sleeping in medium or heavy armor recover fewer Hit Dice and cannot reduce exhaustion (Xanathar's). Characters on watch are exempt.",
+                type: "boolean"
+            },
+            {
+                key: "spellRecoveryMaxLevel",
+                label: "Spell Recovery Max Level",
+                icon: "fas fa-hat-wizard",
+                hint: "Maximum spell slot level recoverable via Arcane Recovery and Natural Recovery. Default 5 matches 2014 rules. Increase for homebrew.",
+                type: "range",
+                min: 1,
+                max: 9,
+                step: 1
+            }
+        ]
     },
     {
-        key: "enableCampfireMinigame",
-        label: "Campfire Minigame (TotM)",
-        icon: "fas fa-fire",
-        hint: "TotM only. Make Camp uses the minigame as the lighting ceremony (tier segments still preview comfort). Activities uses the side panel and hides the Fire tab.",
-        type: "boolean"
-    },
-    {
-        key: "enableWorkbenchIdentify",
-        label: "Workbench Identify (TotM)",
-        icon: "fas fa-search",
-        hint: "Theater of the Mind only. Shows the Identify tab during Activities for the workbench station.",
-        type: "boolean"
-    },
-    {
-        key: "armorDoffRule",
-        label: "Armor Sleep Penalties",
-        icon: "fas fa-shield-alt",
-        hint: "Characters sleeping in medium or heavy armor recover fewer Hit Dice and cannot reduce exhaustion (Xanathar's). Characters on watch are exempt.",
-        type: "boolean"
-    },
-    {
-        key: "spellRecoveryMaxLevel",
-        label: "Spell Recovery Max Level",
-        icon: "fas fa-hat-wizard",
-        hint: "Maximum spell slot level recoverable via Arcane Recovery and Natural Recovery. Default 5 matches 2014 rules. Increase for homebrew.",
-        type: "range",
-        min: 1,
-        max: 9,
-        step: 1
-    },
-    {
-        key: "songOfRestTiming",
-        label: "Song of Rest Timing",
-        icon: "fas fa-music",
-        hint: "When the Bard's Song of Rest bonus die is rolled and applied.",
-        type: "select",
-        choices: {
-            endOfRest: "End of short rest (strict timing)",
-            withFirstHitDie: "With first Hit Die (per character, immediate)"
-        }
-    },
-    {
-        key: "maxValueHitDice",
-        label: "Max Value Hit Dice (Homebrew)",
-        icon: "fas fa-dice-d20",
-        hint: "During short rests, each Hit Die heals for the die's maximum roll plus CON modifier instead of a random roll. Optional, not RAW.",
-        type: "boolean"
+        id: "shortRest",
+        label: "Short Rest",
+        icon: "fas fa-hourglass-half",
+        hint: "Hit Die spending and Bard Song of Rest during short rests.",
+        settings: [
+            {
+                key: "songOfRestTiming",
+                label: "Song of Rest Timing",
+                icon: "fas fa-music",
+                hint: "When the Bard's Song of Rest bonus die is rolled and applied.",
+                type: "select",
+                choices: {
+                    endOfRest: "End of short rest (strict timing)",
+                    withFirstHitDie: "With first Hit Die (per character, immediate)"
+                }
+            },
+            {
+                key: "maxValueHitDice",
+                label: "Max Value Hit Dice (Homebrew)",
+                icon: "fas fa-dice-d20",
+                hint: "During short rests, each Hit Die heals for the die's maximum roll plus CON modifier instead of a random roll. Optional, not RAW.",
+                type: "boolean"
+            }
+        ]
     }
 ];
+
+/** @returns {object[]} Flat setting definitions for save iteration. */
+function _allRecoverySettings() {
+    return RECOVERY_SECTIONS.flatMap(section => section.settings);
+}
 
 export class RecoveryConfigApp extends foundry.applications.api.ApplicationV2 {
 
@@ -84,10 +105,15 @@ export class RecoveryConfigApp extends foundry.applications.api.ApplicationV2 {
 
     /** @override */
     async _prepareContext() {
+        const resolveSetting = (setting) => ({
+            ...setting,
+            value: game.settings.get(MODULE_ID, setting.key)
+        });
+
         return {
-            settings: RECOVERY_SETTINGS.map(s => ({
-                ...s,
-                value: game.settings.get(MODULE_ID, s.key)
+            sections: RECOVERY_SECTIONS.map(section => ({
+                ...section,
+                settings: section.settings.map(resolveSetting)
             }))
         };
     }
@@ -101,17 +127,34 @@ export class RecoveryConfigApp extends foundry.applications.api.ApplicationV2 {
         <p class="settings-config-lead">Control how rest mechanically resolves for this world.</p>
         <div class="settings-config-list">`;
 
-        for (const setting of context.settings) {
+        for (const section of context.sections) {
             html += `
-            <div class="settings-config-row" data-key="${setting.key}">
-                <div class="settings-config-info">
-                    <div class="settings-config-label">
-                        <i class="${setting.icon} settings-config-icon"></i>
-                        ${setting.label}
+            <div class="settings-config-section" data-section="${section.id}">
+                <div class="settings-config-section-header">
+                    <i class="${section.icon} settings-config-icon"></i>
+                    <div class="settings-config-section-heading">
+                        <div class="settings-config-section-label">${section.label}</div>
+                        <div class="settings-config-hint">${section.hint}</div>
                     </div>
-                    <div class="settings-config-hint">${setting.hint}</div>
                 </div>
-                ${this._renderControl(setting)}
+                <div class="settings-config-section-body">`;
+
+            for (const setting of section.settings) {
+                html += `
+                <div class="settings-config-row settings-config-row--sub" data-key="${setting.key}">
+                    <div class="settings-config-info">
+                        <div class="settings-config-label">
+                            <i class="${setting.icon} settings-config-icon"></i>
+                            ${setting.label}
+                        </div>
+                        <div class="settings-config-hint">${setting.hint}</div>
+                    </div>
+                    ${this._renderControl(setting)}
+                </div>`;
+            }
+
+            html += `
+                </div>
             </div>`;
         }
 
@@ -163,7 +206,6 @@ export class RecoveryConfigApp extends foundry.applications.api.ApplicationV2 {
     _wireEvents(el) {
         el.querySelector(".settings-config-save-btn")?.addEventListener("click", () => this._onSave(el));
 
-        // Live range value display
         el.querySelectorAll(".settings-config-range").forEach(range => {
             range.addEventListener("input", () => {
                 const display = el.querySelector(`.settings-config-range-val[data-key="${range.dataset.key}"]`);
@@ -173,7 +215,7 @@ export class RecoveryConfigApp extends foundry.applications.api.ApplicationV2 {
     }
 
     async _onSave(el) {
-        for (const setting of RECOVERY_SETTINGS) {
+        for (const setting of _allRecoverySettings()) {
             if (setting.type === "boolean") {
                 const cb = el.querySelector(`.settings-config-cb[data-key="${setting.key}"]`);
                 if (cb) await game.settings.set(MODULE_ID, setting.key, cb.checked);

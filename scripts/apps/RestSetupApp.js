@@ -68,10 +68,12 @@ import { CampCeremonyDelegate } from "./delegates/CampCeremonyDelegate.js";
 import { EventsPhaseDelegate } from "./delegates/EventsPhaseDelegate.js";
 import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
 import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple, purgeDetectMagicRestArtifacts } from "./delegates/DetectMagicDelegate.js";
-import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, getComfortTip, CAMP_STATIONS, getStationsForTerrain, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments, applyActivityPortraitAssignments, isWorkbenchExamineUiEnabled, isWorkbenchIdentifyUiEnabled } from "./RestConstants.js";
+import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, getComfortTip, CAMP_STATIONS, getStationsForTerrain, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments, applyActivityPortraitAssignments, foldOrphanedAssignmentsOntoOther, isWorkbenchExamineUiEnabled, isWorkbenchIdentifyUiEnabled } from "./RestConstants.js";
 import { isComfortEnabled } from "../services/ComfortCalculator.js";
+import { logCampfireReconnect } from "../services/CampfireReconnectLog.js";
 import { isSimpleStationsMode, requiresMapCampFire, isCampfireMinigameEnabled } from "../services/RestProfileSettings.js";
 import { isScoutingEnabled } from "../services/ScoutingSettings.js";
+import { shouldRunTravelPhase } from "../services/TravelSettings.js";
 import { buildActivityListItem, buildActivityDetailContext } from "./ActivityDetailBuilder.js";
 import {
     activateStationLayer,
@@ -409,6 +411,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         /** ResizeObserver + rAF debounce for TotM window recenter when content height changes. */
         this._restWindowResizeObserver = null;
         this._restWindowRecenterPending = false;
+        /** When true, the user dragged the rest window; skip auto-recenter on render/resize. */
+        this._restWindowUserPositioned = false;
+        /** Suppress recenter during batched TotM camp → activity transition. */
+        this._restWindowRecenterSuppressed = 0;
         /** Guards duplicate ceremony commit from ignite + heat notify. */
         this._commitMakeCampCeremonyInFlight = false;
 
@@ -441,6 +447,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._restData = restData;
         if (restData) {
             this._restId = restData.restId ?? null;
+            if (restData.phase) this._phase = restData.phase;
+            if (restData.fireLevel) this._fireLevel = restData.fireLevel;
+            if (restData.coldCampDecided !== undefined) {
+                this._coldCampDecided = !!restData.coldCampDecided;
+            }
             this._selectedTerrain = restData.terrainTag ?? null;
             this._selectedRestType = restData.restType ?? "long";
             this._activities = restData.activities ?? [];
@@ -458,6 +469,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 comfort: restData.comfort ?? "rough",
                 safeRestSpot: restData.safeRestSpot ?? false
             });
+            if (restData.fireLevel) {
+                this._engine.fireLevel = restData.fireLevel;
+            }
             // Identify this player's characters
             this._myCharacterIds = new Set(
                 game.actors.filter(a => a.hasPlayerOwner && a.isOwner && a.type === "character")
@@ -559,10 +573,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!partyActors.length) return false;
 
         const restType = this._engine?.restType ?? "long";
-        const safeRestSpot = this._effectiveSafeRestSpot();
-        const fireLevel = this._fireLevel ?? "unlit";
-        const isFireLit = !!(this._fireLevel && this._fireLevel !== "unlit");
-        const resolverOpts = { isFireLit, fireLevel, safeRestSpot, ...this._forageResolverOpts() };
+        const resolverOpts = this._activityResolverOpts();
 
         let changed = false;
         for (const actor of partyActors) {
@@ -1205,6 +1216,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     async _saveRestState() {
         if (!game.user.isGM || !this._engine || this._restApplied) return;
         const state = {
+            restId: this._restId ?? null,
             engine: this._engine.serialize(),
             phase: this._phase,
             triggeredEvents: this._triggeredEvents,
@@ -1252,6 +1264,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!state?.engine) return false;
 
         this._engine = RestFlowEngine.deserialize(state.engine);
+        this._restId = state.restId ?? this._restId ?? null;
         this._phase = state.phase ?? "setup";
         this._triggeredEvents = state.triggeredEvents ?? [];
         this._eventsRolled = state.eventsRolled ?? false;
@@ -1583,6 +1596,31 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         };
     }
 
+    /** @returns {boolean} */
+    _isTavernTerrain() {
+        return (this._selectedTerrain ?? this._engine?.terrainTag ?? this._restData?.terrainTag ?? "") === "tavern";
+    }
+
+    /**
+     * Shared ActivityResolver options (safe haven gates, fire state, travel forage).
+     * @param {Object} [overrides]
+     * @returns {Object}
+     */
+    _activityResolverOpts(overrides = {}) {
+        const tavernRest = this._isTavernTerrain();
+        const safeRestSpot = this._effectiveSafeRestSpot() || tavernRest;
+        const fireLevel = overrides.fireLevel ?? this._fireLevel ?? "unlit";
+        const isFireLit = overrides.isFireLit ?? !!(fireLevel && fireLevel !== "unlit");
+        return {
+            safeRestSpot,
+            tavernRest,
+            isFireLit,
+            fireLevel,
+            ...this._forageResolverOpts(),
+            ...overrides
+        };
+    }
+
     /** GM-only advisory when no terrain art pack is active OR pack is outdated (Make Camp phase). */
     _shouldShowArtNudge() {
         if (!game.user.isGM) return false;
@@ -1803,7 +1841,30 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Tear down the body-level GM guidance flyout so it doesn't linger over the canvas
         document.getElementById("ionrift-gm-guidance-flyout")?.remove();
         this._disposeRestWindowResizeObserver();
+        this._restWindowUserPositioned = false;
         return super.close(options);
+    }
+
+    _bindRestWindowUserMoveTracking() {
+        const el = this.element;
+        if (!el) return;
+        const header = el.querySelector("header.window-header") ?? el.querySelector(".window-header");
+        if (!header || header.dataset.restUserMoveBound) return;
+        header.dataset.restUserMoveBound = "1";
+        header.addEventListener("pointerdown", () => {
+            this._restWindowUserPositioned = true;
+        });
+    }
+
+    /** Whether auto-recenter is allowed for the current rest window state. */
+    _shouldAutoRecenterRestWindow() {
+        if (this._restWindowUserPositioned) return false;
+        if (this._restWindowRecenterSuppressed > 0) return false;
+        if (this._isTotM && this._phase === "activity" && this._totmActiveTab === "identify"
+            && !this._totmCampfireMinigamePanelEnabled()) {
+            return false;
+        }
+        return true;
     }
 
     _disposeRestWindowResizeObserver() {
@@ -1826,8 +1887,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._restWindowResizeObserver.observe(el);
     }
 
+    _beginRestWindowRecenterSuppression() {
+        this._restWindowRecenterSuppressed = (this._restWindowRecenterSuppressed ?? 0) + 1;
+    }
+
+    _endRestWindowRecenterSuppression(schedule = true) {
+        this._restWindowRecenterSuppressed = Math.max(0, (this._restWindowRecenterSuppressed ?? 1) - 1);
+        if (schedule && !this._restWindowRecenterSuppressed) {
+            this._scheduleRestWindowRecenter();
+        }
+    }
+
     /** Re-center after layout settles (banner, minigame embed, async images). */
     _scheduleRestWindowRecenter() {
+        if (!this._shouldAutoRecenterRestWindow()) return;
         if (this._restWindowRecenterPending) return;
         this._restWindowRecenterPending = true;
         requestAnimationFrame(() => {
@@ -1840,6 +1913,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     _recenterRestSetupWindow() {
+        if (!this._shouldAutoRecenterRestWindow()) return;
         const el = this.element;
         if (!el) return;
         const h = el.offsetHeight;
@@ -1859,12 +1933,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const top = Math.max(10, Math.round((window.innerHeight - h) / 2));
         const pos = { top };
 
-        if (this._isTotM && this._phase === "camp") {
-            const targetW = 720;
+        if (this._isTotM && (this._phase === "camp" || this._phase === "activity")
+            && (this._campCeremonyMinigameEnabled?.() || this._totmCampfireMinigamePanelEnabled?.())) {
+            const targetW = Math.min(780, Math.round(window.innerWidth * 0.92));
             pos.width = targetW;
             pos.left = Math.max(20, Math.round((window.innerWidth - targetW) / 2));
-        } else if (this._isTotM && this._phase === "activity" && this._totmCampfireMinigamePanelEnabled()) {
-            const targetW = Math.min(780, Math.round(window.innerWidth * 0.92));
+        } else if (this._isTotM && this._phase === "camp") {
+            const targetW = 720;
             pos.width = targetW;
             pos.left = Math.max(20, Math.round((window.innerWidth - targetW) / 2));
         } else {
@@ -2344,7 +2419,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     _resolveSetupWeather(terrainTag, candidate) {
         const valid = TerrainRegistry.getWeather(terrainTag);
         const defaultKey = valid[0] ?? "clear";
-        const pick = candidate ?? this._selectedWeather ?? defaultKey;
+        let lastWeather = "";
+        try {
+            lastWeather = game.settings.get(MODULE_ID, "lastWeather") ?? "";
+        } catch { /* settings not ready */ }
+        const pick = candidate ?? this._selectedWeather ?? (lastWeather || defaultKey);
         return valid.includes(pick) ? pick : defaultKey;
     }
 
@@ -2519,12 +2598,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             };
             const fireLevel = this._fireLevel ?? "unlit";
             const isFireLit = !!(this._fireLevel && this._fireLevel !== "unlit");
-            const { available: avail, faded: fadedActivities, minor: minorActivities, fadedMinor: fadedMinorActivities } = this._activityResolver.getAvailableActivitiesWithFaded(a, this._engine?.restType ?? "long", {
-                isFireLit,
-                fireLevel,
-                safeRestSpot,
-                ...this._forageResolverOpts()
-            });
+            const { available: avail, faded: fadedActivities, minor: minorActivities, fadedMinor: fadedMinorActivities } = this._activityResolver.getAvailableActivitiesWithFaded(
+                a, this._engine?.restType ?? "long", this._activityResolverOpts({ isFireLit, fireLevel })
+            );
             for (const act of avail) {
                 if (act.crafting?.enabled) {
                     professionBadges.push({
@@ -2754,7 +2830,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // Gather the union of available + faded activity IDs across all party members
             const fireLevel = this._fireLevel ?? "unlit";
             const isFireLit = !!(this._fireLevel && this._fireLevel !== "unlit");
-            const resolverOpts = { isFireLit, fireLevel, safeRestSpot, ...this._forageResolverOpts() };
+            const resolverOpts = this._activityResolverOpts({ isFireLit, fireLevel });
             const restType = this._engine?.restType ?? "long";
             const seenIds = new Set();
             const unionTiles = [];
@@ -2774,8 +2850,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
             }
 
-            // Portrait assignments
+            // Portrait assignments (fold hidden picks onto Other for cross-player visibility)
             const assignments = buildActivityAssignments(this._characterChoices, this._earlyResults);
+            foldOrphanedAssignmentsOntoOther(assignments, unionTiles.map(t => t.id));
             for (const tile of unionTiles) {
                 applyActivityPortraitAssignments(tile, assignments[tile.id] ?? []);
             }
@@ -3655,7 +3732,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const _stepRestType = this._selectedRestType ?? "long";
         let _enableProfessions = false;
         try { _enableProfessions = !!game.settings.get(MODULE_ID, "enableProfessions"); } catch (e) { /* */ }
-        const _includeTravelStep = _stepRestType === "long" && _enableProfessions;
+        let _useTravel = true;
+        try { _useTravel = !!game.settings.get(MODULE_ID, "useTravel"); } catch (e) { /* */ }
+        const _includeTravelStep = _stepRestType === "long" && _enableProfessions && _useTravel;
         const _includeEventsStep = _stepRestType !== "short" && !safeRestSpot;
         const _phaseStepDefs = [
             { key: "setup", label: "Setup", include: true },
@@ -3714,7 +3793,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             activityProceed,
             restConfigBadges,
             totmActiveTab: this._totmActiveTab,
-            showTotmCampfirePanel: this._totmCampfireMinigamePanelEnabled(),
+            showTotmCampfirePanel: this._shouldShowTotmCampfirePanel(),
             totmFireTabVisible: this._totmFireTabVisible(),
             totmStationCards,
             totmDetailPanel,
@@ -3961,11 +4040,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 return parts.join(" · ");
             })(),
             weatherOptions: (() => {
-                const defaultKey = TerrainRegistry.getWeather(this._selectedTerrain ?? "forest")[0] ?? "clear";
-                return TerrainRegistry.getWeather(this._selectedTerrain ?? "forest")
+                const terrain = this._selectedTerrain ?? "forest";
+                const defaultKey = TerrainRegistry.getWeather(terrain)[0] ?? "clear";
+                let lastWeather = "";
+                try {
+                    lastWeather = game.settings.get(MODULE_ID, "lastWeather") ?? "";
+                } catch { /* settings not ready */ }
+                return TerrainRegistry.getWeather(terrain)
                     .map(key => ({ value: key, ...WEATHER_TABLE[key] }))
                     .filter(w => w.label)
-                    .map(w => w.value === defaultKey ? { ...w, label: `${w.label} (Default)` } : w);
+                    .map(w => {
+                        const isDefault = w.value === defaultKey;
+                        const isLast = lastWeather && w.value === lastWeather;
+                        if (isDefault && isLast) return { ...w, label: `${w.label} (Default, last used)` };
+                        if (isDefault) return { ...w, label: `${w.label} (Default)` };
+                        if (isLast) return { ...w, label: `${w.label} (last used)` };
+                        return w;
+                    });
             })(),
             defaultWeather: TerrainRegistry.getWeather(this._selectedTerrain ?? "forest")[0] ?? "clear",
             selectedWeather: this._selectedWeather ?? this._resolveSetupWeather(this._selectedTerrain ?? "forest"),
@@ -5455,7 +5546,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     _onRenderBindings(context, options) {
-        const showTotmCampfirePanelEarly = this._totmCampfireMinigamePanelEnabled();
+        const showTotmCampfirePanelEarly = this._shouldShowTotmCampfirePanel();
+        this._bindRestWindowUserMoveTracking();
         if (this._isTotM && (this._phase === "camp" || (this._phase === "activity" && showTotmCampfirePanelEarly))) {
             this._bindRestWindowResizeObserver();
         } else {
@@ -5474,14 +5566,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // TotM Activity: campfire minigame in the permanent right-hand panel
-        const showTotmCampfirePanel = this._totmCampfireMinigamePanelEnabled();
+        const showTotmCampfirePanel = this._shouldShowTotmCampfirePanel();
+        if (this._phase === "activity" && this._isTotM) {
+            logCampfireReconnect("onRenderBindings:activityCampfire", {
+                showTotmCampfirePanel,
+                fireLevel: this._fireLevel ?? "unlit",
+                hasCampfireApp: !!this._campfireApp,
+                hostInDom: !!this.element?.querySelector(".totm-campfire-minigame-host"),
+                ...this._campfireReconnectGateDetail()
+            });
+        }
         if (this.element) {
             this.element.classList.toggle("totm-activity-campfire-panel", showTotmCampfirePanel);
         }
         if (showTotmCampfirePanel) {
             this._mountCampfireEmbed("activity");
         } else if (this._phase !== "camp" || !this._campCeremonyMinigameEnabled()) {
-            this._tearDownCampfireEmbed();
+            this._tearDownCampfireEmbed("onRenderBindings:noPanel");
         }
 
         // Camp: crosshair pit (GM), map notice for all clients, optional canvas panel (gear drag)
@@ -5490,7 +5591,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this._mountCampfireEmbed("camp");
                 this._syncCampCeremonyPreviewToEmbed();
             } else {
-                this._tearDownCampfireEmbed();
+                this._tearDownCampfireEmbed("onRenderBindings:campCeremonyDisabled");
             }
             if (!this._isTotM && this._isGM && !hasCampfirePlaced() && !this._campPitCursorInFlight && !this._campPitPlacementCancelled) {
                 void this._startCampPitCursorFlow();
@@ -5721,6 +5822,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     this._selectedTerrain ?? "forest",
                     weatherSelect.value
                 );
+                game.settings.set(MODULE_ID, "lastWeather", this._selectedWeather);
                 this.render();
             });
         }
@@ -5945,6 +6047,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         } else if (step === 2) {
             this._selectedWeather = formData.weather ?? "clear";
+            game.settings.set(MODULE_ID, "lastWeather", this._selectedWeather);
             this._selectedComfort = formData.comfort ?? "sheltered";
             // Skip shelter for tavern
             if (this._selectedTerrain === "tavern") {
@@ -6734,6 +6837,25 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /** @override */
+    async render(options = {}) {
+        const preservePos = this._restWindowUserPositioned && this.rendered && this.element;
+        let savedPos = null;
+        if (preservePos) {
+            const rect = this.element.getBoundingClientRect();
+            savedPos = {
+                left: Math.round(rect.left),
+                top: Math.round(rect.top),
+                width: this.element.offsetWidth || this.position?.width
+            };
+        }
+        const result = await super.render(options);
+        if (savedPos && Number.isFinite(savedPos.left) && Number.isFinite(savedPos.top)) {
+            this.setPosition(savedPos);
+        }
+        return result;
+    }
+
+    /** @override */
     _onRender(context, options) {
         super._onRender?.(context, options);
         this._onRenderBindings(context, options);
@@ -7081,6 +7203,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Scout comfort and encounter mods come from travel resolution, not setup.
         this._selectedWeather = this._resolveSetupWeather(terrainTag, formData.weather);
+        game.settings.set(MODULE_ID, "lastWeather", this._selectedWeather);
         const weather = this._selectedWeather;
         const wx = WEATHER_TABLE[weather] ?? WEATHER_TABLE.clear;
         const hasTentActive = activeShelters.includes("tent");
@@ -7110,7 +7233,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Add weather encounter DC modifier
         const weatherEncounterMod = weatherCancelled ? 0 : (wx.encounterDC ?? 0);
 
-        const safeRestSpot = !!(formData.safeRestSpot === "on" || formData.safeRestSpot === true || formData.safeRestSpot === "1");
+        const safeRestSpot = !!(formData.safeRestSpot === "on" || formData.safeRestSpot === true || formData.safeRestSpot === "1")
+            || terrainTag === "tavern";
         try {
             await game.settings.set(MODULE_ID, "safeRestSpot", safeRestSpot);
         } catch (e) {
@@ -7172,19 +7296,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             recipes: Object.fromEntries(this._craftingEngine.recipes)
         };
 
+        this._restId = restPayload.restId;
         setActiveRestData(restPayload);
 
         emitRestStarted(restPayload);
 
         ui.notifications.info("Rest phase started. Activity pickers sent to all players.");
 
-        // Long rests show the Travel Resolution phase unless professions are disabled
-        // (travel activities are redundant when resource-gathering is off).
+        // Long rests show the Travel Resolution phase when professions and Use Travel
+        // are both on (forage/hunt need professions; Use Travel skips the phase entirely).
         if (this._engine.restType === "long") {
-            let skipTravel = false;
-            try { skipTravel = !game.settings.get(MODULE_ID, "enableProfessions"); } catch (e) { /* */ }
-
-            if (skipTravel) {
+            if (!shouldRunTravelPhase()) {
                 this._phase = "camp";
             } else {
                 this._phase = "travel";
@@ -7852,12 +7974,100 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (drawer) drawer.classList.add("open");
     }
 
-    _closeCampfire() {
-        this._tearDownCampfireEmbed();
+    _closeCampfire(options = {}) {
+        const keepEmbed = !!options.preserveActivityEmbed || this._shouldShowTotmCampfirePanel();
+        logCampfireReconnect("closeCampfire", {
+            phase: this._phase,
+            keepEmbed,
+            preserveOption: !!options.preserveActivityEmbed,
+            shouldShowPanel: this._shouldShowTotmCampfirePanel(),
+            hasCampfireApp: !!this._campfireApp,
+            fireLevel: this._fireLevel ?? "unlit",
+            ...this._campfireReconnectGateDetail()
+        });
+        if (!keepEmbed) {
+            this._tearDownCampfireEmbed("closeCampfire");
+        }
         const drawerContent = this.element?.querySelector(".campfire-drawer-content");
         if (drawerContent) drawerContent.innerHTML = "";
         const drawer = this.element?.querySelector(".campfire-drawer");
         if (drawer) drawer.classList.remove("open");
+    }
+
+    /**
+     * Re-mount or re-sync the TotM campfire embed after F5 / rejoin snapshot restore.
+     */
+    async _restoreCampfireUiAfterReconnect() {
+        logCampfireReconnect("restoreCampfireUi:enter", {
+            phase: this._phase,
+            rendered: this.rendered,
+            fireLevel: this._fireLevel ?? "unlit",
+            coldCampDecided: !!this._coldCampDecided,
+            shouldShowPanel: this._shouldShowTotmCampfirePanel(),
+            hasCampfireApp: !!this._campfireApp,
+            hostInDom: !!this.element?.querySelector(".totm-campfire-minigame-host"),
+            ...this._campfireReconnectGateDetail()
+        });
+        if (!this.rendered) {
+            logCampfireReconnect("restoreCampfireUi:skip", { reason: "not rendered" });
+            return;
+        }
+
+        if (this._phase === "activity" && this._shouldShowTotmCampfirePanel()) {
+            if (!this._campfireApp) {
+                logCampfireReconnect("restoreCampfireUi:mount", { mode: "activity" });
+                this._mountCampfireEmbed("activity");
+                return;
+            }
+            logCampfireReconnect("restoreCampfireUi:syncExistingEmbed", {
+                fireLevel: this._fireLevel ?? "unlit",
+                embedLit: this._campfireApp?._lit,
+                embedHeat: this._campfireApp?._heat
+            });
+            this._campfireApp.syncFromRestFireLevel(
+                this._fireLevel ?? "unlit",
+                !!this._coldCampDecided,
+                { force: true }
+            );
+            registerCampfireEmbed(this._campfireApp);
+            await this._campfireApp.render();
+            logCampfireReconnect("restoreCampfireUi:embedRendered", {
+                embedLit: this._campfireApp?._lit,
+                embedFireLevel: this._campfireApp?.fireLevel
+            });
+            return;
+        }
+
+        logCampfireReconnect("restoreCampfireUi:noPanel", {
+            phase: this._phase,
+            shouldShowPanel: this._shouldShowTotmCampfirePanel(),
+            ...this._campfireReconnectGateDetail()
+        });
+
+        if (this._phase === "camp" && this._campCeremonyMinigameEnabled()) {
+            if (!this._campfireApp) {
+                this._mountCampfireEmbed("camp");
+                return;
+            }
+            this._syncCampCeremonyPreviewToEmbed();
+            await this._campfireApp.render();
+            return;
+        }
+
+        if (game.user.isGM) {
+            await this._syncCampfireTokenFromRestState();
+        }
+    }
+
+    /** GM: align scene campfire token with canonical rest fire level after reconnect. */
+    async _syncCampfireTokenFromRestState() {
+        if (!game.user.isGM) return;
+        const level = this._fireLevel ?? "unlit";
+        if (this._coldCampDecided || level === "unlit") {
+            await CampfireTokenLinker.setLightState(false);
+        } else if (["embers", "campfire", "bonfire"].includes(level)) {
+            await CampfireTokenLinker.setLightState(true, level);
+        }
     }
 
     /**
@@ -7884,6 +8094,45 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /** @returns {boolean} */
     _totmCampfireMinigamePanelEnabled() {
         return isCampfireMinigameEnabled() && this._totmFireUiEnabled();
+    }
+
+    /**
+     * Whether the TotM activity side panel (and embed host) should render.
+     * Keeps the panel during reconnect when fire is already committed even if
+     * transient UI gates flicker during snapshot apply.
+     * @returns {boolean}
+     */
+    _shouldShowTotmCampfirePanel() {
+        if (this._phase !== "activity" || !this._isTotM || !isCampfireMinigameEnabled()) return false;
+        if (this._totmCampfireMinigamePanelEnabled()) return true;
+        return (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided;
+    }
+
+    /** Gate breakdown for CampfireReconnect console diagnostics. */
+    _campfireReconnectGateDetail() {
+        let safeFromSetting = false;
+        let minigameSetting = false;
+        let restMode = "?";
+        try {
+            safeFromSetting = !!game.settings.get(MODULE_ID, "safeRestSpot");
+            minigameSetting = !!game.settings.get(MODULE_ID, "enableCampfireMinigame");
+            restMode = game.settings.get(MODULE_ID, "restInterfaceMode") ?? "?";
+        } catch { /* settings not ready */ }
+        const magicalShelters = ["tiny_hut", "rope_trick", "magnificent_mansion"];
+        const activeShelterIds = Object.entries(this._shelterOverrides ?? {})
+            .filter(([, v]) => v)
+            .map(([id]) => id);
+        return {
+            isTotM: this._isTotM,
+            restInterfaceMode: restMode,
+            enableCampfireMinigame: minigameSetting,
+            isCampfireMinigameEnabled: isCampfireMinigameEnabled(),
+            isComfortEnabled: isComfortEnabled(),
+            effectiveSafeRest: !!(this._engine?.safeRestSpot ?? this._restData?.safeRestSpot ?? safeFromSetting),
+            magicalShelterActive: activeShelterIds.some(id => magicalShelters.includes(id)),
+            totmFireUiEnabled: this._totmFireUiEnabled(),
+            totmCampfireMinigamePanelEnabled: this._totmCampfireMinigamePanelEnabled()
+        };
     }
 
     /** Fire tier tab only when the minigame side panel is off (minigame supplants it). */
@@ -8166,9 +8415,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 chosenLevel,
                 { autoAdvanceTotm: true }
             );
-            if (this._phase === "camp" && !this._campToActivityDone) {
-                await this._totmAdvanceCampAfterCeremonyIgnite();
-            }
         } finally {
             this._commitMakeCampCeremonyInFlight = false;
         }
@@ -8189,9 +8435,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!isCampfireMinigameEnabled() || !this._isTotM || this._phase !== "camp" || this._campToActivityDone) {
             return;
         }
-        this._tearDownCampfireEmbed();
-        await this._totmSpendMakeCampFirewood();
-        await this._advanceCampToActivity();
+        this._beginRestWindowRecenterSuppression();
+        try {
+            // Keep the embed alive; _mountCampfireEmbed rebinds it to the activity side panel.
+            await this._totmSpendMakeCampFirewood();
+            this._makeCampStagedWood = [];
+            this._makeCampStagedWoodTier = null;
+            await this._advanceCampToActivity();
+        } finally {
+            this._endRestWindowRecenterSuppression(true);
+        }
     }
 
     /** Spend firewood for the committed Make Camp fire (TotM, non-pledge path). */
@@ -8267,16 +8520,47 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     _mountCampfireEmbed(mode) {
         const forCamp = mode === "camp";
-        if (forCamp && !this._campCeremonyMinigameEnabled()) return;
-        if (!forCamp && !this._totmCampfireMinigamePanelEnabled()) return;
+        if (forCamp && !this._campCeremonyMinigameEnabled()) {
+            logCampfireReconnect("mountCampfireEmbed:skip", { mode, reason: "camp ceremony disabled" });
+            return;
+        }
+        if (!forCamp && !this._shouldShowTotmCampfirePanel()) {
+            logCampfireReconnect("mountCampfireEmbed:skip", {
+                mode,
+                reason: "shouldShowTotmCampfirePanel false",
+                fireLevel: this._fireLevel ?? "unlit",
+                ...this._campfireReconnectGateDetail()
+            });
+            return;
+        }
 
         const hostSelector = forCamp
             ? ".totm-camp-minigame-host"
             : ".totm-campfire-minigame-host";
         const host = this.element?.querySelector(hostSelector);
-        if (!host) return;
+        if (!host) {
+            logCampfireReconnect("mountCampfireEmbed:skip", {
+                mode,
+                reason: "host element missing",
+                hostSelector,
+                showTotmCampfirePanelTemplate: this._shouldShowTotmCampfirePanel(),
+                hasActivityLayout: !!this.element?.querySelector(".totm-activity-layout")
+            });
+            return;
+        }
+
+        logCampfireReconnect("mountCampfireEmbed:proceed", {
+            mode,
+            rebind: !!this._campfireApp,
+            fireLevel: this._fireLevel ?? "unlit",
+            hostConnected: host.isConnected
+        });
 
         if (this._campfireApp) {
+            this._campfireApp.setPanelMode({
+                makeCampCeremony: forCamp,
+                showDouseBtn: !forCamp
+            });
             this._campfireApp.rebindContainer(host);
             this._campfireApp.setContextActorId(this._selectedCharacterId);
             if (forCamp) {
@@ -8335,7 +8619,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             });
     }
 
-    _tearDownCampfireEmbed() {
+    _tearDownCampfireEmbed(reason = "unknown") {
+        if (this._campfireApp) {
+            logCampfireReconnect("tearDownCampfireEmbed", {
+                reason,
+                phase: this._phase,
+                fireLevel: this._fireLevel ?? "unlit",
+                embedWasLit: this._campfireApp?._lit,
+                shouldShowPanel: this._shouldShowTotmCampfirePanel()
+            });
+        }
         if (!this._campfireApp) return;
         this._campfireApp.destroy();
         this._campfireApp = null;
@@ -9061,7 +9354,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     static async #onCommitEventsMode(event, target) {
         if (!game.user.isGM) return;
-        if (!RestSetupApp.#beginEventsCommit.call(this)) return;
+        // Pick-from-pool opens a dialog; do not lock the parent UI until an event is chosen.
+        const lockParentUi = this._eventsMode !== "pick";
+        if (lockParentUi && !RestSetupApp.#beginEventsCommit.call(this)) return;
         try {
             switch (this._eventsMode) {
                 case "improvise":
@@ -9076,7 +9371,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     break;
             }
         } finally {
-            RestSetupApp.#endEventsCommit.call(this);
+            if (lockParentUi) RestSetupApp.#endEventsCommit.call(this);
         }
     }
 
@@ -11125,7 +11420,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const hasAvailableAtStation = (actor, stationIdSet) => {
             const { available: allAvail } = this._activityResolver.getAvailableActivitiesWithFaded(
-                actor, restType, { isFireLit, fireLevel, safeRestSpot, ...this._forageResolverOpts() }
+                actor, restType, this._activityResolverOpts({ isFireLit, fireLevel })
             );
             return allAvail.some(a => stationIdSet.has(a.id));
         };
@@ -11310,12 +11605,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const isFireLit = !!(fireLevel && fireLevel !== "unlit");
                 const resolverLoaded = !!(app._activityResolver?.activities?.size);
                 const resolvedAvail = resolverLoaded
-                    ? app._activityResolver.getAvailableActivitiesWithFaded(actor, restType, {
-                        isFireLit,
-                        fireLevel,
-                        safeRestSpot: safeSpot,
-                        ...(app._forageResolverOpts?.() ?? {})
-                    })
+                    ? app._activityResolver.getAvailableActivitiesWithFaded(actor, restType, app._activityResolverOpts({ isFireLit, fireLevel }))
                     : { available: [], faded: [] };
                 const stationActIds = new Set(station.activities ?? []);
                 await StationActivityDialog.openForStation(
@@ -12050,6 +12340,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         return {
             phase: this._phase,
+            restId: this._restId ?? null,
             submissions,
             triggeredEvents: (this._triggeredEvents ?? []).map(e => ({
                 ...e,
@@ -12299,8 +12590,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
-        // Campfire panel lifecycle for players
-        // NOTE: Reflection phase skipped (v2.1); always close.
+        // Campfire panel lifecycle for players (legacy drawer only).
         this._closeCampfire();
 
         // Activity phase: canvas station overlays for all clients; players minimise to the rest bar
@@ -12362,6 +12652,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (enteringTotmCamp) {
             phaseRenderPromise.then(() => this._scheduleRestWindowRecenter());
         }
+        if (phase === "activity" || phase === "camp") {
+            phaseRenderPromise.then(() => this._restoreCampfireUiAfterReconnect());
+        }
 
         // If the player RSA render fails outright, fall back to the rejoin bar
         // so the player can still see the current phase and resume manually.
@@ -12416,6 +12709,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Used for visibility resync and rejoin to avoid race conditions.
      */
     receiveRestSnapshot(snapshot) {
+        logCampfireReconnect("receiveRestSnapshot:enter", {
+            phase: snapshot?.phase ?? null,
+            fireLevel: snapshot?.fireLevel ?? null,
+            restId: snapshot?.restId ?? null,
+            coldCampDecided: !!snapshot?.coldCampDecided,
+            rendered: this.rendered,
+            hasCampfireApp: !!this._campfireApp,
+            priorPhase: this._phase,
+            priorFireLevel: this._fireLevel ?? "unlit"
+        });
         if (!this._isGM) {
             _removeGmRestIndicator();
         }
@@ -12438,6 +12741,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Apply phase + phase data
         if (snapshot.phase) {
             this._phase = snapshot.phase;
+        }
+        if (snapshot.restId) {
+            this._restId = snapshot.restId;
         }
         if (this._restData && snapshot.safeRestSpot !== undefined) {
             this._restData = { ...this._restData, safeRestSpot: !!snapshot.safeRestSpot };
@@ -12665,9 +12971,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._refreshStationOverlayMeals();
         }
 
-        // Campfire panel lifecycle on snapshot restore
-        // NOTE: Reflection phase skipped (v2.1); always close.
-        this._closeCampfire();
+        // Campfire panel lifecycle on snapshot restore (legacy drawer only).
+        logCampfireReconnect("receiveRestSnapshot:beforeCloseCampfire", {
+            phase: this._phase,
+            fireLevel: this._fireLevel ?? "unlit",
+            shouldShowPanel: this._shouldShowTotmCampfirePanel(),
+            hasCampfireApp: !!this._campfireApp,
+            ...this._campfireReconnectGateDetail()
+        });
+        this._closeCampfire({ preserveActivityEmbed: this._shouldShowTotmCampfirePanel() });
 
         // Activity phase: same as receivePhaseChange (F5 rejoin after GM already advanced)
         const _isTheaterRestore = this._isTotM;
@@ -12705,18 +13017,22 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // a snapshot is included; without force, ApplicationV2 may no-op on
         // a state-NONE or state-CLOSED app).
         const snapshotRenderPromise = Promise.resolve(this.render({ force: true }));
-
-        // If render fails, fall back to the rejoin bar so the player can
-        // still resume manually. Replaces the previous 300ms setTimeout
-        // guess, which mis-fired on slow refreshes and left the bar visible
-        // alongside a successfully rendered RSA.
-        if (!this._isGM) {
-            snapshotRenderPromise.catch((err) => {
-
-                Logger.log(`${MODULE_ID} | receiveRestSnapshot: player RSA render failed, falling back to rejoin bar`, err);
-                _ensureRejoinBar(this);
+        void snapshotRenderPromise
+            .then(() => {
+                logCampfireReconnect("receiveRestSnapshot:renderDone", {
+                    phase: this._phase,
+                    fireLevel: this._fireLevel ?? "unlit",
+                    shouldShowPanel: this._shouldShowTotmCampfirePanel(),
+                    hasCampfireApp: !!this._campfireApp,
+                    hostInDom: !!this.element?.querySelector(".totm-campfire-minigame-host")
+                });
+                return this._restoreCampfireUiAfterReconnect();
+            })
+            .catch((err) => {
+                logCampfireReconnect("receiveRestSnapshot:failed", { error: String(err?.message ?? err) });
+                Logger.log(`${MODULE_ID} | receiveRestSnapshot: render/restore failed`, err);
+                if (!this._isGM) _ensureRejoinBar(this);
             });
-        }
     }
 
     /**
@@ -13175,6 +13491,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Warns if any travel days have unresolved declarations.
      */
     static async #onSkipTravelPhase(event, target) {
+        if (!game.user.isGM) return;
+
         if (this._travel && !this._travel.isFullyResolved() && this._travel.hasDeclarations()) {
             const confirmed = await new Promise(resolve => {
                 const overlay = document.createElement("div");
@@ -13587,68 +13905,47 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Safe rest spots (taverns, safe camps) and tavern terrain skip camp and
-     * activity phases entirely. The environment is secure: no campfire ceremony,
-     * no station tokens, no activity selection needed.
+     * Safe rest spots and tavern terrain skip the Make Camp phase (no pit cursor,
+     * no station tokens) and advance straight to activity selection. Encounter
+     * risk, watch, defenses, and camp duties are gated during activities.
      *
-     * All characters are auto-assigned "Rest Fully" and meals are waived.
-     * Advances straight to reflection for long rests, or resolve for short rests.
-     *
-     * @returns {boolean} True if the phase was skipped (caller should not proceed to camp render).
+     * @returns {boolean} True if the camp phase was skipped (caller should not proceed to camp render).
      */
     async _skipCampForSafeRest() {
         const terrain = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
         const isSafeRest = !!(this._engine?.safeRestSpot);
-        if (terrain !== "tavern" && !isSafeRest) return false;
+        const isTavern = terrain === "tavern";
+        if (!isTavern && !isSafeRest) return false;
         if (!game.user.isGM) return false;
 
-        // Fire is implicitly "campfire" (the establishment's hearth).
+        // Fire is implicitly "campfire" (establishment hearth or safe haven).
         this._fireLevel = "campfire";
         this._coldCampDecided = false;
         this._campToActivityDone = true;
         this._campStep2Entered = true;
 
-        _logGmRestSheet("_skipCampForSafeRest", "tavern terrain â€” skipping camp + activity, auto-assigning rest");
+        _logGmRestSheet("_skipCampForSafeRest",
+            isTavern ? "tavern terrain, skipping camp, opening activities" : "safe rest, skipping camp, opening activities");
 
-        // Auto-assign act_rest_fully to every party member and register with engine.
-        const partyActors = getPartyActors();
-        for (const actor of partyActors) {
-            this._characterChoices.set(actor.id, "act_rest_fully");
-            this._engine?.registerChoice(actor.id, "act_rest_fully", {});
-        }
-
-        // Waive meals â€” mark everyone as submitted so the gate is clear.
-        if (!this._activityMealRationsSubmitted) this._activityMealRationsSubmitted = new Set();
-        for (const actor of partyActors) {
-            this._activityMealRationsSubmitted.add(actor.id);
-        }
-
-        // Short rest: skip reflection and events entirely (same as #onSubmitActivities).
-        if (this._engine?.restType === "short") {
-            this._triggeredEvents = [];
-            this._eventsRolled = true;
-            SoundDelegate.stopAll();
-            this._phase = "resolve";
-        } else {
-            // Auto-process rations only for tavern terrain (the inn may still
-            // charge food/water).  Non-tavern safe rest spots waive meals
-            // entirely; no dehydration or starvation saves.
-            if (terrain === "tavern") {
-                const trackFood = game.settings.get(MODULE_ID, "trackFood");
-                const terrainMealRules = TerrainRegistry.getDefaults(terrain)?.mealRules ?? {};
-                if (trackFood && (terrainMealRules.waterPerDay > 0 || terrainMealRules.foodPerDay > 0)) {
-                    this._mealChoices = this._mealChoices ?? new Map();
-                    this._daysSinceLastRest = this._daysSinceLastRest ?? 1;
-                    await this._autoProcessRations();
-                }
+        if (isTavern) {
+            const trackFood = game.settings.get(MODULE_ID, "trackFood");
+            const terrainMealRules = TerrainRegistry.getDefaults(terrain)?.mealRules ?? {};
+            if (trackFood && (terrainMealRules.waterPerDay > 0 || terrainMealRules.foodPerDay > 0)) {
+                this._mealChoices = this._mealChoices ?? new Map();
+                this._daysSinceLastRest = this._daysSinceLastRest ?? 1;
+                await this._autoProcessRations();
             }
-            await this._applyBeddingDown();
-            // Reflection phase skipped (v2.1); advance straight to events.
-            await this._advanceToEvents();
-            return true;
         }
 
-        // Broadcast phase change to players.
+        this._phase = "activity";
+        this._applyLoseActivityTravelLocks();
+        this._applyAutoOtherWhenSoleActivity();
+
+        const isTheater = this._isTotM;
+        if (!isTheater) {
+            await this.close({});
+        }
+
         emitPhaseChanged(this._phase, {
             campStatus: this._campStatus,
             fireLevel: this._fireLevel,
@@ -13657,7 +13954,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         });
 
         await this._saveRestState();
-        this.render();
+        this.render({ force: true });
         return true;
     }
 
@@ -13778,12 +14075,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         emitPhaseChanged(this._phase, {
                 campStatus: this._campStatus,
-                fireLevel: this._fireLevel
+                fireLevel: this._fireLevel,
+                fireLitBy: this._fireLitBy,
+                coldCampDecided: this._coldCampDecided ?? false,
+                makeCampStagedWood: []
             });
         await this._saveRestState();
         if (!isTheater) {
             this._activateCanvasStationLayer();
         } else {
+            // Pre-size before template swap so camp → activity does not jump width twice.
+            if (this._totmCampfireMinigamePanelEnabled()) {
+                const targetW = Math.min(780, Math.round(window.innerWidth * 0.92));
+                this.setPosition({
+                    width: targetW,
+                    left: Math.max(20, Math.round((window.innerWidth - targetW) / 2))
+                });
+            }
             this.render({ force: true });
         }
         _logGmRestSheet("_advanceCampToActivity", "advance complete", { rendered: this.rendered });

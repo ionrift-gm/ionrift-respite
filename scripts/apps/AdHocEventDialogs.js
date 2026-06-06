@@ -300,6 +300,6 @@ export async function pickPoolEvent(events, terrainLabel, terrainTag = null) {
                 });
                 queueMicrotask(() => search.focus());
             }
-        });
+        }).catch(() => finish(null));
     });
 }

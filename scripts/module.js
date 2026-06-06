@@ -1133,15 +1133,22 @@ Hooks.once("ready", async () => {
                 const app = new RestSetupApp();
                 const restored = await app._loadRestState();
                 if (restored) {
+                    registerActiveRestApp(app);
                     const restPayload = {
+                        restId: savedRest.restId ?? `rest_${savedRest.timestamp ?? Date.now()}`,
                         terrainTag: app._engine?.terrainTag,
                         comfort: app._engine?.comfort,
                         restType: app._engine?.restType,
+                        phase: app._phase,
+                        fireLevel: app._fireLevel ?? "unlit",
+                        coldCampDecided: !!app._coldCampDecided,
+                        safeRestSpot: !!app._engine?.safeRestSpot,
                         activities: app._activities ?? [],
                         recipes: app._craftingEngine?.recipes
                             ? Object.fromEntries(app._craftingEngine.recipes)
                             : {}
                     };
+                    app._restId = restPayload.restId;
                     setActiveRestData(restPayload);
 
                     let resumeUiOk = true;
@@ -1165,12 +1172,10 @@ Hooks.once("ready", async () => {
                         Logger.log?.(MODULE_LABEL, "Restored interrupted rest from world flags.");
 
                         setTimeout(() => {
-                            emitRestStarted(restPayload);
-                            const snapshot = app.getRestSnapshot?.();
+                            const snapshot = app.getRestSnapshot?.() ?? null;
+                            emitRestStarted(restPayload, snapshot ? { snapshot } : {});
                             if (snapshot) {
-                                setTimeout(() => {
-                                    emitRestSnapshot(snapshot);
-                                }, 200);
+                                setTimeout(() => emitRestSnapshot(snapshot), 200);
                             }
                         }, 500);
                     }
