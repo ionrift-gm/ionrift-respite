@@ -1,4 +1,4 @@
-﻿const MODULE_ID = "ionrift-respite";
+const MODULE_ID = "ionrift-respite";
 
 /**
  * Discrete fletching yield tiers. Index 0 is Off; indices 1-5 use two dice plus prof.

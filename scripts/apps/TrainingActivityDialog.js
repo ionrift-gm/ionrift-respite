@@ -1,4 +1,4 @@
-﻿/**
+/**
  * TrainingActivityDialog
  *
  * Interactive roll surface for the Training activity. Once a character commits

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @module SettingsRegistrar
  * @description Registers all module settings, menus, and item enrichments for ionrift-respite.
  * Extracted from module.js to reduce monolith size (Phase 2.1).
