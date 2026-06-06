@@ -4,3 +4,4 @@ assets/**/*.webp filter=lfs diff=lfs merge=lfs -text
 assets/**/*.webm filter=lfs diff=lfs merge=lfs -text
 # Discord embed thumbnail - must NOT be in LFS (raw.githubusercontent.com serves LFS pointers as stubs)
 assets/module-icon.png !filter !diff !merge !text
+assets/**/*.mp4 filter=lfs diff=lfs merge=lfs -text
