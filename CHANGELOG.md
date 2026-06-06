@@ -1,21 +1,18 @@
 # Changelog
 
-## [Unreleased]
+## [3.0.3] - 2026-06-06
 
-### Added
-- **Travel Foraging and Travel Hunting toggles** in Travel & Activities. Each can be turned off independently under the Travel group while keeping the travel phase and scouting.
-- **Pray / Meditate toggle** in Travel & Activities. Turn the bedroll activity on or off independently of comfort rules.
+### Fixed
+- **Closing the event picker no longer soft-locks the rest.** Dismissing the event selection dialog during the event phase now cancels cleanly instead of leaving the rest unable to proceed.
+- **Tavern rests now work correctly in station mode.** Running a tavern rest while the interface is set to Stations mode previously caused the activity phase to break. Tavern terrain now forces Theater of the Mind for the duration of the rest automatically.
+- Players rejoining mid-rest while a campfire is lit no longer see the fire as unlit until the next GM action. The campfire state now syncs immediately on reconnect.
 
 ### Changed
-- **Training and Pray / Meditate default off** for new worlds and all Quick Setup profiles (Simple, Standard, Survival). Turn them on under Travel & Activities when wanted.
-- **Travel & Activities settings panel.** The dialog is split into Travel and Activities columns with matching group headers. Module settings menu renamed from Rest Activities.
-- **Arcane / Natural Recovery max level** moved to the Short Rest column in Recovery Rules. Both features resolve at the end of a short rest in 5e.
-- **Tavern setup locks Safe Rest on.** The toggle stays visible, checked, and faded while tavern is selected. Leaving tavern clears Safe Rest and pulses the control to flag the change.
-- **Tavern rests force one-window mode** when camp stations are configured. No map station placement for the rest; the saved interface preference is unchanged afterward.
-- **Tavern rests now include an activity phase.** The party can visit workbench and room stations after skipping camp setup. Watch, defenses, first aid, Rest Fully, profession crafting, and the campfire station are withheld; recovery stays automatic and night encounters do not run.
-- **Setup badges fade for tavern terrain.** Choosing Tavern dims Comfort, Professions, and Meals on the setup screen, matching the safe-rest treatment for comfort and reflecting what actually runs at an inn.
-- **Tavern activity phase hides the campfire panel** and auto-assigns Other when that is the only station activity offered, same as Simple mode.
-- **Kindling moved to Respite Cache Utility compendium.** Forage, hunt, and cooking items stay in Respite Items. Camp utility loot (starting with kindling) lives in the new Respite Cache Utility pack for Quartermaster cache pools.
+- **Travel & Activities settings split into two columns.** Travel options (foraging, hunting, scouting) and activity options (pray/meditate, training) are now grouped separately. Each can be toggled on or off independently.
+- Training and Pray / Meditate default to off for all Quick Setup profiles and new worlds. Turn them on under Travel & Activities when wanted.
+- **Tavern terrain locks Safe Rest on** for the duration of setup. The toggle stays visible but cannot be unchecked while Tavern is selected. Switching away from Tavern clears Safe Rest automatically.
+- Tavern rests now include a full activity phase. Workbench and room stations are available; watch, defenses, campfire, and Rest Fully are withheld.
+- Setup badges (Comfort, Professions, Meals) fade when Tavern is selected to reflect what actually runs at an inn.
 
 ## [3.0.2] - 2026-06-03
 
