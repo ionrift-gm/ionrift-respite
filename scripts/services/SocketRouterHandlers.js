@@ -33,7 +33,7 @@ import {
 import {
     emitShortRestStarted, emitRestStarted, emitShortRestWorkbenchSync,
     emitCampGearPlaced, emitCampStationPlaced, emitCampSceneCleared,
-    emitRequestRestState, emitRequestShortRestState, emitRestSnapshot
+    emitRequestRestState, emitRequestShortRestState
 } from "./SocketController.js";
 import {
     showRejoinNotification, removeRejoinNotification,
@@ -260,10 +260,10 @@ export function handleRequestRestState(data, ctx) {
         gmFireLevel: gmApp?._fireLevel ?? null,
         restDataPhase: restData.phase ?? null
     });
+    // Snapshot rides on REST_STARTED; handleRestStarted applies it once via
+    // receiveRestSnapshot. A delayed REST_SNAPSHOT duplicated that work and
+    // could overwrite player state that changed between the two applies.
     emitRestStarted(restData, { snapshot, targetUserId: userId });
-    if (snapshot) {
-        setTimeout(() => emitRestSnapshot(snapshot), 150);
-    }
 }
 
 // ── Short Rest ──────────────────────────────────────────────────────────────
