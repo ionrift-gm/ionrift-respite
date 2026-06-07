@@ -979,6 +979,24 @@ Hooks.once("ready", async () => {
         }
     });
 
+    /** Block manual deletion of camp layout tokens during a rest (use Move fire in the rest window). */
+    Hooks.on("preDeleteToken", (document, options, userId) => {
+        try {
+            if (options?.ionriftAllowCampDelete) return;
+            const f = document.flags?.[MODULE_ID];
+            if (!f?.isCampFurniture || f.isPlayerGear) return;
+            const user = game.users.get(userId);
+            if (user?.isGM) {
+                ui.notifications.warn("Use Move fire in the Respite window to relocate the campfire and stations.");
+            } else {
+                ui.notifications.warn("Camp layout tokens cannot be deleted during a rest.");
+            }
+            return false;
+        } catch {
+            /* ignore */
+        }
+    });
+
     /** Block non-GM canvas drags for shared station tokens (belt-and-suspenders with TokenDocument#locked). */
     Hooks.on("preUpdateToken", (document, updateData, _options, userId) => {
         try {

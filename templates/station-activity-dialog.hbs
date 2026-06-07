@@ -533,14 +533,35 @@
 
     {{#if (eq station.id "campfire")}}
     {{#if (and showTabBar (eq stationPanelTab "fire") fireTabContext)}}
+    {{#if fireTabContext.useFireMinigame}}
+    <div class="station-fire-tab station-fire-minigame-tab glass-ui" data-station-fire-tab="1">
+        <div class="station-fire-minigame-host" data-station-fire-minigame-host="1"></div>
+        {{#if fireTabContext.campFireEncounterHint}}
+        <p class="station-fire-minigame-hint">{{fireTabContext.campFireEncounterHint}}</p>
+        {{/if}}
+    </div>
+    {{else}}
     <div class="station-fire-tab station-fire-tab-scroll ionrift-list glass-ui" data-station-fire-tab="1">
-        {{#if fireTabContext.campFireTabColdCamp}}
-        <p class="station-fire-cold-hint glass-ui"><i class="fas fa-moon"></i> Cold camp. The table chose no fire.</p>
-        {{else}}
-        {{#if fireTabContext.campFireTierCards.length}}
         <div class="station-fire-tier-section">
             <h4 class="station-fire-tier-heading">Fire levels</h4>
             <div class="camp-fire-tier-strip station-campfire-tier-strip" role="list" aria-label="Fire intensity tiers">
+                {{#if fireTabContext.campFireColdCampCard}}
+                <div class="camp-fire-tier-card cold-camp-card{{#if fireTabContext.campFireColdCampCard.active}} active{{/if}}" data-fire-level="cold_camp" role="listitem">
+                    <span class="camp-fire-tier-watermark" aria-hidden="true"><i class="fas fa-moon"></i></span>
+                    <span class="camp-fire-tier-label">Cold Camp</span>
+                    <span class="camp-fire-tier-cost">(No fire)</span>
+                    <span class="camp-fire-tier-body">No fire tonight. <span class="fire-penalty">−1 comfort.</span> <span class="fire-benefit">Harder for enemies to spot (lower encounter chance).</span> No cooking.</span>
+                    <div class="station-fire-set-row">
+                        {{#if fireTabContext.campFireColdCampCard.active}}
+                        <span class="station-fire-current-label">Current</span>
+                        {{else if @root.isGmUser}}
+                        <button type="button" class="station-fire-set-btn" data-action="setColdCamp" {{#if fireTabContext.campFireColdCampCard.setDisabled}}disabled{{/if}}>Set</button>
+                        {{else}}
+                        <button type="button" class="station-fire-set-btn" data-action="requestColdCamp" {{#if fireTabContext.campFireColdCampCard.requestDisabled}}disabled{{/if}}>Request</button>
+                        {{/if}}
+                    </div>
+                </div>
+                {{/if}}
                 {{#each fireTabContext.campFireTierCards}}
                 <div class="camp-fire-tier-card{{#if active}} active{{/if}}{{#if previewActive}} previewing{{/if}}{{#if actionBlocked}} camp-fire-tier-card--set-disabled{{/if}}"
                      data-fire-level="{{id}}" role="listitem"
@@ -554,27 +575,62 @@
                         {{#if active}}
                         <span class="station-fire-current-label">Current</span>
                         {{else if @root.isGmUser}}
-                        <button type="button" class="station-fire-set-btn{{#if previewActive}} station-fire-set-btn--preview{{/if}}" data-action="setFireLevel" data-fire-level="{{id}}" {{#if setDisabled}}disabled data-tooltip="Not enough firewood"{{/if}}>{{#if previewActive}}Set to {{label}}{{else}}Set{{/if}}</button>
+                        <button type="button" class="station-fire-set-btn{{#if previewActive}} station-fire-set-btn--preview{{/if}}" data-action="setFireLevel" data-fire-level="{{id}}" {{#if setDisabled}}disabled{{#if disabledReason}} data-tooltip="{{disabledReason}}"{{else}} data-tooltip="Not enough firewood"{{/if}}{{/if}}>{{#if previewActive}}Set to {{label}}{{else}}Set{{/if}}</button>
                         {{else}}
-                        <button type="button" class="station-fire-set-btn{{#if previewActive}} station-fire-set-btn--preview{{/if}}" data-action="requestFireLevel" data-fire-level="{{id}}" {{#if requestDisabled}}disabled data-tooltip="Not enough party firewood"{{/if}}>{{#if previewActive}}Request {{label}}{{else}}Request{{/if}}</button>
+                        <button type="button" class="station-fire-set-btn{{#if previewActive}} station-fire-set-btn--preview{{/if}}" data-action="requestFireLevel" data-fire-level="{{id}}" {{#if requestDisabled}}disabled{{#if disabledReason}} data-tooltip="{{disabledReason}}"{{else}} data-tooltip="Not enough party firewood"{{/if}}{{/if}}>{{#if previewActive}}Request {{label}}{{else}}Request{{/if}}</button>
                         {{/if}}
                     </div>
                 </div>
                 {{/each}}
             </div>
-            <p class="station-fire-tier-footnote">Larger fires make the camp easier for enemies to spot. Bonfire can move camp comfort up one step when the scene allows it.</p>
+            <p class="station-fire-tier-footnote">Larger fires make the camp easier for enemies to spot. Bonfire can move camp comfort up one step when the scene allows it. Reducing the fire discards spent firewood with no refund.</p>
         </div>
-        {{/if}}
         {{#if fireTabContext.campFirewoodPledgeList.length}}
         <div class="station-fire-pledge-block">
             <div class="station-fire-pledge-title">Wood pledged (Make Camp)</div>
             {{#each fireTabContext.campFirewoodPledgeList}}<div class="camp-firewood-pledge-row"><i class="fas fa-check"></i> <span>{{actorName}}: {{count}} firewood</span></div>{{/each}}
         </div>
         {{/if}}
-        {{/if}}
     </div>
+    {{/if}}
     {{else}}
-    {{#if campPersonalCard}}
+    {{#if campGearFlavorPanel}}
+    <div class="camp-gear-flavor-panel glass-ui" data-camp-gear-row="1" data-station-personal-gear="1">
+        <p class="camp-gear-flavor-lead">Place gear on the map for flavor. These tokens do not change rest rules.</p>
+        <div class="comfort-factor-list">
+            {{#each campGearFlavorPanel.gearSlots}}
+            <div class="comfort-factor">
+                <span class="comfort-factor-icon"><i class="{{icon}}" aria-hidden="true"></i></span>
+                <span class="comfort-factor-name">{{title}}</span>
+                {{#if isMissing}}
+                <span class="comfort-factor-status">{{flavorLine}}</span>
+                <span class="comfort-factor-badge missing"><i class="fas fa-times"></i> missing</span>
+                {{else}}
+                <span class="comfort-factor-status">{{flavorLine}}</span>
+                <span class="comfort-factor-badge placed"><i class="fas fa-check"></i> owned</span>
+                {{#if canDrag}}
+                <span class="camp-gear-placeable-wrap comfort-factor-drag" draggable="true"
+                      data-drag-type="player-gear" data-gear-type="{{gearType}}" data-actor-id="{{actorId}}"
+                      data-tooltip="Place on map for ambiance">
+                    <i class="fas fa-grip-vertical"></i> map
+                </span>
+                {{/if}}
+                {{#if isPlaced}}
+                <button type="button" class="comfort-factor-drag" data-action="reclaimCampGear"
+                        data-actor-id="{{actorId}}" data-gear-type="{{gearType}}"
+                        data-tooltip="Pick up from map">
+                    <i class="fas fa-check"></i> on map
+                </button>
+                {{/if}}
+                {{#if isReadonlyOwned}}
+                <span class="comfort-factor-readonly">This character places their own gear</span>
+                {{/if}}
+                {{/if}}
+            </div>
+            {{/each}}
+        </div>
+    </div>
+    {{else if campPersonalCard}}
     <div class="comfort-hero tier-{{campPersonalCard.personalComfort}} glass-ui" data-camp-gear-row="1" data-station-personal-gear="1">
         <div class="comfort-hero-row">
             <span class="comfort-hero-label">Camp comfort</span>

@@ -183,7 +183,7 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    max-height: 80vh;
+    max-height: min(80vh, calc(100dvh - 3rem));
     overflow: hidden;
 }
 
@@ -289,6 +289,7 @@
     padding: 0.5rem 0.75rem;
     background: rgba(0, 0, 0, 0.35);
     border-bottom: 1px solid rgba(139, 92, 246, 0.22);
+    flex-shrink: 0;
 }
 
 .camp-conditions-bar-label {
@@ -1122,12 +1123,18 @@
 }
 
 .ionrift-respite-app .camp-phase-shell > .phase-banner,
-.ionrift-respite-app .camp-phase-shell > .roster-strip {
+.ionrift-respite-app .camp-phase-shell > .roster-strip,
+.ionrift-respite-app .camp-phase-shell > .art-nudge-banner {
     flex-shrink: 0;
 }
 
 .ionrift-respite-app .camp-phase-shell > .respite-action-bar {
     flex-shrink: 0;
+}
+
+.ionrift-respite-app .camp-phase-shell > .respite-make-camp .totm-camp-footer {
+    flex-shrink: 0;
+    padding-bottom: 0.35rem;
 }
 
 .respite-make-camp {
@@ -1826,11 +1833,56 @@
     text-transform: uppercase;
 }
 
+.ionrift-station-dialog .station-fire-minigame-tab {
+    margin-top: 0.35rem;
+    padding: 0.35rem 0.4rem 0.45rem;
+    box-sizing: border-box;
+}
+
+.ionrift-station-dialog .station-fire-minigame-host {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.ionrift-station-dialog .station-fire-minigame-host .campfire-body {
+    width: 100%;
+}
+
+.ionrift-station-dialog .station-fire-minigame-host .campfire-fire-area {
+    min-height: 148px;
+}
+
+.ionrift-station-dialog .station-fire-minigame-host .campfire-interactions {
+    font-size: 0.85rem;
+}
+
+.ionrift-station-dialog .station-fire-minigame-hint {
+    margin: 0.4rem 0 0;
+    font-size: 0.68rem;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.55);
+}
+
 .ionrift-station-dialog .station-campfire-tier-strip {
-    gap: 0.35rem;
+    display: flex;
     flex-direction: column;
+    gap: 0.45rem;
     align-items: stretch;
     max-width: 100%;
+}
+
+.ionrift-station-dialog .station-campfire-tier-strip .camp-fire-tier-label,
+.ionrift-station-dialog .station-campfire-tier-strip .camp-fire-tier-cost {
+    display: inline;
+}
+
+.ionrift-station-dialog .station-campfire-tier-strip .camp-fire-tier-cost {
+    margin-left: 0.25rem;
+}
+
+.ionrift-station-dialog .station-campfire-tier-strip .camp-fire-tier-body {
+    font-size: 0.62rem;
+    line-height: 1.45;
 }
 
 /* Fire tab uses the same camp-fire-tier-strip as the read-only Make Camp preview, but that
@@ -1843,6 +1895,8 @@
     cursor: default;
     min-width: 0;
     max-width: none;
+    width: 100%;
+    padding: 0.45rem 0.55rem 0.4rem;
 }
 
 .ionrift-station-dialog .station-fire-set-row {
@@ -9970,6 +10024,20 @@ button.is-processing {
     color: rgba(220, 215, 235, 0.9);
 }
 
+.ionrift-station-dialog .camp-gear-flavor-panel {
+    margin: 0.35rem 0 0.5rem;
+    padding: 0.45rem 0.5rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.22);
+}
+.ionrift-station-dialog .camp-gear-flavor-lead {
+    margin: 0 0 0.45rem;
+    font-size: 0.68rem;
+    line-height: 1.4;
+    color: rgba(220, 215, 235, 0.82);
+}
+
 .ionrift-station-dialog .station-personal-card {
     margin: 0.35rem 0 0.5rem;
     padding: 0.4rem 0.5rem 0.45rem;
@@ -12003,8 +12071,122 @@ button.is-processing {
     line-height: 1.3;
 }
 
+/* Make Camp ceremony: smoldering pit + click-to-strike (replaces strike buttons). */
+.campfire-fire-area.ceremony-ready-strike {
+    cursor: crosshair;
+    background: radial-gradient(ellipse at center 82%, rgba(90, 35, 8, 0.55) 0%, rgba(40, 15, 4, 0.25) 45%, transparent 72%);
+}
+
+.campfire-fire-area.ceremony-ready-strike.ceremony-strike-blocked {
+    cursor: not-allowed;
+}
+
+.campfire-preview-pit.ceremony-smolder-pit .campfire-preview-center .ceremony-smolder-icon {
+    color: rgba(255, 140, 50, 0.85);
+    filter: drop-shadow(0 0 10px rgba(255, 90, 20, 0.55));
+    animation: ceremonySmolderPulse 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes ceremonySmolderPulse {
+    0% { transform: scale(0.92); opacity: 0.65; }
+    100% { transform: scale(1.06); opacity: 1; }
+}
+
+.ceremony-pit-strike-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.2rem;
+    padding: 0 0.5rem 0.55rem;
+    pointer-events: none;
+    z-index: 6;
+}
+
+.ceremony-pit-strike-glow {
+    position: absolute;
+    left: 50%;
+    bottom: 18%;
+    width: 7rem;
+    height: 3.5rem;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(255, 120, 30, 0.35) 0%, transparent 72%);
+    animation: ceremonySmolderGlow 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes ceremonySmolderGlow {
+    0% { opacity: 0.45; transform: translateX(-50%) scale(0.9); }
+    100% { opacity: 0.9; transform: translateX(-50%) scale(1.08); }
+}
+
+.ceremony-pit-strike-label {
+    position: relative;
+    z-index: 1;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(255, 220, 160, 0.92);
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.65);
+}
+
+.ceremony-pit-strike-attempt {
+    position: relative;
+    z-index: 1;
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.campfire-ceremony-action-area.ceremony-strike-phase {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.15rem 0 0;
+}
+
+.campfire-ceremony-action-area .ceremony-strike-prompt {
+    margin: 0;
+    font-size: 0.68rem;
+    color: rgba(255, 220, 160, 0.8);
+    text-align: center;
+}
+
+.campfire-ceremony-action-area .ceremony-cantrip-row {
+    display: flex;
+    justify-content: center;
+}
+
+.totm-camp-minigame-host .campfire-fire-area.ceremony-ready-strike {
+    min-height: 170px;
+}
+
+.totm-camp-minigame-host .campfire-preview-pit.ceremony-smolder-pit .campfire-preview-center .ceremony-smolder-icon {
+    font-size: 3rem;
+}
+
 .ionrift-respite-app.totm-activity-campfire-panel .window-content {
     min-width: min(780px, 95vw);
+}
+
+/* Side panel steals ~268px; drop the centered 680px cap so activities shrink instead of crushing the minigame. */
+.ionrift-respite-app.totm-activity-campfire-panel .totm-activity-main .totm-activity-cards,
+.ionrift-respite-app.totm-activity-campfire-panel .totm-activity-main .totm-activity-footer {
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.ionrift-respite-app.totm-activity-campfire-panel .totm-activity-main {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.ionrift-respite-app.totm-activity-campfire-panel .totm-campfire-side-panel {
+    flex: 0 0 268px;
+    width: 268px;
 }
 
 .totm-activity-layout--no-panel .totm-activity-main {
@@ -14103,6 +14285,17 @@ button.is-processing {
     line-height: 1.3;
 }
 
+/* Disabled ceremony buttons: tooltip on wrapper (native disabled skips hover). */
+.campfire-btn-tooltip-wrap {
+    display: inline-flex;
+    cursor: not-allowed;
+    vertical-align: middle;
+}
+
+.campfire-btn-tooltip-wrap .campfire-btn[disabled] {
+    pointer-events: none;
+}
+
 .campfire-btn.strike-btn,
 .campfire-btn.whittle-btn,
 .campfire-btn.firewood-btn {
@@ -14596,6 +14789,31 @@ button.is-processing {
 }
 
 .fire-meter-zone:last-of-type { border-right: none; }
+
+.fire-meter-zone.is-active {
+    color: rgba(255, 220, 140, 0.95);
+    text-shadow: 0 0 6px rgba(255, 180, 60, 0.35);
+}
+
+.fire-meter-zone.zone-cold-camp.is-active {
+    color: rgba(180, 200, 255, 0.9);
+    text-shadow: 0 0 6px rgba(140, 170, 255, 0.35);
+}
+
+.campfire-fire-area.fire-level-cold-camp .campfire-kindling {
+    color: rgba(180, 200, 255, 0.75);
+}
+
+.campfire-fire-area.fire-level-cold-camp .campfire-kindling i {
+    color: rgba(200, 210, 255, 0.85);
+}
+
+.activity-cold-camp-hint {
+    margin: 0 0 0.35rem;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    color: rgba(190, 205, 255, 0.85);
+}
 
 .fire-meter-fill {
     position: absolute;
@@ -23989,6 +24207,12 @@ button.is-processing {
     gap: 0.75rem;
     padding: 0.5rem 0.75rem 0;
     align-items: start;
+}
+
+.ionrift-respite-app .camp-phase-shell > .respite-make-camp .totm-camp-layout {
+    padding-top: 0;
+    padding-left: 0;
+    padding-right: 0;
 }
 
 /* .totm-camp-active: window class toggled during TotM Make Camp phase. */

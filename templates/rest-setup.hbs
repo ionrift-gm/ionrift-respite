@@ -780,6 +780,9 @@
     {{!-- =============== MAKE CAMP PHASE =============== --}}
     {{#if (eq phase 'camp')}}
 
+    {{!-- TotM or stations + comfort: unified Make Camp panel --}}
+    {{#if showFullMakeCampPanel}}
+    <div class="camp-phase-shell">
     <div class="phase-banner">
         <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
@@ -815,6 +818,7 @@
     </div>
     {{/if}}
     {{> rosterStrip}}
+    <div class="respite-make-camp">
     <div class="totm-camp-layout make-camp-unified">
 
         {{#unless safeRestSpot}}
@@ -979,6 +983,9 @@
                 {{/if}}
 
                 {{#if showCampCeremonyMinigame}}
+                {{#if campPitBlocksFireLighting}}
+                <p class="totm-fire-bill-hint">{{#if isGM}}Place the campfire on the map (Place fire) before anyone can light it.{{else}}The GM must place the campfire on the map before you can light the fire.{{/if}} Wood staging is still allowed.</p>
+                {{/if}}
                 <div class="totm-camp-minigame-host"></div>
                 {{else}}
                 {{#unless campFireIsLit}}
@@ -1005,13 +1012,19 @@
                         <span>No tinderbox or fire cantrip</span>
                         {{/if}}
                     </div>
+                    {{#if campPitBlocksFireLighting}}
+                    <div class="totm-fire-bill-line unmet">
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                        <span>Campfire not on map yet</span>
+                    </div>
+                    {{/if}}
 
                     {{#if isGM}}
                     <button type="button" class="totm-fire-light-btn gm-light-submit"
                             data-action="campLightFire"
                             data-actor-id="__gm__"
                             data-method="Tinderbox"
-                            data-tooltip="Optional. Players with gear see their own Light button. Use this as a GM override.">
+                            {{#if campPitBlocksFireLighting}}disabled data-tooltip="Place the campfire on the map first."{{else}}data-tooltip="Optional. Players with gear see their own Light button. Use this as a GM override."{{/if}}>
                         <i class="fas fa-fire" aria-hidden="true"></i> Light it for them
                     </button>
                     {{else if campViewerCanLight}}
@@ -1093,6 +1106,7 @@
             </span>
             {{/if}}
         </div>
+        {{#if isGM}}
         {{#if campfireDragCard.show}}
         <div class="totm-camp-footer-placement">
             {{#if campfireDragCard.placed}}
@@ -1120,7 +1134,8 @@
             {{else if campfireDragCard.canDrag}}
             <div class="camp-drag-handle camp-drag-handle-compact {{#if campfireDragCard.required}}camp-drag-handle-required{{/if}}"
                  draggable="true"
-                 aria-label="Drag campfire to the map"
+                 {{#if campfireDragCard.placementClick}}data-camp-placement-click="1"{{/if}}
+                 aria-label="{{#if campfireDragCard.placementClick}}Place campfire on the map (click or drag){{else}}Drag campfire to the map{{/if}}"
                  data-tooltip="{{campfireDragCard.tooltip}}" data-tooltip-direction="UP">
                 <div class="camp-drag-icon"><i class="fas fa-fire" aria-hidden="true"></i></div>
                 <div class="camp-drag-label">
@@ -1139,8 +1154,86 @@
             {{/if}}
         </div>
         {{/if}}
+        {{/if}}
     </div>
+    </div>{{!-- /respite-make-camp --}}
+    </div>{{!-- /camp-phase-shell --}}
 
+    {{!-- Spatial mode: minimal dock UI (stations on map) --}}
+    {{else}}
+    <div class="camp-minimal-shell camp-phase-shell">
+    {{#if showArtNudge}}
+    <div class="art-nudge-banner">
+        <div class="art-nudge-content">
+            <i class="fas fa-palette art-nudge-icon"></i>
+            <div class="art-nudge-text">
+                {{#if artNudgeIsUpdate}}
+                <span class="art-nudge-title">A newer art pack is available.</span>
+                <span class="art-nudge-subtitle">Update to get station token art for workstations and camp gear.</span>
+                {{else}}
+                <span class="art-nudge-title">Camp art is using placeholder icons.</span>
+                <span class="art-nudge-subtitle">Import the art pack for terrain and station art.</span>
+                {{/if}}
+            </div>
+        </div>
+        <div class="art-nudge-actions">
+            <button type="button" data-action="openArtPackPatreon" class="art-nudge-btn">
+                <i class="fas fa-external-link-alt"></i> {{#if artNudgeIsUpdate}}Get Update{{else}}Get Art Pack{{/if}}
+            </button>
+            <button type="button" data-action="openArtPackImport" class="art-nudge-btn primary">
+                <i class="fas fa-file-import"></i> {{#if artNudgeIsUpdate}}Update Art Pack{{else}}Import Art Pack{{/if}}
+            </button>
+            <button type="button" data-action="dismissArtNudge" class="art-nudge-dismiss" data-tooltip="Dismiss">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <label class="art-nudge-suppress">
+            <input type="checkbox" class="art-nudge-suppress-checkbox" />
+            Don't show again
+        </label>
+    </div>
+    {{/if}}
+    {{#if campfirePlaced}}
+    {{#if simpleStationsMode}}
+    <p class="camp-minimal-lead glass-ui">Setting up camp...</p>
+    {{else if comfortEnabled}}
+    <p class="camp-minimal-lead glass-ui">Use the <strong>campfire</strong> on the map: light the fire, cold camp, or add fuel. Supply tokens show where stations appear after the fire is going.</p>
+    {{else}}
+    <p class="camp-minimal-lead glass-ui">Campfire and station markers are on the map.</p>
+    {{/if}}
+    {{else}}
+    <p class="camp-minimal-lead glass-ui">
+        {{#if isGM}}{{#if simpleStationsMode}}Click the map to drop the pit. The fire lights itself and the workbench and bedrolls appear beside it.{{else if comfortEnabled}}A preview follows the pointer. Click the map to drop the pit, or right-click / <kbd>Esc</kbd> to cancel.{{else}}Click the map to place the campfire and station markers.{{/if}}{{else}}The GM is placing the campfire.{{/if}}
+    </p>
+    {{/if}}
+    {{#if isGM}}
+    {{#if campPitPlacementCancelled}}
+    <div class="camp-pit-retry glass-ui">
+        <p>Placement was cancelled. Place the pit when ready.</p>
+        <button type="button" class="btn-primary" data-action="retryCampPitPlacement"><i class="fas fa-map-pin"></i> Place campfire pit</button>
+    </div>
+    {{/if}}
+    {{#if campfireCanMove}}
+    <button type="button" class="btn-secondary camp-minimal-move-fire" data-action="reclaimCampfire">
+        <i class="fas fa-arrows-alt" aria-hidden="true"></i> Move campfire
+    </button>
+    {{/if}}
+    {{/if}}
+    </div>
+    {{#if isGM}}
+    <div class="respite-action-bar camp-minimal-action">
+        {{#if campfirePlaced}}
+        <span class="phase-waiting-label"><i class="fas fa-campground" aria-hidden="true"></i> Camp on map</span>
+        {{else}}
+        <span class="phase-waiting-label"><i class="fas fa-compass" aria-hidden="true"></i> Map first</span>
+        {{/if}}
+    </div>
+    {{else}}
+    <div class="respite-action-bar camp-minimal-action">
+        <span class="phase-waiting-label"><i class="fas fa-campground" aria-hidden="true"></i> Check the map</span>
+    </div>
+    {{/if}}
+    {{/if}}{{!-- /showFullMakeCampPanel --}}
     {{/if}}
 
 

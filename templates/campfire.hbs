@@ -50,10 +50,13 @@
                 {{/if}}
             </div>
             {{else}}
-            <div class="campfire-kindling {{#if kindlingPlaced}}has-kindling{{/if}}">
+            <div class="campfire-kindling {{#if kindlingPlaced}}has-kindling{{/if}}{{#if coldCampActive}} cold-camp-pit{{/if}}">
                 {{#if kindlingPlaced}}
                     <i class="fas fa-fire-alt"></i>
                     <span>Ready to light</span>
+                {{else if coldCampActive}}
+                    <i class="fas fa-moon" aria-hidden="true"></i>
+                    <span>Cold camp</span>
                 {{else}}
                     <i class="fas fa-campground"></i>
                     <span>Kindling pile</span>
@@ -108,8 +111,11 @@
                 {{/if}}
             </div>
             {{else}}
-            {{!-- Step 2: Strike / cantrip row --}}
+            {{!-- Step 2: strike flint and/or cantrip (committed row layout) --}}
             <div class="campfire-ceremony-action-area">
+                {{#if ceremonyIgniteBlocked}}
+                <p class="campfire-preview-shortfall-hint">{{ceremonyIgniteBlockReason}}</p>
+                {{/if}}
                 <div class="ceremony-primary-slot">
                 <div class="campfire-ceremony-strike-row">
                     <div class="ceremony-row-left">
@@ -127,18 +133,34 @@
                     </div>
                     <div class="ceremony-row-right">
                         {{#if hasFireCantrip}}
+                        {{#if ceremonyIgniteBlocked}}
+                        <span class="campfire-btn-tooltip-wrap" data-tooltip="{{ceremonyIgniteBlockReason}}">
+                            <button type="button" data-action="cantripIgnite" class="campfire-btn strike-btn cantrip-btn" disabled aria-disabled="true" tabindex="-1">
+                                <i class="fas fa-hat-wizard"></i> {{fireCantrip}}
+                            </button>
+                        </span>
+                        {{else}}
                         <button type="button" data-action="cantripIgnite" class="campfire-btn strike-btn cantrip-btn">
                             <i class="fas fa-hat-wizard"></i> {{fireCantrip}}
                         </button>
                         {{/if}}
+                        {{/if}}
                         {{#if hasTinderbox}}
+                        {{#if ceremonyIgniteBlocked}}
+                        <span class="campfire-btn-tooltip-wrap" data-tooltip="{{ceremonyIgniteBlockReason}}">
+                            <button type="button" data-action="strikeFlint" class="campfire-btn strike-btn" disabled aria-disabled="true" tabindex="-1">
+                                <i class="fas fa-hand-sparkles"></i> Strike Flint
+                            </button>
+                        </span>
+                        {{else}}
                         <button type="button" data-action="strikeFlint" class="campfire-btn strike-btn">
                             <i class="fas fa-hand-sparkles"></i> Strike Flint
                         </button>
                         {{/if}}
+                        {{/if}}
                         {{#unless hasTinderbox}}
                         {{#unless hasFireCantrip}}
-                        <span class="guided-label">Needs tinderbox or fire cantrip</span>
+                        <span class="guided-label">This character needs a tinderbox or fire cantrip</span>
                         {{/unless}}
                         {{/unless}}
                     </div>
@@ -157,7 +179,10 @@
             {{/if}}
             {{/if}}
             {{else}}
-            {{!-- Unlit: guided sequence - show only the current step --}}
+            {{!-- Activity phase: relight after douse or cold camp --}}
+            {{#if coldCampActive}}
+            <p class="guided-label activity-cold-camp-hint">Cold camp. Comfort −1. Drag kindling, then strike flint or use a cantrip to relight.</p>
+            {{/if}}
             {{#unless kindlingPlaced}}
                 {{!-- Step 1: Place kindling --}}
                 {{#if firewoodCount}}
@@ -199,6 +224,12 @@
                 {{/unless}}
                 {{/unless}}
             {{/unless}}
+            {{#if showGiftWoodBtn}}
+            <button type="button" class="campfire-btn ceremony-gift-wood-btn" data-action="giftCeremonyWood"
+                    data-tooltip="Add kindling to {{giftKindlingTargetName}}'s sheet">
+                <i class="fas fa-gift" aria-hidden="true"></i> Gift wood
+            </button>
+            {{/if}}
             {{/if}}
         {{else}}
             {{!-- Lit: compact vertical stack --}}
@@ -235,15 +266,18 @@
         {{/unless}}
     </div>
 
-    {{!-- Fire meter (only when lit) --}}
-    {{#if lit}}
+    {{!-- Fire meter (activity panel: always; ceremony: only when lit) --}}
+    {{#if showFireMeter}}
     <div class="fire-meter">
         <div class="fire-meter-track">
             <div class="fire-meter-fill"></div>
             <div class="fire-meter-needle"></div>
-            <div class="fire-meter-zone zone-embers" data-tooltip="Dim and cold, but harder for enemies to spot.">Embers</div>
-            <div class="fire-meter-zone zone-campfire" data-tooltip="Steady warmth. A fair balance of comfort and caution.">Campfire</div>
-            <div class="fire-meter-zone zone-bonfire" data-tooltip="Raises comfort, but visible from far off; enemies spot the camp easily.">Bonfire</div>
+            {{#unless makeCampCeremony}}
+            <div class="fire-meter-zone zone-cold-camp{{#if (eq meterLevel "cold_camp")}} is-active{{/if}}" data-zone="cold_camp" data-tooltip="No fire. Comfort −1. Harder for enemies to spot.">Cold</div>
+            {{/unless}}
+            <div class="fire-meter-zone zone-embers{{#if (eq meterLevel "embers")}} is-active{{/if}}" data-zone="embers" data-tooltip="Dim and cold, but harder for enemies to spot.">Embers</div>
+            <div class="fire-meter-zone zone-campfire{{#if (eq meterLevel "campfire")}} is-active{{/if}}" data-zone="campfire" data-tooltip="Steady warmth. A fair balance of comfort and caution.">Campfire</div>
+            <div class="fire-meter-zone zone-bonfire{{#if (eq meterLevel "bonfire")}} is-active{{/if}}" data-zone="bonfire" data-tooltip="Raises comfort, but visible from far off; enemies spot the camp easily.">Bonfire</div>
         </div>
     </div>
     {{#if showDouseBtn}}

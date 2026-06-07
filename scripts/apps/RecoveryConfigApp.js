@@ -26,9 +26,9 @@ const RECOVERY_SECTIONS = [
             },
             {
                 key: "enableCampfireMinigame",
-                label: "Campfire Minigame (TotM)",
+                label: "Campfire Minigame",
                 icon: "fas fa-fire",
-                hint: "TotM only. Make Camp uses the minigame as the lighting ceremony (tier segments still preview comfort). Activities uses the side panel and hides the Fire tab.",
+                hint: "Make Camp uses the minigame as the lighting ceremony. During Activities, the minigame manages fire intensity instead of tier buttons (TotM side panel or Stations Fire tab).",
                 type: "boolean"
             },
             {

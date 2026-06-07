@@ -83,6 +83,8 @@ export class CampfireEmbed {
         this._lastFireLevel = "unlit";
         /** Last rest ceremony fire key applied in syncFromRestFireLevel. */
         this._lastSyncedRestCeremonyKey = null;
+        /** Activity phase: cold camp after a full douse (comfort −1, stealth bonus). */
+        this._coldCampActive = false;
         /** TotM Make Camp: pit visuals follow segment preview, not live heat. */
         this._makeCampCeremony = options.makeCampCeremony ?? false;
         this._makeCampPreviewLevel = "embers";
@@ -94,6 +96,8 @@ export class CampfireEmbed {
         this._onGiftCeremonyWood = options.onGiftCeremonyWood ?? null;
         /** TotM Make Camp: first successful strike commits preview tier and advances rest phase. */
         this._onCeremonyIgnited = options.onCeremonyIgnited ?? null;
+        this._canCommitCeremonyIgnite = options.canCommitCeremonyIgnite ?? (() => true);
+        this._ceremonyIgniteBlockReasonFn = options.ceremonyIgniteBlockReason ?? null;
         this._pendingKindlingBanner = null;
         this._templatePath = `modules/${MODULE_ID}/templates/campfire.hbs`;
         /** @type {ReturnType<typeof setTimeout>|null} */
@@ -205,6 +209,10 @@ export class CampfireEmbed {
     _prepareContext() {
         const fireCantrip = this._findFireCantrip();
         const previewVisual = this._makeCampCeremony ? this._buildMakeCampPreviewVisual() : null;
+        const hasOwnTinderbox = this._hasTinderbox();
+        const ceremonyIgniteBlocked = this._makeCampCeremony && !this._canCommitCeremonyIgnite();
+        const activityFirePanel = !this._makeCampCeremony && this._showDouseBtn;
+        const meterLevel = this._getMeterLevel();
         return {
             lit: this._lit,
             litBy: this._litBy,
@@ -213,7 +221,7 @@ export class CampfireEmbed {
             heat: this._heat,
             fireLevel: this.fireLevel,
             firewoodCount: this._getFirewoodCount(),
-            hasTinderbox: this._hasTinderbox(),
+            hasTinderbox: hasOwnTinderbox,
             hasFireCantrip: !!fireCantrip,
             fireCantrip: fireCantrip?.name ?? null,
             kindlingPlaced: this._kindlingPlaced,
@@ -240,8 +248,22 @@ export class CampfireEmbed {
                 return filled < req.length && this._getFirewoodCount() > 0;
             })(),
             showGiftKindlingBtn: this._makeCampCeremony && !!game.user?.isGM,
-            giftKindlingTargetName: this._getPlayerActor()?.name ?? "player"
+            giftKindlingTargetName: this._getPlayerActor()?.name ?? "player",
+            ceremonyIgniteBlocked,
+            ceremonyIgniteBlockReason: this._ceremonyIgniteBlockReasonFn?.()
+                || "Place the campfire on the map before lighting.",
+            activityFirePanel,
+            coldCampActive: this._coldCampActive,
+            showFireMeter: this._makeCampCeremony ? this._lit : activityFirePanel,
+            meterLevel,
+            showGiftWoodBtn: activityFirePanel && !this._lit && !!game.user?.isGM && !!this._onGiftCeremonyWood
         };
+    }
+
+    /** Tier shown on the activity fire meter (includes cold camp at 0%). */
+    _getMeterLevel() {
+        if (!this._lit && this._coldCampActive) return "cold_camp";
+        return this.fireLevel;
     }
 
     /** @returns {string} */
@@ -349,10 +371,12 @@ export class CampfireEmbed {
             this._litBy = null;
             this._heat = 0;
             this._peakHeat = 0;
+            this._coldCampActive = !!coldCamp;
             if (wasLitBefore) this._kindlingPlaced = false;
             this._lastFireLevel = "unlit";
         } else {
             this._lit = true;
+            this._coldCampActive = false;
             this._heat = level === "bonfire" ? 75 : level === "campfire" ? 50 : 30;
             this._peakHeat = this._heat;
             this._kindlingPlaced = true;
@@ -376,8 +400,17 @@ export class CampfireEmbed {
         }
         const area = el.querySelector(".campfire-fire-area");
         if (area) {
-            area.classList.remove("fire-level-unlit", "fire-level-embers", "fire-level-campfire", "fire-level-bonfire");
-            if (this._lit) area.classList.add(`fire-level-${this.fireLevel}`);
+            area.classList.remove(
+                "fire-level-unlit",
+                "fire-level-embers",
+                "fire-level-campfire",
+                "fire-level-bonfire"
+            );
+            if (this._lit) {
+                area.classList.add(`fire-level-${this.fireLevel}`);
+            } else if (this._coldCampActive) {
+                area.classList.add("fire-level-cold-camp");
+            }
         }
         this._updateMeter(el);
         logCampfireReconnect("embed:applyFireAreaVisualState", {
@@ -531,9 +564,15 @@ export class CampfireEmbed {
         } else if (level === "campfire") {
             this._heat = 28;
         } else if (level === "embers") {
+            if (!game.user.isGM) {
+                ui.notifications.warn("Only the GM can douse the fire to cold camp.");
+                return;
+            }
             this._lit = false;
             this._heat = 0;
+            this._peakHeat = 0;
             this._kindlingPlaced = false;
+            this._coldCampActive = true;
         } else {
             return;
         }
@@ -824,8 +863,13 @@ export class CampfireEmbed {
     // ──────── Flint Strike ────────
 
     _onStrikeFlint() {
-        if (!this._hasTinderbox()) {
-            ui.notifications.warn("You need a Tinderbox to light the fire.");
+        if (this._makeCampCeremony && !this._canCommitCeremonyIgnite()) {
+            ui.notifications.warn("Place the campfire on the map before lighting.");
+            return;
+        }
+        const lighter = this._getStrikeFireLighter();
+        if (!lighter) {
+            ui.notifications.warn("This character needs a tinderbox or flint and steel.");
             return;
         }
         if (!this._kindlingPlaced && !this._ceremonyReadyToLight) {
@@ -835,7 +879,8 @@ export class CampfireEmbed {
         this._strikeCount++;
         this._playSpark();
 
-        const hint = this._container?.querySelector(".strike-hint");
+        const hint = this._container?.querySelector(".ceremony-pit-strike-attempt")
+            ?? this._container?.querySelector(".strike-hint");
         if (hint) {
             hint.textContent = this._strikeCount > FLINT_STRIKE_GUARANTEE_AFTER
                 ? `Attempt ${this._strikeCount} · It catches!`
@@ -850,23 +895,44 @@ export class CampfireEmbed {
 
         game.socket.emit(`module.${MODULE_ID}`, {
             type: "campfireStrike",
+            userId: game.user.id,
             userName: game.user.name,
-            actorName: this._getPlayerActor()?.name ?? game.user.name,
+            actorName: lighter.actorName,
+            actorId: lighter.actorId,
+            method: lighter.method ?? "Tinderbox",
             strikeCount: this._strikeCount,
             success
         });
 
-        if (success) this._ignite(this._getPlayerActor()?.name ?? game.user.name);
+        if (success) {
+            this._ignite(lighter.actorName, {
+                actorId: lighter.actorId,
+                method: lighter.method ?? "Tinderbox"
+            });
+        }
     }
 
     receiveStrike(data) {
+        if (data.userId === game.user.id) return;
         this._strikeCount = data.strikeCount;
+        if (this._lit) return;
         if (!this._lit) this._playSpark();
-        if (data.success && !this._lit) this._ignite(data.actorName ?? data.userName);
+        if (data.success) {
+            this._ignite(data.actorName ?? data.userName, {
+                actorId: data.actorId,
+                method: data.cantrip ?? data.method ?? "Tinderbox"
+            });
+        }
     }
 
-    _ignite(playerName) {
+    _ignite(playerName, igniteMeta = {}) {
+        if (this._lit) return;
+        if (this._makeCampCeremony && !this._canCommitCeremonyIgnite()) {
+            ui.notifications.warn("Place the campfire on the map before lighting.");
+            return;
+        }
         this._lit = true;
+        this._coldCampActive = false;
         this._litBy = playerName;
         this._heat = 25;
         this._showLitBanner = true;
@@ -885,8 +951,11 @@ export class CampfireEmbed {
         }, 3000);
 
         if (this._makeCampCeremony && this._onCeremonyIgnited) {
+            const strikeLighter = this._getStrikeFireLighter();
             void this._onCeremonyIgnited({
                 actorName: playerName,
+                actorId: igniteMeta.actorId ?? strikeLighter?.actorId ?? this._getPlayerActor()?.id,
+                method: igniteMeta.method ?? strikeLighter?.method ?? "Tinderbox",
                 readyToLight: !!(this._ceremonyReadyToLight || this._kindlingPlaced)
             });
             return;
@@ -921,43 +990,46 @@ export class CampfireEmbed {
             ?? null;
     }
 
+    /** Selected roster character's fire gear; players may only use characters they own. */
+    _viewerCanUseActorFireGear(actor) {
+        if (!actor) return false;
+        if (game.user?.isGM) return true;
+        return actor.isOwner;
+    }
+
     _hasTinderbox() {
         const ctx = this._getPlayerActor();
-        if (actorHasTinderbox(ctx)) return true;
-        if (game.user?.isGM) return false;
-        for (const id of this._partyCharacterIds) {
-            if (actorHasTinderbox(game.actors.get(id))) return true;
-        }
-        return false;
+        if (!this._viewerCanUseActorFireGear(ctx)) return false;
+        return actorHasTinderbox(ctx);
+    }
+
+    /** @returns {{ actorId: string, actorName: string, method: string }|null} */
+    _getStrikeFireLighter() {
+        const ctx = this._getPlayerActor();
+        if (!this._viewerCanUseActorFireGear(ctx) || !actorHasTinderbox(ctx)) return null;
+        return { actorId: ctx.id, actorName: ctx.name, method: "Tinderbox" };
     }
 
     _findFireCantrip() {
         const fireCantrips = game.ionrift?.respite?.adapter?.getFireCantrips() ?? [];
         if (fireCantrips.length === 0) return null;
-        const actors = [];
         const ctx = this._getPlayerActor();
-        if (ctx) actors.push(ctx);
-        else {
-            for (const id of this._partyCharacterIds) {
-                const a = game.actors.get(id);
-                if (a) actors.push(a);
-            }
-        }
-        for (const actor of actors) {
-            const cantrip = actor.items?.find(i =>
-                i.type === "spell"
-                && (i.system?.level === 0)
-                && fireCantrips.includes(i.name)
-            );
-            if (cantrip) return cantrip;
-        }
-        return null;
+        if (!this._viewerCanUseActorFireGear(ctx)) return null;
+        return ctx.items?.find(i =>
+            i.type === "spell"
+            && (i.system?.level === 0)
+            && fireCantrips.includes(i.name)
+        ) ?? null;
     }
 
     _onCantripIgnite() {
+        if (this._makeCampCeremony && !this._canCommitCeremonyIgnite()) {
+            ui.notifications.warn("Place the campfire on the map before lighting.");
+            return;
+        }
         const cantrip = this._findFireCantrip();
         if (!cantrip) {
-            ui.notifications.warn("No fire cantrip available.");
+            ui.notifications.warn("This character has no fire cantrip.");
             return;
         }
         if (!this._kindlingPlaced && !this._ceremonyReadyToLight) {
@@ -967,13 +1039,19 @@ export class CampfireEmbed {
         const actorName = this._getPlayerActor()?.name ?? game.user.name;
         game.socket.emit(`module.${MODULE_ID}`, {
             type: "campfireStrike",
+            userId: game.user.id,
             userName: game.user.name,
             actorName,
+            actorId: this._getPlayerActor()?.id,
             strikeCount: 0,
             success: true,
-            cantrip: cantrip.name
+            cantrip: cantrip.name,
+            method: cantrip.name
         });
-        this._ignite(actorName);
+        this._ignite(actorName, {
+            actorId: this._getPlayerActor()?.id,
+            method: cantrip.name
+        });
         // Create Bonfire goes straight to bonfire heat
         if (cantrip.name === "Create Bonfire") {
             this._heat = 70;
@@ -1133,10 +1211,12 @@ export class CampfireEmbed {
     _updateMeter(el) {
         if (!el) return;
         if (this._heat > this._peakHeat) this._peakHeat = this._heat;
+        const meterLevel = this._getMeterLevel();
+        const needlePct = meterLevel === "cold_camp" ? 0 : this._heat;
         const fill = el.querySelector(".fire-meter-fill");
-        if (fill) fill.style.width = `${this._heat}%`;
+        if (fill) fill.style.width = `${this._lit ? this._heat : 0}%`;
         const needle = el.querySelector(".fire-meter-needle");
-        if (needle) needle.style.left = `${this._heat}%`;
+        if (needle) needle.style.left = `${needlePct}%`;
         let peak = el.querySelector(".fire-meter-peak");
         if (!peak && this._peakHeat > 0) {
             peak = document.createElement("div");
@@ -1145,6 +1225,10 @@ export class CampfireEmbed {
             if (track) track.appendChild(peak);
         }
         if (peak) peak.style.left = `${this._peakHeat}%`;
+        for (const zone of el.querySelectorAll(".fire-meter-zone")) {
+            const zoneId = zone.dataset?.zone;
+            zone.classList.toggle("is-active", zoneId === meterLevel);
+        }
     }
 
     _notifyFireLevel() {
@@ -1152,7 +1236,9 @@ export class CampfireEmbed {
         if (current !== this._lastFireLevel) {
             this._lastFireLevel = current;
             if (this._onFireLevelChange) this._onFireLevelChange(current);
-            if (!this._makeCampCeremony && this._lit && current !== "unlit" && game.user.isGM) {
+            if (!this._makeCampCeremony && current === "unlit" && this._coldCampActive && game.user.isGM) {
+                void CampfireTokenLinker.setLightState(false);
+            } else if (!this._makeCampCeremony && this._lit && current !== "unlit" && game.user.isGM) {
                 void CampfireTokenLinker.setLightState(true, current);
             }
         }
