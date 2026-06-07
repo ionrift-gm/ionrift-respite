@@ -26,7 +26,8 @@ import { computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, 
 import { canPlaceStation, actorHasBrewingTools } from "../services/CompoundCampPlacer.js";
 import { getPartyActors } from "../services/partyActors.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
-import { emitFeastServeRequest } from "../services/SocketController.js";
+import { emitFeastServeRequest, emitActivityColdCampRequest } from "../services/SocketController.js";
+import { CampGearScanner } from "../services/CampGearScanner.js";
 import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../services/StationInteractionLayer.js";
 import { TerrainRegistry } from "../services/TerrainRegistry.js";
 import { guardEmbedItems } from "../services/MintGuard.js";
@@ -212,6 +213,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             setFireLevel: StationActivityDialog.#onSetFireLevel,
             requestFireLevel: StationActivityDialog.#onRequestFireLevel,
             previewFireLevel: StationActivityDialog.#onPreviewFireLevel,
+            setColdCamp: StationActivityDialog.#onSetColdCamp,
+            requestColdCamp: StationActivityDialog.#onRequestColdCamp,
             submitStationRations: StationActivityDialog.#onSubmitStationRations,
             stationDetectMagicScan: StationActivityDialog.#onStationDetectMagicScan,
             stationIdentifyScannedItem: StationActivityDialog.#onStationIdentifyScannedItem,
@@ -386,7 +389,24 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 if (scrollEl) scrollEl.scrollTop = this._craftDetailScrollTop;
             });
         }
+        this._syncStationFireMinigame();
         return result;
+    }
+
+    /** Mount or release the campfire minigame when the Stations Fire tab is active. */
+    _syncStationFireMinigame() {
+        if (this._station?.id !== "campfire") {
+            this._restApp?.releaseStationFireMinigame?.(this);
+            return;
+        }
+        const useMinigame = !!this._restApp?.isStationFireMinigameTab?.();
+        const onFireTab = this._stationPanelTab === "fire";
+        if (useMinigame && onFireTab && this._dialogState === "list") {
+            const host = this.element?.querySelector("[data-station-fire-minigame-host]");
+            this._restApp?.mountStationFireMinigame?.(host, this);
+        } else {
+            this._restApp?.releaseStationFireMinigame?.(this);
+        }
     }
 
     async _prepareContext(options) {
@@ -483,11 +503,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 stationTabs.push({ id: "identify", label: "Identify" });
             }
         } else if (hubEligible && this._station.id === "campfire") {
-            const fireTabCtx = this._restApp?.getFireTabContextForStationDialog?.() ?? null;
-            if (fireTabCtx) {
-                stationTabs.push({ id: "camp", label: "Camp" });
-                stationTabs.push({ id: "fire", label: "Fire" });
-            }
+            const campfireTabs = this._restApp?.getCampfireStationDialogTabs?.() ?? [];
+            stationTabs.push(...campfireTabs);
         }
 
         const tabIds = new Set(stationTabs.map(t => t.id));
@@ -501,13 +518,20 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const showStationTabs = stationTabs.length > 0;
         const showTabBar = stationTabs.length > 1;
 
+        const campfireFlavorOnly = !!(this._station?.id === "campfire"
+            && this._restApp?.isCampfireStationFlavorOnly?.());
         const campGearAtFire = (this._station?.id === "campfire" && this._restApp?.getCampGearContextForActor)
             ? this._restApp.getCampGearContextForActor(this._actor?.id)
             : null;
         const campComfortAtFire = (this._station?.id === "campfire" && this._restApp?.getCampComfortAdvisoryForStationDialog)
             ? this._restApp.getCampComfortAdvisoryForStationDialog()
             : null;
-        const campPersonalCard = (this._station?.id === "campfire" && this._restApp?.getCampPersonalCardForActor && this._actor?.id)
+        const campGearFlavorPanel = (campfireFlavorOnly && this._actor?.id
+            && this._restApp?.getCampGearFlavorPanelForActor)
+            ? this._restApp.getCampGearFlavorPanelForActor(this._actor.id)
+            : null;
+        const campPersonalCard = (!campfireFlavorOnly && this._station?.id === "campfire"
+            && this._restApp?.getCampPersonalCardForActor && this._actor?.id)
             ? this._restApp.getCampPersonalCardForActor(this._actor.id)
             : null;
         const fireTabContext = (this._station?.id === "campfire" && this._restApp?.getFireTabContextForStationDialog)
@@ -564,6 +588,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             campGearAtFire,
             campComfortAtFire,
             campComfortLine: campComfortAtFire?.mapComfortLine ?? null,
+            campfireFlavorOnly,
+            campGearFlavorPanel,
             campPersonalCard,
             fireTabContext,
             hideNoActivitiesMessage: this._station?.id === "campfire",
@@ -715,11 +741,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 stationTabs.push({ id: "identify", label: "Identify" });
             }
         } else if (this._station.id === "campfire") {
-            const fireTabCtx = this._restApp?.getFireTabContextForStationDialog?.() ?? null;
-            if (fireTabCtx) {
-                stationTabs.push({ id: "camp", label: "Camp" });
-                stationTabs.push({ id: "fire", label: "Fire" });
-            }
+            const campfireTabs = this._restApp?.getCampfireStationDialogTabs?.() ?? [];
+            stationTabs.push(...campfireTabs);
         }
         return stationTabs;
     }
@@ -1233,19 +1256,110 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         }
     }
 
-    static #onRequestFireLevel(event, target) {
+    static async #onRequestFireLevel(event, target) {
         if (game.user.isGM) return;
         const level = target?.dataset?.fireLevel
             ?? target?.closest?.("[data-fire-level]")?.dataset?.fireLevel;
         if (!level || !["embers", "campfire", "bonfire"].includes(level)) return;
         if (target.disabled) return;
+
+        const restApp = this._restApp;
+        if (!restApp) return;
+        const cur = restApp._fireLevel ?? "unlit";
+        if (level === cur) return;
+
+        const F = CampGearScanner.FIREWOOD_COST_BY_LEVEL;
+        const costOf = (fireKey) => (fireKey === "unlit" ? 0 : (F[fireKey] ?? 0));
+        const curCost = costOf(cur);
+        const newCost = costOf(level);
+        const levelLabel = level.charAt(0).toUpperCase() + level.slice(1);
+
+        if (newCost > curCost) {
+            const allActors = getPartyActors();
+            const hasTinderbox = cur !== "unlit" || allActors.some(a => a.items.some(i => {
+                const n = i.name?.toLowerCase() ?? "";
+                return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
+            }));
+            if (cur === "unlit" && !hasTinderbox) {
+                await game.ionrift.library.confirm({
+                    title: "Cannot Light Fire",
+                    content: "<p>No one in the party has a tinderbox or flint and steel. You cannot start a fire.</p>",
+                    yesLabel: "Close",
+                    noLabel: null,
+                    yesIcon: "fas fa-times",
+                    defaultYes: true
+                });
+                return;
+            }
+            const OWNER = CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER;
+            const myActors = allActors.filter(a => a.isOwner);
+            const need = newCost - curCost;
+            const myFirewood = myActors.reduce((sum, a) => {
+                const it = a.items.find(i => {
+                    const n = i.name?.toLowerCase() ?? "";
+                    return n.includes("firewood") || n === "kindling";
+                });
+                return sum + (it?.system?.quantity ?? 0);
+            }, 0);
+            if (need > 0 && myFirewood < need) {
+                await game.ionrift.library.confirm({
+                    title: "Not Enough Firewood",
+                    content: `<p>Raising the fire to <strong>${levelLabel}</strong> requires ${need} firewood, but your characters only have ${myFirewood}.</p>`,
+                    yesLabel: "Close",
+                    noLabel: null,
+                    yesIcon: "fas fa-times",
+                    defaultYes: true
+                });
+                return;
+            }
+            const confirmed = await game.ionrift.library.confirm({
+                title: `Raise Fire to ${levelLabel}`,
+                content: `<p>This will consume <strong>${need} firewood</strong> from your inventory. Continue?</p>`,
+                yesLabel: "Light It",
+                noLabel: "Cancel",
+                yesIcon: "fas fa-fire",
+                noIcon: "fas fa-times",
+                defaultYes: true
+            });
+            if (!confirmed) return;
+        } else if (newCost < curCost) {
+            const confirmed = await game.ionrift.library.confirm({
+                title: `Lower Fire to ${levelLabel}`,
+                content: "<p>Reducing the fire discards spent firewood. There is no refund. Continue?</p>",
+                yesLabel: "Lower Fire",
+                noLabel: "Cancel",
+                yesIcon: "fas fa-arrow-down",
+                noIcon: "fas fa-times",
+                defaultYes: false
+            });
+            if (!confirmed) return;
+        }
+
         game.socket.emit(`module.${MODULE_ID}`, {
             type: "activityFireLevelRequest",
             userId: game.user.id,
             fireLevel: level
         });
-        this._restApp?.setStationFirePreviewLevel?.(null);
+        restApp.setStationFirePreviewLevel?.(null);
         ui.notifications.info("Fire change sent to the GM.");
+    }
+
+    static async #onSetColdCamp() {
+        if (!game.user.isGM) return;
+        if (!this._restApp?.setColdCampDuringActivity) return;
+        try {
+            await this._restApp.setColdCampDuringActivity();
+            void this.render(true);
+        } catch (e) {
+            console.warn(`${MODULE_ID} | setColdCamp`, e);
+        }
+    }
+
+    static #onRequestColdCamp() {
+        if (game.user.isGM) return;
+        emitActivityColdCampRequest(game.user.id);
+        this._restApp?.setStationFirePreviewLevel?.(null);
+        ui.notifications.info("Cold camp request sent to the GM.");
     }
 
     /**
@@ -1786,6 +1900,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         }
         this._stopTokenTracking();
         this._restApp?.setStationFirePreviewLevel?.(null);
+        this._restApp?.releaseStationFireMinigame?.(this);
         _openDialog = null;
         return super.close(options);
     }

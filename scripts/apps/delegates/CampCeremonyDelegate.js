@@ -28,6 +28,52 @@ export class CampCeremonyDelegate {
         this._app = app;
     }
 
+    /**
+     * Player-facing toast when the campfire is first lit during Make Camp.
+     * @param {{ actorName?: string, method?: string }|null} fireLitBy
+     * @param {string} fireLevel
+     * @returns {string|null}
+     */
+    static formatFireLitToastMessage(fireLitBy, fireLevel) {
+        if (!fireLitBy || fireLevel === "unlit") return null;
+        const name = fireLitBy.actorName ?? "Someone";
+        const method = (fireLitBy.method ?? "Tinderbox").trim();
+        const tierPhrase = fireLevel === "embers"
+            ? "embers"
+            : fireLevel === "campfire"
+                ? "a campfire"
+                : fireLevel === "bonfire"
+                    ? "a bonfire"
+                    : "the fire";
+
+        let how;
+        if (method === "Minigame") {
+            how = "during the fire ceremony";
+        } else if (method === "GM Override") {
+            how = "by GM override";
+        } else if (method === "Campfire") {
+            how = "at the pit";
+        } else if (method === "Tinderbox" || /tinderbox|flint/i.test(method)) {
+            how = "with a tinderbox";
+        } else {
+            how = `with ${method}`;
+        }
+
+        if (fireLevel === "embers") {
+            return `${name} lights embers ${how}.`;
+        }
+        return `${name} lights ${tierPhrase} ${how}.`;
+    }
+
+    /**
+     * @param {{ actorName?: string, method?: string }|null} fireLitBy
+     * @param {string} fireLevel
+     */
+    static showFireLitToast(fireLitBy, fireLevel) {
+        const message = CampCeremonyDelegate.formatFireLitToastMessage(fireLitBy, fireLevel);
+        if (message) ui.notifications.info(message);
+    }
+
     // ── State Accessors ─────────────────────────────────────────────────
 
     /** @returns {string} Current fire level. */
@@ -117,22 +163,30 @@ export class CampCeremonyDelegate {
      */
     async lightFire(userId, actorId, method, desiredLevel = null, options = {}) {
         if (!game.user.isGM) return;
+        if (this.fireLitBy && (this.fireLevel ?? "unlit") !== "unlit") return;
+        if (this._app._campPitBlocksFireLighting?.()) {
+            ui.notifications.warn("Place the campfire on the map before lighting.");
+            return;
+        }
         const actor = game.actors.get(actorId);
-        if (!actor) return;
+        if (!actor) {
+            ui.notifications.warn("That character could not be found. Pick another party member or use the GM light override.");
+            return;
+        }
+        const wasUnlit = (this.fireLevel ?? "unlit") === "unlit";
         this.fireLitBy = { userId, actorId, actorName: actor.name, method };
         // Light at the chosen tier in one motion so the picker is the commit; falls back
         // to pledge-derived level (embers with no wood) when no tier was selected.
         const override = ["embers", "campfire", "bonfire"].includes(desiredLevel) ? desiredLevel : null;
         await this._syncFireLevelFromPledges(override, {
             skipRender: !!options.autoAdvanceTotm,
-            skipBroadcast: !!options.autoAdvanceTotm
+            skipBroadcast: !!options.autoAdvanceTotm,
+            notifyFireLit: wasUnlit
         });
-        const shouldAdvanceTotm = options.autoAdvanceTotm
-            || (this._app._isTotM
-                && isCampfireMinigameEnabled()
-                && this.fireLitBy?.method === "Minigame"
-                && this._app._phase === "camp"
-                && !this._app._campToActivityDone);
+        if (wasUnlit && (this.fireLevel ?? "unlit") !== "unlit" && game.user.isGM) {
+            CampCeremonyDelegate.showFireLitToast(this.fireLitBy, this.fireLevel);
+        }
+        const shouldAdvanceTotm = !!options.autoAdvanceTotm && this._app._isTotM;
         if (shouldAdvanceTotm) {
             await this._app._totmAdvanceCampAfterCeremonyIgnite();
         }
@@ -265,23 +319,31 @@ export class CampCeremonyDelegate {
             this._app._engine.fireRollModifier = FIRE_MOD[level] ?? 0;
         }
         await CampfireTokenLinker.setLightState(level !== "unlit", level !== "unlit" ? level : undefined);
+        const shouldNotifyFireLit = !!options.notifyFireLit
+            && !!this.fireLitBy
+            && level !== "unlit";
+        const phasePayload = {
+            fireLevel: level,
+            fireLitBy: this.fireLitBy,
+            firewoodPledges: Array.from(this.firewoodPledges.entries()),
+            selectedTerrain: this._app._selectedTerrain ?? null,
+            ...(shouldNotifyFireLit ? { fireLitNotice: true } : {})
+        };
         if (!options.skipBroadcast) {
-            emitPhaseChanged("camp", {
-                fireLevel: level,
-                fireLitBy: this.fireLitBy,
-                firewoodPledges: Array.from(this.firewoodPledges.entries()),
-                selectedTerrain: this._app._selectedTerrain ?? null
-            });
+            emitPhaseChanged("camp", phasePayload);
             await this._app._saveRestState();
+        } else if (shouldNotifyFireLit) {
+            emitPhaseChanged("camp", phasePayload);
         }
         const _isTotm = this._app._isTotM;
         const willAdvance =
             !_isTotm
-            && isSimpleStationsMode()
             && this._app._phase === "camp"
             && !this._app._campToActivityDone
-            && this.fireLevel !== "unlit";
+            && this.fireLevel !== "unlit"
+            && (isSimpleStationsMode() || isComfortEnabled());
         if (willAdvance) {
+            await this._app._maybeSpendMakeCampCeremonyWoodBeforeAdvance();
             await this._app._advanceCampToActivity();
         } else if (!this._app._campToActivityDone && !options.skipRender) {
             this._app.render();

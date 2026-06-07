@@ -53,7 +53,7 @@ export function requiresMapCampFire() {
 }
 
 /**
- * TotM Activities: whittling campfire panel (requires comfort rules and Theater mode).
+ * Campfire minigame for Make Camp ceremony and activity-phase fire management.
  * @returns {boolean}
  */
 export function isCampfireMinigameEnabled() {

@@ -113,9 +113,9 @@ export function dispatch(data, ctx) {
 
                     console.error(`${MODULE_ID} | receivePhaseChange failed`, err);
                 });
-            } else if (ctx.playerRestActive) {
-                // Client is in a rest but has no app open (canvas-only phase, or dismissed sheet).
-                // Re-request the full rest state so we stay in sync.
+            } else if (!ctx.activePlayerRestApp && data.phase && data.phase !== "setup") {
+                // F5 during Make Camp (or any post-setup phase) may arrive before REST_STARTED.
+                // Re-request the full rest state so the player RSA opens without waiting on GM input.
 
                 Logger.log(`${MODULE_ID} | PHASE_CHANGED received but no player app, requesting state resync`);
                 emitRequestRestState(game.user.id);
@@ -140,7 +140,25 @@ export function dispatch(data, ctx) {
                 snapshotFireLevel: data.snapshot?.fireLevel ?? null,
                 snapshotRestId: data.snapshot?.restId ?? null
             });
-            ctx.activePlayerRestApp?.receiveRestSnapshot?.(data.snapshot);
+            if (ctx.activePlayerRestApp?.receiveRestSnapshot) {
+                ctx.activePlayerRestApp.receiveRestSnapshot(data.snapshot);
+            } else if (data.snapshot?.phase && data.snapshot.phase !== "setup") {
+                logCampfireReconnect("socket:REST_SNAPSHOT:orphan", {
+                    snapshotPhase: data.snapshot.phase,
+                    snapshotRestId: data.snapshot.restId ?? null
+                });
+                const restData = {
+                    restId: data.snapshot.restId ?? null,
+                    phase: data.snapshot.phase,
+                    fireLevel: data.snapshot.fireLevel ?? "unlit",
+                    coldCampDecided: !!data.snapshot.coldCampDecided,
+                    terrainTag: data.snapshot.selectedTerrain ?? "forest",
+                    comfort: data.snapshot.comfort ?? "rough",
+                    safeRestSpot: !!data.snapshot.safeRestSpot,
+                    activities: data.snapshot.activities ?? []
+                };
+                handleRestStarted({ restData, snapshot: data.snapshot, targetUserId: game.user.id }, ctx);
+            }
             break;
 
         // ── Camp Ceremony ────────────────────────────────────────────
@@ -265,7 +283,7 @@ export function dispatch(data, ctx) {
                 : "embers";
             const method = data.method ?? "Tinderbox";
             const app = ctx.activeRestSetupApp;
-            if (method === "Minigame" && isCampfireMinigameEnabled() && app._isTotM) {
+            if (method === "Minigame" && isCampfireMinigameEnabled()) {
                 void app._commitMakeCampCeremonyIgnite()
                     .catch(err => console.error(`${MODULE_ID} | campCeremonyIgnite:`, err));
                 break;

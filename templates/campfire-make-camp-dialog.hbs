@@ -86,18 +86,21 @@
             <button type="button" class="camp-cold-confirm-btn" data-action="campConfirmColdCampMap"><i class="fas fa-check"></i> Confirm cold camp</button>
         </div>
         {{else}}
+        {{#if campPitBlocksFireLighting}}
+        <p class="camp-fire-no-lighter-hint"><i class="fas fa-info-circle"></i> Place the campfire on the map before lighting.</p>
+        {{/if}}
         {{#if isGM}}
         <div class="camp-gm-override-row">
             {{#if campFireLighters.length}}
-            <button type="button" class="camp-gm-light-override" data-action="campLightFireMap" data-actor-id="{{campFireLighters.[0].actorId}}" data-method="{{campFireLighters.[0].method}}"><i class="fas fa-fire-alt"></i> Light it for them</button>
+            <button type="button" class="camp-gm-light-override" data-action="campLightFireMap" data-actor-id="{{campFireLighters.[0].actorId}}" data-method="{{campFireLighters.[0].method}}" {{#if campPitBlocksFireLighting}}disabled{{/if}}><i class="fas fa-fire-alt"></i> Light it for them</button>
             {{else}}
-            <button type="button" class="camp-gm-light-override" data-action="campLightFireMap" data-actor-id="__gm__" data-method="GM Override"><i class="fas fa-fire-alt"></i> Light Fire (GM)</button>
+            <button type="button" class="camp-gm-light-override" data-action="campLightFireMap" data-actor-id="__gm__" data-method="GM Override" {{#if campPitBlocksFireLighting}}disabled{{/if}}><i class="fas fa-fire-alt"></i> Light Fire (GM)</button>
             {{/if}}
         </div>
         {{else}}
         <div class="camp-fire-lighter-list">
         {{#if campFireLighters.length}}
-            {{#each campFireLighters}}{{#if isViewerActor}}<button type="button" class="camp-light-fire-btn" data-action="campLightFireMap" data-actor-id="{{actorId}}" data-method="{{method}}"><i class="fas fa-fire"></i> {{method}}</button>{{/if}}{{/each}}
+            {{#each campFireLighters}}{{#if isViewerActor}}<button type="button" class="camp-light-fire-btn" data-action="campLightFireMap" data-actor-id="{{actorId}}" data-method="{{method}}" {{#if ../campPitBlocksFireLighting}}disabled{{/if}}><i class="fas fa-fire"></i> {{method}}</button>{{/if}}{{/each}}
             {{#unless campViewerCanLight}}
             <p class="camp-fire-no-lighter-hint"><i class="fas fa-info-circle"></i> You don't have a tinderbox or fire cantrip. {{campFireLighterNames}} can light the fire.</p>
             {{/unless}}

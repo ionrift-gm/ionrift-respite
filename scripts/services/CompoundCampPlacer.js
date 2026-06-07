@@ -98,18 +98,55 @@ function findPlayerGearItem(actor, gearType) {
 }
 
 let _campSessionId = null;
+/** Scene where the current rest camp was placed (may differ from the active canvas). */
+let _campSceneId = null;
+/** Coalesce concurrent camp cleanup (abandon + close both call clearCampTokens). */
+let _clearCampTokensPromise = null;
+
+/**
+ * Delete tokens that still exist on the scene (safe when cleanup runs twice).
+ * @param {Scene} scene
+ * @param {string[]} tokenIds
+ * @param {object} [deleteOptions]
+ * @returns {Promise<number>}
+ */
+async function deleteSceneTokensIfPresent(scene, tokenIds, deleteOptions = {}) {
+    const existing = [...new Set(tokenIds)].filter(id => scene.tokens.has(id));
+    if (!existing.length) return 0;
+    await scene.deleteEmbeddedDocuments("Token", existing, deleteOptions);
+    return existing.length;
+}
 
 /**
  * Pit token (logs) for the current respite camp on the active scene.
  * @returns {TokenDocument|null}
  */
 function getPitTokenOnScene() {
-    const scene = canvas?.scene;
+    return getPitTokenOnSceneDoc(canvas?.scene ?? null);
+}
+
+/**
+ * @param {Scene|null} scene
+ * @returns {TokenDocument|null}
+ */
+function getPitTokenOnSceneDoc(scene) {
     if (!scene) return null;
     return scene.tokens.find(t => {
         const f = t.flags?.[MODULE_ID];
         return f?.isCampFurniture && f?.furnitureKey === "campfire";
     }) ?? null;
+}
+
+/**
+ * @param {TokenDocument} pit
+ * @param {number} gs
+ * @returns {{ x: number, y: number }}
+ */
+function pitCenterFromTokenDoc(pit, gs) {
+    return {
+        x: pit.x + (pit.width * gs) / 2,
+        y: pit.y + (pit.height * gs) / 2
+    };
 }
 
 /**
@@ -121,7 +158,80 @@ export function hydrateCampSessionFromScene() {
     const pit = getPitTokenOnScene();
     const sid = pit?.flags?.[MODULE_ID]?.campSessionId ?? null;
     if (sid) _campSessionId = sid;
+    if (pit?.parent?.id) _campSceneId = pit.parent.id;
     return sid;
+}
+
+/** @returns {string|null} */
+export function getCampSceneId() {
+    return _campSceneId;
+}
+
+/** @returns {string|null} */
+export function getCampSessionIdStored() {
+    return _campSessionId;
+}
+
+/**
+ * Restore camp placement pointers after loading persisted rest state.
+ * @param {{ sessionId?: string|null, sceneId?: string|null }} state
+ */
+export function restoreCampPlacementState(state = {}) {
+    if (state.sessionId) _campSessionId = state.sessionId;
+    if (state.sceneId) _campSceneId = state.sceneId;
+}
+
+/**
+ * @param {TokenDocument} tokenDoc
+ * @param {string|null} sessionId
+ * @returns {boolean}
+ */
+function tokenMatchesCampCleanup(tokenDoc, sessionId) {
+    const flags = tokenDoc.flags?.[MODULE_ID];
+    if (!flags) return false;
+    if (flags.isTorchStake || flags.isPerimeterTorch) return true;
+    if (flags.isCampFurniture) {
+        if (sessionId) return flags.campSessionId === sessionId;
+        return true;
+    }
+    if (flags.isCampfireBase || flags.isCampfireToken) return true;
+    return false;
+}
+
+/**
+ * @param {Scene} scene
+ * @param {string|null} sessionId
+ * @returns {Promise<number>}
+ */
+async function clearCampTokensOnScene(scene, sessionId) {
+    const campTokens = scene.tokens.filter(t => tokenMatchesCampCleanup(t, sessionId));
+    if (!campTokens.length) return 0;
+
+    for (const t of campTokens) {
+        const flags = t.flags?.[MODULE_ID];
+        if (flags?.isPlayerGear && flags?.ownerActorId) {
+            const actor = game.actors.get(flags.ownerActorId);
+            if (actor) {
+                const gk = flags.furnitureKey;
+                if (gk === "bedroll" || gk === "tent" || gk === "messkit") {
+                    const item = findPlayerGearItem(actor, gk);
+                    if (item) {
+                        try { await item.unsetFlag(MODULE_ID, "deployedInCamp"); } catch { /* ignore */ }
+                    }
+                }
+            }
+        }
+    }
+
+    const removed = await deleteSceneTokensIfPresent(
+        scene,
+        campTokens.map(t => t.id),
+        { ionriftAllowCampDelete: true }
+    );
+    if (removed > 0) {
+        Logger.log(`${MODULE_ID} | CompoundCampPlacer: cleared ${removed} camp token(s) on scene "${scene.name}"`);
+    }
+    return removed;
 }
 
 function gridSize() {
@@ -492,6 +602,7 @@ export async function placeCampfire(worldX, worldY, options = {}) {
     const cy = snapped.y ?? worldY;
 
     const sessionId = getCampSessionId();
+    _campSceneId = scene.id;
     const linkId = foundry.utils.randomID(8);
 
     const tx = cx - (gs / 2);
@@ -509,6 +620,7 @@ export async function placeCampfire(worldX, worldY, options = {}) {
         x: tx, y: ty,
         hidden: true,
         lockRotation: true,
+        locked: true,
         rotation: Math.floor(Math.random() * 360),
         disposition: -2,
         light: { bright: 0, dim: 0 },
@@ -546,6 +658,7 @@ export async function placeCampfire(worldX, worldY, options = {}) {
         x: tx, y: ty,
         hidden: true,
         lockRotation: true,
+        locked: true,
         rotation: 0,
         disposition: -2,
         light: lightConfig,
@@ -758,57 +871,49 @@ export async function clearPlayerCampGearType(actorId, gearType, sceneId = null)
  * Furniture matches the current campSessionId when set; otherwise all flagged
  * furniture. Prop-placed pit and torches always match.
  *
+ * @param {string|null} [sceneId] - Scene where the camp was placed (falls back to stored camp scene)
  * @returns {Promise<number>} Count of removed tokens
  */
-export async function clearCampTokens() {
+export async function clearCampTokens(sceneId = null) {
     if (!game.user.isGM) return 0;
+    if (_clearCampTokensPromise) return _clearCampTokensPromise;
 
-    const scene = canvas.scene;
-    if (!scene) return 0;
+    _clearCampTokensPromise = clearCampTokensImpl(sceneId).finally(() => {
+        _clearCampTokensPromise = null;
+    });
+    return _clearCampTokensPromise;
+}
 
+/**
+ * @param {string|null} sceneId
+ * @returns {Promise<number>}
+ */
+async function clearCampTokensImpl(sceneId = null) {
     hydrateCampSessionFromScene();
     const sessionId = _campSessionId;
-    const campTokens = scene.tokens.filter(t => {
-        const flags = t.flags?.[MODULE_ID];
-        if (!flags) return false;
-        if (flags.isTorchStake || flags.isPerimeterTorch) return true;
-        if (flags.isCampFurniture) {
-            if (sessionId) return flags.campSessionId === sessionId;
-            return true;
-        }
-        if (flags.isCampfireBase || flags.isCampfireToken) return true;
-        return false;
-    });
+    const preferredSceneId = sceneId ?? _campSceneId ?? null;
 
-    if (!campTokens.length) {
-        _campSessionId = null;
-        return 0;
+    const scenesToClear = new Set();
+    const preferred = resolveSceneForCampOp(preferredSceneId);
+    if (preferred) scenesToClear.add(preferred);
+
+    for (const scene of game.scenes ?? []) {
+        const hasCamp = scene.tokens.some(t => tokenMatchesCampCleanup(t, sessionId));
+        if (hasCamp) scenesToClear.add(scene);
     }
 
-    // Unflag deployed items before removing tokens
-    for (const t of campTokens) {
-        const flags = t.flags?.[MODULE_ID];
-        if (flags?.isPlayerGear && flags?.ownerActorId) {
-            const actor = game.actors.get(flags.ownerActorId);
-            if (actor) {
-                const gk = flags.furnitureKey;
-                if (gk === "bedroll" || gk === "tent" || gk === "messkit") {
-                    const item = findPlayerGearItem(actor, gk);
-                    if (item) {
-                        try { await item.unsetFlag(MODULE_ID, "deployedInCamp"); } catch { /* ignore */ }
-                    }
-                }
-            }
-        }
+    if (!scenesToClear.size && canvas?.scene) {
+        scenesToClear.add(canvas.scene);
     }
 
-    const ids = campTokens.map(t => t.id);
-    await scene.deleteEmbeddedDocuments("Token", ids);
+    let total = 0;
+    for (const scene of scenesToClear) {
+        total += await clearCampTokensOnScene(scene, sessionId);
+    }
 
-    Logger.log(`${MODULE_ID} | CompoundCampPlacer: cleared ${ids.length} camp tokens`);
     _campSessionId = null;
-
-    return ids.length;
+    _campSceneId = null;
+    return total;
 }
 
 /**
@@ -819,10 +924,10 @@ export async function clearCampTokens() {
 export async function clearCampfireSite() {
     if (!game.user.isGM) return 0;
 
-    const scene = canvas?.scene;
+    hydrateCampSessionFromScene();
+    const scene = resolveSceneForCampOp(_campSceneId) ?? canvas?.scene;
     if (!scene) return 0;
 
-    hydrateCampSessionFromScene();
     const sessionId = _campSessionId;
 
     const toRemove = scene.tokens.filter(t => {
@@ -841,11 +946,110 @@ export async function clearCampfireSite() {
         return 0;
     }
 
-    const ids = toRemove.map(t => t.id);
-    await scene.deleteEmbeddedDocuments("Token", ids);
+    const removed = await deleteSceneTokensIfPresent(
+        scene,
+        toRemove.map(t => t.id),
+        { ionriftAllowCampDelete: true }
+    );
     _campSessionId = null;
-    Logger.log(`${MODULE_ID} | clearCampfireSite: removed ${ids.length} layout token(s)`);
-    return ids.length;
+    if (removed > 0) {
+        Logger.log(`${MODULE_ID} | clearCampfireSite: removed ${removed} layout token(s)`);
+    }
+    return removed;
+}
+
+/**
+ * Move the campfire pit, flame, and layout tokens to a new center (stations stay
+ * on the standard cardinal offsets from the pit). GM only.
+ *
+ * @param {number} newCenterX
+ * @param {number} newCenterY
+ * @param {{ safeRestSpot?: boolean, simpleStations?: boolean }} [options]
+ * @returns {Promise<boolean>}
+ */
+export async function relocateCampfireSite(newCenterX, newCenterY, options = {}) {
+    if (!game.user.isGM) return false;
+
+    hydrateCampSessionFromScene();
+    const scene = resolveSceneForCampOp(_campSceneId) ?? canvas?.scene;
+    if (!scene || !canvas?.grid) return false;
+
+    const pit = getPitTokenOnSceneDoc(scene);
+    if (!pit) return false;
+
+    const gs = gridSize();
+    const oldCenter = pitCenterFromTokenDoc(pit, gs);
+    const snapped = canvas.grid.getSnappedPoint(
+        { x: newCenterX, y: newCenterY },
+        { mode: CONST.GRID_SNAPPING_MODES.CENTER }
+    );
+    const newCx = snapped?.x ?? newCenterX;
+    const newCy = snapped?.y ?? newCenterY;
+    const pitCenter = { x: newCx, y: newCy };
+
+    const sid = pit.flags?.[MODULE_ID]?.campSessionId ?? _campSessionId;
+    const flame = scene.tokens.find(t => {
+        const f = t.flags?.[MODULE_ID];
+        return f?.isCampfireToken && (!sid || f.campSessionId === sid);
+    }) ?? null;
+
+    const newTx = newCx - (gs / 2);
+    const newTy = newCy - (gs / 2);
+    const tokenUpdates = [];
+
+    tokenUpdates.push({ _id: pit.id, x: newTx, y: newTy });
+    if (flame) {
+        const w = flame.width ?? 1;
+        const h = flame.height ?? 1;
+        const dx = ((w - 1) * gs) / 2;
+        const dy = ((h - 1) * gs) / 2;
+        tokenUpdates.push({ _id: flame.id, x: newTx + dx, y: newTy + dy });
+    }
+
+    if (tokenUpdates.length) {
+        await scene.updateEmbeddedDocuments("Token", tokenUpdates);
+    }
+
+    const offset = 2 * gs;
+    const layoutSlots = getCampStationLayoutOffsets(offset, !!options.safeRestSpot, {
+        simpleStations: options.simpleStations ?? isSimpleStationsMode()
+    });
+    const slotOffsetByKey = new Map();
+    for (const slot of layoutSlots) {
+        if (slot.condition === false) continue;
+        if (!FURNITURE[slot.key]) continue;
+        slotOffsetByKey.set(slot.key, { dx: slot.dx, dy: slot.dy });
+    }
+
+    const layoutTokens = scene.tokens.filter(t => {
+        const f = t.flags?.[MODULE_ID];
+        if (!f?.isCampFurniture || f.isPlayerGear) return false;
+        if (f.furnitureKey === "campfire" || f.furnitureKey === "campfireFlame") return false;
+        if (sid) return f.campSessionId === sid;
+        return !!f.isPlaceholder || !!f.isSharedStation || !!f.targetStationKey;
+    });
+
+    const stationUpdates = [];
+    for (const doc of layoutTokens) {
+        const f = doc.flags?.[MODULE_ID];
+        const key = f?.targetStationKey ?? f?.furnitureKey;
+        const off = key ? slotOffsetByKey.get(key) : null;
+        if (!off) continue;
+        const w = doc.width ?? 1;
+        const h = doc.height ?? 1;
+        const worldX = newCx + off.dx;
+        const worldY = newCy + off.dy;
+        const v = validateCampEquipmentDrop(worldX, worldY, w, h, pitCenter, doc.id);
+        if (v.tx === null || v.ty === null) continue;
+        stationUpdates.push({ _id: doc.id, x: v.tx, y: v.ty });
+    }
+
+    if (stationUpdates.length) {
+        await scene.updateEmbeddedDocuments("Token", stationUpdates);
+    }
+
+    Logger.log(`${MODULE_ID} | relocateCampfireSite: (${oldCenter.x}, ${oldCenter.y}) -> (${newCx}, ${newCy}), ${stationUpdates.length} layout token(s)`);
+    return true;
 }
 
 /**
@@ -964,6 +1168,7 @@ export function isGearDeployed(actorId, gearType) {
  */
 export function resetCampSession() {
     _campSessionId = null;
+    _campSceneId = null;
 }
 
 /**

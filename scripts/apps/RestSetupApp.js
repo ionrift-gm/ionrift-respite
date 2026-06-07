@@ -35,6 +35,7 @@ import {
     placePlayerGear,
     clearCampTokens,
     clearCampfireSite,
+    relocateCampfireSite,
     clearPlayerCampGear,
     clearPlayerCampGearType,
     clearSharedCampStation,
@@ -49,6 +50,9 @@ import {
     CAMP_STATION_PLACEMENT_KEYS,
     getCampStationPlacementKeys,
     resetCampSession,
+    getCampSceneId,
+    getCampSessionIdStored,
+    restoreCampPlacementState,
     placeStationPlaceholders,
     promoteAllPlaceholders,
     pickCampfirePitBaseTexture,
@@ -371,12 +375,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._coldCampDecided = false;
         this._campPitCursorInFlight = false;
         this._campPitPlacementCancelled = false;
+        /** Active {@link #_pickPitWorldPoint} cancel callback (crosshair placement). */
+        this._campPitPickerCancel = null;
         this._campPlaceholdersEnsured = false;
         this._showCampfireCanvasPanel = false;
         this._campToActivityDone = false;
         /** Make Camp: GM moved past fire ceremony to gear placement and station layout (step 2 UI). */
         this._campStep2Entered = false;
         this._campfireApp = null;
+        /** @type {"camp"|"totm"|"station"|null} */
+        this._campfireEmbedHost = null;
+        /** @type {import("./StationActivityDialog.js").StationActivityDialog|null} */
+        this._stationFireMinigameDialog = null;
         this._campfireSnapshot = null;
         this._selectedCharacterId = null;
         this._activitySubTab = "identify"; // identify | activity | meal
@@ -544,6 +554,52 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (this._tavernTotmOverride) return true;
         try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; }
         catch { return true; }
+    }
+
+    /** Unified Make Camp panel (comfort + fire ceremony). TotM always; stations when comfort is on. */
+    _showFullMakeCampPanel() {
+        return this._isTotM || isComfortEnabled();
+    }
+
+    /** Docked minimal shell: stations map mode with comfort rules off only. */
+    _usesStationsMinimalCampShell() {
+        return !this._isTotM && !isComfortEnabled();
+    }
+
+    /** Stations map mode with comfort: auto-advance and lock pit after the fire is lit. */
+    _stationsComfortAutoAdvanceAfterFireLit() {
+        return !this._isTotM && isComfortEnabled();
+    }
+
+    /** Stations mode: lighting waits until the GM places the pit token (safe rest exempt). */
+    _campPitBlocksFireLighting() {
+        if (this._isTotM) return false;
+        if (this._engine?.safeRestSpot) return false;
+        return !hasCampfirePlaced();
+    }
+
+    /** Tooltip and banner copy when the map pit must be placed before lighting. */
+    _campPitIgniteBlockMessage() {
+        if (!this._campPitBlocksFireLighting()) return "";
+        if (game.user?.isGM) {
+            return "Place the campfire on the map (Place fire) before anyone can light it.";
+        }
+        return "The GM must place the campfire on the map before you can light the fire.";
+    }
+
+    /**
+     * Spend minigame staged kindling before stations auto-advance (TotM uses a separate path).
+     * @returns {Promise<void>}
+     */
+    async _maybeSpendMakeCampCeremonyWoodBeforeAdvance() {
+        if (!this._stationsComfortAutoAdvanceAfterFireLit()) return;
+        const cost = CampGearScanner.FIREWOOD_COST_BY_LEVEL[this._fireLevel ?? "unlit"] ?? 0;
+        if (cost <= 0) return;
+        const staged = this._makeCampStagedWood?.length ?? 0;
+        if (staged < cost) return;
+        await this._totmSpendMakeCampFirewood();
+        this._makeCampStagedWood = [];
+        this._makeCampStagedWoodTier = null;
     }
 
     /**
@@ -1311,6 +1367,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             magicScanComplete: this._magicScanComplete ?? false,
             magicScanResults: this._magicScanResults ?? null,
             tavernTotmOverride: !!this._tavernTotmOverride,
+            campSceneId: getCampSceneId(),
+            campSessionId: getCampSessionIdStored(),
             timestamp: Date.now()
         };
         await game.settings.set(MODULE_ID, "activeRest", state);
@@ -1331,6 +1389,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._eventsRolled = state.eventsRolled ?? false;
         this._activeTreeState = state.activeTreeState ?? null;
         this._campCeremony.restore(state);
+        restoreCampPlacementState({
+            sceneId: state.campSceneId ?? null,
+            sessionId: state.campSessionId ?? null
+        });
         this._campFireWoodSpendUserId = state.campFireWoodSpendUserId ?? null;
         this._campStep2Entered = state.campStep2Entered ?? false;
         this._selectedTerrain = state.selectedTerrain;
@@ -1848,6 +1910,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     async close(options = {}) {
 
         CampfireMakeCampDialog.closeIfOpen();
+        this._cancelCampPlacementCanvasMode();
         this._tearDownCampfireEmbed();
         await closeOpenStationDialog();
         if (this._isGM) {
@@ -1886,7 +1949,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
                 if (confirmed) {
                     emitRestResolved();
-                    clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
+                    clearCampTokens(getCampSceneId()).catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
                     resetCampSession();
                     this._clearDetectMagicScanSession();
                     await super.close(options);
@@ -1906,10 +1969,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 _showGmRestIndicator(this);
             } else {
                 this._gmMinimizedToFooter = false;
-                if (options.resolved) {
+                if (options.resolved && !options.abandoned) {
                     await this._clearRestState();
                     emitRestResolved();
-                    clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
+                    clearCampTokens(getCampSceneId()).catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
                     resetCampSession();
                 }
                 this._tearDownStationLayerCanvas();
@@ -1948,9 +2011,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         });
     }
 
-    /** Target width for Make Camp / activity campfire panel layouts. */
+    /** Target width for Make Camp / TotM activity+campfire side-panel layouts. */
     _campRestWindowTargetWidth() {
-        if (this._isTotM && (this._campCeremonyMinigameEnabled?.() || this._totmCampfireMinigamePanelEnabled?.())) {
+        const campWithMinigame = this._phase === "camp" && this._showFullMakeCampPanel()
+            && (this._campCeremonyMinigameEnabled?.() || this._totmCampfireMinigamePanelEnabled?.());
+        const activityWithCampfirePanel = this._phase === "activity"
+            && this._totmCampfireMinigamePanelEnabled?.();
+        if (campWithMinigame || activityWithCampfirePanel) {
             return Math.min(780, Math.round(window.innerWidth * 0.92));
         }
         return 720;
@@ -2193,7 +2260,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     _bindRestWindowResizeObserver() {
         const el = this.element;
         if (!el || this._restWindowResizeObserver) return;
-        if (!this._isTotM) return;
+        const watchCampFullPanel = this._phase === "camp" && this._showFullMakeCampPanel();
+        if (!this._isTotM && !watchCampFullPanel) return;
         const watchCamp = this._phase === "camp";
         const watchActivityCampfire = this._phase === "activity" && this._totmCampfireMinigamePanelEnabled();
         if (!watchCamp && !watchActivityCampfire) return;
@@ -2250,11 +2318,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const h = el.offsetHeight;
         if (h < 1) return;
 
+        if (this._phase === "camp" && this._usesStationsMinimalCampShell()) {
+            el.classList.add("ionrift-camp-dock");
+            const w = el.offsetWidth;
+            this.setPosition({
+                top: 64,
+                left: Math.max(8, window.innerWidth - w - 16)
+            });
+            return;
+        }
+
         el.classList.remove("ionrift-camp-dock");
         const top = Math.max(10, Math.round((window.innerHeight - h) / 2));
         const pos = { top };
 
-        if (this._isTotM && (this._phase === "camp" || this._phase === "activity")
+        if ((this._phase === "camp" || this._phase === "activity")
             && (this._campCeremonyMinigameEnabled?.() || this._totmCampfireMinigamePanelEnabled?.())) {
             const targetW = this._campRestWindowTargetWidth();
             pos.width = targetW;
@@ -2398,6 +2476,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 isViewerActor: (game.actors.get(l.actorId)?.ownership?.[game.user.id] ?? 0) >= OWNER
             }));
             campViewerCanLight = campFireLighters.some(l => l.isViewerActor);
+            if (this._campPitBlocksFireLighting()) campViewerCanLight = false;
             campFireLighterNames = campFireLighters.map(l => l.actorName).filter((v, i, a) => a.indexOf(v) === i).join(", ");
             campFireOtherLighterCount = campFireLighters.filter(l => !l.isViewerActor).length;
 
@@ -2517,6 +2596,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campFirePreviewLevel: this._campFirePreviewLevel ?? "embers",
             campPreviewIsColdCamp: this._isCampColdCampPreview(),
             campViewerCanLight,
+            campPitBlocksFireLighting: this._campPitBlocksFireLighting(),
             campFireOtherLighterCount,
             campFireLighterNames,
             mapComfortLabel,
@@ -3741,7 +3821,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             : [];
 
         let campScanData = null;
-        let campMakeCampPlacementUnlocked = false;
         let campMakeCampStep = 1;
         let campFireEncounterHint = "";
         let campFirePickerLevels = [];
@@ -3749,7 +3828,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         let campFireGateLevel = false;
         let campColdCampDecided = false;
         let campComfortIsHostile = false;
-        let canContinueToCampLayout = false;
         const _needsFireData = this._phase === "camp"
             || (this._phase === "activity" && this._isTotM && this._totmFireTabVisible());
         if (_needsFireData) {
@@ -3762,10 +3840,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // Gate: fire is lit, OR table decided cold camp (no fire)
             const fireCommitted = (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided;
             campColdCampDecided = !!this._coldCampDecided;
-            const campGatesReady = campfirePlacedGate && fireCommitted;
-            campMakeCampPlacementUnlocked = false;
             campMakeCampStep = 1;
-            canContinueToCampLayout = false;
             campFireGatePit = this._isTotM || !!this._engine?.safeRestSpot || campfirePlacedGate;
             campFireGateLevel = fireCommitted;
             // When fire hasn't been committed, preview defaults to "embers" (the
@@ -3890,6 +3965,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 isViewerActor: (game.actors.get(l.actorId)?.ownership?.[game.user.id] ?? 0) >= OWNER
             }));
             campViewerCanLight = campFireLighters.some(l => l.isViewerActor);
+            if (this._campPitBlocksFireLighting()) campViewerCanLight = false;
             campFireLighterNames = campFireLighters.map(l => l.actorName).filter((v, i, a) => a.indexOf(v) === i).join(", ");
             campFireOtherLighterCount = campFireLighters.filter(l => !l.isViewerActor).length;
 
@@ -3968,150 +4044,88 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const campPersonalSelected = campScanData && this._selectedCharacterId
             ? (campScanData.personalCards.find(p => p.actorId === this._selectedCharacterId) ?? null)
             : null;
-        const campGearForSelected = (() => {
-            if (this._phase !== "camp" || !this._selectedCharacterId) return null;
-            const a = game.actors.get(this._selectedCharacterId);
-            if (!a) return null;
-            const items = a.items?.map(i => i.name?.toLowerCase() ?? "") ?? [];
-            const hasBedroll = items.some(n => n.includes("bedroll"));
-            const hasTent = items.some(n => n.includes("tent"));
-            const hasMessKit = items.some(n =>
-                n.includes("mess kit") || (n.includes("cook") && n.includes("utensil"))
-            );
-            const canDrag = this._isGM || !!a.isOwner;
-            const isOwner = !!a.isOwner;
-            const personalCamp = campScanData?.personalCards?.find(p => p.actorId === this._selectedCharacterId);
-            const exhaustionRisk = !!personalCamp?.recovery?.exhaustionDC;
-            const fireIsLit = (this._fireLevel ?? "unlit") !== "unlit";
-            const tentDeployed = isGearDeployed(a.id, "tent");
-            const bedrollDeployed = isGearDeployed(a.id, "bedroll");
-            const messKitDeployed = isGearDeployed(a.id, "messkit");
-            const hasDeployedCampGear = tentDeployed || bedrollDeployed || messKitDeployed;
-            const placementUnlocked = (this._phase === "activity");
-            const canDragGear = canDrag && (hasDeployedCampGear || placementUnlocked);
-            return {
-                actorId: a.id,
-                actorName: a.name,
-                actorImg: a.img || "icons/svg/mystery-man.svg",
-                hasBedroll,
-                hasTent,
-                hasMessKit,
-                bedrollDeployed,
-                tentDeployed,
-                messKitDeployed,
-                canDrag: canDragGear,
-                isOwner,
-                showClearOwnGear: !this._isGM && isOwner && hasDeployedCampGear,
-                fireIsLit,
-                exhaustionRisk,
-                sceneHasDroppables: hasTent || hasBedroll || hasMessKit,
-                /** Mess kit: advantage is inactive when a save is relevant and fire is out. */
-                messAdvantageOff: hasMessKit && !fireIsLit && exhaustionRisk
-            };
-        })();
-
-        const campPlacementRuleHint = this._phase === "camp"
-            ? "Place within 3 squares of the campfire. Tokens cannot overlap."
-            : "";
-
         const campfirePlaced = this._phase === "camp" && hasCampfirePlaced();
 
         const campfireDragCard = (() => {
-            if (this._phase !== "camp" || safeRestSpot) return { show: false };
+            if (this._phase !== "camp" || safeRestSpot || !this._isGM) return { show: false };
             const placed = campfirePlaced;
-            const required = !this._isTotM;
-            const stationPreview = !this._isTotM
-                ? getCampStationPlacementKeys(!!this._engine?.safeRestSpot, {
-                    simpleStations: isSimpleStationsMode()
-                }).map(key => {
-                    const st = CAMP_STATIONS.find(s => s.furnitureKey === key);
-                    return {
-                        key,
-                        label: st?.label ?? key,
-                        icon: st?.icon ?? "fas fa-cube"
-                    };
-                })
-                : [];
-            const stationLabels = stationPreview.map(s => s.label).join(", ");
+            if (this._isTotM) {
+                const hint = placed
+                    ? "On the map for this rest. Removed when the rest ends."
+                    : "Optional. Drag onto the scene for a visual campfire.";
+                const shortLabel = placed
+                    ? (this._isGM ? "Move fire" : "On map")
+                    : "Campfire";
+                const tooltip = placed && this._isGM
+                    ? "Click to pick a new map spot."
+                    : hint;
+                return {
+                    show: true,
+                    placed,
+                    required: false,
+                    canDrag: this._isGM && !placed,
+                    canReclaim: this._isGM && placed,
+                    hint,
+                    shortLabel,
+                    tooltip
+                };
+            }
+            if (!isComfortEnabled()) return { show: false };
+            const fireIsLit = (this._fireLevel ?? "unlit") !== "unlit";
+            if (fireIsLit) return { show: false };
             const hint = placed
-                ? (required
-                    ? "Build sites are on the map. Light the fire to finish setup."
-                    : "On the map for this rest. Removed when the rest ends.")
-                : (required
-                    ? "Drag onto the scene to set the camp center. Workstations appear around it."
-                    : "Optional. Drag onto the scene for a visual campfire.");
+                ? "Station markers move with the campfire."
+                : "Click for crosshair placement, or drag onto the map. Workstations appear around the pit.";
             const shortLabel = placed
                 ? (this._isGM ? "Move fire" : "On map")
-                : (required ? "Place fire" : "Campfire");
+                : "Place fire";
             const tooltip = placed && this._isGM
-                ? `Click to pick up the campfire and place it elsewhere. ${stationLabels ? `${hint} Stations: ${stationLabels}.` : hint}`
-                : (stationLabels ? `${hint} Stations: ${stationLabels}.` : hint);
+                ? "Click to pick a new map spot. Station markers move with the campfire."
+                : hint;
             return {
                 show: true,
                 placed,
-                required,
+                required: true,
                 canDrag: this._isGM && !placed,
                 canReclaim: this._isGM && placed,
+                placementClick: this._isGM && !placed,
                 hint,
                 shortLabel,
-                tooltip,
-                stationPreview
+                tooltip
             };
         })();
 
+        const campfireCanMove = this._phase === "camp"
+            && this._usesStationsMinimalCampShell()
+            && this._isGM
+            && campfirePlaced;
+
         const canProceedFromMakeCamp = (() => {
             if (this._phase !== "camp") return false;
+            const comfortOn = isComfortEnabled();
+            const mapCampFire = requiresMapCampFire();
             const coldCampPreview = !!this._coldCampPreview;
+            const pitOk = this._isTotM || safeRestSpot
+                || (!(comfortOn || mapCampFire) ? true : campfirePlaced);
             const fireOk = safeRestSpot
+                || !(comfortOn || mapCampFire)
                 || (this._fireLevel ?? "unlit") !== "unlit"
                 || !!this._coldCampDecided
                 || coldCampPreview;
-            const pitOk = this._isTotM || safeRestSpot || campfirePlaced;
             return fireOk && pitOk;
         })();
 
         const proceedBlockedHint = (() => {
             if (this._phase !== "camp") return "Light the fire or choose cold camp";
-            if (!this._isTotM && !safeRestSpot && !campfirePlaced) {
+            const comfortOn = isComfortEnabled();
+            const mapCampFire = requiresMapCampFire();
+            if ((comfortOn || mapCampFire) && !this._isTotM && !safeRestSpot && !campfirePlaced) {
                 return "Place the campfire on the map first";
             }
-            return "Light the fire or choose cold camp";
-        })();
-
-        const campStationCards = (() => {
-            if (this._phase !== "camp") return [];
-            const actor = this._selectedCharacterId ? game.actors.get(this._selectedCharacterId) : null;
-            const rosterSelected = !!actor;
-            const placementKeys = getCampStationPlacementKeys(!!this._engine?.safeRestSpot, {
-                simpleStations: isSimpleStationsMode()
-            });
-            return placementKeys.map(key => {
-                const st = CAMP_STATIONS.find(s => s.furnitureKey === key);
-                const deployed = isStationDeployed(key);
-                const meetsRequirement = actor ? canPlaceStation(actor, key) : false;
-                const isOwner = !!actor?.isOwner;
-                let canDrag = false;
-                if (campMakeCampPlacementUnlocked && campfirePlaced && !deployed) {
-                    if (this._isGM) canDrag = true;
-                    else if (rosterSelected && isOwner && meetsRequirement) canDrag = true;
-                }
-                const canRecallStation = deployed && (
-                    this._isGM || (rosterSelected && isOwner && meetsRequirement)
-                );
-                return {
-                    furnitureKey: key,
-                    label: st?.label ?? key,
-                    icon: st?.icon ?? "fas fa-cube",
-                    deployed,
-                    canDrag,
-                    canRecallStation,
-                    requirementHint: stationPlacementRequirementHint(key),
-                    rosterSelected,
-                    meetsRequirement,
-                    isOwner,
-                    actorId: actor?.id ?? ""
-                };
-            });
+            if (comfortOn || mapCampFire) {
+                return "Light the fire or choose cold camp";
+            }
+            return "Place the campfire on the map first";
         })();
 
         // Whether the Meal phase runs as a distinct step this rest (drives the stepper).
@@ -4189,6 +4203,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return {
             isGM: this._isGM,
             isTheaterMode: this._isTotM,
+            showFullMakeCampPanel: this._phase === "camp" && this._showFullMakeCampPanel(),
+            stationsMinimalCampShell: this._phase === "camp" && this._usesStationsMinimalCampShell(),
             simpleStationsMode: isSimpleStationsMode(),
             workbenchIdentifyUiEnabled: isWorkbenchIdentifyUiEnabled(),
             encountersEnabled,
@@ -4830,13 +4846,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campConditionsBar: this._buildCampConditionsBar(campScanData, { safeRestSpot, encountersEnabled }),
             campScan: campScanData,
             comfortEnabled: isComfortEnabled(),
-            campMakeCampPlacementUnlocked,
-            campGatesReady: this._phase === "camp" && !!(campMakeCampStep === 1 && campFireGatePit && campFireGateLevel),
-            canContinueToCampLayout: false,
             canProceedFromCamp: canProceedFromMakeCamp,
             canProceedFromMakeCamp,
             proceedBlockedHint,
             campfireDragCard,
+            campfireCanMove,
             campMinimalMode: this._phase === "camp",
             showArtNudge: this._phase === "camp" && this._shouldShowArtNudge(),
             artNudgeIsUpdate: this._phase === "camp" && ImageResolver.hasArtPack && !ImageResolver.hasStationTokens,
@@ -4868,7 +4882,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 eventsModeIsPick: false
             }),
             campPitPlacementCancelled: !!this._campPitPlacementCancelled,
-            showCampfireCanvasPanel: !!this._showCampfireCanvasPanel,
             campMakeCampStep,
             campFireEncounterHint,
             showCampCeremonyMinigame: this._campCeremonyMinigameEnabled(),
@@ -4902,13 +4915,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campFireTierCards,
             campFireTotalPledged,
             campViewerCanLight,
+            campPitBlocksFireLighting: this._phase === "camp" && this._campPitBlocksFireLighting(),
             campFireOtherLighterCount,
             campFireLighterNames,
             campPersonalSelected,
-            campGearForSelected,
-            campPlacementRuleHint,
             campfirePlaced,
-            campStationCards,
             craftingDrawer: this._buildCraftingDrawerContext(),
             encounterBar: (this._engine && !this._eventsRolled && !this._engine.safeRestSpot && encountersEnabled) ? (() => {
                 const bd = this._engine._encounterBreakdown ?? {};
@@ -5460,6 +5471,87 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Stations map mode with comfort rules off: campfire dialog is gear-only (no Fire tab).
+     * @returns {boolean}
+     */
+    isCampfireStationFlavorOnly() {
+        return this._phase === "activity" && !this._isTotM && !isComfortEnabled();
+    }
+
+    /**
+     * Activity-phase campfire station tabs (Camp / Fire).
+     * @returns {Array<{ id: string, label: string }>}
+     */
+    getCampfireStationDialogTabs() {
+        if (this._phase !== "activity" || this._isTotM) return [];
+        if (this.isCampfireStationFlavorOnly()) {
+            return [{ id: "camp", label: "Camp" }];
+        }
+        if (!this.getFireTabContextForStationDialog()) return [];
+        return [
+            { id: "camp", label: "Camp" },
+            { id: "fire", label: "Fire" }
+        ];
+    }
+
+    /**
+     * Stations + comfort off: bedroll, tent, mess kit for map placement (no comfort copy).
+     * @param {string} actorId
+     * @returns {{ gearSlots: object[] }|null}
+     */
+    getCampGearFlavorPanelForActor(actorId) {
+        if (!this.isCampfireStationFlavorOnly()) return null;
+        const gearCtx = this.getCampGearContextForActor(actorId);
+        if (!gearCtx) return null;
+        const g = gearCtx;
+        const slot = (def) => ({
+            gearType: def.gearType,
+            title: def.title,
+            icon: def.icon,
+            actorId: g.actorId,
+            isMissing: !def.owned,
+            isPlaced: def.owned && def.deployed,
+            canDrag: def.owned && def.canDrag,
+            isReadonlyOwned: def.owned && !def.canDrag && !def.deployed,
+            flavorLine: def.owned ? def.ownedLine : def.missingLine
+        });
+        return {
+            gearSlots: [
+                slot({
+                    gearType: "bedroll",
+                    title: "Bedroll",
+                    icon: "fas fa-bed",
+                    owned: g.hasBedroll,
+                    deployed: g.bedrollDeployed,
+                    canDrag: g.canDragBedroll,
+                    ownedLine: "Lay out on the map for roleplay.",
+                    missingLine: "Not in inventory."
+                }),
+                slot({
+                    gearType: "tent",
+                    title: "Tent",
+                    icon: "fas fa-campground",
+                    owned: g.hasTent,
+                    deployed: g.tentDeployed,
+                    canDrag: g.canDragTent,
+                    ownedLine: "Pitch on the map for roleplay.",
+                    missingLine: "Not in inventory."
+                }),
+                slot({
+                    gearType: "messkit",
+                    title: g.messKitSource === "utensils" ? "Cook's Utensils" : "Mess kit",
+                    icon: g.messKitSource === "utensils" ? "fas fa-mortar-pestle" : "fas fa-utensils",
+                    owned: g.hasMessKit,
+                    deployed: g.messKitDeployed,
+                    canDrag: g.canDragMessKit,
+                    ownedLine: "Place on the map for roleplay.",
+                    missingLine: "Not in inventory."
+                })
+            ]
+        };
+    }
+
+    /**
      * CampGearScanner result for activity-phase station dialogs. Player clients often have no
      * RestFlowEngine; comfort and fire rows use terrain + snapshot fields only.
      * @returns {object|null}
@@ -5503,6 +5595,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @returns {{ mapComfortTier: string, mapComfortLabel: string, mapComfortLine: string, mapComfortTierClass: string }|null}
      */
     getCampComfortAdvisoryForStationDialog() {
+        if (this.isCampfireStationFlavorOnly()) return null;
         const campScanData = this._getCampScanDataForActivityStationDialog();
         if (!campScanData) return null;
         const mapComfortTier = campScanData.campComfort ?? "rough";
@@ -5521,17 +5614,42 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @returns {object|null}
      */
     getFireTabContextForStationDialog() {
+        if (this.isCampfireStationFlavorOnly()) return null;
         const campScanData = this._getCampScanDataForActivityStationDialog();
         if (!campScanData) return null;
+
+        if (this._stationsFireMinigameEnabled()) {
+            const coldCamp = !!this._coldCampDecided;
+            const curLevel = this._fireLevel ?? "unlit";
+            const effectiveScanLevel = coldCamp ? "cold_camp" : curLevel;
+            let campFireEncounterHint = "";
+            if (effectiveScanLevel === "cold_camp") {
+                campFireEncounterHint = "Cold camp: harder for enemies to spot (lower encounter chance).";
+            } else if (effectiveScanLevel === "unlit") {
+                campFireEncounterHint = "Use the campfire to choose intensity or go cold.";
+            } else if (effectiveScanLevel === "embers") {
+                campFireEncounterHint = "Embers: no change to encounter chance.";
+            } else if (effectiveScanLevel === "campfire") {
+                campFireEncounterHint = "Campfire: light makes the camp easier for enemies to spot.";
+            } else if (effectiveScanLevel === "bonfire") {
+                campFireEncounterHint = "Bonfire: visible from far off; enemies spot the camp easily.";
+            }
+            return {
+                useFireMinigame: true,
+                campFireEncounterHint,
+                campFireIsLit: curLevel !== "unlit",
+                campFireTabColdCamp: coldCamp
+            };
+        }
 
         const coldCamp = !!this._coldCampDecided;
         const curLevel = this._fireLevel ?? "unlit";
         // Local preview wins for the hint and header so the impact is visible before commit.
-        const previewLevel = (!coldCamp && ["embers", "campfire", "bonfire"].includes(this._stationFirePreviewLevel)
+        const previewLevel = (["embers", "campfire", "bonfire"].includes(this._stationFirePreviewLevel)
             && this._stationFirePreviewLevel !== curLevel)
             ? this._stationFirePreviewLevel
             : null;
-        const effectiveScanLevel = coldCamp ? "cold_camp" : (previewLevel ?? curLevel);
+        const effectiveScanLevel = previewLevel ?? (coldCamp ? "cold_camp" : curLevel);
 
         let campFireEncounterHint = "";
         if (effectiveScanLevel === "cold_camp") {
@@ -5556,6 +5674,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const baseComfort = campScanData.campComfortPreFire ?? campScanData.campComfort ?? "rough";
         const baseIdx = COMFORT_TIERS.indexOf(baseComfort);
         const COMFORT_DELTA = { embers: 0, campfire: 0, bonfire: 1 };
+        const F = CampGearScanner.FIREWOOD_COST_BY_LEVEL;
+        const costCur = coldCamp || curLevel === "unlit" ? 0 : (F[curLevel] ?? 0);
+        const actors = getPartyActors();
+        const hasTinderbox = actors.some(a => a.items.some(i => {
+            const n = i.name?.toLowerCase() ?? "";
+            return n.includes("tinderbox") || n.includes("flint and steel") || n.includes("flint & steel");
+        }));
+        const totalPartyFirewood = actors.reduce((sum, a) => sum + countActorFirewood(a), 0);
+
         const campFireTierCards = ["embers", "campfire", "bonfire"].map(id => {
             const delta = COMFORT_DELTA[id] ?? 0;
             const resultIdx = Math.min(baseIdx + delta, COMFORT_TIERS.length - 1);
@@ -5564,41 +5691,47 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const comfortHint = delta !== 0
                 ? `${TIER_LABELS[baseComfort] ?? baseComfort} to ${resultLabel}`
                 : resultLabel;
-            const isActive = curLevel === id;
-            const F = CampGearScanner.FIREWOOD_COST_BY_LEVEL;
+            const isActive = !coldCamp && curLevel === id;
             const costNew = F[id] ?? 0;
-            const costCur = (curLevel === "unlit") ? 0 : (F[curLevel] ?? 0);
             const isGm = !!game.user?.isGM;
             let tierChangeBlocked = true;
-            if (!coldCamp && !isActive) {
+            let tierDisabledReason = "";
+            if (!isActive) {
                 if (costNew < costCur) {
                     tierChangeBlocked = false;
                 } else {
                     const need = costNew - costCur;
-                    const actors = getPartyActors();
-                    const totalFirewood = actors.reduce((sum, a) => {
-                        const it = a.items.find(i => {
-                            const n = i.name?.toLowerCase() ?? "";
-                            return n.includes("firewood") || n === "kindling";
-                        });
-                        return sum + (it?.system?.quantity ?? 0);
-                    }, 0);
-                    tierChangeBlocked = need > 0 && totalFirewood < need;
+                    if (costCur === 0 && !hasTinderbox) {
+                        tierChangeBlocked = true;
+                        tierDisabledReason = "Someone needs a tinderbox or flint and steel.";
+                    } else if (need > 0 && totalPartyFirewood < need) {
+                        tierChangeBlocked = true;
+                        tierDisabledReason = `Need at least ${need} firewood in the party.`;
+                    } else {
+                        tierChangeBlocked = false;
+                    }
                 }
             }
             return {
                 id,
                 label: id.charAt(0).toUpperCase() + id.slice(1),
-                    costLabel: CampGearScanner.firewoodCostLabel(id),
+                costLabel: CampGearScanner.firewoodCostLabel(id),
                 comfortHint,
                 comfortChanged: delta !== 0,
                 active: isActive,
                 previewActive: previewLevel === id,
                 actionBlocked: isActive ? false : tierChangeBlocked,
                 setDisabled: isActive ? false : (isGm ? tierChangeBlocked : true),
-                requestDisabled: tierChangeBlocked
+                requestDisabled: tierChangeBlocked,
+                disabledReason: tierDisabledReason
             };
         });
+
+        const campFireColdCampCard = {
+            active: coldCamp,
+            setDisabled: coldCamp,
+            requestDisabled: coldCamp
+        };
 
         const campFirewoodPledgeList = Array.from(this._firewoodPledges.values())
             .filter(p => p.count > 0)
@@ -5606,6 +5739,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         return {
             campFireTierCards,
+            campFireColdCampCard,
             campFireEncounterHint,
             campFirewoodPledgeList,
             campFireIsLit: (this._fireLevel ?? "unlit") !== "unlit",
@@ -5651,6 +5785,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * }|null}
      */
     getCampPersonalCardForActor(actorId) {
+        if (this.isCampfireStationFlavorOnly()) return null;
         if (this._phase !== "activity" || !actorId) return null;
         const gearCtx = this.getCampGearContextForActor(actorId);
         if (!gearCtx) return null;
@@ -5976,7 +6111,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const showTotmCampfirePanelEarly = this._shouldShowTotmCampfirePanel();
         this._bindRestWindowUserMoveTracking();
-        if (this._isTotM && (this._phase === "camp" || (this._phase === "activity" && showTotmCampfirePanelEarly))) {
+        if ((this._isTotM && (this._phase === "camp" || (this._phase === "activity" && showTotmCampfirePanelEarly)))
+            || (this._phase === "camp" && this._showFullMakeCampPanel())) {
             this._bindRestWindowResizeObserver();
         } else {
             this._disposeRestWindowResizeObserver();
@@ -6007,22 +6143,35 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (this.element) {
             this.element.classList.toggle("totm-activity-campfire-panel", showTotmCampfirePanel);
         }
+        const showCampCeremony = this._phase === "camp" && this._campCeremonyMinigameEnabled();
+        const stationHostsEmbed = this._campfireEmbedHost === "station";
         if (showTotmCampfirePanel) {
             this._mountCampfireEmbed("activity");
-        } else if (this._phase !== "camp" || !this._campCeremonyMinigameEnabled()) {
+        } else if (showCampCeremony) {
+            this._mountCampfireEmbed("camp");
+            this._syncCampCeremonyPreviewToEmbed();
+        } else if (!stationHostsEmbed) {
             this._tearDownCampfireEmbed("onRenderBindings:noPanel");
         }
 
         // Camp: inline Make Camp panel, draggable campfire card, optional minigame embed
         if (this._phase === "camp") {
-            if (this._campCeremonyMinigameEnabled()) {
-                this._mountCampfireEmbed("camp");
-                this._syncCampCeremonyPreviewToEmbed();
-            } else {
+            if (!this._campCeremonyMinigameEnabled() && !stationHostsEmbed) {
                 this._tearDownCampfireEmbed("onRenderBindings:campCeremonyDisabled");
             }
             this._bindCampDragHandlers(this.element);
-            if (this.element) this.element.classList.add("totm-camp-active");
+            if (this.element) {
+                this.element.classList.toggle("totm-camp-active", this._showFullMakeCampPanel());
+            }
+            if (!this._isTotM && this._isGM) {
+                this._healOrphanCampfirePlacementState();
+            }
+            if (this._usesStationsMinimalCampShell() && this._isGM && !hasCampfirePlaced()
+                && !this._campPitCursorInFlight && !this._campPitPlacementCancelled) {
+                void this._startCampPitCursorFlow();
+            } else if (this._usesStationsMinimalCampShell() && hasCampfirePlaced() && !this._campToActivityDone && !isStationLayerActive()) {
+                void this._refreshCampPitNoticeLayer();
+            }
             if (!this._isTotM && this._isGM && hasCampfirePlaced() && !this._campPlaceholdersEnsured) {
                 this._campPlaceholdersEnsured = true;
                 void placeStationPlaceholders(!!this._engine?.safeRestSpot, {
@@ -8549,11 +8698,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Shared gates for TotM fire UI (comfort on, not safe rest, no sealed shelter).
+     * Shared gates for activity-phase fire UI (comfort on, not safe rest, no sealed shelter).
      * @returns {boolean}
      */
-    _totmFireUiEnabled() {
-        if (!this._isTotM || this._phase !== "activity") return false;
+    _activityFireUiEnabled() {
+        if (this._phase !== "activity") return false;
         if (!isComfortEnabled()) return false;
         let safeFromSetting = false;
         try {
@@ -8567,6 +8716,48 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             .map(([id]) => id);
         if (activeShelterIds.some(id => magicalShelters.includes(id))) return false;
         return true;
+    }
+
+    /** @returns {boolean} */
+    _totmFireUiEnabled() {
+        return this._isTotM && this._activityFireUiEnabled();
+    }
+
+    /** Stations activity: Fire tab uses the campfire minigame instead of tier buttons. */
+    _stationsFireMinigameEnabled() {
+        return !this._isTotM
+            && this._phase === "activity"
+            && isCampfireMinigameEnabled()
+            && this._activityFireUiEnabled()
+            && !this.isCampfireStationFlavorOnly();
+    }
+
+    /** @returns {boolean} */
+    isStationFireMinigameTab() {
+        return this._stationsFireMinigameEnabled();
+    }
+
+    /**
+     * Mount the activity campfire minigame inside the Stations Fire tab.
+     * @param {HTMLElement|null} host
+     * @param {import("./StationActivityDialog.js").StationActivityDialog|null} dialog
+     */
+    mountStationFireMinigame(host, dialog = null) {
+        if (!host || !this._stationsFireMinigameEnabled()) return;
+        this._stationFireMinigameDialog = dialog;
+        this._mountCampfireEmbed("station", { host });
+    }
+
+    /**
+     * Release the minigame embed when the station dialog closes or leaves the Fire tab.
+     * @param {import("./StationActivityDialog.js").StationActivityDialog|null} dialog
+     */
+    releaseStationFireMinigame(dialog = null) {
+        if (this._campfireEmbedHost !== "station") return;
+        if (dialog && this._stationFireMinigameDialog && dialog !== this._stationFireMinigameDialog) return;
+        this._tearDownCampfireEmbed("stationDialogRelease");
+        this._campfireEmbedHost = null;
+        this._stationFireMinigameDialog = null;
     }
 
     /** @returns {boolean} */
@@ -8832,10 +9023,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         );
     }
 
-    /** Make Camp (TotM): minigame ceremony before fire is committed. */
+    /** Make Camp: minigame ceremony before fire is committed (TotM or stations with comfort). */
     _campCeremonyMinigameEnabled() {
-        if (!isCampfireMinigameEnabled() || !this._isTotM || this._phase !== "camp") return false;
-        if (!isComfortEnabled()) return false;
+        if (!isCampfireMinigameEnabled() || this._phase !== "camp") return false;
+        if (!this._showFullMakeCampPanel()) return false;
         let safeFromSetting = false;
         try {
             safeFromSetting = !!game.settings.get(MODULE_ID, "safeRestSpot");
@@ -8848,13 +9039,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /**
      * First successful minigame ignite during Make Camp commits the previewed tier (segment picker).
-     * @param {{ readyToLight?: boolean }} [opts]
+     * @param {{ readyToLight?: boolean, actorId?: string, method?: string }} [opts]
      */
     async _commitMakeCampCeremonyIgnite(opts = {}) {
         if (this._commitMakeCampCeremonyInFlight) return;
+        if (this._fireLitBy && (this._fireLevel ?? "unlit") !== "unlit") return;
         if (this._phase !== "camp" || this._campToActivityDone) return;
-        if (!isCampfireMinigameEnabled() || !this._isTotM) return;
+        if (!this._campCeremonyMinigameEnabled()) return;
         if (this._isCampColdCampPreview()) return;
+        if (this._campPitBlocksFireLighting()) {
+            ui.notifications.warn("Place the campfire on the map before lighting.");
+            return;
+        }
 
         const chosenLevel = ["embers", "campfire", "bonfire"].includes(this._campFirePreviewLevel)
             ? this._campFirePreviewLevel
@@ -8869,10 +9065,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
-        const actor = this._selectedCharacterId
+        const selectedActor = this._selectedCharacterId
             ? game.actors.get(this._selectedCharacterId)
             : null;
-        const actorId = actor?.id ?? getPartyActors()[0]?.id;
+        const actorId = opts.actorId ?? selectedActor?.id ?? getPartyActors()[0]?.id;
+        const method = opts.method ?? "Minigame";
         if (!actorId) return;
 
         if ((this._fireLevel ?? "unlit") !== "unlit") {
@@ -8881,7 +9078,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         if (!game.user.isGM) {
-            emitCampLightFire(game.user.id, actorId, "Minigame", chosenLevel);
+            emitCampLightFire(game.user.id, actorId, method, chosenLevel);
             return;
         }
 
@@ -8890,9 +9087,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             await this._campCeremony.lightFire(
                 game.user.id,
                 actorId,
-                "Minigame",
+                method,
                 chosenLevel,
-                { autoAdvanceTotm: true }
+                { autoAdvanceTotm: this._isTotM }
             );
         } finally {
             this._commitMakeCampCeremonyInFlight = false;
@@ -8938,23 +9135,32 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             ? await this._spendCeremonyStagedWood(cost)
             : await this._spendPartyFirewoodForMakeCamp(cost, lighterUserId);
 
+        if (!spend.ok) return;
+
         const level = this._fireLevel ?? "campfire";
         const label = level.charAt(0).toUpperCase() + level.slice(1);
         const lighterName = this._fireLitBy?.actorName ?? null;
-        const donors = spend.spendNames.join(" and ");
+        const donors = RestSetupApp._formatCampFirewoodDonors(spend.spendNames);
 
         if (!spend.spendNames.length) {
             ui.notifications.info(`Firewood for the ${label} is provided.`);
-        } else if (!spend.ok) {
-            ui.notifications.info(`Firewood for ${label} taken from ${donors}; the rest is provided.`);
         } else {
-            const allFromLighter = lighterName && spend.spendNames.every(n => n === lighterName);
+            const uniqueDonors = [...new Set(spend.spendNames.filter(Boolean))];
+            const allFromLighter = lighterName && uniqueDonors.length === 1 && uniqueDonors[0] === lighterName;
             if (allFromLighter) {
                 ui.notifications.info(`${donors} provides firewood for the ${label}.`);
             } else {
                 ui.notifications.info(`Firewood for ${label} taken from ${donors}.`);
             }
         }
+    }
+
+    /** @param {string[]} names */
+    static _formatCampFirewoodDonors(names) {
+        const unique = [...new Set((names ?? []).filter(Boolean))];
+        if (unique.length <= 1) return unique[0] ?? "";
+        if (unique.length === 2) return `${unique[0]} and ${unique[1]}`;
+        return `${unique.slice(0, -1).join(", ")} and ${unique[unique.length - 1]}`;
     }
 
     _syncTotmCampfireEmbedFromRest() {
@@ -8968,8 +9174,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Apply a fire tier change from the minigame meter (douse, fuel). Uses the same spend rules as the Fire tab.
      * @param {string} level - embers | campfire | bonfire | unlit
      */
-    async applyTotmFireLevelFromMinigame(level) {
-        if (!this._totmFireUiEnabled()) return;
+    async applyActivityFireLevelFromMinigame(level) {
+        if (!this._activityFireUiEnabled()) return;
         const cur = this._fireLevel ?? "unlit";
         if (level === cur) return;
 
@@ -8980,6 +9186,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 return;
             }
             await this.setColdCampDuringActivity();
+            this._syncTotmCampfireEmbedFromRest();
+            if (this._campfireApp) void this._campfireApp.render();
             this.render();
             return;
         }
@@ -8994,16 +9202,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Mount campfire minigame embed (Make Camp ceremony or Activities side panel).
-     * @param {"camp"|"activity"} mode
+     * Mount campfire minigame embed (Make Camp ceremony, TotM side panel, or Stations Fire tab).
+     * @param {"camp"|"activity"|"station"} mode
+     * @param {{ host?: HTMLElement|null }} [options]
      */
-    _mountCampfireEmbed(mode) {
+    _mountCampfireEmbed(mode, options = {}) {
         const forCamp = mode === "camp";
+        const forStation = mode === "station";
+        const forTotmActivity = mode === "activity";
         if (forCamp && !this._campCeremonyMinigameEnabled()) {
             logCampfireReconnect("mountCampfireEmbed:skip", { mode, reason: "camp ceremony disabled" });
             return;
         }
-        if (!forCamp && !this._shouldShowTotmCampfirePanel()) {
+        if (forTotmActivity && !this._shouldShowTotmCampfirePanel()) {
             logCampfireReconnect("mountCampfireEmbed:skip", {
                 mode,
                 reason: "shouldShowTotmCampfirePanel false",
@@ -9012,11 +9223,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             });
             return;
         }
+        if (forStation && !this._stationsFireMinigameEnabled()) {
+            logCampfireReconnect("mountCampfireEmbed:skip", { mode, reason: "stations fire minigame disabled" });
+            return;
+        }
 
         const hostSelector = forCamp
             ? ".totm-camp-minigame-host"
-            : ".totm-campfire-minigame-host";
-        const host = this.element?.querySelector(hostSelector);
+            : forStation
+                ? null
+                : ".totm-campfire-minigame-host";
+        const host = options.host ?? (hostSelector ? this.element?.querySelector(hostSelector) : null);
         if (!host) {
             logCampfireReconnect("mountCampfireEmbed:skip", {
                 mode,
@@ -9028,11 +9245,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
+        this._campfireEmbedHost = forCamp ? "camp" : (forStation ? "station" : "totm");
+
         logCampfireReconnect("mountCampfireEmbed:proceed", {
             mode,
             rebind: !!this._campfireApp,
             fireLevel: this._fireLevel ?? "unlit",
-            hostConnected: host.isConnected
+            hostConnected: host.isConnected,
+            embedHost: this._campfireEmbedHost
         });
 
         if (this._campfireApp) {
@@ -9065,6 +9285,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             disableDecay: true,
             showDouseBtn: !forCamp,
             makeCampCeremony: forCamp,
+            canCommitCeremonyIgnite: () => !restApp._campPitBlocksFireLighting(),
+            ceremonyIgniteBlockReason: () => restApp._campPitIgniteBlockMessage(),
             onStageCeremonyWood: () => {
                 const a = restApp._selectedCharacterId
                     ? game.actors.get(restApp._selectedCharacterId)
@@ -9076,10 +9298,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             onUnstageCeremonyWood: (slotId) => restApp.unstageCeremonyWood(slotId),
             onGiftCeremonyWood: () => restApp.giftCeremonyWoodToFocusedActor(),
             onCeremonyIgnited: (data) => restApp._commitMakeCampCeremonyIgnite({
-                readyToLight: data?.readyToLight
+                readyToLight: data?.readyToLight,
+                actorId: data?.actorId,
+                method: data?.method
             }),
             onFireLevelChange: (level) => {
-                if (!forCamp) void restApp.applyTotmFireLevelFromMinigame(level);
+                if (!forCamp) void restApp.applyActivityFireLevelFromMinigame(level);
             }
         });
 
@@ -9111,6 +9335,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!this._campfireApp) return;
         this._campfireApp.destroy();
         this._campfireApp = null;
+        this._campfireEmbedHost = null;
+        this._stationFireMinigameDialog = null;
         clearCampfireEmbed();
     }
 
@@ -9980,6 +10206,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         });
         if (!confirmed) return;
 
+        this._terminated = true;
+        this._cancelCampPlacementCanvasMode();
+
         await this._removeBeddingDown();
 
         // Clear persisted rest state
@@ -9992,8 +10221,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Broadcast to players so they close their windows
         emitRestAbandoned();
 
-        // Clean up camp tokens from the scene
-        clearCampTokens().catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
+        // Clean up camp tokens on the placement scene (and any scene with this session)
+        try {
+            await clearCampTokens(getCampSceneId());
+        } catch (err) {
+            console.warn(`${MODULE_ID} | Camp cleanup failed:`, err);
+        }
         resetCampSession();
         this._campFireWoodSpendUserId = null;
         this._fireLitBy = null;
@@ -12875,6 +13108,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             magicScanComplete: !!this._magicScanComplete,
             magicScanResults: this._magicScanComplete ? (this._magicScanResults ?? []) : null,
             coldCampDecided: this._coldCampDecided ?? false,
+            campFirePreviewLevel: this._coldCampDecided ? null : (this._campFirePreviewLevel ?? null),
+            coldCampPreview: this._coldCampDecided ? false : !!this._coldCampPreview,
             campStep2Entered: this._campStep2Entered ?? false,
             safeRestSpot: !!this._engine?.safeRestSpot,
             comfort: this._engine?.comfort ?? "rough",
@@ -12968,6 +13203,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             void refreshOpenStationDialog();
         }
         if (phaseData.fireLitBy !== undefined) this._fireLitBy = phaseData.fireLitBy ?? null;
+        if (phaseData.fireLitNotice && phaseData.fireLitBy && !game.user.isGM) {
+            const litLevel = phaseData.fireLevel ?? this._fireLevel ?? "unlit";
+            const noticeKey = `${phaseData.fireLitBy.actorId ?? ""}:${litLevel}`;
+            if (this._lastFireLitToastKey !== noticeKey) {
+                this._lastFireLitToastKey = noticeKey;
+                CampCeremonyDelegate.showFireLitToast(phaseData.fireLitBy, litLevel);
+            }
+        }
         if (phaseData.firewoodPledges !== undefined) this._firewoodPledges = new Map(phaseData.firewoodPledges ?? []);
         if (phaseData.makeCampStagedWood !== undefined) {
             this._makeCampStagedWood = [...(phaseData.makeCampStagedWood ?? [])];
@@ -13340,9 +13583,36 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         if (snapshot.coldCampDecided !== undefined) {
             this._coldCampDecided = !!snapshot.coldCampDecided;
+            if (snapshot.coldCampDecided) {
+                this._campFirePreviewLevel = null;
+            }
+        }
+        if (snapshot.campFirePreviewLevel !== undefined) {
+            this._campFirePreviewLevel = snapshot.campFirePreviewLevel;
+        }
+        if (snapshot.coldCampPreview !== undefined) {
+            this._coldCampPreview = !!snapshot.coldCampPreview;
+            if (this._coldCampPreview) {
+                this._campFirePreviewLevel = "cold_camp";
+            }
+        }
+        if (snapshot.campFirePreviewLevel !== undefined) {
+            this._maybeClearStagedWoodOnTierChange(snapshot.campFirePreviewLevel);
+        }
+        if (snapshot.coldCampPreview) {
+            this._makeCampStagedWood = [];
+            this._makeCampStagedWoodTier = 0;
         }
         if (snapshot.campStep2Entered !== undefined) {
             this._campStep2Entered = !!snapshot.campStep2Entered;
+        }
+        if (
+            this._phase === "camp"
+            && (snapshot.campFirePreviewLevel !== undefined
+                || snapshot.coldCampPreview !== undefined
+                || snapshot.makeCampStagedWood !== undefined)
+        ) {
+            this._syncCampCeremonyPreviewToEmbed?.();
         }
         if (snapshot.campfireSnapshot) {
             this._campfireSnapshot = snapshot.campfireSnapshot;
@@ -13462,15 +13732,24 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._refreshStationOverlayMeals();
         }
 
+        // Make Camp F5: drop any stale rejoin chrome and keep ceremony embed mounted when possible.
+        if (this._phase === "camp" && !this._isGM) {
+            _removeRejoinBar();
+        }
+
         // Campfire panel lifecycle on snapshot restore (legacy drawer only).
+        const preserveCampCeremonyEmbed = this._phase === "camp" && this._campCeremonyMinigameEnabled();
         logCampfireReconnect("receiveRestSnapshot:beforeCloseCampfire", {
             phase: this._phase,
             fireLevel: this._fireLevel ?? "unlit",
             shouldShowPanel: this._shouldShowTotmCampfirePanel(),
+            preserveCampCeremonyEmbed,
             hasCampfireApp: !!this._campfireApp,
             ...this._campfireReconnectGateDetail()
         });
-        this._closeCampfire({ preserveActivityEmbed: this._shouldShowTotmCampfirePanel() });
+        this._closeCampfire({
+            preserveActivityEmbed: this._shouldShowTotmCampfirePanel() || preserveCampCeremonyEmbed
+        });
 
         // Activity phase: same as receivePhaseChange (F5 rejoin after GM already advanced)
         const _isTheaterRestore = this._isTotM;
@@ -13509,12 +13788,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // a state-NONE or state-CLOSED app).
         const snapshotRenderPromise = Promise.resolve(this.render({ force: true }));
         void snapshotRenderPromise
-            .then(() => {
-                if (this._phase === "camp" && this._restWindowRecenterSuppressed) {
-                    return this._finalizeCampPhaseWindowLayout();
-                }
+            .then(async () => {
                 if (this._phase === "camp") {
-                    this._scheduleRestWindowRecenter({ smooth: true });
+                    if (this._restWindowRecenterSuppressed) {
+                        await this._finalizeCampPhaseWindowLayout();
+                    } else if (!_isTrailerFilmingMode() && !this._restWindowUserPositioned) {
+                        this._scheduleRestWindowRecenter({ smooth: true });
+                    }
+                    this._syncCampCeremonyPreviewToEmbed?.();
                 }
                 logCampfireReconnect("receiveRestSnapshot:renderDone", {
                     phase: this._phase,
@@ -14166,6 +14447,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /** Player or GM clicks "Light Fire with [item]" in the new contribution UI. */
     static async #onCampLightFire(event, target) {
+        if (this._campPitBlocksFireLighting()) {
+            ui.notifications.warn("Place the campfire on the map before lighting.");
+            return;
+        }
         const root = target?.closest?.("[data-action=\"campLightFire\"]") ?? target;
         let actorId = root?.dataset?.actorId;
         const method = root?.dataset?.method ?? "Tinderbox";
@@ -14465,6 +14750,49 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      *
      * @returns {Promise<boolean>} True if the phase was waived (caller stops).
      */
+    /**
+     * Pit token was removed from the scene while rest state still references it.
+     * Clears stale flags so Move fire / placement can recover.
+     */
+    _healOrphanCampfirePlacementState() {
+        if (hasCampfirePlaced()) return;
+        this._campPlaceholdersEnsured = false;
+        if ((this._fireLevel ?? "unlit") !== "unlit" || this._fireLitBy || this._firewoodPledges?.size) {
+            this._fireLevel = "unlit";
+            this._fireLitBy = null;
+            this._firewoodPledges = new Map();
+            this._makeCampStagedWood = [];
+            this._makeCampStagedWoodTier = null;
+            this._campFireWoodSpendUserId = null;
+            if (this._engine) {
+                this._engine.fireLevel = "unlit";
+                this._engine.fireRollModifier = 0;
+            }
+            void CampfireTokenLinker.setLightState(false);
+        }
+        resetCampSession();
+    }
+
+    /**
+     * Stations + comfort off: ceremony is waived; after pit placement, commit a lit campfire
+     * tier and reveal the flame token (no firewood spend).
+     * @returns {Promise<void>}
+     */
+    async _autoLightCampfireForComfortOffStations() {
+        if (!game.user.isGM) return;
+        if (this._isTotM) return;
+        if (this._phase !== "camp" || this._campToActivityDone) return;
+        if ((this._fireLevel ?? "unlit") !== "unlit" || this._coldCampDecided) return;
+
+        const actor = getPartyActors()[0];
+        if (!actor) {
+            ui.notifications.warn("No party character found to light the campfire. Add an actor to the party or light the fire from the map.");
+            return;
+        }
+
+        await this._campCeremony.lightFire(game.user.id, actor.id, "Campfire", "campfire");
+    }
+
     async _skipCampForComfortOff() {
         if (isComfortEnabled()) return false;
         if (!game.user.isGM) return false;
@@ -14588,12 +14916,38 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Cancel an in-flight pit crosshair picker and any pending camp canvas drop handler.
+     */
+    _cancelCampPlacementCanvasMode() {
+        if (typeof this._campPitPickerCancel === "function") {
+            try {
+                this._campPitPickerCancel();
+            } catch (err) {
+                console.warn(`${MODULE_ID} | cancel camp pit picker`, err);
+            }
+        }
+        this._campPitPickerCancel = null;
+        this._campPitCursorInFlight = false;
+        const board = document.getElementById("board");
+        if (board) {
+            board.removeEventListener("drop", this._boundCampCanvasDrop);
+            board.style.cursor = "";
+        }
+    }
+
+    /** @returns {boolean} */
+    _campPlacementStillActive() {
+        return this._phase === "camp" && !this._terminated && !!game.ionrift?.respite?.activeRestSetupApp;
+    }
+
+    /**
      * Picks a canvas point (GM). Left click confirms; right-click or Escape cancels.
      * Shows a semi-transparent pit sprite and build-site stub ghosts; all snap to the grid.
      * @param {{ pitBaseTextureSrc?: string, safeRestSpot?: boolean }} [options] - Art for the ghost; same source should be passed to {@link placeCampfire}.
      * @returns {Promise<{x: number, y: number}|null>}
      */
     _pickPitWorldPoint(options = {}) {
+        this._cancelCampPlacementCanvasMode();
         return new Promise((resolve) => {
             if (!canvas?.ready) {
                 resolve(null);
@@ -14695,7 +15049,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (pos) updateGhost(pos.x, pos.y);
             };
 
+            let settled = false;
             const cleanup = (result) => {
+                if (settled) return;
+                settled = true;
+                if (this._campPitPickerCancel === cleanup) {
+                    this._campPitPickerCancel = null;
+                }
                 canvas.stage?.off("pointermove", onPointerMove);
                 canvas.stage?.off("pointerdown", onPointerDown);
                 document.removeEventListener("keydown", onKeyDown);
@@ -14708,6 +15068,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
                 resolve(result);
             };
+            this._campPitPickerCancel = cleanup;
 
             const onPointerDown = (event) => {
                 if (event.data?.button !== 0 && event.button !== 0) return;
@@ -14734,6 +15095,41 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
+     * Stations map mode: commit pit + station stubs at a world point, then branch on comfort/profile.
+     * @param {number} worldX
+     * @param {number} worldY
+     * @param {{ pitBaseTextureSrc?: string }} [options]
+     * @returns {Promise<boolean>}
+     */
+    async _commitStationsCampPlacement(worldX, worldY, options = {}) {
+        if (!game.user.isGM || !this._campPlacementStillActive()) return false;
+        const pitBaseTextureSrc = options.pitBaseTextureSrc ?? pickCampfirePitBaseTexture();
+        const res = await placeCampfire(worldX, worldY, { pitBaseTextureSrc });
+        if (!res) return false;
+        this._campPitPlacementCancelled = false;
+        await placeStationPlaceholders(!!this._engine?.safeRestSpot, {
+            simpleStations: isSimpleStationsMode()
+        });
+        if (!isComfortEnabled()) {
+            if (!this._isTotM) {
+                await this._autoLightCampfireForComfortOffStations();
+            }
+            await this._saveRestState();
+            emitPhaseChanged("camp", { campPitCursorDone: true });
+            if (!this._campToActivityDone) {
+                await this._advanceCampToActivity();
+            }
+            return true;
+        }
+        await CampfireTokenLinker.setLightState(false, "unlit");
+        await this._saveRestState();
+        emitPhaseChanged("camp", { campPitCursorDone: true });
+        this.render({ force: true });
+        await this._refreshCampPitNoticeLayer();
+        return true;
+    }
+
+    /**
      * GM: crosshair to place the pit, then placeholders and the "Light the fire" notice.
      * @returns {Promise<void>}
      */
@@ -14752,18 +15148,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this.render({ force: true });
                 return;
             }
-            const res = await placeCampfire(pos.x, pos.y, { pitBaseTextureSrc });
-            if (!res) return;
-            await placeStationPlaceholders(!!this._engine?.safeRestSpot, {
-                simpleStations: isSimpleStationsMode()
-            });
-            await CampfireTokenLinker.setLightState(false, "unlit");
-            await this._saveRestState();
-            emitPhaseChanged("camp", { campPitCursorDone: true });
-            this.render({ force: true });
-            await this._refreshCampPitNoticeLayer();
+            if (!this._campPlacementStillActive()) return;
+            await this._commitStationsCampPlacement(pos.x, pos.y, { pitBaseTextureSrc });
         } catch (e) {
-
             console.error(`${MODULE_ID} | _startCampPitCursorFlow`, e);
         } finally {
             this._campPitCursorInFlight = false;
@@ -14778,6 +15165,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (this._phase !== "camp" || !canvas?.ready) return;
         if (!hasCampfirePlaced()) return;
         if (this._campToActivityDone) return;
+        if (!isComfortEnabled()) return;
         const fireCommitted = !!this._fireLitBy
             || (this._fireLevel ?? "unlit") !== "unlit"
             || !!this._coldCampDecided;
@@ -15432,9 +15820,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const isTotmMode = this._isTotM;
         const willAdvance =
             !isTotmMode
-            && isSimpleStationsMode()
-            && this._phase === "camp" && !this._campToActivityDone && (this._fireLevel ?? "unlit") !== "unlit";
+            && this._phase === "camp"
+            && !this._campToActivityDone
+            && (this._fireLevel ?? "unlit") !== "unlit"
+            && (isSimpleStationsMode() || isComfortEnabled());
         if (willAdvance) {
+            await this._maybeSpendMakeCampCeremonyWoodBeforeAdvance();
             await this._advanceCampToActivity();
         } else if (!this._campToActivityDone) {
             this.render();
@@ -15601,7 +15992,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /** Synced cold camp pick during Make Camp or the activity Fire tab. */
     static async #onSelectCampColdCamp(event, target) {
-        if (this._phase === "activity" && this._isTotM) {
+        if (this._phase === "activity") {
             if (!game.user.isGM) {
                 emitActivityColdCampRequest(game.user.id);
                 return;
@@ -15681,12 +16072,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         const safeRest = !!this._engine?.safeRestSpot;
+        const comfortOn = isComfortEnabled();
+        const mapCampFire = requiresMapCampFire();
         const coldCampPreview = !!this._coldCampPreview;
+        const pitOk = this._isTotM || safeRest
+            || (!(comfortOn || mapCampFire) ? true : hasCampfirePlaced());
         const fireOk = safeRest
+            || !(comfortOn || mapCampFire)
             || (this._fireLevel ?? "unlit") !== "unlit"
             || !!this._coldCampDecided
             || coldCampPreview;
-        const pitOk = this._isTotM || safeRest || hasCampfirePlaced();
 
         if (!pitOk) {
             ui.notifications?.warn("Place the campfire on the map before proceeding.");
@@ -15712,50 +16107,47 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         event.preventDefault?.();
         event.stopPropagation?.();
         if (!game.user.isGM || this._phase !== "camp") return;
-        if (!hasCampfirePlaced()) return;
-
-        const fireLit = (this._fireLevel ?? "unlit") !== "unlit";
-        if (fireLit) {
-            const confirmed = await Dialog.confirm({
-                title: "Move campfire",
-                content: "<p>Remove the campfire from the map? The fire will go out and station markers will clear.</p>",
-                yesLabel: "Pick up",
-                noLabel: "Cancel",
-                defaultYes: false
-            });
-            if (!confirmed) return;
-        }
-
-        const removed = await clearCampfireSite();
-        if (removed <= 0) {
-            ui.notifications.info("No campfire to pick up on this scene.");
+        if (this._stationsComfortAutoAdvanceAfterFireLit() && (this._fireLevel ?? "unlit") !== "unlit") {
             return;
         }
 
-        this._campPlaceholdersEnsured = false;
-        void CampfireTokenLinker.setLightState(false);
-
-        if (fireLit) {
-            this._fireLevel = "unlit";
-            this._fireLitBy = null;
-            this._campFirePreviewLevel = this._campFirePreviewLevel ?? "embers";
-            this._campFireWoodSpendUserId = null;
-            this._firewoodPledges = new Map();
-            this._makeCampStagedWood = [];
-            this._makeCampStagedWoodTier = null;
-            if (this._engine) {
-                this._engine.fireLevel = "unlit";
-                this._engine.fireRollModifier = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL.embers ?? 0;
+        if (!hasCampfirePlaced()) {
+            this._healOrphanCampfirePlacementState();
+            ui.notifications.info("Campfire is not on the map. Click the map to place it again.");
+            if (!this._isTotM) {
+                this._campPitPlacementCancelled = false;
+                await this._startCampPitCursorFlow();
             }
-            this._syncCampCeremonyPreviewToEmbed();
-            if (this._campfireApp) {
-                this._campfireApp.syncFromRestFireLevel("unlit", false);
-            }
+            this.render({ force: true });
+            return;
         }
 
-        ui.notifications.info("Campfire picked up. Drag it to a new spot on the map.");
+        const pitBaseTextureSrc = pickCampfirePitBaseTexture();
+        const pos = await this._pickPitWorldPoint({
+            pitBaseTextureSrc,
+            safeRestSpot: !!this._engine?.safeRestSpot
+        });
+        if (!pos || !this._campPlacementStillActive()) return;
+
+        const moved = await relocateCampfireSite(pos.x, pos.y, {
+            safeRestSpot: !!this._engine?.safeRestSpot,
+            simpleStations: isSimpleStationsMode()
+        });
+        if (!moved) {
+            ui.notifications.warn("Could not move the campfire. Place it again from the map.");
+            this._healOrphanCampfirePlacementState();
+            if (!this._isTotM) {
+                this._campPitPlacementCancelled = false;
+                await this._startCampPitCursorFlow();
+            }
+            this.render({ force: true });
+            return;
+        }
+
+        ui.notifications.info("Campfire and station markers moved.");
         await this._saveRestState();
         this._broadcastMakeCampPhaseSync();
+        await this._refreshCampPitNoticeLayer();
         this.render({ force: true });
     }
 
@@ -15966,9 +16358,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Called from _onRender when in the camp phase.
      */
     _bindCampDragHandlers(html) {
-        // GM compound camp drag handle
-        const campHandle = html.querySelector('.camp-drag-handle[draggable="true"]');
-        if (campHandle) {
+        const campHandles = html.querySelectorAll('.camp-drag-handle[draggable="true"]');
+        for (const campHandle of campHandles) {
+            if (campHandle.dataset.campDragBound) continue;
+            campHandle.dataset.campDragBound = "1";
+
             campHandle.addEventListener("dragstart", (e) => {
                 e.dataTransfer.setData("text/plain", JSON.stringify({ type: "ionrift-campfire-only" }));
                 e.dataTransfer.effectAllowed = "copy";
@@ -15982,7 +16376,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             });
             campHandle.addEventListener("dragend", () => {
                 campHandle.classList.remove("dragging");
+                campHandle.dataset.suppressPlacementClick = "1";
+                requestAnimationFrame(() => {
+                    delete campHandle.dataset.suppressPlacementClick;
+                });
             });
+
+            if (campHandle.dataset.campPlacementClick) {
+                campHandle.addEventListener("click", (e) => {
+                    if (campHandle.dataset.suppressPlacementClick) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this._campPitPlacementCancelled = false;
+                    void this._startCampPitCursorFlow();
+                });
+            }
         }
 
         // Player gear drag handles (bedroll, tent, mess kit)
@@ -16011,28 +16419,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             });
         }
 
-        const stationHandles = html.querySelectorAll(".camp-station-placeable[draggable=\"true\"]");
-        for (const handle of stationHandles) {
-            handle.addEventListener("dragstart", (e) => {
-                const stationKey = handle.dataset.stationKey;
-                const actorId = handle.dataset.actorId ?? "";
-                e.dataTransfer.setData("text/plain", JSON.stringify({
-                    type: "ionrift-camp-station",
-                    stationKey,
-                    actorId
-                }));
-                e.dataTransfer.effectAllowed = "copy";
-                this._applyCampDragGhost(e, handle);
-                handle.classList.add("dragging");
-                const board = document.getElementById("board");
-                if (board) {
-                    board.addEventListener("drop", this._boundCampCanvasDrop, { once: true });
-                }
-            });
-            handle.addEventListener("dragend", () => {
-                handle.classList.remove("dragging");
-            });
-        }
     }
 
     /**
@@ -16041,6 +16427,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     async _onCampCanvasDrop(event) {
         event.preventDefault();
+        if (!this._campPlacementStillActive()) return;
 
         let data;
         try {
@@ -16053,21 +16440,37 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         if (data?.type === "ionrift-campfire-only" || data?.type === "ionrift-compound-camp") {
             if (!game.user.isGM) return;
-            await placeCampfire(x, y, { pitBaseTextureSrc: pickCampfirePitBaseTexture() });
-            await CampfireTokenLinker.setLightState(false);
-            if (this._phase === "camp") {
-                if (!this._isTotM) {
-                    await placeStationPlaceholders(!!this._engine?.safeRestSpot, {
-                        simpleStations: isSimpleStationsMode()
-                    });
+            if (this._isTotM) {
+                await placeCampfire(x, y, { pitBaseTextureSrc: pickCampfirePitBaseTexture() });
+                if (this._phase === "camp") {
+                    await CampfireTokenLinker.setLightState(false);
                     await this._saveRestState();
                     if (game.user.isGM) this._broadcastMakeCampPhaseSync();
                 } else {
+                    await CampfireTokenLinker.setLightState(false);
+                }
+                this.render();
+                return;
+            }
+            if (this._phase !== "camp" || !isComfortEnabled()) return;
+            if (hasCampfirePlaced()) {
+                const moved = await relocateCampfireSite(x, y, {
+                    safeRestSpot: !!this._engine?.safeRestSpot,
+                    simpleStations: isSimpleStationsMode()
+                });
+                if (!moved) {
+                    ui.notifications.warn("Could not move the campfire.");
+                } else {
                     await this._saveRestState();
                     if (game.user.isGM) this._broadcastMakeCampPhaseSync();
+                    void this._refreshCampPitNoticeLayer();
                 }
+            } else {
+                await this._commitStationsCampPlacement(x, y, {
+                    pitBaseTextureSrc: pickCampfirePitBaseTexture()
+                });
             }
-            this.render();
+            this.render({ force: true });
             return;
         }
 

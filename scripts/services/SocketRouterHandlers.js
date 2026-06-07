@@ -234,19 +234,33 @@ export function handleRequestRestState(data, ctx) {
         return;
     }
     const userId = data.userId ?? null;
-    const snapshot = (userId && ctx.activeRestSetupApp?.getRestSnapshotForUser)
-        ? ctx.activeRestSetupApp.getRestSnapshotForUser(userId)
-        : (ctx.activeRestSetupApp?.getRestSnapshot?.() ?? null);
+    const gmApp = ctx.activeRestSetupApp;
+    const snapshot = (userId && gmApp?.getRestSnapshotForUser)
+        ? gmApp.getRestSnapshotForUser(userId)
+        : (gmApp?.getRestSnapshot?.() ?? null);
+    const restData = {
+        ...ctx.activeRestData,
+        ...(gmApp ? {
+            phase: gmApp._phase ?? ctx.activeRestData.phase,
+            fireLevel: gmApp._fireLevel ?? ctx.activeRestData.fireLevel,
+            coldCampDecided: !!gmApp._coldCampDecided,
+            comfort: gmApp._engine?.comfort ?? ctx.activeRestData.comfort,
+            safeRestSpot: !!(gmApp._engine?.safeRestSpot ?? ctx.activeRestData.safeRestSpot),
+            terrainTag: gmApp._engine?.terrainTag ?? gmApp._selectedTerrain ?? ctx.activeRestData.terrainTag,
+            activities: gmApp._activities?.length ? gmApp._activities : ctx.activeRestData.activities
+        } : {})
+    };
     logCampfireReconnect("handleRequestRestState:emit", {
         targetUserId: userId,
         hasSnapshot: !!snapshot,
         snapshotPhase: snapshot?.phase ?? null,
         snapshotFireLevel: snapshot?.fireLevel ?? null,
         snapshotRestId: snapshot?.restId ?? null,
-        gmPhase: ctx.activeRestSetupApp?._phase ?? null,
-        gmFireLevel: ctx.activeRestSetupApp?._fireLevel ?? null
+        gmPhase: gmApp?._phase ?? null,
+        gmFireLevel: gmApp?._fireLevel ?? null,
+        restDataPhase: restData.phase ?? null
     });
-    emitRestStarted(ctx.activeRestData, { snapshot, targetUserId: userId });
+    emitRestStarted(restData, { snapshot, targetUserId: userId });
     if (snapshot) {
         setTimeout(() => emitRestSnapshot(snapshot), 150);
     }

@@ -384,11 +384,14 @@ export class CampGearScanner {
 
         // Fire comfort matches resolution engine (FIRE_COMFORT_MOD):
         // unlit: -1 | embers: 0 | campfire: 0 | bonfire: +1
-        const FIRE_COMFORT = { unlit: -1, embers: 0, campfire: 0, bonfire: 1 };
+        const FIRE_COMFORT = { unlit: -1, cold_camp: -1, embers: 0, campfire: 0, bonfire: 1 };
         const fireComfortDelta = FIRE_COMFORT[fireLevel] ?? 0;
-        const fireIsLit = fireLevel !== "unlit";
+        const fireIsLit = fireLevel !== "unlit" && fireLevel !== "cold_camp";
 
-        if (fireLevel === "unlit") {
+        if (fireLevel === "cold_camp") {
+            campBreakdown.push({ label: "Cold camp", value: "-1 comfort", delta: -1 });
+            campComfort = boostComfort(campComfort, -1);
+        } else if (fireLevel === "unlit") {
             campBreakdown.push({ label: "No fire", value: "-1 comfort", delta: 0 });
             campComfort = boostComfort(campComfort, -1);
         } else if (fireLevel === "embers") {
