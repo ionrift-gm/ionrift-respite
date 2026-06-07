@@ -34,6 +34,7 @@ import {
     placeStation,
     placePlayerGear,
     clearCampTokens,
+    clearCampfireSite,
     clearPlayerCampGear,
     clearPlayerCampGearType,
     clearSharedCampStation,
@@ -167,6 +168,11 @@ function _noteEngineFreePath(methodName, app) {
         Logger.log(`ionrift-respite | [engine-free] ${methodName} â€” no engine (player client, OK)`);
 }
 
+/** True when ionrift-testharness trailer filming mode is active (suppresses window auto-recenter). */
+function _isTrailerFilmingMode() {
+    return !!game.ionrift?.testharness?.isFilmingMode?.();
+}
+
 /**
  * RestSetupApp (v2)
  * GM-facing application for initiating and managing a rest phase.
@@ -279,11 +285,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             previewCampFireLevel: RestSetupApp.#onPreviewCampFireLevel,
             campColdCamp: RestSetupApp.#onCampColdCamp,
             continueToCampLayout: RestSetupApp.#onContinueToCampLayout,
-            proceedFromCamp: RestSetupApp.#onProceedFromCamp,
+            proceedFromCamp: RestSetupApp.#onProceedFromMakeCamp,
+            proceedFromMakeCamp: RestSetupApp.#onProceedFromMakeCamp,
             clearAllCampScene: RestSetupApp.#onClearAllCampScene,
             clearMyCampGear: RestSetupApp.#onClearMyCampGear,
             reclaimCampGear: RestSetupApp.#onReclaimCampGear,
             reclaimCampStation: RestSetupApp.#onReclaimCampStation,
+            reclaimCampfire: RestSetupApp.#onReclaimCampfire,
             exitStationChoiceReview: RestSetupApp.#onExitStationChoiceReview,
             dismissCampfireCanvasPanel: RestSetupApp.#onDismissCampfireCanvasPanel,
             retryCampPitPlacement: RestSetupApp.#onRetryCampPitPlacement,
@@ -295,7 +303,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             selectTotmActivity: RestSetupApp.#onSelectTotmActivity,
             confirmTotmFollowUp: RestSetupApp.#onConfirmTotmFollowUp,
             cancelTotmFollowUp: RestSetupApp.#onCancelTotmFollowUp,
-            proceedFromTotmCamp: RestSetupApp.#onProceedFromTotmCamp,
+            proceedFromTotmCamp: RestSetupApp.#onProceedFromMakeCamp,
             switchTotmTab: RestSetupApp.#onSwitchTotmTab,
             submitWorkbenchIdentify: RestSetupApp.#onSubmitWorkbenchIdentifyTotm,
             dismissWorkbenchIdentifyAck: RestSetupApp.#onDismissWorkbenchIdentifyAckTotm,
@@ -335,7 +343,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._eventResolver = new EventResolver();
         this._craftingEngine = new CraftingEngine();
         this._poolRoller = new ResourcePoolRoller();
-        this._phase = restData ? "activity" : "setup";
+        this._phase = restData?.phase ?? (restData ? "activity" : "setup");
         this._outcomes = [];
         this._triggeredEvents = [];
         this._activeTreeState = null;
@@ -363,6 +371,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._coldCampDecided = false;
         this._campPitCursorInFlight = false;
         this._campPitPlacementCancelled = false;
+        this._campPlaceholdersEnsured = false;
         this._showCampfireCanvasPanel = false;
         this._campToActivityDone = false;
         /** Make Camp: GM moved past fire ceremony to gear placement and station layout (step 2 UI). */
@@ -413,7 +422,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._restWindowRecenterPending = false;
         /** When true, the user dragged the rest window; skip auto-recenter on render/resize. */
         this._restWindowUserPositioned = false;
-        /** Suppress recenter during batched TotM camp → activity transition. */
+        /** Suppress recenter during batched layout transitions (setup→camp, camp→activity). */
         this._restWindowRecenterSuppressed = 0;
         /** One-shot pulse on Safe Rest after leaving tavern terrain in setup. */
         this._safeRestPulseAlert = false;
@@ -1939,8 +1948,233 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         });
     }
 
+    /** Target width for Make Camp / activity campfire panel layouts. */
+    _campRestWindowTargetWidth() {
+        if (this._isTotM && (this._campCeremonyMinigameEnabled?.() || this._totmCampfireMinigamePanelEnabled?.())) {
+            return Math.min(780, Math.round(window.innerWidth * 0.92));
+        }
+        return 720;
+    }
+
+    /**
+     * Trailer filming layout: keep horizontal anchor (left/right margin), vertical center on height changes.
+     * @param {object} [options]
+     * @param {boolean} [options.smooth]
+     */
+    _repositionFilmingRestWindow(options = {}) {
+        if (!_isTrailerFilmingMode()) return Promise.resolve();
+        if (this._filmingWindowAnimating) return Promise.resolve();
+        const el = this.element;
+        if (!el) return;
+        const h = el.offsetHeight;
+        if (h < 1) return;
+
+        const margin = this._filmingWindowMargin ?? 28;
+        const anchor = this._filmingWindowAnchor ?? "left";
+
+        const campLayout = this._phase === "camp"
+            || (this._phase === "activity" && this._totmCampfireMinigamePanelEnabled?.());
+        const width = campLayout
+            ? this._campRestWindowTargetWidth()
+            : ((el.offsetWidth || this.position?.width || RestSetupApp.DEFAULT_OPTIONS.position?.width) ?? 720);
+
+        let left;
+        if (anchor === "left") {
+            left = margin;
+        } else if (anchor === "right") {
+            left = Math.max(margin, window.innerWidth - width - margin);
+        } else {
+            left = Math.max(margin, Math.round((window.innerWidth - width) / 2));
+        }
+
+        const top = Math.max(margin, Math.round((window.innerHeight - h) / 2));
+        return this._applyRestWindowPosition({ left, top, width }, {
+            smooth: !!options.smooth,
+            filming: true,
+            durationMs: options.durationMs
+        });
+    }
+
+    /** @param {object} [options] */
+    _scheduleFilmingWindowReposition(options = {}) {
+        if (!_isTrailerFilmingMode()) return;
+        if (this._filmingWindowRepositionPending) {
+            this._filmingWindowRepositionOpts = { ...this._filmingWindowRepositionOpts, ...options };
+            return;
+        }
+        this._filmingWindowRepositionPending = true;
+        this._filmingWindowRepositionOpts = { ...options };
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                this._filmingWindowRepositionPending = false;
+                const opts = this._filmingWindowRepositionOpts ?? {};
+                this._filmingWindowRepositionOpts = null;
+                if (!this.rendered) return;
+                this._repositionFilmingRestWindow(opts);
+            });
+        });
+    }
+
+    /**
+     * Before swapping setup → Make Camp template: lock width and horizontal center
+     * so the first paint does not jump sideways.
+     */
+    _presetRestWindowForCampEntry() {
+        if (_isTrailerFilmingMode()) {
+            this._repositionFilmingRestWindow();
+            return;
+        }
+        if (this._restWindowUserPositioned) return;
+
+        const targetW = this._campRestWindowTargetWidth();
+        const el = this.element;
+        const currentTop = Math.max(10, el?.offsetTop ?? this.position?.top ?? Math.round((window.innerHeight - 480) / 2));
+        this._applyRestWindowPosition({
+            width: targetW,
+            left: Math.max(20, Math.round((window.innerWidth - targetW) / 2)),
+            top: currentTop
+        });
+    }
+
+    /** Apply window position; optional ease when settling after a phase swap. */
+    _applyRestWindowPosition(pos, { smooth = false, filming = false, durationMs } = {}) {
+        if (filming && smooth && _isTrailerFilmingMode()) {
+            return this._animateFilmingRestWindowPosition(pos, durationMs ?? 420);
+        }
+
+        const root = this.element?.closest?.(".application") ?? this.element;
+        const allowSmooth = smooth && !_isTrailerFilmingMode();
+
+        if (!allowSmooth || !root) {
+            this.setPosition(pos);
+            return Promise.resolve();
+        }
+
+        const settleMs = durationMs ?? 280;
+
+        return new Promise((resolve) => {
+            let settled = false;
+            const finish = () => {
+                if (settled) return;
+                settled = true;
+                root.classList.remove("rest-window-recenter-smooth");
+                resolve();
+            };
+
+            root.classList.add("rest-window-recenter-smooth");
+            void root.offsetWidth;
+
+            requestAnimationFrame(() => {
+                this.setPosition(pos);
+
+                const onTransitionEnd = (ev) => {
+                    if (ev.target !== root) return;
+                    if (ev.propertyName === "left" || ev.propertyName === "top" || ev.propertyName === "width") {
+                        finish();
+                    }
+                };
+
+                root.addEventListener("transitionend", onTransitionEnd, { once: true });
+                setTimeout(finish, settleMs + 80);
+            });
+        });
+    }
+
+    /**
+     * Trailer filming dock: Foundry setPosition does not honor CSS transitions, so lerp each frame.
+     * @param {object} targetPos
+     * @param {number} [durationMs]
+     */
+    _animateFilmingRestWindowPosition(targetPos, durationMs = 420) {
+        const root = this.element?.closest?.(".application") ?? this.element;
+        if (!root) {
+            this.setPosition(targetPos);
+            return Promise.resolve();
+        }
+
+        if (this._filmingWindowAnimFrame) {
+            cancelAnimationFrame(this._filmingWindowAnimFrame);
+            this._filmingWindowAnimFrame = null;
+        }
+
+        this._filmingWindowAnimating = true;
+
+        return new Promise((resolve) => {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const defaultWidth = RestSetupApp.DEFAULT_OPTIONS.position?.width ?? 720;
+                    const startPos = {
+                        left: Number.isFinite(this.position?.left) ? this.position.left : root.offsetLeft,
+                        top: Number.isFinite(this.position?.top) ? this.position.top : root.offsetTop,
+                        width: this.position?.width ?? root.offsetWidth ?? defaultWidth
+                    };
+                    const endPos = {
+                        left: targetPos.left,
+                        top: targetPos.top,
+                        width: targetPos.width ?? startPos.width
+                    };
+
+                    const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+                    const t0 = performance.now();
+
+                    const tick = (now) => {
+                        const t = Math.min(1, (now - t0) / durationMs);
+                        const eased = easeOutCubic(t);
+                        const frame = {
+                            left: Math.round(startPos.left + (endPos.left - startPos.left) * eased),
+                            top: Math.round(startPos.top + (endPos.top - startPos.top) * eased),
+                            width: Math.round(startPos.width + (endPos.width - startPos.width) * eased)
+                        };
+
+                        this.setPosition(frame);
+                        root.style.setProperty("left", `${frame.left}px`);
+                        root.style.setProperty("top", `${frame.top}px`);
+                        root.style.setProperty("width", `${frame.width}px`);
+
+                        if (t < 1) {
+                            this._filmingWindowAnimFrame = requestAnimationFrame(tick);
+                            return;
+                        }
+
+                        this._filmingWindowAnimFrame = null;
+                        this._filmingWindowAnimating = false;
+                        this.setPosition(endPos);
+                        resolve();
+                    };
+
+                    this._filmingWindowAnimFrame = requestAnimationFrame(tick);
+                });
+            });
+        });
+    }
+
+    /**
+     * After Make Camp DOM + optional embed render: one smooth vertical center.
+     */
+    async _finalizeCampPhaseWindowLayout() {
+        try {
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            if (this._campCeremonyMinigameEnabled?.() && this._campfireApp) {
+                try {
+                    await this._campfireApp.render();
+                } catch (err) {
+                    console.warn(`${MODULE_ID} | Campfire embed render during layout finalize:`, err);
+                }
+            }
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        } finally {
+            this._endRestWindowRecenterSuppression(false);
+            if (_isTrailerFilmingMode()) {
+                this._scheduleFilmingWindowReposition({ smooth: true });
+            } else if (this._shouldAutoRecenterRestWindow()) {
+                this._scheduleRestWindowRecenter({ smooth: true });
+            }
+        }
+    }
+
     /** Whether auto-recenter is allowed for the current rest window state. */
     _shouldAutoRecenterRestWindow() {
+        if (_isTrailerFilmingMode()) return false;
         if (this._restWindowUserPositioned) return false;
         if (this._restWindowRecenterSuppressed > 0) return false;
         if (this._isTotM && this._phase === "activity" && this._totmActiveTab === "identify"
@@ -1965,7 +2199,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!watchCamp && !watchActivityCampfire) return;
 
         this._restWindowResizeObserver = new ResizeObserver(() => {
-            this._scheduleRestWindowRecenter();
+            if (_isTrailerFilmingMode()) {
+                this._scheduleFilmingWindowReposition();
+            } else {
+                this._scheduleRestWindowRecenter();
+            }
         });
         this._restWindowResizeObserver.observe(el);
     }
@@ -1982,35 +2220,35 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /** Re-center after layout settles (banner, minigame embed, async images). */
-    _scheduleRestWindowRecenter() {
+    _scheduleRestWindowRecenter(options = {}) {
+        if (_isTrailerFilmingMode()) {
+            this._scheduleFilmingWindowReposition(options);
+            return;
+        }
         if (!this._shouldAutoRecenterRestWindow()) return;
-        if (this._restWindowRecenterPending) return;
+        if (this._restWindowRecenterPending) {
+            this._restWindowRecenterOpts = { ...this._restWindowRecenterOpts, ...options };
+            return;
+        }
         this._restWindowRecenterPending = true;
+        this._restWindowRecenterOpts = { ...options };
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 this._restWindowRecenterPending = false;
+                const opts = this._restWindowRecenterOpts ?? {};
+                this._restWindowRecenterOpts = null;
                 if (!this.rendered) return;
-                this._recenterRestSetupWindow();
+                this._recenterRestSetupWindow(opts);
             });
         });
     }
 
-    _recenterRestSetupWindow() {
+    _recenterRestSetupWindow(options = {}) {
         if (!this._shouldAutoRecenterRestWindow()) return;
         const el = this.element;
         if (!el) return;
         const h = el.offsetHeight;
         if (h < 1) return;
-
-        if (this._phase === "camp" && !this._isTotM) {
-            el.classList.add("ionrift-camp-dock");
-            const w = el.offsetWidth;
-            this.setPosition({
-                top: 64,
-                left: Math.max(8, window.innerWidth - w - 16)
-            });
-            return;
-        }
 
         el.classList.remove("ionrift-camp-dock");
         const top = Math.max(10, Math.round((window.innerHeight - h) / 2));
@@ -2018,11 +2256,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         if (this._isTotM && (this._phase === "camp" || this._phase === "activity")
             && (this._campCeremonyMinigameEnabled?.() || this._totmCampfireMinigamePanelEnabled?.())) {
-            const targetW = Math.min(780, Math.round(window.innerWidth * 0.92));
+            const targetW = this._campRestWindowTargetWidth();
             pos.width = targetW;
             pos.left = Math.max(20, Math.round((window.innerWidth - targetW) / 2));
-        } else if (this._isTotM && this._phase === "camp") {
-            const targetW = 720;
+        } else if (this._phase === "camp") {
+            const targetW = this._campRestWindowTargetWidth();
             pos.width = targetW;
             pos.left = Math.max(20, Math.round((window.innerWidth - targetW) / 2));
         } else {
@@ -2030,7 +2268,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             pos.left = Math.max(10, Math.round((window.innerWidth - w) / 2));
         }
 
-        this.setPosition(pos);
+        this._applyRestWindowPosition(pos, { smooth: !!options.smooth });
     }
 
     /**
@@ -2529,6 +2767,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const partyActors = getPartyActors();
         const emptyParty = partyActors.length === 0;
+        const partySetup = game.ionrift?.library?.party?.getSetupState?.() ?? {
+            isV14: false,
+            usesNativeParty: false,
+            emptyParty,
+            reason: emptyParty ? "no_characters" : null,
+            warning: null
+        };
+        const emptyPartyReason = emptyParty ? (partySetup.reason ?? "no_characters") : null;
+        const partySetupWarning = !emptyParty ? (partySetup.warning ?? null) : null;
+        const showPartyRosterEditor = emptyParty && !partySetup.usesNativeParty;
         if (!this._selectedTerrain) {
             const lastTerrain = game.settings.get(MODULE_ID, "lastTerrain");
             if (lastTerrain && TerrainRegistry.get(lastTerrain)) this._selectedTerrain = lastTerrain;
@@ -3518,7 +3766,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campMakeCampPlacementUnlocked = false;
             campMakeCampStep = 1;
             canContinueToCampLayout = false;
-            campFireGatePit = campfirePlacedGate;
+            campFireGatePit = this._isTotM || !!this._engine?.safeRestSpot || campfirePlacedGate;
             campFireGateLevel = fireCommitted;
             // When fire hasn't been committed, preview defaults to "embers" (the
             // default highlighted tab), NOT "unlit" which applies a no-fire penalty.
@@ -3768,6 +4016,68 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const campfirePlaced = this._phase === "camp" && hasCampfirePlaced();
 
+        const campfireDragCard = (() => {
+            if (this._phase !== "camp" || safeRestSpot) return { show: false };
+            const placed = campfirePlaced;
+            const required = !this._isTotM;
+            const stationPreview = !this._isTotM
+                ? getCampStationPlacementKeys(!!this._engine?.safeRestSpot, {
+                    simpleStations: isSimpleStationsMode()
+                }).map(key => {
+                    const st = CAMP_STATIONS.find(s => s.furnitureKey === key);
+                    return {
+                        key,
+                        label: st?.label ?? key,
+                        icon: st?.icon ?? "fas fa-cube"
+                    };
+                })
+                : [];
+            const stationLabels = stationPreview.map(s => s.label).join(", ");
+            const hint = placed
+                ? (required
+                    ? "Build sites are on the map. Light the fire to finish setup."
+                    : "On the map for this rest. Removed when the rest ends.")
+                : (required
+                    ? "Drag onto the scene to set the camp center. Workstations appear around it."
+                    : "Optional. Drag onto the scene for a visual campfire.");
+            const shortLabel = placed
+                ? (this._isGM ? "Move fire" : "On map")
+                : (required ? "Place fire" : "Campfire");
+            const tooltip = placed && this._isGM
+                ? `Click to pick up the campfire and place it elsewhere. ${stationLabels ? `${hint} Stations: ${stationLabels}.` : hint}`
+                : (stationLabels ? `${hint} Stations: ${stationLabels}.` : hint);
+            return {
+                show: true,
+                placed,
+                required,
+                canDrag: this._isGM && !placed,
+                canReclaim: this._isGM && placed,
+                hint,
+                shortLabel,
+                tooltip,
+                stationPreview
+            };
+        })();
+
+        const canProceedFromMakeCamp = (() => {
+            if (this._phase !== "camp") return false;
+            const coldCampPreview = !!this._coldCampPreview;
+            const fireOk = safeRestSpot
+                || (this._fireLevel ?? "unlit") !== "unlit"
+                || !!this._coldCampDecided
+                || coldCampPreview;
+            const pitOk = this._isTotM || safeRestSpot || campfirePlaced;
+            return fireOk && pitOk;
+        })();
+
+        const proceedBlockedHint = (() => {
+            if (this._phase !== "camp") return "Light the fire or choose cold camp";
+            if (!this._isTotM && !safeRestSpot && !campfirePlaced) {
+                return "Place the campfire on the map first";
+            }
+            return "Light the fire or choose cold camp";
+        })();
+
         const campStationCards = (() => {
             if (this._phase !== "camp") return [];
             const actor = this._selectedCharacterId ? game.actors.get(this._selectedCharacterId) : null;
@@ -3907,6 +4217,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 return this._workbench.buildEmbedContext(rosterSelected, getPartyActors);
             })() : {}),
             emptyParty,
+            emptyPartyReason,
+            partySetupWarning,
+            showPartyRosterEditor,
             rosterInfo: (() => {
                 const roster = getPartyActors();
                 return {
@@ -4520,7 +4833,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campMakeCampPlacementUnlocked,
             campGatesReady: this._phase === "camp" && !!(campMakeCampStep === 1 && campFireGatePit && campFireGateLevel),
             canContinueToCampLayout: false,
-            canProceedFromCamp: false,
+            canProceedFromCamp: canProceedFromMakeCamp,
+            canProceedFromMakeCamp,
+            proceedBlockedHint,
+            campfireDragCard,
             campMinimalMode: this._phase === "camp",
             showArtNudge: this._phase === "camp" && this._shouldShowArtNudge(),
             artNudgeIsUpdate: this._phase === "camp" && ImageResolver.hasArtPack && !ImageResolver.hasStationTokens,
@@ -5697,7 +6013,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._tearDownCampfireEmbed("onRenderBindings:noPanel");
         }
 
-        // Camp: crosshair pit (GM), map notice for all clients, optional canvas panel (gear drag)
+        // Camp: inline Make Camp panel, draggable campfire card, optional minigame embed
         if (this._phase === "camp") {
             if (this._campCeremonyMinigameEnabled()) {
                 this._mountCampfireEmbed("camp");
@@ -5705,13 +6021,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             } else {
                 this._tearDownCampfireEmbed("onRenderBindings:campCeremonyDisabled");
             }
-            if (!this._isTotM && this._isGM && !hasCampfirePlaced() && !this._campPitCursorInFlight && !this._campPitPlacementCancelled) {
-                void this._startCampPitCursorFlow();
-            } else if (!this._isTotM && hasCampfirePlaced() && !this._campToActivityDone && !isStationLayerActive()) {
-                void this._refreshCampPitNoticeLayer();
+            this._bindCampDragHandlers(this.element);
+            if (this.element) this.element.classList.add("totm-camp-active");
+            if (!this._isTotM && this._isGM && hasCampfirePlaced() && !this._campPlaceholdersEnsured) {
+                this._campPlaceholdersEnsured = true;
+                void placeStationPlaceholders(!!this._engine?.safeRestSpot, {
+                    simpleStations: isSimpleStationsMode()
+                });
             }
-            // TotM camp: mark the window so CSS can target Make Camp layout.
-            if (this.element) this.element.classList.toggle("totm-camp-active", this._isTotM);
             const picker = this.element?.querySelector(".camp-fire-tier-picker");
             if (picker && !picker.dataset.ionriftPreviewBound) {
                 picker.dataset.ionriftPreviewBound = "1";
@@ -5740,7 +6057,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
             CampfireMakeCampDialog.refreshIfOpen(this);
         } else {
-            // Remove camp-specific class when NOT in camp phase (banner height etc.)
             if (this.element) this.element.classList.remove("totm-camp-active");
         }
 
@@ -7421,11 +7737,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         };
 
         this._restId = restPayload.restId;
-        setActiveRestData(restPayload);
-
-        emitRestStarted(restPayload);
-
-        ui.notifications.info("Rest phase started. Activity pickers sent to all players.");
 
         // Long rests show the Travel Resolution phase when professions and Use Travel
         // are both on (forage/hunt need professions; Use Travel skips the phase entirely).
@@ -7436,24 +7747,36 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this._phase = "travel";
                 this._travel.setTotalDays(this._daysSinceLastRest ?? 1);
                 this._travel.scoutingAllowed = isScoutingEnabled() && (this._scoutingAllowed ?? true);
-
-                setTimeout(() => {
-                    emitPhaseChanged("travel", {
-                            selectedTerrain: this._selectedTerrain ?? "forest",
-                            travelDays: this._travel.totalDays,
-                            scoutingAllowed: this._travel.scoutingAllowed
-                        });
-                    this._broadcastTravelDeclarations();
-                }, 200);
             }
         } else {
             this._phase = "camp";
         }
 
+        restPayload.phase = this._phase;
         this._campStep2Entered = false;
 
-        // Campfire token: ensure hidden at rest start (fire not lit yet)
-        CampfireTokenLinker.setLightState(false);
+        setActiveRestData(restPayload);
+
+        emitRestStarted(restPayload);
+
+        ui.notifications.info("Rest phase started. Activity pickers sent to all players.");
+
+        if (this._phase === "travel") {
+            setTimeout(() => {
+                emitPhaseChanged("travel", {
+                    selectedTerrain: this._selectedTerrain ?? "forest",
+                    travelDays: this._travel.totalDays,
+                    scoutingAllowed: this._travel.scoutingAllowed
+                });
+                this._broadcastTravelDeclarations();
+            }, 200);
+        }
+
+        // Campfire token: ensure hidden at rest start (fire not lit yet).
+        // Trailer filming keeps a pre-placed canvas token; hiding it here made the pit vanish on resume.
+        if (!_isTrailerFilmingMode() || !CampfireTokenLinker.hasCampfireToken()) {
+            CampfireTokenLinker.setLightState(false);
+        }
         // Reset event-related state from any prior rest
         this._eventsRolled = false;
         this._triggeredEvents = [];
@@ -7474,8 +7797,39 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Comfort off: the fire ceremony has no mechanical effect, so waive it.
         if (this._phase === "camp" && await this._skipCampForComfortOff()) return;
 
-        // Campfire opens after render (see _onRender)
+        const enteringCampFromSetup = this._phase === "camp";
+        if (enteringCampFromSetup && !_isTrailerFilmingMode() && !this._restWindowUserPositioned) {
+            this._beginRestWindowRecenterSuppression();
+            this._presetRestWindowForCampEntry();
+        }
+
         this.render();
+
+        if (enteringCampFromSetup) {
+            void this._finalizeCampPhaseWindowLayout();
+        }
+
+        if (this._phase === "camp") {
+            this._broadcastMakeCampPhaseSync();
+        }
+    }
+
+    /**
+     * Push Make Camp state to player RestSetupApp clones (phase, fire preview, snapshot).
+     */
+    _broadcastMakeCampPhaseSync() {
+        setTimeout(() => {
+            const snapshot = this.getRestSnapshot?.();
+            if (snapshot) emitRestSnapshot(snapshot);
+            emitPhaseChanged("camp", {
+                selectedTerrain: this._selectedTerrain ?? null,
+                fireLevel: this._fireLevel ?? "unlit",
+                coldCampDecided: !!this._coldCampDecided,
+                campFirePreviewLevel: this._campFirePreviewLevel ?? null,
+                coldCampPreview: !!this._coldCampPreview,
+                makeCampStagedWood: [...(this._makeCampStagedWood ?? [])]
+            });
+        }, 200);
     }
 
     /**
@@ -9073,11 +9427,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Restore default window size and center on screen so the full events
         // header is visible regardless of how the user moved the window.
-        const defaultWidth = RestSetupApp.DEFAULT_OPTIONS.position?.width ?? 720;
-        this.setPosition({
-            width: defaultWidth,
-            left: Math.max(8, Math.round((window.innerWidth - defaultWidth) / 2))
-        });
+        if (!_isTrailerFilmingMode()) {
+            const defaultWidth = RestSetupApp.DEFAULT_OPTIONS.position?.width ?? 720;
+            this.setPosition({
+                width: defaultWidth,
+                left: Math.max(8, Math.round((window.innerWidth - defaultWidth) / 2))
+            });
+        }
 
         if (this._engine?.safeRestSpot) {
             if (this._engine) {
@@ -12558,6 +12914,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             void this._detectMagic?.cleanupCastArtifactsOnPhaseExit(getPartyActors());
         }
         const enteringTotmCamp = this._isTotM && phase === "camp" && prevPhase !== "camp";
+        const enteringCamp = phase === "camp" && prevPhase !== "camp";
         this._phase = phase;
         if (phaseData.triggeredEvents) {
             this._triggeredEvents = this._isGM ? phaseData.triggeredEvents
@@ -12749,7 +13106,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         if (phaseData.campPitCursorDone && phase === "camp") {
             requestAnimationFrame(() => {
-                if (this._refreshCampPitNoticeLayer) void this._refreshCampPitNoticeLayer();
+                if (this.rendered) this.render({ force: true });
             });
         }
 
@@ -12768,7 +13125,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         // Reset position when re-opening from a retained-but-closed state
         // so the window appears centered at its natural width, not thin/off-right.
-        if (!this._isGM && prevPhase === "activity") {
+        if (!this._isGM && prevPhase === "activity" && !_isTrailerFilmingMode()) {
             const defaultWidth = 720;
             this.setPosition({
                 width: defaultWidth,
@@ -12776,8 +13133,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 top: Math.max(0, (window.innerHeight - 600) / 2)
             });
         }
+        if (enteringCamp && !_isTrailerFilmingMode() && !this._restWindowUserPositioned) {
+            this._beginRestWindowRecenterSuppression();
+            this._presetRestWindowForCampEntry();
+        }
         const phaseRenderPromise = Promise.resolve(this.render({ force: true }));
-        if (enteringTotmCamp) {
+        if (enteringCamp) {
+            phaseRenderPromise.then(() => this._finalizeCampPhaseWindowLayout());
+        } else if (enteringTotmCamp) {
             phaseRenderPromise.then(() => this._scheduleRestWindowRecenter());
         }
         if (phase === "activity" || phase === "camp") {
@@ -13147,6 +13510,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const snapshotRenderPromise = Promise.resolve(this.render({ force: true }));
         void snapshotRenderPromise
             .then(() => {
+                if (this._phase === "camp" && this._restWindowRecenterSuppressed) {
+                    return this._finalizeCampPhaseWindowLayout();
+                }
+                if (this._phase === "camp") {
+                    this._scheduleRestWindowRecenter({ smooth: true });
+                }
                 logCampfireReconnect("receiveRestSnapshot:renderDone", {
                     phase: this._phase,
                     fireLevel: this._fireLevel ?? "unlit",
@@ -13572,7 +13941,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (await this._skipCampForSafeRest()) return;
             // Comfort off: waive the Make Camp fire phase
             if (await this._skipCampForComfortOff()) return;
-            emitPhaseChanged(this._phase, {});
+            this._broadcastMakeCampPhaseSync();
             await this._saveRestState();
             this.render();
             return;
@@ -13608,7 +13977,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Comfort off: waive the Make Camp fire phase
         if (await this._skipCampForComfortOff()) return;
 
-        emitPhaseChanged(this._phase, { travelResults: this._travel.serialize() });
+        this._broadcastMakeCampPhaseSync();
 
         await this._saveRestState();
         this.render();
@@ -13656,7 +14025,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Comfort off: waive the Make Camp fire phase
         if (await this._skipCampForComfortOff()) return;
 
-        emitPhaseChanged(this._phase, {});
+        this._broadcastMakeCampPhaseSync();
 
         this._saveRestState();
         this.render();
@@ -14136,18 +14505,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * and advance to the activity phase (stations promote on advance).
      * @returns {Promise<void>}
      */
-    async _autoLightCampfireForSimpleStations() {
-        if (!game.user.isGM) return;
-        if (!isSimpleStationsMode()) return;
-        if (this._phase !== "camp" || this._campToActivityDone) return;
-        if ((this._fireLevel ?? "unlit") !== "unlit" || this._coldCampDecided) return;
-
-        const actorId = getPartyActors()[0]?.id;
-        if (!actorId) return;
-
-        await this._campCeremony.lightFire(game.user.id, actorId, "Campfire", "campfire");
-    }
-
     /**
      * After the fire is committed (lit tiers or cold camp), spend fuel, go to activity.
      * @returns {Promise<void>}
@@ -14214,9 +14571,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._activateCanvasStationLayer();
         } else {
             // Pre-size before template swap so camp → activity does not jump width twice.
-            if (this._totmCampfireMinigamePanelEnabled()) {
-                const targetW = Math.min(780, Math.round(window.innerWidth * 0.92));
-                this.setPosition({
+            if (this._totmCampfireMinigamePanelEnabled() && !_isTrailerFilmingMode()) {
+                const targetW = this._campRestWindowTargetWidth();
+                this._applyRestWindowPosition({
                     width: targetW,
                     left: Math.max(20, Math.round((window.innerWidth - targetW) / 2))
                 });
@@ -14224,6 +14581,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this.render({ force: true });
         }
         _logGmRestSheet("_advanceCampToActivity", "advance complete", { rendered: this.rendered });
+
+        if (_isTrailerFilmingMode() && game.user.isGM) {
+            await this._syncCampfireTokenFromRestState();
+        }
     }
 
     /**
@@ -14396,10 +14757,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             await placeStationPlaceholders(!!this._engine?.safeRestSpot, {
                 simpleStations: isSimpleStationsMode()
             });
-            if (isSimpleStationsMode()) {
-                await this._autoLightCampfireForSimpleStations();
-                return;
-            }
             await CampfireTokenLinker.setLightState(false, "unlit");
             await this._saveRestState();
             emitPhaseChanged("camp", { campPitCursorDone: true });
@@ -15074,8 +15431,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         await this._saveRestState();
         const isTotmMode = this._isTotM;
         const willAdvance =
-            !isTotmMode &&
-            this._phase === "camp" && !this._campToActivityDone && (this._fireLevel ?? "unlit") !== "unlit";
+            !isTotmMode
+            && isSimpleStationsMode()
+            && this._phase === "camp" && !this._campToActivityDone && (this._fireLevel ?? "unlit") !== "unlit";
         if (willAdvance) {
             await this._advanceCampToActivity();
         } else if (!this._campToActivityDone) {
@@ -15312,37 +15670,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * GM advances from Make Camp to Activities.
+     * GM advances from Make Camp to Activities (both TotM and Stations).
      */
-    static async #onProceedFromCamp(event, target) {
-        if (!game.user.isGM) return;
-        if (this._phase !== "camp") return;
-        if (this._campToActivityDone) {
-            ui.notifications?.info("Already advanced from Make Camp.");
-            return;
-        }
-        const comfortOn = isComfortEnabled();
-        const mapCampFire = requiresMapCampFire();
-        const pit = (comfortOn || mapCampFire) ? hasCampfirePlaced() : true;
-        const fireOk = (comfortOn || mapCampFire)
-            ? ((this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided)
-            : true;
-        if (!pit || !fireOk) {
-            ui.notifications?.warn("Place the pit and light the fire (or choose cold camp) from the map.");
-            return;
-        }
-        await this._advanceCampToActivity();
-    }
-
-    /**
-     * TotM Make Camp: advance to activities without the canvas pit gate.
-     * Spends firewood for the committed fire level before advancing:
-     *   1. Tries the actor who lit the fire first (preferred donor).
-     *   2. Falls back to any other party member with firewood + toast notification.
-     *   3. Blocks with a modal if cost > 0 and no firewood is found anywhere.
-     * Safe rest spot skips spend and blocking (fire counts as lit without inventory cost).
-     */
-    static async #onProceedFromTotmCamp(event, target) {
+    static async #onProceedFromMakeCamp(event, target) {
         if (!game.user.isGM) return;
         if (this._phase !== "camp") return;
         if (this._campToActivityDone) {
@@ -15350,19 +15680,83 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
+        const safeRest = !!this._engine?.safeRestSpot;
         const coldCampPreview = !!this._coldCampPreview;
-        const fireOk = !isComfortEnabled() || (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided || coldCampPreview;
+        const fireOk = safeRest
+            || (this._fireLevel ?? "unlit") !== "unlit"
+            || !!this._coldCampDecided
+            || coldCampPreview;
+        const pitOk = this._isTotM || safeRest || hasCampfirePlaced();
+
+        if (!pitOk) {
+            ui.notifications?.warn("Place the campfire on the map before proceeding.");
+            return;
+        }
         if (!fireOk) {
             ui.notifications?.warn("Light the fire or declare cold camp before proceeding.");
             return;
         }
-        // Commit cold camp preview if active (the party previewed cold camp and GM hit Proceed)
+
         if (coldCampPreview && !this._coldCampDecided) {
             await this._campCeremony.selectColdCamp();
         }
 
         await this._totmSpendMakeCampFirewood();
         await this._advanceCampToActivity();
+    }
+
+    /**
+     * GM: pick up the map campfire (and station layout) to place elsewhere.
+     */
+    static async #onReclaimCampfire(event, target) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+        if (!game.user.isGM || this._phase !== "camp") return;
+        if (!hasCampfirePlaced()) return;
+
+        const fireLit = (this._fireLevel ?? "unlit") !== "unlit";
+        if (fireLit) {
+            const confirmed = await Dialog.confirm({
+                title: "Move campfire",
+                content: "<p>Remove the campfire from the map? The fire will go out and station markers will clear.</p>",
+                yesLabel: "Pick up",
+                noLabel: "Cancel",
+                defaultYes: false
+            });
+            if (!confirmed) return;
+        }
+
+        const removed = await clearCampfireSite();
+        if (removed <= 0) {
+            ui.notifications.info("No campfire to pick up on this scene.");
+            return;
+        }
+
+        this._campPlaceholdersEnsured = false;
+        void CampfireTokenLinker.setLightState(false);
+
+        if (fireLit) {
+            this._fireLevel = "unlit";
+            this._fireLitBy = null;
+            this._campFirePreviewLevel = this._campFirePreviewLevel ?? "embers";
+            this._campFireWoodSpendUserId = null;
+            this._firewoodPledges = new Map();
+            this._makeCampStagedWood = [];
+            this._makeCampStagedWoodTier = null;
+            if (this._engine) {
+                this._engine.fireLevel = "unlit";
+                this._engine.fireRollModifier = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL.embers ?? 0;
+            }
+            this._syncCampCeremonyPreviewToEmbed();
+            if (this._campfireApp) {
+                this._campfireApp.syncFromRestFireLevel("unlit", false);
+            }
+        }
+
+        ui.notifications.info("Campfire picked up. Drag it to a new spot on the map.");
+        await this._saveRestState();
+        this._broadcastMakeCampPhaseSync();
+        this.render({ force: true });
     }
 
     /**
@@ -15390,6 +15784,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._coldCampDecided = false;
         this._campStep2Entered = false;
         this._campPitPlacementCancelled = false;
+        this._campPlaceholdersEnsured = false;
         this._campToActivityDone = false;
         if (this._engine) {
             this._engine.fireLevel = "unlit";
@@ -15659,21 +16054,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (data?.type === "ionrift-campfire-only" || data?.type === "ionrift-compound-camp") {
             if (!game.user.isGM) return;
             await placeCampfire(x, y, { pitBaseTextureSrc: pickCampfirePitBaseTexture() });
-            const fireIsLit = this._fireLevel && this._fireLevel !== "unlit";
-            await CampfireTokenLinker.setLightState(
-                fireIsLit,
-                fireIsLit ? (this._fireLevel ?? "campfire") : null
-            );
+            await CampfireTokenLinker.setLightState(false);
             if (this._phase === "camp") {
-                await placeStationPlaceholders(!!this._engine?.safeRestSpot, {
-                    simpleStations: isSimpleStationsMode()
-                });
-                if (isSimpleStationsMode()) {
-                    await this._autoLightCampfireForSimpleStations();
-                } else {
-                    emitPhaseChanged("camp", { campPitCursorDone: true });
+                if (!this._isTotM) {
+                    await placeStationPlaceholders(!!this._engine?.safeRestSpot, {
+                        simpleStations: isSimpleStationsMode()
+                    });
                     await this._saveRestState();
-                    void this._refreshCampPitNoticeLayer();
+                    if (game.user.isGM) this._broadcastMakeCampPhaseSync();
+                } else {
+                    await this._saveRestState();
+                    if (game.user.isGM) this._broadcastMakeCampPhaseSync();
                 }
             }
             this.render();

@@ -1081,6 +1081,33 @@
     font-size: 0.9rem;
 }
 
+.respite-empty-party-hint .respite-empty-party-action {
+    margin-top: 1rem;
+}
+
+.respite-party-setup-warning {
+    display: flex;
+    gap: 0.65rem;
+    align-items: flex-start;
+    margin: 0 0 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(255, 180, 80, 0.35);
+    border-radius: 6px;
+    background: rgba(255, 180, 80, 0.08);
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.respite-party-setup-warning i {
+    color: rgba(255, 180, 80, 0.85);
+    margin-top: 0.15rem;
+}
+
+.respite-party-setup-warning p {
+    margin: 0;
+}
+
 /* ---- Make Camp Phase ---- */
 
 /* Camp shell is a direct child of .respite-form (flex column). Without this,
@@ -11842,8 +11869,21 @@ button.is-processing {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.4rem;
     padding: 0.25rem 0;
+    width: 100%;
+}
+
+.totm-camp-minigame-host .campfire-ceremony-action-area .ceremony-gift-wood-btn {
+    flex-shrink: 0;
+}
+
+.totm-camp-minigame-host .ceremony-primary-slot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 2.5rem;
 }
 
 .totm-camp-minigame-host .ceremony-cold-hint {
@@ -11853,9 +11893,20 @@ button.is-processing {
 
 .totm-camp-minigame-host .campfire-ceremony-kindling-step {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
     padding: 0.25rem 0;
+    width: 100%;
+}
+
+.totm-camp-minigame-host .ceremony-kindling-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    text-align: center;
 }
 
 .totm-camp-minigame-host .campfire-ceremony-kindling-step.dimmed {
@@ -11865,10 +11916,11 @@ button.is-processing {
 .totm-camp-minigame-host .ceremony-no-wood-step {
     flex-direction: column;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.4rem;
     opacity: 1;
     width: 100%;
     max-width: 100%;
+    text-align: center;
 }
 
 .totm-camp-minigame-host .ceremony-no-wood-label {
@@ -11886,11 +11938,11 @@ button.is-processing {
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 0.35rem;
+    gap: 0.3rem;
     width: fit-content;
-    min-width: 12rem;
+    min-width: 0;
     max-width: 100%;
-    padding: 0.4rem 1.15rem;
+    padding: 0.35rem 0.65rem;
     font-size: 0.72rem;
     white-space: nowrap;
     box-sizing: border-box;
@@ -22147,6 +22199,137 @@ button.is-processing {
     color: var(--ionrift-accent, #8b5cf6);
 }
 
+.make-camp-unified {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.totm-camp-layout.make-camp-unified {
+    display: grid;
+}
+
+.make-camp-footer-row {
+    align-items: stretch;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+    max-width: 100%;
+}
+
+.make-camp-footer-row .totm-camp-footer-primary {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: stretch;
+}
+
+.make-camp-footer-row .totm-camp-footer-primary .totm-camp-proceed,
+.make-camp-footer-row .totm-camp-footer-primary .totm-camp-player-wait {
+    width: 100%;
+    max-width: none;
+    min-height: 2.35rem;
+}
+
+.make-camp-footer-row .totm-camp-footer-primary .totm-camp-player-wait {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.45rem 0.75rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(196, 181, 253, 0.12);
+    font-size: 0.78rem;
+    color: rgba(200, 195, 220, 0.65);
+    gap: 0.4rem;
+}
+
+.totm-camp-footer-placement {
+    flex: 0 0 auto;
+    min-width: 7.5rem;
+    max-width: 11rem;
+    display: flex;
+    align-items: stretch;
+}
+
+.totm-camp-footer-placement .camp-drag-handle-compact {
+    width: 100%;
+    min-height: 2.35rem;
+    margin: 0;
+    padding: 0.35rem 0.5rem;
+    align-items: center;
+}
+
+.totm-camp-footer-placement .camp-drag-handle-compact .camp-drag-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    font-size: 0.95rem;
+}
+
+.totm-camp-footer-placement .camp-drag-handle-compact .camp-drag-title {
+    font-size: 0.72rem;
+    line-height: 1.15;
+    white-space: nowrap;
+}
+
+.totm-camp-footer-placement .camp-drag-handle-compact .camp-drag-label {
+    min-width: 0;
+}
+
+.totm-camp-footer-placement .camp-drag-required-badge {
+    margin-left: 0.25rem;
+    font-size: 0.58rem;
+}
+
+.totm-camp-footer-placement .camp-drag-grip {
+    font-size: 0.7rem;
+}
+
+.totm-camp-footer-placement .camp-drag-handle-reclaim {
+    cursor: pointer;
+    border-style: dashed;
+}
+
+.totm-camp-footer-placement .camp-drag-handle-reclaim:hover {
+    border-color: rgba(255, 147, 41, 0.65);
+    background: rgba(255, 147, 41, 0.1);
+}
+
+.camp-drag-handle-required {
+    border-color: rgba(255, 147, 41, 0.45);
+}
+
+.camp-drag-handle-placed {
+    cursor: default;
+    border-style: solid;
+    border-color: rgba(72, 187, 120, 0.45);
+    background: rgba(72, 187, 120, 0.08);
+}
+
+.camp-drag-handle-placed .camp-drag-icon {
+    background: rgba(72, 187, 120, 0.15);
+    color: #48bb78;
+}
+
+.camp-drag-handle-wait {
+    cursor: default;
+    opacity: 0.75;
+}
+
+.camp-drag-required-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #ff9329;
+    margin-left: 0.35rem;
+}
+
+.camp-drag-grip {
+    color: rgba(255, 255, 255, 0.35);
+    flex-shrink: 0;
+}
+
 .camp-drag-handle {
     display: flex;
     align-items: center;
@@ -23813,6 +23996,17 @@ button.is-processing {
     /* intentionally empty; position managed in RestSetupApp._recenterRestSetupWindow */
 }
 
+.application.ionrift-respite-app.rest-window-recenter-smooth {
+    transition: top 0.22s ease, left 0.22s ease, width 0.22s ease;
+}
+
+.application.ionrift-respite-app.rest-window-filming-dock {
+    transition:
+        left 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+        top 0.32s ease,
+        width 0.32s ease;
+}
+
 /* ── Left: Camp Comfort panel ─────────────────────────────────────── */
 .ionrift-respite-app .totm-camp-comfort-panel {
     background: rgba(255, 255, 255, 0.03);
@@ -24452,6 +24646,10 @@ button.is-processing {
     padding: 0.5rem 0.6rem 0.6rem;
     display: flex;
     justify-content: center;
+}
+
+.ionrift-respite-app .make-camp-footer-row {
+    flex-direction: row;
 }
 
 .ionrift-respite-app .totm-camp-proceed {

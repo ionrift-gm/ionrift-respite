@@ -73,6 +73,16 @@ export class CampfireTokenLinker {
     }
 
     /**
+     * Find the campfire pit base token (GM layout marker; hidden from players).
+     * @returns {TokenDocument|null}
+     */
+    static findCampfireBaseToken() {
+        const scene = canvas?.scene;
+        if (!scene) return null;
+        return scene.tokens.find(t => t.flags?.[MODULE_ID]?.isCampfireBase === true) ?? null;
+    }
+
+    /**
      * Find the world Actor whose name matches the setting.
      * Prefers an actor inside a folder named "Ionrift" (case-insensitive)
      * to keep the world root clean. Falls back to any matching actor.
@@ -173,8 +183,10 @@ export class CampfireTokenLinker {
         }
 
         const token = CampfireTokenLinker.findCampfireToken();
+        const base = CampfireTokenLinker.findCampfireBaseToken();
         if (!token) {
             Logger.log(`${MODULE_ID} | CampfireTokenLinker: no campfire token found on scene`);
+            if (base && !lit) await base.update({ hidden: true });
             return;
         }
 
@@ -200,7 +212,8 @@ export class CampfireTokenLinker {
                 "texture.scaleX": scale,
                 "texture.scaleY": scale
             });
-            Logger.log(`${MODULE_ID} | CampfireTokenLinker: light ON (${tierKey}), token visible`);
+            if (base) await base.update({ hidden: true });
+            Logger.log(`${MODULE_ID} | CampfireTokenLinker: light ON (${tierKey}), flame visible to players`);
         } else {
             const { x, y, width, height } = CampfireTokenLinker.#patchCenterPreserving(token, 1, 1);
             await token.update({
@@ -214,7 +227,8 @@ export class CampfireTokenLinker {
                 "light.bright": 0,
                 "light.dim": 0
             });
-            Logger.log(`${MODULE_ID} | CampfireTokenLinker: light OFF, token hidden`);
+            if (base) await base.update({ hidden: true });
+            Logger.log(`${MODULE_ID} | CampfireTokenLinker: light OFF, campfire hidden from players`);
         }
     }
 

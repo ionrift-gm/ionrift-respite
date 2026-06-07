@@ -11,7 +11,7 @@ import { CampGearScanner } from "../../services/CampGearScanner.js";
 import { CampfireTokenLinker } from "../../services/CampfireTokenLinker.js";
 import { emitPhaseChanged } from "../../services/SocketController.js";
 import { isComfortEnabled } from "../../services/ComfortCalculator.js";
-import { isCampfireMinigameEnabled, requiresMapCampFire } from "../../services/RestProfileSettings.js";
+import { isCampfireMinigameEnabled, isSimpleStationsMode, requiresMapCampFire } from "../../services/RestProfileSettings.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -234,14 +234,17 @@ export class CampCeremonyDelegate {
     }
 
     /**
-     * GM records cold camp and, on map mode, advances straight to activities.
-     * TotM and synced tier picks use {@link selectColdCamp} and Proceed instead.
+     * GM records cold camp and, on Simple Stations, advances straight to activities.
+     * Unified Make Camp uses {@link selectColdCamp} and Proceed instead.
      */
     async decideColdCamp() {
         if (!game.user.isGM) return;
         await this.selectColdCamp();
         const _isTotmCold = this._app._isTotM;
-        if (!_isTotmCold && this._app._phase === "camp" && !this._app._campToActivityDone) {
+        if (!_isTotmCold
+            && isSimpleStationsMode()
+            && this._app._phase === "camp"
+            && !this._app._campToActivityDone) {
             await this._app._advanceCampToActivity();
         }
     }
@@ -273,8 +276,11 @@ export class CampCeremonyDelegate {
         }
         const _isTotm = this._app._isTotM;
         const willAdvance =
-            !_isTotm &&
-            this._app._phase === "camp" && !this._app._campToActivityDone && this.fireLevel !== "unlit";
+            !_isTotm
+            && isSimpleStationsMode()
+            && this._app._phase === "camp"
+            && !this._app._campToActivityDone
+            && this.fireLevel !== "unlit";
         if (willAdvance) {
             await this._app._advanceCampToActivity();
         } else if (!this._app._campToActivityDone && !options.skipRender) {

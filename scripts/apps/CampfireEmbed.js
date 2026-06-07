@@ -20,6 +20,9 @@ import { logCampfireReconnect } from "../services/CampfireReconnectLog.js";
 /** Default kindling art (matches respite-cache-utility/kindling.json). */
 const DEFAULT_KINDLING_IMG = "icons/commodities/wood/kindling-sticks-brown.webp";
 
+/** After this many strike attempts, the next try always lights the fire. */
+const FLINT_STRIKE_GUARANTEE_AFTER = 10;
+
 const TRINKETS = [
     { id: "pinecone", icon: "fas fa-tree", label: "Pinecone", color: "#4ade80" },
     { id: "letter", icon: "fas fa-envelope", label: "Old Letter", color: "#fbbf24" },
@@ -236,9 +239,7 @@ export class CampfireEmbed {
                 const filled = req.filter(s => s.filled).length;
                 return filled < req.length && this._getFirewoodCount() > 0;
             })(),
-            showGiftKindlingBtn: this._makeCampCeremony
-                && !!game.user?.isGM
-                && this._getFirewoodCount() <= 0,
+            showGiftKindlingBtn: this._makeCampCeremony && !!game.user?.isGM,
             giftKindlingTargetName: this._getPlayerActor()?.name ?? "player"
         };
     }
@@ -835,11 +836,17 @@ export class CampfireEmbed {
         this._playSpark();
 
         const hint = this._container?.querySelector(".strike-hint");
-        if (hint) hint.textContent = `Attempt ${this._strikeCount} \u00b7 Keep trying!`;
+        if (hint) {
+            hint.textContent = this._strikeCount > FLINT_STRIKE_GUARANTEE_AFTER
+                ? `Attempt ${this._strikeCount} · It catches!`
+                : this._strikeCount === FLINT_STRIKE_GUARANTEE_AFTER
+                    ? `Attempt ${this._strikeCount} · Sure spark`
+                    : `Attempt ${this._strikeCount} · Keep trying!`;
+        }
 
         const chance = Math.min(this._strikeCount * 3, 20);
         const roll = Math.floor(Math.random() * 100);
-        const success = roll < chance;
+        const success = this._strikeCount > FLINT_STRIKE_GUARANTEE_AFTER || roll < chance;
 
         game.socket.emit(`module.${MODULE_ID}`, {
             type: "campfireStrike",
@@ -865,8 +872,11 @@ export class CampfireEmbed {
         this._showLitBanner = true;
         this.render();
 
-        // Sync campfire token light on the canvas
-        CampfireTokenLinker.setLightState(true, this.fireLevel);
+        // Make Camp ceremony: panel can show a lit minigame before the table commits;
+        // map token stays off until RestSetupApp commits via onCeremonyIgnited.
+        if (!this._makeCampCeremony) {
+            CampfireTokenLinker.setLightState(true, this.fireLevel);
+        }
 
         if (this._litNotifyTimer) clearTimeout(this._litNotifyTimer);
         this._litNotifyTimer = setTimeout(() => {
@@ -1142,7 +1152,7 @@ export class CampfireEmbed {
         if (current !== this._lastFireLevel) {
             this._lastFireLevel = current;
             if (this._onFireLevelChange) this._onFireLevelChange(current);
-            if (this._lit && current !== "unlit" && game.user.isGM) {
+            if (!this._makeCampCeremony && this._lit && current !== "unlit" && game.user.isGM) {
                 void CampfireTokenLinker.setLightState(true, current);
             }
         }

@@ -507,7 +507,7 @@ export async function placeCampfire(worldX, worldY, options = {}) {
         width: 1, height: 1,
         sort: CAMPFIRE_PIT_SORT,
         x: tx, y: ty,
-        hidden: false,
+        hidden: true,
         lockRotation: true,
         rotation: Math.floor(Math.random() * 360),
         disposition: -2,
@@ -808,6 +808,43 @@ export async function clearCampTokens() {
     Logger.log(`${MODULE_ID} | CompoundCampPlacer: cleared ${ids.length} camp tokens`);
     _campSessionId = null;
 
+    return ids.length;
+}
+
+/**
+ * Remove the campfire pit, flame, and station layout for the current session.
+ * Keeps player gear (bedroll, tent, mess kit) on the scene.
+ * @returns {Promise<number>}
+ */
+export async function clearCampfireSite() {
+    if (!game.user.isGM) return 0;
+
+    const scene = canvas?.scene;
+    if (!scene) return 0;
+
+    hydrateCampSessionFromScene();
+    const sessionId = _campSessionId;
+
+    const toRemove = scene.tokens.filter(t => {
+        const flags = t.flags?.[MODULE_ID];
+        if (!flags?.isCampFurniture || flags.isPlayerGear) return false;
+        if (sessionId) return flags.campSessionId === sessionId;
+        return flags.furnitureKey === "campfire"
+            || flags.furnitureKey === "campfireFlame"
+            || flags.isPlaceholder
+            || !!flags.isSharedStation
+            || !!flags.targetStationKey;
+    });
+
+    if (!toRemove.length) {
+        _campSessionId = null;
+        return 0;
+    }
+
+    const ids = toRemove.map(t => t.id);
+    await scene.deleteEmbeddedDocuments("Token", ids);
+    _campSessionId = null;
+    Logger.log(`${MODULE_ID} | clearCampfireSite: removed ${ids.length} layout token(s)`);
     return ids.length;
 }
 
