@@ -567,26 +567,25 @@ export class CampfireEmbed {
     _onDouseFire() {
         if (!this._lit) return;
         const level = this.fireLevel;
-        if (level === "bonfire") {
-            this._heat = 50;
-        } else if (level === "campfire") {
-            this._heat = 28;
-        } else if (level === "embers") {
+        let targetLevel;
+        if (level === "bonfire") targetLevel = "campfire";
+        else if (level === "campfire") targetLevel = "embers";
+        else if (level === "embers") {
             if (!game.user.isGM) {
                 ui.notifications.warn("Only the GM can douse the fire to cold camp.");
                 return;
             }
-            this._lit = false;
-            this._heat = 0;
-            this._peakHeat = 0;
-            this._kindlingPlaced = false;
-            this._coldCampActive = true;
+            targetLevel = "unlit";
         } else {
             return;
         }
-        this._updateMeter(this._container);
-        this._notifyFireLevel();
-        void this.render();
+
+        // Request the tier change through rest sync; do not mutate heat locally.
+        // Players emit to the GM; the embed updates when PHASE_CHANGED or
+        // syncFromRestFireLevel runs after the commit.
+        if (this._onFireLevelChange) {
+            void this._onFireLevelChange(targetLevel);
+        }
     }
 
     // ──────── Ambient Embers ────────
