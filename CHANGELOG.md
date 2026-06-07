@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.1.0] - 2026-06-07
+
+### Added
+- **Expanded system support.** Added full compatibility adapters for Starfinder Roleplaying Game (SFRPG), Pathfinder 1e, D&D 3.5e, and Old-School Essentials (OSE).
+- **System-native recovery.** Short and long rest recovery correctly maps Hit Dice, HP, spell slots, and condition effects (e.g. fatigue/exhaustion) to the newly supported systems natively.
+
 ## [3.0.4] - 2026-06-07
 
 ### Added
