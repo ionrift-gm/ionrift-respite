@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.0.4] - 2026-06-07
+
+### Added
+- **System support.** Added initial compatibility adapters for Old-School Essentials (OSE), Starfinder Roleplaying Game (SFRPG), Pathfinder 1e, and D&D 3.5e.
+
+### Changed
+- **Campfire minigame.** The interactive campfire lighting ceremony is now fully available in Stations mode when comfort features are enabled.
+- **Campfire management.** Players can now light, douse, and rebuild the fire directly during the Activity phase.
+
+### Fixed
+- Fixed a crash that could occur during the travel resolution phase when certain activities were undefined.
+- Fixed the campfire heat meter occasionally highlighting the incorrect temperature tier.
+- Fixed state desyncs during the campfire minigame and when players rejoin an active Make Camp session.
+
 ## [3.0.3] - 2026-06-06
 
 ### Fixed
