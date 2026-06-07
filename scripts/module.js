@@ -877,6 +877,17 @@ Hooks.once("ready", async () => {
     // Initialize image resolver (art pack detection â€” probes ionrift-data/)
     await ImageResolver.init();
 
+    const refreshOpenRestSetup = () => {
+        if (activeRestSetupApp?.rendered) activeRestSetupApp.render();
+    };
+    Hooks.on("ionrift.partyChanged", refreshOpenRestSetup);
+    Hooks.on("updateActor", (actor, changes) => {
+        const partyId = game.actors?.party?.id;
+        if (partyId && actor.id === partyId && foundry.utils.hasProperty(changes, "system.members")) {
+            refreshOpenRestSetup();
+        }
+    });
+
     // Initialize terrain registry early so data is available before first rest.
     // The registry is Respite-local under strict sovereignty: nothing is pushed
     // into the shared library spine, and other modules are expected to build

@@ -83,59 +83,73 @@
             {{#unless kindlingPlaced}}
             {{!-- Step 1: Drag kindling into requirement slots --}}
             <div class="campfire-ceremony-action-area">
+                <div class="ceremony-primary-slot">
                 {{#if firewoodCount}}
                 <div class="campfire-ceremony-kindling-step">
-                    <div class="firewood-log" draggable="true" data-tooltip="Drag kindling to a slot under the pit">
-                        <img class="firewood-log-icon" src="{{kindlingDragImg}}" alt="" draggable="false">
+                    <div class="ceremony-kindling-row">
+                        <div class="firewood-log" draggable="true" data-tooltip="Drag kindling to a slot under the pit">
+                            <img class="firewood-log-icon" src="{{kindlingDragImg}}" alt="" draggable="false">
+                        </div>
+                        <span class="ceremony-kindling-count">&times;{{firewoodCount}}</span>
+                        <span class="guided-label">Drag kindling ({{ceremonyWoodStaged}}/{{ceremonyWoodRequired}} placed)</span>
                     </div>
-                    <span class="ceremony-kindling-count">&times;{{firewoodCount}}</span>
-                    <span class="guided-label">Drag kindling ({{ceremonyWoodStaged}}/{{ceremonyWoodRequired}} placed)</span>
                 </div>
                 {{else}}
                 <div class="campfire-ceremony-kindling-step dimmed ceremony-no-wood-step">
                     <span class="ceremony-no-wood-label"><i class="fas fa-fire" aria-hidden="true"></i> No firewood in inventory</span>
-                    {{#if showGiftKindlingBtn}}
-                    <button type="button" class="campfire-btn ceremony-gift-wood-btn" data-action="giftCeremonyWood"
-                            data-tooltip="Add kindling to {{giftKindlingTargetName}}'s sheet">
-                        <i class="fas fa-gift" aria-hidden="true"></i> Gift wood to {{giftKindlingTargetName}}
-                    </button>
-                    {{/if}}
                 </div>
+                {{/if}}
+                </div>
+                {{#if showGiftKindlingBtn}}
+                <button type="button" class="campfire-btn ceremony-gift-wood-btn" data-action="giftCeremonyWood"
+                        data-tooltip="Add kindling to {{giftKindlingTargetName}}'s sheet">
+                    <i class="fas fa-gift" aria-hidden="true"></i> Gift wood
+                </button>
                 {{/if}}
             </div>
             {{else}}
             {{!-- Step 2: Strike / cantrip row --}}
-            <div class="campfire-ceremony-strike-row">
-                <div class="ceremony-row-left">
-                    {{#if firewoodCount}}
-                    <div class="firewood-log" draggable="true" data-tooltip="Drag more kindling to fire">
-                        <img class="firewood-log-icon" src="{{kindlingDragImg}}" alt="" draggable="false">
+            <div class="campfire-ceremony-action-area">
+                <div class="ceremony-primary-slot">
+                <div class="campfire-ceremony-strike-row">
+                    <div class="ceremony-row-left">
+                        {{#if firewoodCount}}
+                        <div class="firewood-log" draggable="true" data-tooltip="Drag more kindling to fire">
+                            <img class="firewood-log-icon" src="{{kindlingDragImg}}" alt="" draggable="false">
+                        </div>
+                        <span class="ceremony-kindling-count">&times;{{firewoodCount}}</span>
+                        {{else}}
+                        <span class="ceremony-no-kindling guided-label">No wood left</span>
+                        {{/if}}
                     </div>
-                    <span class="ceremony-kindling-count">&times;{{firewoodCount}}</span>
-                    {{else}}
-                    <span class="ceremony-no-kindling guided-label">No wood left</span>
-                    {{/if}}
+                    <div class="ceremony-row-center">
+                        <span class="strike-hint">Attempt {{strikeCount}}</span>
+                    </div>
+                    <div class="ceremony-row-right">
+                        {{#if hasFireCantrip}}
+                        <button type="button" data-action="cantripIgnite" class="campfire-btn strike-btn cantrip-btn">
+                            <i class="fas fa-hat-wizard"></i> {{fireCantrip}}
+                        </button>
+                        {{/if}}
+                        {{#if hasTinderbox}}
+                        <button type="button" data-action="strikeFlint" class="campfire-btn strike-btn">
+                            <i class="fas fa-hand-sparkles"></i> Strike Flint
+                        </button>
+                        {{/if}}
+                        {{#unless hasTinderbox}}
+                        {{#unless hasFireCantrip}}
+                        <span class="guided-label">Needs tinderbox or fire cantrip</span>
+                        {{/unless}}
+                        {{/unless}}
+                    </div>
                 </div>
-                <div class="ceremony-row-center">
-                    <span class="strike-hint">Attempt {{strikeCount}}</span>
                 </div>
-                <div class="ceremony-row-right">
-                    {{#if hasFireCantrip}}
-                    <button type="button" data-action="cantripIgnite" class="campfire-btn strike-btn cantrip-btn">
-                        <i class="fas fa-hat-wizard"></i> {{fireCantrip}}
-                    </button>
-                    {{/if}}
-                    {{#if hasTinderbox}}
-                    <button type="button" data-action="strikeFlint" class="campfire-btn strike-btn">
-                        <i class="fas fa-hand-sparkles"></i> Strike Flint
-                    </button>
-                    {{/if}}
-                    {{#unless hasTinderbox}}
-                    {{#unless hasFireCantrip}}
-                    <span class="guided-label">Needs tinderbox or fire cantrip</span>
-                    {{/unless}}
-                    {{/unless}}
-                </div>
+                {{#if showGiftKindlingBtn}}
+                <button type="button" class="campfire-btn ceremony-gift-wood-btn" data-action="giftCeremonyWood"
+                        data-tooltip="Add kindling to {{giftKindlingTargetName}}'s sheet">
+                    <i class="fas fa-gift" aria-hidden="true"></i> Gift wood
+                </button>
+                {{/if}}
             </div>
             {{/unless}}
             {{#if previewFirewoodShortfall}}

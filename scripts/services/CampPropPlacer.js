@@ -199,7 +199,7 @@ async function createCampfirePair(x, y) {
 
     const linkId = foundry.utils.randomID(8);
 
-    // Campfire base token (always visible, no light: the charred logs)
+    // Campfire base token (GM-only pit marker until the flame token is revealed)
     const baseData = {
         name: "Campfire Base",
         texture: { src: randomCampfireBase() },
@@ -208,7 +208,7 @@ async function createCampfirePair(x, y) {
         sort: CAMPFIRE_PIT_SORT,
         x: tx,
         y: ty,
-        hidden: false,
+        hidden: true,
         lockRotation: true,
         rotation: Math.floor(Math.random() * 360),
         disposition: -2,

@@ -106,12 +106,41 @@
     <div class="respite-setup">
         <div class="respite-empty-party-hint">
             <i class="fas fa-users-slash"></i>
+            {{#if (eq emptyPartyReason 'no_primary_party')}}
+            <p>No primary party detected.</p>
+            <p>A party group exists in this world but is not designated as the primary party. In the Actors sidebar, right-click the Group actor and choose <strong>Make Primary Party</strong>, then add your characters to it.</p>
+            {{else if (eq emptyPartyReason 'primary_party_empty')}}
+            <p>Primary party has no characters.</p>
+            <p>Open the primary party group and drag player characters onto it, or add members from the Members tab.</p>
+            <button type="button" class="btn-primary respite-empty-party-action" onclick="game.ionrift?.library?.party?.openNativeManagement?.() ?? ui.notifications.warn('Party management requires ionrift-library.');">
+                <i class="fas fa-users"></i> Open Primary Party
+            </button>
+            {{else if (eq emptyPartyReason 'no_party_group')}}
+            <p>No party group found.</p>
+            <p>Create a Group actor in the Actors sidebar, add your player characters, then right-click it and choose <strong>Make Primary Party</strong>.</p>
+            {{else if showPartyRosterEditor}}
+            <p>No characters in the party roster.</p>
+            <p>Create or import player-owned characters, then open Party Roster to choose who participates in Rest.</p>
+            <button type="button" class="btn-primary respite-empty-party-action" onclick="const App = game.ionrift?.library?.PartyRosterApp; if (App) new App().render(true); else ui.notifications.warn('Party Roster requires ionrift-library.');">
+                <i class="fas fa-users-cog"></i> Open Party Roster
+            </button>
+            {{else}}
             <p>No player-owned characters found.</p>
-            <p>Create or import characters and assign them to players, then reopen Respite.</p>
+            <p>Create or import characters, assign them to players, then reopen Respite.</p>
+            {{/if}}
         </div>
     </div>
     {{else}}
     <div class="respite-setup">
+
+        {{#if partySetupWarning}}
+        <div class="respite-party-setup-warning">
+            <i class="fas fa-star-half-stroke" aria-hidden="true"></i>
+            {{#if (eq partySetupWarning 'no_primary_party')}}
+            <p><strong>No primary party detected.</strong> Rest is using characters from a non-primary group. Right-click the correct Group in the Actors sidebar and choose <strong>Make Primary Party</strong>.</p>
+            {{/if}}
+        </div>
+        {{/if}}
 
 
 
@@ -751,13 +780,42 @@
     {{!-- =============== MAKE CAMP PHASE =============== --}}
     {{#if (eq phase 'camp')}}
 
-    {{!-- TotM: inline Make Camp panel (no canvas required) --}}
-    {{#if isTheaterMode}}
     <div class="phase-banner">
         <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
+    {{#if showArtNudge}}
+    <div class="art-nudge-banner">
+        <div class="art-nudge-content">
+            <i class="fas fa-palette art-nudge-icon"></i>
+            <div class="art-nudge-text">
+                {{#if artNudgeIsUpdate}}
+                <span class="art-nudge-title">A newer art pack is available.</span>
+                <span class="art-nudge-subtitle">Update to get station token art for workstations and camp gear.</span>
+                {{else}}
+                <span class="art-nudge-title">Camp art is using placeholder icons.</span>
+                <span class="art-nudge-subtitle">Import the art pack for terrain and station art.</span>
+                {{/if}}
+            </div>
+        </div>
+        <div class="art-nudge-actions">
+            <button type="button" data-action="openArtPackPatreon" class="art-nudge-btn">
+                <i class="fas fa-external-link-alt"></i> {{#if artNudgeIsUpdate}}Get Update{{else}}Get Art Pack{{/if}}
+            </button>
+            <button type="button" data-action="openArtPackImport" class="art-nudge-btn primary">
+                <i class="fas fa-file-import"></i> {{#if artNudgeIsUpdate}}Update Art Pack{{else}}Import Art Pack{{/if}}
+            </button>
+            <button type="button" data-action="dismissArtNudge" class="art-nudge-dismiss" data-tooltip="Dismiss">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <label class="art-nudge-suppress">
+            <input type="checkbox" class="art-nudge-suppress-checkbox" />
+            Don't show again
+        </label>
+    </div>
+    {{/if}}
     {{> rosterStrip}}
-    <div class="totm-camp-layout">
+    <div class="totm-camp-layout make-camp-unified">
 
         {{#unless safeRestSpot}}
         {{!-- LEFT: Personal Comfort (character-contextual) --}}
@@ -1010,91 +1068,79 @@
         </div>
     </div>
 
-    {{!-- Proceed footer (TotM) --}}
-    {{#if isGM}}
-    <div class="totm-camp-footer">
-        {{#if (or safeRestSpot campFireIsLit campColdCampDecided campPreviewIsColdCamp)}}
-        <button type="button" class="btn-primary totm-camp-proceed"
-                data-action="proceedFromTotmCamp">
-            <i class="fas fa-arrow-right" aria-hidden="true"></i> Proceed to Activities
-        </button>
-        {{else}}
-        <button type="button" class="btn-primary totm-camp-proceed disabled" disabled>
-            <i class="fas fa-lock" aria-hidden="true"></i> Light the fire or choose cold camp
-        </button>
+    {{!-- Proceed footer + optional map placement --}}
+    <div class="totm-camp-footer make-camp-footer-row">
+        <div class="totm-camp-footer-primary">
+            {{#if isGM}}
+            {{#if canProceedFromMakeCamp}}
+            <button type="button" class="btn-primary totm-camp-proceed"
+                    data-action="proceedFromMakeCamp">
+                <i class="fas fa-arrow-right" aria-hidden="true"></i> Proceed to Activities
+            </button>
+            {{else}}
+            <button type="button" class="btn-primary totm-camp-proceed disabled" disabled>
+                <i class="fas fa-lock" aria-hidden="true"></i> {{proceedBlockedHint}}
+            </button>
+            {{/if}}
+            {{else}}
+            <span class="totm-camp-player-wait">
+                <i class="fas fa-campground" aria-hidden="true"></i>
+                {{#if canProceedFromMakeCamp}}
+                Camp is set. Waiting for the GM to proceed.
+                {{else}}
+                Setting up camp...
+                {{/if}}
+            </span>
+            {{/if}}
+        </div>
+        {{#if campfireDragCard.show}}
+        <div class="totm-camp-footer-placement">
+            {{#if campfireDragCard.placed}}
+            {{#if campfireDragCard.canReclaim}}
+            <button type="button"
+                    class="camp-drag-handle camp-drag-handle-compact camp-drag-handle-placed camp-drag-handle-reclaim"
+                    data-action="reclaimCampfire"
+                    aria-label="Pick up campfire to place elsewhere"
+                    data-tooltip="{{campfireDragCard.tooltip}}" data-tooltip-direction="UP">
+                <div class="camp-drag-icon"><i class="fas fa-fire" aria-hidden="true"></i></div>
+                <div class="camp-drag-label">
+                    <span class="camp-drag-title">{{campfireDragCard.shortLabel}}</span>
+                </div>
+            </button>
+            {{else}}
+            <div class="camp-drag-handle camp-drag-handle-compact camp-drag-handle-placed"
+                 aria-label="Campfire placed"
+                 data-tooltip="{{campfireDragCard.tooltip}}" data-tooltip-direction="UP">
+                <div class="camp-drag-icon"><i class="fas fa-check" aria-hidden="true"></i></div>
+                <div class="camp-drag-label">
+                    <span class="camp-drag-title">{{campfireDragCard.shortLabel}}</span>
+                </div>
+            </div>
+            {{/if}}
+            {{else if campfireDragCard.canDrag}}
+            <div class="camp-drag-handle camp-drag-handle-compact {{#if campfireDragCard.required}}camp-drag-handle-required{{/if}}"
+                 draggable="true"
+                 aria-label="Drag campfire to the map"
+                 data-tooltip="{{campfireDragCard.tooltip}}" data-tooltip-direction="UP">
+                <div class="camp-drag-icon"><i class="fas fa-fire" aria-hidden="true"></i></div>
+                <div class="camp-drag-label">
+                    <span class="camp-drag-title">{{campfireDragCard.shortLabel}}{{#if campfireDragCard.required}}<span class="camp-drag-required-badge">Req</span>{{/if}}</span>
+                </div>
+                <i class="fas fa-grip-vertical camp-drag-grip" aria-hidden="true"></i>
+            </div>
+            {{else}}
+            <div class="camp-drag-handle camp-drag-handle-compact camp-drag-handle-wait"
+                 data-tooltip="{{campfireDragCard.tooltip}}" data-tooltip-direction="UP">
+                <div class="camp-drag-icon"><i class="fas fa-fire" aria-hidden="true"></i></div>
+                <div class="camp-drag-label">
+                    <span class="camp-drag-title">{{campfireDragCard.shortLabel}}</span>
+                </div>
+            </div>
+            {{/if}}
+        </div>
         {{/if}}
     </div>
-    {{else}}
-    <div class="totm-camp-footer">
-        <span class="totm-camp-player-wait">
-            <i class="fas fa-campground" aria-hidden="true"></i>
-            {{#if (or safeRestSpot campFireIsLit campColdCampDecided)}}
-            Camp is set. Waiting for the GM to proceed.
-            {{else}}
-            Setting up camp...
-            {{/if}}
-        </span>
-    </div>
-    {{/if}}
 
-    {{!-- Spatial mode fallback --}}
-    {{else}}
-    <div class="camp-minimal-shell camp-phase-shell">
-    {{#if showArtNudge}}
-    <div class="art-nudge-banner">
-        <div class="art-nudge-content">
-            <i class="fas fa-palette art-nudge-icon"></i>
-            <div class="art-nudge-text">
-                {{#if artNudgeIsUpdate}}
-                <span class="art-nudge-title">A newer art pack is available.</span>
-                <span class="art-nudge-subtitle">Update to get station token art for workstations and camp gear.</span>
-                {{else}}
-                <span class="art-nudge-title">Camp art is using placeholder icons.</span>
-                <span class="art-nudge-subtitle">Import the art pack for terrain and station art.</span>
-                {{/if}}
-            </div>
-        </div>
-        <div class="art-nudge-actions">
-            <button type="button" data-action="openArtPackPatreon" class="art-nudge-btn">
-                <i class="fas fa-external-link-alt"></i> {{#if artNudgeIsUpdate}}Get Update{{else}}Get Art Pack{{/if}}
-            </button>
-            <button type="button" data-action="openArtPackImport" class="art-nudge-btn primary">
-                <i class="fas fa-file-import"></i> {{#if artNudgeIsUpdate}}Update Art Pack{{else}}Import Art Pack{{/if}}
-            </button>
-            <button type="button" data-action="dismissArtNudge" class="art-nudge-dismiss" data-tooltip="Dismiss">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <label class="art-nudge-suppress">
-            <input type="checkbox" class="art-nudge-suppress-checkbox" />
-            Don't show again
-        </label>
-    </div>
-    {{/if}}
-    {{#if campfirePlaced}}
-    {{#if simpleStationsMode}}
-    <p class="camp-minimal-lead glass-ui">Setting up camp...</p>
-    {{else}}
-    <p class="camp-minimal-lead glass-ui">Use the <strong>campfire</strong> on the map: light the fire, cold camp, or add fuel. Supply tokens show where stations appear after the fire is going.</p>
-    {{/if}}
-    {{else}}
-    <p class="camp-minimal-lead glass-ui">
-        {{#if isGM}}{{#if simpleStationsMode}}Click the map to drop the pit. The fire lights itself and the workbench and bedrolls appear beside it.{{else}}A preview follows the pointer. Click the map to drop the pit, or right-click / <kbd>Esc</kbd> to cancel.{{/if}}{{else}}The GM is placing the campfire.{{/if}}
-    </p>
-    {{/if}}
-    {{#if isGM}}
-    {{#if campPitPlacementCancelled}}
-    <div class="camp-pit-retry glass-ui">
-        <p>Placement was cancelled. Place the pit when ready.</p>
-        <button type="button" class="btn-primary" data-action="retryCampPitPlacement"><i class="fas fa-map-pin"></i> Place campfire pit</button>
-    </div>
-    {{/if}}
-    {{/if}}
-    </div>
-    {{#if isGM}}<div class="respite-action-bar camp-minimal-action"><span class="phase-waiting-label"><i class="fas fa-compass"></i> Map first</span></div>
-    {{else}}<div class="respite-action-bar camp-minimal-action"><span class="phase-waiting-label"><i class="fas fa-campground"></i> Check the map</span></div>
-    {{/if}}
-    {{/if}}{{!-- /isTheaterMode --}}
     {{/if}}
 
 
