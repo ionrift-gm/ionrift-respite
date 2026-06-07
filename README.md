@@ -94,16 +94,18 @@ A separate single-screen flow with per-die Hit Die spending and live HP tracking
 
 ## System support
 
-| System | Status | What works |
-|---|---|---|
-| DnD 5e | Full | Activities, recovery, events, campfire, cooking, and short rest. Verified on Foundry v14, compatible back to v12. |
-| Pathfinder 2e | Early | Core rest flow, campfire, events, activity grid, and HP/Focus recovery. PF2e-specific activities and condition automation are in progress. |
+- **DnD 5e.** Full. Activities, recovery, events, campfire, cooking, and short rest. Verified on Foundry v14, compatible back to v12.
+- **Pathfinder 2e.** Early. Core rest flow, campfire, events, activity grid, and HP/Focus recovery. PF2e-specific activities and condition automation are in progress.
+- **Starfinder 1e.** Initial. Core rest flow, campfire, and Stamina-aware HD recovery. 
+- **Pathfinder 1e & D&D 3.5e.** Initial. Core rest flow, campfire, and HP recovery. (Native rest flows are suppressed to prevent double-dipping).
+- **Old-School Essentials.** Initial. Core rest flow, campfire, HP/scores recovery, and spell slot refresh on long rest.
 
 ---
 
-## Dependencies
+## Requirements
 
 - **[Ionrift Library](https://github.com/ionrift-gm/ionrift-library)**: Required dependency.
+- **System:** One of the 6 supported game systems listed above.
 - **[Simple Calendar](https://foundryvtt.com/packages/foundryvtt-simple-calendar)** (optional): Date tracking and "already rested today" checks.
 
 ---
