@@ -484,6 +484,7 @@ export class TravelResolutionDelegate {
 
     buildContext(partyActors, terrainTag) {
         const terrain = TerrainRegistry.get(terrainTag);
+        const allowed = terrain?.travelActivities ?? ["forage", "hunt", "scout"];
         const { canForage, canHunt } = getTravelGatherAvailability(terrain?.travelActivities);
         const safeRest = this.#effectiveSafeRestSpot();
         const canScout = !safeRest && allowed.includes("scout") && isScoutingEnabled() && this.#scoutingAllowed;

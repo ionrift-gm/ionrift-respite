@@ -3934,6 +3934,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
                 // Player-side context: multi-day aware
                 const terrain = TerrainRegistry.get(terrainTag);
+                const allowed = terrain?.travelActivities ?? ["forage", "hunt", "scout"];
                 const { canForage, canHunt } = getTravelGatherAvailability(terrain?.travelActivities);
                 const scoutAllowed = isScoutingEnabled() && (this._travelScoutingAllowed ?? true);
                 const canScout = !safeRestSpot && allowed.includes("scout") && scoutAllowed;
