@@ -119,16 +119,24 @@ export class CampfireEmbed {
 
     get fireLevel() {
         if (!this._lit) return "unlit";
-        if (this._heat >= 65) return "bonfire";
-        if (this._heat >= 30) return "campfire";
-        return "embers";
+        return CampfireEmbed._fireLevelFromHeat(this._heat);
     }
 
     get peakFireLevel() {
-        if (this._peakHeat >= 65) return "bonfire";
-        if (this._peakHeat >= 30) return "campfire";
-        if (this._peakHeat > 0) return "embers";
-        return "unlit";
+        if (this._peakHeat <= 0) return "unlit";
+        return CampfireEmbed._fireLevelFromHeat(this._peakHeat);
+    }
+
+    /**
+     * Canonical heat anchors: embers 25, campfire 50, bonfire 75.
+     * Thresholds sit between tiers so synced values land on the correct label.
+     * @param {number} heat
+     * @returns {"embers"|"campfire"|"bonfire"}
+     */
+    static _fireLevelFromHeat(heat) {
+        if (heat >= 60) return "bonfire";
+        if (heat >= 35) return "campfire";
+        return "embers";
     }
 
     // ──────── Render into container ────────
@@ -377,7 +385,7 @@ export class CampfireEmbed {
         } else {
             this._lit = true;
             this._coldCampActive = false;
-            this._heat = level === "bonfire" ? 75 : level === "campfire" ? 50 : 30;
+            this._heat = level === "bonfire" ? 75 : level === "campfire" ? 50 : 25;
             this._peakHeat = this._heat;
             this._kindlingPlaced = true;
             this._lastFireLevel = level;
@@ -1208,23 +1216,55 @@ export class CampfireEmbed {
         }, 3000);
     }
 
+    /** @param {HTMLElement|null} el */
+    _meterZoneOrder(el) {
+        const hasCold = !!el?.querySelector(".zone-cold-camp");
+        return hasCold
+            ? ["cold_camp", "embers", "campfire", "bonfire"]
+            : ["embers", "campfire", "bonfire"];
+    }
+
+    /**
+     * Center of the tier segment on the meter track (0–100%).
+     * @param {string} level
+     * @param {HTMLElement|null} el
+     */
+    _meterZoneCenterPercent(level, el) {
+        const zones = this._meterZoneOrder(el);
+        const idx = zones.indexOf(level);
+        if (idx < 0) return 0;
+        const segment = 100 / zones.length;
+        return (idx + 0.5) * segment;
+    }
+
     _updateMeter(el) {
         if (!el) return;
         if (this._heat > this._peakHeat) this._peakHeat = this._heat;
         const meterLevel = this._getMeterLevel();
-        const needlePct = meterLevel === "cold_camp" ? 0 : this._heat;
+        const needlePct = this._meterZoneCenterPercent(meterLevel, el);
+        const peakLevel = this._lit
+            ? CampfireEmbed._fireLevelFromHeat(this._peakHeat)
+            : (this._coldCampActive ? "cold_camp" : "unlit");
+        const peakPct = peakLevel === "unlit"
+            ? 0
+            : this._meterZoneCenterPercent(peakLevel, el);
         const fill = el.querySelector(".fire-meter-fill");
-        if (fill) fill.style.width = `${this._lit ? this._heat : 0}%`;
+        if (fill) {
+            fill.style.width = `${meterLevel === "cold_camp" || !this._lit ? 0 : needlePct}%`;
+        }
         const needle = el.querySelector(".fire-meter-needle");
         if (needle) needle.style.left = `${needlePct}%`;
         let peak = el.querySelector(".fire-meter-peak");
-        if (!peak && this._peakHeat > 0) {
+        if (!peak && this._peakHeat > 0 && this._lit) {
             peak = document.createElement("div");
             peak.classList.add("fire-meter-peak");
             const track = el.querySelector(".fire-meter-track");
             if (track) track.appendChild(peak);
         }
-        if (peak) peak.style.left = `${this._peakHeat}%`;
+        if (peak) {
+            peak.style.left = `${peakPct}%`;
+            peak.style.display = this._lit && peakPct > 0 ? "" : "none";
+        }
         for (const zone of el.querySelectorAll(".fire-meter-zone")) {
             const zoneId = zone.dataset?.zone;
             zone.classList.toggle("is-active", zoneId === meterLevel);
