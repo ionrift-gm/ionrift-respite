@@ -8,6 +8,10 @@
 import { SpoilageClock } from "./SpoilageClock.js";
 import { DietConfigApp } from "../apps/DietConfigApp.js";
 import { injectPlayerLockdownClasses } from "./PlayerLockdownService.js";
+import {
+    mountDietButtonInHeader,
+    resolveDietButtonClassName
+} from "./SheetInjectionUtils.js";
 
 const MODULE_ID = "ionrift-respite";
 const ZZZ_CHILD_NAME = "ionrift-respite-zzz";
@@ -29,31 +33,27 @@ export function injectDietButton(app, html) {
         ?? app.element;
     if (!el) return;
 
-    if (el.querySelector(".respite-diet-btn")) return;
-
     const header = el.querySelector("header.window-header")
         ?? el.closest?.(".app")?.querySelector("header.window-header")
         ?? el.querySelector(".window-header");
     if (!header) return;
 
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "header-control-button respite-diet-btn";
-    btn.dataset.tooltip = "Diet Configuration";
-    btn.setAttribute("aria-label", "Diet Configuration");
-    btn.innerHTML = `<i class="fas fa-utensils"></i>`;
-    btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        new DietConfigApp({ actorId: actor.id }).render({ force: true });
-    });
-
-    const closeBtn = header.querySelector("button.close, button[data-action='close']");
-    if (closeBtn) {
-        closeBtn.before(btn);
-    } else {
-        header.appendChild(btn);
+    let btn = header.querySelector(".respite-diet-btn");
+    if (!btn) {
+        btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.tooltip = "Diet Configuration";
+        btn.setAttribute("aria-label", "Diet Configuration");
+        btn.innerHTML = `<i class="fas fa-utensils"></i>`;
+        btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            new DietConfigApp({ actorId: actor.id }).render({ force: true });
+        });
     }
+
+    btn.className = resolveDietButtonClassName(app);
+    mountDietButtonInHeader(header, btn);
 }
 
 /**

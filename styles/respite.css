@@ -3276,12 +3276,12 @@ button.camp-gear-reclaim-btn .camp-gear-reclaim-hint {
     vertical-align: middle;
 }
 
-.rarity-common { background: rgba(150, 150, 150, 0.2); color: rgba(200, 200, 200, 0.6); }
-.rarity-uncommon { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
-.rarity-rare { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
-.rarity-veryRare { background: rgba(167, 139, 250, 0.15); color: #a78bfa; }
-.rarity-legendary { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
-.rarity-artifact { background: rgba(251, 113, 133, 0.15); color: #fb7185; }
+.rarity-badge.rarity-common { background: rgba(150, 150, 150, 0.2); color: rgba(200, 200, 200, 0.6); }
+.rarity-badge.rarity-uncommon { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+.rarity-badge.rarity-rare { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
+.rarity-badge.rarity-veryRare { background: rgba(167, 139, 250, 0.15); color: #a78bfa; }
+.rarity-badge.rarity-legendary { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+.rarity-badge.rarity-artifact { background: rgba(251, 113, 133, 0.15); color: #fb7185; }
 
 .identify-footer {
     flex-shrink: 0;
@@ -22330,6 +22330,23 @@ button.is-processing {
 
 .respite-diet-btn:hover {
     color: rgba(200, 180, 255, 1);
+}
+
+/* App V1 actor sheets (PF2e and other legacy sheets): compact header icon */
+.respite-diet-btn--appv1 {
+    flex: 0 0 24px;
+    width: 24px;
+    min-width: 24px;
+    max-width: 24px;
+    height: 24px;
+    font-size: 12px;
+    line-height: 24px;
+    padding: 0;
+    margin: 0 2px;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* ---- Inventory Context Menu: Consume Entries ---- */
