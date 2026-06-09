@@ -11,6 +11,7 @@ import { Logger } from "../lib/Logger.js";
  */
 
 import { logCampfireReconnect } from "./CampfireReconnectLog.js";
+import { buildCampCeremonyPhasePayload } from "./campCeremonySync.js";
 import { SOCKET_TYPES, emitRequestRestState, emitWorkbenchIdentifyResult, emitPhaseChanged } from "./SocketController.js";
 import { isCampfireMinigameEnabled } from "./RestProfileSettings.js";
 import { WorkbenchDelegate } from "../apps/delegates/WorkbenchDelegate.js";
@@ -217,10 +218,7 @@ export function dispatch(data, ctx) {
                 const cost = app._campPreviewFirewoodCost?.() ?? 0;
                 if ((app._makeCampStagedWood?.length ?? 0) >= cost) break;
                 app._makeCampStagedWood = [...(app._makeCampStagedWood ?? []), data.slot];
-                emitPhaseChanged(app._phase, {
-                    makeCampStagedWood: [...app._makeCampStagedWood],
-                    selectedTerrain: app._selectedTerrain ?? null
-                });
+                emitPhaseChanged(app._phase, buildCampCeremonyPhasePayload(app));
                 app._syncCampCeremonyPreviewToEmbed?.();
                 if (app._campfireApp) void app._campfireApp.render();
                 else app.render();
@@ -232,10 +230,7 @@ export function dispatch(data, ctx) {
             if (ctx.activeRestSetupApp && data.slotId) {
                 const app = ctx.activeRestSetupApp;
                 app._makeCampStagedWood = (app._makeCampStagedWood ?? []).filter(s => s.id !== data.slotId);
-                emitPhaseChanged(app._phase, {
-                    makeCampStagedWood: [...app._makeCampStagedWood],
-                    selectedTerrain: app._selectedTerrain ?? null
-                });
+                emitPhaseChanged(app._phase, buildCampCeremonyPhasePayload(app));
                 app._syncCampCeremonyPreviewToEmbed?.();
                 if (app._campfireApp) void app._campfireApp.render();
                 else app.render();
@@ -497,6 +492,9 @@ export function dispatch(data, ctx) {
                 if (data.scoutingAllowed !== null) app._travelScoutingAllowed = data.scoutingAllowed;
                 if (data.forageDC !== null) app._travelForageDC = data.forageDC;
                 if (data.huntDC !== null) app._travelHuntDC = data.huntDC;
+                if (data.travelGather && typeof data.travelGather === "object") {
+                    app._syncedTravelGather = { ...data.travelGather };
+                }
                 if (!app._playerTravelRolled) app._playerTravelRolled = {};
                 for (const [dayKey, actors] of Object.entries(data.rolled ?? {})) {
                     const day = parseInt(dayKey, 10);

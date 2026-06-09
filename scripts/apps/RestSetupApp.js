@@ -76,9 +76,14 @@ import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetec
 import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, getComfortTip, CAMP_STATIONS, getStationsForTerrain, getStationOfferedActivityIds, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments, applyActivityPortraitAssignments, foldOrphanedAssignmentsOntoOther, isWorkbenchExamineUiEnabled, isWorkbenchIdentifyUiEnabled } from "./RestConstants.js";
 import { isComfortEnabled } from "../services/ComfortCalculator.js";
 import { logCampfireReconnect } from "../services/CampfireReconnectLog.js";
+import {
+    buildCampCeremonyPhasePayload,
+    shouldPreserveCampfireEmbedOnPhaseChange
+} from "../services/campCeremonySync.js";
 import { isSimpleStationsMode, requiresMapCampFire, isCampfireMinigameEnabled } from "../services/RestProfileSettings.js";
 import { isScoutingEnabled } from "../services/ScoutingSettings.js";
 import { shouldRunTravelPhase, getTravelGatherAvailability } from "../services/TravelSettings.js";
+import { buildTravelGatherPayload } from "../services/TravelGatherPayload.js";
 import { buildActivityListItem, buildActivityDetailContext } from "./ActivityDetailBuilder.js";
 import {
     activateStationLayer,
@@ -499,6 +504,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
             if (restData.fireLevel) {
                 this._engine.fireLevel = restData.fireLevel;
+            }
+            if (restData.travelGather && typeof restData.travelGather === "object") {
+                this._syncedTravelGather = { ...restData.travelGather };
             }
             // Identify this player's characters
             this._myCharacterIds = new Set(
@@ -4264,9 +4272,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 // Player-side context: multi-day aware
                 const terrain = TerrainRegistry.get(terrainTag);
                 const allowed = terrain?.travelActivities ?? ["forage", "hunt", "scout"];
-                const { canForage, canHunt } = getTravelGatherAvailability(terrain?.travelActivities);
+                const syncedGather = this._syncedTravelGather;
+                const { canForage, canHunt } = syncedGather
+                    ? { canForage: !!syncedGather.canForage, canHunt: !!syncedGather.canHunt }
+                    : getTravelGatherAvailability(terrain?.travelActivities);
                 const scoutAllowed = isScoutingEnabled() && (this._travelScoutingAllowed ?? true);
-                const canScout = !safeRestSpot && allowed.includes("scout") && scoutAllowed;
+                const canScout = syncedGather?.canScout != null
+                    ? !!syncedGather.canScout
+                    : (!safeRestSpot && allowed.includes("scout") && scoutAllowed);
                 const hasTravelOptions = canForage || canHunt || canScout;
                 let disabledReason = null;
                 if (!canForage && !canHunt) {
@@ -7902,6 +7915,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         restPayload.phase = this._phase;
+        if (this._phase === "travel") {
+            restPayload.travelGather = this._buildTravelGatherPayload();
+        }
         this._campStep2Entered = false;
 
         setActiveRestData(restPayload);
@@ -8882,10 +8898,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!this._makeCampStagedWood?.length) return;
         this._makeCampStagedWood = [];
         if (game.user.isGM) {
-            emitPhaseChanged(this._phase, {
-                makeCampStagedWood: [],
-                selectedTerrain: this._selectedTerrain ?? null
-            });
+            emitPhaseChanged(this._phase, buildCampCeremonyPhasePayload(this, { makeCampStagedWood: [] }));
             this._syncCampCeremonyPreviewToEmbed();
             if (this._campfireApp) void this._campfireApp.render();
             else this.render();
@@ -8925,10 +8938,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return true;
         }
         this._makeCampStagedWood = [...(this._makeCampStagedWood ?? []), slot];
-        emitPhaseChanged(this._phase, {
-            makeCampStagedWood: [...this._makeCampStagedWood],
-            selectedTerrain: this._selectedTerrain ?? null
-        });
+        this._emitCampCeremonyPhaseSync();
         this._syncCampCeremonyPreviewToEmbed();
         if (this._campfireApp) void this._campfireApp.render();
         else this.render();
@@ -8946,6 +8956,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         try {
             const result = await ItemOutcomeHandler.grantToActor(actor.id, "kindling", 1);
             ui.notifications.info(`Gifted kindling to ${result.actorName}.`);
+            this._emitCampCeremonyPhaseSync();
             this._syncCampCeremonyPreviewToEmbed();
             if (this._campfireApp) void this._campfireApp.render();
             else this.render();
@@ -8971,10 +8982,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
         this._makeCampStagedWood = this._makeCampStagedWood.filter(s => s.id !== slotId);
-        emitPhaseChanged(this._phase, {
-            makeCampStagedWood: [...this._makeCampStagedWood],
-            selectedTerrain: this._selectedTerrain ?? null
-        });
+        this._emitCampCeremonyPhaseSync();
         this._syncCampCeremonyPreviewToEmbed();
         if (this._campfireApp) void this._campfireApp.render();
         else this.render();
@@ -9003,7 +9011,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return { ok: true, spendNames };
     }
 
-    _syncCampCeremonyPreviewToEmbed() {
+    _syncCampCeremonyPreviewToEmbed(syncOpts = {}) {
         if (!this._campfireApp || !this._campCeremonyMinigameEnabled()) return;
         const preview = this._isCampColdCampPreview()
             ? "cold_camp"
@@ -9011,12 +9019,25 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const slots = this._buildMakeCampCeremonyRequirementSlots();
         const cost = this._campPreviewFirewoodCost();
         const ceremonyReady = (this._makeCampStagedWood?.length ?? 0) >= cost && cost > 0;
+        const party = syncOpts.partyFirewood ?? this._partyFirewoodTotal();
+        const actorId = this._selectedCharacterId ?? getPartyActors()[0]?.id;
+        const actorFirewood = actorId && syncOpts.actorFirewood?.[actorId] != null
+            ? syncOpts.actorFirewood[actorId]
+            : null;
         this._campfireApp.syncMakeCampPreview(
             preview,
-            this._partyFirewoodTotal(),
+            party,
             slots,
-            ceremonyReady
+            ceremonyReady,
+            {
+                force: !!syncOpts.force,
+                actorFirewood
+            }
         );
+    }
+
+    _emitCampCeremonyPhaseSync(extra = {}) {
+        emitPhaseChanged(this._phase, buildCampCeremonyPhasePayload(this, extra));
     }
 
     /** Make Camp: minigame ceremony before fire is committed (TotM or stations with comfort). */
@@ -13244,9 +13265,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             phase === "camp"
             && (phaseData.campFirePreviewLevel !== undefined
                 || phaseData.coldCampPreview !== undefined
-                || phaseData.makeCampStagedWood !== undefined)
+                || phaseData.makeCampStagedWood !== undefined
+                || phaseData.campPartyFirewood !== undefined
+                || phaseData.campActorFirewood !== undefined)
         ) {
-            this._syncCampCeremonyPreviewToEmbed();
+            this._syncCampCeremonyPreviewToEmbed({
+                partyFirewood: phaseData.campPartyFirewood,
+                actorFirewood: phaseData.campActorFirewood,
+                force: phaseData.campPartyFirewood !== undefined
+                    || phaseData.campActorFirewood !== undefined
+            });
         }
         if (phaseData.campStep2Entered) this._campStep2Entered = true;
         if (phaseData.campStatus) this._campStatus = phaseData.campStatus;
@@ -13315,7 +13343,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Campfire panel lifecycle for players (legacy drawer only).
-        this._closeCampfire();
+        if (!shouldPreserveCampfireEmbedOnPhaseChange(prevPhase, phase, phaseData)) {
+            this._closeCampfire();
+        }
 
         // Activity phase: canvas station overlays for all clients; players minimise to the rest bar
         if (phase === "activity") {
@@ -14361,8 +14391,25 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     totalDays: this._travel.totalDays,
                     scoutingAllowed: this._travel.scoutingAllowed,
                     forageDC: this._travel.forageDC,
-                    huntDC: this._travel.huntDC
+                    huntDC: this._travel.huntDC,
+                    travelGather: this._buildTravelGatherPayload()
                 });
+    }
+
+    /**
+     * GM-authoritative forage/hunt/scout flags for player travel UI sync.
+     * @returns {{ canForage: boolean, canHunt: boolean, canScout: boolean, hasTravelOptions: boolean }}
+     */
+    _buildTravelGatherPayload() {
+        const terrainTag = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
+        const terrain = TerrainRegistry.get(terrainTag);
+        const safeRest = this._travel?.isEffectiveSafeRestSpot?.()
+            ?? !!(this._engine?.safeRestSpot ?? this._restData?.safeRestSpot);
+        return buildTravelGatherPayload({
+            terrainActivities: terrain?.travelActivities,
+            safeRestSpot: safeRest,
+            scoutingAllowed: this._travel?.scoutingAllowed ?? this._travelScoutingAllowed ?? true
+        });
     }
 
     /**

@@ -43,6 +43,12 @@ import {
 } from "./RejoinManager.js";
 import { resolvePlayerCloseOptions } from "./playerClosePolicy.js";
 import { logCampfireReconnect } from "./CampfireReconnectLog.js";
+import {
+    applyRestDataToExistingPlayerApp,
+    shouldRequestRestStateForExistingApp
+} from "./restStartedPlayerSync.js";
+import { buildTravelGatherPayload } from "./TravelGatherPayload.js";
+import { TerrainRegistry } from "./TerrainRegistry.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -102,10 +108,23 @@ export function handleRestStarted(data, ctx) {
                     });
                     existing.receiveRestSnapshot(data.snapshot);
                 } else {
-                    logCampfireReconnect("handleRestStarted:requestState", {
-                        reason: "no snapshot on REST_STARTED for existing app"
+                    applyRestDataToExistingPlayerApp(existing, data.restData);
+                    const needsSnapshot = shouldRequestRestStateForExistingApp({
+                        restId: incomingId ?? existingId,
+                        app: existing,
+                        restData: data.restData
                     });
-                    emitRequestRestState(game.user.id);
+                    if (needsSnapshot) {
+                        logCampfireReconnect("handleRestStarted:requestState", {
+                            reason: "no snapshot on REST_STARTED for existing app"
+                        });
+                        emitRequestRestState(game.user.id);
+                    } else {
+                        logCampfireReconnect("handleRestStarted:restDataHydrate", {
+                            phase: existing._phase ?? null,
+                            restId: existing._restId ?? null
+                        });
+                    }
                     if (existing.rendered) {
                         existing.render({ force: true });
                     }
@@ -238,16 +257,29 @@ export function handleRequestRestState(data, ctx) {
     const snapshot = (userId && gmApp?.getRestSnapshotForUser)
         ? gmApp.getRestSnapshotForUser(userId)
         : (gmApp?.getRestSnapshot?.() ?? null);
+    const gmPhase = gmApp?._phase ?? ctx.activeRestData.phase;
+    const gmTerrain = gmApp?._engine?.terrainTag ?? gmApp?._selectedTerrain ?? ctx.activeRestData.terrainTag;
+    let resolvedTravelGather = null;
+    if (gmApp && gmPhase === "travel") {
+        const terrainTag = gmTerrain ?? "forest";
+        const terrain = TerrainRegistry.get(terrainTag);
+        resolvedTravelGather = buildTravelGatherPayload({
+            terrainActivities: terrain?.travelActivities,
+            safeRestSpot: !!(gmApp._engine?.safeRestSpot ?? gmApp._restData?.safeRestSpot),
+            scoutingAllowed: gmApp._travel?.scoutingAllowed ?? true
+        });
+    }
     const restData = {
         ...ctx.activeRestData,
         ...(gmApp ? {
-            phase: gmApp._phase ?? ctx.activeRestData.phase,
+            phase: gmPhase,
             fireLevel: gmApp._fireLevel ?? ctx.activeRestData.fireLevel,
             coldCampDecided: !!gmApp._coldCampDecided,
             comfort: gmApp._engine?.comfort ?? ctx.activeRestData.comfort,
             safeRestSpot: !!(gmApp._engine?.safeRestSpot ?? ctx.activeRestData.safeRestSpot),
-            terrainTag: gmApp._engine?.terrainTag ?? gmApp._selectedTerrain ?? ctx.activeRestData.terrainTag,
-            activities: gmApp._activities?.length ? gmApp._activities : ctx.activeRestData.activities
+            terrainTag: gmTerrain,
+            activities: gmApp._activities?.length ? gmApp._activities : ctx.activeRestData.activities,
+            ...(resolvedTravelGather ? { travelGather: resolvedTravelGather } : {})
         } : {})
     };
     logCampfireReconnect("handleRequestRestState:emit", {
