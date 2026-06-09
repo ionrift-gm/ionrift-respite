@@ -921,7 +921,19 @@ Hooks.once("ready", async () => {
 
     // Register socket handler (dispatch extracted to SocketRouter.js â€” Phase 2.2)
     const socketContext = {
-        get activeRestSetupApp() { return activeRestSetupApp; },
+        get activeRestSetupApp() {
+            // Self-heal: if the GM reference was lost (e.g. a render post-step
+            // threw and an older build cleared it) but the rest sheet is still
+            // mounted, recover the live instance so player→GM sockets keep
+            // landing instead of silently dropping.
+            if (!activeRestSetupApp && game.user?.isGM) {
+                const live = foundry.applications.instances.get("ionrift-respite-setup");
+                if (live && !live._terminated) {
+                    activeRestSetupApp = live;
+                }
+            }
+            return activeRestSetupApp;
+        },
         get activePlayerRestApp() { return activePlayerRestApp; },
         get activeShortRestApp() { return activeShortRestApp; },
         get activeCampfireEmbed() { return activeCampfireEmbed; },
