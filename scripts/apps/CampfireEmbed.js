@@ -175,8 +175,9 @@ export class CampfireEmbed {
      * @param {string} previewLevel - cold_camp | embers | campfire | bonfire
      * @param {number} partyFirewood - party-wide firewood count for shortfall marks
      */
-    syncMakeCampPreview(previewLevel, partyFirewood = 0, requirementSlots = [], ceremonyReady = false) {
+    syncMakeCampPreview(previewLevel, partyFirewood = 0, requirementSlots = [], ceremonyReady = false, options = {}) {
         if (!this._makeCampCeremony) return;
+        const force = !!options.force;
         const level = ["cold_camp", "embers", "campfire", "bonfire"].includes(previewLevel)
             ? previewLevel
             : "embers";
@@ -186,8 +187,12 @@ export class CampfireEmbed {
         const changed = level !== this._makeCampPreviewLevel
             || fw !== this._makeCampPartyFirewood
             || slotsJson !== prevJson
-            || ceremonyReady !== this._ceremonyReadyToLight;
-        if (!changed) return;
+            || ceremonyReady !== this._ceremonyReadyToLight
+            || options.actorFirewood != null;
+        if (!changed && !force) return;
+        if (options.actorFirewood != null) {
+            this._ceremonyActorFirewoodOverride = options.actorFirewood;
+        }
         this._makeCampPreviewLevel = level;
         this._makeCampPartyFirewood = fw;
         this._makeCampRequirementSlots = requirementSlots ?? [];
@@ -1069,7 +1074,11 @@ export class CampfireEmbed {
 
     _getFirewoodCount() {
         const actor = this._getPlayerActor();
-        return countActorFirewood(actor);
+        const local = countActorFirewood(actor);
+        if (this._makeCampCeremony && this._ceremonyActorFirewoodOverride != null) {
+            return Math.max(local, this._ceremonyActorFirewoodOverride);
+        }
+        return local;
     }
 
     async _consumeFirewood() {
