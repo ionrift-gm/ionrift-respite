@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.1.3] - 2026-06-09
+
+### Fixed
+- **Player rest window sync loop.** The player-side rest window no longer repeatedly requests state from the GM when a rest starts. It now hydrates from the broadcast payload directly.
+- **Travel gather options not syncing to players.** Forage, hunt, and scout availability now reflects what the GM has configured, correctly, on the player side.
+
 ## [3.1.2] - 2026-06-09
 
 ### Fixed
