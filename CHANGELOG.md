@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.4] - 2026-06-09
+
+### Fixed
+- **GM rest session.** Player travel declarations, activity choices, and fire-level requests now reach the GM correctly even if the rest window was minimised or had a render error during setup.
+- Travel-to-camp transition now advances player UIs in sync with the GM instead of occasionally leaving players stuck on the travel phase.
+- Players who reload mid-travel now rejoin the rest session immediately rather than waiting for the next snapshot.
+
 ## [3.1.3] - 2026-06-09
 
 ### Fixed
