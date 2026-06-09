@@ -1,9 +1,10 @@
 # Changelog
 
-## [3.1.1] - 2026-06-09
+## [3.1.2] - 2026-06-09
 
 ### Fixed
 - **PF2e actor sheet.** The diet button and inventory controls on the PF2e character sheet now display and function correctly during the rest flow. A layout clash with PF2e's native sheet structure was preventing them from rendering.
+- **PF2e status effects.** The unconscious and prone conditions now apply correctly at rest completion on PF2e. PF2e stores status effects as an object rather than an array, which was causing the bedding-down effects to silently fail.
 
 ## [3.1.0] - 2026-06-07
 
