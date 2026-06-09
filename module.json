@@ -1,99 +1,123 @@
-{
-    "id": "ionrift-respite",
-    "title": "Ionrift Respite",
-    "description": "Structured long rest and short rest phases for DnD 5e and Pathfinder 2e. Replaces the default rest dialog with a guided camping flow. Camp deploys onto the scene with a campfire, workbench, weapon rack, and cooking station. Players self-serve their downtime activities: identifying magic items, attuning gear, copying spells, crafting arrows, cooking meals for the party, foraging, and more. The GM runs terrain-driven wilderness encounters and random events across 6 terrains with multiple outcome tiers. Built for tables that want immersive camping without the bookkeeping.",
-    "bugs": "https://discord.gg/vFGXf7Fncj",
-    "version": "3.1.0",
-    "url": "https://github.com/ionrift-gm/ionrift-respite",
-    "manifest": "https://github.com/ionrift-gm/ionrift-respite/releases/latest/download/module.json",
-    "readme": "https://raw.githubusercontent.com/ionrift-gm/ionrift-respite/main/README.md",
-    "download": "https://github.com/ionrift-gm/ionrift-respite/releases/download/v3.1.0/module.zip",
-    "systems": ["dnd5e", "pf2e", "sfrpg", "pf1", "D35E", "ose"],
-    "compatibility": {
-        "minimum": "12",
-        "verified": "14"
-    },
-    "esmodules": [
-        "scripts/module.js"
-    ],
-    "packs": [
-        {
-            "name": "respite-items",
-            "label": "Respite Items",
-            "type": "Item",
-            "system": "dnd5e",
-            "path": "packs/respite-items",
-            "ownership": { "GAMEMASTER": "OWNER" }
-        },
-        {
-            "name": "respite-cache-utility",
-            "label": "Respite Cache Utility",
-            "type": "Item",
-            "system": "dnd5e",
-            "path": "packs/respite-cache-utility",
-            "ownership": { "GAMEMASTER": "OWNER" }
-        },
-        {
-            "name": "respite-guide",
-            "label": "Respite Guide",
-            "type": "JournalEntry",
-            "path": "packs/respite-guide",
-            "ownership": { "PLAYER": "OBSERVER", "GAMEMASTER": "OWNER" }
-        },
-        {
-            "name": "respite-guide-gm",
-            "label": "Respite GM Reference",
-            "type": "JournalEntry",
-            "path": "packs/respite-guide-gm",
-            "ownership": { "GAMEMASTER": "OWNER" }
-        },
-        {
-            "name": "respite-actors",
-            "label": "Respite Actors",
-            "type": "Actor",
-            "system": "dnd5e",
-            "path": "packs/respite-actors",
-            "ownership": { "GAMEMASTER": "OWNER" }
-        }
-    ],
-    "packFolders": [
-        {
-            "name": "Ionrift",
-            "color": "#8b5cf6",
-            "folders": [
-                {
-                    "name": "Respite",
-                    "packs": ["respite-actors", "respite-guide", "respite-guide-gm", "respite-items", "respite-cache-utility"]
-                }
-            ]
-        }
-    ],
-    "socket": true,
-    "languages": [
-        {
-            "lang": "en",
-            "name": "English",
-            "path": "lang/en.json"
-        }
-    ],
-    "styles": [
-        "styles/respite.css"
-    ],
-    "relationships": {
-        "requires": [
-            {
-                "id": "ionrift-library",
-                "type": "module",
-                "compatibility": {
-                    "minimum": "2.3.2"
-                }
-            }
-        ]
-    },
-    "authors": [
-        {
-            "name": "Ionrift",
-            "url": "https://patreon.com/ionrift"
-        }
-    ]
+﻿{
+    "id":  "ionrift-respite",
+    "title":  "Ionrift Respite",
+    "description":  "Structured long rest and short rest phases for DnD 5e and Pathfinder 2e. Replaces the default rest dialog with a guided camping flow. Camp deploys onto the scene with a campfire, workbench, weapon rack, and cooking station. Players self-serve their downtime activities: identifying magic items, attuning gear, copying spells, crafting arrows, cooking meals for the party, foraging, and more. The GM runs terrain-driven wilderness encounters and random events across 6 terrains with multiple outcome tiers. Built for tables that want immersive camping without the bookkeeping.",
+    "bugs":  "https://discord.gg/vFGXf7Fncj",
+    "version":  "3.1.1",
+    "url":  "https://github.com/ionrift-gm/ionrift-respite",
+    "manifest":  "https://github.com/ionrift-gm/ionrift-respite/releases/latest/download/module.json",
+    "readme":  "https://raw.githubusercontent.com/ionrift-gm/ionrift-respite/main/README.md",
+    "download":  "https://github.com/ionrift-gm/ionrift-respite/releases/download/v3.1.0/module.zip",
+    "systems":  [
+                    "dnd5e",
+                    "pf2e",
+                    "sfrpg",
+                    "pf1",
+                    "D35E",
+                    "ose"
+                ],
+    "compatibility":  {
+                          "minimum":  "12",
+                          "verified":  "14"
+                      },
+    "esmodules":  [
+                      "scripts/module.js"
+                  ],
+    "packs":  [
+                  {
+                      "name":  "respite-items",
+                      "label":  "Respite Items",
+                      "type":  "Item",
+                      "system":  "dnd5e",
+                      "path":  "packs/respite-items",
+                      "ownership":  {
+                                        "GAMEMASTER":  "OWNER"
+                                    }
+                  },
+                  {
+                      "name":  "respite-cache-utility",
+                      "label":  "Respite Cache Utility",
+                      "type":  "Item",
+                      "system":  "dnd5e",
+                      "path":  "packs/respite-cache-utility",
+                      "ownership":  {
+                                        "GAMEMASTER":  "OWNER"
+                                    }
+                  },
+                  {
+                      "name":  "respite-guide",
+                      "label":  "Respite Guide",
+                      "type":  "JournalEntry",
+                      "path":  "packs/respite-guide",
+                      "ownership":  {
+                                        "PLAYER":  "OBSERVER",
+                                        "GAMEMASTER":  "OWNER"
+                                    }
+                  },
+                  {
+                      "name":  "respite-guide-gm",
+                      "label":  "Respite GM Reference",
+                      "type":  "JournalEntry",
+                      "path":  "packs/respite-guide-gm",
+                      "ownership":  {
+                                        "GAMEMASTER":  "OWNER"
+                                    }
+                  },
+                  {
+                      "name":  "respite-actors",
+                      "label":  "Respite Actors",
+                      "type":  "Actor",
+                      "system":  "dnd5e",
+                      "path":  "packs/respite-actors",
+                      "ownership":  {
+                                        "GAMEMASTER":  "OWNER"
+                                    }
+                  }
+              ],
+    "packFolders":  [
+                        {
+                            "name":  "Ionrift",
+                            "color":  "#8b5cf6",
+                            "folders":  [
+                                            {
+                                                "name":  "Respite",
+                                                "packs":  [
+                                                              "respite-actors",
+                                                              "respite-guide",
+                                                              "respite-guide-gm",
+                                                              "respite-items",
+                                                              "respite-cache-utility"
+                                                          ]
+                                            }
+                                        ]
+                        }
+                    ],
+    "socket":  true,
+    "languages":  [
+                      {
+                          "lang":  "en",
+                          "name":  "English",
+                          "path":  "lang/en.json"
+                      }
+                  ],
+    "styles":  [
+                   "styles/respite.css"
+               ],
+    "relationships":  {
+                          "requires":  [
+                                           {
+                                               "id":  "ionrift-library",
+                                               "type":  "module",
+                                               "compatibility":  {
+                                                                     "minimum":  "2.3.2"
+                                                                 }
+                                           }
+                                       ]
+                      },
+    "authors":  [
+                    {
+                        "name":  "Ionrift",
+                        "url":  "https://patreon.com/ionrift"
+                    }
+                ]
 }

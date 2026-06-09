@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.1.1] - 2026-06-09
+
+### Fixed
+- **PF2e actor sheet.** The diet button and inventory controls on the PF2e character sheet now display and function correctly during the rest flow. A layout clash with PF2e's native sheet structure was preventing them from rendering.
+
 ## [3.1.0] - 2026-06-07
 
 ### Added
@@ -326,7 +331,7 @@
 
 ### Added
 - **Short Rest Overhaul.** The short rest flow is now a full-featured screen with per-die HD spending, live HP tracking, and hit die pip display. Players spend their own dice; the GM oversees and completes the rest.
-- **Durable feat support.** Characters with the Durable feat now have a minimum healing floor of 2× their CON modifier on each Hit Die roll. Detected automatically from the character sheet.
+- **Durable feat support.** Characters with the Durable feat now have a minimum healing floor of 2x their CON modifier on each Hit Die roll. Detected automatically from the character sheet.
 - **Periapt of Wound Closure support.** Characters attuned to a Periapt of Wound Closure now double their Hit Die healing. Detected automatically from attunement state.
 - **Song of Rest (Bard).** If a bard (level 2+) is in the party, they can volunteer their Song of Rest. A bonus healing die (d6 to d12 by bard level) is rolled for each character who spent at least one Hit Die. Configurable timing: applied at end of rest (strict) or with each character's first Hit Die (immediate).
 - **Arcane Recovery / Natural Recovery.** Wizards and druids with these features now get a spell slot recovery picker during the short rest. Budget-limited (half class level, rounded up), with commit/edit flow so players can lock in their choices. GM receives a warning if anyone has unconfirmed selections when completing the rest.
