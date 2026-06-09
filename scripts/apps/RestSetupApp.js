@@ -8269,12 +8269,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Incapacitated is the overlay; prone adds the visual "down" posture.
      */
     _beddingStatusIds() {
-        const all = CONFIG.statusEffects ?? [];
-        const has = (id) => all.some(e => e.id === id);
-        const incap = has("incapacitated") ? "incapacitated" : (has("unconscious") ? "unconscious" : "incapacitated");
-        const statusIds = [incap];
-        if (has("prone")) statusIds.push("prone");
-        return statusIds;
+        return game.ionrift?.respite?.adapter?.getBeddingStatusIds?.()
+            ?? ["incapacitated", "prone"];
     }
 
     /**

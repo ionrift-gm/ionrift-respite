@@ -346,4 +346,13 @@ export class PF2eAdapter extends SystemAdapter {
             "Prestidigitation"
         ];
     }
+
+    // ── Bedding Down ─────────────────────────────────────────
+
+    getBeddingStatusIds() {
+        const conditions = CONFIG.PF2E?.statusEffects?.conditions ?? CONFIG.statusEffects ?? {};
+        const statusIds = ["unconscious"];
+        if ("prone" in conditions) statusIds.push("prone");
+        return statusIds;
+    }
 }

@@ -223,6 +223,24 @@ export class SystemAdapter {
      */
     getFireCantrips() { return []; }
 
+    // ── Bedding Down ─────────────────────────────────────────
+
+    /**
+     * Status or condition slugs applied when the camp beds down for the night.
+     * First entry is the primary overlay; remaining entries are secondary posture cues.
+     * @returns {string[]}
+     */
+    getBeddingStatusIds() {
+        const raw = CONFIG.statusEffects ?? [];
+        const all = Array.isArray(raw) ? raw : Object.values(raw);
+        const has = (id) => all.some(e => e.id === id);
+        const primary = has("incapacitated") ? "incapacitated"
+            : (has("unconscious") ? "unconscious" : "incapacitated");
+        const statusIds = [primary];
+        if (has("prone")) statusIds.push("prone");
+        return statusIds;
+    }
+
     // ── Internal ─────────────────────────────────────────────
 
     /** @private */
