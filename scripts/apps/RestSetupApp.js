@@ -1879,13 +1879,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._totmCraftScrollTop = scrollEl?.scrollTop ?? 0;
         }
         if (this._isGM) {
+            // Register the socket dispatch ref BEFORE any early return. Player→GM
+            // messages (travel declarations, activity choices, fire requests)
+            // route through this module-level reference; if a minimized-footer
+            // render bailed before registering, every player submission silently
+            // dropped on the GM. Registration is idempotent and safe here.
+            registerActiveRestApp(this);
             if (options.force) {
                 this._gmMinimizedToFooter = false;
             } else if (this._gmMinimizedToFooter) {
                 _logGmRestSheet("render", "skip (minimized, no force)", { phase: this._phase });
                 return;
             }
-            registerActiveRestApp(this);
             if (!this._prepBroadcast) {
                 this._prepBroadcast = true;
                 emitRestPreparing();
