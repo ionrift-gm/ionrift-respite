@@ -189,6 +189,15 @@ export function handleRestStarted(data, ctx) {
                 restDataFireLevel: data.restData?.fireLevel ?? null
             });
             Logger.log(`${MODULE_ID} | RestSetupApp created in player mode, awaiting snapshot before render`);
+            // Open the window now with restData hydration. Without this, a player
+            // F5 mid-rest (especially travel) leaves the snapshot-arrival path as
+            // the only render trigger; if the snapshot races or never arrives the
+            // rest UI never opens.
+            if (data.restData?.phase && data.restData.phase !== "setup") {
+                try { app.render({ force: true }); } catch (err) {
+                    console.warn(`${MODULE_ID} | new player app initial render failed`, err);
+                }
+            }
             emitRequestRestState(game.user.id);
         }
         setTimeout(() => {
@@ -210,8 +219,18 @@ export function handleRestStarted(data, ctx) {
 
 
 export function handleActivityChoice(data, ctx) {
-    if (!ctx.activeRestSetupApp) return;
+    // Silent drop was the previous behaviour and is the worst failure mode:
+    // the player submits, the GM never sees it, and there's no diagnostic.
+    // Warn instead so the GM can recover (resetFlowState / refresh).
+    if (!ctx.activeRestSetupApp) {
+        console.warn(`${MODULE_ID} | handleActivityChoice: no activeRestSetupApp on GM; dropping submission from ${data.userId}`);
+        ui?.notifications?.warn?.("Player activity submission dropped: GM rest session not registered. Reopen the rest sheet.");
+        return;
+    }
     ctx.activeRestSetupApp.receivePlayerChoices(data.userId, data.choices, data.craftingResults ?? null, data.followUps ?? null, data.earlyResults ?? null);
+    // If the GM minimised the RSA to the footer, receivePlayerChoices' render()
+    // is a no-op. Update the footer bar so the GM still sees the latest count.
+    refreshGmRestIndicator(ctx.activeRestSetupApp);
 }
 
 export function handleRestResolved(data, ctx) {

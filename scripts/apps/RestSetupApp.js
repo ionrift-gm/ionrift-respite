@@ -84,6 +84,7 @@ import { isSimpleStationsMode, requiresMapCampFire, isCampfireMinigameEnabled } 
 import { isScoutingEnabled } from "../services/ScoutingSettings.js";
 import { shouldRunTravelPhase, getTravelGatherAvailability } from "../services/TravelSettings.js";
 import { buildTravelGatherPayload } from "../services/TravelGatherPayload.js";
+import { applyPlayerTravelDeclarationToGm } from "../services/travelDeclarationSync.js";
 import { buildActivityListItem, buildActivityDetailContext } from "./ActivityDetailBuilder.js";
 import {
     activateStationLayer,
@@ -1902,15 +1903,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     showAfkPanel();
                 })
                 .catch((err) => {
-
+                    // Render errors must not detach the GM socket dispatch ref.
+                    // Previously this called clearActiveRestApp(), which silently
+                    // disabled every player→GM socket handler (activity choices,
+                    // fire requests, etc.) and surfaced as stacked
+                    // "Open the rest session on the GM client first" warnings on
+                    // the GM client mid-rest. Log the error; keep the ref.
                     console.error(`${MODULE_ID} | RestSetupApp render failed:`, err);
-                    if (this._isGM) clearActiveRestApp();
                 });
             return out;
         } catch (err) {
-
+            // Same rationale as the async catch above: keep activeRestSetupApp
+            // pointed at this instance so player sockets continue to land.
             console.error(`${MODULE_ID} | RestSetupApp render failed:`, err);
-            if (this._isGM) clearActiveRestApp();
             throw err;
         }
     }
@@ -7981,20 +7986,25 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /**
      * Push Make Camp state to player RestSetupApp clones (phase, fire preview, snapshot).
+     *
+     * Sends the snapshot first, then the phaseChanged broadcast, so the player has
+     * the canonical state available when receivePhaseChange fires. Emits are
+     * synchronous so the player transition (travel → camp) lands in the same
+     * microtask as the GM's "Continue to Camp" advance. A previous 200ms
+     * setTimeout here let other state changes race ahead, leaving players stuck
+     * on travel after the GM advanced.
      */
     _broadcastMakeCampPhaseSync() {
-        setTimeout(() => {
-            const snapshot = this.getRestSnapshot?.();
-            if (snapshot) emitRestSnapshot(snapshot);
-            emitPhaseChanged("camp", {
-                selectedTerrain: this._selectedTerrain ?? null,
-                fireLevel: this._fireLevel ?? "unlit",
-                coldCampDecided: !!this._coldCampDecided,
-                campFirePreviewLevel: this._campFirePreviewLevel ?? null,
-                coldCampPreview: !!this._coldCampPreview,
-                makeCampStagedWood: [...(this._makeCampStagedWood ?? [])]
-            });
-        }, 200);
+        const snapshot = this.getRestSnapshot?.();
+        if (snapshot) emitRestSnapshot(snapshot);
+        emitPhaseChanged("camp", {
+            selectedTerrain: this._selectedTerrain ?? null,
+            fireLevel: this._fireLevel ?? "unlit",
+            coldCampDecided: !!this._coldCampDecided,
+            campFirePreviewLevel: this._campFirePreviewLevel ?? null,
+            coldCampPreview: !!this._coldCampPreview,
+            makeCampStagedWood: [...(this._makeCampStagedWood ?? [])]
+        });
     }
 
     /**
@@ -14152,6 +14162,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
             });
 
+        // Render synchronously so the GM sees the new "Rolled" badge without
+        // waiting on resolveIndividualResult (which is async + grant-dependent).
+        // The finally block below renders again once resolution completes.
+        this.render();
+
         const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
         void (async () => {
             try {
@@ -14417,24 +14432,26 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Validates ownership, updates delegate, broadcasts to all players.
      */
     receiveTravelDeclaration(data) {
-        if (!data.declarations) return;
-        const day = data.day ?? this._travel.activeDay;
-        for (const [actorId, activity] of Object.entries(data.declarations)) {
-            const actor = game.actors.get(actorId);
-            if (!actor) continue;
-            const owners = Object.entries(actor.ownership ?? {})
-                .filter(([id, level]) => level >= 3 && id !== "default")
-                .map(([id]) => id);
-            if (!owners.includes(data.userId)) continue;
-            this._travel.setDeclaration(actorId, activity, day);
-            if (data.confirmed === true) {
-                this._travel.setConfirmed(actorId, day, true);
-            } else if (data.confirmed === false) {
-                this._travel.setConfirmed(actorId, day, false);
+        const { applied, rejected } = applyPlayerTravelDeclarationToGm({
+            travel: this._travel,
+            actorLookup: id => game.actors.get(id),
+            data
+        });
+        if (rejected.length) {
+            for (const r of rejected) {
+                console.warn(`${MODULE_ID} | travel declaration rejected for ${r.actorId}: ${r.reason}`);
             }
         }
+        if (!applied.length) return;
 
-        this._broadcastTravelDeclarations();
+        // Broadcast can throw on edge cases (missing terrain, etc.). Ensure the
+        // GM's own render still fires so the confirmation badge appears even if
+        // the player-side sync errors.
+        try {
+            this._broadcastTravelDeclarations();
+        } catch (err) {
+            console.error(`${MODULE_ID} | _broadcastTravelDeclarations failed`, err);
+        }
         this._saveRestState();
         this.render();
     }

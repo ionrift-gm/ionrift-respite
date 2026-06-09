@@ -33,6 +33,7 @@ export function applyRestDataToExistingPlayerApp(app, restData) {
     if (restData.terrainTag) {
         app._selectedTerrain = restData.terrainTag;
         app._restData = { ...(app._restData ?? {}), terrainTag: restData.terrainTag };
+        if (app._engine) app._engine.terrainTag = restData.terrainTag;
         changed = true;
     }
     if (restData.fireLevel !== undefined && restData.fireLevel !== null) {
