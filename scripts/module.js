@@ -848,32 +848,6 @@ Hooks.once("ready", async () => {
     RespiteLog.log(`${MODULE_ID} | Ready hook firing...`);
     Logger.log?.(MODULE_LABEL, "Ready.");
 
-    // â”€â”€ Register adapter contract tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    if (game.ionrift?.library?.tests) {
-        game.ionrift.library.tests.register("ionrift-respite", {
-            name: "Respite System Adapters",
-            description: "Contract tests for DnD5e + PF2e adapters (mock actors, any world)",
-            runFn: async () => {
-                const { runAdapterTests } = await import("./tests/AdapterTests.js");
-                return runAdapterTests();
-            }
-        });
-
-        game.ionrift.library.tests.register("ionrift-respite-overlays", {
-            name: "Respite Overlay Events",
-            description: "Overlay event loading, terrain registry population, cache invalidation",
-            runFn: async () => {
-                try {
-                    const { runOverlayEventTests } = await import("./tests/OverlayEventTests.js");
-                    return runOverlayEventTests();
-                } catch {
-                    return { passed: 0, failed: 0, total: 0, skipped: true,
-                        results: [{ name: "OverlayEventTests", status: "skip", message: "Test file not present (production build)." }] };
-                }
-            }
-        });
-    }
-
     // Initialize image resolver (art pack detection â€” probes ionrift-data/)
     await ImageResolver.init();
 
