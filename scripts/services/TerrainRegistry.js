@@ -37,6 +37,13 @@ export class TerrainRegistry {
     /** @type {Map<string, object>} Cached terrain manifests keyed by terrain id */
     static _terrains = new Map();
 
+    /**
+     * Synthetic terrain stubs for tags referenced by imported event packs
+     * but not backed by a terrain.json. Events-only; travel and forage off.
+     * @type {Map<string, object>}
+     */
+    static _customTerrains = new Map();
+
     /** @type {boolean} True once init() has completed */
     static _ready = false;
 
@@ -51,6 +58,7 @@ export class TerrainRegistry {
 
         await this._loadModuleBase();
         await this._loadFromOverlays();
+        this.syncCustomTerrainsFromPacks();
 
         this._ready = true;
 
@@ -150,7 +158,78 @@ export class TerrainRegistry {
      */
     static reset() {
         this._terrains.clear();
+        this._customTerrains.clear();
         this._ready = false;
+    }
+
+    /**
+     * True when the tag is a synthetic stub from an imported event pack,
+     * not a shipped or overlay terrain.json.
+     *
+     * @param {string} tag
+     * @returns {boolean}
+     */
+    static isCustomTerrain(tag) {
+        return this._customTerrains.has(tag);
+    }
+
+    /**
+     * Register synthetic terrain stubs for pack tags that lack terrain.json.
+     * Skips ids already present in the shipped or overlay registry.
+     *
+     * @param {string[]} tags
+     */
+    static syncCustomTerrains(tags) {
+        for (const tag of tags) {
+            if (!tag || typeof tag !== "string") continue;
+            if (this._terrains.has(tag)) continue;
+            if (!this._customTerrains.has(tag)) {
+                this._customTerrains.set(tag, this._buildCustomStub(tag));
+            }
+        }
+    }
+
+    /**
+     * Seeds custom terrain stubs from imported pack metadata and event tags.
+     * Lightweight pass used during init before the full event catalog loads.
+     */
+    static syncCustomTerrainsFromPacks() {
+        const tags = new Set();
+        try {
+            const importedPacks = game.settings.get(MODULE_ID, "importedPacks") ?? {};
+            for (const pack of Object.values(importedPacks)) {
+                for (const tag of (pack.terrains ?? [])) {
+                    if (tag) tags.add(tag);
+                }
+                for (const evt of (pack.events ?? [])) {
+                    for (const tag of (evt.terrainTags ?? [])) {
+                        if (tag) tags.add(tag);
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn(`${MODULE_ID} | TerrainRegistry: custom terrain pack scan failed:`, e);
+        }
+        this.syncCustomTerrains([...tags]);
+    }
+
+    /**
+     * @param {string} tag
+     * @returns {object}
+     */
+    static _buildCustomStub(tag) {
+        const label = tag.replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase());
+        return {
+            id: tag,
+            label: `${label} (custom)`,
+            category: "custom",
+            icon: "fas fa-puzzle-piece",
+            comfort: "rough",
+            travelActivities: [],
+            mealRules: { waterPerDay: 1, foodPerDay: 1 },
+            custom: true,
+            customNote: "Imported event pack terrain. Travel and forage are off until a terrain pack is installed."
+        };
     }
 
     /**
@@ -159,7 +238,7 @@ export class TerrainRegistry {
      * @returns {object|undefined}
      */
     static get(tag) {
-        return this._terrains.get(tag);
+        return this._terrains.get(tag) ?? this._customTerrains.get(tag);
     }
 
     /**
@@ -167,7 +246,8 @@ export class TerrainRegistry {
      * @returns {object[]}
      */
     static getAll() {
-        return [...this._terrains.values()].sort((a, b) =>
+        const merged = [...this._terrains.values(), ...this._customTerrains.values()];
+        return merged.sort((a, b) =>
             (a.label ?? a.id).localeCompare(b.label ?? b.id)
         );
     }
@@ -181,8 +261,9 @@ export class TerrainRegistry {
      * @returns {"built"|"safe-haven"|"wilderness"}
      */
     static getCategory(id) {
-        const t = this._terrains.get(id);
+        const t = this.get(id);
         if (!t) return "wilderness";
+        if (t.custom || t.category === "custom") return "custom";
         const normalized = normalizeTerrainCategory(t.category);
         if (normalized && VALID_CATEGORIES.has(normalized)) return normalized;
         // Fallback: derive from comfort field for legacy terrain.json files
@@ -199,6 +280,7 @@ export class TerrainRegistry {
         const built = [];
         const safeHaven = [];
         const wilderness = [];
+        const custom = [];
         for (const t of this.getAll()) {
             const opt = {
                 value: t.id,
@@ -207,12 +289,14 @@ export class TerrainRegistry {
             const category = this.getCategory(t.id);
             if (category === "built") built.push(opt);
             else if (category === "safe-haven") safeHaven.push(opt);
+            else if (category === "custom") custom.push(opt);
             else wilderness.push(opt);
         }
         const groups = [];
         if (built.length) groups.push({ group: "Built", options: built });
         if (safeHaven.length) groups.push({ group: "Safe Haven", options: safeHaven });
         if (wilderness.length) groups.push({ group: "Wilderness", options: wilderness });
+        if (custom.length) groups.push({ group: "Custom", options: custom });
         return groups;
     }
 
@@ -221,7 +305,7 @@ export class TerrainRegistry {
      * @returns {Set<string>}
      */
     static getAvailableIds() {
-        return new Set(this._terrains.keys());
+        return new Set([...this._terrains.keys(), ...this._customTerrains.keys()]);
     }
 
     /**

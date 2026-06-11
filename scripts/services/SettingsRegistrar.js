@@ -34,7 +34,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
     game.settings.registerMenu(MODULE_ID, "eventBrowser", {
         name: "Event Pool",
         label: "Curate Event Pool",
-        hint: "Browse camp events and choose which ones can occur when you roll the night check.",
+        hint: "Browse camp events, import custom JSON packs, and choose which ones can occur when you roll the night check.",
         icon: "fas fa-book-open",
         type: EventBrowserApp,
         restricted: true
