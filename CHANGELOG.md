@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.1.5] - 2026-06-11
+
+### Added
+- **Custom event import.** GMs can import JSON event packs directly from the Curate Event Pool panel in the Respite config menu.
+- **Legacy pack terrain filters.** Community packs that share a core terrain tag (e.g. Tavern) appear as a separate filter entry rather than mixing with core events in the pool.
+- Imported packs with unknown terrain tags register as custom terrains for curation purposes - travel and forage stay off by default.
+
+### Changed
+- Content pack import and event pool import now share the same validation and review flow.
+
 ## [3.1.4] - 2026-06-09
 
 ### Fixed
