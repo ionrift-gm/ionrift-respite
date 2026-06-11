@@ -19188,6 +19188,66 @@ button.is-processing {
     font-size: 0.6rem;
 }
 
+.event-terrain-badge.custom {
+    background: rgba(160, 120, 220, 0.12);
+    border-color: rgba(180, 140, 255, 0.3);
+    color: rgba(210, 180, 255, 0.92);
+}
+
+.event-custom-terrain-note,
+.event-legacy-pack-note {
+    font-size: 0.72rem;
+    color: rgba(200, 170, 255, 0.8);
+    margin: 0.35rem 0 0;
+    line-height: 1.35;
+}
+
+.event-legacy-pack-note {
+    color: rgba(255, 200, 120, 0.85);
+}
+
+.event-custom-terrain-note i {
+    margin-right: 0.25rem;
+    opacity: 0.85;
+}
+
+.event-pack-import-report {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.85);
+    max-height: min(360px, 55vh);
+}
+
+.event-pack-import-report-body {
+    overflow-y: auto;
+    min-height: 0;
+    padding-right: 0.25rem;
+}
+
+.event-pack-import-report ul {
+    margin: 0.35rem 0 0.65rem 1.1rem;
+    padding: 0;
+}
+
+.event-pack-import-report li {
+    margin-bottom: 0.25rem;
+}
+
+.event-pack-import-omitted {
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+}
+
+.event-pack-import-report-footer {
+    margin: 0;
+    padding-top: 0.35rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+
 .event-pack-badge {
     font-size: 0.62rem;
     padding: 0.1rem 0.35rem;
@@ -19474,8 +19534,36 @@ button.is-processing {
 
 .event-pool-footer {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
     padding-top: 0.25rem;
+}
+
+.event-pool-import-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.9rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 5px;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.event-pool-import-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.22);
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.event-browser-empty-hint {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.45);
+    margin-top: 0.35rem;
 }
 
 .event-pool-save-btn {

@@ -1,5 +1,12 @@
 import { TerrainRegistry } from "../services/TerrainRegistry.js";
 import { getEventPoolSelection, loadAllCatalogEvents } from "../services/EventCatalogLoader.js";
+import {
+    buildEventPoolFilterGroups,
+    eventMatchesPoolFilter,
+    normalizeEventPoolFilter,
+    parseEventPoolFilter
+} from "../services/EventPackCatalog.js";
+import { importEventPackFromFile } from "../services/EventPackImportService.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -58,9 +65,10 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
         const event = this.#events[this.#index] ?? null;
         const poolCount = Object.keys(this.#pendingSelection).length;
         const filteredPoolCount = this.#events.filter(evt => this.#pendingSelection[evt.id]).length;
+        const activeFilterParsed = parseEventPoolFilter(this.#terrainFilter);
         const terrainPoolCount = this.#terrainFilter
             ? this.#allEvents.filter(evt =>
-                evt.terrainTags?.includes(this.#terrainFilter) && this.#pendingSelection[evt.id]
+                eventMatchesPoolFilter(evt, activeFilterParsed) && this.#pendingSelection[evt.id]
             ).length
             : null;
 
@@ -68,7 +76,7 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
             event,
             index: this.#index,
             total: this.#events.length,
-            terrainOptionGroups: TerrainRegistry.getOptionGroups(),
+            terrainOptionGroups: buildEventPoolFilterGroups(this.#allEvents),
             activeFilter: this.#terrainFilter,
             hasEvents: this.#events.length > 0,
             poolCount,
@@ -115,14 +123,14 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
                 <i class="fas fa-book-open art-nudge-icon"></i>
                 <div class="art-nudge-text">
                     <span class="art-nudge-title">Your camp event pool is empty.</span>
-                    <span class="art-nudge-subtitle">Tick the events you are willing to run at camp, then Save Pool. Only selected events can appear on a night check roll.</span>
+                    <span class="art-nudge-subtitle">Tick the events you are willing to run at camp, then Save Pool. Use Import Custom Events to add community JSON packs.</span>
                 </div>
             </div>
         </div>`;
         }
 
         html += `
-        <p class="event-pool-intro">Tick events you are willing to run at camp. Only selected events can appear on a night check roll.</p>`;
+        <p class="event-pool-intro">Tick events you are willing to run at camp. Only selected events can appear on a night check roll. Import a custom JSON event pack with the button below.</p>`;
 
         if (context.hasEvents) {
             let disasterDividerShown = false;
@@ -161,11 +169,15 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
             <div class="event-browser-empty">
                 <i class="fas fa-ghost"></i>
                 <p>No events match this filter.</p>
+                <p class="event-browser-empty-hint">Import a custom JSON pack, or clear the terrain filter to see the full catalog.</p>
             </div>`;
         }
 
         html += `
         <div class="event-pool-footer">
+            <button type="button" class="event-pool-import-btn" title="Import a custom JSON event pack">
+                <i class="fas fa-file-import"></i> Import Custom Events
+            </button>
             <button type="button" class="event-pool-save-btn" ${context.dirty ? "" : "disabled"}>
                 <i class="fas fa-save"></i> Save Pool
             </button>
@@ -215,9 +227,52 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
             this.render({ force: true });
         });
 
+        el.querySelector(".event-pool-import-btn")?.addEventListener("click", () => this.#importCustomEvents());
         el.querySelector(".event-pool-save-btn")?.addEventListener("click", () => this.#savePool());
 
         return el;
+    }
+
+    /**
+     * Imports a community JSON event pack, reloads the catalog, and stages
+     * the new events in the pending pool selection.
+     */
+    async #importCustomEvents() {
+        const result = await importEventPackFromFile();
+        if (!result?.success) return;
+
+        this.#allEvents = [];
+        await TerrainRegistry.init();
+        await this.#loadEvents();
+        this.#applyFilter();
+
+        for (const eventId of result.eventIds) {
+            this.#pendingSelection[eventId] = true;
+        }
+        this.#dirty = true;
+
+        if (result.eventIds.length) {
+            const firstIdx = this.#events.findIndex(evt => result.eventIds.includes(evt.id));
+            if (firstIdx >= 0) this.#index = firstIdx;
+        }
+
+        const importedPacks = game.settings.get("ionrift-respite", "importedPacks") ?? {};
+        const legacyBinding = importedPacks[result.packId]?.legacyTerrainBinding;
+        const coreTags = (result.terrainTags?.core ?? []).map(t => t.label).join(", ");
+        let terrainHint = "";
+        if (legacyBinding) {
+            const parentLabel = TerrainRegistry.get(legacyBinding.parentTerrain)?.label ?? legacyBinding.parentTerrain;
+            terrainHint = ` Curate under ${parentLabel} · ${legacyBinding.label}.`;
+        } else if (coreTags) {
+            terrainHint = ` Terrain: ${coreTags}.`;
+        } else if (result.terrainTags?.custom?.length) {
+            terrainHint = ` Custom terrain: ${result.terrainTags.custom.map(t => t.label).join(", ")}.`;
+        }
+
+        ui.notifications.info(
+            `Imported ${result.eventCount} event${result.eventCount === 1 ? "" : "s"} from "${result.packId}".${terrainHint} Save Pool to apply.`
+        );
+        this.render({ force: true });
     }
 
     /**
@@ -236,14 +291,28 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
         const terrainBadges = (evt.terrainTags ?? [])
             .map(t => {
                 const terrain = TerrainRegistry.get(t);
+                const isCustom = TerrainRegistry.isCustomTerrain(t);
                 const icon = terrain?.icon ?? "fas fa-map-marker-alt";
                 const label = terrain?.label ?? t;
-                return `<span class="event-terrain-badge"><i class="${icon}"></i> ${label}</span>`;
+                const customClass = isCustom ? " custom" : "";
+                return `<span class="event-terrain-badge${customClass}" title="${isCustom ? (terrain?.customNote ?? "Custom imported terrain") : ""}"><i class="${icon}"></i> ${label}</span>`;
             }).join("");
 
         const packLabel = evt.pack
             ? evt.pack.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())
             : "Base Pack";
+        const isImportedPack = evt.pack && evt.pack !== "base";
+        const parentTerrain = (evt.terrainTags ?? []).find(tag => {
+            const manifest = TerrainRegistry.get(tag);
+            return manifest && !manifest.custom && !TerrainRegistry.isCustomTerrain(tag);
+        });
+        const legacyBindingNote = (isImportedPack && parentTerrain)
+            ? `<p class="event-legacy-pack-note"><i class="fas fa-layer-group"></i> Curate under <strong>${TerrainRegistry.get(parentTerrain)?.label ?? parentTerrain} · ${packLabel}</strong>. Still rolls on ${parentTerrain} rests.</p>`
+            : "";
+        const hasCustomTerrain = (evt.terrainTags ?? []).some(t => TerrainRegistry.isCustomTerrain(t));
+        const customTerrainNote = hasCustomTerrain
+            ? `<p class="event-custom-terrain-note"><i class="fas fa-puzzle-piece"></i> Uses a custom terrain tag. Travel and forage stay off unless a full terrain pack is installed.</p>`
+            : "";
 
         const mech = evt.mechanical ?? {};
         let outcomesHtml = "";
@@ -293,6 +362,8 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
             </div>
             <div class="event-card-body">
                 <p class="event-description">${evt.description ?? ""}</p>
+                ${legacyBindingNote}
+                ${customTerrainNote}
                 ${outcomesHtml}
                 ${guidanceHtml}
             </div>
@@ -399,14 +470,14 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
     /** Loads all catalog events for browsing and curation. */
     async #loadEvents() {
         this.#allEvents = await loadAllCatalogEvents();
+        this.#terrainFilter = normalizeEventPoolFilter(this.#terrainFilter, this.#allEvents);
     }
 
     /** Applies the current terrain filter to the event list. */
     #applyFilter() {
         if (this.#terrainFilter) {
-            this.#events = this.#allEvents.filter(e =>
-                e.terrainTags?.includes(this.#terrainFilter)
-            );
+            const filter = parseEventPoolFilter(this.#terrainFilter);
+            this.#events = this.#allEvents.filter(evt => eventMatchesPoolFilter(evt, filter));
         } else {
             this.#events = [...this.#allEvents];
         }

@@ -33,7 +33,33 @@ export async function loadAllCatalogEvents() {
 
     const deduped = dedupeById(events);
     deduped.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+    TerrainRegistry.syncCustomTerrains(extractTerrainTags(deduped));
     return deduped;
+}
+
+/**
+ * Collects terrain tags from catalog events and imported pack metadata.
+ *
+ * @param {object[]} events
+ * @returns {string[]}
+ */
+export function extractTerrainTags(events) {
+    const tags = new Set();
+
+    for (const evt of events) {
+        for (const tag of (evt.terrainTags ?? [])) {
+            if (tag) tags.add(tag);
+        }
+    }
+
+    const importedPacks = game.settings.get(MODULE_ID, "importedPacks") ?? {};
+    for (const pack of Object.values(importedPacks)) {
+        for (const tag of (pack.terrains ?? [])) {
+            if (tag) tags.add(tag);
+        }
+    }
+
+    return [...tags];
 }
 
 /**

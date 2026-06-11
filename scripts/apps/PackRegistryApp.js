@@ -1,5 +1,6 @@
 const { AbstractPackRegistryApp } = await import("../../../ionrift-library/scripts/apps/AbstractPackRegistryApp.js");
 import { TerrainRegistry } from "../services/TerrainRegistry.js";
+import { importEventPackFromFile } from "../services/EventPackImportService.js";
 import { ImageResolver } from "../util/ImageResolver.js";
 import { EventBrowserApp } from "./EventBrowserApp.js";
 
@@ -603,46 +604,7 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
      * validation, and unified installedPacks metadata tracking.
      */
     async _importPack() {
-        if (!game.ionrift?.library?.importJsonPack) {
-            ui.notifications.error("Ionrift Library v1.6.0+ is required for content pack imports.");
-            return;
-        }
-
-        const result = await game.ionrift.library.importJsonPack({
-            moduleId: "respite",
-            schemaValidator: (data) => {
-                if (!data.id) return { valid: false, errors: ["Pack JSON is missing 'id' field."] };
-                if (!Array.isArray(data.events) || data.events.length === 0) {
-                    return { valid: false, errors: ["Pack JSON has no events."] };
-                }
-                for (const evt of data.events) {
-                    if (!evt.id) return { valid: false, errors: ["Event missing 'id' field."] };
-                    if (!evt.terrainTags?.length) return { valid: false, errors: [`Event ${evt.id} missing 'terrainTags'.`] };
-                }
-                return { valid: true, errors: [] };
-            },
-            onImport: async (data) => {
-                const importedPacks = game.settings.get("ionrift-respite", "importedPacks") ?? {};
-                importedPacks[data.id] = {
-                    name: data.name ?? data.id,
-                    description: data.description ?? "",
-                    icon: data.icon ?? "fas fa-hiking",
-                    terrains: data.terrains ?? [],
-                    events: data.events,
-                    tables: data.tables ?? null,
-                    version: data.version ?? "1.0.0",
-                    importedAt: new Date().toISOString()
-                };
-                await game.settings.set("ionrift-respite", "importedPacks", importedPacks);
-
-                const enabledPacks = game.settings.get("ionrift-respite", "enabledPacks") ?? {};
-                enabledPacks[data.id] = true;
-                await game.settings.set("ionrift-respite", "enabledPacks", enabledPacks);
-
-                return { packId: data.id, name: data.name ?? data.id, eventCount: data.events.length };
-            }
-        });
-
+        const result = await importEventPackFromFile();
         if (result?.success) {
             ui.notifications.info(`Imported "${result.packId}" successfully. Active on next rest.`);
             this.render({ force: true });
@@ -730,6 +692,7 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
 
     _getTerrainIcon(tag) {
         const terrain = TerrainRegistry.get(tag);
+        if (TerrainRegistry.isCustomTerrain(tag)) return "fas fa-puzzle-piece";
         return terrain?.icon ?? "fas fa-map-marker-alt";
     }
 
