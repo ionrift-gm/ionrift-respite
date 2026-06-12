@@ -418,6 +418,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._stationReviewCharacterId = null;
         this._deployedGear = new Map();
         this._boundCampCanvasDrop = this._onCampCanvasDrop.bind(this);
+        /** Drop-enabler: the board only fires `drop` when `dragover` preventDefaults. */
+        this._boundCampCanvasDragOver = (event) => {
+            event.preventDefault();
+            if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+        };
 
         // Inline crafting drawer state
         this._craftingDrawerOpen = false;
@@ -14996,13 +15001,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const board = document.getElementById("board");
         if (board) {
             board.removeEventListener("drop", this._boundCampCanvasDrop);
+            board.removeEventListener("dragover", this._boundCampCanvasDragOver);
             board.style.cursor = "";
         }
     }
 
     /** @returns {boolean} */
     _campPlacementStillActive() {
-        return this._phase === "camp" && !this._terminated && !!game.ionrift?.respite?.activeRestSetupApp;
+        if (this._phase !== "camp" || this._terminated) return false;
+        // The live rest app is tracked module-side and exposed via getActiveApp().
+        // Treat a missing global ref as still-active when this instance is mounted,
+        // covering the registration gap the socket self-heal also guards against.
+        const activeApp = game.ionrift?.respite?.getActiveApp?.() ?? null;
+        return activeApp === this || activeApp === null || this.rendered;
     }
 
     /**
@@ -16437,10 +16448,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const board = document.getElementById("board");
                 if (board) {
                     board.addEventListener("drop", this._boundCampCanvasDrop, { once: true });
+                    board.addEventListener("dragover", this._boundCampCanvasDragOver);
                 }
             });
             campHandle.addEventListener("dragend", () => {
                 campHandle.classList.remove("dragging");
+                const board = document.getElementById("board");
+                if (board) board.removeEventListener("dragover", this._boundCampCanvasDragOver);
                 campHandle.dataset.suppressPlacementClick = "1";
                 requestAnimationFrame(() => {
                     delete campHandle.dataset.suppressPlacementClick;
@@ -16477,10 +16491,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const board = document.getElementById("board");
                 if (board) {
                     board.addEventListener("drop", this._boundCampCanvasDrop, { once: true });
+                    board.addEventListener("dragover", this._boundCampCanvasDragOver);
                 }
             });
             handle.addEventListener("dragend", () => {
                 handle.classList.remove("dragging");
+                const board = document.getElementById("board");
+                if (board) board.removeEventListener("dragover", this._boundCampCanvasDragOver);
             });
         }
 
@@ -16492,6 +16509,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     async _onCampCanvasDrop(event) {
         event.preventDefault();
+        const board = document.getElementById("board");
+        if (board) board.removeEventListener("dragover", this._boundCampCanvasDragOver);
         if (!this._campPlacementStillActive()) return;
 
         let data;
