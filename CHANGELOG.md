@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.1.6] - 2026-06-12
+
+### Fixed
+- **Campfire placement.** Dragging the campfire onto the map and clicking Place fire both work again. A broken guard was silently discarding every placement attempt.
+- **Fire lighting.** Players can use their tinderbox and fire cantrips to light the campfire again. The strike and cantrip buttons were blocked by a stale placement check that prevented the ceremony from advancing.
+
 ## [3.1.5] - 2026-06-11
 
 ### Added
