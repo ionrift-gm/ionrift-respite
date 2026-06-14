@@ -122,14 +122,13 @@ import {
     _refreshGmRestIndicator,
     _refreshRejoinBar,
     _ensureRejoinBar,
-    _removeRejoinBar,
-    showAfkPanel
+    _removeRejoinBar
 } from "../module.js";
 import { getPartyActors } from "../services/partyActors.js";
 import * as RestAfkState from "../services/RestAfkState.js";
 import { pushAllStateToAdapters } from "../services/afk/AfkBridgeService.js";
 import {
-    emitRestStarted, emitRestSnapshot, emitRestPreparing, emitRestResolved,
+    emitRestStarted, emitRestSnapshot, emitRestResolved,
     emitRestAbandoned, emitPhaseChanged, emitSubmissionUpdate,
     emitActivityChoice, emitArmorToggle,
     emitCampLightFire, emitCampFireLevelRequest, emitActivityFireLevelRequest,
@@ -1868,66 +1867,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             console.warn(`${MODULE_ID} | Overlay event lookup failed for ${terrainTag}:`, e);
         }
         return false;
-    }
-
-    render(options = {}) {
-        if (this._terminated) {
-
-            return;
-        }
-        const preserveTotmCraftScroll = this._totmFollowUpExpanded?.isCrafting
-            && this.rendered
-            && !options.resetCraftScroll;
-        if (preserveTotmCraftScroll) {
-            const scrollEl = this.element?.querySelector(".totm-crafting-embed .crafting-detail-panel")
-                ?? this.element?.querySelector(".totm-crafting-embed .crafting-split-body");
-            this._totmCraftScrollTop = scrollEl?.scrollTop ?? 0;
-        }
-        if (this._isGM) {
-            // Register the socket dispatch ref BEFORE any early return. Player→GM
-            // messages (travel declarations, activity choices, fire requests)
-            // route through this module-level reference; if a minimized-footer
-            // render bailed before registering, every player submission silently
-            // dropped on the GM. Registration is idempotent and safe here.
-            registerActiveRestApp(this);
-            if (options.force) {
-                this._gmMinimizedToFooter = false;
-            } else if (this._gmMinimizedToFooter) {
-                _logGmRestSheet("render", "skip (minimized, no force)", { phase: this._phase });
-                return;
-            }
-            if (!this._prepBroadcast) {
-                this._prepBroadcast = true;
-                emitRestPreparing();
-            }
-        }
-        try {
-            const out = super.render(options);
-            void Promise.resolve(out)
-                .then(() => {
-                    if (preserveTotmCraftScroll && (this._totmCraftScrollTop ?? 0) > 0) {
-                        const scrollEl = this.element?.querySelector(".totm-crafting-embed .crafting-detail-panel")
-                            ?? this.element?.querySelector(".totm-crafting-embed .crafting-split-body");
-                        if (scrollEl) scrollEl.scrollTop = this._totmCraftScrollTop;
-                    }
-                    showAfkPanel();
-                })
-                .catch((err) => {
-                    // Render errors must not detach the GM socket dispatch ref.
-                    // Previously this called clearActiveRestApp(), which silently
-                    // disabled every player→GM socket handler (activity choices,
-                    // fire requests, etc.) and surfaced as stacked
-                    // "Open the rest session on the GM client first" warnings on
-                    // the GM client mid-rest. Log the error; keep the ref.
-                    console.error(`${MODULE_ID} | RestSetupApp render failed:`, err);
-                });
-            return out;
-        } catch (err) {
-            // Same rationale as the async catch above: keep activeRestSetupApp
-            // pointed at this instance so player sockets continue to land.
-            console.error(`${MODULE_ID} | RestSetupApp render failed:`, err);
-            throw err;
-        }
     }
 
     async close(options = {}) {
