@@ -491,7 +491,7 @@ class StationOverlay {
      */
     async refreshIcon() {
         const tex = await _iconTextureAsync(this.station, 0xffffff, ICON_RASTER_PX);
-        if (!tex || this._container?.destroyed || !this._bodyRoot) return;
+        if (!tex || !this._container || this._container.destroyed || !this._bodyRoot || this._bodyRoot.destroyed) return;
         if (this._iconSprite) {
             const prevTint = this._iconSprite.tint;
             this._iconSprite.texture = tex;
@@ -602,6 +602,7 @@ class StationOverlay {
     }
 
     _drawBg(g, borderColor, bgAlpha, outlineAlpha = 0) {
+        if (!g || g.destroyed) return;
         const R = OV.BADGE_R;
         g.clear();
         g.beginFill(OV.BG_COLOR, bgAlpha);
@@ -614,6 +615,7 @@ class StationOverlay {
      * @param {"idle"|"hover"|"meal"|"far"} mode
      */
     _drawIconRing(g, cx, cy, mode) {
+        if (!g || g.destroyed) return;
         g.clear();
         if (mode === "idle") return;
         const r = OV.ICON_TEX_PX / 2 + OV.ICON_RING_PAD;
@@ -1205,6 +1207,10 @@ class StationOverlay {
             this._container.destroy({ children: true });
         }
         this._container = null;
+        this._bg = null;
+        this._bodyRoot = null;
+        this._iconSprite = null;
+        this._iconRing = null;
     }
 }
 
