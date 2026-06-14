@@ -23,6 +23,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { compilePack } from "@foundryvtt/foundryvtt-cli";
 import { ClassicLevel } from "classic-level";
+import { stageJournalPackSrc } from "./journal-pack-staging.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MODULE_ROOT = path.resolve(__dirname, "..");
@@ -32,6 +33,78 @@ const OUT_ROOT = path.join(MODULE_ROOT, "packs");
 const STAGING = path.join(MODULE_ROOT, "packs", ".validation-staging");
 
 const VERIFY_ONLY = process.argv.includes("--verify-only");
+const MIN_GUIDE_BODY_CHARS = 80;
+
+function stripHtml(html) {
+    return (html ?? "")
+        .replace(/<style[\s>][\s\S]*?<\/style>/gi, " ")
+        .replace(/<script[\s>][\s\S]*?<\/script>/gi, " ")
+        .replace(/<[^>]*>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&[a-z#0-9]+;/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function pageBodyChars(value) {
+    if (!value) return 0;
+    if (value.type === "text") return stripHtml(value.text?.content ?? "").length;
+    if (value.type === "image") {
+        return stripHtml(value.image?.caption ?? value.text?.content ?? "").length;
+    }
+    return stripHtml(value.text?.content ?? "").length;
+}
+
+function verifyGuideJournalBodies(packName, allEntries) {
+    if (!packName.includes("guide")) return;
+
+    const byKey = new Map(allEntries);
+    const journals = allEntries.filter(([key]) => key.startsWith("!journal!"));
+
+    for (const [journalKey, journal] of journals) {
+        const journalId = journal._id ?? journalKey.replace(/^!journal!/, "");
+        const pageIds = Array.isArray(journal.pages)
+            ? journal.pages.filter((id) => typeof id === "string")
+            : [];
+
+        if (!pageIds.length) {
+            const legacyChars = stripHtml(journal.text?.content ?? "").length;
+            if (legacyChars < MIN_GUIDE_BODY_CHARS) {
+                fail(
+                    `${packName}: journal "${journal.name}" has no page refs and legacy body is ${legacyChars} chars (need ≥${MIN_GUIDE_BODY_CHARS})`,
+                );
+            } else {
+                pass(`${packName}: journal "${journal.name}" legacy body ${legacyChars} chars`);
+            }
+            continue;
+        }
+
+        pass(`${packName}: journal "${journal.name}" lists ${pageIds.length} page ref(s)`);
+
+        let substantivePages = 0;
+        for (const pageId of pageIds) {
+            const pageKey = `!journal.pages!${journalId}.${pageId}`;
+            const page = byKey.get(pageKey);
+            if (!page) {
+                fail(`${packName}: missing page ldb key ${pageKey}`);
+                continue;
+            }
+            const chars = pageBodyChars(page);
+            if (chars >= MIN_GUIDE_BODY_CHARS) {
+                substantivePages++;
+                pass(`${packName}: page "${page.name}" ${chars} chars`);
+            } else {
+                fail(
+                    `${packName}: page "${page.name}" only ${chars} chars (need ≥${MIN_GUIDE_BODY_CHARS})`,
+                );
+            }
+        }
+
+        if (substantivePages === 0) {
+            fail(`${packName}: journal "${journal.name}" has no substantive page bodies`);
+        }
+    }
+}
 
 // ── Expected pack contents ──────────────────────────────────────────────
 const EXPECTED = {
@@ -90,10 +163,11 @@ const EXPECTED = {
         requiredFlags: {},
     },
     "respite-guide-gm": {
-        minEntries: 2,
+        minEntries: 3,
         requiredKeys: [
             "!journal!hG4mR3fRespGuide01",
             "!journal.pages!hG4mR3fRespGuide01.dvr4TYdYmX88MCCf",
+            "!journal.pages!hG4mR3fRespGuide01.mN8kTrXpGmRef001",
         ],
         requiredFlags: {},
     },
@@ -169,7 +243,12 @@ async function main() {
 
             // 2. Compile
             try {
-                await compilePack(srcDir, outDir, { log: false });
+                const staged = stageJournalPackSrc(MODULE_ROOT, srcDir);
+                try {
+                    await compilePack(staged.srcDir, outDir, { log: false });
+                } finally {
+                    if (staged.cleanup) staged.cleanup();
+                }
                 pass("Compiled successfully");
             } catch (e) {
                 fail(`Compilation failed: ${e.message}`);
@@ -250,6 +329,8 @@ async function main() {
                     fail(`Flag check failed: ${label}`);
                 }
             }
+
+            verifyGuideJournalBodies(name, allEntries);
 
             await db.close();
         } catch (e) {
