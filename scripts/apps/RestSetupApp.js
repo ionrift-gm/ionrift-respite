@@ -9629,7 +9629,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Restore default window size and center on screen so the full events
         // header is visible regardless of how the user moved the window.
-        if (!_isTrailerFilmingMode()) {
+        if (!_isTrailerFilmingMode() && this.element) {
             const defaultWidth = RestSetupApp.DEFAULT_OPTIONS.position?.width ?? 720;
             this.setPosition({
                 width: defaultWidth,
@@ -13353,7 +13353,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         // Reset position when re-opening from a retained-but-closed state
         // so the window appears centered at its natural width, not thin/off-right.
-        if (!this._isGM && prevPhase === "activity" && !_isTrailerFilmingMode()) {
+        if (!this._isGM && prevPhase === "activity" && !_isTrailerFilmingMode() && this.element) {
             const defaultWidth = 720;
             this.setPosition({
                 width: defaultWidth,
