@@ -378,12 +378,6 @@ Hooks.once("init", async () => {
         .then(t => Handlebars.registerPartial("fireTierBody", t))
         .catch(e => console.warn(`${MODULE_ID} | Failed to load fire-tier-body partial:`, e));
 
-    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/_roll-request.hbs"]);
-    fetch("modules/ionrift-respite/templates/partials/_roll-request.hbs")
-        .then(r => r.text())
-        .then(t => Handlebars.registerPartial("rollRequest", t))
-        .catch(e => console.warn(`${MODULE_ID} | Failed to load roll-request partial:`, e));
-
     foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/_training-panel.hbs"]);
     fetch("modules/ionrift-respite/templates/partials/_training-panel.hbs")
         .then(r => r.text())
@@ -416,7 +410,9 @@ Hooks.once("init", async () => {
             ensureDcPulse: ensureDcPulseAnimation,
             debugAnimation: inspectDcAnimation,
             watchAnimation: watchDcAnimation,
-            forceDcPulseTest
+            forceDcPulseTest,
+            request: (opts) => game.ionrift?.library?.rollRequest?.request?.(opts),
+            requestDetached: (opts, callback) => game.ionrift?.library?.rollRequest?.requestDetached?.(opts, callback)
         },
         RestFlowEngine,
         ActivityResolver,
