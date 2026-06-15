@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.2.0] - 2026-06-15
+
+### Fixed
+- Rest setup now correctly guards the phase transition when the setup window is closed before the phase completes, preventing a stale state on re-open.
+- The GM guide compendium now only compiles pages that have substantive content, removing blank pages from the in-game journal.
+
 ## [3.1.6] - 2026-06-12
 
 ### Fixed
