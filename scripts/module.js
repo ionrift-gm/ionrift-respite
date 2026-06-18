@@ -479,6 +479,29 @@ Hooks.once("init", async () => {
             return await ForageTableSync.syncAll({ notify: true });
         },
         /**
+         * Open the camp fuel roll table (5% trigger; kindling 1-100 when rolled). Observer access.
+         * @returns {Promise<boolean>}
+         */
+        openCampFuelTable: async () => {
+            const { CampFuelTableSync } = await import("./services/CampFuelTableSync.js");
+            return await CampFuelTableSync.openSheet();
+        },
+        /**
+         * Open the forage roll table for a terrain tag. All users with observer access.
+         * @param {string} [terrain]
+         * @returns {Promise<boolean>}
+         */
+        openForageTable: async (terrain = "forest") => {
+            const { ForageTableSync } = await import("./services/ForageTableSync.js");
+            const table = ForageTableSync.getTableForTerrain(terrain);
+            if (!table) {
+                ui.notifications.warn(`Respite: No forage table for "${terrain}".`);
+                return false;
+            }
+            await table.sheet.render({ force: true });
+            return true;
+        },
+        /**
          * Opens a Respite guide journal from compendium packs.
          * Player and cooking pages live in respite-guide (PLAYER: OBSERVER).
          * GM reference lives in respite-guide-gm (GAMEMASTER: OWNER).

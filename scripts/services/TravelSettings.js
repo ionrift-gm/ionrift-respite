@@ -90,6 +90,38 @@ export function isHomebrewProvisionOnly() {
     }
 }
 
+/** Default camp fuel find rate (% of successful forages that grant kindling). */
+export const CAMP_FUEL_FIND_DEFAULT_PERCENT = 5;
+export const CAMP_FUEL_FIND_MIN_PERCENT = 0;
+export const CAMP_FUEL_FIND_MAX_PERCENT = 25;
+
+/**
+ * World setting: percent chance a successful forage consults the camp fuel table.
+ * @returns {number} Integer 0–25
+ */
+export function getCampFuelFindPercent() {
+    try {
+        const raw = game.settings.get(MODULE_ID, "campFuelFindChance");
+        if (typeof raw === "number" && !Number.isNaN(raw)) {
+            return Math.max(
+                CAMP_FUEL_FIND_MIN_PERCENT,
+                Math.min(CAMP_FUEL_FIND_MAX_PERCENT, Math.round(raw))
+            );
+        }
+    } catch {
+        /* settings not ready */
+    }
+    return CAMP_FUEL_FIND_DEFAULT_PERCENT;
+}
+
+/**
+ * Decimal chance (0–1) for {@link TravelResolver} camp fuel rolls.
+ * @returns {number}
+ */
+export function getCampFuelFindChance() {
+    return getCampFuelFindPercent() / 100;
+}
+
 /**
  * One-time migration for useTravel semantics and legacy allowSkipTravel.
  */

@@ -27,14 +27,15 @@ export class ForageTableInstaller {
 
         const existing = game.tables.filter(table =>
             table.flags?.[MODULE_ID]?.isForageTable
+            || table.flags?.[MODULE_ID]?.isCampFuelTable
         );
         for (const table of existing) {
             await table.delete();
-            Logger.log(`Deleted forage table: ${table.name}`);
+            Logger.log(`Deleted roll table: ${table.name}`);
         }
 
         await ForageTableSync.syncAll({ notify: true });
-        ui.notifications.info("Respite: Rebuilt forage roll tables from compendium folders.");
+        ui.notifications.info("Respite: Rebuilt forage and camp fuel roll tables from compendium folders.");
         Logger.log("Forage table reset complete.");
     }
 }

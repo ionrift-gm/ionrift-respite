@@ -348,6 +348,21 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         restricted: true
     });
 
+    game.settings.register(MODULE_ID, "campFuelFindChance", {
+        name: "Camp Fuel Find Chance",
+        hint: "Percent chance each successful forage also grants kindling (via the Camp Fuel roll table). 0 disables the side yield.",
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 5,
+        restricted: true,
+        onChange: () => {
+            import("./ForageTableSync.js").then(({ ForageTableSync }) => {
+                ForageTableSync.scheduleSync();
+            });
+        }
+    });
+
     game.settings.register(MODULE_ID, "homebrewProvisionOnly", {
         name: "Homebrew Provisions Only",
         hint: "Ignore shipped Respite Items, built-in stubs, and imported pack data. Camp cooking and brewing use your custom recipe list; forage and hunt use the Respite Custom compendium only.",
@@ -869,6 +884,7 @@ export const SETTING_KEYS = [
     "enableScouting",
     "enableForaging",
     "enableHunting",
+    "campFuelFindChance",
     "homebrewProvisionOnly",
     "useTravel",
     "useTravelPhaseSemanticsMigrated",

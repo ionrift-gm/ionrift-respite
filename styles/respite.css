@@ -14257,6 +14257,20 @@ button.is-processing {
     animation: kindlingPulse 2s ease-in-out infinite;
 }
 
+.campfire-fuel-table-row {
+    justify-content: center;
+    margin-top: 0.35rem;
+}
+
+.campfire-fuel-table-btn {
+    font-size: 0.78rem;
+    opacity: 0.85;
+}
+
+.campfire-fuel-table-btn:hover {
+    opacity: 1;
+}
+
 @keyframes kindlingPulse {
     0%, 100% { text-shadow: 0 0 8px rgba(255, 140, 30, 0.3); }
     50% { text-shadow: 0 0 16px rgba(255, 140, 30, 0.7); }
