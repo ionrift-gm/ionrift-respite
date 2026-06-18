@@ -25,6 +25,15 @@ import {
     matchMealBuffPresetId,
     MEAL_BUFF_PRESETS
 } from "../services/MealBuffPresets.js";
+import {
+    buildRecipeMissingOutputIndex,
+    formatSyncError,
+    openCustomOutputCompendiumItem,
+    outputFolderNameForProfession,
+    resolveRecipeOutputNameOnSave,
+    syncRecipeOutputsToCompendium
+} from "../services/RecipeOutputCompendium.js";
+import { PROVISIONS_CUSTOM_PACK_ID } from "../services/ProvisionsCustomPack.js";
 import { SKILL_NAMES } from "./RestConstants.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -79,6 +88,8 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         const recipes = stored[this.#professionId] ?? [];
         const selected = this.#selectedIndex >= 0 ? recipes[this.#selectedIndex] ?? null : null;
         const isNewDraft = this.#selectedIndex < 0 || !selected;
+        const pack = game.packs.get(PROVISIONS_CUSTOM_PACK_ID);
+        const missingOutputIndices = await buildRecipeMissingOutputIndex(pack, recipes);
 
         return {
             professionId: this.#professionId,
@@ -93,7 +104,9 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             selected,
             isNewDraft,
             draft: this.#draft ?? selected ?? this._blankRecipe(),
-            maxRecipes: CUSTOM_RECIPE_MAX_PER_PROFESSION
+            maxRecipes: CUSTOM_RECIPE_MAX_PER_PROFESSION,
+            missingOutputIndices,
+            selectedOutputMissing: !isNewDraft && missingOutputIndices.has(this.#selectedIndex)
         };
     }
 
@@ -113,6 +126,22 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
 
     _esc(value) {
         return foundry.utils.escapeHTML(String(value ?? ""));
+    }
+
+    _stripHtmlForTextarea(html) {
+        if (!html) return "";
+        return String(html)
+            .replace(/<br\s*\/?>/gi, "\n")
+            .replace(/<\/p>\s*<p>/gi, "\n\n")
+            .replace(/<[^>]+>/g, "")
+            .trim();
+    }
+
+    _wrapDescription(text) {
+        const trimmed = String(text ?? "").trim();
+        if (!trimmed) return "";
+        if (trimmed.startsWith("<")) return trimmed;
+        return `<p>${trimmed}</p>`;
     }
 
     _buildSkillOptions(selectedKey) {
@@ -241,10 +270,15 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         const outputName = draft.output?.name ?? "";
         const outputQty = draft.output?.quantity ?? 1;
         const outputImg = draft.output?.img ?? "icons/consumables/food/bowl-stew-brown.webp";
+        const outputDesc = draft.output?.description ?? "";
+        const outputCompendiumId = draft.output?.compendiumId ?? "";
+        const outputFolderLabel = outputFolderNameForProfession(context.professionId);
         const hasAmbitious = Boolean(draft.ambitiousOutput);
         const ambName = draft.ambitiousOutput?.name ?? "";
         const ambQty = draft.ambitiousOutput?.quantity ?? 1;
         const ambImg = draft.ambitiousOutput?.img ?? outputImg;
+        const ambDesc = draft.ambitiousOutput?.description ?? "";
+        const ambCompendiumId = draft.ambitiousOutput?.compendiumId ?? "";
         const profLabel = PROFESSION_LABELS[context.professionId] ?? context.professionId;
         const toolKey = getProfessionToolRequired(context.professionId);
         const toolLabel = toolKey
@@ -259,11 +293,16 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                 const flash = i === this.#flashSavedIndex ? " recipe-editor-list-item--saved-flash" : "";
                 const outputImg = r.output?.img
                     ?? "icons/consumables/food/bowl-stew-brown.webp";
+                const missingOutput = context.missingOutputIndices?.has(i);
+                const missingBadge = missingOutput
+                    ? `<span class="recipe-editor-list-warn" title="Output missing from compendium. Save recipe to recreate."><i class="fas fa-unlink" aria-hidden="true"></i></span>`
+                    : "";
                 recipeListHtml += `
                 <button type="button" class="recipe-editor-list-item${active}${flash}"
                     data-action="selectRecipe" data-index="${i}">
                     <img class="recipe-editor-list-icon" src="${this._esc(outputImg)}" alt="" />
                     <span class="recipe-editor-list-name">${this._esc(r.name)}</span>
+                    ${missingBadge}
                     <span class="recipe-editor-list-meta">DC ${r.dc}</span>
                 </button>`;
             }
@@ -310,7 +349,9 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         return `
         <p class="recipe-editor-lead">
             Homebrew recipes for this world. Match ingredient names to compendium items
-            (place inputs in Forage or Reagents folders). Export or import JSON for bulk edits.
+            (Forage or Reagents). Saving creates or updates output items in
+            <strong>Respite Custom Items → ${this._esc(outputFolderLabel)}</strong>.
+            Deleting a recipe here does not remove its compendium item. Export or import JSON for bulk edits.
         </p>
         <div class="recipe-editor-filter">
             <label class="recipe-editor-filter-label">
@@ -371,9 +412,14 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                         <i class="fas fa-plus"></i> Add ingredient
                     </button>
                 </div>
+                ${context.selectedOutputMissing ? `
+                <p class="recipe-editor-sync-warn">
+                    <i class="fas fa-unlink" aria-hidden="true"></i>
+                    Compendium output missing. Save this recipe to recreate it in ${this._esc(outputFolderLabel)}.
+                </p>` : ""}
                 <div class="recipe-editor-section">
                     <div class="recipe-editor-section-title">Standard output</div>
-                    <p class="recipe-editor-hint">Granted on a normal craft roll (Standard risk).</p>
+                    <p class="recipe-editor-hint">Granted on a normal craft roll (Standard risk). Saved as a compendium item in ${this._esc(outputFolderLabel)}.</p>
                     <div class="recipe-editor-img-row">
                         <img class="recipe-editor-img-preview" src="${this._esc(outputImg)}" alt="" />
                         <input type="hidden" name="outputImg" value="${this._esc(outputImg)}" />
@@ -381,18 +427,28 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                             data-action="pickOutputImg">
                             <i class="fas fa-image"></i> Choose image
                         </button>
+                        ${outputCompendiumId ? `
+                        <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
+                            data-action="openStdOutput" data-compendium-id="${this._esc(outputCompendiumId)}">
+                            <i class="fas fa-book"></i> Open compendium item
+                        </button>` : ""}
                     </div>
                     <div class="recipe-editor-fields recipe-editor-fields--double">
                         <div class="recipe-editor-field">
                             <label class="recipe-editor-label">Item name</label>
                             <input type="text" class="recipe-editor-input" name="outputName"
-                                value="${this._esc(outputName)}" placeholder="Hearty stew" />
+                                value="${this._esc(outputName)}" placeholder="Matches recipe name unless changed" />
                         </div>
                         <div class="recipe-editor-field">
                             <label class="recipe-editor-label">Quantity</label>
                             <input type="number" class="recipe-editor-input" name="outputQty"
                                 min="1" value="${outputQty}" />
                         </div>
+                    </div>
+                    <div class="recipe-editor-field recipe-editor-field--full">
+                        <label class="recipe-editor-label">Item description</label>
+                        <textarea class="recipe-editor-textarea" name="outputDesc" rows="2"
+                            placeholder="Flavor text shown on the compendium item and crafted inventory row.">${this._esc(this._stripHtmlForTextarea(outputDesc))}</textarea>
                     </div>
                     ${showMealEffects ? this._buildMealEffectsMarkup("standard", stdRf, context.professionId) : ""}
                 </div>
@@ -412,6 +468,11 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                                 data-action="pickAmbOutputImg">
                                 <i class="fas fa-image"></i> Choose image
                             </button>
+                            ${ambCompendiumId ? `
+                            <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
+                                data-action="openAmbOutput" data-compendium-id="${this._esc(ambCompendiumId)}">
+                                <i class="fas fa-book"></i> Open compendium item
+                            </button>` : ""}
                         </div>
                         <div class="recipe-editor-fields recipe-editor-fields--double">
                             <div class="recipe-editor-field">
@@ -424,6 +485,11 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                                 <input type="number" class="recipe-editor-input" name="ambOutputQty"
                                     min="1" value="${ambQty}" />
                             </div>
+                        </div>
+                        <div class="recipe-editor-field recipe-editor-field--full">
+                            <label class="recipe-editor-label">Item description</label>
+                            <textarea class="recipe-editor-textarea" name="ambOutputDesc" rows="2"
+                                placeholder="Flavor text for the upgraded compendium item.">${this._esc(this._stripHtmlForTextarea(ambDesc))}</textarea>
                         </div>
                         ${showMealEffects ? this._buildMealEffectsMarkup("ambitious", ambRf, context.professionId) : ""}
                     </div>
@@ -467,6 +533,24 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             this.#draft = this._blankRecipe();
             this.#selectedIndex = -1;
             this.render();
+        });
+
+        const recipeNameInput = el.querySelector("[name=\"name\"]");
+        const outputNameInput = el.querySelector("[name=\"outputName\"]");
+        recipeNameInput?.addEventListener("input", () => {
+            if (!outputNameInput) return;
+            const baseline = this.#draft
+                ?? game.settings.get(MODULE_ID, "customRecipes")?.[this.#professionId]?.[this.#selectedIndex]
+                ?? null;
+            const nextOutput = resolveRecipeOutputNameOnSave(
+                baseline?.name,
+                baseline?.output?.name,
+                recipeNameInput.value,
+                outputNameInput.value
+            );
+            if (nextOutput !== outputNameInput.value) {
+                outputNameInput.value = nextOutput;
+            }
         });
 
         el.querySelector("[data-action=\"addIngredient\"]")?.addEventListener("click", () => {
@@ -552,6 +636,16 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             this._pickImage(el, "ambOutputImg", ".recipe-editor-img-preview--amb");
         });
 
+        el.querySelector("[data-action=\"openStdOutput\"]")?.addEventListener("click", ev => {
+            const id = ev.currentTarget?.dataset?.compendiumId;
+            if (id) openCustomOutputCompendiumItem(id);
+        });
+
+        el.querySelector("[data-action=\"openAmbOutput\"]")?.addEventListener("click", ev => {
+            const id = ev.currentTarget?.dataset?.compendiumId;
+            if (id) openCustomOutputCompendiumItem(id);
+        });
+
         el.querySelector("[data-action=\"saveRecipe\"]")?.addEventListener("click", () => this._saveRecipe(el));
         el.querySelector("[data-action=\"deleteRecipe\"]")?.addEventListener("click", () => this._deleteRecipe());
         el.querySelector("[data-action=\"exportJson\"]")?.addEventListener("click", () => this._exportJson());
@@ -559,13 +653,14 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
     }
 
     _blankRecipe() {
+        const recipeName = "New Recipe";
         return applyProfessionToolToRecipe({
-            name: "New Recipe",
+            name: recipeName,
             dc: 12,
             skill: "sur",
             ingredients: [{ name: "", quantity: 1 }],
             output: {
-                name: "Custom Output",
+                name: recipeName,
                 type: "consumable",
                 quantity: 1,
                 img: "icons/consumables/food/bowl-stew-brown.webp",
@@ -632,10 +727,11 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
     }
 
     _readFormDraft(root) {
-        const draft = foundry.utils.deepClone(
-            this.#draft
+        const baseline = this.#draft
             ?? game.settings.get(MODULE_ID, "customRecipes")?.[this.#professionId]?.[this.#selectedIndex]
-            ?? this._blankRecipe()
+            ?? null;
+        const draft = foundry.utils.deepClone(
+            baseline ?? this._blankRecipe()
         );
 
         draft.name = root.querySelector("[name=\"name\"]")?.value?.trim() ?? draft.name;
@@ -644,15 +740,25 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         applyProfessionToolToRecipe(draft, this.#professionId);
         draft.outputFlags = draft.outputFlags ?? this._defaultOutputFlags();
         draft.output = draft.output ?? {};
-        draft.output.name = root.querySelector("[name=\"outputName\"]")?.value?.trim() ?? draft.output.name;
+        const formOutputName = root.querySelector("[name=\"outputName\"]")?.value?.trim() ?? draft.output.name;
+        draft.output.name = resolveRecipeOutputNameOnSave(
+            baseline?.name,
+            baseline?.output?.name,
+            draft.name,
+            formOutputName
+        );
         draft.output.quantity = Number(root.querySelector("[name=\"outputQty\"]")?.value) || 1;
         draft.output.img = root.querySelector("[name=\"outputImg\"]")?.value?.trim()
             ?? draft.output.img ?? "icons/consumables/food/bowl-stew-brown.webp";
+        const outputDescRaw = root.querySelector("[name=\"outputDesc\"]")?.value?.trim() ?? "";
+        draft.output.description = this._wrapDescription(outputDescRaw)
+            || draft.output.description
+            || `<p>${draft.output.name}</p>`;
         draft.output.type = draft.output.type ?? "consumable";
         draft.output.rarity = draft.output.rarity ?? "common";
-        draft.output.system = draft.output.system ?? { type: { value: "food", subtype: "" } };
-        draft.output.description = draft.output.description
-            ?? `<p>${draft.output.name}</p>`;
+        draft.output.system = draft.output.system ?? {
+            type: { value: this.#professionId === "brewing" ? "potion" : "food", subtype: "" }
+        };
 
         if (this._isMealProfession(this.#professionId)) {
             this._applyMealFlagsFromForm(root, draft, "standard");
@@ -664,14 +770,17 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                 || `${draft.output.name} (Fine)`;
             const ambQty = Number(root.querySelector("[name=\"ambOutputQty\"]")?.value) || 1;
             const ambImg = root.querySelector("[name=\"ambOutputImg\"]")?.value?.trim() || draft.output.img;
+            const ambDescRaw = root.querySelector("[name=\"ambOutputDesc\"]")?.value?.trim() ?? "";
+            const ambDescription = this._wrapDescription(ambDescRaw) || `<p>${ambName}</p>`;
             draft.ambitiousOutput = {
                 name: ambName,
                 type: "consumable",
                 quantity: ambQty,
                 img: ambImg,
-                description: `<p>${ambName}</p>`,
+                description: ambDescription,
                 rarity: "uncommon",
-                system: foundry.utils.deepClone(draft.output.system)
+                system: foundry.utils.deepClone(draft.output.system),
+                compendiumId: draft.ambitiousOutput?.compendiumId
             };
             draft.ambitiousOutputFlags = foundry.utils.deepClone(
                 draft.ambitiousOutputFlags ?? draft.outputFlags ?? this._defaultOutputFlags()
@@ -721,7 +830,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
     }
 
     async _saveRecipe(root) {
-        const draft = this._readFormDraft(root);
+        let draft = this._readFormDraft(root);
         const stored = foundry.utils.deepClone(game.settings.get(MODULE_ID, "customRecipes") ?? {});
         const list = Array.isArray(stored[this.#professionId]) ? stored[this.#professionId] : [];
         const isUpdate = this.#selectedIndex >= 0 && this.#selectedIndex < list.length;
@@ -745,6 +854,15 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             if (!confirmed) return;
         }
 
+        try {
+            draft = await syncRecipeOutputsToCompendium(this.#professionId, draft);
+        } catch (err) {
+            const detail = formatSyncError(err);
+            console.error(`${MODULE_ID} | RecipeEditorApp sync outputs`, detail, err);
+            ui.notifications.error(`Could not write output items to Respite Custom compendium. ${detail}`);
+            return;
+        }
+
         let savedIndex;
         if (isUpdate) {
             list[this.#selectedIndex] = draft;
@@ -765,9 +883,9 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         if (engine) applyCustomRecipesToEngine(engine);
 
         this.#flashSavedIndex = savedIndex;
-        this.#selectedIndex = -1;
-        this.#draft = this._blankRecipe();
-        ui.notifications.info(`Saved "${draft.name}".`);
+        this.#selectedIndex = savedIndex;
+        this.#draft = null;
+        ui.notifications.info(`Saved "${draft.name}". Output item: ${draft.output?.name ?? draft.name}.`);
         await this.render();
         this.#flashSavedIndex = null;
         this._flashSavedListItem(savedIndex);
@@ -797,12 +915,18 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         const stored = foundry.utils.deepClone(game.settings.get(MODULE_ID, "customRecipes") ?? {});
         const list = stored[this.#professionId] ?? [];
         if (this.#selectedIndex < 0 || this.#selectedIndex >= list.length) return;
+        const removed = list[this.#selectedIndex];
+        const outputName = removed?.output?.name;
+        const folderLabel = outputFolderNameForProfession(this.#professionId);
         list.splice(this.#selectedIndex, 1);
         stored[this.#professionId] = list;
         await game.settings.set(MODULE_ID, "customRecipes", sanitizeCustomRecipes(stored));
         this.#selectedIndex = Math.max(0, this.#selectedIndex - 1);
         this.#draft = null;
-        ui.notifications.info("Recipe removed.");
+        const compendiumNote = outputName
+            ? ` Compendium item "${outputName}" may still be in ${folderLabel}.`
+            : "";
+        ui.notifications.info(`Recipe removed.${compendiumNote}`);
         this.render();
     }
 

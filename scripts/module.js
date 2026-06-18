@@ -54,7 +54,6 @@ import {
     emitAfkUpdate,
 } from "./services/SocketController.js";
 import { registerAllSettings, registerItemEnrichments } from "./services/SettingsRegistrar.js";
-import { buildFolderPathMap } from "./services/CompendiumFolderIndex.js";
 import {
     buildRollRequestContext,
     buildEventPlayerRollContext,
@@ -834,6 +833,12 @@ Hooks.once("ready", async () => {
     // Initialize image resolver (art pack detection â€” probes ionrift-data/)
     await ImageResolver.init();
 
+    const { guardLinkedCompendiumOutputDelete } = await import("./services/RecipeOutputCompendium.js");
+    Hooks.on("preDeleteItem", (item, options, userId) => {
+        if (userId !== game.user?.id) return;
+        return guardLinkedCompendiumOutputDelete(item, options);
+    });
+
     const refreshOpenRestSetup = () => {
         if (activeRestSetupApp?.rendered) activeRestSetupApp.render();
     };
@@ -855,26 +860,37 @@ Hooks.once("ready", async () => {
     await initializeEventPoolIfNeeded();
 
     try {
-        const respiteItemsPack = game.packs.get("ionrift-respite.respite-items");
-        if (respiteItemsPack && game.ionrift?.respite) {
-            game.ionrift.respite.travelBasePoolIndex = await respiteItemsPack.getIndex({
-                fields: ["flags", "name", "img", "type", "system", "folder"]
-            });
-            game.ionrift.respite.travelFolderPathMap = buildFolderPathMap(respiteItemsPack.collection);
-            const idx = game.ionrift.respite.travelBasePoolIndex;
-            const forageCount = [...(idx ?? [])].filter(
-                e => e.flags?.["ionrift-respite"]?.category === "forage"
-            ).length;
-            const huntCount = [...(idx ?? [])].filter(
-                e => e.flags?.["ionrift-respite"]?.category === "hunt"
-            ).length;
-            RespiteLog.log(`${MODULE_ID} | Base pool index: ${idx?.size ?? 0} items, ${forageCount} forage, ${huntCount} hunt`);
-            if (forageCount === 0) {
-                console.warn(`${MODULE_ID} | No forage items in respite-items compendium. Camp forage will rely on content pack pools only.`);
+        const { loadTravelProvisionBatches } = await import("./services/TravelProvisionIndex.js");
+        const { PROVISIONS_CUSTOM_PACK_ID } = await import("./services/ProvisionsCustomPack.js");
+        if (game.ionrift?.respite) {
+            const loaded = await loadTravelProvisionBatches();
+            game.ionrift.respite.travelProvisionBatches = loaded.batches;
+            game.ionrift.respite.travelBasePoolIndex = loaded.batches[0]?.entries ?? null;
+            game.ionrift.respite.travelFolderPathMap = loaded.batches[0]?.folderPathMap ?? null;
+            game.ionrift.respite.provisionsCustomPackId = PROVISIONS_CUSTOM_PACK_ID;
+
+            let forageCount = 0;
+            let huntCount = 0;
+            for (const batch of loaded.batches) {
+                for (const entry of batch.entries) {
+                    const cat = entry.flags?.[MODULE_ID]?.category;
+                    if (cat === "forage") forageCount++;
+                    if (cat === "hunt") huntCount++;
+                }
+            }
+            RespiteLog.log(
+                `${MODULE_ID} | Travel provision index: ${loaded.totalEntries} items`
+                + ` (${forageCount} forage, ${huntCount} hunt flags; folders also qualify)`
+            );
+            if (forageCount === 0 && loaded.batches.length <= 1) {
+                console.warn(
+                    `${MODULE_ID} | No forage items in respite-items compendium.`
+                    + " Camp forage will rely on content pack pools only."
+                );
             }
         }
     } catch (e) {
-        console.warn(`${MODULE_ID} | Failed to load respite-items index for travel pools:`, e);
+        console.warn(`${MODULE_ID} | Failed to load travel provision indexes:`, e);
     }
 
     // Register socket handler (dispatch extracted to SocketRouter.js â€” Phase 2.2)

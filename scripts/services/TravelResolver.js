@@ -63,8 +63,9 @@ export class TravelResolver {
      * Build hunt/forage base pools from compendium index (folder path or flags fallback).
      * @param {Iterable<{ _id: string, name?: string, folder?: string, flags?: Record<string, unknown> }>} indexEntries
      * @param {{ pathFor?: (folderId: string) => string } | null} [folderPathMap]
+     * @param {{ overrideRefs?: boolean }} [options]
      */
-    loadBaseItems(indexEntries, folderPathMap = null) {
+    loadBaseItems(indexEntries, folderPathMap = null, { overrideRefs = false } = {}) {
         if (!indexEntries) return;
         for (const entry of indexEntries) {
             const rf = entry.flags?.["ionrift-respite"];
@@ -92,11 +93,17 @@ export class TravelResolver {
                     : String(rf.terrain).split(",").map(t => t.trim()).filter(Boolean);
             }
 
+            const itemRef = rf?.itemRef
+                ?? String(entry.name ?? "").toLowerCase().replace(/\s+/g, "_");
+
             for (const terrain of terrains) {
                 const key = `${terrain}_${category}`;
                 this.#basePools[key] ??= [];
+                if (overrideRefs) {
+                    this.#basePools[key] = this.#basePools[key].filter(pool => pool.itemRef !== itemRef);
+                }
                 this.#basePools[key].push({
-                    itemRef: rf?.itemRef ?? String(entry.name ?? "").toLowerCase().replace(/\s+/g, "_"),
+                    itemRef,
                     _id: entry._id,
                     quantity: 1
                 });
@@ -104,9 +111,22 @@ export class TravelResolver {
         }
     }
 
+    /** Clear folder-derived base pools before a full re-index. */
+    clearBasePools() {
+        this.#basePools = {};
+    }
+
     /** @returns {string[]} Keys such as forest_forage for {@link ForageActivityValidator}. */
     get basePoolCoverage() {
         return Object.keys(this.#basePools);
+    }
+
+    /**
+     * @param {string} poolKey - e.g. forest_forage
+     * @returns {Array<{ itemRef: string, _id: string, quantity: number }>}
+     */
+    getBasePoolEntries(poolKey) {
+        return [...(this.#basePools[poolKey] ?? [])];
     }
 
     /** @returns {ResourcePoolRoller} Shared roller (for {@link ForageActivityValidator}). */

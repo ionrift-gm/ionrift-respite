@@ -1651,16 +1651,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // Ionrift and imported through Respite's Content Packs settings UI.
             await this._loadContentPacks();
 
-            // Ensure the travel delegate's resolver has base pool items from the
-            // shipped compendium. The delegate constructor may have fired before
-            // the compendium index was ready (race condition on startup/restore).
-            if (this._travel && game.ionrift?.respite?.travelBasePoolIndex) {
+            // Rebuild travel base pools from module + world custom compendiums.
+            if (this._travel && game.ionrift?.respite?.travelProvisionBatches) {
                 const resolver = this._travel.getTravelResolver();
-                if (resolver && resolver.basePoolCoverage.length === 0) {
-                    resolver.loadBaseItems(
-                        game.ionrift.respite.travelBasePoolIndex,
-                        game.ionrift.respite.travelFolderPathMap
-                    );
+                if (resolver) {
+                    const { applyTravelProvisionBatches } = await import("../services/TravelProvisionIndex.js");
+                    await applyTravelProvisionBatches(resolver);
                 }
             }
         } catch (e) {

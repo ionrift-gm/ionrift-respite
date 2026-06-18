@@ -84,7 +84,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
     game.settings.registerMenu(MODULE_ID, "recipeEditor", {
         name: "Custom Recipes",
         label: "Edit Custom Recipes",
-        hint: "Add homebrew cooking and brewing recipes for this world. Items are matched by compendium name; place inputs in Forage or Reagents folders.",
+        hint: "Add homebrew cooking and brewing recipes. Match ingredient names to compendium items in Respite Custom (Ionrift Custom sidebar) or shipped Respite Items.",
         icon: "fas fa-mortar-pestle",
         type: RecipeEditorApp,
         restricted: true
