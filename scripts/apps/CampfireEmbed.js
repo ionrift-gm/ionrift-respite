@@ -269,7 +269,8 @@ export class CampfireEmbed {
             coldCampActive: this._coldCampActive,
             showFireMeter: this._makeCampCeremony ? this._lit : activityFirePanel,
             meterLevel,
-            showGiftWoodBtn: activityFirePanel && !this._lit && !!game.user?.isGM && !!this._onGiftCeremonyWood
+            showGiftWoodBtn: activityFirePanel && !this._lit && !!game.user?.isGM && !!this._onGiftCeremonyWood,
+            showCampFuelTableLink: true
         };
     }
 
@@ -566,6 +567,16 @@ export class CampfireEmbed {
         if (douseBtn && !douseBtn._bound) {
             douseBtn._bound = true;
             douseBtn.addEventListener("click", () => this._onDouseFire());
+        }
+
+        const campFuelBtn = el.querySelector('[data-action="openCampFuelTable"]');
+        if (campFuelBtn && !campFuelBtn._bound) {
+            campFuelBtn._bound = true;
+            campFuelBtn.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                game.ionrift?.respite?.openCampFuelTable?.();
+            });
         }
     }
 

@@ -3,15 +3,12 @@ import { CalendarHandler } from "./CalendarHandler.js";
 import { ItemOutcomeHandler } from "./ItemOutcomeHandler.js";
 import { resolvePoolFromFolderPath } from "./CompendiumFolderIndex.js";
 import { STUB_HUNT_YIELDS } from "../data/stub-content.js";
-import { isHomebrewProvisionOnly } from "./TravelSettings.js";
+import { isHomebrewProvisionOnly, getCampFuelFindChance } from "./TravelSettings.js";
 
 const MODULE_ID = "ionrift-respite";
 
 const FORAGE_DC = 12;
 const HUNT_DC = 14;
-
-/** Flat chance any successful forage also turns up firewood, independent of the loot table. */
-const FIREWOOD_FORAGE_CHANCE = 0.05;
 
 /**
  * TravelResolver
@@ -443,12 +440,12 @@ export class TravelResolver {
             items = await this._drawFromBasePool(terrainTag, "forage", exceptional ? 2 : 1);
         }
 
-        // Firewood is a flat side-chance on any successful forage, not a table entry.
-        const firewood = this._rollFirewoodBonus();
-        if (firewood) {
-            const existing = items.find(row => row.itemRef === firewood.itemRef);
-            if (existing) existing.quantity += firewood.quantity;
-            else items.push(firewood);
+        // Flat side-chance; item comes from the camp fuel roll table when present.
+        const campFuel = await this._rollCampFuelBonus();
+        if (campFuel) {
+            const existing = items.find(row => row.itemRef === campFuel.itemRef);
+            if (existing) existing.quantity += campFuel.quantity;
+            else items.push(campFuel);
         }
 
         if (!items.length) {
@@ -464,31 +461,33 @@ export class TravelResolver {
     }
 
     /**
-     * Roll the flat firewood side-chance for a successful forage.
-     * @returns {{ itemRef: string, quantity: number, itemData: object }|null}
+     * Roll the flat camp-fuel side-chance; table is d100 with kindling on 1-30, empty 31-100.
+     * @returns {Promise<{ itemRef: string, quantity: number, itemData: object }|null>}
      */
-    _rollFirewoodBonus() {
-        if (Math.random() >= FIREWOOD_FORAGE_CHANCE) return null;
-        return this._makeFirewood();
+    async _rollCampFuelBonus() {
+        if (Math.random() >= getCampFuelFindChance()) return null;
+        const { CampFuelTableSync } = await import("./CampFuelTableSync.js");
+        const draws = await CampFuelTableSync.drawCampFuelResults(1);
+        return draws[0] ?? null;
     }
 
     /**
      * @param {number} [quantity]
      * @returns {{ itemRef: string, quantity: number, itemData: object }}
      */
-    _makeFirewood(quantity = 1) {
+    _makeKindling(quantity = 1) {
         return {
-            itemRef: "firewood",
+            itemRef: "kindling",
             quantity,
             itemData: {
-                name: "Firewood",
+                name: "Kindling",
                 type: "loot",
-                img: "icons/commodities/wood/lumber-stack-brown.webp",
+                img: "icons/commodities/wood/kindling-sticks-brown.webp",
                 system: {
-                    description: { value: "<p>Dry deadfall gathered while foraging. Fuel for a campfire.</p>" },
+                    description: { value: "<p>Dry twigs and bark strips.</p>" },
                     rarity: "common"
                 },
-                flags: { [MODULE_ID]: { itemRef: "firewood", firewoodType: "firewood" } }
+                flags: { [MODULE_ID]: { itemRef: "kindling", firewoodType: "kindling" } }
             }
         };
     }

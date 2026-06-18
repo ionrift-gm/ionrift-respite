@@ -18,7 +18,12 @@ import {
     getTrainingTier,
     getTrainingTierLabel
 } from "../services/TrainingSettings.js";
-import { isProfessionsEnabled } from "../services/TravelSettings.js";
+import {
+    CAMP_FUEL_FIND_DEFAULT_PERCENT,
+    CAMP_FUEL_FIND_MAX_PERCENT,
+    CAMP_FUEL_FIND_MIN_PERCENT,
+    isProfessionsEnabled
+} from "../services/TravelSettings.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -111,6 +116,17 @@ const ACTIVITY_TOGGLES = [
                 requiresUseTravel: true
             },
             {
+                key: "campFuelFindChance",
+                label: "Camp Fuel Find Chance",
+                hint: "Percent chance each successful forage also grants kindling (Camp Fuel roll table). 0 disables the side yield.",
+                type: "percentSlider",
+                min: CAMP_FUEL_FIND_MIN_PERCENT,
+                max: CAMP_FUEL_FIND_MAX_PERCENT,
+                step: 1,
+                requiresUseTravel: true,
+                requiresForaging: true
+            },
+            {
                 key: "enableHunting",
                 label: "Travel Hunting",
                 hint: "Hunt activity on travel days. Off removes hunting prey from the declaration list.",
@@ -148,10 +164,12 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
     async _prepareContext() {
         const useTravel = !!game.settings.get(MODULE_ID, "useTravel");
         const professionsOn = isProfessionsEnabled();
+        const foragingOn = !!game.settings.get(MODULE_ID, "enableForaging");
 
         const resolveBooleanRow = (row, { groupDisabled = false } = {}) => {
             const disabled = groupDisabled
-                || (row.requiresUseTravel && (!professionsOn || !useTravel));
+                || (row.requiresUseTravel && (!professionsOn || !useTravel))
+                || (row.requiresForaging && !foragingOn);
             return {
                 ...row,
                 type: "boolean",
@@ -160,13 +178,27 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
             };
         };
 
+        const resolveTravelChild = (child, { groupDisabled = false } = {}) => {
+            if (child.type === "percentSlider") {
+                const disabled = groupDisabled
+                    || (child.requiresUseTravel && (!professionsOn || !useTravel))
+                    || (child.requiresForaging && !foragingOn);
+                const raw = game.settings.get(MODULE_ID, child.key);
+                const value = typeof raw === "number" && !Number.isNaN(raw)
+                    ? raw
+                    : CAMP_FUEL_FIND_DEFAULT_PERCENT;
+                return { ...child, value, disabled };
+            }
+            return resolveBooleanRow(child, { groupDisabled });
+        };
+
         const rows = ACTIVITY_TOGGLES.map(entry => {
             if (entry.type === "group") {
                 const groupDisabled = entry.requiresProfessions && !professionsOn;
                 return {
                     ...entry,
                     disabled: groupDisabled,
-                    children: entry.children.map(child => resolveBooleanRow(child, { groupDisabled }))
+                    children: entry.children.map(child => resolveTravelChild(child, { groupDisabled }))
                 };
             }
             if (entry.type === "tierSlider") {
@@ -283,8 +315,9 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
 
     _renderGroupChildRow(row) {
         const disabledClass = row.disabled ? " activity-config-row--disabled" : "";
+        const tierClass = row.type === "percentSlider" ? " activity-config-row--tier" : "";
         return `
-                <div class="activity-config-row activity-config-row--sub${disabledClass}" data-key="${row.key}">
+                <div class="activity-config-row activity-config-row--sub${disabledClass}${tierClass}" data-key="${row.key}">
                     <div class="activity-config-info">
                         <div class="activity-config-label activity-config-label--sub">${row.label}</div>
                         <div class="activity-config-hint">${row.hint}</div>
@@ -314,6 +347,16 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
                 <span class="activity-config-range-val" data-key="${row.key}">${label}</span>
             </div>`;
         }
+        if (row.type === "percentSlider") {
+            const disabled = row.disabled ? " disabled" : "";
+            return `
+            <div class="activity-config-range-wrap">
+                <input type="range" class="activity-config-range" data-key="${row.key}"
+                       min="${row.min}" max="${row.max}" step="${row.step ?? 1}"
+                       value="${row.value}"${disabled} />
+                <span class="activity-config-range-val" data-key="${row.key}">${row.value}%</span>
+            </div>`;
+        }
         return "";
     }
 
@@ -334,8 +377,10 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
         const syncTravelGroup = () => {
             const professionsCb = el.querySelector('.activity-config-cb[data-key="enableProfessions"]');
             const useTravelCb = el.querySelector('.activity-config-cb[data-key="useTravel"]');
+            const foragingCb = el.querySelector('.activity-config-cb[data-key="enableForaging"]');
             const professionsOn = !!professionsCb?.checked;
             const useTravelOn = !!useTravelCb?.checked;
+            const foragingOn = !!foragingCb?.checked;
             const group = el.querySelector('.activity-config-group[data-group="travel"]');
             if (group) {
                 group.classList.toggle("activity-config-group--disabled", !professionsOn);
@@ -346,11 +391,13 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
                 useTravelRow.classList.toggle("activity-config-row--disabled", !professionsOn);
                 useTravelInput.disabled = !professionsOn;
             }
-            for (const travelChildKey of ["enableForaging", "enableHunting", "enableScouting"]) {
+            for (const travelChildKey of ["enableForaging", "enableHunting", "enableScouting", "campFuelFindChance"]) {
                 const childRow = el.querySelector(`.activity-config-row[data-key="${travelChildKey}"]`);
-                const childInput = childRow?.querySelector(".activity-config-cb");
+                const childInput = childRow?.querySelector(".activity-config-cb, .activity-config-range");
                 if (childRow && childInput) {
-                    const childDisabled = !professionsOn || !useTravelOn;
+                    const needsForaging = travelChildKey === "campFuelFindChance";
+                    const childDisabled = !professionsOn || !useTravelOn
+                        || (needsForaging && !foragingOn);
                     childRow.classList.toggle("activity-config-row--disabled", childDisabled);
                     childInput.disabled = childDisabled;
                 }
@@ -361,13 +408,19 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
             ?.addEventListener("change", syncTravelGroup);
         el.querySelector('.activity-config-cb[data-key="useTravel"]')
             ?.addEventListener("change", syncTravelGroup);
+        el.querySelector('.activity-config-cb[data-key="enableForaging"]')
+            ?.addEventListener("change", syncTravelGroup);
         syncTravelGroup();
 
         el.querySelectorAll(".activity-config-range").forEach(range => {
             range.addEventListener("input", () => {
                 const meta = TIER_SLIDER_META[range.dataset.key];
                 const display = el.querySelector(`.activity-config-range-val[data-key="${range.dataset.key}"]`);
-                if (display && meta) display.textContent = meta.getLabel(Number(range.value));
+                if (display && meta) {
+                    display.textContent = meta.getLabel(Number(range.value));
+                } else if (display && range.dataset.key === "campFuelFindChance") {
+                    display.textContent = `${range.value}%`;
+                }
             });
         });
     }
@@ -376,9 +429,16 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
         for (const row of ACTIVITY_TOGGLES) {
             if (row.type === "group") {
                 for (const child of row.children) {
-                    const cb = el.querySelector(`.activity-config-cb[data-key="${child.key}"]`);
-                    if (cb && !cb.disabled) {
-                        await game.settings.set(MODULE_ID, child.key, cb.checked);
+                    if (child.type === "percentSlider") {
+                        const range = el.querySelector(`.activity-config-range[data-key="${child.key}"]`);
+                        if (range && !range.disabled) {
+                            await game.settings.set(MODULE_ID, child.key, Number(range.value));
+                        }
+                    } else {
+                        const cb = el.querySelector(`.activity-config-cb[data-key="${child.key}"]`);
+                        if (cb && !cb.disabled) {
+                            await game.settings.set(MODULE_ID, child.key, cb.checked);
+                        }
                     }
                 }
             } else if (row.type === "boolean") {

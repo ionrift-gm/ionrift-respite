@@ -26,7 +26,9 @@ const TABLE_PREFIX = "Respite: Forage";
 /** Max synced rows per terrain table (Foundry dice + sheet usability). */
 export const FORAGE_TABLE_MAX_ENTRIES = 100;
 
-const WATCHED_PACK_IDS = [PROVISIONS_CUSTOM_PACK_ID, MODULE_PACK_ID];
+const CACHE_PACK_ID = "ionrift-respite.respite-cache-utility";
+const WATCHED_PACK_IDS = [PROVISIONS_CUSTOM_PACK_ID, MODULE_PACK_ID, CACHE_PACK_ID];
+const PLAYER_OBSERVER = (typeof CONST !== "undefined" && CONST.DOCUMENT_OWNERSHIP_LEVELS?.OBSERVER) ?? 2;
 
 let syncTimer = null;
 let syncInFlight = false;
@@ -333,6 +335,10 @@ export class ForageTableSync {
             }
 
             Logger.log(`Forage table sync complete (${synced} terrains).`);
+
+            const { CampFuelTableSync } = await import("./CampFuelTableSync.js");
+            await CampFuelTableSync.syncAll();
+
             return { terrains: synced, truncated: totalTruncated };
         } finally {
             syncInFlight = false;
@@ -418,6 +424,11 @@ export class ForageTableSync {
         if (creates.length) await table.createEmbeddedDocuments("TableResult", creates);
         // normalize() divides by total weight; skip on an empty table to avoid 1d0.
         if (tableResultCount(table) > 0) await table.normalize();
+
+        await table.update({
+            ownership: { default: PLAYER_OBSERVER },
+            displayRoll: true
+        });
 
         return { truncated, entryCount: sorted.length };
     }
@@ -507,11 +518,12 @@ export class ForageTableSync {
         if (!table) {
             table = await RollTable.create({
                 name: tableName,
-                description: `Forage results for ${terrainTag} terrain.`,
+                description: `Forage results for ${terrainTag} terrain. Edit rows here or add items to Forage compendium folders.`,
                 formula: "1d1",
                 replacement: true,
                 displayRoll: true,
                 folder: folderId,
+                ownership: { default: PLAYER_OBSERVER },
                 flags: {
                     [MODULE_ID]: {
                         terrainTag,

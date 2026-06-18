@@ -10,6 +10,7 @@ const SIDEBAR_FOLDER_NAME = "Ionrift Custom";
 
 /** Top-level and terrain folders created on first GM setup. */
 const PROVISION_FOLDER_TREE = {
+    "Camp Fuel": [],
     Forage: ["Forest", "Desert", "Swamp", "Mountain", "Arctic", "Wilderness"],
     Hunting: [],
     Reagents: [],
