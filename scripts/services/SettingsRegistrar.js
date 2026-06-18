@@ -12,6 +12,8 @@ import { ActivityConfigApp } from "../apps/ActivityConfigApp.js";
 import { RecoveryConfigApp } from "../apps/RecoveryConfigApp.js";
 import { isComfortEnabled } from "./ComfortCalculator.js";
 import { PlayerRestrictionsApp } from "../apps/PlayerRestrictionsApp.js";
+import { RecipeEditorApp } from "../apps/RecipeEditorApp.js";
+import { applyCustomRecipesToEngine } from "./RecipeCatalog.js";
 import { migrateFletchingYieldTier } from "./FletchingSettings.js";
 import { migrateTrainingXpTier } from "./TrainingSettings.js";
 import { migrateUseTravel } from "./TravelSettings.js";
@@ -77,6 +79,27 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         icon: "fas fa-campground",
         type: ActivityConfigApp,
         restricted: true
+    });
+
+    game.settings.registerMenu(MODULE_ID, "recipeEditor", {
+        name: "Custom Recipes",
+        label: "Edit Custom Recipes",
+        hint: "Add homebrew cooking and brewing recipes for this world. Items are matched by compendium name; place inputs in Forage or Reagents folders.",
+        icon: "fas fa-mortar-pestle",
+        type: RecipeEditorApp,
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "customRecipes", {
+        scope: "world",
+        config: false,
+        type: Object,
+        default: {},
+        restricted: true,
+        onChange: () => {
+            const live = foundry.applications.instances.get("ionrift-respite-setup");
+            if (live?._craftingEngine) applyCustomRecipesToEngine(live._craftingEngine);
+        }
     });
 
     // ── Recovery Rules submenu ───────────────────────────────────────

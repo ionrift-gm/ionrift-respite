@@ -369,6 +369,7 @@ export class MealPhaseHandler {
         for (const charId of characterIds) {
             const actor = game.actors.get(charId);
             if (!actor) continue;
+            if (!ItemClassifier.participatesInSustenance(actor)) continue;
 
             const currentChoice = mealChoices.get(charId) ?? { food: [], water: [], consumedDays: [], currentDay: 0 };
             const consumedDays = currentChoice.consumedDays ?? [];
@@ -689,6 +690,12 @@ export class MealPhaseHandler {
                 dehydrationAutoFail: false
             };
 
+            if (!ItemClassifier.participatesInSustenance(actor)) {
+                result.exempt = true;
+                results.push(result);
+                continue;
+            }
+
             // Count filled slots across all consumed days
             let totalFoodFilled = 0;
             let totalWaterFilled = 0;
@@ -830,6 +837,8 @@ export class MealPhaseHandler {
         const targets = rf.partyMeal ? [...partyIds] : [consumerCharId];
         for (let u = 0; u < amount; u++) {
             for (const tid of targets) {
+                const targetActor = game.actors.get(tid);
+                if (!targetActor || !ItemClassifier.requiresSustenance(targetActor)) continue;
                 if (rf.satiates?.includes("water")) {
                     extraWaterByChar.set(tid, (extraWaterByChar.get(tid) ?? 0) + 1);
                 }
@@ -868,6 +877,7 @@ export class MealPhaseHandler {
             for (const pid of partyIds) {
                 const member = game.actors.get(pid);
                 if (!member) continue;
+                if (!ItemClassifier.acceptsFoodBuffs(member)) continue;
                 const alreadyWellFed = member.effects?.some(e => e.flags?.[MODULE_ID]?.wellFed === true) ?? false;
                 if (alreadyWellFed) {
                     const doc = MealPhaseHandler._mealSnapshotAsSingleLeftover(itemSnapshot);
@@ -888,6 +898,9 @@ export class MealPhaseHandler {
                 });
             }
         } else {
+            if (!ItemClassifier.acceptsFoodBuffs(consumerActor)) {
+                return;
+            }
             const alreadyWellFed = consumerActor.effects?.some(e => e.flags?.[MODULE_ID]?.wellFed === true) ?? false;
             if (alreadyWellFed) {
                 const doc = MealPhaseHandler._mealSnapshotAsSingleLeftover(itemSnapshot);
@@ -919,6 +932,7 @@ export class MealPhaseHandler {
     static async _applyWellFedEffect(actor, item) {
         const flags = item?.flags?.[MODULE_ID] ?? {};
 
+        if (!ItemClassifier.acceptsFoodBuffs(actor)) return { lines: [], rolls: [] };
         if (flags.wellFed !== true) return { lines: [], rolls: [] };
         const buffRaw = flags.buff;
         if (buffRaw === null) return { lines: [], rolls: [] };

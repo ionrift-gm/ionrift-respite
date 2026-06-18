@@ -25941,6 +25941,681 @@ button.is-processing {
     font-size: 0.7rem;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   RECIPE EDITOR (Custom Recipes settings menu)
+   ═══════════════════════════════════════════════════════════ */
+
+#respite-recipe-editor .window-body,
+#respite-recipe-editor .window-content,
+.application#respite-recipe-editor .window-body {
+    background: transparent;
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.respite-recipe-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.6rem 0.65rem 0.7rem;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+}
+
+.respite-recipe-editor .recipe-editor-lead {
+    margin: 0;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.respite-recipe-editor .recipe-editor-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.55rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.respite-recipe-editor .recipe-editor-filter-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: nowrap;
+}
+
+.respite-recipe-editor .recipe-editor-filter-label i {
+    margin-right: 0.3rem;
+    color: rgba(155, 89, 182, 0.75);
+    font-size: 0.72rem !important;
+    width: 0.85rem;
+    text-align: center;
+    line-height: 1;
+}
+
+.respite-recipe-editor .recipe-editor-select {
+    flex: 1;
+    min-width: 0;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.82rem;
+    padding: 0.3rem 0.45rem;
+}
+
+.respite-recipe-editor .recipe-editor-select:focus {
+    outline: none;
+    border-color: rgba(155, 89, 182, 0.55);
+    box-shadow: 0 0 0 1px rgba(155, 89, 182, 0.25);
+}
+
+.respite-recipe-editor .recipe-editor-count {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: rgba(196, 160, 220, 0.9);
+    white-space: nowrap;
+}
+
+.respite-recipe-editor .recipe-editor-layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(168px, 32%) 1fr;
+    gap: 0.55rem;
+    min-height: 0;
+}
+
+.respite-recipe-editor .recipe-editor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0.35rem;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+}
+
+.respite-recipe-editor .recipe-editor-list-heading {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.45);
+    padding: 0.15rem 0.25rem 0.35rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 0.15rem;
+}
+
+.respite-recipe-editor .recipe-editor-list-item {
+    all: unset !important;
+}
+
+.respite-recipe-editor .recipe-editor-list-item {
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0.4rem !important;
+    width: 100% !important;
+    padding: 0.38rem 0.45rem !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-size: 0.78rem !important;
+    color: rgba(255, 255, 255, 0.82) !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    transition: background 0.15s ease, border-color 0.15s ease !important;
+}
+
+.respite-recipe-editor .recipe-editor-list-item:hover {
+    background: rgba(155, 89, 182, 0.12) !important;
+}
+
+.respite-recipe-editor .recipe-editor-list-item.active {
+    background: rgba(155, 89, 182, 0.18) !important;
+    border-color: rgba(155, 89, 182, 0.35) !important;
+    color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.respite-recipe-editor .recipe-editor-list-item--saved-flash {
+    animation: recipe-editor-saved-flash 1.35s ease;
+}
+
+@keyframes recipe-editor-saved-flash {
+    0%, 100% {
+        border-color: rgba(34, 197, 94, 0.35);
+        background: rgba(34, 197, 94, 0.12);
+        box-shadow: none;
+    }
+    35% {
+        border-color: rgba(34, 197, 94, 0.75);
+        background: rgba(34, 197, 94, 0.22);
+        box-shadow: 0 0 10px rgba(34, 197, 94, 0.35);
+    }
+    70% {
+        border-color: rgba(155, 89, 182, 0.45);
+        background: rgba(155, 89, 182, 0.14);
+        box-shadow: 0 0 6px rgba(155, 89, 182, 0.25);
+    }
+}
+
+.respite-recipe-editor .recipe-editor-list-icon {
+    width: 1.65rem;
+    height: 1.65rem;
+    flex-shrink: 0;
+    border-radius: 3px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.respite-recipe-editor .recipe-editor-list-name {
+    line-height: 1.3;
+    text-align: left;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.respite-recipe-editor .recipe-editor-list-meta {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(196, 160, 220, 0.85);
+    flex-shrink: 0;
+}
+
+.respite-recipe-editor .recipe-editor-empty {
+    margin: 0.25rem 0.15rem;
+    font-size: 0.74rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.45);
+    text-align: center;
+    padding: 0.5rem 0.25rem;
+}
+
+.respite-recipe-editor .recipe-editor-empty i {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.85rem !important;
+    line-height: 1;
+    width: auto !important;
+    color: rgba(155, 89, 182, 0.45);
+}
+
+.respite-recipe-editor .recipe-editor-list-new {
+    all: unset !important;
+}
+
+.respite-recipe-editor .recipe-editor-list-new {
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.35rem !important;
+    margin-top: 0.25rem !important;
+    padding: 0.4rem 0.5rem !important;
+    border-radius: 4px !important;
+    font-size: 0.74rem !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.65) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px dashed rgba(255, 255, 255, 0.14) !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+}
+
+.respite-recipe-editor .recipe-editor-list-new:hover {
+    color: rgba(255, 255, 255, 0.9) !important;
+    border-color: rgba(155, 89, 182, 0.4) !important;
+    background: rgba(155, 89, 182, 0.1) !important;
+}
+
+.respite-recipe-editor .recipe-editor-list-new i {
+    font-size: 0.68rem !important;
+    width: 0.75rem;
+    text-align: center;
+    line-height: 1;
+}
+
+.respite-recipe-editor .recipe-editor-list-new.active {
+    color: rgba(255, 255, 255, 0.95) !important;
+    border-color: rgba(155, 89, 182, 0.45) !important;
+    border-style: solid !important;
+    background: rgba(155, 89, 182, 0.16) !important;
+}
+
+.respite-recipe-editor .recipe-editor-draft-note {
+    margin: 0 0 0.5rem;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.55);
+    border-radius: 4px;
+    background: rgba(155, 89, 182, 0.08);
+    border: 1px solid rgba(155, 89, 182, 0.2);
+}
+
+.respite-recipe-editor .recipe-editor-draft-note i {
+    margin-right: 0.3rem;
+    color: rgba(155, 89, 182, 0.7);
+}
+
+.respite-recipe-editor .recipe-editor-detail {
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding-right: 0.1rem;
+}
+
+.respite-recipe-editor .recipe-editor-section {
+    padding: 0.55rem 0.65rem;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+}
+
+.respite-recipe-editor .recipe-editor-section--muted {
+    background: rgba(0, 0, 0, 0.18);
+    border-color: rgba(255, 255, 255, 0.04);
+}
+
+.respite-recipe-editor .recipe-editor-section-title {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 0.45rem;
+}
+
+.respite-recipe-editor .recipe-editor-hint {
+    margin: -0.15rem 0 0.4rem;
+    font-size: 0.68rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.respite-recipe-editor .recipe-editor-fields {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.respite-recipe-editor .recipe-editor-fields--double {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.respite-recipe-editor .recipe-editor-fields--triple {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.respite-recipe-editor .recipe-editor-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.respite-recipe-editor .recipe-editor-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.respite-recipe-editor .recipe-editor-locked-value {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    box-sizing: border-box;
+    min-height: 1.85rem;
+    padding: 0.32rem 0.45rem;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.82rem;
+    line-height: 1.3;
+}
+
+.respite-recipe-editor .recipe-editor-locked-value i {
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.respite-recipe-editor .recipe-editor-input {
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.82rem;
+    padding: 0.32rem 0.45rem;
+    line-height: 1.3;
+}
+
+.respite-recipe-editor .recipe-editor-input:focus {
+    outline: none;
+    border-color: rgba(155, 89, 182, 0.55);
+    box-shadow: 0 0 0 1px rgba(155, 89, 182, 0.2);
+}
+
+.respite-recipe-editor .recipe-editor-input--qty {
+    max-width: 4.5rem;
+}
+
+.respite-recipe-editor .recipe-editor-ingredients {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 0.45rem;
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-remove {
+    all: unset !important;
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-remove {
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+    flex-shrink: 0 !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    color: rgba(255, 255, 255, 0.45) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease !important;
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-remove:hover {
+    color: rgba(252, 165, 165, 0.95) !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+    background: rgba(239, 68, 68, 0.12) !important;
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-remove i {
+    font-size: 0.65rem !important;
+    line-height: 1;
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-row .recipe-editor-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.respite-recipe-editor .recipe-editor-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+}
+
+.respite-recipe-editor .recipe-editor-footer-left {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.respite-recipe-editor .recipe-editor-btn {
+    all: unset !important;
+}
+
+.respite-recipe-editor .recipe-editor-btn {
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    padding: 0.42rem 0.85rem !important;
+    border-radius: 6px !important;
+    font-size: 0.76rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: rgba(255, 255, 255, 0.78) !important;
+    transition: all 0.15s ease !important;
+}
+
+.respite-recipe-editor .recipe-editor-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.22) !important;
+    color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.respite-recipe-editor .recipe-editor-btn:disabled {
+    opacity: 0.35 !important;
+    cursor: default !important;
+}
+
+.respite-recipe-editor .recipe-editor-btn--primary {
+    border-color: rgba(155, 89, 182, 0.35) !important;
+    background: rgba(155, 89, 182, 0.18) !important;
+    color: rgba(210, 170, 235, 0.95) !important;
+}
+
+.respite-recipe-editor .recipe-editor-btn--primary:hover {
+    background: rgba(155, 89, 182, 0.28) !important;
+    border-color: rgba(155, 89, 182, 0.5) !important;
+    box-shadow: 0 0 10px rgba(155, 89, 182, 0.15) !important;
+}
+
+.respite-recipe-editor .recipe-editor-btn--danger {
+    border-color: rgba(239, 68, 68, 0.25) !important;
+    color: rgba(252, 165, 165, 0.9) !important;
+}
+
+.respite-recipe-editor .recipe-editor-btn--danger:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.12) !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+.respite-recipe-editor .recipe-editor-btn i {
+    font-size: 0.68rem !important;
+    width: 0.75rem;
+    text-align: center;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.respite-recipe-editor .recipe-editor-img-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.45rem;
+}
+
+.respite-recipe-editor .recipe-editor-img-preview {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.35);
+    flex-shrink: 0;
+}
+
+.respite-recipe-editor .recipe-editor-ambitious-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    cursor: pointer;
+    margin-bottom: 0.35rem;
+}
+
+.respite-recipe-editor .recipe-editor-ambitious-toggle input {
+    margin-top: 0.2rem;
+    accent-color: #9b59b6;
+}
+
+.respite-recipe-editor .recipe-editor-ambitious-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.respite-recipe-editor .recipe-editor-ambitious-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.respite-recipe-editor .recipe-editor-ambitious-fields.is-hidden {
+    display: none;
+}
+
+.respite-recipe-editor .recipe-editor-ambitious-fields {
+    margin-top: 0.35rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.respite-recipe-editor .recipe-editor-section--meal {
+    margin-top: 0.45rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.respite-recipe-editor .recipe-editor-meal-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.85rem;
+    margin-bottom: 0.45rem;
+}
+
+.respite-recipe-editor .recipe-editor-check {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.78);
+    cursor: pointer;
+}
+
+.respite-recipe-editor .recipe-editor-check input {
+    accent-color: #9b59b6;
+}
+
+.respite-recipe-editor .recipe-editor-buff-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+}
+
+.respite-recipe-editor .recipe-editor-buff-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.respite-recipe-editor .recipe-editor-buff-summary-text {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.respite-recipe-editor .recipe-editor-buff-popout {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.respite-recipe-editor .recipe-editor-buff-popout-panel {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 0.25rem);
+    top: auto;
+    z-index: 20;
+    width: min(18rem, 100vw);
+    max-height: 14rem;
+    overflow: auto;
+    padding: 0.45rem 0.45rem 0.6rem;
+    border-radius: 6px;
+    background: rgba(12, 14, 22, 0.97);
+    border: 1px solid rgba(155, 89, 182, 0.35);
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.45);
+}
+
+.respite-recipe-editor .recipe-editor-buff-popout-panel.is-hidden {
+    display: none;
+}
+
+.respite-recipe-editor .recipe-editor-buff-popout-heading {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 0.35rem;
+}
+
+.respite-recipe-editor .recipe-editor-buff-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.respite-recipe-editor .recipe-editor-buff-option {
+    all: unset;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    width: 100%;
+    padding: 0.35rem 0.45rem;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.respite-recipe-editor .recipe-editor-buff-option:hover {
+    border-color: rgba(155, 89, 182, 0.45);
+    background: rgba(155, 89, 182, 0.12);
+}
+
+.respite-recipe-editor .recipe-editor-buff-option-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.respite-recipe-editor .recipe-editor-buff-option-desc {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.35;
+}
+
+.respite-recipe-editor .recipe-editor-buff-popout-hint {
+    margin: 0.4rem 0 0.15rem;
+    padding-bottom: 0.1rem;
+    line-height: 1.4;
+}
+
 /* Settings Quick Setup / group headers: ionrift-library (ModuleConfigProfiles) */
 
 /* ── Standardized roll-request component (reuses event-check-module styling) ── */

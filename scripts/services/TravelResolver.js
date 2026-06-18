@@ -1,6 +1,8 @@
 import { ResourcePoolRoller } from "./ResourcePoolRoller.js";
 import { CalendarHandler } from "./CalendarHandler.js";
 import { ItemOutcomeHandler } from "./ItemOutcomeHandler.js";
+import { resolvePoolFromFolderPath } from "./CompendiumFolderIndex.js";
+import { STUB_HUNT_YIELDS } from "../data/stub-content.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -21,6 +23,9 @@ export class TravelResolver {
     /** @type {Record<string, Array<{ itemRef: string, _id: string, quantity: number }>>} */
     #basePools = {};
 
+    /** @type {Record<string, { standard?: Object[], exceptional?: Object[] }> | null} */
+    #huntYields = null;
+
     constructor() {
         this.#poolRoller = new ResourcePoolRoller();
     }
@@ -34,24 +39,64 @@ export class TravelResolver {
     }
 
     /**
-     * Build hunt/forage base pools from the respite-items compendium index (flags.ionrift-respite).
-     * @param {Iterable<{ _id: string, name?: string, flags?: Record<string, unknown> }>} indexEntries
+     * Load hunt yield tables keyed by terrain (from content packs).
+     * @param {Record<string, { standard?: Object[], exceptional?: Object[] }>} yieldData
      */
-    loadBaseItems(indexEntries) {
+    loadHuntYields(yieldData) {
+        if (!yieldData || typeof yieldData !== "object") return;
+        this.#huntYields = this.#huntYields ?? {};
+        for (const [terrain, tiers] of Object.entries(yieldData)) {
+            const prev = this.#huntYields[terrain] ?? { standard: [], exceptional: [] };
+            this.#huntYields[terrain] = {
+                standard: tiers.standard ?? prev.standard,
+                exceptional: tiers.exceptional ?? prev.exceptional
+            };
+        }
+    }
+
+    /** @returns {boolean} */
+    get hasHuntYields() {
+        return this.#huntYields !== null && Object.keys(this.#huntYields).length > 0;
+    }
+
+    /**
+     * Build hunt/forage base pools from compendium index (folder path or flags fallback).
+     * @param {Iterable<{ _id: string, name?: string, folder?: string, flags?: Record<string, unknown> }>} indexEntries
+     * @param {{ pathFor?: (folderId: string) => string } | null} [folderPathMap]
+     */
+    loadBaseItems(indexEntries, folderPathMap = null) {
         if (!indexEntries) return;
         for (const entry of indexEntries) {
             const rf = entry.flags?.["ionrift-respite"];
-            if (!rf?.category || !rf.terrain) continue;
+            let category = null;
+            let terrains = null;
 
-            const terrains = rf.terrain === "any"
-                ? ["forest", "swamp", "desert", "mountain", "arctic", "wilderness"]
-                : String(rf.terrain).split(",").map(t => t.trim()).filter(Boolean);
+            if (entry.folder && folderPathMap?.pathFor) {
+                const folderPath = folderPathMap.pathFor(entry.folder);
+                const fromFolder = resolvePoolFromFolderPath(folderPath);
+                if (fromFolder) {
+                    category = fromFolder.category;
+                    terrains = fromFolder.terrains;
+                }
+            }
+
+            if (!category && rf?.category) {
+                category = rf.category;
+            }
+            if (!category || !["forage", "hunt"].includes(category)) continue;
+
+            if (!terrains?.length) {
+                if (!rf?.terrain) continue;
+                terrains = rf.terrain === "any"
+                    ? ["forest", "swamp", "desert", "mountain", "arctic", "wilderness"]
+                    : String(rf.terrain).split(",").map(t => t.trim()).filter(Boolean);
+            }
 
             for (const terrain of terrains) {
-                const key = `${terrain}_${rf.category}`;
+                const key = `${terrain}_${category}`;
                 this.#basePools[key] ??= [];
                 this.#basePools[key].push({
-                    itemRef: rf.itemRef ?? String(entry.name ?? "").toLowerCase().replace(/\s+/g, "_"),
+                    itemRef: rf?.itemRef ?? String(entry.name ?? "").toLowerCase().replace(/\s+/g, "_"),
                     _id: entry._id,
                     quantity: 1
                 });
@@ -169,7 +214,7 @@ export class TravelResolver {
         if (nat1) {
             mishap = this._rollHuntMishap(terrainTag);
         } else if (success) {
-            items.push(...await this._getHuntYield(terrainTag, exceptional));
+            items.push(...await this._getHuntYieldWithFallback(terrainTag, exceptional));
             if (nat20) {
                 const rarePoolId = `resource_pool_${terrainTag}_rare`;
                 const rareItems = await this.#poolRoller.roll(rarePoolId, 1);
@@ -208,7 +253,7 @@ export class TravelResolver {
         if (nat1) {
             mishap = this._rollHuntMishap(terrainTag);
         } else if (success) {
-            items.push(...await this._getHuntYield(terrainTag, exceptional));
+            items.push(...await this._getHuntYieldWithFallback(terrainTag, exceptional));
 
             if (nat20) {
                 const rarePoolId = `resource_pool_${terrainTag}_rare`;
@@ -401,13 +446,140 @@ export class TravelResolver {
     }
 
     /**
-     * Hunt yields from compendium-backed base pools (and rare pools on nat 20 elsewhere).
+     * Hunt yields from loaded tables, compendium pools, or built-in defaults.
+     * @param {string} terrainTag
+     * @param {boolean} exceptional
+     * @returns {Object[]}
+     */
+    _getHuntYield(terrainTag, exceptional) {
+        const yields = { ...TravelResolver.HUNT_YIELDS, ...(this.#huntYields ?? {}) };
+        const terrain = yields[terrainTag] ?? yields.wilderness;
+        if (terrain) {
+            const tier = exceptional ? terrain.exceptional : terrain.standard;
+            return (tier ?? []).map(entry => this._yieldEntryToItem(entry));
+        }
+        return [];
+    }
+
+    /**
+     * @param {Object} entry - { type, qty?, desc? }
+     * @returns {{ itemRef: string, quantity: number, itemData: object }}
+     */
+    _yieldEntryToItem(entry) {
+        const qty = entry.qty ?? 1;
+        switch (entry.type) {
+            case "meat":
+                return this._makeMeat(qty, entry.desc);
+            case "fish":
+                return this._makeFish(qty, entry.desc);
+            case "choice_cut":
+                return this._makeChoiceCut(qty);
+            case "animal_fat":
+                return this._makeAnimalFat(qty);
+            case "venom_sac":
+                return this._makeVenomSac(qty);
+            default:
+                return this._makeMeat(qty, entry.desc);
+        }
+    }
+
+    _makeMeat(quantity = 1, desc) {
+        return {
+            itemRef: "fresh_meat",
+            quantity,
+            itemData: {
+                name: "Fresh Meat",
+                type: "consumable",
+                img: "icons/consumables/meat/steak-raw-red-pink.webp",
+                system: {
+                    description: { value: desc ?? "<p>Game meat. Needs cooking.</p>" },
+                    rarity: "common",
+                    type: { value: "food", subtype: "" }
+                },
+                flags: { [MODULE_ID]: { foodTag: "meat", spoilsAfter: 1 } }
+            }
+        };
+    }
+
+    _makeFish(quantity = 1, desc) {
+        return {
+            itemRef: "fresh_fish",
+            quantity,
+            itemData: {
+                name: "Fresh Fish",
+                type: "consumable",
+                img: "icons/consumables/meat/fish-whole-blue.webp",
+                system: {
+                    description: { value: desc ?? "<p>Freshwater catch. Needs cooking.</p>" },
+                    rarity: "common",
+                    type: { value: "food", subtype: "" }
+                },
+                flags: { [MODULE_ID]: { foodTag: "meat", spoilsAfter: 1 } }
+            }
+        };
+    }
+
+    _makeChoiceCut(quantity = 1) {
+        return {
+            itemRef: "choice_cut",
+            quantity,
+            itemData: {
+                name: "Choice Cut",
+                type: "consumable",
+                img: "icons/consumables/meat/steak-marbled.webp",
+                system: {
+                    description: { value: "<p>A premium cut of game meat.</p>" },
+                    rarity: "uncommon",
+                    type: { value: "food", subtype: "" }
+                },
+                flags: { [MODULE_ID]: { foodTag: "meat", spoilsAfter: 1 } }
+            }
+        };
+    }
+
+    _makeAnimalFat(quantity = 1) {
+        return {
+            itemRef: "animal_fat",
+            quantity,
+            itemData: {
+                name: "Animal Fat",
+                type: "loot",
+                img: "icons/commodities/biological/shell-tan.webp",
+                system: {
+                    description: { value: "<p>Rendered fat. Burns long and hot.</p>" },
+                    rarity: "common"
+                }
+            }
+        };
+    }
+
+    _makeVenomSac(quantity = 1) {
+        return {
+            itemRef: "venom_sac",
+            quantity,
+            itemData: {
+                name: "Venom Sac",
+                type: "loot",
+                img: "icons/consumables/potions/bottle-round-corked-red.webp",
+                system: {
+                    description: { value: "<p>A gland from a venomous predator.</p>" },
+                    rarity: "uncommon"
+                }
+            }
+        };
+    }
+
+    /**
+     * Hunt yields with compendium fallback when tables are empty.
      * @param {string} terrainTag
      * @param {boolean} exceptional
      */
-    async _getHuntYield(terrainTag, exceptional) {
-        const count = exceptional ? 2 : 1;
-        return this._drawFromBasePool(terrainTag, "hunt", count);
+    async _getHuntYieldWithFallback(terrainTag, exceptional) {
+        let items = this._getHuntYield(terrainTag, exceptional);
+        if (!items.length) {
+            items = await this._drawFromBasePool(terrainTag, "hunt", exceptional ? 2 : 1);
+        }
+        return items;
     }
 
     _rollForageMishap(terrainTag) {
@@ -675,3 +847,4 @@ export class TravelResolver {
 
 TravelResolver.FORAGE_DC = FORAGE_DC;
 TravelResolver.HUNT_DC = HUNT_DC;
+TravelResolver.HUNT_YIELDS = STUB_HUNT_YIELDS;

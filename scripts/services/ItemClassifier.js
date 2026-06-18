@@ -154,6 +154,16 @@ const DIET_PRESETS = {
         label: "Omnivore"
     },
     construct: {
+        canEat: [],
+        canEatTags: [],
+        canDrink: [],
+        customFoodNames: [],
+        customWaterNames: [],
+        excludeNames: [],
+        sustenanceType: "none",
+        label: "Construct"
+    },
+    maintenance: {
         canEat: ["fuel"],
         canEatTags: [],
         canDrink: ["oil"],
@@ -161,7 +171,7 @@ const DIET_PRESETS = {
         customWaterNames: ["oil flask", "lamp oil"],
         excludeNames: [],
         sustenanceType: "essence",
-        label: "Construct"
+        label: "Construct (Maintenance)"
     },
     undead: {
         canEat: [],
@@ -329,6 +339,8 @@ export class ItemClassifier {
     static isFood(item, actor = null) {
         if (!item) return false;
 
+        if (actor && !this.participatesInSustenance(actor)) return false;
+
         // Essence diets delegate to isEssence for their food classification
         if (actor && this.getSustenanceType(actor) === "essence") {
             return this.isEssence(item, actor);
@@ -360,6 +372,8 @@ export class ItemClassifier {
      */
     static isWater(item, actor = null) {
         if (!item) return false;
+
+        if (actor && !this.participatesInSustenance(actor)) return false;
 
         const diet = this.getDiet(actor);
         const drinkType = this.getDrinkType(item);
@@ -487,6 +501,26 @@ export class ItemClassifier {
      */
     static requiresEssence(actor) {
         return this.getSustenanceType(actor) === "essence";
+    }
+
+    /**
+     * Whether the actor participates in meal tracking at all.
+     * False for constructs and other no-sustenance profiles.
+     * @param {Actor} [actor]
+     * @returns {boolean}
+     */
+    static participatesInSustenance(actor) {
+        return this.getSustenanceType(actor) !== "none";
+    }
+
+    /**
+     * Whether cooked meals and Well Fed buffs apply to this actor.
+     * Only standard biological diets accept food buffs.
+     * @param {Actor} [actor]
+     * @returns {boolean}
+     */
+    static acceptsFoodBuffs(actor) {
+        return this.getSustenanceType(actor) === "food";
     }
 
     /**

@@ -54,6 +54,7 @@ import {
     emitAfkUpdate,
 } from "./services/SocketController.js";
 import { registerAllSettings, registerItemEnrichments } from "./services/SettingsRegistrar.js";
+import { buildFolderPathMap } from "./services/CompendiumFolderIndex.js";
 import {
     buildRollRequestContext,
     buildEventPlayerRollContext,
@@ -622,7 +623,7 @@ Hooks.once("init", async () => {
         getDiet: (actor) => ItemClassifier.getDiet(actor),
         /** Set an actor's diet profile. Usage: game.ionrift.respite.setDiet(actor, { label: "Custom", canEat: ["food", "fuel"] }) */
         setDiet: (actor, diet) => ItemClassifier.setDiet(actor, diet),
-        /** Apply a preset diet. Usage: game.ionrift.respite.applyDietPreset(actor, "warforged") */
+        /** Apply a preset diet. Usage: game.ionrift.respite.applyDietPreset(actor, "construct") */
         applyDietPreset: (actor, presetId) => ItemClassifier.applyPreset(actor, presetId),
         /** List available diet presets. Usage: game.ionrift.respite.getDietPresets() */
         getDietPresets: () => ItemClassifier.getPresets(),
@@ -857,8 +858,9 @@ Hooks.once("ready", async () => {
         const respiteItemsPack = game.packs.get("ionrift-respite.respite-items");
         if (respiteItemsPack && game.ionrift?.respite) {
             game.ionrift.respite.travelBasePoolIndex = await respiteItemsPack.getIndex({
-                fields: ["flags", "name", "img", "type", "system"]
+                fields: ["flags", "name", "img", "type", "system", "folder"]
             });
+            game.ionrift.respite.travelFolderPathMap = buildFolderPathMap(respiteItemsPack.collection);
             const idx = game.ionrift.respite.travelBasePoolIndex;
             const forageCount = [...(idx ?? [])].filter(
                 e => e.flags?.["ionrift-respite"]?.category === "forage"

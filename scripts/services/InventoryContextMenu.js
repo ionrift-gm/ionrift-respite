@@ -40,6 +40,8 @@ export function registerInventoryContextMenu() {
             }
         } catch { /* setting not yet registered */ }
 
+        if (!ItemClassifier.participatesInSustenance(actor)) return;
+
         const isEdible = ItemClassifier.isFood(item, actor);
         const isDrinkable = ItemClassifier.isWater(item, actor);
         if (!isEdible && !isDrinkable) return;

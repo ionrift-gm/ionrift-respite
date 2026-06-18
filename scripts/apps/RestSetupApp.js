@@ -21,6 +21,8 @@ import { RecoveryHandler } from "../services/RecoveryHandler.js";
 import { CalendarHandler } from "../services/CalendarHandler.js";
 import { CopySpellHandler } from "../services/CopySpellHandler.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
+import { formatMealBuffPreview } from "../services/MealBuffPresets.js";
+import { ItemClassifier } from "../services/ItemClassifier.js";
 import { ConditionAdvisory } from "../services/ConditionAdvisory.js";
 import { ResourceSink } from "../services/ResourceSink.js";
 import { CampfireTokenLinker } from "../services/CampfireTokenLinker.js";
@@ -108,7 +110,8 @@ import {
 import { CampfireMakeCampDialog } from "./CampfireMakeCampDialog.js";
 import { CampfireEmbed } from "./CampfireEmbed.js";
 
-import { STUB_RECIPES } from "../data/stub-content.js";
+import { STUB_RECIPES, STUB_HUNT_YIELDS } from "../data/stub-content.js";
+import { applyCustomRecipesToEngine } from "../services/RecipeCatalog.js";
 import { ShortRestApp } from "./ShortRestApp.js";
 import {
     registerActiveRestApp,
@@ -124,7 +127,7 @@ import {
     _ensureRejoinBar,
     _removeRejoinBar
 } from "../module.js";
-import { getPartyActors } from "../services/partyActors.js";
+import { getPartyActors, getFoodBuffPartyActors, getMealEligiblePartyActors } from "../services/partyActors.js";
 import * as RestAfkState from "../services/RestAfkState.js";
 import { pushAllStateToAdapters } from "../services/afk/AfkBridgeService.js";
 import {
@@ -1654,7 +1657,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (this._travel && game.ionrift?.respite?.travelBasePoolIndex) {
                 const resolver = this._travel.getTravelResolver();
                 if (resolver && resolver.basePoolCoverage.length === 0) {
-                    resolver.loadBaseItems(game.ionrift.respite.travelBasePoolIndex);
+                    resolver.loadBaseItems(
+                        game.ionrift.respite.travelBasePoolIndex,
+                        game.ionrift.respite.travelFolderPathMap
+                    );
                 }
             }
         } catch (e) {
@@ -1673,6 +1679,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const importedPacks = game.settings.get(MODULE_ID, "importedPacks") ?? {};
 
         let totalRecipes = 0, totalPools = 0;
+        let huntYieldsLoaded = false;
+        const travelResolver = this._travel?.getTravelResolver();
 
         for (const [packId, packData] of Object.entries(importedPacks)) {
             if (enabledPacks[packId] === false) {
@@ -1707,6 +1715,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     loaded.push(`${packData.resourcePools.length} pools`);
                 }
 
+                if (packData.huntYields && typeof packData.huntYields === "object" && travelResolver) {
+                    travelResolver.loadHuntYields(packData.huntYields);
+                    huntYieldsLoaded = true;
+                    loaded.push("hunt yields");
+                }
+
                 if (loaded.length) {
 
                     Logger.log(`${MODULE_ID} | Pack ${packId}: loaded ${loaded.join(", ")}`);
@@ -1725,6 +1739,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
             Logger.log(`${MODULE_ID} | Using built-in stub recipes`);
         }
+
+        if (!huntYieldsLoaded && travelResolver) {
+            travelResolver.loadHuntYields(STUB_HUNT_YIELDS);
+        }
+
+        applyCustomRecipesToEngine(this._craftingEngine);
     }
 
 
@@ -3322,13 +3342,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const partySize = getPartyActors().length;
                 const status = engine.getRecipeStatus(expandActor, professionId, terrainTag, partySize);
 
-                const _formatBuffPreview = (buff) => {
-                    if (!buff) return null;
-                    const labels = { temp_hp: "Temp HP", advantage: "Advantage", exhaustion_save: "Exhaustion Save" };
-                    const dur = { immediate: "Immediate", untilLongRest: "Until long rest", nextSave: "Next save" };
-                    return { label: labels[buff.type] ?? buff.type, formula: buff.formula ?? "", duration: dur[buff.duration] ?? buff.duration ?? "", target: buff.target ?? "self" };
-                };
-
                 const enrichRecipe = (recipe) => {
                     const dcBreakdown = engine.getDcBreakdown(expandActor, recipe, risk, terrainTag);
                     const flags = recipe.outputFlags?.["ionrift-respite"];
@@ -3341,12 +3354,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         ambitiousOutput: recipe.ambitiousOutput,
                         isSelected: recipe.id === this._totmCraftRecipeId,
                         description: recipe.description ?? "",
-                        buffPreview: _formatBuffPreview(flags?.buff),
+                        buffPreview: formatMealBuffPreview(flags?.buff),
                         isPartyMeal: !!flags?.partyMeal,
                         isWellFed: !!flags?.wellFed,
                         satiates: flags?.satiates ?? [],
                         ambitiousName: recipe.ambitiousOutput?.name ?? null,
-                        ambitiousBuffPreview: _formatBuffPreview(
+                        ambitiousBuffPreview: formatMealBuffPreview(
                             recipe.ambitiousOutputFlags?.["ionrift-respite"]?.buff ?? flags?.buff
                         ),
                         ingredientList: (recipe.ingredients ?? []).map(ing => {
@@ -3435,7 +3448,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                             ...this._totmCraftResult,
                             isPartyMeal: !!(selectedRecipe?.isPartyMeal ?? false),
                             partyMealDispositionDone: !!this._totmFeastServed,
-                            partyRoster: getPartyActors().map(a => ({
+                            partyRoster: getFoodBuffPartyActors().map(a => ({
                                 id: a.id,
                                 name: a.name,
                                 img: a.img || "icons/svg/mystery-man.svg",
@@ -11864,7 +11877,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (this._craftingInProgress?.has(characterId)) return null;
 
         // Look up activity from the resolver, then fall back to known crafting IDs
-        const CRAFTING_PROFESSIONS = { act_cook: "cooking", act_brew: "alchemy" };
+        const CRAFTING_PROFESSIONS = { act_cook: "cooking", act_brew: "brewing" };
         const activity = this._activityResolver?.activities?.get(activityId);
         const craftingProfession = activity?.crafting?.profession ?? CRAFTING_PROFESSIONS[activityId];
         if (activity?.crafting?.enabled || craftingProfession) {
@@ -15654,20 +15667,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         this._totmFeastInFlight = true;
         try {
-            const partyIds = getPartyActors().map(a => a.id);
+            const buffPartyIds = getFoodBuffPartyActors().map(a => a.id);
+            const satiationPartyIds = getMealEligiblePartyActors()
+                .filter(a => ItemClassifier.requiresSustenance(a))
+                .map(a => a.id);
             const snapshot = item.toObject(false);
 
             if (game.user.isGM) {
                 await MealPhaseHandler._dispatchWellFedMealServing({
                     consumerActor: actor,
                     itemSnapshot: snapshot,
-                    partyIds
+                    partyIds: buffPartyIds
                 });
             } else {
                 emitFeastServeRequest({
                     cookActorId: actor.id,
                     itemSnapshot: snapshot,
-                    partyIds,
+                    partyIds: buffPartyIds,
                     feastMode: "feast"
                 });
             }
@@ -15693,7 +15709,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const fpd = terrainMealRules.foodPerDay ?? 1;
                 const wpd = terrainMealRules.waterPerDay ?? 2;
 
-                for (const pid of partyIds) {
+                for (const pid of satiationPartyIds) {
                     if (this._activityMealRationsSubmitted.has(pid)) continue;
                     const existing = this._mealChoices.get(pid) ?? {};
                     if (satiates.includes("food")) {
