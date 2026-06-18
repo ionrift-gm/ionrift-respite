@@ -2,6 +2,7 @@ import { Logger } from "../lib/Logger.js";
 import { CalendarHandler } from "./CalendarHandler.js";
 import { ItemClassifier } from "./ItemClassifier.js";
 import { SpoilageClock } from "./SpoilageClock.js";
+import { PROVISIONS_CUSTOM_PACK_ID } from "./ProvisionsCustomPack.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -348,6 +349,7 @@ export class ItemOutcomeHandler {
      */
     static async _fromCompendium(itemRef) {
         const packIds = [
+            PROVISIONS_CUSTOM_PACK_ID,
             "ionrift-respite.respite-items",
             "ionrift-respite.respite-cache-utility"
         ];
