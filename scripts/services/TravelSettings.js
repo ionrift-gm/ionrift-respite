@@ -77,6 +77,20 @@ export function shouldRunTravelPhase() {
 }
 
 /**
+ * When true, only GM-authored custom recipes and Respite Custom compendium
+ * provisions are used. Shipped respite-items, built-in stubs, and imported
+ * pack recipes, forage pools, and hunt tables are skipped.
+ * @returns {boolean}
+ */
+export function isHomebrewProvisionOnly() {
+    try {
+        return !!game.settings.get(MODULE_ID, "homebrewProvisionOnly");
+    } catch {
+        return false;
+    }
+}
+
+/**
  * One-time migration for useTravel semantics and legacy allowSkipTravel.
  */
 export function migrateUseTravel() {

@@ -2,6 +2,7 @@ import { Logger } from "../lib/Logger.js";
 import { CalendarHandler } from "./CalendarHandler.js";
 import { ItemClassifier } from "./ItemClassifier.js";
 import { SpoilageClock } from "./SpoilageClock.js";
+import { isHomebrewProvisionOnly } from "./TravelSettings.js";
 import { PROVISIONS_CUSTOM_PACK_ID } from "./ProvisionsCustomPack.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -348,11 +349,13 @@ export class ItemOutcomeHandler {
      * @returns {Object|null} Item data object, or null if not found.
      */
     static async _fromCompendium(itemRef) {
-        const packIds = [
-            PROVISIONS_CUSTOM_PACK_ID,
-            "ionrift-respite.respite-items",
-            "ionrift-respite.respite-cache-utility"
-        ];
+        const packIds = isHomebrewProvisionOnly()
+            ? [PROVISIONS_CUSTOM_PACK_ID]
+            : [
+                PROVISIONS_CUSTOM_PACK_ID,
+                "ionrift-respite.respite-items",
+                "ionrift-respite.respite-cache-utility"
+            ];
 
         for (const packId of packIds) {
             const pack = game.packs.get(packId);

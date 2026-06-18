@@ -249,6 +249,19 @@ export class TravelResolutionDelegate {
     }
 
     /**
+     * Travel / UI gate for picking Hunt (homebrew-only worlds need compendium hunt items).
+     * @param {string} terrainTag
+     * @returns {{ disabled: boolean, disabledReasonKey: string|null }}
+     */
+    getHuntGate(terrainTag) {
+        const disabledReasonKey = "ionrift-respite.travel.hunt.requires_provision";
+        if (!ForageActivityValidator.isHuntAvailable(this.#resolver, terrainTag)) {
+            return { disabled: true, disabledReasonKey };
+        }
+        return { disabled: false, disabledReasonKey: null };
+    }
+
+    /**
      * Reset pool/yield state (for re-import scenarios).
      */
     resetPools() {
@@ -286,7 +299,10 @@ export class TravelResolutionDelegate {
             if (!isForagingEnabled()) return;
             if (this.getForageGate(this._terrainTagForForageGate()).disabled) return;
         }
-        if (activity === "hunt" && !isHuntingEnabled()) return;
+        if (activity === "hunt") {
+            if (!isHuntingEnabled()) return;
+            if (this.getHuntGate(this._terrainTagForForageGate()).disabled) return;
+        }
         if (activity === "scout") {
             if (!isScoutingEnabled()) return;
             if (this.#effectiveSafeRestSpot()) return;
@@ -387,6 +403,10 @@ export class TravelResolutionDelegate {
         if (entry.activity === "nothing") return null;
 
         if (entry.activity === "forage" && this.getForageGate(this._terrainTagForForageGate()).disabled) {
+            return null;
+        }
+
+        if (entry.activity === "hunt" && this.getHuntGate(this._terrainTagForForageGate()).disabled) {
             return null;
         }
 
@@ -597,6 +617,9 @@ export class TravelResolutionDelegate {
         const forageGate = this.getForageGate(terrainTag);
         const forageDisabled = canForage && forageGate.disabled;
         const forageDisabledReasonKey = forageDisabled ? forageGate.disabledReasonKey : null;
+        const huntGate = this.getHuntGate(terrainTag);
+        const huntDisabled = canHunt && huntGate.disabled;
+        const huntDisabledReasonKey = huntDisabled ? huntGate.disabledReasonKey : null;
 
         return {
             days,
@@ -621,6 +644,11 @@ export class TravelResolutionDelegate {
             forageDisabledTooltip: forageDisabledReasonKey
                 ? game.i18n.localize(forageDisabledReasonKey)
                 : null,
+            huntDisabled,
+            huntDisabledReasonKey,
+            huntDisabledTooltip: huntDisabledReasonKey
+                ? game.i18n.localize(huntDisabledReasonKey)
+                : null,
             forageGMAdj: this.#forageDCOverride !== null
                 ? ((this.forageDC - TravelResolver.FORAGE_DC >= 0 ? "+" : "") + (this.forageDC - TravelResolver.FORAGE_DC))
                 : null,
@@ -641,6 +669,14 @@ export class TravelResolutionDelegate {
             try { ui.notifications?.warn("Not everyone has rolled or confirmed for this day yet."); } catch { /* noop */ }
             return;
         }
+
+        const { isHomebrewProvisionOnly } = await import("../../services/TravelSettings.js");
+        if (isHomebrewProvisionOnly()) {
+            const { applyTravelProvisionBatches } = await import("../../services/TravelProvisionIndex.js");
+            await applyTravelProvisionBatches(this.#resolver);
+            this.#poolsLoaded = this.#resolver.resourcePoolRoller.pools.size > 0;
+        }
+
         if (!this.#poolsLoaded) {
             console.warn("[Respite:TravelDelegate] No resource pools loaded from content packs. Foraging will produce no results.");
         }

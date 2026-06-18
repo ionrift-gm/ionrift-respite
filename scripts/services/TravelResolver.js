@@ -3,11 +3,15 @@ import { CalendarHandler } from "./CalendarHandler.js";
 import { ItemOutcomeHandler } from "./ItemOutcomeHandler.js";
 import { resolvePoolFromFolderPath } from "./CompendiumFolderIndex.js";
 import { STUB_HUNT_YIELDS } from "../data/stub-content.js";
+import { isHomebrewProvisionOnly } from "./TravelSettings.js";
 
 const MODULE_ID = "ionrift-respite";
 
 const FORAGE_DC = 12;
 const HUNT_DC = 14;
+
+/** Flat chance any successful forage also turns up firewood, independent of the loot table. */
+const FIREWOOD_FORAGE_CHANCE = 0.05;
 
 /**
  * TravelResolver
@@ -65,8 +69,9 @@ export class TravelResolver {
      * @param {{ pathFor?: (folderId: string) => string } | null} [folderPathMap]
      * @param {{ overrideRefs?: boolean }} [options]
      */
-    loadBaseItems(indexEntries, folderPathMap = null, { overrideRefs = false } = {}) {
+    loadBaseItems(indexEntries, folderPathMap = null, { overrideRefs = false, packId = null } = {}) {
         if (!indexEntries) return;
+        const defaultPackId = packId ?? "ionrift-respite.respite-items";
         for (const entry of indexEntries) {
             const rf = entry.flags?.["ionrift-respite"];
             let category = null;
@@ -95,6 +100,7 @@ export class TravelResolver {
 
             const itemRef = rf?.itemRef
                 ?? String(entry.name ?? "").toLowerCase().replace(/\s+/g, "_");
+            const docId = entry._id ?? entry.id;
 
             for (const terrain of terrains) {
                 const key = `${terrain}_${category}`;
@@ -102,10 +108,12 @@ export class TravelResolver {
                 if (overrideRefs) {
                     this.#basePools[key] = this.#basePools[key].filter(pool => pool.itemRef !== itemRef);
                 }
+                if (!docId) continue;
                 this.#basePools[key].push({
                     itemRef,
-                    _id: entry._id,
-                    quantity: 1
+                    _id: docId,
+                    quantity: 1,
+                    packId: defaultPackId
                 });
             }
         }
@@ -318,7 +326,8 @@ export class TravelResolver {
                 data.system.quantity = entry.quantity ?? 1;
 
                 const respFlags = data.flags?.[MODULE_ID];
-                if (respFlags?.spoilsAfter !== null && !respFlags.harvestedDate) {
+                const spoilsAfter = respFlags?.spoilsAfter;
+                if (typeof spoilsAfter === "number" && spoilsAfter > 0 && !respFlags?.harvestedDate) {
                     data.flags = data.flags ?? {};
                     data.flags[MODULE_ID] = { ...respFlags, harvestedDate };
                 }
@@ -397,18 +406,49 @@ export class TravelResolver {
      * @returns {Promise<{ items: Object[], warningKey?: string }>}
      */
     async _rollForageItems(terrainTag, exceptional, nat20) {
-        const poolId = `resource_pool_${terrainTag}`;
-        const primaryRoll = await this.#poolRoller.roll(poolId, 1);
-        let rareRoll = [];
-        if (exceptional || nat20) {
-            rareRoll = await this.#poolRoller.roll(`${poolId}_rare`, 1);
-        }
+        const draws = (exceptional || nat20) ? 2 : 1;
+        const { ForageTableSync } = await import("./ForageTableSync.js");
+        let items = await ForageTableSync.drawForageResults(terrainTag, draws);
 
-        const grantable = (arr) => arr.filter(e => e.itemData);
-        let items = [...grantable(primaryRoll), ...grantable(rareRoll)];
+        if (!items.length) {
+            const poolId = `resource_pool_${terrainTag}`;
+            const primaryRoll = await this.#poolRoller.roll(poolId, 1);
+            let rareRoll = [];
+            if (exceptional || nat20) {
+                rareRoll = await this.#poolRoller.roll(`${poolId}_rare`, 1);
+            }
+
+            const { resolveProvisionPoolEntry } = await import("./TravelProvisionIndex.js");
+            const enrichRoll = async (arr) => {
+                const out = [];
+                for (const row of arr) {
+                    if (row.itemData) {
+                        out.push(row);
+                        continue;
+                    }
+                    if (!row.itemRef) continue;
+                    const itemData = await resolveProvisionPoolEntry({
+                        itemRef: row.itemRef,
+                        packId: row.packId
+                    });
+                    if (itemData) out.push({ ...row, itemData });
+                }
+                return out;
+            };
+
+            items = await enrichRoll([...primaryRoll, ...rareRoll]);
+        }
 
         if (!items.length) {
             items = await this._drawFromBasePool(terrainTag, "forage", exceptional ? 2 : 1);
+        }
+
+        // Firewood is a flat side-chance on any successful forage, not a table entry.
+        const firewood = this._rollFirewoodBonus();
+        if (firewood) {
+            const existing = items.find(row => row.itemRef === firewood.itemRef);
+            if (existing) existing.quantity += firewood.quantity;
+            else items.push(firewood);
         }
 
         if (!items.length) {
@@ -421,6 +461,36 @@ export class TravelResolver {
             return { items: [], warningKey: "FORAGE_POOL_EMPTY" };
         }
         return { items };
+    }
+
+    /**
+     * Roll the flat firewood side-chance for a successful forage.
+     * @returns {{ itemRef: string, quantity: number, itemData: object }|null}
+     */
+    _rollFirewoodBonus() {
+        if (Math.random() >= FIREWOOD_FORAGE_CHANCE) return null;
+        return this._makeFirewood();
+    }
+
+    /**
+     * @param {number} [quantity]
+     * @returns {{ itemRef: string, quantity: number, itemData: object }}
+     */
+    _makeFirewood(quantity = 1) {
+        return {
+            itemRef: "firewood",
+            quantity,
+            itemData: {
+                name: "Firewood",
+                type: "loot",
+                img: "icons/commodities/wood/lumber-stack-brown.webp",
+                system: {
+                    description: { value: "<p>Dry deadfall gathered while foraging. Fuel for a campfire.</p>" },
+                    rarity: "common"
+                },
+                flags: { [MODULE_ID]: { itemRef: "firewood", firewoodType: "firewood" } }
+            }
+        };
     }
 
     _getSurvivalMod(actor) {
@@ -451,15 +521,15 @@ export class TravelResolver {
         const shuffled = [...pool].sort(() => Math.random() - 0.5);
         const drawn = shuffled.slice(0, Math.min(count, shuffled.length));
 
-        const pack = game.packs.get("ionrift-respite.respite-items");
+        const { resolveProvisionPoolEntry } = await import("./TravelProvisionIndex.js");
         const results = [];
         for (const entry of drawn) {
-            const doc = pack ? await pack.getDocument(entry._id) : null;
-            if (!doc) continue;
+            const itemData = await resolveProvisionPoolEntry(entry);
+            if (!itemData) continue;
             results.push({
                 itemRef: entry.itemRef,
                 quantity: entry.quantity,
-                itemData: doc.toObject()
+                itemData
             });
         }
         return results;
@@ -472,7 +542,8 @@ export class TravelResolver {
      * @returns {Object[]}
      */
     _getHuntYield(terrainTag, exceptional) {
-        const yields = { ...TravelResolver.HUNT_YIELDS, ...(this.#huntYields ?? {}) };
+        const builtIn = isHomebrewProvisionOnly() ? {} : TravelResolver.HUNT_YIELDS;
+        const yields = { ...builtIn, ...(this.#huntYields ?? {}) };
         const terrain = yields[terrainTag] ?? yields.wilderness;
         if (terrain) {
             const tier = exceptional ? terrain.exceptional : terrain.standard;

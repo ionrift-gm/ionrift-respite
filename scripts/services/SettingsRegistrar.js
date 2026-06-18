@@ -348,6 +348,29 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         restricted: true
     });
 
+    game.settings.register(MODULE_ID, "homebrewProvisionOnly", {
+        name: "Homebrew Provisions Only",
+        hint: "Ignore shipped Respite Items, built-in stubs, and imported pack data. Camp cooking and brewing use your custom recipe list; forage and hunt use the Respite Custom compendium only.",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false,
+        restricted: true,
+        onChange: () => {
+            const live = foundry.applications.instances.get("ionrift-respite-setup");
+            if (live?._craftingEngine) applyCustomRecipesToEngine(live._craftingEngine);
+            if (live?._travel?.getTravelResolver) {
+                import("./TravelProvisionIndex.js").then(async ({ applyTravelProvisionBatches }) => {
+                    await applyTravelProvisionBatches(live._travel.getTravelResolver());
+                    if (live.render) await live.render();
+                });
+            }
+            import("./ForageTableSync.js").then(({ ForageTableSync }) => {
+                ForageTableSync.scheduleSync();
+            });
+        }
+    });
+
     game.settings.register(MODULE_ID, "useTravel", {
         name: "Use Travel",
         hint: "Include the travel phase during long rests when professions are on. Off skips travel entirely and goes straight to camp.",
@@ -846,6 +869,7 @@ export const SETTING_KEYS = [
     "enableScouting",
     "enableForaging",
     "enableHunting",
+    "homebrewProvisionOnly",
     "useTravel",
     "useTravelPhaseSemanticsMigrated",
     "trackFood",

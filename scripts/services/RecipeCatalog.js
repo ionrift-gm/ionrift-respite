@@ -3,6 +3,7 @@
  */
 
 import { STUB_RECIPES } from "../data/stub-content.js";
+import { isHomebrewProvisionOnly } from "./TravelSettings.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -83,8 +84,10 @@ export function mergeRecipeLists(baseRecipes, customRecipes) {
  */
 export function getPackRecipeIdMap(professionId, customList = []) {
     const ids = new Map();
-    for (const recipe of STUB_RECIPES[professionId] ?? []) {
-        if (recipe?.id) ids.set(recipe.id, recipe.name ?? recipe.id);
+    if (!isHomebrewProvisionOnly()) {
+        for (const recipe of STUB_RECIPES[professionId] ?? []) {
+            if (recipe?.id) ids.set(recipe.id, recipe.name ?? recipe.id);
+        }
     }
 
     const customIds = new Set(
@@ -223,9 +226,16 @@ export function applyCustomRecipesToEngine(engine) {
     if (!engine) return;
     const raw = game.settings.get(MODULE_ID, "customRecipes") ?? {};
     const customByProf = sanitizeCustomRecipes(raw);
+    const homebrewOnly = isHomebrewProvisionOnly();
 
     for (const [profId, customList] of Object.entries(customByProf)) {
-        const base = engine.recipes.get(profId) ?? [];
+        const base = homebrewOnly ? [] : (engine.recipes.get(profId) ?? []);
         engine.load(profId, mergeRecipeLists(base, customList));
+    }
+
+    if (homebrewOnly) {
+        for (const profId of HOMEBREW_PROFESSION_IDS) {
+            if (!customByProf[profId]?.length) engine.recipes.delete(profId);
+        }
     }
 }

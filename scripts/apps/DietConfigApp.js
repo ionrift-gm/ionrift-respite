@@ -189,7 +189,7 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
                     <div class="diet-none-hint">
                         <i class="fas fa-info-circle"></i>
                         This character does not need food, water, or essence during rest, and cannot receive cooked meal buffs.
-                        Choose <strong>Construct (Maintenance)</strong> or another essence preset if upkeep is required.
+                        Choose <strong>Maintenance</strong> or another essence preset if upkeep is required.
                     </div>`;
                 } else if (row.isFood) {
                     // Food tags for biological characters
@@ -624,7 +624,10 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
             if (id === "custom") continue;
             const merged = { ...ItemClassifier.DEFAULT_DIET, ...preset };
             const mergedSType = merged.sustenanceType ?? "food";
-            if (diet.label === merged.label
+            const labelMatch = diet.label === merged.label
+                || (id === "construct" && diet.label === "Construct")
+                || (id === "maintenance" && diet.label === "Construct (Maintenance)");
+            if (labelMatch
                 && this._arraysEqual(diet.canEat, merged.canEat)
                 && this._arraysEqual(diet.canEatTags ?? [], merged.canEatTags ?? [])
                 && this._arraysEqual(diet.canDrink, merged.canDrink)

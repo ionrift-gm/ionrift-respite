@@ -423,6 +423,62 @@ Hooks.once("init", async () => {
             new RestSetupApp().render({ force: true });
         },
         /**
+         * Console diagnostic: rebuild and dump travel forage/hunt pools for a terrain.
+         * Run as: await game.ionrift.respite.dumpTravelPools("forest")
+         * @param {string} [terrain]
+         * @returns {Promise<object>}
+         */
+        dumpTravelPools: async (terrain = "forest") => {
+            const app = foundry.applications.instances.get("ionrift-respite-setup");
+            const resolver = app?._travel?.getTravelResolver?.();
+            if (!resolver) {
+                console.warn(`${MODULE_ID} | dumpTravelPools: open Make Camp first.`);
+                return { error: "no active rest" };
+            }
+            const { applyTravelProvisionBatches } = await import("./services/TravelProvisionIndex.js");
+            const loaded = await applyTravelProvisionBatches(resolver);
+
+            const forageKey = `${terrain}_forage`;
+            const huntKey = `${terrain}_hunt`;
+            const roller = resolver.resourcePoolRoller;
+            const resPool = roller.pools.get(`resource_pool_${terrain}`);
+            const { ForageTableSync } = await import("./services/ForageTableSync.js");
+            const forageTable = ForageTableSync.getTableForTerrain(terrain);
+            const report = {
+                terrain,
+                batches: loaded.batches.map(b => ({ packId: b.packId, count: [...(b.entries ?? [])].length })),
+                basePoolCoverage: resolver.basePoolCoverage,
+                forageBaseEntries: resolver.getBasePoolEntries(forageKey),
+                huntBaseEntries: resolver.getBasePoolEntries(huntKey),
+                resourcePoolEntries: (resPool?.entries ?? []).map(e => ({
+                    itemRef: e.itemRef,
+                    hasItemData: !!e.itemData,
+                    name: e.itemData?.name ?? null
+                })),
+                forageTable: forageTable ? {
+                    name: forageTable.name,
+                    formula: forageTable.formula,
+                    resultCount: forageTable.results?.size ?? 0,
+                    results: Array.from(forageTable.results ?? []).map(r => ({
+                        itemRef: r.getFlag?.("ionrift-respite", "itemRef") ?? r.text,
+                        weight: r.weight,
+                        range: r.range
+                    }))
+                } : null
+            };
+            console.log(`${MODULE_ID} | Travel pool dump for "${terrain}":`, report);
+            return report;
+        },
+        /**
+         * Rebuild forage RollTables from compendium folders (GM).
+         * @returns {Promise<object>}
+         */
+        syncForageTables: async () => {
+            if (!game.user?.isGM) return { error: "gm only" };
+            const { ForageTableSync } = await import("./services/ForageTableSync.js");
+            return await ForageTableSync.syncAll({ notify: true });
+        },
+        /**
          * Opens a Respite guide journal from compendium packs.
          * Player and cooking pages live in respite-guide (PLAYER: OBSERVER).
          * GM reference lives in respite-guide-gm (GAMEMASTER: OWNER).
@@ -893,7 +949,18 @@ Hooks.once("ready", async () => {
         console.warn(`${MODULE_ID} | Failed to load travel provision indexes:`, e);
     }
 
-    // Register socket handler (dispatch extracted to SocketRouter.js â€” Phase 2.2)
+    if (game.user?.isGM) {
+        try {
+            const { ForageTableInstaller } = await import("./services/ForageTableInstaller.js");
+            const { ForageTableSync } = await import("./services/ForageTableSync.js");
+            ForageTableSync.registerHooks();
+            await ForageTableInstaller.install();
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Forage table sync failed on ready:`, e);
+        }
+    }
+
+    // Register socket handler (dispatch extracted to SocketRouter.js — Phase 2.2)
     const socketContext = {
         get activeRestSetupApp() {
             // Self-heal: if the GM reference was lost (e.g. a render post-step

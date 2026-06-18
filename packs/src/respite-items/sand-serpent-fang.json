@@ -1,0 +1,27 @@
+{
+    "_key": "!items!c951916c0387471e",
+    "_id": "c951916c0387471e",
+    "name": "Sand Serpent Fang",
+    "type": "loot",
+    "img": "icons/commodities/bones/tooth-tusk-white.webp",
+    "system": {
+        "description": {
+            "value": "<p>Hollow fang from a sand serpent. Alchemical ingredient (poison).</p>"
+        },
+        "rarity": "rare",
+        "weight": 0.1
+    },
+    "folder": "f0ra6e0000000001",
+    "flags": {
+        "ionrift-respite": {
+            "itemRef": "sand_serpent_fang",
+            "terrain": "desert",
+            "category": "forage"
+        }
+    },
+    "effects": [],
+    "ownership": {
+        "default": 0
+    },
+    "sort": 550
+}

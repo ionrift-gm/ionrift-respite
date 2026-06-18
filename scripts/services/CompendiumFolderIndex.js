@@ -12,13 +12,43 @@ const TERRAIN_ALIASES = {
 };
 
 /**
- * Build folder id → slash path map from a compendium collection.
- * @param {CompendiumCollection} collection
+ * @param {Folder} folder
+ * @returns {string|null}
+ */
+function folderParentId(folder) {
+    if (!folder) return null;
+    const parent = folder.folder ?? folder.parent;
+    if (!parent) return null;
+    if (typeof parent === "string") return parent;
+    return parent.id ?? null;
+}
+
+/**
+ * Collect folder documents from a compendium pack or embedded collection.
+ * @param {CompendiumCollection|object} source
+ * @returns {Folder[]}
+ */
+function compendiumFolders(source) {
+    const folders = source?.folders;
+    if (!folders) return [];
+    if (Array.isArray(folders)) return folders;
+    if (folders.contents) return folders.contents;
+    if (typeof folders.forEach === "function") {
+        const list = [];
+        folders.forEach(folder => list.push(folder));
+        return list;
+    }
+    return [];
+}
+
+/**
+ * Build folder id → slash path map from a compendium pack (or collection).
+ * @param {CompendiumCollection|object} packOrCollection
  * @returns {{ pathFor: (folderId: string) => string }}
  */
-export function buildFolderPathMap(collection) {
-    const folders = collection?.folders?.contents ?? [];
-    const byId = new Map(folders.map(f => [f.id, f]));
+export function buildFolderPathMap(packOrCollection) {
+    const folders = compendiumFolders(packOrCollection);
+    const byId = new Map(folders.map(folder => [folder.id, folder]));
 
     function pathFor(folderId) {
         if (!folderId) return "";
@@ -26,7 +56,8 @@ export function buildFolderPathMap(collection) {
         let cur = byId.get(folderId);
         while (cur) {
             parts.unshift(cur.name);
-            cur = cur.folder ? byId.get(cur.folder) : null;
+            const parentId = folderParentId(cur);
+            cur = parentId ? byId.get(parentId) : null;
         }
         return parts.join("/");
     }
@@ -54,6 +85,10 @@ export function resolvePoolFromFolderPath(folderPath) {
         const terrainKey = parts[1].toLowerCase();
         const terrain = TERRAIN_ALIASES[terrainKey];
         if (terrain) return { category, terrains: [terrain] };
+    }
+
+    if (category === "hunt") {
+        return { category, terrains: Object.keys(TERRAIN_ALIASES) };
     }
 
     return { category, terrains: null };

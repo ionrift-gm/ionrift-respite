@@ -1,0 +1,27 @@
+{
+    "_key": "!items!b08b92b73d4142a7",
+    "_id": "b08b92b73d4142a7",
+    "name": "Preserved Skull",
+    "type": "loot",
+    "img": "icons/commodities/bones/skull-hollow-white.webp",
+    "system": {
+        "description": {
+            "value": "<p>Small animal skull preserved in peat. Arcane focus component.</p>"
+        },
+        "rarity": "uncommon",
+        "weight": 0.5
+    },
+    "folder": "f0ra6e0000000001",
+    "flags": {
+        "ionrift-respite": {
+            "itemRef": "preserved_skull",
+            "terrain": "swamp",
+            "category": "forage"
+        }
+    },
+    "effects": [],
+    "ownership": {
+        "default": 0
+    },
+    "sort": 570
+}
