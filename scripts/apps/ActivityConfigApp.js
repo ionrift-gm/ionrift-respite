@@ -121,6 +121,11 @@ const ACTIVITY_TOGGLES = [
                 label: "Travel Scouting",
                 hint: "Scout option on the final travel day. Perception or Survival sets camp comfort and the night check.",
                 requiresUseTravel: true
+            },
+            {
+                key: "homebrewProvisionOnly",
+                label: "Homebrew Provisions Only",
+                hint: "Ignore shipped Respite Items, built-in stubs, and imported pack data. Camp cooking and brewing use your custom recipe list; forage and hunt use the Respite Custom compendium only."
             }
         ]
     }

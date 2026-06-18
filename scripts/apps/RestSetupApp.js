@@ -84,7 +84,7 @@ import {
 } from "../services/campCeremonySync.js";
 import { isSimpleStationsMode, requiresMapCampFire, isCampfireMinigameEnabled } from "../services/RestProfileSettings.js";
 import { isScoutingEnabled } from "../services/ScoutingSettings.js";
-import { shouldRunTravelPhase, getTravelGatherAvailability } from "../services/TravelSettings.js";
+import { shouldRunTravelPhase, getTravelGatherAvailability, isHomebrewProvisionOnly } from "../services/TravelSettings.js";
 import { buildTravelGatherPayload } from "../services/TravelGatherPayload.js";
 import { applyPlayerTravelDeclarationToGm } from "../services/travelDeclarationSync.js";
 import { buildActivityListItem, buildActivityDetailContext } from "./ActivityDetailBuilder.js";
@@ -1652,12 +1652,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             await this._loadContentPacks();
 
             // Rebuild travel base pools from module + world custom compendiums.
-            if (this._travel && game.ionrift?.respite?.travelProvisionBatches) {
-                const resolver = this._travel.getTravelResolver();
-                if (resolver) {
-                    const { applyTravelProvisionBatches } = await import("../services/TravelProvisionIndex.js");
-                    await applyTravelProvisionBatches(resolver);
-                }
+            const resolver = this._travel?.getTravelResolver();
+            if (resolver) {
+                const { applyTravelProvisionBatches } = await import("../services/TravelProvisionIndex.js");
+                await applyTravelProvisionBatches(resolver);
             }
         } catch (e) {
 
@@ -1677,6 +1675,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         let totalRecipes = 0, totalPools = 0;
         let huntYieldsLoaded = false;
         const travelResolver = this._travel?.getTravelResolver();
+        const homebrewOnly = isHomebrewProvisionOnly();
 
         for (const [packId, packData] of Object.entries(importedPacks)) {
             if (enabledPacks[packId] === false) {
@@ -1693,28 +1692,29 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     loaded.push(`${events.length} events`);
                 }
 
-                // Recipes -- keyed by profession (e.g. { cooking: [...] })
-                if (packData.recipes && typeof packData.recipes === "object") {
-                    for (const [profId, recipeList] of Object.entries(packData.recipes)) {
-                        if (Array.isArray(recipeList) && recipeList.length) {
-                            this._craftingEngine.load(profId, recipeList);
-                            totalRecipes += recipeList.length;
+                // Recipes, pools, and hunt yields (skipped in homebrew-only mode)
+                if (!homebrewOnly) {
+                    if (packData.recipes && typeof packData.recipes === "object") {
+                        for (const [profId, recipeList] of Object.entries(packData.recipes)) {
+                            if (Array.isArray(recipeList) && recipeList.length) {
+                                this._craftingEngine.load(profId, recipeList);
+                                totalRecipes += recipeList.length;
+                            }
                         }
+                        loaded.push(`${totalRecipes} recipes`);
                     }
-                    loaded.push(`${totalRecipes} recipes`);
-                }
 
-                // Resource Pools
-                if (Array.isArray(packData.resourcePools) && packData.resourcePools.length && this._travel) {
-                    this._travel.loadPoolsFromData(packData.resourcePools, { fromImportedPack: true });
-                    totalPools += packData.resourcePools.length;
-                    loaded.push(`${packData.resourcePools.length} pools`);
-                }
+                    if (Array.isArray(packData.resourcePools) && packData.resourcePools.length && this._travel) {
+                        this._travel.loadPoolsFromData(packData.resourcePools, { fromImportedPack: true });
+                        totalPools += packData.resourcePools.length;
+                        loaded.push(`${packData.resourcePools.length} pools`);
+                    }
 
-                if (packData.huntYields && typeof packData.huntYields === "object" && travelResolver) {
-                    travelResolver.loadHuntYields(packData.huntYields);
-                    huntYieldsLoaded = true;
-                    loaded.push("hunt yields");
+                    if (packData.huntYields && typeof packData.huntYields === "object" && travelResolver) {
+                        travelResolver.loadHuntYields(packData.huntYields);
+                        huntYieldsLoaded = true;
+                        loaded.push("hunt yields");
+                    }
                 }
 
                 if (loaded.length) {
@@ -1728,7 +1728,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         // Fall back to built-in stub content when no packs provided data
-        if (totalRecipes === 0) {
+        if (!homebrewOnly && totalRecipes === 0) {
             for (const [profId, recipeList] of Object.entries(STUB_RECIPES)) {
                 this._craftingEngine.load(profId, recipeList);
             }
@@ -1736,7 +1736,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             Logger.log(`${MODULE_ID} | Using built-in stub recipes`);
         }
 
-        if (!huntYieldsLoaded && travelResolver) {
+        if (!homebrewOnly && !huntYieldsLoaded && travelResolver) {
             travelResolver.loadHuntYields(STUB_HUNT_YIELDS);
         }
 
@@ -4338,6 +4338,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     ?? { disabled: true, disabledReasonKey: "ionrift-respite.travel.forage.requires_pack" };
                 const forageDisabled = canForage && forageGate.disabled;
                 const forageDisabledReasonKey = forageDisabled ? forageGate.disabledReasonKey : null;
+                const huntGate = this._travel?.getHuntGate?.(terrainTag)
+                    ?? { disabled: false, disabledReasonKey: null };
+                const huntDisabled = canHunt && huntGate.disabled;
+                const huntDisabledReasonKey = huntDisabled ? huntGate.disabledReasonKey : null;
 
                 // Build peer roster (non-owned characters) in roster-strip chip shape
                 // so the travel phase can use {{> rosterStrip}} like every other phase.
@@ -4379,6 +4383,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     forageDisabledReasonKey,
                     forageDisabledTooltip: forageDisabledReasonKey
                         ? game.i18n.localize(forageDisabledReasonKey)
+                        : null,
+                    huntDisabled,
+                    huntDisabledReasonKey,
+                    huntDisabledTooltip: huntDisabledReasonKey
+                        ? game.i18n.localize(huntDisabledReasonKey)
                         : null,
                     travelPeerRoster
                 };

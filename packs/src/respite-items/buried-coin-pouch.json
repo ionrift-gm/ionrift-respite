@@ -1,0 +1,31 @@
+{
+    "_key": "!items!e46aa449188f4ef9",
+    "_id": "e46aa449188f4ef9",
+    "name": "Buried Coin Pouch",
+    "type": "loot",
+    "img": "icons/containers/bags/pouch-simple-leather-brown.webp",
+    "system": {
+        "description": {
+            "value": "<p>Sand-scoured leather pouch. Contains 2d6 gp.</p>"
+        },
+        "rarity": "uncommon",
+        "weight": 0.2,
+        "price": {
+            "value": 7,
+            "denomination": "gp"
+        }
+    },
+    "folder": "f0ra6e0000000001",
+    "flags": {
+        "ionrift-respite": {
+            "itemRef": "buried_coin_pouch",
+            "terrain": "desert",
+            "category": "forage"
+        }
+    },
+    "effects": [],
+    "ownership": {
+        "default": 0
+    },
+    "sort": 540
+}

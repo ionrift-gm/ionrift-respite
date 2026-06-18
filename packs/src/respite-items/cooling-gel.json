@@ -1,0 +1,27 @@
+{
+    "_key": "!items!de23dcb5e0d34dc4",
+    "_id": "de23dcb5e0d34dc4",
+    "name": "Cooling Gel",
+    "type": "loot",
+    "img": "icons/consumables/potions/potion-tube-corked-cyan.webp",
+    "system": {
+        "description": {
+            "value": "<p>Thick cactus extract. Soothes burns, reduces heat exhaustion. Brewing ingredient.</p>"
+        },
+        "rarity": "uncommon",
+        "weight": 0.2
+    },
+    "folder": "f0ra6e0000000001",
+    "flags": {
+        "ionrift-respite": {
+            "itemRef": "cooling_gel",
+            "terrain": "desert",
+            "category": "forage"
+        }
+    },
+    "effects": [],
+    "ownership": {
+        "default": 0
+    },
+    "sort": 530
+}

@@ -161,7 +161,7 @@ const DIET_PRESETS = {
         customWaterNames: [],
         excludeNames: [],
         sustenanceType: "none",
-        label: "Construct"
+        label: "Not Needed"
     },
     maintenance: {
         canEat: ["fuel"],
@@ -171,7 +171,7 @@ const DIET_PRESETS = {
         customWaterNames: ["oil flask", "lamp oil"],
         excludeNames: [],
         sustenanceType: "essence",
-        label: "Construct (Maintenance)"
+        label: "Maintenance"
     },
     undead: {
         canEat: [],
@@ -411,6 +411,8 @@ export class ItemClassifier {
         const merged = { ...DEFAULT_DIET, ...stored };
         merged.customFoodNames = this._normalizeDietNameList(merged.customFoodNames);
         merged.customWaterNames = this._normalizeDietNameList(merged.customWaterNames);
+        if (merged.label === "Construct") merged.label = "Not Needed";
+        if (merged.label === "Construct (Maintenance)") merged.label = "Maintenance";
         return merged;
     }
 

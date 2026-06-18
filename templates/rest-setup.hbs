@@ -349,6 +349,11 @@
             {{/if}}
             {{/if}}
             {{#if travelContext.canHunt}}
+            {{#if travelContext.huntDisabled}}
+            <span class="travel-dc-chip travel-dc-chip--muted" data-tooltip="{{travelContext.huntDisabledTooltip}}">
+                <i class="fas fa-crosshairs"></i> Hunt unavailable
+            </span>
+            {{else}}
             <span class="travel-dc-chip">
                 <i class="fas fa-crosshairs"></i> Hunt DC {{travelContext.huntDC}}
                 {{#if travelContext.huntGMAdj}}
@@ -359,6 +364,7 @@
                     <button type="button" class="encounter-adj-btn" data-action="adjustGlobalDC" data-activity="hunt" data-delta="1" data-tooltip="Increase Hunt DC">+</button>
                 </span>
             </span>
+            {{/if}}
             {{/if}}
         </div>
 
@@ -476,7 +482,7 @@
                     <select class="travel-activity-select" data-actor-id="{{id}}" data-day="{{../day}}">
                         <option value="nothing" {{#if (eq activity 'nothing')}}selected{{/if}}>🏕️ Other</option>
                         {{#if ../../travelContext.canForage}}<option value="forage" {{#if ../../travelContext.forageDisabled}}disabled title="{{../../travelContext.forageDisabledTooltip}}" class="travel-option-disabled"{{/if}} {{#if (eq activity 'forage')}}selected{{/if}}>🌿 Forage</option>{{/if}}
-                        {{#if ../../travelContext.canHunt}}<option value="hunt" {{#if (eq activity 'hunt')}}selected{{/if}}>🎯 Hunt</option>{{/if}}
+                        {{#if ../../travelContext.canHunt}}<option value="hunt" {{#if ../../travelContext.huntDisabled}}disabled title="{{../../travelContext.huntDisabledTooltip}}" class="travel-option-disabled"{{/if}} {{#if (eq activity 'hunt')}}selected{{/if}}>🎯 Hunt</option>{{/if}}
                         {{#if ../canScout}}<option value="scout" {{#if (eq activity 'scout')}}selected{{/if}}>🔭 Scout</option>{{/if}}
                     </select>
                     {{#if awaitingPlayerResponse}}<span class="travel-player-await" data-tooltip="Waiting for this character"><i class="fas fa-circle-notch fa-spin"></i></span>{{/if}}
@@ -704,7 +710,7 @@
                     <select class="travel-player-select" data-actor-id="{{id}}" data-day="{{../day}}">
                         <option value="nothing" {{#if (eq declaration 'nothing')}}selected{{/if}}>🏕️ Other</option>
                         {{#if ../../travelContext.canForage}}<option value="forage" {{#if ../../travelContext.forageDisabled}}disabled title="{{../../travelContext.forageDisabledTooltip}}" class="travel-option-disabled"{{/if}} {{#if (eq declaration 'forage')}}selected{{/if}}>🌿 Forage</option>{{/if}}
-                        {{#if ../../travelContext.canHunt}}<option value="hunt" {{#if (eq declaration 'hunt')}}selected{{/if}}>🎯 Hunt</option>{{/if}}
+                        {{#if ../../travelContext.canHunt}}<option value="hunt" {{#if ../../travelContext.huntDisabled}}disabled title="{{../../travelContext.huntDisabledTooltip}}" class="travel-option-disabled"{{/if}} {{#if (eq declaration 'hunt')}}selected{{/if}}>🎯 Hunt</option>{{/if}}
                         {{#if ../canScout}}<option value="scout" {{#if (eq declaration 'scout')}}selected{{/if}}>🔭 Scout</option>{{/if}}
                     </select>
                     {{#if (eq declaration 'nothing')}}
