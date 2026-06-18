@@ -1,0 +1,842 @@
+/**
+ * RecipeEditorApp
+ * GM-only editor for custom profession recipes (world setting JSON).
+ */
+
+import {
+    CUSTOM_RECIPE_MAX_PER_PROFESSION,
+    HOMEBREW_PROFESSION_IDS,
+    applyCustomRecipesToEngine,
+    applyProfessionToolToRecipe,
+    describeRecipeSaveOverwrite,
+    getProfessionToolRequired,
+    sanitizeCustomRecipes,
+    TOOL_PROFICIENCY_LABELS,
+    validateCustomRecipe
+} from "../services/RecipeCatalog.js";
+import {
+    applyMealBuffPresetToFlags,
+    buildSatiatesList,
+    defaultFoodTagForProfession,
+    defaultSatiatesForProfession,
+    formatMealBuffPreview,
+    FOOD_TAG_OPTIONS,
+    getMealBuffPreset,
+    matchMealBuffPresetId,
+    MEAL_BUFF_PRESETS
+} from "../services/MealBuffPresets.js";
+import { SKILL_NAMES } from "./RestConstants.js";
+
+const MODULE_ID = "ionrift-respite";
+
+const MEAL_EFFECT_PROFESSIONS = new Set(["cooking", "brewing"]);
+
+/** Skills plus ability checks (brewing stubs use wis). */
+const RECIPE_CHECK_KEYS = {
+    ...SKILL_NAMES,
+    str: "Strength",
+    dex: "Dexterity",
+    con: "Constitution",
+    int: "Intelligence",
+    wis: "Wisdom",
+    cha: "Charisma"
+};
+
+const PROFESSION_LABELS = {
+    cooking: "Cooking",
+    brewing: "Brewing"
+};
+
+const PROFESSION_ICONS = {
+    cooking: "fas fa-utensils",
+    brewing: "fas fa-wine-bottle"
+};
+
+export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
+
+    #professionId = "cooking";
+    #selectedIndex = 0;
+    #draft = null;
+    #flashSavedIndex = null;
+
+    static DEFAULT_OPTIONS = {
+        id: "respite-recipe-editor",
+        window: {
+            title: "Custom Recipes",
+            icon: "fas fa-mortar-pestle",
+            resizable: true
+        },
+        position: { width: 720, height: 680 },
+        classes: ["ionrift-window", "glass-ui", "ionrift-respite-app"]
+    };
+
+    /** @override */
+    async _prepareContext() {
+        if (!HOMEBREW_PROFESSION_IDS.includes(this.#professionId)) {
+            this.#professionId = "cooking";
+        }
+        const stored = game.settings.get(MODULE_ID, "customRecipes") ?? {};
+        const recipes = stored[this.#professionId] ?? [];
+        const selected = this.#selectedIndex >= 0 ? recipes[this.#selectedIndex] ?? null : null;
+        const isNewDraft = this.#selectedIndex < 0 || !selected;
+
+        return {
+            professionId: this.#professionId,
+            professionIcon: PROFESSION_ICONS[this.#professionId] ?? "fas fa-hammer",
+            professionOptions: HOMEBREW_PROFESSION_IDS.map(id => ({
+                id,
+                label: PROFESSION_LABELS[id] ?? id,
+                selected: id === this.#professionId
+            })),
+            recipes,
+            selectedIndex: this.#selectedIndex,
+            selected,
+            isNewDraft,
+            draft: this.#draft ?? selected ?? this._blankRecipe(),
+            maxRecipes: CUSTOM_RECIPE_MAX_PER_PROFESSION
+        };
+    }
+
+    /** @override */
+    async _renderHTML(context) {
+        const el = document.createElement("div");
+        el.classList.add("respite-recipe-editor");
+        el.innerHTML = this._buildMarkup(context);
+        this._wireEvents(el);
+        return el;
+    }
+
+    /** @override */
+    _replaceHTML(result, content, _options) {
+        content.replaceChildren(result);
+    }
+
+    _esc(value) {
+        return foundry.utils.escapeHTML(String(value ?? ""));
+    }
+
+    _buildSkillOptions(selectedKey) {
+        const keys = Object.keys(RECIPE_CHECK_KEYS).sort((a, b) =>
+            RECIPE_CHECK_KEYS[a].localeCompare(RECIPE_CHECK_KEYS[b])
+        );
+        let html = "";
+        if (selectedKey && !RECIPE_CHECK_KEYS[selectedKey]) {
+            html += `<option value="${this._esc(selectedKey)}" selected>${this._esc(selectedKey)}</option>`;
+        }
+        for (const key of keys) {
+            const selected = key === selectedKey ? " selected" : "";
+            html += `<option value="${this._esc(key)}"${selected}>${this._esc(RECIPE_CHECK_KEYS[key])}</option>`;
+        }
+        return html;
+    }
+
+    _isMealProfession(professionId) {
+        return MEAL_EFFECT_PROFESSIONS.has(professionId);
+    }
+
+    _mealFieldPrefix(tier) {
+        return tier === "ambitious" ? "ambMeal" : "meal";
+    }
+
+    _mealBuffSummaryText(presetId, rf) {
+        if (presetId === "custom") {
+            const preview = formatMealBuffPreview(rf?.buff);
+            if (preview) {
+                const parts = [preview.label];
+                if (preview.formula) parts.push(preview.formula);
+                if (preview.duration) parts.push(preview.duration);
+                return parts.join(" · ");
+            }
+            return rf?.wellFed ? "Custom Well Fed (JSON)" : "No buff";
+        }
+        const preset = getMealBuffPreset(presetId);
+        return preset?.label ?? "No buff";
+    }
+
+    _buildMealEffectsMarkup(tier, rf, professionId) {
+        const prefix = this._mealFieldPrefix(tier);
+        const presetId = matchMealBuffPresetId(rf);
+        const satiates = Array.isArray(rf?.satiates)
+            ? rf.satiates
+            : defaultSatiatesForProfession(professionId);
+        const foodTag = rf?.foodTag ?? defaultFoodTagForProfession(professionId);
+        const spoilsVal = rf?.spoilsAfter ?? "";
+        const spoilsAttr = spoilsVal === null || spoilsVal === undefined ? "" : String(spoilsVal);
+        const partyMeal = rf?.partyMeal === true;
+        const satiatesFood = satiates.includes("food");
+        const satiatesWater = satiates.includes("water");
+        const summary = this._mealBuffSummaryText(presetId, rf);
+        const tierLabel = tier === "ambitious" ? "Ambitious meal effects" : "Meal effects";
+        const tierHint = tier === "ambitious"
+            ? "Applied when players craft at Ambitious risk (+5 DC)."
+            : "Applied when the crafted item is eaten or used in the meal phase.";
+
+        const foodTagOptions = FOOD_TAG_OPTIONS.map(opt => {
+            const selected = opt.id === foodTag ? " selected" : "";
+            return `<option value="${this._esc(opt.id)}"${selected}>${this._esc(opt.label)}</option>`;
+        }).join("");
+
+        const presetButtons = MEAL_BUFF_PRESETS.map(preset => `
+            <button type="button" class="recipe-editor-buff-option"
+                data-action="selectBuffPreset" data-tier="${tier}" data-preset-id="${this._esc(preset.id)}"
+                title="${this._esc(preset.description)}">
+                <span class="recipe-editor-buff-option-label">${this._esc(preset.label)}</span>
+                <span class="recipe-editor-buff-option-desc">${this._esc(preset.description)}</span>
+            </button>`).join("");
+
+        return `
+        <div class="recipe-editor-section recipe-editor-section--meal" data-meal-tier="${tier}">
+            <div class="recipe-editor-section-title">${this._esc(tierLabel)}</div>
+            <p class="recipe-editor-hint">${this._esc(tierHint)}</p>
+            <div class="recipe-editor-meal-toggles">
+                <label class="recipe-editor-check">
+                    <input type="checkbox" name="${prefix}PartyMeal" ${partyMeal ? "checked" : ""} />
+                    <span>Party meal</span>
+                </label>
+                <label class="recipe-editor-check">
+                    <input type="checkbox" name="${prefix}SatiatesFood" ${satiatesFood ? "checked" : ""} />
+                    <span>Satiates food</span>
+                </label>
+                <label class="recipe-editor-check">
+                    <input type="checkbox" name="${prefix}SatiatesWater" ${satiatesWater ? "checked" : ""} />
+                    <span>Satiates water</span>
+                </label>
+            </div>
+            <div class="recipe-editor-fields recipe-editor-fields--double">
+                <div class="recipe-editor-field">
+                    <label class="recipe-editor-label">Food tag</label>
+                    <select class="recipe-editor-select" name="${prefix}FoodTag">${foodTagOptions}</select>
+                </div>
+                <div class="recipe-editor-field">
+                    <label class="recipe-editor-label">Spoils after (rests)</label>
+                    <input type="number" class="recipe-editor-input" name="${prefix}SpoilsAfter"
+                        min="1" placeholder="Never" value="${this._esc(spoilsAttr)}" />
+                </div>
+            </div>
+            <div class="recipe-editor-buff-row">
+                <div class="recipe-editor-buff-summary">
+                    <span class="recipe-editor-label">Buff</span>
+                    <span class="recipe-editor-buff-summary-text">${this._esc(summary)}</span>
+                </div>
+                <input type="hidden" name="${prefix}BuffPresetId" value="${this._esc(presetId)}" />
+                <div class="recipe-editor-buff-popout">
+                    <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
+                        data-action="toggleBuffPopout" data-tier="${tier}">
+                        <i class="fas fa-star"></i> Choose buff
+                    </button>
+                    <div class="recipe-editor-buff-popout-panel is-hidden" data-buff-popout="${tier}"
+                        role="dialog" aria-label="Choose meal buff">
+                        <div class="recipe-editor-buff-popout-heading">Meal buff presets</div>
+                        <div class="recipe-editor-buff-options">${presetButtons}</div>
+                        <p class="recipe-editor-hint recipe-editor-buff-popout-hint">Custom buffs can still be set via JSON import.</p>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    _buildMarkup(context) {
+        const draft = context.draft;
+        const skillVal = draft.skill ?? "sur";
+        const outputName = draft.output?.name ?? "";
+        const outputQty = draft.output?.quantity ?? 1;
+        const outputImg = draft.output?.img ?? "icons/consumables/food/bowl-stew-brown.webp";
+        const hasAmbitious = Boolean(draft.ambitiousOutput);
+        const ambName = draft.ambitiousOutput?.name ?? "";
+        const ambQty = draft.ambitiousOutput?.quantity ?? 1;
+        const ambImg = draft.ambitiousOutput?.img ?? outputImg;
+        const profLabel = PROFESSION_LABELS[context.professionId] ?? context.professionId;
+        const toolKey = getProfessionToolRequired(context.professionId);
+        const toolLabel = toolKey
+            ? (TOOL_PROFICIENCY_LABELS[toolKey] ?? toolKey)
+            : null;
+
+        let recipeListHtml = "";
+        if (context.recipes.length) {
+            for (let i = 0; i < context.recipes.length; i++) {
+                const r = context.recipes[i];
+                const active = i === context.selectedIndex && !context.isNewDraft ? " active" : "";
+                const flash = i === this.#flashSavedIndex ? " recipe-editor-list-item--saved-flash" : "";
+                const outputImg = r.output?.img
+                    ?? "icons/consumables/food/bowl-stew-brown.webp";
+                recipeListHtml += `
+                <button type="button" class="recipe-editor-list-item${active}${flash}"
+                    data-action="selectRecipe" data-index="${i}">
+                    <img class="recipe-editor-list-icon" src="${this._esc(outputImg)}" alt="" />
+                    <span class="recipe-editor-list-name">${this._esc(r.name)}</span>
+                    <span class="recipe-editor-list-meta">DC ${r.dc}</span>
+                </button>`;
+            }
+        } else {
+            recipeListHtml = `
+                <p class="recipe-editor-empty">
+                    <i class="fas fa-mortar-pestle"></i>
+                    No custom recipes yet.
+                </p>`;
+        }
+
+        let ingredientsHtml = "";
+        const ingredients = (draft.ingredients?.length ? draft.ingredients : [{ name: "", quantity: 1 }]);
+        const canRemoveIngredient = ingredients.length > 1;
+        for (let i = 0; i < ingredients.length; i++) {
+            const ing = ingredients[i];
+            const removeBtn = canRemoveIngredient ? `
+                <button type="button" class="recipe-editor-ingredient-remove" data-action="removeIngredient"
+                    data-ing-index="${i}" title="Remove ingredient" aria-label="Remove ingredient">
+                    <i class="fas fa-times"></i>
+                </button>` : "";
+            ingredientsHtml += `
+            <div class="recipe-editor-ingredient-row" data-ing-index="${i}">
+                <input type="text" class="recipe-editor-input" name="ingName"
+                    value="${this._esc(ing.name)}" placeholder="Compendium item name" />
+                <input type="number" class="recipe-editor-input recipe-editor-input--qty" name="ingQty"
+                    min="1" value="${ing.quantity ?? 1}" aria-label="Quantity" />
+                ${removeBtn}
+            </div>`;
+        }
+
+        const professionOptions = context.professionOptions.map(o => {
+            const selected = o.selected ? " selected" : "";
+            return `<option value="${this._esc(o.id)}"${selected}>${this._esc(o.label)}</option>`;
+        }).join("");
+
+        const deleteDisabled = context.selected && !context.isNewDraft ? "" : " disabled";
+        const newRecipeActive = context.isNewDraft ? " active" : "";
+        const showMealEffects = this._isMealProfession(context.professionId);
+        const stdRf = draft.outputFlags?.[MODULE_ID] ?? {};
+        const ambRf = draft.ambitiousOutputFlags?.[MODULE_ID]
+            ?? foundry.utils.deepClone(stdRf);
+
+        return `
+        <p class="recipe-editor-lead">
+            Homebrew recipes for this world. Match ingredient names to compendium items
+            (place inputs in Forage or Reagents folders). Export or import JSON for bulk edits.
+        </p>
+        <div class="recipe-editor-filter">
+            <label class="recipe-editor-filter-label">
+                <i class="${context.professionIcon}"></i> Profession
+            </label>
+            <select class="recipe-editor-select" data-action="changeProfession">${professionOptions}</select>
+            <span class="recipe-editor-count">${context.recipes.length}/${context.maxRecipes}</span>
+        </div>
+        <div class="recipe-editor-layout">
+            <aside class="recipe-editor-list" aria-label="Recipe list">
+                <div class="recipe-editor-list-heading">${this._esc(profLabel)} recipes</div>
+                ${recipeListHtml}
+                <button type="button" class="recipe-editor-list-new${newRecipeActive}" data-action="newRecipe">
+                    <i class="fas fa-plus"></i> New recipe
+                </button>
+            </aside>
+            <section class="recipe-editor-detail">
+                ${context.isNewDraft ? `
+                <p class="recipe-editor-draft-note">
+                    <i class="fas fa-pen" aria-hidden="true"></i>
+                    Unsaved draft. Nothing is added to the list until you save.
+                </p>` : ""}
+                <div class="recipe-editor-section">
+                    <div class="recipe-editor-section-title">Recipe</div>
+                    <div class="recipe-editor-fields recipe-editor-fields--triple">
+                        <div class="recipe-editor-field">
+                            <label class="recipe-editor-label">Name</label>
+                            <input type="text" class="recipe-editor-input" name="name"
+                                value="${this._esc(draft.name)}" placeholder="Camp stew" />
+                        </div>
+                        <div class="recipe-editor-field">
+                            <label class="recipe-editor-label">DC</label>
+                            <input type="number" class="recipe-editor-input" name="dc"
+                                min="1" value="${draft.dc ?? 12}" />
+                        </div>
+                        <div class="recipe-editor-field">
+                            <label class="recipe-editor-label">Skill</label>
+                            <select class="recipe-editor-select" name="skill"
+                                aria-label="Skill check">${this._buildSkillOptions(skillVal)}</select>
+                        </div>
+                    </div>
+                    ${toolLabel ? `
+                    <div class="recipe-editor-fields recipe-editor-fields--double">
+                        <div class="recipe-editor-field">
+                            <label class="recipe-editor-label">Tool proficiency</label>
+                            <div class="recipe-editor-locked-value" title="Set by profession">
+                                <i class="fas fa-lock" aria-hidden="true"></i>
+                                <span>${this._esc(toolLabel)}</span>
+                            </div>
+                        </div>
+                    </div>` : ""}
+                </div>
+                <div class="recipe-editor-section">
+                    <div class="recipe-editor-section-title">Ingredients</div>
+                    <p class="recipe-editor-hint">Names must match items in the party inventory or compendium.</p>
+                    <div class="recipe-editor-ingredients">${ingredientsHtml}</div>
+                    <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost" data-action="addIngredient">
+                        <i class="fas fa-plus"></i> Add ingredient
+                    </button>
+                </div>
+                <div class="recipe-editor-section">
+                    <div class="recipe-editor-section-title">Standard output</div>
+                    <p class="recipe-editor-hint">Granted on a normal craft roll (Standard risk).</p>
+                    <div class="recipe-editor-img-row">
+                        <img class="recipe-editor-img-preview" src="${this._esc(outputImg)}" alt="" />
+                        <input type="hidden" name="outputImg" value="${this._esc(outputImg)}" />
+                        <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
+                            data-action="pickOutputImg">
+                            <i class="fas fa-image"></i> Choose image
+                        </button>
+                    </div>
+                    <div class="recipe-editor-fields recipe-editor-fields--double">
+                        <div class="recipe-editor-field">
+                            <label class="recipe-editor-label">Item name</label>
+                            <input type="text" class="recipe-editor-input" name="outputName"
+                                value="${this._esc(outputName)}" placeholder="Hearty stew" />
+                        </div>
+                        <div class="recipe-editor-field">
+                            <label class="recipe-editor-label">Quantity</label>
+                            <input type="number" class="recipe-editor-input" name="outputQty"
+                                min="1" value="${outputQty}" />
+                        </div>
+                    </div>
+                    ${showMealEffects ? this._buildMealEffectsMarkup("standard", stdRf, context.professionId) : ""}
+                </div>
+                <div class="recipe-editor-section">
+                    <label class="recipe-editor-ambitious-toggle">
+                        <input type="checkbox" name="enableAmbitious" ${hasAmbitious ? "checked" : ""} />
+                        <span class="recipe-editor-ambitious-copy">
+                            <span class="recipe-editor-ambitious-title">Ambitious output</span>
+                            <span class="recipe-editor-hint">Players can pick Ambitious (+5 DC) at craft time for this upgraded item.</span>
+                        </span>
+                    </label>
+                    <div class="recipe-editor-ambitious-fields${hasAmbitious ? "" : " is-hidden"}">
+                        <div class="recipe-editor-img-row">
+                            <img class="recipe-editor-img-preview recipe-editor-img-preview--amb" src="${this._esc(ambImg)}" alt="" />
+                            <input type="hidden" name="ambOutputImg" value="${this._esc(ambImg)}" />
+                            <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
+                                data-action="pickAmbOutputImg">
+                                <i class="fas fa-image"></i> Choose image
+                            </button>
+                        </div>
+                        <div class="recipe-editor-fields recipe-editor-fields--double">
+                            <div class="recipe-editor-field">
+                                <label class="recipe-editor-label">Upgraded item name</label>
+                                <input type="text" class="recipe-editor-input" name="ambOutputName"
+                                    value="${this._esc(ambName)}" placeholder="Rich hunter's stew" />
+                            </div>
+                            <div class="recipe-editor-field">
+                                <label class="recipe-editor-label">Quantity</label>
+                                <input type="number" class="recipe-editor-input" name="ambOutputQty"
+                                    min="1" value="${ambQty}" />
+                            </div>
+                        </div>
+                        ${showMealEffects ? this._buildMealEffectsMarkup("ambitious", ambRf, context.professionId) : ""}
+                    </div>
+                </div>
+            </section>
+        </div>
+        <footer class="recipe-editor-footer">
+            <div class="recipe-editor-footer-left">
+                <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
+                    data-action="exportJson"><i class="fas fa-download"></i> Export</button>
+                <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
+                    data-action="importJson"><i class="fas fa-upload"></i> Import</button>
+                <button type="button" class="recipe-editor-btn recipe-editor-btn--danger"
+                    data-action="deleteRecipe"${deleteDisabled}>
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+            <button type="button" class="recipe-editor-btn recipe-editor-btn--primary" data-action="saveRecipe">
+                <i class="fas fa-save"></i> Save recipe
+            </button>
+        </footer>`;
+    }
+
+    _wireEvents(el) {
+        el.querySelector("[data-action=\"changeProfession\"]")?.addEventListener("change", ev => {
+            this.#professionId = ev.target.value;
+            this.#selectedIndex = 0;
+            this.#draft = null;
+            this.render();
+        });
+
+        el.querySelectorAll("[data-action=\"selectRecipe\"]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                this.#selectedIndex = Number(btn.dataset.index);
+                this.#draft = null;
+                this.render();
+            });
+        });
+
+        el.querySelector("[data-action=\"newRecipe\"]")?.addEventListener("click", () => {
+            this.#draft = this._blankRecipe();
+            this.#selectedIndex = -1;
+            this.render();
+        });
+
+        el.querySelector("[data-action=\"addIngredient\"]")?.addEventListener("click", () => {
+            const draft = this._readFormDraft(el);
+            draft.ingredients.push({ name: "", quantity: 1 });
+            this.#draft = draft;
+            this.render();
+        });
+
+        el.querySelectorAll("[data-action=\"removeIngredient\"]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const draft = this._readFormDraft(el);
+                if (draft.ingredients.length <= 1) return;
+                const idx = Number(btn.dataset.ingIndex);
+                if (idx >= 0 && idx < draft.ingredients.length) {
+                    draft.ingredients.splice(idx, 1);
+                }
+                this.#draft = draft;
+                this.render();
+            });
+        });
+
+        el.querySelectorAll("[data-action=\"toggleBuffPopout\"]").forEach(btn => {
+            btn.addEventListener("click", ev => {
+                ev.stopPropagation();
+                const tier = btn.dataset.tier;
+                const panel = el.querySelector(`[data-buff-popout="${tier}"]`);
+                const wasHidden = panel?.classList.contains("is-hidden");
+                el.querySelectorAll(".recipe-editor-buff-popout-panel").forEach(p => {
+                    p.classList.add("is-hidden");
+                });
+                if (wasHidden) panel?.classList.remove("is-hidden");
+            });
+        });
+
+        el.querySelectorAll("[data-action=\"selectBuffPreset\"]").forEach(btn => {
+            btn.addEventListener("click", ev => {
+                ev.stopPropagation();
+                const tier = btn.dataset.tier;
+                const presetId = btn.dataset.presetId;
+                const draft = this._readFormDraft(el);
+                const flagsKey = tier === "ambitious" ? "ambitiousOutputFlags" : "outputFlags";
+                if (!draft[flagsKey]) draft[flagsKey] = foundry.utils.deepClone(this._defaultOutputFlags());
+                const rf = draft[flagsKey][MODULE_ID] ?? {};
+                draft[flagsKey][MODULE_ID] = rf;
+                applyMealBuffPresetToFlags(rf, presetId);
+
+                const section = el.querySelector(`[data-meal-tier="${tier}"]`);
+                const prefix = this._mealFieldPrefix(tier);
+                const hidden = section?.querySelector(`[name="${prefix}BuffPresetId"]`);
+                if (hidden) hidden.value = presetId;
+                const summaryEl = section?.querySelector(".recipe-editor-buff-summary-text");
+                if (summaryEl) {
+                    summaryEl.textContent = this._mealBuffSummaryText(presetId, rf);
+                }
+
+                el.querySelectorAll(".recipe-editor-buff-popout-panel").forEach(p => {
+                    p.classList.add("is-hidden");
+                });
+
+                this.#draft = draft;
+            });
+        });
+
+        el.querySelector(".recipe-editor-detail")?.addEventListener("click", ev => {
+            if (!ev.target.closest(".recipe-editor-buff-popout")) {
+                el.querySelectorAll(".recipe-editor-buff-popout-panel").forEach(p => {
+                    p.classList.add("is-hidden");
+                });
+            }
+        });
+
+        el.querySelector("[name=\"enableAmbitious\"]")?.addEventListener("change", ev => {
+            const fields = el.querySelector(".recipe-editor-ambitious-fields");
+            if (fields) fields.classList.toggle("is-hidden", !ev.target.checked);
+        });
+
+        el.querySelector("[data-action=\"pickOutputImg\"]")?.addEventListener("click", () => {
+            this._pickImage(el, "outputImg", ".recipe-editor-img-preview:not(.recipe-editor-img-preview--amb)");
+        });
+
+        el.querySelector("[data-action=\"pickAmbOutputImg\"]")?.addEventListener("click", () => {
+            this._pickImage(el, "ambOutputImg", ".recipe-editor-img-preview--amb");
+        });
+
+        el.querySelector("[data-action=\"saveRecipe\"]")?.addEventListener("click", () => this._saveRecipe(el));
+        el.querySelector("[data-action=\"deleteRecipe\"]")?.addEventListener("click", () => this._deleteRecipe());
+        el.querySelector("[data-action=\"exportJson\"]")?.addEventListener("click", () => this._exportJson());
+        el.querySelector("[data-action=\"importJson\"]")?.addEventListener("click", () => this._importJson());
+    }
+
+    _blankRecipe() {
+        return applyProfessionToolToRecipe({
+            name: "New Recipe",
+            dc: 12,
+            skill: "sur",
+            ingredients: [{ name: "", quantity: 1 }],
+            output: {
+                name: "Custom Output",
+                type: "consumable",
+                quantity: 1,
+                img: "icons/consumables/food/bowl-stew-brown.webp",
+                description: "<p>Custom crafted output.</p>",
+                rarity: "common",
+                system: { type: { value: "food", subtype: "" } }
+            },
+            outputFlags: this._defaultOutputFlags()
+        }, this.#professionId);
+    }
+
+    _defaultOutputFlags() {
+        return {
+            [MODULE_ID]: {
+                foodTag: defaultFoodTagForProfession(this.#professionId),
+                spoilsAfter: 3,
+                partyMeal: false,
+                wellFed: false,
+                satiates: defaultSatiatesForProfession(this.#professionId)
+            }
+        };
+    }
+
+    _applyMealFlagsFromForm(root, draft, tier) {
+        const prefix = this._mealFieldPrefix(tier);
+        const flagsKey = tier === "ambitious" ? "ambitiousOutputFlags" : "outputFlags";
+        if (!draft[flagsKey]) draft[flagsKey] = foundry.utils.deepClone(this._defaultOutputFlags());
+        const rf = draft[flagsKey][MODULE_ID] ?? {};
+        draft[flagsKey][MODULE_ID] = rf;
+
+        rf.partyMeal = root.querySelector(`[name="${prefix}PartyMeal"]`)?.checked ?? false;
+        const satFood = root.querySelector(`[name="${prefix}SatiatesFood"]`)?.checked ?? false;
+        const satWater = root.querySelector(`[name="${prefix}SatiatesWater"]`)?.checked ?? false;
+        rf.satiates = buildSatiatesList(satFood, satWater);
+        if (!rf.satiates.length) {
+            rf.satiates = defaultSatiatesForProfession(this.#professionId);
+        }
+
+        rf.foodTag = root.querySelector(`[name="${prefix}FoodTag"]`)?.value
+            ?? defaultFoodTagForProfession(this.#professionId);
+
+        const spoilsRaw = root.querySelector(`[name="${prefix}SpoilsAfter"]`)?.value?.trim() ?? "";
+        rf.spoilsAfter = spoilsRaw ? (Number(spoilsRaw) || null) : null;
+
+        const presetId = root.querySelector(`[name="${prefix}BuffPresetId"]`)?.value ?? "none";
+        if (presetId !== "custom") {
+            applyMealBuffPresetToFlags(rf, presetId);
+        }
+    }
+
+    _pickImage(root, hiddenName, previewSelector) {
+        const FP = foundry.applications?.apps?.FilePicker?.implementation ?? FilePicker;
+        const hidden = root.querySelector(`[name="${hiddenName}"]`);
+        const preview = root.querySelector(previewSelector);
+        const fp = new FP({
+            type: "image",
+            current: hidden?.value ?? "",
+            callback: path => {
+                if (hidden) hidden.value = path;
+                if (preview) preview.src = path;
+            }
+        });
+        fp.browse();
+    }
+
+    _readFormDraft(root) {
+        const draft = foundry.utils.deepClone(
+            this.#draft
+            ?? game.settings.get(MODULE_ID, "customRecipes")?.[this.#professionId]?.[this.#selectedIndex]
+            ?? this._blankRecipe()
+        );
+
+        draft.name = root.querySelector("[name=\"name\"]")?.value?.trim() ?? draft.name;
+        draft.dc = Number(root.querySelector("[name=\"dc\"]")?.value) || 12;
+        draft.skill = root.querySelector("[name=\"skill\"]")?.value?.trim() || "sur";
+        applyProfessionToolToRecipe(draft, this.#professionId);
+        draft.outputFlags = draft.outputFlags ?? this._defaultOutputFlags();
+        draft.output = draft.output ?? {};
+        draft.output.name = root.querySelector("[name=\"outputName\"]")?.value?.trim() ?? draft.output.name;
+        draft.output.quantity = Number(root.querySelector("[name=\"outputQty\"]")?.value) || 1;
+        draft.output.img = root.querySelector("[name=\"outputImg\"]")?.value?.trim()
+            ?? draft.output.img ?? "icons/consumables/food/bowl-stew-brown.webp";
+        draft.output.type = draft.output.type ?? "consumable";
+        draft.output.rarity = draft.output.rarity ?? "common";
+        draft.output.system = draft.output.system ?? { type: { value: "food", subtype: "" } };
+        draft.output.description = draft.output.description
+            ?? `<p>${draft.output.name}</p>`;
+
+        if (this._isMealProfession(this.#professionId)) {
+            this._applyMealFlagsFromForm(root, draft, "standard");
+        }
+
+        const enableAmbitious = root.querySelector("[name=\"enableAmbitious\"]")?.checked;
+        if (enableAmbitious) {
+            const ambName = root.querySelector("[name=\"ambOutputName\"]")?.value?.trim()
+                || `${draft.output.name} (Fine)`;
+            const ambQty = Number(root.querySelector("[name=\"ambOutputQty\"]")?.value) || 1;
+            const ambImg = root.querySelector("[name=\"ambOutputImg\"]")?.value?.trim() || draft.output.img;
+            draft.ambitiousOutput = {
+                name: ambName,
+                type: "consumable",
+                quantity: ambQty,
+                img: ambImg,
+                description: `<p>${ambName}</p>`,
+                rarity: "uncommon",
+                system: foundry.utils.deepClone(draft.output.system)
+            };
+            draft.ambitiousOutputFlags = foundry.utils.deepClone(
+                draft.ambitiousOutputFlags ?? draft.outputFlags ?? this._defaultOutputFlags()
+            );
+            if (this._isMealProfession(this.#professionId)) {
+                this._applyMealFlagsFromForm(root, draft, "ambitious");
+            }
+        } else {
+            delete draft.ambitiousOutput;
+            delete draft.ambitiousOutputFlags;
+        }
+
+        draft.ingredients = [];
+        for (const row of root.querySelectorAll(".recipe-editor-ingredient-row")) {
+            const name = row.querySelector("[name=\"ingName\"]")?.value?.trim();
+            const qty = Number(row.querySelector("[name=\"ingQty\"]")?.value) || 1;
+            if (name) draft.ingredients.push({ name, quantity: qty });
+        }
+        if (!draft.ingredients.length) draft.ingredients = [{ name: "Rations", quantity: 1 }];
+
+        return draft;
+    }
+
+    async _confirmRecipeOverwrite(messages) {
+        const body = messages.map(line => `<p>${this._esc(line)}</p>`).join("");
+        const confirmFn = game.ionrift?.library?.confirm ?? Dialog.confirm.bind(Dialog);
+        return await confirmFn({
+            title: "Replace existing recipe?",
+            content: body,
+            yesLabel: "Replace",
+            noLabel: "Cancel",
+            yesIcon: "fas fa-save",
+            noIcon: "fas fa-times",
+            defaultYes: false
+        });
+    }
+
+    _flashSavedListItem(index) {
+        requestAnimationFrame(() => {
+            const item = this.element?.querySelector(
+                `[data-action="selectRecipe"][data-index="${index}"]`
+            );
+            if (!item) return;
+            item.classList.add("recipe-editor-list-item--saved-flash");
+            setTimeout(() => item.classList.remove("recipe-editor-list-item--saved-flash"), 1400);
+        });
+    }
+
+    async _saveRecipe(root) {
+        const draft = this._readFormDraft(root);
+        const stored = foundry.utils.deepClone(game.settings.get(MODULE_ID, "customRecipes") ?? {});
+        const list = Array.isArray(stored[this.#professionId]) ? stored[this.#professionId] : [];
+        const isUpdate = this.#selectedIndex >= 0 && this.#selectedIndex < list.length;
+
+        this._ensureRecipeId(draft, list, isUpdate);
+
+        const { valid, errors } = validateCustomRecipe(draft, this.#professionId);
+        if (!valid) {
+            ui.notifications.error(errors.join(" "));
+            return;
+        }
+
+        const overwriteMessages = describeRecipeSaveOverwrite(
+            this.#professionId,
+            draft,
+            list,
+            { isUpdate, selectedIndex: this.#selectedIndex }
+        );
+        if (overwriteMessages.length) {
+            const confirmed = await this._confirmRecipeOverwrite(overwriteMessages);
+            if (!confirmed) return;
+        }
+
+        let savedIndex;
+        if (isUpdate) {
+            list[this.#selectedIndex] = draft;
+            savedIndex = this.#selectedIndex;
+        } else {
+            if (list.length >= CUSTOM_RECIPE_MAX_PER_PROFESSION) {
+                ui.notifications.warn(`Maximum ${CUSTOM_RECIPE_MAX_PER_PROFESSION} custom recipes per profession.`);
+                return;
+            }
+            list.push(draft);
+            savedIndex = list.length - 1;
+        }
+
+        stored[this.#professionId] = list;
+        await game.settings.set(MODULE_ID, "customRecipes", sanitizeCustomRecipes(stored));
+
+        const engine = game.ionrift?.respite?.craftingEngine;
+        if (engine) applyCustomRecipesToEngine(engine);
+
+        this.#flashSavedIndex = savedIndex;
+        this.#selectedIndex = -1;
+        this.#draft = this._blankRecipe();
+        ui.notifications.info(`Saved "${draft.name}".`);
+        await this.render();
+        this.#flashSavedIndex = null;
+        this._flashSavedListItem(savedIndex);
+    }
+
+    /**
+     * Assign a stable internal id. Hidden from the UI; preserved on edit, generated on create.
+     * JSON import/export remains the path to set ids that override pack recipes.
+     * @param {Object} draft
+     * @param {Object[]} list
+     * @param {boolean} isUpdate
+     */
+    _ensureRecipeId(draft, list, isUpdate) {
+        if (isUpdate && draft.id) return;
+
+        const taken = new Set(list.map(r => r.id).filter(Boolean));
+        if (draft.id && !taken.has(draft.id)) return;
+
+        let candidate = `custom_${this.#professionId}_${Date.now()}`;
+        while (taken.has(candidate)) {
+            candidate = `custom_${this.#professionId}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        }
+        draft.id = candidate;
+    }
+
+    async _deleteRecipe() {
+        const stored = foundry.utils.deepClone(game.settings.get(MODULE_ID, "customRecipes") ?? {});
+        const list = stored[this.#professionId] ?? [];
+        if (this.#selectedIndex < 0 || this.#selectedIndex >= list.length) return;
+        list.splice(this.#selectedIndex, 1);
+        stored[this.#professionId] = list;
+        await game.settings.set(MODULE_ID, "customRecipes", sanitizeCustomRecipes(stored));
+        this.#selectedIndex = Math.max(0, this.#selectedIndex - 1);
+        this.#draft = null;
+        ui.notifications.info("Recipe removed.");
+        this.render();
+    }
+
+    _exportJson() {
+        const data = game.settings.get(MODULE_ID, "customRecipes") ?? {};
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "ionrift-custom-recipes.json";
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    async _importJson() {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".json,application/json";
+        input.addEventListener("change", async () => {
+            const file = input.files?.[0];
+            if (!file) return;
+            try {
+                const text = await file.text();
+                const parsed = JSON.parse(text);
+                await game.settings.set(MODULE_ID, "customRecipes", sanitizeCustomRecipes(parsed));
+                ui.notifications.info("Custom recipes imported.");
+                this.#selectedIndex = 0;
+                this.#draft = null;
+                this.render();
+            } catch (err) {
+                console.error(err);
+                ui.notifications.error("Could not parse recipe JSON.");
+            }
+        });
+        input.click();
+    }
+}

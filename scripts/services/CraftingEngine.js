@@ -20,6 +20,7 @@ import { SpoilageClock } from "./SpoilageClock.js";
 import { ItemClassifier } from "./ItemClassifier.js";
 import { GrantLedger } from "./GrantLedger.js";
 import { getPartyActors } from "./partyActors.js";
+import { mergeRecipeLists } from "./RecipeCatalog.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -37,6 +38,16 @@ export class CraftingEngine {
      */
     load(professionId, recipeData) {
         this.recipes.set(professionId, recipeData);
+    }
+
+    /**
+     * Merge pack/stub recipes with GM custom entries (custom overrides by id).
+     * @param {Object[]} baseRecipes
+     * @param {Object[]} customRecipes
+     * @returns {Object[]}
+     */
+    static mergeRecipes(baseRecipes, customRecipes) {
+        return mergeRecipeLists(baseRecipes, customRecipes);
     }
 
     /**

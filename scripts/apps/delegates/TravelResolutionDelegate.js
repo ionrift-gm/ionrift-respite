@@ -80,7 +80,7 @@ export class TravelResolutionDelegate {
         this.#app = app;
         this.#resolver = new TravelResolver();
         const idx = game.ionrift?.respite?.travelBasePoolIndex;
-        if (idx) this.#resolver.loadBaseItems(idx);
+        if (idx) this.#resolver.loadBaseItems(idx, game.ionrift?.respite?.travelFolderPathMap);
     }
 
     /**
@@ -202,6 +202,15 @@ export class TravelResolutionDelegate {
         this.#resolver.loadPools(poolData);
         this.#poolsLoaded = true;
         if (fromImportedPack) this.#resourcePoolsFromPack = true;
+    }
+
+    /**
+     * Load hunt yield tables from imported pack JSON.
+     * @param {Record<string, { standard?: Object[], exceptional?: Object[] }>} yieldData
+     */
+    loadHuntYieldsFromData(yieldData) {
+        if (!yieldData || typeof yieldData !== "object") return;
+        this.#resolver.loadHuntYields(yieldData);
     }
 
     /** @returns {boolean} */

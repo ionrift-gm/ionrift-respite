@@ -76,8 +76,10 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
                 : ItemClassifier.getDiet(actor);
 
             const presetMatch = this._detectPreset(diet);
-            const isEssence = (diet.sustenanceType ?? "food") === "essence";
-            const isFood = !isEssence;
+            const sType = diet.sustenanceType ?? "food";
+            const isNone = sType === "none";
+            const isEssence = sType === "essence";
+            const isFood = !isEssence && !isNone;
             const eatsFuel = diet.canEat.includes("fuel");
 
             return {
@@ -87,6 +89,7 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
                 diet,
                 presetId: presetMatch,
                 expanded: this.#expanded.has(actor.id),
+                isNone,
                 isEssence,
                 isFood,
                 eatsFuel
@@ -168,7 +171,7 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
                     <img class="diet-actor-portrait" src="${row.img}" alt="${row.name}" />
                     <div class="diet-actor-info">
                         <span class="diet-actor-name">${row.name}</span>
-                        <span class="diet-actor-label">${row.diet.label}${row.isEssence ? ' <i class="fas fa-bolt diet-essence-icon"></i>' : ""}</span>
+                        <span class="diet-actor-label">${row.diet.label}${row.isEssence ? ' <i class="fas fa-bolt diet-essence-icon"></i>' : ""}${row.isNone ? ' <i class="fas fa-ban diet-none-icon" title="No sustenance required"></i>' : ""}</span>
                     </div>
                     <select class="diet-preset-select" data-actor-id="${row.id}">
                         ${presetOptions}
@@ -181,7 +184,14 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
             if (row.expanded) {
                 html += `<div class="diet-detail-panel" data-actor-id="${row.id}">`;
 
-                if (row.isFood) {
+                if (row.isNone) {
+                    html += `
+                    <div class="diet-none-hint">
+                        <i class="fas fa-info-circle"></i>
+                        This character does not need food, water, or essence during rest, and cannot receive cooked meal buffs.
+                        Choose <strong>Construct (Maintenance)</strong> or another essence preset if upkeep is required.
+                    </div>`;
+                } else if (row.isFood) {
                     // Food tags for biological characters
                     const canEatTags = row.diet.canEatTags ?? ["meat", "plant", "prepared"];
                     html += `
@@ -200,6 +210,7 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
                     </div>`;
                 }
 
+                if (!row.isNone) {
                 if (row.eatsFuel) {
                     html += `
                     <div class="diet-field-row">
@@ -280,6 +291,7 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
                         <i class="fas fa-plus"></i> Add custom items or exclusions
                     </button>
                     `;
+                }
                 }
 
                 html += `</div>`;

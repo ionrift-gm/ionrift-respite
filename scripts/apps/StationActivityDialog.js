@@ -24,8 +24,10 @@ import {
 import { buildActivityListItem, buildActivityDetailContext } from "./ActivityDetailBuilder.js";
 import { computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, getDetectMagicPlayerAccessReason, spawnDetectMagicCastRipple } from "./delegates/DetectMagicDelegate.js";
 import { canPlaceStation, actorHasBrewingTools } from "../services/CompoundCampPlacer.js";
-import { getPartyActors } from "../services/partyActors.js";
+import { getPartyActors, getFoodBuffPartyActors, getMealEligiblePartyActors } from "../services/partyActors.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
+import { formatMealBuffPreview } from "../services/MealBuffPresets.js";
+import { ItemClassifier } from "../services/ItemClassifier.js";
 import { emitFeastServeRequest, emitActivityColdCampRequest } from "../services/SocketController.js";
 import { CampGearScanner } from "../services/CampGearScanner.js";
 import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../services/StationInteractionLayer.js";
@@ -97,6 +99,8 @@ function _creditFeastMealState(restApp, partyIds, satiates) {
     const wpd = terrainMealRules.waterPerDay ?? 2;
 
     for (const pid of partyIds) {
+        const actor = game.actors.get(pid);
+        if (!actor || !ItemClassifier.requiresSustenance(actor)) continue;
         // Skip characters already submitted; feast credit is additive, not overwriting
         if (restApp._activityMealRationsSubmitted.has(pid)) continue;
 
@@ -693,23 +697,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
      * @returns {object|null}
      */
     _formatBuffPreview(buff) {
-        if (!buff) return null;
-        const labels = {
-            temp_hp: "Temp HP",
-            advantage: "Advantage",
-            exhaustion_save: "Exhaustion Save"
-        };
-        const durationLabels = {
-            immediate: "Immediate",
-            untilLongRest: "Until long rest",
-            nextSave: "Next save"
-        };
-        return {
-            label: labels[buff.type] ?? buff.type,
-            formula: buff.formula ?? "",
-            duration: durationLabels[buff.duration] ?? buff.duration ?? "",
-            target: buff.target ?? "self"
-        };
+        return formatMealBuffPreview(buff);
     }
 
     /** Compute station tab definitions. Shared by list and crafting contexts. */
@@ -899,7 +887,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                     ...this._craftResult,
                     isPartyMeal: !!(selectedRecipe?.isPartyMeal ?? false),
                     partyMealDispositionDone: this._partyMealOutcomeResolved,
-                    partyRoster: getPartyActors().map(a => ({
+                    partyRoster: getFoodBuffPartyActors().map(a => ({
                         id: a.id,
                         name: a.name,
                         img: a.img || "icons/svg/mystery-man.svg",
@@ -1540,20 +1528,23 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         this._feastServeInFlight = true;
         try {
-            const partyIds = getPartyActors().map(a => a.id);
+            const buffPartyIds = getFoodBuffPartyActors().map(a => a.id);
+            const satiationPartyIds = getMealEligiblePartyActors()
+                .filter(a => ItemClassifier.requiresSustenance(a))
+                .map(a => a.id);
             const snapshot = item.toObject(false);
 
             if (game.user.isGM) {
                 await MealPhaseHandler._dispatchWellFedMealServing({
                     consumerActor: actor,
                     itemSnapshot: snapshot,
-                    partyIds
+                    partyIds: buffPartyIds
                 });
             } else {
                 emitFeastServeRequest({
                     cookActorId: actor.id,
                     itemSnapshot: snapshot,
-                    partyIds,
+                    partyIds: buffPartyIds,
                     feastMode: "feast"
                 });
             }
@@ -1573,7 +1564,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 const feastFlags = snapshot.flags?.[MODULE_ID] ?? {};
                 const satiates = Array.isArray(feastFlags.satiates) ? feastFlags.satiates : [];
                 if (satiates.length) {
-                    _creditFeastMealState(restApp, partyIds, satiates);
+                    _creditFeastMealState(restApp, satiationPartyIds, satiates);
                 }
             }
 

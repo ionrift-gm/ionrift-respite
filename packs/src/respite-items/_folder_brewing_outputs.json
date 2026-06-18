@@ -1,0 +1,10 @@
+{
+    "_key": "!folders!brewout00000001",
+    "_id": "brewout00000001",
+    "name": "Brewing Outputs",
+    "type": "Item",
+    "sorting": "a",
+    "sort": 250,
+    "color": "#5c7a99",
+    "flags": {}
+}

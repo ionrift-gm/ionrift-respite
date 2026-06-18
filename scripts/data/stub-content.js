@@ -299,6 +299,141 @@ export const STUB_RECIPES = {
                 }
             }
         }
+    ],
+    brewing: [
+        {
+            id: "stub_herbal_tea",
+            name: "Herbal Tea",
+            profession: "brewing",
+            description: "Steep wild herbs into a calming tea.",
+            toolRequired: "brewer",
+            skill: "wis",
+            dc: 12,
+            ingredients: [
+                { name: "Wild Herbs", quantity: 2 },
+                { name: "Water", quantity: 1, resourceType: "water" }
+            ],
+            output: {
+                name: "Herbal Tea",
+                type: "consumable",
+                quantity: 1,
+                img: "icons/consumables/drinks/tea-jasmine-green.webp",
+                description: "<p>A warm herbal infusion. Slight edge on the next Wisdom save.</p>",
+                rarity: "common",
+                system: { type: { value: "potion", subtype: "" } }
+            },
+            outputFlags: {
+                "ionrift-respite": {
+                    foodTag: "drink",
+                    spoilsAfter: 2,
+                    partyMeal: false,
+                    wellFed: false,
+                    satiates: ["water"],
+                    buff: {
+                        type: "save_advantage",
+                        save: "wis",
+                        duration: "4_hours",
+                        target: "self"
+                    }
+                }
+            },
+            ambitiousOutput: {
+                name: "Restorative Herbal Tea",
+                type: "consumable",
+                quantity: 1,
+                img: "icons/consumables/drinks/tea-jasmine-green.webp",
+                description: "<p>A strong brew shared around the fire. The whole party gains the benefit.</p>",
+                rarity: "uncommon",
+                system: { type: { value: "potion", subtype: "" } }
+            },
+            ambitiousOutputFlags: {
+                "ionrift-respite": {
+                    foodTag: "drink",
+                    spoilsAfter: 2,
+                    partyMeal: false,
+                    wellFed: false,
+                    satiates: ["water"],
+                    buff: {
+                        type: "save_advantage",
+                        save: "wis",
+                        duration: "4_hours",
+                        target: "party"
+                    }
+                }
+            }
+        },
+        {
+            id: "stub_berry_cordial",
+            name: "Berry Cordial",
+            profession: "brewing",
+            description: "Mash foraged berries into a sweet cordial.",
+            toolRequired: "brewer",
+            skill: "wis",
+            dc: 11,
+            ingredients: [{ name: "Wild Berries", quantity: 3 }],
+            output: {
+                name: "Berry Cordial",
+                type: "consumable",
+                quantity: 1,
+                img: "icons/consumables/drinks/wine-amphora-pink.webp",
+                description: "<p>Sweet berry cordial. +1 on the next Constitution save.</p>",
+                rarity: "common",
+                system: { type: { value: "potion", subtype: "" } }
+            },
+            outputFlags: {
+                "ionrift-respite": {
+                    foodTag: "drink",
+                    spoilsAfter: 3,
+                    partyMeal: false,
+                    wellFed: false,
+                    satiates: ["food"],
+                    buff: {
+                        type: "save_bonus",
+                        save: "con",
+                        formula: "1",
+                        duration: "4_hours",
+                        target: "self"
+                    }
+                }
+            }
+        },
+        {
+            id: "stub_hunters_brew",
+            name: "Hunter's Brew",
+            profession: "brewing",
+            description: "Brew herbs and game drippings into a hearty camp drink.",
+            toolRequired: "brewer",
+            skill: "wis",
+            dc: 12,
+            ingredients: [
+                { name: "Wild Herbs", quantity: 1 },
+                { name: "Fresh Meat", quantity: 1 }
+            ],
+            output: {
+                name: "Hunter's Brew",
+                type: "consumable",
+                quantity: 1,
+                img: "icons/consumables/drinks/mug-metal-brown.webp",
+                description: "<p>A savory broth-drink. Steadies the nerves before a hunt.</p>",
+                rarity: "common",
+                system: { type: { value: "potion", subtype: "" } }
+            },
+            outputFlags: {
+                "ionrift-respite": {
+                    foodTag: "drink",
+                    spoilsAfter: 2,
+                    partyMeal: false,
+                    wellFed: false,
+                    satiates: ["food", "water"],
+                    buff: {
+                        type: "initiative_bonus",
+                        formula: "1",
+                        duration: "4_hours",
+                        target: "self"
+                    }
+                }
+            }
+        }
     ]
 };
 
@@ -368,3 +503,34 @@ export const STUB_POOLS = [
         ]
     }
 ];
+
+// ═══════════════════════════════════════════════════════════════
+//  HUNT YIELDS (built-in fallback when no pack tables loaded)
+// ═══════════════════════════════════════════════════════════════
+
+export const STUB_HUNT_YIELDS = {
+    forest: {
+        standard: [{ type: "meat", qty: 1 }],
+        exceptional: [{ type: "meat", qty: 1 }, { type: "choice_cut", qty: 1 }]
+    },
+    swamp: {
+        standard: [{ type: "fish", qty: 1 }],
+        exceptional: [{ type: "fish", qty: 2 }]
+    },
+    mountain: {
+        standard: [{ type: "meat", qty: 1 }],
+        exceptional: [{ type: "choice_cut", qty: 1 }]
+    },
+    arctic: {
+        standard: [{ type: "meat", qty: 1 }],
+        exceptional: [{ type: "meat", qty: 1 }, { type: "animal_fat", qty: 1 }]
+    },
+    desert: {
+        standard: [{ type: "meat", qty: 1 }],
+        exceptional: [{ type: "meat", qty: 1 }, { type: "venom_sac", qty: 1 }]
+    },
+    wilderness: {
+        standard: [{ type: "meat", qty: 1 }],
+        exceptional: [{ type: "choice_cut", qty: 1 }, { type: "meat", qty: 1 }]
+    }
+};

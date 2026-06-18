@@ -4,7 +4,10 @@
  * (`game.ionrift.library.party`). Falls back to the legacy Respite setting
  * if the library is unavailable (defensive, should not happen in production
  * since Respite requires Library ≥ 2.0.0).
- *
+ */
+import { ItemClassifier } from "./ItemClassifier.js";
+
+/**
  * @returns {Actor[]}
  */
 export function getPartyActors() {
@@ -20,4 +23,14 @@ export function getPartyActors() {
         }
     } catch { /* setting not registered yet */ }
     return game.actors.filter(a => a.hasPlayerOwner && a.type === "character");
+}
+
+/** Party members who participate in meal tracking (excludes no-sustenance diets). */
+export function getMealEligiblePartyActors() {
+    return getPartyActors().filter(a => ItemClassifier.participatesInSustenance(a));
+}
+
+/** Party members who can receive cooked meal and Well Fed buffs. */
+export function getFoodBuffPartyActors() {
+    return getPartyActors().filter(a => ItemClassifier.acceptsFoodBuffs(a));
 }

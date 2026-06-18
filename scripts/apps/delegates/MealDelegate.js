@@ -198,7 +198,7 @@ export class MealDelegate {
             if (!owned.has(id)) continue;
             const actor = game.actors.get(id);
             if (!actor || actor.type !== "character") continue;
-            if (ItemClassifier.getSustenanceType(actor) === "none") continue;
+            if (!ItemClassifier.participatesInSustenance(actor)) continue;
             out.add(id);
         }
         return out;
