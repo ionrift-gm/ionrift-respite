@@ -103,6 +103,11 @@ export class DnD5eAdapter extends SystemAdapter {
         );
         const isWizard = !!classEntries.wizard || classNames.has("wizard");
         if (isWizard) return true;
+        // Warlock with Pact of the Tome (Book of Shadows) is the only other class
+        // that transcribes spells into a book. Other classes carrying a spellbook
+        // item (loot, divine casters, etc.) do not qualify.
+        const isWarlock = !!classEntries.warlock || classNames.has("warlock");
+        if (!isWarlock) return false;
         return (actor.items ?? []).some(i =>
             i.name?.toLowerCase().includes("spellbook") ||
             i.name?.toLowerCase().includes("book of shadows")
