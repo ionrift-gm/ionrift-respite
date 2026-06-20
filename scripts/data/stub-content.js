@@ -11,6 +11,40 @@
 export const STUB_RECIPES = {
     cooking: [
         {
+            id: "stub_chef_bolstering_treats",
+            name: "Bolstering Treats",
+            profession: "cooking",
+            description: "Chef feat: bake small treats. Each grants temporary hit points equal to your proficiency bonus when eaten (bonus action). Last 8 hours.",
+            toolRequired: "cook",
+            skill: "sur",
+            dc: 8,
+            chefFeatRequired: true,
+            outputQuantityProficiency: true,
+            ingredients: [],
+            output: {
+                name: "Bolstering Treat",
+                type: "consumable",
+                quantity: 1,
+                img: "icons/consumables/food/cookie-biscuit-brown.webp",
+                description: "<p>A small baked treat from a Chef. Eat as a bonus action to gain temporary hit points equal to the cook's proficiency bonus. Spoils after 8 hours.</p>",
+                rarity: "common",
+                system: { type: { value: "food", subtype: "" } }
+            },
+            outputFlags: {
+                "ionrift-respite": {
+                    foodTag: "prepared",
+                    spoilsAfterHours: 8,
+                    wellFed: false,
+                    chefTreat: true,
+                    buff: {
+                        type: "temp_hp",
+                        formula: "@prof",
+                        target: "self"
+                    }
+                }
+            }
+        },
+        {
             id: "stub_camp_porridge",
             name: "Camp Porridge",
             profession: "cooking",
@@ -122,7 +156,7 @@ export const STUB_RECIPES = {
                 name: "Roasted Mushrooms",
                 type: "consumable",
                 quantity: 1,
-                img: "icons/consumables/food/plate-chicken-grilled-mushroom-brown.webp",
+                img: "icons/consumables/mushrooms/bell-shiitake-brown.webp",
                 description: "<p>Mushrooms roasted over a campfire. Counts as a meal.</p>",
                 rarity: "common",
                 system: { type: { value: "food", subtype: "" } }
@@ -131,7 +165,7 @@ export const STUB_RECIPES = {
                 name: "Seared Mushroom Medley",
                 type: "consumable",
                 quantity: 1,
-                img: "icons/consumables/food/plate-chicken-grilled-mushroom-brown.webp",
+                img: "icons/consumables/mushrooms/bell-shiitake-brown.webp",
                 description: "<p>A mix of wild mushrooms, seared with herbs.</p>",
                 rarity: "uncommon",
                 system: { type: { value: "food", subtype: "" } }

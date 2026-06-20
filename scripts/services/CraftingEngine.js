@@ -21,6 +21,7 @@ import { ItemClassifier } from "./ItemClassifier.js";
 import { GrantLedger } from "./GrantLedger.js";
 import { getPartyActors } from "./partyActors.js";
 import { mergeRecipeLists } from "./RecipeCatalog.js";
+import { hasChefFeat, getChefTreatOutputQuantity, getChefProficiencyBonus } from "./ChefFeat.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -74,16 +75,6 @@ export class CraftingEngine {
     }
 
     /**
-     * @param {Actor} actor
-     * @returns {boolean}
-     */
-    static _hasChefFeat(actor) {
-        return actor?.items?.some(i =>
-            i.type === "feat" && i.name?.toLowerCase() === "chef"
-        ) ?? false;
-    }
-
-    /**
      * DC used for the crafting check and UI (risk tier, terrain, Chef feat -2).
      * @param {Actor} actor
      * @param {Object} recipe
@@ -108,7 +99,7 @@ export class CraftingEngine {
         const base = recipe.dc ?? 12;
         const riskMod = riskMods[riskTier] ?? 0;
         const terrainMod = (terrainTag && recipe.terrainDcModifier?.[terrainTag]) ?? 0;
-        const chefMod = CraftingEngine._hasChefFeat(actor) ? -2 : 0;
+        const chefMod = hasChefFeat(actor) ? -2 : 0;
 
         const factors = [];
         if (riskMod !== 0) {
@@ -153,6 +144,11 @@ export class CraftingEngine {
             // Terrain filter: if recipe specifies terrains array, current terrain must match
             if (terrainTag && recipe.terrains?.length && !recipe.terrains.includes(terrainTag)) {
                 continue; // Silently omit - not available in this terrain
+            }
+
+            if (recipe.chefFeatRequired && !hasChefFeat(actor)) {
+                locked.push({ ...recipe, reason: "Requires Chef feat" });
+                continue;
             }
 
             // Check tool prerequisite
@@ -210,7 +206,7 @@ export class CraftingEngine {
         const useAmbitiousOutput = Boolean(
             recipe.ambitiousOutput
             && (riskTier === "ambitious"
-                || (CraftingEngine._hasChefFeat(actor) && naturalRoll === 20))
+                || (hasChefFeat(actor) && naturalRoll === 20))
         );
 
         await roll.toMessage({
@@ -228,6 +224,10 @@ export class CraftingEngine {
             let output = useAmbitiousOutput
                 ? recipe.ambitiousOutput
                 : recipe.output;
+
+            if (output && recipe.outputQuantityProficiency) {
+                output = { ...output, quantity: getChefTreatOutputQuantity(actor) };
+            }
 
             if (terrainTag && recipe.terrainVariants?.[terrainTag]) {
                 const variant = recipe.terrainVariants[terrainTag];
@@ -247,8 +247,16 @@ export class CraftingEngine {
                 if (consumeIngredients) {
                     await this._consumeIngredients(actor, recipe.ingredients, partySize);
                 }
-                const createdItems = await this._createOutputItems(actor, output, outputFlags);
-                return { createdItems, output, outputFlags };
+                let grantFlags = outputFlags;
+                if (outputFlags?.[MODULE_ID]?.chefTreat) {
+                    grantFlags = foundry.utils.deepClone(outputFlags);
+                    grantFlags[MODULE_ID] = {
+                        ...grantFlags[MODULE_ID],
+                        chefTreatProfBonus: getChefProficiencyBonus(actor)
+                    };
+                }
+                const createdItems = await this._createOutputItems(actor, output, grantFlags);
+                return { createdItems, output, outputFlags: grantFlags };
             };
 
             let createdItems = [];

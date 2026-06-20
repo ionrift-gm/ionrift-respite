@@ -8,6 +8,7 @@ import { resolvePoolFromFolderPath } from "./CompendiumFolderIndex.js";
 import {
     compendiumIndexDocumentId,
     compendiumIndexToArray,
+    getRegisteredProvisionPackIds,
     loadTravelProvisionBatches,
     provisionEntryWeight,
     provisionQualityRank,
@@ -26,8 +27,7 @@ const TABLE_PREFIX = "Respite: Forage";
 /** Max synced rows per terrain table (Foundry dice + sheet usability). */
 export const FORAGE_TABLE_MAX_ENTRIES = 100;
 
-const CACHE_PACK_ID = "ionrift-respite.respite-cache-utility";
-const WATCHED_PACK_IDS = [PROVISIONS_CUSTOM_PACK_ID, MODULE_PACK_ID, CACHE_PACK_ID];
+const WATCHED_PACK_IDS = [PROVISIONS_CUSTOM_PACK_ID, MODULE_PACK_ID];
 const PLAYER_OBSERVER = (typeof CONST !== "undefined" && CONST.DOCUMENT_OWNERSHIP_LEVELS?.OBSERVER) ?? 2;
 
 let syncTimer = null;
@@ -218,7 +218,10 @@ export class ForageTableSync {
             const packId = doc?.pack?.collection
                 ?? doc?.collection?.metadata?.id
                 ?? null;
-            if (!packId || !WATCHED_PACK_IDS.includes(packId)) return;
+            if (!packId) return;
+            const watched = WATCHED_PACK_IDS.includes(packId)
+                || getRegisteredProvisionPackIds().includes(packId);
+            if (!watched) return;
             ForageTableSync.scheduleSync();
         };
 

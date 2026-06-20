@@ -40,6 +40,7 @@ import {
     spawnDetectMagicCastRipple
 } from "./delegates/DetectMagicDelegate.js";
 import { getShortRestRechargeLabels } from "../services/ShortRestRecharge.js";
+import { scanEligibleChefs, rollChefMealBonus } from "../services/ChefFeat.js";
 import { setNativeShortRestUnsuppressed } from "../services/NativeRestPass.js";
 import {
     emitShortRestWorkbenchSync,
@@ -92,6 +93,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             confirmRecovery:      ShortRestApp.#onConfirmRecovery,
             editRecovery:         ShortRestApp.#onEditRecovery,
             volunteerSong:             ShortRestApp.#onVolunteerSong,
+            volunteerChefMeal:         ShortRestApp.#onVolunteerChefMeal,
             toggleShortRestFinished:   ShortRestApp.#onToggleShortRestFinished,
             switchShortRestTab:        ShortRestApp.#onSwitchTab,
             selectWorkbenchRosterActor: ShortRestApp.#onSelectWorkbenchRosterActor,
@@ -141,6 +143,17 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         /** Bard who volunteered Song of Rest. Null until a bard player offers.
          * @type {{ actorId: string, bardName: string, bardLevel: number, songDie: string }|null} */
         this._songVolunteer = null;
+
+        /** Chef who volunteered Replenishing Meal for this short rest. */
+        this._chefVolunteer = null;
+        /** How many eaters have received the Chef meal +1d8 this rest. */
+        this._chefMealServedCount = 0;
+
+        /**
+         * actorId -> Chef meal +1d8 already applied with an HD spend this rest.
+         * @type {Map<string, { total: number, formula: string, chefName: string }>}
+         */
+        this._chefMealBonusByActor = new Map();
 
         /** User IDs who signalled they are done with short rest actions (synced). */
         this._finishedUsers = new Set();
@@ -196,6 +209,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     activeShelter: this._activeShelter,
                     rpPrompt: this._rpPrompt,
                     songVolunteer: this._songVolunteer,
+                    chefVolunteer: this._chefVolunteer,
+                    chefMealServedCount: this._chefMealServedCount,
+                    chefMealBonuses: this._serializeChefMealBonuses(),
                     workbench: this._serializeWorkbenchStateForNet(),
                 });
                 void this._saveShortRestState();
@@ -251,6 +267,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._spellRecovery.clear();
             this._songBonusByActor.clear();
             this._songVolunteer = null;
+            this._chefVolunteer = null;
+            this._chefMealServedCount = 0;
+            this._chefMealBonusByActor.clear();
             this._finishedUsers.clear();
             this._workbenchIdentifyStaging?.clear();
             this._workbenchIdentifyAcknowledge?.clear();
@@ -427,6 +446,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const songTiming = game.settings.get(MODULE_ID, SONG_TIMING_KEY) ?? "endOfRest";
         const eligibleBards = HitDieModifiers.scanAllEligibleBards(partyActors);
+        const eligibleChefs = scanEligibleChefs(partyActors);
 
         // Build character cards
         const characters = partyActors.map(a => {
@@ -439,6 +459,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const totalHealed = rolls.reduce((sum, r) => sum + (Number(r.total) || 0), 0);
             const songBonusRecord = this._songBonusByActor.get(a.id);
             const songBonusTotal = songBonusRecord?.total ?? 0;
+            const chefMealRecord = this._chefMealBonusByActor.get(a.id);
+            const chefMealTotal = chefMealRecord?.total ?? 0;
 
             // Build pip array
             const hdPips = [];
@@ -480,6 +502,15 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const hasVolunteeredSong = this._songVolunteer?.actorId === a.id;
             const songAlreadyClaimed = !!this._songVolunteer && !hasVolunteeredSong;
 
+            const chefInfo = eligibleChefs.find(c => c.actorId === a.id);
+            const isEligibleChef = !!chefInfo;
+            const canInteractChef = isEligibleChef && (this._isGM || a.isOwner);
+            const hasVolunteeredChef = this._chefVolunteer?.actorId === a.id;
+            const chefAlreadyClaimed = !!this._chefVolunteer && !hasVolunteeredChef;
+            const chefMealsRemaining = this._chefVolunteer
+                ? Math.max(0, this._chefVolunteer.mealCapacity - this._chefMealServedCount)
+                : 0;
+
             const linkedId = game.user.character?.id ?? null;
             const isSelfCard = !this._isGM && (
                 (linkedId ? linkedId === a.id : false)
@@ -500,6 +531,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 rolls,
                 totalHealed,
                 songBonusTotal,
+                chefMealTotal,
                 songCard,
                 noHdLeft: hdData.remaining <= 0,
                 isOwner: this._isGM || a.isOwner,
@@ -514,6 +546,12 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 hasVolunteeredSong,
                 songVolunteerLocked: songAlreadyClaimed,
                 bardSongDie: bardInfo?.songDie ?? null,
+                isEligibleChef,
+                canVolunteerChef: canInteractChef && !chefAlreadyClaimed,
+                hasVolunteeredChef,
+                chefVolunteerLocked: chefAlreadyClaimed,
+                chefMealCapacity: chefInfo?.mealCapacity ?? null,
+                chefMealsRemaining,
             };
 
             const recoveryInfo = SpellSlotRecovery.detect(a);
@@ -695,6 +733,13 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     songDie: this._songVolunteer.songDie,
                     timingEnd: songTiming === "endOfRest",
                     timingImmediate: songTiming === "withFirstHitDie",
+                }
+                : null,
+            chefReplenishing: this._chefVolunteer
+                ? {
+                    chefName: this._chefVolunteer.chefName,
+                    mealCapacity: this._chefVolunteer.mealCapacity,
+                    mealsRemaining: Math.max(0, this._chefVolunteer.mealCapacity - this._chefMealServedCount),
                 }
                 : null,
             banner: isRopeTrick
@@ -908,23 +953,48 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this.render();
     }
 
+    static async #onVolunteerChefMeal(event, target) {
+        if (this._completionPhase) return;
+        const actorId = target.dataset.actorId;
+        const actor = game.actors.get(actorId);
+        if (!actor) return;
+        if (!this._isGM && !actor.isOwner) return;
+
+        if (this._chefVolunteer?.actorId === actorId) {
+            this._chefVolunteer = null;
+            this._chefMealServedCount = 0;
+            this._chefMealBonusByActor.clear();
+        } else if (!this._chefVolunteer) {
+            const partyActors = getPartyActors();
+            const chefInfo = scanEligibleChefs(partyActors).find(c => c.actorId === actorId);
+            if (!chefInfo) return;
+            this._chefVolunteer = { ...chefInfo };
+            this._chefMealServedCount = 0;
+            this._chefMealBonusByActor.clear();
+        } else {
+            return;
+        }
+
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "shortRestChefVolunteer",
+            chefVolunteer: this._chefVolunteer,
+            chefMealServedCount: this._chefMealServedCount,
+            chefMealBonuses: this._serializeChefMealBonuses(),
+        });
+        if (this._isGM) this._saveShortRestState();
+        this.render();
+    }
+
     static #escapeChat(str) {
         const fn = globalThis.foundry?.utils?.escapeHTML;
         return fn ? fn(String(str ?? "")) : String(str ?? "");
     }
 
-    /**
-     * @param {Actor[]} partyActors
-     * @returns {Actor|null}
-     */
-    static #findChefActor(partyActors) {
-        for (const a of partyActors) {
-            for (const i of a.items ?? []) {
-                if (i.type !== "feat" && i.type !== "background") continue;
-                if (String(i.name ?? "").toLowerCase().includes("chef")) return a;
-            }
-        }
-        return null;
+    static #buildChefMealChat(chefName, recipientName, formula, total) {
+        const c = ShortRestApp.#escapeChat(chefName);
+        const r = ShortRestApp.#escapeChat(recipientName);
+        const f = ShortRestApp.#escapeChat(formula);
+        return `<div class="respite-chef-meal respite-chat-parchment"><div class="respite-song-title"><i class="fas fa-utensils"></i> Replenishing Meal</div><p><strong>${r}</strong> gains <strong>+${total} HP</strong> <span class="respite-song-meta">(${f})</span> from <em>${c}</em>'s short-rest cooking (with Hit Dice).</p></div>`;
     }
 
     /**
@@ -1232,6 +1302,52 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
+        /** @type {{ actorId: string, total: number, formula: string, chefName: string }|null} */
+        let chefMealBonusUpdate = null;
+
+        if (this._chefVolunteer
+            && this._chefMealServedCount < this._chefVolunteer.mealCapacity
+            && !this._chefMealBonusByActor.has(actorId)) {
+            const chefRoll = await rollChefMealBonus();
+            const mealAdapter = game.ionrift?.respite?.adapter;
+            if (chefRoll.total > 0) {
+                if (mealAdapter) {
+                    await mealAdapter.applyHPRestore(actor, chefRoll.total);
+                } else {
+                    const hpNow = actor.system?.attributes?.hp;
+                    if (hpNow) {
+                        const newHp = Math.min((hpNow.value ?? 0) + chefRoll.total, hpNow.max ?? 0);
+                        await actor.update({ "system.attributes.hp.value": newHp });
+                    }
+                }
+            }
+            this._chefMealServedCount += 1;
+            this._chefMealBonusByActor.set(actorId, {
+                total: chefRoll.total,
+                formula: chefRoll.formula,
+                chefName: this._chefVolunteer.chefName,
+            });
+            chefMealBonusUpdate = {
+                actorId,
+                total: chefRoll.total,
+                formula: chefRoll.formula,
+                chefName: this._chefVolunteer.chefName,
+            };
+            try {
+                await ChatMessage.create({
+                    content: ShortRestApp.#buildChefMealChat(
+                        this._chefVolunteer.chefName,
+                        actor.name,
+                        chefRoll.formula,
+                        chefRoll.total
+                    ),
+                    speaker: ChatMessage.getSpeaker({ actor: game.actors.get(this._chefVolunteer.actorId) }),
+                });
+            } catch (err) {
+                Logger.warn(`${MODULE_ID} | Chef meal chat message failed:`, err);
+            }
+        }
+
         // Broadcast to other clients
         game.socket.emit(`module.${MODULE_ID}`, {
             type: "shortRestHdSpent",
@@ -1241,6 +1357,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             conMod,
             annotations: [...mergedAnnotations],
             ...(songBonusUpdate ? { songBonusUpdate } : {}),
+            ...(chefMealBonusUpdate ? { chefMealBonusUpdate } : {}),
+            chefMealServedCount: this._chefMealServedCount,
         });
 
         this.render();
@@ -1392,10 +1510,12 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const rolls = this._rolls.get(a.id) ?? [];
             const healed = rolls.reduce((sum, r) => sum + (Number(r.total) || 0), 0);
             const song = this._songBonusByActor.get(a.id)?.total ?? 0;
+            const chefMeal = this._chefMealBonusByActor.get(a.id)?.total ?? 0;
             const badges = getShortRestRechargeLabels(a);
             const parts = [];
             if (healed) parts.push(`+${healed} HP from Hit Dice`);
             if (song) parts.push(`+${song} HP from Song of Rest (tracked above)`);
+            if (chefMeal) parts.push(`+${chefMeal} HP from Replenishing Meal (tracked above)`);
             if (badges.length) parts.push(`Typical recharges: ${badges.join(", ")}`);
             const line = parts.length
                 ? parts.join(". ") + "."
@@ -1410,7 +1530,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * GM second step: run native shortRest(), Chef temp HP, then close for everyone.
+     * GM second step: run native shortRest(), then close for everyone.
      */
     static async #onFinalizeShortRestRecovery() {
         if (!this._isGM) return;
@@ -1437,35 +1557,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
             } finally {
                 setNativeShortRestUnsuppressed(false);
-            }
-
-            const chef = ShortRestApp.#findChefActor(partyActors);
-            if (chef) {
-                const chefAdapter = game.ionrift?.respite?.adapter;
-                const pb = chefAdapter ? chefAdapter.getProficiencyBonus(chef) || 2 : (Number(chef.system?.attributes?.prof) || 2);
-                const targets = partyActors.slice(0, 4);
-                for (const t of targets) {
-                    try {
-                        if (chefAdapter) {
-                            await chefAdapter.applyTempHP(t, pb);
-                        } else {
-                            await t.update({ "system.attributes.hp.temp": pb });
-                        }
-                    } catch (e) {
-                        Logger.warn(`${MODULE_ID} | Chef temp HP:`, e);
-                    }
-                }
-                try {
-                    await ChatMessage.create({
-                        content:
-                            `<div class="respite-chat-parchment"><i class="fas fa-utensils"></i> ` +
-                            `Chef treats: <strong>up to four party members</strong> gain <strong>${pb} temporary ` +
-                            `HP</strong> (feat: ${ShortRestApp.#escapeChat(chef.name)}).</div>`,
-                        speaker: ChatMessage.getSpeaker({ actor: chef }),
-                    });
-                } catch (e) {
-                    Logger.warn(`${MODULE_ID} | Chef chat:`, e);
-                }
             }
 
             // Strip any Detect Magic active effects left on party actors from the scan.
@@ -1535,7 +1626,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     receiveHdSpent(data) {
         if (this._completionPhase) return;
-        const { actorId, rollTotal, die, conMod, annotations, songBonusUpdate } = data;
+        const { actorId, rollTotal, die, conMod, annotations, songBonusUpdate, chefMealBonusUpdate, chefMealServedCount } = data;
         if (!this._rolls.has(actorId)) this._rolls.set(actorId, []);
         const entry = { total: rollTotal, die, conMod };
         if (annotations?.length) entry.annotations = [...annotations];
@@ -1546,6 +1637,16 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 formula: String(songBonusUpdate.formula ?? ""),
                 bardName: String(songBonusUpdate.bardName ?? ""),
             });
+        }
+        if (chefMealBonusUpdate?.actorId) {
+            this._chefMealBonusByActor.set(chefMealBonusUpdate.actorId, {
+                total: Number(chefMealBonusUpdate.total) || 0,
+                formula: String(chefMealBonusUpdate.formula ?? ""),
+                chefName: String(chefMealBonusUpdate.chefName ?? ""),
+            });
+        }
+        if (chefMealServedCount !== undefined) {
+            this._chefMealServedCount = Number(chefMealServedCount) || 0;
         }
         this.render();
     }
@@ -1568,6 +1669,11 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (data.activeShelter) this._activeShelter = data.activeShelter;
         if (data.rpPrompt) this._rpPrompt = data.rpPrompt;
         if (data.songVolunteer !== undefined) this._songVolunteer = data.songVolunteer ?? null;
+        if (data.chefVolunteer !== undefined) this._chefVolunteer = data.chefVolunteer ?? null;
+        if (data.chefMealServedCount !== undefined) this._chefMealServedCount = Number(data.chefMealServedCount) || 0;
+        if (data.chefMealBonuses !== undefined) {
+            this._chefMealBonusByActor = this._deserializeChefMealBonuses(data.chefMealBonuses);
+        }
         if (data.workbench) {
             this.applyWorkbenchStateFromHost(data.workbench);
         }
@@ -1580,6 +1686,24 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     receiveSongVolunteer(data) {
         if (this._completionPhase) return;
         this._songVolunteer = data.songVolunteer ?? null;
+        this.render();
+    }
+
+    /**
+     * @param {{ chefVolunteer: object|null, chefMealServedCount?: number, chefMealBonuses?: object }} data
+     */
+    receiveChefVolunteer(data) {
+        if (this._completionPhase) return;
+        this._chefVolunteer = data.chefVolunteer ?? null;
+        if (data.chefMealServedCount !== undefined) {
+            this._chefMealServedCount = Number(data.chefMealServedCount) || 0;
+        }
+        if (data.chefMealBonuses !== undefined) {
+            this._chefMealBonusByActor = this._deserializeChefMealBonuses(data.chefMealBonuses);
+        } else if (!this._chefVolunteer) {
+            this._chefMealBonusByActor.clear();
+            this._chefMealServedCount = 0;
+        }
         this.render();
     }
 
@@ -1631,6 +1755,29 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return map;
     }
 
+    _serializeChefMealBonuses() {
+        const obj = {};
+        for (const [key, val] of this._chefMealBonusByActor) obj[key] = val;
+        return obj;
+    }
+
+    /**
+     * @param {Record<string, { total: number, formula: string, chefName: string }>} obj
+     */
+    _deserializeChefMealBonuses(obj) {
+        const map = new Map();
+        if (!obj || typeof obj !== "object") return map;
+        for (const [key, val] of Object.entries(obj)) {
+            if (!val || typeof val !== "object") continue;
+            map.set(key, {
+                total: Number(val.total) || 0,
+                formula: String(val.formula ?? ""),
+                chefName: String(val.chefName ?? ""),
+            });
+        }
+        return map;
+    }
+
     // ── State persistence ──────────────────────────────────────
 
     /**
@@ -1649,6 +1796,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             activeShelter: this._activeShelter,
             rpPrompt: this._rpPrompt,
             songVolunteer: this._songVolunteer,
+            chefVolunteer: this._chefVolunteer,
+            chefMealServedCount: this._chefMealServedCount,
+            chefMealBonuses: this._serializeChefMealBonuses(),
             confirmedRecovery: [...this._confirmedRecovery],
             workbenchFocusActorId: this._workbenchFocusActorId,
             magicScanResults: this._magicScanResults,
@@ -1683,6 +1833,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (state.activeShelter) this._activeShelter = state.activeShelter;
         if (state.rpPrompt) this._rpPrompt = state.rpPrompt;
         if (state.songVolunteer !== undefined) this._songVolunteer = state.songVolunteer ?? null;
+        if (state.chefVolunteer !== undefined) this._chefVolunteer = state.chefVolunteer ?? null;
+        if (state.chefMealServedCount !== undefined) this._chefMealServedCount = Number(state.chefMealServedCount) || 0;
+        if (state.chefMealBonuses) this._chefMealBonusByActor = this._deserializeChefMealBonuses(state.chefMealBonuses);
         if (state.confirmedRecovery) this._confirmedRecovery = new Set(state.confirmedRecovery);
         if (state.workbenchFocusActorId !== undefined) this._workbenchFocusActorId = state.workbenchFocusActorId;
         this._magicScanResults = state.magicScanResults ?? null;

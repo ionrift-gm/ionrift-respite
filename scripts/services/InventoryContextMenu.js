@@ -65,8 +65,10 @@ export function registerInventoryContextMenu() {
         }
 
         if (isEdible && !isDrinkable) {
+            const flags = item.flags?.[MODULE_ID] ?? {};
+            const eatLabel = flags.chefTreat ? "Eat Treat" : "Eat";
             menuItems.push({
-                name: "Eat",
+                name: eatLabel,
                 icon: `<i class="fas fa-utensils respite-context-icon"></i>`,
                 group: "action",
                 condition: hasStock,
@@ -111,6 +113,15 @@ async function _consumeFromInventory(actor, item, isFood) {
         const wellFed = await MealPhaseHandler._applyWellFedEffect(actor, itemSnapshot);
         buffLines = wellFed.lines ?? [];
         buffRolls = wellFed.rolls ?? [];
+    } else if (flags.chefTreat && flags.buff) {
+        const pb = Number(flags.chefTreatProfBonus) || 0;
+        const treatBuff = await MealPhaseHandler._resolveBuff(
+            actor,
+            { type: "temp_hp", formula: String(pb > 0 ? pb : 1) },
+            { chatDetail: true }
+        );
+        if (treatBuff?.summary) buffLines.push(treatBuff.summary);
+        if (treatBuff?.roll) buffRolls.push(treatBuff.roll);
     }
 
     // Build chat content

@@ -12,6 +12,37 @@ const MODULE_PACK_ID = "ionrift-respite.respite-items";
 const INDEX_FIELDS = ["flags", "name", "img", "type", "system", "folder"];
 
 /**
+ * Extra provision compendiums registered at runtime (e.g. world compendiums
+ * materialised from active overlays by the library materialiser). These ride
+ * the same forage/hunt pipeline as the shipped module pack, gated by the
+ * homebrew-only toggle. Registration is idempotent.
+ */
+const extraProvisionPackIds = new Set();
+
+/**
+ * Register a compendium so its forage/hunt items feed the travel pipeline.
+ * @param {string} packId
+ */
+export function registerProvisionPack(packId) {
+    if (packId) extraProvisionPackIds.add(packId);
+}
+
+/**
+ * Stop sourcing forage/hunt items from a previously registered compendium.
+ * @param {string} packId
+ */
+export function unregisterProvisionPack(packId) {
+    if (packId) extraProvisionPackIds.delete(packId);
+}
+
+/**
+ * @returns {string[]} Currently registered extra provision pack ids.
+ */
+export function getRegisteredProvisionPackIds() {
+    return [...extraProvisionPackIds];
+}
+
+/**
  * Document id from a compendium index row (Foundry may use id or _id).
  * @param {object} entry
  * @returns {string|null}
@@ -149,14 +180,16 @@ export async function loadTravelProvisionBatches() {
     const homebrewOnly = isHomebrewProvisionOnly();
 
     if (!homebrewOnly) {
-        const modulePack = game.packs.get(MODULE_PACK_ID);
-        if (modulePack) {
-            const index = await modulePack.getIndex({ fields: INDEX_FIELDS });
+        const shippedPackIds = [MODULE_PACK_ID, ...getRegisteredProvisionPackIds()];
+        for (const packId of shippedPackIds) {
+            const pack = game.packs.get(packId);
+            if (!pack) continue;
+            const index = await pack.getIndex({ fields: INDEX_FIELDS });
             batches.push({
                 entries: compendiumIndexToArray(index),
-                folderPathMap: buildFolderPathMap(modulePack),
+                folderPathMap: buildFolderPathMap(pack),
                 overrideRefs: false,
-                packId: MODULE_PACK_ID
+                packId
             });
         }
     }

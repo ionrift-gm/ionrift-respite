@@ -58,7 +58,10 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
                     recipes: [],
                     tiers: { normal: 0, disaster: 0 },
                     totalItems: 0,
-                    version: null
+                    version: null,
+                    bucket: null,
+                    bucketLabel: null,
+                    preview: false
                 });
             }
             return packs.get(packId);
@@ -84,13 +87,20 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
         const importedPacks = game.settings.get("ionrift-respite", "importedPacks") ?? {};
         for (const [packId, packData] of Object.entries(importedPacks)) {
             const events = packData.events ?? [];
-            if (!events.length) continue;
+            const recipeGroups = (packData.recipes && typeof packData.recipes === "object")
+                ? Object.values(packData.recipes)
+                : [];
+            const hasRecipes = recipeGroups.some(list => Array.isArray(list) && list.length);
+            if (!events.length && !hasRecipes) continue;
 
             const pack = _ensurePack(packId);
             pack.label = packData.name ?? packId.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-            pack.icon = packData.icon ?? "fas fa-hiking";
+            pack.icon = packData.icon ?? (hasRecipes ? "fas fa-hammer" : "fas fa-hiking");
             pack.description = packData.description ?? "Imported content pack";
             pack.version = packData.version ?? installedPacks[packId]?.version ?? null;
+            pack.bucket = packData.bucket ?? pack.bucket;
+            pack.bucketLabel = packData.bucketLabel ?? pack.bucketLabel;
+            pack.preview = packData.preview === true;
             for (const event of events) {
                 if (event.tier) pack.tiers[event.tier] = (pack.tiers[event.tier] ?? 0) + 1;
                 if (event.tier === "disaster") continue;
@@ -98,6 +108,13 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
                     pack.terrains[tag] = (pack.terrains[tag] ?? 0) + 1;
                 }
                 pack.totalItems++;
+            }
+            for (const list of recipeGroups) {
+                if (!Array.isArray(list)) continue;
+                for (const recipe of list) {
+                    if (recipe?.name) pack.recipes.push(recipe.name);
+                    pack.totalItems++;
+                }
             }
         }
 
@@ -212,10 +229,18 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
 
     _renderEventCardBody(pack) {
         if (pack.type === "profession") {
+            const metaBadges = [];
+            if (pack.preview) {
+                metaBadges.push(`<span class="pack-tier-badge"><i class="fas fa-flask"></i> preview</span>`);
+            }
+            if (pack.bucketLabel) {
+                metaBadges.push(`<span class="pack-tier-badge"><i class="fas fa-box"></i> ${pack.bucketLabel}</span>`);
+            }
+            const metaHtml = metaBadges.length ? `<div class="pack-terrain-list">${metaBadges.join("")}</div>` : "";
             const recipeBadges = pack.recipes
                 .map(name => `<span class="pack-recipe-badge"><i class="fas fa-scroll"></i> ${name}</span>`)
                 .join("");
-            return `<div class="pack-recipe-list">${recipeBadges}</div>`;
+            return `${metaHtml}<div class="pack-recipe-list">${recipeBadges}</div>`;
         }
 
         const terrainBadges = Object.entries(pack.terrains)

@@ -21,6 +21,11 @@
                 <i class="fas fa-music"></i> {{songOfRest.bardName}} · {{songOfRest.songDie}} · {{#if songOfRest.timingEnd}}on complete (if you spend HD){{else}}on 1st HD{{/if}}
             </span>
             {{/if}}
+            {{#if chefReplenishing}}
+            <span class="camp-status-chip sr-chef-chip" data-tooltip="Replenishing Meal: {{chefReplenishing.chefName}} is cooking. Up to {{chefReplenishing.mealCapacity}} characters who spend Hit Dice regain an extra 1d8 HP ({{chefReplenishing.mealsRemaining}} servings left).">
+                <i class="fas fa-utensils"></i> {{chefReplenishing.chefName}} · +1d8 · {{chefReplenishing.mealsRemaining}} left
+            </span>
+            {{/if}}
         </div>
     </div>
 
@@ -123,7 +128,7 @@
                 <span class="sr-roll-entry" data-tooltip="d{{die}} + {{conMod}} CON{{#if annotations.length}} | {{#each annotations}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}">+{{total}}{{#if annotations.length}}<span class="sr-roll-mod-badge">{{#each annotations}}{{this}}{{#unless @last}} · {{/unless}}{{/each}}</span>{{/if}}</span>
                 {{/each}}
                 <span class="sr-roll-total">
-                    <i class="fas fa-plus-circle"></i> {{totalHealed}} HP{{#if songBonusTotal}} <span class="sr-roll-song-addon">+ {{songBonusTotal}} Song</span>{{/if}}
+                    <i class="fas fa-plus-circle"></i> {{totalHealed}} HP{{#if songBonusTotal}} <span class="sr-roll-song-addon">+ {{songBonusTotal}} Song</span>{{/if}}{{#if chefMealTotal}} <span class="sr-roll-chef-addon">+ {{chefMealTotal}} Chef</span>{{/if}}
                 </span>
             </div>
             {{/if}}
@@ -154,6 +159,23 @@
                 </button>
                 {{else if songVolunteerLocked}}
                 <span class="sr-volunteer-locked"><i class="fas fa-music"></i> Song claimed</span>
+                {{/if}}
+            </div>
+            {{/if}}
+
+            {{!-- Chef Replenishing Meal volunteer --}}
+            {{#if isEligibleChef}}
+            <div class="sr-chef-volunteer">
+                {{#if hasVolunteeredChef}}
+                <button type="button" class="sr-volunteer-btn active" data-action="volunteerChefMeal" data-actor-id="{{id}}">
+                    <i class="fas fa-utensils"></i> Cooking for rest ({{chefMealCapacity}} servings)
+                </button>
+                {{else if canVolunteerChef}}
+                <button type="button" class="sr-volunteer-btn" data-action="volunteerChefMeal" data-actor-id="{{id}}">
+                    <i class="fas fa-utensils"></i> Cook Replenishing Meal ({{chefMealCapacity}} servings)
+                </button>
+                {{else if chefVolunteerLocked}}
+                <span class="sr-volunteer-locked"><i class="fas fa-utensils"></i> Chef meal claimed</span>
                 {{/if}}
             </div>
             {{/if}}

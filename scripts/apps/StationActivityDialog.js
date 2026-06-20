@@ -27,6 +27,8 @@ import { canPlaceStation, actorHasBrewingTools } from "../services/CompoundCampP
 import { getPartyActors, getFoodBuffPartyActors, getMealEligiblePartyActors } from "../services/partyActors.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
 import { formatMealBuffPreview } from "../services/MealBuffPresets.js";
+import { buildCraftCommitSummary, resolveDefaultCraftRecipeId } from "../services/CraftCommitSummary.js";
+import { patchCraftingRiskUi } from "../services/CraftingRiskUiPatch.js";
 import { ItemClassifier } from "../services/ItemClassifier.js";
 import { emitFeastServeRequest, emitActivityColdCampRequest } from "../services/SocketController.js";
 import { CampGearScanner } from "../services/CampGearScanner.js";
@@ -376,21 +378,21 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             && this.rendered
             && !options.resetCraftScroll;
         if (preserveCraftScroll) {
-            const scrollEl = this.element?.querySelector(
-                ".station-crafting-panel.crafting-split .crafting-detail-panel"
-            );
-            this._craftDetailScrollTop = scrollEl?.scrollTop ?? 0;
+            const panel = this.element?.querySelector(".station-crafting-panel.crafting-split");
+            this._craftListScrollTop = panel?.querySelector(".crafting-list-panel")?.scrollTop ?? 0;
+            this._craftDetailScrollTop = panel?.querySelector(".crafting-detail-panel")?.scrollTop ?? 0;
         }
         const result = await super.render(options);
         if (savedPos && Number.isFinite(savedPos.left) && Number.isFinite(savedPos.top)) {
             this.setPosition(savedPos);
         }
-        if (preserveCraftScroll && this._craftDetailScrollTop > 0) {
+        if (preserveCraftScroll) {
             queueMicrotask(() => {
-                const scrollEl = this.element?.querySelector(
-                    ".station-crafting-panel.crafting-split .crafting-detail-panel"
-                );
-                if (scrollEl) scrollEl.scrollTop = this._craftDetailScrollTop;
+                const panel = this.element?.querySelector(".station-crafting-panel.crafting-split");
+                const listEl = panel?.querySelector(".crafting-list-panel");
+                const detailEl = panel?.querySelector(".crafting-detail-panel");
+                if (listEl && this._craftListScrollTop > 0) listEl.scrollTop = this._craftListScrollTop;
+                if (detailEl && this._craftDetailScrollTop > 0) detailEl.scrollTop = this._craftDetailScrollTop;
             });
         }
         this._syncStationFireMinigame();
@@ -779,6 +781,18 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const partySize = getPartyActors().length;
         const status = engine.getRecipeStatus(actor, professionId, terrainTag, partySize);
 
+        if (!this._craftHasCrafted) {
+            this._craftRecipeId = resolveDefaultCraftRecipeId({
+                engine,
+                actor,
+                profession: professionId,
+                terrainTag,
+                partySize,
+                currentId: this._craftRecipeId,
+                hasCrafted: false
+            });
+        }
+
         const enrichRecipe = (recipe) => {
             const dcBreakdown = engine.getDcBreakdown(actor, recipe, this._craftRisk, terrainTag);
             const flags = recipe.outputFlags?.["ionrift-respite"];
@@ -825,34 +839,13 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         let commitSummary = null;
         if (selectedRecipe && !this._craftHasCrafted) {
-            const outputForRisk = this._craftRisk === "ambitious" && selectedRecipe.ambitiousOutput
-                ? selectedRecipe.ambitiousOutput : selectedRecipe.output;
-            commitSummary = {
-                recipeName: selectedRecipe.name,
-                dc: selectedRecipe.dcBreakdown.total,
-                dcBreakdown: selectedRecipe.dcBreakdown,
+            commitSummary = buildCraftCommitSummary({
+                recipe: selectedRecipe,
                 risk: this._craftRisk,
-                riskLabel: { standard: "Standard", ambitious: "Ambitious" }[this._craftRisk],
-                outputName: outputForRisk?.name ?? selectedRecipe.outputName,
-                outputImg: outputForRisk?.img ?? selectedRecipe.outputImg ?? "icons/svg/mystery-man.svg",
-                outputQuantity: outputForRisk?.quantity ?? 1,
-                ingredients: (selectedRecipe.ingredients ?? []).map(ing => {
-                    const invKey = ing.name.toLowerCase().trim();
-                    const invEntry = actor.items?.find(i => i.name.toLowerCase().trim() === invKey);
-                    const fallbackIcon = ing.resourceType === "water"
-                        ? "icons/magic/water/water-drop-swirl-blue.webp"
-                        : "icons/consumables/food/bread-loaf-round-white.webp";
-                    const rawImg = invEntry?.img;
-                    return {
-                        name: ing.name,
-                        quantity: ing.quantity ?? 1,
-                        img: (rawImg && !rawImg.includes("mystery-man")) ? rawImg : fallbackIcon
-                    };
-                }),
-                ingredientCost: (selectedRecipe.ingredients ?? []).map(i => `${i.quantity ?? 1}x ${i.name}`).join(", "),
-                failConsequence: "Ingredients consumed on failure",
-                skill: (selectedRecipe.skill ?? "sur").toUpperCase()
-            };
+                actor,
+                engine,
+                terrainTag
+            });
         }
 
         // Include station tab bar so tabs persist during crafting
@@ -882,6 +875,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 partial,
                 selectedRecipe: selectedRecipe ?? null,
                 isAmbitiousSelected: this._craftRisk === "ambitious",
+                noAvailableRecipes: !this._craftHasCrafted && available.length === 0,
                 commitSummary,
                 craftingResult: this._craftResult ? {
                     ...this._craftResult,
@@ -1050,10 +1044,51 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         this.render();
     }
 
-    static #onCraftSelectRisk(event, target) {
+    static async #onCraftSelectRisk(event, target) {
         if (this._craftRollPending || this._craftHasCrafted) return;
-        this._craftRisk = target.dataset.risk;
-        this.render();
+        const risk = target.dataset.risk;
+        if (!risk || !["standard", "ambitious"].includes(risk)) return;
+        if (risk === this._craftRisk) return;
+        this._craftRisk = risk;
+
+        const root = this.element?.querySelector(".station-crafting-panel.crafting-split");
+        const actor = this._actor;
+        const engine = this._restApp?._craftingEngine;
+
+        if (!root || !actor || !engine || !this._craftRecipeId) {
+            this.render();
+            return;
+        }
+
+        const terrainTag = this._restApp?._engine?.terrainTag ?? this._restApp?._restData?.terrainTag ?? null;
+        const partySize = engine.getRecipePartySize(this._craftRecipeId, this._craftProfession);
+        const status = engine.getRecipeStatus(actor, this._craftProfession, terrainTag, partySize);
+        const recipe = status.available.find(r => r.id === this._craftRecipeId)
+            ?? status.partial.find(r => r.id === this._craftRecipeId);
+
+        if (!recipe) {
+            this.render();
+            return;
+        }
+
+        const commitSummary = buildCraftCommitSummary({
+            recipe,
+            risk,
+            actor,
+            engine,
+            terrainTag
+        });
+        const dcBreakdown = engine.getDcBreakdown(actor, recipe, risk, terrainTag);
+
+        const patched = await patchCraftingRiskUi(root, {
+            risk,
+            isAmbitiousSelected: risk === "ambitious",
+            commitSummary,
+            dcBreakdown,
+            dcDisplay: dcBreakdown.total
+        });
+
+        if (!patched) this.render({ resetCraftScroll: false });
     }
 
     static async #onCraftCommit() {

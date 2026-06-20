@@ -8257,6 +8257,136 @@ button.is-processing {
     line-height: 1.15;
 }
 
+.commit-output-has-preview {
+    position: relative;
+}
+
+.commit-output-trigger {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    cursor: help;
+}
+
+.commit-output-preview {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
+    min-width: 220px;
+    max-width: 300px;
+    padding: 0.55rem 0.65rem;
+    border-radius: 6px;
+    background: rgba(18, 22, 30, 0.97);
+    border: 1px solid rgba(126, 184, 218, 0.35);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    pointer-events: none;
+    text-align: left;
+}
+
+.commit-output-has-preview:hover .commit-output-preview,
+.commit-output-has-preview:focus-within .commit-output-preview {
+    display: block;
+}
+
+.commit-output-preview-header {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.35rem;
+}
+
+.commit-output-preview-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.commit-output-preview-titles {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+.commit-output-preview-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+    line-height: 1.2;
+}
+
+.commit-output-preview-rarity {
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.commit-output-preview-desc {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.72);
+    line-height: 1.35;
+    margin: 0 0 0.35rem;
+}
+
+.commit-output-preview-buff {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.4rem;
+    font-size: 0.68rem;
+    color: #b8a4e8;
+    margin-bottom: 0.25rem;
+}
+
+.commit-output-preview-buff-duration {
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.commit-output-preview-tag {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.55);
+    margin-top: 0.15rem;
+}
+
+.commit-output-preview-tag i {
+    margin-right: 0.2rem;
+    opacity: 0.75;
+}
+
+.commit-output-preview-compare {
+    margin-top: 0.45rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.commit-output-preview-compare-label {
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.15rem;
+}
+
+.commit-output-preview-compare-name {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.commit-output-preview-compare-desc {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.55);
+    margin: 0.15rem 0 0;
+    line-height: 1.3;
+}
+
 /* ---- Supporting Details ---- */
 
 .commit-details {
@@ -12617,6 +12747,16 @@ button.is-processing {
     max-width: min(760px, 100%);
     width: 100%;
     box-sizing: border-box;
+    padding-bottom: 0.4rem;
+    gap: 0.35rem;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.totm-detail-view:has(.totm-crafting-embed) .totm-detail-header {
+    flex-shrink: 0;
 }
 
 .totm-crafting-embed .risk-selector {
@@ -12853,9 +12993,70 @@ button.is-processing {
     background: transparent;
 }
 
+/* TotM embed: fill space between roster and footer; detail panel scrolls without phantom tail room */
+.ionrift-respite-app .respite-form:has(.totm-crafting-embed) > .phase-banner,
+.ionrift-respite-app .respite-form:has(.totm-crafting-embed) > .roster-strip,
+.ionrift-respite-app .respite-form:has(.totm-crafting-embed) > .roster-tab-fade,
+.ionrift-respite-app .respite-form:has(.totm-crafting-embed) > .totm-activity-footer {
+    flex-shrink: 0;
+}
+
+.ionrift-respite-app .respite-form:has(.totm-crafting-embed) .totm-activity-layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    display: flex;
+}
+
+.ionrift-respite-app .respite-form:has(.totm-crafting-embed) .totm-activity-main {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.totm-crafting-embed.crafting-picker {
+    padding: 0.45rem 0.5rem 0.2rem;
+    gap: 0.3rem;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
 .totm-crafting-embed .crafting-split-body {
-    max-height: 340px;
-    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+}
+
+.totm-crafting-embed.station-crafting-panel.crafting-split .crafting-split-body {
+    padding-bottom: 0.1rem;
+}
+
+.totm-crafting-embed.station-crafting-panel.crafting-split .crafting-detail-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-bottom: 0.1rem;
+    scroll-padding-bottom: 0.1rem;
+}
+
+.totm-crafting-embed.station-crafting-panel.crafting-split .crafting-detail-panel::after {
+    content: none;
+    display: none;
+    height: 0;
+}
+
+.totm-crafting-embed.station-crafting-panel.crafting-split .craft-commit-panel {
+    margin-bottom: 0;
+}
+
+.ionrift-respite-app .respite-form:has(.totm-crafting-embed) .totm-activity-footer {
+    margin-top: 0;
+    padding: 0.3rem 0.65rem 0.35rem;
 }
 
 .totm-crafting-embed .crafting-roll-blocking-overlay {
@@ -14255,20 +14456,6 @@ button.is-processing {
 
 .campfire-kindling.has-kindling i {
     animation: kindlingPulse 2s ease-in-out infinite;
-}
-
-.campfire-fuel-table-row {
-    justify-content: center;
-    margin-top: 0.35rem;
-}
-
-.campfire-fuel-table-btn {
-    font-size: 0.78rem;
-    opacity: 0.85;
-}
-
-.campfire-fuel-table-btn:hover {
-    opacity: 1;
 }
 
 @keyframes kindlingPulse {
@@ -17239,6 +17426,18 @@ button.is-processing {
     color: rgba(240, 215, 255, 0.98) !important;
 }
 .sr-song-chip i { color: rgba(200, 150, 255, 0.9); margin-right: 0.15rem; }
+
+.sr-chef-chip {
+    background: rgba(210, 140, 70, 0.2) !important;
+    border-color: rgba(230, 170, 90, 0.45) !important;
+    color: rgba(255, 235, 210, 0.98) !important;
+}
+.sr-chef-chip i { color: rgba(255, 190, 120, 0.9); margin-right: 0.15rem; }
+
+.sr-roll-chef-addon {
+    color: rgba(255, 190, 120, 0.85);
+    font-size: 0.85em;
+}
 
 /* Short rest: camp-status badges above banner */
 .short-rest-container .sr-camp-meta {

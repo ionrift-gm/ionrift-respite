@@ -23,7 +23,7 @@
     "flags": {
         "ionrift-respite": {
             "itemRef": "edible_mushrooms",
-            "terrain": "forest,swamp",
+            "terrain": "wilderness",
             "category": "forage",
             "spoilsAfter": 3
         }

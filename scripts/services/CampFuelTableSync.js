@@ -8,7 +8,6 @@ import {
     scaleWeightsToTarget,
     sortForageEntries
 } from "./ForageTableSync.js";
-import { buildFolderPathMap } from "./CompendiumFolderIndex.js";
 import {
     compendiumIndexDocumentId,
     compendiumIndexToArray,
@@ -23,7 +22,6 @@ import { getCampFuelFindPercent } from "./TravelSettings.js";
 
 const MODULE_ID = "ionrift-respite";
 const MODULE_PACK_ID = "ionrift-respite.respite-items";
-const CACHE_PACK_ID = "ionrift-respite.respite-cache-utility";
 const PARENT_FOLDER = "Ionrift";
 const CHILD_FOLDER = "Respite";
 const TABLE_NAME = "Respite: Camp Fuel";
@@ -40,8 +38,7 @@ function buildCampFuelTableDescription() {
 /** Kindling occupies the full d100 when the table is rolled. */
 export const CAMP_FUEL_KINDLING_WEIGHT_D100 = 100;
 
-const WATCHED_PACK_IDS = [PROVISIONS_CUSTOM_PACK_ID, MODULE_PACK_ID, CACHE_PACK_ID];
-const CAMP_FUEL_INDEX_FIELDS = ["flags", "name", "img", "type", "system", "folder"];
+const WATCHED_PACK_IDS = [PROVISIONS_CUSTOM_PACK_ID, MODULE_PACK_ID];
 const CAMP_FUEL_D100_TARGET = 100;
 const CAMP_FUEL_MAX_KINDLING_VARIANTS = 20;
 const PLAYER_OBSERVER = (typeof CONST !== "undefined" && CONST.DOCUMENT_OWNERSHIP_LEVELS?.OBSERVER) ?? 2;
@@ -92,7 +89,7 @@ export function builtInCampFuelEntries() {
         {
             itemRef: "kindling",
             quantity: 1,
-            packId: CACHE_PACK_ID,
+            packId: MODULE_PACK_ID,
             weight: 10,
             rank: 1,
             itemData: {
@@ -139,23 +136,11 @@ export function planCampFuelTableRows(kindlingEntries) {
 }
 
 /**
- * Module + custom compendiums, plus cache-utility (kindling template).
+ * Module + custom compendiums. Kindling lives in the module pack's Camp Fuel folder.
  * @returns {Promise<object[]>}
  */
 async function loadCampFuelSourceBatches() {
     const { batches } = await loadTravelProvisionBatches();
-
-    const cachePack = game.packs.get(CACHE_PACK_ID);
-    if (cachePack) {
-        const index = await cachePack.getIndex({ fields: CAMP_FUEL_INDEX_FIELDS });
-        batches.push({
-            entries: compendiumIndexToArray(index),
-            folderPathMap: buildFolderPathMap(cachePack),
-            overrideRefs: false,
-            packId: CACHE_PACK_ID
-        });
-    }
-
     return batches;
 }
 

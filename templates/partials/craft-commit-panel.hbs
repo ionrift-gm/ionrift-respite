@@ -1,0 +1,98 @@
+{{!-- Commitment summary + craft button (shared by TotM and station crafting UIs) --}}
+{{#if commitSummary}}
+<div class="craft-commit-panel">
+    <div class="commit-header">Ready to Craft</div>
+    <div class="commit-visual-flow">
+        <div class="commit-inputs">
+            {{#each commitSummary.ingredients}}
+            <div class="commit-item-token" data-tooltip="{{quantity}}x {{name}}">
+                <img src="{{img}}" alt="{{name}}">
+                <span class="commit-item-qty">{{quantity}}</span>
+            </div>
+            {{/each}}
+        </div>
+        <div class="commit-flow-arrow"><i class="fas fa-long-arrow-alt-right"></i></div>
+        <div class="commit-output-token commit-output-has-preview">
+            <div class="commit-output-trigger">
+                <img src="{{commitSummary.outputImg}}" alt="{{commitSummary.outputName}}">
+                <span class="commit-output-name">{{commitSummary.outputName}}</span>
+            </div>
+            {{#if commitSummary.outputPreview}}
+            <div class="commit-output-preview" role="tooltip">
+                <div class="commit-output-preview-header">
+                    <img src="{{commitSummary.outputPreview.img}}" alt="" class="commit-output-preview-icon">
+                    <div class="commit-output-preview-titles">
+                        <span class="commit-output-preview-name">{{commitSummary.outputPreview.name}}</span>
+                        {{#if commitSummary.outputPreview.rarity}}
+                        <span class="commit-output-preview-rarity">{{commitSummary.outputPreview.rarity}}</span>
+                        {{/if}}
+                    </div>
+                </div>
+                {{#if commitSummary.outputPreview.descriptionPlain}}
+                <p class="commit-output-preview-desc">{{commitSummary.outputPreview.descriptionPlain}}</p>
+                {{/if}}
+                {{#if commitSummary.outputPreview.buffPreview}}
+                <div class="commit-output-preview-buff">
+                    <i class="fas fa-magic" aria-hidden="true"></i>
+                    <span>{{commitSummary.outputPreview.buffPreview.label}}{{#if commitSummary.outputPreview.buffPreview.formula}} {{commitSummary.outputPreview.buffPreview.formula}}{{/if}}</span>
+                    {{#if commitSummary.outputPreview.buffPreview.duration}}
+                    <span class="commit-output-preview-buff-duration">{{commitSummary.outputPreview.buffPreview.duration}}</span>
+                    {{/if}}
+                </div>
+                {{/if}}
+                {{#if commitSummary.outputPreview.isPartyMeal}}
+                <div class="commit-output-preview-tag"><i class="fas fa-users"></i> Feeds the party</div>
+                {{/if}}
+                {{#if commitSummary.outputPreview.isWellFed}}
+                <div class="commit-output-preview-tag"><i class="fas fa-heart"></i> Well Fed meal</div>
+                {{/if}}
+                {{#if commitSummary.outputPreview.spoilsAfter}}
+                <div class="commit-output-preview-tag"><i class="fas fa-hourglass-half"></i> Spoils after {{commitSummary.outputPreview.spoilsAfter}} rests</div>
+                {{/if}}
+                {{#if commitSummary.alternateOutputPreview}}
+                <div class="commit-output-preview-compare">
+                    <div class="commit-output-preview-compare-label">{{commitSummary.alternateOutputPreview.label}}</div>
+                    <div class="commit-output-preview-compare-name">{{commitSummary.alternateOutputPreview.name}}</div>
+                    {{#if commitSummary.alternateOutputPreview.descriptionPlain}}
+                    <p class="commit-output-preview-compare-desc">{{commitSummary.alternateOutputPreview.descriptionPlain}}</p>
+                    {{/if}}
+                </div>
+                {{/if}}
+            </div>
+            {{/if}}
+        </div>
+    </div>
+    <div class="commit-details">
+        <span class="commit-detail">
+            <i class="fas fa-dice-d20"></i> {{commitSummary.skill}} vs DC {{commitSummary.dc}}
+            {{#if commitSummary.dcBreakdown.hasModifiers}}
+            <span class="commit-dc-factors">
+                <span class="commit-dc-base">{{commitSummary.dcBreakdown.base}}</span>
+                {{#each commitSummary.dcBreakdown.factors}}
+                <span class="dc-factor-pill dc-factor-{{sign}}">{{label}}</span>
+                {{/each}}
+            </span>
+            {{/if}}
+        </span>
+        <span class="commit-detail risk-tag risk-{{commitSummary.risk}}">
+            {{commitSummary.riskLabel}}
+        </span>
+        <span class="commit-detail commit-consequence">
+            {{commitSummary.failConsequence}}
+        </span>
+    </div>
+    <button type="button" class="btn-hero-craft" data-action="craftCommit">
+        <i class="fas fa-hammer"></i><span>Craft</span>
+    </button>
+</div>
+{{else}}
+<div class="craft-commit-panel empty">
+    <div class="commit-placeholder">
+        {{#if noAvailableRecipes}}
+        <i class="fas fa-box-open"></i> No ingredients for any recipe right now.
+        {{else}}
+        <i class="fas fa-hand-pointer"></i> Select a recipe to see your crafting plan
+        {{/if}}
+    </div>
+</div>
+{{/if}}

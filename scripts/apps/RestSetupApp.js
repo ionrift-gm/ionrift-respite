@@ -22,6 +22,8 @@ import { CalendarHandler } from "../services/CalendarHandler.js";
 import { CopySpellHandler } from "../services/CopySpellHandler.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
 import { formatMealBuffPreview } from "../services/MealBuffPresets.js";
+import { buildCraftCommitSummary, resolveDefaultCraftRecipeId } from "../services/CraftCommitSummary.js";
+import { patchCraftingRiskUi } from "../services/CraftingRiskUiPatch.js";
 import { ItemClassifier } from "../services/ItemClassifier.js";
 import { ConditionAdvisory } from "../services/ConditionAdvisory.js";
 import { ResourceSink } from "../services/ResourceSink.js";
@@ -1677,6 +1679,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const travelResolver = this._travel?.getTravelResolver();
         const homebrewOnly = isHomebrewProvisionOnly();
 
+        // Professions covered by an installed recipe source, regardless of its
+        // toggle. When a recipe pack is installed but disabled, respect the
+        // disable for that profession rather than papering over it with the
+        // built-in stub fallback. Tracked per profession so enabling one
+        // profession's pack/overlay never suppresses another's stub recipes.
+        const installedRecipeProfessions = new Set();
+        for (const packData of Object.values(importedPacks)) {
+            if (packData?.recipes && typeof packData.recipes === "object") {
+                for (const [profId, list] of Object.entries(packData.recipes)) {
+                    if (Array.isArray(list) && list.length) installedRecipeProfessions.add(profId);
+                }
+            }
+        }
+
         for (const [packId, packData] of Object.entries(importedPacks)) {
             if (enabledPacks[packId] === false) {
 
@@ -1727,13 +1743,48 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
-        // Fall back to built-in stub content when no packs provided data
-        if (!homebrewOnly && totalRecipes === 0) {
-            for (const [profId, recipeList] of Object.entries(STUB_RECIPES)) {
-                this._craftingEngine.load(profId, recipeList);
+        // Load profession recipes delivered through active overlays (Patreon
+        // Library). This is the recipe-side counterpart to overlay events.
+        if (!homebrewOnly) {
+            try {
+                const { OverlayProfessionLoader } = await import("../services/OverlayProfessionLoader.js");
+                const overlayProfessions = await OverlayProfessionLoader.installedRecipeProfessions();
+                for (const profId of overlayProfessions) installedRecipeProfessions.add(profId);
+                const overlayPacks = await OverlayProfessionLoader.loadAll();
+                let overlayRecipeCount = 0;
+                for (const pack of overlayPacks) {
+                    for (const [profId, recipeList] of Object.entries(pack.recipes)) {
+                        if (Array.isArray(recipeList) && recipeList.length) {
+                            this._craftingEngine.load(profId, recipeList);
+                            overlayRecipeCount += recipeList.length;
+                        }
+                    }
+                }
+                if (overlayRecipeCount) {
+                    totalRecipes += overlayRecipeCount;
+                    Logger.log(`${MODULE_ID} | Overlays: loaded ${overlayRecipeCount} recipes from ${overlayPacks.length} pack(s)`);
+                }
+            } catch (e) {
+                console.warn(`${MODULE_ID} | Overlay profession load failed:`, e);
             }
+        }
 
-            Logger.log(`${MODULE_ID} | Using built-in stub recipes`);
+        // Fall back to built-in stub recipes per profession: a profession's
+        // stubs load only when no recipe source is installed for it (no imported
+        // pack and no overlay on disk). When a source is installed but disabled,
+        // its empty result is intentional and the toggle stays observable. This
+        // is per profession, so enabling the cooking overlay never removes the
+        // base brewing recipes (and vice versa).
+        if (!homebrewOnly) {
+            const stubbed = [];
+            for (const [profId, recipeList] of Object.entries(STUB_RECIPES)) {
+                if (installedRecipeProfessions.has(profId)) continue;
+                this._craftingEngine.load(profId, recipeList);
+                stubbed.push(profId);
+            }
+            if (stubbed.length) {
+                Logger.log(`${MODULE_ID} | Using built-in stub recipes for: ${stubbed.join(", ")}`);
+            }
         }
 
         if (!homebrewOnly && !huntYieldsLoaded && travelResolver) {
@@ -3338,6 +3389,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const partySize = getPartyActors().length;
                 const status = engine.getRecipeStatus(expandActor, professionId, terrainTag, partySize);
 
+                if (!this._totmCraftHasCrafted) {
+                    this._totmCraftRecipeId = resolveDefaultCraftRecipeId({
+                        engine,
+                        actor: expandActor,
+                        profession: professionId,
+                        terrainTag,
+                        partySize,
+                        currentId: this._totmCraftRecipeId,
+                        hasCrafted: false
+                    });
+                }
+
                 const enrichRecipe = (recipe) => {
                     const dcBreakdown = engine.getDcBreakdown(expandActor, recipe, risk, terrainTag);
                     const flags = recipe.outputFlags?.["ionrift-respite"];
@@ -3384,34 +3447,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
                 let commitSummary = null;
                 if (selectedRecipe && !this._totmCraftHasCrafted) {
-                    const outputForRisk = risk === "ambitious" && selectedRecipe.ambitiousOutput
-                        ? selectedRecipe.ambitiousOutput : selectedRecipe.output;
-                    commitSummary = {
-                        recipeName: selectedRecipe.name,
-                        dc: selectedRecipe.dcBreakdown.total,
-                        dcBreakdown: selectedRecipe.dcBreakdown,
+                    commitSummary = buildCraftCommitSummary({
+                        recipe: selectedRecipe,
                         risk,
-                        riskLabel: { standard: "Standard", ambitious: "Ambitious" }[risk],
-                        outputName: outputForRisk?.name ?? selectedRecipe.outputName,
-                        outputImg: outputForRisk?.img ?? selectedRecipe.outputImg ?? "icons/svg/mystery-man.svg",
-                        outputQuantity: outputForRisk?.quantity ?? 1,
-                        ingredients: (selectedRecipe.ingredients ?? []).map(ing => {
-                            const invKey = ing.name.toLowerCase().trim();
-                            const invEntry = expandActor.items?.find(i => i.name.toLowerCase().trim() === invKey);
-                            const fallbackIcon = ing.resourceType === "water"
-                                ? "icons/magic/water/water-drop-swirl-blue.webp"
-                                : "icons/consumables/food/bread-loaf-round-white.webp";
-                            const rawImg = invEntry?.img;
-                            return {
-                                name: ing.name,
-                                quantity: ing.quantity ?? 1,
-                                img: (rawImg && !rawImg.includes("mystery-man")) ? rawImg : fallbackIcon
-                            };
-                        }),
-                        ingredientCost: (selectedRecipe.ingredients ?? []).map(i => `${i.quantity ?? 1}x ${i.name}`).join(", "),
-                        failConsequence: "Ingredients consumed on failure",
-                        skill: (selectedRecipe.skill ?? "sur").toUpperCase()
-                    };
+                        actor: expandActor,
+                        engine,
+                        terrainTag
+                    });
                 }
 
                 return {
@@ -3439,6 +3481,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         partial,
                         selectedRecipe: selectedRecipe ?? null,
                         isAmbitiousSelected: risk === "ambitious",
+                        noAvailableRecipes: !this._totmCraftHasCrafted && available.length === 0,
                         commitSummary,
                         craftingResult: this._totmCraftResult ? {
                             ...this._totmCraftResult,
@@ -8762,6 +8805,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     _shouldShowTotmCampfirePanel() {
         if (this._phase !== "activity" || !this._isTotM || !isCampfireMinigameEnabled()) return false;
+        if (this._totmFollowUpExpanded?.isCrafting) return false;
         if (!this._totmFireUiEnabled()) return false;
         if (this._totmCampfireMinigamePanelEnabled()) return true;
         return (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided;
@@ -15321,6 +15365,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this._resetTotmCraftState();
                 this._hydrateTotmCraftStateFromRest(characterId, craftingProfession);
                 this._totmFollowUpExpanded = { activityId, characterId, isCrafting: true, profession: craftingProfession };
+                if (!this._totmCraftHasCrafted) {
+                    const actor = game.actors.get(characterId);
+                    const terrainTag = this._engine?.terrainTag ?? this._restData?.terrainTag ?? null;
+                    const partySize = getPartyActors().length;
+                    this._totmCraftRecipeId = resolveDefaultCraftRecipeId({
+                        engine: this._craftingEngine,
+                        actor,
+                        profession: craftingProfession,
+                        terrainTag,
+                        partySize,
+                        currentId: this._totmCraftRecipeId,
+                        hasCrafted: false
+                    });
+                }
             }
             this.render();
             return;
@@ -15532,10 +15590,52 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /** TotM inline crafting: select a risk tier. */
-    static #onTotmCraftSelectRisk(event, target) {
+    static async #onTotmCraftSelectRisk(event, target) {
         if (this._totmCraftRollPending || this._totmCraftHasCrafted) return;
-        this._totmCraftRisk = target.dataset.risk;
-        this.render();
+        const risk = target.dataset.risk;
+        if (!risk || !["standard", "ambitious"].includes(risk)) return;
+        if (risk === this._totmCraftRisk) return;
+        this._totmCraftRisk = risk;
+
+        const root = this.element?.querySelector(".totm-crafting-embed");
+        const expanded = this._totmFollowUpExpanded;
+        const actor = expanded?.characterId ? game.actors.get(expanded.characterId) : null;
+        const engine = this._craftingEngine;
+
+        if (!root || !actor || !engine || !expanded?.isCrafting || !this._totmCraftRecipeId) {
+            this.render();
+            return;
+        }
+
+        const terrainTag = this._engine?.terrainTag ?? this._restData?.terrainTag ?? null;
+        const partySize = getPartyActors().length;
+        const status = engine.getRecipeStatus(actor, expanded.profession, terrainTag, partySize);
+        const recipe = status.available.find(r => r.id === this._totmCraftRecipeId)
+            ?? status.partial.find(r => r.id === this._totmCraftRecipeId);
+
+        if (!recipe) {
+            this.render();
+            return;
+        }
+
+        const commitSummary = buildCraftCommitSummary({
+            recipe,
+            risk,
+            actor,
+            engine,
+            terrainTag
+        });
+        const dcBreakdown = engine.getDcBreakdown(actor, recipe, risk, terrainTag);
+
+        const patched = await patchCraftingRiskUi(root, {
+            risk,
+            isAmbitiousSelected: risk === "ambitious",
+            commitSummary,
+            dcBreakdown,
+            dcDisplay: dcBreakdown.total
+        });
+
+        if (!patched) this.render();
     }
 
     /** TotM inline crafting: execute the craft roll. */
