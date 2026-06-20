@@ -395,7 +395,7 @@ export class MealPhaseHandler {
 
             const lastFedDay = (() => {
                 for (let i = consumedDays.length - 1; i >= 0; i--) {
-                    if ((consumedDays[i].food ?? []).some(v => v && v !== "skip")) return i;
+                    if ((consumedDays[i].food ?? []).some(v => ItemClassifier.isMealSlotSelection(actor, v))) return i;
                 }
                 return -1;
             })();
@@ -443,7 +443,7 @@ export class MealPhaseHandler {
                 foodSlots.push({
                     index: i,
                     selected: sel,
-                    filled: sel && sel !== "skip",
+                    filled: sel && sel !== "skip" && ItemClassifier.isMealSlotSelection(actor, sel),
                     locked: foodLockedSlots.includes(i)
                 });
             }
@@ -516,7 +516,7 @@ export class MealPhaseHandler {
             let summaryWaterRequired = wpd;
             if (allDaysConsumed && consumedDays.length > 0) {
                 summaryFoodFilled = consumedDays.reduce((sum, d) =>
-                    sum + (d.food ?? []).filter(v => v && v !== "skip").length, 0);
+                    sum + (d.food ?? []).filter(id => ItemClassifier.isMealSlotSelection(actor, id)).length, 0);
                 summaryWaterFilled = consumedDays.reduce((sum, d) =>
                     sum + (d.water ?? []).filter(v => v && v !== "skip").length, 0);
 
@@ -662,7 +662,9 @@ export class MealPhaseHandler {
             for (const day of (choice.consumedDays ?? [])) {
                 if (day.itemsConsumed) continue;
                 for (const id of (day.food ?? [])) {
-                    if (id && id !== "skip" && !id.startsWith("__")) foodUsage.set(id, (foodUsage.get(id) ?? 0) + 1);
+                    if (ItemClassifier.isMealSlotSelection(actor, id)) {
+                        foodUsage.set(id, (foodUsage.get(id) ?? 0) + 1);
+                    }
                 }
             }
             const snapMap = new Map();
@@ -713,7 +715,7 @@ export class MealPhaseHandler {
             let totalFoodFilled = 0;
             let totalWaterFilled = 0;
             for (const day of consumedDays) {
-                totalFoodFilled += (day.food ?? []).filter(id => id && id !== "skip").length;
+                totalFoodFilled += (day.food ?? []).filter(id => ItemClassifier.isMealSlotSelection(actor, id)).length;
                 totalWaterFilled += (day.water ?? []).filter(id => id && id !== "skip").length;
             }
 
@@ -819,10 +821,14 @@ export class MealPhaseHandler {
         // Auto-consume: if a character has active food/water selections but hasn't
         // consumed all days, fold those selections into consumedDays.
         for (const [charId, choice] of mealChoices) {
+            const actor = game.actors.get(charId);
             const consumed = choice.consumedDays ?? [];
             const food = Array.isArray(choice.food) ? choice.food : [];
             const water = Array.isArray(choice.water) ? choice.water : [];
-            const hasActiveSelections = food.some(id => id && id !== "skip") || water.some(id => id && id !== "skip");
+            const hasActiveSelections = actor
+                ? (food.some(id => ItemClassifier.isMealSlotSelection(actor, id))
+                    || water.some(id => id && id !== "skip"))
+                : (food.some(id => id && id !== "skip") || water.some(id => id && id !== "skip"));
 
             if (consumed.length < totalDays && hasActiveSelections) {
                 consumed.push({ food: [...food], water: [...water] });
@@ -847,6 +853,7 @@ export class MealPhaseHandler {
      */
     static _accumulateMealSatiation(snapshot, amount, consumerCharId, partyIds, extraWaterByChar, extraFoodByChar) {
         const rf = snapshot.flags?.[MODULE_ID] ?? {};
+        if (rf.chefTreat) return;
         const targets = rf.partyMeal ? [...partyIds] : [consumerCharId];
         for (let u = 0; u < amount; u++) {
             for (const tid of targets) {
@@ -1367,7 +1374,7 @@ export class MealPhaseHandler {
 
             const allowed = useEssenceTray
                 ? ItemClassifier.isEssenceMealFoodOption(item, actor)
-                : ItemClassifier.isFood(item, actor);
+                : ItemClassifier.isMealSubstitute(item, actor);
             if (!allowed) continue;
 
             options.push({

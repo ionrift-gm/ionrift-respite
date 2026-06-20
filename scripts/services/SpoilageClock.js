@@ -78,7 +78,63 @@ export class SpoilageClock {
     }
 
     /**
-     * Hours remaining before hour-gated spoilage (Chef treats).
+     * Inventory badge content for spoilage indicators (days or hours).
+     * @param {foundry.documents.Item|object} itemLike
+     * @param {object} [clock]
+     * @returns {{ text: string, tooltip: string, stateClass: string } | null}
+     */
+    static getSpoilageBadgeState(itemLike, clock = {}) {
+        const daysLeft = this.getCalendarDaysRemaining(itemLike, clock);
+        if (daysLeft !== null) {
+            if (daysLeft <= 0) {
+                return {
+                    text: "SPOILED",
+                    tooltip: "This food has gone off.",
+                    stateClass: "spoil-expired"
+                };
+            }
+            if (daysLeft === 1) {
+                return {
+                    text: "1d",
+                    tooltip: "Spoils within a day. Eat or cook it.",
+                    stateClass: "spoil-urgent"
+                };
+            }
+            return {
+                text: `${daysLeft}d`,
+                tooltip: `${daysLeft} days until spoilage.`,
+                stateClass: "spoil-fresh"
+            };
+        }
+
+        const hoursLeft = this.getHoursRemaining(itemLike, clock);
+        if (hoursLeft === null) return null;
+
+        if (hoursLeft <= 0) {
+            return {
+                text: "SPOILED",
+                tooltip: "This food has gone off.",
+                stateClass: "spoil-expired"
+            };
+        }
+
+        const displayHours = Math.ceil(hoursLeft);
+        if (displayHours <= 1) {
+            return {
+                text: displayHours < 1 ? "<1h" : "1h",
+                tooltip: "Spoils within an hour. Eat it soon.",
+                stateClass: "spoil-urgent"
+            };
+        }
+
+        return {
+            text: `${displayHours}h`,
+            tooltip: `${displayHours} hours until spoilage.`,
+            stateClass: displayHours <= 2 ? "spoil-urgent" : "spoil-fresh"
+        };
+    }
+
+    /**
      * @param {foundry.documents.Item|object} itemLike
      * @param {object} [clock]
      * @returns {number|null}

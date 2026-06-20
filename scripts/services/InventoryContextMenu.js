@@ -162,6 +162,9 @@ async function _syncWithRestMealState(actor, itemId, isFood, itemSnapshot) {
     const restApp = game.ionrift?.respite?.getActiveApp?.();
     if (!restApp) return;
 
+    const flags = itemSnapshot?.flags?.[MODULE_ID] ?? {};
+    if (flags.chefTreat) return;
+
     const charId = actor.id;
     const slot = isFood ? "food" : "water";
 
@@ -192,7 +195,6 @@ async function _syncWithRestMealState(actor, itemId, isFood, itemSnapshot) {
 
     // ── Satiates cross-credit: if the item satiates both food AND water,
     //    fill + lock the OTHER slot too so the player doesn't need a separate item. ──
-    const flags = itemSnapshot?.flags?.[MODULE_ID] ?? {};
     const satiates = Array.isArray(flags.satiates) ? flags.satiates : [];
     const crossSlot = isFood ? "water" : "food";
     if (satiates.includes(crossSlot)) {

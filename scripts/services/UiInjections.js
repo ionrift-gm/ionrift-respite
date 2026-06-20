@@ -96,24 +96,13 @@ export function injectSpoilageBadges(app, html) {
 
         if (row.querySelector(".respite-spoil-badge")) continue;
 
-        const daysLeft = SpoilageClock.getCalendarDaysRemaining(item);
-        if (daysLeft === null) continue;
+        const badgeState = SpoilageClock.getSpoilageBadgeState(item);
+        if (!badgeState) continue;
 
         const badge = document.createElement("span");
-        badge.className = "respite-spoil-badge";
-        if (daysLeft <= 0) {
-            badge.classList.add("spoil-expired");
-            badge.textContent = "SPOILED";
-            badge.dataset.tooltip = "This food has gone off.";
-        } else if (daysLeft === 1) {
-            badge.classList.add("spoil-urgent");
-            badge.textContent = "1d";
-            badge.dataset.tooltip = "Spoils within a day. Eat or cook it.";
-        } else {
-            badge.classList.add("spoil-fresh");
-            badge.textContent = `${daysLeft}d`;
-            badge.dataset.tooltip = `${daysLeft} days until spoilage.`;
-        }
+        badge.className = `respite-spoil-badge ${badgeState.stateClass}`;
+        badge.textContent = badgeState.text;
+        badge.dataset.tooltip = badgeState.tooltip;
 
         const nameEl = row.querySelector(".item-name, .entry-name, h4, .name");
         if (nameEl) {

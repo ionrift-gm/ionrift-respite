@@ -953,6 +953,13 @@ Hooks.once("ready", async () => {
     // so an enabled overlay's forage/hunt items are picked up on this boot.
     if (game.user?.isGM) {
         try {
+            const { migrateBolsteringTreatIcons } = await import("./services/RecipeIcons.js");
+            await migrateBolsteringTreatIcons();
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Bolstering treat icon migration failed on ready:`, e);
+        }
+
+        try {
             const { ProvisionOverlayMaterialiser } = await import("./services/ProvisionOverlayMaterialiser.js");
             await ProvisionOverlayMaterialiser.materialiseAll();
         } catch (e) {
