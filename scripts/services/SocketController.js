@@ -134,6 +134,7 @@ export const SOCKET_TYPES = Object.freeze({
     SHORT_REST_AFK_UPDATE: "shortRestAfkUpdate",
     SHORT_REST_PLAYER_FINISHED: "shortRestPlayerFinished",
     SHORT_REST_SONG_VOLUNTEER:  "shortRestSongVolunteer",
+    SHORT_REST_CHEF_VOLUNTEER:  "shortRestChefVolunteer",
     SHORT_REST_HD_SPENT:   "shortRestHdSpent",
     /** GM → players: in-window summary before native shortRest() runs */
     SHORT_REST_COMPLETION_SUMMARY: "shortRestCompletionSummary",

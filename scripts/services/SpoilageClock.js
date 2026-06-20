@@ -78,6 +78,30 @@ export class SpoilageClock {
     }
 
     /**
+     * Hours remaining before hour-gated spoilage (Chef treats).
+     * @param {foundry.documents.Item|object} itemLike
+     * @param {object} [clock]
+     * @returns {number|null}
+     */
+    static getHoursRemaining(itemLike, clock = {}) {
+        const spoilsHours = ItemClassifier.getSpoilsAfterHours(itemLike);
+        if (!spoilsHours) return null;
+
+        const flags = itemLike.flags?.[MODULE_ID] ?? {};
+        if (flags.spoiled) return 0;
+
+        const { worldTimeEpoch } = this._resolveClock(clock);
+        const harvested = flags.harvestedDate;
+        if (!harvested) return spoilsHours;
+
+        const harvestedEpoch = parseInt(harvested, 10);
+        if (Number.isNaN(harvestedEpoch)) return spoilsHours;
+
+        const hoursPassed = (worldTimeEpoch - harvestedEpoch) / 3600;
+        return Math.max(0, spoilsHours - hoursPassed);
+    }
+
+    /**
      * Two rows may stack only if both are shelf-stable or both perishable with the same days remaining.
      * @param {foundry.documents.Item|object} itemA
      * @param {foundry.documents.Item|object} itemB

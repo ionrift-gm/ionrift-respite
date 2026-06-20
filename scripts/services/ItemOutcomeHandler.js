@@ -112,11 +112,15 @@ export class ItemOutcomeHandler {
             } else {
                 // Stamp harvestedDate on perishable items for spoilage tracking
                 const grantFlags = grant.flags?.[MODULE_ID] ?? {};
-                if (grantFlags.spoilsAfter !== null && !grantFlags.harvestedDate) {
-                    grant.flags = grant.flags ?? {};
-                    grant.flags[MODULE_ID] = grant.flags[MODULE_ID] ?? {};
-                    grant.flags[MODULE_ID].harvestedDate =
-                        CalendarHandler.getCurrentDate() ?? String(game.time.worldTime);
+                if ((grantFlags.spoilsAfter !== null && grantFlags.spoilsAfter !== undefined)
+                    || grantFlags.spoilsAfterHours) {
+                    if (!grantFlags.harvestedDate) {
+                        grant.flags = grant.flags ?? {};
+                        grant.flags[MODULE_ID] = grant.flags[MODULE_ID] ?? {};
+                        grant.flags[MODULE_ID].harvestedDate = grantFlags.spoilsAfterHours
+                            ? String(game.time.worldTime)
+                            : (CalendarHandler.getCurrentDate() ?? String(game.time.worldTime));
+                    }
                 }
 
                 // Create new item with correct quantity.
@@ -353,8 +357,7 @@ export class ItemOutcomeHandler {
             ? [PROVISIONS_CUSTOM_PACK_ID]
             : [
                 PROVISIONS_CUSTOM_PACK_ID,
-                "ionrift-respite.respite-items",
-                "ionrift-respite.respite-cache-utility"
+                "ionrift-respite.respite-items"
             ];
 
         for (const packId of packIds) {

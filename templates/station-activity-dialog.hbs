@@ -406,8 +406,13 @@
                 {{!-- Empty state --}}
                 <div class="recipe-hero recipe-hero-empty">
                     <div class="recipe-hero-placeholder">
+                        {{#if crafting.noAvailableRecipes}}
+                        <i class="fas fa-box-open"></i>
+                        <span>No ingredients for any recipe. Forage or check inventory.</span>
+                        {{else}}
                         <i class="fas fa-utensils"></i>
                         <span>Select a recipe to see details</span>
+                        {{/if}}
                     </div>
                 </div>
                 {{/if}}
@@ -427,54 +432,7 @@
                 </div>
 
                 {{!-- Commitment Summary + Craft Button --}}
-                {{#if crafting.commitSummary}}
-                <div class="craft-commit-panel">
-                    <div class="commit-header">Ready to Craft</div>
-                    <div class="commit-visual-flow">
-                        <div class="commit-inputs">
-                            {{#each crafting.commitSummary.ingredients}}
-                            <div class="commit-item-token" data-tooltip="{{quantity}}x {{name}}">
-                                <img src="{{img}}" alt="{{name}}">
-                                <span class="commit-item-qty">{{quantity}}</span>
-                            </div>
-                            {{/each}}
-                        </div>
-                        <div class="commit-flow-arrow"><i class="fas fa-long-arrow-alt-right"></i></div>
-                        <div class="commit-output-token" data-tooltip="{{crafting.commitSummary.outputName}}">
-                            <img src="{{crafting.commitSummary.outputImg}}" alt="{{crafting.commitSummary.outputName}}">
-                            <span class="commit-output-name">{{crafting.commitSummary.outputName}}</span>
-                        </div>
-                    </div>
-                    <div class="commit-details">
-                        <span class="commit-detail">
-                            <i class="fas fa-dice-d20"></i> {{crafting.commitSummary.skill}} vs DC {{crafting.commitSummary.dc}}
-                            {{#if crafting.commitSummary.dcBreakdown.hasModifiers}}
-                            <span class="commit-dc-factors">
-                                <span class="commit-dc-base">{{crafting.commitSummary.dcBreakdown.base}}</span>
-                                {{#each crafting.commitSummary.dcBreakdown.factors}}
-                                <span class="dc-factor-pill dc-factor-{{sign}}">{{label}}</span>
-                                {{/each}}
-                            </span>
-                            {{/if}}
-                        </span>
-                        <span class="commit-detail risk-tag risk-{{crafting.commitSummary.risk}}">
-                            {{crafting.commitSummary.riskLabel}}
-                        </span>
-                        <span class="commit-detail commit-consequence">
-                            {{crafting.commitSummary.failConsequence}}
-                        </span>
-                    </div>
-                    <button type="button" class="btn-hero-craft" data-action="craftCommit">
-                        <i class="fas fa-hammer"></i><span>Craft</span>
-                    </button>
-                </div>
-                {{else}}
-                <div class="craft-commit-panel empty">
-                    <div class="commit-placeholder">
-                        <i class="fas fa-hand-pointer"></i> Select a recipe to see your crafting plan
-                    </div>
-                </div>
-                {{/if}}
+                {{> craftCommitPanel commitSummary=crafting.commitSummary noAvailableRecipes=crafting.noAvailableRecipes}}
             </div>
         </div>
 

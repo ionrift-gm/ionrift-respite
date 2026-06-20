@@ -378,6 +378,12 @@ Hooks.once("init", async () => {
         .then(t => Handlebars.registerPartial("fireTierBody", t))
         .catch(e => console.warn(`${MODULE_ID} | Failed to load fire-tier-body partial:`, e));
 
+    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/craft-commit-panel.hbs"]);
+    fetch("modules/ionrift-respite/templates/partials/craft-commit-panel.hbs")
+        .then(r => r.text())
+        .then(t => Handlebars.registerPartial("craftCommitPanel", t))
+        .catch(e => console.warn(`${MODULE_ID} | Failed to load craft-commit-panel partial:`, e));
+
     foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/_training-panel.hbs"]);
     fetch("modules/ionrift-respite/templates/partials/_training-panel.hbs")
         .then(r => r.text())
@@ -774,11 +780,15 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
         return;
     }
 
-    // Event/content overlay: invalidate cached event data
-    // The next rest start or browser open will re-scan overlays
+    // Event/content overlay: invalidate cached event and recipe data.
+    // The next rest start or browser open will re-scan overlays.
     try {
         const { OverlayEventLoader } = await import("./services/OverlayEventLoader.js");
         OverlayEventLoader.invalidate();
+    } catch { /* loader not available */ }
+    try {
+        const { OverlayProfessionLoader } = await import("./services/OverlayProfessionLoader.js");
+        OverlayProfessionLoader.invalidate();
     } catch { /* loader not available */ }
     RespiteLog.log(`${MODULE_ID} | Overlay content changed: ${detail.overlayId} (active=${detail.active})`);
 });
@@ -938,6 +948,18 @@ Hooks.once("ready", async () => {
     const { initializeEventPoolIfNeeded } = await import("./services/EventPoolMigration.js");
     await initializeEventPoolIfNeeded();
 
+    // Materialise active overlay item payloads into world compendiums and
+    // register them with the travel pipeline before the provision index loads,
+    // so an enabled overlay's forage/hunt items are picked up on this boot.
+    if (game.user?.isGM) {
+        try {
+            const { ProvisionOverlayMaterialiser } = await import("./services/ProvisionOverlayMaterialiser.js");
+            await ProvisionOverlayMaterialiser.materialiseAll();
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Overlay item materialisation failed on ready:`, e);
+        }
+    }
+
     try {
         const { loadTravelProvisionBatches } = await import("./services/TravelProvisionIndex.js");
         const { PROVISIONS_CUSTOM_PACK_ID } = await import("./services/ProvisionsCustomPack.js");
@@ -980,6 +1002,75 @@ Hooks.once("ready", async () => {
             await ForageTableInstaller.install();
         } catch (e) {
             console.warn(`${MODULE_ID} | Forage table sync failed on ready:`, e);
+        }
+
+        // Re-materialise overlay items and resync forage tables when a GM
+        // enables, disables, or uninstalls a Respite overlay in the Library.
+        Hooks.on("ionrift.overlayContentChanged", async (detail) => {
+            try {
+                const { ProvisionOverlayMaterialiser } = await import("./services/ProvisionOverlayMaterialiser.js");
+                await ProvisionOverlayMaterialiser.onOverlayContentChanged(detail);
+            } catch (e) {
+                console.warn(`${MODULE_ID} | Overlay content change handling failed:`, e);
+            }
+        });
+
+        // Migration: strip the retired registry-injection profession previews.
+        // Profession content now ships via disk overlays, not the importedPacks
+        // registry, so remove any preview-flagged entries seeded by older builds.
+        try {
+            const imported = game.settings.get(MODULE_ID, "importedPacks") ?? {};
+            const enabled = game.settings.get(MODULE_ID, "enabledPacks") ?? {};
+            let changed = false;
+            for (const [id, data] of Object.entries(imported)) {
+                if (data?.preview === true) {
+                    delete imported[id];
+                    delete enabled[id];
+                    changed = true;
+                }
+            }
+            if (changed) {
+                await game.settings.set(MODULE_ID, "importedPacks", imported);
+                await game.settings.set(MODULE_ID, "enabledPacks", enabled);
+                RespiteLog.log(`${MODULE_ID} | Removed retired profession preview packs from registry.`);
+            }
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Profession preview cleanup failed on ready:`, e);
+        }
+
+        // Surface the disk-staged profession overlays in the Patreon Library via
+        // the library's local dev registry. Display metadata only; the content
+        // itself loads from disk through OverlayProfessionLoader. Lets the GM
+        // toggle them in the overlay UI for local e2e without a registry publish.
+        try {
+            const settingExists = game.settings.settings.has("ionrift-library.devOverlayRegistry");
+            if (settingExists) {
+                const PREVIEW_OVERLAYS = {
+                    "respite-cooking-overlay": {
+                        latest: "0.1.0", tier: "Free", sublayer: "cooking", moduleId: MODULE_ID,
+                        minModuleVersion: "3.0.0", packLabel: "Core Cooking Pack (preview)",
+                        description: "Cooking recipes. Free tier."
+                    },
+                    "respite-subscriber-overlay": {
+                        latest: "0.1.0", tier: "Initiate", sublayer: "subscriber", moduleId: MODULE_ID,
+                        minModuleVersion: "3.0.0", packLabel: "Profession Catalogues (preview)",
+                        description: "Brewing, tailoring, and leatherworking recipes. Subscriber tier."
+                    },
+                    "respite-premium-overlay": {
+                        latest: "0.1.0", tier: "Acolyte", sublayer: "premium", moduleId: MODULE_ID,
+                        minModuleVersion: "3.0.0", packLabel: "Delicious Dungeon (preview)",
+                        description: "Monster harvesting and exotic recipes. Premium tier."
+                    }
+                };
+                const current = game.settings.get("ionrift-library", "devOverlayRegistry") ?? {};
+                const merged = { ...current, ...PREVIEW_OVERLAYS };
+                if (JSON.stringify(current) !== JSON.stringify(merged)) {
+                    await game.settings.set("ionrift-library", "devOverlayRegistry", merged);
+                    RespiteLog.log(`${MODULE_ID} | Registered profession preview overlays in the library dev registry.`);
+                }
+            }
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Dev overlay registration failed on ready:`, e);
         }
     }
 

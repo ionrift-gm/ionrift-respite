@@ -260,11 +260,14 @@ export class MealPhaseHandler {
             if (!actor) continue;
             const toStamp = [];
             for (const item of actor.items) {
-                const spoilsAfter = ItemClassifier.getSpoilsAfter(item);
-                if (spoilsAfter === null || spoilsAfter <= 0) continue;
+                const spoilsHours = ItemClassifier.getSpoilsAfterHours(item);
+                const spoilsAfter = spoilsHours ? null : ItemClassifier.getSpoilsAfter(item);
+                if (spoilsAfter === null && !spoilsHours) continue;
+                if (spoilsAfter !== null && spoilsAfter <= 0) continue;
                 const flags = item.flags?.[MODULE_ID] ?? {};
                 if (flags.harvestedDate) continue;
-                toStamp.push({ _id: item.id, [`flags.${MODULE_ID}.harvestedDate`]: now ?? String(nowEpoch) });
+                const stamp = spoilsHours ? String(nowEpoch) : (now ?? String(nowEpoch));
+                toStamp.push({ _id: item.id, [`flags.${MODULE_ID}.harvestedDate`]: stamp });
             }
             if (toStamp.length) {
                 await actor.updateEmbeddedDocuments("Item", toStamp);
@@ -276,6 +279,16 @@ export class MealPhaseHandler {
             if (!actor) continue;
 
             const result = await this._spoilActorItems(actor, (item, flags) => {
+                const spoilsHours = ItemClassifier.getSpoilsAfterHours(item);
+                if (spoilsHours) {
+                    const harvested = flags.harvestedDate;
+                    if (!harvested) return false;
+                    const harvestedEpoch = parseInt(harvested, 10);
+                    if (Number.isNaN(harvestedEpoch)) return false;
+                    const hoursPassed = (nowEpoch - harvestedEpoch) / 3600;
+                    return hoursPassed >= spoilsHours;
+                }
+
                 const spoilsAfter = ItemClassifier.getSpoilsAfter(item);
                 if (spoilsAfter === null || spoilsAfter <= 0) return false;
 

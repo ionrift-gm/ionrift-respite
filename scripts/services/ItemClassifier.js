@@ -317,6 +317,9 @@ export class ItemClassifier {
     static getSpoilsAfter(item) {
         if (!item) return null;
 
+        const flags = item.flags?.[MODULE_ID] ?? {};
+        if (flags.spoilsAfterHours) return null;
+
         // Explicit flag takes priority
         const explicit = item.flags?.[MODULE_ID]?.spoilsAfter;
         if (explicit !== null && explicit !== undefined) return explicit > 0 ? explicit : null;
@@ -326,6 +329,19 @@ export class ItemClassifier {
         if (!tag) return null;
 
         return DEFAULT_SPOILS_AFTER[tag] ?? null;
+    }
+
+    /**
+     * Hour-based spoilage (Chef treats). Returns null when not hour-gated.
+     * @param {Item|object} item
+     * @returns {number|null}
+     */
+    static getSpoilsAfterHours(item) {
+        if (!item) return null;
+        const hours = item.flags?.[MODULE_ID]?.spoilsAfterHours;
+        if (hours === null || hours === undefined) return null;
+        const n = Number(hours);
+        return n > 0 ? n : null;
     }
 
     /**

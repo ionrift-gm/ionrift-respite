@@ -689,6 +689,10 @@ export function dispatch(data, ctx) {
             ctx.activeShortRestApp?.receiveSongVolunteer?.(data);
             break;
 
+        case SOCKET_TYPES.SHORT_REST_CHEF_VOLUNTEER:
+            ctx.activeShortRestApp?.receiveChefVolunteer?.(data);
+            break;
+
         case SOCKET_TYPES.SHORT_REST_HD_SPENT:
             ctx.activeShortRestApp?.receiveHdSpent?.(data);
             break;

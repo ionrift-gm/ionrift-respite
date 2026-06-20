@@ -414,6 +414,9 @@ export function handleRequestShortRestState(data, ctx) {
             activeShelter: newApp._activeShelter,
             rpPrompt: newApp._rpPrompt,
             songVolunteer: newApp._songVolunteer,
+            chefVolunteer: newApp._chefVolunteer,
+            chefMealServedCount: newApp._chefMealServedCount,
+            chefMealBonuses: newApp._serializeChefMealBonuses(),
             workbench: _workbenchStateFromApp(newApp),
         });
         return;
@@ -427,6 +430,9 @@ export function handleRequestShortRestState(data, ctx) {
         activeShelter: app._activeShelter,
         rpPrompt: app._rpPrompt,
         songVolunteer: app._songVolunteer,
+        chefVolunteer: app._chefVolunteer,
+        chefMealServedCount: app._chefMealServedCount,
+        chefMealBonuses: app._serializeChefMealBonuses(),
         workbench: _workbenchStateFromApp(app),
     });
 }

@@ -3,7 +3,7 @@
     "_id": "a1b2c3d4e5f6000d",
     "name": "Roasted Mushrooms",
     "type": "consumable",
-    "img": "icons/consumables/food/plate-chicken-grilled-mushroom-brown.webp",
+    "img": "icons/consumables/mushrooms/bell-shiitake-brown.webp",
     "system": {
         "description": {
             "value": "<p>Mushrooms sliced and roasted over coals until golden. Simple, satisfying camp fare.</p>"

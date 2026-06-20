@@ -235,6 +235,11 @@ export class ContentPackCompiler {
         await game.settings.set("core", "compendiumConfiguration", cfg);
     }
 
+    /** @returns {string|null} Compendium sidebar folder id for Ionrift > Respite. */
+    static findRespiteCompendiumFolderId() {
+        return this._findRespiteFolderId();
+    }
+
     static _findRespiteFolderId() {
         const cfg = game.settings.get("core", "compendiumConfiguration") ?? {};
 

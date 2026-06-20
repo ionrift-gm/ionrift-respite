@@ -23,7 +23,7 @@
     "flags": {
         "ionrift-respite": {
             "itemRef": "wild_berries",
-            "terrain": "forest,swamp,wilderness",
+            "terrain": "wilderness",
             "category": "forage",
             "spoilsAfter": 3
         }

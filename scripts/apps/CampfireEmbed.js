@@ -17,7 +17,7 @@ import {
 } from "../services/CampGearScanner.js";
 import { logCampfireReconnect } from "../services/CampfireReconnectLog.js";
 
-/** Default kindling art (matches respite-cache-utility/kindling.json). */
+/** Default kindling art (matches respite-items kindling.json). */
 const DEFAULT_KINDLING_IMG = "icons/commodities/wood/kindling-sticks-brown.webp";
 
 /** After this many strike attempts, the next try always lights the fire. */
@@ -269,8 +269,7 @@ export class CampfireEmbed {
             coldCampActive: this._coldCampActive,
             showFireMeter: this._makeCampCeremony ? this._lit : activityFirePanel,
             meterLevel,
-            showGiftWoodBtn: activityFirePanel && !this._lit && !!game.user?.isGM && !!this._onGiftCeremonyWood,
-            showCampFuelTableLink: true
+            showGiftWoodBtn: activityFirePanel && !this._lit && !!game.user?.isGM && !!this._onGiftCeremonyWood
         };
     }
 
@@ -567,16 +566,6 @@ export class CampfireEmbed {
         if (douseBtn && !douseBtn._bound) {
             douseBtn._bound = true;
             douseBtn.addEventListener("click", () => this._onDouseFire());
-        }
-
-        const campFuelBtn = el.querySelector('[data-action="openCampFuelTable"]');
-        if (campFuelBtn && !campFuelBtn._bound) {
-            campFuelBtn._bound = true;
-            campFuelBtn.addEventListener("click", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                game.ionrift?.respite?.openCampFuelTable?.();
-            });
         }
     }
 

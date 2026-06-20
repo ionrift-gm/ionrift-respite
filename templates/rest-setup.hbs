@@ -1533,8 +1533,13 @@
                     {{!-- Empty state --}}
                     <div class="recipe-hero recipe-hero-empty">
                         <div class="recipe-hero-placeholder">
+                            {{#if noAvailableRecipes}}
+                            <i class="fas fa-box-open"></i>
+                            <span>No ingredients for any recipe. Forage or check inventory.</span>
+                            {{else}}
                             <i class="fas fa-utensils"></i>
                             <span>Select a recipe to see details</span>
+                            {{/if}}
                         </div>
                     </div>
                     {{/if}}
@@ -1554,65 +1559,12 @@
                     </div>
 
                     {{!-- Commitment Summary + Craft Button --}}
-                    {{#if commitSummary}}
-                    <div class="craft-commit-panel">
-                        <div class="commit-header">Ready to Craft</div>
-                        <div class="commit-visual-flow">
-                            <div class="commit-inputs">
-                                {{#each commitSummary.ingredients}}
-                                <div class="commit-item-token" data-tooltip="{{quantity}}x {{name}}">
-                                    <img src="{{img}}" alt="{{name}}">
-                                    <span class="commit-item-qty">{{quantity}}</span>
-                                </div>
-                                {{/each}}
-                            </div>
-                            <div class="commit-flow-arrow"><i class="fas fa-long-arrow-alt-right"></i></div>
-                            <div class="commit-output-token" data-tooltip="{{commitSummary.outputName}}">
-                                <img src="{{commitSummary.outputImg}}" alt="{{commitSummary.outputName}}">
-                                <span class="commit-output-name">{{commitSummary.outputName}}</span>
-                            </div>
-                        </div>
-                        <div class="commit-details">
-                            <span class="commit-detail">
-                                <i class="fas fa-dice-d20"></i> {{commitSummary.skill}} vs DC {{commitSummary.dc}}
-                                {{#if commitSummary.dcBreakdown.hasModifiers}}
-                                <span class="commit-dc-factors">
-                                    <span class="commit-dc-base">{{commitSummary.dcBreakdown.base}}</span>
-                                    {{#each commitSummary.dcBreakdown.factors}}
-                                    <span class="dc-factor-pill dc-factor-{{sign}}">{{label}}</span>
-                                    {{/each}}
-                                </span>
-                                {{/if}}
-                            </span>
-                            <span class="commit-detail risk-tag risk-{{commitSummary.risk}}">
-                                {{commitSummary.riskLabel}}
-                            </span>
-                            <span class="commit-detail commit-consequence">
-                                {{commitSummary.failConsequence}}
-                            </span>
-                        </div>
-                        <button type="button" class="btn-hero-craft" data-action="craftCommit">
-                            <i class="fas fa-hammer"></i><span>Craft</span>
-                        </button>
-                    </div>
-                    {{else}}
-                    <div class="craft-commit-panel empty">
-                        <div class="commit-placeholder">
-                            <i class="fas fa-hand-pointer"></i> Select a recipe to see your crafting plan
-                        </div>
-                    </div>
-                    {{/if}}
+                    {{> craftCommitPanel commitSummary=commitSummary noAvailableRecipes=noAvailableRecipes}}
                 </div>
             </div>
 
             {{/if}}
 
-            {{!-- Footer --}}
-            <div class="crafting-footer">
-                <button type="button" class="btn-secondary" data-action="craftClose">
-                    {{#if hasCrafted}}Close{{else}}Cancel{{/if}}
-                </button>
-            </div>
         </div>
         {{/with}}
 

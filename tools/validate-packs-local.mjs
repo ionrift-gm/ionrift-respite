@@ -123,17 +123,6 @@ const EXPECTED = {
             ),
         },
     },
-    "respite-cache-utility": {
-        minEntries: 1,
-        requiredKeys: [
-            "!items!4f8a1b2c3d4e5f60",   // Kindling
-        ],
-        requiredFlags: {
-            cacheEligible: (entries) => entries.some(
-                ([, v]) => v?.flags?.["ionrift-respite"]?.cacheEligible === true
-            ),
-        },
-    },
     "respite-actors": {
         minEntries: 9,  // 1 campfire + 7 equipment + 1 folder
         requiredKeys: [
