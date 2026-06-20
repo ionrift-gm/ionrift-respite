@@ -3,6 +3,7 @@
  */
 
 import { buildCommitOutputPreviewBundle } from "./CraftOutputPreview.js";
+import { getChefTreatOutputQuantity } from "./ChefFeat.js";
 
 /**
  * Pick the first craftable recipe when none is selected, or keep a still-valid selection.
@@ -43,11 +44,14 @@ export function resolveDefaultCraftRecipeId({
 export function buildCraftCommitSummary({ recipe, risk, actor, engine, terrainTag = null }) {
     if (!recipe || !actor || !engine) return null;
 
-    const dcBreakdown = engine.getDcBreakdown(actor, recipe, risk, terrainTag);
-    const outputForRisk = risk === "ambitious" && recipe.ambitiousOutput
+    const effectiveRisk = recipe.noSkillCheck ? "standard" : risk;
+    const dcBreakdown = recipe.noSkillCheck
+        ? { total: 0, base: 0, factors: [], hasModifiers: false }
+        : engine.getDcBreakdown(actor, recipe, effectiveRisk, terrainTag);
+    const outputForRisk = effectiveRisk === "ambitious" && recipe.ambitiousOutput
         ? recipe.ambitiousOutput
         : recipe.output;
-    const outputPreviewBundle = buildCommitOutputPreviewBundle(recipe, risk);
+    const outputPreviewBundle = buildCommitOutputPreviewBundle(recipe, effectiveRisk);
 
     const ingredients = (recipe.ingredients ?? []).map(ing => {
         const invKey = ing.name.toLowerCase().trim();
@@ -63,15 +67,34 @@ export function buildCraftCommitSummary({ recipe, risk, actor, engine, terrainTa
         };
     });
 
+    const outputQuantity = recipe.outputQuantityProficiency
+        ? getChefTreatOutputQuantity(actor)
+        : (outputForRisk?.quantity ?? 1);
+
+    if (recipe.noSkillCheck) {
+        return {
+            recipeName: recipe.name,
+            noSkillCheck: true,
+            outputName: outputForRisk?.name ?? recipe.output?.name ?? "Unknown",
+            outputImg: outputForRisk?.img ?? recipe.output?.img ?? "icons/svg/mystery-man.svg",
+            outputQuantity,
+            ingredients,
+            ingredientCost: "",
+            actionLabel: "Prepare",
+            outputPreview: outputPreviewBundle.active,
+            alternateOutputPreview: null
+        };
+    }
+
     return {
         recipeName: recipe.name,
         dc: dcBreakdown.total,
         dcBreakdown,
-        risk,
-        riskLabel: { standard: "Standard", ambitious: "Ambitious" }[risk] ?? risk,
+        risk: effectiveRisk,
+        riskLabel: { standard: "Standard", ambitious: "Ambitious" }[effectiveRisk] ?? effectiveRisk,
         outputName: outputForRisk?.name ?? recipe.output?.name ?? "Unknown",
         outputImg: outputForRisk?.img ?? recipe.output?.img ?? "icons/svg/mystery-man.svg",
-        outputQuantity: outputForRisk?.quantity ?? 1,
+        outputQuantity,
         ingredients,
         ingredientCost: (recipe.ingredients ?? []).map(i => `${i.quantity ?? 1}x ${i.name}`).join(", "),
         failConsequence: "Ingredients consumed on failure",

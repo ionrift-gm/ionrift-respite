@@ -19,13 +19,14 @@ export const STUB_RECIPES = {
             skill: "sur",
             dc: 8,
             chefFeatRequired: true,
+            noSkillCheck: true,
             outputQuantityProficiency: true,
             ingredients: [],
             output: {
                 name: "Bolstering Treat",
                 type: "consumable",
                 quantity: 1,
-                img: "icons/consumables/food/cookie-biscuit-brown.webp",
+                img: "icons/consumables/food/bread-loaf-simple-brown.webp",
                 description: "<p>A small baked treat from a Chef. Eat as a bonus action to gain temporary hit points equal to the cook's proficiency bonus. Spoils after 8 hours.</p>",
                 rarity: "common",
                 system: { type: { value: "food", subtype: "" } }

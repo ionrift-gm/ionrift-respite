@@ -1323,11 +1323,13 @@
                 </div>
                 <div class="craft-result-divider"></div>
                 <div class="craft-result-details">
+                    {{#unless craftingResult.noSkillCheck}}
                     <div class="craft-result-detail-row">
                         <i class="fas fa-dice-d20"></i>
                         <span>Rolled <strong>{{craftingResult.roll}}</strong> vs DC <strong>{{craftingResult.dc}}</strong></span>
                         <span class="risk-tag risk-{{craftingResult.riskTier}}">{{craftingResult.riskTier}}</span>
                     </div>
+                    {{/unless}}
                     <div class="craft-result-detail-row narrative">
                         <i class="fas fa-feather-alt"></i>
                         <span>{{craftingResult.narrative}}</span>
@@ -1457,11 +1459,12 @@
 
                     {{!-- Hero Card: Selected Recipe --}}
                     {{#if selectedRecipe}}
-                    <div class="recipe-hero{{#if selectedRecipe.ambitiousName}} recipe-hero--has-ambitious{{/if}}">
+                    <div class="recipe-hero">
                         <div class="recipe-hero-header">
                             <img src="{{selectedRecipe.outputImg}}" alt="{{selectedRecipe.name}}" class="recipe-hero-icon">
                             <div class="recipe-hero-titles">
                                 <h3 class="recipe-hero-name">{{selectedRecipe.name}}</h3>
+                                {{#unless selectedRecipe.noSkillCheck}}
                                 <div class="recipe-hero-dc-row">
                                     <span class="recipe-hero-dc"><i class="fas fa-dice-d20"></i> DC {{selectedRecipe.dcDisplay}}</span>
                                     {{#if selectedRecipe.dcBreakdown.hasModifiers}}
@@ -1471,6 +1474,7 @@
                                     {{/each}}
                                     {{/if}}
                                 </div>
+                                {{/unless}}
                                 {{#if selectedRecipe.isPartyMeal}}
                                 <span class="recipe-hero-badge badge-party-meal"><i class="fas fa-users"></i> Feeds the Party</span>
                                 {{/if}}
@@ -1481,6 +1485,7 @@
                         {{/if}}
 
                         {{!-- Ingredient tokens --}}
+                        {{#if selectedRecipe.ingredientList.length}}
                         <div class="recipe-hero-ingredients">
                             {{#each selectedRecipe.ingredientList}}
                             <div class="hero-ingredient-token {{#if met}}met{{else}}unmet{{/if}}" data-tooltip="{{required}}x {{name}} (have {{available}})">
@@ -1490,6 +1495,7 @@
                             </div>
                             {{/each}}
                         </div>
+                        {{/if}}
 
                         {{!-- Buff preview --}}
                         {{#if selectedRecipe.buffPreview}}
@@ -1520,14 +1526,6 @@
                             {{/if}}
                         </div>
                         {{/if}}
-
-                        {{!-- Ambitious teaser: slot always reserved when recipe supports it --}}
-                        {{#if selectedRecipe.ambitiousName}}
-                        <div class="recipe-hero-ambitious{{#unless isAmbitiousSelected}} recipe-hero-ambitious--reserved{{/unless}}">
-                            <i class="fas fa-fire-alt"></i>
-                            <span>On success: <strong>{{selectedRecipe.ambitiousName}}</strong></span>
-                        </div>
-                        {{/if}}
                     </div>
                     {{else}}
                     {{!-- Empty state --}}
@@ -1545,6 +1543,7 @@
                     {{/if}}
 
                     {{!-- Step 2: Choose Approach --}}
+                    {{#unless hideRiskTiers}}
                     <div class="crafting-step crafting-step-approach">
                         <div class="step-label"><span class="step-num">2</span> Choose Your Approach</div>
                         <div class="risk-selector">
@@ -1557,6 +1556,7 @@
                             {{/each}}
                         </div>
                     </div>
+                    {{/unless}}
 
                     {{!-- Commitment Summary + Craft Button --}}
                     {{> craftCommitPanel commitSummary=commitSummary noAvailableRecipes=noAvailableRecipes}}
