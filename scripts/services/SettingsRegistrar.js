@@ -253,12 +253,27 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     game.settings.register(MODULE_ID, "enableProfessions", {
         name: "Crafting Professions",
-        hint: "Show cooking, brewing, tailoring, and crafting activities during rest. Disable for a simpler rest without profession crafting. Also auto-skips the travel phase when disabled.",
+        hint: "Show cooking, brewing, tailoring, and crafting activities during rest.",
         scope: "world",
         config: false,
         type: Boolean,
         default: true,
         restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "chefTreatCookingOnly", {
+        name: "Chef Treats Only (RAW)",
+        hint: "Disables tailoring, brewing, and camp meal crafting. Chef feat characters can still bake Bolstering Treats.",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false,
+        restricted: true,
+        onChange: () => {
+            const live = foundry.applications.instances.get("ionrift-respite-setup");
+            if (live?._craftingEngine) applyCustomRecipesToEngine(live._craftingEngine);
+            if (live?.render) live.render();
+        }
     });
 
     game.settings.register(MODULE_ID, "enableFletching", {
@@ -320,7 +335,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     game.settings.register(MODULE_ID, "enableScouting", {
         name: "Travel Scouting",
-        hint: "Scout activity on the final travel day before camp. Requires Use Travel. Off hides scouting when the travel phase is not used.",
+        hint: "Scout on the final travel day before camp. Requires Use Travel.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -330,7 +345,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     game.settings.register(MODULE_ID, "enableForaging", {
         name: "Travel Foraging",
-        hint: "Forage activity during the travel phase. Off removes foraging from travel day choices.",
+        hint: "Forage during the travel phase. Off removes foraging from travel days.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -340,7 +355,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     game.settings.register(MODULE_ID, "enableHunting", {
         name: "Travel Hunting",
-        hint: "Hunt activity during the travel phase. Off removes hunting prey from travel day choices.",
+        hint: "Hunt during the travel phase. Off removes hunting from travel days.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -388,7 +403,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     game.settings.register(MODULE_ID, "useTravel", {
         name: "Use Travel",
-        hint: "Include the travel phase during long rests when professions are on. Off skips travel entirely and goes straight to camp.",
+        hint: "Include the travel phase during long rests. Off skips travel and goes straight to camp.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -875,6 +890,7 @@ export const SETTING_KEYS = [
     "trainingXpTier",
     "trainingXpTierMigrated",
     "enableProfessions",
+    "chefTreatCookingOnly",
     "enableFletching",
     "fletchingYieldTier",
     "fletchingYieldTierMigrated",

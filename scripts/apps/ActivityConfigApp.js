@@ -21,8 +21,7 @@ import {
 import {
     CAMP_FUEL_FIND_DEFAULT_PERCENT,
     CAMP_FUEL_FIND_MAX_PERCENT,
-    CAMP_FUEL_FIND_MIN_PERCENT,
-    isProfessionsEnabled
+    CAMP_FUEL_FIND_MIN_PERCENT
 } from "../services/TravelSettings.js";
 
 const MODULE_ID = "ionrift-respite";
@@ -49,51 +48,58 @@ const ACTIVITIES_GROUP = {
     id: "activities",
     label: "Activities",
     icon: "fas fa-campground",
-    hint: "Evening camp options: professions, training, pray, fletching, night encounters, and copy spell."
+    hint: "Evening camp: professions, training, pray, fletching, encounters, copy spell."
 };
 
 /** Boolean activity toggles and tier sliders. Order = display order in the dialog. */
 const ACTIVITY_TOGGLES = [
     {
+        key: "chefTreatCookingOnly",
+        label: "Chef Treats Only",
+        icon: "fas fa-cookie-bite",
+        hint: "RAW: no tailoring, brewing, or camp meals. Chef feat bakes Bolstering Treats only.",
+        type: "boolean"
+    },
+    {
         key: "enableProfessions",
         label: "Crafting Professions",
         icon: "fas fa-hammer",
-        hint: "Cooking, brewing, tailoring, and crafting activities. Also controls the travel phase: disabling this auto-skips travel.",
+        hint: "Cook, brew, tailor, and craft activities during rest.",
         type: "boolean"
     },
     {
         key: "enableEncounters",
         label: "Night Encounters & Watch",
         icon: "fas fa-shield-alt",
-        hint: "Keep Watch, Set Up Defenses, scouting, and the night encounter roll. Off skips the encounter layer; the night passes without a check.",
+        hint: "Watch, defenses, scouting, and the night encounter roll.",
         type: "boolean"
     },
     {
         key: "fletchingYieldTier",
         label: "Fletching",
         icon: "fas fa-bullseye",
-        hint: "Fletch Arrows during long rests. Slide to Off, or snap to a yield tier: 2d4+prof through 2d20+prof on a successful check.",
+        hint: "Fletch arrows on long rests. Off, or yield tiers from 2d4+prof to 2d20+prof.",
         type: "tierSlider"
     },
     {
         key: "trainingXpTier",
         label: "Training",
         icon: "fas fa-dumbbell",
-        hint: "Characters level 5 and below can train during long rests. Slide to Off, or snap to a tier: fail XP / pass XP per set, from 3/10 up to 10/50.",
+        hint: "Level 5 and below train on long rests. Off, or XP tiers from 3/10 to 10/50 per set.",
         type: "tierSlider"
     },
     {
         key: "enablePrayMeditate",
         label: "Pray / Meditate",
         icon: "fas fa-pray",
-        hint: "Religion or Insight check during rests for temporary HP on success. Off removes the activity from the bedroll station.",
+        hint: "Religion or Insight for temp HP. Off removes bedroll Pray / Meditate.",
         type: "boolean"
     },
     {
         key: "enableCopySpell",
         label: "Copy Spell",
         icon: "fas fa-scroll",
-        hint: "Copy Spell activity during long rests for wizards with a spellbook.",
+        hint: "Wizards with a spellbook copy spells on long rests.",
         type: "boolean"
     },
     {
@@ -101,24 +107,23 @@ const ACTIVITY_TOGGLES = [
         id: "travel",
         label: "Travel",
         icon: "fas fa-route",
-        hint: "Pre-camp travel when crafting professions are on: forage, hunt, and optional final-day scouting.",
-        requiresProfessions: true,
+        hint: "Pre-camp march: forage, hunt, optional final-day scouting.",
         children: [
             {
                 key: "useTravel",
                 label: "Use Travel Phase",
-                hint: "Include the travel phase during long rests. Off skips travel entirely and goes straight to camp."
+                hint: "Travel phase on long rests. Off goes straight to camp."
             },
             {
                 key: "enableForaging",
                 label: "Travel Foraging",
-                hint: "Forage activity on travel days. Off removes foraging from the declaration list.",
+                hint: "Forage on travel days. Off removes it from declarations.",
                 requiresUseTravel: true
             },
             {
                 key: "campFuelFindChance",
                 label: "Camp Fuel Find Chance",
-                hint: "Percent chance each successful forage also grants kindling (Camp Fuel roll table). 0 disables the side yield.",
+                hint: "Chance each forage also grants kindling. 0 turns off the roll.",
                 type: "percentSlider",
                 min: CAMP_FUEL_FIND_MIN_PERCENT,
                 max: CAMP_FUEL_FIND_MAX_PERCENT,
@@ -129,19 +134,19 @@ const ACTIVITY_TOGGLES = [
             {
                 key: "enableHunting",
                 label: "Travel Hunting",
-                hint: "Hunt activity on travel days. Off removes hunting prey from the declaration list.",
+                hint: "Hunt prey on travel days. Off removes it from declarations.",
                 requiresUseTravel: true
             },
             {
                 key: "enableScouting",
                 label: "Travel Scouting",
-                hint: "Scout option on the final travel day. Perception or Survival sets camp comfort and the night check.",
+                hint: "Scout on the last travel day. Sets comfort and the night check.",
                 requiresUseTravel: true
             },
             {
                 key: "homebrewProvisionOnly",
                 label: "Homebrew Provisions Only",
-                hint: "Ignore shipped Respite Items, built-in stubs, and imported pack data. Camp cooking and brewing use your custom recipe list; forage and hunt use the Respite Custom compendium only."
+                hint: "Custom recipes and Respite Custom compendium only. Ignores shipped items, stubs, and imported packs."
             }
         ]
     }
@@ -163,12 +168,10 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
     /** @override */
     async _prepareContext() {
         const useTravel = !!game.settings.get(MODULE_ID, "useTravel");
-        const professionsOn = isProfessionsEnabled();
         const foragingOn = !!game.settings.get(MODULE_ID, "enableForaging");
 
-        const resolveBooleanRow = (row, { groupDisabled = false } = {}) => {
-            const disabled = groupDisabled
-                || (row.requiresUseTravel && (!professionsOn || !useTravel))
+        const resolveBooleanRow = (row) => {
+            const disabled = (row.requiresUseTravel && !useTravel)
                 || (row.requiresForaging && !foragingOn);
             return {
                 ...row,
@@ -178,10 +181,9 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
             };
         };
 
-        const resolveTravelChild = (child, { groupDisabled = false } = {}) => {
+        const resolveTravelChild = (child) => {
             if (child.type === "percentSlider") {
-                const disabled = groupDisabled
-                    || (child.requiresUseTravel && (!professionsOn || !useTravel))
+                const disabled = (child.requiresUseTravel && !useTravel)
                     || (child.requiresForaging && !foragingOn);
                 const raw = game.settings.get(MODULE_ID, child.key);
                 const value = typeof raw === "number" && !Number.isNaN(raw)
@@ -189,16 +191,14 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
                     : CAMP_FUEL_FIND_DEFAULT_PERCENT;
                 return { ...child, value, disabled };
             }
-            return resolveBooleanRow(child, { groupDisabled });
+            return resolveBooleanRow(child);
         };
 
         const rows = ACTIVITY_TOGGLES.map(entry => {
             if (entry.type === "group") {
-                const groupDisabled = entry.requiresProfessions && !professionsOn;
                 return {
                     ...entry,
-                    disabled: groupDisabled,
-                    children: entry.children.map(child => resolveTravelChild(child, { groupDisabled }))
+                    children: entry.children.map(child => resolveTravelChild(child))
                 };
             }
             if (entry.type === "tierSlider") {
@@ -211,7 +211,7 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
             };
         });
 
-        return { rows, professionsOn, useTravel };
+        return { rows, useTravel };
     }
 
     /** @override */
@@ -223,7 +223,7 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
         const travelGroup = context.rows.find(row => row.type === "group" && row.id === "travel");
 
         let html = `
-        <p class="activity-config-lead">Configure pre-camp travel and evening activities for this world. Training and fletching use tier sliders (Off plus five rates).</p>
+        <p class="activity-config-lead">Pre-camp travel and evening activities. Training and fletching use tier sliders.</p>
         <div class="activity-config-layout">
             <div class="activity-config-column activity-config-column--travel">`;
 
@@ -254,9 +254,10 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
     _renderSettingRow(row, { asSub = false } = {}) {
         const tierRowClass = row.rowClass ? ` ${row.rowClass}` : "";
         const subClass = asSub ? " activity-config-row--sub" : "";
+        const disabledClass = row.disabled ? " activity-config-row--disabled" : "";
         const labelClass = asSub ? " activity-config-label--sub" : "";
         return `
-            <div class="activity-config-row${subClass}${row.type === "tierSlider" ? ` activity-config-row--tier${tierRowClass}` : ""}" data-key="${row.key}">
+            <div class="activity-config-row${subClass}${disabledClass}${row.type === "tierSlider" ? ` activity-config-row--tier${tierRowClass}` : ""}" data-key="${row.key}">
                 <div class="activity-config-info">
                     <div class="activity-config-label${labelClass}">
                         ${asSub ? "" : `<i class="${row.icon} activity-config-icon"></i>`}
@@ -375,28 +376,16 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
         });
 
         const syncTravelGroup = () => {
-            const professionsCb = el.querySelector('.activity-config-cb[data-key="enableProfessions"]');
             const useTravelCb = el.querySelector('.activity-config-cb[data-key="useTravel"]');
             const foragingCb = el.querySelector('.activity-config-cb[data-key="enableForaging"]');
-            const professionsOn = !!professionsCb?.checked;
             const useTravelOn = !!useTravelCb?.checked;
             const foragingOn = !!foragingCb?.checked;
-            const group = el.querySelector('.activity-config-group[data-group="travel"]');
-            if (group) {
-                group.classList.toggle("activity-config-group--disabled", !professionsOn);
-            }
-            const useTravelRow = el.querySelector('.activity-config-row[data-key="useTravel"]');
-            const useTravelInput = useTravelRow?.querySelector(".activity-config-cb");
-            if (useTravelRow && useTravelInput) {
-                useTravelRow.classList.toggle("activity-config-row--disabled", !professionsOn);
-                useTravelInput.disabled = !professionsOn;
-            }
             for (const travelChildKey of ["enableForaging", "enableHunting", "enableScouting", "campFuelFindChance"]) {
                 const childRow = el.querySelector(`.activity-config-row[data-key="${travelChildKey}"]`);
                 const childInput = childRow?.querySelector(".activity-config-cb, .activity-config-range");
                 if (childRow && childInput) {
                     const needsForaging = travelChildKey === "campFuelFindChance";
-                    const childDisabled = !professionsOn || !useTravelOn
+                    const childDisabled = !useTravelOn
                         || (needsForaging && !foragingOn);
                     childRow.classList.toggle("activity-config-row--disabled", childDisabled);
                     childInput.disabled = childDisabled;
@@ -404,8 +393,6 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
             }
         };
 
-        el.querySelector('.activity-config-cb[data-key="enableProfessions"]')
-            ?.addEventListener("change", syncTravelGroup);
         el.querySelector('.activity-config-cb[data-key="useTravel"]')
             ?.addEventListener("change", syncTravelGroup);
         el.querySelector('.activity-config-cb[data-key="enableForaging"]')

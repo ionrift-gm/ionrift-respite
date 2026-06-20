@@ -3,7 +3,7 @@
  */
 
 import { STUB_RECIPES } from "../data/stub-content.js";
-import { isHomebrewProvisionOnly } from "./TravelSettings.js";
+import { isHomebrewProvisionOnly, isChefTreatCookingOnly } from "./TravelSettings.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -224,13 +224,32 @@ export function sanitizeCustomRecipes(raw) {
  * @param {import("./CraftingEngine.js").CraftingEngine} engine
  */
 export function applyCoreFeatRecipesToEngine(engine) {
-    if (!engine || isHomebrewProvisionOnly()) return;
+    if (!engine) return;
+    if (isHomebrewProvisionOnly() && !isChefTreatCookingOnly()) return;
 
     const featCooking = (STUB_RECIPES.cooking ?? []).filter(recipe => recipe.chefFeatRequired);
     if (!featCooking.length) return;
 
     const base = engine.recipes.get("cooking") ?? [];
     engine.load("cooking", mergeRecipeLists(base, featCooking));
+}
+
+/**
+ * When Chef Treats Only is on, strip non-feat cooking recipes then re-merge
+ * Bolstering Treats from the core stub.
+ * @param {import("./CraftingEngine.js").CraftingEngine} engine
+ */
+export function applyChefTreatCookingOnlyToEngine(engine) {
+    if (!engine || !isChefTreatCookingOnly()) return;
+
+    const cooking = engine.recipes.get("cooking") ?? [];
+    const kept = cooking.filter(recipe => recipe.chefFeatRequired);
+    if (kept.length) {
+        engine.load("cooking", kept);
+    } else {
+        engine.recipes.delete("cooking");
+    }
+    applyCoreFeatRecipesToEngine(engine);
 }
 
 /**
@@ -254,4 +273,6 @@ export function applyCustomRecipesToEngine(engine) {
             if (!customByProf[profId]?.length) engine.recipes.delete(profId);
         }
     }
+
+    applyChefTreatCookingOnlyToEngine(engine);
 }

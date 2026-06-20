@@ -37,7 +37,7 @@ const PROFILE_KEYS = [...COMPLEXITY_KEYS, ...PLAYER_KEYS];
 const KEY_LABELS = {
     enableComfort: "Comfort rules",
     enableCampfireMinigame: "Campfire minigame (TotM)",
-    enableProfessions: "Crafting professions (and travel phase)",
+    enableProfessions: "Crafting professions",
     trainingXpTier: "Training activity",
     fletchingYieldTier: "Fletching yield",
     enableEncounters: "Night encounters & watch",
