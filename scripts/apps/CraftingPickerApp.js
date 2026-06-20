@@ -1,5 +1,6 @@
 import { CraftingEngine } from "../services/CraftingEngine.js";
 import { GrantLedger } from "../services/GrantLedger.js";
+import { normalizeRecipeOutputImg } from "../services/RecipeIcons.js";
 
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -123,7 +124,7 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
             ...recipe,
             dcDisplay: adjustedDc,
             outputName: recipe.output?.name ?? "Unknown",
-            outputImg: recipe.output?.img ?? "icons/svg/mystery-man.svg",
+            outputImg: normalizeRecipeOutputImg(recipe.output?.img, "icons/svg/mystery-man.svg"),
             ambitiousOutput: recipe.ambitiousOutput,
             isSelected: recipe.id === this._selectedRecipeId,
             ingredientList: (recipe.ingredients ?? []).map(ing => {

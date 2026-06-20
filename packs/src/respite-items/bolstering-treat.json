@@ -1,0 +1,48 @@
+{
+    "_key": "!items!a1b2c3d4e5f6010a",
+    "_id": "a1b2c3d4e5f6010a",
+    "name": "Bolstering Treat",
+    "type": "consumable",
+    "img": "icons/consumables/food/berry-bowl-red.webp",
+    "system": {
+        "description": {
+            "value": "<p>A small baked treat from a Chef. Eat as a bonus action to gain temporary hit points equal to the cook's proficiency bonus. Spoils after 8 hours.</p>"
+        },
+        "rarity": "common",
+        "weight": 0.1,
+        "price": {
+            "value": 2,
+            "denomination": "cp"
+        },
+        "type": {
+            "value": "food",
+            "subtype": ""
+        },
+        "uses": {
+            "max": 1,
+            "per": "charges",
+            "autoDestroy": true
+        }
+    },
+    "folder": "c00ked0000000001",
+    "flags": {
+        "ionrift-respite": {
+            "itemRef": "stub_chef_bolstering_treats__out",
+            "category": "prepared",
+            "foodTag": "prepared",
+            "spoilsAfterHours": 8,
+            "wellFed": false,
+            "chefTreat": true,
+            "buff": {
+                "type": "temp_hp",
+                "formula": "@prof",
+                "target": "self"
+            }
+        }
+    },
+    "effects": [],
+    "ownership": {
+        "default": 0
+    },
+    "sort": 1400
+}

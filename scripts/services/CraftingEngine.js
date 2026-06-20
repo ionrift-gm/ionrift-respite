@@ -22,6 +22,7 @@ import { GrantLedger } from "./GrantLedger.js";
 import { getPartyActors } from "./partyActors.js";
 import { mergeRecipeLists } from "./RecipeCatalog.js";
 import { hasChefFeat, getChefTreatOutputQuantity, getChefProficiencyBonus } from "./ChefFeat.js";
+import { normalizeRecipeOutputImg } from "./RecipeIcons.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -626,7 +627,7 @@ export class CraftingEngine {
             const grant = {
                 name: output.name ?? resolved.name,
                 type: output.type ?? resolved.type,
-                img: output.img ?? resolved.img,
+                img: normalizeRecipeOutputImg(output.img ?? resolved.img),
                 quantity: qty,
                 system: foundry.utils.mergeObject(
                     foundry.utils.duplicate(resolved.system ?? {}),
@@ -656,7 +657,7 @@ export class CraftingEngine {
             return await ItemOutcomeHandler.grantItemsToActor(actor, [{
                 name: output.name,
                 type: output.type ?? "consumable",
-                img: output.img ?? "icons/consumables/food/bowl-stew-brown.webp",
+                img: normalizeRecipeOutputImg(output.img),
                 quantity: output.quantity ?? 1,
                 system: {
                     description: { value: output.description ?? "" },

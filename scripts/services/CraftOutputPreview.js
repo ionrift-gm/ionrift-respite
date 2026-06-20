@@ -3,6 +3,7 @@
  */
 
 import { formatMealBuffPreview } from "./MealBuffPresets.js";
+import { normalizeRecipeOutputImg } from "./RecipeIcons.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -44,7 +45,7 @@ export function buildCraftOutputPreview(output, outputFlags) {
     const rarityKey = (output.rarity ?? "common").toLowerCase().replace(/\s+/g, "");
     return {
         name: output.name ?? "Unknown",
-        img: output.img ?? "icons/svg/mystery-man.svg",
+        img: normalizeRecipeOutputImg(output.img, "icons/svg/mystery-man.svg"),
         quantity: output.quantity ?? 1,
         rarity: RARITY_LABELS[rarityKey] ?? output.rarity ?? "",
         descriptionPlain: stripHtmlPreview(output.description ?? ""),

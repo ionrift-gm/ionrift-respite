@@ -28,6 +28,7 @@ import { getPartyActors, getFoodBuffPartyActors, getMealEligiblePartyActors } fr
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
 import { formatMealBuffPreview } from "../services/MealBuffPresets.js";
 import { buildCraftCommitSummary, resolveDefaultCraftRecipeId } from "../services/CraftCommitSummary.js";
+import { normalizeRecipeOutputImg } from "../services/RecipeIcons.js";
 import { patchCraftingRiskUi } from "../services/CraftingRiskUiPatch.js";
 import { ItemClassifier } from "../services/ItemClassifier.js";
 import { emitFeastServeRequest, emitActivityColdCampRequest } from "../services/SocketController.js";
@@ -804,7 +805,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 dcDisplay: dcBreakdown.total,
                 dcBreakdown,
                 outputName: recipe.output?.name ?? "Unknown",
-                outputImg: recipe.output?.img ?? "icons/consumables/food/bowl-stew-brown.webp",
+                outputImg: normalizeRecipeOutputImg(recipe.output?.img),
                 ambitiousOutput: recipe.ambitiousOutput,
                 isSelected: recipe.id === this._craftRecipeId,
                 description: recipe.description ?? "",

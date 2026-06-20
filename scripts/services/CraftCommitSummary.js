@@ -4,6 +4,7 @@
 
 import { buildCommitOutputPreviewBundle } from "./CraftOutputPreview.js";
 import { getChefTreatOutputQuantity } from "./ChefFeat.js";
+import { normalizeRecipeOutputImg } from "./RecipeIcons.js";
 
 /**
  * Pick the first craftable recipe when none is selected, or keep a still-valid selection.
@@ -76,7 +77,7 @@ export function buildCraftCommitSummary({ recipe, risk, actor, engine, terrainTa
             recipeName: recipe.name,
             noSkillCheck: true,
             outputName: outputForRisk?.name ?? recipe.output?.name ?? "Unknown",
-            outputImg: outputForRisk?.img ?? recipe.output?.img ?? "icons/svg/mystery-man.svg",
+            outputImg: normalizeRecipeOutputImg(outputForRisk?.img ?? recipe.output?.img),
             outputQuantity,
             ingredients,
             ingredientCost: "",
@@ -93,7 +94,7 @@ export function buildCraftCommitSummary({ recipe, risk, actor, engine, terrainTa
         risk: effectiveRisk,
         riskLabel: { standard: "Standard", ambitious: "Ambitious" }[effectiveRisk] ?? effectiveRisk,
         outputName: outputForRisk?.name ?? recipe.output?.name ?? "Unknown",
-        outputImg: outputForRisk?.img ?? recipe.output?.img ?? "icons/svg/mystery-man.svg",
+        outputImg: normalizeRecipeOutputImg(outputForRisk?.img ?? recipe.output?.img),
         outputQuantity,
         ingredients,
         ingredientCost: (recipe.ingredients ?? []).map(i => `${i.quantity ?? 1}x ${i.name}`).join(", "),
