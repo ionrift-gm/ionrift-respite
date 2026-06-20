@@ -380,6 +380,43 @@ export class ItemClassifier {
     }
 
     /**
+     * Chef Bolstering Treats: bonus-action temp HP snacks, not rest rations.
+     * @param {Item|object} item
+     * @returns {boolean}
+     */
+    static isChefTreat(item) {
+        return !!item?.flags?.[MODULE_ID]?.chefTreat;
+    }
+
+    /**
+     * Items that can fill a rest rations food slot (excludes Chef treats).
+     * @param {Item} item
+     * @param {Actor} [actor]
+     * @returns {boolean}
+     */
+    static isMealSubstitute(item, actor = null) {
+        if (!item || this.isChefTreat(item)) return false;
+        if (actor && this.requiresEssence(actor)) {
+            return this.isEssenceMealFoodOption(item, actor);
+        }
+        return this.isFood(item, actor);
+    }
+
+    /**
+     * Whether a meal-choice food slot selection counts toward sustenance.
+     * @param {Actor} actor
+     * @param {string} itemId
+     * @returns {boolean}
+     */
+    static isMealSlotSelection(actor, itemId) {
+        if (!itemId || itemId === "skip") return false;
+        if (String(itemId).startsWith("__")) return false;
+        const item = actor?.items?.get(itemId);
+        if (item && this.isChefTreat(item)) return false;
+        return true;
+    }
+
+    /**
      * Check if an item qualifies as water/drink for a specific actor (diet-aware).
      *
      * @param {Item} item - Foundry Item document
