@@ -25,7 +25,6 @@ function patchRecipeHeroDcRow(row, dcBreakdown, dcDisplay) {
  * @param {HTMLElement} root - `.totm-crafting-embed` or `.station-crafting-panel`
  * @param {Object} options
  * @param {string} options.risk
- * @param {boolean} options.isAmbitiousSelected
  * @param {Object|null} options.commitSummary
  * @param {Object} [options.dcBreakdown]
  * @param {number} [options.dcDisplay]
@@ -33,7 +32,6 @@ function patchRecipeHeroDcRow(row, dcBreakdown, dcDisplay) {
  */
 export async function patchCraftingRiskUi(root, {
     risk,
-    isAmbitiousSelected,
     commitSummary,
     dcBreakdown,
     dcDisplay
@@ -42,11 +40,6 @@ export async function patchCraftingRiskUi(root, {
 
     for (const btn of root.querySelectorAll(".btn-risk[data-risk]")) {
         btn.classList.toggle("selected", btn.dataset.risk === risk);
-    }
-
-    const amb = root.querySelector(".recipe-hero-ambitious");
-    if (amb) {
-        amb.classList.toggle("recipe-hero-ambitious--reserved", !isAmbitiousSelected);
     }
 
     if (dcBreakdown && dcDisplay != null) {

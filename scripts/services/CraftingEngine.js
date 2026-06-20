@@ -194,6 +194,12 @@ export class CraftingEngine {
             return { success: false, error: "Missing ingredients.", ingredientStatus };
         }
 
+        if (recipe.noSkillCheck) {
+            return await this._resolveNoSkillCheckCraft(
+                actor, recipe, recipeId, professionId, terrainTag, partySize, { ledger }
+            );
+        }
+
         const adjustedDc = this.getAdjustedCraftingDc(actor, recipe, riskTier, terrainTag);
 
         // Roll the skill check
@@ -305,6 +311,68 @@ export class CraftingEngine {
                     : (recipe.failNarrative ?? "The attempt fails. Your ingredients are spent.")
             };
         }
+    }
+
+    /**
+     * Recipes with noSkillCheck skip the roll and always grant output (Chef Bolstering Treats, etc.).
+     */
+    async _resolveNoSkillCheckCraft(actor, recipe, recipeId, professionId, terrainTag, partySize, { ledger } = {}) {
+        let output = recipe.output;
+
+        if (output && recipe.outputQuantityProficiency) {
+            output = { ...output, quantity: getChefTreatOutputQuantity(actor) };
+        }
+
+        if (terrainTag && recipe.terrainVariants?.[terrainTag]?.output) {
+            output = recipe.terrainVariants[terrainTag].output;
+        }
+
+        const outputFlags = recipe.outputFlags;
+        const slotKey = GrantLedger.craftingSlotKey(actor.id, professionId, recipeId);
+
+        const performSuccessGrant = async () => {
+            let grantFlags = outputFlags;
+            if (outputFlags?.[MODULE_ID]?.chefTreat) {
+                grantFlags = foundry.utils.deepClone(outputFlags);
+                grantFlags[MODULE_ID] = {
+                    ...grantFlags[MODULE_ID],
+                    chefTreatProfBonus: getChefProficiencyBonus(actor)
+                };
+            }
+            const createdItems = await this._createOutputItems(actor, output, grantFlags);
+            return { createdItems, output, outputFlags: grantFlags };
+        };
+
+        let createdItems = [];
+        let duplicate = false;
+
+        if (ledger) {
+            const { duplicate: wasDup, summary } = await ledger.grantOnce(slotKey, performSuccessGrant);
+            duplicate = wasDup;
+            createdItems = summary?.createdItems ?? [];
+            if (!wasDup) {
+                output = summary?.output ?? output;
+            }
+        } else {
+            const summary = await performSuccessGrant();
+            createdItems = summary.createdItems;
+            output = summary.output;
+        }
+
+        return {
+            success: true,
+            duplicate,
+            noSkillCheck: true,
+            recipeId,
+            recipeName: recipe.name,
+            riskTier: "standard",
+            roll: null,
+            dc: null,
+            output,
+            createdItems,
+            ingredientsConsumed: false,
+            narrative: recipe.successNarrative ?? `You prepare ${recipe.name}.`
+        };
     }
 
     // ──────── Internal Methods ────────

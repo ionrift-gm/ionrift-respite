@@ -219,11 +219,27 @@ export function sanitizeCustomRecipes(raw) {
 }
 
 /**
+ * Core feat-linked recipes always merge into the engine, even when a cooking
+ * overlay or imported pack owns that profession.
+ * @param {import("./CraftingEngine.js").CraftingEngine} engine
+ */
+export function applyCoreFeatRecipesToEngine(engine) {
+    if (!engine || isHomebrewProvisionOnly()) return;
+
+    const featCooking = (STUB_RECIPES.cooking ?? []).filter(recipe => recipe.chefFeatRequired);
+    if (!featCooking.length) return;
+
+    const base = engine.recipes.get("cooking") ?? [];
+    engine.load("cooking", mergeRecipeLists(base, featCooking));
+}
+
+/**
  * Apply merged custom recipes onto a CraftingEngine instance.
  * @param {import("./CraftingEngine.js").CraftingEngine} engine
  */
 export function applyCustomRecipesToEngine(engine) {
     if (!engine) return;
+    applyCoreFeatRecipesToEngine(engine);
     const raw = game.settings.get(MODULE_ID, "customRecipes") ?? {};
     const customByProf = sanitizeCustomRecipes(raw);
     const homebrewOnly = isHomebrewProvisionOnly();

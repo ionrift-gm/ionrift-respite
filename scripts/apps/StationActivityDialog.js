@@ -794,10 +794,13 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         }
 
         const enrichRecipe = (recipe) => {
-            const dcBreakdown = engine.getDcBreakdown(actor, recipe, this._craftRisk, terrainTag);
+            const dcBreakdown = recipe.noSkillCheck
+                ? { total: 0, base: 0, factors: [], hasModifiers: false }
+                : engine.getDcBreakdown(actor, recipe, this._craftRisk, terrainTag);
             const flags = recipe.outputFlags?.["ionrift-respite"];
             return {
                 ...recipe,
+                noSkillCheck: !!recipe.noSkillCheck,
                 dcDisplay: dcBreakdown.total,
                 dcBreakdown,
                 outputName: recipe.output?.name ?? "Unknown",
@@ -809,7 +812,6 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 isPartyMeal: !!flags?.partyMeal,
                 isWellFed: !!flags?.wellFed,
                 satiates: flags?.satiates ?? [],
-                ambitiousName: recipe.ambitiousOutput?.name ?? null,
                 ambitiousBuffPreview: this._formatBuffPreview(
                     recipe.ambitiousOutputFlags?.["ionrift-respite"]?.buff ?? flags?.buff
                 ),
@@ -867,14 +869,14 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 hasCrafted: this._craftHasCrafted,
                 rollPending: this._craftRollPending,
                 showMissing: this._craftShowMissing,
-                riskTiers: [
+                hideRiskTiers: !!selectedRecipe?.noSkillCheck,
+                riskTiers: selectedRecipe?.noSkillCheck ? [] : [
                     { id: "standard", label: "Standard", hint: "Base DC · Ingredients used", selected: this._craftRisk === "standard" },
                     { id: "ambitious", label: "Ambitious", hint: "DC +5 · Better yield", selected: this._craftRisk === "ambitious" }
                 ],
                 available,
                 partial,
                 selectedRecipe: selectedRecipe ?? null,
-                isAmbitiousSelected: this._craftRisk === "ambitious",
                 noAvailableRecipes: !this._craftHasCrafted && available.length === 0,
                 commitSummary,
                 craftingResult: this._craftResult ? {
@@ -1041,6 +1043,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
     static #onCraftSelectRecipe(event, target) {
         if (this._craftRollPending || this._craftHasCrafted) return;
         this._craftRecipeId = target.dataset.recipeId;
+        this._craftRisk = "standard";
         this.render();
     }
 
@@ -1070,6 +1073,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             this.render();
             return;
         }
+        if (recipe.noSkillCheck) return;
 
         const commitSummary = buildCraftCommitSummary({
             recipe,
@@ -1082,7 +1086,6 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         const patched = await patchCraftingRiskUi(root, {
             risk,
-            isAmbitiousSelected: risk === "ambitious",
             commitSummary,
             dcBreakdown,
             dcDisplay: dcBreakdown.total

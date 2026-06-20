@@ -498,6 +498,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 for (const [profId, recipeList] of Object.entries(restData.recipes)) {
                     this._craftingEngine.load(profId, recipeList);
                 }
+                applyCustomRecipesToEngine(this._craftingEngine);
             }
             // Create a minimal engine so comfort/fire/shelter state is available
             // on the player side (prevents fallback to terrain defaults).
@@ -3402,10 +3403,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
 
                 const enrichRecipe = (recipe) => {
-                    const dcBreakdown = engine.getDcBreakdown(expandActor, recipe, risk, terrainTag);
+                    const dcBreakdown = recipe.noSkillCheck
+                        ? { total: 0, base: 0, factors: [], hasModifiers: false }
+                        : engine.getDcBreakdown(expandActor, recipe, risk, terrainTag);
                     const flags = recipe.outputFlags?.["ionrift-respite"];
                     return {
                         ...recipe,
+                        noSkillCheck: !!recipe.noSkillCheck,
                         dcDisplay: dcBreakdown.total,
                         dcBreakdown,
                         outputName: recipe.output?.name ?? "Unknown",
@@ -3417,7 +3421,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         isPartyMeal: !!flags?.partyMeal,
                         isWellFed: !!flags?.wellFed,
                         satiates: flags?.satiates ?? [],
-                        ambitiousName: recipe.ambitiousOutput?.name ?? null,
                         ambitiousBuffPreview: formatMealBuffPreview(
                             recipe.ambitiousOutputFlags?.["ionrift-respite"]?.buff ?? flags?.buff
                         ),
@@ -3473,14 +3476,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         hasCrafted: !!this._totmCraftHasCrafted,
                         rollPending: !!this._totmCraftRollPending,
                         showMissing: !!this._totmCraftShowMissing,
-                        riskTiers: [
+                        hideRiskTiers: !!selectedRecipe?.noSkillCheck,
+                        riskTiers: selectedRecipe?.noSkillCheck ? [] : [
                             { id: "standard", label: "Standard", hint: "Base DC · Ingredients used", selected: risk === "standard" },
                             { id: "ambitious", label: "Ambitious", hint: "DC +5 · Better yield", selected: risk === "ambitious" }
                         ],
                         available,
                         partial,
                         selectedRecipe: selectedRecipe ?? null,
-                        isAmbitiousSelected: risk === "ambitious",
                         noAvailableRecipes: !this._totmCraftHasCrafted && available.length === 0,
                         commitSummary,
                         craftingResult: this._totmCraftResult ? {
@@ -15586,6 +15589,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static #onTotmCraftSelectRecipe(event, target) {
         if (this._totmCraftRollPending || this._totmCraftHasCrafted) return;
         this._totmCraftRecipeId = target.dataset.recipeId;
+        this._totmCraftRisk = "standard";
         this.render();
     }
 
@@ -15617,6 +15621,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this.render();
             return;
         }
+        if (recipe.noSkillCheck) return;
 
         const commitSummary = buildCraftCommitSummary({
             recipe,
@@ -15629,7 +15634,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const patched = await patchCraftingRiskUi(root, {
             risk,
-            isAmbitiousSelected: risk === "ambitious",
             commitSummary,
             dcBreakdown,
             dcDisplay: dcBreakdown.total

@@ -63,6 +63,12 @@
         </div>
     </div>
     <div class="commit-details">
+        {{#if commitSummary.noSkillCheck}}
+        <span class="commit-detail commit-no-roll">No roll · no ingredients</span>
+        {{#if commitSummary.outputQuantity}}
+        <span class="commit-detail">Makes {{commitSummary.outputQuantity}} treats</span>
+        {{/if}}
+        {{else}}
         <span class="commit-detail">
             <i class="fas fa-dice-d20"></i> {{commitSummary.skill}} vs DC {{commitSummary.dc}}
             {{#if commitSummary.dcBreakdown.hasModifiers}}
@@ -80,9 +86,10 @@
         <span class="commit-detail commit-consequence">
             {{commitSummary.failConsequence}}
         </span>
+        {{/if}}
     </div>
     <button type="button" class="btn-hero-craft" data-action="craftCommit">
-        <i class="fas fa-hammer"></i><span>Craft</span>
+        <i class="fas fa-hammer"></i><span>{{#if commitSummary.actionLabel}}{{commitSummary.actionLabel}}{{else}}Craft{{/if}}</span>
     </button>
 </div>
 {{else}}
