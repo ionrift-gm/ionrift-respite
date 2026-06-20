@@ -747,12 +747,15 @@ export class ActivityResolver {
                     Object.values(classEntries).map(c => c.name?.toLowerCase().trim())
                 );
                 const isWizard = !!classEntries.wizard || classNames.has("wizard");
-                const isArtificer = !!classEntries.artificer || classNames.has("artificer");
-                if (isArtificer && !isWizard) return false;
-                const hasSpellbook = (actor.items ?? []).some(i =>
-                    i.name?.toLowerCase().includes("spellbook") || i.name?.toLowerCase().includes("book of shadows")
-                );
-                if (!isWizard && !hasSpellbook) return false;
+                if (!isWizard) {
+                    // Warlock with Pact of the Tome (Book of Shadows) is the only
+                    // other class that transcribes spells into a book.
+                    const isWarlock = !!classEntries.warlock || classNames.has("warlock");
+                    const hasSpellbook = isWarlock && (actor.items ?? []).some(i =>
+                        i.name?.toLowerCase().includes("spellbook") || i.name?.toLowerCase().includes("book of shadows")
+                    );
+                    if (!hasSpellbook) return false;
+                }
             }
         }
 
