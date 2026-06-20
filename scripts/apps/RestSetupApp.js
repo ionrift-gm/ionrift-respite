@@ -1681,19 +1681,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const travelResolver = this._travel?.getTravelResolver();
         const homebrewOnly = isHomebrewProvisionOnly();
 
-        // Professions covered by an installed recipe source, regardless of its
-        // toggle. When a recipe pack is installed but disabled, respect the
-        // disable for that profession rather than papering over it with the
-        // built-in stub fallback. Tracked per profession so enabling one
-        // profession's pack/overlay never suppresses another's stub recipes.
-        const installedRecipeProfessions = new Set();
-        for (const packData of Object.values(importedPacks)) {
-            if (packData?.recipes && typeof packData.recipes === "object") {
-                for (const [profId, list] of Object.entries(packData.recipes)) {
-                    if (Array.isArray(list) && list.length) installedRecipeProfessions.add(profId);
-                }
-            }
-        }
+        // Professions that received recipes from an enabled pack or active overlay
+        // this boot. Stub fallback applies per profession when nothing loaded, including
+        // when a source is installed but disabled.
+        const loadedRecipeProfessions = new Set();
 
         for (const [packId, packData] of Object.entries(importedPacks)) {
             if (enabledPacks[packId] === false) {
@@ -1716,10 +1707,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         for (const [profId, recipeList] of Object.entries(packData.recipes)) {
                             if (Array.isArray(recipeList) && recipeList.length) {
                                 this._craftingEngine.load(profId, recipeList);
+                                loadedRecipeProfessions.add(profId);
                                 totalRecipes += recipeList.length;
                             }
                         }
-                        loaded.push(`${totalRecipes} recipes`);
+                        if (loadedRecipeProfessions.size) loaded.push(`${totalRecipes} recipes`);
                     }
 
                     if (Array.isArray(packData.resourcePools) && packData.resourcePools.length && this._travel) {
@@ -1750,14 +1742,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!homebrewOnly) {
             try {
                 const { OverlayProfessionLoader } = await import("../services/OverlayProfessionLoader.js");
-                const overlayProfessions = await OverlayProfessionLoader.installedRecipeProfessions();
-                for (const profId of overlayProfessions) installedRecipeProfessions.add(profId);
                 const overlayPacks = await OverlayProfessionLoader.loadAll();
                 let overlayRecipeCount = 0;
                 for (const pack of overlayPacks) {
                     for (const [profId, recipeList] of Object.entries(pack.recipes)) {
                         if (Array.isArray(recipeList) && recipeList.length) {
                             this._craftingEngine.load(profId, recipeList);
+                            loadedRecipeProfessions.add(profId);
                             overlayRecipeCount += recipeList.length;
                         }
                     }
@@ -1771,16 +1762,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
-        // Fall back to built-in stub recipes per profession: a profession's
-        // stubs load only when no recipe source is installed for it (no imported
-        // pack and no overlay on disk). When a source is installed but disabled,
-        // its empty result is intentional and the toggle stays observable. This
-        // is per profession, so enabling the cooking overlay never removes the
-        // base brewing recipes (and vice versa).
+        // Fall back to built-in stub recipes per profession when no enabled pack
+        // or active overlay loaded recipes for that profession. Disabling the
+        // cooking overlay restores base stub cooking; feat-only merges still run
+        // afterward when an overlay owns the profession.
         if (!homebrewOnly) {
             const stubbed = [];
             for (const [profId, recipeList] of Object.entries(STUB_RECIPES)) {
-                if (installedRecipeProfessions.has(profId)) continue;
+                if (loadedRecipeProfessions.has(profId)) continue;
                 this._craftingEngine.load(profId, recipeList);
                 stubbed.push(profId);
             }
@@ -4157,16 +4146,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             && (this._selectedRestType ?? "long") !== "short"
             && ((_mealStepRules.waterPerDay > 0) || (_mealStepRules.foodPerDay > 0));
 
-        // Stepper pips: only show phases that actually run this rest, so the dot
-        // count and labels match the real flow. Travel is long-rest + professions
-        // only (mirrors the skip in #beginRest). Events are skipped on short rests
-        // and safe rest spots (mirrors _advanceToEvents).
+        // Stepper pips: only show phases that actually run this rest.
+        // Travel is long-rest + Use Travel (independent of crafting professions).
         const _stepRestType = this._selectedRestType ?? "long";
-        let _enableProfessions = false;
-        try { _enableProfessions = !!game.settings.get(MODULE_ID, "enableProfessions"); } catch (e) { /* */ }
         let _useTravel = true;
         try { _useTravel = !!game.settings.get(MODULE_ID, "useTravel"); } catch (e) { /* */ }
-        const _includeTravelStep = _stepRestType === "long" && _enableProfessions && _useTravel;
+        const _includeTravelStep = _stepRestType === "long" && _useTravel;
         const _includeEventsStep = _stepRestType !== "short" && !setupSafeHaven;
         const _phaseStepDefs = [
             { key: "setup", label: "Setup", include: true },
@@ -4212,7 +4197,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     : "Comfort bypassed: safe rest spot negates comfort penalties, fire, and exhaustion saves.";
                 return [
                     { on: comfortActive, icon: "fas fa-temperature-half", label: "Comfort", tooltip: setupSafeHaven ? comfortBypassTooltip : comfort ? "Comfort tiers, fire, and exhaustion saves are on. Change under Recovery Rules." : "Comfort off: no fire phase and no terrain exhaustion saves. Change under Recovery Rules." },
-                    { on: professionsActive, icon: "fas fa-hammer", label: "Professions", tooltip: isTavernSetup ? "Professions not offered at a tavern; personal activities only." : professions ? "Crafting professions and the travel phase are on. Change under Travel & Activities." : "Professions off: the travel phase is skipped. Change under Travel & Activities." },
+                    { on: professionsActive, icon: "fas fa-hammer", label: "Professions", tooltip: isTavernSetup ? "Professions not offered at a tavern; personal activities only." : professions ? "Crafting professions on. Change under Travel & Activities." : "Crafting professions off. Change under Travel & Activities." },
                     { on: mealsActive, icon: "fas fa-drumstick-bite", label: "Meals", tooltip: isTavernSetup ? "Meals provided by the establishment; no ration tracking at a tavern." : meals ? "Food and water tracking is on; the Meal phase runs." : "Meal tracking off: no rations or dehydration saves. Change in module settings." }
                 ];
             })()

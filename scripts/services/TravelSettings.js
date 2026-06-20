@@ -68,11 +68,10 @@ export function getTravelGatherAvailability(terrainActivities) {
 
 /**
  * Whether the travel resolution phase should run this long rest.
- * Requires professions (forage/hunt activities) and Use Travel.
+ * Gated by Use Travel only (independent of crafting professions).
  * @returns {boolean}
  */
 export function shouldRunTravelPhase() {
-    if (!isProfessionsEnabled()) return false;
     return isTravelPhaseUsed();
 }
 
@@ -88,6 +87,32 @@ export function isHomebrewProvisionOnly() {
     } catch {
         return false;
     }
+}
+
+/**
+ * When true, only Bolstering Treats remain from profession crafting. Tailoring,
+ * brewing, tinkering craft, and camp meal recipes are hidden. The Cook
+ * activity stays available for characters with the Chef feat.
+ * @returns {boolean}
+ */
+export function isChefTreatCookingOnly() {
+    try {
+        return !!game.settings.get(MODULE_ID, "chefTreatCookingOnly");
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Whether a profession-category rest activity is enabled for this world.
+ * Chef Treats Only keeps Cook (Bolstering Treats) and drops the rest.
+ * @param {Object} activity
+ * @returns {boolean}
+ */
+export function isProfessionActivityEnabled(activity) {
+    if (!activity || activity.category !== "profession") return true;
+    if (isChefTreatCookingOnly()) return activity.id === "act_cook";
+    return isProfessionsEnabled();
 }
 
 /** Default camp fuel find rate (% of successful forages that grant kindling). */

@@ -6,6 +6,8 @@ import {
     isFletchingEnabled
 } from "./FletchingSettings.js";
 import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "./TrainingSettings.js";
+import { isProfessionActivityEnabled, isChefTreatCookingOnly } from "./TravelSettings.js";
+import { hasChefFeat } from "./ChefFeat.js";
 
 /** Activities hidden when the GM marks a safe rest spot (no encounter risk; no redundant camp duties). */
 export const SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS = new Set([
@@ -125,11 +127,10 @@ export class ActivityResolver {
             // Gate Training behind XP tier (0 = off)
             if (activity.id === "act_train" && !isTrainingEnabled()) continue;
 
-            // Gate Professions (cook, brew, tailor, craft) behind module setting
+            // Gate profession activities (cook, brew, tailor, craft)
             if (activity.category === "profession") {
-                try {
-                    if (!game.settings.get("ionrift-respite", "enableProfessions")) continue;
-                } catch (e) { /* setting may not exist yet */ }
+                if (!isProfessionActivityEnabled(activity)) continue;
+                if (isChefTreatCookingOnly() && activity.id === "act_cook" && !hasChefFeat(actor)) continue;
             }
 
             // Gate Fletching behind yield tier (0 = off)
@@ -797,11 +798,10 @@ export class ActivityResolver {
             // Gate Training behind XP tier (0 = off)
             if (activity.id === "act_train" && !isTrainingEnabled()) continue;
 
-            // Gate Professions (cook, brew, tailor, craft) behind module setting
+            // Gate profession activities (cook, brew, tailor, craft)
             if (activity.category === "profession") {
-                try {
-                    if (!game.settings.get("ionrift-respite", "enableProfessions")) continue;
-                } catch (e) { /* setting may not exist yet */ }
+                if (!isProfessionActivityEnabled(activity)) continue;
+                if (isChefTreatCookingOnly() && activity.id === "act_cook" && !hasChefFeat(actor)) continue;
             }
 
             // Gate Fletching behind yield tier (0 = off)

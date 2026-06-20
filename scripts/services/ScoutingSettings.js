@@ -4,8 +4,7 @@ const MODULE_ID = "ionrift-respite";
 
 /**
  * Whether travel scouting is active for this rest.
- * Requires the travel phase to run (professions + Use Travel) and the
- * scouting toggle. Defaults to false (Standard profile).
+ * Requires the travel phase to run (Use Travel) and the scouting toggle.
  * @returns {boolean}
  */
 export function isScoutingEnabled() {

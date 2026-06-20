@@ -91,11 +91,24 @@ export class OverlayProfessionLoader {
     }
 
     /**
-     * Professions covered by any recipe overlay installed on disk, regardless of
-     * whether it is active. Lets the rest flow distinguish, per profession, "no
-     * overlay" (use stub recipes) from "overlay installed but disabled"
-     * (intentionally empty), so each profession toggle stays observable without
-     * one profession's overlay suppressing another's stub fallback.
+     * Professions covered by any active overlay that loaded recipes this session.
+     * @returns {Promise<Set<string>>}
+     */
+    static async activeRecipeProfessions() {
+        const loaded = await this.loadAll();
+        const professions = new Set();
+        for (const pack of loaded) {
+            for (const [profId, list] of Object.entries(pack.recipes ?? {})) {
+                if (Array.isArray(list) && list.length) professions.add(profId);
+            }
+        }
+        return professions;
+    }
+
+    /**
+     * Professions present in any installed overlay manifest on disk, regardless
+     * of whether the overlay is active. Prefer {@link activeRecipeProfessions}
+     * when deciding whether stub fallback should apply.
      * @returns {Promise<Set<string>>}
      */
     static async installedRecipeProfessions() {
