@@ -5,6 +5,7 @@
  */
 
 import { isStationLayerActive } from "../../services/StationInteractionLayer.js";
+import { normalizeRecipeOutputImg } from "../../services/RecipeIcons.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -45,7 +46,7 @@ export class CraftingDelegate {
                 ...recipe,
                 dcDisplay: adjustedDc,
                 outputName: recipe.output?.name ?? "Unknown",
-                outputImg: recipe.output?.img ?? "icons/svg/mystery-man.svg",
+                outputImg: normalizeRecipeOutputImg(recipe.output?.img, "icons/svg/mystery-man.svg"),
                 ambitiousOutput: recipe.ambitiousOutput,
                 isSelected: recipe.id === app._craftingDrawerRecipeId,
                 ingredientList: (recipe.ingredients ?? []).map(ing => {

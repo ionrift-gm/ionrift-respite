@@ -26,13 +26,15 @@ export const STUB_RECIPES = {
                 name: "Bolstering Treat",
                 type: "consumable",
                 quantity: 1,
-                img: "icons/consumables/food/bread-loaf-simple-brown.webp",
+                img: "icons/consumables/food/berry-bowl-red.webp",
+                itemRef: "stub_chef_bolstering_treats__out",
                 description: "<p>A small baked treat from a Chef. Eat as a bonus action to gain temporary hit points equal to the cook's proficiency bonus. Spoils after 8 hours.</p>",
                 rarity: "common",
                 system: { type: { value: "food", subtype: "" } }
             },
             outputFlags: {
                 "ionrift-respite": {
+                    itemRef: "stub_chef_bolstering_treats__out",
                     foodTag: "prepared",
                     spoilsAfterHours: 8,
                     wellFed: false,
