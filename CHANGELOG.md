@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.3.0] - 2026-06-21
+## [3.3.1] - 2026-06-21
 
 ### Added
 - **Homebrew recipe editor.** GMs can author custom recipes per profession that merge with any installed content pack. Crafted results sync into a world compendium so they resolve to real items.
