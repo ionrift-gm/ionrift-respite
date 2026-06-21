@@ -1418,11 +1418,6 @@ function _showShortRestRejoinNotification() {
     showShortRestRejoinNotification(_rejoinShortRest);
 }
 
-/** @deprecated Use removeShortRestRejoinNotification() directly. */
-function _removeShortRestRejoinNotification() {
-    removeShortRestRejoinNotification();
-}
-
 /**
  * Player rejoins an in-progress short rest by requesting state from the GM.
  */
