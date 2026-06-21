@@ -357,6 +357,7 @@ Hooks.once("init", async () => {
     _registerPartial("fire-tier-picker.hbs", "fireTierPicker");
     _registerPartial("fire-tier-body.hbs", "fireTierBody");
     _registerPartial("_training-panel.hbs", "trainingPanel");
+    _registerPartial("craft-commit-panel.hbs", "craftCommitPanel");
 
     // Expose API
     const adapter = createAdapter();
