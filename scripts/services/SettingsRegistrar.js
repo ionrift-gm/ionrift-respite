@@ -253,7 +253,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     game.settings.register(MODULE_ID, "enableProfessions", {
         name: "Crafting Professions",
-        hint: "Show cooking, tailoring, and crafting activities during rest.",
+        hint: "Show cooking and crafting activities during rest.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -263,7 +263,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     game.settings.register(MODULE_ID, "chefTreatCookingOnly", {
         name: "Chef Treats Only (RAW)",
-        hint: "Disables tailoring and camp meal crafting. Chef feat characters can still bake Bolstering Treats.",
+        hint: "Disables camp meal crafting. Chef feat characters can still bake Bolstering Treats.",
         scope: "world",
         config: false,
         type: Boolean,

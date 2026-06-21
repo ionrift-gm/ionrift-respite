@@ -344,8 +344,8 @@ export const CAMP_STATIONS = [
         label: "Your Bedroll",
         icon: "fas fa-bed",
         furnitureKey: null,
-        tagline: "Rest, pray, train, tales, craft, tailor, other",
-        activities: ["act_rest_fully", "act_pray", "act_train", "act_tell_tales", "act_craft", "act_tailor", "act_other"],
+        tagline: "Rest, pray, train, tales, craft, other",
+        activities: ["act_rest_fully", "act_pray", "act_train", "act_tell_tales", "act_craft", "act_other"],
         terrainLabel: { tavern: "Your Room" }
     },
     {
