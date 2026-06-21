@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.3.0] - 2026-06-21
+
+### Added
+- **Homebrew recipe editor.** GMs can author custom recipes per profession that merge with any installed content pack. Crafted results sync into a world compendium so they resolve to real items.
+- **Terrain foraging.** Foraging now rolls from per-terrain tables built from the compendium, with a find-rate slider to tune how generous the rolls are. A camp fuel table lets the party gather firewood and kindling while travelling.
+- **Chef feat support.** Enables raw-cooking mode and chef treat effects so characters with the Chef feat get meaningful benefits at camp.
+- **Player loot rolls.** Players roll their own d100 loot after a successful travel leg.
+
+### Changed
+- Travel and professions are decoupled, so foraging and crafting no longer depend on each other being set up.
+- Copy Spell is now limited to wizards and Pact of the Tome warlocks.
+
+### Fixed
+- Bolstering treat now resolves as an automatic success and shows the correct icon.
+- PF2e proficiency bonus scaling is bounded to a 5e-equivalent range so cross-system rest checks stay balanced.
+
 ## [3.2.0] - 2026-06-15
 
 ### Fixed
