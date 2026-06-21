@@ -15482,7 +15482,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._totmCraftHasCrafted = false;
         this._totmCraftShowMissing = false;
         this._totmCraftRollPending = false;
-        this._totmCraftScrollTop = 0;
         this._totmFeastServed = false;
         this._totmFeastInFlight = false;
     }
