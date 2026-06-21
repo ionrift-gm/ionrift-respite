@@ -103,44 +103,6 @@
         "category": "profession"
     },
     {
-        "id": "act_brew",
-        "name": "Brew",
-        "professions": [
-            "alchemist",
-            "poisoner"
-        ],
-        "description": "Use your supplies to brew a draught, salve, or tincture. View recipes, choose your risk level, and brew.",
-        "restTypes": [
-            "long"
-        ],
-        "prerequisites": {
-            "proficiencies": [],
-            "tools": [
-                "alchemist",
-                "brewer",
-                "herbalism"
-            ],
-            "minimumLevel": 1
-        },
-        "crafting": {
-            "enabled": true,
-            "profession": "brewing"
-        },
-        "requiresFire": true,
-        "check": null,
-        "outcomes": {
-            "success": {
-                "narrative": "You mix what you have into something passable.",
-                "items": [],
-                "effects": []
-            }
-        },
-        "combatModifiers": {
-            "description": "Normal readiness. Near the fire, reasonably alert."
-        },
-        "category": "profession"
-    },
-    {
         "id": "act_craft",
         "name": "Craft",
         "professions": [

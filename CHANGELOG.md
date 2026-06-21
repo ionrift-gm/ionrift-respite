@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.3.2] - 2026-06-21
+
+### Removed
+- Brewing as a separate camp activity. Cooking stays the camp provisioning profession. Brewing will return once it has a complete recipe set.
+
 ## [3.3.1] - 2026-06-21
 
 ### Added

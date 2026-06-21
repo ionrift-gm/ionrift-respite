@@ -10,7 +10,7 @@ const MODULE_ID = "ionrift-respite";
 export const CUSTOM_RECIPE_MAX_PER_PROFESSION = 20;
 
 /** Phase 2 homebrew: professions with recipe authoring and CraftingEngine integration. */
-export const HOMEBREW_PROFESSION_IDS = ["cooking", "brewing"];
+export const HOMEBREW_PROFESSION_IDS = ["cooking"];
 
 /** Canonical tool proficiency key per crafting profession (matches activity prerequisites). */
 export const PROFESSION_TOOL_REQUIRED = {

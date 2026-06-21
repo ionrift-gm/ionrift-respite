@@ -64,7 +64,7 @@ export const ACTIVITY_ICONS = {
     act_keep_watch: "fas fa-eye", act_rest_fully: "fas fa-bed",
     act_scout: "fas fa-binoculars", act_tell_tales: "fas fa-theater-masks",
     act_tend_wounds: "fas fa-hand-holding-medical", act_pray: "fas fa-pray",
-    act_cook: "fas fa-utensils", act_brew: "fas fa-flask", act_tailor: "fas fa-cut",
+    act_cook: "fas fa-utensils", act_tailor: "fas fa-cut",
     act_craft: "fas fa-tools", act_fletch: "fas fa-crosshairs",
     act_defenses: "fas fa-shield-alt", act_train: "fas fa-dumbbell",
     act_identify: "fas fa-search", act_scribe: "fas fa-scroll",
@@ -96,7 +96,6 @@ export function isWorkbenchExamineUiEnabled() {
 const ACTIVITY_HINTS_STATIC = {
     act_tell_tales: "Inspires one ally. All allies on exceptional roll",
     act_cook: "Prepare a meal from ingredients",
-    act_brew: "Brew a potion or salve",
     act_tailor: "Stitch materials into gear",
     act_craft: "Work raw materials into items"
 };
@@ -363,8 +362,8 @@ export const CAMP_STATIONS = [
         label: "Cooking Station",
         icon: "fas fa-utensils",
         furnitureKey: "cookingArea",
-        tagline: "Cook, brew",
-        activities: ["act_cook", "act_brew"],
+        tagline: "Cook",
+        activities: ["act_cook"],
         terrainLabel: { tavern: "Hearth & Table" }
     }
 ];

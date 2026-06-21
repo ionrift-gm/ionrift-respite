@@ -57,7 +57,7 @@ const ACTIVITY_TOGGLES = [
         key: "chefTreatCookingOnly",
         label: "Chef Treats Only",
         icon: "fas fa-cookie-bite",
-        hint: "RAW: no tailoring, brewing, or camp meals. Chef feat bakes Bolstering Treats only.",
+        hint: "RAW: no tailoring or camp meals. Chef feat bakes Bolstering Treats only.",
         type: "boolean"
     },
     {
