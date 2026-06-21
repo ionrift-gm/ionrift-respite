@@ -179,13 +179,6 @@ export function emitRestStarted(restData, opts = {}) {
 }
 
 /**
- * GM → Players: GM opened the setup wizard, rest is coming soon.
- */
-export function emitRestPreparing() {
-    _emit(SOCKET_TYPES.REST_PREPARING);
-}
-
-/**
  * GM → Players: rest resolved, close pickers.
  */
 export function emitRestResolved() {
