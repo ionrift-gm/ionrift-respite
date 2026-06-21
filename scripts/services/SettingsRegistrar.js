@@ -84,7 +84,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
     game.settings.registerMenu(MODULE_ID, "recipeEditor", {
         name: "Custom Recipes",
         label: "Edit Custom Recipes",
-        hint: "Add homebrew cooking and brewing recipes. Match ingredient names to compendium items in Respite Custom (Ionrift Custom sidebar) or shipped Respite Items.",
+        hint: "Add homebrew cooking recipes. Match ingredient names to compendium items in Respite Custom (Ionrift Custom sidebar) or shipped Respite Items.",
         icon: "fas fa-mortar-pestle",
         type: RecipeEditorApp,
         restricted: true
@@ -253,7 +253,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     game.settings.register(MODULE_ID, "enableProfessions", {
         name: "Crafting Professions",
-        hint: "Show cooking, brewing, tailoring, and crafting activities during rest.",
+        hint: "Show cooking, tailoring, and crafting activities during rest.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -263,7 +263,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     game.settings.register(MODULE_ID, "chefTreatCookingOnly", {
         name: "Chef Treats Only (RAW)",
-        hint: "Disables tailoring, brewing, and camp meal crafting. Chef feat characters can still bake Bolstering Treats.",
+        hint: "Disables tailoring and camp meal crafting. Chef feat characters can still bake Bolstering Treats.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -380,7 +380,7 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
 
     game.settings.register(MODULE_ID, "homebrewProvisionOnly", {
         name: "Homebrew Provisions Only",
-        hint: "Ignore shipped Respite Items, built-in stubs, and imported pack data. Camp cooking and brewing use your custom recipe list; forage and hunt use the Respite Custom compendium only.",
+        hint: "Ignore shipped Respite Items, built-in stubs, and imported pack data. Camp cooking uses your custom recipe list; forage and hunt use the Respite Custom compendium only.",
         scope: "world",
         config: false,
         type: Boolean,
