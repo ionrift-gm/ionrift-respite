@@ -342,47 +342,21 @@ Hooks.once("init", async () => {
     });
 
     // Register partials
-    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/roster-strip.hbs"]);
-    fetch("modules/ionrift-respite/templates/partials/roster-strip.hbs")
-        .then(r => r.text())
-        .then(t => Handlebars.registerPartial("rosterStrip", t))
-        .catch(e => console.warn(`${MODULE_ID} | Failed to load roster-strip partial:`, e));
-
-    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/workbench-identify-embed.hbs"]);
-    fetch("modules/ionrift-respite/templates/partials/workbench-identify-embed.hbs")
-        .then(r => r.text())
-        .then(t => Handlebars.registerPartial("workbenchIdentifyEmbed", t))
-        .catch(e => console.warn(`${MODULE_ID} | Failed to load workbench identify partial:`, e));
-
-    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/workbench-identify-panel.hbs"]);
-    fetch("modules/ionrift-respite/templates/partials/workbench-identify-panel.hbs")
-        .then(r => r.text())
-        .then(t => Handlebars.registerPartial("workbenchIdentifyPanel", t))
-        .catch(e => console.warn(`${MODULE_ID} | Failed to load workbench identify panel partial:`, e));
-
-    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/activity-portraits.hbs"]);
-    fetch("modules/ionrift-respite/templates/partials/activity-portraits.hbs")
-        .then(r => r.text())
-        .then(t => Handlebars.registerPartial("activityPortraits", t))
-        .catch(e => console.warn(`${MODULE_ID} | Failed to load activity-portraits partial:`, e));
-
-    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/fire-tier-picker.hbs"]);
-    fetch("modules/ionrift-respite/templates/partials/fire-tier-picker.hbs")
-        .then(r => r.text())
-        .then(t => Handlebars.registerPartial("fireTierPicker", t))
-        .catch(e => console.warn(`${MODULE_ID} | Failed to load fire-tier-picker partial:`, e));
-
-    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/fire-tier-body.hbs"]);
-    fetch("modules/ionrift-respite/templates/partials/fire-tier-body.hbs")
-        .then(r => r.text())
-        .then(t => Handlebars.registerPartial("fireTierBody", t))
-        .catch(e => console.warn(`${MODULE_ID} | Failed to load fire-tier-body partial:`, e));
-
-    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/_training-panel.hbs"]);
-    fetch("modules/ionrift-respite/templates/partials/_training-panel.hbs")
-        .then(r => r.text())
-        .then(t => Handlebars.registerPartial("trainingPanel", t))
-        .catch(e => console.warn(`${MODULE_ID} | Failed to load training-panel partial:`, e));
+    const _registerPartial = (file, name) => {
+        const path = `modules/ionrift-respite/templates/partials/${file}`;
+        foundry.applications.handlebars.loadTemplates([path]);
+        fetch(path)
+            .then(r => r.text())
+            .then(t => Handlebars.registerPartial(name, t))
+            .catch(e => console.warn(`${MODULE_ID} | Failed to load ${file} partial:`, e));
+    };
+    _registerPartial("roster-strip.hbs", "rosterStrip");
+    _registerPartial("workbench-identify-embed.hbs", "workbenchIdentifyEmbed");
+    _registerPartial("workbench-identify-panel.hbs", "workbenchIdentifyPanel");
+    _registerPartial("activity-portraits.hbs", "activityPortraits");
+    _registerPartial("fire-tier-picker.hbs", "fireTierPicker");
+    _registerPartial("fire-tier-body.hbs", "fireTierBody");
+    _registerPartial("_training-panel.hbs", "trainingPanel");
 
     // Expose API
     const adapter = createAdapter();
