@@ -616,6 +616,33 @@ Hooks.once("init", async () => {
         toggleTorches,
         /** TorchTokenLinker service reference. */
         TorchTokenLinker,
+        /**
+         * Rebuild forage and camp fuel roll tables from compendium folders (GM only).
+         * Also locks tables and folders to GM-only visibility.
+         */
+        syncForageTables: async () => {
+            if (!game.user.isGM) {
+                console.warn(`${MODULE_ID} | syncForageTables is GM-only.`);
+                return null;
+            }
+            const { ForageTableSync } = await import("./services/ForageTableSync.js");
+            return await ForageTableSync.syncAll({ notify: true });
+        },
+        /**
+         * Hide Respite roll tables from players without rebuilding rows (GM only).
+         */
+        lockRollTables: async () => {
+            if (!game.user.isGM) {
+                console.warn(`${MODULE_ID} | lockRollTables is GM-only.`);
+                return null;
+            }
+            const { ForageTableSync } = await import("./services/ForageTableSync.js");
+            const result = await ForageTableSync.lockDownRollTableVisibility();
+            ui.notifications.info(
+                `Respite: Locked ${result.tables} roll table(s) and ${result.folders} folder(s) to GM-only.`
+            );
+            return result;
+        },
         /** Whether a Respite rest flow (long or short) is currently active. Used by PlayerLockdownService. */
         get isRestActive() { return respiteFlowActive; }
     };
@@ -824,6 +851,15 @@ Hooks.once("ready", async () => {
 
     const { initializeEventPoolIfNeeded } = await import("./services/EventPoolMigration.js");
     await initializeEventPoolIfNeeded();
+
+    if (game.user.isGM) {
+        const { ForageTableSync } = await import("./services/ForageTableSync.js");
+        ForageTableSync.registerHooks();
+        void ForageTableSync.lockDownRollTableVisibility().catch(err => {
+            console.error(`${MODULE_ID} | Roll table lockdown failed:`, err);
+        });
+        ForageTableSync.scheduleSync();
+    }
 
     try {
         const respiteItemsPack = game.packs.get("ionrift-respite.respite-items");
