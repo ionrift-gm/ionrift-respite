@@ -21,11 +21,6 @@ import { RecoveryHandler } from "../services/RecoveryHandler.js";
 import { CalendarHandler } from "../services/CalendarHandler.js";
 import { CopySpellHandler } from "../services/CopySpellHandler.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
-import { formatMealBuffPreview } from "../services/MealBuffPresets.js";
-import { buildCraftCommitSummary, resolveDefaultCraftRecipeId } from "../services/CraftCommitSummary.js";
-import { normalizeRecipeOutputImg } from "../services/RecipeIcons.js";
-import { patchCraftingRiskUi } from "../services/CraftingRiskUiPatch.js";
-import { ItemClassifier } from "../services/ItemClassifier.js";
 import { ConditionAdvisory } from "../services/ConditionAdvisory.js";
 import { ResourceSink } from "../services/ResourceSink.js";
 import { CampfireTokenLinker } from "../services/CampfireTokenLinker.js";
@@ -87,7 +82,7 @@ import {
 } from "../services/campCeremonySync.js";
 import { isSimpleStationsMode, requiresMapCampFire, isCampfireMinigameEnabled } from "../services/RestProfileSettings.js";
 import { isScoutingEnabled } from "../services/ScoutingSettings.js";
-import { shouldRunTravelPhase, getTravelGatherAvailability, isHomebrewProvisionOnly } from "../services/TravelSettings.js";
+import { shouldRunTravelPhase, getTravelGatherAvailability } from "../services/TravelSettings.js";
 import { buildTravelGatherPayload } from "../services/TravelGatherPayload.js";
 import { applyPlayerTravelDeclarationToGm } from "../services/travelDeclarationSync.js";
 import { buildActivityListItem, buildActivityDetailContext } from "./ActivityDetailBuilder.js";
@@ -113,8 +108,7 @@ import {
 import { CampfireMakeCampDialog } from "./CampfireMakeCampDialog.js";
 import { CampfireEmbed } from "./CampfireEmbed.js";
 
-import { STUB_RECIPES, STUB_HUNT_YIELDS } from "../data/stub-content.js";
-import { applyCustomRecipesToEngine } from "../services/RecipeCatalog.js";
+import { STUB_RECIPES } from "../data/stub-content.js";
 import { ShortRestApp } from "./ShortRestApp.js";
 import {
     registerActiveRestApp,
@@ -130,7 +124,7 @@ import {
     _ensureRejoinBar,
     _removeRejoinBar
 } from "../module.js";
-import { getPartyActors, getFoodBuffPartyActors, getMealEligiblePartyActors } from "../services/partyActors.js";
+import { getPartyActors } from "../services/partyActors.js";
 import * as RestAfkState from "../services/RestAfkState.js";
 import { pushAllStateToAdapters } from "../services/afk/AfkBridgeService.js";
 import {
@@ -499,7 +493,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 for (const [profId, recipeList] of Object.entries(restData.recipes)) {
                     this._craftingEngine.load(profId, recipeList);
                 }
-                applyCustomRecipesToEngine(this._craftingEngine);
             }
             // Create a minimal engine so comfort/fire/shelter state is available
             // on the player side (prevents fallback to terrain defaults).
@@ -1655,11 +1648,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // Ionrift and imported through Respite's Content Packs settings UI.
             await this._loadContentPacks();
 
-            // Rebuild travel base pools from module + world custom compendiums.
-            const resolver = this._travel?.getTravelResolver();
-            if (resolver) {
-                const { applyTravelProvisionBatches } = await import("../services/TravelProvisionIndex.js");
-                await applyTravelProvisionBatches(resolver);
+            // Ensure the travel delegate's resolver has base pool items from the
+            // shipped compendium. The delegate constructor may have fired before
+            // the compendium index was ready (race condition on startup/restore).
+            if (this._travel && game.ionrift?.respite?.travelBasePoolIndex) {
+                const resolver = this._travel.getTravelResolver();
+                if (resolver && resolver.basePoolCoverage.length === 0) {
+                    resolver.loadBaseItems(game.ionrift.respite.travelBasePoolIndex);
+                }
             }
         } catch (e) {
 
@@ -1677,14 +1673,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const importedPacks = game.settings.get(MODULE_ID, "importedPacks") ?? {};
 
         let totalRecipes = 0, totalPools = 0;
-        let huntYieldsLoaded = false;
-        const travelResolver = this._travel?.getTravelResolver();
-        const homebrewOnly = isHomebrewProvisionOnly();
-
-        // Professions that received recipes from an enabled pack or active overlay
-        // this boot. Stub fallback applies per profession when nothing loaded, including
-        // when a source is installed but disabled.
-        const loadedRecipeProfessions = new Set();
 
         for (const [packId, packData] of Object.entries(importedPacks)) {
             if (enabledPacks[packId] === false) {
@@ -1701,30 +1689,22 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     loaded.push(`${events.length} events`);
                 }
 
-                // Recipes, pools, and hunt yields (skipped in homebrew-only mode)
-                if (!homebrewOnly) {
-                    if (packData.recipes && typeof packData.recipes === "object") {
-                        for (const [profId, recipeList] of Object.entries(packData.recipes)) {
-                            if (Array.isArray(recipeList) && recipeList.length) {
-                                this._craftingEngine.load(profId, recipeList);
-                                loadedRecipeProfessions.add(profId);
-                                totalRecipes += recipeList.length;
-                            }
+                // Recipes -- keyed by profession (e.g. { cooking: [...] })
+                if (packData.recipes && typeof packData.recipes === "object") {
+                    for (const [profId, recipeList] of Object.entries(packData.recipes)) {
+                        if (Array.isArray(recipeList) && recipeList.length) {
+                            this._craftingEngine.load(profId, recipeList);
+                            totalRecipes += recipeList.length;
                         }
-                        if (loadedRecipeProfessions.size) loaded.push(`${totalRecipes} recipes`);
                     }
+                    loaded.push(`${totalRecipes} recipes`);
+                }
 
-                    if (Array.isArray(packData.resourcePools) && packData.resourcePools.length && this._travel) {
-                        this._travel.loadPoolsFromData(packData.resourcePools, { fromImportedPack: true });
-                        totalPools += packData.resourcePools.length;
-                        loaded.push(`${packData.resourcePools.length} pools`);
-                    }
-
-                    if (packData.huntYields && typeof packData.huntYields === "object" && travelResolver) {
-                        travelResolver.loadHuntYields(packData.huntYields);
-                        huntYieldsLoaded = true;
-                        loaded.push("hunt yields");
-                    }
+                // Resource Pools
+                if (Array.isArray(packData.resourcePools) && packData.resourcePools.length && this._travel) {
+                    this._travel.loadPoolsFromData(packData.resourcePools, { fromImportedPack: true });
+                    totalPools += packData.resourcePools.length;
+                    loaded.push(`${packData.resourcePools.length} pools`);
                 }
 
                 if (loaded.length) {
@@ -1737,52 +1717,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
-        // Load profession recipes delivered through active overlays (Patreon
-        // Library). This is the recipe-side counterpart to overlay events.
-        if (!homebrewOnly) {
-            try {
-                const { OverlayProfessionLoader } = await import("../services/OverlayProfessionLoader.js");
-                const overlayPacks = await OverlayProfessionLoader.loadAll();
-                let overlayRecipeCount = 0;
-                for (const pack of overlayPacks) {
-                    for (const [profId, recipeList] of Object.entries(pack.recipes)) {
-                        if (Array.isArray(recipeList) && recipeList.length) {
-                            this._craftingEngine.load(profId, recipeList);
-                            loadedRecipeProfessions.add(profId);
-                            overlayRecipeCount += recipeList.length;
-                        }
-                    }
-                }
-                if (overlayRecipeCount) {
-                    totalRecipes += overlayRecipeCount;
-                    Logger.log(`${MODULE_ID} | Overlays: loaded ${overlayRecipeCount} recipes from ${overlayPacks.length} pack(s)`);
-                }
-            } catch (e) {
-                console.warn(`${MODULE_ID} | Overlay profession load failed:`, e);
-            }
-        }
-
-        // Fall back to built-in stub recipes per profession when no enabled pack
-        // or active overlay loaded recipes for that profession. Disabling the
-        // cooking overlay restores base stub cooking; feat-only merges still run
-        // afterward when an overlay owns the profession.
-        if (!homebrewOnly) {
-            const stubbed = [];
+        // Fall back to built-in stub content when no packs provided data
+        if (totalRecipes === 0) {
             for (const [profId, recipeList] of Object.entries(STUB_RECIPES)) {
-                if (loadedRecipeProfessions.has(profId)) continue;
                 this._craftingEngine.load(profId, recipeList);
-                stubbed.push(profId);
             }
-            if (stubbed.length) {
-                Logger.log(`${MODULE_ID} | Using built-in stub recipes for: ${stubbed.join(", ")}`);
-            }
-        }
 
-        if (!homebrewOnly && !huntYieldsLoaded && travelResolver) {
-            travelResolver.loadHuntYields(STUB_HUNT_YIELDS);
+            Logger.log(`${MODULE_ID} | Using built-in stub recipes`);
         }
-
-        applyCustomRecipesToEngine(this._craftingEngine);
     }
 
 
@@ -3380,38 +3322,31 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const partySize = getPartyActors().length;
                 const status = engine.getRecipeStatus(expandActor, professionId, terrainTag, partySize);
 
-                if (!this._totmCraftHasCrafted) {
-                    this._totmCraftRecipeId = resolveDefaultCraftRecipeId({
-                        engine,
-                        actor: expandActor,
-                        profession: professionId,
-                        terrainTag,
-                        partySize,
-                        currentId: this._totmCraftRecipeId,
-                        hasCrafted: false
-                    });
-                }
+                const _formatBuffPreview = (buff) => {
+                    if (!buff) return null;
+                    const labels = { temp_hp: "Temp HP", advantage: "Advantage", exhaustion_save: "Exhaustion Save" };
+                    const dur = { immediate: "Immediate", untilLongRest: "Until long rest", nextSave: "Next save" };
+                    return { label: labels[buff.type] ?? buff.type, formula: buff.formula ?? "", duration: dur[buff.duration] ?? buff.duration ?? "", target: buff.target ?? "self" };
+                };
 
                 const enrichRecipe = (recipe) => {
-                    const dcBreakdown = recipe.noSkillCheck
-                        ? { total: 0, base: 0, factors: [], hasModifiers: false }
-                        : engine.getDcBreakdown(expandActor, recipe, risk, terrainTag);
+                    const dcBreakdown = engine.getDcBreakdown(expandActor, recipe, risk, terrainTag);
                     const flags = recipe.outputFlags?.["ionrift-respite"];
                     return {
                         ...recipe,
-                        noSkillCheck: !!recipe.noSkillCheck,
                         dcDisplay: dcBreakdown.total,
                         dcBreakdown,
                         outputName: recipe.output?.name ?? "Unknown",
-                        outputImg: normalizeRecipeOutputImg(recipe.output?.img),
+                        outputImg: recipe.output?.img ?? "icons/consumables/food/bowl-stew-brown.webp",
                         ambitiousOutput: recipe.ambitiousOutput,
                         isSelected: recipe.id === this._totmCraftRecipeId,
                         description: recipe.description ?? "",
-                        buffPreview: formatMealBuffPreview(flags?.buff),
+                        buffPreview: _formatBuffPreview(flags?.buff),
                         isPartyMeal: !!flags?.partyMeal,
                         isWellFed: !!flags?.wellFed,
                         satiates: flags?.satiates ?? [],
-                        ambitiousBuffPreview: formatMealBuffPreview(
+                        ambitiousName: recipe.ambitiousOutput?.name ?? null,
+                        ambitiousBuffPreview: _formatBuffPreview(
                             recipe.ambitiousOutputFlags?.["ionrift-respite"]?.buff ?? flags?.buff
                         ),
                         ingredientList: (recipe.ingredients ?? []).map(ing => {
@@ -3440,13 +3375,34 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
                 let commitSummary = null;
                 if (selectedRecipe && !this._totmCraftHasCrafted) {
-                    commitSummary = buildCraftCommitSummary({
-                        recipe: selectedRecipe,
+                    const outputForRisk = risk === "ambitious" && selectedRecipe.ambitiousOutput
+                        ? selectedRecipe.ambitiousOutput : selectedRecipe.output;
+                    commitSummary = {
+                        recipeName: selectedRecipe.name,
+                        dc: selectedRecipe.dcBreakdown.total,
+                        dcBreakdown: selectedRecipe.dcBreakdown,
                         risk,
-                        actor: expandActor,
-                        engine,
-                        terrainTag
-                    });
+                        riskLabel: { standard: "Standard", ambitious: "Ambitious" }[risk],
+                        outputName: outputForRisk?.name ?? selectedRecipe.outputName,
+                        outputImg: outputForRisk?.img ?? selectedRecipe.outputImg ?? "icons/svg/mystery-man.svg",
+                        outputQuantity: outputForRisk?.quantity ?? 1,
+                        ingredients: (selectedRecipe.ingredients ?? []).map(ing => {
+                            const invKey = ing.name.toLowerCase().trim();
+                            const invEntry = expandActor.items?.find(i => i.name.toLowerCase().trim() === invKey);
+                            const fallbackIcon = ing.resourceType === "water"
+                                ? "icons/magic/water/water-drop-swirl-blue.webp"
+                                : "icons/consumables/food/bread-loaf-round-white.webp";
+                            const rawImg = invEntry?.img;
+                            return {
+                                name: ing.name,
+                                quantity: ing.quantity ?? 1,
+                                img: (rawImg && !rawImg.includes("mystery-man")) ? rawImg : fallbackIcon
+                            };
+                        }),
+                        ingredientCost: (selectedRecipe.ingredients ?? []).map(i => `${i.quantity ?? 1}x ${i.name}`).join(", "),
+                        failConsequence: "Ingredients consumed on failure",
+                        skill: (selectedRecipe.skill ?? "sur").toUpperCase()
+                    };
                 }
 
                 return {
@@ -3466,21 +3422,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         hasCrafted: !!this._totmCraftHasCrafted,
                         rollPending: !!this._totmCraftRollPending,
                         showMissing: !!this._totmCraftShowMissing,
-                        hideRiskTiers: !!selectedRecipe?.noSkillCheck,
-                        riskTiers: selectedRecipe?.noSkillCheck ? [] : [
+                        riskTiers: [
                             { id: "standard", label: "Standard", hint: "Base DC · Ingredients used", selected: risk === "standard" },
                             { id: "ambitious", label: "Ambitious", hint: "DC +5 · Better yield", selected: risk === "ambitious" }
                         ],
                         available,
                         partial,
                         selectedRecipe: selectedRecipe ?? null,
-                        noAvailableRecipes: !this._totmCraftHasCrafted && available.length === 0,
+                        isAmbitiousSelected: risk === "ambitious",
                         commitSummary,
                         craftingResult: this._totmCraftResult ? {
                             ...this._totmCraftResult,
                             isPartyMeal: !!(selectedRecipe?.isPartyMeal ?? false),
                             partyMealDispositionDone: !!this._totmFeastServed,
-                            partyRoster: getFoodBuffPartyActors().map(a => ({
+                            partyRoster: getPartyActors().map(a => ({
                                 id: a.id,
                                 name: a.name,
                                 img: a.img || "icons/svg/mystery-man.svg",
@@ -4146,12 +4101,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             && (this._selectedRestType ?? "long") !== "short"
             && ((_mealStepRules.waterPerDay > 0) || (_mealStepRules.foodPerDay > 0));
 
-        // Stepper pips: only show phases that actually run this rest.
-        // Travel is long-rest + Use Travel (independent of crafting professions).
+        // Stepper pips: only show phases that actually run this rest, so the dot
+        // count and labels match the real flow. Travel is long-rest + professions
+        // only (mirrors the skip in #beginRest). Events are skipped on short rests
+        // and safe rest spots (mirrors _advanceToEvents).
         const _stepRestType = this._selectedRestType ?? "long";
+        let _enableProfessions = false;
+        try { _enableProfessions = !!game.settings.get(MODULE_ID, "enableProfessions"); } catch (e) { /* */ }
         let _useTravel = true;
         try { _useTravel = !!game.settings.get(MODULE_ID, "useTravel"); } catch (e) { /* */ }
-        const _includeTravelStep = _stepRestType === "long" && _useTravel;
+        const _includeTravelStep = _stepRestType === "long" && _enableProfessions && _useTravel;
         const _includeEventsStep = _stepRestType !== "short" && !setupSafeHaven;
         const _phaseStepDefs = [
             { key: "setup", label: "Setup", include: true },
@@ -4197,7 +4156,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     : "Comfort bypassed: safe rest spot negates comfort penalties, fire, and exhaustion saves.";
                 return [
                     { on: comfortActive, icon: "fas fa-temperature-half", label: "Comfort", tooltip: setupSafeHaven ? comfortBypassTooltip : comfort ? "Comfort tiers, fire, and exhaustion saves are on. Change under Recovery Rules." : "Comfort off: no fire phase and no terrain exhaustion saves. Change under Recovery Rules." },
-                    { on: professionsActive, icon: "fas fa-hammer", label: "Professions", tooltip: isTavernSetup ? "Professions not offered at a tavern; personal activities only." : professions ? "Crafting professions on. Change under Travel & Activities." : "Crafting professions off. Change under Travel & Activities." },
+                    { on: professionsActive, icon: "fas fa-hammer", label: "Professions", tooltip: isTavernSetup ? "Professions not offered at a tavern; personal activities only." : professions ? "Crafting professions and the travel phase are on. Change under Travel & Activities." : "Professions off: the travel phase is skipped. Change under Travel & Activities." },
                     { on: mealsActive, icon: "fas fa-drumstick-bite", label: "Meals", tooltip: isTavernSetup ? "Meals provided by the establishment; no ration tracking at a tavern." : meals ? "Food and water tracking is on; the Meal phase runs." : "Meal tracking off: no rations or dehydration saves. Change in module settings." }
                 ];
             })()
@@ -4370,10 +4329,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     ?? { disabled: true, disabledReasonKey: "ionrift-respite.travel.forage.requires_pack" };
                 const forageDisabled = canForage && forageGate.disabled;
                 const forageDisabledReasonKey = forageDisabled ? forageGate.disabledReasonKey : null;
-                const huntGate = this._travel?.getHuntGate?.(terrainTag)
-                    ?? { disabled: false, disabledReasonKey: null };
-                const huntDisabled = canHunt && huntGate.disabled;
-                const huntDisabledReasonKey = huntDisabled ? huntGate.disabledReasonKey : null;
 
                 // Build peer roster (non-owned characters) in roster-strip chip shape
                 // so the travel phase can use {{> rosterStrip}} like every other phase.
@@ -4415,11 +4370,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     forageDisabledReasonKey,
                     forageDisabledTooltip: forageDisabledReasonKey
                         ? game.i18n.localize(forageDisabledReasonKey)
-                        : null,
-                    huntDisabled,
-                    huntDisabledReasonKey,
-                    huntDisabledTooltip: huntDisabledReasonKey
-                        ? game.i18n.localize(huntDisabledReasonKey)
                         : null,
                     travelPeerRoster
                 };
@@ -8794,7 +8744,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      */
     _shouldShowTotmCampfirePanel() {
         if (this._phase !== "activity" || !this._isTotM || !isCampfireMinigameEnabled()) return false;
-        if (this._totmFollowUpExpanded?.isCrafting) return false;
         if (!this._totmFireUiEnabled()) return false;
         if (this._totmCampfireMinigamePanelEnabled()) return true;
         return (this._fireLevel ?? "unlit") !== "unlit" || !!this._coldCampDecided;
@@ -11915,7 +11864,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (this._craftingInProgress?.has(characterId)) return null;
 
         // Look up activity from the resolver, then fall back to known crafting IDs
-        const CRAFTING_PROFESSIONS = { act_cook: "cooking", act_brew: "brewing" };
+        const CRAFTING_PROFESSIONS = { act_cook: "cooking", act_brew: "alchemy" };
         const activity = this._activityResolver?.activities?.get(activityId);
         const craftingProfession = activity?.crafting?.profession ?? CRAFTING_PROFESSIONS[activityId];
         if (activity?.crafting?.enabled || craftingProfession) {
@@ -15354,20 +15303,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this._resetTotmCraftState();
                 this._hydrateTotmCraftStateFromRest(characterId, craftingProfession);
                 this._totmFollowUpExpanded = { activityId, characterId, isCrafting: true, profession: craftingProfession };
-                if (!this._totmCraftHasCrafted) {
-                    const actor = game.actors.get(characterId);
-                    const terrainTag = this._engine?.terrainTag ?? this._restData?.terrainTag ?? null;
-                    const partySize = getPartyActors().length;
-                    this._totmCraftRecipeId = resolveDefaultCraftRecipeId({
-                        engine: this._craftingEngine,
-                        actor,
-                        profession: craftingProfession,
-                        terrainTag,
-                        partySize,
-                        currentId: this._totmCraftRecipeId,
-                        hasCrafted: false
-                    });
-                }
             }
             this.render();
             return;
@@ -15547,7 +15482,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._totmCraftHasCrafted = false;
         this._totmCraftShowMissing = false;
         this._totmCraftRollPending = false;
-        this._totmCraftScrollTop = 0;
         this._totmFeastServed = false;
         this._totmFeastInFlight = false;
     }
@@ -15575,57 +15509,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static #onTotmCraftSelectRecipe(event, target) {
         if (this._totmCraftRollPending || this._totmCraftHasCrafted) return;
         this._totmCraftRecipeId = target.dataset.recipeId;
-        this._totmCraftRisk = "standard";
         this.render();
     }
 
     /** TotM inline crafting: select a risk tier. */
-    static async #onTotmCraftSelectRisk(event, target) {
+    static #onTotmCraftSelectRisk(event, target) {
         if (this._totmCraftRollPending || this._totmCraftHasCrafted) return;
-        const risk = target.dataset.risk;
-        if (!risk || !["standard", "ambitious"].includes(risk)) return;
-        if (risk === this._totmCraftRisk) return;
-        this._totmCraftRisk = risk;
-
-        const root = this.element?.querySelector(".totm-crafting-embed");
-        const expanded = this._totmFollowUpExpanded;
-        const actor = expanded?.characterId ? game.actors.get(expanded.characterId) : null;
-        const engine = this._craftingEngine;
-
-        if (!root || !actor || !engine || !expanded?.isCrafting || !this._totmCraftRecipeId) {
-            this.render();
-            return;
-        }
-
-        const terrainTag = this._engine?.terrainTag ?? this._restData?.terrainTag ?? null;
-        const partySize = getPartyActors().length;
-        const status = engine.getRecipeStatus(actor, expanded.profession, terrainTag, partySize);
-        const recipe = status.available.find(r => r.id === this._totmCraftRecipeId)
-            ?? status.partial.find(r => r.id === this._totmCraftRecipeId);
-
-        if (!recipe) {
-            this.render();
-            return;
-        }
-        if (recipe.noSkillCheck) return;
-
-        const commitSummary = buildCraftCommitSummary({
-            recipe,
-            risk,
-            actor,
-            engine,
-            terrainTag
-        });
-        const dcBreakdown = engine.getDcBreakdown(actor, recipe, risk, terrainTag);
-
-        const patched = await patchCraftingRiskUi(root, {
-            risk,
-            commitSummary,
-            dcBreakdown,
-            dcDisplay: dcBreakdown.total
-        });
-
-        if (!patched) this.render();
+        this._totmCraftRisk = target.dataset.risk;
+        this.render();
     }
 
     /** TotM inline crafting: execute the craft roll. */
@@ -15762,23 +15653,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         this._totmFeastInFlight = true;
         try {
-            const buffPartyIds = getFoodBuffPartyActors().map(a => a.id);
-            const satiationPartyIds = getMealEligiblePartyActors()
-                .filter(a => ItemClassifier.requiresSustenance(a))
-                .map(a => a.id);
+            const partyIds = getPartyActors().map(a => a.id);
             const snapshot = item.toObject(false);
 
             if (game.user.isGM) {
                 await MealPhaseHandler._dispatchWellFedMealServing({
                     consumerActor: actor,
                     itemSnapshot: snapshot,
-                    partyIds: buffPartyIds
+                    partyIds
                 });
             } else {
                 emitFeastServeRequest({
                     cookActorId: actor.id,
                     itemSnapshot: snapshot,
-                    partyIds: buffPartyIds,
+                    partyIds,
                     feastMode: "feast"
                 });
             }
@@ -15804,7 +15692,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const fpd = terrainMealRules.foodPerDay ?? 1;
                 const wpd = terrainMealRules.waterPerDay ?? 2;
 
-                for (const pid of satiationPartyIds) {
+                for (const pid of partyIds) {
                     if (this._activityMealRationsSubmitted.has(pid)) continue;
                     const existing = this._mealChoices.get(pid) ?? {};
                     if (satiates.includes("food")) {
