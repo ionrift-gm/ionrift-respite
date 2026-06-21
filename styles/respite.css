@@ -21248,6 +21248,75 @@ button.is-processing {
     align-self: flex-start;
 }
 
+/* Post-success loot roll: gentle pulse so the next step reads as clickable */
+@keyframes travel-loot-roll-pulse {
+    0%, 100% {
+        box-shadow: 0 0 6px rgba(100, 200, 120, 0.2);
+        border-color: rgba(100, 200, 120, 0.4);
+        transform: translateY(0);
+    }
+    50% {
+        box-shadow: 0 0 14px rgba(110, 220, 140, 0.45), 0 2px 6px rgba(0, 0, 0, 0.25);
+        border-color: rgba(140, 235, 160, 0.7);
+        transform: translateY(-1px);
+    }
+}
+
+@keyframes travel-loot-dice-tilt {
+    0%, 100% { transform: rotate(-10deg); }
+    50% { transform: rotate(10deg); }
+}
+
+.travel-loot-roll-btn {
+    border: 1px solid rgba(100, 200, 120, 0.45);
+    background: linear-gradient(
+        180deg,
+        rgba(80, 180, 100, 0.22) 0%,
+        rgba(45, 110, 60, 0.2) 100%
+    );
+    animation: travel-loot-roll-pulse 2.2s ease-in-out infinite;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.travel-loot-roll-btn i {
+    display: inline-block;
+    animation: travel-loot-dice-tilt 2.2s ease-in-out infinite;
+}
+
+.travel-loot-roll-btn:hover:not(:disabled) {
+    animation: none;
+    transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 0 16px rgba(120, 230, 150, 0.55);
+    border-color: rgba(160, 245, 175, 0.85);
+    background: linear-gradient(
+        180deg,
+        rgba(95, 210, 115, 0.38) 0%,
+        rgba(55, 140, 75, 0.32) 100%
+    );
+}
+
+.travel-loot-roll-btn:hover:not(:disabled) i {
+    animation: none;
+    transform: rotate(0deg);
+}
+
+.travel-loot-roll-btn:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 0 8px rgba(100, 200, 120, 0.35);
+}
+
+.travel-loot-roll-btn:disabled {
+    animation: none;
+    opacity: 0.65;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .travel-loot-roll-btn,
+    .travel-loot-roll-btn i {
+        animation: none;
+    }
+}
+
 .travel-confirmed-icon {
     color: rgba(100, 200, 100, 0.5);
     font-size: 0.5rem;

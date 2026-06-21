@@ -34,6 +34,30 @@ export const ROLL_TABLE_GM_ONLY_OWNERSHIP =
     (typeof CONST !== "undefined" && CONST.DOCUMENT_OWNERSHIP_LEVELS?.NONE) ?? 0;
 
 /**
+ * Ownership payload that hides roll tables from players and strips legacy per-user Observer grants.
+ * @param {Record<string, number>} [existing]
+ * @returns {Record<string, number|null>}
+ */
+export function buildGmOnlyRollTableOwnership(existing = {}) {
+    const ownerLevel = (typeof CONST !== "undefined" && CONST.DOCUMENT_OWNERSHIP_LEVELS?.OWNER) ?? 3;
+    const ownership = { default: ROLL_TABLE_GM_ONLY_OWNERSHIP };
+
+    for (const user of game.users ?? []) {
+        if (user.isGM) ownership[user.id] = ownerLevel;
+    }
+
+    for (const [userId, level] of Object.entries(existing)) {
+        if (userId === "default") continue;
+        const user = game.users.get(userId);
+        if (!user?.isGM && (level ?? 0) > ROLL_TABLE_GM_ONLY_OWNERSHIP) {
+            ownership[`-${userId}`] = null;
+        }
+    }
+
+    return ownership;
+}
+
+/**
  * @param {RollTable|null|undefined} table
  * @param {number} rollValue - d100 face (1-100)
  * @returns {TableResult|null}
@@ -340,6 +364,41 @@ export class ForageTableSync {
     }
 
     /**
+     * Hide Respite roll tables and folders from non-GM clients.
+     * Clears legacy per-user Observer grants from earlier builds.
+     * @returns {Promise<{ tables: number, folders: number }>}
+     */
+    static async lockDownRollTableVisibility() {
+        if (!game.user?.isGM) return { tables: 0, folders: 0 };
+
+        let tables = 0;
+        for (const table of game.tables) {
+            if (!table.flags?.[MODULE_ID]?.isForageTable && !table.flags?.[MODULE_ID]?.isCampFuelTable) {
+                continue;
+            }
+            await table.update({
+                ownership: buildGmOnlyRollTableOwnership(table.ownership ?? {})
+            });
+            tables++;
+        }
+
+        let folders = 0;
+        for (const folder of game.folders) {
+            if (folder.type !== "RollTable") continue;
+            const isRespiteRollFolder = folder.name === PARENT_FOLDER
+                || folder.name === CHILD_FOLDER
+                || (folder.folder && game.folders.get(folder.folder)?.name === PARENT_FOLDER);
+            if (!isRespiteRollFolder) continue;
+            await folder.update({
+                ownership: buildGmOnlyRollTableOwnership(folder.ownership ?? {})
+            });
+            folders++;
+        }
+
+        return { tables, folders };
+    }
+
+    /**
      * Rebuild all terrain forage tables from compendium data.
      * @param {{ notify?: boolean }} [options]
      */
@@ -393,6 +452,7 @@ export class ForageTableSync {
 
             const { CampFuelTableSync } = await import("./CampFuelTableSync.js");
             await CampFuelTableSync.syncAll();
+            await ForageTableSync.lockDownRollTableVisibility();
 
             return { terrains: synced, truncated: totalTruncated };
         } finally {
@@ -481,7 +541,7 @@ export class ForageTableSync {
         if (tableResultCount(table) > 0) await table.normalize();
 
         await table.update({
-            ownership: { default: ROLL_TABLE_GM_ONLY_OWNERSHIP },
+            ownership: buildGmOnlyRollTableOwnership(table.ownership ?? {}),
             displayRoll: true
         });
 
@@ -536,7 +596,12 @@ export class ForageTableSync {
             parent = await Folder.create({
                 name: PARENT_FOLDER,
                 type: "RollTable",
-                parent: null
+                parent: null,
+                ownership: buildGmOnlyRollTableOwnership()
+            });
+        } else {
+            await parent.update({
+                ownership: buildGmOnlyRollTableOwnership(parent.ownership ?? {})
             });
         }
 
@@ -550,9 +615,17 @@ export class ForageTableSync {
             child = await Folder.create({
                 name: CHILD_FOLDER,
                 type: "RollTable",
-                folder: parentId
+                folder: parentId,
+                ownership: buildGmOnlyRollTableOwnership()
+            });
+        } else {
+            await child.update({
+                ownership: buildGmOnlyRollTableOwnership(child.ownership ?? {})
             });
         }
+        await parent.update({
+            ownership: buildGmOnlyRollTableOwnership(parent.ownership ?? {})
+        });
         return child;
     }
 
@@ -578,7 +651,7 @@ export class ForageTableSync {
                 replacement: true,
                 displayRoll: true,
                 folder: folderId,
-                ownership: { default: ROLL_TABLE_GM_ONLY_OWNERSHIP },
+                ownership: buildGmOnlyRollTableOwnership(),
                 flags: {
                     [MODULE_ID]: {
                         terrainTag,
@@ -587,6 +660,10 @@ export class ForageTableSync {
                 }
             });
             Logger.log(`Created forage table: ${tableName}`);
+        } else {
+            await table.update({
+                ownership: buildGmOnlyRollTableOwnership(table.ownership ?? {})
+            });
         }
         return table;
     }

@@ -7,7 +7,8 @@ import { Logger } from "../lib/Logger.js";
 import {
     scaleWeightsToTarget,
     sortForageEntries,
-    ROLL_TABLE_GM_ONLY_OWNERSHIP
+    ROLL_TABLE_GM_ONLY_OWNERSHIP,
+    buildGmOnlyRollTableOwnership
 } from "./ForageTableSync.js";
 import {
     compendiumIndexDocumentId,
@@ -292,7 +293,7 @@ export class CampFuelTableSync {
         await table.update({
             formula: "1d100",
             description: buildCampFuelTableDescription(),
-            ownership: { default: ROLL_TABLE_GM_ONLY_OWNERSHIP },
+            ownership: buildGmOnlyRollTableOwnership(table.ownership ?? {}),
             displayRoll: true
         });
 
@@ -355,7 +356,12 @@ export class CampFuelTableSync {
             parent = await Folder.create({
                 name: PARENT_FOLDER,
                 type: "RollTable",
-                parent: null
+                parent: null,
+                ownership: buildGmOnlyRollTableOwnership()
+            });
+        } else {
+            await parent.update({
+                ownership: buildGmOnlyRollTableOwnership(parent.ownership ?? {})
             });
         }
 
@@ -369,7 +375,12 @@ export class CampFuelTableSync {
             child = await Folder.create({
                 name: CHILD_FOLDER,
                 type: "RollTable",
-                folder: parentId
+                folder: parentId,
+                ownership: buildGmOnlyRollTableOwnership()
+            });
+        } else {
+            await child.update({
+                ownership: buildGmOnlyRollTableOwnership(child.ownership ?? {})
             });
         }
         return child;
@@ -392,7 +403,7 @@ export class CampFuelTableSync {
                 replacement: true,
                 displayRoll: true,
                 folder: folderId,
-                ownership: { default: ROLL_TABLE_GM_ONLY_OWNERSHIP },
+                ownership: buildGmOnlyRollTableOwnership(),
                 flags: {
                     [MODULE_ID]: {
                         isCampFuelTable: true
@@ -402,6 +413,10 @@ export class CampFuelTableSync {
             Logger.log(`Created camp fuel table: ${TABLE_NAME}`);
         } else if (table.folder !== folderId) {
             await table.update({ folder: folderId });
+        } else {
+            await table.update({
+                ownership: buildGmOnlyRollTableOwnership(table.ownership ?? {})
+            });
         }
         return table;
     }
