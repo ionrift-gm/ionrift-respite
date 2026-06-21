@@ -458,6 +458,15 @@
                     {{/if}}
                     </div>
 
+                    {{else if (eq status 'awaiting_loot')}}
+                    <div class="travel-gm-activity-pick">
+                    <span class="travel-pending-label travel-loot-await"><i class="fas fa-dice-d20"></i> Skill {{total}} — loot roll</span>
+                    {{#if awaitingPlayerResponse}}<span class="travel-player-await" data-tooltip="Waiting for loot roll"><i class="fas fa-circle-notch fa-spin"></i></span>{{/if}}
+                    <button type="button" class="btn-roll-for-player travel-fallback" data-action="rollTravelLootForPlayer" data-actor-id="{{id}}" data-day="{{../day}}" data-tooltip="Roll loot on their behalf">
+                        <i class="fas fa-dice"></i>
+                    </button>
+                    </div>
+
                     {{else if (eq status 'rolled')}}
                     <span class="travel-result success"><i class="fas fa-check"></i> Rolled {{total}}</span>
 
@@ -693,7 +702,11 @@
                         <span class="travel-activity-desc">{{activityFlavor}}</span>
                         {{/unless}}{{/unless}}
                     </div>
-                    {{#if rolled}}
+                    {{#if awaitingLoot}}
+                    <button type="button" class="travel-self-roll-btn btn-primary travel-loot-roll-btn" data-action="rollTravelLoot" data-actor-id="{{id}}" data-day="{{../day}}" data-activity="{{declaration}}" data-draws="{{lootDraws}}">
+                        <i class="fas fa-dice-d20"></i> Roll loot{{#if (gte lootDraws 2)}} ({{lootDraws}}x d100){{/if}}
+                    </button>
+                    {{else if rolled}}
                     <span class="travel-rolled-badge">
                         <i class="fas fa-dice-d20"></i>
                         {{#if (eq declaration 'forage')}}Foraging{{else if (eq declaration 'hunt')}}Hunting{{else if (eq declaration 'scout')}}Scouting{{else}}Other{{/if}}

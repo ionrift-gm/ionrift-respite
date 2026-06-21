@@ -94,4 +94,31 @@ export class ResourcePoolRoller {
 
         return results;
     }
+
+    /**
+     * Pick one pool entry using a player d100 (1 = lowest weight band, 100 = high).
+     * @param {string} poolId
+     * @param {number} rollValue
+     * @returns {Object|null} Pool entry from JSON data.
+     */
+    pickWithPercentileRoll(poolId, rollValue) {
+        let pool = this.pools.get(poolId);
+        if (!pool) pool = this.pools.get("resource_pool_wilderness");
+        if (!pool?.entries?.length) return null;
+
+        const totalWeight = pool.entries.reduce((sum, entry) => sum + (entry.weight ?? 1), 0);
+        if (totalWeight <= 0) return null;
+
+        const clamped = Math.max(1, Math.min(100, Math.floor(Number(rollValue) || 0)));
+        let rand = ((clamped - 1) / 100) * totalWeight;
+        let selected = pool.entries[0];
+        for (const entry of pool.entries) {
+            rand -= (entry.weight ?? 1);
+            if (rand <= 0) {
+                selected = entry;
+                break;
+            }
+        }
+        return selected;
+    }
 }

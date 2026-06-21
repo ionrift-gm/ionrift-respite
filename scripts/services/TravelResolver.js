@@ -188,18 +188,44 @@ export class TravelResolver {
     }
 
     /**
-     * Resolve a foraging attempt from a pre-rolled total (player-rolled).
+     * Evaluate a foraging skill check without drawing loot.
      * @param {Actor} actor
-     * @param {string} terrainTag
-     * @param {number} total - The player's roll total.
-     * @param {number} dc - The DC used for this check.
-     * @returns {Object}
+     * @param {number} total
+     * @param {number} dc
+     * @returns {{ success: boolean, nat20: boolean, nat1: boolean, exceptional: boolean, survivalMod: number }}
      */
-    async resolveForageFromTotal(actor, terrainTag, total, dc) {
-        const nat20 = total - this._getSurvivalMod(actor) === 20;
-        const nat1 = total - this._getSurvivalMod(actor) === 1;
+    evaluateForageSkill(actor, total, dc) {
+        const survivalMod = this._getSurvivalMod(actor);
+        const nat20 = total - survivalMod === 20;
+        const nat1 = total - survivalMod === 1;
         const success = nat20 || (!nat1 && total >= dc);
         const exceptional = total >= dc + 5;
+        return { success, nat20, nat1, exceptional, survivalMod };
+    }
+
+    /**
+     * Evaluate a hunting skill check without drawing loot.
+     * @param {Actor} actor
+     * @param {number} total
+     * @param {number} dc
+     * @returns {{ success: boolean, nat20: boolean, nat1: boolean, exceptional: boolean, survivalMod: number }}
+     */
+    evaluateHuntSkill(actor, total, dc) {
+        return this.evaluateForageSkill(actor, total, dc);
+    }
+
+    /**
+     * Build a forage result after the skill check and player loot rolls.
+     * @param {Actor} actor
+     * @param {string} terrainTag
+     * @param {number} total
+     * @param {number} dc
+     * @param {{ success: boolean, nat20: boolean, nat1: boolean, exceptional: boolean }} skillEval
+     * @param {number[]} lootRolls - Player d100 faces (one per draw).
+     * @returns {Promise<Object>}
+     */
+    async buildForageResult(actor, terrainTag, total, dc, skillEval, lootRolls = []) {
+        const { success, nat20, nat1, exceptional } = skillEval;
 
         let items = [];
         let mishap = null;
@@ -208,30 +234,39 @@ export class TravelResolver {
         if (nat1) {
             mishap = this._rollForageMishap(terrainTag);
         } else if (success) {
-            const rolled = await this._rollForageItems(terrainTag, exceptional, nat20);
+            const rolled = await this._rollForageItems(terrainTag, exceptional, nat20, lootRolls);
             items = rolled.items;
             warningKey = rolled.warningKey ?? null;
         }
 
         return {
-            activity: "forage", actorId: actor.id, actorName: actor.name,
-            success, nat20, nat1, exceptional, total, dc, items, mishap, warningKey
+            activity: "forage",
+            actorId: actor.id,
+            actorName: actor.name,
+            success,
+            nat20,
+            nat1,
+            exceptional,
+            total,
+            dc,
+            items,
+            mishap,
+            warningKey
         };
     }
 
     /**
-     * Resolve a hunting attempt from a pre-rolled total (player-rolled).
+     * Build a hunt result after the skill check and player loot rolls.
      * @param {Actor} actor
      * @param {string} terrainTag
-     * @param {number} total - The player's roll total.
-     * @param {number} dc - The DC used for this check.
-     * @returns {Object}
+     * @param {number} total
+     * @param {number} dc
+     * @param {{ success: boolean, nat20: boolean, nat1: boolean, exceptional: boolean }} skillEval
+     * @param {number[]} lootRolls - Player d100 faces (second roll used for nat 20 rare pool).
+     * @returns {Promise<Object>}
      */
-    async resolveHuntFromTotal(actor, terrainTag, total, dc) {
-        const nat20 = total - this._getSurvivalMod(actor) === 20;
-        const nat1 = total - this._getSurvivalMod(actor) === 1;
-        const success = nat20 || (!nat1 && total >= dc);
-        const exceptional = total >= dc + 5;
+    async buildHuntResult(actor, terrainTag, total, dc, skillEval, lootRolls = []) {
+        const { success, nat20, nat1, exceptional } = skillEval;
 
         let items = [];
         let mishap = null;
@@ -241,16 +276,53 @@ export class TravelResolver {
         } else if (success) {
             items.push(...await this._getHuntYieldWithFallback(terrainTag, exceptional));
             if (nat20) {
-                const rarePoolId = `resource_pool_${terrainTag}_rare`;
-                const rareItems = await this.#poolRoller.roll(rarePoolId, 1);
+                const rareRoll = lootRolls.length >= 2 ? lootRolls[1] : lootRolls[0];
+                const rareItems = await this._rollHuntRarePool(terrainTag, rareRoll);
                 items.push(...rareItems);
             }
         }
 
         return {
-            activity: "hunt", actorId: actor.id, actorName: actor.name,
-            success, nat20, nat1, exceptional, total, dc, items, mishap
+            activity: "hunt",
+            actorId: actor.id,
+            actorName: actor.name,
+            success,
+            nat20,
+            nat1,
+            exceptional,
+            total,
+            dc,
+            items,
+            mishap
         };
+    }
+
+    /**
+     * Resolve a foraging attempt from a pre-rolled total (player-rolled skill check).
+     * @deprecated Use evaluateForageSkill + buildForageResult for the two-step flow.
+     * @param {Actor} actor
+     * @param {string} terrainTag
+     * @param {number} total - The player's roll total.
+     * @param {number} dc - The DC used for this check.
+     * @returns {Object}
+     */
+    async resolveForageFromTotal(actor, terrainTag, total, dc) {
+        const skillEval = this.evaluateForageSkill(actor, total, dc);
+        return await this.buildForageResult(actor, terrainTag, total, dc, skillEval, []);
+    }
+
+    /**
+     * Resolve a hunting attempt from a pre-rolled total (player-rolled skill check).
+     * @deprecated Use evaluateHuntSkill + buildHuntResult for the two-step flow.
+     * @param {Actor} actor
+     * @param {string} terrainTag
+     * @param {number} total - The player's roll total.
+     * @param {number} dc - The DC used for this check.
+     * @returns {Object}
+     */
+    async resolveHuntFromTotal(actor, terrainTag, total, dc) {
+        const skillEval = this.evaluateHuntSkill(actor, total, dc);
+        return await this.buildHuntResult(actor, terrainTag, total, dc, skillEval, []);
     }
 
     /**
@@ -402,10 +474,39 @@ export class TravelResolver {
      * Pool draws for forage (no synthetic loot). Empty grantable results log a warning.
      * @returns {Promise<{ items: Object[], warningKey?: string }>}
      */
-    async _rollForageItems(terrainTag, exceptional, nat20) {
+    async _rollForageItems(terrainTag, exceptional, nat20, lootRolls = []) {
         const draws = (exceptional || nat20) ? 2 : 1;
+        const rolls = (lootRolls ?? []).slice(0, draws);
+
         const { ForageTableSync } = await import("./ForageTableSync.js");
-        let items = await ForageTableSync.drawForageResults(terrainTag, draws);
+        let items = rolls.length
+            ? await ForageTableSync.resolveRollValues(terrainTag, rolls)
+            : await ForageTableSync.drawForageResults(terrainTag, draws);
+
+        if (!items.length && rolls.length) {
+            const poolId = `resource_pool_${terrainTag}`;
+            const primaryEntry = this.#poolRoller.pickWithPercentileRoll(poolId, rolls[0]);
+            let rareEntry = null;
+            if ((exceptional || nat20) && rolls.length >= 2) {
+                rareEntry = this.#poolRoller.pickWithPercentileRoll(`${poolId}_rare`, rolls[1]);
+            }
+
+            const { resolveProvisionPoolEntry } = await import("./TravelProvisionIndex.js");
+            const enrichEntry = async (row) => {
+                if (!row) return null;
+                if (row.itemData) return { ...row };
+                if (!row.itemRef) return null;
+                const itemData = await resolveProvisionPoolEntry({
+                    itemRef: row.itemRef,
+                    packId: row.packId
+                });
+                return itemData ? { ...row, itemData } : null;
+            };
+
+            const primaryRoll = primaryEntry ? [await enrichEntry(primaryEntry)].filter(Boolean) : [];
+            const rareRoll = rareEntry ? [await enrichEntry(rareEntry)].filter(Boolean) : [];
+            items = [...primaryRoll, ...rareRoll];
+        }
 
         if (!items.length) {
             const poolId = `resource_pool_${terrainTag}`;
@@ -437,7 +538,19 @@ export class TravelResolver {
         }
 
         if (!items.length) {
-            items = await this._drawFromBasePool(terrainTag, "forage", exceptional ? 2 : 1);
+            const baseCount = exceptional ? 2 : 1;
+            if (rolls.length) {
+                for (let index = 0; index < Math.min(baseCount, rolls.length); index++) {
+                    const drawn = await this._drawFromBasePoolWithRoll(
+                        terrainTag,
+                        "forage",
+                        rolls[index]
+                    );
+                    items.push(...drawn);
+                }
+            } else {
+                items = await this._drawFromBasePool(terrainTag, "forage", baseCount);
+            }
         }
 
         // Flat side-chance; item comes from the camp fuel roll table when present.
@@ -532,6 +645,32 @@ export class TravelResolver {
             });
         }
         return results;
+    }
+
+    /**
+     * @param {string} terrainTag
+     * @param {string} category - "hunt" | "forage"
+     * @param {number} rollValue - Player d100 (1-100).
+     * @returns {Promise<Array<{ itemRef: string, quantity: number, itemData: object }>>}
+     */
+    async _drawFromBasePoolWithRoll(terrainTag, category, rollValue) {
+        const key = `${terrainTag}_${category}`;
+        const pool = this.#basePools[key] ?? this.#basePools[`wilderness_${category}`] ?? [];
+        if (!pool.length) return [];
+
+        const clamped = Math.max(1, Math.min(100, Math.floor(Number(rollValue) || 0)));
+        const index = Math.min(pool.length - 1, Math.floor((clamped - 1) / 100 * pool.length));
+        const entry = pool[index];
+        if (!entry) return [];
+
+        const { resolveProvisionPoolEntry } = await import("./TravelProvisionIndex.js");
+        const itemData = await resolveProvisionPoolEntry(entry);
+        if (!itemData) return [];
+        return [{
+            itemRef: entry.itemRef,
+            quantity: entry.quantity,
+            itemData
+        }];
     }
 
     /**
@@ -670,6 +809,33 @@ export class TravelResolver {
             items = await this._drawFromBasePool(terrainTag, "hunt", exceptional ? 2 : 1);
         }
         return items;
+    }
+
+    /**
+     * Nat 20 hunt bonus from terrain rare pool using a player d100 when provided.
+     * @param {string} terrainTag
+     * @param {number|null} rollValue
+     * @returns {Promise<Object[]>}
+     */
+    async _rollHuntRarePool(terrainTag, rollValue = null) {
+        const rarePoolId = `resource_pool_${terrainTag}_rare`;
+        if (rollValue != null) {
+            const selected = this.#poolRoller.pickWithPercentileRoll(rarePoolId, rollValue);
+            if (!selected) return [];
+            const { resolveProvisionPoolEntry } = await import("./TravelProvisionIndex.js");
+            const itemData = selected.itemData
+                ?? await resolveProvisionPoolEntry({
+                    itemRef: selected.itemRef,
+                    packId: selected.packId
+                });
+            if (!itemData) return [];
+            return [{
+                itemRef: selected.itemRef,
+                quantity: selected.quantity ?? 1,
+                itemData
+            }];
+        }
+        return await this.#poolRoller.roll(rarePoolId, 1);
     }
 
     _rollForageMishap(terrainTag) {

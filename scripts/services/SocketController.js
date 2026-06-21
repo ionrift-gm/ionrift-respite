@@ -97,6 +97,8 @@ export const SOCKET_TYPES = Object.freeze({
     TRAVEL_DECLARATIONS_SYNC:  "travelDeclarationsSync",
     TRAVEL_ROLL_REQUEST:       "travelRollRequest",
     TRAVEL_ROLL_RESULT:        "travelRollResult",
+    TRAVEL_LOOT_ROLL_PROMPT:   "travelLootRollPrompt",
+    TRAVEL_LOOT_ROLL_RESULT:   "travelLootRollResult",
     TRAVEL_DEBRIEF:            "travelDebrief",
     TRAVEL_INDIVIDUAL_DEBRIEF: "travelIndividualDebrief",
 
@@ -499,6 +501,22 @@ export function emitTravelRollRequest(data) {
  */
 export function emitTravelRollResult(data) {
     _emit(SOCKET_TYPES.TRAVEL_ROLL_RESULT, data);
+}
+
+/**
+ * GM → Player: prompt for forage/hunt loot table roll(s) after a successful skill check.
+ * @param {object} data
+ */
+export function emitTravelLootRollPrompt(data) {
+    _emit(SOCKET_TYPES.TRAVEL_LOOT_ROLL_PROMPT, data);
+}
+
+/**
+ * Player → GM: loot table d100 roll result(s).
+ * @param {object} data
+ */
+export function emitTravelLootRollResult(data) {
+    _emit(SOCKET_TYPES.TRAVEL_LOOT_ROLL_RESULT, data);
 }
 
 /**

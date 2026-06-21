@@ -28,7 +28,26 @@ const TABLE_PREFIX = "Respite: Forage";
 export const FORAGE_TABLE_MAX_ENTRIES = 100;
 
 const WATCHED_PACK_IDS = [PROVISIONS_CUSTOM_PACK_ID, MODULE_PACK_ID];
-const PLAYER_OBSERVER = (typeof CONST !== "undefined" && CONST.DOCUMENT_OWNERSHIP_LEVELS?.OBSERVER) ?? 2;
+
+/** Roll tables stay GM-only; players roll d100 in chat and the GM client maps the value. */
+export const ROLL_TABLE_GM_ONLY_OWNERSHIP =
+    (typeof CONST !== "undefined" && CONST.DOCUMENT_OWNERSHIP_LEVELS?.NONE) ?? 0;
+
+/**
+ * @param {RollTable|null|undefined} table
+ * @param {number} rollValue - d100 face (1-100)
+ * @returns {TableResult|null}
+ */
+export function findTableResultForRoll(table, rollValue) {
+    if (!table?.results?.length) return null;
+    const value = Math.max(1, Math.min(100, Math.floor(Number(rollValue) || 0)));
+    for (const result of table.results) {
+        const range = result.range;
+        if (!Array.isArray(range) || range.length < 2) continue;
+        if (value >= range[0] && value <= range[1]) return result;
+    }
+    return null;
+}
 
 let syncTimer = null;
 let syncInFlight = false;
@@ -266,25 +285,58 @@ export class ForageTableSync {
 
         const merged = [];
         for (let index = 0; index < draws; index++) {
-            const draw = await table.draw({ rollMode: game.user?.isGM ? "gmroll" : "blindroll" });
-            for (const result of draw?.results ?? []) {
-                const itemRef = result.getFlag(MODULE_ID, "itemRef") ?? String(result.text ?? "").trim();
-                if (!itemRef) continue;
-
-                const quantity = result.getFlag(MODULE_ID, "quantity") ?? 1;
-                const packId = result.getFlag(MODULE_ID, "packId");
-                let itemData = result.getFlag(MODULE_ID, "itemData");
-                if (!itemData) {
-                    itemData = await resolveProvisionPoolEntry({ itemRef, packId });
-                }
-                if (!itemData) continue;
-
-                const existing = merged.find(row => row.itemRef === itemRef);
-                if (existing) existing.quantity += quantity;
-                else merged.push({ itemRef, quantity, itemData });
+            const draw = await table.draw({ rollMode: "gmroll", displayChat: false });
+            for (const row of draw?.results ?? []) {
+                const grant = await ForageTableSync._tableResultToGrant(row);
+                if (!grant) continue;
+                const existing = merged.find(entry => entry.itemRef === grant.itemRef);
+                if (existing) existing.quantity += grant.quantity;
+                else merged.push(grant);
             }
         }
         return merged;
+    }
+
+    /**
+     * Resolve player d100 rolls against the terrain forage table (GM-only document).
+     * @param {string} terrainTag
+     * @param {number[]} rollValues - One face per draw (1-100).
+     * @returns {Promise<Array<{ itemRef: string, quantity: number, itemData: object }>>}
+     */
+    static async resolveRollValues(terrainTag, rollValues = []) {
+        const table = ForageTableSync.getTableForTerrain(terrainTag);
+        if (tableResultCount(table) === 0 || !rollValues?.length) return [];
+
+        const merged = [];
+        for (const raw of rollValues) {
+            const result = findTableResultForRoll(table, raw);
+            if (!result) continue;
+            const grant = await ForageTableSync._tableResultToGrant(result);
+            if (!grant) continue;
+            const existing = merged.find(entry => entry.itemRef === grant.itemRef);
+            if (existing) existing.quantity += grant.quantity;
+            else merged.push(grant);
+        }
+        return merged;
+    }
+
+    /**
+     * @param {TableResult} result
+     * @returns {Promise<{ itemRef: string, quantity: number, itemData: object }|null>}
+     */
+    static async _tableResultToGrant(result) {
+        const itemRef = result.getFlag(MODULE_ID, "itemRef") ?? String(result.text ?? "").trim();
+        if (!itemRef) return null;
+
+        const quantity = result.getFlag(MODULE_ID, "quantity") ?? 1;
+        const packId = result.getFlag(MODULE_ID, "packId");
+        let itemData = result.getFlag(MODULE_ID, "itemData");
+        if (!itemData) {
+            itemData = await resolveProvisionPoolEntry({ itemRef, packId });
+        }
+        if (!itemData) return null;
+
+        return { itemRef, quantity, itemData };
     }
 
     /**
@@ -429,7 +481,7 @@ export class ForageTableSync {
         if (tableResultCount(table) > 0) await table.normalize();
 
         await table.update({
-            ownership: { default: PLAYER_OBSERVER },
+            ownership: { default: ROLL_TABLE_GM_ONLY_OWNERSHIP },
             displayRoll: true
         });
 
@@ -526,7 +578,7 @@ export class ForageTableSync {
                 replacement: true,
                 displayRoll: true,
                 folder: folderId,
-                ownership: { default: PLAYER_OBSERVER },
+                ownership: { default: ROLL_TABLE_GM_ONLY_OWNERSHIP },
                 flags: {
                     [MODULE_ID]: {
                         terrainTag,
