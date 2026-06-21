@@ -4,6 +4,7 @@
 
 ### Fixed
 - Cooking and other camp crafting activities open again. Selecting one no longer makes the rest window fail to render.
+- The campfire panel no longer sits beside the crafting view. Crafting takes the full width again.
 
 ### Removed
 - Brewing as a separate camp activity. Cooking stays the camp provisioning profession. Brewing will return once it has a complete recipe set.
