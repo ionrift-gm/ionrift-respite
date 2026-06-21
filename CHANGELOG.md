@@ -3,13 +3,12 @@
 ## [3.3.2] - 2026-06-21
 
 ### Fixed
-- Cooking and other camp crafting activities open again. Selecting one no longer makes the rest window fail to render.
-- The campfire panel no longer sits beside the crafting view. Crafting takes the full width again.
-- Opening a crafting activity now preselects a craftable recipe so the panel shows details right away. When nothing can be made, it says so instead of sitting on an empty prompt.
+- Crafting activities no longer fail to render when selecting cooking or any other profession at a station. The commit panel partial was dropped during a registration refactor.
+- The inline crafting panel now preselects the first available recipe instead of opening to an empty prompt.
+- The campfire side panel no longer overlaps the crafting view during theatre-of-mind rest phases.
 
 ### Removed
-- Brewing as a separate camp activity. Cooking stays the camp provisioning profession. Brewing will return once it has a complete recipe set.
-- Tailoring as a camp activity. Cooking is the only crafting profession in the base module for now.
+- Additional camp activities are deferred until their recipe sets are complete. Cooking remains the active crafting profession.
 
 ## [3.3.1] - 2026-06-21
 
