@@ -790,8 +790,6 @@ registerInventoryContextMenu();
 // â”€â”€ Monster Cooking: Chat Card Button Wiring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // [CARVED OUT, WS-6] Monster Cooking chat card wiring removed for v2.0.
 // Archived: ionrift-brand/Assets/Archived/butcher_system/REINTEGRATION.md
-// [CARVED OUT - WS-6] Monster Cooking chat card wiring removed for v2.0.
-// See: ionrift-brand/Assets/Archived/butcher_system/REINTEGRATION.md
 
 
 // Item Enrichment hooks are now wired by ionrift-library (ItemEnrichmentEngine).
