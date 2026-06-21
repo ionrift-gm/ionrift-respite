@@ -342,53 +342,21 @@ Hooks.once("init", async () => {
     });
 
     // Register partials
-    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/roster-strip.hbs"]);
-    fetch("modules/ionrift-respite/templates/partials/roster-strip.hbs")
-        .then(r => r.text())
-        .then(t => Handlebars.registerPartial("rosterStrip", t))
-        .catch(e => console.warn(`${MODULE_ID} | Failed to load roster-strip partial:`, e));
-
-    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/workbench-identify-embed.hbs"]);
-    fetch("modules/ionrift-respite/templates/partials/workbench-identify-embed.hbs")
-        .then(r => r.text())
-        .then(t => Handlebars.registerPartial("workbenchIdentifyEmbed", t))
-        .catch(e => console.warn(`${MODULE_ID} | Failed to load workbench identify partial:`, e));
-
-    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/workbench-identify-panel.hbs"]);
-    fetch("modules/ionrift-respite/templates/partials/workbench-identify-panel.hbs")
-        .then(r => r.text())
-        .then(t => Handlebars.registerPartial("workbenchIdentifyPanel", t))
-        .catch(e => console.warn(`${MODULE_ID} | Failed to load workbench identify panel partial:`, e));
-
-    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/activity-portraits.hbs"]);
-    fetch("modules/ionrift-respite/templates/partials/activity-portraits.hbs")
-        .then(r => r.text())
-        .then(t => Handlebars.registerPartial("activityPortraits", t))
-        .catch(e => console.warn(`${MODULE_ID} | Failed to load activity-portraits partial:`, e));
-
-    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/fire-tier-picker.hbs"]);
-    fetch("modules/ionrift-respite/templates/partials/fire-tier-picker.hbs")
-        .then(r => r.text())
-        .then(t => Handlebars.registerPartial("fireTierPicker", t))
-        .catch(e => console.warn(`${MODULE_ID} | Failed to load fire-tier-picker partial:`, e));
-
-    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/fire-tier-body.hbs"]);
-    fetch("modules/ionrift-respite/templates/partials/fire-tier-body.hbs")
-        .then(r => r.text())
-        .then(t => Handlebars.registerPartial("fireTierBody", t))
-        .catch(e => console.warn(`${MODULE_ID} | Failed to load fire-tier-body partial:`, e));
-
-    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/craft-commit-panel.hbs"]);
-    fetch("modules/ionrift-respite/templates/partials/craft-commit-panel.hbs")
-        .then(r => r.text())
-        .then(t => Handlebars.registerPartial("craftCommitPanel", t))
-        .catch(e => console.warn(`${MODULE_ID} | Failed to load craft-commit-panel partial:`, e));
-
-    foundry.applications.handlebars.loadTemplates(["modules/ionrift-respite/templates/partials/_training-panel.hbs"]);
-    fetch("modules/ionrift-respite/templates/partials/_training-panel.hbs")
-        .then(r => r.text())
-        .then(t => Handlebars.registerPartial("trainingPanel", t))
-        .catch(e => console.warn(`${MODULE_ID} | Failed to load training-panel partial:`, e));
+    const _registerPartial = (file, name) => {
+        const path = `modules/ionrift-respite/templates/partials/${file}`;
+        foundry.applications.handlebars.loadTemplates([path]);
+        fetch(path)
+            .then(r => r.text())
+            .then(t => Handlebars.registerPartial(name, t))
+            .catch(e => console.warn(`${MODULE_ID} | Failed to load ${file} partial:`, e));
+    };
+    _registerPartial("roster-strip.hbs", "rosterStrip");
+    _registerPartial("workbench-identify-embed.hbs", "workbenchIdentifyEmbed");
+    _registerPartial("workbench-identify-panel.hbs", "workbenchIdentifyPanel");
+    _registerPartial("activity-portraits.hbs", "activityPortraits");
+    _registerPartial("fire-tier-picker.hbs", "fireTierPicker");
+    _registerPartial("fire-tier-body.hbs", "fireTierBody");
+    _registerPartial("_training-panel.hbs", "trainingPanel");
 
     // Expose API
     const adapter = createAdapter();
@@ -427,85 +395,6 @@ Hooks.once("init", async () => {
         openRestSetup: () => {
             if (!game.user.isGM) return;
             new RestSetupApp().render({ force: true });
-        },
-        /**
-         * Console diagnostic: rebuild and dump travel forage/hunt pools for a terrain.
-         * Run as: await game.ionrift.respite.dumpTravelPools("forest")
-         * @param {string} [terrain]
-         * @returns {Promise<object>}
-         */
-        dumpTravelPools: async (terrain = "forest") => {
-            const app = foundry.applications.instances.get("ionrift-respite-setup");
-            const resolver = app?._travel?.getTravelResolver?.();
-            if (!resolver) {
-                console.warn(`${MODULE_ID} | dumpTravelPools: open Make Camp first.`);
-                return { error: "no active rest" };
-            }
-            const { applyTravelProvisionBatches } = await import("./services/TravelProvisionIndex.js");
-            const loaded = await applyTravelProvisionBatches(resolver);
-
-            const forageKey = `${terrain}_forage`;
-            const huntKey = `${terrain}_hunt`;
-            const roller = resolver.resourcePoolRoller;
-            const resPool = roller.pools.get(`resource_pool_${terrain}`);
-            const { ForageTableSync } = await import("./services/ForageTableSync.js");
-            const forageTable = ForageTableSync.getTableForTerrain(terrain);
-            const report = {
-                terrain,
-                batches: loaded.batches.map(b => ({ packId: b.packId, count: [...(b.entries ?? [])].length })),
-                basePoolCoverage: resolver.basePoolCoverage,
-                forageBaseEntries: resolver.getBasePoolEntries(forageKey),
-                huntBaseEntries: resolver.getBasePoolEntries(huntKey),
-                resourcePoolEntries: (resPool?.entries ?? []).map(e => ({
-                    itemRef: e.itemRef,
-                    hasItemData: !!e.itemData,
-                    name: e.itemData?.name ?? null
-                })),
-                forageTable: forageTable ? {
-                    name: forageTable.name,
-                    formula: forageTable.formula,
-                    resultCount: forageTable.results?.size ?? 0,
-                    results: Array.from(forageTable.results ?? []).map(r => ({
-                        itemRef: r.getFlag?.("ionrift-respite", "itemRef") ?? r.text,
-                        weight: r.weight,
-                        range: r.range
-                    }))
-                } : null
-            };
-            console.log(`${MODULE_ID} | Travel pool dump for "${terrain}":`, report);
-            return report;
-        },
-        /**
-         * Rebuild forage RollTables from compendium folders (GM).
-         * @returns {Promise<object>}
-         */
-        syncForageTables: async () => {
-            if (!game.user?.isGM) return { error: "gm only" };
-            const { ForageTableSync } = await import("./services/ForageTableSync.js");
-            return await ForageTableSync.syncAll({ notify: true });
-        },
-        /**
-         * Open the camp fuel roll table (5% trigger; kindling 1-100 when rolled). Observer access.
-         * @returns {Promise<boolean>}
-         */
-        openCampFuelTable: async () => {
-            const { CampFuelTableSync } = await import("./services/CampFuelTableSync.js");
-            return await CampFuelTableSync.openSheet();
-        },
-        /**
-         * Open the forage roll table for a terrain tag. All users with observer access.
-         * @param {string} [terrain]
-         * @returns {Promise<boolean>}
-         */
-        openForageTable: async (terrain = "forest") => {
-            const { ForageTableSync } = await import("./services/ForageTableSync.js");
-            const table = ForageTableSync.getTableForTerrain(terrain);
-            if (!table) {
-                ui.notifications.warn(`Respite: No forage table for "${terrain}".`);
-                return false;
-            }
-            await table.sheet.render({ force: true });
-            return true;
         },
         /**
          * Opens a Respite guide journal from compendium packs.
@@ -707,7 +596,7 @@ Hooks.once("init", async () => {
         getDiet: (actor) => ItemClassifier.getDiet(actor),
         /** Set an actor's diet profile. Usage: game.ionrift.respite.setDiet(actor, { label: "Custom", canEat: ["food", "fuel"] }) */
         setDiet: (actor, diet) => ItemClassifier.setDiet(actor, diet),
-        /** Apply a preset diet. Usage: game.ionrift.respite.applyDietPreset(actor, "construct") */
+        /** Apply a preset diet. Usage: game.ionrift.respite.applyDietPreset(actor, "warforged") */
         applyDietPreset: (actor, presetId) => ItemClassifier.applyPreset(actor, presetId),
         /** List available diet presets. Usage: game.ionrift.respite.getDietPresets() */
         getDietPresets: () => ItemClassifier.getPresets(),
@@ -780,15 +669,11 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
         return;
     }
 
-    // Event/content overlay: invalidate cached event and recipe data.
-    // The next rest start or browser open will re-scan overlays.
+    // Event/content overlay: invalidate cached event data
+    // The next rest start or browser open will re-scan overlays
     try {
         const { OverlayEventLoader } = await import("./services/OverlayEventLoader.js");
         OverlayEventLoader.invalidate();
-    } catch { /* loader not available */ }
-    try {
-        const { OverlayProfessionLoader } = await import("./services/OverlayProfessionLoader.js");
-        OverlayProfessionLoader.invalidate();
     } catch { /* loader not available */ }
     RespiteLog.log(`${MODULE_ID} | Overlay content changed: ${detail.overlayId} (active=${detail.active})`);
 });
@@ -905,8 +790,6 @@ registerInventoryContextMenu();
 // â”€â”€ Monster Cooking: Chat Card Button Wiring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // [CARVED OUT, WS-6] Monster Cooking chat card wiring removed for v2.0.
 // Archived: ionrift-brand/Assets/Archived/butcher_system/REINTEGRATION.md
-// [CARVED OUT - WS-6] Monster Cooking chat card wiring removed for v2.0.
-// See: ionrift-brand/Assets/Archived/butcher_system/REINTEGRATION.md
 
 
 // Item Enrichment hooks are now wired by ionrift-library (ItemEnrichmentEngine).
@@ -921,12 +804,6 @@ Hooks.once("ready", async () => {
 
     // Initialize image resolver (art pack detection â€” probes ionrift-data/)
     await ImageResolver.init();
-
-    const { guardLinkedCompendiumOutputDelete } = await import("./services/RecipeOutputCompendium.js");
-    Hooks.on("preDeleteItem", (item, options, userId) => {
-        if (userId !== game.user?.id) return;
-        return guardLinkedCompendiumOutputDelete(item, options);
-    });
 
     const refreshOpenRestSetup = () => {
         if (activeRestSetupApp?.rendered) activeRestSetupApp.render();
@@ -948,140 +825,29 @@ Hooks.once("ready", async () => {
     const { initializeEventPoolIfNeeded } = await import("./services/EventPoolMigration.js");
     await initializeEventPoolIfNeeded();
 
-    // Materialise active overlay item payloads into world compendiums and
-    // register them with the travel pipeline before the provision index loads,
-    // so an enabled overlay's forage/hunt items are picked up on this boot.
-    if (game.user?.isGM) {
-        try {
-            const { migrateBolsteringTreatIcons } = await import("./services/RecipeIcons.js");
-            await migrateBolsteringTreatIcons();
-        } catch (e) {
-            console.warn(`${MODULE_ID} | Bolstering treat icon migration failed on ready:`, e);
-        }
-
-        try {
-            const { ProvisionOverlayMaterialiser } = await import("./services/ProvisionOverlayMaterialiser.js");
-            await ProvisionOverlayMaterialiser.materialiseAll();
-        } catch (e) {
-            console.warn(`${MODULE_ID} | Overlay item materialisation failed on ready:`, e);
-        }
-    }
-
     try {
-        const { loadTravelProvisionBatches } = await import("./services/TravelProvisionIndex.js");
-        const { PROVISIONS_CUSTOM_PACK_ID } = await import("./services/ProvisionsCustomPack.js");
-        if (game.ionrift?.respite) {
-            const loaded = await loadTravelProvisionBatches();
-            game.ionrift.respite.travelProvisionBatches = loaded.batches;
-            game.ionrift.respite.travelBasePoolIndex = loaded.batches[0]?.entries ?? null;
-            game.ionrift.respite.travelFolderPathMap = loaded.batches[0]?.folderPathMap ?? null;
-            game.ionrift.respite.provisionsCustomPackId = PROVISIONS_CUSTOM_PACK_ID;
-
-            let forageCount = 0;
-            let huntCount = 0;
-            for (const batch of loaded.batches) {
-                for (const entry of batch.entries) {
-                    const cat = entry.flags?.[MODULE_ID]?.category;
-                    if (cat === "forage") forageCount++;
-                    if (cat === "hunt") huntCount++;
-                }
-            }
-            RespiteLog.log(
-                `${MODULE_ID} | Travel provision index: ${loaded.totalEntries} items`
-                + ` (${forageCount} forage, ${huntCount} hunt flags; folders also qualify)`
-            );
-            if (forageCount === 0 && loaded.batches.length <= 1) {
-                console.warn(
-                    `${MODULE_ID} | No forage items in respite-items compendium.`
-                    + " Camp forage will rely on content pack pools only."
-                );
+        const respiteItemsPack = game.packs.get("ionrift-respite.respite-items");
+        if (respiteItemsPack && game.ionrift?.respite) {
+            game.ionrift.respite.travelBasePoolIndex = await respiteItemsPack.getIndex({
+                fields: ["flags", "name", "img", "type", "system"]
+            });
+            const idx = game.ionrift.respite.travelBasePoolIndex;
+            const forageCount = [...(idx ?? [])].filter(
+                e => e.flags?.["ionrift-respite"]?.category === "forage"
+            ).length;
+            const huntCount = [...(idx ?? [])].filter(
+                e => e.flags?.["ionrift-respite"]?.category === "hunt"
+            ).length;
+            RespiteLog.log(`${MODULE_ID} | Base pool index: ${idx?.size ?? 0} items, ${forageCount} forage, ${huntCount} hunt`);
+            if (forageCount === 0) {
+                console.warn(`${MODULE_ID} | No forage items in respite-items compendium. Camp forage will rely on content pack pools only.`);
             }
         }
     } catch (e) {
-        console.warn(`${MODULE_ID} | Failed to load travel provision indexes:`, e);
+        console.warn(`${MODULE_ID} | Failed to load respite-items index for travel pools:`, e);
     }
 
-    if (game.user?.isGM) {
-        try {
-            const { ForageTableInstaller } = await import("./services/ForageTableInstaller.js");
-            const { ForageTableSync } = await import("./services/ForageTableSync.js");
-            ForageTableSync.registerHooks();
-            await ForageTableInstaller.install();
-        } catch (e) {
-            console.warn(`${MODULE_ID} | Forage table sync failed on ready:`, e);
-        }
-
-        // Re-materialise overlay items and resync forage tables when a GM
-        // enables, disables, or uninstalls a Respite overlay in the Library.
-        Hooks.on("ionrift.overlayContentChanged", async (detail) => {
-            try {
-                const { ProvisionOverlayMaterialiser } = await import("./services/ProvisionOverlayMaterialiser.js");
-                await ProvisionOverlayMaterialiser.onOverlayContentChanged(detail);
-            } catch (e) {
-                console.warn(`${MODULE_ID} | Overlay content change handling failed:`, e);
-            }
-        });
-
-        // Migration: strip the retired registry-injection profession previews.
-        // Profession content now ships via disk overlays, not the importedPacks
-        // registry, so remove any preview-flagged entries seeded by older builds.
-        try {
-            const imported = game.settings.get(MODULE_ID, "importedPacks") ?? {};
-            const enabled = game.settings.get(MODULE_ID, "enabledPacks") ?? {};
-            let changed = false;
-            for (const [id, data] of Object.entries(imported)) {
-                if (data?.preview === true) {
-                    delete imported[id];
-                    delete enabled[id];
-                    changed = true;
-                }
-            }
-            if (changed) {
-                await game.settings.set(MODULE_ID, "importedPacks", imported);
-                await game.settings.set(MODULE_ID, "enabledPacks", enabled);
-                RespiteLog.log(`${MODULE_ID} | Removed retired profession preview packs from registry.`);
-            }
-        } catch (e) {
-            console.warn(`${MODULE_ID} | Profession preview cleanup failed on ready:`, e);
-        }
-
-        // Surface the disk-staged profession overlays in the Patreon Library via
-        // the library's local dev registry. Display metadata only; the content
-        // itself loads from disk through OverlayProfessionLoader. Lets the GM
-        // toggle them in the overlay UI for local e2e without a registry publish.
-        try {
-            const settingExists = game.settings.settings.has("ionrift-library.devOverlayRegistry");
-            if (settingExists) {
-                const PREVIEW_OVERLAYS = {
-                    "respite-cooking-overlay": {
-                        latest: "0.1.0", tier: "Free", sublayer: "cooking", moduleId: MODULE_ID,
-                        minModuleVersion: "3.0.0", packLabel: "Core Cooking Pack (preview)",
-                        description: "Cooking recipes. Free tier."
-                    },
-                    "respite-subscriber-overlay": {
-                        latest: "0.1.0", tier: "Initiate", sublayer: "subscriber", moduleId: MODULE_ID,
-                        minModuleVersion: "3.0.0", packLabel: "Profession Catalogues (preview)",
-                        description: "Brewing, tailoring, and leatherworking recipes. Subscriber tier."
-                    },
-                    "respite-premium-overlay": {
-                        latest: "0.1.0", tier: "Acolyte", sublayer: "premium", moduleId: MODULE_ID,
-                        minModuleVersion: "3.0.0", packLabel: "Delicious Dungeon (preview)",
-                        description: "Monster harvesting and exotic recipes. Premium tier."
-                    }
-                };
-                const current = game.settings.get("ionrift-library", "devOverlayRegistry") ?? {};
-                const merged = { ...current, ...PREVIEW_OVERLAYS };
-                if (JSON.stringify(current) !== JSON.stringify(merged)) {
-                    await game.settings.set("ionrift-library", "devOverlayRegistry", merged);
-                    RespiteLog.log(`${MODULE_ID} | Registered profession preview overlays in the library dev registry.`);
-                }
-            }
-        } catch (e) {
-            console.warn(`${MODULE_ID} | Dev overlay registration failed on ready:`, e);
-        }
-    }
-
-    // Register socket handler (dispatch extracted to SocketRouter.js — Phase 2.2)
+    // Register socket handler (dispatch extracted to SocketRouter.js â€” Phase 2.2)
     const socketContext = {
         get activeRestSetupApp() {
             // Self-heal: if the GM reference was lost (e.g. a render post-step
@@ -1622,11 +1388,6 @@ export function _removeRejoinBar() {
  */
 function _showShortRestRejoinNotification() {
     showShortRestRejoinNotification(_rejoinShortRest);
-}
-
-/** @deprecated Use removeShortRestRejoinNotification() directly. */
-function _removeShortRestRejoinNotification() {
-    removeShortRestRejoinNotification();
 }
 
 /**
