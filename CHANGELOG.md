@@ -9,6 +9,7 @@
 
 ### Removed
 - Brewing as a separate camp activity. Cooking stays the camp provisioning profession. Brewing will return once it has a complete recipe set.
+- Tailoring as a camp activity. Cooking is the only crafting profession in the base module for now.
 
 ## [3.3.1] - 2026-06-21
 
