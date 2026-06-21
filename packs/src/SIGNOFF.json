@@ -2,13 +2,6 @@
   "$schema": "./signoff-schema.json",
   "version": "1",
   "items": {
-    "alpine-herbs.json": {
-      "status": "approved",
-      "approvedBy": "geoff",
-      "approvedDate": "2026-05-01",
-      "assetSource": "foundry-core",
-      "assetSourceNote": "icons/consumables/plants/herb-tied-bundle-green.webp"
-    },
     "berry-preserves.json": {
       "status": "approved",
       "approvedBy": "geoff",
@@ -58,12 +51,12 @@
       "assetSource": "foundry-core",
       "assetSourceNote": "icons/consumables/food/bowl-stew-brown.webp"
     },
-    "prickly-pear.json": {
+    "kindling.json": {
       "status": "approved",
       "approvedBy": "geoff",
-      "approvedDate": "2026-05-01",
+      "approvedDate": "2026-06-21",
       "assetSource": "foundry-core",
-      "assetSourceNote": "icons/consumables/fruit/pickly-pear-cactus-red-yellow.webp"
+      "assetSourceNote": "icons/commodities/wood/kindling-sticks-brown.webp"
     },
     "roasted-mushrooms.json": {
       "status": "approved",
