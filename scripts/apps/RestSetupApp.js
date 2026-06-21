@@ -14,6 +14,7 @@ import { pickPoolEvent } from "./AdHocEventDialogs.js";
 import { openEventPoolApp } from "../services/EventPoolMigration.js";
 import { DecisionTreeResolver } from "../services/DecisionTreeResolver.js";
 import { CraftingEngine } from "../services/CraftingEngine.js";
+import { resolveDefaultCraftRecipeId } from "../services/CraftCommitSummary.js";
 import { ResourcePoolRoller } from "../services/ResourcePoolRoller.js";
 import { ItemOutcomeHandler } from "../services/ItemOutcomeHandler.js";
 import { GrantLedger } from "../services/GrantLedger.js";
@@ -3325,6 +3326,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const partySize = getPartyActors().length;
                 const status = engine.getRecipeStatus(expandActor, professionId, terrainTag, partySize);
 
+                // Preselect a craftable recipe so the panel opens populated. Keeps a
+                // still-valid prior selection; falls back to the first available recipe.
+                if (!this._totmCraftHasCrafted) {
+                    this._totmCraftRecipeId = resolveDefaultCraftRecipeId({
+                        engine,
+                        actor: expandActor,
+                        profession: professionId,
+                        terrainTag,
+                        partySize,
+                        currentId: this._totmCraftRecipeId,
+                        hasCrafted: false
+                    });
+                }
+
                 const _formatBuffPreview = (buff) => {
                     if (!buff) return null;
                     const labels = { temp_hp: "Temp HP", advantage: "Advantage", exhaustion_save: "Exhaustion Save" };
@@ -3431,6 +3446,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         ],
                         available,
                         partial,
+                        noAvailableRecipes: !this._totmCraftHasCrafted && available.length === 0,
                         selectedRecipe: selectedRecipe ?? null,
                         isAmbitiousSelected: risk === "ambitious",
                         commitSummary,
@@ -15504,6 +15520,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             } else {
                 // Reset crafting state, then restore a prior craft so a refresh
                 // mid-rest shows the finished result instead of a fresh roll.
+                // A default recipe is preselected in the crafting context builder.
                 this._resetTotmCraftState();
                 this._hydrateTotmCraftStateFromRest(characterId, craftingProfession);
                 this._totmFollowUpExpanded = { activityId, characterId, isCrafting: true, profession: craftingProfession };
