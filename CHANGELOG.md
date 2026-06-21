@@ -2,6 +2,9 @@
 
 ## [3.3.2] - 2026-06-21
 
+### Fixed
+- Cooking and other camp crafting activities open again. Selecting one no longer makes the rest window fail to render.
+
 ### Removed
 - Brewing as a separate camp activity. Cooking stays the camp provisioning profession. Brewing will return once it has a complete recipe set.
 
