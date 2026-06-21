@@ -142,6 +142,7 @@ import {
     emitTreeRollRequest, emitTreeRollResult,
     emitTravelDeclaration, emitTravelDeclarationsSync,
     emitTravelRollRequest, emitTravelRollResult,
+    emitTravelLootRollPrompt, emitTravelLootRollResult,
     emitTravelDebrief, emitTravelIndividualDebrief,
     emitCopySpellProposal,
     emitFeastServeRequest,
@@ -284,6 +285,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             confirmTravelForPlayer: RestSetupApp.#onConfirmTravelForPlayer,
             rollTravelCheck: RestSetupApp.#onRollTravelCheck,
             selfRollTravelCheck: RestSetupApp.#onSelfRollTravelCheck,
+            rollTravelLoot: RestSetupApp.#onRollTravelLoot,
+            rollTravelLootForPlayer: RestSetupApp.#onRollTravelLootForPlayer,
             rollTravelForPlayer: RestSetupApp.#onRollTravelForPlayer,
             lightCampfire: RestSetupApp.#onLightCampfire,
             campLightFire: RestSetupApp.#onCampLightFire,
@@ -4271,6 +4274,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         const rolled = !!(this._playerTravelRolled?.[day]?.[a.id]
                             || this._syncedTravelRolled?.[day]?.[a.id]
                             || this._syncedTravelResolved?.[day]?.[a.id]);
+                        const awaitingLootInfo = this._playerTravelAwaitingLoot?.[day]?.[a.id]
+                            ?? this._syncedTravelAwaitingLoot?.[day]?.[a.id];
+                        const awaitingLoot = !!awaitingLootInfo;
+                        const lootDraws = awaitingLootInfo?.lootDraws ?? 1;
                         const forageDC = this._travelForageDC ?? 12;
                         const huntDC = this._travelHuntDC ?? 14;
                         return {
@@ -4280,6 +4287,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                             isOwner: a.isOwner,
                             confirmed,
                             rolled,
+                            awaitingLoot,
+                            lootDraws,
                             lastActivity: lastLabel,
                             showLastHint: !!(lastLabel && lastAct !== decl),
                             survivalMod: (() => {
@@ -4321,7 +4330,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         canScout: isFinalDay && canScout,
                         isActive: d === activeDay,
                         characters: chars,
-                        playerDone: owned.length > 0 && owned.every(c => c.confirmed || c.rolled)
+                        playerDone: owned.length > 0 && owned.every(c => c.confirmed || (c.rolled && !c.awaitingLoot))
                     });
                 }
 
@@ -12876,6 +12885,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const declarations = {};
         const confirmed = {};
         const rolled = {};
+        const awaitingLoot = {};
         const debrief = [];
 
         for (const [key, entry] of Object.entries(travelState.entries)) {
@@ -12893,9 +12903,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 confirmed[day][actorId] = true;
             }
 
-            if (entry.status === "rolled" || entry.status === "resolved") {
+            if (entry.status === "rolled" || entry.status === "resolved" || entry.status === "awaiting_loot") {
                 rolled[day] ??= {};
                 rolled[day][actorId] = true;
+            }
+
+            if (entry.status === "awaiting_loot") {
+                awaitingLoot[day] ??= {};
+                awaitingLoot[day][actorId] = {
+                    lootDraws: entry.lootDraws ?? 1,
+                    activity: entry.activity
+                };
             }
 
             if (entry.status === "resolved" && entry.result
@@ -12927,6 +12945,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             declarations,
             confirmed,
             rolled,
+            awaitingLoot: Object.keys(awaitingLoot).length ? awaitingLoot : null,
             debrief: debrief.length ? debrief : null,
             totalDays,
             activeDay: travelState.activeDay ?? 1,
@@ -12991,6 +13010,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._playerTravelRolled = foundry.utils.mergeObject(
                 this._playerTravelRolled ?? {},
                 pt.rolled,
+                { inplace: false, insertKeys: true, insertValues: true }
+            );
+        }
+        if (pt.awaitingLoot) {
+            this._playerTravelAwaitingLoot = foundry.utils.mergeObject(
+                this._playerTravelAwaitingLoot ?? {},
+                pt.awaitingLoot,
                 { inplace: false, insertKeys: true, insertValues: true }
             );
         }
@@ -14111,38 +14137,207 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }
             });
 
-        // Render synchronously so the GM sees the new "Rolled" badge without
-        // waiting on resolveIndividualResult (which is async + grant-dependent).
-        // The finally block below renders again once resolution completes.
         this.render();
 
         const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
+        const entry = this._travel._getEntry(day, data.actorId);
+        if (!entry || (entry.activity !== "forage" && entry.activity !== "hunt")) {
+            void this._saveRestState();
+            return;
+        }
+
         void (async () => {
             try {
-                const row = await this._travel.resolveIndividualResult(data.actorId, day, terrainTag);
-                if (row) {
+                const staged = await this._travel.processSkillRoll(data.actorId, day, terrainTag);
+                this._broadcastTravelDeclarations();
+
+                if (staged?.awaitingLoot) {
                     const actor = game.actors.get(data.actorId);
                     if (actor) {
                         const ownerIds = Object.entries(actor.ownership ?? {})
                             .filter(([id, level]) => id !== "default" && level >= 3)
                             .map(([id]) => id);
                         for (const uid of ownerIds) {
-                            emitTravelIndividualDebrief({
+                            emitTravelLootRollPrompt({
                                 targetUserId: uid,
-                                result: row,
-                                playerTravel: this._buildPlayerTravelRestore(uid)
+                                actorId: data.actorId,
+                                actorName: data.actorName ?? actor.name,
+                                day,
+                                activity: entry.activity,
+                                lootDraws: staged.lootDraws
                             });
                         }
                     }
+                    return;
                 }
-            } catch (e) {
 
-                console.error("[Respite] resolveIndividualResult", e);
+                if (staged?.result) {
+                    await this.#emitTravelIndividualDebriefForRow(staged, data.actorId);
+                }
+            } catch (err) {
+                console.error("[Respite] processSkillRoll", err);
             } finally {
                 await this._saveRestState();
                 this.render();
             }
         })();
+    }
+
+    /**
+     * GM receives player loot roll result(s) for forage/hunt.
+     */
+    receiveTravelLootRollResult(data) {
+        const day = data.day ?? this._travel.activeDay;
+        const entry = this._travel._getEntry(day, data.actorId);
+        if (!entry || entry.status !== "awaiting_loot") return;
+
+        emitPhaseChanged("travel", {
+            travelLootRollUpdate: {
+                actorId: data.actorId,
+                actorName: data.actorName,
+                rolls: data.rolls,
+                day
+            }
+        });
+
+        this.render();
+
+        const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
+        void (async () => {
+            try {
+                const row = await this._travel.resolveLootAndFinish(
+                    data.actorId,
+                    day,
+                    terrainTag,
+                    data.rolls ?? []
+                );
+                if (row) {
+                    await this.#emitTravelIndividualDebriefForRow(row, data.actorId);
+                }
+                this._broadcastTravelDeclarations();
+            } catch (err) {
+                console.error("[Respite] resolveLootAndFinish", err);
+            } finally {
+                await this._saveRestState();
+                this.render();
+            }
+        })();
+    }
+
+    /**
+     * Player receives a loot-roll prompt after a successful forage/hunt check.
+     */
+    receiveTravelLootRollPrompt(data) {
+        const day = data.day ?? 1;
+        if (!this._playerTravelAwaitingLoot) this._playerTravelAwaitingLoot = {};
+        this._playerTravelAwaitingLoot[day] ??= {};
+        this._playerTravelAwaitingLoot[day][data.actorId] = {
+            lootDraws: data.lootDraws ?? 1,
+            activity: data.activity
+        };
+        this.render();
+    }
+
+    /**
+     * @param {{ day: number, activity: string, result: object }} row
+     * @param {string} actorId
+     */
+    async #emitTravelIndividualDebriefForRow(row, actorId) {
+        const actor = game.actors.get(actorId);
+        if (!actor) return;
+        const ownerIds = Object.entries(actor.ownership ?? {})
+            .filter(([id, level]) => id !== "default" && level >= 3)
+            .map(([id]) => id);
+        for (const uid of ownerIds) {
+            emitTravelIndividualDebrief({
+                targetUserId: uid,
+                result: row,
+                playerTravel: this._buildPlayerTravelRestore(uid)
+            });
+        }
+    }
+
+    /**
+     * Player rolls d100 loot table outcome(s) after a successful forage/hunt check.
+     */
+    static async #onRollTravelLoot(event, target) {
+        event.preventDefault?.();
+        const actorId = target.dataset.actorId;
+        const day = parseInt(target.dataset.day) || 1;
+        const draws = parseInt(target.dataset.draws) || 1;
+        if (!actorId) return;
+
+        const actor = game.actors.get(actorId);
+        if (!actor || !actor.isOwner) return;
+
+        const activity = target.dataset.activity ?? "forage";
+        const actLabel = activity === "hunt" ? "Hunt yield" : "Forage loot";
+        const rolls = [];
+
+        target.disabled = true;
+        target.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
+
+        for (let index = 0; index < draws; index++) {
+            const flavor = draws > 1
+                ? `<strong>${actor.name}</strong> - ${actLabel} (${index + 1}/${draws})`
+                : `<strong>${actor.name}</strong> - ${actLabel}`;
+            const roll = await new Roll("1d100").evaluate();
+            await postRollToChat(actor, roll, flavor);
+            await waitForDiceSoNice();
+            rolls.push(roll.total);
+        }
+
+        if (this._playerTravelAwaitingLoot?.[day]) {
+            delete this._playerTravelAwaitingLoot[day][actorId];
+        }
+
+        emitTravelLootRollResult({
+            actorId,
+            actorName: actor.name,
+            rolls,
+            day
+        });
+
+        ui.notifications.info(`${actor.name} rolled loot (${rolls.join(", ")}).`);
+        this.render();
+    }
+
+    /**
+     * GM rolls loot table outcome(s) for an absent player.
+     */
+    static async #onRollTravelLootForPlayer(event, target) {
+        if (!game.user.isGM) return;
+        const actorId = target.dataset.actorId;
+        const day = parseInt(target.dataset.day) || this._travel.activeDay;
+        if (!actorId) return;
+
+        const entry = this._travel._getEntry(day, actorId);
+        if (!entry || entry.status !== "awaiting_loot") return;
+
+        const actor = game.actors.get(actorId);
+        if (!actor) return;
+
+        const draws = entry.lootDraws ?? 1;
+        const activity = entry.activity;
+        const actLabel = activity === "hunt" ? "Hunt yield" : "Forage loot";
+        const rolls = [];
+
+        for (let index = 0; index < draws; index++) {
+            const flavor = draws > 1
+                ? `<strong>${actor.name}</strong> - ${actLabel} (${index + 1}/${draws})`
+                : `<strong>${actor.name}</strong> - ${actLabel}`;
+            const roll = await new Roll("1d100").evaluate();
+            await postRollToChat(actor, roll, flavor);
+            await waitForDiceSoNice();
+            rolls.push(roll.total);
+        }
+
+        this.receiveTravelLootRollResult({
+            actorId,
+            actorName: actor.name,
+            rolls,
+            day
+        });
     }
 
     /**
@@ -14320,6 +14515,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const allDayDeclarations = {};
         const rolledByDay = {};
         const resolvedByDay = {};
+        const awaitingLootByDay = {};
         const travelEntries = this._travel.serialize()?.entries ?? {};
 
         for (const [key, entry] of Object.entries(travelEntries)) {
@@ -14328,9 +14524,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const day = parseInt(key.slice(0, colon), 10);
             const actorId = key.slice(colon + 1);
             if (!day || !actorId) continue;
-            if (entry.status === "rolled" || entry.status === "resolved") {
+            if (entry.status === "rolled" || entry.status === "resolved" || entry.status === "awaiting_loot") {
                 rolledByDay[day] ??= {};
                 rolledByDay[day][actorId] = true;
+            }
+            if (entry.status === "awaiting_loot") {
+                awaitingLootByDay[day] ??= {};
+                awaitingLootByDay[day][actorId] = {
+                    lootDraws: entry.lootDraws ?? 1,
+                    activity: entry.activity
+                };
             }
             if (entry.status === "resolved") {
                 resolvedByDay[day] ??= {};
@@ -14351,6 +14554,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     declarations: allDayDeclarations,
                     rolled: rolledByDay,
                     resolved: resolvedByDay,
+                    awaitingLoot: awaitingLootByDay,
                     activeDay: this._travel.activeDay,
                     totalDays: this._travel.totalDays,
                     scoutingAllowed: this._travel.scoutingAllowed,

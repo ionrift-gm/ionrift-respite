@@ -6,7 +6,8 @@
 import { Logger } from "../lib/Logger.js";
 import {
     scaleWeightsToTarget,
-    sortForageEntries
+    sortForageEntries,
+    ROLL_TABLE_GM_ONLY_OWNERSHIP
 } from "./ForageTableSync.js";
 import {
     compendiumIndexDocumentId,
@@ -41,7 +42,6 @@ export const CAMP_FUEL_KINDLING_WEIGHT_D100 = 100;
 const WATCHED_PACK_IDS = [PROVISIONS_CUSTOM_PACK_ID, MODULE_PACK_ID];
 const CAMP_FUEL_D100_TARGET = 100;
 const CAMP_FUEL_MAX_KINDLING_VARIANTS = 20;
-const PLAYER_OBSERVER = (typeof CONST !== "undefined" && CONST.DOCUMENT_OWNERSHIP_LEVELS?.OBSERVER) ?? 2;
 
 const EMPTY_RESULT_TEXT = "—";
 
@@ -211,7 +211,7 @@ export class CampFuelTableSync {
 
         const merged = [];
         for (let index = 0; index < draws; index++) {
-            const draw = await table.draw({ rollMode: game.user?.isGM ? "gmroll" : "blindroll" });
+            const draw = await table.draw({ rollMode: "gmroll", displayChat: false });
             for (const result of draw?.results ?? []) {
                 if (result.getFlag(MODULE_ID, "isEmptyResult")) continue;
 
@@ -292,7 +292,7 @@ export class CampFuelTableSync {
         await table.update({
             formula: "1d100",
             description: buildCampFuelTableDescription(),
-            ownership: { default: PLAYER_OBSERVER },
+            ownership: { default: ROLL_TABLE_GM_ONLY_OWNERSHIP },
             displayRoll: true
         });
 
@@ -392,7 +392,7 @@ export class CampFuelTableSync {
                 replacement: true,
                 displayRoll: true,
                 folder: folderId,
-                ownership: { default: PLAYER_OBSERVER },
+                ownership: { default: ROLL_TABLE_GM_ONLY_OWNERSHIP },
                 flags: {
                     [MODULE_ID]: {
                         isCampFuelTable: true

@@ -495,6 +495,12 @@ export function dispatch(data, ctx) {
                 if (data.travelGather && typeof data.travelGather === "object") {
                     app._syncedTravelGather = { ...data.travelGather };
                 }
+                if (!app._syncedTravelAwaitingLoot) app._syncedTravelAwaitingLoot = {};
+                for (const [dayKey, actors] of Object.entries(data.awaitingLoot ?? {})) {
+                    const day = parseInt(dayKey, 10);
+                    if (!day) continue;
+                    app._syncedTravelAwaitingLoot[day] = { ...(actors ?? {}) };
+                }
                 if (!app._playerTravelRolled) app._playerTravelRolled = {};
                 for (const [dayKey, actors] of Object.entries(data.rolled ?? {})) {
                     const day = parseInt(dayKey, 10);
@@ -516,6 +522,17 @@ export function dispatch(data, ctx) {
         case SOCKET_TYPES.TRAVEL_ROLL_RESULT:
             if (!game.user.isGM) return;
             ctx.activeRestSetupApp?.receiveTravelRollResult?.(data);
+            break;
+
+        case SOCKET_TYPES.TRAVEL_LOOT_ROLL_PROMPT:
+            if (game.user.isGM) return;
+            if (data.targetUserId !== game.user.id) return;
+            ctx.activePlayerRestApp?.receiveTravelLootRollPrompt?.(data);
+            break;
+
+        case SOCKET_TYPES.TRAVEL_LOOT_ROLL_RESULT:
+            if (!game.user.isGM) return;
+            ctx.activeRestSetupApp?.receiveTravelLootRollResult?.(data);
             break;
 
         case SOCKET_TYPES.TRAVEL_DEBRIEF:

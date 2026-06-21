@@ -31,7 +31,8 @@ const SCOUTING_EFFECTS = {
  * States per entry:
  *   "idle"      - GM is configuring (activity select)
  *   "requested" - Roll request sent to player, awaiting roll
- *   "rolled"    - Player rolled, result received
+ *   "rolled"    - Player rolled skill check, result received
+ *   "awaiting_loot" - Skill success; waiting for player loot table roll(s)
  *   "resolved"  - Pool draws done, items granted
  */
 export class TravelResolutionDelegate {
@@ -141,6 +142,12 @@ export class TravelResolutionDelegate {
                     return status === "rolled" || status === "resolved";
                 }
                 return this.isConfirmed(actor.id, day);
+            }
+            if (activity === "scout") {
+                return status === "rolled" || status === "resolved";
+            }
+            if (activity === "forage" || activity === "hunt") {
+                return status === "resolved";
             }
             return status === "rolled" || status === "resolved";
         });
@@ -451,6 +458,10 @@ export class TravelResolutionDelegate {
             console.warn(`${MODULE_ID} | Ignored duplicate travel roll for ${actorId} day ${d} (already rolled)`);
             return false;
         }
+        if (entry.status === "awaiting_loot") {
+            console.warn(`${MODULE_ID} | Ignored travel skill roll for ${actorId} day ${d} (awaiting loot roll)`);
+            return false;
+        }
 
         entry.total = total;
         if (natD20 !== null) entry.natD20 = natD20;
@@ -459,28 +470,67 @@ export class TravelResolutionDelegate {
     }
 
     /**
-     * Resolve forage or hunt for one character as soon as the roll is received.
-     * Scout and Other still resolve in resolveDay. Skips if already resolved.
-     * @returns {Promise<{ day: number, activity: string, result: object }|null>} debrief row, or null
+     * After a skill check is received, evaluate success and either resolve failures
+     * immediately or wait for player loot rolls on success.
+     * @returns {Promise<{ awaitingLoot?: boolean, lootDraws?: number, day?: number, activity?: string, result?: object }|null>}
      */
-    async resolveIndividualResult(actorId, day, terrainTag) {
-        if (!this.#poolsLoaded) {
-            console.warn("[Respite:TravelDelegate] No resource pools loaded from content packs. Foraging will produce no results.");
-        }
+    async processSkillRoll(actorId, day, terrainTag) {
         const entry = this._getEntry(day, actorId);
-        if (!entry) return null;
-        if (entry.status === "resolved") return null;
-        if (entry.status !== "rolled") return null;
+        if (!entry || entry.status !== "rolled") return null;
         if (entry.activity !== "forage" && entry.activity !== "hunt") return null;
 
         const actor = game.actors.get(actorId);
         if (!actor) return null;
 
+        const skillEval = entry.activity === "forage"
+            ? this.#resolver.evaluateForageSkill(actor, entry.total, entry.dc)
+            : this.#resolver.evaluateHuntSkill(actor, entry.total, entry.dc);
+
+        entry.skillEval = skillEval;
+
+        if (!skillEval.success) {
+            return await this.resolveLootAndFinish(actorId, day, terrainTag, []);
+        }
+
+        entry.status = "awaiting_loot";
+        entry.lootDraws = entry.activity === "forage"
+            ? ((skillEval.exceptional || skillEval.nat20) ? 2 : 1)
+            : (skillEval.nat20 ? 2 : 1);
+        return { awaitingLoot: true, lootDraws: entry.lootDraws };
+    }
+
+    /**
+     * Apply player loot rolls and finish forage/hunt resolution.
+     * @param {string} actorId
+     * @param {number} day
+     * @param {string} terrainTag
+     * @param {number[]} lootRolls - d100 faces from the player.
+     * @returns {Promise<{ day: number, activity: string, result: object }|null>}
+     */
+    async resolveLootAndFinish(actorId, day, terrainTag, lootRolls = []) {
+        const entry = this._getEntry(day, actorId);
+        if (!entry) return null;
+        if (entry.status !== "awaiting_loot" && entry.status !== "rolled") return null;
+        if (entry.activity !== "forage" && entry.activity !== "hunt") return null;
+
+        const actor = game.actors.get(actorId);
+        if (!actor) return null;
+
+        const skillEval = entry.skillEval ?? (
+            entry.activity === "forage"
+                ? this.#resolver.evaluateForageSkill(actor, entry.total, entry.dc)
+                : this.#resolver.evaluateHuntSkill(actor, entry.total, entry.dc)
+        );
+
         let result;
         if (entry.activity === "forage") {
-            result = await this.#resolver.resolveForageFromTotal(actor, terrainTag, entry.total, entry.dc);
+            result = await this.#resolver.buildForageResult(
+                actor, terrainTag, entry.total, entry.dc, skillEval, lootRolls
+            );
         } else {
-            result = await this.#resolver.resolveHuntFromTotal(actor, terrainTag, entry.total, entry.dc);
+            result = await this.#resolver.buildHuntResult(
+                actor, terrainTag, entry.total, entry.dc, skillEval, lootRolls
+            );
         }
 
         if (result.success && result.items?.length) {
@@ -507,6 +557,33 @@ export class TravelResolutionDelegate {
             activity: entry.activity,
             result
         };
+    }
+
+    /**
+     * Resolve forage or hunt for one character as soon as loot rolls are received.
+     * Scout and Other still resolve in resolveDay. Skips if already resolved.
+     * @returns {Promise<{ day: number, activity: string, result: object }|null>} debrief row, or null
+     */
+    async resolveIndividualResult(actorId, day, terrainTag, lootRolls = []) {
+        const entry = this._getEntry(day, actorId);
+        if (!entry) return null;
+        if (entry.status === "resolved") return null;
+        if (entry.status === "awaiting_loot") {
+            return await this.resolveLootAndFinish(actorId, day, terrainTag, lootRolls);
+        }
+        if (entry.status !== "rolled") return null;
+        if (entry.activity !== "forage" && entry.activity !== "hunt") return null;
+
+        const staged = await this.processSkillRoll(actorId, day, terrainTag);
+        if (staged?.awaitingLoot) return null;
+        if (staged?.day && staged?.result) {
+            return {
+                day: staged.day,
+                activity: staged.activity,
+                result: staged.result
+            };
+        }
+        return null;
     }
 
     // ── Context building ──
@@ -567,6 +644,8 @@ export class TravelResolutionDelegate {
                     customDC: entry?.customDC ?? null,
                     customSkill: entry?.customSkill ?? null,
                     hasCustomRoll,
+                    awaitingLoot: status === "awaiting_loot",
+                    lootDraws: entry?.lootDraws ?? 0,
                     otherLockedIn: activity === "nothing" && !hasCustomRoll && this.isConfirmed(actor.id, d)
                 };
 
@@ -579,6 +658,8 @@ export class TravelResolutionDelegate {
                 if (!dayResolved) {
                     if (activity === "nothing") {
                         charCtx.awaitingPlayerResponse = !charCtx.confirmed;
+                    } else if (status === "awaiting_loot") {
+                        charCtx.awaitingPlayerResponse = true;
                     } else {
                         charCtx.awaitingPlayerResponse = status !== "rolled" && status !== "resolved";
                     }
@@ -596,7 +677,7 @@ export class TravelResolutionDelegate {
             const anyRequested = characters.some(c => c.requested && c.status !== "rolled" && c.status !== "resolved");
             const hasDeclarations = activeDeclarations.length > 0;
             const locked = anyRequested || allRollsIn || dayResolved ||
-                characters.some(c => c.status === "rolled" || c.status === "resolved" || c.requested);
+                characters.some(c => c.status === "rolled" || c.status === "resolved" || c.status === "awaiting_loot" || c.requested);
 
             days.push({
                 day: d,
@@ -727,6 +808,10 @@ export class TravelResolutionDelegate {
                 continue;
             }
 
+            if (entry.status === "awaiting_loot") {
+                continue;
+            }
+
             let result;
             if (entry.activity === "forage") {
                 result = await this.#resolver.resolveForageFromTotal(actor, terrainTag, entry.total, entry.dc);
@@ -832,7 +917,12 @@ export class TravelResolutionDelegate {
             .map(([, e]) => e);
         const active = dayEntries.filter(e => e.activity !== "nothing" || e.customDC);
         if (active.length === 0) return false;
-        return active.every(e => e.status === "rolled" || e.status === "resolved");
+        return active.every(e => {
+            if (e.activity === "forage" || e.activity === "hunt") {
+                return e.status === "resolved";
+            }
+            return e.status === "rolled" || e.status === "resolved";
+        });
     }
 
     // ── Get all declarations for a day (for socket broadcast) ──
@@ -942,6 +1032,8 @@ export class TravelResolutionDelegate {
                     natD20: e.natD20 ?? null,
                     customDC: e.customDC ?? null,
                     customSkill: e.customSkill ?? null,
+                    skillEval: e.skillEval ?? null,
+                    lootDraws: e.lootDraws ?? 0,
                     individualDebriefEmitted: !!e.individualDebriefEmitted,
                     result: e.result ? {
                         activity: e.result.activity,
