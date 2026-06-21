@@ -87,10 +87,11 @@ export class PF2eAdapter extends SystemAdapter {
     }
 
     getProficiencyBonus(actor) {
-        // PF2e proficiency bonus = level + proficiency rank bonus (2/4/6/8).
-        // Since there's no single prof bonus, return level as a baseline.
-        // Callers needing per-skill proficiency should use getSkillTotal() instead.
-        return this.getLevel(actor);
+        // PF2e has no single global proficiency bonus. Respite features that
+        // consume this method are modeled around a bounded DnD-style bonus.
+        // Map level to a 5e-equivalent progression so values stay in-range.
+        const level = Math.max(1, Number(this.getLevel(actor)) || 1);
+        return Math.min(6, Math.max(2, Math.floor((level - 1) / 4) + 2));
     }
 
     getSaveBonus(actor, saveKey) {
