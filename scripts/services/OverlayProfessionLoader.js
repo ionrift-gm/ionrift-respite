@@ -96,18 +96,30 @@ export class OverlayProfessionLoader {
      * @returns {Promise<Set<string>>}
      */
     static async activeRecipeProfessions() {
+        const sources = await this.activeRecipeProfessionSources();
+        return new Set(sources.keys());
+    }
+
+    /**
+     * Map each profession id to the overlay pack name that supplies it.
+     * First active overlay wins when multiple packs define the same profession.
+     * @returns {Promise<Map<string, string>>}
+     */
+    static async activeRecipeProfessionSources() {
         const loaded = await this.loadAll();
-        const professions = new Set();
+        /** @type {Map<string, string>} */
+        const sources = new Map();
         for (const pack of loaded) {
             const recipes = pack.recipes ?? {};
             if (Array.isArray(recipes)) continue;
+            const packLabel = pack.name ?? pack.packId ?? "Content pack";
             for (const [profId, list] of Object.entries(recipes)) {
                 if (!Array.isArray(list) || !list.length) continue;
                 if (!Object.prototype.hasOwnProperty.call(PROFESSION_TOOL_REQUIRED, profId)) continue;
-                professions.add(profId);
+                if (!sources.has(profId)) sources.set(profId, packLabel);
             }
         }
-        return professions;
+        return sources;
     }
 
     /**
