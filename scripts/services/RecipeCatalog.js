@@ -85,16 +85,34 @@ export function collectHomebrewProfessionIds(sources = {}) {
  * @returns {Promise<string[]>}
  */
 export async function getHomebrewProfessionIds() {
-    let overlayProfessions = [];
+    const options = await getHomebrewProfessionOptions();
+    return options.map(option => option.id);
+}
+
+/**
+ * Homebrew profession picker rows with overlay pack attribution.
+ * @returns {Promise<{ id: string, label: string, packSource: string|null }[]>}
+ */
+export async function getHomebrewProfessionOptions() {
+    /** @type {Map<string, string>} */
+    let sources = new Map();
     try {
         const { OverlayProfessionLoader } = await import("./OverlayProfessionLoader.js");
         OverlayProfessionLoader.invalidate();
-        overlayProfessions = [...await OverlayProfessionLoader.activeRecipeProfessions()];
+        sources = await OverlayProfessionLoader.activeRecipeProfessionSources();
     } catch {
-        overlayProfessions = [];
+        sources = new Map();
     }
 
-    return collectHomebrewProfessionIds({ overlayProfessions });
+    return collectHomebrewProfessionIds({ overlayProfessions: [...sources.keys()] })
+        .map(id => {
+            const baseLabel = HOMEBREW_PROFESSION_DISPLAY[id]?.label ?? id;
+            const packSource = sources.get(id) ?? null;
+            const label = packSource && id !== "cooking"
+                ? `${baseLabel} · ${packSource}`
+                : baseLabel;
+            return { id, label, packSource };
+        });
 }
 
 /**

@@ -9,6 +9,7 @@ import {
     applyProfessionToolToRecipe,
     describeRecipeSaveOverwrite,
     getHomebrewProfessionIds,
+    getHomebrewProfessionOptions,
     getProfessionToolRequired,
     HOMEBREW_PROFESSION_DISPLAY,
     sanitizeCustomRecipes,
@@ -83,9 +84,9 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
 
     /** @override */
     async _prepareContext() {
-        const homebrewProfessionIds = await getHomebrewProfessionIds();
-        if (!homebrewProfessionIds.includes(this.#professionId)) {
-            this.#professionId = homebrewProfessionIds[0] ?? "cooking";
+        const homebrewProfessionOptions = await getHomebrewProfessionOptions();
+        if (!homebrewProfessionOptions.some(option => option.id === this.#professionId)) {
+            this.#professionId = homebrewProfessionOptions[0]?.id ?? "cooking";
         }
         const stored = game.settings.get(MODULE_ID, "customRecipes") ?? {};
         const recipes = stored[this.#professionId] ?? [];
@@ -97,10 +98,11 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         return {
             professionId: this.#professionId,
             professionIcon: PROFESSION_ICONS[this.#professionId] ?? "fas fa-hammer",
-            professionOptions: homebrewProfessionIds.map(id => ({
-                id,
-                label: PROFESSION_LABELS[id] ?? id,
-                selected: id === this.#professionId
+            professionOptions: homebrewProfessionOptions.map(option => ({
+                id: option.id,
+                label: option.label,
+                packSource: option.packSource,
+                selected: option.id === this.#professionId
             })),
             recipes,
             selectedIndex: this.#selectedIndex,
