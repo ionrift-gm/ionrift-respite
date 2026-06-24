@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.3.3] - 2026-06-24
+
+### Fixed
+- Fixed overlay events and terrains not loading on Sqyre-hosted games. Update and, if content is still missing, reinstall the pack once.
+
 ## [3.3.2] - 2026-06-21
 
 ### Fixed
