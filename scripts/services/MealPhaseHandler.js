@@ -17,6 +17,11 @@ import { SpoilageClock } from "./SpoilageClock.js";
 import { guardEmbedItems } from "./MintGuard.js";
 import { GrantLedger } from "./GrantLedger.js";
 import { ItemOutcomeHandler } from "./ItemOutcomeHandler.js";
+import {
+    dispatchMealBuffHandler,
+    getMealBuffHandler,
+    warnUnknownMealBuffType
+} from "./MealBuffHandlerRegistry.js";
 
 function _activeGrantLedger() {
     return game.ionrift?.respite?.getActiveApp?.()?._grantLedger ?? null;
@@ -1084,6 +1089,10 @@ export class MealPhaseHandler {
     static async _resolveBuff(actor, buff, { chatDetail = false } = {}) {
         if (!buff?.type) return null;
 
+        if (getMealBuffHandler(buff.type)) {
+            return dispatchMealBuffHandler(actor, buff, { chatDetail });
+        }
+
         switch (buff.type) {
             case "temp_hp": {
                 const { total, roll } = await MealPhaseHandler._rollBuffFormula(actor, buff.formula);
@@ -1169,6 +1178,7 @@ export class MealPhaseHandler {
             case "resistance":
                 return null;
             default:
+                warnUnknownMealBuffType(buff.type);
                 return null;
         }
     }
@@ -1183,6 +1193,17 @@ export class MealPhaseHandler {
 
     static _buffSummaryLabel(buff) {
         if (!buff?.type) return "";
+
+        const handler = getMealBuffHandler(buff.type);
+        if (handler?.preview) {
+            try {
+                const preview = handler.preview(buff);
+                if (typeof preview === "string" && preview.trim()) return preview;
+            } catch {
+                // fall through to legacy labels
+            }
+        }
+
         if (buff.type === "temp_hp") return `temp HP (${buff.formula ?? "?"})`;
         if (buff.type === "heal") return `healing (${buff.formula ?? "?"})`;
         if (buff.type === "advantage") {

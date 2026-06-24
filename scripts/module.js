@@ -878,6 +878,28 @@ Hooks.once("ready", async () => {
             console.warn(`${MODULE_ID} | Meal buff preset loader failed:`, err);
         }
 
+        try {
+            const mealBuffRegistry = await import("./services/MealBuffHandlerRegistry.js");
+            const professionRegistry = await import("./services/ProfessionPluginRegistry.js");
+            const { OverlayMealBuffHandlerLoader } = await import("./services/OverlayMealBuffHandlerLoader.js");
+            const { OverlayProfessionPluginLoader } = await import("./services/OverlayProfessionPluginLoader.js");
+
+            await OverlayMealBuffHandlerLoader.loadAll();
+            await OverlayProfessionPluginLoader.loadAll();
+
+            game.ionrift.respite.mealBuffHandlers = {
+                get: mealBuffRegistry.getMealBuffHandler,
+                list: mealBuffRegistry.listMealBuffHandlers,
+                dispatch: mealBuffRegistry.dispatchMealBuffHandler
+            };
+            game.ionrift.respite.professionPlugins = {
+                get: professionRegistry.getProfessionPlugin,
+                list: professionRegistry.listProfessionPlugins
+            };
+        } catch (err) {
+            console.warn(`${MODULE_ID} | Profession pack plugin loaders failed:`, err);
+        }
+
         const { ForageTableSync } = await import("./services/ForageTableSync.js");
         ForageTableSync.registerHooks();
         void ForageTableSync.lockDownRollTableVisibility().catch(err => {
