@@ -110,13 +110,13 @@ export class OverlayProfessionPluginLoader {
             ? await overlay.readFileIndex(MODULE_ID, sublayer)
             : null;
 
-        if (fileIndex) {
+        if (fileIndex?.length) {
             return fileIndex.some(path => PROFESSION_PATH_RE.test(path));
         }
 
         try {
-            await overlay.readOverlayFile(MODULE_ID, sublayer, PROFESSION_PATH);
-            return true;
+            const listing = await overlay.listOverlayDir(MODULE_ID, sublayer, "plugins");
+            return (listing?.files ?? []).includes("profession.mjs");
         } catch {
             return false;
         }
@@ -160,6 +160,11 @@ export class OverlayProfessionPluginLoader {
             }
         });
     }
+}
+
+/** @internal Test helper for profession plugin discovery. */
+export async function hasOverlayProfessionPlugin(overlay, sublayer) {
+    return OverlayProfessionPluginLoader._hasProfessionPlugin(overlay, sublayer);
 }
 
 /** @private */
