@@ -5,11 +5,12 @@
 
 import {
     CUSTOM_RECIPE_MAX_PER_PROFESSION,
-    HOMEBREW_PROFESSION_IDS,
     applyCustomRecipesToEngine,
     applyProfessionToolToRecipe,
     describeRecipeSaveOverwrite,
+    getHomebrewProfessionIds,
     getProfessionToolRequired,
+    HOMEBREW_PROFESSION_DISPLAY,
     sanitizeCustomRecipes,
     TOOL_PROFICIENCY_LABELS,
     validateCustomRecipe
@@ -20,16 +21,14 @@ import {
     defaultFoodTagForProfession,
     defaultSatiatesForProfession,
     formatMealBuffPreview,
-    formatMealBuffPresetSubtitle,
     formatMealBuffPresetTitle,
     FOOD_TAG_OPTIONS,
-    getBaseMealBuffPresets,
     getMealBuffPreset,
     getMealBuffPresetAttribution,
-    getUniqueOverlayMealBuffPresets,
-    groupMealBuffPresetsByCategory,
+    getMealBuffPresetsForProfession,
     matchMealBuffPresetId
 } from "../services/MealBuffPresets.js";
+import { MealBuffPickerDialog } from "./MealBuffPickerDialog.js";
 import {
     buildRecipeMissingOutputIndex,
     formatSyncError,
@@ -56,15 +55,13 @@ const RECIPE_CHECK_KEYS = {
     cha: "Charisma"
 };
 
-const PROFESSION_LABELS = {
-    cooking: "Cooking",
-    brewing: "Brewing"
-};
+const PROFESSION_LABELS = Object.fromEntries(
+    Object.entries(HOMEBREW_PROFESSION_DISPLAY).map(([id, meta]) => [id, meta.label])
+);
 
-const PROFESSION_ICONS = {
-    cooking: "fas fa-utensils",
-    brewing: "fas fa-wine-bottle"
-};
+const PROFESSION_ICONS = Object.fromEntries(
+    Object.entries(HOMEBREW_PROFESSION_DISPLAY).map(([id, meta]) => [id, meta.icon])
+);
 
 export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
 
@@ -86,8 +83,9 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
 
     /** @override */
     async _prepareContext() {
-        if (!HOMEBREW_PROFESSION_IDS.includes(this.#professionId)) {
-            this.#professionId = "cooking";
+        const homebrewProfessionIds = await getHomebrewProfessionIds();
+        if (!homebrewProfessionIds.includes(this.#professionId)) {
+            this.#professionId = homebrewProfessionIds[0] ?? "cooking";
         }
         const stored = game.settings.get(MODULE_ID, "customRecipes") ?? {};
         const recipes = stored[this.#professionId] ?? [];
@@ -99,7 +97,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         return {
             professionId: this.#professionId,
             professionIcon: PROFESSION_ICONS[this.#professionId] ?? "fas fa-hammer",
-            professionOptions: HOMEBREW_PROFESSION_IDS.map(id => ({
+            professionOptions: homebrewProfessionIds.map(id => ({
                 id,
                 label: PROFESSION_LABELS[id] ?? id,
                 selected: id === this.#professionId
@@ -168,6 +166,12 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         return MEAL_EFFECT_PROFESSIONS.has(professionId);
     }
 
+    _hasOutputBuffEffects(professionId) {
+        if (MEAL_EFFECT_PROFESSIONS.has(professionId)) return true;
+        const presets = getMealBuffPresetsForProfession(professionId);
+        return presets.handlers.length > 0 || presets.overlay.length > 0;
+    }
+
     _mealFieldPrefix(tier) {
         return tier === "ambitious" ? "ambMeal" : "meal";
     }
@@ -193,45 +197,27 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         return `<span class="recipe-editor-buff-pack-badge" title="Preset from ${this._esc(attribution.packLabel)}">${this._esc(attribution.packLabel)}</span>`;
     }
 
-    _buildMealBuffPresetButton(preset, tier) {
-        const title = formatMealBuffPresetTitle(preset);
-        const subtitle = formatMealBuffPresetSubtitle(preset);
-        const packBadge = preset._packLabel && preset._source !== "overlay"
-            ? `<span class="recipe-editor-buff-pack-badge">${this._esc(preset._packLabel)}</span>`
-            : "";
-        return `
-            <button type="button" class="recipe-editor-buff-option${preset._source === "overlay" ? " recipe-editor-buff-option--pack" : ""}"
-                data-action="selectBuffPreset" data-tier="${tier}" data-preset-id="${this._esc(preset.id)}"
-                title="${this._esc(subtitle || title)}">
-                <span class="recipe-editor-buff-option-head">
-                    <span class="recipe-editor-buff-option-label">${this._esc(title)}</span>
-                    ${packBadge}
-                </span>
-                ${subtitle ? `<span class="recipe-editor-buff-option-desc">${this._esc(subtitle)}</span>` : ""}
-            </button>`;
-    }
+    _openBuffPicker(el, tier) {
+        const prefix = this._mealFieldPrefix(tier);
+        const presetId = el.querySelector(`[name="${prefix}BuffPresetId"]`)?.value ?? "none";
+        const dialog = new MealBuffPickerDialog({
+            professionId: this.#professionId,
+            tier,
+            selectedPresetId: presetId,
+            onSelect: selectedId => {
+                const draft = this._readFormDraft(el);
+                const flagsKey = tier === "ambitious" ? "ambitiousOutputFlags" : "outputFlags";
+                if (!draft[flagsKey]) draft[flagsKey] = foundry.utils.deepClone(this._defaultOutputFlags());
+                const rf = draft[flagsKey][MODULE_ID] ?? {};
+                draft[flagsKey][MODULE_ID] = rf;
+                applyMealBuffPresetToFlags(rf, selectedId);
 
-    _buildPackPresetGroupsMarkup(tier) {
-        const overlayPresets = getUniqueOverlayMealBuffPresets();
-        if (!overlayPresets.length) {
-            return "";
-        }
-
-        const packLabel = overlayPresets[0]?._packLabel ?? "Content pack";
-        const groups = groupMealBuffPresetsByCategory(overlayPresets);
-
-        return `
-            <div class="recipe-editor-buff-pack-header">
-                <span class="recipe-editor-buff-pack-badge">${this._esc(packLabel)}</span>
-                <span class="recipe-editor-buff-pack-header-note">Pack-only buffs not in base presets</span>
-            </div>
-            ${groups.map(group => `
-                <div class="recipe-editor-buff-type-group">
-                    <div class="recipe-editor-buff-type-heading">${this._esc(group.label)}</div>
-                    <div class="recipe-editor-buff-options recipe-editor-buff-options--pack">
-                        ${group.presets.map(preset => this._buildMealBuffPresetButton(preset, tier)).join("")}
-                    </div>
-                </div>`).join("")}`;
+                const section = el.querySelector(`[data-meal-tier="${tier}"]`);
+                this._syncMealTierDom(section, rf, selectedId);
+                this.#draft = draft;
+            }
+        });
+        dialog.render(true);
     }
 
     _syncMealTierDom(section, rf, presetId) {
@@ -272,6 +258,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
     _buildMealEffectsMarkup(tier, rf, professionId) {
         const prefix = this._mealFieldPrefix(tier);
         const presetId = matchMealBuffPresetId(rf);
+        const showMealFields = this._isMealProfession(professionId);
         const satiates = Array.isArray(rf?.satiates)
             ? rf.satiates
             : defaultSatiatesForProfession(professionId);
@@ -282,30 +269,22 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         const satiatesFood = satiates.includes("food");
         const satiatesWater = satiates.includes("water");
         const summary = this._mealBuffSummaryText(presetId, rf);
-        const tierLabel = tier === "ambitious" ? "Ambitious meal effects" : "Meal effects";
+        const tierLabel = tier === "ambitious"
+            ? (showMealFields ? "Ambitious meal effects" : "Ambitious output effects")
+            : (showMealFields ? "Meal effects" : "Output effects");
         const tierHint = tier === "ambitious"
             ? "Applied when players craft at Ambitious risk (+5 DC)."
-            : "Applied when the crafted item is eaten or used in the meal phase.";
+            : (showMealFields
+                ? "Applied when the crafted item is eaten or used in the meal phase."
+                : "Applied when the crafted item is consumed or used.");
 
         const foodTagOptions = FOOD_TAG_OPTIONS.map(opt => {
             const selected = opt.id === foodTag ? " selected" : "";
             return `<option value="${this._esc(opt.id)}"${selected}>${this._esc(opt.label)}</option>`;
         }).join("");
 
-        const presetButtons = getBaseMealBuffPresets()
-            .map(preset => this._buildMealBuffPresetButton(preset, tier))
-            .join("");
-        const packPresetButtons = this._buildPackPresetGroupsMarkup(tier);
-        const packSectionMarkup = packPresetButtons
-            ? `<div class="recipe-editor-buff-popout-heading">Pack-only presets</div>
-                        <div class="recipe-editor-buff-pack-groups">${packPresetButtons}</div>`
-            : "";
         const attributionMarkup = this._mealBuffAttributionMarkup(presetId);
-
-        return `
-        <div class="recipe-editor-section recipe-editor-section--meal" data-meal-tier="${tier}">
-            <div class="recipe-editor-section-title">${this._esc(tierLabel)}</div>
-            <p class="recipe-editor-hint">${this._esc(tierHint)}</p>
+        const mealFieldsMarkup = showMealFields ? `
             <div class="recipe-editor-meal-toggles">
                 <label class="recipe-editor-check">
                     <input type="checkbox" name="${prefix}PartyMeal" ${partyMeal ? "checked" : ""} />
@@ -330,7 +309,13 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                     <input type="number" class="recipe-editor-input" name="${prefix}SpoilsAfter"
                         min="1" placeholder="Never" value="${this._esc(spoilsAttr)}" />
                 </div>
-            </div>
+            </div>` : "";
+
+        return `
+        <div class="recipe-editor-section recipe-editor-section--meal" data-meal-tier="${tier}">
+            <div class="recipe-editor-section-title">${this._esc(tierLabel)}</div>
+            <p class="recipe-editor-hint">${this._esc(tierHint)}</p>
+            ${mealFieldsMarkup}
             <div class="recipe-editor-buff-row">
                 <div class="recipe-editor-buff-summary">
                     <span class="recipe-editor-label">Buff</span>
@@ -340,19 +325,10 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                     </div>
                 </div>
                 <input type="hidden" name="${prefix}BuffPresetId" value="${this._esc(presetId)}" />
-                <div class="recipe-editor-buff-popout">
-                    <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
-                        data-action="toggleBuffPopout" data-tier="${tier}">
-                        <i class="fas fa-star"></i> Choose buff
-                    </button>
-                    <div class="recipe-editor-buff-popout-panel is-hidden" data-buff-popout="${tier}"
-                        role="dialog" aria-label="Choose meal buff">
-                        <div class="recipe-editor-buff-popout-heading">Base presets</div>
-                        <div class="recipe-editor-buff-options">${presetButtons}</div>
-                        ${packSectionMarkup}
-                        <p class="recipe-editor-hint recipe-editor-buff-popout-hint">Custom buffs can still be set via JSON import.</p>
-                    </div>
-                </div>
+                <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
+                    data-action="openBuffPicker" data-tier="${tier}">
+                    <i class="fas fa-star"></i> Choose buff
+                </button>
             </div>
         </div>`;
     }
@@ -434,7 +410,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
 
         const deleteDisabled = context.selected && !context.isNewDraft ? "" : " disabled";
         const newRecipeActive = context.isNewDraft ? " active" : "";
-        const showMealEffects = this._isMealProfession(context.professionId);
+        const showOutputBuffEffects = this._hasOutputBuffEffects(context.professionId);
         const stdRf = draft.outputFlags?.[MODULE_ID] ?? {};
         const ambRf = draft.ambitiousOutputFlags?.[MODULE_ID]
             ?? foundry.utils.deepClone(stdRf);
@@ -543,7 +519,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                         <textarea class="recipe-editor-textarea" name="outputDesc" rows="2"
                             placeholder="Flavor text shown on the compendium item and crafted inventory row.">${this._esc(this._stripHtmlForTextarea(outputDesc))}</textarea>
                     </div>
-                    ${showMealEffects ? this._buildMealEffectsMarkup("standard", stdRf, context.professionId) : ""}
+                    ${showOutputBuffEffects ? this._buildMealEffectsMarkup("standard", stdRf, context.professionId) : ""}
                 </div>
                 <div class="recipe-editor-section">
                     <label class="recipe-editor-ambitious-toggle">
@@ -584,7 +560,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                             <textarea class="recipe-editor-textarea" name="ambOutputDesc" rows="2"
                                 placeholder="Flavor text for the upgraded compendium item.">${this._esc(this._stripHtmlForTextarea(ambDesc))}</textarea>
                         </div>
-                        ${showMealEffects ? this._buildMealEffectsMarkup("ambitious", ambRf, context.professionId) : ""}
+                        ${showOutputBuffEffects ? this._buildMealEffectsMarkup("ambitious", ambRf, context.professionId) : ""}
                     </div>
                 </div>
             </section>
@@ -606,15 +582,19 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         </footer>`;
     }
 
-    static _mealPresetHookRegistered = false;
+    static _recipeEditorHookRegistered = false;
 
     _wireEvents(el) {
-        if (!RecipeEditorApp._mealPresetHookRegistered) {
-            RecipeEditorApp._mealPresetHookRegistered = true;
-            Hooks.on("ionrift.mealBuffPresetsChanged", () => {
+        if (!RecipeEditorApp._recipeEditorHookRegistered) {
+            RecipeEditorApp._recipeEditorHookRegistered = true;
+            const refreshOpenEditors = () => {
                 for (const app of Object.values(ui.windows ?? {})) {
                     if (app instanceof RecipeEditorApp && app.rendered) app.render(false);
                 }
+            };
+            Hooks.on("ionrift.mealBuffPresetsChanged", refreshOpenEditors);
+            Hooks.on("ionrift.overlayContentChanged", payload => {
+                if (payload?.moduleId === MODULE_ID) refreshOpenEditors();
             });
         }
 
@@ -677,48 +657,10 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             });
         });
 
-        el.querySelectorAll("[data-action=\"toggleBuffPopout\"]").forEach(btn => {
-            btn.addEventListener("click", ev => {
-                ev.stopPropagation();
-                const tier = btn.dataset.tier;
-                const panel = el.querySelector(`[data-buff-popout="${tier}"]`);
-                const wasHidden = panel?.classList.contains("is-hidden");
-                el.querySelectorAll(".recipe-editor-buff-popout-panel").forEach(p => {
-                    p.classList.add("is-hidden");
-                });
-                if (wasHidden) panel?.classList.remove("is-hidden");
+        el.querySelectorAll("[data-action=\"openBuffPicker\"]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                this._openBuffPicker(el, btn.dataset.tier);
             });
-        });
-
-        el.querySelectorAll("[data-action=\"selectBuffPreset\"]").forEach(btn => {
-            btn.addEventListener("click", ev => {
-                ev.stopPropagation();
-                const tier = btn.dataset.tier;
-                const presetId = btn.dataset.presetId;
-                const draft = this._readFormDraft(el);
-                const flagsKey = tier === "ambitious" ? "ambitiousOutputFlags" : "outputFlags";
-                if (!draft[flagsKey]) draft[flagsKey] = foundry.utils.deepClone(this._defaultOutputFlags());
-                const rf = draft[flagsKey][MODULE_ID] ?? {};
-                draft[flagsKey][MODULE_ID] = rf;
-                applyMealBuffPresetToFlags(rf, presetId);
-
-                const section = el.querySelector(`[data-meal-tier="${tier}"]`);
-                this._syncMealTierDom(section, rf, presetId);
-
-                el.querySelectorAll(".recipe-editor-buff-popout-panel").forEach(p => {
-                    p.classList.add("is-hidden");
-                });
-
-                this.#draft = draft;
-            });
-        });
-
-        el.querySelector(".recipe-editor-detail")?.addEventListener("click", ev => {
-            if (!ev.target.closest(".recipe-editor-buff-popout")) {
-                el.querySelectorAll(".recipe-editor-buff-popout-panel").forEach(p => {
-                    p.classList.add("is-hidden");
-                });
-            }
         });
 
         el.querySelector("[name=\"enableAmbitious\"]")?.addEventListener("change", ev => {
@@ -752,19 +694,33 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
 
     _blankRecipe() {
         const recipeName = "New Recipe";
+        const isTailoring = this.#professionId === "tailoring";
+        const isBrewing = this.#professionId === "brewing";
+        const isLeather = this.#professionId === "leatherworking";
+        const defaultImg = isTailoring
+            ? "icons/equipment/back/cloak-hooded-blue.webp"
+            : isBrewing
+                ? "icons/consumables/drinks/tea-jasmine-green.webp"
+                : isLeather
+                    ? "icons/equipment/shield/buckler-wooden-boss-brown.webp"
+                    : "icons/consumables/food/bowl-stew-brown.webp";
+        const systemSubtype = isBrewing
+            ? "potion"
+            : (isTailoring || isLeather ? "trinket" : "food");
+        const defaultSkill = isTailoring ? "dex" : (isBrewing ? "wis" : "sur");
         return applyProfessionToolToRecipe({
             name: recipeName,
             dc: 12,
-            skill: "sur",
+            skill: defaultSkill,
             ingredients: [{ name: "", quantity: 1 }],
             output: {
                 name: recipeName,
                 type: "consumable",
                 quantity: 1,
-                img: "icons/consumables/food/bowl-stew-brown.webp",
+                img: defaultImg,
                 description: "<p>Custom crafted output.</p>",
                 rarity: "common",
-                system: { type: { value: "food", subtype: "" } }
+                system: { type: { value: systemSubtype, subtype: "" } }
             },
             outputFlags: this._defaultOutputFlags()
         }, this.#professionId);
@@ -789,19 +745,26 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         const rf = draft[flagsKey][MODULE_ID] ?? {};
         draft[flagsKey][MODULE_ID] = rf;
 
-        rf.partyMeal = root.querySelector(`[name="${prefix}PartyMeal"]`)?.checked ?? false;
-        const satFood = root.querySelector(`[name="${prefix}SatiatesFood"]`)?.checked ?? false;
-        const satWater = root.querySelector(`[name="${prefix}SatiatesWater"]`)?.checked ?? false;
-        rf.satiates = buildSatiatesList(satFood, satWater);
-        if (!rf.satiates.length) {
-            rf.satiates = defaultSatiatesForProfession(this.#professionId);
+        if (this._isMealProfession(this.#professionId)) {
+            rf.partyMeal = root.querySelector(`[name="${prefix}PartyMeal"]`)?.checked ?? false;
+            const satFood = root.querySelector(`[name="${prefix}SatiatesFood"]`)?.checked ?? false;
+            const satWater = root.querySelector(`[name="${prefix}SatiatesWater"]`)?.checked ?? false;
+            rf.satiates = buildSatiatesList(satFood, satWater);
+            if (!rf.satiates.length) {
+                rf.satiates = defaultSatiatesForProfession(this.#professionId);
+            }
+
+            rf.foodTag = root.querySelector(`[name="${prefix}FoodTag"]`)?.value
+                ?? defaultFoodTagForProfession(this.#professionId);
+
+            const spoilsRaw = root.querySelector(`[name="${prefix}SpoilsAfter"]`)?.value?.trim() ?? "";
+            rf.spoilsAfter = spoilsRaw ? (Number(spoilsRaw) || null) : null;
+        } else {
+            delete rf.partyMeal;
+            delete rf.satiates;
+            delete rf.foodTag;
+            delete rf.spoilsAfter;
         }
-
-        rf.foodTag = root.querySelector(`[name="${prefix}FoodTag"]`)?.value
-            ?? defaultFoodTagForProfession(this.#professionId);
-
-        const spoilsRaw = root.querySelector(`[name="${prefix}SpoilsAfter"]`)?.value?.trim() ?? "";
-        rf.spoilsAfter = spoilsRaw ? (Number(spoilsRaw) || null) : null;
 
         const presetId = root.querySelector(`[name="${prefix}BuffPresetId"]`)?.value ?? "none";
         if (presetId !== "custom") {
@@ -855,10 +818,15 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         draft.output.type = draft.output.type ?? "consumable";
         draft.output.rarity = draft.output.rarity ?? "common";
         draft.output.system = draft.output.system ?? {
-            type: { value: this.#professionId === "brewing" ? "potion" : "food", subtype: "" }
+            type: {
+                value: this.#professionId === "brewing"
+                    ? "potion"
+                    : (["tailoring", "leatherworking", "smithing"].includes(this.#professionId) ? "trinket" : "food"),
+                subtype: ""
+            }
         };
 
-        if (this._isMealProfession(this.#professionId)) {
+        if (this._hasOutputBuffEffects(this.#professionId)) {
             this._applyMealFlagsFromForm(root, draft, "standard");
         }
 
@@ -883,7 +851,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             draft.ambitiousOutputFlags = foundry.utils.deepClone(
                 draft.ambitiousOutputFlags ?? draft.outputFlags ?? this._defaultOutputFlags()
             );
-            if (this._isMealProfession(this.#professionId)) {
+            if (this._hasOutputBuffEffects(this.#professionId)) {
                 this._applyMealFlagsFromForm(root, draft, "ambitious");
             }
         } else {

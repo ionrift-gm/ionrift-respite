@@ -71,7 +71,16 @@ export function recipeOutputItemRef(recipeId, tier = "standard") {
  * @returns {string}
  */
 export function outputFolderNameForProfession(professionId) {
-    return professionId === "brewing" ? "Brewing Outputs" : "Cooking Outputs";
+    const labels = {
+        brewing: "Brewing Outputs",
+        tailoring: "Tailoring Outputs",
+        leatherworking: "Leatherworking Outputs",
+        alchemy: "Alchemy Outputs",
+        fletching: "Fletching Outputs",
+        tinkering: "Tinkering Outputs",
+        smithing: "Smithing Outputs"
+    };
+    return labels[professionId] ?? "Cooking Outputs";
 }
 
 /**
@@ -88,8 +97,10 @@ export function buildOutputItemDocument(output, outputFlags, itemRef, folderId, 
     rf.itemRef = itemRef;
     rf.category = professionId === "brewing" ? "brew" : "prepared";
 
-    const systemType = output.system?.type?.value
-        ?? (professionId === "brewing" ? "potion" : "food");
+    const defaultSystemType = professionId === "brewing"
+        ? "potion"
+        : (["tailoring", "leatherworking", "smithing"].includes(professionId) ? "trinket" : "food");
+    const systemType = output.system?.type?.value ?? defaultSystemType;
 
     const flags = { ...(outputFlags ?? {}) };
     flags[MODULE_ID] = rf;

@@ -27005,6 +27005,180 @@ button.is-processing {
     line-height: 1.4;
 }
 
+/* Meal buff picker dialog (homebrew recipe editor) */
+
+.respite-meal-buff-picker .meal-buff-picker-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    min-height: 0;
+    height: 100%;
+    box-sizing: border-box;
+    /* !important: Foundry window-content may zero padding on app shells */
+    padding: 0.75rem 1.25rem 1rem !important;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-lead {
+    margin: 0;
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.72);
+    line-height: 1.5;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-right: 0.35rem;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-section + .meal-buff-picker-section {
+    margin-top: 0.15rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.respite-meal-buff-picker .meal-buff-picker-section-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(196, 168, 255, 0.88);
+    margin: 0 0 0.25rem;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-type-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-type-group + .meal-buff-picker-type-group {
+    margin-top: 0.35rem;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-type-heading {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+    margin: 0.5rem 0 0.15rem;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-type-group:first-child .meal-buff-picker-type-heading {
+    margin-top: 0;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-option {
+    all: unset !important;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-option {
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.35rem !important;
+    width: 100% !important;
+    padding: 0.55rem 1rem !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    transition: border-color 0.15s ease, background 0.15s ease !important;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-option:hover,
+.respite-meal-buff-picker .meal-buff-picker-option--selected {
+    border-color: rgba(155, 89, 182, 0.45) !important;
+    background: rgba(155, 89, 182, 0.12) !important;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-option--pack {
+    border-color: rgba(155, 89, 182, 0.25) !important;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-option-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    width: 100%;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-option-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+    line-height: 1.35;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-option-desc {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.48);
+    line-height: 1.45;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-pack-badge {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: 0.35rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: rgba(196, 168, 255, 0.95);
+    background: rgba(155, 89, 182, 0.22);
+    border: 1px solid rgba(155, 89, 182, 0.45);
+    white-space: nowrap;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-pack-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 0.35rem;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-pack-note {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1.4;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-hint {
+    margin: 0;
+    padding-top: 0.65rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.45;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-empty {
+    margin: 0;
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.65);
+    line-height: 1.45;
+}
+
 /* Settings Quick Setup / group headers: ionrift-library (ModuleConfigProfiles) */
 
 /* ── Standardized roll-request component (reuses event-check-module styling) ── */
