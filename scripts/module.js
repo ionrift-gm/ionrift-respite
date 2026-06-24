@@ -674,6 +674,13 @@ Hooks.once("init", async () => {
 Hooks.on("ionrift.overlayContentChanged", async (detail) => {
     if (detail?.moduleId !== MODULE_ID) return;
 
+    try {
+        const { ProvisionOverlayMaterialiser } = await import("./services/ProvisionOverlayMaterialiser.js");
+        await ProvisionOverlayMaterialiser.onOverlayContentChanged(detail);
+    } catch (err) {
+        console.warn(`${MODULE_ID} | Overlay materialiser update failed:`, err);
+    }
+
     // Art overlay
     if (detail.overlayId === "respite-core-overlay") {
         const disabled = !detail.installed || !detail.active;
@@ -697,11 +704,14 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
         return;
     }
 
-    // Event/content overlay: invalidate cached event data
-    // The next rest start or browser open will re-scan overlays
+    // Event/content overlay: invalidate cached event and profession data
     try {
         const { OverlayEventLoader } = await import("./services/OverlayEventLoader.js");
         OverlayEventLoader.invalidate();
+    } catch { /* loader not available */ }
+    try {
+        const { OverlayProfessionLoader } = await import("./services/OverlayProfessionLoader.js");
+        OverlayProfessionLoader.invalidate();
     } catch { /* loader not available */ }
     RespiteLog.log(`${MODULE_ID} | Overlay content changed: ${detail.overlayId} (active=${detail.active})`);
 });
@@ -854,6 +864,13 @@ Hooks.once("ready", async () => {
     await initializeEventPoolIfNeeded();
 
     if (game.user.isGM) {
+        try {
+            const { ProvisionOverlayMaterialiser } = await import("./services/ProvisionOverlayMaterialiser.js");
+            await ProvisionOverlayMaterialiser.materialiseAll();
+        } catch (err) {
+            console.error(`${MODULE_ID} | Overlay provision materialisation failed:`, err);
+        }
+
         const { ForageTableSync } = await import("./services/ForageTableSync.js");
         ForageTableSync.registerHooks();
         void ForageTableSync.lockDownRollTableVisibility().catch(err => {

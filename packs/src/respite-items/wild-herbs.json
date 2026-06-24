@@ -23,7 +23,7 @@
     "flags": {
         "ionrift-respite": {
             "itemRef": "wild_herbs",
-            "terrain": "wilderness",
+            "terrain": "wilderness,forest,desert",
             "category": "forage"
         }
     },

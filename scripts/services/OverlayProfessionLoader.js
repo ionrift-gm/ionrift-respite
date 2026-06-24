@@ -138,6 +138,45 @@ export class OverlayProfessionLoader {
         _cache = null;
     }
 
+    /**
+     * Merged hunt yield tables from all active overlay sublayers that ship
+     * `hunt_yields.json`. Later sublayers override the same terrain key.
+     * @returns {Promise<Object|null>}
+     */
+    static async loadHuntYields() {
+        const overlay = game.ionrift?.library?.overlay;
+        if (!overlay) return null;
+
+        const merged = {};
+        try {
+            const sublayers = await overlay.listInstalledSublayers(MODULE_ID);
+            for (const sublayer of sublayers) {
+                const manifest = await overlay.getLocalManifest(MODULE_ID, sublayer);
+                if (!manifest?.overlayId) continue;
+
+                const active = await overlay.isOverlayActive(
+                    manifest.overlayId, MODULE_ID, sublayer
+                );
+                if (!active) continue;
+
+                try {
+                    const data = await overlay.readOverlayFile(
+                        MODULE_ID, sublayer, "hunt_yields.json"
+                    );
+                    if (data && typeof data === "object" && !Array.isArray(data)) {
+                        Object.assign(merged, data);
+                    }
+                } catch {
+                    // hunt_yields.json is optional per overlay
+                }
+            }
+        } catch (e) {
+            console.warn(`${MODULE_ID} | OverlayProfessionLoader: hunt yield scan failed:`, e);
+        }
+
+        return Object.keys(merged).length ? merged : null;
+    }
+
     /** @returns {boolean} */
     static get isCached() {
         return _cache !== null;

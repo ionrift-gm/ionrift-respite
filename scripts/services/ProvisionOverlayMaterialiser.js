@@ -48,6 +48,7 @@ function respiteMaterialiserConfig() {
         sectionWrapperName: (packDir) => {
             if (packDir === "forage") return "Forage";
             if (packDir === "hunting") return "Hunting";
+            if (packDir === "outputs") return "Cooking Outputs";
             return null;
         },
         sidebarFolderResolver: async () => {
