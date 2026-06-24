@@ -29,6 +29,29 @@ export const FOOD_TAG_OPTIONS = [
     { id: "raw_fish", label: "Raw fish" }
 ];
 
+/** Display order for buff-type groups in the homebrew picker. */
+export const MEAL_BUFF_CATEGORY_ORDER = [
+    "temp_hp",
+    "exhaustion_save",
+    "advantage",
+    "resistance",
+    "heal",
+    "hit_die",
+    "combo",
+    "none"
+];
+
+const MEAL_BUFF_CATEGORY_LABELS = {
+    temp_hp: "Temp HP",
+    exhaustion_save: "Exhaustion save",
+    advantage: "Advantage",
+    resistance: "Resistance",
+    heal: "Healing",
+    hit_die: "Hit die",
+    combo: "Combined buffs",
+    none: "No buff"
+};
+
 /**
  * @typedef {Object} MealBuffPreset
  * @property {string} id
@@ -174,6 +197,37 @@ export function getOverlayMealBuffPresets() {
 }
 
 /**
+ * Compare Well Fed + buff payload only (ignore satiates, food tag, etc.).
+ * @param {MealBuffPreset|null|undefined} a
+ * @param {MealBuffPreset|null|undefined} b
+ * @returns {boolean}
+ */
+export function mealBuffEffectEqual(a, b) {
+    if (!a || !b) return false;
+    return a.wellFed === b.wellFed && mealBuffsEqual(a.buff ?? null, b.buff ?? null);
+}
+
+/**
+ * True when a pack preset repeats a generic base homebrew buff.
+ * @param {MealBuffPreset} preset
+ * @returns {boolean}
+ */
+export function isDuplicateOfBaseMealBuffPreset(preset) {
+    if (preset?._source !== "overlay") return false;
+    return BASE_MEAL_BUFF_PRESETS.some(base =>
+        base.id !== "none" && mealBuffEffectEqual(base, preset)
+    );
+}
+
+/**
+ * Pack presets whose buff effect is not already offered in base presets.
+ * @returns {MealBuffPreset[]}
+ */
+export function getUniqueOverlayMealBuffPresets() {
+    return getOverlayMealBuffPresets().filter(preset => !isDuplicateOfBaseMealBuffPreset(preset));
+}
+
+/**
  * @returns {MealBuffPreset[]}
  */
 export function getAllMealBuffPresets() {
@@ -220,6 +274,115 @@ export function unregisterOverlayMealBuffPresetsForOverlayAndCount(overlayId) {
     const count = overlayPresetIdsByOverlay.get(overlayId)?.size ?? 0;
     unregisterOverlayMealBuffPresetsForOverlay(overlayId);
     return count;
+}
+
+/**
+ * @param {Object} buff
+ * @param {{ partyMeal?: boolean }} [ctx]
+ * @returns {string}
+ */
+export function formatSingleBuffSummary(buff, ctx = {}) {
+    if (!buff?.type) return "";
+    const parts = [MEAL_BUFF_TYPE_LABELS[buff.type] ?? buff.type];
+
+    if (buff.type === "temp_hp" || buff.type === "heal" || buff.type === "hit_die") {
+        if (buff.formula) parts.push(buff.formula);
+    }
+    if (buff.type === "exhaustion_save" && buff.formula) {
+        parts.push(`DC ${buff.formula}`);
+    }
+    if (buff.type === "advantage") {
+        parts.push(String(buff.save?.ability ?? buff.formula ?? "con").toUpperCase());
+    }
+    if (buff.type === "resistance") {
+        parts.push(buff.damageType ?? buff.formula ?? "damage");
+    }
+
+    const target = buff.target === "party" || ctx.partyMeal ? "party" : "self";
+    if (target === "party") parts.push("party");
+
+    const duration = MEAL_BUFF_DURATION_LABELS[buff.duration] ?? buff.duration;
+    if (duration) parts.push(duration);
+
+    return parts.join(" · ");
+}
+
+/**
+ * Primary picker label: buff type and parameters, not meal name.
+ * @param {MealBuffPreset|null|undefined} preset
+ * @returns {string}
+ */
+export function formatMealBuffPresetTitle(preset) {
+    if (!preset || preset.id === "none") return "No buff";
+    if (!preset.buff) return preset.wellFed ? "Well Fed only" : "No buff";
+
+    const buffs = Array.isArray(preset.buff) ? preset.buff : [preset.buff];
+    if (buffs.length > 1) {
+        return buffs.map(buff => formatSingleBuffSummary(buff, { partyMeal: preset.partyMeal }))
+            .filter(Boolean)
+            .join(" + ");
+    }
+    return formatSingleBuffSummary(buffs[0], { partyMeal: preset.partyMeal });
+}
+
+/**
+ * Secondary line: pack reference meal or preset description for base rows.
+ * @param {MealBuffPreset|null|undefined} preset
+ * @returns {string}
+ */
+export function formatMealBuffPresetSubtitle(preset) {
+    if (!preset) return "";
+    if (preset._source === "overlay" && preset.label) {
+        const tier = preset.tier === "ambitious" ? " · ambitious craft" : "";
+        return `Pack reference: ${preset.label}${tier}`;
+    }
+    return preset.description ?? "";
+}
+
+/**
+ * @param {MealBuffPreset} preset
+ * @returns {string}
+ */
+export function getMealBuffPresetCategoryKey(preset) {
+    if (!preset?.buff) return "none";
+    const buffs = Array.isArray(preset.buff) ? preset.buff : [preset.buff];
+    if (buffs.length > 1) return "combo";
+    return buffs[0]?.type ?? "none";
+}
+
+/**
+ * @param {MealBuffPreset[]} presets
+ * @returns {{ key: string, label: string, presets: MealBuffPreset[] }[]}
+ */
+export function groupMealBuffPresetsByCategory(presets) {
+    const buckets = new Map();
+    for (const preset of presets) {
+        const key = getMealBuffPresetCategoryKey(preset);
+        if (!buckets.has(key)) buckets.set(key, []);
+        buckets.get(key).push(preset);
+    }
+
+    const groups = [];
+    for (const key of MEAL_BUFF_CATEGORY_ORDER) {
+        const items = buckets.get(key);
+        if (!items?.length) continue;
+        items.sort((a, b) => formatMealBuffPresetTitle(a).localeCompare(formatMealBuffPresetTitle(b)));
+        groups.push({
+            key,
+            label: MEAL_BUFF_CATEGORY_LABELS[key] ?? key,
+            presets: items
+        });
+        buckets.delete(key);
+    }
+    for (const [key, items] of buckets) {
+        items.sort((a, b) => formatMealBuffPresetTitle(a).localeCompare(formatMealBuffPresetTitle(b)));
+        groups.push({
+            key,
+            label: MEAL_BUFF_CATEGORY_LABELS[key] ?? key,
+            presets: items
+        });
+    }
+    return groups;
 }
 
 /**

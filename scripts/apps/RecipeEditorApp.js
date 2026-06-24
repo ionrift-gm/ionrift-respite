@@ -20,11 +20,14 @@ import {
     defaultFoodTagForProfession,
     defaultSatiatesForProfession,
     formatMealBuffPreview,
+    formatMealBuffPresetSubtitle,
+    formatMealBuffPresetTitle,
     FOOD_TAG_OPTIONS,
     getBaseMealBuffPresets,
     getMealBuffPreset,
     getMealBuffPresetAttribution,
-    getOverlayMealBuffPresets,
+    getUniqueOverlayMealBuffPresets,
+    groupMealBuffPresetsByCategory,
     matchMealBuffPresetId
 } from "../services/MealBuffPresets.js";
 import {
@@ -181,7 +184,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             return rf?.wellFed ? "Custom Well Fed (JSON)" : "No buff";
         }
         const preset = getMealBuffPreset(presetId);
-        return preset?.label ?? "No buff";
+        return formatMealBuffPresetTitle(preset);
     }
 
     _mealBuffAttributionMarkup(presetId) {
@@ -191,19 +194,44 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
     }
 
     _buildMealBuffPresetButton(preset, tier) {
-        const packBadge = preset._packLabel
+        const title = formatMealBuffPresetTitle(preset);
+        const subtitle = formatMealBuffPresetSubtitle(preset);
+        const packBadge = preset._packLabel && preset._source !== "overlay"
             ? `<span class="recipe-editor-buff-pack-badge">${this._esc(preset._packLabel)}</span>`
             : "";
         return `
             <button type="button" class="recipe-editor-buff-option${preset._source === "overlay" ? " recipe-editor-buff-option--pack" : ""}"
                 data-action="selectBuffPreset" data-tier="${tier}" data-preset-id="${this._esc(preset.id)}"
-                title="${this._esc(preset.description)}">
+                title="${this._esc(subtitle || title)}">
                 <span class="recipe-editor-buff-option-head">
-                    <span class="recipe-editor-buff-option-label">${this._esc(preset.label)}</span>
+                    <span class="recipe-editor-buff-option-label">${this._esc(title)}</span>
                     ${packBadge}
                 </span>
-                <span class="recipe-editor-buff-option-desc">${this._esc(preset.description)}</span>
+                ${subtitle ? `<span class="recipe-editor-buff-option-desc">${this._esc(subtitle)}</span>` : ""}
             </button>`;
+    }
+
+    _buildPackPresetGroupsMarkup(tier) {
+        const overlayPresets = getUniqueOverlayMealBuffPresets();
+        if (!overlayPresets.length) {
+            return "";
+        }
+
+        const packLabel = overlayPresets[0]?._packLabel ?? "Content pack";
+        const groups = groupMealBuffPresetsByCategory(overlayPresets);
+
+        return `
+            <div class="recipe-editor-buff-pack-header">
+                <span class="recipe-editor-buff-pack-badge">${this._esc(packLabel)}</span>
+                <span class="recipe-editor-buff-pack-header-note">Pack-only buffs not in base presets</span>
+            </div>
+            ${groups.map(group => `
+                <div class="recipe-editor-buff-type-group">
+                    <div class="recipe-editor-buff-type-heading">${this._esc(group.label)}</div>
+                    <div class="recipe-editor-buff-options recipe-editor-buff-options--pack">
+                        ${group.presets.map(preset => this._buildMealBuffPresetButton(preset, tier)).join("")}
+                    </div>
+                </div>`).join("")}`;
     }
 
     _syncMealTierDom(section, rf, presetId) {
@@ -267,10 +295,11 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         const presetButtons = getBaseMealBuffPresets()
             .map(preset => this._buildMealBuffPresetButton(preset, tier))
             .join("");
-        const overlayPresets = getOverlayMealBuffPresets();
-        const packPresetButtons = overlayPresets.length
-            ? overlayPresets.map(preset => this._buildMealBuffPresetButton(preset, tier)).join("")
-            : `<p class="recipe-editor-hint recipe-editor-buff-popout-empty">No pack presets installed.</p>`;
+        const packPresetButtons = this._buildPackPresetGroupsMarkup(tier);
+        const packSectionMarkup = packPresetButtons
+            ? `<div class="recipe-editor-buff-popout-heading">Pack-only presets</div>
+                        <div class="recipe-editor-buff-pack-groups">${packPresetButtons}</div>`
+            : "";
         const attributionMarkup = this._mealBuffAttributionMarkup(presetId);
 
         return `
@@ -320,8 +349,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                         role="dialog" aria-label="Choose meal buff">
                         <div class="recipe-editor-buff-popout-heading">Base presets</div>
                         <div class="recipe-editor-buff-options">${presetButtons}</div>
-                        <div class="recipe-editor-buff-popout-heading">Pack presets</div>
-                        <div class="recipe-editor-buff-options recipe-editor-buff-options--pack">${packPresetButtons}</div>
+                        ${packSectionMarkup}
                         <p class="recipe-editor-hint recipe-editor-buff-popout-hint">Custom buffs can still be set via JSON import.</p>
                     </div>
                 </div>
