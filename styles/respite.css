@@ -26870,6 +26870,41 @@ button.is-processing {
     margin: 0.15rem 0 0.5rem;
 }
 
+.respite-recipe-editor .recipe-editor-buff-pack-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    max-height: 16rem;
+    overflow-y: auto;
+}
+
+.respite-recipe-editor .recipe-editor-buff-pack-header {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.15rem;
+}
+
+.respite-recipe-editor .recipe-editor-buff-pack-header-note {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.respite-recipe-editor .recipe-editor-buff-type-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.respite-recipe-editor .recipe-editor-buff-type-heading {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(196, 168, 255, 0.88);
+    margin-top: 0.15rem;
+}
+
 .respite-recipe-editor .recipe-editor-buff-popout {
     position: relative;
     flex-shrink: 0;
