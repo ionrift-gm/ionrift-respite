@@ -863,12 +863,19 @@ Hooks.once("ready", async () => {
     const { initializeEventPoolIfNeeded } = await import("./services/EventPoolMigration.js");
     await initializeEventPoolIfNeeded();
 
-    if (game.user.isGM) {
+        if (game.user.isGM) {
         try {
             const { ProvisionOverlayMaterialiser } = await import("./services/ProvisionOverlayMaterialiser.js");
             await ProvisionOverlayMaterialiser.materialiseAll();
         } catch (err) {
             console.error(`${MODULE_ID} | Overlay provision materialisation failed:`, err);
+        }
+
+        try {
+            const { OverlayMealBuffPresetLoader } = await import("./services/OverlayMealBuffPresetLoader.js");
+            await OverlayMealBuffPresetLoader.loadAll();
+        } catch (err) {
+            console.warn(`${MODULE_ID} | Meal buff preset loader failed:`, err);
         }
 
         const { ForageTableSync } = await import("./services/ForageTableSync.js");
