@@ -1,9 +1,12 @@
 /**
  * Curated meal buff presets for recipe authoring and craft UI previews.
  * Base presets ship in the module; overlay packs register additional presets
- * at runtime (see OverlayMealBuffPresetLoader).
- * Runtime application lives in MealPhaseHandler.
+ * at runtime (see OverlayMealBuffPresetLoader). Registered meal buff handlers
+ * may expose authoringPreset for the homebrew editor.
+ * Runtime application lives in MealPhaseHandler via MealBuffHandlerRegistry.
  */
+
+import { listMealBuffHandlers } from "./MealBuffHandlerRegistry.js";
 
 export const MEAL_BUFF_DURATION_LABELS = {
     immediate: "Immediate",
@@ -228,10 +231,41 @@ export function getUniqueOverlayMealBuffPresets() {
 }
 
 /**
+ * Presets derived from registered meal buff handler plugins.
+ * @returns {MealBuffPreset[]}
+ */
+export function getHandlerAuthoredMealBuffPresets() {
+    return listMealBuffHandlers()
+        .filter(handler => handler.authoringPreset)
+        .map(handler => {
+            const preset = handler.authoringPreset;
+            return {
+                id: preset.id ?? `handler:${handler.id}`,
+                label: preset.label ?? handler.label,
+                description: preset.description ?? "",
+                wellFed: preset.wellFed ?? true,
+                buff: preset.buff,
+                partyMeal: preset.partyMeal,
+                satiates: preset.satiates,
+                foodTag: preset.foodTag,
+                spoilsAfter: preset.spoilsAfter,
+                _source: "handler",
+                _handlerId: handler.id,
+                _overlayId: handler._overlayId,
+                _packLabel: handler._overlayId
+            };
+        });
+}
+
+/**
  * @returns {MealBuffPreset[]}
  */
 export function getAllMealBuffPresets() {
-    return [...BASE_MEAL_BUFF_PRESETS, ...overlayPresetsById.values()];
+    return [
+        ...BASE_MEAL_BUFF_PRESETS,
+        ...getHandlerAuthoredMealBuffPresets(),
+        ...overlayPresetsById.values()
+    ];
 }
 
 /**
