@@ -593,8 +593,11 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                 }
             };
             Hooks.on("ionrift.mealBuffPresetsChanged", refreshOpenEditors);
-            Hooks.on("ionrift.overlayContentChanged", payload => {
-                if (payload?.moduleId === MODULE_ID) refreshOpenEditors();
+            Hooks.on("ionrift.overlayContentChanged", async payload => {
+                if (payload?.moduleId !== MODULE_ID) return;
+                const { OverlayProfessionLoader } = await import("../services/OverlayProfessionLoader.js");
+                OverlayProfessionLoader.invalidate();
+                refreshOpenEditors();
             });
         }
 

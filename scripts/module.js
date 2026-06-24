@@ -675,6 +675,11 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
     if (detail?.moduleId !== MODULE_ID) return;
 
     try {
+        const { OverlayProfessionLoader } = await import("./services/OverlayProfessionLoader.js");
+        OverlayProfessionLoader.invalidate();
+    } catch { /* loader not available */ }
+
+    try {
         const { ProvisionOverlayMaterialiser } = await import("./services/ProvisionOverlayMaterialiser.js");
         await ProvisionOverlayMaterialiser.onOverlayContentChanged(detail);
     } catch (err) {
