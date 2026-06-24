@@ -21,9 +21,11 @@ import {
     defaultSatiatesForProfession,
     formatMealBuffPreview,
     FOOD_TAG_OPTIONS,
+    getBaseMealBuffPresets,
     getMealBuffPreset,
-    matchMealBuffPresetId,
-    MEAL_BUFF_PRESETS
+    getMealBuffPresetAttribution,
+    getOverlayMealBuffPresets,
+    matchMealBuffPresetId
 } from "../services/MealBuffPresets.js";
 import {
     buildRecipeMissingOutputIndex,
@@ -182,6 +184,63 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         return preset?.label ?? "No buff";
     }
 
+    _mealBuffAttributionMarkup(presetId) {
+        const attribution = getMealBuffPresetAttribution(presetId);
+        if (!attribution) return "";
+        return `<span class="recipe-editor-buff-pack-badge" title="Preset from ${this._esc(attribution.packLabel)}">${this._esc(attribution.packLabel)}</span>`;
+    }
+
+    _buildMealBuffPresetButton(preset, tier) {
+        const packBadge = preset._packLabel
+            ? `<span class="recipe-editor-buff-pack-badge">${this._esc(preset._packLabel)}</span>`
+            : "";
+        return `
+            <button type="button" class="recipe-editor-buff-option${preset._source === "overlay" ? " recipe-editor-buff-option--pack" : ""}"
+                data-action="selectBuffPreset" data-tier="${tier}" data-preset-id="${this._esc(preset.id)}"
+                title="${this._esc(preset.description)}">
+                <span class="recipe-editor-buff-option-head">
+                    <span class="recipe-editor-buff-option-label">${this._esc(preset.label)}</span>
+                    ${packBadge}
+                </span>
+                <span class="recipe-editor-buff-option-desc">${this._esc(preset.description)}</span>
+            </button>`;
+    }
+
+    _syncMealTierDom(section, rf, presetId) {
+        if (!section) return;
+        const tier = section.dataset.mealTier;
+        const prefix = this._mealFieldPrefix(tier);
+        const satiates = Array.isArray(rf?.satiates) ? rf.satiates : defaultSatiatesForProfession(this.#professionId);
+        const foodTag = rf?.foodTag ?? defaultFoodTagForProfession(this.#professionId);
+        const spoilsVal = rf?.spoilsAfter ?? "";
+
+        const partyMeal = section.querySelector(`[name="${prefix}PartyMeal"]`);
+        if (partyMeal) partyMeal.checked = rf?.partyMeal === true;
+
+        const satiatesFood = section.querySelector(`[name="${prefix}SatiatesFood"]`);
+        if (satiatesFood) satiatesFood.checked = satiates.includes("food");
+
+        const satiatesWater = section.querySelector(`[name="${prefix}SatiatesWater"]`);
+        if (satiatesWater) satiatesWater.checked = satiates.includes("water");
+
+        const foodTagSelect = section.querySelector(`[name="${prefix}FoodTag"]`);
+        if (foodTagSelect) foodTagSelect.value = foodTag;
+
+        const spoilsInput = section.querySelector(`[name="${prefix}SpoilsAfter"]`);
+        if (spoilsInput) spoilsInput.value = spoilsVal === null || spoilsVal === undefined ? "" : String(spoilsVal);
+
+        const hidden = section.querySelector(`[name="${prefix}BuffPresetId"]`);
+        if (hidden) hidden.value = presetId;
+
+        const summaryEl = section.querySelector(".recipe-editor-buff-summary-text");
+        if (summaryEl) summaryEl.textContent = this._mealBuffSummaryText(presetId, rf);
+
+        const badgeEl = section.querySelector(".recipe-editor-buff-pack-attribution");
+        if (badgeEl) {
+            badgeEl.innerHTML = this._mealBuffAttributionMarkup(presetId);
+        }
+    }
+
     _buildMealEffectsMarkup(tier, rf, professionId) {
         const prefix = this._mealFieldPrefix(tier);
         const presetId = matchMealBuffPresetId(rf);
@@ -205,13 +264,14 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             return `<option value="${this._esc(opt.id)}"${selected}>${this._esc(opt.label)}</option>`;
         }).join("");
 
-        const presetButtons = MEAL_BUFF_PRESETS.map(preset => `
-            <button type="button" class="recipe-editor-buff-option"
-                data-action="selectBuffPreset" data-tier="${tier}" data-preset-id="${this._esc(preset.id)}"
-                title="${this._esc(preset.description)}">
-                <span class="recipe-editor-buff-option-label">${this._esc(preset.label)}</span>
-                <span class="recipe-editor-buff-option-desc">${this._esc(preset.description)}</span>
-            </button>`).join("");
+        const presetButtons = getBaseMealBuffPresets()
+            .map(preset => this._buildMealBuffPresetButton(preset, tier))
+            .join("");
+        const overlayPresets = getOverlayMealBuffPresets();
+        const packPresetButtons = overlayPresets.length
+            ? overlayPresets.map(preset => this._buildMealBuffPresetButton(preset, tier)).join("")
+            : `<p class="recipe-editor-hint recipe-editor-buff-popout-empty">No pack presets installed.</p>`;
+        const attributionMarkup = this._mealBuffAttributionMarkup(presetId);
 
         return `
         <div class="recipe-editor-section recipe-editor-section--meal" data-meal-tier="${tier}">
@@ -245,7 +305,10 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             <div class="recipe-editor-buff-row">
                 <div class="recipe-editor-buff-summary">
                     <span class="recipe-editor-label">Buff</span>
-                    <span class="recipe-editor-buff-summary-text">${this._esc(summary)}</span>
+                    <div class="recipe-editor-buff-summary-line">
+                        <span class="recipe-editor-buff-summary-text">${this._esc(summary)}</span>
+                        <span class="recipe-editor-buff-pack-attribution">${attributionMarkup}</span>
+                    </div>
                 </div>
                 <input type="hidden" name="${prefix}BuffPresetId" value="${this._esc(presetId)}" />
                 <div class="recipe-editor-buff-popout">
@@ -255,8 +318,10 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                     </button>
                     <div class="recipe-editor-buff-popout-panel is-hidden" data-buff-popout="${tier}"
                         role="dialog" aria-label="Choose meal buff">
-                        <div class="recipe-editor-buff-popout-heading">Meal buff presets</div>
+                        <div class="recipe-editor-buff-popout-heading">Base presets</div>
                         <div class="recipe-editor-buff-options">${presetButtons}</div>
+                        <div class="recipe-editor-buff-popout-heading">Pack presets</div>
+                        <div class="recipe-editor-buff-options recipe-editor-buff-options--pack">${packPresetButtons}</div>
                         <p class="recipe-editor-hint recipe-editor-buff-popout-hint">Custom buffs can still be set via JSON import.</p>
                     </div>
                 </div>
@@ -513,7 +578,18 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         </footer>`;
     }
 
+    static _mealPresetHookRegistered = false;
+
     _wireEvents(el) {
+        if (!RecipeEditorApp._mealPresetHookRegistered) {
+            RecipeEditorApp._mealPresetHookRegistered = true;
+            Hooks.on("ionrift.mealBuffPresetsChanged", () => {
+                for (const app of Object.values(ui.windows ?? {})) {
+                    if (app instanceof RecipeEditorApp && app.rendered) app.render(false);
+                }
+            });
+        }
+
         el.querySelector("[data-action=\"changeProfession\"]")?.addEventListener("change", ev => {
             this.#professionId = ev.target.value;
             this.#selectedIndex = 0;
@@ -599,13 +675,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                 applyMealBuffPresetToFlags(rf, presetId);
 
                 const section = el.querySelector(`[data-meal-tier="${tier}"]`);
-                const prefix = this._mealFieldPrefix(tier);
-                const hidden = section?.querySelector(`[name="${prefix}BuffPresetId"]`);
-                if (hidden) hidden.value = presetId;
-                const summaryEl = section?.querySelector(".recipe-editor-buff-summary-text");
-                if (summaryEl) {
-                    summaryEl.textContent = this._mealBuffSummaryText(presetId, rf);
-                }
+                this._syncMealTierDom(section, rf, presetId);
 
                 el.querySelectorAll(".recipe-editor-buff-popout-panel").forEach(p => {
                     p.classList.add("is-hidden");

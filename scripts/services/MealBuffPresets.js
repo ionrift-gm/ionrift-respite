@@ -1,5 +1,7 @@
 /**
  * Curated meal buff presets for recipe authoring and craft UI previews.
+ * Base presets ship in the module; overlay packs register additional presets
+ * at runtime (see OverlayMealBuffPresetLoader).
  * Runtime application lives in MealPhaseHandler.
  */
 
@@ -33,17 +35,27 @@ export const FOOD_TAG_OPTIONS = [
  * @property {string} label
  * @property {string} description
  * @property {boolean} wellFed
- * @property {Object|null} buff
+ * @property {Object|Object[]|null} [buff]
+ * @property {boolean} [partyMeal]
+ * @property {string[]} [satiates]
+ * @property {string} [foodTag]
+ * @property {number|null} [spoilsAfter]
+ * @property {string} [linkedRecipeId]
+ * @property {string} [tier]
+ * @property {string} [_overlayId]
+ * @property {string} [_packLabel]
+ * @property {"base"|"overlay"} [_source]
  */
 
 /** @type {MealBuffPreset[]} */
-export const MEAL_BUFF_PRESETS = [
+const BASE_MEAL_BUFF_PRESETS = [
     {
         id: "none",
         label: "No buff",
         description: "Satiates only. No Well Fed slot interaction.",
         wellFed: false,
-        buff: null
+        buff: null,
+        _source: "base"
     },
     {
         id: "temp_hp_prof",
@@ -55,7 +67,8 @@ export const MEAL_BUFF_PRESETS = [
             formula: "@prof",
             duration: "untilLongRest",
             target: "self"
-        }
+        },
+        _source: "base"
     },
     {
         id: "temp_hp_prof_1d4",
@@ -67,7 +80,8 @@ export const MEAL_BUFF_PRESETS = [
             formula: "@prof + 1d4",
             duration: "untilLongRest",
             target: "self"
-        }
+        },
+        _source: "base"
     },
     {
         id: "temp_hp_prof_party",
@@ -79,7 +93,8 @@ export const MEAL_BUFF_PRESETS = [
             formula: "@prof",
             duration: "untilLongRest",
             target: "party"
-        }
+        },
+        _source: "base"
     },
     {
         id: "exhaustion_save_15",
@@ -91,7 +106,8 @@ export const MEAL_BUFF_PRESETS = [
             formula: "15",
             duration: "immediate",
             target: "self"
-        }
+        },
+        _source: "base"
     },
     {
         id: "advantage_con",
@@ -103,7 +119,8 @@ export const MEAL_BUFF_PRESETS = [
             save: { ability: "con" },
             duration: "nextSave",
             target: "self"
-        }
+        },
+        _source: "base"
     },
     {
         id: "heal_prof",
@@ -115,7 +132,8 @@ export const MEAL_BUFF_PRESETS = [
             formula: "@prof",
             duration: "immediate",
             target: "self"
-        }
+        },
+        _source: "base"
     },
     {
         id: "hit_die_1",
@@ -127,9 +145,82 @@ export const MEAL_BUFF_PRESETS = [
             formula: "1",
             duration: "immediate",
             target: "self"
-        }
+        },
+        _source: "base"
     }
 ];
+
+/** @type {Map<string, MealBuffPreset>} */
+const overlayPresetsById = new Map();
+
+/** @type {Map<string, Set<string>>} */
+const overlayPresetIdsByOverlay = new Map();
+
+/** Base presets only (backward compatible export). */
+export const MEAL_BUFF_PRESETS = BASE_MEAL_BUFF_PRESETS;
+
+/**
+ * @returns {MealBuffPreset[]}
+ */
+export function getBaseMealBuffPresets() {
+    return BASE_MEAL_BUFF_PRESETS;
+}
+
+/**
+ * @returns {MealBuffPreset[]}
+ */
+export function getOverlayMealBuffPresets() {
+    return [...overlayPresetsById.values()];
+}
+
+/**
+ * @returns {MealBuffPreset[]}
+ */
+export function getAllMealBuffPresets() {
+    return [...BASE_MEAL_BUFF_PRESETS, ...overlayPresetsById.values()];
+}
+
+/**
+ * @param {MealBuffPreset} preset
+ * @param {{ overlayId: string, packLabel?: string }} meta
+ */
+export function registerOverlayMealBuffPreset(preset, meta) {
+    if (!preset?.id) return;
+
+    const existing = overlayPresetsById.get(preset.id);
+    if (existing && existing._overlayId !== meta.overlayId) return;
+
+    const entry = foundry.utils.deepClone(preset);
+    entry._overlayId = meta.overlayId;
+    entry._packLabel = meta.packLabel ?? meta.overlayId;
+    entry._source = "overlay";
+
+    overlayPresetsById.set(entry.id, entry);
+    if (!overlayPresetIdsByOverlay.has(meta.overlayId)) {
+        overlayPresetIdsByOverlay.set(meta.overlayId, new Set());
+    }
+    overlayPresetIdsByOverlay.get(meta.overlayId).add(entry.id);
+}
+
+/**
+ * @param {string} overlayId
+ */
+export function unregisterOverlayMealBuffPresetsForOverlay(overlayId) {
+    const ids = overlayPresetIdsByOverlay.get(overlayId);
+    if (!ids) return;
+    for (const id of ids) overlayPresetsById.delete(id);
+    overlayPresetIdsByOverlay.delete(overlayId);
+}
+
+/**
+ * @param {string} overlayId
+ * @returns {number}
+ */
+export function unregisterOverlayMealBuffPresetsForOverlayAndCount(overlayId) {
+    const count = overlayPresetIdsByOverlay.get(overlayId)?.size ?? 0;
+    unregisterOverlayMealBuffPresetsForOverlay(overlayId);
+    return count;
+}
 
 /**
  * @param {Object|null|undefined} buff
@@ -137,21 +228,27 @@ export const MEAL_BUFF_PRESETS = [
  */
 export function formatMealBuffPreview(buff) {
     if (!buff) return null;
-    const label = MEAL_BUFF_TYPE_LABELS[buff.type] ?? buff.type;
-    const duration = MEAL_BUFF_DURATION_LABELS[buff.duration] ?? buff.duration ?? "";
-    let detail = buff.formula ?? "";
-    if (buff.type === "advantage") {
-        const ab = buff.save?.ability ?? buff.formula ?? "con";
+    const primary = Array.isArray(buff) ? buff[0] : buff;
+    if (!primary?.type) return null;
+
+    const label = MEAL_BUFF_TYPE_LABELS[primary.type] ?? primary.type;
+    const duration = MEAL_BUFF_DURATION_LABELS[primary.duration] ?? primary.duration ?? "";
+    let detail = primary.formula ?? "";
+    if (primary.type === "advantage") {
+        const ab = primary.save?.ability ?? primary.formula ?? "con";
         detail = String(ab).toUpperCase();
     }
-    if (buff.type === "resistance") {
-        detail = buff.damageType ?? buff.formula ?? "";
+    if (primary.type === "resistance") {
+        detail = primary.damageType ?? primary.formula ?? "";
+    }
+    if (Array.isArray(buff) && buff.length > 1) {
+        detail = detail ? `${detail} +${buff.length - 1}` : `+${buff.length - 1} more`;
     }
     return {
         label,
         formula: detail,
         duration,
-        target: buff.target ?? "self"
+        target: primary.target ?? "self"
     };
 }
 
@@ -171,20 +268,66 @@ export function mealBuffsEqual(a, b) {
 }
 
 /**
+ * @param {MealBuffPreset} preset
+ * @returns {Object}
+ */
+function presetMealSnapshot(preset) {
+    const snap = {
+        wellFed: preset.wellFed === true,
+        buff: preset.buff ?? null
+    };
+    if (preset.partyMeal === true) snap.partyMeal = true;
+    if (Array.isArray(preset.satiates) && preset.satiates.length) {
+        snap.satiates = [...preset.satiates].sort();
+    }
+    if (preset.foodTag) snap.foodTag = preset.foodTag;
+    if (preset.spoilsAfter != null) snap.spoilsAfter = preset.spoilsAfter;
+    return snap;
+}
+
+/**
+ * @param {Object|null|undefined} rf
+ * @returns {Object}
+ */
+function flagsMealSnapshot(rf) {
+    const snap = {
+        wellFed: rf?.wellFed === true,
+        buff: rf?.buff ?? null
+    };
+    if (rf?.partyMeal === true) snap.partyMeal = true;
+    if (Array.isArray(rf?.satiates) && rf.satiates.length) {
+        snap.satiates = [...rf.satiates].sort();
+    }
+    if (rf?.foodTag) snap.foodTag = rf.foodTag;
+    if (rf?.spoilsAfter != null) snap.spoilsAfter = rf.spoilsAfter;
+    return snap;
+}
+
+/**
+ * @param {MealBuffPreset} preset
+ * @param {Object|null|undefined} rf
+ * @returns {boolean}
+ */
+export function mealBuffPresetMatchesFlags(preset, rf) {
+    try {
+        return JSON.stringify(presetMealSnapshot(preset)) === JSON.stringify(flagsMealSnapshot(rf));
+    } catch {
+        return false;
+    }
+}
+
+/**
  * @param {Object|null|undefined} rf - ionrift-respite flags object
  * @returns {string}
  */
 export function matchMealBuffPresetId(rf) {
     if (!rf) return "none";
-    const wellFed = rf.wellFed === true;
-    const buff = rf.buff ?? null;
+    if (!rf.wellFed && (rf.buff == null || rf.buff === undefined)) return "none";
 
-    for (const preset of MEAL_BUFF_PRESETS) {
-        if (preset.wellFed === wellFed && mealBuffsEqual(preset.buff, buff)) {
-            return preset.id;
-        }
+    for (const preset of getAllMealBuffPresets()) {
+        if (mealBuffPresetMatchesFlags(preset, rf)) return preset.id;
     }
-    if (!wellFed && buff == null) return "none";
+    if (!rf.wellFed && rf.buff == null) return "none";
     return "custom";
 }
 
@@ -193,20 +336,47 @@ export function matchMealBuffPresetId(rf) {
  * @returns {MealBuffPreset|undefined}
  */
 export function getMealBuffPreset(presetId) {
-    return MEAL_BUFF_PRESETS.find(p => p.id === presetId);
+    return BASE_MEAL_BUFF_PRESETS.find(p => p.id === presetId)
+        ?? overlayPresetsById.get(presetId);
 }
 
 /**
- * Apply a preset onto ionrift-respite flags (wellFed + buff only).
+ * @param {string} presetId
+ * @returns {{ packLabel: string, overlayId: string }|null}
+ */
+export function getMealBuffPresetAttribution(presetId) {
+    const preset = getMealBuffPreset(presetId);
+    if (!preset?._packLabel || !preset._overlayId) return null;
+    return {
+        packLabel: preset._packLabel,
+        overlayId: preset._overlayId
+    };
+}
+
+/**
+ * Apply a preset onto ionrift-respite flags (meal effect fields).
  * @param {Object} rf - Existing flags object to mutate
  * @param {string} presetId
  */
 export function applyMealBuffPresetToFlags(rf, presetId) {
     const preset = getMealBuffPreset(presetId);
     if (!preset) return;
+
     rf.wellFed = preset.wellFed;
-    if (preset.buff) rf.buff = foundry.utils.deepClone(preset.buff);
+    if (preset.buff != null) rf.buff = foundry.utils.deepClone(preset.buff);
     else delete rf.buff;
+
+    if (preset.partyMeal === true) rf.partyMeal = true;
+    else delete rf.partyMeal;
+
+    if (Array.isArray(preset.satiates)) rf.satiates = [...preset.satiates];
+    else delete rf.satiates;
+
+    if (preset.foodTag) rf.foodTag = preset.foodTag;
+    else delete rf.foodTag;
+
+    if (preset.spoilsAfter != null) rf.spoilsAfter = preset.spoilsAfter;
+    else delete rf.spoilsAfter;
 }
 
 /**
@@ -238,4 +408,10 @@ export function defaultFoodTagForProfession(professionId) {
  */
 export function defaultSatiatesForProfession(professionId) {
     return professionId === "brewing" ? ["water"] : ["food"];
+}
+
+/** @private test helper */
+export function _resetOverlayMealBuffPresetsForTests() {
+    overlayPresetsById.clear();
+    overlayPresetIdsByOverlay.clear();
 }
