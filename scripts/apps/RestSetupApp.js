@@ -110,6 +110,7 @@ import { CampfireMakeCampDialog } from "./CampfireMakeCampDialog.js";
 import { CampfireEmbed } from "./CampfireEmbed.js";
 
 import { STUB_RECIPES } from "../data/stub-content.js";
+import { applyCustomRecipesToEngine } from "../services/RecipeCatalog.js";
 import { ShortRestApp } from "./ShortRestApp.js";
 import {
     registerActiveRestApp,
@@ -1677,6 +1678,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const importedPacks = game.settings.get(MODULE_ID, "importedPacks") ?? {};
 
         let totalRecipes = 0, totalPools = 0;
+        const loadedProfessions = new Set();
 
         for (const [packId, packData] of Object.entries(importedPacks)) {
             if (enabledPacks[packId] === false) {
@@ -1699,6 +1701,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         if (Array.isArray(recipeList) && recipeList.length) {
                             this._craftingEngine.load(profId, recipeList);
                             totalRecipes += recipeList.length;
+                            loadedProfessions.add(profId);
                         }
                     }
                     loaded.push(`${totalRecipes} recipes`);
@@ -1721,14 +1724,40 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
-        // Fall back to built-in stub content when no packs provided data
-        if (totalRecipes === 0) {
-            for (const [profId, recipeList] of Object.entries(STUB_RECIPES)) {
-                this._craftingEngine.load(profId, recipeList);
+        try {
+            const { OverlayProfessionLoader } = await import("../services/OverlayProfessionLoader.js");
+            const overlayPacks = await OverlayProfessionLoader.loadAll();
+            for (const pack of overlayPacks) {
+                for (const [profId, recipeList] of Object.entries(pack.recipes ?? {})) {
+                    if (!Array.isArray(recipeList) || !recipeList.length) continue;
+                    this._craftingEngine.load(profId, recipeList);
+                    totalRecipes += recipeList.length;
+                    loadedProfessions.add(profId);
+                }
+            }
+            if (overlayPacks.length) {
+                Logger.log(`${MODULE_ID} | Overlay packs: loaded recipes for [${[...loadedProfessions].join(", ")}]`);
             }
 
-            Logger.log(`${MODULE_ID} | Using built-in stub recipes`);
+            const huntYields = await OverlayProfessionLoader.loadHuntYields();
+            if (huntYields && this._travel) {
+                this._travel.loadHuntYieldsFromData(huntYields);
+                Logger.log(`${MODULE_ID} | Overlay hunt yields: ${Object.keys(huntYields).length} terrain(s)`);
+            }
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Overlay profession load failed:`, e);
         }
+
+        for (const [profId, recipeList] of Object.entries(STUB_RECIPES)) {
+            if (loadedProfessions.has(profId)) continue;
+            this._craftingEngine.load(profId, recipeList);
+            totalRecipes += recipeList.length;
+        }
+        if (!loadedProfessions.has("cooking") || !loadedProfessions.has("brewing")) {
+            Logger.log(`${MODULE_ID} | Stub recipes applied for uncovered profession(s)`);
+        }
+
+        applyCustomRecipesToEngine(this._craftingEngine);
     }
 
 

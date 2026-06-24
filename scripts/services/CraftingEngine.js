@@ -26,6 +26,20 @@ import { normalizeRecipeOutputImg } from "./RecipeIcons.js";
 
 const MODULE_ID = "ionrift-respite";
 
+/**
+ * Primary ingredient name plus optional alternates (case-insensitive).
+ * @param {{ name?: string, alternates?: string[] }} ingredient
+ * @returns {string[]}
+ */
+export function ingredientNameOptions(ingredient) {
+    const primary = String(ingredient?.name ?? "").toLowerCase().trim();
+    if (!primary) return [];
+    const alts = (ingredient?.alternates ?? [])
+        .map(name => String(name).toLowerCase().trim())
+        .filter(Boolean);
+    return [...new Set([primary, ...alts])];
+}
+
 export class CraftingEngine {
 
     constructor() {
@@ -421,9 +435,10 @@ export class CraftingEngine {
             if (ing.resourceType === "water" && actor) {
                 available = this._countWaterPints(actor);
             } else {
-                const key = ing.name.toLowerCase().trim();
-                const entry = inventory.get(key);
-                available = entry?.quantity ?? 0;
+                available = 0;
+                for (const key of ingredientNameOptions(ing)) {
+                    available += inventory.get(key)?.quantity ?? 0;
+                }
             }
 
             const met = available >= effectiveQty;
@@ -487,34 +502,38 @@ export class CraftingEngine {
                 continue;
             }
 
-            const key = ing.name.toLowerCase().trim();
             let remaining = required;
+            const nameOrder = ingredientNameOptions(ing);
 
-            const matches = actor.items.filter(i => i.name.toLowerCase().trim() === key);
-            matches.sort((a, b) => {
-                const ka = SpoilageClock.getConsumeSortKey(a);
-                const kb = SpoilageClock.getConsumeSortKey(b);
-                if (ka !== kb) return ka - kb;
-                return String(a.id).localeCompare(String(b.id));
-            });
-            const updates = [];
-            const deletes = [];
-
-            for (const item of matches) {
+            for (const nameKey of nameOrder) {
                 if (remaining <= 0) break;
-                const qty = item.system?.quantity ?? 1;
 
-                if (qty <= remaining) {
-                    deletes.push(item.id);
-                    remaining -= qty;
-                } else {
-                    updates.push({ _id: item.id, "system.quantity": qty - remaining });
-                    remaining = 0;
+                const matches = actor.items.filter(i => i.name.toLowerCase().trim() === nameKey);
+                matches.sort((a, b) => {
+                    const ka = SpoilageClock.getConsumeSortKey(a);
+                    const kb = SpoilageClock.getConsumeSortKey(b);
+                    if (ka !== kb) return ka - kb;
+                    return String(a.id).localeCompare(String(b.id));
+                });
+                const updates = [];
+                const deletes = [];
+
+                for (const item of matches) {
+                    if (remaining <= 0) break;
+                    const qty = item.system?.quantity ?? 1;
+
+                    if (qty <= remaining) {
+                        deletes.push(item.id);
+                        remaining -= qty;
+                    } else {
+                        updates.push({ _id: item.id, "system.quantity": qty - remaining });
+                        remaining = 0;
+                    }
                 }
-            }
 
-            if (updates.length) await actor.updateEmbeddedDocuments("Item", updates);
-            if (deletes.length) await actor.deleteEmbeddedDocuments("Item", deletes);
+                if (updates.length) await actor.updateEmbeddedDocuments("Item", updates);
+                if (deletes.length) await actor.deleteEmbeddedDocuments("Item", deletes);
+            }
         }
     }
 
