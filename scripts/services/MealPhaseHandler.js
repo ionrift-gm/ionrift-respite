@@ -22,6 +22,8 @@ import {
     getMealBuffHandler,
     warnUnknownMealBuffType
 } from "./MealBuffHandlerRegistry.js";
+import { rollBuffFormula, rollForChat, restoreHitDice } from "./MealBuffResolveHelpers.js";
+import { resolveStubMealBuff } from "./MealBuffStubFallback.js";
 
 function _activeGrantLedger() {
     return game.ionrift?.respite?.getActiveApp?.()?._grantLedger ?? null;
@@ -1093,102 +1095,31 @@ export class MealPhaseHandler {
             return dispatchMealBuffHandler(actor, buff, { chatDetail });
         }
 
-        switch (buff.type) {
-            case "temp_hp": {
-                const { total, roll } = await MealPhaseHandler._rollBuffFormula(actor, buff.formula);
-                if (total <= 0) return null;
-                const buffAdapter = game.ionrift?.respite?.adapter;
-                if (buffAdapter) {
-                    await buffAdapter.applyTempHP(actor, total);
-                } else {
-                    const cur = foundry.utils.getProperty(actor, "system.attributes.hp.temp") ?? 0;
-                    const next = Math.max(cur, total);
-                    await actor.update({ "system.attributes.hp.temp": next });
-                }
-                const summary = chatDetail ? `temp HP +${total}` : `temp HP +${total}`;
-                return { summary, roll: MealPhaseHandler._rollForChat(roll) };
-            }
-            case "heal": {
-                const { total: heal, roll } = await MealPhaseHandler._rollBuffFormula(actor, buff.formula);
-                if (heal <= 0) return null;
-                const healAdapter = game.ionrift?.respite?.adapter;
-                if (healAdapter) {
-                    await healAdapter.applyHPRestore(actor, heal);
-                } else {
-                    const hp = foundry.utils.getProperty(actor, "system.attributes.hp.value") ?? 0;
-                    const max = foundry.utils.getProperty(actor, "system.attributes.hp.effectivemax")
-                        ?? foundry.utils.getProperty(actor, "system.attributes.hp.max") ?? hp;
-                    await actor.update({ "system.attributes.hp.value": Math.min(max, hp + heal) });
-                }
-                const summary = chatDetail ? `healing +${heal}` : `healing +${heal}`;
-                return { summary, roll: MealPhaseHandler._rollForChat(roll) };
-            }
-            case "exhaustion_save": {
-                const dc = Number(buff.save?.dc ?? buff.formula ?? 15);
-                const exAdapter = game.ionrift?.respite?.adapter;
-                const conSaveBonus = exAdapter
-                    ? exAdapter.getSaveBonus(actor, "con")
-                    : (() => {
-                        const rollData = actor.getRollData?.() ?? {};
-                        const fromRollData = rollData?.abilities?.con?.save;
-                        if (typeof fromRollData === "number") return fromRollData;
-                        const conMod = actor.system?.abilities?.con?.mod ?? 0;
-                        const profBonus = actor.system?.attributes?.prof ?? 0;
-                        const proficient = actor.system?.abilities?.con?.proficient ?? 0;
-                        return conMod + (proficient > 0 ? Math.floor(profBonus * proficient) : 0);
-                    })();
-                const roll = await new Roll(`1d20 + ${conSaveBonus}`).evaluate();
-                const total = roll.total;
-                const pass = total >= dc;
-                if (pass) {
-                    if (exAdapter) {
-                        await exAdapter.applyExhaustionDelta(actor, -1);
-                    } else {
-                        const ex = foundry.utils.getProperty(actor, "system.attributes.exhaustion") ?? 0;
-                        if (ex > 0) await actor.update({ "system.attributes.exhaustion": ex - 1 });
-                    }
-                }
-                const detail = `1d20 + ${conSaveBonus} = ${total} vs DC ${dc} (${pass ? "pass" : "fail"})`;
-                await ChatMessage.create({
-                    content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>Meal Buff: Exhaustion Save</strong></p><p><i class="fas fa-dice-d20"></i> <strong>${actor.name}</strong> ${detail}. ${pass ? "Removes 1 exhaustion." : "No exhaustion removed."}</p></div>`,
-                    rolls: [roll],
-                    speaker: ChatMessage.getSpeaker({ actor })
-                });
-                const summary = chatDetail ? `exhaustion save (${detail})` : `exhaustion save (${pass ? "pass" : "fail"})`;
-                return { summary, roll };
-            }
-            case "hit_die": {
-                const raw = buff.formula ?? "1";
-                let n = parseInt(raw, 10);
-                if (Number.isNaN(n) || n <= 0) {
-                    const r = await new Roll(String(raw), actor.getRollData()).evaluate();
-                    n = Math.max(0, Math.floor(Number(r.total) || 0));
-                }
-                const restored = await MealPhaseHandler._restoreHitDice(actor, n);
-                if (restored > 0) {
-                    await ChatMessage.create({
-                        content: `<div class="respite-recovery-chat"><p><i class="fas fa-heart"></i> <strong>${actor.name}</strong> restores <strong>${restored}</strong> hit die.</p></div>`,
-                        speaker: ChatMessage.getSpeaker({ actor })
-                    });
-                }
-                const summary = chatDetail ? `hit die +${restored}` : `hit die +${restored}`;
-                return { summary, roll: null };
-            }
-            case "advantage":
-            case "resistance":
-                return null;
-            default:
-                warnUnknownMealBuffType(buff.type);
-                return null;
+        const stubResult = await resolveStubMealBuff(actor, buff, { chatDetail });
+        if (stubResult !== null || MealPhaseHandler._isKnownStubBuffType(buff.type)) {
+            return stubResult;
         }
+
+        warnUnknownMealBuffType(buff.type);
+        return null;
+    }
+
+    /** @private */
+    static _isKnownStubBuffType(type) {
+        return ["temp_hp", "heal", "exhaustion_save", "hit_die", "advantage", "resistance"].includes(type);
     }
 
     /** Include roll on chat only when the formula contains dice (Dice So Nice, inline breakdown). */
     static _rollForChat(roll) {
-        if (!roll) return null;
-        const formula = String(roll.formula ?? "");
-        if (roll.dice?.length > 0 || /(^|[^0-9])d\d+/i.test(formula)) return roll;
-        return null;
+        return rollForChat(roll);
+    }
+
+    static async _rollBuffFormula(actor, formula) {
+        return rollBuffFormula(actor, formula);
+    }
+
+    static async _restoreHitDice(actor, amount) {
+        return restoreHitDice(actor, amount);
     }
 
     static _buffSummaryLabel(buff) {
@@ -1215,41 +1146,6 @@ export class MealPhaseHandler {
             return `resistance (${dt}, ${buff.duration ?? "untilLongRest"})`;
         }
         return buff.type;
-    }
-
-    static async _rollBuffFormula(actor, formula) {
-        if (!formula) return { total: 0, roll: null };
-        try {
-            const roll = new Roll(String(formula), actor.getRollData?.() ?? {});
-            await roll.evaluate();
-            return { total: Math.floor(Number(roll.total) || 0), roll };
-        } catch {
-            return { total: 0, roll: null };
-        }
-    }
-
-    static async _restoreHitDice(actor, amount) {
-        if (amount <= 0) return 0;
-        const hdAdapter = game.ionrift?.respite?.adapter;
-        if (hdAdapter) {
-            await hdAdapter.applyHDRestore(actor, amount);
-            return amount;
-        }
-        if (game.system.id !== "dnd5e") return 0;
-        let remaining = amount;
-        const classes = actor.items.filter(i => i.type === "class");
-        classes.sort((a, b) => (b.system?.levels ?? 0) - (a.system?.levels ?? 0));
-        let restored = 0;
-        for (const cls of classes) {
-            if (remaining <= 0) break;
-            const used = cls.system?.hitDiceUsed ?? 0;
-            if (used <= 0) continue;
-            const delta = Math.min(used, remaining);
-            await cls.update({ "system.hitDiceUsed": used - delta });
-            remaining -= delta;
-            restored += delta;
-        }
-        return restored;
     }
 
     /**
