@@ -63,19 +63,14 @@ export function isHomebrewProfessionSupported(professionId) {
 
 /**
  * Build the ordered homebrew profession list from known recipe sources.
- * @param {{ stubRecipeKeys?: string[], overlayProfessions?: string[], storedCustomKeys?: string[] }} sources
+ * Cooking is always available. Other professions require an active overlay catalogue.
+ * @param {{ overlayProfessions?: string[] }} sources
  * @returns {string[]}
  */
 export function collectHomebrewProfessionIds(sources = {}) {
     const ids = new Set(["cooking"]);
 
-    for (const profId of sources.stubRecipeKeys ?? []) {
-        if (isHomebrewProfessionSupported(profId)) ids.add(profId);
-    }
     for (const profId of sources.overlayProfessions ?? []) {
-        if (isHomebrewProfessionSupported(profId)) ids.add(profId);
-    }
-    for (const profId of sources.storedCustomKeys ?? []) {
         if (isHomebrewProfessionSupported(profId)) ids.add(profId);
     }
 
@@ -90,30 +85,16 @@ export function collectHomebrewProfessionIds(sources = {}) {
  * @returns {Promise<string[]>}
  */
 export async function getHomebrewProfessionIds() {
-    const stubRecipeKeys = Object.keys(STUB_RECIPES).filter(profId => {
-        const list = STUB_RECIPES[profId];
-        return Array.isArray(list) && list.length > 0;
-    });
-
     let overlayProfessions = [];
     try {
         const { OverlayProfessionLoader } = await import("./OverlayProfessionLoader.js");
+        OverlayProfessionLoader.invalidate();
         overlayProfessions = [...await OverlayProfessionLoader.activeRecipeProfessions()];
     } catch {
         overlayProfessions = [];
     }
 
-    const stored = game.settings.get(MODULE_ID, "customRecipes") ?? {};
-    const storedCustomKeys = Object.keys(stored).filter(profId => {
-        const list = stored[profId];
-        return Array.isArray(list) && list.length > 0;
-    });
-
-    return collectHomebrewProfessionIds({
-        stubRecipeKeys,
-        overlayProfessions,
-        storedCustomKeys
-    });
+    return collectHomebrewProfessionIds({ overlayProfessions });
 }
 
 /**

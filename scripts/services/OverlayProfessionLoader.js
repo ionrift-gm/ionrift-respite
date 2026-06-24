@@ -12,6 +12,7 @@
  * cached per session and invalidated on `ionrift.overlayContentChanged`.
  */
 import { Logger } from "../lib/Logger.js";
+import { PROFESSION_TOOL_REQUIRED } from "./RecipeCatalog.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -98,8 +99,12 @@ export class OverlayProfessionLoader {
         const loaded = await this.loadAll();
         const professions = new Set();
         for (const pack of loaded) {
-            for (const [profId, list] of Object.entries(pack.recipes ?? {})) {
-                if (Array.isArray(list) && list.length) professions.add(profId);
+            const recipes = pack.recipes ?? {};
+            if (Array.isArray(recipes)) continue;
+            for (const [profId, list] of Object.entries(recipes)) {
+                if (!Array.isArray(list) || !list.length) continue;
+                if (!Object.prototype.hasOwnProperty.call(PROFESSION_TOOL_REQUIRED, profId)) continue;
+                professions.add(profId);
             }
         }
         return professions;
