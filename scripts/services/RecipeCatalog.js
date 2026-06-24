@@ -9,8 +9,24 @@ const MODULE_ID = "ionrift-respite";
 
 export const CUSTOM_RECIPE_MAX_PER_PROFESSION = 20;
 
-/** Phase 2 homebrew: professions with recipe authoring and CraftingEngine integration. */
+/**
+ * Cooking always ships with homebrew authoring. Other professions appear when stub
+ * or overlay recipe catalogues are active, or when the world already stores
+ * custom recipes for that profession. Prefer {@link getHomebrewProfessionIds}.
+ */
 export const HOMEBREW_PROFESSION_IDS = ["cooking"];
+
+/** Labels and icons for the homebrew recipe editor profession picker. */
+export const HOMEBREW_PROFESSION_DISPLAY = {
+    cooking: { label: "Cooking", icon: "fas fa-utensils" },
+    brewing: { label: "Brewing", icon: "fas fa-wine-bottle" },
+    tailoring: { label: "Tailoring", icon: "fas fa-scissors" },
+    leatherworking: { label: "Leatherworking", icon: "fas fa-shield-alt" },
+    alchemy: { label: "Alchemy", icon: "fas fa-flask" },
+    fletching: { label: "Fletching", icon: "fas fa-bow-arrow" },
+    tinkering: { label: "Tinkering", icon: "fas fa-cog" },
+    smithing: { label: "Smithing", icon: "fas fa-hammer" }
+};
 
 /** Canonical tool proficiency key per crafting profession (matches activity prerequisites). */
 export const PROFESSION_TOOL_REQUIRED = {
@@ -18,8 +34,10 @@ export const PROFESSION_TOOL_REQUIRED = {
     brewing: "brewer",
     alchemy: "alchemist",
     tailoring: "weaver",
+    leatherworking: "leatherworker",
     fletching: "woodcarver",
-    tinkering: "tinker"
+    tinkering: "tinker",
+    smithing: "smith"
 };
 
 /** Display labels for locked tool proficiency in the recipe editor. */
@@ -28,9 +46,75 @@ export const TOOL_PROFICIENCY_LABELS = {
     brewer: "Brewer's supplies",
     alchemist: "Alchemist's supplies",
     weaver: "Weaver's tools",
+    tailor: "Tailor's tools",
+    leatherworker: "Leatherworker's tools",
     woodcarver: "Woodcarver's tools",
-    tinker: "Tinker's tools"
+    tinker: "Tinker's tools",
+    smith: "Smith's tools"
 };
+
+/**
+ * @param {string} professionId
+ * @returns {boolean}
+ */
+export function isHomebrewProfessionSupported(professionId) {
+    return Boolean(professionId && PROFESSION_TOOL_REQUIRED[professionId]);
+}
+
+/**
+ * Build the ordered homebrew profession list from known recipe sources.
+ * @param {{ stubRecipeKeys?: string[], overlayProfessions?: string[], storedCustomKeys?: string[] }} sources
+ * @returns {string[]}
+ */
+export function collectHomebrewProfessionIds(sources = {}) {
+    const ids = new Set(["cooking"]);
+
+    for (const profId of sources.stubRecipeKeys ?? []) {
+        if (isHomebrewProfessionSupported(profId)) ids.add(profId);
+    }
+    for (const profId of sources.overlayProfessions ?? []) {
+        if (isHomebrewProfessionSupported(profId)) ids.add(profId);
+    }
+    for (const profId of sources.storedCustomKeys ?? []) {
+        if (isHomebrewProfessionSupported(profId)) ids.add(profId);
+    }
+
+    return [
+        "cooking",
+        ...[...ids].filter(id => id !== "cooking").sort((a, b) => a.localeCompare(b))
+    ];
+}
+
+/**
+ * Professions available in the homebrew recipe editor for this world session.
+ * @returns {Promise<string[]>}
+ */
+export async function getHomebrewProfessionIds() {
+    const stubRecipeKeys = Object.keys(STUB_RECIPES).filter(profId => {
+        const list = STUB_RECIPES[profId];
+        return Array.isArray(list) && list.length > 0;
+    });
+
+    let overlayProfessions = [];
+    try {
+        const { OverlayProfessionLoader } = await import("./OverlayProfessionLoader.js");
+        overlayProfessions = [...await OverlayProfessionLoader.activeRecipeProfessions()];
+    } catch {
+        overlayProfessions = [];
+    }
+
+    const stored = game.settings.get(MODULE_ID, "customRecipes") ?? {};
+    const storedCustomKeys = Object.keys(stored).filter(profId => {
+        const list = stored[profId];
+        return Array.isArray(list) && list.length > 0;
+    });
+
+    return collectHomebrewProfessionIds({
+        stubRecipeKeys,
+        overlayProfessions,
+        storedCustomKeys
+    });
+}
 
 /**
  * Tool proficiency key for a profession, or undefined when no tool gate applies.
@@ -201,7 +285,8 @@ export function sanitizeCustomRecipes(raw) {
     if (!raw || typeof raw !== "object") return {};
     const out = {};
 
-    for (const profId of HOMEBREW_PROFESSION_IDS) {
+    for (const profId of Object.keys(raw)) {
+        if (!isHomebrewProfessionSupported(profId)) continue;
         const list = raw[profId];
         if (!Array.isArray(list)) continue;
 
@@ -269,7 +354,10 @@ export function applyCustomRecipesToEngine(engine) {
     }
 
     if (homebrewOnly) {
-        for (const profId of HOMEBREW_PROFESSION_IDS) {
+        for (const profId of [...engine.recipes.keys()]) {
+            const featOnly = profId === "cooking" && (engine.recipes.get(profId) ?? [])
+                .some(recipe => recipe.chefFeatRequired);
+            if (featOnly) continue;
             if (!customByProf[profId]?.length) engine.recipes.delete(profId);
         }
     }

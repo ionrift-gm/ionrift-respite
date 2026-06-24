@@ -7,6 +7,15 @@
  */
 
 import { listMealBuffHandlers } from "./MealBuffHandlerRegistry.js";
+import { PROFESSION_TOOL_REQUIRED } from "./RecipeCatalog.js";
+
+/** Crafting professions that may attach output buffs. */
+export const MEAL_BUFF_PROFESSION_IDS = new Set(Object.keys(PROFESSION_TOOL_REQUIRED));
+
+/** Default profession when an overlay does not encode one in preset ids. */
+const OVERLAY_DEFAULT_PROFESSION = {
+    "respite-cooking-overlay": "cooking"
+};
 
 export const MEAL_BUFF_DURATION_LABELS = {
     immediate: "Immediate",
@@ -231,6 +240,86 @@ export function getUniqueOverlayMealBuffPresets() {
 }
 
 /**
+ * Infer the crafting profession a preset belongs to.
+ * @param {MealBuffPreset|null|undefined} preset
+ * @returns {string|null}
+ */
+export function inferMealBuffPresetProfession(preset) {
+    if (typeof preset?.professionId === "string" && preset.professionId) {
+        return preset.professionId;
+    }
+
+    const handlerId = preset?._handlerId ?? "";
+    const handlerPrefix = handlerId.split(":")[0];
+    if (MEAL_BUFF_PROFESSION_IDS.has(handlerPrefix)) return handlerPrefix;
+
+    const idPrefix = String(preset?.id ?? "").split(/[.:]/)[0];
+    if (MEAL_BUFF_PROFESSION_IDS.has(idPrefix)) return idPrefix;
+
+    const overlayDefault = OVERLAY_DEFAULT_PROFESSION[preset?._overlayId ?? ""];
+    if (overlayDefault) return overlayDefault;
+
+    return null;
+}
+
+/**
+ * @param {MealBuffPreset|null|undefined} preset
+ * @param {string} professionId
+ * @returns {boolean}
+ */
+export function mealBuffPresetAppliesToProfession(preset, professionId) {
+    const inferred = inferMealBuffPresetProfession(preset);
+    if (inferred == null) {
+        return professionId === "cooking" || professionId === "brewing";
+    }
+    return inferred === professionId;
+}
+
+/**
+ * @param {MealBuffPreset|null|undefined} preset
+ * @param {"standard"|"ambitious"} tier
+ * @returns {boolean}
+ */
+export function mealBuffPresetAppliesToTier(preset, tier) {
+    const presetTier = preset?.tier;
+    if (!presetTier) return true;
+    if (tier === "ambitious") return presetTier !== "standard";
+    return presetTier !== "ambitious";
+}
+
+/**
+ * True when a handler preset repeats a generic base homebrew buff.
+ * @param {MealBuffPreset} preset
+ * @returns {boolean}
+ */
+export function isDuplicateHandlerMealBuffPreset(preset) {
+    if (preset?._source !== "handler") return false;
+    return BASE_MEAL_BUFF_PRESETS.some(base =>
+        base.id !== "none" && mealBuffEffectEqual(base, preset)
+    );
+}
+
+/**
+ * Buff presets available for a profession and output tier in the homebrew editor.
+ * @param {string} professionId
+ * @param {{ tier?: "standard"|"ambitious" }} [options]
+ * @returns {{ base: MealBuffPreset[], handlers: MealBuffPreset[], overlay: MealBuffPreset[] }}
+ */
+export function getMealBuffPresetsForProfession(professionId, { tier = "standard" } = {}) {
+    const matches = preset =>
+        mealBuffPresetAppliesToProfession(preset, professionId)
+        && mealBuffPresetAppliesToTier(preset, tier);
+
+    const base = BASE_MEAL_BUFF_PRESETS.filter(matches);
+    const handlers = getHandlerAuthoredMealBuffPresets()
+        .filter(preset => matches(preset) && !isDuplicateHandlerMealBuffPreset(preset));
+    const overlay = getOverlayMealBuffPresets()
+        .filter(preset => matches(preset) && !isDuplicateOfBaseMealBuffPreset(preset));
+
+    return { base, handlers, overlay };
+}
+
+/**
  * Presets derived from registered meal buff handler plugins.
  * @returns {MealBuffPreset[]}
  */
@@ -239,7 +328,7 @@ export function getHandlerAuthoredMealBuffPresets() {
         .filter(handler => handler.authoringPreset)
         .map(handler => {
             const preset = handler.authoringPreset;
-            return {
+            const entry = {
                 id: preset.id ?? `handler:${handler.id}`,
                 label: preset.label ?? handler.label,
                 description: preset.description ?? "",
@@ -249,11 +338,17 @@ export function getHandlerAuthoredMealBuffPresets() {
                 satiates: preset.satiates,
                 foodTag: preset.foodTag,
                 spoilsAfter: preset.spoilsAfter,
+                professionId: preset.professionId,
+                tier: preset.tier,
                 _source: "handler",
                 _handlerId: handler.id,
                 _overlayId: handler._overlayId,
                 _packLabel: handler._overlayId
             };
+            if (!entry.professionId) {
+                entry.professionId = inferMealBuffPresetProfession(entry);
+            }
+            return entry;
         });
 }
 
@@ -282,6 +377,9 @@ export function registerOverlayMealBuffPreset(preset, meta) {
     entry._overlayId = meta.overlayId;
     entry._packLabel = meta.packLabel ?? meta.overlayId;
     entry._source = "overlay";
+    if (!entry.professionId) {
+        entry.professionId = inferMealBuffPresetProfession(entry);
+    }
 
     overlayPresetsById.set(entry.id, entry);
     if (!overlayPresetIdsByOverlay.has(meta.overlayId)) {
@@ -356,7 +454,12 @@ export function formatMealBuffPresetTitle(preset) {
             .filter(Boolean)
             .join(" + ");
     }
-    return formatSingleBuffSummary(buffs[0], { partyMeal: preset.partyMeal });
+    const primary = buffs[0];
+    const summary = formatSingleBuffSummary(primary, { partyMeal: preset.partyMeal });
+    if (primary?.type && !MEAL_BUFF_TYPE_LABELS[primary.type] && preset.label) {
+        return preset.label;
+    }
+    return summary;
 }
 
 /**
@@ -366,6 +469,9 @@ export function formatMealBuffPresetTitle(preset) {
  */
 export function formatMealBuffPresetSubtitle(preset) {
     if (!preset) return "";
+    if (preset._source === "handler") {
+        return preset.description ?? "";
+    }
     if (preset._source === "overlay" && preset.label) {
         const tier = preset.tier === "ambitious" ? " · ambitious craft" : "";
         return `Pack reference: ${preset.label}${tier}`;
@@ -534,7 +640,8 @@ export function matchMealBuffPresetId(rf) {
  */
 export function getMealBuffPreset(presetId) {
     return BASE_MEAL_BUFF_PRESETS.find(p => p.id === presetId)
-        ?? overlayPresetsById.get(presetId);
+        ?? overlayPresetsById.get(presetId)
+        ?? getHandlerAuthoredMealBuffPresets().find(p => p.id === presetId);
 }
 
 /**
