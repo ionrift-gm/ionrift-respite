@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.3.5] - 2026-06-28
+
+### Fixed
+- Druidcraft now ignites the campfire, matching the other nature and fire cantrips.
+
 ## [3.3.4] - 2026-06-28
 
 ### Added
