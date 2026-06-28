@@ -281,7 +281,7 @@ export class DnD5eAdapter extends SystemAdapter {
         return [
             "Fire Bolt", "Produce Flame", "Create Bonfire",
             "Control Flames", "Prestidigitation",
-            "Elementalism", "Thaumaturgy"
+            "Elementalism", "Thaumaturgy", "Druidcraft"
         ];
     }
 }
