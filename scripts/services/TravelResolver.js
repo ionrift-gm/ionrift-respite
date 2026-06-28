@@ -140,54 +140,6 @@ export class TravelResolver {
     }
 
     /**
-     * Resolve a foraging attempt for a single character.
-     * @param {Actor} actor
-     * @param {string} terrainTag
-     * @returns {Object} { success, nat20, nat1, total, dc, items, mishap }
-     */
-    async resolveForage(actor, terrainTag) {
-        const roll = await new Roll("1d20 + @mod", {
-            mod: this._getSurvivalMod(actor)
-        }).evaluate();
-
-        const d20 = roll.dice[0]?.results?.[0]?.result ?? roll.total;
-        const nat20 = d20 === 20;
-        const nat1 = d20 === 1;
-        const total = roll.total;
-        const dc = FORAGE_DC;
-        const success = nat20 || (!nat1 && total >= dc);
-        const exceptional = total >= dc + 5;
-
-        let items = [];
-        let mishap = null;
-        let warningKey = null;
-
-        if (nat1) {
-            mishap = this._rollForageMishap(terrainTag);
-        } else if (success) {
-            const rolled = await this._rollForageItems(terrainTag, exceptional, nat20);
-            items = rolled.items;
-            warningKey = rolled.warningKey ?? null;
-        }
-
-        return {
-            activity: "forage",
-            actorId: actor.id,
-            actorName: actor.name,
-            success,
-            nat20,
-            nat1,
-            exceptional,
-            total,
-            dc,
-            roll,
-            items,
-            mishap,
-            warningKey
-        };
-    }
-
-    /**
      * Evaluate a foraging skill check without drawing loot.
      * @param {Actor} actor
      * @param {number} total
@@ -323,56 +275,6 @@ export class TravelResolver {
     async resolveHuntFromTotal(actor, terrainTag, total, dc) {
         const skillEval = this.evaluateHuntSkill(actor, total, dc);
         return await this.buildHuntResult(actor, terrainTag, total, dc, skillEval, []);
-    }
-
-    /**
-     * Resolve a hunting attempt for a single character.
-     * @param {Actor} actor
-     * @param {string} terrainTag
-     * @returns {Object} { success, nat20, nat1, total, dc, items, mishap }
-     */
-    async resolveHunt(actor, terrainTag) {
-        const roll = await new Roll("1d20 + @mod", {
-            mod: this._getSurvivalMod(actor)
-        }).evaluate();
-
-        const d20 = roll.dice[0]?.results?.[0]?.result ?? roll.total;
-        const nat20 = d20 === 20;
-        const nat1 = d20 === 1;
-        const total = roll.total;
-        const dc = HUNT_DC;
-        const success = nat20 || (!nat1 && total >= dc);
-        const exceptional = total >= dc + 5;
-
-        let items = [];
-        let mishap = null;
-
-        if (nat1) {
-            mishap = this._rollHuntMishap(terrainTag);
-        } else if (success) {
-            items.push(...await this._getHuntYieldWithFallback(terrainTag, exceptional));
-
-            if (nat20) {
-                const rarePoolId = `resource_pool_${terrainTag}_rare`;
-                const rareItems = await this.#poolRoller.roll(rarePoolId, 1);
-                items.push(...rareItems);
-            }
-        }
-
-        return {
-            activity: "hunt",
-            actorId: actor.id,
-            actorName: actor.name,
-            success,
-            nat20,
-            nat1,
-            exceptional,
-            total,
-            dc,
-            roll,
-            items,
-            mishap
-        };
     }
 
     /**

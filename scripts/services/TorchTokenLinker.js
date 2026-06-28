@@ -145,14 +145,6 @@ export class TorchTokenLinker {
     }
 
     /**
-     * Check whether any perimeter torch tokens exist on the active scene.
-     * @returns {boolean}
-     */
-    static hasTorchTokens() {
-        return TorchTokenLinker.findAllTorchTokens().length > 0;
-    }
-
-    /**
      * Get current light state of the torches (based on first found torch).
      * @returns {boolean} true if torches are lit
      */
