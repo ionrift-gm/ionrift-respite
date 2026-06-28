@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.3.4] - 2026-06-28
+
+### Added
+- **Cooking overlay support.** Installing a cooking content pack now materialises its compendium items automatically and registers profession plugins so meal-buff handlers load from the pack.
+- **Terrain-gated recipes.** Recipes can now declare terrain requirements; only recipes valid for the active terrain appear at the cooking station.
+- **Ingredient alternates.** Recipes can list substitute ingredients, so foragers with different hauls can still complete a recipe.
+- **Homebrew meal-buff presets.** The homebrew recipe editor now includes overlay-supplied meal-buff presets, grouped by type and filterable by profession.
+
+### Fixed
+- Profession plugin discovery no longer errors on overlay packs that do not declare professions.
+- Profession cache now invalidates correctly when an overlay is deactivated, so stale profession entries no longer persist after uninstall.
+
 ## [3.3.3] - 2026-06-24
 
 ### Fixed
