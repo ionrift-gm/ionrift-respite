@@ -9121,12 +9121,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
     }
 
-    /** @deprecated Use _commitMakeCampCeremonyIgnite via onCeremonyIgnited. */
-    async applyCampFireFromMinigameCeremony() {
-        if (!this._campCeremonyMinigameEnabled()) return;
-        await this._commitMakeCampCeremonyIgnite();
-    }
-
     /**
      * TotM + campfire minigame: after ceremony ignite, spend placed kindling and advance
      * to Activities (skips the redundant post-light tier picker step).
@@ -12599,16 +12593,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return computeCanTriggerDetectMagicScan(getPartyActors());
     }
 
-    /** @deprecated Use this._workbench.getStaging() */
-    _getWorkbenchIdentifyStaging(actorId) {
-        return this._workbench.getStaging(actorId);
-    }
-
-    /** @deprecated Use this._workbench.setStaging() */
-    _setWorkbenchIdentifyStaging(actorId, partial) {
-        this._workbench.setStaging(actorId, partial);
-    }
-
     /**
      * Station workbench: staged chips for Identify (items are dragged from the character sheet, not listed here).
      * @param {string|null} actorId
@@ -12626,36 +12610,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /** @deprecated Use this._detectMagic.clearScanSession() */
     _clearDetectMagicScanSession(opts = {}) {
         this._detectMagic.clearScanSession(opts);
-    }
-
-    /** @deprecated Use this._detectMagic.broadcastPartyScan() */
-    _broadcastDetectMagicPartyScan() {
-        this._detectMagic.broadcastPartyScan(getPartyActors);
-    }
-
-    /** @deprecated Use this._workbench.removePotionFromStation() */
-    removeWorkbenchIdentifyPotionFromStation(actorId, itemId) {
-        this._workbench.removePotionFromStation(actorId, itemId);
-    }
-
-    /** @deprecated Use this._workbench.submitFromStation() */
-    async submitWorkbenchIdentifyFromStation(actorId) {
-        await this._workbench.submitFromStation(actorId);
-    }
-
-    /** @deprecated Use this._workbench.identifyItem() */
-    async identifyItemFromWorkbenchStation(actorId, itemId, options = {}) {
-        return this._workbench.identifyItem(actorId, itemId, options);
-    }
-
-    /** @deprecated Use this._detectMagic.runScan() */
-    async runDetectMagicScan() {
-        await this._detectMagic.runScan(getPartyActors);
-    }
-
-    /** @deprecated Use this._detectMagic.identifyScannedItem() */
-    async identifyScannedMagicItem(actorId, itemId) {
-        await this._detectMagic.identifyScannedItem(actorId, itemId, getPartyActors);
     }
 
     /**
@@ -14909,15 +14863,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {string} level - embers | campfire | bonfire
      * @param {string|null} requestingUserId - reserved for spend order when spend runs at proceed (player request path)
      */
-    /** @deprecated Use this._campCeremony.deriveCampFireLevel() */
-    _deriveCampFireLevel() {
-        return this._campCeremony.deriveCampFireLevel();
-    }
-
-    /** @deprecated Use this._campCeremony._syncFireLevelFromPledges() */
-    async _syncFireLevelFromPledges() {
-        return this._campCeremony._syncFireLevelFromPledges();
-    }
 
     /**
      * Theater of the Mind: skip the camp phase entirely.
@@ -15995,26 +15940,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         } finally {
             this._totmFeastInFlight = false;
         }
-    }
-
-    /** @deprecated Use this._campCeremony.lightFire() */
-    async _lightFire(userId, actorId, method) {
-        return this._campCeremony.lightFire(userId, actorId, method);
-    }
-
-    /** @deprecated Use this._campCeremony.addFirewoodPledge() */
-    async _addFirewoodPledge(userId, actorId) {
-        return this._campCeremony.addFirewoodPledge(userId, actorId);
-    }
-
-    /** @deprecated Use this._campCeremony.addGmFirewoodPledge() */
-    async _addGmFirewoodPledge() {
-        return this._campCeremony.addGmFirewoodPledge();
-    }
-
-    /** @deprecated Use this._campCeremony.removeFirewoodPledge() */
-    async _removeFirewoodPledge(userId) {
-        return this._campCeremony.removeFirewoodPledge(userId);
     }
 
     async _runSetCampFireLevelForGm(level, requestingUserId = null, gmOverride = false) {
