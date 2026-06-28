@@ -186,9 +186,3 @@ export function registerRespiteSettingsPanel() {
         groups: GROUPS
     });
 }
-
-/** @deprecated Use library ModuleConfigProfiles; kept for harness compatibility */
-export function enhanceRespiteSettings(root) {
-    const config = game.ionrift?.library?.ModuleConfigProfiles?._registry?.get(MODULE_ID);
-    if (config) game.ionrift.library.ModuleConfigProfiles.enhanceSettingsSection(root, config);
-}

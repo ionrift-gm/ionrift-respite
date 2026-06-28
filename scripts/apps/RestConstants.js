@@ -533,14 +533,6 @@ export function getComfortTip(tier) {
     return tips[tier] ?? tips.sheltered;
 }
 
-/** @deprecated Use getComfortTip(tier) instead. Kept for existing consumers. */
-export const COMFORT_TIPS = {
-    hostile: "Hostile: regain 75% max HP, -2 HD, CON DC 15 or +1 exhaustion",
-    rough: "Rough: full HP, -1 HD, CON DC 10 or +1 exhaustion",
-    sheltered: "Sheltered: full HP, full HD recovery",
-    safe: "Safe: full HP, full HD recovery, no encounter risk"
-};
-
 /** Identify tab: Detect Magic toolbar label. */
 export const DETECT_MAGIC_BTN_LABEL_PLAYER = "Detect Magic";
 export const DETECT_MAGIC_BTN_LABEL_GM = "Detect Magic";
