@@ -387,7 +387,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         /** Active {@link #_pickPitWorldPoint} cancel callback (crosshair placement). */
         this._campPitPickerCancel = null;
         this._campPlaceholdersEnsured = false;
-        this._showCampfireCanvasPanel = false;
         this._campToActivityDone = false;
         /** Make Camp: GM moved past fire ceremony to gear placement and station layout (step 2 UI). */
         this._campStep2Entered = false;
@@ -396,7 +395,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._campfireEmbedHost = null;
         /** @type {import("./StationActivityDialog.js").StationActivityDialog|null} */
         this._stationFireMinigameDialog = null;
-        this._campfireSnapshot = null;
         this._selectedCharacterId = null;
         this._activitySubTab = "identify"; // identify | activity | meal
         /** TotM Activity phase: which tab is active. "activities" | "identify" | "fire" */
@@ -1448,7 +1446,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._activityMealRationsSubmitted = new Set(state.activityMealRationsSubmitted ?? []);
         this._totmFeastServed = state.totmFeastServed ?? false;
         this._daysSinceLastRest = state.daysSinceLastRest ?? 1;
-        this._campfireSnapshot = state.campfireSnapshot ?? null;
 
         this._magicScanResults = state.magicScanResults ?? null;
         this._magicScanComplete = state.magicScanComplete ?? false;
@@ -2599,8 +2596,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         };
     }
 
-    _setShowCampfireCanvasPanel(v) {
-        this._showCampfireCanvasPanel = !!v;
+    _setShowCampfireCanvasPanel(_v) {
     }
 
     runMakeCampLightFireFromUi(event, target) {
@@ -13669,9 +13665,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         ) {
             this._syncCampCeremonyPreviewToEmbed?.();
         }
-        if (snapshot.campfireSnapshot) {
-            this._campfireSnapshot = snapshot.campfireSnapshot;
-        }
         if (snapshot.campStatus) this._campStatus = snapshot.campStatus;
 
         // Restore camp roll data for pending camp activity checks
@@ -15454,7 +15447,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static async #onDismissCampfireCanvasPanel() {
-        this._showCampfireCanvasPanel = false;
         this.render({ force: true });
     }
 
