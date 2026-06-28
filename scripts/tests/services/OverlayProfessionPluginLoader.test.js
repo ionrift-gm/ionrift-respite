@@ -20,7 +20,7 @@ beforeAll(async () => {
         callAll: vi.fn()
     };
 
-    ({ hasOverlayProfessionPlugin } = await import("../../../services/OverlayProfessionPluginLoader.js"));
+    ({ hasOverlayProfessionPlugin } = await import("../../services/OverlayProfessionPluginLoader.js"));
 });
 
 afterAll(() => {
