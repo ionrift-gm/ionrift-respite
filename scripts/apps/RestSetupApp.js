@@ -74,7 +74,7 @@ import { CampCeremonyDelegate } from "./delegates/CampCeremonyDelegate.js";
 import { EventsPhaseDelegate } from "./delegates/EventsPhaseDelegate.js";
 import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
 import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple, purgeDetectMagicRestArtifacts } from "./delegates/DetectMagicDelegate.js";
-import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, COMFORT_TIPS, getComfortTip, CAMP_STATIONS, getStationsForTerrain, getStationOfferedActivityIds, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments, applyActivityPortraitAssignments, foldOrphanedAssignmentsOntoOther, isWorkbenchExamineUiEnabled, isWorkbenchIdentifyUiEnabled } from "./RestConstants.js";
+import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, getComfortTip, CAMP_STATIONS, getStationsForTerrain, getStationOfferedActivityIds, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments, applyActivityPortraitAssignments, foldOrphanedAssignmentsOntoOther, isWorkbenchExamineUiEnabled, isWorkbenchIdentifyUiEnabled } from "./RestConstants.js";
 import { isComfortEnabled } from "../services/ComfortCalculator.js";
 import { logCampfireReconnect } from "../services/CampfireReconnectLog.js";
 import {
@@ -103,7 +103,6 @@ import {
     closeStationDialogIfDifferentActor,
     refreshOpenStationDialog,
     notifyStationMealChoicesUpdated,
-    notifyWorkbenchIdentifyStagingTouched,
     StationActivityDialog
 } from "./StationActivityDialog.js";
 import { CampfireMakeCampDialog } from "./CampfireMakeCampDialog.js";
@@ -388,7 +387,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         /** Active {@link #_pickPitWorldPoint} cancel callback (crosshair placement). */
         this._campPitPickerCancel = null;
         this._campPlaceholdersEnsured = false;
-        this._showCampfireCanvasPanel = false;
         this._campToActivityDone = false;
         /** Make Camp: GM moved past fire ceremony to gear placement and station layout (step 2 UI). */
         this._campStep2Entered = false;
@@ -397,7 +395,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._campfireEmbedHost = null;
         /** @type {import("./StationActivityDialog.js").StationActivityDialog|null} */
         this._stationFireMinigameDialog = null;
-        this._campfireSnapshot = null;
         this._selectedCharacterId = null;
         this._activitySubTab = "identify"; // identify | activity | meal
         /** TotM Activity phase: which tab is active. "activities" | "identify" | "fire" */
@@ -1449,7 +1446,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._activityMealRationsSubmitted = new Set(state.activityMealRationsSubmitted ?? []);
         this._totmFeastServed = state.totmFeastServed ?? false;
         this._daysSinceLastRest = state.daysSinceLastRest ?? 1;
-        this._campfireSnapshot = state.campfireSnapshot ?? null;
 
         this._magicScanResults = state.magicScanResults ?? null;
         this._magicScanComplete = state.magicScanComplete ?? false;
@@ -2600,8 +2596,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         };
     }
 
-    _setShowCampfireCanvasPanel(v) {
-        this._showCampfireCanvasPanel = !!v;
+    _setShowCampfireCanvasPanel(_v) {
     }
 
     runMakeCampLightFireFromUi(event, target) {
@@ -9126,12 +9121,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
     }
 
-    /** @deprecated Use _commitMakeCampCeremonyIgnite via onCeremonyIgnited. */
-    async applyCampFireFromMinigameCeremony() {
-        if (!this._campCeremonyMinigameEnabled()) return;
-        await this._commitMakeCampCeremonyIgnite();
-    }
-
     /**
      * TotM + campfire minigame: after ceremony ignite, spend placed kindling and advance
      * to Activities (skips the redundant post-light tier picker step).
@@ -12604,16 +12593,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return computeCanTriggerDetectMagicScan(getPartyActors());
     }
 
-    /** @deprecated Use this._workbench.getStaging() */
-    _getWorkbenchIdentifyStaging(actorId) {
-        return this._workbench.getStaging(actorId);
-    }
-
-    /** @deprecated Use this._workbench.setStaging() */
-    _setWorkbenchIdentifyStaging(actorId, partial) {
-        this._workbench.setStaging(actorId, partial);
-    }
-
     /**
      * Station workbench: staged chips for Identify (items are dragged from the character sheet, not listed here).
      * @param {string|null} actorId
@@ -12631,36 +12610,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /** @deprecated Use this._detectMagic.clearScanSession() */
     _clearDetectMagicScanSession(opts = {}) {
         this._detectMagic.clearScanSession(opts);
-    }
-
-    /** @deprecated Use this._detectMagic.broadcastPartyScan() */
-    _broadcastDetectMagicPartyScan() {
-        this._detectMagic.broadcastPartyScan(getPartyActors);
-    }
-
-    /** @deprecated Use this._workbench.removePotionFromStation() */
-    removeWorkbenchIdentifyPotionFromStation(actorId, itemId) {
-        this._workbench.removePotionFromStation(actorId, itemId);
-    }
-
-    /** @deprecated Use this._workbench.submitFromStation() */
-    async submitWorkbenchIdentifyFromStation(actorId) {
-        await this._workbench.submitFromStation(actorId);
-    }
-
-    /** @deprecated Use this._workbench.identifyItem() */
-    async identifyItemFromWorkbenchStation(actorId, itemId, options = {}) {
-        return this._workbench.identifyItem(actorId, itemId, options);
-    }
-
-    /** @deprecated Use this._detectMagic.runScan() */
-    async runDetectMagicScan() {
-        await this._detectMagic.runScan(getPartyActors);
-    }
-
-    /** @deprecated Use this._detectMagic.identifyScannedItem() */
-    async identifyScannedMagicItem(actorId, itemId) {
-        await this._detectMagic.identifyScannedItem(actorId, itemId, getPartyActors);
     }
 
     /**
@@ -13669,9 +13618,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 || snapshot.makeCampStagedWood !== undefined)
         ) {
             this._syncCampCeremonyPreviewToEmbed?.();
-        }
-        if (snapshot.campfireSnapshot) {
-            this._campfireSnapshot = snapshot.campfireSnapshot;
         }
         if (snapshot.campStatus) this._campStatus = snapshot.campStatus;
 
@@ -14917,15 +14863,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {string} level - embers | campfire | bonfire
      * @param {string|null} requestingUserId - reserved for spend order when spend runs at proceed (player request path)
      */
-    /** @deprecated Use this._campCeremony.deriveCampFireLevel() */
-    _deriveCampFireLevel() {
-        return this._campCeremony.deriveCampFireLevel();
-    }
-
-    /** @deprecated Use this._campCeremony._syncFireLevelFromPledges() */
-    async _syncFireLevelFromPledges() {
-        return this._campCeremony._syncFireLevelFromPledges();
-    }
 
     /**
      * Theater of the Mind: skip the camp phase entirely.
@@ -15455,7 +15392,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     static async #onDismissCampfireCanvasPanel() {
-        this._showCampfireCanvasPanel = false;
         this.render({ force: true });
     }
 
@@ -16004,26 +15940,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         } finally {
             this._totmFeastInFlight = false;
         }
-    }
-
-    /** @deprecated Use this._campCeremony.lightFire() */
-    async _lightFire(userId, actorId, method) {
-        return this._campCeremony.lightFire(userId, actorId, method);
-    }
-
-    /** @deprecated Use this._campCeremony.addFirewoodPledge() */
-    async _addFirewoodPledge(userId, actorId) {
-        return this._campCeremony.addFirewoodPledge(userId, actorId);
-    }
-
-    /** @deprecated Use this._campCeremony.addGmFirewoodPledge() */
-    async _addGmFirewoodPledge() {
-        return this._campCeremony.addGmFirewoodPledge();
-    }
-
-    /** @deprecated Use this._campCeremony.removeFirewoodPledge() */
-    async _removeFirewoodPledge(userId) {
-        return this._campCeremony.removeFirewoodPledge(userId);
     }
 
     async _runSetCampFireLevelForGm(level, requestingUserId = null, gmOverride = false) {

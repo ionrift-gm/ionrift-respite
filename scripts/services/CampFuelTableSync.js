@@ -75,13 +75,6 @@ export function isCampFuelKindlingEntry(entry, folderPath = "") {
 }
 
 /**
- * @deprecated Use isCampFuelKindlingEntry. Kept for tests naming continuity.
- */
-export function isCampFuelEntry(entry, folderPath = "") {
-    return isCampFuelKindlingEntry(entry, folderPath);
-}
-
-/**
  * Shipped kindling default when compendiums have not loaded yet.
  * @returns {object[]}
  */

@@ -374,34 +374,6 @@ export class EventResolver {
         return this._buildResult(event, watchRoster, options);
     }
 
-    // ── Legacy Compatibility ────────────────────────────────────────────
-
-    /**
-     * @deprecated Use _pickFromPool() instead.
-     * Kept for any external callers during migration.
-     */
-    _pickDisasterEvent(terrainTag, excludeIds = [], watchRoster = []) {
-        return this._pickFromPool(terrainTag, {
-            tier: "disaster",
-            hasWatch: watchRoster.length > 0,
-            excludeIds
-        });
-    }
-
-    /**
-     * @deprecated Use _pickFromPool() instead.
-     * Kept for any external callers during migration.
-     */
-    _pickBonusEvent(terrainTag, category, excludeIds = [], watchRoster = [], options = {}) {
-        return this._pickFromPool(terrainTag, {
-            tier: "normal",
-            category,
-            hasWatch: watchRoster.length > 0,
-            skipDecisionTrees: options.skipDecisionTrees ?? false,
-            excludeIds
-        });
-    }
-
     // ── Target Resolution ───────────────────────────────────────────────
 
     /**
