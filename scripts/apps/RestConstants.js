@@ -5,7 +5,7 @@
  */
 
 import { isGearDeployed } from "../services/CompoundCampPlacer.js";
-import { HD_PENALTY, boostComfort, isComfortEnabled, getComfortDcMod } from "../services/ComfortCalculator.js";
+import { HD_PENALTY, boostComfort, isComfortEnabled, getComfortDcMod, COMFORT_RANK, RANK_TO_KEY } from "../services/ComfortCalculator.js";
 import { isSimpleStationsMode } from "../services/RestProfileSettings.js";
 import { getFletchingYieldHint, isFletchingEnabled } from "../services/FletchingSettings.js";
 import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "../services/TrainingSettings.js";
@@ -53,11 +53,7 @@ export const SKILL_NAMES = {
     ste: "Stealth", sur: "Survival"
 };
 
-/** Comfort tier ranking for comparison and arithmetic */
-export const COMFORT_RANK = { hostile: 0, rough: 1, sheltered: 2, safe: 3 };
-
-/** Comfort tiers indexed by rank value */
-export const RANK_TO_KEY = ["hostile", "rough", "sheltered", "safe"];
+export { COMFORT_RANK, RANK_TO_KEY };
 
 /** Activity icon mapping */
 export const ACTIVITY_ICONS = {
