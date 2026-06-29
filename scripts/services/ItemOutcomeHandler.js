@@ -13,7 +13,8 @@ const MODULE_ID = "ionrift-respite";
  * delegates creation to Workshop (if active) or falls back to raw Item.create().
  *
  * All item grants go through grantItemsToActor() which stacks onto existing
- * inventory rows when name, type, and calendar spoilage cohort match.
+ * inventory rows when type and stack rules match (cohort suffix names when enabled,
+ * or harvest metadata compatibility when suffixes are off).
  */
 
 /**
@@ -78,13 +79,24 @@ export class ItemOutcomeHandler {
             if (qty <= 0) continue;
 
             const grantType = grant.type ?? "loot";
-            const grantLike = { name: grant.name, flags: grant.flags ?? {} };
 
-            const existing = actor.items.find(
-                i => i.name?.toLowerCase().trim() === grant.name?.toLowerCase().trim()
-                    && i.type === grantType
-                    && SpoilageClock.areStacksCompatible(i, grantLike)
-            );
+            ItemOutcomeHandler._stampPerishableHarvestDate(grant);
+
+            const useCohortSuffix = ItemOutcomeHandler._isSpoilageNameSuffixEnabled();
+            if (useCohortSuffix) {
+                const nameBefore = grant.name;
+                SpoilageClock.applyGrantCohortName(grant, ItemOutcomeHandler._grantClock());
+                if (grant.name === nameBefore && ItemOutcomeHandler._isPerishableLike(grant)) {
+                    Logger.warn(
+                        `spoilageNameSuffix enabled but no cohort label applied to "${nameBefore}"`
+                        + " (check spoilsAfter, foodTag, or harvest metadata on the grant)."
+                    );
+                }
+            }
+
+            const existing = useCohortSuffix
+                ? ItemOutcomeHandler._findCohortSuffixMergeTarget(actor, grant, grantType)
+                : ItemOutcomeHandler._findMetadataMergeTarget(actor, grant, grantType);
 
             if (existing) {
                 // Stack onto existing: increment quantity + merge flags
@@ -110,19 +122,6 @@ export class ItemOutcomeHandler {
                 toUpdate.push(updateData);
                 summary.push({ name: grant.name, quantity: qty, stacked: true });
             } else {
-                // Stamp harvestedDate on perishable items for spoilage tracking
-                const grantFlags = grant.flags?.[MODULE_ID] ?? {};
-                if ((grantFlags.spoilsAfter !== null && grantFlags.spoilsAfter !== undefined)
-                    || grantFlags.spoilsAfterHours) {
-                    if (!grantFlags.harvestedDate) {
-                        grant.flags = grant.flags ?? {};
-                        grant.flags[MODULE_ID] = grant.flags[MODULE_ID] ?? {};
-                        grant.flags[MODULE_ID].harvestedDate = grantFlags.spoilsAfterHours
-                            ? String(game.time.worldTime)
-                            : (CalendarHandler.getCurrentDate() ?? String(game.time.worldTime));
-                    }
-                }
-
                 // Create new item with correct quantity.
                 // Spread system first, then override quantity so the rolled
                 // count always wins over any quantity baked into itemData.
@@ -266,6 +265,63 @@ export class ItemOutcomeHandler {
     }
 
     // ── Internal Helpers ─────────────────────────────────────────
+
+    static _isSpoilageNameSuffixEnabled() {
+        try {
+            return game.settings.get(MODULE_ID, "spoilageNameSuffix") === true;
+        } catch {
+            return false;
+        }
+    }
+
+    static _grantClock() {
+        return {
+            calendarDate: CalendarHandler.getCurrentDate(),
+            worldTimeEpoch: game.time?.worldTime ?? 0
+        };
+    }
+
+    static _stampPerishableHarvestDate(grant) {
+        if (!ItemOutcomeHandler._isPerishableLike(grant)) return;
+
+        const grantFlags = grant.flags?.[MODULE_ID] ?? {};
+        if (grantFlags.harvestedDate) return;
+
+        grant.flags = grant.flags ?? {};
+        grant.flags[MODULE_ID] = grant.flags[MODULE_ID] ?? {};
+        grant.flags[MODULE_ID].harvestedDate = grantFlags.spoilsAfterHours
+            ? String(game.time.worldTime)
+            : (CalendarHandler.getCurrentDate() ?? String(game.time.worldTime));
+    }
+
+    static _isPerishableLike(itemLike) {
+        return ItemClassifier.getSpoilsAfter(itemLike) !== null
+            || ItemClassifier.getSpoilsAfterHours(itemLike);
+    }
+
+    /** Merge target when spoilage name suffixes are enabled (exact name match). */
+    static _findCohortSuffixMergeTarget(actor, grant, grantType) {
+        const grantName = grant.name?.toLowerCase().trim();
+        return actor.items.find(
+            i => i.name?.toLowerCase().trim() === grantName && i.type === grantType
+        );
+    }
+
+    /**
+     * Merge target when suffixes are off: base name match, with spoilage compatibility
+     * for perishable rows (matches SpoilageMergeGuard / SpoilageClock).
+     */
+    static _findMetadataMergeTarget(actor, grant, grantType) {
+        const baseName = ItemClassifier.baseItemName(grant);
+        return actor.items.find(i => {
+            if (i.type !== grantType) return false;
+            if (ItemClassifier.baseItemName(i) !== baseName) return false;
+            if (ItemOutcomeHandler._isPerishableLike(i) || ItemOutcomeHandler._isPerishableLike(grant)) {
+                return SpoilageClock.areStacksCompatible(i, grant);
+            }
+            return true;
+        });
+    }
 
     /**
      * Aggregates grants by name+type, summing quantities.

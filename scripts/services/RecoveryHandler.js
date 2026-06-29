@@ -322,7 +322,7 @@ export class RecoveryHandler {
                 if (["success", "triumph"].includes(sub.resolvedOutcome)) continue;
 
                 for (const effect of (sub.effects ?? [])) {
-                    if (effect.type !== "damage" || !effect.formula) continue;
+                    if (effect.type !== "damage" || !(effect.formula ?? effect.roll)) continue;
                     const scope = effect.scope ?? "all";
                     if (scope !== "random" && scope !== "randomTarget" && scope !== "failed") continue;
                     if (visited.has(effect)) continue;
@@ -338,12 +338,12 @@ export class RecoveryHandler {
                         const actor = game.actors.get(actorId);
                         if (!actor) continue;
                         try {
-                            const roll = await new Roll(effect.formula).evaluate();
+                            const roll = await new Roll(effect.formula ?? effect.roll).evaluate();
                             const damage = roll.total;
                             damageByActor.set(actorId, (damageByActor.get(actorId) ?? 0) + damage);
                             await roll.toMessage({
                                 speaker: { alias: sub.eventName ?? "Rest Event" },
-                                flavor: `<strong>${actor.name}</strong>: ${effect.formula} ${effect.damageType ?? ""} damage<br><em>${effect.description ?? ""}</em>`,
+                                flavor: `<strong>${actor.name}</strong>: ${effect.formula ?? effect.roll} ${effect.damageType ?? ""} damage<br><em>${effect.description ?? ""}</em>`,
                                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
                             });
                         } catch (e) {
@@ -602,7 +602,7 @@ export class RecoveryHandler {
             if (sub.source !== "event" || ["success", "triumph"].includes(sub.resolvedOutcome)) continue;
 
             for (const effect of (sub.effects ?? [])) {
-                if (effect.type !== "damage" || !effect.formula) continue;
+                if (effect.type !== "damage" || !(effect.formula ?? effect.roll)) continue;
                 // Locked consequences are applied post-recovery elsewhere.
                 if (effect._locked) continue;
 
@@ -611,13 +611,13 @@ export class RecoveryHandler {
                 if (scope !== "all" && scope !== actor.id) continue;
 
                 try {
-                    const roll = await new Roll(effect.formula).evaluate();
+                    const roll = await new Roll(effect.formula ?? effect.roll).evaluate();
                     const damage = roll.total;
                     totalDamage += damage;
 
                     await roll.toMessage({
                         speaker: { alias: sub.eventName ?? "Rest Event" },
-                        flavor: `<strong>${actor.name}</strong>: ${effect.formula} ${effect.damageType ?? ""} damage<br><em>${effect.description ?? ""}</em>`,
+                        flavor: `<strong>${actor.name}</strong>: ${effect.formula ?? effect.roll} ${effect.damageType ?? ""} damage<br><em>${effect.description ?? ""}</em>`,
                         whisper: game.users.filter(u => u.isGM).map(u => u.id)
                     });
                 } catch (e) {

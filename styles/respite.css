@@ -196,6 +196,37 @@
     overflow: hidden;
 }
 
+/* ---- Loading State ---- */
+
+.respite-loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-height: 200px;
+    gap: 1rem;
+    opacity: 0;
+    animation: respite-fade-in 0.3s ease-out 0.05s forwards;
+}
+
+.respite-loading-spinner {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.respite-loading-label {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+    letter-spacing: 0.03em;
+    margin: 0;
+}
+
+@keyframes respite-fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ---- Phase Header ---- */
 
 .respite-phase-header {
@@ -27770,5 +27801,247 @@ button.is-processing {
     font-size: 0.82rem;
     color: rgba(180, 220, 255, 0.75);
     padding: 0.35rem 0;
+}
+
+/* ── Rest Ledger ───────────────────────────────────────────── */
+
+#ionrift-respite-ledger {
+    min-width: 280px;
+    max-width: 420px;
+}
+
+.rest-ledger-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.5rem;
+    height: 100%;
+    overflow: hidden;
+}
+
+.rest-ledger-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid rgba(140, 180, 220, 0.18);
+}
+
+.rest-ledger-filters {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+    flex: 1 1 auto;
+}
+
+.rest-ledger-chip {
+    padding: 0.2rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: rgba(80, 140, 200, 0.15);
+    border: 1px solid rgba(120, 180, 240, 0.22);
+    color: rgba(200, 220, 240, 0.85);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.rest-ledger-chip:hover {
+    background: rgba(80, 140, 200, 0.28);
+}
+
+.rest-ledger-chip.active {
+    background: rgba(100, 160, 220, 0.4);
+    border-color: rgba(140, 200, 255, 0.5);
+    color: #fff;
+}
+
+.rest-ledger-toolbar-actions {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: auto;
+}
+
+.rest-ledger-toolbar-btn {
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: rgba(80, 140, 200, 0.12);
+    border: 1px solid rgba(120, 180, 240, 0.18);
+    color: rgba(200, 220, 240, 0.8);
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: background 0.15s;
+}
+
+.rest-ledger-toolbar-btn:hover {
+    background: rgba(80, 140, 200, 0.3);
+}
+
+.rest-ledger-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    flex: 1 1 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(120, 180, 240, 0.3) transparent;
+}
+
+.rest-ledger-phase-group {
+    margin-bottom: 0.15rem;
+}
+
+.rest-ledger-phase-header {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    width: 100%;
+    padding: 0.3rem 0.45rem;
+    border-radius: 5px;
+    background: rgba(60, 100, 160, 0.18);
+    border: none;
+    color: rgba(200, 220, 240, 0.92);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    transition: background 0.15s;
+}
+
+.rest-ledger-phase-header:hover {
+    background: rgba(60, 100, 160, 0.3);
+}
+
+.rest-ledger-chevron {
+    font-size: 0.65rem;
+    transition: transform 0.2s;
+}
+
+.rest-ledger-phase-header.collapsed .rest-ledger-chevron {
+    transform: rotate(-90deg);
+}
+
+.rest-ledger-phase-count {
+    margin-left: auto;
+    font-size: 0.7rem;
+    color: rgba(160, 200, 240, 0.6);
+    font-weight: 400;
+}
+
+.rest-ledger-entries {
+    list-style: none;
+    margin: 0;
+    padding: 0.15rem 0 0.15rem 0.6rem;
+}
+
+.rest-ledger-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    padding: 0.25rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: rgba(210, 225, 240, 0.9);
+    transition: background 0.12s;
+}
+
+.rest-ledger-entry:hover {
+    background: rgba(80, 140, 200, 0.1);
+}
+
+.rest-ledger-entry-icon {
+    flex: 0 0 auto;
+    width: 18px;
+    text-align: center;
+    color: rgba(140, 190, 240, 0.7);
+    font-size: 0.75rem;
+    padding-top: 0.1rem;
+}
+
+.rest-ledger-entry-body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+}
+
+.rest-ledger-actor {
+    color: rgba(160, 210, 255, 0.95);
+    font-size: 0.75rem;
+}
+
+.rest-ledger-summary {
+    color: rgba(210, 225, 240, 0.88);
+}
+
+.rest-ledger-detail {
+    font-size: 0.72rem;
+    color: rgba(170, 200, 230, 0.6);
+    font-style: italic;
+}
+
+.rest-ledger-time {
+    flex: 0 0 auto;
+    font-size: 0.65rem;
+    color: rgba(140, 180, 220, 0.45);
+    padding-top: 0.15rem;
+    white-space: nowrap;
+}
+
+.rest-ledger-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: rgba(180, 210, 240, 0.5);
+    font-size: 0.82rem;
+}
+
+.rest-ledger-empty i {
+    font-size: 1.8rem;
+    margin-bottom: 0.6rem;
+    display: block;
+    opacity: 0.4;
+}
+
+/* Ledger buttons: suppress Foundry's .app-v2 button:focus red ring
+   (loads after module CSS). Needs higher specificity than Foundry's base
+   .application button:focus and .app-v2 button:focus rules. */
+.ionrift-window.ionrift-respite-app .rest-ledger-chip:focus,
+.ionrift-window.ionrift-respite-app .rest-ledger-toolbar-btn:focus,
+.ionrift-window.ionrift-respite-app .rest-ledger-phase-header:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.ionrift-window.ionrift-respite-app .rest-ledger-chip:focus-visible,
+.ionrift-window.ionrift-respite-app .rest-ledger-toolbar-btn:focus-visible,
+.ionrift-window.ionrift-respite-app .rest-ledger-phase-header:focus-visible {
+    outline: 2px solid rgba(139, 92, 246, 0.9) !important;
+    outline-offset: 2px !important;
+    box-shadow: none !important;
+}
+
+.ionrift-window.ionrift-respite-app .rest-ledger-chip.active:focus-visible {
+    box-shadow: inset 0 0 0 1px rgba(140, 200, 255, 0.3) !important;
+}
+
+/* Armor/rations modal buttons: suppress browser default and Foundry red ring.
+   The overlay sits on document.body outside .application scope, but some
+   browsers still paint a focus ring on click. */
+.ionrift-armor-modal-buttons button:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.ionrift-armor-modal-buttons button:focus-visible {
+    outline: 2px solid rgba(139, 92, 246, 0.9) !important;
+    outline-offset: 2px !important;
+    box-shadow: none !important;
 }
 

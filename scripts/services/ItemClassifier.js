@@ -15,6 +15,8 @@
  *   - Legacy flag migration (foodType -> resourceType)
  */
 
+import { stripSpoilageCohortSuffix } from "../../../ionrift-library/scripts/services/cooking/CookingClassifier.js";
+
 const MODULE_ID = "ionrift-respite";
 
 /** Built-in food item names (lowercase). */
@@ -210,6 +212,18 @@ const DIET_PRESETS = {
 
 export class ItemClassifier {
 
+    /**
+     * Whether an item is spoiled loot (inedible; cannot satiate hunger).
+     * @param {Item|object} item
+     * @returns {boolean}
+     */
+    static isSpoiled(item) {
+        if (!item) return false;
+        if (item.flags?.[MODULE_ID]?.spoiled === true) return true;
+        const name = item.name?.toLowerCase().trim() ?? "";
+        return name === "spoiled food";
+    }
+
     // ── Core Classification ──────────────────────────────────────
 
     /**
@@ -292,7 +306,7 @@ export class ItemClassifier {
         const explicit = item.flags?.[MODULE_ID]?.foodTag;
         if (explicit && FOOD_TAGS.has(explicit)) return explicit;
 
-        const name = item.name?.toLowerCase().trim() ?? "";
+        const name = this.baseItemName(item);
         if (!name) return null;
 
         for (const [tag, names] of Object.entries(FOOD_TAG_NAMES)) {
@@ -354,6 +368,7 @@ export class ItemClassifier {
      */
     static isFood(item, actor = null) {
         if (!item) return false;
+        if (this.isSpoiled(item)) return false;
 
         if (actor && !this.participatesInSustenance(actor)) return false;
 
@@ -425,6 +440,7 @@ export class ItemClassifier {
      */
     static isWater(item, actor = null) {
         if (!item) return false;
+        if (this.isSpoiled(item)) return false;
 
         if (actor && !this.participatesInSustenance(actor)) return false;
 
@@ -587,6 +603,7 @@ export class ItemClassifier {
      */
     static isEssence(item, actor = null) {
         if (!item) return false;
+        if (this.isSpoiled(item)) return false;
 
         const explicit = item.flags?.[MODULE_ID]?.resourceType;
         if (explicit === "essence") return true;
@@ -685,8 +702,13 @@ export class ItemClassifier {
 
     // ── Internal Helpers ─────────────────────────────────────────
 
+    /** Base display name without a spoilage cohort suffix. */
+    static baseItemName(item) {
+        return stripSpoilageCohortSuffix(item?.name ?? "").toLowerCase().trim();
+    }
+
     static _matchesFoodByName(item) {
-        const name = item.name?.toLowerCase().trim();
+        const name = this.baseItemName(item);
         if (!name) return false;
         if (FOOD_NAMES.has(name)) return true;
         // Any ration-named variant (seasoned, fortified, well-seasoned, ...) is
@@ -698,7 +720,7 @@ export class ItemClassifier {
     }
 
     static _matchesWaterByName(item) {
-        const name = item.name?.toLowerCase().trim();
+        const name = this.baseItemName(item);
         if (!name) return false;
         if (WATER_NAMES.has(name)) return true;
         if (this.getCustomNames("customWaterNames").has(name)) return true;
@@ -706,14 +728,14 @@ export class ItemClassifier {
     }
 
     static _matchesFuelByName(item) {
-        const name = item.name?.toLowerCase().trim();
+        const name = this.baseItemName(item);
         if (!name) return false;
         if (FUEL_NAMES.has(name)) return true;
         return false;
     }
 
     static _matchesIngredientByName(item) {
-        const name = item.name?.toLowerCase().trim();
+        const name = this.baseItemName(item);
         if (!name) return false;
         return INGREDIENT_NAMES.has(name);
     }
@@ -727,7 +749,7 @@ export class ItemClassifier {
      */
     static _isExcludedByDiet(item, diet) {
         if (!diet.excludeNames?.length) return false;
-        const name = item.name?.toLowerCase().trim() ?? "";
+        const name = this.baseItemName(item);
         return diet.excludeNames.some(ex => name === ex.toLowerCase().trim());
     }
 }

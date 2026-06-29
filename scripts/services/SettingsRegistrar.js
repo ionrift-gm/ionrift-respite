@@ -452,6 +452,16 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         restricted: true
     });
 
+    game.settings.register(MODULE_ID, "spoilageNameSuffix", {
+        name: "Spoilage Name Suffixes",
+        hint: "Adds a freshness label to perishable item names on grant (e.g. Bird Eggs (3d)) so dnd5e keeps incompatible stacks separate. Off keeps base names and relies on harvest metadata plus the inventory merge guard.",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: false,
+        restricted: true
+    });
+
     game.settings.register(MODULE_ID, "lockPlayerQuantity", {
         name: "Lock Player Quantity Controls",
         hint: "Prevents players from adjusting item quantities on their character sheet. The GM can still modify quantities. Useful when tracking rations and consumables through the Respite rest flow.",
@@ -906,6 +916,7 @@ export const SETTING_KEYS = [
     "useTravelPhaseSemanticsMigrated",
     "trackFood",
     "partialSustenance",
+    "spoilageNameSuffix",
     "lockPlayerQuantity",
     "lockAttuneOutsideRest",
     "safeRestSpot",

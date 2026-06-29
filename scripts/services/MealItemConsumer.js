@@ -30,6 +30,7 @@ import {
 export async function consumeItem(actor, itemId, amount = 1, { wholeUnit = false } = {}) {
     const item = actor.items.get(itemId);
     if (!item) return 0;
+    if (ItemClassifier.isSpoiled(item)) return 0;
 
     // Container-type items (e.g. Waterskin as DnD5e container): consume
     // from the contained water items, not the container itself.

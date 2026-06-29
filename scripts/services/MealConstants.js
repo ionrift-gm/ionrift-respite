@@ -8,10 +8,13 @@ export const MODULE_ID = "ionrift-respite";
 /** DnD5e uses "container"; PF2e uses "backpack". */
 export const CONTAINER_ITEM_TYPES = new Set(["container", "backpack"]);
 
+/** Shown when a player tries to eat spoiled inventory food. */
+export const SPOILED_FOOD_BLOCKED_MESSAGE = "Spoiled food cannot be eaten.";
+
 export const SPOILED_FOOD_TEMPLATE = {
     name: "Spoiled Food",
     type: "consumable",
-    img: "icons/consumables/food/berries-ration-round-red.webp",
+    img: "icons/commodities/materials/slime-yellow.webp",
     system: {
         description: { value: "Rotten, inedible remains. Might have been something good once." },
         quantity: 1,

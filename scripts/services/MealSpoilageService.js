@@ -12,6 +12,33 @@ import { MODULE_ID, SPOILED_FOOD_TEMPLATE } from "./MealConstants.js";
 import { grantMealItem } from "./MealItemGrant.js";
 
 /**
+ * @param {Object[]} report - Spoilage report from resolveSpoilage / resolveCalendarSpoilage
+ * @param {string} intro - Lead sentence before the item list (no trailing markup)
+ * @param {string} gmContext - Short phrase for the GM whisper summary
+ */
+async function postSpoilageChat(report, intro, gmContext) {
+    if (!report.length) return;
+
+    const lines = report.flatMap(r =>
+        r.spoiled.map(s => `<strong>${r.actorName}</strong> lost ${s.qty}x ${s.name}`)
+    );
+
+    await ChatMessage.create({
+        content: `<div class="respite-recovery-chat"><p><i class="fas fa-skull-crossbones"></i> <strong>Spoilage</strong></p><p>${intro}</p><ul>${lines.map(l => `<li>${l}</li>`).join("")}</ul></div>`,
+        speaker: { alias: "Respite" }
+    });
+
+    const totalSpoiled = report.reduce((sum, r) => sum + r.spoiled.reduce((s, i) => s + i.qty, 0), 0);
+    await ChatMessage.create({
+        content: `<p><i class="fas fa-info-circle"></i> <strong>Spoilage Report:</strong> ${totalSpoiled} item(s) spoiled across ${report.length} character(s) ${gmContext}.</p>`,
+        speaker: { alias: "Respite" },
+        whisper: ChatMessage.getWhisperRecipients?.("GM")
+            ?? game.users.filter(u => u.isGM).map(u => u.id),
+        type: CONST.CHAT_MESSAGE_TYPES.WHISPER ?? 4
+    });
+}
+
+/**
  * Resolve food spoilage across all party members before the meal phase.
  *
  * Rest-phase spoilage uses **elapsed rests since last long rest**, not the
@@ -49,25 +76,12 @@ export async function resolveSpoilage(characterIds, daysSinceLastRest = 1) {
     }
 
     if (report.length) {
-        const lines = report.flatMap(r =>
-            r.spoiled.map(s => `<strong>${r.actorName}</strong> lost ${s.qty}x ${s.name}`)
-        );
         const dayLabel = daysSinceLastRest === 1 ? "1 day" : `${daysSinceLastRest} days`;
-
-        // Public thematic chat card
-        await ChatMessage.create({
-            content: `<div class="respite-recovery-chat"><p><i class="fas fa-skull-crossbones"></i> <strong>Spoilage</strong></p><p>After ${dayLabel} of travel, perishable food has gone off:</p><ul>${lines.map(l => `<li>${l}</li>`).join("")}</ul></div>`,
-            speaker: { alias: "Respite" }
-        });
-
-        // GM-only whispered summary
-        const totalSpoiled = report.reduce((sum, r) => sum + r.spoiled.reduce((s, i) => s + i.qty, 0), 0);
-        await ChatMessage.create({
-            content: `<p><i class="fas fa-info-circle"></i> <strong>Spoilage Report:</strong> ${totalSpoiled} item(s) spoiled across ${report.length} character(s) after ${dayLabel}.</p>`,
-            speaker: { alias: "Respite" },
-            whisper: game.users.filter(u => u.isGM).map(u => u.id),
-            type: CONST.CHAT_MESSAGE_TYPES.WHISPER ?? 4
-        });
+        await postSpoilageChat(
+            report,
+            `After ${dayLabel} of travel, perishable food has gone off:`,
+            `after ${dayLabel}`
+        );
     }
 
     return report;
@@ -147,6 +161,14 @@ export async function resolveCalendarSpoilage(actors) {
         if (result.spoiled.length) {
             report.push({ characterId: actor.id, actorName: actor.name, spoiled: result.spoiled });
         }
+    }
+
+    if (report.length) {
+        const formattedDate = CalendarHandler.getFormattedDate();
+        const intro = formattedDate
+            ? `On ${formattedDate}, perishable food has gone off:`
+            : "Perishable food has gone off:";
+        await postSpoilageChat(report, intro, "during time advance");
     }
 
     return report;

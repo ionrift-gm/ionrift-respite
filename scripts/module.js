@@ -78,8 +78,10 @@ import {
     forceDcPulseTest
 } from "./services/RollRequestDcPulse.js";
 import { RollRequestPreviewApp } from "./apps/RollRequestPreviewApp.js";
-import { registerUiHooks, refreshZzzOverlay } from "./services/UiInjections.js";
+import { registerUiHooks, refreshZzzOverlay, refreshSpoilageBadgesOnOpenSheets } from "./services/UiInjections.js";
 import { registerSpoilageMergeGuard } from "./services/SpoilageMergeGuard.js";
+import { registerSpoilageGrantHook } from "./services/SpoilageGrantHook.js";
+import { syncPartyCohortSuffixes } from "./services/SpoilageCohortSync.js";
 import { registerInventoryContextMenu } from "./services/InventoryContextMenu.js";
 import { registerLockdownHooks } from "./services/PlayerLockdownService.js";
 import {
@@ -601,6 +603,19 @@ Hooks.once("init", async () => {
         applyDietPreset: (actor, presetId) => ItemClassifier.applyPreset(actor, presetId),
         /** List available diet presets. Usage: game.ionrift.respite.getDietPresets() */
         getDietPresets: () => ItemClassifier.getPresets(),
+        /** Open the rest session ledger popout. GM only. Usage: game.ionrift.respite.openLedger() */
+        openLedger: () => {
+            if (!game.user.isGM) return;
+            if (!activeRestSetupApp) {
+                console.warn(`${MODULE_ID} | No active rest. Start a rest first.`);
+                return;
+            }
+            const el = activeRestSetupApp.element;
+            if (el) {
+                const btn = el.querySelector("[data-action='openLedger']");
+                if (btn) btn.click();
+            }
+        },
 
         // â”€â”€ Camp Prop Placement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         /** Place a campfire (base + fire overlay) via crosshair. GM only. */
@@ -776,54 +791,54 @@ registerInventoryContextMenu();
 // â”€â”€ Calendar-Driven Spoilage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // When in-game time advances (Simple Calendar or core worldTime), check all
 // party member inventories for perishable items that have expired based on
-// their harvestedDate. Replaces spoiled items with "Spoiled Food" and
-// whispers a summary to the GM.
+// their harvestedDate. Replaces spoiled items with "Spoiled Food" and posts
+// spoilage chat (public card + GM whisper) via MealSpoilageService.
 {
     let _spoilageDebounce = null;
 
-    Hooks.on("updateWorldTime", (worldTime, dt) => {
-        if (!game.user.isGM) return;
+    function _scheduleSpoilageTick() {
         if (_spoilageDebounce) clearTimeout(_spoilageDebounce);
-        _spoilageDebounce = setTimeout(() => _runCalendarSpoilage(), 2000);
+        _spoilageDebounce = setTimeout(() => _runSpoilageTick(), 2000);
+    }
+
+    Hooks.on("updateWorldTime", () => {
+        _scheduleSpoilageTick();
     });
 
     // Simple Calendar fires its own date change hook
     Hooks.on("simple-calendar-date-time-change", () => {
-        if (!game.user.isGM) return;
-        if (_spoilageDebounce) clearTimeout(_spoilageDebounce);
-        _spoilageDebounce = setTimeout(() => _runCalendarSpoilage(), 2000);
+        _scheduleSpoilageTick();
     });
 
-    async function _runCalendarSpoilage() {
+    async function _runSpoilageTick() {
         _spoilageDebounce = null;
+
+        refreshSpoilageBadgesOnOpenSheets();
+
+        if (!game.user.isGM) return;
+
         try {
             const actors = game.ionrift?.library?.party?.getMembers() ?? [];
             if (!actors.length) return;
 
+            await syncPartyCohortSuffixes(actors);
+
             const report = await MealPhaseHandler.resolveCalendarSpoilage(actors);
 
-            // Re-render open actor sheets so spoilage badges update live
-            for (const actor of actors) {
-                actor?.sheet?.render(false);
+            if (report.length) {
+                const totalSpoiled = report.reduce(
+                    (sum, r) => sum + r.spoiled.reduce((s, i) => s + i.qty, 0), 0
+                );
+                Logger?.log?.(MODULE_LABEL, `Calendar spoilage: ${totalSpoiled} items spoiled across ${report.length} characters.`);
             }
 
-            if (!report.length) return;
-
-            const totalSpoiled = report.reduce(
-                (sum, r) => sum + r.spoiled.reduce((s, i) => s + i.qty, 0), 0
-            );
-            const lines = report.flatMap(r =>
-                r.spoiled.map(s => `<strong>${r.actorName}</strong>: ${s.qty}x ${s.name}`)
-            );
-
-            await ChatMessage.create({
-                content: `<p><i class="fas fa-hourglass-end"></i> <strong>Food Spoilage (time advance):</strong> ${totalSpoiled} item(s) have spoiled.</p><ul>${lines.map(l => `<li>${l}</li>`).join("")}</ul>`,
-                speaker: { alias: "Respite" },
-                whisper: game.users.filter(u => u.isGM).map(u => u.id),
-                type: CONST.CHAT_MESSAGE_TYPES.WHISPER ?? 4
-            });
-
-            Logger?.log?.(MODULE_LABEL, `Calendar spoilage: ${totalSpoiled} items spoiled across ${report.length} characters.`);
+            for (const actor of actors) {
+                try {
+                    actor?.sheet?.render(false);
+                } catch (e) {
+                    console.warn(`${MODULE_ID} | Calendar spoilage sheet refresh failed:`, e);
+                }
+            }
         } catch (e) {
             console.warn(`${MODULE_ID} | Calendar spoilage check failed:`, e);
         }
@@ -989,6 +1004,7 @@ Hooks.once("ready", async () => {
     registerCampFurnitureZOrderGuards();
     registerLockdownHooks();
     registerSpoilageMergeGuard();
+    registerSpoilageGrantHook();
 
     // Zzz overlay on tokens for characters bedded down during reflection.
     Hooks.on("refreshToken", (token) => {

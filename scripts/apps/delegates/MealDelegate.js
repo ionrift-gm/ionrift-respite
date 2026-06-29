@@ -9,6 +9,7 @@ import { Logger } from "../../lib/Logger.js";
 import { MealPhaseHandler } from "../../services/MealPhaseHandler.js";
 import { TerrainRegistry } from "../../services/TerrainRegistry.js";
 import { ItemClassifier } from "../../services/ItemClassifier.js";
+import { RestLedger } from "../../services/RestLedger.js";
 import { getPartyActors } from "../../services/partyActors.js";
 import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../../services/StationInteractionLayer.js";
 
@@ -415,9 +416,8 @@ export class MealDelegate {
 
                 const ownerUser = game.users.find(u => !u.isGM && actor.testUserPermission(u, "OWNER"));
                 const ownerSubmitted = ownerUser && app._mealSubmissions?.has(ownerUser.id);
-                if (ownerSubmitted) continue;
 
-                missing.push({ name: actor.name, playerOwned: !!ownerUser });
+                missing.push({ name: actor.name, playerOwned: !!ownerUser, awaitingPlayer: !!ownerUser && !ownerSubmitted });
             }
         }
 
@@ -430,7 +430,7 @@ export class MealDelegate {
                     <div class="ionrift-armor-modal">
                         <h3><i class="fas fa-exclamation-triangle"></i> Characters Without Rations</h3>
                         <p>These characters have no food or water assigned:</p>
-                        <ul>${missing.map(m => `<li>${m.name}${m.playerOwned ? ' <span style="opacity:0.6">(awaiting player)</span>' : ""}</li>`).join("")}</ul>
+                        <ul>${missing.map(m => `<li>${m.name}${m.awaitingPlayer ? ' <span style="opacity:0.6">(awaiting player)</span>' : ""}</li>`).join("")}</ul>
                         <p>Processing now treats them as skipping all meals${anyPlayer ? ", even if a player is still choosing" : ""}, applying any starvation and dehydration.</p>
                         <div class="ionrift-armor-modal-buttons">
                             <button class="btn-armor-confirm"><i class="fas fa-forward"></i> Process Anyway</button>
@@ -604,6 +604,17 @@ export class MealDelegate {
                                 content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> fails the CON save (${total} vs DC ${r.dehydrationSaveDC}) and gains 1 level of exhaustion from dehydration.</div>`,
                                 speaker: ChatMessage.getSpeaker({ actor })
                             });
+                            if (app._restLedger) {
+                                app._restLedger.add({
+                                    phase: "meal",
+                                    category: "exhaustion",
+                                    icon: "fas fa-tired",
+                                    actor: r.characterId,
+                                    actorName: r.actorName ?? "",
+                                    summary: "+1 exhaustion",
+                                    detail: `Failed CON save (${total} vs DC ${r.dehydrationSaveDC}), dehydration`
+                                });
+                            }
                         } else {
                             await ChatMessage.create({
                                 content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> passes the CON save (${total} vs DC ${r.dehydrationSaveDC}) and fights off dehydration.</div>`,
@@ -692,6 +703,17 @@ export class MealDelegate {
                     content: `<div class="respite-recovery-chat"><strong>${save.actorName}</strong> fails the CON save (skipped by GM) and gains 1 level of exhaustion from dehydration.</div>`,
                     speaker: ChatMessage.getSpeaker({ actor })
                 });
+                if (app._restLedger) {
+                    app._restLedger.add({
+                        phase: "meal",
+                        category: "exhaustion",
+                        icon: "fas fa-tired",
+                        actor: save.characterId,
+                        actorName: save.actorName ?? "",
+                        summary: "+1 exhaustion",
+                        detail: "Dehydration (GM skipped save)"
+                    });
+                }
             }
 
             save.resolved = true;
@@ -940,6 +962,18 @@ export class MealDelegate {
                 content: `<div class="respite-recovery-chat"><strong>${actorName}</strong> fails the CON save (${total} vs DC ${dc}) and gains 1 level of exhaustion from dehydration.</div>`,
                 speaker: ChatMessage.getSpeaker({ actor })
             });
+            if (app._restLedger) {
+                app._restLedger.add({
+                    phase: "meal",
+                    category: "exhaustion",
+                    icon: "fas fa-tired",
+                    actor: characterId,
+                    actorName: actorName ?? "",
+                    summary: "+1 exhaustion",
+                    detail: `Failed CON save (${total} vs DC ${dc}), dehydration`
+                });
+                app._refreshLedgerApp?.();
+            }
         } else if (passed) {
             await ChatMessage.create({
                 content: `<div class="respite-recovery-chat"><strong>${actorName}</strong> passes the CON save (${total} vs DC ${dc}) and fights off dehydration.</div>`,
