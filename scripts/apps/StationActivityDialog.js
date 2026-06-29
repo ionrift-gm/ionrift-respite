@@ -26,6 +26,7 @@ import { computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, 
 import { canPlaceStation, actorHasBrewingTools } from "../services/CompoundCampPlacer.js";
 import { getPartyActors, getFoodBuffPartyActors, getMealEligiblePartyActors } from "../services/partyActors.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
+import { MonstrousFeastBridge } from "../services/MonstrousFeastBridge.js";
 import { formatMealBuffPreview } from "../services/MealBuffPresets.js";
 import { buildCraftCommitSummary, resolveDefaultCraftRecipeId } from "../services/CraftCommitSummary.js";
 import { normalizeRecipeOutputImg } from "../services/RecipeIcons.js";
@@ -234,6 +235,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             craftCommit: StationActivityDialog.#onCraftCommit,
             craftToggleMissing: StationActivityDialog.#onCraftToggleMissing,
             craftClose: StationActivityDialog.#onCraftClose,
+            openMonsterCookbook: StationActivityDialog.#onOpenMonsterCookbook,
             serveToParty: StationActivityDialog.#onServeToParty,
             feastServeNow: StationActivityDialog.#onFeastServeNow,
             identifyPoolItem: StationActivityDialog.#onIdentifyPoolItem
@@ -860,6 +862,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             stationTabs,
             stationPanelTab: this._stationPanelTab,
             craftRollPending: this._craftRollPending,
+            mfCookbookAvailable: professionId === "cooking"
+                && !this._craftHasCrafted
+                && MonstrousFeastBridge.ownsCooking(),
             crafting: {
                 profession: professionLabels[professionId] ?? professionId,
                 professionId,
@@ -912,6 +917,48 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         await this.close();
     }
 
+    /**
+     * Open the Monstrous Feast cookbook as an optional alternative to Respite's
+     * native cooking. The station dialog stays open and every normal activity
+     * stays reachable, so the player can cancel the cookbook and pick something
+     * else without spending anything. A completed cook calls back into
+     * {@link _onMonstrousFeastCookCompleted}, which consumes the cook's rest
+     * activity. Surfaced only when Monstrous Feast is installed.
+     */
+    static #onOpenMonsterCookbook() {
+        const dialog = this;
+        const opened = MonstrousFeastBridge.openCooking(this._actor, {
+            onCooked: () => { void dialog._onMonstrousFeastCookCompleted(); }
+        });
+        if (!opened) {
+            ui.notifications.warn("The Monster Cooking book is not available right now.");
+        }
+    }
+
+    /**
+     * Record a completed Monstrous Feast cook as this character's cooking
+     * activity for the rest, then close the station dialog. Idempotent: a cook
+     * fires once, and the commit guards against re-entry. Cancelling the
+     * cookbook never reaches here, so it spends nothing.
+     */
+    async _onMonstrousFeastCookCompleted() {
+        if (this._mfCookCommitted) return;
+        this._mfCookCommitted = true;
+        this._craftProfession = "cooking";
+        if (!this._selectedActivityId) this._selectedActivityId = "act_cook";
+        this._craftResult = {
+            success: true,
+            narrative: "Cooked from the Monster Cookbook.",
+            recipeId: null,
+            monstrousFeast: true,
+            ingredientsConsumed: true
+        };
+        this._craftHasCrafted = true;
+        this._craftCommitted = false;
+        await this._autoCommitCraftResult();
+        await this.close();
+    }
+
     static #onSelectActivity(event, target) {
         const activityId = target.dataset.activityId;
         Logger.log(`ionrift-respite | #onSelectActivity`, { activityId, target: target?.outerHTML?.slice(0,120) });
@@ -924,7 +971,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             const resolver = this._restApp?._activityResolver;
             const activity = resolver?.activities?.get(activityId)
                 ?? this._cookingAvailable?.find(a => a.id === activityId);
-            this._craftProfession  = activity?.crafting?.profession ?? (activityId === "act_cook" ? "cooking" : activityId === "act_brew" ? "brewing" : "cooking");
+            const cookProfession = activity?.crafting?.profession ?? (activityId === "act_cook" ? "cooking" : activityId === "act_brew" ? "brewing" : "cooking");
+            this._craftProfession  = cookProfession;
             this._craftRecipeId    = null;
             this._craftRisk        = "standard";
             this._craftResult      = null;
@@ -990,7 +1038,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         // Crafting activities: transition to inline crafting picker
         if (activity?.crafting?.enabled || COOK_ACTIVITY_IDS.has(activityId)) {
-            this._craftProfession  = activity?.crafting?.profession ?? (activityId === "act_cook" ? "cooking" : activityId === "act_brew" ? "brewing" : "cooking");
+            const cookProfession = activity?.crafting?.profession ?? (activityId === "act_cook" ? "cooking" : activityId === "act_brew" ? "brewing" : "cooking");
+            this._craftProfession  = cookProfession;
             this._craftRecipeId    = null;
             this._craftRisk        = "standard";
             this._craftResult      = null;
