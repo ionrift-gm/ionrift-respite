@@ -31,6 +31,18 @@
     "icons/consumables/food/fish-grilled-brown.webp",
     "icons/consumables/food/meat-raw-red.webp",
     "icons/commodities/stone/ore-chunk-white.webp",
-    "icons/commodities/bones/horn-curved-worn-brown.webp"
+    "icons/commodities/bones/horn-curved-worn-brown.webp",
+    "icons/consumables/food/steak-cooked-grilled-brown.webp",
+    "icons/commodities/leather/fur-pelt-brown.webp",
+    "icons/commodities/flowers/clover-pink.webp",
+    "icons/commodities/gems/gem-rough-oval-purple.webp",
+    "icons/commodities/claws/claw-bear-brown.webp",
+    "icons/commodities/materials/feather-colored-red.webp",
+    "icons/commodities/materials/powder-grey.webp",
+    "icons/creatures/abilities/bear-roar-bite-brown.webp",
+    "icons/creatures/abilities/mouth-teeth-sharp.webp",
+    "icons/creatures/tentacles/tentacle-eyes-yellow-pink.webp",
+    "icons/creatures/abilities/dragon-breath-purple.webp",
+    "icons/sundries/documents/document-torn-diagram-tan.webp"
   ]
 }
