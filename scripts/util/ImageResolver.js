@@ -250,13 +250,17 @@ export class ImageResolver {
                                 }
                             }
 
-                            for (const subDir of (result.dirs ?? [])) {
+                            // Walk child directories concurrently instead of sequentially.
+                            const childDirs = result.dirs ?? [];
+                            for (const subDir of childDirs) {
                                 const childDirName = subDir.split("/").pop();
                                 if (dirName === "terrains" && childDirName) {
                                     terrains.push(childDirName);
                                 }
-                                await walk(subDir, depth + 1);
                             }
+                            await Promise.allSettled(
+                                childDirs.map(subDir => walk(subDir, depth + 1))
+                            );
                         } catch { /* skip inaccessible dirs */ }
                     };
                     await walk(candidatePath);
