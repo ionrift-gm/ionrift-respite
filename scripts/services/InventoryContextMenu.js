@@ -67,6 +67,11 @@ export function registerInventoryContextMenu() {
         if (isEdible && !isDrinkable) {
             const flags = item.flags?.[MODULE_ID] ?? {};
             const eatLabel = flags.chefTreat ? "Eat Treat" : "Eat";
+
+            // Inventory food is eaten through the normal consume path, which
+            // applies any Well Fed buff. Monstrous Feast meals are eaten fresh
+            // when cooked and never enter inventory, so there is no shared-dish
+            // redirect to make here.
             menuItems.push({
                 name: eatLabel,
                 icon: `<i class="fas fa-utensils respite-context-icon"></i>`,
