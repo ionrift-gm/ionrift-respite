@@ -845,6 +845,15 @@ Hooks.once("ready", async () => {
     RespiteLog.log(`${MODULE_ID} | Ready hook firing...`);
     Logger.log?.(MODULE_LABEL, "Ready.");
 
+    // Register Respite's Well Fed serve with the shared cooking abstraction so
+    // serveDish routes communal feeding and the single shared slot through
+    // Respite. Additive; no-op when the kernel has no cooking namespace.
+    try {
+        MealPhaseHandler.registerFeedProvider();
+    } catch (e) {
+        console.warn(`${MODULE_ID} | Cooking feed provider registration failed:`, e);
+    }
+
     // Initialize image resolver (art pack detection â€” probes ionrift-data/)
     await ImageResolver.init();
 

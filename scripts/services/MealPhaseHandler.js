@@ -905,7 +905,7 @@ export class MealPhaseHandler {
                 const member = game.actors.get(pid);
                 if (!member) continue;
                 if (!ItemClassifier.acceptsFoodBuffs(member)) continue;
-                const alreadyWellFed = member.effects?.some(e => e.flags?.[MODULE_ID]?.wellFed === true) ?? false;
+                const alreadyWellFed = member.effects?.some(e => MealPhaseHandler._isCookingSlotEffect(e)) ?? false;
                 if (alreadyWellFed) {
                     const doc = MealPhaseHandler._mealSnapshotAsSingleLeftover(itemSnapshot);
                     const ref = doc.flags?.[MODULE_ID]?.itemRef ?? doc.name ?? itemName;
@@ -928,7 +928,7 @@ export class MealPhaseHandler {
             if (!ItemClassifier.acceptsFoodBuffs(consumerActor)) {
                 return;
             }
-            const alreadyWellFed = consumerActor.effects?.some(e => e.flags?.[MODULE_ID]?.wellFed === true) ?? false;
+            const alreadyWellFed = consumerActor.effects?.some(e => MealPhaseHandler._isCookingSlotEffect(e)) ?? false;
             if (alreadyWellFed) {
                 const doc = MealPhaseHandler._mealSnapshotAsSingleLeftover(itemSnapshot);
                 const ref = doc.flags?.[MODULE_ID]?.itemRef ?? doc.name ?? itemName;
@@ -1018,6 +1018,10 @@ export class MealPhaseHandler {
                 ...dndFlags.effectFlags
             };
 
+            // Dual-flag the shared cooking slot so Monstrous Feast and Respite
+            // share one mutual-exclusion slot (kills the double-feed).
+            MealPhaseHandler._stampCookingSlotFlag(aeFlags);
+
             // Merge DAE specialDuration from buff builders
             if (aeDaeSpecials.length) {
                 const existing = aeFlags.dae?.specialDuration ?? [];
@@ -1053,7 +1057,7 @@ export class MealPhaseHandler {
     }
 
     static async _removeWellFedEffects(actor) {
-        const toDelete = actor.effects?.filter(e => e.flags?.[MODULE_ID]?.wellFed === true) ?? [];
+        const toDelete = actor.effects?.filter(e => MealPhaseHandler._isCookingSlotEffect(e)) ?? [];
         if (toDelete.length) {
             await actor.deleteEmbeddedDocuments("ActiveEffect", toDelete.map(e => e.id));
         }
@@ -1070,7 +1074,7 @@ export class MealPhaseHandler {
         let removed = 0;
         for (const actor of actors) {
             const wellFedEffects = actor.effects?.filter(
-                e => e.flags?.[MODULE_ID]?.wellFed === true
+                e => MealPhaseHandler._isCookingSlotEffect(e)
             ) ?? [];
             if (wellFedEffects.length) {
                 await actor.deleteEmbeddedDocuments(
@@ -1201,6 +1205,240 @@ export class MealPhaseHandler {
         }
     }
 
+    // ── Shared cooking abstraction bridge (ionrift-library) ───────────
+    // All of the following degrade to Respite's standalone behavior when the
+    // kernel predates the cooking namespace (feature-detected, never required).
+
+    /**
+     * Active Effect changes from the shared cooking buff model, when present.
+     * Returns null to signal "use Respite's local path". Only delegates on
+     * dnd5e: the kernel returns an empty list off-system, where Respite's own
+     * adapter may still produce changes. temp_hp is intentionally never
+     * delegated because the kernel applies the formula verbatim (no roll) and
+     * uses a different change mode than Respite's adapter.
+     * @param {object} buff - Canonical buff descriptor.
+     * @param {Actor|null} actor
+     * @returns {object[]|null}
+     */
+    static _cookingAeChanges(buff, actor) {
+        const buffs = game.ionrift?.library?.cooking?.buffs;
+        if (!buffs?.toActiveEffectChanges) return null;
+        if (buff?.type === "temp_hp") return null;
+        const systemId = game.ionrift?.respite?.adapter?.id ?? game.system?.id;
+        if (systemId !== "dnd5e") return null;
+        try {
+            const out = buffs.toActiveEffectChanges(actor, buff);
+            return Array.isArray(out) ? out : null;
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * Respite's own Active Effect change generation (adapter, then literal
+     * fallback). Used when the shared cooking model is unavailable.
+     * @param {string} buffType
+     * @param {object} params
+     * @returns {object[]}
+     */
+    static _localAeChanges(buffType, params) {
+        const aeAdapter = game.ionrift?.respite?.adapter;
+        if (aeAdapter) return aeAdapter.getActiveEffectChanges(buffType, params);
+        if (buffType === "advantage") {
+            const ab = (params.ability ?? "con").toLowerCase();
+            return [{ key: `system.abilities.${ab}.save.roll.mode`, mode: CONST.ACTIVE_EFFECT_MODES.ADD, value: "1", priority: 20 }];
+        }
+        if (buffType === "resistance") {
+            const dtype = String(params.damageType ?? "poison").toLowerCase();
+            return [{ key: "system.traits.dr.value", mode: CONST.ACTIVE_EFFECT_MODES.ADD, value: dtype, priority: 20 }];
+        }
+        if (buffType === "temp_hp") {
+            return [{ key: "system.attributes.hp.temp", mode: CONST.ACTIVE_EFFECT_MODES.OVERRIDE, value: String(params.value ?? 0), priority: 20 }];
+        }
+        return [];
+    }
+
+    /**
+     * Whether an effect occupies the shared cooking buff slot. Matches EITHER
+     * the kernel flag (`flags["ionrift-library"].cookingBuff`) OR Respite's
+     * legacy `wellFed` flag, so Monstrous Feast and Respite share one
+     * mutual-exclusion slot without breaking existing Well Fed cleanup.
+     * @param {ActiveEffect|object} effect
+     * @returns {boolean}
+     */
+    static _isCookingSlotEffect(effect) {
+        if (!effect) return false;
+        if (effect.flags?.[MODULE_ID]?.wellFed === true) return true;
+        const buffs = game.ionrift?.library?.cooking?.buffs;
+        const ns = buffs?.COOKING_BUFF_FLAG_NAMESPACE ?? "ionrift-library";
+        const flag = buffs?.COOKING_BUFF_FLAG ?? "cookingBuff";
+        return effect.flags?.[ns]?.[flag] === true;
+    }
+
+    /**
+     * Add the shared cooking slot flag onto an effect's flags object (in place)
+     * alongside Respite's existing `wellFed` flag. No-op without the kernel.
+     * @param {object} flags
+     * @param {string} [slot]
+     * @returns {object} the same flags object
+     */
+    static _stampCookingSlotFlag(flags, slot) {
+        const buffs = game.ionrift?.library?.cooking?.buffs;
+        if (!buffs) return flags;
+        const ns = buffs.COOKING_BUFF_FLAG_NAMESPACE;
+        flags[ns] = {
+            ...(flags[ns] ?? {}),
+            [buffs.COOKING_BUFF_FLAG]: true,
+            [buffs.COOKING_SLOT_FLAG]: slot ?? buffs.DEFAULT_COOKING_SLOT
+        };
+        return flags;
+    }
+
+    /**
+     * Register Respite's Well Fed serve as a provider with the shared cooking
+     * abstraction so that `cooking.feed.serveDish` routes communal feeding,
+     * satiation, and the single shared slot through Respite. Additive and
+     * idempotent; returns false when the kernel has no cooking namespace.
+     * @returns {boolean}
+     */
+    static registerFeedProvider() {
+        const feed = game.ionrift?.library?.cooking?.feed;
+        if (!feed?.registerProvider) return false;
+        feed.registerProvider({
+            id: "ionrift-respite:wellfed",
+            canHandle: (item) => {
+                try {
+                    const found = feed.buffsForDish?.(item);
+                    return Array.isArray(found) && found.length > 0;
+                } catch {
+                    return false;
+                }
+            },
+            serve: (ctx) => MealPhaseHandler.serveCommunalDish(ctx)
+        });
+        return true;
+    }
+
+    /**
+     * Serve a dish communally, folding the supplied buffs into Respite's Well
+     * Fed serve so the single shared slot and satiation crediting stay owned by
+     * Respite. Entry point for `cooking.feed.serveDish`.
+     * @param {{ cookActor?: Actor, item?: object, recipients?: Actor[], buffs?: object[], opts?: object }} ctx
+     * @returns {Promise<{ served: number, buffs: object[] }>}
+     */
+    static async serveCommunalDish({ cookActor = null, item = null, recipients = [], buffs = [], opts = {} } = {}) {
+        const list = Array.isArray(recipients) ? recipients.filter(Boolean) : [];
+        const partyIds = list.map(a => a.id).filter(Boolean);
+        const snapshot = MealPhaseHandler._buildServeSnapshot(item, buffs, opts?.title);
+        const consumer = cookActor ?? list[0] ?? null;
+        if (consumer && partyIds.length) {
+            await MealPhaseHandler._dispatchWellFedMealServing({
+                consumerActor: consumer,
+                itemSnapshot: snapshot,
+                partyIds
+            });
+        }
+        await MealPhaseHandler._creditCommunalSatiation(snapshot, partyIds);
+        return { served: partyIds.length, buffs };
+    }
+
+    /**
+     * Build a party-meal snapshot that carries the supplied buffs so the
+     * existing communal serve applies them. Buffs use the same descriptor shape
+     * Respite already stores under `flags["ionrift-respite"].buff`.
+     * @private
+     */
+    static _buildServeSnapshot(item, buffs, title) {
+        let snapshot;
+        if (item && typeof item.toObject === "function") snapshot = item.toObject(false);
+        else snapshot = item ? foundry.utils.deepClone(item) : {};
+        snapshot.name = title ?? snapshot.name ?? "Meal";
+        const rf = { ...(snapshot.flags?.[MODULE_ID] ?? {}) };
+        rf.partyMeal = true;
+        if (Array.isArray(buffs) && buffs.length) {
+            rf.wellFed = true;
+            rf.buff = buffs;
+        }
+        snapshot.flags = { ...(snapshot.flags ?? {}), [MODULE_ID]: rf };
+        return snapshot;
+    }
+
+    /**
+     * Credit satiation for a communally served dish into the active rest's meal
+     * tracking. No-ops when no rest is running (satiation has no store outside a
+     * rest). Mirrors the TotM feast-serve crediting.
+     * @private
+     */
+    static async _creditCommunalSatiation(snapshot, partyIds) {
+        const restApp = game.ionrift?.respite?.getActiveApp?.();
+        if (!restApp) return false;
+        const rf = snapshot.flags?.[MODULE_ID] ?? {};
+        const satiates = Array.isArray(rf.satiates) ? rf.satiates : [];
+        if (!satiates.length) return false;
+
+        let foodPerDay = 1;
+        let waterPerDay = 2;
+        try {
+            const { TerrainRegistry } = await import("./TerrainRegistry.js");
+            const tag = restApp._engine?.terrainTag ?? restApp._selectedTerrain ?? "forest";
+            const mealRules = TerrainRegistry.getDefaults?.(tag)?.mealRules ?? {};
+            if (mealRules.foodPerDay != null) foodPerDay = mealRules.foodPerDay;
+            if (mealRules.waterPerDay != null) waterPerDay = mealRules.waterPerDay;
+        } catch { /* terrain rules unavailable: use baseline */ }
+
+        if (!restApp._mealChoices) restApp._mealChoices = new Map();
+        if (!restApp._activityMealRationsSubmitted) restApp._activityMealRationsSubmitted = new Set();
+
+        for (const pid of partyIds) {
+            if (restApp._activityMealRationsSubmitted.has(pid)) continue;
+            const existing = restApp._mealChoices.get(pid) ?? {};
+            if (satiates.includes("food")) {
+                const foodArr = Array.isArray(existing.food) ? [...existing.food] : [];
+                const foodLocked = Array.isArray(existing.foodLockedSlots) ? [...existing.foodLockedSlots] : [];
+                for (let i = 0; i < foodPerDay; i++) {
+                    if (!foodArr[i] || foodArr[i] === "skip") {
+                        foodArr[i] = "__feast_food";
+                        if (!foodLocked.includes(i)) foodLocked.push(i);
+                    }
+                }
+                existing.food = foodArr;
+                existing.foodLockedSlots = foodLocked;
+            }
+            if (satiates.includes("water")) {
+                const waterArr = Array.isArray(existing.water) ? [...existing.water] : [];
+                const waterLocked = Array.isArray(existing.waterLockedSlots) ? [...existing.waterLockedSlots] : [];
+                for (let i = 0; i < waterPerDay; i++) {
+                    if (!waterArr[i] || waterArr[i] === "skip") {
+                        waterArr[i] = "__feast_water";
+                        if (!waterLocked.includes(i)) waterLocked.push(i);
+                    }
+                }
+                existing.water = waterArr;
+                existing.waterLockedSlots = waterLocked;
+            }
+            const consumedDays = Array.isArray(existing.consumedDays) ? [...existing.consumedDays] : [];
+            consumedDays.push({
+                food: [...(existing.food ?? [])],
+                water: [...(existing.water ?? [])],
+                essence: [...(existing.essence ?? [])]
+            });
+            restApp._mealChoices.set(pid, {
+                ...existing,
+                consumedDays,
+                currentDay: consumedDays.length,
+                food: [],
+                water: [],
+                essence: existing.essence ?? [],
+                itemsConsumed: true,
+                foodLockedSlots: existing.foodLockedSlots ?? [],
+                waterLockedSlots: existing.waterLockedSlots ?? []
+            });
+            restApp._activityMealRationsSubmitted.add(pid);
+        }
+        try { if (typeof restApp._saveRestState === "function") await restApp._saveRestState(); } catch { /* persistence is best-effort */ }
+        return true;
+    }
+
     /**
      * Build ActiveEffect change list for deferred (non-immediate) buffs.
      */
@@ -1228,10 +1466,8 @@ export class MealPhaseHandler {
 
         if (buff.type === "advantage") {
             const ab = (buff.save?.ability ?? buff.formula ?? "con").toLowerCase();
-            const aeAdapter = game.ionrift?.respite?.adapter;
-            const aeChanges = aeAdapter
-                ? aeAdapter.getActiveEffectChanges("advantage", { ability: ab })
-                : [{ key: `system.abilities.${ab}.save.roll.mode`, mode: CONST.ACTIVE_EFFECT_MODES.ADD, value: "1", priority: 20 }];
+            const aeChanges = MealPhaseHandler._cookingAeChanges({ type: "advantage", save: { ability: ab }, duration: buff.duration }, actor)
+                ?? MealPhaseHandler._localAeChanges("advantage", { ability: ab });
             changes.push(...aeChanges);
             descriptions.push(
                 `Advantage on ${ab.toUpperCase()} saving throws (${buff.duration ?? "nextSave"}).`
@@ -1246,10 +1482,8 @@ export class MealPhaseHandler {
 
         if (buff.type === "resistance") {
             const dtype = String(buff.damageType ?? buff.formula ?? "poison").toLowerCase();
-            const aeAdapter = game.ionrift?.respite?.adapter;
-            const aeChanges = aeAdapter
-                ? aeAdapter.getActiveEffectChanges("resistance", { damageType: dtype })
-                : [{ key: "system.traits.dr.value", mode: CONST.ACTIVE_EFFECT_MODES.ADD, value: dtype, priority: 20 }];
+            const aeChanges = MealPhaseHandler._cookingAeChanges({ type: "resistance", damageType: dtype }, actor)
+                ?? MealPhaseHandler._localAeChanges("resistance", { damageType: dtype });
             changes.push(...aeChanges);
             descriptions.push(
                 `Damage resistance (${dtype}).`
