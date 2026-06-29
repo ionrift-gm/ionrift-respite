@@ -4968,9 +4968,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const terrainObj = TerrainRegistry.get(this._engine.terrainTag);
                 const terrainLabel = terrainObj?.label ?? this._engine.terrainTag ?? "Terrain";
                 const chips = [];
-                if (weather !== 0) chips.push({ label: bd.weatherName ?? "Weather", value: fmt(weather), icon: "fas fa-cloud-sun-rain", tooltip: "Weather shifts the night check. Rough weather makes a camp event more likely. The value is this factor's effect on the DC." });
-                if (shelter !== 0) chips.push({ label: "Shelter", value: fmt(shelter), icon: "fas fa-campground", tooltip: "A tent or shelter spell hides the camp and lowers the chance of a night event." });
-                if (scouting !== 0) chips.push({ label: `Scout: ${bd.scoutingResult ?? "?"}`, value: fmt(scouting), icon: "fas fa-binoculars", tooltip: "Scouting result during travel. A good scout lowers the event chance; a poor scout raises it." });
+                if (weather !== 0) chips.push({ label: bd.weatherName ?? "Weather", value: fmt(-weather), icon: "fas fa-cloud-sun-rain", tooltip: "Weather shifts the night check. Rough weather makes a camp event more likely. The value is this factor's effect on the DC." });
+                if (shelter !== 0) chips.push({ label: "Shelter", value: fmt(-shelter), icon: "fas fa-campground", tooltip: "A tent or shelter spell hides the camp and lowers the encounter DC, so a night event is less likely." });
+                if (scouting !== 0) chips.push({ label: `Scout: ${bd.scoutingResult ?? "?"}`, value: fmt(-scouting), icon: "fas fa-binoculars", tooltip: "Scouting result during travel. A good scout lowers the encounter DC; a poor scout raises it. The value is this factor's effect on the DC." });
                 if (complication) chips.push({ label: "Complication", value: "", icon: "fas fa-exclamation-triangle", warn: true, tooltip: "A failed scout left a hidden complication that will trigger during events." });
                 if (fire !== 0) chips.push({ label: this._fireLevel ?? "Fire", value: fmt(-fire), icon: "fas fa-fire", tooltip: "A lit fire is a beacon. A larger fire raises the encounter DC and draws attention." });
                 const defensesAttempted = this._pendingCampRolls?.some(p => p.activityId === "act_defenses");
@@ -14627,9 +14627,10 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._engine._encounterBreakdown.scouting = effects.encounterDC;
         this._engine._encounterBreakdown.scoutingResult = tier;
 
-        // Recalculate total shelter encounter mod
+        // Recalculate total shelter encounter mod. Scouting stays in the
+        // breakdown only; getEffectiveEncounterDC adds it once from there.
         const bd = this._engine._encounterBreakdown;
-        this._engine.shelterEncounterMod = (bd.shelter ?? 0) + (bd.weather ?? 0) + effects.encounterDC;
+        this._engine.shelterEncounterMod = (bd.shelter ?? 0) + (bd.weather ?? 0);
 
         // Apply comfort bonus
         if (effects.comfortBonus > 0) {

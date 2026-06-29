@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.3.6] - 2026-06-29
+
+### Fixed
+- **World startup latency.** Reduced ready-hook initialisation from ~28s to ~11s by running independent loaders concurrently instead of one-at-a-time.
+- **Encounter DC chips.** Protection factors now display as negative and threats as positive, matching the convention the fire chip already used.
+- **Scout double-count.** A good scouting result was being applied twice to the encounter threshold, making the rolled DC one off from the bar display.
+
 ## [3.3.5] - 2026-06-28
 
 ### Fixed
