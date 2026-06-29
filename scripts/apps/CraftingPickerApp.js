@@ -1,6 +1,7 @@
 import { CraftingEngine } from "../services/CraftingEngine.js";
 import { GrantLedger } from "../services/GrantLedger.js";
 import { normalizeRecipeOutputImg } from "../services/RecipeIcons.js";
+import { MonstrousFeastBridge } from "../services/MonstrousFeastBridge.js";
 
 const MODULE_ID = "ionrift-respite";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -30,6 +31,7 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
             selectRisk: CraftingPickerApp.#onSelectRisk,
             craftRecipe: CraftingPickerApp.#onCraftRecipe,
             toggleMissing: CraftingPickerApp.#onToggleMissing,
+            openMonsterCookbook: CraftingPickerApp.#onOpenMonsterCookbook,
             closePicker: CraftingPickerApp.#onClose
         }
     };
@@ -51,6 +53,20 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         this._craftingResult = null;
         this._hasCrafted = ledger?.hasCraftingForActor(actor.id, professionId) ?? false;
         this._showMissing = false;
+        this._mfCookCommitted = false;
+    }
+
+    /**
+     * Whether the optional Monstrous Feast cookbook should be offered here.
+     * Surfaced only for cooking, only before a craft resolves, and only when
+     * Monstrous Feast is installed and exposes its stable cooking entry. Native
+     * Respite cooking stays available and remains the default either way.
+     * @returns {boolean}
+     */
+    _isMonsterCookbookAvailable() {
+        return this._professionId === "cooking"
+            && !this._hasCrafted
+            && MonstrousFeastBridge.ownsCooking();
     }
 
     async _prepareContext(options) {
@@ -103,6 +119,7 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
             selectedRecipeId: this._selectedRecipeId,
             hasCrafted: this._hasCrafted,
             showMissing: this._showMissing,
+            mfCookbookAvailable: this._isMonsterCookbookAvailable(),
             riskTiers: [
                 { id: "safe", label: "Safe", hint: "DC −3 · Ingredients kept", selected: this._selectedRisk === "safe" },
                 { id: "standard", label: "Standard", hint: "Base DC · Ingredients used", selected: this._selectedRisk === "standard" },
@@ -196,6 +213,50 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
     static #onToggleMissing(event, target) {
         this._showMissing = !this._showMissing;
         this.render();
+    }
+
+    static #onOpenMonsterCookbook(event, target) {
+        this._openMonsterCookbook();
+    }
+
+    /**
+     * Open the Monstrous Feast cookbook as an optional alternative to Respite's
+     * native cooking. The picker stays open, so the player can cancel the
+     * cookbook and pick a recipe instead without spending anything. A completed
+     * cook calls back into {@link _onMonstrousFeastCookCompleted}, which records
+     * the rest's cooking activity. Surfaced only when Monstrous Feast is present.
+     * @returns {boolean} true when the cookbook opened.
+     */
+    _openMonsterCookbook() {
+        const opened = MonstrousFeastBridge.openCooking(this._actor, {
+            onCooked: () => { void this._onMonstrousFeastCookCompleted(); }
+        });
+        if (!opened) {
+            ui.notifications.warn("The Monster Cooking book is not available right now.");
+        }
+        return opened;
+    }
+
+    /**
+     * Record a completed Monstrous Feast cook as this character's cooking
+     * activity for the rest, then close the picker. Routes through the same
+     * completion callback the native craft uses, so the choice is recorded as
+     * the cooking activity (act_cook). Idempotent: a cook fires once, and
+     * cancelling the cookbook never reaches here, so it spends nothing.
+     */
+    async _onMonstrousFeastCookCompleted() {
+        if (this._mfCookCommitted) return;
+        this._mfCookCommitted = true;
+        this._hasCrafted = true;
+        this._craftingResult = {
+            success: true,
+            narrative: "Cooked from the Monster Cookbook.",
+            recipeId: null,
+            monstrousFeast: true,
+            ingredientsConsumed: true
+        };
+        if (this._onComplete) this._onComplete(this._craftingResult);
+        await this.close();
     }
 
     static #onClose(event, target) {

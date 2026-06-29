@@ -162,5 +162,11 @@
         <button type="button" class="btn-secondary" data-action="closePicker">
             {{#if hasCrafted}}Close{{else}}Cancel{{/if}}
         </button>
+        {{#if mfCookbookAvailable}}
+        <button type="button" class="btn-secondary mf-cookbook-btn" data-action="openMonsterCookbook"
+            data-tooltip="Cook from the Monster Cookbook instead. A finished cook uses this rest's cooking activity.">
+            <i class="fas fa-book-open"></i> Monster Cookbook
+        </button>
+        {{/if}}
     </div>
 </div>

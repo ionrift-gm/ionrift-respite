@@ -1306,6 +1306,10 @@ export class MealPhaseHandler {
         if (!feed?.registerProvider) return false;
         feed.registerProvider({
             id: "ionrift-respite:wellfed",
+            // Respite owns the rest cycle and clears the Well Fed marker on rest,
+            // so the kernel can safely enforce its block/no-replace gate while
+            // Respite is present. Without this flag the kernel replaces instead.
+            tracksRest: true,
             canHandle: (item) => {
                 try {
                     const found = feed.buffsForDish?.(item);
