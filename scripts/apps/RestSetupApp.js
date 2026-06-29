@@ -107,6 +107,8 @@ import {
 } from "./StationActivityDialog.js";
 import { CampfireMakeCampDialog } from "./CampfireMakeCampDialog.js";
 import { CampfireEmbed } from "./CampfireEmbed.js";
+import { RestLedger } from "../services/RestLedger.js";
+import { RestLedgerApp } from "./RestLedgerApp.js";
 
 import { STUB_RECIPES } from "../data/stub-content.js";
 import { applyCustomRecipesToEngine } from "../services/RecipeCatalog.js";
@@ -327,7 +329,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             craftToggleMissing: RestSetupApp.#onTotmCraftToggleMissing,
             craftClose: RestSetupApp.#onTotmCraftClose,
             feastServeNow: RestSetupApp.#onTotmFeastServeNow,
-            trainingRoll: RestSetupApp.#onTrainingRoll
+            trainingRoll: RestSetupApp.#onTrainingRoll,
+            openLedger: RestSetupApp.#onOpenLedger
         }
     };
 
@@ -467,6 +470,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         /** Per-rest idempotent reward grants (travel, crafting, discoveries, meals). */
         this._grantLedger = new GrantLedger();
+
+        /** Structured audit trail for the rest session (GM only). */
+        this._restLedger = new RestLedger();
+        /** @type {RestLedgerApp|null} */
+        this._restLedgerApp = null;
 
         // Delegates
         this._crafting = new CraftingDelegate(this);
@@ -1178,7 +1186,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     for (const eff of (sub.effects ?? [])) {
                         if (eff.type === "damage") {
                             // Parse flat formula or use the number directly
-                            const dmg = parseInt(eff.formula) || 0;
+                            const dmg = parseInt(eff.formula ?? eff.roll) || 0;
                             totalDamage += dmg;
                         }
                     }
@@ -1372,6 +1380,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             awaitingCombat: this._awaitingCombat ?? false,
             gmCopySpellProposal: this._gmCopySpellProposal?.charged ? this._gmCopySpellProposal : null,
             mealChoices: this._mealChoices ? Array.from(this._mealChoices.entries()) : [],
+            mealResults: this._mealResults ?? null,
             mealSubmissions: this._mealSubmissions ? Array.from(this._mealSubmissions.entries()) : [],
             activityMealRationsSubmitted: [...(this._activityMealRationsSubmitted ?? [])],
             totmFeastServed: this._totmFeastServed ?? false,
@@ -1379,6 +1388,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campfireSnapshot: RestSetupApp._campfireSnapshotFromFireLevel(this._fireLevel),
             travelState: this._travel?.serialize() ?? null,
             grantLedger: this._grantLedger?.serialize() ?? null,
+            restLedger: this._restLedger?.serialize() ?? null,
             magicScanComplete: this._magicScanComplete ?? false,
             magicScanResults: this._magicScanResults ?? null,
             tavernTotmOverride: !!this._tavernTotmOverride,
@@ -1442,6 +1452,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._awaitingCombat = state.awaitingCombat ?? false;
         this._gmCopySpellProposal = state.gmCopySpellProposal ?? null;
         this._mealChoices = new Map(state.mealChoices ?? []);
+        this._mealResults = state.mealResults ?? null;
         this._mealSubmissions = new Map(state.mealSubmissions ?? []);
         this._activityMealRationsSubmitted = new Set(state.activityMealRationsSubmitted ?? []);
         this._totmFeastServed = state.totmFeastServed ?? false;
@@ -1452,6 +1463,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         if (!this._grantLedger) this._grantLedger = new GrantLedger();
         this._grantLedger.deserialize(state.grantLedger ?? null);
+
+        if (!this._restLedger) this._restLedger = new RestLedger();
+        this._restLedger.deserialize(state.restLedger ?? null);
+        if (this._restLedgerApp?.rendered) {
+            this._restLedgerApp.setLedger(this._restLedger);
+        }
 
         if (state.travelState) {
             this._travel.deserialize(state.travelState);
@@ -1616,6 +1633,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             await game.settings.set(MODULE_ID, "activeRest", {});
         } catch (e) {
             // Setting may not be registered yet
+        }
+    }
+
+    /** Re-render the ledger popout if it is open. */
+    _refreshLedgerApp() {
+        if (this._restLedgerApp?.rendered) {
+            this._restLedgerApp.render();
         }
     }
 
@@ -2819,10 +2843,20 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     async _prepareContext(options) {
+        // If data hasn't loaded yet, render the loading state immediately and
+        // kick off a re-render once loading completes. This gives instant
+        // visual feedback that the app is opening.
+        if (this._dataReady) {
+            const settled = await Promise.race([this._dataReady, Promise.resolve("pending")]);
+            if (settled === "pending") {
+                this._dataReady.then(() => this.render({ force: true }));
+                return { isLoading: true };
+            }
+            this._dataReady = null;
+        }
+
         // Ensure terrain registry is loaded (no-ops after first call)
         await TerrainRegistry.init();
-        // Ensure content packs and event data are loaded before building terrain options
-        if (this._dataReady) await this._dataReady;
 
         if (!this._pendingSelections) this._pendingSelections = new Map();
         if (!this._expandedCards) this._expandedCards = new Set();
@@ -7067,11 +7101,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 if (!actor) continue;
                 let amount = 0;
                 try {
-                    const roll = await new Roll(effect.formula ?? "0").evaluate();
+                    const roll = await new Roll(effect.formula ?? effect.roll ?? "0").evaluate();
                     amount = roll.total;
                     await roll.toMessage({
                         speaker: { alias: te.name ?? "Rest Event" },
-                        flavor: `<strong>${actor.name}</strong>: ${effect.formula} ${effect.damageType ?? ""} damage (applied after the rest)`,
+                        flavor: `<strong>${actor.name}</strong>: ${effect.formula ?? effect.roll ?? "?"} ${effect.damageType ?? ""} damage (applied after the rest)`,
                         whisper: game.users.filter(u => u.isGM).map(u => u.id)
                     });
                 } catch (e) {
@@ -7488,6 +7522,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const rosterPhases = new Set(["camp", "travel", "activity", "meal"]);
             if (rosterPhases.has(this._phase)) this._installGmStationTokenSyncHook();
             else this._removeGmStationTokenSyncHook();
+        }
+
+        if (this._isGM && this.element) {
+            const header = this.element.querySelector("header.window-header") ?? this.element.querySelector(".window-header");
+            if (header && !header.querySelector(".rest-ledger-header-btn")) {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "header-control rest-ledger-header-btn";
+                btn.dataset.action = "openLedger";
+                btn.dataset.tooltip = "Open Ledger";
+                btn.innerHTML = `<i class="fas fa-book"></i>`;
+                const closeBtn = header.querySelector("button.close") ?? header.querySelector("[data-action='close']");
+                if (closeBtn) header.insertBefore(btn, closeBtn);
+                else header.appendChild(btn);
+            }
         }
 
     }
@@ -7926,6 +7975,30 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         setActiveRestData(restPayload);
 
         emitRestStarted(restPayload);
+
+        this._restLedger.clear();
+        this._restLedger.add({
+            phase: "setup", category: "terrain", icon: "fas fa-mountain",
+            summary: `Terrain: ${this._terrainLabel ?? terrainTag}`
+        });
+        this._restLedger.add({
+            phase: "setup", category: "weather", icon: "fas fa-cloud-sun",
+            summary: `Weather: ${weather}`,
+            detail: weatherPenalty > 0 ? `Comfort penalty: ${weatherPenalty}` : ""
+        });
+        if (activeShelters.length > 0) {
+            this._restLedger.add({
+                phase: "setup", category: "shelter", icon: "fas fa-campground",
+                summary: `Shelter: ${activeShelters.join(", ")}`,
+                detail: shelterEncounterMod > 0 ? `Encounter DC +${shelterEncounterMod}` : ""
+            });
+        }
+        this._restLedger.add({
+            phase: "setup", category: "comfort", icon: "fas fa-bed",
+            summary: `Comfort: ${effectiveComfort}`,
+            detail: safeRestSpot ? "Safe rest spot" : ""
+        });
+        this._refreshLedgerApp();
 
         ui.notifications.info("Rest phase started. Activity pickers sent to all players.");
 
@@ -8533,6 +8606,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 } catch { /* noop */ }
             }
         }
+
+        for (const [characterId, activityId] of this._characterChoices) {
+            const actor = game.actors.get(characterId);
+            const act = this._activities?.find(a => a.id === activityId);
+            this._restLedger.add({
+                phase: "activity", category: "activity",
+                icon: "fas fa-hammer",
+                actor: characterId,
+                actorName: actor?.name ?? characterId,
+                summary: act?.name ?? activityId
+            });
+        }
+        this._refreshLedgerApp();
 
         // Short rest: skip reflection and events entirely
         if (this._engine.restType === "short") {
@@ -9713,6 +9799,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Close campfire panel
         this._closeCampfire();
 
+        if (this._mealResults?.length) {
+            for (const r of this._mealResults) {
+                const entry = RestLedger.formatMealEntry(r);
+                if (entry) this._restLedger.add(entry);
+            }
+            for (const r of this._mealResults) {
+                const exhEntry = RestLedger.formatMealExhaustionEntry(r);
+                if (exhEntry) this._restLedger.add(exhEntry);
+            }
+            this._refreshLedgerApp();
+        }
+
         this._eventsRolled = false;
         this._phase = "events";
         this._eventPoolQuietNightBypass = false;
@@ -9782,6 +9880,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         await this._saveRestState();
+
+        const effectiveDC = this._engine?.getEffectiveEncounterDC?.() ?? 0;
+        if (effectiveDC > 0) {
+            const bd = this._engine?._encounterBreakdown ?? {};
+            const modParts = [];
+            if (bd.shelter) modParts.push(`Shelter +${bd.shelter}`);
+            if (bd.weather) modParts.push(`Weather +${bd.weather}`);
+            if (bd.scouting) modParts.push(`Scouting +${bd.scouting}`);
+            this._restLedger.add({
+                phase: "events", category: "night_check", icon: "fas fa-dice-d20",
+                summary: `Night check threshold: ${effectiveDC}`,
+                detail: modParts.length ? modParts.join(", ") : ""
+            });
+            this._refreshLedgerApp();
+        }
 
         // Broadcast phase change (camp roll requests are sent individually via GM "request roll" button)
         emitPhaseChanged("events", {
@@ -9920,6 +10033,24 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this._activeTreeState.stalled = false;
             }
         }
+
+        if (this._triggeredEvents?.length > 0) {
+            for (const evt of this._triggeredEvents) {
+                this._restLedger.add({
+                    phase: "events",
+                    category: evt.category === "encounter" ? "encounter" : "event",
+                    icon: evt.category === "encounter" ? "fas fa-swords" : "fas fa-scroll",
+                    summary: evt.name ?? "Event triggered",
+                    detail: evt.rollTotal != null ? `Roll: ${evt.rollTotal}` : ""
+                });
+            }
+        } else {
+            this._restLedger.add({
+                phase: "events", category: "night_pass", icon: "fas fa-moon",
+                summary: "The night passes without incident."
+            });
+        }
+        this._refreshLedgerApp();
 
         emitPhaseChanged("events", {
                 triggeredEvents: this._triggeredEvents,
@@ -11151,6 +11282,22 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         await this._removeBeddingDown();
 
+        for (const outcome of this._outcomes) {
+            const actor = game.actors.get(outcome.characterId);
+            const name = actor?.name ?? outcome.characterId;
+            const hpRec = outcome.recovery?.hpRestored;
+            const hdRec = outcome.recovery?.hdRegained;
+            const parts = [];
+            if (hpRec > 0) parts.push(`+${hpRec} HP`);
+            if (hdRec > 0) parts.push(`+${hdRec} HD`);
+            this._restLedger.add({
+                phase: "resolve", category: "recovery", icon: "fas fa-heart",
+                actor: outcome.characterId, actorName: name,
+                summary: parts.length ? parts.join(", ") : "No recovery"
+            });
+        }
+        this._refreshLedgerApp();
+
         SoundDelegate.stopAll();
         this._phase = "resolve";
         await this._clearRestState();
@@ -11511,6 +11658,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     // â”€â”€â”€â”€â”€â”€â”€â”€ Instance methods â”€â”€â”€â”€â”€â”€â”€â”€
+
+    /** GM-only: open or focus the rest ledger popout. */
+    static #onOpenLedger(event, target) {
+        if (!game.user.isGM) return;
+        if (!this._restLedgerApp || !this._restLedgerApp.rendered) {
+            this._restLedgerApp = new RestLedgerApp({}, this._restLedger);
+            this._restLedgerApp.render(true);
+            requestAnimationFrame(() => this._restLedgerApp?.positionBeside(this.element));
+        } else {
+            this._restLedgerApp.bringToFront?.();
+        }
+    }
 
     /**
      * Receives player-submitted choices from the socket handler.
@@ -15077,6 +15236,21 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._applyLoseActivityTravelLocks();
         this._applyAutoOtherWhenSoleActivity();
         _logGmRestSheet("_advanceCampToActivity", "phase -> activity, closing window");
+
+        if (this._coldCampDecided) {
+            this._restLedger.add({
+                phase: "camp", category: "cold_camp", icon: "fas fa-snowflake",
+                summary: "Cold camp: the party sleeps without fire."
+            });
+        } else {
+            const level = this._fireLevel ?? "unlit";
+            this._restLedger.add({
+                phase: "camp", category: "fire", icon: "fas fa-fire",
+                summary: `Fire level: ${level}`,
+                detail: this._fireLitBy?.actorName ? `Lit by ${this._fireLitBy.actorName}` : ""
+            });
+        }
+        this._refreshLedgerApp();
 
         const isTheater = this._isTotM;
         if (!isTheater) {

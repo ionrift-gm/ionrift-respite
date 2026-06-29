@@ -12,6 +12,7 @@ import {
     mountDietButtonInHeader,
     resolveDietButtonClassName
 } from "./SheetInjectionUtils.js";
+import { syncCohortSuffixesOnSheetRender } from "./SpoilageCohortSync.js";
 
 const MODULE_ID = "ionrift-respite";
 const ZZZ_CHILD_NAME = "ionrift-respite-zzz";
@@ -57,6 +58,52 @@ export function injectDietButton(app, html) {
 }
 
 /**
+ * Updates or injects spoilage badges on inventory rows for one sheet root element.
+ * @param {Actor} actor
+ * @param {HTMLElement} el
+ */
+export function refreshSpoilageBadgesForElement(actor, el) {
+    if (!actor || !el) return;
+
+    const itemRows = el.querySelectorAll("[data-item-id]");
+    for (const row of itemRows) {
+        const itemId = row.dataset.itemId;
+        if (!itemId) continue;
+
+        const item = actor.items.get(itemId);
+        if (!item) continue;
+
+        const flags = item.flags?.[MODULE_ID] ?? {};
+        const existingBadge = row.querySelector(".respite-spoil-badge");
+
+        if (flags.spoiled) {
+            existingBadge?.remove();
+            continue;
+        }
+
+        const badgeState = SpoilageClock.getSpoilageBadgeState(item);
+        if (!badgeState) {
+            existingBadge?.remove();
+            continue;
+        }
+
+        const badge = existingBadge ?? document.createElement("span");
+        badge.className = `respite-spoil-badge ${badgeState.stateClass}`;
+        badge.textContent = badgeState.text;
+        badge.dataset.tooltip = badgeState.tooltip;
+
+        if (!existingBadge) {
+            const nameEl = row.querySelector(".item-name, .entry-name, h4, .name");
+            if (nameEl) {
+                nameEl.appendChild(badge);
+            } else {
+                row.appendChild(badge);
+            }
+        }
+    }
+}
+
+/**
  * Scans visible inventory item rows on character sheets and injects a small
  * badge showing days remaining before spoilage.
  * @param {Application} app - The actor sheet application.
@@ -83,33 +130,21 @@ export function injectSpoilageBadges(app, html) {
         ?? app.element;
     if (!el) return;
 
-    const itemRows = el.querySelectorAll("[data-item-id]");
-    for (const row of itemRows) {
-        const itemId = row.dataset.itemId;
-        if (!itemId) continue;
+    refreshSpoilageBadgesForElement(actor, el);
+}
 
-        const item = actor.items.get(itemId);
-        if (!item) continue;
+/**
+ * Refreshes spoilage badges on every open character sheet (all clients).
+ */
+export function refreshSpoilageBadgesOnOpenSheets() {
+    for (const app of Object.values(ui.windows)) {
+        const actor = app?.actor ?? app?.document;
+        if (!actor || actor.type !== "character" || !app.rendered) continue;
 
-        const flags = item.flags?.[MODULE_ID] ?? {};
-        if (flags.spoiled) continue;
+        const el = app.element;
+        if (!el) continue;
 
-        if (row.querySelector(".respite-spoil-badge")) continue;
-
-        const badgeState = SpoilageClock.getSpoilageBadgeState(item);
-        if (!badgeState) continue;
-
-        const badge = document.createElement("span");
-        badge.className = `respite-spoil-badge ${badgeState.stateClass}`;
-        badge.textContent = badgeState.text;
-        badge.dataset.tooltip = badgeState.tooltip;
-
-        const nameEl = row.querySelector(".item-name, .entry-name, h4, .name");
-        if (nameEl) {
-            nameEl.appendChild(badge);
-        } else {
-            row.appendChild(badge);
-        }
+        refreshSpoilageBadgesForElement(actor, el);
     }
 }
 
@@ -184,4 +219,29 @@ export function registerUiHooks() {
             injectPlayerLockdownClasses(app, html);
         });
     }
+
+    for (const hookName of sheetHooks) {
+        Hooks.on(hookName, (app) => {
+            const actor = app?.actor ?? app?.document;
+            if (actor?.type === "character") {
+                syncCohortSuffixesOnSheetRender(actor).catch(() => {});
+            }
+        });
+    }
+
+    Hooks.on("updateItem", (item, changes, options) => {
+        const actor = item.parent;
+        if (!actor || actor.documentName !== "Actor" || actor.type !== "character") return;
+
+        const sheet = actor.sheet;
+        if (!sheet?.rendered) return;
+
+        if (options?.ionriftCohortSuffixSync && changes.name) {
+            sheet.render(false);
+            return;
+        }
+
+        const el = sheet.element;
+        if (el) refreshSpoilageBadgesForElement(actor, el);
+    });
 }

@@ -3,6 +3,15 @@
 
 <form class="respite-form">
 
+{{#if isLoading}}
+    <div class="respite-loading-state">
+        <div class="respite-loading-spinner">
+            <i class="fas fa-campground fa-2x fa-beat-fade" aria-hidden="true"></i>
+        </div>
+        <p class="respite-loading-label">Preparing camp&hellip;</p>
+    </div>
+{{else}}
+
     {{!-- Phase Indicator: pips and label come from phaseSteps, which only --}}
     {{!-- includes phases that actually run this rest (skipped travel/meal/events --}}
     {{!-- drop out so the dot count matches the real flow). --}}
@@ -3800,4 +3809,5 @@
     </div>
     {{/if}}
 
+{{/if}}
 </form>

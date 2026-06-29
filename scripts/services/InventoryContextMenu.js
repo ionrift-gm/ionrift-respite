@@ -16,6 +16,7 @@
 
 import { ItemClassifier } from "./ItemClassifier.js";
 import { MealPhaseHandler } from "./MealPhaseHandler.js";
+import { SPOILED_FOOD_BLOCKED_MESSAGE } from "./MealConstants.js";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -96,6 +97,11 @@ export function registerInventoryContextMenu() {
  * @param {boolean} isFood - true for food, false for water
  */
 async function _consumeFromInventory(actor, item, isFood) {
+    if (ItemClassifier.isSpoiled(item)) {
+        ui.notifications.warn(SPOILED_FOOD_BLOCKED_MESSAGE);
+        return;
+    }
+
     // Snapshot the item data before consumption (for Well Fed resolution)
     const itemSnapshot = item.toObject(false);
     const itemName = item.name;
@@ -103,7 +109,9 @@ async function _consumeFromInventory(actor, item, isFood) {
 
     const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1, { wholeUnit: !isFood });
     if (consumed <= 0) {
-        ui.notifications.warn(`${itemName} could not be consumed.`);
+        ui.notifications.warn(ItemClassifier.isSpoiled(item)
+            ? SPOILED_FOOD_BLOCKED_MESSAGE
+            : `${itemName} could not be consumed.`);
         return;
     }
 

@@ -4,6 +4,7 @@
  * and stack/consume ordering for perishable ionrift-respite items.
  */
 
+import { stripSpoilageCohortSuffix } from "../../../ionrift-library/scripts/services/cooking/CookingClassifier.js";
 import { CalendarHandler } from "./CalendarHandler.js";
 import { ItemClassifier } from "./ItemClassifier.js";
 
@@ -62,11 +63,15 @@ export class SpoilageClock {
         let daysLeft = spoilsAfter;
         const harvested = flags.harvestedDate;
         if (harvested) {
-            if (calendarDate && String(harvested).includes("-")) {
-                const daysPassed = this.dateDiffDays(harvested, calendarDate);
-                daysLeft = Math.max(0, spoilsAfter - daysPassed);
+            const harvestKey = String(harvested);
+            if (harvestKey.includes("-")) {
+                if (calendarDate) {
+                    const daysPassed = this.dateDiffDays(harvestKey, calendarDate);
+                    daysLeft = Math.max(0, spoilsAfter - daysPassed);
+                }
+                // Calendar key without an active calendar clock: treat as freshly harvested.
             } else {
-                const harvestedEpoch = parseInt(harvested, 10);
+                const harvestedEpoch = parseInt(harvestKey, 10);
                 if (!Number.isNaN(harvestedEpoch)) {
                     const daysPassed = Math.floor((worldTimeEpoch - harvestedEpoch) / 86400);
                     daysLeft = Math.max(0, spoilsAfter - daysPassed);
@@ -180,5 +185,87 @@ export class SpoilageClock {
         const rem = this.getCalendarDaysRemaining(itemLike, clock);
         if (rem === null) return 1_000_000;
         return rem;
+    }
+
+    /**
+     * Cohort label for perishable item names, aligned with badge text (e.g. "3d", "1h", "<1h").
+     * @param {foundry.documents.Item|object} itemLike
+     * @param {object} [clock]
+     * @returns {string|null}
+     */
+    static formatCohortSuffixLabel(itemLike, clock = {}) {
+        const daysLeft = this.getCalendarDaysRemaining(itemLike, clock);
+        if (daysLeft !== null) {
+            if (daysLeft <= 0) return null;
+            return daysLeft === 1 ? "1d" : `${daysLeft}d`;
+        }
+
+        const hoursLeft = this.getHoursRemaining(itemLike, clock);
+        if (hoursLeft === null || hoursLeft <= 0) return null;
+
+        const displayHours = Math.ceil(hoursLeft);
+        if (displayHours <= 1) return displayHours < 1 ? "<1h" : "1h";
+        return `${displayHours}h`;
+    }
+
+    /**
+     * Strip a spoilage cohort suffix from an item display name.
+     * @param {string} name
+     * @returns {string}
+     */
+    static stripCohortSuffix(name) {
+        return stripSpoilageCohortSuffix(name);
+    }
+
+    /**
+     * Display name with a cohort suffix reflecting current days/hours remaining.
+     * Returns the base name alone when no live suffix applies (shelf-stable, spoiled, expired).
+     * @param {foundry.documents.Item|object} itemLike
+     * @param {object} [clock]
+     * @returns {string|null}
+     */
+    static buildSyncedCohortName(itemLike, clock = {}) {
+        if (!itemLike?.name) return null;
+
+        const flags = itemLike.flags?.[MODULE_ID] ?? {};
+        if (flags.spoiled) return null;
+
+        const label = this.formatCohortSuffixLabel(itemLike, clock);
+        const baseName = stripSpoilageCohortSuffix(itemLike.name);
+        if (!label) return baseName;
+        return `${baseName} (${label})`;
+    }
+
+    /**
+     * Append a cohort suffix to a perishable grant so incompatible stacks stay distinct.
+     * Shelf-stable and spoiled rows are left unchanged.
+     * @param {{ name?: string, flags?: object }} grant
+     * @param {object} [clock]
+     */
+    static applyGrantCohortName(grant, clock = {}) {
+        if (!grant?.name) return;
+
+        const itemLike = {
+            name: grant.name,
+            type: grant.type,
+            system: grant.system,
+            flags: grant.flags ?? {}
+        };
+        const synced = this.buildSyncedCohortName(itemLike, clock);
+        if (synced) grant.name = synced;
+    }
+
+    /**
+     * Item update payload when the stored name should reflect current spoilage countdown.
+     * @param {foundry.documents.Item|object} itemLike
+     * @param {object} [clock]
+     * @returns {{ name: string } | null}
+     */
+    static buildCohortSuffixSyncUpdate(itemLike, clock = {}) {
+        if (!itemLike?.name) return null;
+
+        const synced = this.buildSyncedCohortName(itemLike, clock);
+        if (!synced || synced === itemLike.name) return null;
+        return { name: synced };
     }
 }

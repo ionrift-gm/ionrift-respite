@@ -18,6 +18,7 @@
 import { waitForDiceSoNice } from "./RollRequestManager.js";
 import { SpoilageClock } from "./SpoilageClock.js";
 import { ItemClassifier } from "./ItemClassifier.js";
+import { stripSpoilageCohortSuffix } from "../../../ionrift-library/scripts/services/cooking/CookingClassifier.js";
 import { GrantLedger } from "./GrantLedger.js";
 import { getPartyActors } from "./partyActors.js";
 import { mergeRecipeLists } from "./RecipeCatalog.js";
@@ -400,7 +401,7 @@ export class CraftingEngine {
     _buildInventoryMap(actor) {
         const map = new Map();
         for (const item of actor.items) {
-            const key = item.name.toLowerCase().trim();
+            const key = stripSpoilageCohortSuffix(item.name).toLowerCase().trim();
             if (map.has(key)) {
                 map.get(key).quantity += (item.system?.quantity ?? 1);
             } else {
@@ -508,7 +509,9 @@ export class CraftingEngine {
             for (const nameKey of nameOrder) {
                 if (remaining <= 0) break;
 
-                const matches = actor.items.filter(i => i.name.toLowerCase().trim() === nameKey);
+                const matches = actor.items.filter(
+                    i => stripSpoilageCohortSuffix(i.name).toLowerCase().trim() === nameKey
+                );
                 matches.sort((a, b) => {
                     const ka = SpoilageClock.getConsumeSortKey(a);
                     const kb = SpoilageClock.getConsumeSortKey(b);
