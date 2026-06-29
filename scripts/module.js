@@ -1468,6 +1468,8 @@ Hooks.on("dnd5e.preRestCompleted", (actor, result, config) => {
     // Suppress exhaustion recovery: Respite handles this via RecoveryHandler.
     // v5+: system reads config.exhaustionDelta to decide reduction.
     if (config.exhaustionDelta) config.exhaustionDelta = 0;
+    // v5+ delta reporting (system applies this independently of updateData)
+    if (result.deltas?.exhaustion !== undefined) result.deltas.exhaustion = 0;
     // Flat key (v3)
     delete result.updateData?.["system.attributes.exhaustion"];
     // Nested key (v5 mergeObject expansion)

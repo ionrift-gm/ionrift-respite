@@ -3574,6 +3574,9 @@
             {{#if deprivationBlocksRecovery}}
             <div class="outcome-effect-line outcome-loss"><i class="fas fa-tint-slash"></i> Lack of food or water blocks exhaustion recovery</div>
             {{/if}}
+            {{#if mealExhaustion}}
+            <div class="outcome-effect-line outcome-loss"><i class="fas fa-tired"></i> Retained +{{mealExhaustion}} exhaustion from deprivation</div>
+            {{/if}}
             {{#if eventDamage}}
             <div class="outcome-effect-line outcome-loss"><i class="fas fa-tint"></i> Took {{eventDamage}} damage</div>
             {{/if}}

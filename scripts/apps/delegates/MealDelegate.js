@@ -9,7 +9,6 @@ import { Logger } from "../../lib/Logger.js";
 import { MealPhaseHandler } from "../../services/MealPhaseHandler.js";
 import { TerrainRegistry } from "../../services/TerrainRegistry.js";
 import { ItemClassifier } from "../../services/ItemClassifier.js";
-import { RestLedger } from "../../services/RestLedger.js";
 import { getPartyActors } from "../../services/partyActors.js";
 import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../../services/StationInteractionLayer.js";
 
@@ -20,6 +19,49 @@ export class MealDelegate {
     /** @param {RestSetupApp} app */
     constructor(app) {
         this._app = app;
+    }
+
+    // ── Static Helpers (testable without DOM) ────────────────────────────
+
+    /**
+     * Build the list of characters missing food or water assignments.
+     * Pure function: takes data, returns results. No Foundry globals needed
+     * beyond the actors/users passed in.
+     *
+     * @param {string[]} characterIds  IDs to evaluate
+     * @param {Map}      mealChoices   charId -> { food, water, consumedDays }
+     * @param {Map|null} mealSubmissions  userId -> submission record
+     * @param {object}   resolvers     { getActor, findOwnerUser, participates }
+     * @returns {{ name: string, playerOwned: boolean, awaitingPlayer: boolean }[]}
+     */
+    static buildMissingCharactersList(characterIds, mealChoices, mealSubmissions, resolvers) {
+        const missing = [];
+        for (const charId of characterIds) {
+            const actor = resolvers.getActor(charId);
+            if (!actor) continue;
+            if (resolvers.participates && !resolvers.participates(actor)) continue;
+
+            const choice = mealChoices.get(charId);
+            if (choice?.consumedDays?.length > 0) continue;
+
+            const foodArr = Array.isArray(choice?.food) ? choice.food : [];
+            const waterArr = Array.isArray(choice?.water) ? choice.water : [];
+            const hasFood = foodArr.some(id => id && id !== "skip");
+            const hasWater = waterArr.some(id => id && id !== "skip");
+            if (hasFood && hasWater) continue;
+
+            const ownerUser = resolvers.findOwnerUser(actor);
+            const ownerSubmitted = ownerUser && mealSubmissions?.has(ownerUser.id);
+
+            missing.push({
+                name: actor.name,
+                playerOwned: !!ownerUser,
+                awaitingPlayer: !!ownerUser && !ownerSubmitted,
+                missingFood: !hasFood,
+                missingWater: !hasWater
+            });
+        }
+        return missing;
     }
 
     // ── Action Handlers ──────────────────────────────────────────────────
@@ -35,7 +77,10 @@ export class MealDelegate {
 
         if (!app._mealChoices) app._mealChoices = new Map();
         const existing = app._mealChoices.get(charId) ?? {};
-        app._mealChoices.set(charId, { ...existing, food: value });
+        const arr = Array.isArray(existing.food) ? [...existing.food] : [];
+        if (arr.length === 0) arr.push(value);
+        else arr[0] = value;
+        app._mealChoices.set(charId, { ...existing, food: arr });
         app.render();
     }
 
@@ -50,7 +95,10 @@ export class MealDelegate {
 
         if (!app._mealChoices) app._mealChoices = new Map();
         const existing = app._mealChoices.get(charId) ?? {};
-        app._mealChoices.set(charId, { ...existing, water: value });
+        const arr = Array.isArray(existing.water) ? [...existing.water] : [];
+        if (arr.length === 0) arr.push(value);
+        else arr[0] = value;
+        app._mealChoices.set(charId, { ...existing, water: arr });
         app.render();
     }
 
@@ -403,23 +451,16 @@ export class MealDelegate {
         // processed. The modal is only useful before first processing;
         // on subsequent clicks (e.g. after dehydration saves resolve)
         // the choices are already locked in.
-        const missing = [];
-        if (!app._mealProcessed) {
-            for (const charId of characterIds) {
-                const actor = game.actors.get(charId);
-                if (!actor) continue;
-
-                const choice = app._mealChoices.get(charId);
-                const hasConsumed = choice?.consumedDays?.length > 0;
-                const hasSelections = (choice?.food?.some(id => id && id !== "skip")) || (choice?.water?.some(id => id && id !== "skip"));
-                if (hasConsumed || hasSelections) continue;
-
-                const ownerUser = game.users.find(u => !u.isGM && actor.testUserPermission(u, "OWNER"));
-                const ownerSubmitted = ownerUser && app._mealSubmissions?.has(ownerUser.id);
-
-                missing.push({ name: actor.name, playerOwned: !!ownerUser, awaitingPlayer: !!ownerUser && !ownerSubmitted });
+        const missing = app._mealProcessed ? [] : MealDelegate.buildMissingCharactersList(
+            characterIds,
+            app._mealChoices,
+            app._mealSubmissions ?? null,
+            {
+                getActor: id => game.actors.get(id),
+                findOwnerUser: actor => game.users.find(u => !u.isGM && actor.testUserPermission(u, "OWNER")),
+                participates: actor => actor.type === "character" && ItemClassifier.participatesInSustenance(actor)
             }
-        }
+        );
 
         if (missing.length > 0) {
             const anyPlayer = missing.some(m => m.playerOwned);
@@ -429,8 +470,15 @@ export class MealDelegate {
                 overlay.innerHTML = `
                     <div class="ionrift-armor-modal">
                         <h3><i class="fas fa-exclamation-triangle"></i> Characters Without Rations</h3>
-                        <p>These characters have no food or water assigned:</p>
-                        <ul>${missing.map(m => `<li>${m.name}${m.awaitingPlayer ? ' <span style="opacity:0.6">(awaiting player)</span>' : ""}</li>`).join("")}</ul>
+                        <p>These characters are missing rations:</p>
+                        <ul>${missing.map(m => {
+                            let detail = "";
+                            if (m.missingFood && m.missingWater) detail = " (no food or water)";
+                            else if (m.missingFood) detail = " (no food)";
+                            else if (m.missingWater) detail = " (no water)";
+                            const awaiting = m.awaitingPlayer ? ' <span style="opacity:0.6">(awaiting player)</span>' : "";
+                            return `<li>${m.name}${detail}${awaiting}</li>`;
+                        }).join("")}</ul>
                         <p>Processing now treats them as skipping all meals${anyPlayer ? ", even if a player is still choosing" : ""}, applying any starvation and dehydration.</p>
                         <div class="ionrift-armor-modal-buttons">
                             <button class="btn-armor-confirm"><i class="fas fa-forward"></i> Process Anyway</button>
@@ -491,6 +539,8 @@ export class MealDelegate {
             // Apply starvation exhaustion (auto, no save)
             app._pendingDehydrationSaves = [];
             for (const r of mealResults) {
+                r.mealExhaustionApplied = 0;
+
                 if (r.starvationExhaustion > 0) {
                     const actor = game.actors.get(r.characterId);
                     if (actor) {
@@ -504,6 +554,7 @@ export class MealDelegate {
                                 await actor.update({ "system.attributes.exhaustion": newLevel });
                             }
                         }
+                        r.mealExhaustionApplied += r.starvationExhaustion;
                         await ChatMessage.create({
                                 content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.starvationExhaustion}</strong> level${r.starvationExhaustion > 1 ? "s" : ""} of exhaustion from starvation.</div>`,
                                 speaker: ChatMessage.getSpeaker({ actor })
@@ -536,6 +587,7 @@ export class MealDelegate {
                                 await actor.update({ "system.attributes.exhaustion": newLevel });
                             }
                         }
+                        r.mealExhaustionApplied = (r.mealExhaustionApplied ?? 0) + 1;
                         const restsSinceWater = actor.getFlag("ionrift-respite", "restsSinceWater") ?? 0;
                         await ChatMessage.create({
                             content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains 1 level of exhaustion from severe dehydration (auto-fail, ${restsSinceWater} rests without water).</div>`,
@@ -600,6 +652,7 @@ export class MealDelegate {
                                     await actor.update({ "system.attributes.exhaustion": newLevel });
                                 }
                             }
+                            r.mealExhaustionApplied = (r.mealExhaustionApplied ?? 0) + 1;
                             await ChatMessage.create({
                                 content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> fails the CON save (${total} vs DC ${r.dehydrationSaveDC}) and gains 1 level of exhaustion from dehydration.</div>`,
                                 speaker: ChatMessage.getSpeaker({ actor })
@@ -699,6 +752,8 @@ export class MealDelegate {
                         await actor.update({ "system.attributes.exhaustion": newLevel });
                     }
                 }
+                const mr = app._mealResults?.find(r => r.characterId === save.characterId);
+                if (mr) mr.mealExhaustionApplied = (mr.mealExhaustionApplied ?? 0) + 1;
                 await ChatMessage.create({
                     content: `<div class="respite-recovery-chat"><strong>${save.actorName}</strong> fails the CON save (skipped by GM) and gains 1 level of exhaustion from dehydration.</div>`,
                     speaker: ChatMessage.getSpeaker({ actor })
@@ -958,6 +1013,8 @@ export class MealDelegate {
                     await actor.update({ "system.attributes.exhaustion": newLevel });
                 }
             }
+            const mr = app._mealResults?.find(r => r.characterId === characterId);
+            if (mr) mr.mealExhaustionApplied = (mr.mealExhaustionApplied ?? 0) + 1;
             await ChatMessage.create({
                 content: `<div class="respite-recovery-chat"><strong>${actorName}</strong> fails the CON save (${total} vs DC ${dc}) and gains 1 level of exhaustion from dehydration.</div>`,
                 speaker: ChatMessage.getSpeaker({ actor })
