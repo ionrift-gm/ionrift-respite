@@ -6118,9 +6118,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
             const exhaustionConditionLabel = recovery.comfortLevel === "hostile" ? "Hostile" : "Rough";
 
+            const mealExhaustion = recovery.mealExhaustion ?? 0;
+
             const hasRecovered = positives.length > 0 || exhaustionSavePassed || hasGain;
             const hasSetback = setbacks.length > 0 || exhaustionSaveFailed
-                || hostileBlocksRecovery || deprivationBlocksRecovery || eventDamage > 0 || !!o.eventDisrupted;
+                || hostileBlocksRecovery || deprivationBlocksRecovery || mealExhaustion > 0
+                || eventDamage > 0 || !!o.eventDisrupted;
 
             return {
                 characterId: o.characterId,
@@ -6147,6 +6150,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 exhaustionConditionLabel,
                 hostileBlocksRecovery,
                 deprivationBlocksRecovery,
+                mealExhaustion,
                 eventDamage
             };
         });
@@ -8484,6 +8488,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
 
             for (const r of mealResults) {
+                r.mealExhaustionApplied = 0;
+
                 if (r.starvationExhaustion > 0) {
                     const actor = game.actors.get(r.characterId);
                     if (!actor) continue;
@@ -8497,6 +8503,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                             await actor.update({ "system.attributes.exhaustion": newLevel });
                         }
                     }
+                    r.mealExhaustionApplied += r.starvationExhaustion;
                     await ChatMessage.create({
                         content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.starvationExhaustion}</strong> level${r.starvationExhaustion > 1 ? "s" : ""} of exhaustion from starvation.</div>`,
                         speaker: ChatMessage.getSpeaker({ actor })
@@ -8515,6 +8522,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                             await actor.update({ "system.attributes.exhaustion": newLevel });
                         }
                     }
+                    r.mealExhaustionApplied += r.essenceExhaustion;
                     await ChatMessage.create({
                         content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.essenceExhaustion}</strong> level${r.essenceExhaustion > 1 ? "s" : ""} of exhaustion from essence depletion.</div>`,
                         speaker: ChatMessage.getSpeaker({ actor })
@@ -8534,6 +8542,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                             await actor.update({ "system.attributes.exhaustion": newLevel });
                         }
                     }
+                    r.mealExhaustionApplied += 1;
                     const restsSinceWater = actor.getFlag("ionrift-respite", "restsSinceWater") ?? 0;
                     await ChatMessage.create({
                         content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains 1 level of exhaustion from severe dehydration (auto-fail, ${restsSinceWater} rests without water).</div>`,
@@ -8566,6 +8575,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                                 await actor.update({ "system.attributes.exhaustion": newLevel });
                             }
                         }
+                        r.mealExhaustionApplied += 1;
                         await ChatMessage.create({
                             content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> fails the CON save (${roll.total} vs DC ${r.dehydrationSaveDC}) and gains 1 level of exhaustion from dehydration.</div>`,
                             speaker: ChatMessage.getSpeaker({ actor })
@@ -11295,6 +11305,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 actor: outcome.characterId, actorName: name,
                 summary: parts.length ? parts.join(", ") : "No recovery"
             });
+            const mealExh = outcome.recovery?.mealExhaustion ?? 0;
+            if (mealExh > 0) {
+                this._restLedger.add({
+                    phase: "resolve", category: "exhaustion", icon: "fas fa-tired",
+                    actor: outcome.characterId, actorName: name,
+                    summary: `+${mealExh} exhaustion retained`,
+                    detail: "Deprivation exhaustion persists through rest"
+                });
+            }
         }
         this._refreshLedgerApp();
 
@@ -11341,11 +11360,16 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // PHB p.185: exhaustion recovery requires adequate food and drink.
         // Stamp recovery objects so RecoveryHandler blocks the -1 reduction
         // for characters who skipped meals or water during the meal phase.
+        // Also thread meal-phase exhaustion so the resolution card can display it.
         if (this._mealResults?.length) {
             for (const outcome of this._outcomes) {
                 const mr = this._mealResults.find(r => r.characterId === outcome.characterId);
-                if (mr && (!mr.ate || !mr.drank) && outcome.recovery) {
+                if (!mr || !outcome.recovery) continue;
+                if (!mr.ate || !mr.drank) {
                     outcome.recovery.noFoodOrWater = true;
+                }
+                if ((mr.mealExhaustionApplied ?? 0) > 0) {
+                    outcome.recovery.mealExhaustion = mr.mealExhaustionApplied;
                 }
             }
         }
@@ -11416,6 +11440,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
+        // Snapshot expected exhaustion BEFORE native rest so we can detect
+        // and correct any unintended reduction by longRest()/shortRest().
+        const expectedExhaustion = new Map();
+        {
+            const exhAdapter = game.ionrift?.respite?.adapter;
+            for (const outcome of this._outcomes) {
+                const actor = game.actors.get(outcome.characterId);
+                if (!actor) continue;
+                const exh = exhAdapter ? exhAdapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+                expectedExhaustion.set(outcome.characterId, exh);
+            }
+        }
+
         // Trigger native rest for spell slots, class features, item uses.
         // HP/HD/Exhaustion already handled by RecoveryHandler above.
         // For hookable systems (DnD5e), preRestCompleted suppresses double-dipping.
@@ -11446,6 +11483,26 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         } else if (!skipRecovery) {
 
             Logger.log(`${MODULE_ID} | Skipping native rest call (system: ${game.system.id} â€” no longRest/shortRest API).`);
+        }
+
+        // Re-assert exhaustion levels in case the native rest reduced them
+        // despite preRestCompleted suppression (covers system version gaps).
+        {
+            const exhAdapter = game.ionrift?.respite?.adapter;
+            for (const [charId, expected] of expectedExhaustion) {
+                const actor = game.actors.get(charId);
+                if (!actor) continue;
+                const actual = exhAdapter ? exhAdapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+                if (actual < expected) {
+                    const deficit = expected - actual;
+                    if (exhAdapter) {
+                        await exhAdapter.applyExhaustionDelta(actor, deficit);
+                    } else {
+                        await actor.update({ "system.attributes.exhaustion": expected });
+                    }
+                    Logger.log(`[Respite:Recovery] Re-asserted exhaustion for ${actor.name}: ${actual} -> ${expected} (native rest reduced by ${deficit})`);
+                }
+            }
         }
 
         // Strip any Detect Magic active effects left on party actors from the rest scan.
