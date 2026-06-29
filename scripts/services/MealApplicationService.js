@@ -121,7 +121,32 @@ export async function applyMealChoices(mealChoices, daysSinceLastRest = 1, terra
         const waterNeeded = totalDays * rules.waterPerDay;
 
         const effectiveFood = totalFoodFilled + (extraFoodByChar.get(charId) ?? 0);
-        const effectiveWater = totalWaterFilled + (extraWaterByChar.get(charId) ?? 0);
+
+        // Station-submitted (itemsConsumed) days are skipped by the foodUsage path
+        // that feeds extraWaterByChar, so their wet-meal water would otherwise be
+        // dropped. Credit the persisted per-day bonusWater here so the dehydration
+        // decision uses the same water total as the Hydrated badge. This is additive
+        // to extraWaterByChar (non-consumed days only) and totalWaterFilled (waterskin
+        // slots only), so no source is double-counted.
+        let consumedMealWater = 0;
+        for (const day of consumedDays) {
+            if (!day.itemsConsumed) continue;
+            if (typeof day.bonusWater === "number") {
+                consumedMealWater += day.bonusWater;
+            } else {
+                // Fallback for older/edge submissions without a stored bonusWater:
+                // recompute from meal-slot food items that satiate water, matching
+                // the non-consumed foodUsage path above.
+                for (const id of (day.food ?? [])) {
+                    if (!ItemClassifier.isMealSlotSelection(actor, id)) continue;
+                    const it = actor.items.get(id);
+                    const satiates = it?.flags?.[MODULE_ID]?.satiates;
+                    if (Array.isArray(satiates) && satiates.includes("water")) consumedMealWater++;
+                }
+            }
+        }
+
+        const effectiveWater = totalWaterFilled + (extraWaterByChar.get(charId) ?? 0) + consumedMealWater;
 
         result.foodConsumed = effectiveFood;
         result.waterConsumed = effectiveWater;
