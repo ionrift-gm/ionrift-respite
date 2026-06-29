@@ -118,20 +118,17 @@ export class TerrainRegistry {
             return;
         }
 
-        for (const sublayer of sublayers) {
-            try {
+        // Process all sublayers concurrently — each is independent.
+        const sublayerResults = await Promise.allSettled(
+            sublayers.map(async (sublayer) => {
                 const manifest = await overlay.getLocalManifest(MODULE_ID, sublayer);
-                if (!manifest?.overlayId) continue;
+                if (!manifest?.overlayId) return [];
 
                 const active = await overlay.isOverlayActive(
                     manifest.overlayId, MODULE_ID, sublayer
                 );
-                if (!active) continue;
+                if (!active) return [];
 
-                // Prefer the browse-independent file index (library 2.5.0+). On
-                // Sqyre, FilePicker.browse does not list freshly uploaded overlay
-                // content, so the directory walk finds no terrains. Derive terrain
-                // dirs from the index; fall back to the browse walk otherwise.
                 const fileIndex = typeof overlay.readFileIndex === "function"
                     ? await overlay.readFileIndex(MODULE_ID, sublayer)
                     : null;
@@ -150,20 +147,29 @@ export class TerrainRegistry {
                     terrainDirs = listing?.dirs ?? [];
                 }
 
-                for (const terrainId of terrainDirs) {
-                    try {
+                // Read all terrain files within this sublayer concurrently.
+                const terrainResults = await Promise.allSettled(
+                    terrainDirs.map(async (terrainId) => {
                         const data = await overlay.readOverlayFile(
                             MODULE_ID, sublayer, `data/terrains/${terrainId}/terrain.json`
                         );
-                        if (!data) continue;
+                        if (!data) return null;
                         data.id = data.id ?? terrainId;
-                        this._terrains.set(data.id, data);
-                    } catch (e) {
-                        console.warn(`${MODULE_ID} | TerrainRegistry: Failed to read overlay terrain "${terrainId}" from ${sublayer}:`, e);
-                    }
-                }
-            } catch (e) {
-                console.warn(`${MODULE_ID} | TerrainRegistry: Failed to scan overlay sublayer "${sublayer}":`, e);
+                        return data;
+                    })
+                );
+
+                return terrainResults
+                    .filter(r => r.status === "fulfilled" && r.value)
+                    .map(r => r.value);
+            })
+        );
+
+        // Merge results into the registry (order-stable: first sublayer wins).
+        for (const result of sublayerResults) {
+            if (result.status !== "fulfilled" || !result.value) continue;
+            for (const data of result.value) {
+                this._terrains.set(data.id, data);
             }
         }
     }

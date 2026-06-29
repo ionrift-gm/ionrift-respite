@@ -830,7 +830,7 @@ registerInventoryContextMenu();
     }
 }
 
-// â”€â”€ Monster Cooking: Chat Card Button Wiring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// —— Monster Cooking: Chat Card Button Wiring ————————————————
 // [CARVED OUT, WS-6] Monster Cooking chat card wiring removed for v2.0.
 // Archived: ionrift-brand/Assets/Archived/butcher_system/REINTEGRATION.md
 
@@ -838,7 +838,7 @@ registerInventoryContextMenu();
 // Item Enrichment hooks are now wired by ionrift-library (ItemEnrichmentEngine).
 // Respite enrichment data is registered in the init hook below via registerBatch().
 
-// Zzz overlay extracted to UiInjections.js â€” Phase 2.3
+// Zzz overlay extracted to UiInjections.js — Phase 2.3
 // _refreshZzzOverlay is imported at the top of this file.
 
 Hooks.once("ready", async () => {
@@ -854,8 +854,24 @@ Hooks.once("ready", async () => {
         console.warn(`${MODULE_ID} | Cooking feed provider registration failed:`, e);
     }
 
-    // Initialize image resolver (art pack detection â€” probes ionrift-data/)
-    await ImageResolver.init();
+    // ── Phase 1: Independent initialisers (parallel) ────────────────────
+    // ImageResolver, TerrainRegistry, and EventPoolMigration have no
+    // interdependencies. Running them concurrently instead of sequentially
+    // eliminates the largest single-thread bottleneck (was ~10s serial).
+    const initPhase1 = [
+        ImageResolver.init().catch(err => {
+            console.warn(`${MODULE_ID} | ImageResolver init failed:`, err);
+        }),
+        TerrainRegistry.init().catch(err => {
+            console.warn(`${MODULE_ID} | TerrainRegistry init failed:`, err);
+        }),
+        import("./services/EventPoolMigration.js")
+            .then(({ initializeEventPoolIfNeeded }) => initializeEventPoolIfNeeded())
+            .catch(err => {
+                console.warn(`${MODULE_ID} | EventPoolMigration failed:`, err);
+            })
+    ];
+    await Promise.allSettled(initPhase1);
 
     const refreshOpenRestSetup = () => {
         if (activeRestSetupApp?.rendered) activeRestSetupApp.render();
@@ -868,51 +884,48 @@ Hooks.once("ready", async () => {
         }
     });
 
-    // Initialize terrain registry early so data is available before first rest.
-    // The registry is Respite-local under strict sovereignty: nothing is pushed
-    // into the shared library spine, and other modules are expected to build
-    // their own view on top of `game.ionrift.library.terrains.getBase()`.
-    await TerrainRegistry.init();
+    // ── Phase 2: GM overlay loaders (parallel) ───────────────────────────
+    // Provision materialiser, meal buff presets/handlers, and profession
+    // plugins are all independent of each other. Running them concurrently
+    // instead of sequentially saves ~15s on worlds with overlay content.
+    if (game.user.isGM) {
+        const mealBuffRegistry = await import("./services/MealBuffHandlerRegistry.js");
+        const professionRegistry = await import("./services/ProfessionPluginRegistry.js");
 
-    const { initializeEventPoolIfNeeded } = await import("./services/EventPoolMigration.js");
-    await initializeEventPoolIfNeeded();
+        const gmPhase2 = [
+            import("./services/ProvisionOverlayMaterialiser.js")
+                .then(({ ProvisionOverlayMaterialiser }) => ProvisionOverlayMaterialiser.materialiseAll())
+                .catch(err => {
+                    console.error(`${MODULE_ID} | Overlay provision materialisation failed:`, err);
+                }),
+            import("./services/OverlayMealBuffPresetLoader.js")
+                .then(({ OverlayMealBuffPresetLoader }) => OverlayMealBuffPresetLoader.loadAll())
+                .catch(err => {
+                    console.warn(`${MODULE_ID} | Meal buff preset loader failed:`, err);
+                }),
+            import("./services/OverlayMealBuffHandlerLoader.js")
+                .then(({ OverlayMealBuffHandlerLoader }) => OverlayMealBuffHandlerLoader.loadAll())
+                .catch(err => {
+                    console.warn(`${MODULE_ID} | Overlay meal buff handler loader failed:`, err);
+                }),
+            import("./services/OverlayProfessionPluginLoader.js")
+                .then(({ OverlayProfessionPluginLoader }) => OverlayProfessionPluginLoader.loadAll())
+                .catch(err => {
+                    console.warn(`${MODULE_ID} | Profession pack plugin loaders failed:`, err);
+                })
+        ];
+        await Promise.allSettled(gmPhase2);
 
-        if (game.user.isGM) {
-        try {
-            const { ProvisionOverlayMaterialiser } = await import("./services/ProvisionOverlayMaterialiser.js");
-            await ProvisionOverlayMaterialiser.materialiseAll();
-        } catch (err) {
-            console.error(`${MODULE_ID} | Overlay provision materialisation failed:`, err);
-        }
-
-        try {
-            const { OverlayMealBuffPresetLoader } = await import("./services/OverlayMealBuffPresetLoader.js");
-            await OverlayMealBuffPresetLoader.loadAll();
-        } catch (err) {
-            console.warn(`${MODULE_ID} | Meal buff preset loader failed:`, err);
-        }
-
-        try {
-            const mealBuffRegistry = await import("./services/MealBuffHandlerRegistry.js");
-            const professionRegistry = await import("./services/ProfessionPluginRegistry.js");
-            const { OverlayMealBuffHandlerLoader } = await import("./services/OverlayMealBuffHandlerLoader.js");
-            const { OverlayProfessionPluginLoader } = await import("./services/OverlayProfessionPluginLoader.js");
-
-            await OverlayMealBuffHandlerLoader.loadAll();
-            await OverlayProfessionPluginLoader.loadAll();
-
-            game.ionrift.respite.mealBuffHandlers = {
-                get: mealBuffRegistry.getMealBuffHandler,
-                list: mealBuffRegistry.listMealBuffHandlers,
-                dispatch: mealBuffRegistry.dispatchMealBuffHandler
-            };
-            game.ionrift.respite.professionPlugins = {
-                get: professionRegistry.getProfessionPlugin,
-                list: professionRegistry.listProfessionPlugins
-            };
-        } catch (err) {
-            console.warn(`${MODULE_ID} | Profession pack plugin loaders failed:`, err);
-        }
+        // Expose APIs now that all loaders have settled
+        game.ionrift.respite.mealBuffHandlers = {
+            get: mealBuffRegistry.getMealBuffHandler,
+            list: mealBuffRegistry.listMealBuffHandlers,
+            dispatch: mealBuffRegistry.dispatchMealBuffHandler
+        };
+        game.ionrift.respite.professionPlugins = {
+            get: professionRegistry.getProfessionPlugin,
+            list: professionRegistry.listProfessionPlugins
+        };
 
         const { ForageTableSync } = await import("./services/ForageTableSync.js");
         ForageTableSync.registerHooks();
