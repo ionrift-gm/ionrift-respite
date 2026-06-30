@@ -412,27 +412,27 @@ export const STUB_POOLS = [
 
 export const STUB_HUNT_YIELDS = {
     forest: {
-        standard: [{ type: "meat", qty: 1 }],
-        exceptional: [{ type: "meat", qty: 1 }, { type: "choice_cut", qty: 1 }]
+        standard: [{ itemRef: "fresh_meat", qty: 1 }],
+        exceptional: [{ itemRef: "fresh_meat", qty: 1 }, { itemRef: "choice_cut", qty: 1 }]
     },
     swamp: {
-        standard: [{ type: "fish", qty: 1 }],
-        exceptional: [{ type: "fish", qty: 2 }]
+        standard: [{ itemRef: "fresh_fish", qty: 1 }],
+        exceptional: [{ itemRef: "fresh_fish", qty: 2 }]
     },
     mountain: {
-        standard: [{ type: "meat", qty: 1 }],
-        exceptional: [{ type: "choice_cut", qty: 1 }]
+        standard: [{ itemRef: "fresh_meat", qty: 1 }],
+        exceptional: [{ itemRef: "choice_cut", qty: 1 }]
     },
     arctic: {
-        standard: [{ type: "meat", qty: 1 }],
-        exceptional: [{ type: "meat", qty: 1 }, { type: "animal_fat", qty: 1 }]
+        standard: [{ itemRef: "fresh_meat", qty: 1 }],
+        exceptional: [{ itemRef: "fresh_meat", qty: 1 }, { itemRef: "animal_fat", qty: 1 }]
     },
     desert: {
-        standard: [{ type: "meat", qty: 1 }],
-        exceptional: [{ type: "meat", qty: 1 }, { type: "venom_sac", qty: 1 }]
+        standard: [{ itemRef: "fresh_meat", qty: 1 }],
+        exceptional: [{ itemRef: "fresh_meat", qty: 1 }, { itemRef: "venom_sac", qty: 1 }]
     },
     wilderness: {
-        standard: [{ type: "meat", qty: 1 }],
-        exceptional: [{ type: "choice_cut", qty: 1 }, { type: "meat", qty: 1 }]
+        standard: [{ itemRef: "fresh_meat", qty: 1 }],
+        exceptional: [{ itemRef: "choice_cut", qty: 1 }, { itemRef: "fresh_meat", qty: 1 }]
     }
 };
