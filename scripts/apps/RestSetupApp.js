@@ -22,6 +22,14 @@ import { RecoveryHandler } from "../services/RecoveryHandler.js";
 import { CalendarHandler } from "../services/CalendarHandler.js";
 import { CopySpellHandler } from "../services/CopySpellHandler.js";
 import { MealPhaseHandler } from "../services/MealPhaseHandler.js";
+import {
+    setMealExhaustionFloors,
+    clearMealExhaustionFloors,
+    mergeMealExhaustionFloors,
+    stampDeprivationExhaustionFloor,
+    clearDeprivationExhaustionFloors,
+    mealExhaustionFloorFor
+} from "../services/MealExhaustionGuard.js";
 import { ConditionAdvisory } from "../services/ConditionAdvisory.js";
 import { ResourceSink } from "../services/ResourceSink.js";
 import { CampfireTokenLinker } from "../services/CampfireTokenLinker.js";
@@ -1986,6 +1994,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 this._gmMinimizedToFooter = false;
                 if (options.resolved && !options.abandoned) {
                     await this._clearRestState();
+                    clearMealExhaustionFloors();
+                    await clearDeprivationExhaustionFloors(getPartyActors());
                     emitRestResolved();
                     clearCampTokens(getCampSceneId()).catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
                     resetCampSession();
@@ -8033,6 +8043,11 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Strip Well Fed effects from the prior rest â€” the effect persists
         // between sessions but expires when a new long rest begins.
         await MealPhaseHandler.cleanupWellFedEffects(getPartyActors());
+        // Mirror Well Fed timing for rest-event conditions: anything tagged
+        // "until next rest" clears at the start of the next rest. This is the
+        // DAE-independent reaper; DAE special durations are a redundant backup.
+        await ConditionAdvisory.cleanupRestConditions(getPartyActors());
+        await clearDeprivationExhaustionFloors(getPartyActors());
         await this._saveRestState();
 
         // Theater of the Mind: skip camp phase, jump to activity
@@ -8504,6 +8519,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         }
                     }
                     r.mealExhaustionApplied += r.starvationExhaustion;
+                    await stampDeprivationExhaustionFloor(actor);
                     await ChatMessage.create({
                         content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.starvationExhaustion}</strong> level${r.starvationExhaustion > 1 ? "s" : ""} of exhaustion from starvation.</div>`,
                         speaker: ChatMessage.getSpeaker({ actor })
@@ -8523,6 +8539,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         }
                     }
                     r.mealExhaustionApplied += r.essenceExhaustion;
+                    await stampDeprivationExhaustionFloor(actor);
                     await ChatMessage.create({
                         content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.essenceExhaustion}</strong> level${r.essenceExhaustion > 1 ? "s" : ""} of exhaustion from essence depletion.</div>`,
                         speaker: ChatMessage.getSpeaker({ actor })
@@ -8543,6 +8560,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                         }
                     }
                     r.mealExhaustionApplied += 1;
+                    await stampDeprivationExhaustionFloor(actor);
                     const restsSinceWater = actor.getFlag("ionrift-respite", "restsSinceWater") ?? 0;
                     await ChatMessage.create({
                         content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains 1 level of exhaustion from severe dehydration (auto-fail, ${restsSinceWater} rests without water).</div>`,
@@ -8576,6 +8594,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                             }
                         }
                         r.mealExhaustionApplied += 1;
+                        await stampDeprivationExhaustionFloor(actor);
                         await ChatMessage.create({
                             content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> fails the CON save (${roll.total} vs DC ${r.dehydrationSaveDC}) and gains 1 level of exhaustion from dehydration.</div>`,
                             speaker: ChatMessage.getSpeaker({ actor })
@@ -11319,11 +11338,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Capture meal-phase exhaustion floors before any recovery or native rest
         // can reduce levels. Used for noFoodOrWater stamping and post-rest re-assert.
-        const mealExhaustionFloors = new Map();
-        for (const mr of (this._mealResults ?? [])) {
-            const applied = mr.mealExhaustionApplied ?? 0;
-            if (applied > 0) mealExhaustionFloors.set(mr.characterId, applied);
-        }
+        const mealExhaustionFloors = mergeMealExhaustionFloors(this._mealResults);
 
         SoundDelegate.stopAll();
         this._phase = "resolve";
@@ -11369,16 +11384,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Stamp recovery objects so RecoveryHandler blocks the -1 reduction
         // for characters who skipped meals or water during the meal phase.
         // Also thread meal-phase exhaustion so the resolution card can display it.
-        if (this._mealResults?.length) {
+        if (this._mealResults?.length || mealExhaustionFloors.size) {
             for (const outcome of this._outcomes) {
-                const mr = this._mealResults.find(r => r.characterId === outcome.characterId);
-                if (!mr || !outcome.recovery) continue;
-                const mealExh = mr.mealExhaustionApplied ?? mealExhaustionFloors.get(outcome.characterId) ?? 0;
-                if (!mr.ate || !mr.drank || mealExh > 0) {
+                if (!outcome.recovery) continue;
+                const floor = mealExhaustionFloors.get(outcome.characterId)
+                    ?? mealExhaustionFloorFor(game.actors.get(outcome.characterId));
+                const mr = this._mealResults?.find(r => r.characterId === outcome.characterId);
+                const mealExh = mr?.mealExhaustionApplied ?? floor ?? 0;
+                if (!mr?.ate || !mr?.drank || mealExh > 0 || floor > 0) {
                     outcome.recovery.noFoodOrWater = true;
                 }
-                if (mealExh > 0) {
-                    outcome.recovery.mealExhaustion = mealExh;
+                if (mealExh > 0 || floor > 0) {
+                    outcome.recovery.mealExhaustion = Math.max(mealExh, floor);
                 }
             }
         }

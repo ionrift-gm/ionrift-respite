@@ -47,7 +47,7 @@ export async function dispatchWellFedMealServing({ consumerActor, itemSnapshot, 
             if (alreadyWellFed) {
                 const doc = mealSnapshotAsSingleLeftover(itemSnapshot);
                 const ref = doc.flags?.[MODULE_ID]?.itemRef ?? doc.name ?? itemName;
-                await grantMealItem(member, doc, ref);
+                await grantMealItem(member, doc, ref, { separateItem: true });
                 summaries.push(`<strong>${member.name}</strong>: packed serving (already Well Fed)`);
             } else {
                 const part = await applyWellFedEffect(member, itemSnapshot);
@@ -70,7 +70,7 @@ export async function dispatchWellFedMealServing({ consumerActor, itemSnapshot, 
         if (alreadyWellFed) {
             const doc = mealSnapshotAsSingleLeftover(itemSnapshot);
             const ref = doc.flags?.[MODULE_ID]?.itemRef ?? doc.name ?? itemName;
-            await grantMealItem(consumerActor, doc, ref);
+            await grantMealItem(consumerActor, doc, ref, { separateItem: true });
             await ChatMessage.create({
                 content: `<div class="respite-recovery-chat"><p><i class="fas fa-box-open"></i> <strong>${consumerActor.name}</strong> could not eat another full meal yet. <strong>${itemName}</strong> was packed away.</p></div>`,
                 speaker: ChatMessage.getSpeaker({ actor: consumerActor })

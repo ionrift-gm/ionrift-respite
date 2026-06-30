@@ -1,4 +1,5 @@
 import { Logger } from "../lib/Logger.js";
+import { mealExhaustionFloorFor } from "./MealExhaustionGuard.js";
 /**
  * RecoveryHandler
  * Applies comfort-modified HP, Hit Dice, and exhaustion recovery to actors.
@@ -62,7 +63,17 @@ export class RecoveryHandler {
         const hdRecovered = this._recoverHitDice(actor, recovery.hdRestored);
 
         // --- Exhaustion Recovery ---
-        const exhaustionDelta = await this._calculateExhaustionDelta(actor, recovery);
+        const deprivationFloor = mealExhaustionFloorFor(actor);
+        if (deprivationFloor > 0) {
+            recovery.noFoodOrWater = true;
+        }
+        let exhaustionDelta = await this._calculateExhaustionDelta(actor, recovery);
+        if (deprivationFloor > 0 && exhaustionDelta < 0) {
+            const currentExh = adapter
+                ? adapter.getExhaustion(actor)
+                : (actor.system?.attributes?.exhaustion ?? 0);
+            exhaustionDelta = Math.max(exhaustionDelta, deprivationFloor - currentExh);
+        }
         recovery.exhaustionDelta = exhaustionDelta;
 
         // Apply HP update via adapter

@@ -12,6 +12,13 @@ export class ConditionAdvisory {
     /** Effect types this service handles. */
     static HANDLED_TYPES = new Set(["condition", "temp_hp"]);
 
+    /** Standard 5e conditions recognised for native/CE application. */
+    static STANDARD_CONDITIONS = new Set([
+        "poisoned", "blinded", "frightened", "deafened",
+        "stunned", "paralyzed", "restrained", "incapacitated",
+        "petrified", "prone", "charmed", "grappled", "invisible"
+    ]);
+
     /** Cached registry data (loaded once per session). */
     static _registry = null;
     static _durationMap = null;
@@ -141,14 +148,21 @@ export class ConditionAdvisory {
     }
 
     /**
-     * Process condition effects: auto-apply via CE or registry, then post advisory.
+     * Process condition effects: auto-apply via the system catalog or registry,
+     * then post a GM advisory for anything left to manage by hand.
+     *
+     * Application order per condition (see CONDITION_AUTHORING.md):
+     *   A. Registry entry with its own changes  -> custom Active Effect.
+     *   B. Standard 5e condition                -> native system status.
+     *   C. Standard 5e condition, CE installed  -> Convenient Effects (last resort).
+     *   else                                    -> listed in advisory for manual handling.
+     *
      * @param {Object[]} outcomes - Full outcomes array from the rest flow.
      * @param {Object} [options]
      * @param {Set<string>} [options.preApplied] - Set of `${actorId}:${condition}`
      *        tuples already applied directly via the system adapter. These are
-     *        marked as "Applied" in the advisory and skipped for CE/registry
-     *        application so we don't stack a Convenient Effect on top of an
-     *        adapter-driven `system.attributes.exhaustion` update.
+     *        marked as "Applied" in the advisory and skipped for re-application
+     *        so we don't stack on top of an adapter-driven exhaustion update.
      * @returns {boolean} True if any conditions were found and reported.
      */
     static async processAll(outcomes, options = {}) {
@@ -159,8 +173,9 @@ export class ConditionAdvisory {
 
         await this._loadRegistry();
 
-        const ceApi = game.modules.get("dfreds-convenient-effects")?.api ?? null;
-        const ceAvailable = !!ceApi;
+        // Shared effect-automation detection (DAE / Midi-QoL / CE). Falls back
+        // gracefully when the library kernel predates the helper.
+        const fx = game.ionrift?.library?.effects ?? null;
 
         const applied = new Set();
         const aeApplied = new Set();
@@ -172,35 +187,23 @@ export class ConditionAdvisory {
             for (const effect of charData.effects) {
                 if (effect.type !== "condition") continue;
 
-                const ceEffectId = this._mapConditionToCeId(effect.condition);
                 const key = `${charData.characterId}:${this._buildRegistryKey(effect.condition, effect.checks)}`;
                 const adapterKey = `${charData.characterId}:${effect.condition}`;
 
                 // Adapter already applied this condition (e.g. disaster-tree
                 // exhaustion path). Mark applied so the advisory renders it
-                // as a done deal and skip CE/registry to avoid stacking.
+                // as a done deal and skip re-application to avoid stacking.
                 if (preApplied.has(adapterKey)) {
                     applied.add(key);
                     continue;
                 }
 
-                // Path A: CE standard condition
-                if (ceEffectId && ceAvailable) {
-                    try {
-                        await ceApi.addEffect({ effectId: ceEffectId, uuid: actor.uuid });
-                        applied.add(key);
-                        Logger.log(`CE auto-applied "${effect.condition}" to ${actor.name}`);
-                        continue;
-                    } catch (e) {
-                        console.warn(`${MODULE_ID} | CE apply failed for ${effect.condition}:`, e);
-                    }
-                }
-
-                // Path B: Registry-based custom AE
                 const entry = this._findRegistryEntry(effect);
+
+                // Path A: bespoke condition with its own changes -> custom AE.
                 if (entry?.changes?.length) {
                     try {
-                        await this._applyRegistryEffect(actor, entry, effect);
+                        await this._applyRegistryEffect(actor, entry, effect, fx);
                         aeApplied.add(key);
                         Logger.log(`Registry AE applied "${entry.label}" to ${actor.name}`);
                         continue;
@@ -208,6 +211,42 @@ export class ConditionAdvisory {
                         console.warn(`${MODULE_ID} | Registry AE failed for ${entry.id}:`, e);
                     }
                 }
+
+                // Standard 5e condition: prefer the system catalog, fall back to
+                // Convenient Effects only as a last resort.
+                if (entry?.ceStandard === true || this._isStandardCondition(effect.condition)) {
+                    // Path B: native dnd5e status (preferred catalog).
+                    try {
+                        const res = await this._applyStandardCondition(actor, effect, entry);
+                        if (res.applied) {
+                            // Tag for rest-start cleanup + DAE expiry (belt-and-braces).
+                            await this._stampRestExpiry(res.effect, entry, effect, fx);
+                            applied.add(key);
+                            Logger.log(`Native status applied "${effect.condition}" to ${actor.name}`);
+                            continue;
+                        }
+                    } catch (e) {
+                        console.warn(`${MODULE_ID} | Native status apply failed for ${effect.condition}:`, e);
+                    }
+
+                    // Path C: Convenient Effects (last resort, optional).
+                    const ceId = entry?.ceId ?? this._mapConditionToCeId(effect.condition);
+                    const ceApi = fx?.hasCe?.() ? fx.ceApi() : null;
+                    if (ceId && ceApi) {
+                        try {
+                            const before = new Set(actor.effects.map(e => e.id));
+                            await ceApi.addEffect({ effectId: ceId, uuid: actor.uuid });
+                            const created = actor.effects.find(e => !before.has(e.id)) ?? null;
+                            await this._stampRestExpiry(created, entry, effect, fx);
+                            applied.add(key);
+                            Logger.log(`CE auto-applied "${effect.condition}" to ${actor.name}`);
+                            continue;
+                        } catch (e) {
+                            console.warn(`${MODULE_ID} | CE apply failed for ${effect.condition}:`, e);
+                        }
+                    }
+                }
+                // Unapplied conditions remain for the manual advisory below.
             }
         }
 
@@ -218,8 +257,20 @@ export class ConditionAdvisory {
             `<h3><i class="fas fa-exclamation-triangle"></i> Conditions to Apply</h3>`,
             allApplied.size > 0
                 ? `<p class="advisory-subtitle">Conditions auto-applied where possible. Manual items listed below.</p>`
-                : `<p class="advisory-subtitle">These conditions were triggered by rest events. Apply them manually or via Convenient Effects.</p>`
+                : `<p class="advisory-subtitle">These conditions were triggered by rest events. Apply them manually.</p>`
         ];
+
+        // When the automation stack is absent, point the GM at what would make
+        // these self-managing. Only shown if something was left unapplied.
+        const anyUnapplied = conditionData.some(c =>
+            c.effects.some(e => e.type === "condition"
+                && !allApplied.has(`${c.characterId}:${this._buildRegistryKey(e.condition, e.checks)}`)));
+        if (anyUnapplied && fx?.tier?.() === "basic") {
+            lines.push(
+                `<p class="advisory-hint"><i class="fas fa-circle-info"></i> ` +
+                `Dynamic Active Effects and Midi-QoL apply and expire these automatically.</p>`
+            );
+        }
 
         for (const charData of conditionData) {
             const actor = game.actors.get(charData.characterId);
@@ -296,8 +347,9 @@ export class ConditionAdvisory {
      * @param {Actor} actor - Target actor.
      * @param {Object} entry - Registry entry from condition_registry.json.
      * @param {Object} effect - Event effect object (for duration override).
+     * @param {Object} [fx] - Shared effect-automation helper (game.ionrift.library.effects).
      */
-    static async _applyRegistryEffect(actor, entry, effect) {
+    static async _applyRegistryEffect(actor, entry, effect, fx = null) {
         const duration = effect.duration ?? entry.defaultDuration;
         const durationConfig = this._durationMap?.[duration] ?? {};
 
@@ -326,9 +378,16 @@ export class ConditionAdvisory {
             aeData["duration.seconds"] = durationConfig.seconds;
         }
 
-        // DAE special duration (auto-expire on long rest, short rest, etc.)
+        // DAE special duration (auto-expire on long rest, short rest, etc.).
+        // Respite's own rest cleanup removes next_rest/end_of_rest conditions
+        // even without DAE, so this only adds finer auto-expiry when present.
         if (durationConfig.daeSpecial) {
-            aeData.flags.dae = { specialDuration: [durationConfig.daeSpecial] };
+            const helper = fx ?? game.ionrift?.library?.effects ?? null;
+            if (helper?.stampDaeDuration) {
+                helper.stampDaeDuration(aeData, [durationConfig.daeSpecial]);
+            } else {
+                aeData.flags.dae = { specialDuration: [durationConfig.daeSpecial] };
+            }
         }
 
         if (effect.description ?? entry.description) {
@@ -413,22 +472,118 @@ export class ConditionAdvisory {
     }
 
     /**
+     * Whether a condition is a standard 5e condition (native status or CE).
+     * @param {string} condition
+     * @returns {boolean}
+     */
+    static _isStandardCondition(condition) {
+        if (!condition) return false;
+        const lower = condition.toLowerCase();
+        return this.STANDARD_CONDITIONS.has(lower) || /^exhaustion/.test(lower);
+    }
+
+    /**
+     * Resolve a dnd5e status effect id for a standard condition, or null if the
+     * running system does not register it.
+     * @param {string} condition
+     * @returns {string|null}
+     */
+    static _resolveStatusId(condition) {
+        if (!condition) return null;
+        const lower = condition.toLowerCase();
+        const raw = CONFIG.statusEffects ?? [];
+        const all = Array.isArray(raw) ? raw : Object.values(raw);
+        return all.some(e => e?.id === lower) ? lower : null;
+    }
+
+    /**
+     * Apply a standard condition through the system catalog (preferred over CE).
+     * Exhaustion is numeric on dnd5e and routed through the system adapter so it
+     * reaches the intended level without stacking.
+     * @param {Actor} actor
+     * @param {Object} effect
+     * @param {Object|null} entry
+     * @returns {Promise<{applied: boolean, effect: ActiveEffect|null}>}
+     *          `applied` is true when the condition landed; `effect` is the
+     *          backing Active Effect when one exists (null for numeric exhaustion).
+     */
+    static async _applyStandardCondition(actor, effect, entry) {
+        const condition = (effect.condition ?? "").toLowerCase();
+
+        if (/^exhaustion/.test(condition)) {
+            const level = entry?.level ?? effect.level ?? 1;
+            const adapter = game.ionrift?.respite?.adapter ?? null;
+            if (adapter?.applyExhaustionDelta && adapter?.getExhaustion) {
+                const current = adapter.getExhaustion(actor) ?? 0;
+                const delta = level - current;
+                if (delta > 0) await adapter.applyExhaustionDelta(actor, delta);
+                return { applied: true, effect: null };
+            }
+            return { applied: false, effect: null };
+        }
+
+        const statusId = this._resolveStatusId(condition);
+        if (statusId && typeof actor.toggleStatusEffect === "function") {
+            if (actor.statuses?.has?.(statusId)) {
+                // Already present (likely a manual GM/player toggle). Treat as
+                // applied but do not hijack it with our auto-expiry tagging.
+                return { applied: true, effect: null };
+            }
+            const before = new Set(actor.effects.map(e => e.id));
+            await actor.toggleStatusEffect(statusId, { active: true });
+            const created = actor.effects.find(e => !before.has(e.id) && e.statuses?.has?.(statusId))
+                ?? actor.effects.find(e => e.statuses?.has?.(statusId))
+                ?? null;
+            return { applied: true, effect: created };
+        }
+        return { applied: false, effect: null };
+    }
+
+    /**
+     * Belt-and-braces expiry tagging for a standard condition applied via the
+     * system catalog or CE. Stamps the Respite `expiresAt` flag (read by
+     * cleanupRestConditions at rest start) and the DAE special duration (read by
+     * DAE at rest completion). Either reaper can then remove the effect.
+     * @param {ActiveEffect|null} ae
+     * @param {Object|null} entry
+     * @param {Object} effect
+     * @param {Object|null} fx - Shared effect-automation helper.
+     */
+    static async _stampRestExpiry(ae, entry, effect, fx = null) {
+        if (!ae?.update) return;
+        const duration = effect.duration ?? entry?.defaultDuration ?? "next_rest";
+        const durationConfig = this._durationMap?.[duration] ?? {};
+
+        const updates = {
+            [`flags.${MODULE_ID}.conditionId`]: entry?.id ?? effect.condition,
+            [`flags.${MODULE_ID}.expiresAt`]: duration,
+            [`flags.${MODULE_ID}.autoApplied`]: true,
+            [`flags.${MODULE_ID}.source`]: effect.source ?? "unknown"
+        };
+
+        if (durationConfig.daeSpecial) {
+            const existing = ae.flags?.dae?.specialDuration ?? [];
+            updates["flags.dae.specialDuration"] = [...new Set([...existing, durationConfig.daeSpecial])];
+        }
+
+        try {
+            await ae.update(updates);
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Failed to stamp rest expiry on ${ae.name}:`, e);
+        }
+    }
+
+    /**
      * Map a respite condition name to a CE ceEffectId.
      * Returns null for custom conditions that CE does not handle.
      * @param {string} condition - Condition name from event data.
      * @returns {string|null}
      */
     static _mapConditionToCeId(condition) {
-        const CE_CONDITIONS = new Set([
-            "poisoned", "blinded", "frightened", "deafened",
-            "stunned", "paralyzed", "restrained", "incapacitated",
-            "petrified", "prone", "charmed", "grappled", "invisible"
-        ]);
-
         if (!condition) return null;
         const lower = condition.toLowerCase();
 
-        if (CE_CONDITIONS.has(lower)) {
+        if (this.STANDARD_CONDITIONS.has(lower)) {
             return `ce-${lower}`;
         }
 

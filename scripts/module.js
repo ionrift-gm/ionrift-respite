@@ -93,6 +93,7 @@ import {
 } from "./services/RejoinManager.js";
 import { dispatch as socketDispatch } from "./services/SocketRouter.js";
 import { isNativeShortRestUnsuppressed } from "./services/NativeRestPass.js";
+import { reassertMealExhaustionFloor } from "./services/MealExhaustionGuard.js";
 
 const MODULE_ID = "ionrift-respite";
 const MODULE_LABEL = "Respite";
@@ -1477,6 +1478,11 @@ Hooks.on("dnd5e.preRestCompleted", (actor, result, config) => {
         `Suppressed default HP/HD/exhaustion recovery for ${actor.name} (Respite flow active).`
     );
     return true;
+});
+
+Hooks.on("dnd5e.restCompleted", (actor) => {
+    if (!respiteFlowActive) return;
+    void reassertMealExhaustionFloor(actor);
 });
 
 // â”€â”€ Socket dispatch extracted to SocketRouter.js â€” Phase 2.2 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
