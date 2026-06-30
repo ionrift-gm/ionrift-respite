@@ -610,11 +610,7 @@ Hooks.once("init", async () => {
                 console.warn(`${MODULE_ID} | No active rest. Start a rest first.`);
                 return;
             }
-            const el = activeRestSetupApp.element;
-            if (el) {
-                const btn = el.querySelector("[data-action='openLedger']");
-                if (btn) btn.click();
-            }
+            activeRestSetupApp.openLedgerPanel?.();
         },
 
         // â”€â”€ Camp Prop Placement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

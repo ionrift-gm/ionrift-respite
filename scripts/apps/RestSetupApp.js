@@ -11317,6 +11317,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         this._refreshLedgerApp();
 
+        // Capture meal-phase exhaustion floors before any recovery or native rest
+        // can reduce levels. Used for noFoodOrWater stamping and post-rest re-assert.
+        const mealExhaustionFloors = new Map();
+        for (const mr of (this._mealResults ?? [])) {
+            const applied = mr.mealExhaustionApplied ?? 0;
+            if (applied > 0) mealExhaustionFloors.set(mr.characterId, applied);
+        }
+
         SoundDelegate.stopAll();
         this._phase = "resolve";
         await this._clearRestState();
@@ -11365,11 +11373,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             for (const outcome of this._outcomes) {
                 const mr = this._mealResults.find(r => r.characterId === outcome.characterId);
                 if (!mr || !outcome.recovery) continue;
-                if (!mr.ate || !mr.drank) {
+                const mealExh = mr.mealExhaustionApplied ?? mealExhaustionFloors.get(outcome.characterId) ?? 0;
+                if (!mr.ate || !mr.drank || mealExh > 0) {
                     outcome.recovery.noFoodOrWater = true;
                 }
-                if ((mr.mealExhaustionApplied ?? 0) > 0) {
-                    outcome.recovery.mealExhaustion = mr.mealExhaustionApplied;
+                if (mealExh > 0) {
+                    outcome.recovery.mealExhaustion = mealExh;
                 }
             }
         }
@@ -11449,7 +11458,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const actor = game.actors.get(outcome.characterId);
                 if (!actor) continue;
                 const exh = exhAdapter ? exhAdapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
-                expectedExhaustion.set(outcome.characterId, exh);
+                const floor = mealExhaustionFloors.get(outcome.characterId) ?? 0;
+                expectedExhaustion.set(outcome.characterId, Math.max(exh, floor));
             }
         }
 
@@ -11492,15 +11502,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             for (const [charId, expected] of expectedExhaustion) {
                 const actor = game.actors.get(charId);
                 if (!actor) continue;
+                const floor = mealExhaustionFloors.get(charId) ?? 0;
+                const target = Math.max(expected, floor);
                 const actual = exhAdapter ? exhAdapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
-                if (actual < expected) {
-                    const deficit = expected - actual;
+                if (actual < target) {
+                    const deficit = target - actual;
                     if (exhAdapter) {
                         await exhAdapter.applyExhaustionDelta(actor, deficit);
                     } else {
-                        await actor.update({ "system.attributes.exhaustion": expected });
+                        await actor.update({ "system.attributes.exhaustion": target });
                     }
-                    Logger.log(`[Respite:Recovery] Re-asserted exhaustion for ${actor.name}: ${actual} -> ${expected} (native rest reduced by ${deficit})`);
+                    Logger.log(`[Respite:Recovery] Re-asserted exhaustion for ${actor.name}: ${actual} -> ${target} (native rest reduced by ${deficit})`);
                 }
             }
         }
@@ -11719,10 +11731,19 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /** GM-only: open or focus the rest ledger popout. */
     static #onOpenLedger(event, target) {
         if (!game.user.isGM) return;
+        this.openLedgerPanel();
+    }
+
+    /** GM-only: open or focus the rest ledger popout (callable from module API). */
+    openLedgerPanel() {
+        if (!game.user.isGM) return;
         if (!this._restLedgerApp || !this._restLedgerApp.rendered) {
             this._restLedgerApp = new RestLedgerApp({}, this._restLedger);
-            this._restLedgerApp.render(true);
-            requestAnimationFrame(() => this._restLedgerApp?.positionBeside(this.element));
+            void this._restLedgerApp.render(true).then(() => {
+                if (this._restLedgerApp?.element && this.element) {
+                    this._restLedgerApp.positionBeside(this.element);
+                }
+            });
         } else {
             this._restLedgerApp.bringToFront?.();
         }

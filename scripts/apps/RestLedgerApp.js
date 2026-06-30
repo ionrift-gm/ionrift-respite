@@ -187,7 +187,7 @@ export class RestLedgerApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {HTMLElement} [refEl]
      */
     positionBeside(refEl) {
-        if (!refEl) return;
+        if (!refEl || !this.element) return;
         const rect = refEl.getBoundingClientRect();
         const left = Math.round(rect.right + 12);
         const top = Math.round(rect.top);
