@@ -4,6 +4,9 @@ import { ItemClassifier } from "./ItemClassifier.js";
 import { SpoilageClock } from "./SpoilageClock.js";
 import { isHomebrewProvisionOnly } from "./TravelSettings.js";
 import { PROVISIONS_CUSTOM_PACK_ID } from "./ProvisionsCustomPack.js";
+import { getRegisteredProvisionPackIds } from "./TravelProvisionIndex.js";
+
+const MODULE_PACK_ID = "ionrift-respite.respite-items";
 
 const MODULE_ID = "ionrift-respite";
 
@@ -404,26 +407,73 @@ export class ItemOutcomeHandler {
     }
 
     /**
+     * Compendium pack ids searched for provision item resolution (custom, base,
+     * and runtime-registered overlay materialisations).
+     * @returns {string[]}
+     */
+    static _provisionPackIds() {
+        const base = isHomebrewProvisionOnly()
+            ? [PROVISIONS_CUSTOM_PACK_ID]
+            : [PROVISIONS_CUSTOM_PACK_ID, MODULE_PACK_ID];
+        return [...new Set([...base, ...getRegisteredProvisionPackIds()])];
+    }
+
+    /**
+     * Resolve a canonical provision item from compendium packs. Prefer explicit
+     * `itemRef`; fall back to display name. Returns null when no compendium match.
+     * @param {{ itemRef?: string, name?: string }} query
+     * @returns {Promise<object|null>}
+     */
+    static async resolveProvisionItem({ itemRef, name } = {}) {
+        if (itemRef) {
+            const fromRef = await this._fromCompendium(itemRef);
+            if (fromRef) return fromRef;
+        }
+        if (name) {
+            const fromName = await this._fromCompendiumByName(name);
+            if (fromName) return fromName;
+        }
+        return null;
+    }
+
+    /**
      * Looks up an item from module compendiums by itemRef flag.
      * @param {string} itemRef
      * @returns {Object|null} Item data object, or null if not found.
      */
     static async _fromCompendium(itemRef) {
-        const packIds = isHomebrewProvisionOnly()
-            ? [PROVISIONS_CUSTOM_PACK_ID]
-            : [
-                PROVISIONS_CUSTOM_PACK_ID,
-                "ionrift-respite.respite-items"
-            ];
-
-        for (const packId of packIds) {
+        for (const packId of this._provisionPackIds()) {
             const pack = game.packs.get(packId);
             if (!pack) continue;
 
             const index = await pack.getIndex({ fields: ["flags"] });
             const entry = index.find(
-                e => e.flags?.["ionrift-respite"]?.itemRef === itemRef
+                e => e.flags?.[MODULE_ID]?.itemRef === itemRef
             );
+            if (!entry) continue;
+
+            const doc = await pack.getDocument(entry._id);
+            return doc?.toObject() ?? null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Looks up an item from provision compendiums by display name.
+     * @param {string} name
+     * @returns {Promise<object|null>}
+     */
+    static async _fromCompendiumByName(name) {
+        const target = name?.toLowerCase().trim();
+        if (!target) return null;
+
+        for (const packId of this._provisionPackIds()) {
+            const pack = game.packs.get(packId);
+            if (!pack) continue;
+
+            const index = await pack.getIndex({ fields: ["name"] });
+            const entry = index.find(e => e.name?.toLowerCase().trim() === target);
             if (!entry) continue;
 
             const doc = await pack.getDocument(entry._id);

@@ -593,11 +593,18 @@ export class TravelResolver {
     }
 
     /**
-     * @param {Object} entry - { type, qty?, desc? }
-     * @returns {{ itemRef: string, quantity: number, itemData: object }}
+     * @param {Object} entry - { itemRef?, type?, qty?, desc? }
+     * @returns {{ itemRef: string, quantity: number, itemData?: object }}
      */
     _yieldEntryToItem(entry) {
         const qty = entry.qty ?? 1;
+        if (entry.itemRef) {
+            const resolved = { itemRef: entry.itemRef, quantity: qty };
+            if (entry.desc) {
+                resolved.itemData = { system: { description: { value: entry.desc } } };
+            }
+            return resolved;
+        }
         switch (entry.type) {
             case "meat":
                 return this._makeMeat(qty, entry.desc);
