@@ -1,0 +1,68 @@
+<div class="training-root">
+<style>
+.ionrift-training-dialog .training-body { padding: 6px 4px 2px; }
+.ionrift-training-dialog .training-intro { margin: 0 0 10px; opacity: 0.85; font-size: 0.92em; }
+.ionrift-training-dialog .training-meta { font-size: 0.85em; opacity: 0.7; margin: 0 0 12px; }
+.ionrift-training-dialog .training-bar { display: flex; gap: 6px; margin: 0 0 12px; }
+.ionrift-training-dialog .training-seg {
+    flex: 1; height: 16px; border-radius: 4px;
+    background: rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+.ionrift-training-dialog .training-seg.current {
+    border-color: rgba(232, 195, 73, 0.7);
+    box-shadow: 0 0 8px rgba(232, 195, 73, 0.4);
+}
+.ionrift-training-dialog .training-seg.pass {
+    background: #3fa7d6; box-shadow: 0 0 8px rgba(63, 167, 214, 0.55);
+}
+.ionrift-training-dialog .training-seg.fail {
+    background: #b0563f;
+}
+.ionrift-training-dialog .training-rolls { display: flex; flex-direction: column; gap: 3px; margin: 0 0 12px; min-height: 1.2em; }
+.ionrift-training-dialog .training-rolls .roll { font-size: 0.88em; }
+.ionrift-training-dialog .training-rolls .roll.pass { color: #7ec8ee; }
+.ionrift-training-dialog .training-rolls .roll.fail { color: #e0917f; }
+.ionrift-training-dialog .training-summary { margin: 0 0 12px; }
+.ionrift-training-dialog .training-summary .award { font-size: 1.15em; font-weight: bold; color: #e8c349; margin: 4px 0 0; }
+.ionrift-training-dialog .training-summary .reduction { font-size: 0.82em; opacity: 0.75; margin: 2px 0 0; }
+.ionrift-training-dialog .training-summary .no-xp { color: #e0917f; }
+.ionrift-training-dialog button[data-action] { width: 100%; padding: 8px; font-size: 0.95em; }
+</style>
+
+<div class="training-body">
+    <p class="training-intro">Run three drills. Each set is a separate {{abilityLabel}} check against DC {{dc}}. Every set you land banks XP; the ones you miss still count for a little.</p>
+
+    <div class="training-bar">
+        {{#each segments}}
+        <div class="training-seg {{this.state}}"></div>
+        {{/each}}
+    </div>
+
+    <div class="training-rolls">
+        {{#each rolls}}
+        <span class="roll {{#if this.passed}}pass{{else}}fail{{/if}}">Set {{this.set}}: rolled <strong>{{this.total}}</strong>{{#unless this.passed}} (miss){{/unless}}</span>
+        {{/each}}
+    </div>
+
+    {{#unless allRolled}}
+    <button type="button" data-action="rollSet" {{#if rolling}}disabled{{/if}}>
+        <i class="fas fa-dice-d20"></i> {{rollButtonLabel}}
+    </button>
+    {{else}}
+    <div class="training-summary">
+        <p>{{successes}} of {{numRolls}} sets landed.</p>
+        {{#if reduction}}<p class="reduction">Diminishing returns held back {{reduction}} XP this rest.</p>{{/if}}
+        {{#if noXp}}
+        <p class="award no-xp">No XP this rest</p>
+        {{else}}
+        <p class="award">+{{awardedXP}} XP</p>
+        {{/if}}
+    </div>
+    <button type="button" data-action="confirmTraining">
+        <i class="fas fa-check"></i> Confirm and bank XP
+    </button>
+    {{/unless}}
+</div>
+</div>

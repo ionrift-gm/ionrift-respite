@@ -1,0 +1,33 @@
+{
+  "version": "1",
+  "packs": {
+    "respite-items": {
+      "status": "approved",
+      "approvedBy": "ionrift",
+      "approvedDate": "2026-04-01",
+      "assetPolicy": "foundry-core-only",
+      "note": "Forage, hunt, and cooking items (not for Quartermaster loot pools)"
+    },
+    "respite-guide": {
+      "status": "approved",
+      "approvedBy": "ionrift",
+      "approvedDate": "2026-04-01",
+      "assetPolicy": "foundry-core-only",
+      "note": "Player guide journals (Player Quick Reference, Cooking)"
+    },
+    "respite-guide-gm": {
+      "status": "approved",
+      "approvedBy": "ionrift",
+      "approvedDate": "2026-06-01",
+      "assetPolicy": "foundry-core-only",
+      "note": "GM-only guide journal"
+    },
+    "respite-actors": {
+      "status": "approved",
+      "approvedBy": "ionrift",
+      "approvedDate": "2026-04-01",
+      "assetPolicy": "foundry-core-only",
+      "note": "Camp actor templates"
+    }
+  }
+}

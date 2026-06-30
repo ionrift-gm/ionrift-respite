@@ -1,0 +1,20 @@
+{
+  "scripts": {
+    "lint": "eslint scripts --ext .js --max-warnings 250",
+    "lint:debug": "node tools/lint-debug-logging.mjs",
+    "validate:events": "node tools/validate-event-schema.mjs",
+    "validate:icons": "node tools/validate-icon-paths.mjs",
+    "lint:hbs": "node tools/lint-hbs.mjs",
+    "lint:hbs:watch": "node tools/lint-hbs.mjs --watch",
+    "build:packs": "node tools/compile-packs.mjs"
+  },
+  "dependencies": {
+    "classic-level": "^3.0.0"
+  },
+  "devDependencies": {
+    "@foundryvtt/foundryvtt-cli": "^1.1.0",
+    "handlebars": "^4.7.9",
+    "sharp": "^0.34.5",
+    "vitest": "^4.1.8"
+  }
+}

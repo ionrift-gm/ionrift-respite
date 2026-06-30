@@ -1,0 +1,25 @@
+{
+    "_id": "CampBedroll01",
+    "_key": "!actors!CampBedroll01",
+    "name": "Bedroll",
+    "type": "npc",
+    "img": "icons/svg/sleep.svg",
+    "system": {
+        "description": { "value": "<h2>Bedroll</h2><p>A personal bedroll placed per party member during a rest. Represents where each character sleeps.</p><p>Drag this actor onto the scene to place a bedroll token. Respite auto-places one per party member, but you can use this to customise the token art.</p>" },
+        "attributes": { "hp": { "value": 1, "max": 1 } },
+        "details": { "type": { "value": "construct" }, "cr": 0 }
+    },
+    "prototypeToken": {
+        "name": "Bedroll", "displayName": 0, "width": 1, "height": 1,
+        "texture": { "src": "icons/svg/sleep.svg", "scaleX": 1, "scaleY": 1 },
+        "hidden": false, "lockRotation": true, "rotation": 0, "actorLink": false,
+        "disposition": -2, "light": { "bright": 0, "dim": 0 },
+        "sight": { "enabled": false }, "detectionModes": []
+    },
+    "items": [], "effects": [],
+    "folder": "CampEquipFolder0",
+    "ownership": { "default": 0 },
+    "flags": { "ionrift-respite": { "isCampEquipment": true, "equipmentKey": "CampBedroll01" } },
+    "sort": 500,
+    "_stats": { "compendiumSource": null, "duplicateSource": null, "coreVersion": "12.331", "systemId": "dnd5e", "systemVersion": "4.1.2", "createdTime": null, "modifiedTime": null, "lastModifiedBy": null }
+}

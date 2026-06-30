@@ -1,0 +1,25 @@
+{
+    "_id": "CampCooking01",
+    "_key": "!actors!CampCooking01",
+    "name": "Cooking Station",
+    "type": "npc",
+    "img": "icons/svg/fire.svg",
+    "system": {
+        "description": { "value": "<h2>Cooking Station</h2><p>A camp kitchen area for preparing meals during a rest. Cooking requires ingredients and a recipe.</p><p>Drag this actor onto the scene to place the cooking station token. Respite will auto-place one when a rest begins, but you can use this to customise the token art.</p>" },
+        "attributes": { "hp": { "value": 1, "max": 1 } },
+        "details": { "type": { "value": "construct" }, "cr": 0 }
+    },
+    "prototypeToken": {
+        "name": "Cooking Station", "displayName": 0, "width": 1, "height": 1,
+        "texture": { "src": "icons/svg/fire.svg", "scaleX": 1, "scaleY": 1 },
+        "hidden": false, "lockRotation": true, "rotation": 0, "actorLink": false,
+        "disposition": -2, "light": { "bright": 0, "dim": 0 },
+        "sight": { "enabled": false }, "detectionModes": []
+    },
+    "items": [], "effects": [],
+    "folder": "CampEquipFolder0",
+    "ownership": { "default": 0 },
+    "flags": { "ionrift-respite": { "isCampEquipment": true, "equipmentKey": "CampCooking01" } },
+    "sort": 400,
+    "_stats": { "compendiumSource": null, "duplicateSource": null, "coreVersion": "12.331", "systemId": "dnd5e", "systemVersion": "4.1.2", "createdTime": null, "modifiedTime": null, "lastModifiedBy": null }
+}
