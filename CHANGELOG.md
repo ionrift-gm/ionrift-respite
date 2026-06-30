@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.3.7] - 2026-06-30
+
+### Added
+- **Rest Session Ledger (GM).** Optional popout during a long rest that records terrain, weather, activities, rations, night events, and recovery in phase groups. Filter chips, collapse, and copy-to-clipboard for session notes or debugging.
+
+### Fixed
+- Starvation and dehydration exhaustion applied during the meal phase now survives rest resolve. Native long rest no longer strips those levels back to zero.
+- Characters shown as Hydrated in the rations panel no longer roll a dehydration CON save when a wet meal's water credit was counted at station submit time.
+- Stacked rations with spoilage cohort suffixes no longer confuse duplicate-item handling in the meal flow.
+- While Well Fed is active, eating another full meal packs the extra serving away as its own inventory item instead of merging into the consumed stack.
+- Night-event and rest-start condition cleanup uses the library effect stack helper, with dual cleanup at rest start so orphaned effects are less likely to linger.
+
 ## [3.3.6] - 2026-06-29
 
 ### Fixed
