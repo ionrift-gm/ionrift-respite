@@ -16,22 +16,33 @@ function activeGrantLedger() {
  * @param {Actor} actor
  * @param {object} itemData
  * @param {string} slotRef
+ * @param {{ separateItem?: boolean }} [opts]
+ *   When separateItem is true, always creates a new inventory row (packed
+ *   leftovers) instead of stacking onto an existing row with the same name.
  */
-export async function grantMealItem(actor, itemData, slotRef) {
+export async function grantMealItem(actor, itemData, slotRef, opts = {}) {
     const ledger = activeGrantLedger();
-    const slotKey = GrantLedger.mealSlotKey(actor.id, slotRef);
+    const separateItem = opts.separateItem === true;
     const qty = itemData.system?.quantity ?? 1;
-    const grant = [{
+    const itemDoc = {
         name: itemData.name,
         type: itemData.type ?? "loot",
         img: itemData.img ?? "icons/svg/item-bag.svg",
-        quantity: qty,
         system: { ...(itemData.system ?? {}), quantity: qty },
         flags: itemData.flags ?? {}
-    }];
+    };
+    const grant = [{ ...itemDoc, quantity: qty }];
     guardEmbedItems(grant);
-    const perform = () => ItemOutcomeHandler.grantItemsToActor(actor, grant);
+    const perform = () => {
+        if (separateItem) {
+            return actor.createEmbeddedDocuments("Item", [itemDoc]);
+        }
+        return ItemOutcomeHandler.grantItemsToActor(actor, grant);
+    };
     if (ledger) {
+        const slotKey = separateItem
+            ? GrantLedger.mealSlotKey(actor.id, `${slotRef}:leftover:${foundry.utils.randomID()}`)
+            : GrantLedger.mealSlotKey(actor.id, slotRef);
         await ledger.grantOnce(slotKey, perform);
     } else {
         await perform();

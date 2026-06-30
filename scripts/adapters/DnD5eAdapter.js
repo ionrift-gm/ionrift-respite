@@ -235,6 +235,8 @@ export class DnD5eAdapter extends SystemAdapter {
         } else {
             await actor.shortRest({ dialog: false, chat: false, advanceTime: false });
         }
+        const { reassertMealExhaustionFloor } = await import("../services/MealExhaustionGuard.js");
+        await reassertMealExhaustionFloor(actor);
     }
 
     // ── Active Effects ────────────────────────────────────────
