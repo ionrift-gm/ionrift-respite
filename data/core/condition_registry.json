@@ -1,0 +1,127 @@
+{
+    "_meta": {
+        "version": "1.0.0",
+        "description": "Condition registry for Ionrift Respite. Source of truth for all conditions the module can apply to actors.",
+        "backlog": "v1.1: Expose entries in Convenient Effects UI listing"
+    },
+    "durationMap": {
+        "next_rest": { "seconds": null, "removal": "respite_cleanup", "daeSpecial": "longRest", "label": "Until next rest" },
+        "end_of_rest": { "seconds": null, "removal": "respite_cleanup", "daeSpecial": "shortRest", "label": "End of current rest" },
+        "4_hours": { "seconds": 14400, "removal": "timer", "daeSpecial": null, "label": "4 hours" },
+        "8_hours": { "seconds": 28800, "removal": "timer", "daeSpecial": null, "label": "8 hours" },
+        "24_hours": { "seconds": 86400, "removal": "timer", "daeSpecial": "newDay", "label": "24 hours" },
+        "permanent": { "seconds": null, "removal": "manual", "daeSpecial": null, "label": "Permanent" },
+        "1_attack": { "seconds": null, "removal": "timer", "daeSpecial": "1Attack", "label": "Next attack" }
+    },
+    "conditions": [
+        {
+            "id": "respite-poisoned",
+            "condition": "poisoned",
+            "ceStandard": true,
+            "ceId": "ce-poisoned",
+            "label": "Poisoned",
+            "icon": null,
+            "description": "Nausea or venom. Disadvantage on attack rolls and ability checks.",
+            "defaultDuration": "next_rest",
+            "colorTheme": "green"
+        },
+        {
+            "id": "respite-disadv-con",
+            "condition": "disadvantage",
+            "checks": ["con"],
+            "ceStandard": false,
+            "label": "Weakened (CON)",
+            "icon": "icons/skills/wounds/blood-drip-droplet-red.webp",
+            "description": "Blood loss or physical strain has left you weakened. Disadvantage on CON checks and saves.",
+            "defaultDuration": "next_rest",
+            "colorTheme": "red",
+            "changes": [
+                { "key": "flags.midi-qol.disadvantage.ability.check.con", "mode": 0, "value": "1" },
+                { "key": "flags.midi-qol.disadvantage.ability.save.con", "mode": 0, "value": "1" }
+            ]
+        },
+        {
+            "id": "respite-disadv-prc",
+            "condition": "disadvantage",
+            "checks": ["prc"],
+            "ceStandard": false,
+            "label": "Dulled Senses",
+            "icon": "icons/skills/social/intimidation-impressing.webp",
+            "description": "Your senses are clouded and unreliable. Disadvantage on Perception checks.",
+            "defaultDuration": "next_rest",
+            "colorTheme": "grey",
+            "changes": [
+                { "key": "flags.midi-qol.disadvantage.skill.prc", "mode": 0, "value": "1" }
+            ]
+        },
+        {
+            "id": "respite-disadv-cha-check",
+            "condition": "disadvantage",
+            "checks": ["cha"],
+            "ceStandard": false,
+            "label": "Unclean",
+            "icon": "icons/magic/water/dirt-stains-spots.webp",
+            "description": "Covered in filth or stink. Disadvantage on Charisma checks (saves unaffected) until you can wash properly.",
+            "defaultDuration": "next_rest",
+            "colorTheme": "brown",
+            "changes": [
+                { "key": "flags.midi-qol.disadvantage.ability.check.cha", "mode": 0, "value": "1" },
+                { "key": "flags.midi-qol.disadvantage.skill.per", "mode": 0, "value": "1" },
+                { "key": "flags.midi-qol.disadvantage.skill.dec", "mode": 0, "value": "1" },
+                { "key": "flags.midi-qol.disadvantage.skill.itm", "mode": 0, "value": "1" },
+                { "key": "flags.midi-qol.disadvantage.skill.prf", "mode": 0, "value": "1" }
+            ]
+        },
+        {
+            "id": "respite-exhaustion-1",
+            "condition": "exhaustion",
+            "level": 1,
+            "ceStandard": true,
+            "ceId": "ce-exhaustion-1",
+            "label": "Exhaustion (1)",
+            "icon": null,
+            "description": "Disadvantage on ability checks.",
+            "defaultDuration": "permanent",
+            "colorTheme": "amber"
+        },
+        {
+            "id": "respite-exhaustion-2",
+            "condition": "exhaustion",
+            "level": 2,
+            "ceStandard": true,
+            "ceId": "ce-exhaustion-2",
+            "label": "Exhaustion (2)",
+            "icon": null,
+            "description": "Speed halved, disadvantage on ability checks.",
+            "defaultDuration": "permanent",
+            "colorTheme": "amber"
+        },
+        {
+            "id": "respite-diseased",
+            "condition": "diseased",
+            "ceStandard": false,
+            "label": "Diseased",
+            "icon": "icons/skills/wounds/blood-drip-1-red.webp",
+            "description": "A lingering illness. Disadvantage on CON checks and saves until cured.",
+            "defaultDuration": "permanent",
+            "colorTheme": "green",
+            "changes": [
+                { "key": "flags.midi-qol.disadvantage.ability.check.con", "mode": 0, "value": "1" },
+                { "key": "flags.midi-qol.disadvantage.ability.save.con", "mode": 0, "value": "1" }
+            ]
+        },
+        {
+            "id": "respite-disadvantage-attack-1",
+            "condition": "disadvantage_attack",
+            "ceStandard": false,
+            "label": "Disadvantage (next attack)",
+            "icon": "icons/svg/downgrade.svg",
+            "description": "The next attack roll is at disadvantage, then the effect ends.",
+            "defaultDuration": "1_attack",
+            "colorTheme": "grey",
+            "changes": [
+                { "key": "flags.midi-qol.disadvantage.attack.all", "mode": 0, "value": "1" }
+            ]
+        }
+    ]
+}

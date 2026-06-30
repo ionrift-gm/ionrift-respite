@@ -1,0 +1,11 @@
+{
+    "released": [
+        "forest",
+        "swamp",
+        "desert",
+        "urban",
+        "dungeon",
+        "tavern"
+    ],
+    "_comment": "Module-shipped terrains. The kernel base from ionrift-library defines the canonical id set; Tavern is the Respite safe-haven addition. Pack overlays deliver their own terrains via data/terrains/<id>/terrain.json. Adding a terrain id here ships its data with the module, not via an overlay."
+}

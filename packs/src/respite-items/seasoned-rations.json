@@ -1,0 +1,40 @@
+{
+    "_key": "!items!a1b2c3d4e5f60009",
+    "_id": "a1b2c3d4e5f60009",
+    "name": "Seasoned Rations",
+    "type": "consumable",
+    "img": "icons/consumables/food/dried-meat-jerky-fish-red.webp",
+    "system": {
+        "description": {
+            "value": "<p>Trail rations improved with fresh wild herbs. The flavour makes a long march more bearable.</p>"
+        },
+        "rarity": "common",
+        "weight": 0.5,
+        "price": {
+            "value": 3,
+            "denomination": "cp"
+        },
+        "type": {
+            "value": "food",
+            "subtype": ""
+        },
+        "uses": {
+            "max": 1,
+            "per": "charges",
+            "autoDestroy": true
+        }
+    },
+    "folder": "c00ked0000000001",
+    "flags": {
+        "ionrift-respite": {
+            "itemRef": "seasoned_rations",
+            "category": "prepared",
+            "foodTag": "cooked_meal"
+        }
+    },
+    "effects": [],
+    "ownership": {
+        "default": 0
+    },
+    "sort": 900
+}

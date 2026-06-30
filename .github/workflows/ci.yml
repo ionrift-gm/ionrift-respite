@@ -1,0 +1,124 @@
+name: CI - Lint & Static Analysis
+
+on:
+  push:
+    branches:
+      - master
+    # Explicitly skip tag pushes; release.yml owns those
+    tags-ignore:
+      - '**'
+
+  # Allow manual trigger for diagnosis
+  workflow_dispatch:
+
+  repository_dispatch:
+    types: [lib-updated]
+
+jobs:
+
+  lint:
+    uses: ionrift-gm/ionrift-ci/.github/workflows/lint.yml@main
+    with:
+      eslint_max_warnings: 250
+      eslint_extra_args: "--ignore-pattern 'scripts/tests/**'"
+      # Test runner imports (./tests/RespiteTestRunner.js) are runtime-probe-gated.
+      # fetch HEAD check + try/catch ensures graceful no-op in production.
+      # The static checker can't evaluate those guards, so skip it.
+      skip_import_integrity: true
+      # Respite uses npx vitest run with an explicit config path. Vitest handles
+      # this below; ESLint defaults (.js, scripts/, --ext .js) are all correct.
+
+  hygiene:
+    uses: ionrift-gm/ionrift-ci/.github/workflows/hygiene.yml@main
+
+  vitest:
+    uses: ionrift-gm/ionrift-ci/.github/workflows/vitest.yml@main
+    with:
+      testharness_repo: 'ionrift-gm/ionrift-testharness'
+      testharness_config: 'vitest/respite/vitest.config.js'
+    secrets:
+      CI_PAT: ${{ secrets.IONRIFT_CI_PAT }}
+
+  forge-safety:
+    uses: ionrift-gm/ionrift-ci/.github/workflows/vitest.yml@main
+    with:
+      testharness_repo: 'ionrift-gm/ionrift-testharness'
+      testharness_config: 'vitest/forge-safety/vitest.config.js'
+    secrets:
+      CI_PAT: ${{ secrets.IONRIFT_CI_PAT }}
+
+  pack-signoff:
+    name: Compendium Sign-off Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Validate compendium sign-offs
+        run: node tools/validate-packs.mjs
+
+  shipping:
+    name: Pack shipping allowlist
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate shipping manifest
+        run: node tools/validate-shipping.mjs
+
+      - name: Validate string literals (no typographic dashes)
+        run: node tools/validate-strings.mjs
+
+  fallback-parity:
+    name: GM/player fallback parity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check fallback parity
+        run: node tools/fallback_parity.mjs
+
+  event-schema:
+    name: Event schema validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate core event JSON
+        run: node tools/validate-event-schema.mjs
+
+  debug-logging:
+    name: Debug logging gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Block residual debug traces
+        run: node tools/lint-debug-logging.mjs

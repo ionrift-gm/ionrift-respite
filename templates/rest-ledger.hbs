@@ -1,0 +1,62 @@
+<section class="rest-ledger-body">
+    <header class="rest-ledger-toolbar">
+        <div class="rest-ledger-filters" role="group" aria-label="Phase filter">
+            {{#each filters}}
+            <button type="button"
+                class="rest-ledger-chip {{#if active}}active{{/if}}"
+                data-action="ledgerFilter"
+                data-filter="{{key}}"
+                aria-pressed="{{#if active}}true{{else}}false{{/if}}">
+                {{label}}
+            </button>
+            {{/each}}
+        </div>
+        <div class="rest-ledger-toolbar-actions">
+            <button type="button" class="rest-ledger-toolbar-btn" data-action="ledgerFreezeScroll"
+                data-tooltip="{{#if freezeScroll}}Resume auto-scroll{{else}}Freeze scroll{{/if}}"
+                aria-pressed="{{#if freezeScroll}}true{{else}}false{{/if}}">
+                <i class="fas {{#if freezeScroll}}fa-play{{else}}fa-pause{{/if}}"></i>
+            </button>
+            <button type="button" class="rest-ledger-toolbar-btn" data-action="ledgerCopy"
+                data-tooltip="Copy to clipboard">
+                <i class="fas fa-clipboard"></i>
+            </button>
+        </div>
+    </header>
+
+    {{#if hasEntries}}
+    <ol class="rest-ledger-list">
+        {{#each phaseGroups}}
+        <li class="rest-ledger-phase-group">
+            <button type="button" class="rest-ledger-phase-header {{#if collapsed}}collapsed{{/if}}"
+                data-action="ledgerTogglePhase"
+                data-phase="{{phase}}">
+                <i class="fas fa-chevron-down rest-ledger-chevron"></i>
+                <span class="rest-ledger-phase-label">{{label}}</span>
+                <span class="rest-ledger-phase-count">{{count}}</span>
+            </button>
+            {{#unless collapsed}}
+            <ul class="rest-ledger-entries">
+                {{#each entries}}
+                <li class="rest-ledger-entry" data-category="{{category}}">
+                    <span class="rest-ledger-entry-icon"><i class="{{icon}}"></i></span>
+                    <span class="rest-ledger-entry-body">
+                        {{#if actorName}}<strong class="rest-ledger-actor">{{actorName}}</strong>{{/if}}
+                        <span class="rest-ledger-summary">{{summary}}</span>
+                        {{#if detail}}<span class="rest-ledger-detail">{{detail}}</span>{{/if}}
+                    </span>
+                    <time class="rest-ledger-time">{{time}}</time>
+                </li>
+                {{/each}}
+            </ul>
+            {{/unless}}
+        </li>
+        {{/each}}
+    </ol>
+    {{else}}
+    <div class="rest-ledger-empty">
+        <i class="fas fa-book-open"></i>
+        <p>No entries yet. The ledger records decisions as the rest progresses.</p>
+    </div>
+    {{/if}}
+</section>

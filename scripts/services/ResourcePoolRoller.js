@@ -1,0 +1,124 @@
+/**
+ * ResourcePoolRoller
+ * Rolls against terrain-bound resource pools to produce item references.
+ * Handles weighted selection and quantity rolling.
+ */
+export class ResourcePoolRoller {
+
+    constructor() {
+        /** @type {Map<string, Object>} Resource pools keyed by ID. */
+        this.pools = new Map();
+    }
+
+    /**
+     * Loads resource pool definitions from JSON data.
+     * @param {Object[]} poolData - Array of resource pool schemas.
+     */
+    load(poolData) {
+        for (const pool of poolData) {
+            this.pools.set(pool.id, pool);
+        }
+    }
+
+    /**
+     * @param {string} poolId
+     * @returns {boolean}
+     */
+    hasPool(poolId) {
+        return this.pools.has(poolId);
+    }
+
+    /**
+     * Rolls against a named pool a given number of times.
+     * @param {string} poolId - Resource pool ID.
+     * @param {number} rolls - Number of rolls to make.
+     * @returns {Object[]} Array of { itemRef, quantity, itemData }.
+     */
+    /**
+     * Pool used for standard travel/camp forage draws (matches {@link ResourcePoolRoller.roll} fallback rules).
+     * @param {string} terrainTag
+     * @returns {Object|null}
+     */
+    getEffectiveForagePool(terrainTag) {
+        const poolId = `resource_pool_${terrainTag}`;
+        let pool = this.pools.get(poolId);
+        if (!pool) pool = this.pools.get("resource_pool_wilderness");
+        return pool ?? null;
+    }
+
+    async roll(poolId, rolls = 1) {
+        let pool = this.pools.get(poolId);
+
+        // Fallback to generic wilderness pool if terrain-specific pool missing
+        if (!pool) {
+            pool = this.pools.get("resource_pool_wilderness");
+        }
+        if (!pool) return [];
+
+        const results = [];
+        const totalWeight = pool.entries.reduce((sum, e) => sum + (e.weight ?? 1), 0);
+
+        for (let i = 0; i < rolls; i++) {
+            // Weighted random selection
+            let rand = Math.random() * totalWeight;
+            let selected = pool.entries[0];
+            for (const entry of pool.entries) {
+                rand -= (entry.weight ?? 1);
+                if (rand <= 0) {
+                    selected = entry;
+                    break;
+                }
+            }
+
+            // Roll quantity
+            let quantity = 1;
+            if (typeof selected.quantity === "string") {
+                const qRoll = await new Roll(selected.quantity).evaluate();
+                quantity = qRoll.total;
+            } else if (typeof selected.quantity === "number") {
+                quantity = selected.quantity;
+            }
+
+            // Merge with existing result or add new
+            const existing = results.find(r => r.itemRef === selected.itemRef);
+            if (existing) {
+                existing.quantity += quantity;
+            } else {
+                results.push({
+                    itemRef: selected.itemRef,
+                    quantity,
+                    itemData: selected.itemData ?? null
+                });
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * Pick one pool entry using a player d100 (1 = lowest weight band, 100 = high).
+     * @param {string} poolId
+     * @param {number} rollValue
+     * @returns {Object|null} Pool entry from JSON data.
+     */
+    pickWithPercentileRoll(poolId, rollValue) {
+        let pool = this.pools.get(poolId);
+        if (!pool) pool = this.pools.get("resource_pool_wilderness");
+        if (!pool?.entries?.length) return null;
+
+        const totalWeight = pool.entries.reduce((sum, entry) => sum + (entry.weight ?? 1), 0);
+        if (totalWeight <= 0) return null;
+
+        const clamped = Math.max(1, Math.min(100, Math.floor(Number(rollValue) || 0)));
+        let rand = ((clamped - 1) / 100) * totalWeight;
+        let selected = pool.entries[0];
+        for (const entry of pool.entries) {
+            rand -= (entry.weight ?? 1);
+            if (rand <= 0) {
+                selected = entry;
+                break;
+            }
+        }
+        return selected;
+    }
+}

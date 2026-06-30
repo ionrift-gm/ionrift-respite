@@ -1,0 +1,115 @@
+{{!-- Make Camp: anchored at pit token; window title is "Campfire" --}}
+{{#if dialogClosing}}
+{{!-- Closing; avoid one-frame unlit + Cold camp fallback after phase leaves camp --}}
+{{else}}
+<div class="campfire-canvas-drawer campfire-map-dialog glass-ui" data-campfire-map-dialog="1">
+    <div class="campfire-canvas-body">
+        {{#if campScanData}}
+        <div class="campfire-map-comfort">
+            <div class="campfire-map-comfort-header">
+                <span class="camp-comfort-header-inline">Camp comfort</span>
+                <span class="comfort-tier {{mapComfortTierClass}}" data-tooltip="{{comfortHint campScanData.campComfort}}">{{mapComfortLabel}}</span>
+            </div>
+            <p class="camp-comfort-reason campfire-map-comfort-line">{{mapComfortLine}}</p>
+        </div>
+        {{/if}}
+        {{#if mapRestCard}}
+        <div class="campfire-map-rest tier-{{mapRestCard.personalComfort}}">
+            <div class="campfire-map-rest-head">
+                <span class="campfire-map-rest-label">{{#if mapRestActorName}}{{mapRestActorName}}'s rest{{else}}Your rest{{/if}}</span>
+                <span class="comfort-tier comfort-{{mapRestCard.personalComfort}}" data-tooltip="{{comfortHint mapRestCard.personalComfort}}">{{mapRestCard.personalComfortLabel}}</span>
+            </div>
+            <div class="recovery-line recovery-hp {{#if mapRestCard.recovery.hpSeverity}}{{mapRestCard.recovery.hpSeverity}}{{else}}success{{/if}}">
+                <i class="fas fa-heart" aria-hidden="true"></i> {{mapRestCard.recovery.hpLabel}}
+            </div>
+            <div class="recovery-line recovery-hd {{#if mapRestCard.recovery.hdSeverity}}{{mapRestCard.recovery.hdSeverity}}{{else}}success{{/if}}">
+                <i class="fas fa-dice-d6" aria-hidden="true"></i> {{mapRestCard.recovery.hdLabel}}
+            </div>
+            {{#if mapRestCard.recovery.exhaustionDC}}
+            <div class="recovery-line recovery-exhaustion {{mapRestCard.recovery.exhaustionSeverity}}">
+                <i class="fas fa-exclamation-triangle" aria-hidden="true"></i> {{mapRestCard.recovery.exhaustionLabel}}
+            </div>
+            {{else}}
+            <div class="recovery-line recovery-exhaustion success">
+                <i class="fas fa-shield-alt" aria-hidden="true"></i> No exhaustion risk
+            </div>
+            {{/if}}
+        </div>
+        {{/if}}
+        {{#if campFireTierCards.length}}
+        <div class="campfire-map-fire-levels">
+            <h4 class="campfire-map-section-title">Fire levels</h4>
+            <div class="camp-fire-tier-strip" role="list" aria-label="Fire intensity tiers">
+                <button type="button"
+                        class="camp-fire-tier-card cold-camp{{#if campColdCampDecided}} active selected{{else if campPreviewIsColdCamp}} active selected{{/if}}"
+                        data-action="selectCampColdCampMap"
+                        role="listitem"
+                        {{#if campColdCampDecided}}aria-current="true"{{else if campPreviewIsColdCamp}}aria-current="true"{{/if}}>
+                    <span class="camp-fire-tier-watermark" aria-hidden="true"><i class="fas fa-moon"></i></span>
+                    <span class="camp-fire-tier-label">Cold Camp</span>
+                    <span class="camp-fire-tier-cost">(No fire)</span>
+                    <span class="camp-fire-tier-body">No fire tonight. <span class="fire-penalty">−1 comfort.</span> <span class="fire-benefit">Harder for enemies to spot (lower encounter chance).</span> No cooking.</span>
+                </button>
+                {{#each campFireTierCards}}
+                <button type="button"
+                        class="camp-fire-tier-card{{#if active}} active selected{{/if}}"
+                        data-fire-level="{{id}}"
+                        data-action="selectCampFireLevelMap"
+                        role="listitem"
+                        {{#if active}}aria-current="true"{{/if}}>
+                    <span class="camp-fire-tier-watermark" aria-hidden="true"><i class="fas fa-fire"></i></span>
+                    <span class="camp-fire-tier-label">{{label}}</span>
+                    <span class="camp-fire-tier-cost">({{costLabel}})</span>
+                    <span class="camp-fire-tier-body">{{> fireTierBody}}</span>
+                </button>
+                {{/each}}
+            </div>
+            <p class="campfire-map-tier-footnote">Anyone at the table can pick a tier. Cold camp and fire tiers stay editable until the GM proceeds.</p>
+        </div>
+        {{/if}}
+        {{#if campColdCampDecided}}
+        <p class="camp-fire-cold-banner glass-ui"><i class="fas fa-moon"></i> Cold camp selected</p>
+        {{else if campFireIsLit}}
+        <div class="camp-fire-lit-banner"><i class="fas fa-fire"></i> {{#if campFireLitBy}}<span>{{campFireLitBy.actorName}} lit the fire ({{campFireLitBy.method}}).</span>{{else}}<span>{{campCurrentFireLevel}} fire selected.</span>{{/if}}</div>
+        {{#if campFirewoodPledgeList.length}}
+        <div class="camp-firewood-pledge-list campfire-map-pledges">
+        {{#each campFirewoodPledgeList}}<div class="camp-firewood-pledge-row"><i class="fas fa-check"></i> <span>{{actorName}}: {{count}} firewood</span></div>{{/each}}
+        </div>
+        {{/if}}
+        <div class="camp-fuel-controls">
+            <button type="button" class="camp-pledge-btn" data-action="campPledgeFirewoodMap" data-actor-id="{{campMyFirewoodActorId}}" {{#unless campCanAddFirewood}}disabled{{/unless}}><i class="fas fa-plus"></i> Add Firewood</button>
+            <button type="button" class="camp-reclaim-btn" data-action="campReclaimFirewoodMap" {{#unless campMyPledge}}disabled{{/unless}}><i class="fas fa-undo"></i> Take Back</button>
+        </div>
+        {{else if campPreviewIsColdCamp}}
+        <div class="camp-cold-confirm-row">
+            <p class="camp-fire-cold-note"><i class="fas fa-moon"></i> No fire. Lock in cold camp to settle.</p>
+            <button type="button" class="camp-cold-confirm-btn" data-action="campConfirmColdCampMap"><i class="fas fa-check"></i> Confirm cold camp</button>
+        </div>
+        {{else}}
+        {{#if campPitBlocksFireLighting}}
+        <p class="camp-fire-no-lighter-hint"><i class="fas fa-info-circle"></i> Place the campfire on the map before lighting.</p>
+        {{/if}}
+        {{#if isGM}}
+        <div class="camp-gm-override-row">
+            {{#if campFireLighters.length}}
+            <button type="button" class="camp-gm-light-override" data-action="campLightFireMap" data-actor-id="{{campFireLighters.[0].actorId}}" data-method="{{campFireLighters.[0].method}}" {{#if campPitBlocksFireLighting}}disabled{{/if}}><i class="fas fa-fire-alt"></i> Light it for them</button>
+            {{else}}
+            <button type="button" class="camp-gm-light-override" data-action="campLightFireMap" data-actor-id="__gm__" data-method="GM Override" {{#if campPitBlocksFireLighting}}disabled{{/if}}><i class="fas fa-fire-alt"></i> Light Fire (GM)</button>
+            {{/if}}
+        </div>
+        {{else}}
+        <div class="camp-fire-lighter-list">
+        {{#if campFireLighters.length}}
+            {{#each campFireLighters}}{{#if isViewerActor}}<button type="button" class="camp-light-fire-btn" data-action="campLightFireMap" data-actor-id="{{actorId}}" data-method="{{method}}" {{#if ../campPitBlocksFireLighting}}disabled{{/if}}><i class="fas fa-fire"></i> {{method}}</button>{{/if}}{{/each}}
+            {{#unless campViewerCanLight}}
+            <p class="camp-fire-no-lighter-hint"><i class="fas fa-info-circle"></i> You don't have a tinderbox or fire cantrip. {{campFireLighterNames}} can light the fire.</p>
+            {{/unless}}
+        {{else}}
+        <p class="camp-fire-no-lighter-hint camp-fire-no-lighter-prominent"><i class="fas fa-exclamation-triangle"></i> <strong>No fire starter.</strong> Someone in the party needs a tinderbox, flint &amp; steel, or a fire cantrip to light the campfire.</p>
+        {{/if}}
+        </div>
+        {{/if}}
+        {{/if}}
+    </div>
+</div>
+{{/if}}

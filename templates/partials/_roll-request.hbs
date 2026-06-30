@@ -1,0 +1,182 @@
+﻿{{!-- Shared roll-request component. Reuses event-check-module styling from the events DC challenge UI. --}}
+<div class="ionrift-roll-request{{#if rollRequest.gmView}} ionrift-roll-request--gm{{/if}}">
+    {{#if rollRequest.showTitle}}
+    {{#if rollRequest.title}}
+    <div class="ionrift-roll-request__event-title">{{rollRequest.title}}</div>
+    {{/if}}
+    {{/if}}
+
+    <div class="event-check-module">
+        <div class="check-module-skill">{{rollRequest.skillName}}</div>
+        <div class="check-module-dc-row check-module-dc-row--readonly">
+            <div class="ionrift-dc-stage{{#if rollRequest.ownerOutcome}} ionrift-dc-stage--{{rollRequest.ownerOutcome}}{{/if}}">
+                {{#if rollRequest.dcPulseActive}}
+                <span class="ionrift-dc-ripple" aria-hidden="true"></span>
+                <span class="ionrift-dc-ripple ionrift-dc-ripple--b" aria-hidden="true"></span>
+                {{/if}}
+                <div class="event-dc-badge circular{{#if rollRequest.dcPulseActive}} ionrift-dc-badge--live{{/if}}{{#if rollRequest.ownerOutcome}} event-dc-badge--{{rollRequest.ownerOutcome}}{{/if}}">
+                    <span class="dc-label">DC</span>
+                    <span class="dc-value">{{#if rollRequest.meta.noDc}}-{{else}}{{rollRequest.dc}}{{/if}}</span>
+                </div>
+                {{#if rollRequest.ownerOutcome}}
+                <span class="ionrift-dc-outcome ionrift-dc-outcome--{{rollRequest.ownerOutcome}}"
+                    data-tooltip="{{#if (eq rollRequest.ownerOutcome 'pass')}}You passed{{else}}You failed{{/if}}{{#if rollRequest.ownerTotal}} · rolled {{rollRequest.ownerTotal}}{{/if}}">
+                    <i class="fas {{#if (eq rollRequest.ownerOutcome 'pass')}}fa-check{{else}}fa-times{{/if}}"></i>
+                </span>
+                {{/if}}
+            </div>
+            {{#if rollRequest.ownerOutcome}}
+            <div class="ionrift-roll-request__outcome ionrift-roll-request__outcome--{{rollRequest.ownerOutcome}}">
+                {{#if (eq rollRequest.ownerOutcome 'pass')}}
+                <i class="fas fa-circle-check"></i> You passed{{#if rollRequest.ownerTotal}} with {{rollRequest.ownerTotal}}{{/if}}
+                {{else}}
+                <i class="fas fa-circle-xmark"></i> You failed{{#if rollRequest.ownerTotal}} with {{rollRequest.ownerTotal}}{{/if}}
+                {{/if}}
+            </div>
+            {{/if}}
+        </div>
+        {{#if rollRequest.targetLabel}}
+        <div class="check-module-target">{{rollRequest.targetLabel}}</div>
+        {{/if}}
+        {{#if rollRequest.progressLabel}}
+        <div class="ionrift-roll-request__progress">{{rollRequest.progressLabel}}</div>
+        {{/if}}
+        {{#if rollRequest.showRoster}}
+        {{#if rollRequest.participants.length}}
+        <div class="ionrift-roll-request__roster{{#if rollRequest.rosterFocusCenter}} ionrift-roll-request__roster--focus-center{{/if}}{{#if rollRequest.rosterScroll}} ionrift-roll-request__roster--scroll{{/if}}">
+            {{#each rollRequest.participants}}
+            <div class="ionrift-roll-participant{{#if rolled}} is-done{{else}}{{#if forced}} is-done is-settled{{else}} is-waiting{{/if}}{{/if}}{{#if isOwner}} is-yours{{else}} is-other{{/if}}">
+                {{#if isOwner}}
+                <span class="ionrift-roll-participant__you-pill">You</span>
+                {{/if}}
+                <span class="check-avatar check-avatar--static{{#if (eq rollMode "advantage")}} adv{{/if}}{{#if (eq rollMode "disadvantage")}} dis{{/if}}{{#if (eq rollMode "force-pass")}} forced-pass{{/if}}{{#if (eq rollMode "force-fail")}} forced-fail{{/if}}{{#if rolled}} rolled{{/if}}{{#if isOwner}} is-yours{{/if}}"
+                    data-tooltip="{{name}}{{#if (eq rollMode "force-pass")}} · Auto-pass (no roll needed){{else if (eq rollMode "force-fail")}} · Auto-fail (no roll needed){{else if (eq rollMode "advantage")}} · Advantage{{else if (eq rollMode "disadvantage")}} · Disadvantage{{/if}}{{#if isOwner}} · You{{/if}}">
+                    {{#if img}}
+                    <img src="{{img}}" alt="{{name}}" />
+                    {{/if}}
+                    {{#if rolled}}
+                    <span class="ionrift-roll-participant__badge done"><i class="fas fa-check"></i></span>
+                    {{/if}}
+                    {{#if (eq rollMode "advantage")}}
+                    <span class="check-avatar-mode adv"><i class="fas fa-angle-up"></i></span>
+                    {{/if}}
+                    {{#if (eq rollMode "disadvantage")}}
+                    <span class="check-avatar-mode dis"><i class="fas fa-angle-down"></i></span>
+                    {{/if}}
+                    {{#if (eq rollMode "force-pass")}}
+                    <span class="check-avatar-mode force-pass"><i class="fas fa-check"></i></span>
+                    {{/if}}
+                    {{#if (eq rollMode "force-fail")}}
+                    <span class="check-avatar-mode force-fail"><i class="fas fa-times"></i></span>
+                    {{/if}}
+                </span>
+                <span class="ionrift-roll-participant__name">{{name}}</span>
+                <span class="ionrift-roll-participant__status">
+                    {{#if rolled}}
+                    <i class="fas fa-check"></i> Rolled
+                    {{else if (eq rollMode "force-pass")}}
+                    <i class="fas fa-check"></i> Auto-pass
+                    {{else if (eq rollMode "force-fail")}}
+                    <i class="fas fa-times"></i> Auto-fail
+                    {{else if isOwner}}
+                    Your turn
+                    {{else}}
+                    <i class="fas fa-hourglass-half"></i> Waiting
+                    {{/if}}
+                </span>
+            </div>
+            {{/each}}
+        </div>
+        {{/if}}
+        {{/if}}
+    </div>
+
+    {{#if rollRequest.gmView}}
+    {{#if rollRequest.checkContext}}
+    <div class="event-check-context">
+        <i class="fas fa-dice-d20"></i> {{rollRequest.checkContext}}
+    </div>
+    {{/if}}
+    {{/if}}
+
+    {{#if rollRequest.gmView}}
+    {{#if rollRequest.participants.length}}
+    <div class="ionrift-roll-request__gm-actions">
+        {{#each rollRequest.participants}}
+        {{#unless rolled}}
+        <div class="event-roll-line pending">
+            <span class="roll-char-name">{{name}}</span>
+            <span class="roll-status"><i class="fas fa-spinner fa-spin"></i> Waiting...</span>
+            <button type="button"
+                class="btn-roll-for-player"
+                data-action="{{../rollRequest.gmRollAction}}"
+                data-character-id="{{id}}"
+                data-event-index="{{../rollRequest.meta.eventIndex}}"
+                data-tooltip="Roll on their behalf">
+                <i class="fas fa-dice"></i> Roll for them
+            </button>
+        </div>
+        {{/unless}}
+        {{/each}}
+    </div>
+    {{/if}}
+    {{#if rollRequest.results.length}}
+    <div class="event-roll-results">
+        {{#each rollRequest.results}}
+        <div class="event-roll-line {{#if passed}}pass{{else}}fail{{/if}}">
+            <span class="roll-char-name">{{name}}</span>
+            <span class="roll-value">{{total}}</span>
+            <i class="fas {{#if passed}}fa-check-circle{{else}}fa-times-circle{{/if}}"></i>
+        </div>
+        {{/each}}
+    </div>
+    {{/if}}
+    {{else}}
+    {{#if rollRequest.ownerSettled}}
+    <div class="event-roll-settled-note">
+        <i class="fas fa-check-circle"></i>
+        The GM set your outcome for this check. You do not need to roll. Wait for the rest of the party.
+    </div>
+    {{else if rollRequest.actionTargets.length}}
+    <div class="event-adjudicate-buttons ionrift-roll-request__actions">
+        {{#each rollRequest.actionTargets}}
+        <button type="button"
+            class="btn-resolve-check"
+            data-action="ionriftRoll"
+            data-flow="{{../rollRequest.flow}}"
+            data-character-id="{{id}}"
+            data-event-index="{{../rollRequest.meta.eventIndex}}"
+            {{#if ../rollRequest.meta.activityId}}data-activity-id="{{../rollRequest.meta.activityId}}"{{/if}}
+            {{#if ../rollRequest.meta.day}}data-day="{{../rollRequest.meta.day}}"{{/if}}>
+            <i class="fas fa-dice-d20"></i>
+            Roll {{../rollRequest.skillName}} · {{name}}
+        </button>
+        {{/each}}
+    </div>
+    {{else if rollRequest.allRolled}}
+    <div class="event-roll-submitted">
+        <i class="fas fa-check"></i> All requested rolls are in.
+    </div>
+    {{else if rollRequest.participants.length}}
+    <div class="event-check-waiting">
+        <i class="fas fa-hourglass-half"></i> Waiting for other party members to roll...
+    </div>
+    {{else}}
+    <div class="event-check-waiting">
+        <i class="fas fa-hourglass-half"></i> Waiting for watch to roll...
+    </div>
+    {{/if}}
+
+    {{#if rollRequest.results.length}}
+    <div class="event-roll-results">
+        {{#each rollRequest.results}}
+        <div class="event-roll-line {{#if passed}}pass{{else}}fail{{/if}}">
+            <span class="roll-char-name">{{name}}</span>
+            <span class="roll-value">{{total}}</span>
+            <i class="fas {{#if passed}}fa-check-circle{{else}}fa-times-circle{{/if}}"></i>
+        </div>
+        {{/each}}
+    </div>
+    {{/if}}
+    {{/if}}
+</div>

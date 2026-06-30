@@ -1,0 +1,20 @@
+{
+    "_id": "1Zh2gDQ1xOLFUrhW",
+    "_key": "!journal!1Zh2gDQ1xOLFUrhW",
+    "name": "Getting Started with Respite",
+    "ownership": { "default": 2 },
+    "flags": {},
+    "pages": [],
+    "sort": 0,
+    "folder": null,
+    "_stats": {
+        "compendiumSource": null,
+        "duplicateSource": null,
+        "coreVersion": "12.331",
+        "systemId": null,
+        "systemVersion": null,
+        "createdTime": null,
+        "modifiedTime": null,
+        "lastModifiedBy": null
+    }
+}
