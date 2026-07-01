@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Well Fed on Pathfinder 2e applies automatable deferred buffs as Effect items via the kernel applicator, with GM relay for cross-owner writes.
+
+### Fixed
+- Load crash from invalid trailing commas on class methods in `DnD5eAdapter`.
+
 ## [3.3.7] - 2026-06-30
 
 ### Added
