@@ -242,6 +242,39 @@ export class DnD5eAdapter extends SystemAdapter {
     // ── Active Effects ────────────────────────────────────────
 
     getActiveEffectChanges(buffType, params) {
+        const buffs = game.ionrift?.library?.cooking?.buffs;
+        const descriptor = this._buffDescriptorFromParams(buffType, params);
+        if (buffs?.toActiveEffectChanges && descriptor) {
+            const kernel = buffs.toActiveEffectChanges(null, descriptor);
+            if (Array.isArray(kernel) && kernel.length) return kernel;
+        }
+        return this._legacyActiveEffectChanges(buffType, params);
+    },
+
+    /** @private */
+    _buffDescriptorFromParams(buffType, params) {
+        if (buffType === "temp_hp") {
+            return { type: "temp_hp", formula: String(params.value ?? 0) };
+        }
+        if (buffType === "advantage") {
+            return {
+                type: "advantage",
+                save: { ability: params.ability ?? "con" },
+                duration: params.duration ?? "nextSave"
+            };
+        }
+        if (buffType === "resistance") {
+            return {
+                type: "resistance",
+                damageType: params.damageType ?? "poison",
+                duration: params.duration ?? "untilLongRest"
+            };
+        }
+        return null;
+    },
+
+    /** @private */
+    _legacyActiveEffectChanges(buffType, params) {
         if (buffType === "temp_hp") {
             return [{
                 key: "system.attributes.hp.temp",
