@@ -8,7 +8,7 @@ import { Logger } from "../lib/Logger.js";
 import { ItemClassifier } from "./ItemClassifier.js";
 import { MODULE_ID } from "./MealConstants.js";
 import { grantMealItem } from "./MealItemGrant.js";
-import { isCookingSlotEffect, stampCookingSlotFlag } from "./CookingBuffBridge.js";
+import { isCookingSlotEffect, stampCookingSlotFlag, actorHasCookingSlot, isCookingSlotItem } from "./CookingBuffBridge.js";
 import {
     resolveBuff,
     buffToActiveEffectPartsAsync,
@@ -43,7 +43,7 @@ export async function dispatchWellFedMealServing({ consumerActor, itemSnapshot, 
             const member = game.actors.get(pid);
             if (!member) continue;
             if (!ItemClassifier.acceptsFoodBuffs(member)) continue;
-            const alreadyWellFed = member.effects?.some(e => isCookingSlotEffect(e)) ?? false;
+            const alreadyWellFed = actorHasCookingSlot(member);
             if (alreadyWellFed) {
                 const doc = mealSnapshotAsSingleLeftover(itemSnapshot);
                 const ref = doc.flags?.[MODULE_ID]?.itemRef ?? doc.name ?? itemName;
@@ -66,7 +66,7 @@ export async function dispatchWellFedMealServing({ consumerActor, itemSnapshot, 
         if (!ItemClassifier.acceptsFoodBuffs(consumerActor)) {
             return;
         }
-        const alreadyWellFed = consumerActor.effects?.some(e => isCookingSlotEffect(e)) ?? false;
+        const alreadyWellFed = actorHasCookingSlot(consumerActor);
         if (alreadyWellFed) {
             const doc = mealSnapshotAsSingleLeftover(itemSnapshot);
             const ref = doc.flags?.[MODULE_ID]?.itemRef ?? doc.name ?? itemName;
@@ -125,68 +125,78 @@ export async function applyWellFedEffect(actor, item) {
     const aeDescriptions = [];
     const aeDaeSpecials = [];
     const deferredSummaries = [];
-    for (const buff of deferredBuffs) {
-        const built = await buffToActiveEffectPartsAsync(actor, buff);
-        if (built.changes?.length) aeChanges.push(...built.changes);
-        if (built.description) aeDescriptions.push(built.description);
-        if (built.daeSpecialDuration?.length) aeDaeSpecials.push(...built.daeSpecialDuration);
-        if (built.summaryLine) deferredSummaries.push(built.summaryLine);
-        if (built.roll) buffRolls.push(built.roll);
-    }
-
+    const systemId = game.ionrift?.respite?.adapter?.id ?? game.system?.id;
+    const applicator = game.ionrift?.library?.cooking?.applicator;
     const itemName = item.name ?? "Meal";
-    if (deferredBuffs.length && (aeChanges.length || aeDescriptions.length)) {
-        const durationTag = deferredBuffs[0]?.duration ?? "untilLongRest";
-        const dndFlags = wellFedDnd5eDurationFlags(durationTag);
+    const usePf2e = systemId === "pf2e" && applicator?.hasAutomatableBuffs?.(deferredBuffs);
 
-        // CE availability detection
-        const ceActive = !!game.modules?.get?.("dfreds-convenient-effects")?.active;
-        if (!ceActive && aeChanges.length) {
-            aeDescriptions.push(
-                "Convenient Effects is not installed. This effect applies basic roll mode changes only. "
-                + "conditional automation (Midi-QoL triggers, advantage reminders) will not function."
-            );
+    if (deferredBuffs.length && usePf2e) {
+        const pf2eResult = await applicator.applyBuffsRouted(actor, deferredBuffs, {
+            item,
+            title: `Well Fed: ${itemName}`,
+            extraFlags: { [MODULE_ID]: { wellFed: true, expiresAt: "nextRestStart" } },
+            clearSlot: true
+        });
+        if (pf2eResult.lines?.length) deferredSummaries.push(...pf2eResult.lines);
+        if (pf2eResult.approximateNotes?.length) deferredSummaries.push(...pf2eResult.approximateNotes);
+    } else if (deferredBuffs.length) {
+        for (const buff of deferredBuffs) {
+            const built = await buffToActiveEffectPartsAsync(actor, buff);
+            if (built.changes?.length) aeChanges.push(...built.changes);
+            if (built.description) aeDescriptions.push(built.description);
+            if (built.daeSpecialDuration?.length) aeDaeSpecials.push(...built.daeSpecialDuration);
+            if (built.summaryLine) deferredSummaries.push(built.summaryLine);
+            if (built.roll) buffRolls.push(built.roll);
         }
 
-        const desc = [aeDescriptions.filter(Boolean).join(" "), dndFlags.manualNote].filter(Boolean).join("\n");
-        const aeFlags = {
-            [MODULE_ID]: { wellFed: true, expiresAt: "nextRestStart" },
-            core: { overlay: false },
-            "dfreds-convenient-effects": { isConvenient: true },
-            ...dndFlags.effectFlags
-        };
+        if (aeChanges.length || aeDescriptions.length) {
+            const durationTag = deferredBuffs[0]?.duration ?? "untilLongRest";
+            const dndFlags = wellFedDnd5eDurationFlags(durationTag);
 
-        // Dual-flag the shared cooking slot so Monstrous Feast and Respite
-        // share one mutual-exclusion slot (kills the double-feed).
-        stampCookingSlotFlag(aeFlags);
+            const ceActive = !!game.modules?.get?.("dfreds-convenient-effects")?.active;
+            if (!ceActive && aeChanges.length) {
+                aeDescriptions.push(
+                    "Convenient Effects is not installed. This effect applies basic roll mode changes only. "
+                    + "conditional automation (Midi-QoL triggers, advantage reminders) will not function."
+                );
+            }
 
-        // Merge DAE specialDuration from buff builders
-        if (aeDaeSpecials.length) {
-            const existing = aeFlags.dae?.specialDuration ?? [];
-            aeFlags.dae = { specialDuration: [...new Set([...existing, ...aeDaeSpecials])] };
-        }
+            const desc = [aeDescriptions.filter(Boolean).join(" "), dndFlags.manualNote].filter(Boolean).join("\n");
+            const aeFlags = {
+                [MODULE_ID]: { wellFed: true, expiresAt: "nextRestStart" },
+                core: { overlay: false },
+                "dfreds-convenient-effects": { isConvenient: true },
+                ...dndFlags.effectFlags
+            };
 
-        await actor.createEmbeddedDocuments("ActiveEffect", [{
-            name: `Well Fed: ${itemName}`,
-            img: item.img ?? "icons/consumables/food/bowl-stew-brown.webp",
-            origin: actor.uuid,
-            transfer: false,
-            disabled: false,
-            duration: dndFlags.duration ?? {},
-            changes: aeChanges,
-            description: desc || undefined,
-            flags: aeFlags
-        }]);
+            stampCookingSlotFlag(aeFlags);
 
-        // GM fallback chat when CE is missing
-        if (!ceActive) {
-            const gmIds = game.users?.filter(u => u.isGM).map(u => u.id) ?? [];
-            if (gmIds.length) {
-                await ChatMessage.create({
-                    content: `<div class="respite-recovery-chat"><p><i class="fas fa-exclamation-triangle"></i> <strong>Well Fed: ${itemName}</strong> applied to <strong>${actor.name}</strong> with basic AE changes. <em>Convenient Effects</em> is not installed. Conditional triggers (expire on next save, advantage reminders) require CE + DAE/Midi-QoL.</p></div>`,
-                    whisper: gmIds,
-                    speaker: { alias: "Respite" }
-                });
+            if (aeDaeSpecials.length) {
+                const existing = aeFlags.dae?.specialDuration ?? [];
+                aeFlags.dae = { specialDuration: [...new Set([...existing, ...aeDaeSpecials])] };
+            }
+
+            await actor.createEmbeddedDocuments("ActiveEffect", [{
+                name: `Well Fed: ${itemName}`,
+                img: item.img ?? "icons/consumables/food/bowl-stew-brown.webp",
+                origin: actor.uuid,
+                transfer: false,
+                disabled: false,
+                duration: dndFlags.duration ?? {},
+                changes: aeChanges,
+                description: desc || undefined,
+                flags: aeFlags
+            }]);
+
+            if (!ceActive) {
+                const gmIds = game.users?.filter(u => u.isGM).map(u => u.id) ?? [];
+                if (gmIds.length) {
+                    await ChatMessage.create({
+                        content: `<div class="respite-recovery-chat"><p><i class="fas fa-exclamation-triangle"></i> <strong>Well Fed: ${itemName}</strong> applied to <strong>${actor.name}</strong> with basic AE changes. <em>Convenient Effects</em> is not installed. Conditional triggers (expire on next save, advantage reminders) require CE + DAE/Midi-QoL.</p></div>`,
+                        whisper: gmIds,
+                        speaker: { alias: "Respite" }
+                    });
+                }
             }
         }
     }
@@ -195,9 +205,13 @@ export async function applyWellFedEffect(actor, item) {
 }
 
 export async function removeWellFedEffects(actor) {
-    const toDelete = actor.effects?.filter(e => isCookingSlotEffect(e)) ?? [];
-    if (toDelete.length) {
-        await actor.deleteEmbeddedDocuments("ActiveEffect", toDelete.map(e => e.id));
+    const aeIds = actor.effects?.filter(e => isCookingSlotEffect(e)).map(e => e.id) ?? [];
+    const itemIds = actor.items?.filter(i => isCookingSlotItem(i)).map(i => i.id) ?? [];
+    if (aeIds.length) {
+        await actor.deleteEmbeddedDocuments("ActiveEffect", aeIds);
+    }
+    if (itemIds.length) {
+        await actor.deleteEmbeddedDocuments("Item", itemIds);
     }
 }
 
@@ -211,14 +225,15 @@ export async function removeWellFedEffects(actor) {
 export async function cleanupWellFedEffects(actors) {
     let removed = 0;
     for (const actor of actors) {
-        const wellFedEffects = actor.effects?.filter(
-            e => isCookingSlotEffect(e)
-        ) ?? [];
-        if (wellFedEffects.length) {
-            await actor.deleteEmbeddedDocuments(
-                "ActiveEffect", wellFedEffects.map(e => e.id)
-            );
-            removed += wellFedEffects.length;
+        const aeIds = actor.effects?.filter(e => isCookingSlotEffect(e)).map(e => e.id) ?? [];
+        const itemIds = actor.items?.filter(i => isCookingSlotItem(i)).map(i => i.id) ?? [];
+        if (aeIds.length) {
+            await actor.deleteEmbeddedDocuments("ActiveEffect", aeIds);
+            removed += aeIds.length;
+        }
+        if (itemIds.length) {
+            await actor.deleteEmbeddedDocuments("Item", itemIds);
+            removed += itemIds.length;
         }
     }
     if (removed > 0) {

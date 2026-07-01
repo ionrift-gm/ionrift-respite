@@ -73,6 +73,32 @@ export function isCookingSlotEffect(effect) {
 }
 
 /**
+ * Whether an Effect item occupies the shared cooking buff slot.
+ * @param {Item|object} item
+ * @returns {boolean}
+ */
+export function isCookingSlotItem(item) {
+    if (!item) return false;
+    if (item.flags?.[MODULE_ID]?.wellFed === true) return true;
+    const buffs = game.ionrift?.library?.cooking?.buffs;
+    const ns = buffs?.COOKING_BUFF_FLAG_NAMESPACE ?? "ionrift-library";
+    const flag = buffs?.COOKING_BUFF_FLAG ?? "cookingBuff";
+    return item.flags?.[ns]?.[flag] === true;
+}
+
+/**
+ * Whether an actor already occupies the shared cooking buff slot (AE or Effect item).
+ * @param {Actor|object} actor
+ * @returns {boolean}
+ */
+export function actorHasCookingSlot(actor) {
+    return Boolean(
+        actor?.effects?.some(e => isCookingSlotEffect(e))
+        || actor?.items?.some(i => isCookingSlotItem(i))
+    );
+}
+
+/**
  * Add the shared cooking slot flag onto an effect's flags object (in place)
  * alongside Respite's existing `wellFed` flag. No-op without the kernel.
  * @param {object} flags

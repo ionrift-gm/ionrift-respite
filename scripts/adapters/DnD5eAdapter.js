@@ -249,7 +249,7 @@ export class DnD5eAdapter extends SystemAdapter {
             if (Array.isArray(kernel) && kernel.length) return kernel;
         }
         return this._legacyActiveEffectChanges(buffType, params);
-    },
+    }
 
     /** @private */
     _buffDescriptorFromParams(buffType, params) {
@@ -271,7 +271,7 @@ export class DnD5eAdapter extends SystemAdapter {
             };
         }
         return null;
-    },
+    }
 
     /** @private */
     _legacyActiveEffectChanges(buffType, params) {
