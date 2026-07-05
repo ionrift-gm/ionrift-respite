@@ -7,8 +7,10 @@ import { Logger } from "../lib/Logger.js";
 import {
     scaleWeightsToTarget,
     sortForageEntries,
+    tableResultCount,
     ROLL_TABLE_GM_ONLY_OWNERSHIP,
-    buildGmOnlyRollTableOwnership
+    buildGmOnlyRollTableOwnership,
+    ensureRespiteRollTableFolder
 } from "./ForageTableSync.js";
 import {
     compendiumIndexDocumentId,
@@ -24,8 +26,6 @@ import { getCampFuelFindPercent } from "./TravelSettings.js";
 
 const MODULE_ID = "ionrift-respite";
 const MODULE_PACK_ID = "ionrift-respite.respite-items";
-const PARENT_FOLDER = "Ionrift";
-const CHILD_FOLDER = "Respite";
 const TABLE_NAME = "Respite: Camp Fuel";
 
 function buildCampFuelTableDescription() {
@@ -46,17 +46,7 @@ const CAMP_FUEL_MAX_KINDLING_VARIANTS = 20;
 
 const EMPTY_RESULT_TEXT = "—";
 
-/**
- * @param {RollTable|null|undefined} table
- * @returns {number}
- */
-function tableResultCount(table) {
-    const results = table?.results;
-    if (!results) return 0;
-    if (typeof results.size === "number") return results.size;
-    if (typeof results.length === "number") return results.length;
-    return 0;
-}
+
 
 /**
  * True when a compendium row is kindling for the camp fuel table (not firewood).
@@ -338,45 +328,9 @@ export class CampFuelTableSync {
         };
     }
 
-    /**
-     * @returns {Promise<Folder>}
-     */
+    /** @returns {Promise<Folder>} */
     static async _ensureRollTableFolder() {
-        let parent = game.folders.find(folder =>
-            folder.name === PARENT_FOLDER && folder.type === "RollTable" && !folder.folder
-        );
-        if (!parent) {
-            parent = await Folder.create({
-                name: PARENT_FOLDER,
-                type: "RollTable",
-                parent: null,
-                ownership: buildGmOnlyRollTableOwnership()
-            });
-        } else {
-            await parent.update({
-                ownership: buildGmOnlyRollTableOwnership(parent.ownership ?? {})
-            });
-        }
-
-        const parentId = parent.id ?? parent._id;
-        let child = game.folders.find(folder =>
-            folder.name === CHILD_FOLDER
-            && folder.type === "RollTable"
-            && (folder.folder?.id === parentId || folder.folder === parentId)
-        );
-        if (!child) {
-            child = await Folder.create({
-                name: CHILD_FOLDER,
-                type: "RollTable",
-                folder: parentId,
-                ownership: buildGmOnlyRollTableOwnership()
-            });
-        } else {
-            await child.update({
-                ownership: buildGmOnlyRollTableOwnership(child.ownership ?? {})
-            });
-        }
-        return child;
+        return ensureRespiteRollTableFolder();
     }
 
     /**

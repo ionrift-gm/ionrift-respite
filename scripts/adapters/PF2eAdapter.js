@@ -149,12 +149,6 @@ export class PF2eAdapter extends SystemAdapter {
         return { current: level, max: level };
     }
 
-    getFocusPoints(actor) {
-        const focus = actor.system?.resources?.focus;
-        if (focus) return { value: focus.value ?? 0, max: focus.max ?? 0 };
-        return { value: 0, max: 0 };
-    }
-
     hasSpellSlots(actor) {
         try {
             const entries = actor.spellcasting?.contents ?? [];
@@ -179,19 +173,6 @@ export class PF2eAdapter extends SystemAdapter {
             i.type === "condition" && i.system?.slug === "fatigued"
         );
         return hasFatigued ? 1 : 0;
-    }
-
-    getDrainedLevel(actor) {
-        try {
-            if (actor.conditions) {
-                const drained = actor.conditions.bySlug("drained");
-                if (drained?.length > 0) return drained[0].value ?? 1;
-            }
-        } catch { /* fall through */ }
-        const drainedItem = (actor.items ?? []).find(i =>
-            i.type === "condition" && i.system?.slug === "drained"
-        );
-        return drainedItem?.system?.value?.value ?? drainedItem?.badge?.value ?? 0;
     }
 
     hasSpellbook(actor) {

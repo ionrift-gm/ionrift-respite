@@ -83,7 +83,7 @@ import { EventsPhaseDelegate } from "./delegates/EventsPhaseDelegate.js";
 import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
 import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple, purgeDetectMagicRestArtifacts } from "./delegates/DetectMagicDelegate.js";
 import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, getComfortTip, CAMP_STATIONS, getStationsForTerrain, getStationOfferedActivityIds, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments, applyActivityPortraitAssignments, foldOrphanedAssignmentsOntoOther, isWorkbenchExamineUiEnabled, isWorkbenchIdentifyUiEnabled } from "./RestConstants.js";
-import { isComfortEnabled } from "../services/ComfortCalculator.js";
+import { isComfortEnabled, COMFORT_TIERS } from "../services/ComfortCalculator.js";
 import { logCampfireReconnect } from "../services/CampfireReconnectLog.js";
 import {
     buildCampCeremonyPhasePayload,
@@ -428,7 +428,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._postStationChoiceReview = false;
         /** Actor id for revert on Back after a station pick. */
         this._stationReviewCharacterId = null;
-        this._deployedGear = new Map();
         this._boundCampCanvasDrop = this._onCampCanvasDrop.bind(this);
         /** Drop-enabler: the board only fires `drop` when `dragover` preventDefaults. */
         this._boundCampCanvasDragOver = (event) => {
@@ -2534,7 +2533,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 campfire: "Cooking and warmth. Easier for enemies to spot.",
                 bonfire: "+1 camp comfort. Visible from far off."
             };
-            const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
             const TIER_LABELS = Object.fromEntries(
                 COMFORT_TIERS.map(k => [k, CampGearScanner.getRules(k).label])
             );
@@ -4053,7 +4051,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     campfire: "Cooking and warmth. Easier for enemies to spot.",
                     bonfire: "+1 camp comfort. Visible from far off."
                 };
-                const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
                 const TIER_LABELS = Object.fromEntries(
                     COMFORT_TIERS.map(k => [k, CampGearScanner.getRules(k).label])
                 );
@@ -5727,7 +5724,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campFireEncounterHint = `Previewing ${previewLevel}. ${campFireEncounterHint}`;
         }
 
-        const COMFORT_TIERS = ["hostile", "rough", "sheltered", "safe"];
         const TIER_LABELS = Object.fromEntries(
             COMFORT_TIERS.map(k => [k, CampGearScanner.getRules(k).label])
         );
