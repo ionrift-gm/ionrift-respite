@@ -72,22 +72,6 @@ export class RestLedger {
         return [...this.#entries];
     }
 
-    /**
-     * @param {LedgerPhase} phase
-     * @returns {LedgerEntry[]}
-     */
-    getByPhase(phase) {
-        return this.#entries.filter(e => e.phase === phase);
-    }
-
-    /**
-     * @param {string} category
-     * @returns {LedgerEntry[]}
-     */
-    getByCategory(category) {
-        return this.#entries.filter(e => e.category === category);
-    }
-
     /** @returns {object} Plain-object snapshot safe for JSON serialization. */
     serialize() {
         return { entries: this.#entries.map(e => ({ ...e })) };

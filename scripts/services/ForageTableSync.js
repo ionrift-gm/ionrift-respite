@@ -97,12 +97,56 @@ export function isForageTerrain(terrainTag) {
  * @param {RollTable|null|undefined} table
  * @returns {number}
  */
-function tableResultCount(table) {
+export function tableResultCount(table) {
     const results = table?.results;
     if (!results) return 0;
     if (typeof results.size === "number") return results.size;
     if (typeof results.length === "number") return results.length;
     return 0;
+}
+
+/**
+ * Shared Ionrift > Respite roll-table folder bootstrap.
+ * Creates the parent Ionrift and child Respite folders if absent,
+ * and enforces GM-only ownership on both.
+ * @returns {Promise<Folder>} The Respite child folder.
+ */
+export async function ensureRespiteRollTableFolder() {
+    let parent = game.folders.find(folder =>
+        folder.name === PARENT_FOLDER && folder.type === "RollTable" && !folder.folder
+    );
+    if (!parent) {
+        parent = await Folder.create({
+            name: PARENT_FOLDER,
+            type: "RollTable",
+            parent: null,
+            ownership: buildGmOnlyRollTableOwnership()
+        });
+    } else {
+        await parent.update({
+            ownership: buildGmOnlyRollTableOwnership(parent.ownership ?? {})
+        });
+    }
+
+    const parentId = parent.id ?? parent._id;
+    let child = game.folders.find(folder =>
+        folder.name === CHILD_FOLDER
+        && folder.type === "RollTable"
+        && (folder.folder?.id === parentId || folder.folder === parentId)
+    );
+    if (!child) {
+        child = await Folder.create({
+            name: CHILD_FOLDER,
+            type: "RollTable",
+            folder: parentId,
+            ownership: buildGmOnlyRollTableOwnership()
+        });
+    } else {
+        await child.update({
+            ownership: buildGmOnlyRollTableOwnership(child.ownership ?? {})
+        });
+    }
+    return child;
 }
 
 /**
@@ -585,48 +629,9 @@ export class ForageTableSync {
         return `${TABLE_PREFIX} (${label})`;
     }
 
-    /**
-     * @returns {Promise<Folder>}
-     */
+    /** @returns {Promise<Folder>} */
     static async _ensureFolder() {
-        let parent = game.folders.find(folder =>
-            folder.name === PARENT_FOLDER && folder.type === "RollTable" && !folder.folder
-        );
-        if (!parent) {
-            parent = await Folder.create({
-                name: PARENT_FOLDER,
-                type: "RollTable",
-                parent: null,
-                ownership: buildGmOnlyRollTableOwnership()
-            });
-        } else {
-            await parent.update({
-                ownership: buildGmOnlyRollTableOwnership(parent.ownership ?? {})
-            });
-        }
-
-        const parentId = parent.id ?? parent._id;
-        let child = game.folders.find(folder =>
-            folder.name === CHILD_FOLDER
-            && folder.type === "RollTable"
-            && (folder.folder?.id === parentId || folder.folder === parentId)
-        );
-        if (!child) {
-            child = await Folder.create({
-                name: CHILD_FOLDER,
-                type: "RollTable",
-                folder: parentId,
-                ownership: buildGmOnlyRollTableOwnership()
-            });
-        } else {
-            await child.update({
-                ownership: buildGmOnlyRollTableOwnership(child.ownership ?? {})
-            });
-        }
-        await parent.update({
-            ownership: buildGmOnlyRollTableOwnership(parent.ownership ?? {})
-        });
-        return child;
+        return ensureRespiteRollTableFolder();
     }
 
     /**
