@@ -428,7 +428,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._postStationChoiceReview = false;
         /** Actor id for revert on Back after a station pick. */
         this._stationReviewCharacterId = null;
-        this._deployedGear = new Map();
         this._boundCampCanvasDrop = this._onCampCanvasDrop.bind(this);
         /** Drop-enabler: the board only fires `drop` when `dragover` preventDefaults. */
         this._boundCampCanvasDragOver = (event) => {
