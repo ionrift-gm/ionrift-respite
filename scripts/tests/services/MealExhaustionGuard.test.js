@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+let mockedPartyActors = [];
+vi.mock("../../services/partyActors.js", () => ({
+    getPartyActors: () => mockedPartyActors
+}));
+
 import {
     clearDeprivationExhaustionFloors,
     clearMealExhaustionFloors,
@@ -43,13 +48,10 @@ describe("MealExhaustionGuard", () => {
             actors: new Map(),
             ionrift: {
                 respite: {},
-                library: {
-                    party: {
-                        getMembers: () => []
-                    }
-                }
+                library: {}
             }
         };
+        mockedPartyActors = [];
         clearMealExhaustionFloors();
     });
 
@@ -58,7 +60,7 @@ describe("MealExhaustionGuard", () => {
         const actorB = makeActor({ id: "b", exhaustion: 0, floorFlag: 2 });
         game.actors.set("a", actorA);
         game.actors.set("b", actorB);
-        game.ionrift.library.party.getMembers = () => [actorA, actorB];
+        mockedPartyActors = [actorA, actorB];
 
         const floors = mergeMealExhaustionFloors([
             { characterId: "a", mealExhaustionApplied: 2 }
