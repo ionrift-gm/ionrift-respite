@@ -438,13 +438,6 @@ export class ImageResolver {
         return STATION_CORE_FALLBACKS[resolvedKey] ?? STATION_CORE_FALLBACKS[stationKey] ?? "icons/svg/circle.svg";
     }
 
-    /**
-     * Resolve an image path relative to the active base (imported art or module).
-     */
-    static resolve(relativePath) {
-        return `${this.#basePath}/${relativePath}`;
-    }
-
     /** Universal fallback banner path. */
     static get fallbackBanner() {
         return FALLBACK_BANNER;
