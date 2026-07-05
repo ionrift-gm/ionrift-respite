@@ -209,15 +209,6 @@ export class SpoilageClock {
     }
 
     /**
-     * Strip a spoilage cohort suffix from an item display name.
-     * @param {string} name
-     * @returns {string}
-     */
-    static stripCohortSuffix(name) {
-        return stripSpoilageCohortSuffix(name);
-    }
-
-    /**
      * Display name with a cohort suffix reflecting current days/hours remaining.
      * Returns the base name alone when no live suffix applies (shelf-stable, spoiled, expired).
      * @param {foundry.documents.Item|object} itemLike

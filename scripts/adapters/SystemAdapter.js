@@ -65,15 +65,6 @@ export class SystemAdapter {
     /** @returns {number} Exhaustion level (0-6 for 5e, or equivalent) */
     getExhaustion(actor) { this._notImpl("getExhaustion"); }
 
-    /**
-     * @returns {{ value: number, max: number }} Focus points (PF2e) or { 0, 0 } if N/A.
-     */
-    getFocusPoints(actor) { return { value: 0, max: 0 }; }
-
-    /**
-     * @returns {number} Drained condition level (PF2e), or 0 if N/A.
-     */
-    getDrainedLevel(actor) { return 0; }
 
     // ── Equipment & Inventory ────────────────────────────────
 
