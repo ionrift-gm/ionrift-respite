@@ -8,6 +8,11 @@
 ### Fixed
 - Load crash from invalid trailing commas on class methods in `DnD5eAdapter`.
 
+## [3.3.8] - 2026-07-07
+
+### Fixed
+- **Cooking overlay on Forge.** Profession plugins and meal buff handlers no longer 404 on Forge VTT. The cooking overlay pack now loads correctly on both Forge and self-hosted.
+
 ## [3.3.7] - 2026-06-30
 
 ### Added
