@@ -64,7 +64,11 @@ export class OverlayProfessionPluginLoader {
         const hasProfessionPlugin = await OverlayProfessionPluginLoader._hasProfessionPlugin(overlay, sublayer);
         if (!hasProfessionPlugin) return;
 
-        const importPath = `/ionrift-data/overlays/${MODULE_ID}/${sublayer}/${PROFESSION_PATH}`;
+        const platform = game.ionrift?.library?.platform;
+        const rawPath = `ionrift-data/overlays/${MODULE_ID}/${sublayer}/${PROFESSION_PATH}`;
+        const importPath = platform
+            ? await platform.resolveAssetUrl(rawPath)
+            : `/${rawPath}`;
         try {
             const mod = await import(importPath);
             const plugin = mod.default ?? mod.profession ?? mod;
