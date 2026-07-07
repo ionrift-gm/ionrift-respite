@@ -65,9 +65,13 @@ export class OverlayMealBuffHandlerLoader {
         if (!handlerNames.length) return;
 
         let registered = 0;
+        const platform = game.ionrift?.library?.platform;
         for (const handlerName of handlerNames) {
-            const importPath = `/ionrift-data/overlays/${MODULE_ID}/${sublayer}/plugins/meal-buffs/handlers/${handlerName}.mjs`;
+            const rawPath = `ionrift-data/overlays/${MODULE_ID}/${sublayer}/plugins/meal-buffs/handlers/${handlerName}.mjs`;
             try {
+                const importPath = platform
+                    ? await platform.resolveAssetUrl(rawPath)
+                    : `/${rawPath}`;
                 const mod = await import(importPath);
                 const handler = mod.default ?? mod.handler ?? mod;
 
