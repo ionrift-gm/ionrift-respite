@@ -62,7 +62,7 @@ describe("OverlayMealBuffHandlerLoader", () => {
         expect(Hooks.callAll).toHaveBeenCalledWith("ionrift.mealBuffHandlersChanged");
     });
 
-    it("discovers unique handler names and skips private files", async () => {
+    it("discovers unique .mjs handler names and skips private files", async () => {
         const overlay = {
             readFileIndex: vi.fn().mockResolvedValue([
                 "plugins/meal-buffs/handlers/alpha.mjs",
@@ -73,6 +73,24 @@ describe("OverlayMealBuffHandlerLoader", () => {
         };
 
         const names = await OverlayMealBuffHandlerLoader._discoverHandlerNames(overlay, "core");
-        expect(names.sort()).toEqual(["alpha", "beta"]);
+        expect(names).toEqual(["alpha"]);
+    });
+
+    it("falls back to listOverlayDir and accepts .mjs/.js handler files", async () => {
+        const overlay = {
+            listOverlayDir: vi.fn().mockResolvedValue({
+                files: ["alpha.mjs", "_internal.mjs", "beta.js", "readme.txt"]
+            })
+        };
+
+        await expect(OverlayMealBuffHandlerLoader._discoverHandlerNames(overlay, "fallback")).resolves.toEqual([
+            "alpha",
+            "beta"
+        ]);
+        expect(overlay.listOverlayDir).toHaveBeenCalledWith(
+            "ionrift-respite",
+            "fallback",
+            "plugins/meal-buffs/handlers"
+        );
     });
 });
