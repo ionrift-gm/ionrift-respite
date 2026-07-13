@@ -38,7 +38,6 @@ export const SOCKET_TYPES = Object.freeze({
     ACTIVITY_CHOICE:       "activityChoice",
 
     // ── Camp ceremony ──
-    CAMP_LIGHT_FIRE_REQUEST:  "campLightFireRequest",
     CAMP_FIRE_LEVEL_REQUEST:  "campFireLevelRequest",
     ACTIVITY_FIRE_LEVEL_REQUEST: "activityFireLevelRequest",
     CAMP_LIGHT_FIRE:       "campLightFire",
@@ -272,14 +271,6 @@ export function emitTrainingComplete(characterId, earlyResult) {
 }
 
 // ── Camp Fire Emitters ──────────────────────────────────────────────────────
-
-/**
- * Player → GM: request to light campfire (GM performs item updates).
- * @param {string} userId
- */
-export function emitCampLightFireRequest(userId) {
-    _emit(SOCKET_TYPES.CAMP_LIGHT_FIRE_REQUEST, { userId });
-}
 
 /**
  * Player → GM: request a specific fire level.
