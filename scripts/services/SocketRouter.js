@@ -163,17 +163,6 @@ export function dispatch(data, ctx) {
             break;
 
         // ── Camp Ceremony ────────────────────────────────────────────
-        case SOCKET_TYPES.CAMP_LIGHT_FIRE_REQUEST:
-            if (!game.user.isGM) return;
-            if (ctx.activeRestSetupApp?._runSetCampFireLevelForGm) {
-                void ctx.activeRestSetupApp._runSetCampFireLevelForGm("campfire", data.userId ?? null).catch(err => {
-
-                    console.error(`${MODULE_ID} | campLightFireRequest:`, err);
-                    ui.notifications.error("Could not set fire level. Check the console.");
-                });
-            } else { ui.notifications.warn("Open the rest session on the GM client first."); }
-            break;
-
         case SOCKET_TYPES.CAMP_FIRE_LEVEL_REQUEST:
             if (!game.user.isGM) return;
             if (ctx.activeRestSetupApp) {
