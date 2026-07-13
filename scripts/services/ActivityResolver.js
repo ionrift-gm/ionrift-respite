@@ -217,6 +217,27 @@ export class ActivityResolver {
 
         // Roll skill check directly (avoids midi-qol / libWrapper collision)
         // If check.ability is defined, use a flat ability check instead of a skill
+        const rollAdapter = game.ionrift?.respite?.adapter;
+        const getAbilityMod = (abilityKey) => rollAdapter
+            ? rollAdapter.getAbilityMod(actor, abilityKey)
+            : (actor.system?.abilities?.[abilityKey]?.mod ?? 0);
+        const getSkillTotal = (skillKey) => {
+            if (rollAdapter) {
+                const nativeKey = rollAdapter.normalizeSkillKey(skillKey);
+                return rollAdapter.getSkillTotal(actor, nativeKey);
+            }
+            const skill = actor.system?.skills?.[skillKey];
+            return skill?.total ?? skill?.mod ?? 0;
+        };
+        const hasSkillKey = (skillKey) => {
+            if (rollAdapter) {
+                const nativeKey = rollAdapter.normalizeSkillKey(skillKey);
+                const skillKeys = rollAdapter.getSkillKeys(actor);
+                return skillKeys.includes(nativeKey);
+            }
+            return !!actor.system?.skills?.[skillKey];
+        };
+
         let chosenSkillKey = activity.check.skill;
         let modifier;
         let rollLabel;
@@ -230,8 +251,8 @@ export class ActivityResolver {
                 const abilities = actor.system?.abilities ?? {};
                 let bestKey = "str";
                 let bestMod = -99;
-                for (const [key, data] of Object.entries(abilities)) {
-                    const mod = data.mod ?? 0;
+                for (const [key] of Object.entries(abilities)) {
+                    const mod = getAbilityMod(key);
                     if (mod > bestMod) { bestMod = mod; bestKey = key; }
                 }
                 abilityKey = bestKey;
@@ -239,7 +260,7 @@ export class ActivityResolver {
 
             const ABILITY_MAP = { str: "str", dex: "dex", con: "con", int: "int", wis: "wis", cha: "cha" };
             const aKey = ABILITY_MAP[abilityKey] ?? abilityKey;
-            modifier = actor.system?.abilities?.[aKey]?.mod ?? 0;
+            modifier = getAbilityMod(aKey);
             rollLabel = aKey.toUpperCase();
         } else {
             // Skill check: pick whichever gives the actor a higher modifier
@@ -248,26 +269,27 @@ export class ActivityResolver {
                 // selection when available; otherwise fall back to the actor's
                 // highest-total skill.
                 const followUpSkill = options.followUpValue;
-                if (followUpSkill && actor.system?.skills?.[followUpSkill]) {
+                if (followUpSkill && hasSkillKey(followUpSkill)) {
                     chosenSkillKey = followUpSkill;
                 } else {
                     // No followUp or invalid key, pick the actor's best skill
-                    const skills = actor.system?.skills ?? {};
+                    const skills = rollAdapter
+                        ? rollAdapter.getSkillKeys(actor)
+                        : Object.keys(actor.system?.skills ?? {});
                     let bestKey = null;
                     let bestTotal = -99;
-                    for (const [key, data] of Object.entries(skills)) {
-                        const total = data.total ?? data.mod ?? 0;
+                    for (const key of skills) {
+                        const total = getSkillTotal(key);
                         if (total > bestTotal) { bestTotal = total; bestKey = key; }
                     }
                     if (bestKey) chosenSkillKey = bestKey;
                 }
             } else if (activity.check.altSkill) {
-                const primary = actor.system?.skills?.[activity.check.skill]?.total ?? 0;
-                const alt = actor.system?.skills?.[activity.check.altSkill]?.total ?? 0;
+                const primary = getSkillTotal(activity.check.skill);
+                const alt = getSkillTotal(activity.check.altSkill);
                 if (alt > primary) chosenSkillKey = activity.check.altSkill;
             }
-            const skillData = actor.system?.skills?.[chosenSkillKey];
-            modifier = skillData?.total ?? skillData?.mod ?? 0;
+            modifier = getSkillTotal(chosenSkillKey);
             rollLabel = chosenSkillKey.toUpperCase();
         }
         // Resolve advantageIf conditions from the activity check definition
@@ -558,18 +580,22 @@ export class ActivityResolver {
         const adjustedDc = baseDc + getComfortDcMod(comfortForDc);
         const numRolls = Math.max(1, activity.check?.rolls ?? 1);
 
+        const trainingAdapter = game.ionrift?.respite?.adapter;
+        const getAbilityMod = (ability) => trainingAdapter
+            ? trainingAdapter.getAbilityMod(actor, ability)
+            : (actor.system?.abilities?.[ability]?.mod ?? 0);
         let abilityKey = activity.check?.ability ?? "best";
         if (abilityKey === "best") {
             const abilities = actor.system?.abilities ?? {};
             let bestKey = "str";
             let bestMod = -99;
-            for (const [key, data] of Object.entries(abilities)) {
-                const mod = data.mod ?? 0;
+            for (const [key] of Object.entries(abilities)) {
+                const mod = getAbilityMod(key);
                 if (mod > bestMod) { bestMod = mod; bestKey = key; }
             }
             abilityKey = bestKey;
         }
-        const modifier = actor.system?.abilities?.[abilityKey]?.mod ?? 0;
+        const modifier = getAbilityMod(abilityKey);
         const rollLabel = String(abilityKey).toUpperCase();
 
         const tierXp = getTrainingXpValues();

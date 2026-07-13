@@ -506,7 +506,9 @@ export class RecoveryHandler {
 
         // CON save at rough/hostile: fail = +1 exhaustion
         if (recovery.exhaustionDC) {
-            const conMod = actor.system?.abilities?.con?.mod ?? 0;
+            const conMod = adapter
+                ? adapter.getSaveBonus(actor, "con")
+                : (actor.system?.abilities?.con?.mod ?? 0);
             const advantage = !!recovery.exhaustionAdvantage;
 
             // Roll the save (2d20kh for advantage, 1d20 otherwise)
