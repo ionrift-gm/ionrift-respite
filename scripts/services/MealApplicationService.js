@@ -6,7 +6,8 @@
 
 import { Logger } from "../lib/Logger.js";
 import { ItemClassifier } from "./ItemClassifier.js";
-import { MealPhaseHandler } from "./MealPhaseHandler.js";
+import { consumeItem } from "./MealItemConsumer.js";
+import { dispatchWellFedMealServing } from "./WellFedService.js";
 import { MODULE_ID, MEAL_DEFAULTS } from "./MealConstants.js";
 
 /**
@@ -75,7 +76,7 @@ export async function applyMealChoices(mealChoices, daysSinceLastRest = 1, terra
         for (const [itemId, amount] of foodUsage) {
             const snap = snapMap.get(itemId);
             if (snap) {
-                MealPhaseHandler._accumulateMealSatiation(
+                accumulateMealSatiation(
                     snap, amount, charId, partyIds, extraWaterByChar, extraFoodByChar
                 );
             }
@@ -170,11 +171,11 @@ export async function applyMealChoices(mealChoices, daysSinceLastRest = 1, terra
             }
             for (const [itemId, amount] of foodUsage) {
                 const snapshot = snapMap.get(itemId);
-                const consumed = await MealPhaseHandler._consumeItem(actor, itemId, amount);
+                const consumed = await consumeItem(actor, itemId, amount);
                 Logger.log(`[Respite:Meal] Consumed ${consumed}x food item ${itemId} from ${actor.name}`);
                 if (snapshot && consumed > 0) {
                     for (let u = 0; u < consumed; u++) {
-                        await MealPhaseHandler._dispatchWellFedMealServing({
+                        await dispatchWellFedMealServing({
                             consumerActor: actor,
                             itemSnapshot: snapshot,
                             partyIds
@@ -183,7 +184,7 @@ export async function applyMealChoices(mealChoices, daysSinceLastRest = 1, terra
                 }
             }
             for (const [itemId, amount] of waterUsage) {
-                const consumed = await MealPhaseHandler._consumeItem(actor, itemId, amount);
+                const consumed = await consumeItem(actor, itemId, amount);
                 Logger.log(`[Respite:Meal] Consumed ${consumed} pint(s) from water item ${itemId} from ${actor.name}`);
             }
         }
@@ -266,6 +267,6 @@ export async function processAndApply(mealChoices, totalDays = 1, terrainMealRul
         }
     }
 
-    const results = await MealPhaseHandler.applyMealChoices(mealChoices, totalDays, terrainMealRules);
+    const results = await applyMealChoices(mealChoices, totalDays, terrainMealRules);
     return { mealChoices, results };
 }

@@ -178,7 +178,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._workbenchFocusUsed = new Set();
         this._magicScanResults = null;
         this._magicScanComplete = false;
-        this._identifiedItems = [];
 
         this._workbench = new WorkbenchDelegate(this);
         this._detectMagic = new DetectMagicDelegate(this);

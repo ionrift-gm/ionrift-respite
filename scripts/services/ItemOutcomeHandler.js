@@ -2,6 +2,7 @@ import { Logger } from "../lib/Logger.js";
 import { CalendarHandler } from "./CalendarHandler.js";
 import { ItemClassifier } from "./ItemClassifier.js";
 import { SpoilageClock } from "./SpoilageClock.js";
+import { isSpoilageNameSuffixEnabled } from "./SpoilageCohortSync.js";
 import { isHomebrewProvisionOnly } from "./TravelSettings.js";
 import { PROVISIONS_CUSTOM_PACK_ID } from "./ProvisionsCustomPack.js";
 import { getRegisteredProvisionPackIds } from "./TravelProvisionIndex.js";
@@ -85,7 +86,7 @@ export class ItemOutcomeHandler {
 
             ItemOutcomeHandler._stampPerishableHarvestDate(grant);
 
-            const useCohortSuffix = ItemOutcomeHandler._isSpoilageNameSuffixEnabled();
+            const useCohortSuffix = isSpoilageNameSuffixEnabled();
             if (useCohortSuffix) {
                 const nameBefore = grant.name;
                 SpoilageClock.applyGrantCohortName(grant, ItemOutcomeHandler._grantClock());
@@ -268,14 +269,6 @@ export class ItemOutcomeHandler {
     }
 
     // ── Internal Helpers ─────────────────────────────────────────
-
-    static _isSpoilageNameSuffixEnabled() {
-        try {
-            return game.settings.get(MODULE_ID, "spoilageNameSuffix") === true;
-        } catch {
-            return false;
-        }
-    }
 
     static _grantClock() {
         return {
