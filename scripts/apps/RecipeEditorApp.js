@@ -8,7 +8,6 @@ import {
     applyCustomRecipesToEngine,
     applyProfessionToolToRecipe,
     describeRecipeSaveOverwrite,
-    getHomebrewProfessionIds,
     getHomebrewProfessionOptions,
     getProfessionToolRequired,
     HOMEBREW_PROFESSION_DISPLAY,
