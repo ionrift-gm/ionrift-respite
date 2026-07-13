@@ -4,15 +4,6 @@
  */
 
 /**
- * Whether an item has system.identified === false (native Foundry unidentified state).
- * @param {Item} item
- * @returns {boolean}
- */
-export function itemIsNativeUnidentified(item) {
-    return item?.system?.identified === false;
-}
-
-/**
  * Whether an item is a dnd5e potion-type consumable.
  * @param {Item} item
  * @returns {boolean}

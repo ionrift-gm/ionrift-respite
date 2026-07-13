@@ -462,16 +462,6 @@ export class WorkbenchDelegate {
         }
 
         const trueName = resolveTrueName(actor, itemId, item.name);
-        const fresh = actor.items.get(itemId);
-        if (!this._app._identifiedItems) this._app._identifiedItems = [];
-        this._app._identifiedItems.push({
-            itemId,
-            actorId,
-            name: trueName,
-            img: fresh?.img ?? item.img,
-            actorName: actor.name,
-            requiresAttunement: (att => att === "required" || att === 1)(fresh?.system?.attunement)
-        });
         if (!deferNotify) ui.notifications.info(`${trueName} identified by ${actor.name}.`);
         if (!deferRender) this._app.render();
         return true;

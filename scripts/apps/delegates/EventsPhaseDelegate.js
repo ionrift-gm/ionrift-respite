@@ -11,10 +11,7 @@
 import { DecisionTreeResolver } from "../../services/DecisionTreeResolver.js";
 import {
     emitPhaseChanged,
-    emitEventRollRequest,
-    emitEventRollResult,
-    emitTreeRollRequest,
-    emitTreeRollResult
+    emitTreeRollRequest
 } from "../../services/SocketController.js";
 import {
     executePlayerRoll,
