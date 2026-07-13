@@ -6,16 +6,7 @@
 import { CalendarHandler } from "./CalendarHandler.js";
 import { ItemClassifier } from "./ItemClassifier.js";
 import { SpoilageClock } from "./SpoilageClock.js";
-
-const MODULE_ID = "ionrift-respite";
-
-function isSpoilageNameSuffixEnabled() {
-    try {
-        return game.settings.get(MODULE_ID, "spoilageNameSuffix") === true;
-    } catch {
-        return false;
-    }
-}
+import { isSpoilageNameSuffixEnabled } from "./SpoilageCohortSync.js";
 
 function grantClock() {
     return {
