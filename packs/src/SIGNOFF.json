@@ -126,9 +126,9 @@
     "campfire.json": {
       "status": "approved",
       "approvedBy": "geoff",
-      "approvedDate": "2026-05-14",
-      "assetSource": "module-bundled",
-      "assetSourceNote": "modules/ionrift-respite/assets/tokens/campfire_topdown_128x128.png + .webm"
+      "approvedDate": "2026-07-14",
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/svg/fire.svg"
     },
     "cooking-station.json": {
       "status": "approved",
