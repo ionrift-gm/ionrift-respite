@@ -26,7 +26,7 @@ export const STUB_RECIPES = {
                 name: "Bolstering Treat",
                 type: "consumable",
                 quantity: 1,
-                img: "modules/ionrift-respite/assets/icons/bolstering-treat.webp",
+                img: "icons/consumables/food/berries-ration-round-red.webp",
                 itemRef: "stub_chef_bolstering_treats__out",
                 description: "<p>A small baked treat from a Chef. Eat as a bonus action to gain temporary hit points equal to the cook's proficiency bonus. Spoils after 8 hours.</p>",
                 rarity: "common",

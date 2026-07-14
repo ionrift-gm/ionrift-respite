@@ -2,9 +2,7 @@
  * Recipe output icon normalization. Remaps known-bad core paths and supplies fallbacks.
  */
 
-const MODULE_ID = "ionrift-respite";
-
-export const BOLSTERING_TREAT_ICON = `modules/${MODULE_ID}/assets/icons/bolstering-treat.webp`;
+export const BOLSTERING_TREAT_ICON = "icons/consumables/food/berries-ration-round-red.webp";
 
 export const RECIPE_OUTPUT_ICON_FALLBACK = "icons/consumables/food/bowl-stew-brown.webp";
 
