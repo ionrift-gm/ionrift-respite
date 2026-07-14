@@ -8,6 +8,13 @@
 ### Fixed
 - Load crash from invalid trailing commas on class methods in `DnD5eAdapter`.
 
+## [3.3.9] - 2026-07-14
+
+### Changed
+- Package listing uses Foundry's default module icon.
+- Campfire token uses Foundry's built-in fire icon.
+- README no longer embeds YouTube or promo clips.
+
 ## [3.3.8] - 2026-07-07
 
 ### Fixed

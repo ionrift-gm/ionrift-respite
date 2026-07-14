@@ -30,8 +30,8 @@ const TORCH_STAKES = [
 const CAMPFIRE_BASE_PIT = "icons/svg/fire.svg";
 const CAMPFIRE_BASES = [CAMPFIRE_BASE_PIT];
 
-// Campfire fire overlay
-const CAMPFIRE_FLAME = `modules/${MODULE_ID}/assets/tokens/campfire_topdown_128x128.webm`;
+// Campfire fire overlay (Foundry core; art pack may override via ImageResolver)
+const CAMPFIRE_FLAME = "icons/svg/fire.svg";
 
 /** Stacking at same elevation: HUD bring-to-front uses `sort` (higher = on top). Not flight. */
 const PROP_PAIR_BASE_SORT = 100;
