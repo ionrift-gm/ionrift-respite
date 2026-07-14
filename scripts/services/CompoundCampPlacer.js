@@ -482,7 +482,7 @@ function buildFurnitureToken(key, x, y, def, extraFlags = {}) {
 function getCampfireBasePitTexture() {
     return ImageResolver.resolveStationToken("campfire");
 }
-const CAMPFIRE_FLAME = `modules/${MODULE_ID}/assets/tokens/campfire_topdown_128x128.webm`;
+const CAMPFIRE_FLAME = "icons/svg/fire.svg";
 
 /**
  * Token `sort` among siblings at the same elevation (HUD bring-to-front / send-to-back).
