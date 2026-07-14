@@ -90,8 +90,8 @@
       "status": "approved",
       "approvedBy": "geoff",
       "approvedDate": "2026-06-20",
-      "assetSource": "module",
-      "assetSourceNote": "modules/ionrift-respite/assets/icons/bolstering-treat.webp (from Foundry core berries-ration-round-red)"
+      "assetSource": "foundry-core",
+      "assetSourceNote": "icons/consumables/food/berries-ration-round-red.webp"
     },
     "wild-herbs.json": {
       "status": "approved",

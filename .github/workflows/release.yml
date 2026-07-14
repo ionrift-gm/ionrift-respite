@@ -254,8 +254,7 @@ jobs:
                 title: `🔥 Ionrift Respite v${version}`,
                 description: desc,
                 color: 0xC9952A,
-                url: `https://github.com/${repo}/releases/tag/${tag}`,
-                thumbnail: { url: `https://raw.githubusercontent.com/${repo}/master/assets/module-icon.png` }
+                url: `https://github.com/${repo}/releases/tag/${tag}`
               }]
             };
 

@@ -3,7 +3,7 @@
     "_id": "a1b2c3d4e5f6010a",
     "name": "Bolstering Treat",
     "type": "consumable",
-    "img": "modules/ionrift-respite/assets/icons/bolstering-treat.webp",
+    "img": "icons/consumables/food/berries-ration-round-red.webp",
     "system": {
         "description": {
             "value": "<p>A small baked treat from a Chef. Eat as a bonus action to gain temporary hit points equal to the cook's proficiency bonus. Spoils after 8 hours.</p>"
