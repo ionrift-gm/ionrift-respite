@@ -12,8 +12,6 @@ export class SystemAdapter {
     /** @returns {string} System identifier, e.g. "dnd5e", "pf2e", "daggerheart" */
     get id() { throw new Error("SystemAdapter.id not implemented"); }
 
-    // ── Actor Stats ──────────────────────────────────────────
-
     /** @returns {{ value: number, max: number }} */
     getHP(actor) { this._notImpl("getHP"); }
 
@@ -35,8 +33,6 @@ export class SystemAdapter {
      */
     getSaveBonus(actor, saveKey) { this._notImpl("getSaveBonus"); }
 
-    // ── Skills & Checks ──────────────────────────────────────
-
     /**
      * Translate a system-agnostic or DnD5e skill abbreviation into the
      * key used by the active system. Pass-through if already native.
@@ -54,8 +50,6 @@ export class SystemAdapter {
     /** @returns {string[]} All skill keys the actor has */
     getSkillKeys(actor) { this._notImpl("getSkillKeys"); }
 
-    // ── Resources ────────────────────────────────────────────
-
     /** @returns {{ current: number, max: number }} Hit dice or equivalent recovery resource */
     getHitDice(actor) { this._notImpl("getHitDice"); }
 
@@ -64,9 +58,6 @@ export class SystemAdapter {
 
     /** @returns {number} Exhaustion level (0-6 for 5e, or equivalent) */
     getExhaustion(actor) { this._notImpl("getExhaustion"); }
-
-
-    // ── Equipment & Inventory ────────────────────────────────
 
     /**
      * @param {string} name - item name to search (case-insensitive)
@@ -86,8 +77,6 @@ export class SystemAdapter {
     /** @returns {boolean} Whether the actor is proficient with the given tool */
     isToolProficient(actor, toolKey) { this._notImpl("isToolProficient"); }
 
-    // ── Currency ──────────────────────────────────────────────
-
     /**
      * @returns {number} Gold pieces (or equivalent primary currency).
      */
@@ -100,8 +89,6 @@ export class SystemAdapter {
      * @returns {Promise}
      */
     async deductCurrency(actor, amount) { this._notImpl("deductCurrency"); }
-
-    // ── Recovery (write-side) ────────────────────────────────
 
     /** @returns {Promise} */
     async applyHPRestore(actor, amount) { this._notImpl("applyHPRestore"); }
@@ -132,8 +119,6 @@ export class SystemAdapter {
      */
     async applyTempHP(actor, amount) { this._notImpl("applyTempHP"); }
 
-    // ── Native Rest ───────────────────────────────────────────
-
     /** @returns {{ preShort: string|null, preLong: string|null, preCompleted: string|null }} */
     getRestHookNames() { this._notImpl("getRestHookNames"); }
 
@@ -155,8 +140,6 @@ export class SystemAdapter {
      */
     async triggerNativeRest(actor, restType) { this._notImpl("triggerNativeRest"); }
 
-    // ── Active Effects ────────────────────────────────────────
-
     /**
      * Build system-appropriate ActiveEffect changes for a buff type.
      * @param {"temp_hp"|"advantage"|"resistance"} buffType
@@ -164,8 +147,6 @@ export class SystemAdapter {
      * @returns {Object[]} Array of AE change objects { key, mode, value, priority }
      */
     getActiveEffectChanges(buffType, params) { return []; }
-
-    // ── Activity Filtering ───────────────────────────────────
 
     /**
      * Remove activities that are incompatible with the current system.
@@ -205,16 +186,12 @@ export class SystemAdapter {
      */
     getToolProficiencies(actor) { return []; }
 
-    // ── Campfire ─────────────────────────────────────────────
-
     /**
      * Returns cantrip names that can light a campfire.
      * System-specific: override in concrete adapters.
      * @returns {string[]}
      */
     getFireCantrips() { return []; }
-
-    // ── Bedding Down ─────────────────────────────────────────
 
     /**
      * Status or condition slugs applied when the camp beds down for the night.
@@ -231,8 +208,6 @@ export class SystemAdapter {
         if (has("prone")) statusIds.push("prone");
         return statusIds;
     }
-
-    // ── Internal ─────────────────────────────────────────────
 
     /** @private */
     _notImpl(method) {

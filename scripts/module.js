@@ -1,14 +1,10 @@
 import { Logger as RespiteLog } from "./utils/Logger.js";
-import { RestFlowEngine } from "./services/RestFlowEngine.js";
-import { ActivityResolver } from "./services/ActivityResolver.js";
-import { EventResolver } from "./services/EventResolver.js";
-import { ResourcePoolRoller } from "./services/ResourcePoolRoller.js";
-import { CalendarHandler } from "./services/CalendarHandler.js";
-import { TerrainRegistry } from "./services/TerrainRegistry.js";
-import { RestSetupApp } from "./apps/RestSetupApp.js";
-import { ShortRestApp } from "./apps/ShortRestApp.js";
-import { TorchTokenLinker } from "./services/TorchTokenLinker.js";
-import { placeTorch, placePerimeter, clearTorches, toggleTorches, placeCampfire, placeCamp } from "./services/CampPropPlacer.js";
+import { CalendarHandler } from "./services/rest/session/CalendarHandler.js";
+import { TerrainRegistry } from "./services/events/resolve/TerrainRegistry.js";
+import { RestSetupApp } from "./apps/rest/RestSetupApp.js";
+import { ShortRestApp } from "./apps/rest/ShortRestApp.js";
+import { TorchTokenLinker } from "./services/camp/props/TorchTokenLinker.js";
+import { placeTorch, placePerimeter, clearTorches, toggleTorches, placeCampfire, placeCamp } from "./services/camp/props/CampPropPlacer.js";
 import {
     placePlayerGear,
     placeStation,
@@ -20,28 +16,23 @@ import {
     resetCampSession,
     registerCampFurnitureZOrderGuards,
     clampCampFloorTokenInPreUpdate
-} from "./services/CompoundCampPlacer.js";
+} from "./services/camp/props/CompoundCampPlacer.js";
 
-import { createAdapter } from "./adapters/adapterFactory.js";
-import { PackRegistryApp } from "./apps/PackRegistryApp.js";
+import { createRespiteContext } from "./composition/createRespiteContext.js";
+import { PackRegistryApp } from "./apps/packs/PackRegistryApp.js";
 import { ImageResolver } from "./utils/ImageResolver.js";
-import { ItemClassifier } from "./services/ItemClassifier.js";
-import { DietConfigApp } from "./apps/DietConfigApp.js";
-import { AfkPanelApp } from "./apps/AfkPanelApp.js";
-import * as RestAfkState from "./services/RestAfkState.js";
+import { DietConfigApp } from "./apps/meal/DietConfigApp.js";
+import { AfkPanelApp } from "./apps/rest/AfkPanelApp.js";
+import * as RestAfkState from "./services/rest/session/RestAfkState.js";
 import {
     setRestSessionAfkEmitter,
     setAfkUiRefresh
-} from "./services/restSessionAfkEmit.js";
+} from "./services/rest/session/restSessionAfkEmit.js";
 import {
     initAfkBridge,
     reconcileFromAdapters
 } from "./services/afk/AfkBridgeService.js";
-import { MealPhaseHandler } from "./services/MealPhaseHandler.js";
-import {
-    setDetectMagicInventoryGlowAdapter,
-    getDetectMagicInventoryGlowAdapter
-} from "./services/DetectMagicInventoryGlowBridge.js";
+import { MealPhaseHandler } from "./services/meal/phase/MealPhaseHandler.js";
 import {
     emitForceReload,
     emitRequestRestState,
@@ -52,51 +43,25 @@ import {
     emitShortRestAbandoned,
     emitShortRestAfkUpdate,
     emitAfkUpdate,
-} from "./services/SocketController.js";
-import { registerAllSettings, registerItemEnrichments } from "./services/SettingsRegistrar.js";
-import {
-    buildRollRequestContext,
-    buildEventPlayerRollContext,
-    buildEventGmRollContext,
-    buildTreePlayerRollContext,
-    buildCampActivityRollContext,
-    buildTravelActivityRollContext,
-    buildCopySpellRollContext,
-    buildMockRollRequestContext,
-    buildRollParticipants,
-    buildRollTargetLabel,
-    sortRollParticipants,
-    layoutRollParticipants,
-    findPreviewPlayerActor,
-    centerRollRequestRoster,
-    ROLL_REQUEST_PREVIEW_VARIANTS
-} from "./services/RollRequestView.js";
-import {
-    ensureDcPulseAnimation,
-    inspectDcAnimation,
-    watchDcAnimation,
-    forceDcPulseTest
-} from "./services/RollRequestDcPulse.js";
-import { RollRequestPreviewApp } from "./apps/RollRequestPreviewApp.js";
-import { registerUiHooks, refreshZzzOverlay, refreshSpoilageBadgesOnOpenSheets } from "./services/UiInjections.js";
-import { registerSpoilageMergeGuard } from "./services/SpoilageMergeGuard.js";
-import { registerSpoilageGrantHook } from "./services/SpoilageGrantHook.js";
-import { syncPartyCohortSuffixes } from "./services/SpoilageCohortSync.js";
-import { registerInventoryContextMenu } from "./services/InventoryContextMenu.js";
-import { registerLockdownHooks } from "./services/PlayerLockdownService.js";
+} from "./services/socket/SocketController.js";
+import { registerAllSettings, registerItemEnrichments } from "./services/ui/settings/SettingsRegistrar.js";
+import { registerUiHooks, refreshZzzOverlay, refreshSpoilageBadgesOnOpenSheets } from "./services/ui/sheet/UiInjections.js";
+import { registerSpoilageMergeGuard } from "./services/meal/spoilage/SpoilageMergeGuard.js";
+import { registerSpoilageGrantHook } from "./services/meal/spoilage/SpoilageGrantHook.js";
+import { syncPartyCohortSuffixes } from "./services/meal/spoilage/SpoilageCohortSync.js";
+import { registerInventoryContextMenu } from "./services/ui/sheet/InventoryContextMenu.js";
+import { registerLockdownHooks } from "./services/ui/sheet/PlayerLockdownService.js";
 import {
     showRejoinNotification, removeRejoinNotification,
     showShortRestRejoinNotification, removeShortRestRejoinNotification,
     showGmRestIndicator, removeGmRestIndicator, refreshGmRestIndicator,
     refreshRejoinBar,
     showGmShortRestIndicator, removeGmShortRestIndicator
-} from "./services/RejoinManager.js";
-import { dispatch as socketDispatch } from "./services/SocketRouter.js";
-import { isNativeShortRestUnsuppressed } from "./services/NativeRestPass.js";
-import { reassertMealExhaustionFloor } from "./services/MealExhaustionGuard.js";
-
-const MODULE_ID = "ionrift-respite";
-const MODULE_LABEL = "Respite";
+} from "./services/ui/sheet/RejoinManager.js";
+import { dispatch as socketDispatch } from "./services/socket/SocketRouter.js";
+import { isNativeShortRestUnsuppressed } from "./services/rest/flow/NativeRestPass.js";
+import { reassertMealExhaustionFloor } from "./services/meal/phase/MealExhaustionGuard.js";
+import { MODULE_ID, MODULE_LABEL } from "./data/moduleId.js";
 
 // Shared logger reference; falls back to console if ionrift-lib unavailable.
 let Logger;
@@ -104,7 +69,6 @@ let Logger;
 // Tracks whether a Respite rest flow is currently active.
 // When true, the dnd5e.preRestCompleted hook will suppress default HP/HD recovery.
 let respiteFlowActive = false;
-
 
 // Active GM app reference, used by socket handler to push incoming choices.
 let activeRestSetupApp = null;
@@ -126,7 +90,7 @@ let _playerRestActive = false;
 
 /**
  * Registers the active CampfireEmbed for socket routing.
- * @param {import("./apps/CampfireEmbed.js").CampfireEmbed|null} embed
+ * @param {import("./apps/camp/CampfireEmbed.js").CampfireEmbed|null} embed
  */
 export function registerCampfireEmbed(embed) {
     activeCampfireEmbed = embed;
@@ -202,8 +166,6 @@ export function clearActiveShortRestApp() {
 export function notifyShortRestActive() {
     _showShortRestRejoinNotification();
 }
-
-
 
 /** @type {AfkPanelApp|null} */
 let activeAfkPanel = null;
@@ -309,7 +271,6 @@ function _canStartRest() {
     return true;
 }
 
-
 Hooks.once("init", async () => {
     RespiteLog.log(`${MODULE_ID} | Initializing...`);
     Logger = game.ionrift?.library?.Logger ?? console;
@@ -362,305 +323,20 @@ Hooks.once("init", async () => {
     _registerPartial("_training-panel.hbs", "trainingPanel");
     _registerPartial("craft-commit-panel.hbs", "craftCommitPanel");
 
-    // Expose API
-    const adapter = createAdapter();
-    game.ionrift = game.ionrift || {};
-    game.ionrift.respite = {
-        adapter,
-        rollRequest: {
-            buildContext: buildRollRequestContext,
-            buildEventPlayerContext: buildEventPlayerRollContext,
-            buildEventGmContext: buildEventGmRollContext,
-            buildTreePlayerContext: buildTreePlayerRollContext,
-            buildCampActivityContext: buildCampActivityRollContext,
-            buildTravelActivityContext: buildTravelActivityRollContext,
-            buildCopySpellContext: buildCopySpellRollContext,
-            buildParticipants: buildRollParticipants,
-            sortParticipants: sortRollParticipants,
-            layoutParticipants: layoutRollParticipants,
-            centerRoster: centerRollRequestRoster,
-            findPreviewPlayerActor,
-            buildTargetLabel: buildRollTargetLabel,
-            buildMockContext: buildMockRollRequestContext,
-            variants: ROLL_REQUEST_PREVIEW_VARIANTS,
-            partial: "rollRequest",
-            openPreview: (options) => RollRequestPreviewApp.open(options),
-            ensureDcPulse: ensureDcPulseAnimation,
-            debugAnimation: inspectDcAnimation,
-            watchAnimation: watchDcAnimation,
-            forceDcPulseTest,
-            request: (opts) => game.ionrift?.library?.rollRequest?.request?.(opts),
-            requestDetached: (opts, callback) => game.ionrift?.library?.rollRequest?.requestDetached?.(opts, callback)
-        },
-        RestFlowEngine,
-        ActivityResolver,
-        EventResolver,
-        ResourcePoolRoller,
-        openRestSetup: () => {
-            if (!game.user.isGM) return;
-            new RestSetupApp().render({ force: true });
-        },
-        /**
-         * Opens a Respite guide journal from compendium packs.
-         * Player and cooking pages live in respite-guide (PLAYER: OBSERVER).
-         * GM reference lives in respite-guide-gm (GAMEMASTER: OWNER).
-         *
-         * @param {string} [pageId] - Optional page _id to jump to.
-         * @returns {Promise<void>}
-         */
-        openPlayerGuide: async (pageId) => {
-            const GUIDE_PAGES = {
-                player: "aQc3PtQPrYDi9Mlx",
-                gm: "dvr4TYdYmX88MCCf",
-                cooking: "cK8pRQdW2nFb4Xvj",
-                training: "mN8kTrXpGmRef001",
-            };
-            const GUIDE_JOURNALS = {
-                player: "1Zh2gDQ1xOLFUrhW",
-                gm: "hG4mR3fRespGuide01",
-            };
-
-            const isGM = game.user?.isGM;
-            let packName;
-            let journalId;
-            let focusPageId;
-
-            if (!isGM) {
-                packName = `${MODULE_ID}.respite-guide`;
-                journalId = GUIDE_JOURNALS.player;
-                focusPageId = pageId === GUIDE_PAGES.cooking
-                    ? GUIDE_PAGES.cooking
-                    : GUIDE_PAGES.player;
-            } else if (!pageId || pageId === GUIDE_PAGES.gm || pageId === GUIDE_PAGES.training) {
-                packName = `${MODULE_ID}.respite-guide-gm`;
-                journalId = GUIDE_JOURNALS.gm;
-                focusPageId = pageId === GUIDE_PAGES.training ? GUIDE_PAGES.training : GUIDE_PAGES.gm;
-            } else {
-                packName = `${MODULE_ID}.respite-guide`;
-                journalId = GUIDE_JOURNALS.player;
-                focusPageId = pageId;
-            }
-
-            const pack = game.packs.get(packName);
-            if (!pack) {
-                ui.notifications?.warn("Respite: guide compendium not available.");
-                return;
-            }
-            try {
-                const journal = await pack.getDocument(journalId);
-                if (!journal) {
-                    ui.notifications?.warn("Respite: guide journal not found in compendium.");
-                    return;
-                }
-                const opts = focusPageId ? { pageId: focusPageId } : {};
-                journal.sheet.render(true, opts);
-            } catch (e) {
-                console.warn(`${MODULE_ID} | Failed to open player guide:`, e);
-                ui.notifications?.error("Respite: failed to open the player guide. See console.");
-            }
-        },
-        /** Debug: force the next event roll to always trigger an encounter. */
-        forceEncounter: () => {
-            if (!game.user.isGM) return;
-            if (!activeRestSetupApp) {
-                console.warn(`${MODULE_ID} | No active rest. Start a rest first.`);
-                return;
-            }
-            activeRestSetupApp._forceEncounter = true;
-            ui.notifications.info("Next event roll will force an encounter.");
-        },
-        /** Debug: get the active RestSetupApp instance. */
-        getActiveApp: () => activeRestSetupApp,
-        /** Run regression test suite. GM only. Requires local test files (not shipped). */
-        runTests: async () => {
-            if (!game.user.isGM) { console.warn(`${MODULE_ID} | Tests are GM-only.`); return; }
-            try {
-                const probe = await fetch(`modules/${MODULE_ID}/scripts/tests/RespiteTestRunner.js`, { method: "HEAD" });
-                if (!probe.ok) { console.warn(`${MODULE_ID} | Test suite not found. Tests are dev-only and not included in release builds.`); return; }
-                const { RespiteTestRunner } = await import("./tests/RespiteTestRunner.js");
-                const runner = new RespiteTestRunner();
-                return await runner.runAll();
-            } catch (e) {
-                console.warn(`${MODULE_ID} | Failed to load test suite:`, e.message);
-            }
-        },
-        /** Run short rest feature parity E2E tests only. GM only. Dev builds only. */
-        runShortRestE2E: async () => {
-            if (!game.user.isGM) { console.warn(`${MODULE_ID} | Tests are GM-only.`); return; }
-            try {
-                const probe = await fetch(`modules/${MODULE_ID}/scripts/tests/RespiteTestRunner.js`, { method: "HEAD" });
-                if (!probe.ok) { console.warn(`${MODULE_ID} | Test suite not found (dev-only, not in releases).`); return; }
-                const { RespiteTestRunner } = await import("./tests/RespiteTestRunner.js");
-                const runner = new RespiteTestRunner();
-                return await runner.runShortRestE2E();
-            } catch (e) {
-                console.warn(`${MODULE_ID} | Failed to load test suite:`, e.message);
-            }
-        },
-        /** Run short rest state persistence tests only. GM only. Dev builds only. */
-        runShortRestPersistenceTests: async () => {
-            if (!game.user.isGM) { console.warn(`${MODULE_ID} | Tests are GM-only.`); return; }
-            try {
-                const probe = await fetch(`modules/${MODULE_ID}/scripts/tests/RespiteTestRunner.js`, { method: "HEAD" });
-                if (!probe.ok) { console.warn(`${MODULE_ID} | Test suite not found (dev-only, not in releases).`); return; }
-                const { RespiteTestRunner } = await import("./tests/RespiteTestRunner.js");
-                const runner = new RespiteTestRunner();
-                return await runner.runShortRestPersistence();
-            } catch (e) {
-                console.warn(`${MODULE_ID} | Failed to load test suite:`, e.message);
-            }
-        },
-        /** Reload all connected clients, then reload the GM. */
-        reloadAll: () => {
-            if (!game.user.isGM) return;
-            emitForceReload();
-            RespiteLog.log(`${MODULE_ID} | Sent forceReload to all clients. GM reloading in 500ms...`);
-            setTimeout(() => window.location.reload(), 500);
-        },
-        /** Debug: Add supplies to all party actors. Usage: game.ionrift.respite.addSupplies(50) */
-        addSupplies: (qty = 50) => RestSetupApp._debugAddSupplies(qty),
-        /**
-         * Plug in a module that replaces the built-in school-colored inventory glow after Detect Magic.
-         * Pass null to restore the default sheet highlights. See scripts/services/DetectMagicInventoryGlowBridge.js.
-         */
-        setDetectMagicInventoryGlowAdapter,
-        getDetectMagicInventoryGlowAdapter,
-        /** Check which terrain packs are currently linked (accessible). */
-        packStatus: async () => {
-            if (!game.user.isGM) return;
-            await TerrainRegistry.init();
-            const coreTerrains = new Set(["forest", "swamp", "desert", "urban", "dungeon", "tavern"]);
-            const results = {};
-            for (const t of TerrainRegistry.getAvailableIds()) {
-                if (coreTerrains.has(t)) continue; // Core terrains are always present
-                try {
-                    const resp = await fetch(`modules/${MODULE_ID}/data/terrains/${t}/events.json?t=${Date.now()}`);
-                    results[t] = resp.ok ? "LINKED" : "MISSING";
-                } catch { results[t] = "MISSING"; }
-            }
-            RespiteLog.log(results);
-            return results;
-        },
-        /** Write LINK_PACKS to cmd.txt for the DevTools CommandListener. */
-        linkPacks: async () => {
-            if (!game.user.isGM) return;
-            const file = new File(["LINK_PACKS"], "cmd.txt", { type: "text/plain" });
-                const FP = game.ionrift?.library?.platform?.FP ?? FilePicker;
-                await FP.upload("data", "ionrift_debug", file, { notify: false });
-            ui.notifications.info("LINK_PACKS command sent. Waiting for DevTools to execute...");
-        },
-        /** Write UNLINK_PACKS to cmd.txt for the DevTools CommandListener. */
-        unlinkPacks: async () => {
-            if (!game.user.isGM) return;
-            const file = new File(["UNLINK_PACKS"], "cmd.txt", { type: "text/plain" });
-                const FP = game.ionrift?.library?.platform?.FP ?? FilePicker;
-                await FP.upload("data", "ionrift_debug", file, { notify: false });
-            ui.notifications.info("UNLINK_PACKS command sent. Waiting for DevTools to execute...");
-        },
-        /** GM escape hatch: clears stale rest state, removes camp tokens on the scene, reloads. Usage: game.ionrift.respite.resetFlowState() */
-        resetFlowState: async () => {
-            if (!game.user.isGM) { console.warn(`${MODULE_ID} | resetFlowState is GM-only.`); return; }
-            respiteFlowActive = false;
-            activeRestSetupApp = null;
-            activeRestData = null;
-            activeShortRestApp = null;
-            hideAfkPanel();
-            try {
-                const removed = await clearCampTokens();
-                if (removed > 0) {
-                    RespiteLog.log(`${MODULE_ID} | resetFlowState removed ${removed} camp or torch token(s) from the active scene.`);
-                }
-            } catch (e) {
-                console.warn(`${MODULE_ID} | resetFlowState camp cleanup failed:`, e);
-            } finally {
-                resetCampSession();
-            }
-            await game.settings.set(MODULE_ID, "activeRest", {});
-            await game.settings.set(MODULE_ID, "activeShortRest", {});
-            await game.settings.set(MODULE_ID, "lastRestDate", "");
-            emitForceReload();
-            ui.notifications.info("Rest state cleared. Reloading...");
-            setTimeout(() => window.location.reload(), 500);
-        },
-        /** Item Enrichment: delegates to ionrift-library kernel (backward compat). */
-        getItemEnrichment: (itemName) => game.ionrift?.library?.enrichment?.get(itemName) ?? null,
-        /** Item Enrichment: returns all registered enrichment names (debug). */
-        getEnrichmentNames: () => game.ionrift?.library?.enrichment?.getRegisteredNames() ?? [],
-        /** Item classification: unified food/water/fuel classification. */
-        ItemClassifier,
-        /** Diet configuration UI. Usage: game.ionrift.respite.openDietConfig() or game.ionrift.respite.openDietConfig(actorId) */
-        DietConfigApp,
-        openDietConfig: (actorId) => {
-            if (!game.user.isGM) return;
-            new DietConfigApp(actorId ? { actorId } : {}).render({ force: true });
-        },
-        /** Classify a single item. Usage: game.ionrift.respite.classifyItem(item) */
-        classifyItem: (item) => ItemClassifier.classify(item),
-        /** Get an actor's diet profile. Usage: game.ionrift.respite.getDiet(actor) */
-        getDiet: (actor) => ItemClassifier.getDiet(actor),
-        /** Set an actor's diet profile. Usage: game.ionrift.respite.setDiet(actor, { label: "Custom", canEat: ["food", "fuel"] }) */
-        setDiet: (actor, diet) => ItemClassifier.setDiet(actor, diet),
-        /** Apply a preset diet. Usage: game.ionrift.respite.applyDietPreset(actor, "warforged") */
-        applyDietPreset: (actor, presetId) => ItemClassifier.applyPreset(actor, presetId),
-        /** List available diet presets. Usage: game.ionrift.respite.getDietPresets() */
-        getDietPresets: () => ItemClassifier.getPresets(),
-        /** Open the rest session ledger popout. GM only. Usage: game.ionrift.respite.openLedger() */
-        openLedger: () => {
-            if (!game.user.isGM) return;
-            if (!activeRestSetupApp) {
-                console.warn(`${MODULE_ID} | No active rest. Start a rest first.`);
-                return;
-            }
-            activeRestSetupApp.openLedgerPanel?.();
-        },
-
-        // â”€â”€ Camp Prop Placement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        /** Place a campfire (base + fire overlay) via crosshair. GM only. */
-        placeCampfire,
-        /** Place a single torch pair (stake + fire overlay) via crosshair. GM only. */
-        placeTorch,
-        /** Place a ring of torch pairs around the selected token or a clicked point. GM only. */
-        placePerimeter,
-        /** Place a full camp: campfire + perimeter ring, one click. GM only. */
-        placeCamp,
-        /** Remove all torch tokens (stakes + fire overlays) from the scene. GM only. */
-        clearTorches,
-        /** Toggle all perimeter torch lights on/off. GM only. */
-        toggleTorches,
-        /** TorchTokenLinker service reference. */
-        TorchTokenLinker,
-        /**
-         * Rebuild forage and camp fuel roll tables from compendium folders (GM only).
-         * Also locks tables and folders to GM-only visibility.
-         */
-        syncForageTables: async () => {
-            if (!game.user.isGM) {
-                console.warn(`${MODULE_ID} | syncForageTables is GM-only.`);
-                return null;
-            }
-            const { ForageTableSync } = await import("./services/ForageTableSync.js");
-            return await ForageTableSync.syncAll({ notify: true });
-        },
-        /**
-         * Hide Respite roll tables from players without rebuilding rows (GM only).
-         */
-        lockRollTables: async () => {
-            if (!game.user.isGM) {
-                console.warn(`${MODULE_ID} | lockRollTables is GM-only.`);
-                return null;
-            }
-            const { ForageTableSync } = await import("./services/ForageTableSync.js");
-            const result = await ForageTableSync.lockDownRollTableVisibility();
-            ui.notifications.info(
-                `Respite: Locked ${result.tables} roll table(s) and ${result.folders} folder(s) to GM-only.`
-            );
-            return result;
-        },
-        /** Whether a Respite rest flow (long or short) is currently active. Used by PlayerLockdownService. */
-        get isRestActive() { return respiteFlowActive; }
+    // Expose API via composition root
+    const respiteRuntime = {
+        get respiteFlowActive() { return respiteFlowActive; },
+        set respiteFlowActive(v) { respiteFlowActive = v; },
+        get activeRestSetupApp() { return activeRestSetupApp; },
+        set activeRestSetupApp(v) { activeRestSetupApp = v; },
+        get activeRestData() { return activeRestData; },
+        set activeRestData(v) { activeRestData = v; },
+        get activeShortRestApp() { return activeShortRestApp; },
+        set activeShortRestApp(v) { activeShortRestApp = v; },
+        hideAfkPanel
     };
+    createRespiteContext(respiteRuntime);
 
-    // Register settings (extracted to SettingsRegistrar.js â€” Phase 2.1)
     registerAllSettings({
         PackRegistryApp,
         DietConfigApp,
@@ -676,7 +352,7 @@ Hooks.once("init", async () => {
     // Register Core Art Pack nudge with the shared library service so the
     // Settings panel surfaces it alongside the in-app camp-phase nudge.
     try {
-        const { registerArtPackNudge } = await import("./services/packs/artPackNudge.js");
+        const { registerArtPackNudge } = await import("./services/packs/registry/artPackNudge.js");
         registerArtPackNudge();
     } catch (e) {
         console.warn(`${MODULE_ID} | Art pack nudge registration failed:`, e);
@@ -687,12 +363,12 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
     if (detail?.moduleId !== MODULE_ID) return;
 
     try {
-        const { OverlayProfessionLoader } = await import("./services/OverlayProfessionLoader.js");
+        const { OverlayProfessionLoader } = await import("./services/packs/overlays/OverlayProfessionLoader.js");
         OverlayProfessionLoader.invalidate();
     } catch { /* loader not available */ }
 
     try {
-        const { ProvisionOverlayMaterialiser } = await import("./services/ProvisionOverlayMaterialiser.js");
+        const { ProvisionOverlayMaterialiser } = await import("./services/meal/provisions/ProvisionOverlayMaterialiser.js");
         await ProvisionOverlayMaterialiser.onOverlayContentChanged(detail);
     } catch (err) {
         console.warn(`${MODULE_ID} | Overlay materialiser update failed:`, err);
@@ -712,7 +388,7 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
     if (detail.overlayId === "respite-frost-stone-overlay" || detail.overlayId === "respite-bone-dust-overlay") {
         await ImageResolver.init();
         try {
-            const { TerrainRegistry } = await import("./services/TerrainRegistry.js");
+            const { TerrainRegistry } = await import("./services/events/resolve/TerrainRegistry.js");
             TerrainRegistry.reset();
             await TerrainRegistry.init();
         } catch (e) {
@@ -723,11 +399,11 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
 
     // Event/content overlay: invalidate cached event and profession data
     try {
-        const { OverlayEventLoader } = await import("./services/OverlayEventLoader.js");
+        const { OverlayEventLoader } = await import("./services/packs/overlays/OverlayEventLoader.js");
         OverlayEventLoader.invalidate();
     } catch { /* loader not available */ }
     try {
-        const { OverlayProfessionLoader } = await import("./services/OverlayProfessionLoader.js");
+        const { OverlayProfessionLoader } = await import("./services/packs/overlays/OverlayProfessionLoader.js");
         OverlayProfessionLoader.invalidate();
     } catch { /* loader not available */ }
     RespiteLog.log(`${MODULE_ID} | Overlay content changed: ${detail.overlayId} (active=${detail.active})`);
@@ -779,13 +455,10 @@ Hooks.on("chatMessage", (log, message, chatData) => {
     }
 });
 
-// â”€â”€ Actor Sheet Injections (extracted to UiInjections.js â€” Phase 2.3) â”€â”€â”€â”€
 registerUiHooks();
 
-// ── Inventory Context Menu (Consume at Camp) ───────────────────────────
 registerInventoryContextMenu();
 
-// â”€â”€ Calendar-Driven Spoilage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // When in-game time advances (Simple Calendar or core worldTime), check all
 // party member inventories for perishable items that have expired based on
 // their harvestedDate. Replaces spoiled items with "Spoiled Food" and posts
@@ -842,15 +515,12 @@ registerInventoryContextMenu();
     }
 }
 
-// —— Monster Cooking: Chat Card Button Wiring ————————————————
 // [CARVED OUT, WS-6] Monster Cooking chat card wiring removed for v2.0.
 // Archived: ionrift-brand/Assets/Archived/butcher_system/REINTEGRATION.md
-
 
 // Item Enrichment hooks are now wired by ionrift-library (ItemEnrichmentEngine).
 // Respite enrichment data is registered in the init hook below via registerBatch().
 
-// Zzz overlay extracted to UiInjections.js — Phase 2.3
 // _refreshZzzOverlay is imported at the top of this file.
 
 Hooks.once("ready", async () => {
@@ -866,7 +536,6 @@ Hooks.once("ready", async () => {
         console.warn(`${MODULE_ID} | Cooking feed provider registration failed:`, e);
     }
 
-    // ── Phase 1: Independent initialisers (parallel) ────────────────────
     // ImageResolver, TerrainRegistry, and EventPoolMigration have no
     // interdependencies. Running them concurrently instead of sequentially
     // eliminates the largest single-thread bottleneck (was ~10s serial).
@@ -877,7 +546,7 @@ Hooks.once("ready", async () => {
         TerrainRegistry.init().catch(err => {
             console.warn(`${MODULE_ID} | TerrainRegistry init failed:`, err);
         }),
-        import("./services/EventPoolMigration.js")
+        import("./services/events/catalog/EventPoolMigration.js")
             .then(({ initializeEventPoolIfNeeded }) => initializeEventPoolIfNeeded())
             .catch(err => {
                 console.warn(`${MODULE_ID} | EventPoolMigration failed:`, err);
@@ -896,31 +565,30 @@ Hooks.once("ready", async () => {
         }
     });
 
-    // ── Phase 2: GM overlay loaders (parallel) ───────────────────────────
     // Provision materialiser, meal buff presets/handlers, and profession
     // plugins are all independent of each other. Running them concurrently
     // instead of sequentially saves ~15s on worlds with overlay content.
     if (game.user.isGM) {
-        const mealBuffRegistry = await import("./services/MealBuffHandlerRegistry.js");
-        const professionRegistry = await import("./services/ProfessionPluginRegistry.js");
+        const mealBuffRegistry = await import("./services/meal/buffs/MealBuffHandlerRegistry.js");
+        const professionRegistry = await import("./services/packs/registry/ProfessionPluginRegistry.js");
 
         const gmPhase2 = [
-            import("./services/ProvisionOverlayMaterialiser.js")
+            import("./services/meal/provisions/ProvisionOverlayMaterialiser.js")
                 .then(({ ProvisionOverlayMaterialiser }) => ProvisionOverlayMaterialiser.materialiseAll())
                 .catch(err => {
                     console.error(`${MODULE_ID} | Overlay provision materialisation failed:`, err);
                 }),
-            import("./services/OverlayMealBuffPresetLoader.js")
+            import("./services/packs/overlays/OverlayMealBuffPresetLoader.js")
                 .then(({ OverlayMealBuffPresetLoader }) => OverlayMealBuffPresetLoader.loadAll())
                 .catch(err => {
                     console.warn(`${MODULE_ID} | Meal buff preset loader failed:`, err);
                 }),
-            import("./services/OverlayMealBuffHandlerLoader.js")
+            import("./services/packs/overlays/OverlayMealBuffHandlerLoader.js")
                 .then(({ OverlayMealBuffHandlerLoader }) => OverlayMealBuffHandlerLoader.loadAll())
                 .catch(err => {
                     console.warn(`${MODULE_ID} | Overlay meal buff handler loader failed:`, err);
                 }),
-            import("./services/OverlayProfessionPluginLoader.js")
+            import("./services/packs/overlays/OverlayProfessionPluginLoader.js")
                 .then(({ OverlayProfessionPluginLoader }) => OverlayProfessionPluginLoader.loadAll())
                 .catch(err => {
                     console.warn(`${MODULE_ID} | Profession pack plugin loaders failed:`, err);
@@ -939,7 +607,7 @@ Hooks.once("ready", async () => {
             list: professionRegistry.listProfessionPlugins
         };
 
-        const { ForageTableSync } = await import("./services/ForageTableSync.js");
+        const { ForageTableSync } = await import("./services/travel/forage/ForageTableSync.js");
         ForageTableSync.registerHooks();
         void ForageTableSync.lockDownRollTableVisibility().catch(err => {
             console.error(`${MODULE_ID} | Roll table lockdown failed:`, err);
@@ -969,12 +637,11 @@ Hooks.once("ready", async () => {
         console.warn(`${MODULE_ID} | Failed to load respite-items index for travel pools:`, e);
     }
 
-    // Register socket handler (dispatch extracted to SocketRouter.js â€” Phase 2.2)
     const socketContext = {
         get activeRestSetupApp() {
             // Self-heal: if the GM reference was lost (e.g. a render post-step
             // threw and an older build cleared it) but the rest sheet is still
-            // mounted, recover the live instance so player→GM sockets keep
+            // mounted, recover the live instance so player, GM sockets keep
             // landing instead of silently dropping.
             if (!activeRestSetupApp && game.user?.isGM) {
                 const live = foundry.applications.instances.get("ionrift-respite-setup");
@@ -1122,8 +789,6 @@ Hooks.once("ready", async () => {
         return;
     }
 
-
-
     // Detect rest-recovery module collision
     const restRecovery = game.modules.get("rest-recovery");
     if (restRecovery?.active) {
@@ -1148,7 +813,6 @@ Hooks.once("ready", async () => {
         Logger.log?.(MODULE_LABEL, "Quartermaster not detected. Items will be created with minimal normalization.");
     }
 
-    // â”€â”€ PF2e Early-Support Advisory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (game.system.id === "pf2e") {
         try {
             const shown = game.settings.get(MODULE_ID, "pf2eAdvisoryShown");
@@ -1178,11 +842,10 @@ Hooks.once("ready", async () => {
                 game.settings.set(MODULE_ID, "pf2eAdvisoryShown", true);
             }
         } catch (e) {
-            // Graceful fail â€” don't block startup for an advisory
+            // Graceful fail ,  don't block startup for an advisory
         }
     }
 
-    // â”€â”€ Session Recovery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // Check for interrupted rest state saved in world settings
     const savedRest = game.settings.get(MODULE_ID, "activeRest");
     if (savedRest?.engine) {
@@ -1296,7 +959,6 @@ Hooks.once("ready", async () => {
         }
     }
 
-    // â”€â”€ Short Rest Session Recovery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const savedShortRest = game.settings.get(MODULE_ID, "activeShortRest");
     if (savedShortRest?.timestamp && !respiteFlowActive) {
         const age = Date.now() - (savedShortRest.timestamp ?? 0);
@@ -1352,7 +1014,6 @@ Hooks.once("ready", async () => {
         }
     }
 
-    // â”€â”€ Combat Blocking Hook â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // When combat ends and a rest is awaiting combat resolution, resume the rest flow
     Hooks.on("deleteCombat", (combat, options, userId) => {
         if (!activeRestSetupApp) return;
@@ -1365,20 +1026,16 @@ Hooks.once("ready", async () => {
         Logger.log?.(MODULE_LABEL, "Combat ended, rest flow unblocked.");
     });
 
-    // â”€â”€ Monster Cooking: Butcher Prompt after Combat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-
-
     _maybeShowAmbientAfkPanelAtReady();
 
     initAfkBridge();
 
     RespiteLog.log(`${MODULE_ID} | Boot complete.`);
     if (game.user.isGM) {
-        RespiteLog.log("  → game.ionrift.respite.rollRequest.openPreview()");
-        RespiteLog.log("  → game.ionrift.respite.rollRequest.debugAnimation()");
-        RespiteLog.log("  → game.ionrift.respite.rollRequest.watchAnimation()");
-        RespiteLog.log("  → game.ionrift.respite.rollRequest.forceDcPulseTest()");
+        RespiteLog.log("  ,  game.ionrift.respite.rollRequest.openPreview()");
+        RespiteLog.log("  ,  game.ionrift.respite.rollRequest.debugAnimation()");
+        RespiteLog.log("  ,  game.ionrift.respite.rollRequest.watchAnimation()");
+        RespiteLog.log("  ,  game.ionrift.respite.rollRequest.forceDcPulseTest()");
     }
 });
 
@@ -1485,37 +1142,15 @@ Hooks.on("dnd5e.restCompleted", (actor) => {
     void reassertMealExhaustionFloor(actor);
 });
 
-// â”€â”€ Socket dispatch extracted to SocketRouter.js â€” Phase 2.2 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// _onSocketMessage, _handleRestStarted, _handleActivityChoice,
-// _handleRestResolved, _handleShortRestStarted, _showButcherPopup,
-// and all _handle* functions now live in SocketRouter.js / SocketRouterHandlers.js.
-//
-// Keeping this comment block as a tombstone for git blame navigation.
-
-/**
- * Shows a persistent rejoin notification when the player closes the rest window.
- * @param {RestSetupApp} [app] - Active player rest app for phase/progress info.
- */
-/**
- * Shows a persistent rejoin notification when the player closes the rest window.
- * Delegates to RejoinManager (Phase 2.4).
- */
 function _showRejoinNotification(app) {
     showRejoinNotification(app, _rejoinRest);
 }
 
-/**
- * Removes the player rejoin bar. Re-exported for RestSetupApp to use
- * when auto-opening the player window on post-activity phase transitions.
- */
+/** Re-exported for RestSetupApp post-activity auto-open. */
 export function _removeRejoinBar() {
     removeRejoinNotification();
 }
 
-/**
- * Shows a persistent short rest rejoin notification.
- * Delegates to RejoinManager (Phase 2.4).
- */
 function _showShortRestRejoinNotification() {
     showShortRestRejoinNotification(_rejoinShortRest);
 }
@@ -1527,7 +1162,6 @@ function _rejoinShortRest() {
     removeShortRestRejoinNotification();
     emitRequestShortRestState(game.user.id);
 }
-
 
 /**
  * Shows a persistent GM indicator when the rest window is closed but a rest is still active.
