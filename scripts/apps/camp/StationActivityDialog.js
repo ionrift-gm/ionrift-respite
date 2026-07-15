@@ -1,12 +1,5 @@
 import { Logger } from "../../utils/Logger.js";
 import { MODULE_ID } from "../../data/moduleId.js";
-/**
- * StationActivityDialog
- *
- * Lightweight popup that opens when a player clicks a campsite station overlay.
- * Shows the activities offered by that station, filtered for the actor,
- * and submits the choice via the same socket path as the panel Confirm button.
- */
 
 import {
     ACTIVITY_ICONS,
@@ -44,7 +37,7 @@ import { refreshGmRestIndicator } from "../../services/ui/sheet/RejoinManager.js
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
-/** Lets RestSetupApp refresh this dialog after meal drag without a full rest window render. */
+/** Refresh open station dialog after meal drag without full rest window render. */
 export function notifyStationMealChoicesUpdated() {
     Hooks.callAll(`${MODULE_ID}.stationMealChoicesTouched`);
 }
@@ -81,15 +74,8 @@ export async function closeOpenStationDialog() {
 }
 
 /**
- * Credit feast satiation in the active rest's meal state for all recipients.
- * Fills + locks food/water slots based on the feast's satiates array, folds
- * selections into consumedDays, and marks each character as rations-submitted.
- *
- * Called after a party meal is served via the "Feast: Serve Now" button.
- *
- * @param {object} restApp - The active RestSetupApp instance
- * @param {string[]} partyIds - Actor IDs of all party members
- * @param {string[]} satiates - Satiates array from the feast item flags (e.g. ["food", "water"])
+ * Credit feast satiation in the active rest meal state for all recipients.
+ * Fills and locks food/water slots from satiates, folds into consumedDays, marks rations submitted.
  */
 function _creditFeastMealState(restApp, partyIds, satiates) {
     if (!restApp) return;
