@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 /**
  * CampPropPlacer
  * GM-only utility that places paired camp prop tokens (stake + fire overlay)

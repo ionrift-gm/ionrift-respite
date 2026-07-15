@@ -79,6 +79,13 @@ export function isCookingSlotEffect(effect) {
  */
 export function isCookingSlotItem(item) {
     if (!item) return false;
+    // dnd5e represents cooking buffs exclusively as ActiveEffects, never Items.
+    // isCookingSlotEffect handles AE cleanup. Returning false here prevents
+    // inventory consumables (which carry wellFed metadata) from being
+    // misidentified as active buff slots.
+    const systemId = game.ionrift?.respite?.adapter?.id ?? game.system?.id;
+    if (systemId === "dnd5e") return false;
+    if (item.type === "consumable") return false;
     if (item.flags?.[MODULE_ID]?.wellFed === true) return true;
     const buffs = game.ionrift?.library?.cooking?.buffs;
     const ns = buffs?.COOKING_BUFF_FLAG_NAMESPACE ?? "ionrift-library";

@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 /**
  * TorchTokenLinker
  * Finds all perimeter torch tokens on the active scene and toggles their

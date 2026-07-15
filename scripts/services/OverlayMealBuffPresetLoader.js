@@ -5,7 +5,7 @@
  * into the homebrew recipe editor preset registry.
  */
 
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import {
     registerOverlayMealBuffPreset,
     unregisterOverlayMealBuffPresetsForOverlay

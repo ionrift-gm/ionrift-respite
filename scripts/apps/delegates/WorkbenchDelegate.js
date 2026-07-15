@@ -1,4 +1,4 @@
-import { Logger } from "../../lib/Logger.js";
+import { Logger } from "../../utils/Logger.js";
 /**
  * WorkbenchDelegate.js
  * Handles workbench identify staging, drag-drop, item reveal, and ritual
@@ -23,8 +23,8 @@ import {
     DETECT_MAGIC_BTN_LABEL_GM,
     DETECT_MAGIC_BTN_LABEL_PLAYER,
     DETECT_MAGIC_BTN_TITLE_GM
-} from "../RestConstants.js";
-import { itemIsDnD5ePotionType, resolveItemFromDropEvent } from "../../util/itemDropUtils.js";
+} from "../../data/RestConstants.js";
+import { itemIsDnD5ePotionType, resolveItemFromDropEvent } from "../../utils/itemDropUtils.js";
 
 const MODULE_ID = "ionrift-respite";
 

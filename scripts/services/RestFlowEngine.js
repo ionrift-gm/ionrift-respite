@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import { getPartyActors } from "./partyActors.js";
 import { boostComfort, getHdPenalty, getExhaustionDC, HP_FRACTION, isComfortEnabled } from "./ComfortCalculator.js";
 

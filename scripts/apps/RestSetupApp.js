@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import { RestFlowEngine } from "../services/RestFlowEngine.js";
 import {
     executePlayerRoll, executeAbilityRoll, rollForPlayer, pickBestSkill, SKILL_DISPLAY_NAMES,
@@ -71,7 +71,7 @@ import {
     notifyDetectMagicScanApplied,
     notifyDetectMagicScanCleared
 } from "../services/DetectMagicInventoryGlowBridge.js";
-import { ImageResolver } from "../util/ImageResolver.js";
+import { ImageResolver } from "../utils/ImageResolver.js";
 import { CraftingPickerApp } from "./CraftingPickerApp.js";
 import { CraftingDelegate } from "./delegates/CraftingDelegate.js";
 import { MealDelegate } from "./delegates/MealDelegate.js";
@@ -82,7 +82,7 @@ import { CampCeremonyDelegate } from "./delegates/CampCeremonyDelegate.js";
 import { EventsPhaseDelegate } from "./delegates/EventsPhaseDelegate.js";
 import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
 import { DetectMagicDelegate, collectPartyIdentifyEmbedData, computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, spawnDetectMagicCastRipple, purgeDetectMagicRestArtifacts } from "./delegates/DetectMagicDelegate.js";
-import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, getComfortTip, CAMP_STATIONS, getStationsForTerrain, getStationOfferedActivityIds, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments, applyActivityPortraitAssignments, foldOrphanedAssignmentsOntoOther, isWorkbenchExamineUiEnabled, isWorkbenchIdentifyUiEnabled } from "./RestConstants.js";
+import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS, getComfortTip, CAMP_STATIONS, getStationsForTerrain, getStationOfferedActivityIds, inferCanvasStationForActivity, getActivityAdvisory, buildPartyState, buildActivityAssignments, applyActivityPortraitAssignments, foldOrphanedAssignmentsOntoOther, isWorkbenchExamineUiEnabled, isWorkbenchIdentifyUiEnabled } from "../data/RestConstants.js";
 import { isComfortEnabled, COMFORT_TIERS } from "../services/ComfortCalculator.js";
 import { logCampfireReconnect } from "../services/CampfireReconnectLog.js";
 import {
@@ -8505,17 +8505,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     const actor = game.actors.get(r.characterId);
                     if (!actor) continue;
                     const adapter = game.ionrift?.respite?.adapter;
+                    const current = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+                    const newLevel = Math.min(6, current + r.starvationExhaustion);
                     if (adapter) {
                         await adapter.applyExhaustionDelta(actor, r.starvationExhaustion);
                     } else {
-                        const current = actor.system?.attributes?.exhaustion ?? 0;
-                        const newLevel = Math.min(6, current + r.starvationExhaustion);
                         if (newLevel > current) {
                             await actor.update({ "system.attributes.exhaustion": newLevel });
                         }
                     }
                     r.mealExhaustionApplied += r.starvationExhaustion;
-                    await stampDeprivationExhaustionFloor(actor);
+                    await stampDeprivationExhaustionFloor(actor, newLevel);
                     await ChatMessage.create({
                         content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.starvationExhaustion}</strong> level${r.starvationExhaustion > 1 ? "s" : ""} of exhaustion from starvation.</div>`,
                         speaker: ChatMessage.getSpeaker({ actor })
@@ -8525,17 +8525,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     const actor = game.actors.get(r.characterId);
                     if (!actor) continue;
                     const adapter = game.ionrift?.respite?.adapter;
+                    const current = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+                    const newLevel = Math.min(6, current + r.essenceExhaustion);
                     if (adapter) {
                         await adapter.applyExhaustionDelta(actor, r.essenceExhaustion);
                     } else {
-                        const current = actor.system?.attributes?.exhaustion ?? 0;
-                        const newLevel = Math.min(6, current + r.essenceExhaustion);
                         if (newLevel > current) {
                             await actor.update({ "system.attributes.exhaustion": newLevel });
                         }
                     }
                     r.mealExhaustionApplied += r.essenceExhaustion;
-                    await stampDeprivationExhaustionFloor(actor);
+                    await stampDeprivationExhaustionFloor(actor, newLevel);
                     await ChatMessage.create({
                         content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.essenceExhaustion}</strong> level${r.essenceExhaustion > 1 ? "s" : ""} of exhaustion from essence depletion.</div>`,
                         speaker: ChatMessage.getSpeaker({ actor })
@@ -8546,17 +8546,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     const actor = game.actors.get(r.characterId);
                     if (!actor) continue;
                     const adapter = game.ionrift?.respite?.adapter;
+                    const current = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+                    const newLevel = Math.min(6, current + 1);
                     if (adapter) {
                         await adapter.applyExhaustionDelta(actor, 1);
                     } else {
-                        const current = actor.system?.attributes?.exhaustion ?? 0;
-                        const newLevel = Math.min(6, current + 1);
                         if (newLevel > current) {
                             await actor.update({ "system.attributes.exhaustion": newLevel });
                         }
                     }
                     r.mealExhaustionApplied += 1;
-                    await stampDeprivationExhaustionFloor(actor);
+                    await stampDeprivationExhaustionFloor(actor, newLevel);
                     const restsSinceWater = actor.getFlag("ionrift-respite", "restsSinceWater") ?? 0;
                     await ChatMessage.create({
                         content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains 1 level of exhaustion from severe dehydration (auto-fail, ${restsSinceWater} rests without water).</div>`,
@@ -8580,17 +8580,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     }
                     if (roll.total < r.dehydrationSaveDC) {
                         const adapter = game.ionrift?.respite?.adapter;
+                        const current = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+                        const newLevel = Math.min(6, current + 1);
                         if (adapter) {
                             await adapter.applyExhaustionDelta(actor, 1);
                         } else {
-                            const current = actor.system?.attributes?.exhaustion ?? 0;
-                            const newLevel = Math.min(6, current + 1);
                             if (newLevel > current) {
                                 await actor.update({ "system.attributes.exhaustion": newLevel });
                             }
                         }
                         r.mealExhaustionApplied += 1;
-                        await stampDeprivationExhaustionFloor(actor);
+                        await stampDeprivationExhaustionFloor(actor, newLevel);
                         await ChatMessage.create({
                             content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> fails the CON save (${roll.total} vs DC ${r.dehydrationSaveDC}) and gains 1 level of exhaustion from dehydration.</div>`,
                             speaker: ChatMessage.getSpeaker({ actor })

@@ -4,7 +4,7 @@
  * flags, and compute starvation/dehydration consequences.
  */
 
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import { ItemClassifier } from "./ItemClassifier.js";
 import { consumeItem } from "./MealItemConsumer.js";
 import { dispatchWellFedMealServing } from "./WellFedService.js";

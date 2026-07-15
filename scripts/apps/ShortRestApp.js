@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import { HitDieModifiers } from "../services/HitDieModifiers.js";
 import { SpellSlotRecovery } from "../services/SpellSlotRecovery.js";
 
@@ -31,7 +31,7 @@ const SONG_TIMING_KEY = "songOfRestTiming";
 const MAX_VALUE_HD_KEY = "maxValueHitDice";
 /** Actor flag: pending Arcane/Natural Recovery selections for GM apply on rest complete. */
 const SPELL_RECOVERY_FLAG = "spellRecoveryPending";
-import { ImageResolver } from "../util/ImageResolver.js";
+import { ImageResolver } from "../utils/ImageResolver.js";
 import { WorkbenchDelegate } from "./delegates/WorkbenchDelegate.js";
 import {
     collectPartyIdentifyEmbedData,

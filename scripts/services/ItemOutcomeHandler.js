@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import { CalendarHandler } from "./CalendarHandler.js";
 import { ItemClassifier } from "./ItemClassifier.js";
 import { SpoilageClock } from "./SpoilageClock.js";

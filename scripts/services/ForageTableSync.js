@@ -3,7 +3,7 @@
  * Tables are the draw source for travel forage; compendium edits trigger a debounced rebuild.
  */
 
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import { resolvePoolFromFolderPath } from "./CompendiumFolderIndex.js";
 import {
     compendiumIndexDocumentId,

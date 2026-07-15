@@ -5,7 +5,7 @@
  * sublayers at world-ready time (GM only). Hot-swaps on overlay changes.
  */
 
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import {
     getMealBuffHandler,
     registerMealBuffHandler,

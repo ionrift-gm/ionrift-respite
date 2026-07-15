@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import { ConditionAdvisory } from "./ConditionAdvisory.js";
 import { ResourceSink } from "./ResourceSink.js";
 

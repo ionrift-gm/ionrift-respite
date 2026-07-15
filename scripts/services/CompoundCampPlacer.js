@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 /**
  * CompoundCampPlacer
  * Places the campfire pit (base + flame tokens) on the active scene. Shared
@@ -12,7 +12,7 @@ import { Logger } from "../lib/Logger.js";
 
 import { getPartyActors } from "./partyActors.js";
 import { isSimpleStationsMode } from "./RestProfileSettings.js";
-import { ImageResolver } from "../util/ImageResolver.js";
+import { ImageResolver } from "../utils/ImageResolver.js";
 
 /** Placeholder token definition for station build-sites before equipment is assigned. */
 const PLACEHOLDER_CAMP_STATION = {

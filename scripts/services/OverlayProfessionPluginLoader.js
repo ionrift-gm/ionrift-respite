@@ -4,7 +4,7 @@
  * Loads profession root plugins from overlay sublayers (plugins/profession.mjs).
  */
 
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import { registerMealBuffHandler } from "./MealBuffHandlerRegistry.js";
 import {
     getProfessionPlugin,

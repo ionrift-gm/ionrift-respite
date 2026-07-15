@@ -38,7 +38,7 @@ import {
     syncRecipeOutputsToCompendium
 } from "../services/RecipeOutputCompendium.js";
 import { PROVISIONS_CUSTOM_PACK_ID } from "../services/ProvisionsCustomPack.js";
-import { SKILL_NAMES } from "./RestConstants.js";
+import { SKILL_NAMES } from "../data/RestConstants.js";
 
 const MODULE_ID = "ionrift-respite";
 

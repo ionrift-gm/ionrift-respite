@@ -16,7 +16,7 @@ import {
     getActivityAdvisory,
     buildFollowUpDataForActivity,
     buildCheckLabelForActivity
-} from "./RestConstants.js";
+} from "../data/RestConstants.js";
 
 // ─── Internal helper ─────────────────────────────────────────────────────────
 

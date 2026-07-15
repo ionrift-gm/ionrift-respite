@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 /**
  * SocketRouter: inbound socket message dispatcher.
  * Extracted from module.js (Phase 2.2).
