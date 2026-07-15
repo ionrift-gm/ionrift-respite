@@ -1,8 +1,9 @@
-const { AbstractPackRegistryApp } = await import("../../../../ionrift-library/scripts/apps/AbstractPackRegistryApp.js");
+const { AbstractPackRegistryApp } = await import("../../../../ionrift-library/scripts/apps/packs/AbstractPackRegistryApp.js");
 import { TerrainRegistry } from "../../services/events/resolve/TerrainRegistry.js";
 import { importEventPackFromFile } from "../../services/events/catalog/EventPackImportService.js";
 import { ImageResolver } from "../../utils/ImageResolver.js";
 import { EventBrowserApp } from "../events/EventBrowserApp.js";
+import { getWorldSetting } from "../../../../ionrift-library/scripts/services/platform/connectOwnedSettings.js";
 
 /**
  * PackRegistryApp
@@ -40,7 +41,7 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
 
     async _preparePackData() {
         const enabledPacks = game.settings.get("ionrift-respite", "enabledPacks") ?? {};
-        const installedPacks = game.settings.get("ionrift-library", "installedPacks") ?? {};
+        const installedPacks = getWorldSetting("installedPacks") ?? {};
         const packs = new Map();
 
         const _ensurePack = (packId) => {

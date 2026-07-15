@@ -11,6 +11,7 @@ import {
     showEventPackImportFailure
 } from "./EventPackValidation.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { getWorldSetting, setWorldSetting } from "../../../../../ionrift-library/scripts/services/platform/connectOwnedSettings.js";
 
 /**
  * Writes an imported event pack into world settings and enables it.
@@ -72,7 +73,7 @@ export async function persistImportedEventPack(data, importMeta = {}) {
 async function storeLibraryPackMetadata(data, isLegacy, manifest) {
     if (isLegacy) return;
 
-    const installedPacks = game.settings.get("ionrift-library", "installedPacks") ?? {};
+    const installedPacks = getWorldSetting("installedPacks") ?? {};
     installedPacks[manifest.packId] = {
         version: manifest.version,
         tier: manifest.tier,
@@ -81,7 +82,7 @@ async function storeLibraryPackMetadata(data, isLegacy, manifest) {
         installedAt: new Date().toISOString(),
         fileCount: 1
     };
-    await game.settings.set("ionrift-library", "installedPacks", installedPacks);
+    await setWorldSetting("installedPacks", installedPacks);
 }
 
 /**
