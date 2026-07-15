@@ -4,9 +4,7 @@
  * Resource pools are not auto-loaded; travel and camp forage require pool data from an imported pack.
  */
 
-// ═══════════════════════════════════════════════════════════════
 //  RECIPES
-// ═══════════════════════════════════════════════════════════════
 
 export const STUB_RECIPES = {
     cooking: [
@@ -339,9 +337,7 @@ export const STUB_RECIPES = {
     ]
 };
 
-// ═══════════════════════════════════════════════════════════════
 //  HUNT YIELDS (built-in fallback when no pack tables loaded)
-// ═══════════════════════════════════════════════════════════════
 
 export const STUB_HUNT_YIELDS = {
     forest: {
