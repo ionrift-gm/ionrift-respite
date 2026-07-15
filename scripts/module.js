@@ -82,45 +82,29 @@ let activeShortRestApp = null;
 // Active player rest app reference for socket routing.
 let activePlayerRestApp = null;
 
-/** Active TotM campfire minigame embed (socket sync for whittle, sticks, emotes). */
+/** Active TotM campfire minigame embed (socket sync). */
 let activeCampfireEmbed = null;
 
-// Tracks whether a player-side rest flow is currently active.
 let _playerRestActive = false;
 
-/**
- * Registers the active CampfireEmbed for socket routing.
- * @param {import("./apps/camp/CampfireEmbed.js").CampfireEmbed|null} embed
- */
+/** @param {import("./apps/camp/CampfireEmbed.js").CampfireEmbed|null} embed */
 export function registerCampfireEmbed(embed) {
     activeCampfireEmbed = embed;
 }
 
-/** Clears the active CampfireEmbed reference. */
 export function clearCampfireEmbed() {
     activeCampfireEmbed = null;
 }
 
-/**
- * Registers the active RestSetupApp so the socket handler can route to it.
- * Called by RestSetupApp on render.
- */
 export function registerActiveRestApp(app) {
     activeRestSetupApp = app;
     respiteFlowActive = true;
 }
 
-/**
- * Stores the current rest data so late-joining players can retrieve it.
- */
 export function setActiveRestData(data) {
     activeRestData = data;
 }
 
-/**
- * Clears the active RestSetupApp reference.
- * Called by RestSetupApp on close.
- */
 export function clearActiveRestApp() {
     activeRestSetupApp = null;
     activeRestData = null;
@@ -131,38 +115,24 @@ export function clearActiveRestApp() {
 }
 
 /**
- * Keeps the GM RestSetupApp ref alive when the app closes to the footer indicator
- * during the activity phase. The rest is still active; the ref is needed for
- * handleRequestRestState to build snapshots for late-joining players.
- *
- * Does not clear activeRestData or activeRestSetupApp.
- * Only called from RestSetupApp.close({ retainGmRestApp: true }).
+ * Keep GM RestSetupApp ref when closing to the footer indicator during activity.
+ * Rest stays active; needed for handleRequestRestState late-join snapshots.
+ * Only from RestSetupApp.close({ retainGmRestApp: true }).
  */
 export function retainGmRestAppFooter() {
-    // respiteFlowActive stays true; rest is still running.
-    // activeRestSetupApp and activeRestData are intentionally left intact.
     _removeGmRestIndicator();
 }
 
-/**
- * Registers the active ShortRestApp so socket messages route to it.
- */
 export function registerActiveShortRestApp(app) {
     activeShortRestApp = app;
     respiteFlowActive = true;
 }
 
-/**
- * Clears the active ShortRestApp reference.
- */
 export function clearActiveShortRestApp() {
     activeShortRestApp = null;
     respiteFlowActive = false;
 }
 
-/**
- * Called by players to show a rejoin notification for an active short rest.
- */
 export function notifyShortRestActive() {
     _showShortRestRejoinNotification();
 }
@@ -170,9 +140,6 @@ export function notifyShortRestActive() {
 /** @type {AfkPanelApp|null} */
 let activeAfkPanel = null;
 
-/**
- * Shows the persistent AFK panel during an active rest (long or short).
- */
 export function showAfkPanel() {
     reconcileFromAdapters();
     if (activeAfkPanel?.rendered) {
@@ -183,9 +150,6 @@ export function showAfkPanel() {
     void activeAfkPanel.render({ force: true });
 }
 
-/**
- * Hides the AFK panel and clears shared AFK state.
- */
 export function hideAfkPanel() {
     if (activeAfkPanel) {
         activeAfkPanel.close();
@@ -194,20 +158,13 @@ export function hideAfkPanel() {
     RestAfkState.clear();
 }
 
-/**
- * Refreshes the AFK panel after socket updates (no-op if not shown).
- */
 export function refreshAfkPanel() {
     if (activeAfkPanel?.rendered) {
         activeAfkPanel.render({ force: true });
     }
 }
 
-/**
- * Emits AFK sync using the correct socket type for the active rest (long vs short).
- * @param {string} characterId
- * @param {boolean} isAfk
- */
+/** Long vs short socket type for AFK sync. */
 export function emitAfkSocket(characterId, isAfk) {
     const longRest = !!(activeRestSetupApp ?? activePlayerRestApp);
     const shortOnly = !!activeShortRestApp && !longRest;
@@ -229,7 +186,7 @@ function _ambientAfkHudWorldEnabled() {
     }
 }
 
-/** After a rest ends: clear AFK state and panel, then show ambient HUD if the world allows it. */
+/** After rest ends: clear AFK, then ambient HUD if the world allows it. */
 export function hideAfkPanelAfterRest() {
     hideAfkPanel();
     if (_ambientAfkHudWorldEnabled()) void showAfkPanel();
@@ -241,11 +198,7 @@ function _maybeShowAmbientAfkPanelAtReady() {
     void showAfkPanel();
 }
 
-/**
- * Checks whether a new rest can be started.
- * Guards against: active flow already open, and Simple Calendar 1-rest-per-day.
- * @returns {boolean} true if a rest can start, false if blocked.
- */
+/** Guard active flow and Simple Calendar one-rest-per-day. @returns {boolean} */
 function _canStartRest() {
     if (respiteFlowActive) {
         ui.notifications.warn("A rest is already in progress.");
