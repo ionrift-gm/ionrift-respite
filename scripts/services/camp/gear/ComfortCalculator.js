@@ -1,0 +1,104 @@
+/**
+ * ComfortCalculator
+ *
+ * Single source of truth for comfort-tier arithmetic used by RestFlowEngine,
+ * CampGearScanner, RestSetupApp, and RestConstants. Consolidates the
+ * previously duplicated tier arrays, HD penalties, HP caps, exhaustion DCs,
+ * and tier-stepping logic into one testable service.
+ *
+ * Design notes:
+ *   - The canonical tier list uses four tiers: hostile ,  rough ,  sheltered ,  safe.
+ *   - CampGearScanner's five-tier list (which includes "comfortable") is an
+ *     aliased display concern: "comfortable" maps to "sheltered" mechanically.
+ *   - Tier-stepping clamps to array bounds (hostile floor, safe ceiling).
+ */
+
+/**
+ * Single gate for the entire comfort subsystem.
+ * When false, all downstream comfort mechanics short-circuit to safe/neutral values.
+ * @returns {boolean}
+ */
+export function isComfortEnabled() {
+    try { return game.settings.get("ionrift-respite", "enableComfort"); }
+    catch { return true; } // default true if setting not yet registered
+}
+
+/** Comfort tiers in ascending order (worst ,  best). */
+export const COMFORT_TIERS = Object.freeze(["hostile", "rough", "sheltered", "safe"]);
+
+/** Numeric rank for each tier (used for comparison and clamping). */
+export const COMFORT_RANK = Object.freeze({ hostile: 0, rough: 1, sheltered: 2, safe: 3 });
+
+/** Inverse of COMFORT_RANK: rank index ,  tier key. */
+export const RANK_TO_KEY = Object.freeze(["hostile", "rough", "sheltered", "safe"]);
+
+/** HD penalty applied at each comfort tier. */
+export const HD_PENALTY = Object.freeze({ safe: 0, sheltered: 0, rough: 1, hostile: 2 });
+
+/** HP fraction restored at each comfort tier (1.0 = full, 0.75 = hostile cap). */
+export const HP_FRACTION = Object.freeze({ safe: 1.0, sheltered: 1.0, rough: 1.0, hostile: 0.75 });
+
+/** Exhaustion CON save DC at each tier (null = no risk). */
+export const EXHAUSTION_DC = Object.freeze({ safe: null, sheltered: null, rough: 10, hostile: 15 });
+
+/**
+ * Boost a comfort tier by `steps` levels (clamped to safe).
+ * Negative steps lower the tier (clamped to hostile).
+ * When comfort is disabled, always returns "safe".
+ *
+ * @param {string} tier - Current comfort tier key.
+ * @param {number} [steps=1] - Number of tiers to boost (positive) or lower (negative).
+ * @returns {string} The resulting tier key.
+ */
+export function boostComfort(tier, steps = 1) {
+    if (!isComfortEnabled()) return "safe";
+    const idx = COMFORT_TIERS.indexOf(tier);
+    if (idx < 0) return tier; // unknown tier, pass through
+    const clamped = Math.max(0, Math.min(COMFORT_TIERS.length - 1, idx + steps));
+    return COMFORT_TIERS[clamped];
+}
+
+/**
+ * Returns the exhaustion DC for a given comfort tier, or null if none.
+ * When comfort is disabled, always returns null (no exhaustion risk).
+ * @param {string} tier
+ * @returns {number|null}
+ */
+export function getExhaustionDC(tier) {
+    if (!isComfortEnabled()) return null;
+    return EXHAUSTION_DC[tier] ?? null;
+}
+
+/**
+ * Returns the HD penalty for a given comfort tier.
+ * When comfort is disabled, always returns 0 (no penalty).
+ * @param {string} tier
+ * @returns {number}
+ */
+export function getHdPenalty(tier) {
+    if (!isComfortEnabled()) return 0;
+    return HD_PENALTY[tier] ?? 0;
+}
+
+/**
+ * Returns the HP fraction cap for a given comfort tier.
+ * When comfort is disabled, always returns 1.0 (full HP).
+ * @param {string} tier
+ * @returns {number}
+ */
+export function getHpFraction(tier) {
+    if (!isComfortEnabled()) return 1.0;
+    return HP_FRACTION[tier] ?? 1.0;
+}
+
+/**
+ * Returns the activity DC modifier for a given comfort tier.
+ * Centralised here to eliminate duplication in RestConstants and ActivityResolver.
+ * When comfort is disabled, always returns 0.
+ * @param {string} tier
+ * @returns {number}
+ */
+export function getComfortDcMod(tier) {
+    if (!isComfortEnabled()) return 0;
+    return { safe: 0, sheltered: 0, rough: 2, hostile: 5 }[tier] ?? 0;
+}

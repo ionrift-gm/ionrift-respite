@@ -1,15 +1,24 @@
 import { Logger } from "../utils/Logger.js";
-import { DaggerheartAdapter } from "./DaggerheartAdapter.js";
-import { DnD35eAdapter } from "./DnD35eAdapter.js";
-import { DnD5eAdapter } from "./DnD5eAdapter.js";
-import { OSEAdapter } from "./OSEAdapter.js";
-import { PF1eAdapter } from "./PF1eAdapter.js";
-import { PF2eAdapter } from "./PF2eAdapter.js";
-import { SFRPGAdapter } from "./SFRPGAdapter.js";
-
-const MODULE_ID = "ionrift-respite";
+import { DaggerheartAdapter } from "./concrete/narrative/DaggerheartAdapter.js";
+import { DnD35eAdapter } from "./concrete/dnd/DnD35eAdapter.js";
+import { DnD5eAdapter } from "./concrete/dnd/DnD5eAdapter.js";
+import { OSEAdapter } from "./concrete/dnd/OSEAdapter.js";
+import { PF1eAdapter } from "./concrete/pathfinder/PF1eAdapter.js";
+import { PF2eAdapter } from "./concrete/pathfinder/PF2eAdapter.js";
+import { SFRPGAdapter } from "./concrete/pathfinder/SFRPGAdapter.js";
+import { MODULE_ID } from "../data/moduleId.js";
 
 let pf1RestHookRegistered = false;
+
+const ADAPTER_BY_SYSTEM = {
+    dnd5e: DnD5eAdapter,
+    pf2e: PF2eAdapter,
+    daggerheart: DaggerheartAdapter,
+    sfrpg: SFRPGAdapter,
+    pf1: PF1eAdapter,
+    D35E: DnD35eAdapter,
+    ose: OSEAdapter
+};
 
 /**
  * Suppress PF1-family default HP/HD recovery when Respite manages recovery.
@@ -29,48 +38,31 @@ function registerPf1RestHook() {
 
 /**
  * Auto-detect the active game system and return the appropriate adapter.
- *
- * Called once during module init. The adapter is stored globally on
- * game.ionrift.respite.adapter for all services to reference.
- *
+ * Called once during module init. Stored on game.ionrift.respite.adapter.
  * @returns {SystemAdapter}
  */
 export function createAdapter() {
     const systemId = game.system?.id ?? "unknown";
+    const AdapterClass = ADAPTER_BY_SYSTEM[systemId] ?? DnD5eAdapter;
 
-    switch (systemId) {
-        case "dnd5e":
-            Logger.log(`${MODULE_ID} | System adapter: DnD5e`);
-            return new DnD5eAdapter();
-
-        case "pf2e":
-            Logger.log(`${MODULE_ID} | System adapter: PF2e (early support)`);
-            return new PF2eAdapter();
-
-        case "daggerheart":
-            console.warn(`${MODULE_ID} | System adapter: Daggerheart (stub, limited support)`);
-            return new DaggerheartAdapter();
-
-        case "sfrpg":
-            Logger.log(`${MODULE_ID} | System adapter: SFRPG`);
-            return new SFRPGAdapter();
-
-        case "pf1":
-            Logger.log(`${MODULE_ID} | System adapter: PF1e`);
-            registerPf1RestHook();
-            return new PF1eAdapter();
-
-        case "D35E":
-            Logger.log(`${MODULE_ID} | System adapter: D35E`);
-            registerPf1RestHook();
-            return new DnD35eAdapter();
-
-        case "ose":
-            Logger.log(`${MODULE_ID} | System adapter: OSE`);
-            return new OSEAdapter();
-
-        default:
-            console.warn(`${MODULE_ID} | Unknown system "${systemId}", falling back to DnD5e adapter`);
-            return new DnD5eAdapter();
+    if (systemId === "pf1" || systemId === "D35E") {
+        registerPf1RestHook();
     }
+
+    if (!ADAPTER_BY_SYSTEM[systemId]) {
+        console.warn(`${MODULE_ID} | Unknown system "${systemId}", falling back to DnD5e adapter`);
+    } else if (systemId === "daggerheart") {
+        console.warn(`${MODULE_ID} | System adapter: Daggerheart (stub, limited support)`);
+    } else if (systemId === "pf2e") {
+        Logger.log(`${MODULE_ID} | System adapter: PF2e (early support)`);
+    } else {
+        Logger.log(`${MODULE_ID} | System adapter: ${AdapterClass.name.replace(/Adapter$/, "")}`);
+    }
+
+    return new AdapterClass();
+}
+
+/** System ids with a concrete adapter class (for smoke tests). */
+export function getAdapterMapKeys() {
+    return Object.keys(ADAPTER_BY_SYSTEM);
 }

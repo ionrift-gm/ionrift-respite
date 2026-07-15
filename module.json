@@ -97,9 +97,9 @@
                                            {
                                                "id":  "ionrift-library",
                                                "type":  "module",
-                                               "manifest": "https://github.com/ionrift-gm/ionrift-library/releases/download/v2.5.3/module.json",
+                                               "manifest": "https://github.com/ionrift-gm/ionrift-library/releases/download/v2.5.10/module.json",
                                                "compatibility":  {
-                                                                     "minimum":  "2.5.3"
+                                                                     "minimum":  "2.5.10"
                                                                  }
                                            }
                                        ]

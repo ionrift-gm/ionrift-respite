@@ -1,9 +1,9 @@
 /**
  * Bidirectional AFK sync between Respite rest state and third-party modules.
  */
-import * as RestAfkState from "../RestAfkState.js";
-import { emitRestSessionAfk, refreshAfterAfkChange } from "../restSessionAfkEmit.js";
-import { getPartyActors } from "../partyActors.js";
+import * as RestAfkState from "../rest/session/RestAfkState.js";
+import { emitRestSessionAfk, refreshAfterAfkChange } from "../rest/session/restSessionAfkEmit.js";
+import { getPartyActors } from "../party/partyActors.js";
 import {
     fastFlipAdapterMeta,
     installFastFlipHooks,
@@ -20,8 +20,7 @@ import {
     removePlayerListStatusHooks,
     writePlayerListStatusAfk
 } from "./adapters/PlayerListStatusAfkAdapter.js";
-
-const MODULE_ID = "ionrift-respite";
+import { MODULE_ID } from "../../data/moduleId.js";
 
 /** @typedef {"respite"|"socket"|"external"|"reconcile"} AfkChangeOrigin */
 
@@ -35,8 +34,6 @@ const ADAPTER_READERS = [
     { meta: fastFlipAdapterMeta, read: readFastFlipAfk, write: writeFastFlipAfk },
     { meta: playerListStatusAdapterMeta, read: readPlayerListStatusAfk, write: writePlayerListStatusAfk }
 ];
-
-
 
 /** @returns {{ id: string, label: string, active: boolean }[]} */
 export function getDetectedAfkAdapters() {
