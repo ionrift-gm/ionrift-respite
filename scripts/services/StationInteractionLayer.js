@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 /**
  * StationInteractionLayer
  *
@@ -12,7 +12,7 @@ import { Logger } from "../lib/Logger.js";
  *   deactivate()         → remove all overlays, clean up ticker
  */
 
-import { CAMP_STATIONS, getStationsForTerrain, STATION_RANGE_SQUARES, inferCanvasStationForActivity } from "../apps/RestConstants.js";
+import { CAMP_STATIONS, getStationsForTerrain, STATION_RANGE_SQUARES, inferCanvasStationForActivity } from "../data/RestConstants.js";
 import { isSimpleStationsMode } from "./RestProfileSettings.js";
 import { isGearDeployed, measureWorldDistanceFeet } from "./CompoundCampPlacer.js";
 import { getPartyActors } from "./partyActors.js";

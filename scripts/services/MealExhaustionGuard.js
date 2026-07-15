@@ -41,13 +41,14 @@ export function readDeprivationExhaustionFloor(actor) {
 /**
  * Persist the actor's current exhaustion as the deprivation floor after meal-phase gains.
  * @param {Actor} actor
+ * @param {number} [level] - Explicit floor level if known to avoid race conditions.
  */
-export async function stampDeprivationExhaustionFloor(actor) {
+export async function stampDeprivationExhaustionFloor(actor, level) {
     if (!actor) return;
-    const level = readActorExhaustion(actor);
-    if (level <= 0) return;
-    await actor.setFlag(MODULE_ID, FLOOR_FLAG, level);
-    mealExhaustionFloors.set(actor.id, Math.max(mealExhaustionFloors.get(actor.id) ?? 0, level));
+    const finalLevel = level ?? readActorExhaustion(actor);
+    if (finalLevel <= 0) return;
+    await actor.setFlag(MODULE_ID, FLOOR_FLAG, finalLevel);
+    mealExhaustionFloors.set(actor.id, Math.max(mealExhaustionFloors.get(actor.id) ?? 0, finalLevel));
 }
 
 /**

@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 /**
  * TerrainRegistry
  * Centralized, data-driven terrain configuration for Respite.

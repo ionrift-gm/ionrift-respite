@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import { DaggerheartAdapter } from "./DaggerheartAdapter.js";
 import { DnD35eAdapter } from "./DnD35eAdapter.js";
 import { DnD5eAdapter } from "./DnD5eAdapter.js";

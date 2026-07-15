@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 
 const MODULE_ID = "ionrift-respite";
 

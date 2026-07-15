@@ -9,7 +9,7 @@
  *
  * Caches loaded data per session; invalidated on `ionrift.overlayContentChanged`.
  */
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 
 const MODULE_ID = "ionrift-respite";
 

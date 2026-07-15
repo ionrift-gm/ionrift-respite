@@ -1,5 +1,5 @@
 import { EventBrowserApp } from "../apps/EventBrowserApp.js";
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import { filterByEnabledPacks, loadAllCatalogEvents } from "./EventCatalogLoader.js";
 
 const MODULE_ID = "ionrift-respite";
