@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 /**
  * StationActivityDialog
  *
@@ -20,7 +20,7 @@ import {
     DETECT_MAGIC_BTN_TITLE_GM,
     isWorkbenchExamineUiEnabled,
     isWorkbenchIdentifyUiEnabled
-} from "./RestConstants.js";
+} from "../data/RestConstants.js";
 import { buildActivityListItem, buildActivityDetailContext } from "./ActivityDetailBuilder.js";
 import { computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, getDetectMagicPlayerAccessReason, spawnDetectMagicCastRipple } from "./delegates/DetectMagicDelegate.js";
 import { canPlaceStation, actorHasBrewingTools } from "../services/CompoundCampPlacer.js";

@@ -1,7 +1,7 @@
 const { AbstractPackRegistryApp } = await import("../../../ionrift-library/scripts/apps/AbstractPackRegistryApp.js");
 import { TerrainRegistry } from "../services/TerrainRegistry.js";
 import { importEventPackFromFile } from "../services/EventPackImportService.js";
-import { ImageResolver } from "../util/ImageResolver.js";
+import { ImageResolver } from "../utils/ImageResolver.js";
 import { EventBrowserApp } from "./EventBrowserApp.js";
 
 /**

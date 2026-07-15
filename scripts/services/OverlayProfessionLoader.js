@@ -11,7 +11,7 @@
  * Only installed overlays that are active for the world are read. Results are
  * cached per session and invalidated on `ionrift.overlayContentChanged`.
  */
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import { PROFESSION_TOOL_REQUIRED } from "./RecipeCatalog.js";
 
 const MODULE_ID = "ionrift-respite";

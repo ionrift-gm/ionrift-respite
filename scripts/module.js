@@ -1,4 +1,4 @@
-import { Logger as RespiteLog } from "./lib/Logger.js";
+import { Logger as RespiteLog } from "./utils/Logger.js";
 import { RestFlowEngine } from "./services/RestFlowEngine.js";
 import { ActivityResolver } from "./services/ActivityResolver.js";
 import { EventResolver } from "./services/EventResolver.js";
@@ -24,7 +24,7 @@ import {
 
 import { createAdapter } from "./adapters/adapterFactory.js";
 import { PackRegistryApp } from "./apps/PackRegistryApp.js";
-import { ImageResolver } from "./util/ImageResolver.js";
+import { ImageResolver } from "./utils/ImageResolver.js";
 import { ItemClassifier } from "./services/ItemClassifier.js";
 import { DietConfigApp } from "./apps/DietConfigApp.js";
 import { AfkPanelApp } from "./apps/AfkPanelApp.js";
@@ -676,7 +676,7 @@ Hooks.once("init", async () => {
     // Register Core Art Pack nudge with the shared library service so the
     // Settings panel surfaces it alongside the in-app camp-phase nudge.
     try {
-        const { registerArtPackNudge } = await import("./artPackNudge.js");
+        const { registerArtPackNudge } = await import("./services/packs/artPackNudge.js");
         registerArtPackNudge();
     } catch (e) {
         console.warn(`${MODULE_ID} | Art pack nudge registration failed:`, e);

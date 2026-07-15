@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 /**
  * CampfireTokenLinker
  * Finds a campfire token on the active scene and toggles its light source
