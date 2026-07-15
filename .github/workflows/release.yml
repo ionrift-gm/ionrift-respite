@@ -71,20 +71,35 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Checkout private module tools
+        uses: actions/checkout@v4
+        with:
+          repository: ionrift-gm/ionrift-testharness
+          token: ${{ secrets.IONRIFT_CI_PAT }}
+          path: ionrift-testharness
+
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
       - name: Validate CHANGELOG
-        run: node tools/validate-changelog.mjs
+        env:
+          MODULE_ROOT: ${{ github.workspace }}
+        run: node ionrift-testharness/tools/modules/respite/validate-changelog.mjs
 
       - name: Validate compendium sign-offs
-        run: node tools/validate-packs.mjs
+        env:
+          MODULE_ROOT: ${{ github.workspace }}
+        run: node ionrift-testharness/tools/modules/respite/validate-packs.mjs
 
       - name: Validate shipping manifest
-        run: node tools/validate-shipping.mjs
+        env:
+          MODULE_ROOT: ${{ github.workspace }}
+        run: node ionrift-testharness/tools/modules/respite/validate-shipping.mjs
 
       - name: Build shipping manifest
-        run: node tools/filter-manifest.mjs
+        env:
+          MODULE_ROOT: ${{ github.workspace }}
+        run: node ionrift-testharness/tools/modules/respite/filter-manifest.mjs
 
       - name: Stage filtered manifest for release
         run: cp .build/module.json module.json
@@ -121,22 +136,18 @@ jobs:
           echo "OK: module.json version ($VERSION) matches tag ($TAG)"
 
       - name: Compile compendium packs from JSON sources
-        run: node tools/compile-packs.mjs
+        env:
+          MODULE_ROOT: ${{ github.workspace }}
+        run: node ionrift-testharness/tools/modules/respite/compile-packs.mjs
 
       - name: Validate compiled packs
-        # --verify-only reads from packs/ directly (what goes into the zip).
-        # Without this flag the script recompiles into a staging directory and
-        # never checks the actual output, so a silent empty compile would pass.
-        run: node tools/validate-packs-local.mjs --verify-only
-        # Post-mortem (Respite v3.0.1): A user reported blank compendiums after install.
-        # Root cause: compilePack() can silently produce an empty-but-valid LevelDB.
-        # The prior validate step recompiled into .validation-staging and never read
-        # from packs/, so the empty output went into the zip undetected.
-        # compile-packs.mjs now fails on 0 entries; this step verifies the same output.
+        env:
+          MODULE_ROOT: ${{ github.workspace }}
+        run: node ionrift-testharness/tools/modules/respite/validate-packs-local.mjs --verify-only
 
       - name: Zip Module
         run: |
-          zip -r module.zip . -x ".git/*" ".github/*" ".gitignore" ".gitattributes" "RELEASE_WORKFLOW.md" "task.md" "package.json" "package-lock.json" "node_modules/*" "scripts/tests/*" "data/professions/*" "packs/src/*" "assets/items/forage/*" "assets/screenshots/pure/promo/*" "assets/tokens/*" "*.bak" "audit_*.json" "audit_*.txt" "audit_*.js" "docs/*.gif" "docs/*.mp4" "docs/*.webm" "SETUP_GUIDE.md" "TEST_SCENARIOS.md" "BACKLOG.md" "pack-items.mjs" "pack-actors.mjs" "tests/*" "vitest*" ".eslintrc*" "tools/*" ".build/*"
+          zip -r module.zip . -x ".git/*" ".github/*" ".gitignore" ".gitattributes" "RELEASE_WORKFLOW.md" "task.md" "package.json" "package-lock.json" "node_modules/*" "scripts/tests/*" "data/professions/*" "packs/src/*" "assets/items/forage/*" "assets/screenshots/pure/promo/*" "assets/tokens/*" "*.bak" "audit_*.json" "audit_*.txt" "audit_*.js" "docs/*.gif" "docs/*.mp4" "docs/*.webm" "SETUP_GUIDE.md" "TEST_SCENARIOS.md" "BACKLOG.md" "pack-items.mjs" "pack-actors.mjs" "tests/*" "vitest*" ".eslintrc*" "tools/*" "ionrift-testharness/*" ".build/*"
 
       - name: Smoke test release ZIP
         run: |
