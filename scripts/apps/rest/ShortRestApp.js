@@ -2,16 +2,6 @@ import { Logger } from "../../utils/Logger.js";
 import { HitDieModifiers } from "../../services/rest/recovery/HitDieModifiers.js";
 import { SpellSlotRecovery } from "../../services/rest/recovery/SpellSlotRecovery.js";
 import { MODULE_ID } from "../../data/moduleId.js";
-
-/**
- * ShortRestApp
- * Single-screen short rest flow. HD spending, shelter toggle, complete.
- * Self-service: players spend their own HD, GM oversees and completes.
- *
- * Uses actor.rollHitDie() (Foundry native) to stay in sync with character sheets.
- * Calls actor.shortRest() on completion for class feature recovery.
- */
-
 import {
     registerActiveShortRestApp,
     clearActiveShortRestApp,
