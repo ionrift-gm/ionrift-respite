@@ -15,7 +15,7 @@
  *   - Legacy flag migration (foodType -> resourceType)
  */
 
-import { stripSpoilageCohortSuffix } from "../../../../ionrift-library/scripts/services/cooking/CookingClassifier.js";
+import { stripSpoilageCohortSuffix } from "../../../../ionrift-library/scripts/services/cooking/match/CookingClassifier.js";
 import { MODULE_ID } from "../../data/moduleId.js";
 
 /** Built-in food item names (lowercase). */

@@ -18,7 +18,7 @@
 import { waitForDiceSoNice } from "../../ui/rollRequest/RollRequestManager.js";
 import { SpoilageClock } from "../../meal/spoilage/SpoilageClock.js";
 import { ItemClassifier } from "../../party/ItemClassifier.js";
-import { stripSpoilageCohortSuffix } from "../../../../../ionrift-library/scripts/services/cooking/CookingClassifier.js";
+import { stripSpoilageCohortSuffix } from "../../../../../ionrift-library/scripts/services/cooking/match/CookingClassifier.js";
 import { GrantLedger } from "../outcomes/GrantLedger.js";
 import { getPartyActors } from "../../party/partyActors.js";
 import { mergeRecipeLists } from "../recipes/RecipeCatalog.js";
