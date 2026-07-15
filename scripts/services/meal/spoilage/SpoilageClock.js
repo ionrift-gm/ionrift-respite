@@ -4,7 +4,7 @@
  * and stack/consume ordering for perishable ionrift-respite items.
  */
 
-import { stripSpoilageCohortSuffix } from "../../../../../ionrift-library/scripts/services/cooking/CookingClassifier.js";
+import { stripSpoilageCohortSuffix } from "../../../../../ionrift-library/scripts/services/cooking/match/CookingClassifier.js";
 import { CalendarHandler } from "../../rest/session/CalendarHandler.js";
 import { ItemClassifier } from "../../party/ItemClassifier.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
