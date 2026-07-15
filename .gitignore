@@ -68,6 +68,9 @@ ITEM_DESIGN_GUIDE.md
 # Build output (filtered manifest for release)
 .build/
 
+# Module-root tools live in private ionrift-testharness (principles §14)
+/tools/
+
 # Dev composition profiles (local only)
 dev-profiles.json
 packs/.staging/
