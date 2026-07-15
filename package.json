@@ -1,12 +1,13 @@
 {
   "scripts": {
     "lint": "eslint scripts --ext .js --max-warnings 250",
-    "lint:debug": "node tools/lint-debug-logging.mjs",
-    "validate:events": "node tools/validate-event-schema.mjs",
-    "validate:icons": "node tools/validate-icon-paths.mjs",
-    "lint:hbs": "node tools/lint-hbs.mjs",
-    "lint:hbs:watch": "node tools/lint-hbs.mjs --watch",
-    "build:packs": "node tools/compile-packs.mjs"
+    "lint:debug": "node ../ionrift-testharness/tools/modules/respite/lint-debug-logging.mjs",
+    "validate:events": "node ../ionrift-testharness/tools/modules/respite/validate-event-schema.mjs",
+    "validate:icons": "node ../ionrift-testharness/tools/modules/respite/validate-icon-paths.mjs",
+    "lint:hbs": "node ../ionrift-testharness/tools/modules/respite/lint-hbs.mjs",
+    "lint:hbs:watch": "node ../ionrift-testharness/tools/modules/respite/lint-hbs.mjs --watch",
+    "build:packs": "node ../ionrift-testharness/tools/modules/respite/compile-packs.mjs",
+    "validate:packs": "node ../ionrift-testharness/tools/modules/respite/validate-packs.mjs"
   },
   "dependencies": {
     "classic-level": "^3.0.0"
