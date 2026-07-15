@@ -6,7 +6,7 @@
     <div class="identify-caster-advisory">
         <i class="fas fa-hat-wizard"></i>
         {{#each identifyCasters}}{{#unless @first}}, {{/unless}}{{name}}{{/each}}
-        can cast Identify (ritual, free)
+        can cast Identify as a ritual (prepared — no slot used)
     </div>
     {{/if}}
     <p class="wb-ident-hint">DMG p.136 (Identifying a Magic Item): focus on 1 item per rest, or taste a potion, to learn properties without Identify. Use Detect Magic to reveal auras.</p>
@@ -59,7 +59,7 @@
             data-action="stationDetectMagicScan"
             {{#unless canTriggerDetectMagicScan}}disabled{{/unless}}
             {{#if workbenchSubmitPending}}disabled aria-disabled="true"{{/if}}
-            data-tooltip="{{#if workbenchSubmitPending}}Wait for identify to finish{{else}}{{#if magicScanActive}}Dismiss scan{{else}}{{#if canTriggerDetectMagicScan}}{{#if isGmUser}}Cast Detect Magic for the party{{else}}Cast Detect Magic{{/if}}{{else}}No Detect Magic caster in party{{/if}}{{/if}}{{/if}}">
+            data-tooltip="{{#if workbenchSubmitPending}}Wait for identify to finish{{else}}{{#if magicScanActive}}Dismiss scan{{else}}{{#if canTriggerDetectMagicScan}}{{#if isGmUser}}Cast Detect Magic for the party{{else}}Cast Detect Magic{{/if}}{{else}}Detect Magic must be prepared to cast as a ritual (PHB 2024 p.234). Wizards can cast from their spellbook unprepared.{{/if}}{{/if}}{{/if}}">
             <i class="fas {{#if magicScanActive}}fa-eye-slash{{else}}fa-eye{{/if}}" aria-hidden="true"></i>
             <span class="btn-detect-magic-text">{{#if magicScanActive}}Dismiss{{else}}Detect Magic{{/if}}</span>
         </button>
