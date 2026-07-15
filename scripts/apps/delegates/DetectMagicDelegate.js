@@ -29,8 +29,30 @@ const trackedDetectMagicTemplateUuids = new Set();
 // ── Free-function helpers (copied from RSA module scope) ────────────────────
 
 /**
+ * Whether an actor is a Wizard (Ritual Adept class feature).
+ * Wizards can ritual-cast any Ritual-tagged spell directly from their spellbook
+ * without having it prepared (PHB 2024 p.115).
+ * @param {Actor} actor
+ * @returns {boolean}
+ */
+function actorIsWizard(actor) {
+    // dnd5e 3+: actor.classes is a keyed object of class items
+    if (actor.classes?.wizard) return true;
+    // Fallback: scan items for a class named "wizard"
+    return !!(actor.items?.find(i2 => i2.type === "class" && i2.name?.toLowerCase() === "wizard"));
+}
+
+/**
  * Whether an actor can cast a named spell from their sheet
- * (dnd5e: cantrips, prepared, always, innate).
+ * (dnd5e: cantrips, prepared, always, innate, or Wizard ritual-from-spellbook).
+ *
+ * PHB 2024 p.234 — Ritual tag: you can cast a ritual spell without expending a
+ * spell slot, but ONLY if the spell is prepared. Exception: Wizards with the
+ * Ritual Adept class feature (PHB p.115) can ritual-cast any Ritual-tagged spell
+ * directly from their spellbook without preparation. The Ritual Caster feat
+ * (PHB p.204) grants its spells as "always prepared" (mode="always"), which is
+ * already caught by the mode check below — no special case needed.
+ *
  * @param {Actor} actor
  * @param {string} spellNameLower
  * @returns {boolean}
@@ -43,12 +65,16 @@ function actorHasNamedSpellAccess(actor, spellNameLower) {
         const level = i.system?.level ?? 0;
         if (level === 0) return true;
 
-        // Ritual spells can be cast from the spellbook without preparation.
+        // PHB 2024 p.234 + p.115: Ritual Adept (Wizard only) — can cast ritual
+        // spells from spellbook without preparation.
         // Modern dnd5e: system.properties is a Set; legacy: system.components.ritual.
         const isRitual = (i.system?.properties instanceof Set && i.system.properties.has("ritual"))
             || i.system?.properties?.ritual === true
             || i.system?.components?.ritual === true;
-        if (isRitual) return true;
+        if (isRitual && actorIsWizard(actor)) return true;
+        // Non-Wizards with a ritual-tagged spell still need it prepared — that
+        // is caught by the isPrepared check below (Ritual Caster feat sets
+        // preparation mode to "always", so it also passes through).
 
         // dnd5e 5.1+ renamed preparation.mode → system.method
         //                      preparation.prepared → system.prepared
@@ -324,8 +350,9 @@ export function getDetectMagicPlayerAccessReason(partyActors) {
             const isRitual = (item.system?.properties instanceof Set && item.system.properties.has("ritual"))
                 || item.system?.properties?.ritual === true
                 || item.system?.components?.ritual === true;
-            if (isRitual) {
-                return `${actor.name} has Detect Magic as a ritual and can cast it from their spellbook.`;
+            // PHB 2024 p.115: Wizard Ritual Adept — can cast from spellbook unprepared.
+            if (isRitual && actorIsWizard(actor)) {
+                return `${actor.name} can cast Detect Magic as a ritual (Wizard – Ritual Adept, PHB p.115).`;
             }
             let mode, isPrepared;
             if (item.system !== null && "method" in item.system) {
@@ -337,7 +364,9 @@ export function getDetectMagicPlayerAccessReason(partyActors) {
                 isPrepared = prep?.prepared;
             }
             if (mode === "innate") return `${actor.name} can cast Detect Magic innately.`;
-            if (mode === "always") return `${actor.name} always has Detect Magic available.`;
+            // mode="always" covers Ritual Caster feat (PHB p.204) and similar always-prepared sources.
+            if (mode === "always") return `${actor.name} always has Detect Magic available (Ritual Caster or similar, PHB p.204).`;
+            if (isPrepared === true && isRitual) return `${actor.name} has Detect Magic prepared with the Ritual tag — can cast as a ritual.`;
             if (isPrepared === true) return `${actor.name} has Detect Magic prepared.`;
         }
     }

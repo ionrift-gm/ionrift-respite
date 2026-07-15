@@ -2,7 +2,7 @@
  * Sync custom recipe outputs into world.ionrift-respite-custom (Cooking/Brewing Outputs).
  */
 
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import { ProvisionsCustomPack, PROVISIONS_CUSTOM_PACK_ID, folderParentId } from "./ProvisionsCustomPack.js";
 
 const MODULE_ID = "ionrift-respite";

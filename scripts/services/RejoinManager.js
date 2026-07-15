@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 /**
  * @module RejoinManager
  * @description Manages persistent notification bars for rest rejoin, prep, and GM indicators.

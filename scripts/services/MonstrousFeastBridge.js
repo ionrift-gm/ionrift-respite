@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 
 const MF_MODULE_ID = "ionrift-monstrous-feast";
 

@@ -32,7 +32,7 @@ pack-actors.mjs
 
 # Dev scripts & test suites (IP-sensitive, hosted in private ionrift-tests repo)
 scripts/tests/
-scripts/utils/
+# scripts/utils/ removed 2026-07-15 (MVCS runtime Logger lives here)
 scripts/dev-link-packs.ps1
 macros/
 

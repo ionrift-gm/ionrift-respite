@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import { ItemClassifier } from "./ItemClassifier.js";
 import { MealPhaseHandler } from "./MealPhaseHandler.js";
 

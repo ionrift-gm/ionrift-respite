@@ -4,7 +4,7 @@
  * handles communal (party-meal) serving, leftovers, and rest-boundary cleanup.
  */
 
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import { ItemClassifier } from "./ItemClassifier.js";
 import { MODULE_ID } from "./MealConstants.js";
 import { grantMealItem } from "./MealItemGrant.js";

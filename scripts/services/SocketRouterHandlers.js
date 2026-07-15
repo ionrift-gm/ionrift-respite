@@ -1,4 +1,4 @@
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import { refreshGmRestIndicator } from "./RejoinManager.js";
 /**
  * SocketRouterHandlers: handler functions for inbound socket messages.

@@ -3,7 +3,7 @@
  * Design: 5% of successful forages roll this table; when rolled, outcome is always kindling (d100 1-100).
  */
 
-import { Logger } from "../lib/Logger.js";
+import { Logger } from "../utils/Logger.js";
 import {
     scaleWeightsToTarget,
     sortForageEntries,
