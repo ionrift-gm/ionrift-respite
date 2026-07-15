@@ -1,9 +1,4 @@
 /**
- * Shared item-drop and classification utilities.
- * Extracted from RestSetupApp / WorkbenchDelegate where they were duplicated.
- */
-
-/**
  * Whether an item is a dnd5e potion-type consumable.
  * @param {Item} item
  * @returns {boolean}

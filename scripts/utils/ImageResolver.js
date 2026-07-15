@@ -1,4 +1,5 @@
 import { Logger } from "./Logger.js";
+import { MODULE_ID } from "../data/moduleId.js";
 /**
  * ImageResolver
  *
@@ -24,7 +25,6 @@ import { Logger } from "./Logger.js";
 
 /* global ForgeVTT, FilePicker */
 
-const MODULE_ID = "ionrift-respite";
 const FALLBACK_BANNER = `modules/${MODULE_ID}/assets/placeholder-banner.webp`;
 
 /** Overlay install root managed by ionrift-library OverlayService. */

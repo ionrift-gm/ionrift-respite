@@ -1,0 +1,182 @@
+import { isStationLayerActive } from "../../../services/camp/props/StationInteractionLayer.js";
+import { normalizeRecipeOutputImg } from "../../../services/crafting/recipes/RecipeIcons.js";
+import { MODULE_ID } from "../../../data/moduleId.js";
+
+export class CraftingDelegate {
+
+    constructor(app) {
+        this._app = app;
+    }
+
+        buildContext() {
+        const app = this._app;
+        if (!app._craftingDrawerOpen || !app._craftingDrawerProfession) return null;
+
+        const charId = app._selectedCharacterId;
+        const actor = charId ? game.actors.get(charId) : null;
+        if (!actor) return null;
+
+        const professionId = app._craftingDrawerProfession;
+        const professionLabels = {
+            cooking: "Cooking", alchemy: "Alchemy",
+            smithing: "Smithing", leatherworking: "Leatherworking",
+            brewing: "Brewing", tailoring: "Tailoring"
+        };
+
+        const terrainTag = app._engine?.terrainTag ?? app._restData?.terrainTag ?? null;
+        const status = app._craftingEngine.getRecipeStatus(actor, professionId, terrainTag);
+
+        const enrichRecipe = (recipe) => {
+            const adjustedDc = app._craftingEngine.getAdjustedCraftingDc(
+                actor, recipe, app._craftingDrawerRisk, terrainTag
+            );
+            return {
+                ...recipe,
+                dcDisplay: adjustedDc,
+                outputName: recipe.output?.name ?? "Unknown",
+                outputImg: normalizeRecipeOutputImg(recipe.output?.img, "icons/svg/mystery-man.svg"),
+                ambitiousOutput: recipe.ambitiousOutput,
+                isSelected: recipe.id === app._craftingDrawerRecipeId,
+                ingredientList: (recipe.ingredients ?? []).map(ing => {
+                    const detail = recipe.ingredientStatus?.details?.find(d => d.name === ing.name);
+                    return {
+                        name: ing.name,
+                        required: ing.quantity ?? 1,
+                        available: detail?.available ?? 0,
+                        met: detail?.met ?? false
+                    };
+                })
+            };
+        };
+
+        const available = status.available.map(r => enrichRecipe(r));
+        const partial = status.partial.map(r => enrichRecipe(r));
+        const selectedRecipe = available.find(r => r.id === app._craftingDrawerRecipeId);
+
+        let commitSummary = null;
+        if (selectedRecipe && !app._craftingDrawerHasCrafted) {
+            const adjustedDc = app._craftingEngine.getAdjustedCraftingDc(
+                actor, selectedRecipe, app._craftingDrawerRisk, terrainTag
+            );
+            const outputForRisk = app._craftingDrawerRisk === "ambitious" && selectedRecipe.ambitiousOutput
+                ? selectedRecipe.ambitiousOutput
+                : selectedRecipe.output;
+
+            commitSummary = {
+                recipeName: selectedRecipe.name,
+                dc: adjustedDc,
+                risk: app._craftingDrawerRisk,
+                riskLabel: { safe: "Safe", standard: "Standard", ambitious: "Ambitious" }[app._craftingDrawerRisk],
+                outputName: outputForRisk?.name ?? selectedRecipe.outputName,
+                outputQuantity: outputForRisk?.quantity ?? 1,
+                ingredientCost: (selectedRecipe.ingredients ?? []).map(i => `${i.quantity ?? 1}x ${i.name}`).join(", "),
+                failConsequence: app._craftingDrawerRisk === "safe"
+                    ? "Ingredients preserved on failure"
+                    : "Ingredients consumed on failure",
+                skill: (selectedRecipe.skill ?? "sur").toUpperCase()
+            };
+        }
+
+        return {
+            isOpen: true,
+            profession: professionLabels[professionId] ?? professionId,
+            professionId,
+            actorName: actor.name,
+            selectedRisk: app._craftingDrawerRisk,
+            selectedRecipeId: app._craftingDrawerRecipeId,
+            hasCrafted: app._craftingDrawerHasCrafted,
+            showMissing: app._craftingDrawerShowMissing,
+            riskTiers: [
+                { id: "safe", label: "Safe", hint: "DC -3, ingredients preserved on failure", selected: app._craftingDrawerRisk === "safe" },
+                { id: "standard", label: "Standard", hint: "Base DC, ingredients consumed", selected: app._craftingDrawerRisk === "standard" },
+                { id: "ambitious", label: "Ambitious", hint: "DC +5, enhanced output on success", selected: app._craftingDrawerRisk === "ambitious" }
+            ],
+            available,
+            partial,
+            commitSummary,
+            craftingResult: app._craftingDrawerResult
+        };
+    }
+
+    onSelectRecipe(event, target) {
+        if (this._app._craftingDrawerHasCrafted) return;
+        this._app._craftingDrawerRecipeId = target.dataset.recipeId;
+        this._app.render();
+    }
+
+    onSelectRisk(event, target) {
+        if (this._app._craftingDrawerHasCrafted) return;
+        this._app._craftingDrawerRisk = target.dataset.risk;
+        this._app.render();
+    }
+
+    async onCraft(event, target) {
+        const app = this._app;
+        if (app._craftingDrawerHasCrafted || !app._craftingDrawerRecipeId) return;
+
+        const charId = app._selectedCharacterId;
+        const actor = charId ? game.actors.get(charId) : null;
+        if (!actor) return;
+
+        const terrainTag = app._engine?.terrainTag ?? app._restData?.terrainTag ?? null;
+        const partySize = app._craftingEngine.getRecipePartySize(app._craftingDrawerRecipeId, app._craftingDrawerProfession);
+        app._craftingDrawerResult = await app._craftingEngine.resolve(
+            actor, app._craftingDrawerRecipeId, app._craftingDrawerProfession, app._craftingDrawerRisk, terrainTag,
+            partySize, { ledger: app._grantLedger }
+        );
+        app._craftingDrawerHasCrafted = true;
+        app.render();
+    }
+
+    onToggleMissing(event, target) {
+        this._app._craftingDrawerShowMissing = !this._app._craftingDrawerShowMissing;
+        this._app.render();
+    }
+
+    onClose(event, target) {
+        const app = this._app;
+        const characterId = app._selectedCharacterId;
+        const profession = app._craftingDrawerProfession;
+        const result = app._craftingDrawerResult;
+
+        app._craftingInProgress?.delete(characterId);
+        app._craftingDrawerOpen = false;
+
+        if (app._craftingDrawerHasCrafted && result) {
+            app._craftingResults.set(characterId, result);
+
+            const craftingActivity = (app._activities ?? []).find(a => a.crafting?.profession === profession);
+            if (craftingActivity) {
+                if (app._isGM) {
+                    app._gmOverrides.set(characterId, craftingActivity.id);
+                    app._rebuildCharacterChoices();
+
+                    const submissions = {};
+                    for (const [charId, actId] of app._characterChoices) {
+                        const act = app._activities?.find(a => a.id === actId);
+                        submissions[charId] = { activityId: actId, activityName: act?.name ?? actId, source: app._gmOverrides.has(charId) ? "gm" : "player" };
+                    }
+                    game.socket.emit(`module.${MODULE_ID}`, { type: "submissionUpdate", submissions });
+                } else {
+                    app._characterChoices.set(characterId, craftingActivity.id);
+                    app._lockedCharacters = app._lockedCharacters ?? new Set();
+                    app._lockedCharacters.add(characterId);
+
+                    game.socket.emit(`module.${MODULE_ID}`, {
+                        type: "activityChoice",
+                        userId: game.user.id,
+                        choices: Object.fromEntries(app._characterChoices),
+                        craftingResults: { [characterId]: result }
+                    });
+                    const actor = game.actors.get(characterId);
+                    if (actor) ui.notifications.info(`${actor.name}'s activity submitted.`);
+                    if (app._phase === "activity" && isStationLayerActive()) {
+                        app._refreshStationOverlayForFocusChange?.();
+                    }
+                }
+            }
+        }
+
+        app.render();
+    }
+}

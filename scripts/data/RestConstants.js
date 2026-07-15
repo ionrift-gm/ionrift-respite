@@ -1,15 +1,10 @@
-/**
- * RestConstants.js
- * Shared constants for the Respite rest flow. Extracted from RestSetupApp
- * to reduce file size and improve maintainability.
- */
-
-import { isGearDeployed } from "../services/CompoundCampPlacer.js";
-import { HD_PENALTY, boostComfort, isComfortEnabled, getComfortDcMod, COMFORT_RANK, RANK_TO_KEY } from "../services/ComfortCalculator.js";
-import { isSimpleStationsMode } from "../services/RestProfileSettings.js";
-import { getFletchingYieldHint, isFletchingEnabled } from "../services/FletchingSettings.js";
-import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "../services/TrainingSettings.js";
-import { isPrayMeditateEnabled } from "../services/ActivityResolver.js";
+import { isGearDeployed } from "../services/camp/props/CompoundCampPlacer.js";
+import { HD_PENALTY, boostComfort, isComfortEnabled, getComfortDcMod, COMFORT_RANK, RANK_TO_KEY } from "../services/camp/gear/ComfortCalculator.js";
+import { isSimpleStationsMode } from "../services/rest/flow/RestProfileSettings.js";
+import { getFletchingYieldHint, isFletchingEnabled } from "../services/crafting/settings/FletchingSettings.js";
+import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "../services/crafting/settings/TrainingSettings.js";
+import { isPrayMeditateEnabled } from "../services/rest/flow/ActivityResolver.js";
+import { MODULE_ID } from "./moduleId.js";
 
 /**
  * Weather master table. Each entry defines comfort penalty, encounter DC modifier,
@@ -66,8 +61,6 @@ export const ACTIVITY_ICONS = {
     act_identify: "fas fa-search", act_scribe: "fas fa-scroll",
     act_other: "fas fa-comments"
 };
-
-const MODULE_ID = "ionrift-respite";
 
 /** @returns {boolean} TotM Identify tab and workbench identify station UI. */
 export function isWorkbenchIdentifyUiEnabled() {
@@ -259,7 +252,7 @@ export function getActivityAdvisory(activityId, actor, partyState) {
  * Pre-compute party state for advisory generation.
  * Call once per render, pass to each getActivityAdvisory call.
  * @param {Actor5e[]} partyActors - All actors in the rest
- * @param {Map} pendingSelections - Map of actorId → activityId
+ * @param {Map} pendingSelections - Map of actorId ,  activityId
  * @param {number} encounterDC - Current effective encounter DC
  * @returns {object}
  */
@@ -367,7 +360,7 @@ export const CAMP_STATIONS = [
 /**
  * Returns CAMP_STATIONS filtered and adjusted for a given terrain.
  * Hidden stations are removed; activities from hidden stations that should
- * migrate are folded into fallback stations (e.g. Keep Watch → bedroll in taverns).
+ * migrate are folded into fallback stations (e.g. Keep Watch ,  bedroll in taverns).
  * Labels are overridden per terrainLabel where defined.
  * @param {string} terrainTag
  * @param {boolean} [safeRestSpot] - Hides medical bed and relabels weapon rack for safe rest flow
@@ -600,15 +593,9 @@ export function foldOrphanedAssignmentsOntoOther(assignments, visibleActivityIds
 }
 
 /**
- * Build the follow-up input descriptor for a given activity and actor.
- * Extracted from StationActivityDialog._buildDetailContext() so TotM inline
- * panels can use the same logic without instantiating the full dialog.
- *
- * @param {string} activityId
- * @param {object} activity - Activity schema from ActivityResolver
- * @param {Actor5e} actor
- * @param {string|null} [currentValue] - Existing follow-up answer (for pre-selection)
- * @returns {object|null} Follow-up descriptor, or null if the activity has no follow-up
+ * Follow-up input descriptor for an activity (shared by TotM inline panels).
+ * @param {string|null} [currentValue] - Existing answer for pre-selection
+ * @returns {object|null}
  */
 export function buildFollowUpDataForActivity(activityId, activity, actor, currentValue = null) {
     if (!activity?.followUp) return null;

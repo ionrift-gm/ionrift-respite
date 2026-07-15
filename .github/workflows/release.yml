@@ -136,7 +136,7 @@ jobs:
 
       - name: Zip Module
         run: |
-          zip -r module.zip . -x ".git/*" ".github/*" ".gitignore" ".gitattributes" "RELEASE_WORKFLOW.md" "task.md" "package.json" "package-lock.json" "node_modules/*" "scripts/tests/*" "data/professions/*" "packs/src/*" "assets/items/forage/*" "assets/screenshots/pure/promo/*" "assets/tokens/*" "*.bak" "audit_*.json" "audit_*.txt" "audit_*.js" "docs/*" "SETUP_GUIDE.md" "TEST_SCENARIOS.md" "BACKLOG.md" "pack-items.mjs" "pack-actors.mjs" "scripts/utils/*" "tests/*" "vitest*" ".eslintrc*" "tools/*" ".build/*"
+          zip -r module.zip . -x ".git/*" ".github/*" ".gitignore" ".gitattributes" "RELEASE_WORKFLOW.md" "task.md" "package.json" "package-lock.json" "node_modules/*" "scripts/tests/*" "data/professions/*" "packs/src/*" "assets/items/forage/*" "assets/screenshots/pure/promo/*" "assets/tokens/*" "*.bak" "audit_*.json" "audit_*.txt" "audit_*.js" "docs/*.gif" "docs/*.mp4" "docs/*.webm" "SETUP_GUIDE.md" "TEST_SCENARIOS.md" "BACKLOG.md" "pack-items.mjs" "pack-actors.mjs" "tests/*" "vitest*" ".eslintrc*" "tools/*" ".build/*"
 
       - name: Smoke test release ZIP
         run: |

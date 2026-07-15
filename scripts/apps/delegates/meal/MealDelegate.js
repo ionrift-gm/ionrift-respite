@@ -1,0 +1,982 @@
+import { Logger } from "../../../utils/Logger.js";
+import { MODULE_ID } from "../../../data/moduleId.js";
+import { MealPhaseHandler } from "../../../services/meal/phase/MealPhaseHandler.js";
+import { TerrainRegistry } from "../../../services/events/resolve/TerrainRegistry.js";
+import { ItemClassifier } from "../../../services/party/ItemClassifier.js";
+import { getPartyActors } from "../../../services/party/partyActors.js";
+import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../../../services/camp/props/StationInteractionLayer.js";
+import { stampDeprivationExhaustionFloor } from "../../../services/meal/phase/MealExhaustionGuard.js";
+
+export class MealDelegate {
+
+    constructor(app) {
+        this._app = app;
+    }
+
+    static buildMissingCharactersList(characterIds, mealChoices, mealSubmissions, resolvers) {
+        const missing = [];
+        for (const charId of characterIds) {
+            const actor = resolvers.getActor(charId);
+            if (!actor) continue;
+            if (resolvers.participates && !resolvers.participates(actor)) continue;
+
+            const choice = mealChoices.get(charId);
+            if (choice?.consumedDays?.length > 0) continue;
+
+            const foodArr = Array.isArray(choice?.food) ? choice.food : [];
+            const waterArr = Array.isArray(choice?.water) ? choice.water : [];
+            const hasFood = foodArr.some(id => id && id !== "skip");
+            const hasWater = waterArr.some(id => id && id !== "skip");
+            if (hasFood && hasWater) continue;
+
+            const ownerUser = resolvers.findOwnerUser(actor);
+            const ownerSubmitted = ownerUser && mealSubmissions?.has(ownerUser.id);
+
+            missing.push({
+                name: actor.name,
+                playerOwned: !!ownerUser,
+                awaitingPlayer: !!ownerUser && !ownerSubmitted,
+                missingFood: !hasFood,
+                missingWater: !hasWater
+            });
+        }
+        return missing;
+    }
+
+    onSelectFood(event, target) {
+        const app = this._app;
+        const charId = target.dataset.characterId;
+        const value = target.value ?? target.getAttribute("value") ?? "skip";
+        if (!charId) return;
+
+        if (!app._mealChoices) app._mealChoices = new Map();
+        const existing = app._mealChoices.get(charId) ?? {};
+        const arr = Array.isArray(existing.food) ? [...existing.food] : [];
+        if (arr.length === 0) arr.push(value);
+        else arr[0] = value;
+        app._mealChoices.set(charId, { ...existing, food: arr });
+        app.render();
+    }
+
+    onSelectWater(event, target) {
+        const app = this._app;
+        const charId = target.dataset.characterId;
+        const value = target.value ?? target.getAttribute("value") ?? "skip";
+        if (!charId) return;
+
+        if (!app._mealChoices) app._mealChoices = new Map();
+        const existing = app._mealChoices.get(charId) ?? {};
+        const arr = Array.isArray(existing.water) ? [...existing.water] : [];
+        if (arr.length === 0) arr.push(value);
+        else arr[0] = value;
+        app._mealChoices.set(charId, { ...existing, water: arr });
+        app.render();
+    }
+
+    async onConsumeMealDay(event, target) {
+        const app = this._app;
+        if (!app._mealChoices) app._mealChoices = new Map();
+        const characterIds = app._isGM
+            ? [app._selectedCharacterId].filter(Boolean)
+            : (app._myCharacterIds ? Array.from(app._myCharacterIds) : []);
+
+        const consumeByCharacter = {};
+
+        for (const charId of characterIds) {
+            const choice = app._mealChoices.get(charId) ?? { food: [], water: [], consumedDays: [], currentDay: 0 };
+            const consumedDays = choice.consumedDays ?? [];
+            const currentDay = choice.currentDay ?? consumedDays.length;
+            const food = Array.isArray(choice.food) ? [...choice.food] : [];
+            const water = Array.isArray(choice.water) ? [...choice.water] : [];
+
+            if (!app._isGM) {
+                consumeByCharacter[charId] = { food, water, consumedDays, currentDay };
+                continue;
+            }
+
+            const actor = game.actors.get(charId);
+            // Compute bonusWater BEFORE consuming items (items still in inventory)
+            let dayBonusWater = 0;
+            if (actor) {
+                const satiatesLookup = app._buildSatiatesLookup?.() ?? null;
+                for (const itemId of food) {
+                    if (!itemId || itemId === "skip" || itemId.startsWith?.("__")) continue;
+                    const item = actor.items.get(itemId);
+                    if (!item) continue;
+                    let sats = item.flags?.["ionrift-respite"]?.satiates;
+                    if (!Array.isArray(sats) && satiatesLookup) {
+                        sats = satiatesLookup.get(item.name.toLowerCase().trim()) ?? null;
+                    }
+                    if (Array.isArray(sats) && sats.includes("water")) dayBonusWater++;
+                }
+            }
+            if (actor) {
+                // Snapshot food items before consumption for Well Fed resolution
+                const foodSnapshots = new Map();
+                for (const itemId of food) {
+                    if (itemId && itemId !== "skip") {
+                        const item = actor.items.get(itemId);
+                        if (item) foodSnapshots.set(itemId, item.toObject(false));
+                    }
+                }
+
+                for (const itemId of food) {
+                    if (itemId && itemId !== "skip") {
+                        const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                        const snapshot = foodSnapshots.get(itemId);
+                        if (snapshot && consumed > 0) {
+                            const partyIds = (app._myCharacterIds
+                                ? Array.from(app._myCharacterIds)
+                                : characterIds);
+                            await MealPhaseHandler._dispatchWellFedMealServing({
+                                consumerActor: actor,
+                                itemSnapshot: snapshot,
+                                partyIds
+                            });
+                        }
+                    }
+                }
+                for (const itemId of water) {
+                    if (itemId && itemId !== "skip") {
+                        await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                    }
+                }
+            }
+
+            consumedDays.push({ food, water, bonusWater: dayBonusWater, itemsConsumed: true });
+            app._mealChoices.set(charId, {
+                food: [],
+                water: [],
+                consumedDays,
+                currentDay: currentDay + 1
+            });
+        }
+
+        if (!app._isGM) {
+            if (!Object.keys(consumeByCharacter).length) {
+                app.render();
+                return;
+            }
+            game.socket.emit(`module.${MODULE_ID}`, {
+                type: "mealDayConsumeRequest",
+                userId: game.user.id,
+                consumeByCharacter
+            });
+            for (const [charId, pack] of Object.entries(consumeByCharacter)) {
+                const consumedDays = [...(pack.consumedDays ?? [])];
+                consumedDays.push({ food: pack.food, water: pack.water, bonusWater: pack.bonusWater ?? 0, itemsConsumed: true });
+                const priorDay = pack.currentDay ?? (pack.consumedDays?.length ?? 0);
+                app._mealChoices.set(charId, {
+                    food: [],
+                    water: [],
+                    consumedDays,
+                    currentDay: priorDay + 1
+                });
+            }
+            await app._saveRestState();
+            app.render();
+            return;
+        }
+
+        await app._saveRestState();
+
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "mealDayConsumed",
+            userId: game.user.id,
+            mealChoices: Object.fromEntries(app._mealChoices)
+        });
+
+        app.render();
+    }
+
+    /**
+     * Omits auxiliary sheets (loot, shared chests) that were inflating Skip Meals.
+     * @returns {Set<string>}
+     */
+    _mealObligatedOwnedCharacterIds(app) {
+        const owned = app._myCharacterIds;
+        if (!owned?.size) return new Set();
+
+        const rosterIds = new Set(getPartyActors().map(a => a.id));
+        let participantIds;
+        if (app._engine?.characterChoices?.size) {
+            participantIds = [...app._engine.characterChoices.keys()].filter(id => rosterIds.has(id));
+        } else {
+            participantIds = [...rosterIds].filter(id => owned.has(id));
+        }
+
+        const out = new Set();
+        for (const id of participantIds) {
+            if (!owned.has(id)) continue;
+            const actor = game.actors.get(id);
+            if (!actor || actor.type !== "character") continue;
+            if (!ItemClassifier.participatesInSustenance(actor)) continue;
+            out.add(id);
+        }
+        return out;
+    }
+
+    /**
+     * @param {string[]} skippedSlots
+     * @param {string} charId
+     * @param {{ food?: unknown[], water?: unknown[] }} choice
+     */
+    _pushMealSlotWarnings(skippedSlots, charId, choice) {
+        const MODULE_ID_LOCAL = "ionrift-respite";
+        const actor = game.actors.get(charId);
+        const name = actor?.name ?? charId;
+        const foodArr = Array.isArray(choice.food) ? choice.food : [];
+        const foodEmpty = foodArr.filter(v => !v || v === "skip").length;
+        if (foodArr.length === 0 || foodEmpty > 0) {
+            skippedSlots.push(`${name}: ${foodArr.length === 0 ? "no food" : `${foodEmpty} food slot${foodEmpty > 1 ? "s" : ""} empty`}`);
+        }
+
+    // Count bonus water from food items that satiate water (e.g. Camp Porridge)
+        let bonusWater = 0;
+        if (actor) {
+            const satiatesLookup = this._app._buildSatiatesLookup?.() ?? null;
+            for (const itemId of foodArr) {
+                if (!itemId || itemId === "skip" || itemId.startsWith?.("__")) continue;
+                const item = actor.items.get(itemId);
+                if (!item) continue;
+                let satiates = item.flags?.[MODULE_ID_LOCAL]?.satiates;
+                if (!Array.isArray(satiates) && satiatesLookup) {
+                    satiates = satiatesLookup.get(item.name.toLowerCase().trim()) ?? null;
+                }
+                if (Array.isArray(satiates) && satiates.includes("water")) bonusWater++;
+            }
+        }
+
+        const waterArr = Array.isArray(choice.water) ? choice.water : [];
+        const waterEmpty = waterArr.filter(v => !v || v === "skip").length;
+        const effectiveWaterEmpty = Math.max(0, waterEmpty - bonusWater);
+        const effectiveNoWater = waterArr.length === 0 && bonusWater === 0;
+        if (effectiveNoWater || effectiveWaterEmpty > 0) {
+            skippedSlots.push(`${name}: ${effectiveNoWater ? "no water" : `${effectiveWaterEmpty} water slot${effectiveWaterEmpty > 1 ? "s" : ""} empty`}`);
+        }
+    }
+
+    /**
+     * @param {string[]} skippedSlots
+     * @returns {Promise<boolean>}
+     */
+    async _confirmSkipMeals(skippedSlots) {
+        if (skippedSlots.length === 0) return true;
+        return await new Promise(resolve => {
+            const overlay = document.createElement("div");
+            overlay.classList.add("ionrift-armor-modal-overlay");
+            overlay.innerHTML = `
+                    <div class="ionrift-armor-modal">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Skip Meals?</h3>
+                        <p>The following meals are empty:</p>
+                        <ul>${skippedSlots.map(s => `<li>${s}</li>`).join("")}</ul>
+                        <p>Skipping meals has consequences.</p>
+                        <div class="ionrift-armor-modal-buttons">
+                            <button class="btn-armor-confirm"><i class="fas fa-check"></i> Continue</button>
+                            <button class="btn-armor-cancel"><i class="fas fa-arrow-left"></i> Go Back</button>
+                        </div>
+                    </div>`;
+            document.body.appendChild(overlay);
+            overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => {
+                overlay.remove();
+                resolve(true);
+            });
+            overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => {
+                overlay.remove();
+                resolve(false);
+            });
+        });
+    }
+
+    /** Cooking station: one character only (avoids party-chest sheets on submit). */
+    async onSubmitStationMealChoices(actorId) {
+        const app = this._app;
+        if (app._isGM || !actorId) return;
+
+        const obligated = this._mealObligatedOwnedCharacterIds(app);
+        if (!obligated.has(actorId)) return;
+
+        if (!app._activityMealRationsSubmitted) app._activityMealRationsSubmitted = new Set();
+        if (app._activityMealRationsSubmitted.has(actorId)) return;
+
+        const choice = app._mealChoices?.get(actorId) ?? {};
+        const totalDays = app._engine?.durationDays ?? 1;
+        if ((choice.consumedDays?.length ?? 0) >= totalDays) {
+            app._activityMealRationsSubmitted.add(actorId);
+            const allRecorded = [...obligated].every(id => app._activityMealRationsSubmitted.has(id));
+            if (allRecorded) app._mealSubmitted = true;
+            app.render();
+            return;
+        }
+
+        const skippedSlots = [];
+        this._pushMealSlotWarnings(skippedSlots, actorId, choice);
+        if (!(await this._confirmSkipMeals(skippedSlots))) return;
+
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "mealChoice",
+            userId: game.user.id,
+            choices: { [actorId]: choice }
+        });
+
+        app._activityMealRationsSubmitted.add(actorId);
+        const allRecorded = [...obligated].every(id => app._activityMealRationsSubmitted.has(id));
+        if (allRecorded) app._mealSubmitted = true;
+
+        if (isStationLayerActive()) {
+            refreshStationEmptyNoticeFade(app);
+        }
+        app.render();
+        ui.notifications.info("Meal choices submitted.");
+    }
+
+        async onSubmitMealChoices(event, target) {
+        const app = this._app;
+        if (app._isGM) return;
+
+        const obligated = this._mealObligatedOwnedCharacterIds(app);
+        const submitted = app._activityMealRationsSubmitted ?? new Set();
+        const pending = new Set([...obligated].filter(id => !submitted.has(id)));
+
+        const choices = {};
+        const skippedSlots = [];
+        const totalDays = app._engine?.durationDays ?? 1;
+
+        for (const charId of obligated) {
+            const choice = app._mealChoices?.get(charId) ?? {};
+
+            if ((choice.consumedDays?.length ?? 0) >= totalDays) {
+                choices[charId] = choice;
+                continue;
+            }
+
+            if (!pending.has(charId)) {
+                choices[charId] = choice;
+                continue;
+            }
+
+            choices[charId] = choice;
+            this._pushMealSlotWarnings(skippedSlots, charId, choice);
+        }
+
+        if (!(await this._confirmSkipMeals(skippedSlots))) return;
+
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "mealChoice",
+            userId: game.user.id,
+            choices
+        });
+
+        if (!app._activityMealRationsSubmitted) app._activityMealRationsSubmitted = new Set();
+        for (const charId of obligated) {
+            app._activityMealRationsSubmitted.add(charId);
+        }
+
+        app._mealSubmitted = true;
+        if (isStationLayerActive()) {
+            refreshStationEmptyNoticeFade(app);
+        }
+        app.render();
+        ui.notifications.info("Meal choices submitted.");
+    }
+
+        async onProceedFromMeal(event, target) {
+        const app = this._app;
+
+    // Re-entry guard
+        if (app._pendingDehydrationSaves?.length > 0) {
+            const unresolved = app._pendingDehydrationSaves.filter(s => !s.resolved);
+            if (unresolved.length > 0) {
+                ui.notifications.warn(`Still waiting for ${unresolved.length} dehydration save(s).`);
+                return;
+            }
+        }
+        Logger.log(`[Respite:Meal] #onProceedFromMeal: starting`);
+
+        const rosterIds = new Set(getPartyActors().map(a => a.id));
+        const characterIds = app._engine?.characterChoices
+            ? Array.from(app._engine.characterChoices.keys()).filter(id => rosterIds.has(id))
+            : [];
+        if (!app._mealChoices) app._mealChoices = new Map();
+
+        // Skip missing-characters modal once meals are processed (e.g. after dehydration saves).
+        const missing = app._mealProcessed ? [] : MealDelegate.buildMissingCharactersList(
+            characterIds,
+            app._mealChoices,
+            app._mealSubmissions ?? null,
+            {
+                getActor: id => game.actors.get(id),
+                findOwnerUser: actor => game.users.find(u => !u.isGM && actor.testUserPermission(u, "OWNER")),
+                participates: actor => actor.type === "character" && ItemClassifier.participatesInSustenance(actor)
+            }
+        );
+
+        if (missing.length > 0) {
+            const anyPlayer = missing.some(m => m.playerOwned);
+            const confirmed = await new Promise(resolve => {
+                const overlay = document.createElement("div");
+                overlay.classList.add("ionrift-armor-modal-overlay");
+                overlay.innerHTML = `
+                    <div class="ionrift-armor-modal">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Characters Without Rations</h3>
+                        <p>These characters are missing rations:</p>
+                        <ul>${missing.map(m => {
+                            let detail = "";
+                            if (m.missingFood && m.missingWater) detail = " (no food or water)";
+                            else if (m.missingFood) detail = " (no food)";
+                            else if (m.missingWater) detail = " (no water)";
+                            const awaiting = m.awaitingPlayer ? ' <span style="opacity:0.6">(awaiting player)</span>' : "";
+                            return `<li>${m.name}${detail}${awaiting}</li>`;
+                        }).join("")}</ul>
+                        <p>Processing now treats them as skipping all meals${anyPlayer ? ", even if a player is still choosing" : ""}, applying any starvation and dehydration.</p>
+                        <div class="ionrift-armor-modal-buttons">
+                            <button class="btn-armor-confirm"><i class="fas fa-forward"></i> Process Anyway</button>
+                            <button class="btn-armor-cancel"><i class="fas fa-clock"></i> Go Back</button>
+                        </div>
+                    </div>`;
+                document.body.appendChild(overlay);
+                overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => { overlay.remove(); resolve(true); });
+                overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => { overlay.remove(); resolve(false); });
+            });
+            if (!confirmed) return;
+        }
+
+        // Spinner while party-wide processing runs (avoids looking hung).
+        const procBtn = target?.closest?.("button") ?? null;
+        if (procBtn) {
+            procBtn.disabled = true;
+            procBtn.classList.add("is-processing");
+            procBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Processing...`;
+        }
+
+        for (const charId of characterIds) {
+            if (!app._mealChoices.has(charId)) {
+                const terrainTag = app._engine?.terrainTag ?? "forest";
+                const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
+                const cards = MealPhaseHandler.buildMealContext(
+                    [charId], terrainTag, terrainMealRules,
+                    app._daysSinceLastRest ?? 1, app._mealChoices
+                );
+                if (cards.length > 0) {
+                    app._mealChoices.set(charId, {
+                        food: cards[0].selectedFood,
+                        water: cards[0].selectedWater
+                    });
+                }
+            }
+        }
+
+        let mealResults = [];
+        if (!app._mealProcessed) {
+            app._mealProcessed = true;
+            try {
+                const terrainTag = app._engine?.terrainTag ?? "forest";
+                const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
+                const totalDays = app._daysSinceLastRest ?? 1;
+                const outcome = await MealPhaseHandler.processAndApply(app._mealChoices, totalDays, terrainMealRules);
+                mealResults = outcome.results;
+                app._mealResults = mealResults;
+                Logger.log(`[Respite:Meal] Consumption results:`, mealResults);
+            } catch (err) {
+                console.error(`[Respite:Meal] Error applying meal choices:`, err);
+            }
+
+            app._pendingDehydrationSaves = [];
+            for (const r of mealResults) {
+                r.mealExhaustionApplied = 0;
+
+                if (r.starvationExhaustion > 0) {
+                    const actor = game.actors.get(r.characterId);
+                    if (actor) {
+                        const adapter = game.ionrift?.respite?.adapter;
+                        const current = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+                        const newLevel = Math.min(6, current + r.starvationExhaustion);
+                        if (adapter) {
+                            await adapter.applyExhaustionDelta(actor, r.starvationExhaustion);
+                        } else {
+                            if (newLevel > current) {
+                                await actor.update({ "system.attributes.exhaustion": newLevel });
+                            }
+                        }
+                        r.mealExhaustionApplied += r.starvationExhaustion;
+                        await stampDeprivationExhaustionFloor(actor, newLevel);
+                        await ChatMessage.create({
+                                content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.starvationExhaustion}</strong> level${r.starvationExhaustion > 1 ? "s" : ""} of exhaustion from starvation.</div>`,
+                                speaker: ChatMessage.getSpeaker({ actor })
+                            });
+                        app._pendingDehydrationSaves.push({
+                            characterId: r.characterId,
+                            actorName: r.actorName,
+                            dc: 0,
+                            resolved: true,
+                            passed: false,
+                            total: 0,
+                            reason: `starvation (${r.starvationExhaustion} exhaustion)`
+                        });
+                    }
+                }
+            }
+
+            for (const r of mealResults) {
+                if (r.dehydrationAutoFail) {
+                    const actor = game.actors.get(r.characterId);
+                    if (actor) {
+                        const adapter = game.ionrift?.respite?.adapter;
+                        const current = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+                        const newLevel = Math.min(6, current + 1);
+                        if (adapter) {
+                            await adapter.applyExhaustionDelta(actor, 1);
+                        } else {
+                            if (newLevel > current) {
+                                await actor.update({ "system.attributes.exhaustion": newLevel });
+                            }
+                        }
+                        r.mealExhaustionApplied = (r.mealExhaustionApplied ?? 0) + 1;
+                        await stampDeprivationExhaustionFloor(actor, newLevel);
+                        const restsSinceWater = actor.getFlag("ionrift-respite", "restsSinceWater") ?? 0;
+                        await ChatMessage.create({
+                            content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains 1 level of exhaustion from severe dehydration (auto-fail, ${restsSinceWater} rests without water).</div>`,
+                            speaker: ChatMessage.getSpeaker({ actor })
+                        });
+                        app._pendingDehydrationSaves.push({
+                            characterId: r.characterId,
+                            actorName: r.actorName,
+                            dc: 0,
+                            resolved: true,
+                            passed: false,
+                            total: 0,
+                            reason: `dehydration auto-fail (${restsSinceWater} rests without water)`
+                        });
+                    }
+                } else if (r.dehydrationSaveDC > 0) {
+                    const actor = game.actors.get(r.characterId);
+                    if (!actor) continue;
+
+                    const ownerUser = game.users.find(u =>
+                        !u.isGM && actor.testUserPermission(u, "OWNER")
+                    );
+
+                    if (ownerUser) {
+                        app._pendingDehydrationSaves.push({
+                            characterId: r.characterId,
+                            actorName: r.actorName,
+                            dc: r.dehydrationSaveDC,
+                            userId: ownerUser.id,
+                            resolved: false
+                        });
+                        game.socket.emit(`module.${MODULE_ID}`, {
+                            type: "dehydrationSaveRequest",
+                            characterId: r.characterId,
+                            actorName: r.actorName,
+                            dc: r.dehydrationSaveDC,
+                            targetUserId: ownerUser.id
+                        });
+                        Logger.log(`[Respite:Meal] Sent dehydration save request for ${r.actorName} to user ${ownerUser.name}`);
+                    } else {
+                        const saveAdapter = game.ionrift?.respite?.adapter;
+                        const conSave = saveAdapter ? saveAdapter.getSaveBonus(actor, "con") : (() => {
+                            const conMod = actor.system?.abilities?.con?.mod ?? 0;
+                            const profBonus = actor.system?.abilities?.con?.save ? (actor.system?.attributes?.prof ?? 0) : 0;
+                            return conMod + profBonus;
+                        })();
+                        const roll = await new Roll(`1d20 + ${conSave}`).evaluate();
+                        const total = roll.total;
+                        const passed = total >= r.dehydrationSaveDC;
+
+                        if (game.dice3d) {
+                            await game.dice3d.showForRoll(roll, game.user, true);
+                        }
+                        if (!passed) {
+                            const current = saveAdapter ? saveAdapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+                            const newLevel = Math.min(6, current + 1);
+                            if (saveAdapter) {
+                                await saveAdapter.applyExhaustionDelta(actor, 1);
+                            } else {
+                                if (newLevel > current) {
+                                    await actor.update({ "system.attributes.exhaustion": newLevel });
+                                }
+                            }
+                            r.mealExhaustionApplied = (r.mealExhaustionApplied ?? 0) + 1;
+                            await stampDeprivationExhaustionFloor(actor, newLevel);
+                            await ChatMessage.create({
+                                content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> fails the CON save (${total} vs DC ${r.dehydrationSaveDC}) and gains 1 level of exhaustion from dehydration.</div>`,
+                                speaker: ChatMessage.getSpeaker({ actor })
+                            });
+                            if (app._restLedger) {
+                                app._restLedger.add({
+                                    phase: "meal",
+                                    category: "exhaustion",
+                                    icon: "fas fa-tired",
+                                    actor: r.characterId,
+                                    actorName: r.actorName ?? "",
+                                    summary: "+1 exhaustion",
+                                    detail: `Failed CON save (${total} vs DC ${r.dehydrationSaveDC}), dehydration`
+                                });
+                            }
+                        } else {
+                            await ChatMessage.create({
+                                content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> passes the CON save (${total} vs DC ${r.dehydrationSaveDC}) and fights off dehydration.</div>`,
+                                speaker: ChatMessage.getSpeaker({ actor })
+                            });
+                        }
+                        app._pendingDehydrationSaves.push({
+                            characterId: r.characterId,
+                            actorName: r.actorName,
+                            dc: r.dehydrationSaveDC,
+                            userId: game.user.id,
+                            resolved: true
+                        });
+                    }
+                }
+            }
+        }
+
+        if (app._pendingDehydrationSaves?.length > 0) {
+            const allResults = app._pendingDehydrationSaves
+                .map(s => ({
+                    actorName: s.actorName,
+                    total: s.total ?? 0,
+                    passed: s.passed ?? false,
+                    dc: s.dc ?? 0,
+                    reason: s.reason ?? null,
+                    pending: !s.resolved
+                }));
+            game.socket.emit(`module.${MODULE_ID}`, {
+                type: "dehydrationResultsBroadcast",
+                results: allResults
+            });
+        }
+
+        if (app._pendingDehydrationSaves?.length > 0) {
+            const allResolved = app._pendingDehydrationSaves.every(s => s.resolved);
+            if (!allResolved) {
+                Logger.log(`[Respite:Meal] Waiting for dehydration save(s) to resolve...`);
+                ui.notifications.info(`Waiting for dehydration save(s) to resolve before proceeding.`);
+                await app._saveRestState();
+                app.render();
+                return;
+            } else {
+                if (!app._mealResultsReviewed) {
+                    app._mealResultsReviewed = true;
+                    await app._saveRestState();
+                    app.render();
+                    return;
+                }
+                app._pendingDehydrationSaves = [];
+            }
+        }
+
+    // Reflection phase skipped (v2.1); advance straight to events.
+        await app._applyBeddingDown();
+        Logger.log(`[Respite:Meal] Reflection skipped, advancing to events`);
+        await app._advanceToEvents();
+    }
+
+        async onSkipPendingSaves(event, target) {
+        const app = this._app;
+        if (!app._pendingDehydrationSaves?.length) return;
+
+        const unresolved = app._pendingDehydrationSaves.filter(s => !s.resolved);
+        if (!unresolved.length) return;
+
+        for (const save of unresolved) {
+            const actor = game.actors.get(save.characterId);
+            if (actor) {
+                const adapter = game.ionrift?.respite?.adapter;
+                if (adapter) {
+                    await adapter.applyExhaustionDelta(actor, 1);
+                } else {
+                    const current = actor.system?.attributes?.exhaustion ?? 0;
+                    const newLevel = Math.min(6, current + 1);
+                    if (newLevel > current) {
+                        await actor.update({ "system.attributes.exhaustion": newLevel });
+                    }
+                }
+                const mr = app._mealResults?.find(r => r.characterId === save.characterId);
+                if (mr) mr.mealExhaustionApplied = (mr.mealExhaustionApplied ?? 0) + 1;
+                await ChatMessage.create({
+                    content: `<div class="respite-recovery-chat"><strong>${save.actorName}</strong> fails the CON save (skipped by GM) and gains 1 level of exhaustion from dehydration.</div>`,
+                    speaker: ChatMessage.getSpeaker({ actor })
+                });
+                if (app._restLedger) {
+                    app._restLedger.add({
+                        phase: "meal",
+                        category: "exhaustion",
+                        icon: "fas fa-tired",
+                        actor: save.characterId,
+                        actorName: save.actorName ?? "",
+                        summary: "+1 exhaustion",
+                        detail: "Dehydration (GM skipped save)"
+                    });
+                }
+            }
+
+            save.resolved = true;
+            save.passed = false;
+            save.total = 0;
+            save.reason = "dehydration (GM skipped)";
+        }
+
+        const allResults = app._pendingDehydrationSaves.map(s => ({
+            actorName: s.actorName,
+            total: s.total ?? 0,
+            passed: s.passed ?? false,
+            dc: s.dc ?? 0,
+            reason: s.reason ?? null,
+            pending: !s.resolved
+        }));
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "dehydrationResultsBroadcast",
+            results: allResults
+        });
+
+        await app._saveRestState();
+        app.render();
+        ui.notifications.info(`Skipped ${unresolved.length} pending save(s). Exhaustion applied.`);
+    }
+
+        async receiveMealChoices(userId, choices) {
+        if (!game.user.isGM) return;
+        const app = this._app;
+        if (!app._mealChoices) app._mealChoices = new Map();
+        if (!app._mealSubmissions) app._mealSubmissions = new Map();
+
+        for (const [charId, choice] of Object.entries(choices)) {
+            app._mealChoices.set(charId, choice);
+        }
+
+        app._mealSubmissions.set(userId, {
+            timestamp: Date.now(),
+            characterIds: Object.keys(choices)
+        });
+
+        if (!app._activityMealRationsSubmitted) app._activityMealRationsSubmitted = new Set();
+        for (const charId of Object.keys(choices)) {
+            app._activityMealRationsSubmitted.add(charId);
+        }
+
+        Logger.log(`[Respite:Meal] Received meal choices from user ${userId}:`, choices);
+        await app._saveRestState();
+        const snapshot = app.getRestSnapshot?.();
+        if (snapshot) {
+            game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
+        }
+        app.render();
+        if (typeof app._updateRestBarProgress === "function") app._updateRestBarProgress();
+        if (typeof app._refreshStationOverlayMeals === "function") app._refreshStationOverlayMeals();
+    }
+
+        async receiveMealDayConsumeRequest(userId, consumeByCharacter) {
+        if (!game.user.isGM) return;
+        const app = this._app;
+        if (!consumeByCharacter || typeof consumeByCharacter !== "object") return;
+        if (!app._mealChoices) app._mealChoices = new Map();
+
+        const requestingUser = game.users.get(userId);
+        for (const [charId, pack] of Object.entries(consumeByCharacter)) {
+            const actor = game.actors.get(charId);
+            if (!actor) continue;
+            if (requestingUser && !requestingUser.isGM) {
+                if (!actor.testUserPermission(requestingUser, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)) {
+                    console.warn(`[Respite:Meal] mealDayConsumeRequest rejected: ${charId} not owned by user ${userId}`);
+                    continue;
+                }
+            }
+
+            const food = Array.isArray(pack.food) ? [...pack.food] : [];
+            const water = Array.isArray(pack.water) ? [...pack.water] : [];
+
+            // Snapshot food items before consumption for Well Fed resolution
+            const foodSnapshots = new Map();
+            for (const itemId of food) {
+                if (itemId && itemId !== "skip") {
+                    const item = actor.items.get(itemId);
+                    if (item) foodSnapshots.set(itemId, item.toObject(false));
+                }
+            }
+
+            const partyIds = [...(app._mealChoices?.keys() ?? [])];
+            for (const itemId of food) {
+                if (itemId && itemId !== "skip") {
+                    const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                    const snapshot = foodSnapshots.get(itemId);
+                    if (snapshot && consumed > 0) {
+                        await MealPhaseHandler._dispatchWellFedMealServing({
+                            consumerActor: actor,
+                            itemSnapshot: snapshot,
+                            partyIds
+                        });
+                    }
+                }
+            }
+            for (const itemId of water) {
+                if (itemId && itemId !== "skip") {
+                    await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                }
+            }
+
+            const consumedDays = [...(pack.consumedDays ?? [])];
+            consumedDays.push({ food, water, itemsConsumed: true });
+            const priorDay = pack.currentDay ?? (pack.consumedDays?.length ?? 0);
+            app._mealChoices.set(charId, {
+                food: [],
+                water: [],
+                consumedDays,
+                currentDay: priorDay + 1
+            });
+        }
+
+        await app._saveRestState();
+
+        game.socket.emit(`module.${MODULE_ID}`, {
+            type: "mealDayConsumed",
+            userId,
+            mealChoices: Object.fromEntries(app._mealChoices)
+        });
+
+        const snapshot = app.getRestSnapshot?.();
+        if (snapshot) {
+            game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot });
+        }
+
+        app.render();
+        if (typeof app._updateRestBarProgress === "function") app._updateRestBarProgress();
+        if (typeof app._refreshStationOverlayMeals === "function") app._refreshStationOverlayMeals();
+    }
+
+    async receiveMealDayConsumed(userId, clientChoices) {
+        if (!game.user.isGM) return;
+        const app = this._app;
+        if (!app._mealChoices) app._mealChoices = new Map();
+
+        for (const [charId, choice] of Object.entries(clientChoices)) {
+            const existing = app._mealChoices.get(charId) ?? {};
+            app._mealChoices.set(charId, {
+                ...existing,
+                consumedDays: choice.consumedDays ?? existing.consumedDays ?? [],
+                currentDay: choice.currentDay ?? existing.currentDay ?? 0,
+                food: choice.food ?? [],
+                water: choice.water ?? []
+            });
+        }
+
+        Logger.log(`[Respite:Meal] Received meal day consumed from user ${userId}:`, clientChoices);
+        await app._saveRestState();
+        app.render();
+    }
+
+        async receiveDehydrationPrompt(characterId, actorName, dc) {
+        if (game.user.isGM) return;
+        const actor = game.actors.get(characterId);
+        if (!actor) return;
+
+        const confirmed = await game.ionrift.library.confirm({
+            title: "Dehydration Check",
+            content: `<p><strong>${actorName}</strong> has gone without water.</p><p>Constitution save DC ${dc} or gain 1 level of exhaustion.</p>`,
+            yesLabel: "Roll CON Save",
+            noLabel: "Cancel",
+            yesIcon: "fas fa-dice-d20",
+            noIcon: "fas fa-times",
+            defaultYes: true
+        });
+
+        if (confirmed) {
+            let total = 0;
+            let passed = false;
+            try {
+                const playerSaveAdapter = game.ionrift?.respite?.adapter;
+                const playerConSave = playerSaveAdapter ? playerSaveAdapter.getSaveBonus(actor, "con") : (() => {
+                    const conMod = actor.system?.abilities?.con?.mod ?? 0;
+                    const profBonus = actor.system?.abilities?.con?.save ? (actor.system?.attributes?.prof ?? 0) : 0;
+                    return conMod + profBonus;
+                })();
+                const roll = await new Roll(`1d20 + ${playerConSave}`).evaluate();
+                total = roll.total;
+                passed = total >= dc;
+
+                if (game.dice3d) {
+                    await game.dice3d.showForRoll(roll, game.user, true);
+                }
+            } catch (e) {
+                console.error(`[Respite] Dehydration save roll failed for ${actorName}:`, e);
+                ui.notifications.error(`Could not roll CON save for ${actorName}. Treating as failed.`);
+            }
+
+            setTimeout(() => {
+                game.socket.emit(`module.${MODULE_ID}`, {
+                    type: "dehydrationSaveResult",
+                    characterId,
+                    actorName,
+                    dc,
+                    total,
+                    passed,
+                    userId: game.user.id
+                });
+            }, 3500);
+        }
+    }
+
+        async receiveDehydrationResult(data) {
+        if (!game.user.isGM) return;
+        const app = this._app;
+        const { characterId, actorName, dc, total, passed } = data;
+        const actor = game.actors.get(characterId);
+
+        if (!passed && actor) {
+            const adapter = game.ionrift?.respite?.adapter;
+            const current = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+            const newLevel = Math.min(6, current + 1);
+            if (adapter) {
+                await adapter.applyExhaustionDelta(actor, 1);
+            } else {
+                if (newLevel > current) {
+                    await actor.update({ "system.attributes.exhaustion": newLevel });
+                }
+            }
+            const mr = app._mealResults?.find(r => r.characterId === characterId);
+            if (mr) mr.mealExhaustionApplied = (mr.mealExhaustionApplied ?? 0) + 1;
+            await stampDeprivationExhaustionFloor(actor, newLevel);
+            await ChatMessage.create({
+                content: `<div class="respite-recovery-chat"><strong>${actorName}</strong> fails the CON save (${total} vs DC ${dc}) and gains 1 level of exhaustion from dehydration.</div>`,
+                speaker: ChatMessage.getSpeaker({ actor })
+            });
+            if (app._restLedger) {
+                app._restLedger.add({
+                    phase: "meal",
+                    category: "exhaustion",
+                    icon: "fas fa-tired",
+                    actor: characterId,
+                    actorName: actorName ?? "",
+                    summary: "+1 exhaustion",
+                    detail: `Failed CON save (${total} vs DC ${dc}), dehydration`
+                });
+                app._refreshLedgerApp?.();
+            }
+        } else if (passed) {
+            await ChatMessage.create({
+                content: `<div class="respite-recovery-chat"><strong>${actorName}</strong> passes the CON save (${total} vs DC ${dc}) and fights off dehydration.</div>`,
+                speaker: actor ? ChatMessage.getSpeaker({ actor }) : undefined
+            });
+        }
+
+        if (app._pendingDehydrationSaves) {
+            const pending = app._pendingDehydrationSaves.find(s => s.characterId === characterId);
+            if (pending) {
+                pending.resolved = true;
+                pending.total = total;
+                pending.passed = passed;
+            }
+
+            app._saveRestState();
+            app.render();
+
+            const resolvedResults = app._pendingDehydrationSaves
+                .filter(s => s.resolved)
+                .map(s => ({ actorName: s.actorName, total: s.total, passed: s.passed, dc: s.dc, reason: s.reason ?? null, pending: !s.resolved }));
+            game.socket.emit(`module.${MODULE_ID}`, {
+                type: "dehydrationResultsBroadcast",
+                results: resolvedResults
+            });
+        }
+    }
+}
