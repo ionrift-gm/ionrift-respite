@@ -820,21 +820,15 @@
             <i class="fas fa-palette art-nudge-icon"></i>
             <div class="art-nudge-text">
                 {{#if artNudgeIsUpdate}}
-                <span class="art-nudge-title">A newer art pack is available.</span>
-                <span class="art-nudge-subtitle">Update to get station token art for workstations and camp gear.</span>
+                <span class="art-nudge-title">Camp art pack is incomplete.</span>
+                <span class="art-nudge-subtitle">Station token art is missing from the local pack on disk.</span>
                 {{else}}
                 <span class="art-nudge-title">Camp art is using placeholder icons.</span>
-                <span class="art-nudge-subtitle">Import the art pack for terrain and station art.</span>
+                <span class="art-nudge-subtitle">A local art pack is not present on this machine.</span>
                 {{/if}}
             </div>
         </div>
         <div class="art-nudge-actions">
-            <button type="button" data-action="openArtPackPatreon" class="art-nudge-btn">
-                <i class="fas fa-external-link-alt"></i> {{#if artNudgeIsUpdate}}Get Update{{else}}Get Art Pack{{/if}}
-            </button>
-            <button type="button" data-action="openArtPackImport" class="art-nudge-btn primary">
-                <i class="fas fa-file-import"></i> {{#if artNudgeIsUpdate}}Update Art Pack{{else}}Import Art Pack{{/if}}
-            </button>
             <button type="button" data-action="dismissArtNudge" class="art-nudge-dismiss" data-tooltip="Dismiss">
                 <i class="fas fa-times"></i>
             </button>
@@ -1196,21 +1190,15 @@
             <i class="fas fa-palette art-nudge-icon"></i>
             <div class="art-nudge-text">
                 {{#if artNudgeIsUpdate}}
-                <span class="art-nudge-title">A newer art pack is available.</span>
-                <span class="art-nudge-subtitle">Update to get station token art for workstations and camp gear.</span>
+                <span class="art-nudge-title">Camp art pack is incomplete.</span>
+                <span class="art-nudge-subtitle">Station token art is missing from the local pack on disk.</span>
                 {{else}}
                 <span class="art-nudge-title">Camp art is using placeholder icons.</span>
-                <span class="art-nudge-subtitle">Import the art pack for terrain and station art.</span>
+                <span class="art-nudge-subtitle">A local art pack is not present on this machine.</span>
                 {{/if}}
             </div>
         </div>
         <div class="art-nudge-actions">
-            <button type="button" data-action="openArtPackPatreon" class="art-nudge-btn">
-                <i class="fas fa-external-link-alt"></i> {{#if artNudgeIsUpdate}}Get Update{{else}}Get Art Pack{{/if}}
-            </button>
-            <button type="button" data-action="openArtPackImport" class="art-nudge-btn primary">
-                <i class="fas fa-file-import"></i> {{#if artNudgeIsUpdate}}Update Art Pack{{else}}Import Art Pack{{/if}}
-            </button>
             <button type="button" data-action="dismissArtNudge" class="art-nudge-dismiss" data-tooltip="Dismiss">
                 <i class="fas fa-times"></i>
             </button>

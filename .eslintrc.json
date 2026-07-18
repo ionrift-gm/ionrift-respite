@@ -27,7 +27,7 @@
       }
     },
     {
-      "files": ["scripts/services/RollRequestDcPulse.js"],
+      "files": ["scripts/services/ui/rollRequest/RollRequestDcPulse.js"],
       "rules": {
         "no-console": "off"
       }

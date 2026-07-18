@@ -613,6 +613,20 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         default: false
     });
 
+    game.settings.register(MODULE_ID, "cookingItemArt", {
+        name: "Cooking Item Art",
+        hint: "Legacy mirror of whether optional cooking icon files are present.",
+        scope: "world",
+        config: false,
+        type: String,
+        choices: {
+            default: "Default icons",
+            pack: "Pack icons"
+        },
+        default: "default",
+        restricted: true
+    });
+
     game.settings.register(MODULE_ID, "artPackCache", {
         scope: "world",
         config: false,
@@ -899,6 +913,7 @@ export const SETTING_KEYS = [
     "eventPoolNudgeSnoozedUntil",
     "importedPacks",
     "artPackDisabled",
+    "cookingItemArt",
     "artPackCache",
     "artNudgeSnoozedUntil",
     "artNudgeSuppressed",
