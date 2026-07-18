@@ -1,1 +1,1 @@
-export * from "../../../../../ionrift-library/scripts/services/RollRequestDcPulse.js";
+export * from "../../../../../ionrift-library/scripts/services/rolls/RollRequestDcPulse.js";

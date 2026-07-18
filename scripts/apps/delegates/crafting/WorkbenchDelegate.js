@@ -300,7 +300,7 @@ export class WorkbenchDelegate {
             if (qmActive) {
                 try {
                     const { IdentificationService } = await import(
-                        "/modules/ionrift-quartermaster/scripts/services/IdentificationService.js"
+                        "/modules/ionrift-quartermaster/scripts/services/identify/IdentificationService.js"
                     );
                     const result = await IdentificationService.identify(item, { silent: true });
                     identified = result.identified;

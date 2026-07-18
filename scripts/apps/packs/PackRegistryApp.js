@@ -583,29 +583,19 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
             html += `
             <div class="art-empty-state">
                 <i class="fas fa-image"></i>
-                <p>No art packs installed.</p>
-                <span>Import a ZIP with terrain images to replace placeholder banners.</span>
-                <span class="art-format-hint">Accepted formats: .webp, .png, .jpg</span>
+                <p>No art packs installed locally.</p>
+                <span>This panel reports packs already present on disk. Pack downloads are outside the listed module.</span>
             </div>`;
         }
 
         html += `</div>`;
 
-        // Footer links
         html += this._renderFooterLinks([
-            { href: "https://www.patreon.com/posts/154985310", icon: "fas fa-download", label: "Get art packs" },
             { href: "https://github.com/ionrift-gm/ionrift-library/wiki/Art-Packs", icon: "fas fa-book", label: "Documentation" }
-        ]);
-
-        // Action button
-        html += this._renderActionButtons([
-            { cls: "pack-import-art-btn", icon: "fas fa-file-archive", label: hasArt ? "Re-import Art Pack" : "Import Art Pack" }
         ]);
 
         panel.innerHTML = html;
 
-        // Wire art buttons
-        panel.querySelector(".pack-import-art-btn").addEventListener("click", () => this._importArtPack());
         panel.querySelector(".art-uninstall-btn")?.addEventListener("click", () => this._uninstallArtPack());
     }
 
@@ -625,38 +615,6 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
     }
 
     /**
-     * Opens the Zip Pack Importer for terrain art assets.
-     */
-    async _importArtPack() {
-        if (!game.ionrift?.library?.importZipPack) {
-            ui.notifications.error("Ionrift Library v1.5.0+ is required for art pack imports.");
-            return;
-        }
-
-        await game.settings.set("ionrift-respite", "artPackDisabled", false);
-
-        const result = await game.ionrift.library.importZipPack({
-            moduleId: "respite",
-            assetType: "art",
-            allowedExtensions: [".webp", ".png", ".jpg", ".jpeg"],
-            schemaValidator: (entries) => {
-                const hasTerrain = entries.some(e => e.dir.length > 0);
-                if (!hasTerrain) {
-                    return { valid: false, errors: ["Art pack should contain terrain subfolders (e.g. forest/, desert/)."] };
-                }
-                return { valid: true, errors: [] };
-            }
-        });
-
-        if (result && result.imported > 0) {
-            await ImageResolver.init();
-            ui.notifications.info(`Art pack ready. ${result.imported} terrain images loaded.`);
-            this.render({ force: true });
-            this._refreshOpenRestApp();
-        }
-    }
-
-    /**
      * Disables the art pack by setting a world flag.
      */
     async _uninstallArtPack() {
@@ -665,9 +623,9 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
 
         try {
             const confirmed = await foundry.applications.api.DialogV2.confirm({
-                window: { title: "Uninstall Art Pack" },
-                content: "<p>Remove all terrain art and revert to placeholder banners?</p><p>You can re-import the pack at any time.</p>",
-                yes: { label: "Uninstall", icon: "fas fa-trash-alt" },
+                window: { title: "Disable Art Pack" },
+                content: "<p>Disable terrain art and revert to placeholder banners?</p><p>Pack files on disk are left in place.</p>",
+                yes: { label: "Disable", icon: "fas fa-eye-slash" },
                 no: { label: "Cancel", icon: "fas fa-times" }
             });
             if (!confirmed) return;

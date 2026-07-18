@@ -383,7 +383,7 @@ export function dispatch(data, ctx) {
                 if (qmActive) {
                     try {
                         const { IdentificationService } = await import(
-                            "/modules/ionrift-quartermaster/scripts/services/IdentificationService.js"
+                            "/modules/ionrift-quartermaster/scripts/services/identify/IdentificationService.js"
                         );
         Logger.log(`[Respite] WB-IDENTIFY GM: calling IdentificationService.identify`);
                         const result = await IdentificationService.identify(item, { silent: true });

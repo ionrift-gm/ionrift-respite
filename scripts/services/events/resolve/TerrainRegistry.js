@@ -16,7 +16,7 @@ import { MODULE_ID } from "../../../data/moduleId.js";
  * instead of hardcoded arrays and objects.
  */
 
-import { normalizeTerrainCategory } from "../../../../../ionrift-library/scripts/services/TerrainRegistry.js";
+import { normalizeTerrainCategory } from "../../../../../ionrift-library/scripts/services/terrain/TerrainRegistry.js";
 
 /** Camp comfort keys used by RestSetupApp and RestFlowEngine */
 const VALID_COMFORT = new Set(["safe", "sheltered", "rough", "hostile"]);

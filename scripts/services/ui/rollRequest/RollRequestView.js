@@ -1,1 +1,1 @@
-export * from "../../../../../ionrift-library/scripts/services/RollRequestView.js";
+export * from "../../../../../ionrift-library/scripts/services/rolls/RollRequestView.js";
