@@ -308,8 +308,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             dismissArtNudge: RestSetupApp.#onDismissArtNudge,
             dismissEventPoolNudge: RestSetupApp.#onDismissEventPoolNudge,
             openEventPoolCurator: RestSetupApp.#onOpenEventPoolCurator,
-            openArtPackPatreon: RestSetupApp.#onOpenArtPackPatreon,
-            openArtPackImport: RestSetupApp.#onOpenArtPackImport,
             selectTotmActivity: RestSetupApp.#onSelectTotmActivity,
             confirmTotmFollowUp: RestSetupApp.#onConfirmTotmFollowUp,
             cancelTotmFollowUp: RestSetupApp.#onCancelTotmFollowUp,
@@ -15066,19 +15064,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static #onOpenEventPoolCurator(event, target) {
         const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
         openEventPoolApp(terrainTag);
-    }
-
-    static #onOpenArtPackPatreon(event, target) {
-        window.open("https://www.patreon.com/posts/154985310", "_blank");
-    }
-
-    static async #onOpenArtPackImport(event, target) {
-        const { PackRegistryApp } = await import("../packs/PackRegistryApp.js");
-        const app = new PackRegistryApp();
-        app.render(true);
-        setTimeout(() => {
-            app.element?.querySelector('.pack-tab[data-tab="art"]')?.click();
-        }, 200);
     }
 
     /**

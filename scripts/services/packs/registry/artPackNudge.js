@@ -1,8 +1,6 @@
 import { ImageResolver } from "../../../utils/ImageResolver.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 
-const CORE_ART_PATREON_URL = "https://www.patreon.com/posts/154985310";
-
 /**
  * Returns true when the camp art pack is fully resolved (terrain + station tokens).
  * Mirrors the gating in RestSetupApp._shouldShowArtNudge.
@@ -12,7 +10,7 @@ export function hasFullArtPack() {
 }
 
 /**
- * Open the Respite content pack manager focused on the art tab.
+ * Open the Respite content pack manager focused on the art tab (local status only).
  */
 async function openArtPackInstaller() {
     const lib = game.ionrift?.library;
@@ -29,9 +27,10 @@ async function openArtPackInstaller() {
 }
 
 /**
- * Registers the Respite Core Art Pack nudge with the shared library service.
+ * Registers the Respite camp art readiness nudge with the shared library service.
  * Idempotent. Re-uses the existing artNudge* settings so the dismiss state is
  * shared with the in-app camp-phase art nudge in RestSetupApp.
+ * No packUrl: listed Respite must not funnel prepared-media downloads.
  */
 export function registerArtPackNudge() {
     const packNudge = game.ionrift?.library?.packNudge;
@@ -40,16 +39,13 @@ export function registerArtPackNudge() {
 
     packNudge.register({
         moduleId: MODULE_ID,
-        packUrl: CORE_ART_PATREON_URL,
         isContentInstalled: () => hasFullArtPack(),
         openInstaller: () => openArtPackInstaller(),
         title: "Camp art pack not installed.",
-        subtitle: "Download the Core Art Pack, then install the zip from Patreon Library (Respite).",
+        subtitle: "Respite uses placeholder icons until a local art pack is present. Pack downloads are outside the listed module.",
         icon: "fas fa-palette",
-        primaryLabel: "Install .zip",
-        primaryIcon: "fas fa-file-import",
-        secondaryLabel: "Get Pack",
-        secondaryIcon: "fas fa-download",
+        primaryLabel: "Manage Packs",
+        primaryIcon: "fas fa-sliders",
         settings: {
             suppressed: "artNudgeSuppressed",
             snoozedUntil: "artNudgeSnoozedUntil"

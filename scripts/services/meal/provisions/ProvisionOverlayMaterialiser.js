@@ -13,6 +13,12 @@ import {
     unregisterProvisionPack
 } from "../../travel/resolve/TravelProvisionIndex.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import {
+    COOKING_OVERLAY_ID,
+    COOKING_ART_OVERLAY_ID,
+    COOKING_ART_SUBLAYER,
+    CookingArtPreference
+} from "./CookingArtPreference.js";
 
 function titleCase(value) {
     return String(value ?? "").replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
@@ -72,7 +78,10 @@ export class ProvisionOverlayMaterialiser {
     static async materialiseAll() {
         const materialiser = game.ionrift?.library?.materialiser;
         if (!materialiser) return;
+        await CookingArtPreference.ensureAvailable();
         await materialiser.materialiseAll(this.config());
+        const images = await CookingArtPreference.synchronizeCompendium();
+        await CookingArtPreference.synchronizeActorItems(images);
     }
 
     /**
@@ -83,9 +92,25 @@ export class ProvisionOverlayMaterialiser {
         const materialiser = game.ionrift?.library?.materialiser;
         if (!materialiser || detail?.moduleId !== MODULE_ID) return;
 
+        if (
+            detail.overlayId === COOKING_ART_OVERLAY_ID
+            || detail.sublayer === COOKING_ART_SUBLAYER
+            || detail.overlayId === COOKING_OVERLAY_ID
+        ) {
+            await CookingArtPreference.ensureAvailable();
+            if (detail.overlayId === COOKING_ART_OVERLAY_ID
+                || detail.sublayer === COOKING_ART_SUBLAYER) {
+                return;
+            }
+        }
+
         const config = this.config();
         if (detail.installed && detail.active) {
             await materialiser.materialiseSublayer(detail.sublayer, config);
+            if (detail.sublayer === "cooking") {
+                const images = await CookingArtPreference.synchronizeCompendium();
+                await CookingArtPreference.synchronizeActorItems(images);
+            }
         } else if (detail.installed && detail.overlayId) {
             await materialiser.setOverlayActive(detail.overlayId, false, config);
         } else if (!detail.installed && detail.overlayId) {

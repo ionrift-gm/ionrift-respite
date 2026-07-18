@@ -13,6 +13,7 @@
  */
 import { Logger } from "../../../utils/Logger.js";
 import { PROFESSION_TOOL_REQUIRED } from "../../crafting/recipes/RecipeCatalog.js";
+import { CookingArtPreference } from "../../meal/provisions/CookingArtPreference.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 
 /** @type {{ packId: string, sublayer: string, name: string, recipes: Object }[] | null} */
@@ -55,6 +56,7 @@ export class OverlayProfessionLoader {
                 }
 
                 if (data?.recipes && typeof data.recipes === "object") {
+                    CookingArtPreference.applyToRecipeData(data);
                     results.push({
                         packId: data.id ?? manifest.overlayId,
                         sublayer,
