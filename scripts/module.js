@@ -158,12 +158,6 @@ export function hideAfkPanel() {
     RestAfkState.clear();
 }
 
-export function refreshAfkPanel() {
-    if (activeAfkPanel?.rendered) {
-        activeAfkPanel.render({ force: true });
-    }
-}
-
 /** Long vs short socket type for AFK sync. */
 export function emitAfkSocket(characterId, isAfk) {
     const longRest = !!(activeRestSetupApp ?? activePlayerRestApp);
