@@ -9260,8 +9260,13 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             // Determine best skill for this character
             let skillKey = activity.check.skill;
             if (activity.check.altSkill) {
-                const primary = actor.system?.skills?.[activity.check.skill]?.total ?? 0;
-                const alt = actor.system?.skills?.[activity.check.altSkill]?.total ?? 0;
+                const setupAdapter = game.ionrift?.respite?.adapter;
+                const primary = setupAdapter
+                    ? setupAdapter.getSkillTotal(actor, setupAdapter.normalizeSkillKey(activity.check.skill))
+                    : (actor.system?.skills?.[activity.check.skill]?.total ?? 0);
+                const alt = setupAdapter
+                    ? setupAdapter.getSkillTotal(actor, setupAdapter.normalizeSkillKey(activity.check.altSkill))
+                    : (actor.system?.skills?.[activity.check.altSkill]?.total ?? 0);
                 if (alt > primary) skillKey = activity.check.altSkill;
             }
             const skillName = SKILL_NAMES[skillKey] ?? skillKey;

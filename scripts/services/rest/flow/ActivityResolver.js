@@ -476,7 +476,10 @@ export class ActivityResolver {
         for (const itemRef of (outcome.items ?? [])) {
             let qty = itemRef.quantity ?? 1;
             if (typeof qty === "string") {
-                const prof = actor.system?.attributes?.prof ?? 2;
+                const profAdapter = game.ionrift?.respite?.adapter;
+                const prof = profAdapter
+                    ? profAdapter.getProficiencyBonus(actor)
+                    : (actor.system?.attributes?.prof ?? 2);
                 let expr = qty;
                 if (activity.id === "act_fletch") {
                     const tierFormula = getFletchingYieldFormula();
