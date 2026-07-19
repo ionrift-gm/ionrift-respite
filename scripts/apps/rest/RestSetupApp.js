@@ -305,7 +305,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             exitStationChoiceReview: RestSetupApp.#onExitStationChoiceReview,
             dismissCampfireCanvasPanel: RestSetupApp.#onDismissCampfireCanvasPanel,
             retryCampPitPlacement: RestSetupApp.#onRetryCampPitPlacement,
-            dismissArtNudge: RestSetupApp.#onDismissArtNudge,
             dismissEventPoolNudge: RestSetupApp.#onDismissEventPoolNudge,
             openEventPoolCurator: RestSetupApp.#onOpenEventPoolCurator,
             selectTotmActivity: RestSetupApp.#onSelectTotmActivity,
@@ -1243,19 +1242,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             ...this._forageResolverOpts(),
             ...overrides
         };
-    }
-
-    /** GM-only advisory when no terrain art pack is active OR pack is outdated (Make Camp phase). */
-    _shouldShowArtNudge() {
-        if (!game.user.isGM) return false;
-        if (ImageResolver.hasArtPack && ImageResolver.hasStationTokens) return false;
-        if (game.settings.get(MODULE_ID, "artNudgeSuppressed")) return false;
-        const snoozedUntil = game.settings.get(MODULE_ID, "artNudgeSnoozedUntil");
-        if (snoozedUntil) {
-            const snoozeDate = new Date(snoozedUntil);
-            if (!isNaN(snoozeDate.getTime()) && snoozeDate > new Date()) return false;
-        }
-        return true;
     }
 
     /** GM-only banner when the curated event pool is empty for the current terrain. */
@@ -4294,8 +4280,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             campfireDragCard,
             campfireCanMove,
             campMinimalMode: this._phase === "camp",
-            showArtNudge: this._phase === "camp" && this._shouldShowArtNudge(),
-            artNudgeIsUpdate: this._phase === "camp" && ImageResolver.hasArtPack && !ImageResolver.hasStationTokens,
             ...(this._phase === "events" && !this._eventsRolled ? (() => {
                 const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? "forest";
                 const poolCount = countPoolEventsForTerrain(this._eventResolver, terrainTag);
@@ -15038,20 +15022,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         event?.stopPropagation?.();
         const pageId = game.user?.isGM ? "dvr4TYdYmX88MCCf" : "aQc3PtQPrYDi9Mlx";
         await game.ionrift?.respite?.openPlayerGuide?.(pageId);
-    }
-
-    static async #onDismissArtNudge(event, target) {
-        const banner = this.element.querySelector(".art-nudge-banner");
-        const suppress = banner?.querySelector(".art-nudge-suppress-checkbox")?.checked ?? false;
-
-        if (suppress) {
-            await game.settings.set(MODULE_ID, "artNudgeSuppressed", true);
-        } else {
-            const snoozeUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-            await game.settings.set(MODULE_ID, "artNudgeSnoozedUntil", snoozeUntil);
-        }
-
-        banner?.remove();
     }
 
     static async #onDismissEventPoolNudge(event, target) {

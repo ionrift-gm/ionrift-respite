@@ -1,6 +1,5 @@
 import { MODULE_ID } from "../../../data/moduleId.js";
 
-export const COOKING_ART_SETTING = "cookingItemArt";
 export const COOKING_ART_DEFAULT = "default";
 export const COOKING_ART_PACK = "pack";
 export const COOKING_OVERLAY_ID = "respite-cooking-overlay";
@@ -97,16 +96,6 @@ export class CookingArtPreference {
      * Does not require Annex world active state (manual unzip may never toggle it).
      */
     static async detectPackArtPresent() {
-        const overlay = game.ionrift?.annex?.overlay;
-        if (overlay?.getLocalManifest) {
-            try {
-                const manifest = await overlay.getLocalManifest(MODULE_ID, COOKING_ART_SUBLAYER);
-                if (manifest?.overlayId === COOKING_ART_OVERLAY_ID) return true;
-            } catch {
-                // fall through to path probe
-            }
-        }
-
         try {
             const browse = game.ionrift?.library?.PlatformHelper?.FP?.browse
                 ?? globalThis.foundry?.applications?.apps?.FilePicker?.implementation?.browse
@@ -114,11 +103,10 @@ export class CookingArtPreference {
             if (typeof browse !== "function") return false;
             const listing = await browse(
                 "data",
-                `ionrift-data/overlays/${MODULE_ID}/${COOKING_ART_SUBLAYER}`
+                `${COOKING_ART_ROOT}/cooking`
             );
             const files = listing?.files ?? [];
-            return files.some(path => String(path).endsWith("overlay-manifest.json"))
-                || (listing?.dirs?.length > 0);
+            return files.some(path => String(path).endsWith("/fortified-rations.webp"));
         } catch {
             return false;
         }
@@ -134,9 +122,6 @@ export class CookingArtPreference {
      */
     static async apply(_preference, { notify: _notify = true } = {}) {
         await this.refreshPresence();
-        if (game.settings.get(MODULE_ID, COOKING_ART_SETTING) !== this.value) {
-            await game.settings.set(MODULE_ID, COOKING_ART_SETTING, this.value);
-        }
         const { OverlayProfessionLoader } = await import("../../packs/overlays/OverlayProfessionLoader.js");
         OverlayProfessionLoader.invalidate();
         const images = await this.synchronizeCompendium();
