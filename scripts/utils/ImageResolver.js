@@ -6,7 +6,7 @@ import { MODULE_ID } from "../data/moduleId.js";
  * Centralizes image path resolution for Respite. Probes the filesystem
  * for an art source in priority order:
  *
- *   1. Overlay install (Patreon Library / cloud distribution) at
+ *   1. Manually installed overlay at
  *      `ionrift-data/overlays/ionrift-respite/<sublayer>/`. Sublayer is
  *      `core/` post-rename or `free/` for legacy / sticky-back-compat
  *      installs.
@@ -199,7 +199,7 @@ export class ImageResolver {
         }
 
         // GM: probe the filesystem in priority order.
-        // 1. Overlay installs (cloud-distributed via Patreon Library).
+        // 1. Manually installed overlays.
         //    `core/` is the post-rename default; `free/` covers existing
         //    sticky-back-compat installs from before the May 2026 rename.
         // 2. Legacy zip-imported pack at ionrift-data/respite/art/.

@@ -1270,7 +1270,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         try {
             const resp = await fetch(path);
             if (!resp.ok) {
-                // Try overlay-delivered events (Patreon Library content packs)
+                // Try events from manually installed overlays.
                 const loaded = await this._loadTerrainEventsFromOverlay(terrainTag);
                 if (!loaded) {
 

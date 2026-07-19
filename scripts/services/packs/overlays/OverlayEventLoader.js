@@ -1,6 +1,6 @@
 /**
  * OverlayEventLoader
- * Discovers and loads event data from Patreon Library overlay packs.
+ * Discovers and loads event data from manually installed overlays.
  *
  * Overlay packs (e.g. Frost & Stone) deliver terrain-specific event JSON
  * to `ionrift-data/overlays/ionrift-respite/{sublayer}/events/{packDir}/events.json`.

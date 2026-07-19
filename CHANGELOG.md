@@ -8,6 +8,11 @@
 ### Fixed
 - Load crash from invalid trailing commas on class methods in `DnD5eAdapter`.
 
+## [3.3.11] - 2026-07-19
+
+### Changed
+- Content packs now load from manually unzipped overlay folders. Respite no longer includes an in-app pack manager.
+
 ## [3.3.10] - 2026-07-19
 
 ### Changed

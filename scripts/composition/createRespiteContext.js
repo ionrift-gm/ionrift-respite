@@ -15,7 +15,6 @@ import {
     placeCamp
 } from "../services/camp/props/CampPropPlacer.js";
 import { clearCampTokens, resetCampSession } from "../services/camp/props/CompoundCampPlacer.js";
-import { PackRegistryApp } from "../apps/packs/PackRegistryApp.js";
 import { ItemClassifier } from "../services/party/ItemClassifier.js";
 import { DietConfigApp } from "../apps/meal/DietConfigApp.js";
 import {
@@ -298,7 +297,6 @@ export function createRespiteContext(runtime) {
             return result;
         },
         get isRestActive() { return runtime.respiteFlowActive; },
-        PackRegistryApp
     };
 
     exposeRespiteApi(api);
