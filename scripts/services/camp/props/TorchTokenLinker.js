@@ -17,9 +17,6 @@ import { MODULE_ID } from "../../../data/moduleId.js";
  * GM-side handler calls these methods.
  */
 
-/** Path to the shipped torch flame sprite (placeholder, scaled campfire glow). */
-export const TORCH_FLAME_IMG = `modules/${MODULE_ID}/assets/tokens/torches/torch_flame_128x128.webm`;
-
 /** Sensible fallback if no template actor exists. Smaller/tighter than campfire. */
 const DEFAULT_LIGHT = {
     bright: 10,
