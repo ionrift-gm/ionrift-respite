@@ -302,14 +302,6 @@ Hooks.once("init", async () => {
     // Register Respite-specific item enrichments with the shared library engine.
     registerItemEnrichments();
 
-    // Register Core Art Pack nudge with the shared library service so the
-    // Settings panel surfaces it alongside the in-app camp-phase nudge.
-    try {
-        const { registerArtPackNudge } = await import("./services/packs/registry/artPackNudge.js");
-        registerArtPackNudge();
-    } catch (e) {
-        console.warn(`${MODULE_ID} | Art pack nudge registration failed:`, e);
-    }
 });
 
 Hooks.on("ionrift.overlayContentChanged", async (detail) => {

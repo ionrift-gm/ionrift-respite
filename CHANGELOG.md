@@ -8,6 +8,12 @@
 ### Fixed
 - Load crash from invalid trailing commas on class methods in `DnD5eAdapter`.
 
+## [3.3.10] - 2026-07-19
+
+### Changed
+- Optional cooking item icons apply automatically when Core Cooking Art files are present under `ionrift-data/overlays/ionrift-respite/cooking-art/`. No art toggle in settings.
+- Camp art pack prompts moved out of Respite. Placeholders remain until Core Art is unzipped locally.
+
 ## [3.3.9] - 2026-07-14
 
 ### Changed

@@ -195,12 +195,6 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
 
         html += `</div>`;
 
-        // Footer links
-        html += this._renderFooterLinks([
-            { href: "https://www.patreon.com/collection/2079931", icon: "fas fa-download", label: "Get more packs" },
-            { href: "https://www.patreon.com/collection/2096842", icon: "fas fa-pencil-alt", label: "Create your own" }
-        ]);
-
         // Action buttons
         html += this._renderActionButtons([
             { cls: "pack-browse-btn", icon: "fas fa-book-open", label: "Curate Pool" },
@@ -328,11 +322,6 @@ export class PackRegistryApp extends AbstractPackRegistryApp {
         }
 
         html += `</div>`;
-
-        // Footer links
-        html += this._renderFooterLinks([
-            { href: "https://www.patreon.com/collection/2079931", icon: "fas fa-download", label: "Get more packs" }
-        ]);
 
         // Action buttons
         html += this._renderActionButtons([
