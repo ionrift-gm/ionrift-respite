@@ -3,12 +3,6 @@ const restStateRequestAtByRestId = new Map();
 
 export const REST_STATE_REQUEST_COOLDOWN_MS = 5000;
 
-/** @param {string} [restId] */
-export function clearRestStateRequestCooldown(restId) {
-    if (restId) restStateRequestAtByRestId.delete(restId);
-    else restStateRequestAtByRestId.clear();
-}
-
 /**
  * @param {object|null|undefined} app
  * @param {object|null|undefined} restData
