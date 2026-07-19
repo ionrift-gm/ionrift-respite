@@ -16,11 +16,10 @@ import { MODULE_ID } from "../../../data/moduleId.js";
  * Must be called during the init hook, after `game.ionrift.respite` is constructed.
  *
  * @param {object} opts
- * @param {typeof import("../../../apps/packs/PackRegistryApp.js").PackRegistryApp} opts.PackRegistryApp
  * @param {typeof import("../../../apps/meal/DietConfigApp.js").DietConfigApp} opts.DietConfigApp
  * @param {function} opts.onAmbientAfkChange - Callback when ambientAfkHud setting changes.
  */
-export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientAfkChange }) {
+export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.registerMenu(MODULE_ID, "eventBrowser", {
         name: "Event Pool",
@@ -30,15 +29,6 @@ export function registerAllSettings({ PackRegistryApp, DietConfigApp, onAmbientA
         type: EventBrowserApp,
         restricted: true
     });
-
-    // Legacy pack manager: only when Patreon Library does not own overlay delivery.
-    const overlayPackUi = game.ionrift?.library?.isOverlayDistributionActive?.();
-    if (!overlayPackUi) {
-        const SettingsLayoutForPack = game.ionrift?.library?.SettingsLayout;
-        SettingsLayoutForPack?.registerPackButton(MODULE_ID, PackRegistryApp, {
-            hint: "Enable or disable event content packs. Shows event counts per terrain."
-        });
-    }
 
     // Menu removed: roster UI now lives in ionrift-library (game.ionrift.library.party).
     // Setting kept so the library migration hook can seed from existing Respite data.

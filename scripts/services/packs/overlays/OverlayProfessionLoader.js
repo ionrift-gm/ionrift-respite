@@ -1,6 +1,6 @@
 /**
  * OverlayProfessionLoader
- * Discovers and loads profession recipe data from Patreon Library overlay packs.
+ * Discovers and loads profession recipe data from manually installed overlays.
  *
  * Profession overlays deliver recipe JSON to
  * `ionrift-data/overlays/ionrift-respite/{sublayer}/professions/recipes.json`,
