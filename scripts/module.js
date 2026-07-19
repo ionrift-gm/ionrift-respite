@@ -19,7 +19,6 @@ import {
 } from "./services/camp/props/CompoundCampPlacer.js";
 
 import { createRespiteContext } from "./composition/createRespiteContext.js";
-import { PackRegistryApp } from "./apps/packs/PackRegistryApp.js";
 import { ImageResolver } from "./utils/ImageResolver.js";
 import { DietConfigApp } from "./apps/meal/DietConfigApp.js";
 import { AfkPanelApp } from "./apps/rest/AfkPanelApp.js";
@@ -291,7 +290,6 @@ Hooks.once("init", async () => {
     createRespiteContext(respiteRuntime);
 
     registerAllSettings({
-        PackRegistryApp,
         DietConfigApp,
         onAmbientAfkChange: (value) => {
             if (value) void showAfkPanel();

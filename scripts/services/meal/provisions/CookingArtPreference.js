@@ -60,7 +60,7 @@ function itemIdentity(item) {
 
 /**
  * Optional cooking icons when files are present under the cooking-art overlay.
- * No Annex selector and no world preference: presence drives default vs pack art.
+ * No selector or world preference: presence drives default vs pack art.
  */
 export class CookingArtPreference {
 
@@ -93,7 +93,7 @@ export class CookingArtPreference {
 
     /**
      * True when the optional cooking-art overlay is on disk.
-     * Does not require Annex world active state (manual unzip may never toggle it).
+     * Does not require world active state.
      */
     static async detectPackArtPresent() {
         try {
