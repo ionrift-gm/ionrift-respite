@@ -219,8 +219,10 @@ export class CraftingEngine {
 
         // Roll the skill check
         const skill = recipe.skill ?? "sur";
-        const skillData = actor.system?.skills?.[skill];
-        const modifier = skillData?.total ?? skillData?.mod ?? 0;
+        const skillAdapter = game.ionrift?.respite?.adapter;
+        const modifier = skillAdapter
+            ? skillAdapter.getSkillTotal(actor, skillAdapter.normalizeSkillKey(skill))
+            : (actor.system?.skills?.[skill]?.total ?? actor.system?.skills?.[skill]?.mod ?? 0);
         const roll = await new Roll(`1d20 + ${modifier}`).evaluate();
 
         const naturalRoll = roll.dice[0]?.results?.[0]?.result;
