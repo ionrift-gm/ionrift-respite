@@ -61,8 +61,3 @@ export function createAdapter() {
 
     return new AdapterClass();
 }
-
-/** System ids with a concrete adapter class (for smoke tests). */
-export function getAdapterMapKeys() {
-    return Object.keys(ADAPTER_BY_SYSTEM);
-}

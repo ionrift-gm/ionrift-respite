@@ -301,56 +301,6 @@ export function emitCampFirewoodReclaim(userId) {
     _emit(SOCKET_TYPES.CAMP_FIREWOOD_RECLAIM, { userId });
 }
 
-/**
- * Player ,  GM: meal choices submitted.
- * @param {string} userId
- * @param {object} choices
- */
-export function emitMealChoice(userId, choices) {
-    _emit(SOCKET_TYPES.MEAL_CHOICE, { userId, choices });
-}
-
-/**
- * Player ,  GM: request host to apply meal-day inventory consumption.
- * @param {string} userId
- * @param {object} consumeByCharacter
- */
-export function emitMealDayConsumeRequest(userId, consumeByCharacter) {
-    _emit(SOCKET_TYPES.MEAL_DAY_CONSUME_REQUEST, { userId, consumeByCharacter });
-}
-
-/**
- * GM ,  clients: meal choice map sync after a meal day is consumed.
- * @param {string} userId
- * @param {object} mealChoices
- */
-export function emitMealDayConsumed(userId, mealChoices) {
-    _emit(SOCKET_TYPES.MEAL_DAY_CONSUMED, { userId, mealChoices });
-}
-
-/**
- * GM ,  Player: dehydration save required.
- * @param {object} data - { targetUserId, characterId, actorName, dc }
- */
-export function emitDehydrationSaveRequest(data) {
-    _emit(SOCKET_TYPES.DEHYDRATION_SAVE_REQUEST, data);
-}
-
-/**
- * Player ,  GM: dehydration save result.
- * @param {object} data
- */
-export function emitDehydrationSaveResult(data) {
-    _emit(SOCKET_TYPES.DEHYDRATION_SAVE_RESULT, data);
-}
-
-/**
- * GM ,  Players: dehydration save results broadcast.
- * @param {object[]} results
- */
-export function emitDehydrationResultsBroadcast(results) {
-    _emit(SOCKET_TYPES.DEHYDRATION_RESULTS_BROADCAST, { results });
-}
 
 /**
  * Any ,  All: Detect Magic scan results.
@@ -561,45 +511,6 @@ export function emitCopySpellProposal(data) {
     _emit(SOCKET_TYPES.COPY_SPELL_PROPOSAL, data);
 }
 
-/**
- * GM ,  Player: Approve spell copy proposal.
- * @param {object} data
- */
-export function emitCopySpellApproved(data) {
-    _emit(SOCKET_TYPES.COPY_SPELL_APPROVED, data);
-}
-
-/**
- * GM ,  Player: Decline spell copy proposal.
- * @param {object} data
- */
-export function emitCopySpellDeclined(data) {
-    _emit(SOCKET_TYPES.COPY_SPELL_DECLINED, data);
-}
-
-/**
- * GM ,  Player: Prompt for the spell copy skill roll.
- * @param {object} data
- */
-export function emitCopySpellRollPrompt(data) {
-    _emit(SOCKET_TYPES.COPY_SPELL_ROLL_PROMPT, data);
-}
-
-/**
- * Player ,  GM: The result of the copy spell roll.
- * @param {object} data
- */
-export function emitCopySpellResult(data) {
-    _emit(SOCKET_TYPES.COPY_SPELL_RESULT, data);
-}
-
-/**
- * GM ,  Player: Reject proposal because GM is busy copying another spell.
- * @param {object} data
- */
-export function emitCopySpellBusy(data) {
-    _emit(SOCKET_TYPES.COPY_SPELL_BUSY, data);
-}
 
 /**
  * GM ,  Players: short rest started.
@@ -643,13 +554,6 @@ export function emitShortRestWorkbenchStagingFromPlayer(payload) {
  */
 export function emitShortRestAbandoned() {
     _emit(SOCKET_TYPES.SHORT_REST_ABANDONED);
-}
-
-/**
- * Short rest dismissed (window closed, rest still active).
- */
-export function emitShortRestDismissed() {
-    _emit(SOCKET_TYPES.SHORT_REST_DISMISSED);
 }
 
 /**

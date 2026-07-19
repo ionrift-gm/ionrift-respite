@@ -681,16 +681,6 @@ export async function placeCampfire(worldX, worldY, options = {}) {
 }
 
 /**
- * Backward-compatible alias: places only the campfire pit (no furniture ring).
- * @param {number} worldX
- * @param {number} worldY
- * @returns {Promise<{sessionId: string, center: {x: number, y: number}}|null>}
- */
-export async function placeCompoundCamp(worldX, worldY) {
-    return placeCampfire(worldX, worldY);
-}
-
-/**
  * Place one shared camp station token. GM only. One token per station key per session.
  *
  * @param {number} worldX

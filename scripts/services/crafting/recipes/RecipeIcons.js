@@ -22,30 +22,3 @@ export function normalizeRecipeOutputImg(img, fallback = RECIPE_OUTPUT_ICON_FALL
     if (!img || img.includes("mystery-man")) return fallback;
     return REMAPPED_OUTPUT_ICONS[img] ?? img;
 }
-
-/**
- * @param {Item} item
- * @returns {string}
- */
-export function normalizeItemImg(item) {
-    return normalizeRecipeOutputImg(item?.img);
-}
-
-/**
- * One-time GM migration for chef treats crafted before the module icon shipped.
- */
-export async function migrateBolsteringTreatIcons() {
-    if (!game.user.isGM) return;
-
-    for (const actor of game.actors) {
-        const updates = [];
-        for (const item of actor.items) {
-            if (!item.flags?.[MODULE_ID]?.chefTreat) continue;
-            const normalized = normalizeItemImg(item);
-            if (normalized !== item.img) {
-                updates.push({ _id: item.id, img: normalized });
-            }
-        }
-        if (updates.length) await actor.updateEmbeddedDocuments("Item", updates);
-    }
-}

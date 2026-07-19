@@ -19,9 +19,6 @@ import { MODULE_ID } from "../../../data/moduleId.js";
  */
 import { CampGearScanner } from "../gear/CampGearScanner.js";
 
-/** Default pit art for the cold campfire base token (placed campfires). Lit overlay uses flame asset or template actor. */
-export const CAMPFIRE_TOKEN_IMG = "icons/svg/fire.svg";
-
 /** Sensible fallback if no template actor exists. */
 const DEFAULT_LIGHT = {
     bright: 20,

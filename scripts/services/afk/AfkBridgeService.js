@@ -9,7 +9,6 @@ import {
     installFastFlipHooks,
     isFastFlipAvailable,
     readFastFlipAfk,
-    removeFastFlipHooks,
     writeFastFlipAfk
 } from "./adapters/FastFlipAfkAdapter.js";
 import {
@@ -17,7 +16,6 @@ import {
     isPlayerListStatusAvailable,
     playerListStatusAdapterMeta,
     readPlayerListStatusAfk,
-    removePlayerListStatusHooks,
     writePlayerListStatusAfk
 } from "./adapters/PlayerListStatusAfkAdapter.js";
 import { MODULE_ID } from "../../data/moduleId.js";
@@ -158,12 +156,6 @@ export function installAfkBridgeHooks() {
 
     installFastFlipHooks(onExternal);
     installPlayerListStatusHooks(onExternal);
-}
-
-export function removeAfkBridgeHooks() {
-    removeFastFlipHooks();
-    removePlayerListStatusHooks();
-    _hooksInstalled = false;
 }
 
 export function initAfkBridge() {
