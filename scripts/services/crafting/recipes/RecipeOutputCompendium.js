@@ -4,6 +4,7 @@
 
 import { Logger } from "../../../utils/Logger.js";
 import { ProvisionsCustomPack, PROVISIONS_CUSTOM_PACK_ID, folderParentId } from "../../meal/provisions/ProvisionsCustomPack.js";
+import { syncResourceTypeFromMealFlags } from "../../meal/buffs/MealBuffPresets.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 
 /** Placeholder output names replaced with the recipe title on save. */
@@ -95,6 +96,9 @@ export function buildOutputItemDocument(output, outputFlags, itemRef, folderId, 
     const rf = { ...(outputFlags?.[MODULE_ID] ?? {}) };
     rf.itemRef = itemRef;
     rf.category = professionId === "brewing" ? "brew" : "prepared";
+
+    // Drink / water-only homebrew must classify as water even when DnD5e type is potion.
+    if (!rf.resourceType) syncResourceTypeFromMealFlags(rf);
 
     const defaultSystemType = professionId === "brewing"
         ? "potion"

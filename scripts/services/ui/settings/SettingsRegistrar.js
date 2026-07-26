@@ -24,7 +24,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     game.settings.registerMenu(MODULE_ID, "eventBrowser", {
         name: "Event Pool",
         label: "Curate Event Pool",
-        hint: "Browse camp events, import custom JSON packs, and choose which ones can occur when you roll the night check.",
+        hint: "Browse, import, and enable camp night events.",
         icon: "fas fa-book-open",
         type: EventBrowserApp,
         restricted: true
@@ -42,7 +42,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     game.settings.registerMenu(MODULE_ID, "dietConfigMenu", {
         name: "Food & Diet",
         label: "Configure Food & Diet",
-        hint: "Turn meal tracking on or off, set the partial-sustenance house rule, and set per-character dietary rules (what each character can eat and drink, preset profiles, and custom overrides).",
+        hint: "Meal tracking, house rules, and per-character diets.",
         icon: "fas fa-utensils",
         type: DietConfigApp,
         restricted: true
@@ -51,7 +51,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     game.settings.registerMenu(MODULE_ID, "activityConfig", {
         name: "Travel & Activities",
         label: "Configure Travel & Activities",
-        hint: "Pre-camp travel and evening camp activities. Training and fletching use tier sliders (Off through five rates).",
+        hint: "Travel phase and camp activity toggles, including Training and Fletching tiers.",
         icon: "fas fa-campground",
         type: ActivityConfigApp,
         restricted: true
@@ -60,7 +60,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     game.settings.registerMenu(MODULE_ID, "recipeEditor", {
         name: "Custom Recipes",
         label: "Edit Custom Recipes",
-        hint: "Add homebrew cooking recipes. Match ingredient names to compendium items in Respite Custom (Ionrift Custom sidebar) or shipped Respite Items.",
+        hint: "Homebrew recipes. Ingredient names must match Respite Custom or Respite Items.",
         icon: "fas fa-mortar-pestle",
         type: RecipeEditorApp,
         restricted: true
@@ -81,7 +81,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     game.settings.registerMenu(MODULE_ID, "recoveryConfig", {
         name: "Recovery Rules",
         label: "Configure Recovery",
-        hint: "Armor penalties, spell recovery, Song of Rest timing, and homebrew hit die rules.",
+        hint: "Armor sleep rules, spell recovery, Song of Rest, and Hit Dice options.",
         icon: "fas fa-heart-pulse",
         type: RecoveryConfigApp,
         restricted: true
@@ -90,7 +90,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     game.settings.registerMenu(MODULE_ID, "playerRestrictions", {
         name: "Player Restrictions",
         label: "Configure Restrictions",
-        hint: "Control rest interception, quantity locks, and attunement rules.",
+        hint: "Rest interception, quantity locks, and attunement limits.",
         icon: "fas fa-user-lock",
         type: PlayerRestrictionsApp,
         restricted: true
@@ -98,21 +98,21 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "restInterfaceMode", {
         name: "Rest Interface Mode",
-        hint: "Choose how the table engages with camp. One window runs the whole rest in a single panel, with players picking activities from a list. Camp stations drops the camp onto the scene in one click; players move their tokens to a piece to act there, which suits groups that prefer to stay in character.",
+        hint: "One window: full rest in a panel. Camp stations: place camp pieces on the scene and move tokens to act.",
         scope: "world",
         config: true,
         type: String,
         default: "theater",
         choices: {
-            theater: "One window (run camp as a single panel)",
-            stations: "Camp stations (place pieces on the scene, move tokens)"
+            theater: "One window",
+            stations: "Camp stations"
         },
         restricted: true
     });
 
     game.settings.register(MODULE_ID, "interceptRests", {
         name: "Intercept Player Rests",
-        hint: "Block the default Short/Long Rest buttons for players. Rests must go through the GM-managed Respite flow.",
+        hint: "Block default Short/Long Rest buttons. Players use the Respite flow instead.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -122,7 +122,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "armorDoffRule", {
         name: "Armor Sleep Penalties",
-        hint: "Characters sleeping in medium or heavy armor recover fewer Hit Dice and cannot reduce exhaustion (Xanathar's). Characters on watch are exempt.",
+        hint: "Medium/heavy armor: fewer Hit Dice recovered, no exhaustion reduction (Xanathar's). Watch is exempt.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -132,7 +132,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "enableComfort", {
         name: "Comfort Rules (Homebrew)",
-        hint: "Terrain comfort tiers, fire mechanics, and gear-driven recovery modifiers. Off by default (Standard profile). Survival Quick Setup turns this on. When off: no comfort penalties, no fire phase, no terrain exhaustion saves.",
+        hint: "Terrain comfort, fire, and gear recovery. Off: no comfort penalties, fire phase, or terrain exhaustion saves.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -143,7 +143,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "enableCampfireMinigame", {
         name: "Campfire Minigame",
-        hint: "Make Camp uses the minigame as the lighting ceremony. During Activities, the minigame manages fire intensity instead of tier buttons (TotM side panel or Stations Fire tab). On by default; Survival Quick Setup keeps it on.",
+        hint: "Use the campfire minigame for lighting and fire intensity instead of tier buttons.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -153,7 +153,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "enableWorkbenchIdentify", {
         name: "Workbench Identify Tab (TotM)",
-        hint: "During TotM Activities, show the Identify tab for the workbench station. Off hides in-rest identification UI (use spellcasting at the table instead).",
+        hint: "Show the Identify tab on the TotM workbench during Activities.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -163,7 +163,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "spellRecoveryMaxLevel", {
         name: "Spell Recovery Max Level",
-        hint: "Maximum spell slot level recoverable via Arcane Recovery and Natural Recovery. The default matches the 2014 rules cap of 5. Increase for homebrew.",
+        hint: "Highest slot level for Arcane/Natural Recovery (2014 default: 5).",
         scope: "world",
         config: false,
         type: Number,
@@ -174,21 +174,21 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "songOfRestTiming", {
         name: "Song of Rest Timing",
-        hint: "End of rest: bonus die is rolled for each qualifying character when the GM completes the short rest (strict table timing). With first Hit Die: each character's bonus is rolled and applied as soon as they spend their first Hit Die this rest (clearer at the table, still once per character per rest).",
+        hint: "When the Song of Rest bonus die is rolled on a short rest.",
         scope: "world",
         config: false,
         type: String,
         default: "endOfRest",
         choices: {
-            endOfRest: "End of short rest (strict timing)",
-            withFirstHitDie: "With first Hit Die (per character, immediate)",
+            endOfRest: "End of short rest",
+            withFirstHitDie: "With first Hit Die",
         },
         restricted: true,
     });
 
     game.settings.register(MODULE_ID, "maxValueHitDice", {
         name: "Short Rest: Max Hit Dice (Homebrew)",
-        hint: "During short rests only, each Hit Die heals for the die's maximum roll plus CON modifier (not a random roll). Native Hit Die spend and chat card still run; HP is corrected to match. Optional rule, not RAW.",
+        hint: "Short rest Hit Dice heal for maximum + CON instead of rolling.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -208,7 +208,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "trainingXpTier", {
         name: "Training XP Tier",
-        hint: "0 disables Training. 1-5 set fail/pass XP per set (3/10 through 10/50).",
+        hint: "0 off. 1-5: fail/pass XP per set (3/10 to 10/50).",
         scope: "world",
         config: false,
         type: Number,
@@ -225,7 +225,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "enableProfessions", {
         name: "Crafting Professions",
-        hint: "Show cooking and crafting activities during rest.",
+        hint: "Show cooking and crafting during rest.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -235,7 +235,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "chefTreatCookingOnly", {
         name: "Chef Treats Only (RAW)",
-        hint: "Disables camp meal crafting. Chef feat characters can still bake Bolstering Treats.",
+        hint: "Disable camp meal crafting. Chef feat Bolstering Treats still work.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -260,7 +260,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "fletchingYieldTier", {
         name: "Fletching Yield Tier",
-        hint: "0 disables Fletching. 1-5 set success yield dice (2d4+prof through 2d20+prof).",
+        hint: "0 off. 1-5: success yield dice (2d4+prof to 2d20+prof).",
         scope: "world",
         config: false,
         type: Number,
@@ -277,7 +277,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "enableEncounters", {
         name: "Night Encounters (Homebrew)",
-        hint: "Run the night encounter layer: Keep Watch, Set Up Defenses, scouting, and the encounter threshold roll. Disable for a rest closer to RAW; the night passes without a check.",
+        hint: "Night check, Keep Watch, and related camp defenses. Off: night passes with no check.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -287,7 +287,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "enableCopySpell", {
         name: "Copy Spell Activity",
-        hint: "Show the Copy Spell activity during long rests for wizards with a spellbook. Disable for a simpler rest without spell scribing.",
+        hint: "Show Copy Spell on long rests for wizards with a spellbook.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -297,7 +297,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "enablePrayMeditate", {
         name: "Pray / Meditate Activity",
-        hint: "Show the Pray / Meditate activity during rests. Religion or Insight check for temporary HP on success.",
+        hint: "Show Pray / Meditate. Religion or Insight for temp HP on success.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -307,7 +307,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "enableScouting", {
         name: "Travel Scouting",
-        hint: "Scout on the final travel day before camp. Requires Use Travel.",
+        hint: "Scout on the last travel day. Requires Use Travel.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -317,7 +317,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "enableForaging", {
         name: "Travel Foraging",
-        hint: "Forage during the travel phase. Off removes foraging from travel days.",
+        hint: "Allow foraging on travel days.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -327,7 +327,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "enableHunting", {
         name: "Travel Hunting",
-        hint: "Hunt during the travel phase. Off removes hunting from travel days.",
+        hint: "Allow hunting on travel days.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -337,7 +337,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "campFuelFindChance", {
         name: "Camp Fuel Find Chance",
-        hint: "Percent chance each successful forage also grants kindling (via the Camp Fuel roll table). 0 disables the side yield.",
+        hint: "Percent chance a successful forage also grants kindling. 0 disables.",
         scope: "world",
         config: false,
         type: Number,
@@ -352,7 +352,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "homebrewProvisionOnly", {
         name: "Homebrew Provisions Only",
-        hint: "Ignore shipped Respite Items, built-in stubs, and imported pack data. Camp cooking uses your custom recipe list; forage and hunt use the Respite Custom compendium only.",
+        hint: "Cooking, forage, and hunt use custom recipes and Respite Custom only.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -375,7 +375,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "useTravel", {
         name: "Use Travel",
-        hint: "Include the travel phase during long rests. Off skips travel and goes straight to camp.",
+        hint: "Include the travel phase on long rests. Off skips to camp.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -404,7 +404,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     // the Survival profile turns meal tracking on.
     game.settings.register(MODULE_ID, "trackFood", {
         name: "Track Food & Water",
-        hint: "Show the Meal phase during long rests. Characters consume rations and water, with advisories for starvation and dehydration.",
+        hint: "Show the Meal phase on long rests (rations, water, starvation advisories).",
         scope: "world",
         config: false,
         type: Boolean,
@@ -416,7 +416,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     // the Survival profile turns this leniency on alongside meal tracking.
     game.settings.register(MODULE_ID, "partialSustenance", {
         name: "Partial Sustenance (House Rule)",
-        hint: "In terrains requiring double rations or water, partial fulfilment grants a benefit: +2 to CON save (water) or extended grace period (food). Disable for strict RAW.",
+        hint: "Partial food/water in harsh terrains still helps (CON bonus or longer grace). Off for strict RAW.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -426,7 +426,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "spoilageNameSuffix", {
         name: "Spoilage Name Suffixes",
-        hint: "Adds a freshness label to perishable item names on grant (e.g. Bird Eggs (3d)) so dnd5e keeps incompatible stacks separate. Off keeps base names and relies on harvest metadata plus the inventory merge guard.",
+        hint: "Append freshness to perishable names on grant (e.g. Bird Eggs (3d)) so stacks stay separate.",
         scope: "world",
         config: true,
         type: Boolean,
@@ -436,7 +436,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "lockPlayerQuantity", {
         name: "Lock Player Quantity Controls",
-        hint: "Prevents players from adjusting item quantities on their character sheet. The GM can still modify quantities. Useful when tracking rations and consumables through the Respite rest flow.",
+        hint: "Players cannot change item quantities. GM still can.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -446,7 +446,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "lockAttuneOutsideRest", {
         name: "Lock Attunement to Rest",
-        hint: "Players can only attune or de-attune items during an active rest (long or short). Outside of rest, the attunement toggle is disabled. RAW: attunement requires a short rest.",
+        hint: "Players may only attune or unattune during a rest.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -464,7 +464,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "campfireTokenName", {
         name: "Campfire Token Name",
-        hint: "Name of the token on the scene to link with the campfire. When the campfire is lit, the token's light turns on. Case-insensitive.",
+        hint: "Scene token name linked to campfire light. Case-insensitive.",
         scope: "world",
         config: false,
         type: String,
@@ -474,7 +474,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "torchTokenName", {
         name: "Perimeter Torch Token Name",
-        hint: "Name of the tokens on the scene used as perimeter torches. All matching tokens toggle together. Case-insensitive.",
+        hint: "Scene token name for perimeter torches. All matches toggle together.",
         scope: "world",
         config: false,
         type: String,
@@ -484,7 +484,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "torchAutoLink", {
         name: "Auto-Link Torches to Campfire",
-        hint: "When enabled, perimeter torches automatically light and extinguish with the campfire.",
+        hint: "Perimeter torches light and extinguish with the campfire.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -494,7 +494,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "customFoodNames", {
         name: "Custom Food Items",
-        hint: "Comma-separated list of additional item names to recognise as food in the meal phase. Case-insensitive. Example: scrap metal, goodberries, dried fish",
+        hint: "Extra food names for the meal phase, comma-separated (e.g. scrap metal, goodberries).",
         scope: "world",
         config: false,
         type: String,
@@ -504,7 +504,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "customWaterNames", {
         name: "Custom Water Items",
-        hint: "Comma-separated list of additional item names to recognise as water in the meal phase. Case-insensitive. Example: oil, wine, ale, milk",
+        hint: "Extra water names for the meal phase, comma-separated (e.g. oil, wine, ale).",
         scope: "world",
         config: false,
         type: String,
@@ -639,7 +639,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "ambientAfkHud", {
         name: "Ambient AFK HUD",
-        hint: "Keeps the party AFK strip on screen when not at camp or in a rest flow. Toggle off to show it only during long or short rest.",
+        hint: "Keep the AFK strip visible outside active rests. Off: only during rest.",
         scope: "world",
         config: true,
         type: Boolean,
@@ -669,7 +669,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     game.settings.registerMenu(MODULE_ID, "clearRestState", {
         name: "Reset Rest State",
         label: "Reset Rest State",
-        hint: "Clears rest locks so the party can rest again, including the same in-game day. Removes camp tokens on the active scene and reloads all clients.",
+        hint: "Clear stuck rest locks, remove camp tokens on the active scene, and reload clients.",
         icon: "fas fa-broom",
         type: class ClearRestStateApp extends FormApplication {
             async _updateObject() {
@@ -678,7 +678,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
             async render() {
                 const proceed = await Dialog.confirm({
                     title: "Reset Rest State",
-                    content: "<p>Rest locks and any in-progress rest will be cleared. Camp tokens on the active scene are removed and all clients reload.</p><p>Use when rest will not start, the party needs to rest again today, or a rest did not finish cleanly.</p>",
+                    content: "<p>Clears rest locks and in-progress rest state, removes camp tokens on the active scene, and reloads all clients.</p>",
                     yes: () => true,
                     no: () => false,
                     defaultYes: false

@@ -224,8 +224,8 @@
         {{/unless}}
         {{/if}}
 
-        {{!-- Advanced Drawer (collapsed by default) --}}
-        <details class="scene-advanced-drawer">
+        {{!-- Advanced Drawer (collapsed by default; open state survives day-stepper re-renders) --}}
+        <details class="scene-advanced-drawer" {{#if setupAdvancedOpen}}open{{/if}}>
             <summary class="scene-advanced-toggle">
                 <i class="fas fa-cog"></i> Advanced
             </summary>
@@ -270,7 +270,7 @@
                         <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
                         {{/each}}
                     </select>
-                    <span class="comfort-hint">How the table runs this rest. One window keeps everything in this panel; camp stations drops pieces on the scene for players to move tokens to.</span>
+                    <span class="comfort-hint">One window: this panel. Camp stations: pieces on the scene, move tokens to act.</span>
                 </div>
             </div>
         </details>

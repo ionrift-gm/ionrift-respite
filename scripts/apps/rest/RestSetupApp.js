@@ -3666,6 +3666,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 };
             })(),
             trackFood: trackFoodSetting,
+            setupAdvancedOpen: !!this._setupAdvancedOpen,
             gmCopySpellProposal: this._gmCopySpellProposal ?? null,
             copySpellRollPrompt: this._copySpellRollPrompt ?? null,
             copySpellRollRequest: buildCopySpellRollContext(this._copySpellRollPrompt),
@@ -3930,7 +3931,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 const current = this._isTotM ? "theater" : "stations";
                 return [
                     { value: "theater", label: "One window", selected: current === "theater" },
-                    { value: "stations", label: "Camp stations (place on scene)", selected: current === "stations" }
+                    { value: "stations", label: "Camp stations", selected: current === "stations" }
                 ];
             })(),
             setupStep: this._setupStep ?? 1,
@@ -5738,6 +5739,14 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
+        // Persist Advanced drawer open state across setup re-renders (day stepper, rest type, etc.)
+        const advancedDrawer = this.element.querySelector(".scene-advanced-drawer");
+        if (advancedDrawer) {
+            advancedDrawer.addEventListener("toggle", () => {
+                this._setupAdvancedOpen = advancedDrawer.open;
+            });
+        }
+
         // Rest type toggle buttons: update hidden input on click
         const restTypeButtons = this.element.querySelectorAll('.rest-type-btn');
         const restTypeInput = this.element.querySelector('[name="restType"]');
@@ -6085,6 +6094,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static #onAdjustDaysSinceRest(event, target) {
         const delta = parseInt(target.dataset.delta, 10) || 0;
         this._daysSinceLastRest = Math.max(1, Math.min(9, (this._daysSinceLastRest ?? 1) + delta));
+        // Day stepper lives inside Advanced; keep the drawer open across re-render.
+        this._setupAdvancedOpen = true;
         this.render();
     }
 
