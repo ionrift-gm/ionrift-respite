@@ -102,7 +102,8 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
             drinkTypes,
             isSingleActor: !!this.#focusActorId,
             trackFood: game.settings.get(MODULE_ID, "trackFood"),
-            partialSustenance: game.settings.get(MODULE_ID, "partialSustenance")
+            partialSustenance: game.settings.get(MODULE_ID, "partialSustenance"),
+            spoilageNameSuffix: game.settings.get(MODULE_ID, "spoilageNameSuffix")
         };
     }
 
@@ -139,6 +140,14 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
                     <span class="diet-global-copy">
                         <span class="diet-global-name">Partial sustenance <span class="diet-global-tag">house rule</span></span>
                         <span class="diet-global-hint">In terrains needing double rations or water, partial fulfilment still helps: +2 to the CON save (water) or a longer grace period (food). Turn off for strict RAW.</span>
+                    </span>
+                </label>
+                <label class="diet-global-toggle">
+                    <input type="checkbox" class="diet-spoilage-suffix-cb" ${context.spoilageNameSuffix ? "checked" : ""} />
+                    <span class="diet-global-switch"></span>
+                    <span class="diet-global-copy">
+                        <span class="diet-global-name">Spoilage name suffixes</span>
+                        <span class="diet-global-hint">Append freshness to perishable names on grant (e.g. Bird Eggs (3d)) so stacks with different timers stay separate.</span>
                     </span>
                 </label>
             </div>`;
@@ -334,6 +343,10 @@ export class DietConfigApp extends foundry.applications.api.ApplicationV2 {
 
         el.querySelector(".diet-partial-cb")?.addEventListener("change", async (ev) => {
             await game.settings.set(MODULE_ID, "partialSustenance", ev.target.checked);
+        });
+
+        el.querySelector(".diet-spoilage-suffix-cb")?.addEventListener("change", async (ev) => {
+            await game.settings.set(MODULE_ID, "spoilageNameSuffix", ev.target.checked);
         });
 
         el.querySelectorAll(".diet-preset-select").forEach(sel => {

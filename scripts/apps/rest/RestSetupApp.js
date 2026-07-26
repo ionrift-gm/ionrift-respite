@@ -11529,7 +11529,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (this._craftingInProgress?.has(characterId)) return null;
 
         // Look up activity from the resolver, then fall back to known crafting IDs
-        const CRAFTING_PROFESSIONS = { act_cook: "cooking", act_brew: "alchemy" };
+        const CRAFTING_PROFESSIONS = { act_cook: "cooking", act_brew: "brewing" };
         const activity = this._activityResolver?.activities?.get(activityId);
         const craftingProfession = activity?.crafting?.profession ?? CRAFTING_PROFESSIONS[activityId];
         if (activity?.crafting?.enabled || craftingProfession) {

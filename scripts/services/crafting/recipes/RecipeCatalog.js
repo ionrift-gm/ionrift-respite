@@ -253,21 +253,35 @@ export function validateCustomRecipe(recipe, professionId) {
             }
         }
     }
-    const out = recipe.output;
-    if (!out?.name || typeof out.name !== "string") {
-        errors.push("Output must include a name.");
-    }
-    if (out && (typeof out.quantity !== "number" || out.quantity <= 0)) {
-        errors.push("Output quantity must be a positive number.");
+    const stdOutputs = Array.isArray(recipe.outputs) && recipe.outputs.length
+        ? recipe.outputs
+        : (recipe.output ? [recipe.output] : []);
+    if (!stdOutputs.length) {
+        errors.push("Output must include a name (or a non-empty outputs OR-list).");
+    } else {
+        for (const out of stdOutputs) {
+            if (!out?.name || typeof out.name !== "string") {
+                errors.push("Each output must include a name.");
+                break;
+            }
+            if (out && (typeof out.quantity !== "number" || out.quantity <= 0)) {
+                errors.push("Output quantity must be a positive number.");
+                break;
+            }
+        }
     }
 
-    const amb = recipe.ambitiousOutput;
-    if (amb) {
+    const ambOutputs = Array.isArray(recipe.ambitiousOutputs) && recipe.ambitiousOutputs.length
+        ? recipe.ambitiousOutputs
+        : (recipe.ambitiousOutput ? [recipe.ambitiousOutput] : []);
+    for (const amb of ambOutputs) {
         if (!amb.name || typeof amb.name !== "string") {
             errors.push("Ambitious output must include a name.");
+            break;
         }
         if (typeof amb.quantity !== "number" || amb.quantity <= 0) {
             errors.push("Ambitious output quantity must be a positive number.");
+            break;
         }
     }
 
