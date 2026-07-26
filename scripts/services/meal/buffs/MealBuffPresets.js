@@ -684,6 +684,57 @@ export function applyMealBuffPresetToFlags(rf, presetId) {
 }
 
 /**
+ * Commit homebrew editor meal fields onto flags.
+ * Buff preset owns wellFed/buff; form values always win for satiates, foodTag,
+ * partyMeal, and spoilsAfter so picking a preset cannot stomp manual drink/water.
+ *
+ * @param {Object} rf - ionrift-respite flags object to mutate
+ * @param {object} fields
+ * @param {string} [fields.presetId="none"]
+ * @param {string[]} fields.satiates
+ * @param {string} fields.foodTag
+ * @param {boolean} fields.partyMeal
+ * @param {number|null} fields.spoilsAfter
+ */
+export function commitMealEffectFieldsFromForm(rf, fields = {}) {
+    if (!rf) return;
+    const presetId = fields.presetId ?? "none";
+    if (presetId !== "custom") {
+        applyMealBuffPresetToFlags(rf, presetId);
+    }
+
+    rf.partyMeal = fields.partyMeal === true;
+    if (!rf.partyMeal) delete rf.partyMeal;
+
+    rf.satiates = Array.isArray(fields.satiates) ? [...fields.satiates] : [];
+    rf.foodTag = fields.foodTag || "cooked_meal";
+    rf.spoilsAfter = fields.spoilsAfter ?? null;
+    if (rf.spoilsAfter == null) delete rf.spoilsAfter;
+
+    syncResourceTypeFromMealFlags(rf);
+}
+
+/**
+ * Derive resourceType from meal editor fields so ItemClassifier can detect drinks
+ * without requiring JSON. Drink / water-only outputs become water; food-satiating
+ * outputs become food.
+ *
+ * @param {Object} rf - ionrift-respite flags object to mutate
+ */
+export function syncResourceTypeFromMealFlags(rf) {
+    if (!rf) return;
+    const satiates = Array.isArray(rf.satiates) ? rf.satiates : [];
+    const waterOnly = satiates.includes("water") && !satiates.includes("food");
+    if (rf.foodTag === "drink" || waterOnly) {
+        rf.resourceType = "water";
+        return;
+    }
+    if (satiates.includes("food") || ["cooked_meal", "preserved", "meat", "raw_fish", "prepared"].includes(rf.foodTag)) {
+        rf.resourceType = "food";
+    }
+}
+
+/**
  * Build satiates array from checkbox state.
  * @param {boolean} food
  * @param {boolean} water

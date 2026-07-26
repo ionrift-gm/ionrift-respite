@@ -249,13 +249,16 @@ export class ItemClassifier {
         //    Must run before the DnD5e "food" subtype catch-all.
         if (this._matchesIngredientByName(item)) return "ingredient";
 
-        // 4a. Module foodTag flag: items with a foodTag are definitively food
-        //     (covers crafted meals that may have wrong DnD5e type)
+        // 4a. Module foodTag: drink is water; other meal tags are food
+        //     (covers crafted meals/drinks that may have wrong DnD5e type)
         const foodTag = item.flags?.[MODULE_ID]?.foodTag;
+        if (foodTag === "drink") return "water";
         if (foodTag && FOOD_TAGS.has(foodTag)) return "food";
-        if (foodTag === "cooked_meal") return "food";
+        if (foodTag === "cooked_meal" || foodTag === "preserved" || foodTag === "raw_fish") return "food";
 
-        // 4b. DnD5e consumable subtype "food" (covers food AND drink in DnD5e)
+        // 4b. DnD5e consumable subtypes
+        if (item.type === "consumable" && item.system?.type?.value === "drink") return "water";
+        // "food" covers food AND many liquids in SRD data; water names already matched above
         if (item.type === "consumable" && item.system?.type?.value === "food") return "food";
 
         // 5. Name list fallback: food
