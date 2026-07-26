@@ -8,6 +8,21 @@
 ### Fixed
 - Load crash from invalid trailing commas on class methods in `DnD5eAdapter`.
 
+## [3.3.12] - 2026-07-26
+
+### Added
+- Custom Recipes: per-ingredient Alternates drawer for substitute ingredient names.
+- Advanced JSON recipes can define `outputs` / `ambitiousOutputs` as an OR-list; craft picks one result at random.
+
+### Fixed
+- Saving a custom recipe no longer clears Satiates, Food tag, or related meal fields.
+- Drink and water outputs classify correctly for the meal phase.
+- The Advanced "Days Since Last Rest" drawer stays open across re-renders.
+
+### Changed
+- Spoilage name suffixes live under Food & Diet with the other meal tracking options.
+- Shortened a few settings labels and hints.
+
 ## [3.3.11] - 2026-07-19
 
 ### Changed
