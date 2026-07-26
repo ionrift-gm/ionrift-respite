@@ -18,6 +18,7 @@ import {
 import {
     applyMealBuffPresetToFlags,
     buildSatiatesList,
+    commitMealEffectFieldsFromForm,
     defaultFoodTagForProfession,
     defaultSatiatesForProfession,
     formatMealBuffPreview,
@@ -26,7 +27,8 @@ import {
     getMealBuffPreset,
     getMealBuffPresetAttribution,
     getMealBuffPresetsForProfession,
-    matchMealBuffPresetId
+    matchMealBuffPresetId,
+    syncResourceTypeFromMealFlags
 } from "../../services/meal/buffs/MealBuffPresets.js";
 import { MealBuffPickerDialog } from "../meal/MealBuffPickerDialog.js";
 import {
@@ -730,15 +732,15 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
     }
 
     _defaultOutputFlags() {
-        return {
-            [MODULE_ID]: {
-                foodTag: defaultFoodTagForProfession(this.#professionId),
-                spoilsAfter: 3,
-                partyMeal: false,
-                wellFed: false,
-                satiates: defaultSatiatesForProfession(this.#professionId)
-            }
+        const rf = {
+            foodTag: defaultFoodTagForProfession(this.#professionId),
+            spoilsAfter: 3,
+            partyMeal: false,
+            wellFed: false,
+            satiates: defaultSatiatesForProfession(this.#professionId)
         };
+        syncResourceTypeFromMealFlags(rf);
+        return { [MODULE_ID]: rf };
     }
 
     _applyMealFlagsFromForm(root, draft, tier) {
@@ -749,29 +751,31 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         draft[flagsKey][MODULE_ID] = rf;
 
         if (this._isMealProfession(this.#professionId)) {
-            rf.partyMeal = root.querySelector(`[name="${prefix}PartyMeal"]`)?.checked ?? false;
             const satFood = root.querySelector(`[name="${prefix}SatiatesFood"]`)?.checked ?? false;
             const satWater = root.querySelector(`[name="${prefix}SatiatesWater"]`)?.checked ?? false;
-            rf.satiates = buildSatiatesList(satFood, satWater);
-            if (!rf.satiates.length) {
-                rf.satiates = defaultSatiatesForProfession(this.#professionId);
+            let satiates = buildSatiatesList(satFood, satWater);
+            if (!satiates.length) {
+                satiates = defaultSatiatesForProfession(this.#professionId);
             }
-
-            rf.foodTag = root.querySelector(`[name="${prefix}FoodTag"]`)?.value
-                ?? defaultFoodTagForProfession(this.#professionId);
-
             const spoilsRaw = root.querySelector(`[name="${prefix}SpoilsAfter"]`)?.value?.trim() ?? "";
-            rf.spoilsAfter = spoilsRaw ? (Number(spoilsRaw) || null) : null;
+            commitMealEffectFieldsFromForm(rf, {
+                presetId: root.querySelector(`[name="${prefix}BuffPresetId"]`)?.value ?? "none",
+                partyMeal: root.querySelector(`[name="${prefix}PartyMeal"]`)?.checked ?? false,
+                satiates,
+                foodTag: root.querySelector(`[name="${prefix}FoodTag"]`)?.value
+                    ?? defaultFoodTagForProfession(this.#professionId),
+                spoilsAfter: spoilsRaw ? (Number(spoilsRaw) || null) : null
+            });
         } else {
             delete rf.partyMeal;
             delete rf.satiates;
             delete rf.foodTag;
             delete rf.spoilsAfter;
-        }
-
-        const presetId = root.querySelector(`[name="${prefix}BuffPresetId"]`)?.value ?? "none";
-        if (presetId !== "custom") {
-            applyMealBuffPresetToFlags(rf, presetId);
+            delete rf.resourceType;
+            const presetId = root.querySelector(`[name="${prefix}BuffPresetId"]`)?.value ?? "none";
+            if (presetId !== "custom") {
+                applyMealBuffPresetToFlags(rf, presetId);
+            }
         }
     }
 
