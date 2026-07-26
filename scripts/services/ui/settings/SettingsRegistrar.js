@@ -60,7 +60,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     game.settings.registerMenu(MODULE_ID, "recipeEditor", {
         name: "Custom Recipes",
         label: "Edit Custom Recipes",
-        hint: "Homebrew recipes. Ingredient names must match Respite Custom or Respite Items.",
+        hint: "Homebrew recipes by profession. Ingredient names must match Respite Custom or Respite Items.",
         icon: "fas fa-mortar-pestle",
         type: RecipeEditorApp,
         restricted: true
@@ -424,11 +424,12 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         restricted: true
     });
 
+    // Surfaced in the Food & Diet dialog (DietConfigApp), not the native panel.
     game.settings.register(MODULE_ID, "spoilageNameSuffix", {
         name: "Spoilage Name Suffixes",
         hint: "Append freshness to perishable names on grant (e.g. Bird Eggs (3d)) so stacks stay separate.",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: false,
         restricted: true

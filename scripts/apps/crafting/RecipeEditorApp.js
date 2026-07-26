@@ -70,6 +70,8 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
     #selectedIndex = 0;
     #draft = null;
     #flashSavedIndex = null;
+    /** @type {Set<number>} Ingredient row indices with Alternates open. */
+    #ingredientAdvancedOpen = new Set();
 
     static DEFAULT_OPTIONS = {
         id: "respite-recipe-editor",
@@ -390,18 +392,53 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         const canRemoveIngredient = ingredients.length > 1;
         for (let i = 0; i < ingredients.length; i++) {
             const ing = ingredients[i];
+            const alts = Array.isArray(ing.alternates)
+                ? ing.alternates.map(a => String(a ?? "").trim()).filter(Boolean)
+                : [];
+            const advancedOpen = this.#ingredientAdvancedOpen.has(i) || alts.length > 0;
+            if (advancedOpen) this.#ingredientAdvancedOpen.add(i);
             const removeBtn = canRemoveIngredient ? `
                 <button type="button" class="recipe-editor-ingredient-remove" data-action="removeIngredient"
                     data-ing-index="${i}" title="Remove ingredient" aria-label="Remove ingredient">
                     <i class="fas fa-times"></i>
                 </button>` : "";
+            let altRowsHtml = "";
+            const altList = alts.length ? alts : (advancedOpen ? [""] : []);
+            for (let altIdx = 0; altIdx < altList.length; altIdx++) {
+                altRowsHtml += `
+                <div class="recipe-editor-ingredient-alt-row">
+                    <input type="text" class="recipe-editor-input" name="ingAlt"
+                        value="${this._esc(altList[altIdx])}" placeholder="Or this item name" />
+                    <button type="button" class="recipe-editor-ingredient-remove" data-action="removeAlternate"
+                        data-ing-index="${i}" data-alt-index="${altIdx}"
+                        title="Remove alternate" aria-label="Remove alternate">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>`;
+            }
             ingredientsHtml += `
-            <div class="recipe-editor-ingredient-row" data-ing-index="${i}">
-                <input type="text" class="recipe-editor-input" name="ingName"
-                    value="${this._esc(ing.name)}" placeholder="Compendium item name" />
-                <input type="number" class="recipe-editor-input recipe-editor-input--qty" name="ingQty"
-                    min="1" value="${ing.quantity ?? 1}" aria-label="Quantity" />
-                ${removeBtn}
+            <div class="recipe-editor-ingredient-block" data-ing-index="${i}">
+                <div class="recipe-editor-ingredient-row">
+                    <input type="text" class="recipe-editor-input" name="ingName"
+                        value="${this._esc(ing.name)}" placeholder="Compendium item name" />
+                    <input type="number" class="recipe-editor-input recipe-editor-input--qty" name="ingQty"
+                        min="1" value="${ing.quantity ?? 1}" aria-label="Quantity" />
+                    ${removeBtn}
+                </div>
+                <details class="recipe-editor-ingredient-advanced" data-ing-index="${i}"${advancedOpen ? " open" : ""}>
+                    <summary class="recipe-editor-ingredient-advanced-toggle">
+                        <i class="fas fa-exchange-alt" aria-hidden="true"></i> Alternates
+                        ${alts.length ? `<span class="recipe-editor-ingredient-alt-count">${alts.length}</span>` : ""}
+                    </summary>
+                    <div class="recipe-editor-ingredient-advanced-body">
+                        <p class="recipe-editor-hint">Any of these names also satisfy this ingredient slot.</p>
+                        <div class="recipe-editor-ingredient-alts">${altRowsHtml}</div>
+                        <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost"
+                            data-action="addAlternate" data-ing-index="${i}">
+                            <i class="fas fa-plus"></i> Add alternate
+                        </button>
+                    </div>
+                </details>
             </div>`;
         }
 
@@ -423,6 +460,9 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             (Forage or Reagents). Saving creates or updates output items in
             <strong>Respite Custom Items ,  ${this._esc(outputFolderLabel)}</strong>.
             Deleting a recipe here does not remove its compendium item. Export or import JSON for bulk edits.
+            ${context.professionId === "cooking"
+                ? " Drinks and water crafts belong under Brewing when that profession is available from Craft Professions Pack."
+                : ""}
         </p>
         <div class="recipe-editor-filter">
             <label class="recipe-editor-filter-label">
@@ -477,7 +517,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                 </div>
                 <div class="recipe-editor-section">
                     <div class="recipe-editor-section-title">Ingredients</div>
-                    <p class="recipe-editor-hint">Names must match items in the party inventory or compendium.</p>
+                    <p class="recipe-editor-hint">Names must match inventory or compendium items. Open Alternates on a row to accept substitute names for that slot.</p>
                     <div class="recipe-editor-ingredients">${ingredientsHtml}</div>
                     <button type="button" class="recipe-editor-btn recipe-editor-btn--ghost" data-action="addIngredient">
                         <i class="fas fa-plus"></i> Add ingredient
@@ -607,6 +647,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             this.#professionId = ev.target.value;
             this.#selectedIndex = 0;
             this.#draft = null;
+            this.#ingredientAdvancedOpen = new Set();
             this.render();
         });
 
@@ -614,6 +655,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
             btn.addEventListener("click", () => {
                 this.#selectedIndex = Number(btn.dataset.index);
                 this.#draft = null;
+                this.#ingredientAdvancedOpen = new Set();
                 this.render();
             });
         });
@@ -621,6 +663,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         el.querySelector("[data-action=\"newRecipe\"]")?.addEventListener("click", () => {
             this.#draft = this._blankRecipe();
             this.#selectedIndex = -1;
+            this.#ingredientAdvancedOpen = new Set();
             this.render();
         });
 
@@ -657,6 +700,51 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                 if (idx >= 0 && idx < draft.ingredients.length) {
                     draft.ingredients.splice(idx, 1);
                 }
+                this.#ingredientAdvancedOpen = new Set(
+                    [...this.#ingredientAdvancedOpen]
+                        .filter(i => i !== idx)
+                        .map(i => (i > idx ? i - 1 : i))
+                );
+                this.#draft = draft;
+                this.render();
+            });
+        });
+
+        el.querySelectorAll(".recipe-editor-ingredient-advanced").forEach(details => {
+            details.addEventListener("toggle", () => {
+                const idx = Number(details.dataset.ingIndex);
+                if (Number.isNaN(idx)) return;
+                if (details.open) this.#ingredientAdvancedOpen.add(idx);
+                else this.#ingredientAdvancedOpen.delete(idx);
+            });
+        });
+
+        el.querySelectorAll("[data-action=\"addAlternate\"]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const draft = this._readFormDraft(el);
+                const idx = Number(btn.dataset.ingIndex);
+                const ing = draft.ingredients[idx];
+                if (!ing) return;
+                if (!Array.isArray(ing.alternates)) ing.alternates = [];
+                ing.alternates.push("");
+                this.#ingredientAdvancedOpen.add(idx);
+                this.#draft = draft;
+                this.render();
+            });
+        });
+
+        el.querySelectorAll("[data-action=\"removeAlternate\"]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const draft = this._readFormDraft(el);
+                const idx = Number(btn.dataset.ingIndex);
+                const altIdx = Number(btn.dataset.altIndex);
+                const ing = draft.ingredients[idx];
+                if (!ing || !Array.isArray(ing.alternates)) return;
+                if (altIdx >= 0 && altIdx < ing.alternates.length) {
+                    ing.alternates.splice(altIdx, 1);
+                }
+                if (!ing.alternates.length) delete ing.alternates;
+                this.#ingredientAdvancedOpen.add(idx);
                 this.#draft = draft;
                 this.render();
             });
@@ -867,10 +955,16 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         }
 
         draft.ingredients = [];
-        for (const row of root.querySelectorAll(".recipe-editor-ingredient-row")) {
-            const name = row.querySelector("[name=\"ingName\"]")?.value?.trim();
-            const qty = Number(row.querySelector("[name=\"ingQty\"]")?.value) || 1;
-            if (name) draft.ingredients.push({ name, quantity: qty });
+        for (const block of root.querySelectorAll(".recipe-editor-ingredient-block")) {
+            const name = block.querySelector("[name=\"ingName\"]")?.value?.trim();
+            const qty = Number(block.querySelector("[name=\"ingQty\"]")?.value) || 1;
+            if (!name) continue;
+            const alternates = [...block.querySelectorAll("[name=\"ingAlt\"]")]
+                .map(input => input.value?.trim())
+                .filter(Boolean);
+            const entry = { name, quantity: qty };
+            if (alternates.length) entry.alternates = alternates;
+            draft.ingredients.push(entry);
         }
         if (!draft.ingredients.length) draft.ingredients = [{ name: "Rations", quantity: 1 }];
 
