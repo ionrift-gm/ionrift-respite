@@ -40,6 +40,110 @@ export function ingredientNameOptions(ingredient) {
     return [...new Set([primary, ...alts])];
 }
 
+/**
+ * Resolve which output item a successful craft grants.
+ *
+ * Hidden JSON accommodation (not in the recipe editor UI):
+ * - `outputs: Output[]` — OR-list for standard success; one entry chosen at random
+ * - `ambitiousOutputs: Output[]` — same for ambitious / Chef nat-20 upgrade
+ * Singular `output` / `ambitiousOutput` still work. Terrain variants may carry
+ * the same fields. Prefer separate recipes when the outcome depends on inputs.
+ *
+ * @param {Object} recipe
+ * @param {object} [opts]
+ * @param {boolean} [opts.useAmbitious=false]
+ * @param {string|null} [opts.terrainTag=null]
+ * @param {() => number} [opts.rng=Math.random]
+ * @returns {{ output: Object|null, outputFlags: Object|undefined }}
+ */
+export function pickRecipeCraftOutput(recipe, {
+    useAmbitious = false,
+    terrainTag = null,
+    rng = Math.random
+} = {}) {
+    const variant = terrainTag && recipe?.terrainVariants?.[terrainTag]
+        ? recipe.terrainVariants[terrainTag]
+        : null;
+
+    if (useAmbitious) {
+        const ambCandidates = _normalizeOutputCandidates(
+            variant?.ambitiousOutputs ?? recipe?.ambitiousOutputs,
+            variant?.ambitiousOutput ?? recipe?.ambitiousOutput
+        );
+        const ambPicked = _pickOutputCandidate(ambCandidates, rng);
+        if (ambPicked) {
+            return {
+                output: _outputPayload(ambPicked),
+                outputFlags: _outputCandidateFlags(
+                    ambPicked,
+                    recipe?.ambitiousOutputFlags ?? recipe?.outputFlags
+                )
+            };
+        }
+    }
+
+    const stdCandidates = _normalizeOutputCandidates(
+        variant?.outputs ?? recipe?.outputs,
+        variant?.output ?? recipe?.output
+    );
+    const stdPicked = _pickOutputCandidate(stdCandidates, rng);
+    return {
+        output: _outputPayload(stdPicked),
+        outputFlags: _outputCandidateFlags(stdPicked, recipe?.outputFlags)
+    };
+}
+
+/**
+ * @param {Object[]|undefined} list
+ * @param {Object|undefined} singular
+ * @returns {Object[]}
+ */
+function _normalizeOutputCandidates(list, singular) {
+    if (Array.isArray(list) && list.length) {
+        return list.filter(entry => entry && typeof entry === "object" && entry.name);
+    }
+    if (singular && typeof singular === "object" && singular.name) return [singular];
+    return [];
+}
+
+/**
+ * @param {Object[]} candidates
+ * @param {() => number} rng
+ * @returns {Object|null}
+ */
+function _pickOutputCandidate(candidates, rng) {
+    if (!candidates.length) return null;
+    if (candidates.length === 1) return candidates[0];
+    const roll = typeof rng === "function" ? rng() : Math.random();
+    const idx = Math.min(candidates.length - 1, Math.max(0, Math.floor(roll * candidates.length)));
+    return candidates[idx];
+}
+
+/**
+ * @param {Object|null} candidate
+ * @returns {Object|null}
+ */
+function _outputPayload(candidate) {
+    if (!candidate) return null;
+    const { outputFlags: _of, flags: _f, ...rest } = candidate;
+    return rest;
+}
+
+/**
+ * @param {Object|null} candidate
+ * @param {Object|undefined} fallback
+ * @returns {Object|undefined}
+ */
+function _outputCandidateFlags(candidate, fallback) {
+    if (candidate?.outputFlags && typeof candidate.outputFlags === "object") {
+        return candidate.outputFlags;
+    }
+    if (candidate?.flags && typeof candidate.flags === "object") {
+        return candidate.flags;
+    }
+    return fallback;
+}
+
 export class CraftingEngine {
 
     constructor() {
@@ -244,25 +348,14 @@ export class CraftingEngine {
         const consumeIngredients = success || riskTier !== "safe";
 
         if (success) {
-            let output = useAmbitiousOutput
-                ? recipe.ambitiousOutput
-                : recipe.output;
+            let { output, outputFlags } = pickRecipeCraftOutput(recipe, {
+                useAmbitious: useAmbitiousOutput,
+                terrainTag
+            });
 
             if (output && recipe.outputQuantityProficiency) {
                 output = { ...output, quantity: getChefTreatOutputQuantity(actor) };
             }
-
-            if (terrainTag && recipe.terrainVariants?.[terrainTag]) {
-                const variant = recipe.terrainVariants[terrainTag];
-                const variantOutput = useAmbitiousOutput && variant.ambitiousOutput
-                    ? variant.ambitiousOutput
-                    : variant.output;
-                if (variantOutput) output = variantOutput;
-            }
-
-            const outputFlags = useAmbitiousOutput
-                ? (recipe.ambitiousOutputFlags ?? recipe.outputFlags)
-                : recipe.outputFlags;
 
             const slotKey = GrantLedger.craftingSlotKey(actor.id, professionId, recipeId);
 
@@ -334,17 +427,12 @@ export class CraftingEngine {
      * Recipes with noSkillCheck skip the roll and always grant output (Chef Bolstering Treats, etc.).
      */
     async _resolveNoSkillCheckCraft(actor, recipe, recipeId, professionId, terrainTag, partySize, { ledger } = {}) {
-        let output = recipe.output;
+        let { output, outputFlags } = pickRecipeCraftOutput(recipe, { terrainTag });
 
         if (output && recipe.outputQuantityProficiency) {
             output = { ...output, quantity: getChefTreatOutputQuantity(actor) };
         }
 
-        if (terrainTag && recipe.terrainVariants?.[terrainTag]?.output) {
-            output = recipe.terrainVariants[terrainTag].output;
-        }
-
-        const outputFlags = recipe.outputFlags;
         const slotKey = GrantLedger.craftingSlotKey(actor.id, professionId, recipeId);
 
         const performSuccessGrant = async () => {
