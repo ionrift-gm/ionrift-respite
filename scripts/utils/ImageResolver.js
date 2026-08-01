@@ -37,8 +37,17 @@ const OVERLAY_DATA_ROOT = "ionrift-data/overlays";
  */
 const OVERLAY_SUBLAYERS = ["core", "free"];
 
-/** Named overlays that add terrain art outside the core/free install root. */
-const OVERLAY_TERRAIN_SUPPLEMENTS = ["frost-stone", "bone-dust"];
+/**
+ * Named overlays that add terrain art outside the core/free install root.
+ * Prefer *-art companions; keep legacy data-sublayer probes so combined
+ * 1.0.0 installs keep working until GMs update.
+ */
+export const OVERLAY_TERRAIN_SUPPLEMENTS = [
+    "frost-stone-art",
+    "bone-dust-art",
+    "frost-stone",
+    "bone-dust"
+];
 
 /** Raw art pack folder (Ionrift art zip dropped directly into Data). */
 const RAW_ART_FOLDER = "ionrift-respite-art";

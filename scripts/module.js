@@ -319,9 +319,8 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
         return;
     }
 
-    // Terrain art supplements (Frost & Stone, Bone & Dust). These overlays also
-    // gate which terrains the local registry surfaces, so it has to re-evaluate
-    // every time their active state changes.
+    // Terrain data unlocks (Frost & Stone, Bone & Dust). These gate which
+    // terrains the local registry surfaces.
     if (detail.overlayId === "respite-frost-stone-overlay" || detail.overlayId === "respite-bone-dust-overlay") {
         await ImageResolver.init();
         try {
@@ -331,6 +330,15 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
         } catch (e) {
             console.warn(`${MODULE_ID} | Terrain registry reset failed:`, e);
         }
+        return;
+    }
+
+    // Optional generative terrain art companions (presence-based).
+    if (
+        detail.overlayId === "respite-frost-stone-art-overlay"
+        || detail.overlayId === "respite-bone-dust-art-overlay"
+    ) {
+        await ImageResolver.init();
         return;
     }
 
