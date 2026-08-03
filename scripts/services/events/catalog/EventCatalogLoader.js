@@ -9,15 +9,10 @@ import { MODULE_ID } from "../../../data/moduleId.js";
  */
 export async function loadAllCatalogEvents() {
     await TerrainRegistry.init();
-    const events = [...await TerrainRegistry.loadReleasedEvents()];
 
-    const importedPacks = game.settings.get(MODULE_ID, "importedPacks") ?? {};
-    for (const packData of Object.values(importedPacks)) {
-        for (const evt of (packData.events ?? [])) {
-            events.push(evt);
-        }
-    }
-
+    // Overlay first so dedupeById (first wins) prefers Core pack / follower
+    // overlay copies over baked-in module JSON during the grace window.
+    const events = [];
     try {
         const { OverlayEventLoader } = await import("../../packs/overlays/OverlayEventLoader.js");
         const overlayPacks = await OverlayEventLoader.loadAll();
@@ -28,6 +23,17 @@ export async function loadAllCatalogEvents() {
         }
     } catch (e) {
         console.warn(`${MODULE_ID} | EventCatalogLoader: overlay loading failed:`, e);
+    }
+
+    for (const evt of await TerrainRegistry.loadReleasedEvents()) {
+        events.push(evt);
+    }
+
+    const importedPacks = game.settings.get(MODULE_ID, "importedPacks") ?? {};
+    for (const packData of Object.values(importedPacks)) {
+        for (const evt of (packData.events ?? [])) {
+            events.push(evt);
+        }
     }
 
     const deduped = dedupeById(events);

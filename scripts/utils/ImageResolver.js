@@ -7,9 +7,9 @@ import { MODULE_ID } from "../data/moduleId.js";
  * for an art source in priority order:
  *
  *   1. Manually installed overlay at
- *      `ionrift-data/overlays/ionrift-respite/<sublayer>/`. Sublayer is
- *      `core/` post-rename or `free/` for legacy / sticky-back-compat
- *      installs.
+ *      `ionrift-data/overlays/ionrift-respite/<sublayer>/`. Prefer
+ *      `core-art/` (generative companion); then `core/` / `free/` for
+ *      legacy art installs during the Core data reclaim grace window.
  *   2. Zip-imported art pack at `ionrift-data/respite/art/` (legacy).
  *   3. Raw drop folder `ionrift-respite-art/` (legacy).
  *
@@ -31,11 +31,11 @@ const FALLBACK_BANNER = `modules/${MODULE_ID}/assets/placeholder-banner.webp`;
 const OVERLAY_DATA_ROOT = "ionrift-data/overlays";
 
 /**
- * Sublayer probe order under the overlay root. `core/` is the
- * post-rename default; `free/` is the legacy / sticky-back-compat
- * sublayer that existing GM installs continue to upgrade in place.
+ * Sublayer probe order under the overlay root.
+ * `core-art/` is the generative companion. `core/` and `free/` remain
+ * as legacy art fallbacks until GMs move art off the data Core pack path.
  */
-const OVERLAY_SUBLAYERS = ["core", "free"];
+const OVERLAY_SUBLAYERS = ["core-art", "core", "free"];
 
 /**
  * Named overlays that add terrain art outside the core/free install root.
@@ -208,9 +208,7 @@ export class ImageResolver {
         }
 
         // GM: probe the filesystem in priority order.
-        // 1. Manually installed overlays.
-        //    `core/` is the post-rename default; `free/` covers existing
-        //    sticky-back-compat installs from before the May 2026 rename.
+        // 1. Manually installed overlays (`core-art`, then legacy `core`/`free`).
         // 2. Legacy zip-imported pack at ionrift-data/respite/art/.
         // 3. Legacy raw drop folder ionrift-respite-art/.
         const overlayCandidates = OVERLAY_SUBLAYERS.map(
@@ -228,65 +226,69 @@ export class ImageResolver {
             try {
                 const source = _fileSource();
                 const browse = await FP.browse(source, candidatePath);
-                if (browse.dirs?.length > 0 || browse.files?.length > 0) {
-                    this.#artPackActive = true;
-                    this.#importedArtPath = candidatePath;
-                    this.#basePath = candidatePath;
+                if (!(browse.dirs?.length > 0 || browse.files?.length > 0)) continue;
 
-                    let fileCount = 0;
-                    const terrains = [];
-                    const tokenFiles = [];
-                    let terrainsRoot = null;
-                    let tokensRoot = null;
+                let fileCount = 0;
+                const terrains = [];
+                const tokenFiles = [];
+                let terrainsRoot = null;
+                let tokensRoot = null;
 
-                    const walk = async (currentPath, depth = 0) => {
-                        try {
-                            const result = await FP.browse(source, currentPath);
-                            fileCount += result.files?.length ?? 0;
-                            const dirName = currentPath.split("/").pop();
+                const walk = async (currentPath, depth = 0) => {
+                    try {
+                        const result = await FP.browse(source, currentPath);
+                        fileCount += result.files?.length ?? 0;
+                        const dirName = currentPath.split("/").pop();
 
-                            // Capture the absolute path of the terrains/ and
-                            // tokens/ directories so the resolvers can build
-                            // URLs without assuming a particular layout shape.
-                            if (dirName === "terrains" && !terrainsRoot) {
-                                terrainsRoot = currentPath;
-                            }
-                            if (dirName === "tokens" && !tokensRoot) {
-                                tokensRoot = currentPath;
-                                for (const f of (result.files ?? [])) {
-                                    const basename = f.split("/").pop();
-                                    if (basename) tokenFiles.push(basename);
-                                }
-                            }
-
-                            // Walk child directories concurrently instead of sequentially.
-                            const childDirs = result.dirs ?? [];
-                            for (const subDir of childDirs) {
-                                const childDirName = subDir.split("/").pop();
-                                if (dirName === "terrains" && childDirName) {
-                                    terrains.push(childDirName);
-                                }
-                            }
-                            await Promise.allSettled(
-                                childDirs.map(subDir => walk(subDir, depth + 1))
-                            );
-                        } catch { /* skip inaccessible dirs */ }
-                    };
-                    await walk(candidatePath);
-                    this.#artFileCount = fileCount;
-                    this.#artTerrains = terrains.sort();
-                    this.#terrainsRoot = terrainsRoot;
-                    if (terrainsRoot) {
-                        for (const tag of terrains) {
-                            this.#terrainRootsByTag.set(tag, terrainsRoot);
+                        // Capture the absolute path of the terrains/ and
+                        // tokens/ directories so the resolvers can build
+                        // URLs without assuming a particular layout shape.
+                        if (dirName === "terrains" && !terrainsRoot) {
+                            terrainsRoot = currentPath;
                         }
+                        if (dirName === "tokens" && !tokensRoot) {
+                            tokensRoot = currentPath;
+                            for (const f of (result.files ?? [])) {
+                                const basename = f.split("/").pop();
+                                if (basename) tokenFiles.push(basename);
+                            }
+                        }
+
+                        // Walk child directories concurrently instead of sequentially.
+                        const childDirs = result.dirs ?? [];
+                        for (const subDir of childDirs) {
+                            const childDirName = subDir.split("/").pop();
+                            if (dirName === "terrains" && childDirName) {
+                                terrains.push(childDirName);
+                            }
+                        }
+                        await Promise.allSettled(
+                            childDirs.map(subDir => walk(subDir, depth + 1))
+                        );
+                    } catch { /* skip inaccessible dirs */ }
+                };
+                await walk(candidatePath);
+
+                // Empty companion stubs (manifest + contents only) must not
+                // claim the art pack and block legacy core/free probes.
+                if (!terrainsRoot && tokenFiles.length === 0) continue;
+
+                this.#artPackActive = true;
+                this.#importedArtPath = candidatePath;
+                this.#basePath = candidatePath;
+                this.#artFileCount = fileCount;
+                this.#artTerrains = terrains.sort();
+                this.#terrainsRoot = terrainsRoot;
+                if (terrainsRoot) {
+                    for (const tag of terrains) {
+                        this.#terrainRootsByTag.set(tag, terrainsRoot);
                     }
-                    if (tokenFiles.length > 0) {
-                        this.#hasStationTokens = true;
-                        this.#stationTokenFiles = new Set(tokenFiles);
-                        this.#stationTokenBasePath = candidatePath;
-                        this.#tokensRoot = tokensRoot;
-                    }
+                }
+                if (tokenFiles.length > 0) {
+                    this.#hasStationTokens = true;
+                    this.#stationTokenFiles = new Set(tokenFiles);
+                    this.#stationTokenBasePath = candidatePath;
+                    this.#tokensRoot = tokensRoot;
                 }
             } catch {
                 // Directory doesn't exist, try next candidate

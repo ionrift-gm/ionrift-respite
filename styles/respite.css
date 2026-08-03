@@ -1032,23 +1032,6 @@
     margin-top: 0.5rem;
 }
 
-.shelter-rp-prompt {
-    font-size: 0.7rem;
-    font-style: italic;
-    color: rgba(255, 200, 100, 0.7);
-    padding: 0.4rem 0.5rem;
-    background: rgba(255, 200, 100, 0.06);
-    border-left: 2px solid rgba(255, 200, 100, 0.3);
-    border-radius: 0 4px 4px 0;
-    margin-bottom: 0.4rem;
-    line-height: 1.4;
-}
-
-.shelter-rp-prompt i {
-    margin-right: 0.3rem;
-    color: rgba(255, 200, 100, 0.5);
-}
-
 .shelter-effect-chips {
     display: flex;
     gap: 0.4rem;

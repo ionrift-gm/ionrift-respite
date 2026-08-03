@@ -3,6 +3,7 @@ import { TerrainRegistry } from "../../../services/events/resolve/TerrainRegistr
 import { DecisionTreeResolver } from "../../../services/events/resolve/DecisionTreeResolver.js";
 import { countPoolEventsForTerrain } from "../../../services/events/catalog/EventCatalogLoader.js";
 import { resolveDefaultCraftRecipeId } from "../../../services/crafting/engine/CraftCommitSummary.js";
+import { buildCraftRecipeListContext } from "../../../services/crafting/engine/CraftRecipeListBuilder.js";
 import { CampGearScanner } from "../../../services/camp/gear/CampGearScanner.js";
 import { CampfireTokenLinker } from "../../../services/camp/fire/CampfireTokenLinker.js";
 import { hasCampPlaced, hasCampfirePlaced } from "../../../services/camp/props/CompoundCampPlacer.js";
@@ -145,7 +146,6 @@ export class RestPrepareContext {
                 available: tentAvailable,
                 casterNames: tentOwnerNames,
                 hint: tentAvailable ? `Carried by ${tentOwnerNames}. Weather shield. Encounter DC +2.` : "No tent in party inventory.",
-                rpPrompt: "Who sets it up? Where do they pitch it? Is it large enough for everyone, or do some sleep outside?",
                 comfortFloor: null,
                 encounterMod: 2,
                 active: !!app._shelterOverrides.tent
@@ -159,7 +159,6 @@ export class RestPrepareContext {
             available: true,
             casterNames: null,
             hint: "Under the open sky. No protection from weather or encounters.",
-            rpPrompt: null,
             comfortFloor: null,
             encounterMod: 0,
             active: !!app._shelterOverrides.none
@@ -174,7 +173,6 @@ export class RestPrepareContext {
             name: activeShelter.name,
             comfortFloor: activeShelter.comfortFloor,
             encounterMod: activeShelter.encounterMod ?? 0,
-            rpPrompt: activeShelter.rpPrompt ?? null,
             casterNames: activeShelter.casterNames ?? null
         } : null;
 
@@ -530,16 +528,10 @@ export class RestPrepareContext {
             // so the template can reuse the station split-panel markup verbatim (no split-brain).
             if (expanded.isCrafting) {
                 const professionId = expanded.profession;
-                const professionLabels = {
-                    cooking: "Cooking", alchemy: "Alchemy",
-                    smithing: "Smithing", leatherworking: "Leatherworking",
-                    brewing: "Brewing", tailoring: "Tailoring"
-                };
                 const engine = app._craftingEngine;
                 const terrainTag = app._engine?.terrainTag ?? app._restData?.terrainTag ?? null;
                 const risk = app._totmCraftRisk ?? "standard";
                 const partySize = getPartyActors().length;
-                const status = engine.getRecipeStatus(expandActor, professionId, terrainTag, partySize);
 
                 // still-valid prior selection; falls back to the first available recipe.
                 if (!app._totmCraftHasCrafted) {
@@ -554,98 +546,35 @@ export class RestPrepareContext {
                     });
                 }
 
-                const _formatBuffPreview = (buff) => {
-                    if (!buff) return null;
-                    const labels = { temp_hp: "Temp HP", advantage: "Advantage", exhaustion_save: "Exhaustion Save" };
-                    const dur = { immediate: "Immediate", untilLongRest: "Until long rest", nextSave: "Next save" };
-                    return { label: labels[buff.type] ?? buff.type, formula: buff.formula ?? "", duration: dur[buff.duration] ?? buff.duration ?? "", target: buff.target ?? "self" };
-                };
-
-                const enrichRecipe = (recipe) => {
-                    const dcBreakdown = engine.getDcBreakdown(expandActor, recipe, risk, terrainTag);
-                    const flags = recipe.outputFlags?.["ionrift-respite"];
-                    return {
-                        ...recipe,
-                        dcDisplay: dcBreakdown.total,
-                        dcBreakdown,
-                        outputName: recipe.output?.name ?? "Unknown",
-                        outputImg: recipe.output?.img ?? "icons/consumables/food/bowl-stew-brown.webp",
-                        ambitiousOutput: recipe.ambitiousOutput,
-                        isSelected: recipe.id === app._totmCraftRecipeId,
-                        description: recipe.description ?? "",
-                        buffPreview: _formatBuffPreview(flags?.buff),
-                        isPartyMeal: !!flags?.partyMeal,
-                        isWellFed: !!flags?.wellFed,
-                        satiates: flags?.satiates ?? [],
-                        ambitiousName: recipe.ambitiousOutput?.name ?? null,
-                        ambitiousBuffPreview: _formatBuffPreview(
-                            recipe.ambitiousOutputFlags?.["ionrift-respite"]?.buff ?? flags?.buff
-                        ),
-                        ingredientList: (recipe.ingredients ?? []).map(ing => {
-                            const detail = recipe.ingredientStatus?.details?.find(d => d.name === ing.name);
-                            const invKey = ing.name.toLowerCase().trim();
-                            const invEntry = expandActor.items?.find(i => i.name.toLowerCase().trim() === invKey);
-                            const fallbackIcon = ing.resourceType === "water"
-                                ? "icons/magic/water/water-drop-swirl-blue.webp"
-                                : "icons/consumables/food/bread-loaf-round-white.webp";
-                            const rawImg = invEntry?.img;
-                            return {
-                                name: ing.name,
-                                required: ing.quantity ?? 1,
-                                available: detail?.available ?? 0,
-                                met: detail?.met ?? false,
-                                img: (rawImg && !rawImg.includes("mystery-man")) ? rawImg : fallbackIcon
-                            };
-                        })
-                    };
-                };
-
-                const available = status.available.map(r => enrichRecipe(r));
-                const partial = status.partial.map(r => enrichRecipe(r));
-                const selectedRecipe = available.find(r => r.id === app._totmCraftRecipeId)
-                    ?? partial.find(r => r.id === app._totmCraftRecipeId);
-
-                let commitSummary = null;
-                if (selectedRecipe && !app._totmCraftHasCrafted) {
-                    const outputForRisk = risk === "ambitious" && selectedRecipe.ambitiousOutput
-                        ? selectedRecipe.ambitiousOutput : selectedRecipe.output;
-                    commitSummary = {
-                        recipeName: selectedRecipe.name,
-                        dc: selectedRecipe.dcBreakdown.total,
-                        dcBreakdown: selectedRecipe.dcBreakdown,
-                        risk,
-                        riskLabel: { standard: "Standard", ambitious: "Ambitious" }[risk],
-                        outputName: outputForRisk?.name ?? selectedRecipe.outputName,
-                        outputImg: outputForRisk?.img ?? selectedRecipe.outputImg ?? "icons/svg/mystery-man.svg",
-                        outputQuantity: outputForRisk?.quantity ?? 1,
-                        ingredients: (selectedRecipe.ingredients ?? []).map(ing => {
-                            const invKey = ing.name.toLowerCase().trim();
-                            const invEntry = expandActor.items?.find(i => i.name.toLowerCase().trim() === invKey);
-                            const fallbackIcon = ing.resourceType === "water"
-                                ? "icons/magic/water/water-drop-swirl-blue.webp"
-                                : "icons/consumables/food/bread-loaf-round-white.webp";
-                            const rawImg = invEntry?.img;
-                            return {
-                                name: ing.name,
-                                quantity: ing.quantity ?? 1,
-                                img: (rawImg && !rawImg.includes("mystery-man")) ? rawImg : fallbackIcon
-                            };
-                        }),
-                        ingredientCost: (selectedRecipe.ingredients ?? []).map(i => `${i.quantity ?? 1}x ${i.name}`).join(", "),
-                        failConsequence: "Ingredients consumed on failure",
-                        skill: (selectedRecipe.skill ?? "sur").toUpperCase()
-                    };
-                }
+                const list = buildCraftRecipeListContext({
+                    engine,
+                    actor: expandActor,
+                    professionId,
+                    risk,
+                    terrainTag,
+                    partySize,
+                    selectedRecipeId: app._totmCraftRecipeId,
+                    hasCrafted: !!app._totmCraftHasCrafted
+                });
+                const {
+                    available,
+                    missing,
+                    partial,
+                    selectedRecipe,
+                    commitSummary,
+                    noAvailableRecipes,
+                    isAmbitiousSelected
+                } = list;
 
                 return {
                     isCrafting: true,
-                    name: professionLabels[professionId] ?? professionId,
+                    name: list.profession,
                     icon: "fas fa-hammer",
                     actorName: expandActor.name,
                     actorPortrait: expandActor.img ?? expandActor.prototypeToken?.texture?.src ?? "icons/svg/mystery-man.svg",
                     // Station-compatible `crafting` sub-object (same shape as StationActivityDialog)
                     crafting: {
-                        profession: professionLabels[professionId] ?? professionId,
+                        profession: list.profession,
                         professionId,
                         actorName: expandActor.name,
                         actorImg: expandActor.img,
@@ -659,10 +588,11 @@ export class RestPrepareContext {
                             { id: "ambitious", label: "Ambitious", hint: "DC +5 · Better yield", selected: risk === "ambitious" }
                         ],
                         available,
+                        missing,
                         partial,
-                        noAvailableRecipes: !app._totmCraftHasCrafted && available.length === 0,
+                        noAvailableRecipes,
                         selectedRecipe: selectedRecipe ?? null,
-                        isAmbitiousSelected: risk === "ambitious",
+                        isAmbitiousSelected,
                         commitSummary,
                         craftingResult: app._totmCraftResult ? {
                             ...app._totmCraftResult,
