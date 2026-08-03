@@ -129,15 +129,15 @@
     </div>
     {{/if}}
 
-    {{!-- Collapsible: Missing Recipes --}}
-    {{#if partial.length}}
+    {{!-- Collapsible: Missing Recipes (partial matches + fully unmet / locked) --}}
+    {{#if missing.length}}
     <div class="missing-toggle" data-action="toggleMissing">
         <i class="fas fa-caret-{{#if showMissing}}down{{else}}right{{/if}}"></i>
-        Missing Ingredients ({{partial.length}} recipes)
+        Missing Ingredients ({{missing.length}} recipes)
     </div>
     {{#if showMissing}}
     <div class="missing-recipes">
-        {{#each partial}}
+        {{#each missing}}
         <div class="recipe-card partial">
             <img src="{{outputImg}}" alt="{{name}}" class="recipe-icon-sm">
             <div class="recipe-info">
@@ -146,6 +146,8 @@
                     {{#each ingredientList}}
                     <span class="ingredient-pill {{#if met}}met{{else}}unmet{{/if}}">{{required}}x {{name}} {{#unless
                         met}}(need {{required}}){{/unless}}</span>
+                    {{else}}
+                    {{#if lockReason}}<span class="ingredient-pill unmet">{{lockReason}}</span>{{/if}}
                     {{/each}}
                 </div>
             </div>

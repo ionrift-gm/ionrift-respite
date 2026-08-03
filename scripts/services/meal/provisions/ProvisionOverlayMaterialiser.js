@@ -19,9 +19,38 @@ import {
     COOKING_ART_SUBLAYER,
     CookingArtPreference
 } from "./CookingArtPreference.js";
+import {
+    CRAFT_PROFESSIONS_OVERLAY_ID,
+    CRAFT_PROFESSIONS_ART_OVERLAY_ID,
+    CRAFT_PROFESSIONS_ART_SUBLAYER,
+    CraftProfessionsArtPreference
+} from "./CraftProfessionsArtPreference.js";
+
+/** Cooking overlay packDirs with fixed wrapper labels. */
+const COOKING_SECTION_LABELS = Object.freeze({
+    forage: "Forage",
+    hunting: "Hunting",
+    outputs: "Cooking Outputs"
+});
 
 function titleCase(value) {
     return String(value ?? "").replace(/[-_]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/**
+ * Top-level folder label for an items/ packDir inside a materialised overlay.
+ * Cooking keeps fixed labels. Other packDirs (e.g. brewing under craft-professions)
+ * become profession roots so the sidebar nests Standard/Ambitious underneath.
+ *
+ * @param {string} packDir
+ * @returns {string|null}
+ */
+export function respiteSectionWrapperName(packDir) {
+    if (!packDir) return null;
+    if (Object.prototype.hasOwnProperty.call(COOKING_SECTION_LABELS, packDir)) {
+        return COOKING_SECTION_LABELS[packDir];
+    }
+    return titleCase(packDir);
 }
 
 /**
@@ -50,12 +79,7 @@ function respiteMaterialiserConfig() {
         logLabel: "Respite",
         notifyLabel: "Respite",
         labelForSublayer: (sublayer) => `Respite: ${titleCase(sublayer)}`,
-        sectionWrapperName: (packDir) => {
-            if (packDir === "forage") return "Forage";
-            if (packDir === "hunting") return "Hunting";
-            if (packDir === "outputs") return "Cooking Outputs";
-            return null;
-        },
+        sectionWrapperName: respiteSectionWrapperName,
         sidebarFolderResolver: async () => {
             const { ContentPackCompiler } = await import("../../packs/registry/ContentPackCompiler.js");
             return ContentPackCompiler.findRespiteCompendiumFolderId();
@@ -79,9 +103,12 @@ export class ProvisionOverlayMaterialiser {
         const materialiser = game.ionrift?.library?.materialiser;
         if (!materialiser) return;
         await CookingArtPreference.ensureAvailable();
+        await CraftProfessionsArtPreference.ensureAvailable();
         await materialiser.materialiseAll(this.config());
-        const images = await CookingArtPreference.synchronizeCompendium();
-        await CookingArtPreference.synchronizeActorItems(images);
+        const cookingImages = await CookingArtPreference.synchronizeCompendium();
+        await CookingArtPreference.synchronizeActorItems(cookingImages);
+        const craftImages = await CraftProfessionsArtPreference.synchronizeCompendium();
+        await CraftProfessionsArtPreference.synchronizeActorItems(craftImages);
     }
 
     /**
@@ -104,12 +131,30 @@ export class ProvisionOverlayMaterialiser {
             }
         }
 
+        if (
+            detail.overlayId === CRAFT_PROFESSIONS_ART_OVERLAY_ID
+            || detail.sublayer === CRAFT_PROFESSIONS_ART_SUBLAYER
+            || detail.overlayId === CRAFT_PROFESSIONS_OVERLAY_ID
+        ) {
+            await CraftProfessionsArtPreference.ensureAvailable();
+            if (detail.overlayId === CRAFT_PROFESSIONS_ART_OVERLAY_ID
+                || detail.sublayer === CRAFT_PROFESSIONS_ART_SUBLAYER) {
+                const images = await CraftProfessionsArtPreference.synchronizeCompendium();
+                await CraftProfessionsArtPreference.synchronizeActorItems(images);
+                return;
+            }
+        }
+
         const config = this.config();
         if (detail.installed && detail.active) {
             await materialiser.materialiseSublayer(detail.sublayer, config);
             if (detail.sublayer === "cooking") {
                 const images = await CookingArtPreference.synchronizeCompendium();
                 await CookingArtPreference.synchronizeActorItems(images);
+            }
+            if (detail.sublayer === "craft-professions") {
+                const images = await CraftProfessionsArtPreference.synchronizeCompendium();
+                await CraftProfessionsArtPreference.synchronizeActorItems(images);
             }
         } else if (detail.installed && detail.overlayId) {
             await materialiser.setOverlayActive(detail.overlayId, false, config);

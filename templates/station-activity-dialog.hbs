@@ -301,15 +301,15 @@
                 <div class="crafting-empty">No recipes available with current ingredients.</div>
                 {{/if}}
 
-                {{!-- Missing Recipes --}}
-                {{#if crafting.partial.length}}
+                {{!-- Missing Recipes (partial matches + fully unmet / locked) --}}
+                {{#if crafting.missing.length}}
                 <div class="missing-toggle" data-action="craftToggleMissing">
                     <i class="fas fa-caret-{{#if crafting.showMissing}}down{{else}}right{{/if}}"></i>
-                    Missing ({{crafting.partial.length}})
+                    Missing ({{crafting.missing.length}})
                 </div>
                 {{#if crafting.showMissing}}
                 <div class="missing-recipes">
-                    {{#each crafting.partial}}
+                    {{#each crafting.missing}}
                     <div class="recipe-card recipe-card-compact partial">
                         <img src="{{outputImg}}" alt="{{name}}" class="recipe-icon-sm">
                         <div class="recipe-info">
@@ -317,6 +317,8 @@
                             <div class="recipe-brief">
                                 {{#each ingredientList}}
                                 <span class="ingredient-pill {{#if met}}met{{else}}unmet{{/if}}">{{required}}x {{name}}</span>
+                                {{else}}
+                                {{#if lockReason}}<span class="ingredient-pill unmet">{{lockReason}}</span>{{/if}}
                                 {{/each}}
                             </div>
                         </div>
