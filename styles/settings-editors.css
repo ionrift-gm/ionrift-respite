@@ -1,0 +1,2392 @@
+/* Respite: settings-editors.css. Loaded via module.json after totm-make-camp.css; last. Do not reorder. */
+/* ═══════════════════════════════════════════════════════════
+   SETTINGS CONFIG SUBMENUS (shared by Activity, Recovery, Player Restrictions)
+   ═══════════════════════════════════════════════════════════ */
+
+#respite-activity-config .window-body,
+#respite-recovery-config .window-body,
+#respite-player-restrictions .window-body {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.respite-activity-config,
+.respite-settings-config {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem 0.65rem 0.7rem;
+    flex: 1;
+    min-height: 0;
+}
+
+/* Intro lead: the window title bar already names the panel, so the body
+   shows only a short description and lets the option cards carry the weight. */
+.respite-settings-config .settings-config-lead,
+.respite-activity-config .activity-config-lead {
+    margin: 0.1rem 0.2rem 0.4rem;
+    padding: 0;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* Toggle list */
+.respite-settings-config .settings-config-list,
+.respite-activity-config .activity-config-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.respite-activity-config .activity-config-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0.55rem;
+}
+
+.respite-activity-config .activity-config-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.respite-activity-config .activity-config-column--travel {
+    flex: 1 1 0;
+    padding-right: 0.55rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.respite-activity-config .activity-config-column--activities {
+    flex: 1 1 0;
+}
+
+.respite-activity-config .activity-config-column--travel .activity-config-group,
+.respite-activity-config .activity-config-column--activities .activity-config-group {
+    flex: 1 1 auto;
+    height: 100%;
+}
+
+.respite-settings-config .settings-config-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0.55rem;
+}
+
+.respite-settings-config .settings-config-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.respite-settings-config .settings-config-column--long {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-right: 0.55rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.respite-settings-config .settings-config-column--short {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.respite-settings-config .settings-config-column .settings-config-section {
+    flex: 1 1 auto;
+    height: 100%;
+}
+
+.respite-settings-config .settings-config-layout .settings-config-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.4rem;
+}
+
+.respite-settings-config .settings-config-layout .settings-config-toggle,
+.respite-settings-config .settings-config-layout .settings-config-range-wrap {
+    align-self: flex-end;
+}
+
+.respite-settings-config .settings-config-layout .settings-config-select {
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+}
+
+.respite-settings-config .settings-config-layout .settings-config-range-wrap {
+    width: 100%;
+    justify-content: flex-end;
+}
+
+.respite-settings-config .settings-config-layout .settings-config-range {
+    flex: 1 1 auto;
+    max-width: 10rem;
+}
+
+/* Each setting row */
+.respite-settings-config .settings-config-row,
+.respite-activity-config .activity-config-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.65rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    transition: border-color 0.15s;
+}
+
+.respite-settings-config .settings-config-row:hover,
+.respite-activity-config .activity-config-row:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.respite-settings-config .settings-config-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0.55rem 0.65rem 0.45rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    transition: border-color 0.15s;
+}
+
+.respite-settings-config .settings-config-section:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.respite-settings-config .settings-config-section-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding-bottom: 0.45rem;
+    margin-bottom: 0.35rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.respite-settings-config .settings-config-section-heading {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.respite-settings-config .settings-config-section-label {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.respite-settings-config .settings-config-section-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.respite-settings-config .settings-config-row--sub {
+    padding: 0.4rem 0.35rem 0.4rem 0.5rem;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+}
+
+.respite-settings-config .settings-config-row--sub:hover {
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.respite-activity-config .activity-config-row--disabled {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.respite-activity-config .activity-config-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0.55rem 0.65rem 0.45rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    transition: border-color 0.15s;
+}
+
+.respite-activity-config .activity-config-group:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.respite-activity-config .activity-config-group--disabled {
+    opacity: 0.45;
+}
+
+.respite-activity-config .activity-config-group-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding-bottom: 0.45rem;
+    margin-bottom: 0.35rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.respite-activity-config .activity-config-group-heading {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.respite-activity-config .activity-config-group-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.respite-activity-config .activity-config-row--sub {
+    padding: 0.4rem 0.35rem 0.4rem 0.5rem;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+}
+
+.respite-activity-config .activity-config-row--sub:hover {
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.respite-activity-config .activity-config-label--sub {
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.respite-settings-config .settings-config-info,
+.respite-activity-config .activity-config-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.respite-settings-config .settings-config-label,
+.respite-activity-config .activity-config-label {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.respite-settings-config .settings-config-icon,
+.respite-activity-config .activity-config-icon {
+    width: 1.1rem;
+    text-align: center;
+    color: rgba(155, 89, 182, 0.85);
+    margin-right: 0.3rem;
+    font-size: 0.8rem;
+}
+
+.respite-settings-config .settings-config-hint,
+.respite-activity-config .activity-config-hint {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.35);
+    line-height: 1.35;
+}
+
+/* Toggle switch (boolean) */
+.respite-settings-config .settings-config-toggle,
+.respite-activity-config .activity-config-toggle {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.respite-settings-config .settings-config-toggle input,
+.respite-activity-config .activity-config-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.respite-settings-config .settings-config-slider,
+.respite-activity-config .activity-config-slider {
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    overflow: hidden;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.respite-settings-config .settings-config-slider::before,
+.respite-activity-config .activity-config-slider::before {
+    content: "";
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    background: rgba(255, 255, 255, 0.35);
+    transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.respite-settings-config .settings-config-toggle input:checked + .settings-config-slider,
+.respite-activity-config .activity-config-toggle input:checked + .activity-config-slider {
+    background: rgba(155, 89, 182, 0.2);
+    border-color: rgba(155, 89, 182, 0.4);
+}
+
+.respite-settings-config .settings-config-toggle input:checked + .settings-config-slider::before,
+.respite-activity-config .activity-config-toggle input:checked + .activity-config-slider::before {
+    transform: translateX(16px);
+    background: var(--ionrift-accent, #9b59b6);
+    box-shadow: 0 0 5px rgba(155, 89, 182, 0.35);
+}
+
+.activity-config-row--training {
+    align-items: flex-start;
+}
+
+.activity-config-row--training .activity-config-info {
+    padding-top: 0.15rem;
+}
+
+.activity-config-row--training .activity-config-label {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    width: 100%;
+}
+
+.activity-config-guide-link {
+    margin-left: auto;
+    background: rgba(200, 160, 60, 0.12);
+    border: 1px solid rgba(200, 160, 60, 0.35);
+    color: rgba(220, 190, 110, 0.95);
+    font-size: 0.68rem;
+    padding: 0.12rem 0.45rem;
+    border-radius: 4px;
+    line-height: 1.35;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.activity-config-guide-link:hover {
+    background: rgba(200, 160, 60, 0.22);
+    border-color: rgba(200, 160, 60, 0.6);
+    color: rgba(235, 205, 130, 1);
+}
+
+.activity-config-guide-link i {
+    margin-right: 0.25rem;
+}
+
+.activity-config-range-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
+    min-width: 7.5rem;
+    flex-shrink: 0;
+}
+
+.activity-config-range {
+    width: 100%;
+    accent-color: rgba(200, 160, 60, 0.85);
+    cursor: pointer;
+}
+
+.activity-config-range-val {
+    font-size: 0.68rem;
+    color: rgba(220, 190, 110, 0.9);
+    text-align: right;
+    line-height: 1.3;
+    max-width: 8.5rem;
+}
+
+/* Select dropdown (Song of Rest, etc.) */
+.respite-settings-config .settings-config-select {
+    width: 200px;
+    flex-shrink: 0;
+    padding: 0.3rem 0.45rem;
+    font-size: 0.72rem;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+}
+
+.respite-settings-config .settings-config-select:focus {
+    outline: none;
+    border-color: rgba(155, 89, 182, 0.4);
+}
+
+.respite-settings-config .settings-config-select option {
+    background: #1a1a2e;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* Range slider (Spell Recovery Max Level, etc.) */
+.respite-settings-config .settings-config-range-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.respite-settings-config .settings-config-range {
+    width: 100px;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.respite-settings-config .settings-config-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--ionrift-accent, #9b59b6);
+    border: 2px solid rgba(155, 89, 182, 0.6);
+    box-shadow: 0 0 4px rgba(155, 89, 182, 0.3);
+    cursor: pointer;
+}
+
+.respite-settings-config .settings-config-range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--ionrift-accent, #9b59b6);
+    border: 2px solid rgba(155, 89, 182, 0.6);
+    box-shadow: 0 0 4px rgba(155, 89, 182, 0.3);
+    cursor: pointer;
+}
+
+.respite-settings-config .settings-config-range-val {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.75);
+    min-width: 1.2rem;
+    text-align: center;
+}
+
+/* Save button */
+.respite-settings-config .settings-config-actions,
+.respite-activity-config .activity-config-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.15rem;
+    padding: 0.45rem 0.05rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.respite-settings-config .settings-config-save-btn,
+.respite-activity-config .activity-config-save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 1rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid rgba(155, 89, 182, 0.35);
+    background: rgba(155, 89, 182, 0.15);
+    color: rgba(155, 89, 182, 0.9);
+}
+
+.respite-settings-config .settings-config-save-btn:hover,
+.respite-activity-config .activity-config-save-btn:hover {
+    background: rgba(155, 89, 182, 0.25);
+    border-color: rgba(155, 89, 182, 0.5);
+    box-shadow: 0 0 10px rgba(155, 89, 182, 0.15);
+}
+
+.respite-settings-config .settings-config-save-btn i,
+.respite-activity-config .activity-config-save-btn i {
+    font-size: 0.7rem;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RECIPE EDITOR (Custom Recipes settings menu)
+   ═══════════════════════════════════════════════════════════ */
+
+#respite-recipe-editor .window-body,
+#respite-recipe-editor .window-content,
+.application#respite-recipe-editor .window-body {
+    background: transparent;
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.respite-recipe-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.6rem 0.65rem 0.7rem;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+}
+
+.respite-recipe-editor .recipe-editor-lead {
+    margin: 0;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.respite-recipe-editor .recipe-editor-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.55rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.respite-recipe-editor .recipe-editor-filter-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: nowrap;
+}
+
+.respite-recipe-editor .recipe-editor-filter-label i {
+    margin-right: 0.3rem;
+    color: rgba(155, 89, 182, 0.75);
+    font-size: 0.72rem !important;
+    width: 0.85rem;
+    text-align: center;
+    line-height: 1;
+}
+
+.respite-recipe-editor .recipe-editor-select {
+    flex: 1;
+    min-width: 0;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.82rem;
+    padding: 0.3rem 0.45rem;
+}
+
+.respite-recipe-editor .recipe-editor-select:focus {
+    outline: none;
+    border-color: rgba(155, 89, 182, 0.55);
+    box-shadow: 0 0 0 1px rgba(155, 89, 182, 0.25);
+}
+
+.respite-recipe-editor .recipe-editor-count {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: rgba(196, 160, 220, 0.9);
+    white-space: nowrap;
+}
+
+.respite-recipe-editor .recipe-editor-layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(168px, 32%) 1fr;
+    gap: 0.55rem;
+    min-height: 0;
+}
+
+.respite-recipe-editor .recipe-editor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0.35rem;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+}
+
+.respite-recipe-editor .recipe-editor-list-heading {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.45);
+    padding: 0.15rem 0.25rem 0.35rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 0.15rem;
+}
+
+.respite-recipe-editor .recipe-editor-list-item {
+    all: unset !important;
+}
+
+.respite-recipe-editor .recipe-editor-list-item {
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0.4rem !important;
+    width: 100% !important;
+    padding: 0.38rem 0.45rem !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    font-size: 0.78rem !important;
+    color: rgba(255, 255, 255, 0.82) !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    transition: background 0.15s ease, border-color 0.15s ease !important;
+}
+
+.respite-recipe-editor .recipe-editor-list-item:hover {
+    background: rgba(155, 89, 182, 0.12) !important;
+}
+
+.respite-recipe-editor .recipe-editor-list-item.active {
+    background: rgba(155, 89, 182, 0.18) !important;
+    border-color: rgba(155, 89, 182, 0.35) !important;
+    color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.respite-recipe-editor .recipe-editor-list-item--saved-flash {
+    animation: recipe-editor-saved-flash 1.35s ease;
+}
+
+@keyframes recipe-editor-saved-flash {
+    0%, 100% {
+        border-color: rgba(34, 197, 94, 0.35);
+        background: rgba(34, 197, 94, 0.12);
+        box-shadow: none;
+    }
+    35% {
+        border-color: rgba(34, 197, 94, 0.75);
+        background: rgba(34, 197, 94, 0.22);
+        box-shadow: 0 0 10px rgba(34, 197, 94, 0.35);
+    }
+    70% {
+        border-color: rgba(155, 89, 182, 0.45);
+        background: rgba(155, 89, 182, 0.14);
+        box-shadow: 0 0 6px rgba(155, 89, 182, 0.25);
+    }
+}
+
+.respite-recipe-editor .recipe-editor-list-icon {
+    width: 1.65rem;
+    height: 1.65rem;
+    flex-shrink: 0;
+    border-radius: 3px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.respite-recipe-editor .recipe-editor-list-name {
+    line-height: 1.3;
+    text-align: left;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.respite-recipe-editor .recipe-editor-list-meta {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(196, 160, 220, 0.85);
+    flex-shrink: 0;
+}
+
+.respite-recipe-editor .recipe-editor-list-warn {
+    color: #f0a060;
+    flex-shrink: 0;
+    font-size: 0.75rem;
+}
+
+.respite-recipe-editor .recipe-editor-list-warn i {
+    margin: 0;
+}
+
+.respite-recipe-editor .recipe-editor-sync-warn {
+    margin: 0 0 0.75rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid rgba(240, 160, 96, 0.35);
+    border-radius: 4px;
+    background: rgba(240, 160, 96, 0.08);
+    color: #f0c898;
+    font-size: 0.82rem;
+    line-height: 1.35;
+}
+
+.respite-recipe-editor .recipe-editor-sync-warn i {
+    margin-right: 0.35rem;
+}
+
+.respite-recipe-editor .recipe-editor-empty {
+    margin: 0.25rem 0.15rem;
+    font-size: 0.74rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.45);
+    text-align: center;
+    padding: 0.5rem 0.25rem;
+}
+
+.respite-recipe-editor .recipe-editor-empty i {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.85rem !important;
+    line-height: 1;
+    width: auto !important;
+    color: rgba(155, 89, 182, 0.45);
+}
+
+.respite-recipe-editor .recipe-editor-list-new {
+    all: unset !important;
+}
+
+.respite-recipe-editor .recipe-editor-list-new {
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.35rem !important;
+    margin-top: 0.25rem !important;
+    padding: 0.4rem 0.5rem !important;
+    border-radius: 4px !important;
+    font-size: 0.74rem !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.65) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px dashed rgba(255, 255, 255, 0.14) !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+}
+
+.respite-recipe-editor .recipe-editor-list-new:hover {
+    color: rgba(255, 255, 255, 0.9) !important;
+    border-color: rgba(155, 89, 182, 0.4) !important;
+    background: rgba(155, 89, 182, 0.1) !important;
+}
+
+.respite-recipe-editor .recipe-editor-list-new i {
+    font-size: 0.68rem !important;
+    width: 0.75rem;
+    text-align: center;
+    line-height: 1;
+}
+
+.respite-recipe-editor .recipe-editor-list-new.active {
+    color: rgba(255, 255, 255, 0.95) !important;
+    border-color: rgba(155, 89, 182, 0.45) !important;
+    border-style: solid !important;
+    background: rgba(155, 89, 182, 0.16) !important;
+}
+
+.respite-recipe-editor .recipe-editor-draft-note {
+    margin: 0 0 0.5rem;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.55);
+    border-radius: 4px;
+    background: rgba(155, 89, 182, 0.08);
+    border: 1px solid rgba(155, 89, 182, 0.2);
+}
+
+.respite-recipe-editor .recipe-editor-draft-note i {
+    margin-right: 0.3rem;
+    color: rgba(155, 89, 182, 0.7);
+}
+
+.respite-recipe-editor .recipe-editor-detail {
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding-right: 0.1rem;
+}
+
+.respite-recipe-editor .recipe-editor-section {
+    padding: 0.55rem 0.65rem;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+}
+
+.respite-recipe-editor .recipe-editor-section--muted {
+    background: rgba(0, 0, 0, 0.18);
+    border-color: rgba(255, 255, 255, 0.04);
+}
+
+.respite-recipe-editor .recipe-editor-section-title {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 0.45rem;
+}
+
+.respite-recipe-editor .recipe-editor-hint {
+    margin: -0.15rem 0 0.4rem;
+    font-size: 0.68rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.respite-recipe-editor .recipe-editor-fields {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.respite-recipe-editor .recipe-editor-fields--double {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.respite-recipe-editor .recipe-editor-fields--triple {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.respite-recipe-editor .recipe-editor-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.respite-recipe-editor .recipe-editor-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.respite-recipe-editor .recipe-editor-locked-value {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    box-sizing: border-box;
+    min-height: 1.85rem;
+    padding: 0.32rem 0.45rem;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.82rem;
+    line-height: 1.3;
+}
+
+.respite-recipe-editor .recipe-editor-locked-value i {
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.respite-recipe-editor .recipe-editor-input {
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.82rem;
+    padding: 0.32rem 0.45rem;
+    line-height: 1.3;
+}
+
+.respite-recipe-editor .recipe-editor-input:focus {
+    outline: none;
+    border-color: rgba(155, 89, 182, 0.55);
+    box-shadow: 0 0 0 1px rgba(155, 89, 182, 0.2);
+}
+
+.respite-recipe-editor .recipe-editor-input--qty {
+    max-width: 4.5rem;
+}
+
+.respite-recipe-editor .recipe-editor-ingredients {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    margin-bottom: 0.45rem;
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-advanced {
+    margin: 0 0 0 0.15rem;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-advanced-toggle {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.45rem;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-advanced-toggle::-webkit-details-marker {
+    display: none;
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-alt-count {
+    margin-left: 0.15rem;
+    padding: 0.05rem 0.35rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-advanced-body {
+    padding: 0 0.45rem 0.45rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-alts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-alt-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-remove {
+    all: unset !important;
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-remove {
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+    flex-shrink: 0 !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    color: rgba(255, 255, 255, 0.45) !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease !important;
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-remove:hover {
+    color: rgba(252, 165, 165, 0.95) !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+    background: rgba(239, 68, 68, 0.12) !important;
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-remove i {
+    font-size: 0.65rem !important;
+    line-height: 1;
+}
+
+.respite-recipe-editor .recipe-editor-ingredient-row .recipe-editor-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.respite-recipe-editor .recipe-editor-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+}
+
+.respite-recipe-editor .recipe-editor-footer-left {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.respite-recipe-editor .recipe-editor-btn {
+    all: unset !important;
+}
+
+.respite-recipe-editor .recipe-editor-btn {
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    padding: 0.42rem 0.85rem !important;
+    border-radius: 6px !important;
+    font-size: 0.76rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: rgba(255, 255, 255, 0.78) !important;
+    transition: all 0.15s ease !important;
+}
+
+.respite-recipe-editor .recipe-editor-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.22) !important;
+    color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.respite-recipe-editor .recipe-editor-btn:disabled {
+    opacity: 0.35 !important;
+    cursor: default !important;
+}
+
+.respite-recipe-editor .recipe-editor-btn--primary {
+    border-color: rgba(155, 89, 182, 0.35) !important;
+    background: rgba(155, 89, 182, 0.18) !important;
+    color: rgba(210, 170, 235, 0.95) !important;
+}
+
+.respite-recipe-editor .recipe-editor-btn--primary:hover {
+    background: rgba(155, 89, 182, 0.28) !important;
+    border-color: rgba(155, 89, 182, 0.5) !important;
+    box-shadow: 0 0 10px rgba(155, 89, 182, 0.15) !important;
+}
+
+.respite-recipe-editor .recipe-editor-btn--danger {
+    border-color: rgba(239, 68, 68, 0.25) !important;
+    color: rgba(252, 165, 165, 0.9) !important;
+}
+
+.respite-recipe-editor .recipe-editor-btn--danger:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.12) !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+.respite-recipe-editor .recipe-editor-btn i {
+    font-size: 0.68rem !important;
+    width: 0.75rem;
+    text-align: center;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.respite-recipe-editor .recipe-editor-img-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.45rem;
+}
+
+.respite-recipe-editor .recipe-editor-img-preview {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.35);
+    flex-shrink: 0;
+}
+
+.respite-recipe-editor .recipe-editor-ambitious-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    cursor: pointer;
+    margin-bottom: 0.35rem;
+}
+
+.respite-recipe-editor .recipe-editor-ambitious-toggle input {
+    margin-top: 0.2rem;
+    accent-color: #9b59b6;
+}
+
+.respite-recipe-editor .recipe-editor-ambitious-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.respite-recipe-editor .recipe-editor-ambitious-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.respite-recipe-editor .recipe-editor-ambitious-fields.is-hidden {
+    display: none;
+}
+
+.respite-recipe-editor .recipe-editor-ambitious-fields {
+    margin-top: 0.35rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.respite-recipe-editor .recipe-editor-section--meal {
+    margin-top: 0.45rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.respite-recipe-editor .recipe-editor-meal-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.85rem;
+    margin-bottom: 0.45rem;
+}
+
+.respite-recipe-editor .recipe-editor-check {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.78);
+    cursor: pointer;
+}
+
+.respite-recipe-editor .recipe-editor-check input {
+    accent-color: #9b59b6;
+}
+
+.respite-recipe-editor .recipe-editor-buff-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+}
+
+.respite-recipe-editor .recipe-editor-buff-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.respite-recipe-editor .recipe-editor-buff-summary-text {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.respite-recipe-editor .recipe-editor-buff-summary-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.respite-recipe-editor .recipe-editor-buff-pack-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: rgba(196, 168, 255, 0.95);
+    background: rgba(155, 89, 182, 0.22);
+    border: 1px solid rgba(155, 89, 182, 0.45);
+    white-space: nowrap;
+}
+
+.respite-recipe-editor .recipe-editor-buff-option-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem;
+    width: 100%;
+}
+
+.respite-recipe-editor .recipe-editor-buff-option--pack {
+    border-color: rgba(155, 89, 182, 0.35);
+}
+
+.respite-recipe-editor .recipe-editor-buff-options--pack {
+    margin-bottom: 0.35rem;
+}
+
+.respite-recipe-editor .recipe-editor-buff-popout-empty {
+    margin: 0.15rem 0 0.5rem;
+}
+
+.respite-recipe-editor .recipe-editor-buff-pack-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    max-height: 16rem;
+    overflow-y: auto;
+}
+
+.respite-recipe-editor .recipe-editor-buff-pack-header {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.15rem;
+}
+
+.respite-recipe-editor .recipe-editor-buff-pack-header-note {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.respite-recipe-editor .recipe-editor-buff-type-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.respite-recipe-editor .recipe-editor-buff-type-heading {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(196, 168, 255, 0.88);
+    margin-top: 0.15rem;
+}
+
+.respite-recipe-editor .recipe-editor-buff-popout {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.respite-recipe-editor .recipe-editor-buff-popout-panel {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 0.25rem);
+    top: auto;
+    z-index: 20;
+    width: min(18rem, 100vw);
+    max-height: 14rem;
+    overflow: auto;
+    padding: 0.45rem 0.45rem 0.6rem;
+    border-radius: 6px;
+    background: rgba(12, 14, 22, 0.97);
+    border: 1px solid rgba(155, 89, 182, 0.35);
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.45);
+}
+
+.respite-recipe-editor .recipe-editor-buff-popout-panel.is-hidden {
+    display: none;
+}
+
+.respite-recipe-editor .recipe-editor-buff-popout-heading {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 0.35rem;
+}
+
+.respite-recipe-editor .recipe-editor-buff-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.respite-recipe-editor .recipe-editor-buff-option {
+    all: unset;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    width: 100%;
+    padding: 0.35rem 0.45rem;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.respite-recipe-editor .recipe-editor-buff-option:hover {
+    border-color: rgba(155, 89, 182, 0.45);
+    background: rgba(155, 89, 182, 0.12);
+}
+
+.respite-recipe-editor .recipe-editor-buff-option-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.respite-recipe-editor .recipe-editor-buff-option-desc {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.35;
+}
+
+.respite-recipe-editor .recipe-editor-field--full {
+    width: 100%;
+}
+
+.respite-recipe-editor .recipe-editor-textarea {
+    width: 100%;
+    min-height: 3.25rem;
+    padding: 0.45rem 0.55rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.25);
+    color: var(--color-text-light-highlight, #eee);
+    font-family: inherit;
+    font-size: 0.85rem;
+    line-height: 1.35;
+    resize: vertical;
+}
+
+.respite-recipe-editor .recipe-editor-textarea:focus {
+    outline: none;
+    border-color: rgba(120, 180, 255, 0.45);
+    box-shadow: 0 0 0 1px rgba(120, 180, 255, 0.2);
+}
+
+.respite-recipe-editor .recipe-editor-buff-popout-hint {
+    margin: 0.4rem 0 0.15rem;
+    padding-bottom: 0.1rem;
+    line-height: 1.4;
+}
+
+/* Meal buff picker dialog (homebrew recipe editor) */
+
+.respite-meal-buff-picker .meal-buff-picker-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    min-height: 0;
+    height: 100%;
+    box-sizing: border-box;
+    /* !important: Foundry window-content may zero padding on app shells */
+    padding: 0.75rem 1.25rem 1rem !important;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-lead {
+    margin: 0;
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.72);
+    line-height: 1.5;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-right: 0.35rem;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-section + .meal-buff-picker-section {
+    margin-top: 0.15rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.respite-meal-buff-picker .meal-buff-picker-section-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(196, 168, 255, 0.88);
+    margin: 0 0 0.25rem;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-type-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-type-group + .meal-buff-picker-type-group {
+    margin-top: 0.35rem;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-type-heading {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+    margin: 0.5rem 0 0.15rem;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-type-group:first-child .meal-buff-picker-type-heading {
+    margin-top: 0;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-option {
+    all: unset !important;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-option {
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.35rem !important;
+    width: 100% !important;
+    padding: 0.55rem 1rem !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    transition: border-color 0.15s ease, background 0.15s ease !important;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-option:hover,
+.respite-meal-buff-picker .meal-buff-picker-option--selected {
+    border-color: rgba(155, 89, 182, 0.45) !important;
+    background: rgba(155, 89, 182, 0.12) !important;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-option--pack {
+    border-color: rgba(155, 89, 182, 0.25) !important;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-option-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    width: 100%;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-option-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+    line-height: 1.35;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-option-desc {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.48);
+    line-height: 1.45;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-pack-badge {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: 0.35rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: rgba(196, 168, 255, 0.95);
+    background: rgba(155, 89, 182, 0.22);
+    border: 1px solid rgba(155, 89, 182, 0.45);
+    white-space: nowrap;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-pack-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 0.35rem;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-pack-note {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1.4;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-hint {
+    margin: 0;
+    padding-top: 0.65rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.45;
+}
+
+.respite-meal-buff-picker .meal-buff-picker-empty {
+    margin: 0;
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.65);
+    line-height: 1.45;
+}
+
+/* Settings Quick Setup / group headers: ionrift-library (ModuleConfigProfiles) */
+
+/* ── Standardized roll-request component (reuses event-check-module styling) ── */
+
+.check-module-dc-row--readonly {
+    justify-content: center;
+    overflow: visible;
+}
+
+.ionrift-roll-request .event-check-module {
+    overflow: visible;
+}
+
+.check-avatar--static {
+    cursor: default;
+}
+
+.check-avatar--static:hover {
+    transform: none;
+}
+
+.check-avatar--static.rolled {
+    opacity: 0.55;
+}
+
+.ionrift-roll-request {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0.1rem 0;
+    max-height: min(70vh, 640px);
+    overflow-x: visible;
+    overflow-y: auto;
+    padding: 0.2rem 0.15rem 0.1rem 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 92, 246, 0.45) rgba(255, 255, 255, 0.06);
+}
+
+.ionrift-roll-request::-webkit-scrollbar {
+    width: 8px;
+}
+
+.ionrift-roll-request::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.45);
+    border-radius: 999px;
+}
+
+.ionrift-roll-request::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
+}
+
+.ionrift-roll-request .event-check-module {
+    max-width: min(100%, 420px);
+    width: 100%;
+    padding: 0.4rem 0.85rem;
+    gap: 0.25rem;
+}
+
+.ionrift-roll-request .check-module-skill {
+    font-size: 0.92rem;
+    letter-spacing: 0.02em;
+}
+
+.ionrift-roll-request .check-module-dc-row {
+    overflow: visible;
+    padding: 0.3rem 0;
+}
+
+.ionrift-dc-stage {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 3.1rem;
+    height: 3.1rem;
+    flex: 0 0 auto;
+}
+
+.ionrift-dc-ripple {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(167, 139, 250, 0.38);
+    pointer-events: none;
+    transform-origin: center center;
+    opacity: 0;
+    will-change: transform, opacity;
+}
+
+.ionrift-dc-ripple--b {
+    /* stagger handled in RollRequestDcPulse.js */
+}
+
+.ionrift-roll-request .event-dc-badge.circular {
+    width: 3.1rem;
+    height: 3.1rem;
+}
+
+.ionrift-roll-request .event-dc-badge.circular.ionrift-dc-badge--live {
+    position: relative;
+    z-index: 2;
+    border-width: 2px;
+    transform-origin: center center;
+    will-change: box-shadow, transform, border-color;
+}
+
+.ionrift-roll-request .event-dc-badge.circular .dc-label {
+    font-size: 0.5rem;
+    letter-spacing: 0.1em;
+    position: relative;
+    z-index: 1;
+}
+
+.ionrift-roll-request .event-dc-badge.circular .dc-value {
+    font-size: 1.3rem;
+    font-weight: 800;
+    line-height: 1;
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Owner result acknowledgement on the DC badge ── */
+.ionrift-roll-request .event-dc-badge.circular.event-dc-badge--pass {
+    border-color: rgba(46, 204, 113, 0.85);
+    background: radial-gradient(circle at 50% 35%, rgba(46, 204, 113, 0.35), rgba(46, 204, 113, 0.14));
+    box-shadow: 0 0 10px rgba(46, 204, 113, 0.4);
+}
+
+.ionrift-roll-request .event-dc-badge.circular.event-dc-badge--fail {
+    border-color: rgba(231, 76, 60, 0.85);
+    background: radial-gradient(circle at 50% 35%, rgba(231, 76, 60, 0.32), rgba(231, 76, 60, 0.13));
+    box-shadow: 0 0 10px rgba(231, 76, 60, 0.38);
+}
+
+.ionrift-dc-outcome {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 50%;
+    font-size: 0.7rem;
+    color: #fff;
+    border: 2px solid rgba(20, 18, 28, 0.95);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.ionrift-dc-outcome--pass { background: #2ecc71; }
+.ionrift-dc-outcome--fail { background: #e74c3c; }
+
+.ionrift-roll-request__outcome {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    margin-top: 0.1rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+.ionrift-roll-request__outcome--pass { color: #2ecc71; }
+.ionrift-roll-request__outcome--fail { color: #e74c3c; }
+
+.ionrift-roll-request__event-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+}
+
+.ionrift-roll-request__actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    margin-top: 0.35rem;
+    padding: 0.55rem 0 0.15rem;
+    background: linear-gradient(to top, rgba(10, 8, 16, 0.98) 55%, rgba(10, 8, 16, 0));
+}
+
+.ionrift-roll-request .btn-resolve-check--force-pass {
+    border-color: rgba(52, 211, 153, 0.45);
+    background: rgba(52, 211, 153, 0.12);
+}
+
+.ionrift-roll-request .btn-resolve-check--force-fail {
+    border-color: rgba(248, 113, 113, 0.45);
+    background: rgba(248, 113, 113, 0.12);
+}
+
+.ionrift-roll-request__progress {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.ionrift-roll-request__roster {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 0.45rem 0.65rem;
+    width: 100%;
+    margin-top: 0.15rem;
+}
+
+.ionrift-roll-request__roster--scroll {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 0.35rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 92, 246, 0.45) rgba(255, 255, 255, 0.06);
+}
+
+.ionrift-roll-request__roster--scroll::-webkit-scrollbar {
+    height: 7px;
+}
+
+.ionrift-roll-request__roster--scroll::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.45);
+    border-radius: 999px;
+}
+
+.ionrift-roll-request__roster--scroll::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
+}
+
+.ionrift-roll-request__roster--scroll .ionrift-roll-participant {
+    flex: 0 0 auto;
+}
+
+.ionrift-roll-request__roster--focus-center {
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 0.55rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.15rem 0.25rem 0.35rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 92, 246, 0.45) rgba(255, 255, 255, 0.06);
+}
+
+.ionrift-roll-request__roster--focus-center::-webkit-scrollbar {
+    height: 7px;
+}
+
+.ionrift-roll-request__roster--focus-center::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.45);
+    border-radius: 999px;
+}
+
+.ionrift-roll-request__roster--focus-center .ionrift-roll-participant {
+    flex: 0 0 auto;
+}
+
+.ionrift-roll-request__roster--focus-center .ionrift-roll-participant.is-yours {
+    order: 0;
+    margin-inline: 0.15rem;
+    scroll-margin-inline: 50%;
+}
+
+.ionrift-roll-participant {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    min-width: 3.2rem;
+    max-width: 4.5rem;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.ionrift-roll-participant.is-other {
+    opacity: 0.62;
+}
+
+.ionrift-roll-participant.is-yours {
+    min-width: 4.2rem;
+    max-width: 5.2rem;
+    transform: translateY(-2px);
+}
+
+.ionrift-roll-participant__you-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.08rem 0.35rem;
+    border-radius: 999px;
+    font-size: 0.52rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #fff;
+    background: var(--ionrift-accent, #8b5cf6);
+    box-shadow: 0 0 8px rgba(139, 92, 246, 0.35);
+}
+
+.ionrift-roll-participant.is-yours .check-avatar {
+    width: 2.35rem;
+    height: 2.35rem;
+    border-width: 2px;
+    border-color: var(--ionrift-accent, #8b5cf6);
+    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.45), 0 0 10px rgba(139, 92, 246, 0.28);
+}
+
+.ionrift-roll-participant.is-other .check-avatar {
+    width: 1.75rem;
+    height: 1.75rem;
+}
+
+.ionrift-roll-participant.is-yours .ionrift-roll-participant__name {
+    color: #fff;
+    font-size: 0.68rem;
+}
+
+.ionrift-roll-participant.is-other .ionrift-roll-participant__name {
+    font-size: 0.58rem;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.ionrift-roll-participant__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.ionrift-roll-participant.is-done .ionrift-roll-participant__status {
+    color: #2ecc71;
+}
+
+.ionrift-roll-participant.is-yours.is-waiting .ionrift-roll-participant__status {
+    color: var(--ionrift-accent, #8b5cf6);
+}
+
+.ionrift-roll-participant.is-settled .ionrift-roll-participant__status {
+    color: rgba(127, 212, 255, 0.95);
+}
+
+.event-roll-settled-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    background: rgba(127, 212, 255, 0.08);
+    border: 1px solid rgba(127, 212, 255, 0.25);
+    border-radius: 6px;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: rgba(220, 240, 255, 0.9);
+    text-align: left;
+}
+
+.event-roll-settled-note > i {
+    margin-top: 0.1rem;
+    color: rgba(127, 212, 255, 0.85);
+    flex-shrink: 0;
+}
+
+.ionrift-roll-participant__badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 0.85rem;
+    height: 0.85rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.5rem;
+    border: 1px solid rgba(0, 0, 0, 0.45);
+}
+
+.ionrift-roll-participant__badge.done {
+    background: #2ecc71;
+    color: #0c0f0c;
+}
+
+.ionrift-roll-participant .check-avatar {
+    position: relative;
+}
+
+.ionrift-roll-request__gm-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-top: 0.15rem;
+}
+
+/* Roll-request preview harness (GM dev surface) */
+
+.ionrift-roll-request-preview.window-app .window-content {
+    overflow: hidden;
+}
+
+.roll-request-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    height: 100%;
+    min-height: 0;
+    box-sizing: border-box;
+}
+
+.roll-request-preview__controls {
+    flex: 0 0 auto;
+}
+
+.roll-request-preview__controls-summary {
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.75;
+    margin-bottom: 0.35rem;
+    list-style: none;
+}
+
+.roll-request-preview__controls-summary::-webkit-details-marker {
+    display: none;
+}
+
+.roll-request-preview__controls[open] {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    margin-bottom: 0.35rem;
+}
+
+.roll-request-preview__label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.7;
+}
+
+.roll-request-preview__select {
+    width: 100%;
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(0, 0, 0, 0.25);
+    color: inherit;
+}
+
+.roll-request-preview__toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+.roll-request-preview__hint {
+    display: none;
+}
+
+.roll-request-preview__stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 0.65rem;
+    border-radius: 8px;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    background: rgba(0, 0, 0, 0.18);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 92, 246, 0.45) rgba(255, 255, 255, 0.06);
+}
+
+.roll-request-preview__stage::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.roll-request-preview__stage::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.45);
+    border-radius: 999px;
+}
+
+.roll-request-preview__stage::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
+}
+
+.roll-request-preview__stage .ionrift-roll-request {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+}
+
+.totm-detail-view .ionrift-training-panel {
+    margin-top: 0.75rem;
+}
+
+.ionrift-training-panel {
+    margin: 0.5rem 0 0;
+    padding: 0.65rem 0.75rem;
+    border-radius: 8px;
+    background: rgba(20, 28, 42, 0.85);
+    border: 1px solid rgba(120, 180, 220, 0.25);
+}
+
+.ionrift-training-panel__header {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: rgba(180, 220, 255, 0.92);
+    margin-bottom: 0.45rem;
+}
+
+.ionrift-training-panel__diminish {
+    font-size: 0.72rem;
+    color: rgba(255, 200, 100, 0.75);
+    margin-bottom: 0.4rem;
+}
+
+.ionrift-training-panel__bar {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 0.45rem;
+}
+
+.ionrift-training-panel__seg {
+    flex: 1;
+    height: 10px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.ionrift-training-panel__seg--current {
+    border-color: rgba(120, 180, 240, 0.55);
+    background: rgba(80, 140, 200, 0.2);
+}
+
+.ionrift-training-panel__seg--pass {
+    background: rgba(60, 160, 80, 0.75);
+    border: 1px solid rgba(100, 200, 120, 0.45);
+}
+
+.ionrift-training-panel__seg--fail {
+    background: rgba(160, 60, 60, 0.75);
+    border: 1px solid rgba(200, 80, 80, 0.45);
+}
+
+.ionrift-training-panel__results {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.45rem;
+    font-size: 0.78rem;
+}
+
+.ionrift-training-panel__result.pass { color: #7ec8ee; }
+.ionrift-training-panel__result.fail { color: #e0917f; }
+
+.ionrift-training-panel__roll {
+    width: 100%;
+    padding: 0.45rem 0.6rem;
+    border-radius: 6px;
+    background: rgba(80, 140, 200, 0.28);
+    border: 1px solid rgba(120, 180, 240, 0.4);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.ionrift-training-panel__roll:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+.ionrift-training-panel__waiting {
+    text-align: center;
+    font-size: 0.82rem;
+    color: rgba(180, 220, 255, 0.75);
+    padding: 0.35rem 0;
+}
+
+/* ── Rest Ledger ───────────────────────────────────────────── */
+
+#ionrift-respite-ledger {
+    min-width: 280px;
+    max-width: 420px;
+}
+
+.rest-ledger-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.5rem;
+    height: 100%;
+    overflow: hidden;
+}
+
+.rest-ledger-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid rgba(140, 180, 220, 0.18);
+}
+
+.rest-ledger-filters {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+    flex: 1 1 auto;
+}
+
+.rest-ledger-chip {
+    padding: 0.2rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: rgba(80, 140, 200, 0.15);
+    border: 1px solid rgba(120, 180, 240, 0.22);
+    color: rgba(200, 220, 240, 0.85);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.rest-ledger-chip:hover {
+    background: rgba(80, 140, 200, 0.28);
+}
+
+.rest-ledger-chip.active {
+    background: rgba(100, 160, 220, 0.4);
+    border-color: rgba(140, 200, 255, 0.5);
+    color: #fff;
+}
+
+.rest-ledger-toolbar-actions {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: auto;
+}
+
+.rest-ledger-toolbar-btn {
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: rgba(80, 140, 200, 0.12);
+    border: 1px solid rgba(120, 180, 240, 0.18);
+    color: rgba(200, 220, 240, 0.8);
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: background 0.15s;
+}
+
+.rest-ledger-toolbar-btn:hover {
+    background: rgba(80, 140, 200, 0.3);
+}
+
+.rest-ledger-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    flex: 1 1 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(120, 180, 240, 0.3) transparent;
+}
+
+.rest-ledger-phase-group {
+    margin-bottom: 0.15rem;
+}
+
+.rest-ledger-phase-header {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    width: 100%;
+    padding: 0.3rem 0.45rem;
+    border-radius: 5px;
+    background: rgba(60, 100, 160, 0.18);
+    border: none;
+    color: rgba(200, 220, 240, 0.92);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    transition: background 0.15s;
+}
+
+.rest-ledger-phase-header:hover {
+    background: rgba(60, 100, 160, 0.3);
+}
+
+.rest-ledger-chevron {
+    font-size: 0.65rem;
+    transition: transform 0.2s;
+}
+
+.rest-ledger-phase-header.collapsed .rest-ledger-chevron {
+    transform: rotate(-90deg);
+}
+
+.rest-ledger-phase-count {
+    margin-left: auto;
+    font-size: 0.7rem;
+    color: rgba(160, 200, 240, 0.6);
+    font-weight: 400;
+}
+
+.rest-ledger-entries {
+    list-style: none;
+    margin: 0;
+    padding: 0.15rem 0 0.15rem 0.6rem;
+}
+
+.rest-ledger-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    padding: 0.25rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: rgba(210, 225, 240, 0.9);
+    transition: background 0.12s;
+}
+
+.rest-ledger-entry:hover {
+    background: rgba(80, 140, 200, 0.1);
+}
+
+.rest-ledger-entry-icon {
+    flex: 0 0 auto;
+    width: 18px;
+    text-align: center;
+    color: rgba(140, 190, 240, 0.7);
+    font-size: 0.75rem;
+    padding-top: 0.1rem;
+}
+
+.rest-ledger-entry-body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+}
+
+.rest-ledger-actor {
+    color: rgba(160, 210, 255, 0.95);
+    font-size: 0.75rem;
+}
+
+.rest-ledger-summary {
+    color: rgba(210, 225, 240, 0.88);
+}
+
+.rest-ledger-detail {
+    font-size: 0.72rem;
+    color: rgba(170, 200, 230, 0.6);
+    font-style: italic;
+}
+
+.rest-ledger-time {
+    flex: 0 0 auto;
+    font-size: 0.65rem;
+    color: rgba(140, 180, 220, 0.45);
+    padding-top: 0.15rem;
+    white-space: nowrap;
+}
+
+.rest-ledger-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: rgba(180, 210, 240, 0.5);
+    font-size: 0.82rem;
+}
+
+.rest-ledger-empty i {
+    font-size: 1.8rem;
+    margin-bottom: 0.6rem;
+    display: block;
+    opacity: 0.4;
+}
+
+/* Ledger buttons: suppress Foundry's .app-v2 button:focus red ring
+   (loads after module CSS). Needs higher specificity than Foundry's base
+   .application button:focus and .app-v2 button:focus rules. */
+.ionrift-window.ionrift-respite-app .rest-ledger-chip:focus,
+.ionrift-window.ionrift-respite-app .rest-ledger-toolbar-btn:focus,
+.ionrift-window.ionrift-respite-app .rest-ledger-phase-header:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.ionrift-window.ionrift-respite-app .rest-ledger-chip:focus-visible,
+.ionrift-window.ionrift-respite-app .rest-ledger-toolbar-btn:focus-visible,
+.ionrift-window.ionrift-respite-app .rest-ledger-phase-header:focus-visible {
+    outline: 2px solid rgba(139, 92, 246, 0.9) !important;
+    outline-offset: 2px !important;
+    box-shadow: none !important;
+}
+
+.ionrift-window.ionrift-respite-app .rest-ledger-chip.active:focus-visible {
+    box-shadow: inset 0 0 0 1px rgba(140, 200, 255, 0.3) !important;
+}
+
+/* Armor/rations modal buttons: suppress browser default and Foundry red ring.
+   The overlay sits on document.body outside .application scope, but some
+   browsers still paint a focus ring on click. */
+.ionrift-armor-modal-buttons button:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.ionrift-armor-modal-buttons button:focus-visible {
+    outline: 2px solid rgba(139, 92, 246, 0.9) !important;
+    outline-offset: 2px !important;
+    box-shadow: none !important;
+}
+

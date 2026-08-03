@@ -1,0 +1,2978 @@
+/* Respite: short-rest.css. Loaded via module.json after party-roster.css; before diet-travel.css. Do not reorder. */
+/* ============================================================
+   SHORT REST APP
+   ============================================================ */
+
+.short-rest-app .window-content {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.short-rest-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Header bar: matches the long rest .respite-phase-header. Flex row, button pushed right. */
+.sr-header-bar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 0.3rem 0.5rem;
+    flex-shrink: 0;
+}
+
+.btn-abandon-rest {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.55rem;
+    background: rgba(220, 80, 80, 0.12);
+    border: 1px solid rgba(220, 80, 80, 0.3);
+    border-radius: 4px;
+    color: rgba(220, 130, 130, 0.85);
+    font-size: 0.7rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.btn-abandon-rest:hover {
+    background: rgba(220, 80, 80, 0.25);
+    color: #ef9a9a;
+}
+
+/* ---- Banner ---- */
+.sr-banner {
+    position: relative;
+    width: 100%;
+    height: 120px;
+    background-size: cover;
+    background-position: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.sr-banner-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(13, 17, 23, 0.2), rgba(13, 17, 23, 0.95));
+    display: flex;
+    align-items: flex-end;
+    padding: 0.5rem 1rem;
+}
+
+.sr-banner-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* ---- Shelter Toggle ---- */
+.short-rest-shelter {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.shelter-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.6rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.shelter-toggle:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.shelter-toggle.active {
+    background: rgba(0, 200, 220, 0.12);
+    border-color: rgba(0, 200, 220, 0.4);
+    color: rgba(0, 220, 240, 0.9);
+    box-shadow: 0 0 8px rgba(0, 200, 220, 0.15);
+}
+
+.shelter-toggle input[type='checkbox'] { display: none; }
+
+.shelter-caster { font-size: 0.65rem; color: rgba(255, 255, 255, 0.4); font-style: italic; }
+
+/* ---- Song of Rest status chip ---- */
+.sr-song-chip {
+    background: rgba(155, 89, 182, 0.22) !important;
+    border-color: rgba(190, 120, 255, 0.45) !important;
+    color: rgba(240, 215, 255, 0.98) !important;
+}
+.sr-song-chip i { color: rgba(200, 150, 255, 0.9); margin-right: 0.15rem; }
+
+.sr-chef-chip {
+    background: rgba(210, 140, 70, 0.2) !important;
+    border-color: rgba(230, 170, 90, 0.45) !important;
+    color: rgba(255, 235, 210, 0.98) !important;
+}
+.sr-chef-chip i { color: rgba(255, 190, 120, 0.9); margin-right: 0.15rem; }
+
+.sr-roll-chef-addon {
+    color: rgba(255, 190, 120, 0.85);
+    font-size: 0.85em;
+}
+
+/* Short rest: camp-status badges above banner */
+.short-rest-container .sr-camp-meta {
+    flex-shrink: 0;
+    background: rgba(0, 0, 0, 0.25);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.short-rest-container .sr-camp-meta .camp-status-bar {
+    border-bottom: none;
+}
+
+/* Short rest roster strip: status-only chips (not selection tabs) */
+.sr-roster-strip {
+    background: rgba(0, 0, 0, 0.2);
+}
+.sr-roster-strip .roster-chip {
+    cursor: default;
+}
+.sr-roster-strip .roster-chip:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Finished indicator on roster chips */
+.sr-roster-strip .roster-chip.sr-finished {
+    border-color: rgba(80, 200, 120, 0.35);
+    background: rgba(80, 200, 120, 0.06);
+}
+.sr-roster-strip .roster-chip.sr-finished .roster-status i {
+    color: #4ade80;
+}
+.sr-roster-strip .roster-chip .roster-status i.fa-hourglass-half {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* ---- Scrollable body ---- */
+.sr-scroll-body {
+    flex: 1 1 0;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+/* ---- Character Cards ---- */
+.short-rest-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.5rem 0.75rem;
+}
+/* GM sees all cards expanded in a 2-column grid */
+.short-rest-cards.sr-gm-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.4rem;
+}
+
+.short-rest-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 0.45rem 0.6rem;
+    transition: border-color 0.2s ease;
+}
+
+/* ---- Collapsed party cards (player view, non-self) ---- */
+.sr-collapsed-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.3rem;
+    padding: 0 0.75rem 0.35rem;
+}
+.short-rest-card.is-collapsed {
+    padding: 0.3rem 0.5rem;
+}
+.short-rest-card.is-collapsed .sr-card-header {
+    gap: 0.4rem;
+}
+.short-rest-card.is-collapsed .sr-portrait {
+    width: 28px;
+    height: 28px;
+}
+.short-rest-card.is-collapsed .sr-name {
+    font-size: 0.72rem;
+}
+.short-rest-card.is-collapsed .sr-hp-row {
+    margin-top: 0;
+}
+.short-rest-card.is-collapsed .sr-hp,
+.short-rest-card.is-collapsed .sr-hd-count {
+    font-size: 0.65rem;
+}
+.short-rest-card.is-collapsed .sr-card-action-row {
+    margin-top: 0.15rem;
+}
+.short-rest-card.is-collapsed .sr-pip {
+    width: 7px;
+    height: 7px;
+}
+.short-rest-card:hover { border-color: rgba(255, 255, 255, 0.12); }
+
+.sr-card-header { display: flex; align-items: center; gap: 0.5rem; }
+.sr-portrait { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255, 255, 255, 0.12); flex-shrink: 0; }
+.sr-identity { flex: 1; min-width: 0; }
+.sr-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+.sr-you-pill {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    background: rgba(180, 140, 255, 0.35);
+    border: 1px solid rgba(200, 160, 255, 0.55);
+    color: rgba(245, 235, 255, 0.98);
+}
+.short-rest-card.is-self-card {
+    border: 2px solid rgba(180, 140, 255, 0.55);
+    background: rgba(180, 140, 255, 0.12);
+    box-shadow:
+        0 0 0 1px rgba(140, 100, 220, 0.22),
+        0 0 20px rgba(120, 80, 200, 0.18);
+}
+.short-rest-card.is-self-card .sr-portrait {
+    border-color: rgba(200, 170, 255, 0.65);
+    box-shadow: 0 0 0 2px rgba(180, 140, 255, 0.3);
+}
+.short-rest-card.is-self-card.is-afk {
+    border-color: rgba(224, 160, 64, 0.55);
+    box-shadow:
+        0 0 0 1px rgba(224, 160, 64, 0.22),
+        inset 0 0 0 1px rgba(224, 160, 64, 0.1);
+}
+.sr-hp-row { display: flex; gap: 0.65rem; margin-top: 0.1rem; }
+.sr-hp { font-size: 0.72rem; color: rgba(220, 90, 90, 0.85); }
+.sr-hp.full { color: rgba(80, 200, 120, 0.85); }
+.sr-hp i, .sr-hd-count i { margin-right: 0.15rem; font-size: 0.6rem; }
+.sr-hd-count { font-size: 0.72rem; color: rgba(180, 140, 255, 0.8); }
+
+/* ---- HD Pips + Spend in one row ---- */
+.sr-card-action-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.3rem; }
+.sr-hd-pips { display: flex; gap: 3px; flex-wrap: wrap; flex: 1; }
+.sr-pip { width: 9px; height: 9px; border-radius: 50%; border: 1px solid rgba(180, 140, 255, 0.35); transition: all 0.2s ease; }
+.sr-pip.filled { background: rgba(180, 140, 255, 0.6); border-color: rgba(180, 140, 255, 0.7); box-shadow: 0 0 4px rgba(180, 140, 255, 0.3); }
+.sr-pip.empty { background: rgba(255, 255, 255, 0.08); border-color: rgba(200, 200, 220, 0.28); }
+
+/* ---- Roll Log ---- */
+.sr-roll-log { display: flex; align-items: center; gap: 0.3rem; margin-top: 0.3rem; flex-wrap: wrap; }
+.sr-roll-entry { display: inline-flex; align-items: center; padding: 0.05rem 0.35rem; background: rgba(80, 200, 120, 0.1); border: 1px solid rgba(80, 200, 120, 0.2); border-radius: 4px; font-size: 0.65rem; font-weight: 600; color: rgba(80, 200, 120, 0.85); animation: srRollPop 0.3s ease-out; }
+@keyframes srRollPop { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+.sr-roll-total { font-size: 0.65rem; color: rgba(80, 200, 120, 0.6); margin-left: auto; }
+.sr-roll-total i { margin-right: 0.15rem; }
+
+/* ---- Actions (spend button sits in action row now) ---- */
+.sr-spend-btn { background: rgba(180, 140, 255, 0.12); border: 1px solid rgba(180, 140, 255, 0.3); color: rgba(180, 140, 255, 0.9); padding: 0.2rem 0.55rem; border-radius: 5px; cursor: pointer; font-size: 0.68rem; font-weight: 600; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 0.25rem; flex-shrink: 0; white-space: nowrap; }
+.sr-spend-btn:hover { background: rgba(180, 140, 255, 0.2); border-color: rgba(180, 140, 255, 0.5); box-shadow: 0 0 8px rgba(180, 140, 255, 0.15); }
+.sr-spend-btn.faded {
+    opacity: 1;
+    cursor: not-allowed;
+    color: rgba(220, 210, 255, 0.55) !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: rgba(255, 255, 255, 0.14) !important;
+}
+.sr-spend-btn.faded:hover { background: rgba(255, 255, 255, 0.08) !important; border-color: rgba(255, 255, 255, 0.18) !important; box-shadow: none; }
+
+.short-rest-app .short-rest-container .sr-spend-btn:focus {
+    outline: none !important;
+}
+.short-rest-app .short-rest-container .sr-spend-btn:focus-visible {
+    outline: 2px solid rgba(139, 92, 246, 0.9) !important;
+    outline-offset: 2px !important;
+}
+
+/* ---- Roll Log: Compression Badge ---- */
+.sr-roll-hidden-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.05rem 0.35rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.4);
+    cursor: default;
+}
+
+/* ---- Song of Rest: Volunteer Button ---- */
+.sr-song-volunteer { margin-top: 0.35rem; }
+.sr-volunteer-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    width: 100%;
+    padding: 0.3rem 0.5rem;
+    border-radius: 5px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(155, 89, 182, 0.08);
+    border: 1px solid rgba(155, 89, 182, 0.3);
+    color: rgba(220, 195, 255, 0.9);
+}
+.sr-volunteer-btn:hover {
+    background: rgba(155, 89, 182, 0.18);
+    border-color: rgba(155, 89, 182, 0.5);
+    box-shadow: 0 0 8px rgba(155, 89, 182, 0.15);
+}
+.sr-volunteer-btn.active {
+    background: rgba(80, 200, 120, 0.1);
+    border-color: rgba(80, 200, 120, 0.35);
+    color: rgba(150, 240, 180, 0.95);
+}
+.sr-volunteer-btn.active:hover {
+    background: rgba(80, 200, 120, 0.2);
+    border-color: rgba(80, 200, 120, 0.5);
+}
+.sr-volunteer-locked {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    width: 100%;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.65rem;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.3);
+}
+.sr-volunteer-locked i { font-size: 0.55rem; }
+
+/* ---- Short rest completion (in-window, replaces tabs) ---- */
+.short-rest-container .sr-completion-body {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0.5rem 0.75rem 0.65rem;
+}
+.short-rest-container .sr-completion-heading {
+    margin: 0 0 0.45rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(210, 200, 255, 0.92);
+}
+.short-rest-container .sr-completion-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    margin-bottom: 0.5rem;
+}
+.short-rest-container .sr-completion-card {
+    padding: 0.4rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.22);
+}
+.short-rest-container .sr-completion-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: rgba(200, 190, 255, 0.95);
+    margin-bottom: 0.15rem;
+}
+.short-rest-container .sr-completion-line {
+    margin: 0;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: rgba(220, 225, 245, 0.78);
+}
+.short-rest-container .sr-completion-empty {
+    margin: 0;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: rgba(255, 200, 120, 0.85);
+    font-style: italic;
+}
+.short-rest-container .sr-completion-lead {
+    margin: 0;
+    font-size: 0.68rem;
+    line-height: 1.35;
+    color: rgba(180, 190, 220, 0.55);
+}
+
+/* ---- Sticky Footer ---- */
+.sr-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    background: rgba(18, 16, 28, 0.95);
+    backdrop-filter: blur(6px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.4rem 0.75rem;
+}
+.sr-footer-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+.sr-finished-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 5px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid rgba(80, 200, 120, 0.35);
+    background: rgba(80, 200, 120, 0.1);
+    color: rgba(150, 240, 180, 0.95);
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.sr-finished-toggle:hover {
+    background: rgba(80, 200, 120, 0.2);
+    border-color: rgba(80, 200, 120, 0.55);
+    box-shadow: 0 0 10px rgba(80, 200, 120, 0.15);
+}
+.sr-finished-toggle.active {
+    background: rgba(140, 170, 255, 0.12);
+    border-color: rgba(140, 170, 255, 0.4);
+    color: rgba(190, 200, 255, 0.95);
+}
+.sr-complete-btn { background: rgba(80, 200, 120, 0.12); border: 1px solid rgba(80, 200, 120, 0.3); color: rgba(80, 200, 120, 0.9); padding: 0.35rem 0.85rem; border-radius: 5px; cursor: pointer; font-size: 0.78rem; font-weight: 600; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 0.3rem; }
+.sr-complete-btn:hover { background: rgba(80, 200, 120, 0.2); border-color: rgba(80, 200, 120, 0.5); box-shadow: 0 0 10px rgba(80, 200, 120, 0.15); }
+.sr-abandon-btn { background: rgba(192, 57, 43, 0.1); border: 1px solid rgba(192, 57, 43, 0.25); color: rgba(192, 57, 43, 0.7); padding: 0.35rem 0.65rem; border-radius: 5px; cursor: pointer; font-size: 0.72rem; font-weight: 500; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 0.3rem; }
+.sr-abandon-btn:hover { background: rgba(192, 57, 43, 0.18); border-color: rgba(192, 57, 43, 0.45); color: rgba(192, 57, 43, 0.9); }
+.sr-waiting { font-size: 0.68rem; font-style: italic; color: rgba(255, 255, 255, 0.4); }
+.sr-waiting i { margin-right: 0.2rem; }
+
+.short-rest-card.is-afk {
+    border-color: rgba(224, 160, 64, 0.45);
+    box-shadow: inset 0 0 0 1px rgba(224, 160, 64, 0.12);
+}
+
+.sr-spell-recovery-static { margin-top: 0.35rem; }
+.sr-spell-recovery-static.exhausted {
+    border-color: rgba(180, 100, 100, 0.35);
+    background: rgba(120, 40, 40, 0.08);
+}
+.sr-spell-static-msg {
+    margin: 0.2rem 0 0;
+    font-size: 0.68rem;
+    line-height: 1.35;
+    color: rgba(255, 245, 230, 0.75);
+}
+.sr-spell-recovery-static.exhausted .sr-spell-static-msg { color: rgba(255, 210, 210, 0.85); }
+.sr-spell-budget-muted { opacity: 0.65; }
+
+/* Short rest tabs: Foundry .application button:focus styles load after module CSS
+   and draw a warm/red ring. Nuclear reset + module app scope (see IONRIFT_UI_HANDBOOK §3). */
+.short-rest-app .short-rest-container .sr-tab-bar {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem 0.35rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.short-rest-app .short-rest-container .sr-tab {
+    all: unset !important;
+}
+
+.short-rest-app .short-rest-container .sr-tab {
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0.35rem 0.5rem !important;
+    font-family: inherit !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    text-align: center !important;
+    line-height: 1.2 !important;
+    color: rgba(200, 210, 255, 0.55) !important;
+    background: rgba(0, 0, 0, 0.15) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 5px 5px 0 0 !important;
+    cursor: pointer !important;
+    outline: none !important;
+    box-shadow: none !important;
+    transition: color 0.2s, background 0.2s, border-color 0.2s !important;
+}
+
+.short-rest-app .short-rest-container .sr-tab i {
+    margin-right: 0.2rem;
+    opacity: 0.85;
+}
+
+.short-rest-app .short-rest-container .sr-tab:hover {
+    color: rgba(220, 230, 255, 0.85) !important;
+}
+
+.short-rest-app .short-rest-container .sr-tab.active {
+    color: rgba(220, 230, 255, 0.95) !important;
+    background: rgba(100, 140, 200, 0.12) !important;
+    border-color: rgba(167, 139, 250, 0.4) !important;
+    border-bottom-color: transparent !important;
+    box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.22) !important;
+}
+
+.short-rest-app .short-rest-container .sr-tab:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.short-rest-app .short-rest-container .sr-tab.active:focus {
+    box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.22) !important;
+}
+
+.short-rest-app .short-rest-container .sr-tab:focus-visible {
+    outline: 2px solid rgba(139, 92, 246, 0.9) !important;
+    outline-offset: 2px !important;
+    box-shadow: none !important;
+}
+
+.short-rest-app .short-rest-container .sr-tab.active:focus-visible {
+    box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.28) !important;
+}
+
+.sr-recharge-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.35rem;
+    padding-top: 0.25rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+.sr-recharge-pill {
+    font-size: 0.62rem;
+    font-weight: 600;
+    line-height: 1.1;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    background: rgba(120, 100, 200, 0.2);
+    border: 1px solid rgba(150, 140, 220, 0.3);
+    color: rgba(210, 200, 255, 0.9);
+    max-width: 100%;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.sr-workbench-body { padding: 0.35rem 0.4rem; }
+
+.short-rest-container .sr-roster-strip .roster-chip.sr-wb-roster-pickable {
+    cursor: pointer;
+}
+.short-rest-container .sr-roster-strip .roster-chip.sr-wb-roster-pickable:hover {
+    filter: brightness(1.06);
+}
+.short-rest-container .sr-roster-strip .roster-chip.sr-wb-roster-focus {
+    box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.85), 0 0 12px rgba(99, 102, 241, 0.35);
+    border-radius: 10px;
+}
+
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+/* ---- Rest Type Toggle Buttons ---- */
+.rest-type-toggle { display: flex; gap: 0; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 7px; overflow: hidden; width: fit-content; }
+.application .rest-type-toggle .rest-type-btn { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.85rem; font-size: 0.78rem; font-weight: 600; color: rgba(255,255,255,0.45); background: transparent; border: none !important; outline: none !important; box-shadow: none !important; cursor: pointer; transition: background 0.2s ease, color 0.2s ease; white-space: nowrap; margin: 0; }
+.application .rest-type-toggle .rest-type-btn:hover { color: rgba(255,255,255,0.75); background: rgba(255,255,255,0.05); }
+.application .rest-type-toggle .rest-type-btn.active { background: rgba(155,89,182,0.2); color: rgba(200,160,255,0.95); box-shadow: inset 0 0 0 1px rgba(155,89,182,0.35) !important; }
+.application .rest-type-toggle .rest-type-btn:focus,
+.application .rest-type-toggle .rest-type-btn:focus-visible,
+.application .rest-type-toggle .rest-type-btn:active { outline: none !important; border: none !important; box-shadow: none !important; }
+.application .rest-type-toggle .rest-type-btn.active:focus { box-shadow: inset 0 0 0 1px rgba(155,89,182,0.35) !important; }
+.application .rest-type-toggle .rest-type-btn i { font-size: 0.7rem; }
+/* ---- Decision Tree ---- */
+
+.respite-decision-tree {
+    padding: 0 0.5rem;
+}
+
+/* Tree event title: trim the header box so the roll button clears the fold */
+.respite-event-card.tree-active {
+    padding: 0.4rem 0.65rem;
+    margin-bottom: 0.25rem;
+}
+.respite-event-card.tree-active .event-name {
+    font-size: 1.1rem;
+    margin-bottom: 0;
+}
+
+/* Fix 2: scrollable events area */
+.respite-events {
+    overflow-y: auto;
+    max-height: calc(100vh - 300px);
+    padding-bottom: 0.5rem;
+}
+
+.tree-choices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+}
+
+.choice-description {
+    font-size: 0.72rem;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 400;
+    line-height: 1.4;
+    margin: 0.15rem 0 0.1rem;
+    flex: 1;
+}
+
+/* Spell rulings: compact reference strip, visually distinct from scenario text */
+.choice-spell-rulings {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.3rem;
+    margin-top: 0.2rem;
+    padding: 0.2rem 0.35rem;
+    background: rgba(155, 89, 182, 0.08);
+    border: 1px solid rgba(155, 89, 182, 0.2);
+    border-radius: 4px;
+    font-size: 0.62rem;
+    color: rgba(200, 170, 240, 0.75);
+    line-height: 1.35;
+    font-style: italic;
+    font-weight: 400;
+}
+
+.choice-spell-rulings i {
+    font-size: 0.55rem;
+    color: rgba(155, 89, 182, 0.5);
+    margin-top: 0.1rem;
+    flex-shrink: 0;
+}
+
+.choice-check {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 600;
+    margin-top: auto;
+}
+
+.choice-check .skill-tag {
+    display: inline-block;
+    padding: 0.1rem 0.4rem;
+    background: rgba(155, 89, 182, 0.2);
+    border: 1px solid rgba(155, 89, 182, 0.4);
+    border-radius: 4px;
+    font-size: 0.62rem;
+    color: rgba(220, 190, 255, 0.95);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+}
+
+.choice-check .skill-best-of {
+    font-size: 0.58rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+    font-weight: 400;
+}
+
+.choice-check .skill-sep {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-weight: 400;
+}
+
+/* Disaster tree: one narration card; prompt is the read-aloud line */
+.tree-narration-block .narration-read-aloud {
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-style: normal;
+    line-height: 1.35;
+}
+
+.tree-narration-block .narration-read-aloud > span {
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.tree-narration-block .tree-decision-prompt {
+    display: flex;
+    gap: 0.4rem;
+    align-items: flex-start;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px dashed rgba(155, 89, 182, 0.22);
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.tree-narration-block .tree-decision-prompt > i {
+    color: rgba(155, 89, 182, 0.65);
+    margin-top: 0.12rem;
+    flex-shrink: 0;
+    font-size: 0.75rem;
+}
+
+.tree-narration-block .tree-event-check-context {
+    margin-top: 0.45rem;
+    text-align: left;
+}
+
+.tree-gm-steer-expand {
+    margin-top: 0.45rem;
+    border-top: 1px dashed rgba(155, 89, 182, 0.18);
+    padding-top: 0.35rem;
+}
+
+.tree-gm-steer-expand > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(200, 170, 240, 0.75);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.tree-gm-steer-expand > summary::-webkit-details-marker {
+    display: none;
+}
+
+.tree-gm-steer-expand > summary::after {
+    content: "\f078";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 0.55rem;
+    margin-left: auto;
+    opacity: 0.45;
+    transition: transform 0.15s ease;
+}
+
+.tree-gm-steer-expand[open] > summary::after {
+    transform: rotate(180deg);
+}
+
+.tree-gm-steer-expand > summary > i {
+    opacity: 0.7;
+}
+
+.tree-gm-steer-body {
+    margin-top: 0.35rem;
+    padding: 0.4rem 0.45rem;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.62);
+    white-space: pre-wrap;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    max-height: 12rem;
+    overflow-y: auto;
+}
+
+.choice-check-hint {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 0.2rem;
+    color: rgba(155, 89, 182, 0.55);
+    font-size: 0.72rem;
+    cursor: help;
+    vertical-align: middle;
+}
+
+.choice-check-hint:hover {
+    color: rgba(200, 170, 240, 0.9);
+}
+
+.tree-roll-header--configure .choice-check-hint {
+    margin-left: 0.35rem;
+    font-size: 0.78rem;
+}
+
+/* Choice card: skills row + circular DC with nudge buttons */
+.tree-choice-card .choice-dc-module {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0.35rem 0 0.45rem;
+}
+
+.tree-choice-card .choice-dc-module--readonly {
+    margin: 0.35rem 0 0.45rem;
+}
+
+.tree-choice-card .tree-choice-dc-row {
+    justify-content: center;
+    gap: 0.45rem;
+}
+
+.tree-choice-card .tree-choice-dc-badge {
+    width: 3.75rem;
+    height: 3.75rem;
+    border-color: rgba(220, 70, 60, 0.45);
+    background: radial-gradient(circle at 50% 35%, rgba(180, 45, 40, 0.35), rgba(80, 20, 20, 0.2));
+}
+
+.tree-choice-card .tree-choice-dc-badge .dc-value {
+    font-size: 1.55rem;
+    font-weight: 800;
+}
+
+.tree-choice-card .tree-choice-dc-badge .dc-label {
+    font-size: 0.58rem;
+}
+
+.tree-dc-adj-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.35rem;
+    margin: 0.35rem 0 0.15rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
+    text-align: center;
+}
+
+.tree-dc-adj-note > i {
+    font-size: 0.62rem;
+    color: rgba(155, 89, 182, 0.55);
+}
+
+/* GM Narration Hint */
+.tree-narration-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    padding: 0.35rem 0.5rem;
+    margin-bottom: 0.3rem;
+    background: rgba(255, 200, 100, 0.05);
+    border-left: 2px solid rgba(255, 200, 100, 0.3);
+    border-radius: 0 4px 4px 0;
+    font-size: 0.7rem;
+    font-style: italic;
+    color: rgba(255, 200, 100, 0.7);
+    line-height: 1.35;
+}
+
+.tree-narration-hint i {
+    margin-top: 0.1rem;
+    flex-shrink: 0;
+    color: rgba(255, 200, 100, 0.5);
+}
+
+/* GM Guidance Sidebar */
+.respite-decision-tree {
+    position: relative;
+}
+
+/* In-tree sidebar: hidden data holder only. Visible flyout is in document.body. */
+.respite-decision-tree .tree-gm-sidebar {
+    display: none;
+}
+
+/* Event name row: flex to push GM Notes button to the right */
+.respite-event-card .event-name {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.respite-event-card .event-name-text {
+    flex: 1;
+    min-width: 0;
+}
+
+/* GM Notes pill button: lives in the event-name header row */
+.tree-gm-notes-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.55rem;
+    background: rgba(100, 160, 220, 0.08);
+    border: 1px solid rgba(100, 160, 220, 0.2) !important;
+    border-radius: 4px;
+    color: rgba(140, 185, 230, 0.7);
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.tree-gm-notes-btn:focus,
+.tree-gm-notes-btn:focus-visible,
+.tree-gm-notes-btn:active {
+    outline: none !important;
+    box-shadow: none !important;
+    border-color: rgba(100, 160, 220, 0.35) !important;
+}
+
+/* “?” affordance marker */
+.tree-gm-notes-btn::after {
+    content: " ?";
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: rgba(140, 185, 230, 0.5);
+    font-style: italic;
+}
+
+.tree-gm-notes-btn:hover {
+    background: rgba(100, 160, 220, 0.15);
+    border-color: rgba(100, 160, 220, 0.4);
+    color: rgba(160, 200, 240, 0.95);
+}
+
+.tree-gm-notes-btn.active {
+    background: rgba(100, 160, 220, 0.18);
+    border-color: rgba(100, 160, 220, 0.5);
+    color: rgba(180, 215, 255, 1);
+    box-shadow: 0 0 6px rgba(100, 160, 220, 0.15);
+}
+
+.tree-gm-notes-btn i {
+    font-size: 0.6rem;
+}
+
+
+.tree-gm-sidebar {
+    position: fixed;
+    width: 260px;
+    background: rgba(13, 17, 25, 0.97);
+    border: 1px solid rgba(100, 160, 220, 0.2);
+    border-left: none;
+    border-radius: 0 10px 10px 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(-20px);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.22s ease, opacity 0.18s ease;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.6), 1px 0 0 rgba(100, 160, 220, 0.15);
+    max-height: 70vh;
+    overflow: hidden;
+}
+
+.tree-gm-sidebar.open {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.tree-gm-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid rgba(100, 160, 220, 0.12);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: rgba(140, 185, 230, 0.85);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+}
+
+.tree-gm-sidebar-header i {
+    font-size: 0.6rem;
+    margin-right: 0.3rem;
+    color: rgba(140, 185, 230, 0.5);
+}
+
+.tree-gm-sidebar-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    padding: 0.2rem;
+    font-size: 0.65rem;
+    transition: color 0.2s ease;
+}
+
+.tree-gm-sidebar-close:hover {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.tree-gm-sidebar-body {
+    padding: 0.5rem 0.6rem 0.6rem;
+    overflow-y: auto;
+    flex: 1;
+    font-size: 0.73rem;
+    color: rgba(180, 210, 240, 0.85);
+    line-height: 1.55;
+}
+
+.tree-gm-sidebar-body p {
+    margin: 0 0 0.55rem;
+    padding: 0;
+}
+
+.tree-gm-sidebar-body p:last-child {
+    margin-bottom: 0;
+}
+
+/* First paragraph: trigger context. Muted italic. */
+.tree-gm-sidebar-body p:first-child {
+    font-size: 0.68rem;
+    color: rgba(180, 210, 240, 0.55);
+    font-style: italic;
+    margin-bottom: 0.65rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(100, 160, 220, 0.08);
+}
+
+/* Subsequent paragraphs: left-bar ruling blocks */
+.tree-gm-sidebar-body p:not(:first-child) {
+    padding-left: 0.5rem;
+    border-left: 2px solid rgba(100, 160, 220, 0.2);
+}
+
+/* Last paragraph: stall ruling. Amber tint. */
+.tree-gm-sidebar-body p:last-child {
+    border-left-color: rgba(255, 200, 100, 0.3);
+    color: rgba(255, 210, 130, 0.8);
+}
+
+/* Label chips: bold lead word in each ruling paragraph */
+.tree-gm-sidebar-body p:not(:first-child) > strong:first-child {
+    display: inline-block;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: rgba(140, 185, 230, 0.6);
+    background: rgba(100, 160, 220, 0.08);
+    border: 1px solid rgba(100, 160, 220, 0.15);
+    border-radius: 3px;
+    padding: 0.05rem 0.3rem;
+    margin-right: 0.35rem;
+    vertical-align: middle;
+    line-height: 1.6;
+}
+
+.tree-gm-sidebar-body p:last-child > strong:first-child {
+    color: rgba(255, 200, 100, 0.65);
+    background: rgba(255, 200, 100, 0.06);
+    border-color: rgba(255, 200, 100, 0.15);
+}
+
+/* Stall Penalty Area (below option cards) */
+.tree-stall-area {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.6rem;
+    margin: 0.65rem 0 0.25rem;
+    padding: 0.45rem 0.55rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+}
+
+.btn-stall-penalty {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.85rem;
+    background: rgba(255, 80, 50, 0.12);
+    border: 1px solid rgba(255, 80, 50, 0.4);
+    border-radius: 5px;
+    color: rgba(255, 140, 90, 0.95);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.btn-stall-penalty:hover {
+    background: rgba(255, 80, 50, 0.22);
+    border-color: rgba(255, 80, 50, 0.6);
+    box-shadow: 0 0 12px rgba(255, 80, 50, 0.2), 0 0 4px rgba(255, 80, 50, 0.1) inset;
+    color: rgba(255, 160, 110, 1);
+}
+
+.btn-stall-penalty i {
+    font-size: 0.7rem;
+}
+
+.stall-hint {
+    /* Moved to title tooltip on the button, no longer rendered inline */
+    display: none;
+}
+
+.stall-applied-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(255, 120, 80, 0.95);
+}
+
+.stall-applied-count i {
+    font-size: 0.65rem;
+    color: rgba(255, 80, 50, 0.7);
+}
+
+.tree-stall-applied {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.5rem;
+    background: rgba(255, 80, 50, 0.08);
+    border: 1px solid rgba(255, 80, 50, 0.2);
+    border-radius: 5px;
+    font-size: 0.7rem;
+    color: rgba(255, 120, 80, 0.85);
+}
+
+.tree-dc-adj-label {
+    font-size: 0.6rem;
+    color: rgba(255, 200, 100, 0.6);
+    font-weight: 600;
+    margin-left: 0.25rem;
+}
+
+
+.tree-stall-applied i {
+    font-size: 0.6rem;
+    flex-shrink: 0;
+}
+
+.tree-history-entry {
+    padding: 0.3rem 0.5rem;
+    margin-bottom: 0.3rem;
+    background: rgba(0, 0, 0, 0.15);
+    border-left: 2px solid rgba(155, 89, 182, 0.4);
+    border-radius: 0 4px 4px 0;
+    font-size: 0.75rem;
+}
+
+.tree-choice-made {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.tree-choice-made i {
+    color: rgba(155, 89, 182, 0.6);
+    font-size: 0.65rem;
+}
+
+.tree-result.success { color: rgba(100, 220, 130, 0.9); }
+.tree-result.failure { color: rgba(255, 120, 100, 0.9); }
+
+.tree-resolved {
+    margin-top: 0.5rem;
+    padding: 0.6rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.tree-outcome-header {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255, 220, 130, 0.85);
+    margin-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.tree-outcome-header i {
+    font-size: 0.7rem;
+    color: rgba(255, 220, 130, 0.6);
+}
+
+.tree-final-narrative {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 2px solid rgba(255, 220, 130, 0.3);
+    border-radius: 0 4px 4px 0;
+    font-style: italic;
+}
+
+.tree-effects {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-bottom: 0.4rem;
+}
+
+.tree-effects-header {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 120, 80, 0.7);
+    margin-bottom: 0.1rem;
+}
+
+.tree-effects-player-note {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.55rem;
+    margin-bottom: 0.4rem;
+    font-size: 0.82rem;
+    color: rgba(220, 230, 245, 0.75);
+    background: rgba(90, 140, 200, 0.08);
+    border-left: 2px solid rgba(120, 170, 220, 0.35);
+    border-radius: 0 4px 4px 0;
+}
+
+.tree-effects-player-note i {
+    flex-shrink: 0;
+    color: rgba(120, 170, 220, 0.6);
+}
+
+.tree-effect {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.5rem;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 5px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tree-effect i {
+    font-size: 0.65rem;
+    flex-shrink: 0;
+    width: 1rem;
+    text-align: center;
+}
+
+.tree-effect.effect-supply_loss i { color: rgba(255, 180, 80, 0.7); }
+.tree-effect.effect-condition i { color: rgba(220, 80, 80, 0.8); }
+.tree-effect.effect-damage i { color: rgba(255, 80, 80, 0.8); }
+
+.tree-effect .effect-label {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    text-transform: capitalize;
+}
+
+.tree-effect .effect-detail {
+    font-size: 0.7rem;
+    color: rgba(255, 200, 130, 0.8);
+    font-weight: 600;
+    padding: 0.05rem 0.3rem;
+    background: rgba(255, 200, 130, 0.08);
+    border: 1px solid rgba(255, 200, 130, 0.15);
+    border-radius: 3px;
+}
+
+.tree-effect .effect-desc {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+    margin-left: auto;
+}
+
+.tree-effect .effect-scope {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-style: italic;
+}
+
+/* Conditions (exhaustion, etc.) are serious, lasting consequences: flag them red
+   so they read as heavier than a supply dent in the disaster outcome list. */
+.effect-condition-severe {
+    color: #e74c3c;
+    font-weight: 600;
+}
+
+.effect-condition-severe i {
+    color: #e74c3c;
+}
+
+.effect-condition-severe .effect-scope {
+    color: rgba(231, 76, 60, 0.7);
+}
+
+.tree-waiting {
+    text-align: center;
+    padding: 0.5rem;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-style: italic;
+}
+
+.tree-waiting i {
+    margin-right: 0.3rem;
+}
+
+/* ---- Tree: Awaiting Player Rolls (GM View) ---- */
+
+.tree-awaiting-rolls {
+    margin-top: 0.4rem;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(155, 89, 182, 0.2);
+    border-radius: 8px;
+}
+
+.tree-roll-header {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: rgba(200, 160, 255, 0.9);
+    margin-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.tree-roll-header i {
+    color: rgba(155, 89, 182, 0.7);
+}
+
+.tree-roll-tracker {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.tree-roll-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 5px;
+    font-size: 0.75rem;
+}
+
+.tree-roll-entry.resolved {
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tree-roll-entry.pending {
+    background: rgba(255, 200, 100, 0.04);
+    border: 1px solid rgba(255, 200, 100, 0.1);
+}
+
+.tree-roll-entry .roll-name {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tree-roll-entry .roll-total {
+    font-weight: 700;
+    font-size: 0.82rem;
+    min-width: 1.5rem;
+    text-align: center;
+}
+
+.tree-roll-entry .roll-total.pass { color: rgba(100, 220, 130, 0.9); }
+.tree-roll-entry .roll-total.fail { color: rgba(255, 120, 100, 0.9); }
+
+.tree-roll-entry .roll-status {
+    font-size: 0.7rem;
+    color: rgba(255, 200, 100, 0.6);
+    font-style: italic;
+}
+
+.tree-roll-entry .fa-check-circle { color: rgba(100, 220, 130, 0.7); font-size: 0.7rem; }
+.tree-roll-entry .fa-times-circle { color: rgba(255, 120, 100, 0.7); font-size: 0.7rem; }
+
+.tree-roll-actions {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+    justify-content: flex-end;
+}
+
+/* ---- Roll for Player / Resend Buttons ---- */
+
+.btn-roll-for-player {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.45rem;
+    background: rgba(255, 200, 100, 0.08);
+    border: 1px solid rgba(255, 200, 100, 0.2);
+    border-radius: 4px;
+    color: rgba(255, 200, 100, 0.7);
+    font-size: 0.65rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.btn-roll-for-player:hover {
+    background: rgba(255, 200, 100, 0.15);
+    border-color: rgba(255, 200, 100, 0.4);
+    color: rgba(255, 220, 130, 0.95);
+}
+
+.btn-roll-for-player i { font-size: 0.6rem; margin: 0; }
+
+.btn-roll-for-player.camp-fallback {
+    padding: 0.15rem 0.35rem;
+    font-size: 0.6rem;
+    margin-left: 0.3rem;
+}
+
+.btn-resend-roll {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.6rem;
+    background: rgba(100, 180, 255, 0.08);
+    border: 1px solid rgba(100, 180, 255, 0.2);
+    border-radius: 4px;
+    color: rgba(140, 200, 255, 0.8);
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-resend-roll:hover {
+    background: rgba(100, 180, 255, 0.15);
+    border-color: rgba(100, 180, 255, 0.4);
+    color: rgba(180, 220, 255, 0.95);
+}
+
+.btn-resend-roll i { font-size: 0.65rem; }
+
+/* ---- Tree: Player Roll Area ---- */
+
+.tree-player-roll-area {
+    margin-top: 0.4rem;
+    padding: 0.5rem;
+    background: rgba(155, 89, 182, 0.06);
+    border: 1px solid rgba(155, 89, 182, 0.15);
+    border-radius: 8px;
+}
+
+.tree-roll-character {
+    margin-top: 0.3rem;
+}
+
+.btn-tree-roll {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+    padding: 0.45rem 0.7rem;
+    background: rgba(155, 89, 182, 0.12);
+    border: 1px solid rgba(155, 89, 182, 0.35);
+    border-radius: 6px;
+    color: rgba(220, 190, 255, 0.95);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-tree-roll:hover {
+    background: rgba(155, 89, 182, 0.22);
+    border-color: rgba(155, 89, 182, 0.55);
+    box-shadow: 0 0 12px rgba(155, 89, 182, 0.15);
+}
+
+.btn-tree-roll.rolled {
+    background: rgba(100, 220, 130, 0.08);
+    border-color: rgba(100, 220, 130, 0.25);
+    color: rgba(100, 220, 130, 0.7);
+    cursor: default;
+}
+
+.btn-tree-roll i { font-size: 0.75rem; }
+
+.btn-tree-roll--force-pass {
+    background: rgba(80, 220, 120, 0.1);
+    border-color: rgba(80, 220, 120, 0.35);
+    color: rgba(100, 230, 140, 0.95);
+}
+
+.btn-tree-roll--force-pass:hover {
+    background: rgba(80, 220, 120, 0.18);
+    border-color: rgba(80, 220, 120, 0.55);
+}
+
+.btn-tree-roll--force-fail {
+    background: rgba(220, 50, 60, 0.1);
+    border-color: rgba(220, 50, 60, 0.35);
+    color: rgba(240, 90, 90, 0.95);
+}
+
+.btn-tree-roll--force-fail:hover {
+    background: rgba(220, 50, 60, 0.18);
+    border-color: rgba(220, 50, 60, 0.55);
+}
+
+/* Player: roll result after rolling */
+.tree-roll-result {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+    padding: 0.45rem 0.7rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.tree-roll-result.pass {
+    background: rgba(100, 220, 130, 0.08);
+    border: 1px solid rgba(100, 220, 130, 0.25);
+    color: rgba(100, 220, 130, 0.9);
+}
+
+.tree-roll-result.fail {
+    background: rgba(255, 120, 100, 0.08);
+    border: 1px solid rgba(255, 120, 100, 0.25);
+    color: rgba(255, 120, 100, 0.9);
+}
+
+.tree-roll-result .roll-char-name {
+    flex: 1;
+}
+
+.tree-roll-result .roll-total {
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.tree-roll-result i {
+    font-size: 0.75rem;
+}
+
+/* ---- Roll Mode Selector (GM: awaiting-rolls panel) ---- */
+
+.tree-roll-dispatched-note {
+    font-size: 0.67rem;
+    color: rgba(100, 180, 255, 0.6);
+    margin-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-style: italic;
+}
+
+.tree-roll-dispatched-note i {
+    font-size: 0.6rem;
+    color: rgba(100, 180, 255, 0.45);
+}
+
+/* Configure phase header (amber tint) */
+.tree-roll-header--configure {
+    color: rgba(255, 200, 100, 0.9);
+}
+
+.tree-roll-header--configure i {
+    color: rgba(255, 200, 100, 0.6);
+}
+
+.tree-roll-configure-note {
+    font-size: 0.67rem;
+    color: rgba(255, 200, 100, 0.55);
+    margin-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.tree-roll-configure-note i {
+    font-size: 0.6rem;
+    color: rgba(255, 200, 100, 0.4);
+}
+
+/* Send Roll Request button: prominent action */
+.btn-send-roll-request {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.8rem;
+    background: rgba(255, 200, 100, 0.12);
+    border: 1px solid rgba(255, 200, 100, 0.4);
+    border-radius: 5px;
+    color: rgba(255, 220, 130, 0.95);
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.03em;
+}
+
+.btn-send-roll-request:hover {
+    background: rgba(255, 200, 100, 0.22);
+    border-color: rgba(255, 200, 100, 0.65);
+    box-shadow: 0 0 12px rgba(255, 200, 100, 0.2), 0 0 4px rgba(255, 200, 100, 0.1) inset;
+    color: rgba(255, 230, 150, 1);
+}
+
+.btn-send-roll-request i { font-size: 0.65rem; }
+
+/* ---- Spell Rulings Advisory (GM: awaiting-rolls panel) ---- */
+
+.tree-spell-rulings-advisory {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.4rem 0.55rem;
+    margin-bottom: 0.4rem;
+    background: rgba(155, 89, 182, 0.07);
+    border: 1px solid rgba(155, 89, 182, 0.2);
+    border-left: 3px solid rgba(155, 89, 182, 0.5);
+    border-radius: 0 5px 5px 0;
+    font-size: 0.72rem;
+    color: rgba(220, 190, 255, 0.85);
+    line-height: 1.45;
+}
+
+.tree-spell-rulings-advisory i {
+    font-size: 0.65rem;
+    color: rgba(180, 130, 255, 0.7);
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+}
+
+/* ---- Roll Mode Badge (Player: before rolling) ---- */
+
+.roll-mode-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.5rem;
+    margin-bottom: 0.2rem;
+    border-radius: 5px;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.roll-mode-badge--advantage {
+    background: rgba(255, 200, 80, 0.1);
+    border: 1px solid rgba(255, 200, 80, 0.3);
+    color: rgba(255, 220, 120, 0.95);
+}
+
+.roll-mode-badge--disadvantage {
+    background: rgba(255, 120, 80, 0.1);
+    border: 1px solid rgba(255, 120, 80, 0.3);
+    color: rgba(255, 150, 110, 0.95);
+}
+
+.roll-mode-badge--force-pass {
+    background: rgba(80, 220, 120, 0.1);
+    border: 1px solid rgba(80, 220, 120, 0.3);
+    color: rgba(100, 230, 140, 0.95);
+}
+
+.roll-mode-badge--force-fail {
+    background: rgba(220, 50, 60, 0.1);
+    border: 1px solid rgba(220, 50, 60, 0.3);
+    color: rgba(240, 90, 90, 0.95);
+}
+
+.roll-mode-badge i { font-size: 0.65rem; }
+
+/* ---- Event Pending Rolls (GM View) ---- */
+
+.event-pending-rolls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin: 0.3rem 0;
+}
+
+.event-roll-line.pending {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.4rem;
+    background: rgba(255, 200, 100, 0.04);
+    border: 1px solid rgba(255, 200, 100, 0.1);
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.event-roll-line.pending .roll-char-name {
+    flex: 1;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.event-roll-line.pending .roll-status {
+    font-size: 0.68rem;
+    color: rgba(255, 200, 100, 0.5);
+    font-style: italic;
+}
+
+/* ---- Supply Loss Approval Modal ---- */
+
+.ionrift-supply-loss-modal {
+    padding: 0.4rem 0;
+}
+
+.loss-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    background: rgba(255, 80, 50, 0.08);
+    border: 1px solid rgba(255, 80, 50, 0.2);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    color: rgba(255, 140, 90, 0.95);
+}
+
+.loss-summary i {
+    font-size: 0.8rem;
+    color: rgba(255, 180, 80, 0.7);
+}
+
+.loss-summary.loss-empty {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.loss-summary.loss-empty i { color: rgba(255, 255, 255, 0.3); }
+
+.loss-note {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.5;
+    padding: 0.3rem 0.4rem;
+}
+
+.loss-note strong { color: rgba(255, 200, 130, 0.7); }
+
+.loss-controls {
+    display: flex;
+    gap: 0.3rem;
+    margin-bottom: 0.4rem;
+}
+
+.loss-controls button {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.loss-controls button:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.loss-controls button i { margin-right: 0.2rem; }
+
+.loss-scrollable {
+    max-height: 280px;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.1);
+    padding: 0.3rem;
+    margin-bottom: 0.4rem;
+}
+
+.loss-actor-section {
+    margin-bottom: 0.3rem;
+}
+
+.loss-actor-section:last-child { margin-bottom: 0; }
+
+.loss-actor-header {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: rgba(255, 220, 130, 0.8);
+    padding: 0.25rem 0.4rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.loss-item-row {
+    display: grid;
+    grid-template-columns: 1.4rem 1.4rem 3fr 1fr 2fr;
+    gap: 0.3rem;
+    align-items: center;
+    padding: 0.25rem 0.4rem;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.1s;
+}
+
+.loss-item-row:hover { background: rgba(255, 255, 255, 0.04); }
+
+.loss-item-row input[type="checkbox"] {
+    width: 0.85rem;
+    height: 0.85rem;
+    margin: 0;
+    accent-color: rgba(255, 120, 80, 0.8);
+}
+
+.loss-item-name { font-weight: 500; }
+
+.loss-item-qty {
+    color: rgba(255, 100, 70, 0.9);
+    font-weight: 700;
+    text-align: right;
+}
+
+.loss-item-current {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: right;
+}
+
+.loss-tally {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.72rem;
+    color: rgba(255, 180, 80, 0.7);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.loss-tally i { font-size: 0.65rem; }
+
+.loss-section-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 120, 80, 0.6);
+    padding: 0.3rem 0.4rem 0.15rem;
+}
+
+/* ═══════════════════════════════════════════════════
+   Event Browser
+   ═══════════════════════════════════════════════════ */
+
+#respite-event-browser .window-body,
+#respite-event-browser .window-content,
+.application#respite-event-browser .window-body {
+    background: transparent;
+    padding: 0;
+    overflow: hidden;
+}
+
+.respite-event-browser {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0.6rem;
+    gap: 0.5rem;
+}
+
+.event-browser-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+}
+
+.event-browser-filter label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: nowrap;
+}
+
+.event-browser-filter label i {
+    margin-right: 0.25rem;
+    color: rgba(255, 200, 100, 0.5);
+}
+
+.event-terrain-select {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.9rem;
+    padding: 0.25rem 0.4rem;
+    color-scheme: dark;
+}
+
+.event-terrain-select optgroup {
+    background: rgb(14, 12, 24);
+    color: rgba(210, 185, 255, 0.98);
+    font-style: normal;
+    font-weight: 700;
+    font-size: 0.88rem;
+    letter-spacing: 0.04em;
+}
+
+.event-terrain-select option {
+    background: rgb(22, 18, 38);
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 0.92rem;
+    padding: 5px 10px;
+}
+
+.event-terrain-select option:checked {
+    background: rgba(120, 90, 200, 0.45);
+    color: #fff;
+}
+
+.event-terrain-select:focus {
+    outline: none;
+    border-color: rgba(255, 200, 100, 0.4);
+}
+
+.event-counter {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: rgba(255, 200, 100, 0.8);
+    white-space: nowrap;
+    min-width: 4rem;
+    text-align: right;
+}
+
+/* Event Card */
+.event-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.6rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    overflow-y: auto;
+}
+
+.event-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.event-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.event-name i {
+    margin-right: 0.3rem;
+    color: rgba(255, 200, 100, 0.7);
+}
+
+.event-tier-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.event-tier-badge.disaster {
+    background: rgba(255, 60, 40, 0.15);
+    border: 1px solid rgba(255, 60, 40, 0.4);
+    color: rgba(255, 120, 90, 0.95);
+}
+
+.event-tier-badge.negative {
+    background: rgba(255, 180, 60, 0.1);
+    border: 1px solid rgba(255, 180, 60, 0.3);
+    color: rgba(255, 200, 100, 0.9);
+}
+
+.event-tier-badge.positive {
+    background: rgba(80, 200, 120, 0.1);
+    border: 1px solid rgba(80, 200, 120, 0.3);
+    color: rgba(120, 220, 150, 0.9);
+}
+
+.event-tier-badge.neutral {
+    background: rgba(150, 150, 200, 0.1);
+    border: 1px solid rgba(150, 150, 200, 0.25);
+    color: rgba(180, 180, 220, 0.85);
+}
+
+.event-card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.event-terrain-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.event-terrain-badge {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.4rem;
+    background: rgba(100, 180, 255, 0.08);
+    border: 1px solid rgba(100, 180, 255, 0.2);
+    border-radius: 3px;
+    color: rgba(140, 200, 255, 0.85);
+}
+
+.event-terrain-badge i {
+    margin-right: 0.2rem;
+    font-size: 0.6rem;
+}
+
+.event-terrain-badge.custom {
+    background: rgba(160, 120, 220, 0.12);
+    border-color: rgba(180, 140, 255, 0.3);
+    color: rgba(210, 180, 255, 0.92);
+}
+
+.event-custom-terrain-note,
+.event-legacy-pack-note {
+    font-size: 0.72rem;
+    color: rgba(200, 170, 255, 0.8);
+    margin: 0.35rem 0 0;
+    line-height: 1.35;
+}
+
+.event-legacy-pack-note {
+    color: rgba(255, 200, 120, 0.85);
+}
+
+.event-custom-terrain-note i {
+    margin-right: 0.25rem;
+    opacity: 0.85;
+}
+
+.event-pack-import-report {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.85);
+    max-height: min(360px, 55vh);
+}
+
+.event-pack-import-report-body {
+    overflow-y: auto;
+    min-height: 0;
+    padding-right: 0.25rem;
+}
+
+.event-pack-import-report ul {
+    margin: 0.35rem 0 0.65rem 1.1rem;
+    padding: 0;
+}
+
+.event-pack-import-report li {
+    margin-bottom: 0.25rem;
+}
+
+.event-pack-import-omitted {
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+}
+
+.event-pack-import-report-footer {
+    margin: 0;
+    padding-top: 0.35rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+
+.event-pack-badge {
+    font-size: 0.62rem;
+    padding: 0.1rem 0.35rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    color: rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+}
+
+.event-pack-badge i {
+    margin-right: 0.2rem;
+    font-size: 0.55rem;
+}
+
+.event-card-body {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.event-description {
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+    padding: 0.3rem 0;
+}
+
+.event-card-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    flex-wrap: wrap;
+}
+
+.event-category {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: capitalize;
+}
+
+.event-category i {
+    margin-right: 0.2rem;
+    color: rgba(255, 200, 100, 0.4);
+}
+
+.event-outcomes {
+    font-size: 0.65rem;
+    color: rgba(155, 89, 182, 0.7);
+    font-weight: 600;
+}
+
+.event-dc {
+    font-size: 0.68rem;
+    color: rgba(255, 200, 100, 0.7);
+    font-weight: 600;
+    margin-left: auto;
+}
+
+.event-dc i {
+    margin-right: 0.2rem;
+}
+
+/* Empty state */
+.event-browser-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.event-browser-empty i {
+    font-size: 2rem;
+    opacity: 0.4;
+}
+
+.event-browser-empty p {
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+/* Navigation */
+.event-browser-nav {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.event-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.4rem 0.8rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 5px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.event-nav-btn:hover:not([disabled]) {
+    background: rgba(255, 200, 100, 0.1);
+    border-color: rgba(255, 200, 100, 0.3);
+    color: rgba(255, 220, 130, 0.95);
+}
+
+.event-nav-btn[disabled] {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.event-nav-btn i {
+    font-size: 0.7rem;
+}
+
+.event-pool-nudge-banner {
+    margin-bottom: 0.5rem;
+    /* Override base art-nudge-banner */
+    flex-wrap: nowrap;
+    padding: 8px 14px;
+    gap: 8px;
+    background: transparent;
+    border: 1px solid rgba(200, 160, 60, 0.35);
+    border-radius: 6px;
+    backdrop-filter: none;
+}
+.event-pool-nudge-banner .art-nudge-content {
+    min-width: 0;
+}
+.event-pool-nudge-banner .art-nudge-icon {
+    color: rgba(200, 160, 60, 0.8);
+    font-size: 1.1em;
+}
+.event-pool-nudge-banner .art-nudge-text {
+    gap: 1px;
+}
+.event-pool-nudge-banner .art-nudge-title {
+    font-size: 0.82em;
+    color: rgba(220, 190, 100, 0.95);
+}
+.event-pool-nudge-banner .art-nudge-subtitle {
+    font-size: 0.72em;
+    line-height: 1.3;
+    color: rgba(200, 180, 120, 0.6);
+}
+.event-pool-nudge-banner .art-nudge-actions {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.event-pool-nudge-banner .art-nudge-btn.primary {
+    background: rgba(200, 160, 60, 0.15);
+    border-color: rgba(200, 160, 60, 0.4);
+    color: rgba(220, 190, 100, 0.95);
+}
+.event-pool-nudge-banner .art-nudge-btn.primary:hover {
+    background: rgba(200, 160, 60, 0.25);
+}
+.event-pool-nudge-banner .art-nudge-dismiss {
+    color: rgba(200, 160, 60, 0.5);
+}
+.event-pool-nudge-banner .art-nudge-dismiss:hover {
+    color: rgba(200, 160, 60, 0.8);
+}
+
+.event-pool-curator-intro {
+    margin-bottom: 0.35rem;
+}
+
+/* Event Pool curation */
+.event-pool-summary {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: rgba(255, 200, 100, 0.85);
+    white-space: nowrap;
+    text-align: right;
+}
+
+.event-pool-intro {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.55);
+    margin: 0;
+    line-height: 1.35;
+}
+
+.event-pool-layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(180px, 34%) 1fr;
+    gap: 0.5rem;
+    min-height: 0;
+}
+
+.event-pool-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    overflow-y: auto;
+    padding: 0.35rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+}
+
+.event-pool-check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    padding: 0.3rem 0.4rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.event-pool-check-item:hover,
+.event-pool-check-item.active {
+    background: rgba(255, 200, 100, 0.08);
+}
+
+.event-pool-check-item.active {
+    border: 1px solid rgba(255, 200, 100, 0.25);
+}
+
+.event-pool-check-name {
+    line-height: 1.3;
+}
+
+.event-pool-group-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0.4rem 0.1rem 0.15rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid rgba(255, 120, 90, 0.25);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 140, 110, 0.85);
+}
+
+.event-pool-group-divider i {
+    font-size: 0.7rem;
+}
+
+.event-pool-check-item.disaster {
+    color: rgba(255, 165, 140, 0.9);
+}
+
+.event-pool-check-item.disaster:hover,
+.event-pool-check-item.disaster.active {
+    background: rgba(255, 100, 70, 0.1);
+}
+
+.event-pool-check-item.disaster.active {
+    border-color: rgba(255, 120, 90, 0.4);
+}
+
+.event-pool-detail {
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.event-pool-card-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 200, 100, 0.85);
+    margin: 0.2rem 0 0.4rem;
+    cursor: pointer;
+}
+
+.event-pool-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 0.25rem;
+}
+
+.event-pool-import-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.9rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 5px;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.event-pool-import-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.22);
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.event-browser-empty-hint {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.45);
+    margin-top: 0.35rem;
+}
+
+.event-pool-save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.9rem;
+    background: rgba(120, 90, 200, 0.35);
+    border: 1px solid rgba(180, 142, 173, 0.45);
+    border-radius: 5px;
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.event-pool-save-btn:hover:not([disabled]) {
+    background: rgba(120, 90, 200, 0.5);
+}
+
+.event-pool-save-btn[disabled] {
+    opacity: 0.35;
+    cursor: default;
+}
+
+/* Outcome Narratives */
+.event-outcomes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.event-outcome-row {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    border-left: 3px solid rgba(255, 255, 255, 0.15);
+    background: rgba(0, 0, 0, 0.15);
+    align-items: flex-start;
+}
+
+.outcome-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    min-width: 4rem;
+    flex-shrink: 0;
+    padding-top: 0.05rem;
+}
+
+.outcome-text {
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.event-outcome-row.triumph {
+    border-left-color: rgba(80, 200, 120, 0.6);
+}
+.event-outcome-row.triumph .outcome-label {
+    color: rgba(120, 220, 150, 0.9);
+}
+
+.event-outcome-row.success {
+    border-left-color: rgba(100, 180, 255, 0.5);
+}
+.event-outcome-row.success .outcome-label {
+    color: rgba(140, 200, 255, 0.9);
+}
+
+.event-outcome-row.mixed {
+    border-left-color: rgba(255, 200, 100, 0.5);
+}
+.event-outcome-row.mixed .outcome-label {
+    color: rgba(255, 200, 100, 0.9);
+}
+
+.event-outcome-row.failure {
+    border-left-color: rgba(255, 100, 80, 0.5);
+}
+.event-outcome-row.failure .outcome-label {
+    color: rgba(255, 120, 90, 0.9);
+}
+
+.event-decision-tree {
+    margin-top: 0.4rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.event-decision-header {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 140, 110, 0.85);
+    margin-bottom: 0.3rem;
+}
+
+.event-decision-prompt {
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.75);
+    margin: 0 0 0.4rem;
+}
+
+.event-decision-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.event-decision-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 4px;
+    border-left: 3px solid rgba(255, 120, 90, 0.45);
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.event-decision-option-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.event-decision-option-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 200, 180, 0.95);
+}
+
+.event-decision-dc {
+    flex: none;
+    font-size: 0.68rem;
+    color: rgba(180, 200, 255, 0.85);
+    white-space: nowrap;
+}
+
+.event-decision-option-desc {
+    font-size: 0.76rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.event-decision-branch {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.68rem;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.event-gm-guidance {
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 4px;
+    border-left: 3px solid rgba(155, 89, 182, 0.5);
+    background: rgba(109, 40, 217, 0.08);
+}
+
+.event-gm-guidance-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(179, 136, 255, 0.85);
+    margin-bottom: 0.25rem;
+}
+
+.event-gm-guidance p {
+    font-size: 0.76rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
+}
+
+/* ---- Roll Modifier Badges ---- */
+.sr-roll-mod-badge {
+    display: inline-block;
+    margin-left: 0.25rem;
+    padding: 0 0.3rem;
+    font-size: 0.55rem;
+    font-weight: 600;
+    color: rgba(255, 200, 100, 0.8);
+    background: rgba(255, 200, 100, 0.08);
+    border: 1px solid rgba(255, 200, 100, 0.15);
+    border-radius: 3px;
+    vertical-align: middle;
+    letter-spacing: 0.02em;
+}
+
+/* ---- Song of Rest Chat Card ---- */
+.respite-song-of-rest {
+    padding: 0.65rem 0.85rem;
+    font-size: 0.92rem;
+    color: rgba(255, 255, 255, 0.92);
+    line-height: 1.45;
+    border: 1px solid rgba(155, 89, 182, 0.35);
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(90, 40, 120, 0.25) 0%, rgba(40, 25, 70, 0.35) 100%);
+    box-shadow: 0 0 12px rgba(155, 89, 182, 0.12);
+}
+.respite-song-of-rest i {
+    color: rgba(200, 160, 255, 0.85);
+    margin-right: 0.35rem;
+}
+.respite-song-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(230, 200, 255, 0.98);
+    margin-bottom: 0.35rem;
+}
+.respite-song-lead {
+    margin: 0.35rem 0 0.5rem;
+    font-size: 0.88rem;
+    color: rgba(220, 200, 255, 0.88);
+}
+.respite-song-list {
+    margin: 0;
+    padding-left: 1.1rem;
+    color: rgba(255, 245, 255, 0.92);
+    font-size: 0.88rem;
+}
+.respite-song-list li {
+    margin: 0.2rem 0;
+}
+.respite-song-meta {
+    font-weight: 600;
+    color: rgba(190, 160, 240, 0.9);
+}
+.respite-song-of-rest-summary .respite-song-title {
+    margin-bottom: 0.25rem;
+}
+.respite-song-of-rest-card p {
+    margin: 0.25rem 0 0;
+}
+
+/* Chat / notification: light card so text stays legible on parchment UI */
+.respite-song-of-rest.respite-chat-parchment,
+.respite-chat-parchment.respite-song-of-rest {
+    color: #1e1828 !important;
+    background: #f5f2fa !important;
+    border: 1px solid rgba(80, 50, 120, 0.28) !important;
+    box-shadow: none;
+}
+.respite-chat-parchment.respite-song-of-rest i { color: #5a4190 !important; }
+.respite-chat-parchment .respite-song-title { color: #2d1f52 !important; }
+.respite-chat-parchment .respite-song-lead,
+.respite-chat-parchment .respite-song-list { color: #2a2038 !important; }
+.respite-chat-parchment .respite-song-list li { color: #2a2038 !important; }
+.respite-chat-parchment .respite-song-meta { color: #4a3080 !important; }
+
+/* ---- Spell Slot Recovery Panel ---- */
+.sr-spell-recovery {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    background: rgba(100, 140, 255, 0.04);
+    border: 1px solid rgba(100, 140, 255, 0.12);
+    border-radius: 6px;
+}
+
+.sr-spell-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.35rem;
+    font-size: 0.75rem;
+    color: rgba(140, 170, 255, 0.85);
+}
+
+.sr-spell-header i {
+    font-size: 0.65rem;
+    color: rgba(140, 170, 255, 0.5);
+}
+
+.sr-spell-label {
+    font-weight: 600;
+}
+
+.sr-spell-budget {
+    margin-left: auto;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.1rem 0.4rem;
+    background: rgba(140, 170, 255, 0.1);
+    border: 1px solid rgba(140, 170, 255, 0.2);
+    border-radius: 4px;
+    color: rgba(160, 190, 255, 0.9);
+}
+
+.sr-spell-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.sr-spell-slot-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.2rem 0.3rem;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+.sr-spell-level {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    min-width: 3.5rem;
+}
+
+.sr-spell-count {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.45);
+    flex: 1;
+}
+
+.sr-spell-controls {
+    display: flex;
+    gap: 0.2rem;
+}
+
+.sr-spell-btn {
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(140, 170, 255, 0.1);
+    border: 1px solid rgba(140, 170, 255, 0.25);
+    border-radius: 4px;
+    color: rgba(140, 170, 255, 0.8);
+    cursor: pointer;
+    font-size: 0.6rem;
+    transition: all 0.15s ease;
+    padding: 0;
+}
+
+.sr-spell-btn:hover {
+    background: rgba(140, 170, 255, 0.2);
+    border-color: rgba(140, 170, 255, 0.45);
+    color: rgba(180, 200, 255, 1);
+}
+
+.sr-spell-btn.faded {
+    opacity: 0.25;
+    cursor: not-allowed;
+}
+
+.sr-spell-btn.faded:hover {
+    background: rgba(140, 170, 255, 0.1);
+    border-color: rgba(140, 170, 255, 0.25);
+    color: rgba(140, 170, 255, 0.8);
+}
+
+/* ---- Spell Recovery Chat Card (default Foundry chat is light) ---- */
+.respite-spell-recovery {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.88rem;
+    color: #1e1828;
+    line-height: 1.45;
+    background: #f5f2fa;
+    border: 1px solid rgba(70, 50, 110, 0.22);
+    border-radius: 6px;
+}
+.respite-spell-recovery i {
+    color: #5a4190;
+    margin-right: 0.35rem;
+}
+.respite-spell-recovery strong { color: #120818; }
+.respite-spell-recovery em { color: #352060; }
+.chat-message .message-content .respite-spell-recovery,
+.notification .respite-spell-recovery {
+    color: #1e1828;
+    background: #f5f2fa;
+}
+
+/* ---- Spell Recovery: Confirmed State ---- */
+.sr-spell-recovery.confirmed {
+    border-color: rgba(80, 200, 120, 0.25);
+    background: rgba(80, 200, 120, 0.04);
+}
+
+.sr-spell-confirmed-badge {
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 0.1rem 0.4rem;
+    background: rgba(80, 200, 120, 0.12);
+    border: 1px solid rgba(80, 200, 120, 0.3);
+    border-radius: 4px;
+    color: rgba(120, 220, 150, 0.9);
+    margin-left: 0.3rem;
+}
+
+.sr-spell-confirmed-badge i {
+    color: rgba(120, 220, 150, 0.9);
+    font-size: 0.58rem;
+    margin-right: 0.15rem;
+}
+
+.sr-spell-confirm-btn,
+.sr-spell-edit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    width: 100%;
+    margin-top: 0.4rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 5px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sr-spell-confirm-btn {
+    background: rgba(80, 200, 120, 0.1);
+    border: 1px solid rgba(80, 200, 120, 0.3);
+    color: rgba(120, 220, 150, 0.9);
+}
+
+.sr-spell-confirm-btn:hover {
+    background: rgba(80, 200, 120, 0.2);
+    border-color: rgba(80, 200, 120, 0.5);
+    color: rgba(140, 235, 170, 1);
+    box-shadow: 0 0 10px rgba(80, 200, 120, 0.15);
+}
+
+.sr-spell-confirm-btn i { font-size: 0.62rem; }
+
+.sr-spell-edit-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.sr-spell-edit-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.sr-spell-edit-btn i { font-size: 0.62rem; }
+
+/* Per-card Song line */
+.sr-song-card-line {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.25rem;
+    padding: 0.2rem 0.45rem;
+    font-size: 0.65rem;
+    line-height: 1.3;
+    border-radius: 4px;
+    border: 1px solid rgba(155, 89, 182, 0.25);
+    background: rgba(100, 50, 140, 0.1);
+    color: rgba(220, 195, 255, 0.92);
+}
+
+.sr-song-card-line > i {
+    color: rgba(190, 140, 255, 0.8);
+    flex-shrink: 0;
+    font-size: 0.55rem;
+}
+
+.sr-song-card-line.pending_end {
+    border-color: rgba(140, 160, 220, 0.35);
+    background: rgba(80, 100, 160, 0.12);
+}
+
+.sr-song-card-line.applied_immediate {
+    border-color: rgba(100, 200, 140, 0.35);
+    background: rgba(60, 120, 90, 0.12);
+}
+
+.sr-song-card-text .sr-song-formula {
+    font-weight: 600;
+    opacity: 0.85;
+}
+
+.sr-roll-song-addon {
+    color: rgba(180, 220, 160, 0.95);
+    font-weight: 600;
+}

@@ -1,0 +1,4303 @@
+/* Respite: diet-travel.css. Loaded via module.json after short-rest.css; before totm-make-camp.css. Do not reorder. */
+/* ═══════════════════════════════════════════════════════════
+   DIET CONFIGURATION APP
+   ═══════════════════════════════════════════════════════════ */
+
+/* Diet Config: the window-body must constrain so children can scroll */
+#respite-diet-config .window-body {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.respite-diet-config {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.25rem;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Meal-tracking toggles (folded in from the settings panel) */
+.diet-global-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.6rem 0.7rem;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.diet-global-section .diet-global-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.diet-global-section .diet-global-title i {
+    margin-right: 0.35rem;
+    color: rgba(255, 180, 90, 0.7);
+}
+
+.diet-global-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    cursor: pointer;
+}
+
+.diet-global-toggle.is-disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.diet-global-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.diet-global-switch {
+    position: relative;
+    flex-shrink: 0;
+    width: 34px;
+    height: 18px;
+    margin-top: 0.15rem;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transition: background 0.15s ease;
+}
+
+.diet-global-switch::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.75);
+    transition: transform 0.15s ease;
+}
+
+.diet-global-toggle input:checked + .diet-global-switch {
+    background: rgba(100, 180, 255, 0.5);
+    border-color: rgba(100, 180, 255, 0.6);
+}
+
+.diet-global-toggle input:checked + .diet-global-switch::after {
+    transform: translateX(16px);
+    background: #fff;
+}
+
+.diet-global-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.diet-global-name {
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.diet-global-tag {
+    margin-left: 0.3rem;
+    padding: 0 0.3rem;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 180, 90, 0.85);
+    border: 1px solid rgba(255, 180, 90, 0.4);
+    border-radius: 4px;
+    vertical-align: middle;
+}
+
+.diet-global-hint {
+    font-size: 0.68rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+/* Summary bar */
+.diet-summary-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.65rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.diet-summary-count {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.diet-summary-count strong {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.85rem;
+}
+
+.diet-summary-count i {
+    margin-right: 0.3rem;
+    color: rgba(100, 180, 255, 0.6);
+}
+
+.diet-summary-hint {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.35);
+    font-style: italic;
+}
+
+/* Actor list: flex-fills remaining space so overflow-y actually triggers */
+.diet-actor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 0.15rem;
+}
+
+/* Actor card */
+.diet-actor-card {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.15s;
+    flex-shrink: 0;
+}
+
+.diet-actor-card:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.diet-actor-card.expanded {
+    border-color: rgba(155, 89, 182, 0.25);
+}
+
+/* Card header row */
+.diet-actor-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+}
+
+.diet-actor-portrait {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+}
+
+.diet-actor-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.diet-actor-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.diet-actor-label {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+/* Preset dropdown */
+.diet-preset-select {
+    width: 140px;
+    flex-shrink: 0;
+    padding: 0.25rem 0.4rem;
+    font-size: 0.72rem;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+}
+
+.diet-preset-select:focus {
+    outline: none;
+    border-color: rgba(155, 89, 182, 0.4);
+}
+
+/* Expand button */
+.diet-expand-btn {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    color: rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    font-size: 0.65rem;
+    transition: all 0.15s;
+}
+
+.diet-expand-btn:hover {
+    background: rgba(0, 0, 0, 0.35);
+    color: rgba(255, 255, 255, 0.7);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Detail panel (expanded state) */
+.diet-detail-panel {
+    padding: 0.5rem 0.65rem 0.6rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.diet-field-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.diet-field-row > label,
+.diet-field-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.45);
+    letter-spacing: 0.02em;
+}
+
+/* Checkbox tag groups (canEat, canDrink) */
+.diet-tag-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.diet-tag-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.55rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+    position: relative;
+}
+
+.diet-tag-label.active {
+    background: rgba(155, 89, 182, 0.1);
+    border-color: rgba(155, 89, 182, 0.25);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.diet-tag-label:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.diet-tag-label.active:hover {
+    background: rgba(155, 89, 182, 0.15);
+}
+
+/* Hide native checkbox, use custom indicator */
+.diet-tag-label input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.diet-tag-check {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+    transition: all 0.15s;
+    position: relative;
+}
+
+.diet-tag-label.active .diet-tag-check {
+    background: var(--ionrift-accent, #9b59b6);
+    border-color: var(--ionrift-accent, #9b59b6);
+}
+
+.diet-tag-label.active .diet-tag-check::after {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 0.5px;
+    width: 4px;
+    height: 7px;
+    border: solid #fff;
+    border-width: 0 1.5px 1.5px 0;
+    transform: rotate(45deg);
+}
+
+.diet-tag-text {
+    line-height: 1;
+}
+
+/* Text inputs (comma-separated lists) */
+.diet-text-input {
+    width: 100%;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.72rem;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.diet-text-input::placeholder {
+    color: rgba(255, 255, 255, 0.2);
+    font-style: italic;
+}
+
+.diet-text-input:focus {
+    outline: none;
+    border-color: rgba(155, 89, 182, 0.4);
+}
+
+/* Custom items section */
+.diet-custom-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding-top: 0.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.diet-show-custom-btn {
+    align-self: flex-start;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.62rem;
+    border-radius: 4px;
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.diet-show-custom-btn:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.diet-show-custom-btn i {
+    margin-right: 0.2rem;
+    font-size: 0.55rem;
+}
+
+/* Sustenance toggle row */
+/* (sustenance row/select removed; preset drives sustenance type) */
+
+.diet-sustenance-hint {
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+    flex: 1;
+}
+
+/* Essence section for non-biological characters */
+.diet-essence-section {
+    padding: 0.15rem 0;
+}
+
+.diet-essence-section .diet-field-label i {
+    color: rgba(230, 176, 50, 0.8);
+    margin-right: 0.25rem;
+}
+
+.diet-essence-hint {
+    display: block;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+    padding: 0.15rem 0 0;
+}
+
+.diet-essence-icon {
+    color: rgba(230, 176, 50, 0.7);
+    font-size: 0.6rem;
+    margin-left: 0.2rem;
+}
+
+/* Balance warning dialog */
+.diet-balance-warning {
+    padding: 0.5rem;
+    line-height: 1.5;
+}
+
+.diet-balance-warning p {
+    margin: 0 0 0.6rem;
+}
+
+.diet-balance-warning i.fa-exclamation-triangle {
+    color: #f39c12;
+    margin-right: 0.4rem;
+}
+
+/* Save button */
+.diet-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.5rem 0.4rem 0.4rem;
+    margin-top: 0.15rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    flex-shrink: 0;
+}
+
+.diet-save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 1rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid rgba(155, 89, 182, 0.35);
+    background: rgba(155, 89, 182, 0.15);
+    color: rgba(155, 89, 182, 0.9);
+}
+
+.diet-save-btn:hover {
+    background: rgba(155, 89, 182, 0.25);
+    border-color: rgba(155, 89, 182, 0.5);
+    box-shadow: 0 0 10px rgba(155, 89, 182, 0.15);
+}
+
+.diet-save-btn i {
+    font-size: 0.7rem;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TRAVEL RESOLUTION PHASE
+   ═══════════════════════════════════════════════════════════ */
+
+.respite-travel-phase {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem 0.5rem;
+    max-width: 540px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.travel-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.travel-header i {
+    color: rgba(155, 89, 182, 0.7);
+}
+
+.travel-day-tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.travel-day-tab {
+    flex: 1;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.travel-day-tab:hover {
+    background: rgba(155, 89, 182, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.travel-day-tab.active {
+    background: rgba(155, 89, 182, 0.15);
+    border-color: rgba(155, 89, 182, 0.3);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.travel-day-tab.resolved {
+    color: rgba(100, 200, 100, 0.6);
+}
+
+.travel-day-tab.resolved.active {
+    color: rgba(100, 200, 100, 0.8);
+}
+
+.travel-day-tab i {
+    font-size: 0.55rem;
+    margin-left: 0.15rem;
+}
+
+.travel-scout-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.5rem;
+    margin-bottom: 0.4rem;
+    font-size: 0.65rem;
+    color: rgba(100, 180, 255, 0.7);
+    background: rgba(100, 180, 255, 0.06);
+    border: 1px solid rgba(100, 180, 255, 0.1);
+    border-radius: 4px;
+}
+
+.travel-day-resolved-label {
+    font-size: 0.7rem;
+    color: rgba(100, 200, 100, 0.6);
+}
+
+.travel-day-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 0.3rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.travel-global-actions {
+    margin-top: 0.3rem;
+    padding-top: 0.3rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── Skip Travel: demoted escape-hatch link inside resolve bar ── */
+.respite-action-bar .travel-skip-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-left: auto;
+    font-size: 0.62rem;
+    font-weight: 500;
+    color: rgba(200, 205, 220, 0.4);
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 0.15rem 0;
+    cursor: pointer;
+    transition: color 0.15s;
+    box-shadow: none;
+}
+
+.respite-action-bar .travel-skip-link:hover {
+    color: rgba(200, 205, 220, 0.7);
+    text-decoration: underline;
+    background: none;
+    transform: none;
+    box-shadow: none;
+}
+
+.respite-action-bar .travel-skip-link i {
+    font-size: 0.52rem;
+}
+
+.respite-action-bar .travel-skip-link:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.travel-result.scout {
+    color: rgba(100, 180, 255, 0.8);
+}
+
+.travel-result.other {
+    color: rgba(200, 200, 200, 0.6);
+    font-size: 0.65rem;
+}
+
+/* ── GM Scouting Debrief Panel ── */
+
+.travel-scouting-debrief {
+    margin-top: 0.4rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    background: rgba(100, 180, 255, 0.06);
+    border: 1px solid rgba(100, 180, 255, 0.12);
+    max-height: 12rem;
+    overflow-y: auto;
+}
+
+.travel-scouting-debrief.nat1 {
+    background: rgba(255, 80, 80, 0.06);
+    border-color: rgba(255, 80, 80, 0.15);
+}
+
+.travel-scouting-debrief.nat20 {
+    background: rgba(100, 255, 100, 0.06);
+    border-color: rgba(100, 255, 100, 0.12);
+}
+
+.travel-scouting-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.travel-scouting-header i {
+    color: rgba(100, 180, 255, 0.7);
+}
+
+.nat1 .travel-scouting-header i {
+    color: rgba(255, 80, 80, 0.7);
+}
+
+.travel-scouting-gm-advisory {
+    margin: 0.35rem 0 0.45rem;
+    padding: 0;
+    font-size: 0.62rem;
+    line-height: 1.35;
+    font-style: italic;
+    color: rgba(200, 205, 220, 0.45);
+}
+
+.scouting-effect {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.3rem;
+    background: rgba(100, 200, 100, 0.1);
+    border-radius: 3px;
+    color: rgba(100, 200, 100, 0.7);
+}
+
+.travel-scouting-narrative {
+    margin-top: 0.3rem;
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.4;
+    padding-left: 0.3rem;
+    border-left: 2px solid rgba(100, 180, 255, 0.15);
+}
+
+.nat1 .travel-scouting-narrative {
+    border-left-color: rgba(255, 80, 80, 0.15);
+}
+
+.travel-scouting-gm-hint {
+    margin-top: 0.3rem;
+    font-size: 0.62rem;
+    color: rgba(255, 200, 50, 0.7);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.travel-scouting-gm-hint.danger {
+    color: rgba(255, 80, 80, 0.8);
+    font-weight: 600;
+}
+
+/* ── Player Debrief ── */
+
+.travel-debrief-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: 0.3rem;
+    max-height: 14rem;
+    overflow-y: auto;
+}
+
+.travel-debrief-entry {
+    padding: 0.4rem 0.5rem;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.travel-debrief-entry.success {
+    border-left: 3px solid rgba(100, 200, 100, 0.4);
+}
+
+.travel-debrief-entry.nat20 {
+    border-left: 3px solid rgba(255, 215, 0, 0.5);
+    background: rgba(255, 215, 0, 0.03);
+}
+
+.travel-debrief-entry.nat1 {
+    border-left: 3px solid rgba(255, 80, 80, 0.4);
+    background: rgba(255, 80, 80, 0.03);
+}
+
+.travel-debrief-entry.failure {
+    border-left: 3px solid rgba(255, 255, 255, 0.1);
+}
+
+.travel-debrief-header {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.travel-debrief-header i {
+    font-size: 0.6rem;
+}
+
+.debrief-activity {
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.debrief-total {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.3);
+    margin-left: auto;
+}
+
+.travel-debrief-items {
+    margin-top: 0.2rem;
+    padding-left: 0.3rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+}
+
+.travel-debrief-mishap {
+    margin-top: 0.2rem;
+    font-size: 0.62rem;
+    color: rgba(255, 120, 50, 0.7);
+}
+
+.travel-debrief-nothing {
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+    margin-top: 0.1rem;
+}
+
+.travel-player-scout-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.68rem;
+    color: rgba(100, 180, 255, 0.6);
+    background: rgba(100, 180, 255, 0.04);
+    border: 1px solid rgba(100, 180, 255, 0.08);
+    border-radius: 4px;
+}
+
+.travel-waiting-gm {
+    margin-top: 0.3rem;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+/* ── Player Hero Card (owned characters) ── */
+
+.travel-hero-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    margin-bottom: 0.3rem;
+    background: rgba(155, 89, 182, 0.06);
+    border: 1px solid rgba(155, 89, 182, 0.12);
+    border-radius: 6px;
+}
+
+.travel-hero-card .travel-hero-portrait {
+    margin-top: 0.1rem;
+}
+
+.travel-hero-portrait {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(155, 89, 182, 0.25);
+    flex-shrink: 0;
+}
+
+.travel-hero-card.confirmed {
+    border-color: rgba(100, 200, 100, 0.2);
+    background: rgba(100, 200, 100, 0.04);
+}
+
+.travel-hero-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.travel-hero-name {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.travel-hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: nowrap;
+}
+
+.travel-hero-mod {
+    font-size: 0.64rem;
+    font-weight: 600;
+    color: rgba(170, 200, 240, 0.75);
+    white-space: nowrap;
+}
+
+.travel-activity-desc {
+    font-size: 0.6rem;
+    line-height: 1.4;
+    color: rgba(200, 200, 220, 0.5);
+    margin-top: 0.1rem;
+    white-space: normal;
+}
+
+/* ── Confirm button & confirmed label ── */
+
+.travel-confirm-btn, .travel-hero-card .travel-confirm-btn {
+    align-self: flex-start;
+}
+
+.travel-confirm-btn {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border: 1px solid rgba(100, 200, 100, 0.25);
+    border-radius: 4px;
+    background: rgba(100, 200, 100, 0.08);
+    color: rgba(100, 200, 100, 0.7);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    font-size: 0.65rem;
+}
+
+.travel-confirm-btn:hover {
+    background: rgba(100, 200, 100, 0.15);
+    border-color: rgba(100, 200, 100, 0.4);
+    color: rgba(100, 200, 100, 0.9);
+}
+
+.travel-confirmed-label {
+    font-size: 0.65rem;
+    color: rgba(100, 200, 100, 0.7);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    background: rgba(100, 200, 100, 0.06);
+    border: 1px solid rgba(100, 200, 100, 0.12);
+    white-space: nowrap;
+}
+
+.travel-confirmed-label i {
+    font-size: 0.55rem;
+}
+
+.travel-rolled-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: rgba(180, 230, 255, 0.85);
+    background: rgba(80, 160, 220, 0.1);
+    border: 1px solid rgba(80, 160, 220, 0.25);
+    white-space: nowrap;
+}
+
+.travel-rolled-badge i {
+    font-size: 0.7rem;
+    color: rgba(120, 190, 255, 0.8);
+}
+
+.travel-hero-card.rolled {
+    border-left: 2px solid rgba(80, 160, 220, 0.4);
+    opacity: 0.85;
+}
+
+.travel-self-roll-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.7rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    align-self: flex-start;
+}
+
+/* Post-success loot roll: gentle pulse so the next step reads as clickable */
+@keyframes travel-loot-roll-pulse {
+    0%, 100% {
+        box-shadow: 0 0 6px rgba(100, 200, 120, 0.2);
+        border-color: rgba(100, 200, 120, 0.4);
+        transform: translateY(0);
+    }
+    50% {
+        box-shadow: 0 0 14px rgba(110, 220, 140, 0.45), 0 2px 6px rgba(0, 0, 0, 0.25);
+        border-color: rgba(140, 235, 160, 0.7);
+        transform: translateY(-1px);
+    }
+}
+
+@keyframes travel-loot-dice-tilt {
+    0%, 100% { transform: rotate(-10deg); }
+    50% { transform: rotate(10deg); }
+}
+
+.travel-loot-roll-btn {
+    border: 1px solid rgba(100, 200, 120, 0.45);
+    background: linear-gradient(
+        180deg,
+        rgba(80, 180, 100, 0.22) 0%,
+        rgba(45, 110, 60, 0.2) 100%
+    );
+    animation: travel-loot-roll-pulse 2.2s ease-in-out infinite;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.travel-loot-roll-btn i {
+    display: inline-block;
+    animation: travel-loot-dice-tilt 2.2s ease-in-out infinite;
+}
+
+.travel-loot-roll-btn:hover:not(:disabled) {
+    animation: none;
+    transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 0 16px rgba(120, 230, 150, 0.55);
+    border-color: rgba(160, 245, 175, 0.85);
+    background: linear-gradient(
+        180deg,
+        rgba(95, 210, 115, 0.38) 0%,
+        rgba(55, 140, 75, 0.32) 100%
+    );
+}
+
+.travel-loot-roll-btn:hover:not(:disabled) i {
+    animation: none;
+    transform: rotate(0deg);
+}
+
+.travel-loot-roll-btn:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 0 0 8px rgba(100, 200, 120, 0.35);
+}
+
+.travel-loot-roll-btn:disabled {
+    animation: none;
+    opacity: 0.65;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .travel-loot-roll-btn,
+    .travel-loot-roll-btn i {
+        animation: none;
+    }
+}
+
+.travel-confirmed-icon {
+    color: rgba(100, 200, 100, 0.5);
+    font-size: 0.5rem;
+    margin-left: 0.2rem;
+}
+
+.travel-confirmed-pick {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: 0.25rem;
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: rgba(100, 200, 100, 0.95);
+}
+
+.travel-confirmed-pick .travel-confirmed-icon {
+    color: rgba(100, 200, 100, 0.9);
+    font-size: 0.58rem;
+    margin-left: 0;
+}
+
+.travel-pending-pick {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    margin-left: 0.25rem;
+    font-size: 0.58rem;
+    font-weight: 500;
+    color: rgba(220, 200, 160, 0.6);
+    font-style: italic;
+}
+
+.travel-other-emoji {
+    display: inline-block;
+    font-style: normal;
+}
+
+.travel-grid-card.confirmed {
+    border-color: rgba(100, 200, 100, 0.32);
+    box-shadow: 0 0 0 1px rgba(100, 200, 100, 0.1);
+}
+
+.travel-character-row.player-confirmed {
+    border-left: 2px solid rgba(100, 200, 100, 0.25);
+}
+
+/* ── Party Grid (other characters, compact) ── */
+
+.travel-party-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+    gap: 0.35rem;
+    margin-top: 0.45rem;
+}
+
+.travel-grid-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    min-width: 5rem;
+    padding: 0.45rem 0.35rem 0.4rem;
+    background: rgba(20, 22, 28, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 2px solid rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.travel-grid-card:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.travel-grid-card.active {
+    border-left-color: rgba(160, 150, 220, 0.5);
+    background: rgba(150, 120, 200, 0.06);
+}
+
+.travel-grid-card.active-other {
+    border-left-color: rgba(200, 170, 120, 0.4);
+    background: rgba(200, 160, 100, 0.05);
+}
+
+.travel-grid-portrait-wrap {
+    position: relative;
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+.travel-grid-card.active .travel-grid-portrait {
+    box-shadow: 0 0 0 2px rgba(150, 130, 200, 0.35);
+}
+
+.travel-grid-card.active-other .travel-grid-portrait {
+    box-shadow: 0 0 0 2px rgba(200, 150, 90, 0.4);
+}
+
+.travel-grid-portrait {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    display: block;
+}
+
+.travel-grid-confirmed-badge {
+    position: absolute;
+    right: -0.1rem;
+    bottom: -0.1rem;
+    width: 0.9rem;
+    height: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.5rem;
+    color: #fff;
+    background: rgba(50, 140, 80, 0.95);
+    border: 1.5px solid rgba(0, 0, 0, 0.35);
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+}
+
+.travel-grid-name {
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.62);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 5.2rem;
+}
+
+.travel-grid-activity {
+    font-size: 0.95rem;
+    line-height: 1.1;
+    min-height: 1.1rem;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.travel-grid-activity.idle {
+    opacity: 0.35;
+}
+
+.travel-grid-activity.travel-activity-other i.fa-campground {
+    color: rgba(200, 170, 120, 0.9);
+    opacity: 1;
+}
+
+.travel-grid-activity i {
+    display: block;
+    text-align: center;
+}
+
+.travel-grid-activity i.fa-seedling { color: rgba(100, 220, 120, 0.95); }
+.travel-grid-activity i.fa-crosshairs { color: rgba(255, 150, 60, 0.95); }
+.travel-grid-activity i.fa-binoculars { color: rgba(100, 190, 255, 0.95); }
+
+.travel-grid-label {
+    display: block;
+    font-size: 0.58rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: center;
+    color: rgba(200, 210, 220, 0.7);
+    max-width: 5.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.travel-grid-label.idle {
+    text-transform: none;
+    font-weight: 500;
+    letter-spacing: normal;
+    color: rgba(150, 160, 175, 0.5);
+    font-size: 0.55rem;
+    font-style: italic;
+}
+
+/* ── Scout Roster in GM Debrief ── */
+
+.travel-scout-roster {
+    margin-top: 0.3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.travel-scout-roster.multi {
+    max-height: 7rem;
+    overflow-y: auto;
+}
+
+.travel-scout-entry {
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    padding: 0.2rem 0.3rem;
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 3px;
+}
+
+.travel-scout-entry.best {
+    background: rgba(100, 180, 255, 0.06);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.scout-name {
+    font-weight: 600;
+}
+
+.scout-total {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.6rem;
+}
+
+.scout-best-badge {
+    font-size: 0.55rem;
+    color: rgba(255, 215, 0, 0.8);
+    font-weight: 600;
+}
+
+.scout-narrative {
+    width: 100%;
+    margin-top: 0.1rem;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.4);
+    line-height: 1.3;
+    padding-left: 0.2rem;
+    border-left: 2px solid rgba(100, 180, 255, 0.1);
+}
+
+.travel-scout-entry.best .scout-narrative {
+    border-left-color: rgba(100, 180, 255, 0.2);
+}
+
+/* ── Responsive scrolling for tall content ── */
+
+.travel-character-list {
+    max-height: 20rem;
+    overflow-y: auto;
+}
+
+.travel-no-options {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.6rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+}
+
+.travel-dc-bar {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.travel-dc-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.68rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.travel-last-hint {
+    font-size: 0.56rem;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.28);
+    font-style: italic;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    padding-left: 0.4rem;
+    white-space: nowrap;
+}
+
+.travel-dc-chip > i:first-child {
+    font-size: 0.6rem;
+    color: rgba(100, 180, 255, 0.6);
+}
+
+.travel-dc-chip .encounter-gm-adj {
+    margin-left: 0.15rem;
+}
+
+.travel-dc-chip .encounter-chip {
+    margin-left: 0.2rem;
+}
+
+.travel-dc-chip--muted {
+    opacity: 0.42;
+    cursor: help;
+}
+
+.travel-player-view select option.travel-option-disabled,
+.travel-activity-select option.travel-option-disabled {
+    color: rgba(255, 255, 255, 0.38);
+}
+
+.respite-picker select option.activity-option-disabled {
+    color: rgba(255, 255, 255, 0.38);
+}
+
+.travel-character-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.travel-character-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    transition: all 0.15s;
+}
+
+.travel-character-row:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.travel-character-row.resolved {
+    border-color: rgba(155, 89, 182, 0.2);
+}
+
+.travel-character-row.row-awaiting {
+    border-left: 2px solid rgba(150, 120, 200, 0.3);
+}
+
+.travel-gm-activity-pick,
+.travel-locked-pick {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.travel-gm-other-locked {
+    min-height: 1.5rem;
+}
+
+.travel-gm-other-locked-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.75);
+    white-space: nowrap;
+}
+
+.travel-player-await {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.1rem;
+    height: 1.1rem;
+    color: rgba(180, 160, 230, 0.9);
+    font-size: 0.78rem;
+    flex-shrink: 0;
+}
+
+.travel-portrait {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+
+.travel-char-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.travel-char-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.travel-char-mod {
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.travel-activity-select {
+    width: 110px;
+    flex-shrink: 0;
+    padding: 0.25rem 0.4rem;
+    font-size: 0.72rem;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+}
+
+.travel-activity-select:focus {
+    outline: none;
+    border-color: rgba(155, 89, 182, 0.4);
+}
+
+.travel-result {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.travel-result.success {
+    color: rgba(139, 195, 74, 0.9);
+    background: rgba(139, 195, 74, 0.1);
+    border: 1px solid rgba(139, 195, 74, 0.2);
+}
+
+.travel-result.nat20 {
+    color: rgba(76, 175, 80, 1);
+    background: rgba(76, 175, 80, 0.15);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    text-shadow: 0 0 6px rgba(76, 175, 80, 0.3);
+}
+
+.travel-result.failure {
+    color: rgba(255, 152, 0, 0.8);
+    background: rgba(255, 152, 0, 0.08);
+    border: 1px solid rgba(255, 152, 0, 0.15);
+}
+
+.travel-result.nat1 {
+    color: rgba(244, 67, 54, 0.9);
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid rgba(244, 67, 54, 0.2);
+}
+
+.travel-roll-total {
+    font-weight: 400;
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.travel-items-gained {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.15rem 0.5rem 0.3rem 2.8rem;
+}
+
+.travel-item-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.15);
+    color: rgba(76, 175, 80, 0.8);
+}
+
+.travel-item-badge i {
+    font-size: 0.55rem;
+}
+
+.travel-gm-result-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.3rem;
+    max-width: min(18rem, 100%);
+    flex-shrink: 0;
+}
+
+.travel-gm-yield-badges {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.25rem;
+}
+
+.travel-gm-yield-nothing {
+    font-size: 0.65rem;
+    color: rgba(200, 205, 220, 0.45);
+    font-style: italic;
+    text-align: right;
+}
+
+.travel-mishap--in-cell {
+    margin: 0;
+    padding: 0.2rem 0;
+    text-align: right;
+    max-width: 16rem;
+    font-size: 0.64rem;
+    color: rgba(244, 67, 54, 0.85);
+    font-style: italic;
+}
+
+.travel-mishap--in-cell i {
+    margin-right: 0.2rem;
+}
+
+.travel-mishap-effect-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    justify-content: flex-end;
+    margin-top: 0.25rem;
+}
+
+.travel-mishap-effect-badge {
+    display: inline-block;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.58rem;
+    font-style: normal;
+    color: rgba(230, 232, 240, 0.9);
+    background: rgba(155, 89, 182, 0.2);
+    border: 1px solid rgba(155, 89, 182, 0.35);
+}
+
+.travel-mishap {
+    padding: 0.25rem 0.5rem 0.3rem 2.8rem;
+    font-size: 0.68rem;
+    color: rgba(244, 67, 54, 0.8);
+    font-style: italic;
+}
+
+.travel-mishap i {
+    margin-right: 0.2rem;
+}
+
+/* Disabled terrain state */
+.respite-travel-phase.travel-disabled {
+    opacity: 0.85;
+}
+
+.travel-disabled-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.8rem;
+    margin: 0.25rem 0;
+    background: rgba(255, 152, 0, 0.06);
+    border: 1px solid rgba(255, 152, 0, 0.15);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: rgba(255, 200, 100, 0.7);
+}
+
+.travel-disabled-notice i {
+    color: rgba(255, 152, 0, 0.5);
+    font-size: 0.8rem;
+    flex-shrink: 0;
+    margin-left: 0.15rem;
+}
+
+.travel-row-disabled {
+    opacity: 0.45;
+}
+
+.travel-activity-disabled {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.25);
+    padding-right: 0.3rem;
+}
+
+/* Travel Skip Acknowledgment */
+.travel-skip-mode {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.travel-skip-notice {
+    text-align: center;
+    padding: 1.25rem 1.25rem 0.75rem;
+}
+
+.travel-skip-reason {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.5;
+    max-width: 340px;
+    margin: 0 auto;
+    font-style: italic;
+}
+
+.travel-skip-pulse {
+    animation: skip-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes skip-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(180, 140, 255, 0.25);
+    }
+    50% {
+        box-shadow: 0 0 10px 2px rgba(180, 140, 255, 0.15);
+    }
+}
+
+/* Locked activity label (after roll requests sent) */
+.travel-locked-label {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+}
+
+.travel-locked-label i {
+    margin-right: 0.15rem;
+    font-size: 0.6rem;
+}
+
+/* Inline custom DC for "Other" characters */
+.travel-other-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    margin-left: 0.3rem;
+}
+
+.travel-other-dc-input {
+    width: 2.2rem;
+    padding: 0.1rem 0.2rem;
+    font-size: 0.6rem;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 3px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.travel-other-dc-input:focus {
+    border-color: rgba(155, 89, 182, 0.4);
+    outline: none;
+}
+
+.travel-other-send-btn {
+    padding: 0.1rem 0.3rem;
+    font-size: 0.6rem;
+    background: rgba(155, 89, 182, 0.15);
+    border: 1px solid rgba(155, 89, 182, 0.25);
+    border-radius: 3px;
+    color: rgba(155, 89, 182, 0.8);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.travel-other-send-btn:hover {
+    background: rgba(155, 89, 182, 0.25);
+}
+
+.travel-other-roll-btn {
+    padding: 0.1rem 0.3rem;
+    font-size: 0.6rem;
+    background: rgba(100, 200, 100, 0.1);
+    border: 1px solid rgba(100, 200, 100, 0.2);
+    border-radius: 3px;
+    color: rgba(100, 200, 100, 0.7);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.travel-other-roll-btn:hover {
+    background: rgba(100, 200, 100, 0.2);
+}
+
+.travel-other-dc-badge {
+    font-size: 0.6rem;
+    color: rgba(155, 89, 182, 0.6);
+    font-style: italic;
+}
+
+/* GM: pending label */
+.travel-pending-label {
+    font-size: 0.7rem;
+    color: rgba(155, 89, 182, 0.7);
+    white-space: nowrap;
+}
+
+/* GM: roll-for-player button */
+.travel-fallback {
+    padding: 0.15rem 0.3rem;
+    font-size: 0.65rem;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.travel-fallback:hover {
+    border-color: rgba(155, 89, 182, 0.4);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.travel-gm-direct-roll {
+    min-width: 1.9rem;
+    min-height: 1.5rem;
+    box-sizing: border-box;
+    padding: 0.18rem 0.35rem;
+    font-size: 0.65rem;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.12s, color 0.12s, background 0.12s, opacity 0.12s;
+}
+
+.travel-gm-direct-roll:hover {
+    border-color: rgba(155, 89, 182, 0.5);
+    color: rgba(200, 180, 255, 0.95);
+    background: rgba(155, 89, 182, 0.12);
+}
+
+.travel-gm-direct-roll:disabled,
+.travel-gm-direct-roll[disabled] {
+    opacity: 0.32;
+    cursor: not-allowed;
+    border-color: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.02);
+    color: rgba(255, 255, 255, 0.2);
+}
+
+.travel-gm-direct-roll:disabled:hover,
+.travel-gm-direct-roll[disabled]:hover {
+    border-color: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.02);
+    color: rgba(255, 255, 255, 0.2);
+}
+
+.travel-gm-confirm-for-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    min-width: 4.2rem;
+    min-height: 1.5rem;
+    box-sizing: border-box;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.6rem;
+    font-weight: 600;
+    border-radius: 3px;
+    border: 1px solid rgba(100, 200, 120, 0.35);
+    background: rgba(80, 160, 100, 0.12);
+    color: rgba(160, 230, 180, 0.9);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.12s, background 0.12s, color 0.12s;
+    white-space: nowrap;
+}
+
+.travel-gm-confirm-for-btn:hover {
+    border-color: rgba(120, 220, 150, 0.55);
+    background: rgba(80, 180, 110, 0.2);
+    color: rgba(200, 255, 220, 0.95);
+}
+
+.travel-gm-confirmed-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.5rem;
+    min-height: 1.5rem;
+    box-sizing: border-box;
+    border-radius: 3px;
+    border: 1px solid rgba(100, 200, 120, 0.3);
+    background: rgba(80, 160, 100, 0.1);
+    color: rgba(140, 220, 160, 0.85);
+    font-size: 0.7rem;
+    flex-shrink: 0;
+}
+
+/* GM: waiting label in action bar */
+.travel-waiting-label {
+    font-size: 0.72rem;
+    color: rgba(155, 89, 182, 0.6);
+    font-style: italic;
+}
+
+.travel-day-resolve-bar {
+    align-items: center;
+}
+
+.travel-resolve-day-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.travel-resolve-pending-hint {
+    max-width: 12rem;
+    line-height: 1.3;
+    font-style: normal;
+    color: rgba(200, 205, 220, 0.5);
+}
+
+.respite-action-bar.travel-day-resolve-bar .travel-resolve-day-btn:disabled,
+.travel-day-resolve-bar .travel-resolve-day-btn:disabled {
+    pointer-events: none;
+    opacity: 0.42;
+    cursor: not-allowed;
+    filter: saturate(0.4) brightness(0.9);
+    transform: none;
+    box-shadow: none;
+}
+
+.respite-action-bar.travel-day-resolve-bar .travel-resolve-day-btn:disabled:hover,
+.travel-day-resolve-bar .travel-resolve-day-btn:disabled:hover {
+    background: var(--ionrift-accent, #9b59b6);
+    transform: none;
+}
+
+/* Player view */
+.travel-player-view {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.travel-player-info {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+}
+
+.travel-player-info i {
+    color: rgba(155, 89, 182, 0.5);
+}
+
+.travel-roll-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.travel-roll-prompt {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(155, 89, 182, 0.2);
+    border-radius: 6px;
+}
+
+.travel-roll-prompt.rolled {
+    opacity: 0.6;
+}
+
+.travel-roll-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.travel-roll-info strong {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.travel-roll-skill {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.travel-roll-result {
+    font-size: 0.72rem;
+    color: rgba(155, 89, 182, 0.7);
+}
+
+.btn-travel-roll {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.72rem;
+    flex-shrink: 0;
+}
+
+.travel-player-select {
+    width: 120px;
+    flex-shrink: 0;
+    align-self: flex-start;
+    padding: 0.25rem 0.4rem;
+    font-size: 0.72rem;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+}
+
+.travel-player-select:focus {
+    outline: none;
+    border-color: rgba(155, 89, 182, 0.4);
+}
+
+.travel-row-other {
+    opacity: 0.6;
+}
+
+.travel-other-choice {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: rgba(155, 89, 182, 0.8);
+    background: rgba(155, 89, 182, 0.08);
+    border: 1px solid rgba(155, 89, 182, 0.15);
+    flex-shrink: 0;
+}
+
+.travel-other-choice.idle {
+    color: rgba(255, 255, 255, 0.25);
+    background: none;
+    border-color: transparent;
+}
+
+.travel-other-choice i {
+    font-size: 0.6rem;
+}
+
+/* ---- Monster Cooking: Butcher Prompt Card ---- */
+
+.respite-butcher-card {
+    background: linear-gradient(135deg, rgba(20, 12, 28, 0.95), rgba(30, 18, 40, 0.95));
+    border: 1px solid rgba(155, 89, 182, 0.3);
+    border-radius: 8px;
+    padding: 0.8rem;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.8rem;
+}
+
+.respite-butcher-card.result {
+    border-color: rgba(212, 175, 55, 0.4);
+}
+
+.butcher-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+}
+
+.butcher-creature-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    border: 1px solid rgba(155, 89, 182, 0.3);
+    object-fit: cover;
+}
+
+.butcher-card-title h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.butcher-tier {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    margin-top: 0.15rem;
+}
+
+.butcher-tier.tier-common {
+    color: rgba(200, 200, 200, 0.9);
+    background: rgba(200, 200, 200, 0.1);
+}
+
+.butcher-tier.tier-uncommon {
+    color: rgba(46, 204, 113, 0.9);
+    background: rgba(46, 204, 113, 0.1);
+}
+
+.butcher-tier.tier-rare {
+    color: rgba(52, 152, 219, 0.9);
+    background: rgba(52, 152, 219, 0.1);
+}
+
+.butcher-tier.tier-legendary {
+    color: rgba(212, 175, 55, 0.9);
+    background: rgba(212, 175, 55, 0.15);
+}
+
+.butcher-flavour {
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.55);
+    margin: 0.4rem 0;
+    font-size: 0.75rem;
+    line-height: 1.3;
+}
+
+.butcher-card-info {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 0.4rem;
+}
+
+.butcher-card-info strong {
+    color: rgba(155, 89, 182, 0.8);
+}
+
+.butcher-holders {
+    font-size: 0.72rem;
+    color: rgba(155, 89, 182, 0.7);
+    margin: 0.3rem 0;
+}
+
+.butcher-holders i {
+    margin-right: 0.25rem;
+}
+
+.butcher-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.btn-butcher {
+    flex: 1;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid rgba(155, 89, 182, 0.4);
+    background: rgba(155, 89, 182, 0.15);
+    color: rgba(200, 160, 220, 0.95);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-butcher:hover:not(:disabled) {
+    background: rgba(155, 89, 182, 0.25);
+    border-color: rgba(155, 89, 182, 0.6);
+}
+
+.btn-butcher:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-butcher-pass {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.78rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.5);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.btn-butcher-pass:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.butcher-passed {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.35);
+    font-style: italic;
+}
+
+/* Butcher result card */
+
+.butcher-result-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.4rem 0;
+    font-size: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.butcher-who {
+    color: rgba(155, 89, 182, 0.7);
+}
+
+.butcher-roll {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.butcher-roll strong {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.butcher-outcome {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+}
+
+.butcher-outcome.outcome-nat20 {
+    color: rgba(212, 175, 55, 1);
+    background: rgba(212, 175, 55, 0.15);
+}
+
+.butcher-outcome.outcome-nat1 {
+    color: rgba(231, 76, 60, 0.9);
+    background: rgba(231, 76, 60, 0.12);
+}
+
+.butcher-outcome.outcome-exceptional {
+    color: rgba(52, 152, 219, 0.9);
+    background: rgba(52, 152, 219, 0.1);
+}
+
+.butcher-outcome.outcome-standard {
+    color: rgba(46, 204, 113, 0.9);
+    background: rgba(46, 204, 113, 0.1);
+}
+
+.butcher-outcome.outcome-basic {
+    color: rgba(200, 200, 200, 0.7);
+    background: rgba(200, 200, 200, 0.08);
+}
+
+.butcher-yields {
+    list-style: none;
+    padding: 0;
+    margin: 0.3rem 0;
+}
+
+.butcher-yields li {
+    padding: 0.15rem 0;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.butcher-yields li::before {
+    content: "\f6d6";
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    margin-right: 0.4rem;
+    font-size: 0.6rem;
+    color: rgba(155, 89, 182, 0.5);
+}
+
+.butcher-yields .loot-tag {
+    font-size: 0.6rem;
+    color: rgba(212, 175, 55, 0.7);
+    background: rgba(212, 175, 55, 0.1);
+    padding: 0 0.3rem;
+    border-radius: 2px;
+    margin-left: 0.25rem;
+}
+
+.butcher-mishap {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    padding: 0.4rem 0.5rem;
+    margin-top: 0.4rem;
+    background: rgba(231, 76, 60, 0.08);
+    border: 1px solid rgba(231, 76, 60, 0.2);
+    border-radius: 5px;
+    font-size: 0.72rem;
+    color: rgba(231, 76, 60, 0.85);
+}
+
+.butcher-mishap i {
+    margin-top: 0.1rem;
+    flex-shrink: 0;
+}
+
+.mishap-damage {
+    display: block;
+    font-weight: 600;
+    margin-top: 0.15rem;
+}
+
+/* ---- Monster Cooking Splash Card ---- */
+
+.respite-monster-cooking-splash {
+    background: linear-gradient(135deg, rgba(20, 12, 28, 0.98), rgba(45, 25, 60, 0.95));
+    border: 2px solid rgba(212, 175, 55, 0.4);
+    border-radius: 10px;
+    padding: 0;
+    overflow: hidden;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.splash-banner {
+    width: 100%;
+    height: 120px;
+    overflow: hidden;
+    position: relative;
+    background: linear-gradient(180deg, rgba(155, 89, 182, 0.15), rgba(212, 175, 55, 0.1));
+}
+
+.splash-dish-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid rgba(212, 175, 55, 0.5);
+    object-fit: cover;
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20, 12, 28, 0.9);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.splash-title {
+    text-align: center;
+    margin: 1.2rem 0.8rem 0.3rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.splash-title.rarity-common { color: rgba(200, 200, 200, 0.95); }
+.splash-title.rarity-uncommon { color: rgba(46, 204, 113, 0.95); }
+.splash-title.rarity-rare { color: rgba(52, 152, 219, 0.95); }
+.splash-title.rarity-very.rare { color: rgba(155, 89, 182, 0.95); }
+.splash-title.rarity-legendary { color: rgba(212, 175, 55, 0.95); }
+
+.splash-cook {
+    text-align: center;
+    font-size: 0.75rem;
+    color: rgba(155, 89, 182, 0.7);
+    margin: 0 0 0.5rem;
+}
+
+.splash-cook strong {
+    color: rgba(155, 89, 182, 0.9);
+}
+
+.splash-ingredients {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.3rem;
+    padding: 0 0.8rem;
+    margin-bottom: 0.5rem;
+}
+
+.splash-ingredient {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.5rem;
+    background: rgba(155, 89, 182, 0.1);
+    border: 1px solid rgba(155, 89, 182, 0.2);
+    border-radius: 3px;
+    color: rgba(200, 160, 220, 0.8);
+}
+
+.splash-description {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.75);
+    line-height: 1.4;
+    margin: 0;
+}
+
+.splash-narrative {
+    padding: 0.4rem 0.8rem 0.8rem;
+    font-size: 0.72rem;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.45);
+    line-height: 1.3;
+    margin: 0;
+}
+
+/* ---- Spoilage Badge: Inventory Freshness Indicator ---- */
+
+.respite-spoil-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-left: 6px;
+    vertical-align: middle;
+    line-height: 1.4;
+}
+
+.respite-spoil-badge.spoil-fresh {
+    background: rgba(46, 139, 87, 0.25);
+    color: rgba(120, 220, 160, 0.95);
+    border: 1px solid rgba(46, 139, 87, 0.4);
+}
+
+.respite-spoil-badge.spoil-urgent {
+    background: rgba(200, 140, 30, 0.25);
+    color: rgba(255, 200, 80, 0.95);
+    border: 1px solid rgba(200, 140, 30, 0.5);
+}
+
+.respite-spoil-badge.spoil-expired {
+    background: rgba(180, 40, 40, 0.3);
+    color: rgba(255, 120, 120, 0.95);
+    border: 1px solid rgba(180, 40, 40, 0.5);
+}
+
+/* ---- Diet Config: Actor Sheet Header Button ---- */
+
+.respite-diet-btn {
+    background: none;
+    border: none;
+    color: rgba(200, 180, 255, 0.7);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 2px 4px;
+    margin: 0 2px;
+    transition: color 0.15s ease;
+}
+
+.respite-diet-btn:hover {
+    color: rgba(200, 180, 255, 1);
+}
+
+/* App V1 actor sheets (PF2e and other legacy sheets): compact header icon */
+.respite-diet-btn--appv1 {
+    flex: 0 0 24px;
+    width: 24px;
+    min-width: 24px;
+    max-width: 24px;
+    height: 24px;
+    font-size: 12px;
+    line-height: 24px;
+    padding: 0;
+    margin: 0 2px;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ---- Inventory Context Menu: Consume Entries ---- */
+
+.respite-context-icon {
+    color: var(--ionrift-accent, #b388ff) !important;
+}
+
+/* Well Fed summary in consume chat card */
+.respite-well-fed-summary {
+    font-size: 0.82rem;
+    color: rgba(212, 175, 55, 0.9);
+    margin-top: 0.25rem;
+}
+
+.respite-well-fed-summary i {
+    color: rgba(212, 175, 55, 0.8);
+    margin-right: 0.2rem;
+}
+
+/* ---- Ionrift-themed DialogV2 confirm overrides ---- */
+
+.ionrift-window.dialog .window-content {
+    padding: 16px 20px !important;
+}
+
+.ionrift-window.dialog .dialog-content {
+    padding: 4px 0 12px;
+    color: var(--ionrift-text-muted, #ccc);
+    line-height: 1.5;
+}
+
+.ionrift-window.dialog .dialog-content p {
+    margin: 0 0 8px;
+}
+
+.ionrift-window.dialog .form-footer {
+    display: flex;
+    gap: 8px;
+    padding: 8px 0 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ionrift-window.dialog .form-footer button {
+    flex: 1;
+    background: linear-gradient(to bottom, #4a4a4a, #2a2a2a) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #fff !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.ionrift-window.dialog .form-footer button:hover {
+    background: rgba(139, 92, 246, 0.6) !important;
+    border-color: var(--ionrift-accent, #8b5cf6) !important;
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.4) !important;
+}
+
+/* ── Make Camp Phase: Scene Placement ────────────────────────────── */
+
+.camp-placement-section,
+.camp-gear-section {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 0.75rem;
+}
+
+.camp-placement-header,
+.camp-gear-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.625rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.camp-placement-header i,
+.camp-gear-header i {
+    color: var(--ionrift-accent, #8b5cf6);
+}
+
+.make-camp-unified {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.totm-camp-layout.make-camp-unified {
+    display: grid;
+}
+
+.make-camp-footer-row {
+    align-items: stretch;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+    max-width: 100%;
+}
+
+.make-camp-footer-row .totm-camp-footer-primary {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: stretch;
+}
+
+.make-camp-footer-row .totm-camp-footer-primary .totm-camp-proceed,
+.make-camp-footer-row .totm-camp-footer-primary .totm-camp-player-wait {
+    width: 100%;
+    max-width: none;
+    min-height: 2.35rem;
+}
+
+.make-camp-footer-row .totm-camp-footer-primary .totm-camp-player-wait {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.45rem 0.75rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(196, 181, 253, 0.12);
+    font-size: 0.78rem;
+    color: rgba(200, 195, 220, 0.65);
+    gap: 0.4rem;
+}
+
+.totm-camp-footer-placement {
+    flex: 0 0 auto;
+    min-width: 7.5rem;
+    max-width: 11rem;
+    display: flex;
+    align-items: stretch;
+}
+
+.totm-camp-footer-placement .camp-drag-handle-compact {
+    width: 100%;
+    min-height: 2.35rem;
+    margin: 0;
+    padding: 0.35rem 0.5rem;
+    align-items: center;
+}
+
+.totm-camp-footer-placement .camp-drag-handle-compact .camp-drag-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    font-size: 0.95rem;
+}
+
+.totm-camp-footer-placement .camp-drag-handle-compact .camp-drag-title {
+    font-size: 0.72rem;
+    line-height: 1.15;
+    white-space: nowrap;
+}
+
+.totm-camp-footer-placement .camp-drag-handle-compact .camp-drag-label {
+    min-width: 0;
+}
+
+.totm-camp-footer-placement .camp-drag-required-badge {
+    margin-left: 0.25rem;
+    font-size: 0.58rem;
+}
+
+.totm-camp-footer-placement .camp-drag-grip {
+    font-size: 0.7rem;
+}
+
+.totm-camp-footer-placement .camp-drag-handle-reclaim {
+    cursor: pointer;
+    border-style: dashed;
+}
+
+.totm-camp-footer-placement .camp-drag-handle-reclaim:hover {
+    border-color: rgba(255, 147, 41, 0.65);
+    background: rgba(255, 147, 41, 0.1);
+}
+
+.camp-drag-handle-required {
+    border-color: rgba(255, 147, 41, 0.45);
+}
+
+.camp-drag-handle-placed {
+    cursor: default;
+    border-style: solid;
+    border-color: rgba(72, 187, 120, 0.45);
+    background: rgba(72, 187, 120, 0.08);
+}
+
+.camp-drag-handle-placed .camp-drag-icon {
+    background: rgba(72, 187, 120, 0.15);
+    color: #48bb78;
+}
+
+.camp-drag-handle-wait {
+    cursor: default;
+    opacity: 0.75;
+}
+
+.camp-drag-required-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #ff9329;
+    margin-left: 0.35rem;
+}
+
+.camp-drag-grip {
+    color: rgba(255, 255, 255, 0.35);
+    flex-shrink: 0;
+}
+
+.camp-drag-handle {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px dashed rgba(139, 92, 246, 0.3);
+    border-radius: 6px;
+    cursor: grab;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.camp-drag-handle:hover {
+    background: rgba(139, 92, 246, 0.08);
+    border-color: rgba(139, 92, 246, 0.5);
+}
+
+.camp-drag-handle:active,
+.camp-drag-handle.dragging {
+    cursor: grabbing;
+    opacity: 0.6;
+    border-color: var(--ionrift-accent, #8b5cf6);
+    background: rgba(139, 92, 246, 0.12);
+}
+
+.camp-drag-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: rgba(255, 147, 41, 0.15);
+    color: #ff9329;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.camp-drag-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    flex: 1;
+}
+
+.camp-drag-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.camp-drag-hint {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+}
+
+.camp-drag-layout-preview {
+    display: grid;
+    grid-template-areas:
+        ".   top  ."
+        "left mid right"
+        ".   bot  .";
+    grid-template-columns: 20px 20px 20px;
+    grid-template-rows: 20px 20px 20px;
+    gap: 1px;
+    flex-shrink: 0;
+}
+
+.camp-drag-layout-preview .layout-piece {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 2px;
+}
+
+.camp-drag-layout-preview .layout-piece.center {
+    color: #ff9329;
+    background: rgba(255, 147, 41, 0.12);
+}
+
+.camp-drag-layout-preview .layout-piece:nth-child(1) { grid-area: top; }
+.camp-drag-layout-preview .layout-piece:nth-child(2) { grid-area: left; }
+.camp-drag-layout-preview .layout-piece:nth-child(3) { grid-area: mid; }
+.camp-drag-layout-preview .layout-piece:nth-child(4) { grid-area: right; }
+.camp-drag-layout-preview .layout-piece:nth-child(5) { grid-area: bot; }
+
+.camp-placed-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    color: #4ade80;
+    font-size: 0.85rem;
+}
+
+.camp-placed-indicator i {
+    font-size: 1rem;
+}
+
+/* Gear cards grid */
+
+.camp-gear-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.camp-gear-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    padding: 0.5rem;
+}
+
+.camp-gear-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.375rem;
+}
+
+.camp-gear-portrait {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.camp-gear-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.camp-gear-items {
+    display: flex;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+}
+
+.gear-drag-handle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.3rem 0.625rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px dashed rgba(139, 92, 246, 0.25);
+    border-radius: 4px;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: grab;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.gear-drag-handle:hover:not(.deployed) {
+    background: rgba(139, 92, 246, 0.08);
+    border-color: rgba(139, 92, 246, 0.4);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.gear-drag-handle.dragging {
+    cursor: grabbing;
+    opacity: 0.5;
+    border-color: var(--ionrift-accent, #8b5cf6);
+}
+
+.gear-drag-handle.deployed {
+    cursor: default;
+    border-style: solid;
+    border-color: rgba(74, 222, 128, 0.3);
+    background: rgba(74, 222, 128, 0.06);
+    color: #4ade80;
+}
+
+.gear-drag-handle .deployed-check {
+    font-size: 0.7rem;
+    color: #4ade80;
+}
+
+.camp-gear-none {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+    padding: 0.25rem 0;
+}
+
+/* Campfire column: GM scene token + single-card gear row */
+
+.camp-fire-scene-block {
+    padding: 0.4rem 0.5rem 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 0.25rem;
+}
+
+.camp-fire-scene-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.45);
+    margin-bottom: 0.35rem;
+}
+
+.camp-fire-scene-block .camp-placed-indicator {
+    padding: 0.35rem 0.4rem;
+    font-size: 0.75rem;
+}
+
+.btn-camp-clear-all {
+    width: 100%;
+    margin-top: 0.35rem;
+    padding: 0.28rem 0.45rem;
+    font-size: 0.65rem;
+    line-height: 1.2;
+    border-radius: 4px;
+    border: 1px solid rgba(220, 90, 90, 0.35);
+    background: rgba(220, 70, 70, 0.12);
+    color: rgba(255, 200, 200, 0.9);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+}
+
+.btn-camp-clear-all:hover {
+    background: rgba(220, 70, 70, 0.22);
+    border-color: rgba(240, 120, 120, 0.45);
+}
+
+.camp-clear-own-row {
+    margin-top: 0.3rem;
+    padding-top: 0.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.btn-camp-clear-own {
+    width: 100%;
+    padding: 0.26rem 0.4rem;
+    font-size: 0.62rem;
+    line-height: 1.2;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.65);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+}
+
+.btn-camp-clear-own:hover {
+    background: rgba(255, 255, 255, 0.09);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.camp-drag-handle-compact {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+}
+
+.camp-drag-handle-compact .camp-drag-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+}
+
+.camp-drag-handle-compact .camp-drag-title {
+    font-size: 0.78rem;
+}
+
+.camp-drag-handle-compact .camp-drag-hint {
+    font-size: 0.65rem;
+}
+
+.camp-layout-gm-step1 .camp-drag-handle-compact {
+    padding: 0.55rem 0.65rem;
+    border-color: rgba(255, 140, 30, 0.4);
+    background: rgba(255, 140, 30, 0.07);
+}
+
+.camp-layout-gm-step1 .camp-drag-handle-compact:hover {
+    background: rgba(255, 140, 30, 0.14);
+    border-color: rgba(255, 140, 30, 0.6);
+}
+
+.camp-layout-gm-step1 .camp-drag-handle-compact .camp-drag-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 1.2rem;
+    color: rgba(255, 140, 30, 0.9);
+}
+
+.camp-layout-gm-step1 .camp-drag-handle-compact .camp-drag-title {
+    font-size: 0.85rem;
+}
+
+.camp-personal-grid-single {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+}
+
+.camp-personal-pick-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.4rem;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+}
+
+.camp-gear-scene-row {
+    margin: 0.25rem 0 0.35rem;
+    padding: 0.35rem 0.4rem 0.4rem;
+    background: rgba(139, 92, 246, 0.06);
+    border: 1px solid rgba(139, 92, 246, 0.12);
+    border-radius: 6px;
+}
+
+.camp-gear-scene-row.camp-gear-scene-row-tight {
+    margin: 0.2rem 0 0.3rem;
+    padding: 0.3rem 0.35rem;
+}
+
+.camp-gear-scene-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    margin-bottom: 0.3rem;
+}
+
+.camp-gear-scene-label {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.camp-gear-scene-hint {
+    font-size: 0.65rem;
+    line-height: 1.25;
+    color: rgba(255, 255, 255, 0.38);
+    font-style: italic;
+}
+
+.camp-gear-scene-slots {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.35rem;
+    align-items: stretch;
+}
+
+@media (max-width: 520px) {
+    .camp-gear-scene-slots {
+        grid-template-columns: 1fr;
+    }
+}
+
+.camp-gear-scene-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-width: 0;
+}
+
+.camp-gear-placeable-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.2rem;
+    flex: 1;
+    min-width: 0;
+    padding: 0.35rem 0.4rem;
+    border-radius: 6px;
+    border: 2px solid rgba(74, 222, 128, 0.22);
+    background: rgba(74, 222, 128, 0.1);
+    transition: background 0.15s ease, border-color 0.15s ease;
+    cursor: grab;
+}
+
+.camp-gear-placeable-wrap:not(.deployed):hover {
+    background: rgba(74, 222, 128, 0.16);
+    border-color: rgba(110, 231, 160, 0.45);
+}
+
+.camp-gear-placeable-wrap.deployed {
+    border-style: solid;
+    border-color: rgba(74, 222, 128, 0.42);
+    background: rgba(74, 222, 128, 0.14);
+    cursor: default;
+}
+
+.camp-gear-placeable-wrap > .camp-gear-mechanic-note {
+    padding: 0 0.05rem;
+    text-align: left;
+}
+
+/* Contrast on violet: benefit line slightly brighter than old green-on-black */
+.camp-gear-placeable-wrap:not(.deployed) > .camp-gear-mechanic-note.benefit {
+    color: #d1fae5;
+}
+
+.camp-gear-placeable-wrap:not(.deployed) > .camp-gear-mechanic-note:not(.benefit) {
+    color: #fde68a;
+}
+
+.camp-gear-placeable-wrap:not(.deployed) > .gear-drag-handle.gear-drag-handle-scene {
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.camp-gear-placeable-wrap:not(.deployed) .gear-drag-scene-pill {
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.camp-gear-placeable-wrap:not(.deployed) > .gear-drag-handle > i {
+    color: rgba(221, 214, 254, 0.95);
+}
+
+/* Deployed state: bright mint on dark-green background */
+.camp-gear-placeable-wrap.deployed > .camp-gear-mechanic-note.benefit {
+    color: #86efac;
+}
+
+.camp-gear-placeable-wrap.deployed > .camp-gear-mechanic-note:not(.benefit) {
+    color: #fde68a;
+}
+
+.camp-gear-placeable-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin: 0;
+    padding: 0.05rem 0.05rem 0;
+    font-size: 0.52rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(237, 233, 254, 0.82);
+}
+
+.camp-gear-placeable-wrap > .camp-gear-placeable-hint {
+    margin-top: auto;
+    padding: 0.2rem 0.05rem 0;
+}
+
+.camp-gear-placeable-hint > i {
+    font-size: 0.5rem;
+    opacity: 0.85;
+}
+
+.camp-gear-placeable-wrap.deployed > .camp-gear-placeable-hint {
+    display: none;
+}
+
+.camp-gear-scene-placeholder {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
+    padding: 0.35rem 0.4rem;
+    border: 2px dashed rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.12);
+    color: rgba(255, 255, 255, 0.38);
+}
+
+.camp-gear-scene-placeholder .placeholder-head {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.2rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: rgba(255, 255, 255, 0.42);
+}
+
+.camp-gear-scene-placeholder .placeholder-head i {
+    font-size: 0.85rem;
+    opacity: 0.65;
+}
+
+.camp-gear-scene-placeholder .placeholder-body {
+    font-size: 0.62rem;
+    line-height: 1.3;
+    color: rgba(255, 255, 255, 0.4);
+    margin: 0;
+}
+
+.camp-gear-scene-placeholder .placeholder-body.no-border {
+    text-align: left;
+    width: 100%;
+}
+
+.camp-gear-scene-placeholder .placeholder-body.camp-gear-shared-note {
+    color: rgba(134, 239, 172, 0.7);
+    font-style: italic;
+}
+
+.camp-gear-scene-locked {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0.35rem 0.3rem;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.42);
+    font-size: 0.62rem;
+    line-height: 1.25;
+}
+
+.camp-gear-mess-scene {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.camp-gear-mechanic-note {
+    font-size: 0.57rem;
+    line-height: 1.2;
+    color: rgba(251, 191, 36, 0.9);
+    margin: 0;
+    padding: 0 0.05rem 0.05rem;
+}
+.camp-gear-mechanic-note.benefit {
+    color: rgba(134, 239, 172, 0.85);
+}
+
+.gear-drag-handle.gear-drag-handle-scene {
+    display: flex;
+    flex: 1;
+    min-height: 3.75rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    text-align: center;
+    padding: 0.35rem 0.4rem;
+    gap: 0.4rem;
+    border-width: 2px;
+    border-style: dashed;
+}
+
+.gear-drag-handle.gear-drag-handle-scene > i {
+    font-size: 1.05rem;
+    flex-shrink: 0;
+}
+
+.gear-drag-scene-pill {
+    font-size: 0.65rem;
+    font-weight: 600;
+    line-height: 1.2;
+    flex: 1 1 5rem;
+    min-width: 0;
+    text-align: left;
+}
+
+.gear-drag-handle.gear-drag-handle-scene.deployed {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+}
+
+.gear-drag-handle.gear-drag-handle-scene .deployed-check {
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.camp-gear-mess-scene .gear-drag-handle.gear-drag-handle-scene {
+    min-height: 3.25rem;
+}
+
+.camp-gear-mess-scene.has-fire-note .gear-drag-handle.gear-drag-handle-scene {
+    min-height: 2.75rem;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+}
+
+/* Inner handle: single outer dashed card; override scene/mess min-heights */
+.camp-gear-placeable-wrap > .gear-drag-handle.gear-drag-handle-scene {
+    border: none;
+    background: transparent;
+    min-height: auto;
+    padding: 0.12rem 0;
+    flex: 0 0 auto;
+    align-self: stretch;
+}
+
+.camp-gear-placeable-wrap > .gear-drag-handle.gear-drag-handle-scene.deployed {
+    border: none;
+    background: transparent;
+}
+
+/* Detect Magic: inventory rows. Tinted band per row; soft outer glow; bg tint breathes. */
+@keyframes ionrift-dm-row-tint {
+    0%,
+    100% {
+        opacity: 0.78;
+        filter: brightness(0.94);
+    }
+    50% {
+        opacity: 1;
+        filter: brightness(1.06);
+    }
+}
+
+@keyframes ionrift-dm-glow-pulse {
+    0%,
+    100% {
+        opacity: 0.58;
+    }
+    50% {
+        opacity: 0.92;
+    }
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow {
+    --ionrift-dm-glow-c: rgba(186, 104, 255, 0.88);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 18%, rgba(8, 6, 18, 0.88));
+    --ionrift-dm-row-edge: color-mix(in srgb, var(--ionrift-dm-glow-c) 42%, transparent);
+    --ionrift-dm-glow-soft: color-mix(in srgb, var(--ionrift-dm-glow-c) 40%, transparent);
+    --ionrift-dm-glow-halo: color-mix(in srgb, var(--ionrift-dm-glow-c) 20%, transparent);
+    position: relative;
+    z-index: 0;
+    isolation: isolate;
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow::before {
+    content: "";
+    position: absolute;
+    inset: 1px 3px;
+    pointer-events: none;
+    z-index: -2;
+    border-radius: 4px;
+    background: var(--ionrift-dm-row-bg);
+    box-shadow:
+        inset 3px 0 0 0 var(--ionrift-dm-glow-c),
+        inset 0 0 0 1px var(--ionrift-dm-row-edge);
+    animation: ionrift-dm-row-tint 3.1s ease-in-out infinite;
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow::after {
+    content: "";
+    position: absolute;
+    inset: 1px 3px;
+    pointer-events: none;
+    z-index: -1;
+    border: none;
+    border-radius: 4px;
+    box-shadow:
+        inset 0 0 16px 0 color-mix(in srgb, var(--ionrift-dm-glow-c) 18%, transparent),
+        inset 0 0 6px 0 color-mix(in srgb, var(--ionrift-dm-glow-c) 10%, transparent),
+        0 0 10px 2px var(--ionrift-dm-glow-soft),
+        0 0 22px 5px var(--ionrift-dm-glow-halo);
+    animation: ionrift-dm-glow-pulse 2.75s ease-in-out infinite;
+}
+
+/* Item portrait: soft school-colored halo */
+.sheet [data-item-id].ionrift-detect-magic-glow .item-image img,
+.sheet [data-item-id].ionrift-detect-magic-glow .item .item-image img,
+.sheet [data-item-id].ionrift-detect-magic-glow figure img {
+    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ionrift-dm-glow-c) 60%, transparent))
+        drop-shadow(0 0 8px color-mix(in srgb, var(--ionrift-dm-glow-c) 28%, transparent));
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sheet [data-item-id].ionrift-detect-magic-glow::before {
+        animation: none;
+        opacity: 0.9;
+        filter: none;
+    }
+
+    .sheet [data-item-id].ionrift-detect-magic-glow::after {
+        animation: none;
+        opacity: 0.78;
+    }
+
+    .sheet [data-item-id].ionrift-detect-magic-glow .item-image img,
+    .sheet [data-item-id].ionrift-detect-magic-glow .item .item-image img,
+    .sheet [data-item-id].ionrift-detect-magic-glow figure img {
+        filter: drop-shadow(0 0 5px color-mix(in srgb, var(--ionrift-dm-glow-c) 48%, transparent));
+    }
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-abj {
+    --ionrift-dm-glow-c: rgba(200, 210, 255, 0.95);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 16%, rgba(10, 12, 24, 0.9));
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-con {
+    --ionrift-dm-glow-c: rgba(255, 165, 70, 0.9);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 16%, rgba(18, 10, 6, 0.9));
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-div {
+    --ionrift-dm-glow-c: rgba(120, 200, 255, 0.9);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 16%, rgba(6, 12, 18, 0.9));
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-enc {
+    --ionrift-dm-glow-c: rgba(255, 120, 200, 0.88);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 16%, rgba(16, 8, 14, 0.9));
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-evo {
+    --ionrift-dm-glow-c: rgba(255, 100, 60, 0.92);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 16%, rgba(18, 8, 6, 0.9));
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-ill {
+    --ionrift-dm-glow-c: rgba(180, 140, 255, 0.9);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 18%, rgba(10, 8, 18, 0.9));
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-nec {
+    --ionrift-dm-glow-c: rgba(80, 200, 120, 0.88);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 16%, rgba(6, 14, 10, 0.9));
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-trs {
+    --ionrift-dm-glow-c: rgba(255, 210, 80, 0.9);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 16%, rgba(16, 14, 6, 0.9));
+}
+
+.sheet [data-item-id].ionrift-detect-magic-glow.ionrift-dm-school-unknown {
+    --ionrift-dm-glow-c: rgba(186, 104, 255, 0.88);
+    --ionrift-dm-row-bg: color-mix(in srgb, var(--ionrift-dm-glow-c) 18%, rgba(8, 6, 18, 0.88));
+}
+
+/* Detect Magic: inventory tab (dnd5e nav.tabs). In-tab CSS only, no overlay nodes. */
+@keyframes ionrift-dm-inv-tab-attn {
+    0%,
+    100% {
+        opacity: 0.28;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+@keyframes ionrift-dm-inv-tab-ring {
+    0%,
+    100% {
+        box-shadow:
+            inset 0 0 0 1px color-mix(in srgb, var(--ionrift-dm-tab-c) 44%, transparent),
+            inset 0 0 10px color-mix(in srgb, var(--ionrift-dm-tab-c) 10%, transparent);
+    }
+    50% {
+        box-shadow:
+            inset 0 0 0 1px color-mix(in srgb, var(--ionrift-dm-tab-c) 78%, transparent),
+            inset 0 0 22px color-mix(in srgb, var(--ionrift-dm-tab-c) 26%, transparent);
+    }
+}
+
+@keyframes ionrift-dm-inv-tab-icon {
+    0%,
+    100% {
+        filter: drop-shadow(0 0 2px color-mix(in srgb, var(--ionrift-dm-tab-c) 45%, transparent));
+    }
+    50% {
+        filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ionrift-dm-tab-c) 82%, transparent));
+    }
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow {
+    position: relative;
+    z-index: 1;
+    --ionrift-dm-tab-c: rgba(186, 104, 255, 0.88);
+    box-shadow:
+        inset 0 0 0 1px color-mix(in srgb, var(--ionrift-dm-tab-c) 58%, transparent),
+        inset 0 0 14px color-mix(in srgb, var(--ionrift-dm-tab-c) 16%, transparent);
+    animation: ionrift-dm-inv-tab-ring 2.05s ease-in-out infinite;
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow::after {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(
+        circle at 50% 50%,
+        color-mix(in srgb, var(--ionrift-dm-tab-c) 38%, transparent) 0%,
+        transparent 72%
+    );
+    animation: ionrift-dm-inv-tab-attn 2.05s ease-in-out infinite;
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow dnd5e-icon {
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 0 3px color-mix(in srgb, var(--ionrift-dm-tab-c) 65%, transparent));
+    animation: ionrift-dm-inv-tab-icon 2.05s ease-in-out infinite;
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="abj"] {
+    --ionrift-dm-tab-c: rgba(200, 210, 255, 0.95);
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="con"] {
+    --ionrift-dm-tab-c: rgba(255, 165, 70, 0.9);
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="div"] {
+    --ionrift-dm-tab-c: rgba(120, 200, 255, 0.9);
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="enc"] {
+    --ionrift-dm-tab-c: rgba(255, 120, 200, 0.88);
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="evo"] {
+    --ionrift-dm-tab-c: rgba(255, 100, 60, 0.92);
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="ill"] {
+    --ionrift-dm-tab-c: rgba(180, 140, 255, 0.9);
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="nec"] {
+    --ionrift-dm-tab-c: rgba(80, 200, 120, 0.88);
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="trs"] {
+    --ionrift-dm-tab-c: rgba(255, 210, 80, 0.9);
+}
+
+.sheet nav.tabs a.ionrift-dm-inventory-tab-glow[data-ionrift-dm-tab-school="unknown"] {
+    --ionrift-dm-tab-c: rgba(186, 104, 255, 0.88);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sheet nav.tabs a.ionrift-dm-inventory-tab-glow {
+        animation: none;
+        box-shadow:
+            inset 0 0 0 1px color-mix(in srgb, var(--ionrift-dm-tab-c) 58%, transparent),
+            inset 0 0 14px color-mix(in srgb, var(--ionrift-dm-tab-c) 16%, transparent);
+    }
+
+    .sheet nav.tabs a.ionrift-dm-inventory-tab-glow::after {
+        animation: none;
+        opacity: 0.78;
+    }
+
+    .sheet nav.tabs a.ionrift-dm-inventory-tab-glow dnd5e-icon {
+        animation: none;
+        filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ionrift-dm-tab-c) 55%, transparent));
+    }
+}
+
+/* Make Camp: minimal shell (campfire-first) */
+.ionrift-respite-app .camp-minimal-shell {
+    max-width: 32rem;
+    margin: 0 auto;
+    padding: 0 0.5rem 0.5rem;
+}
+.ionrift-respite-app.ionrift-camp-dock {
+    min-width: 15rem;
+    max-width: 22rem;
+}
+.ionrift-respite-app.ionrift-camp-dock .camp-minimal-shell {
+    max-width: none;
+    margin: 0;
+    padding: 0 0.35rem 0.4rem;
+}
+.ionrift-respite-app.ionrift-camp-dock .respite-phase-header {
+    padding: 0.35rem 0.45rem 0.4rem;
+    gap: 0.35rem;
+}
+.ionrift-respite-app.ionrift-camp-dock .phase-dot {
+    width: 6px;
+    height: 6px;
+}
+.ionrift-respite-app.ionrift-camp-dock .phase-label {
+    font-size: 0.72rem;
+}
+.ionrift-respite-app.ionrift-camp-dock .btn-phase-guide {
+    width: 18px;
+    height: 18px;
+    font-size: 0.7rem;
+}
+.ionrift-respite-app .camp-minimal-lead {
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: rgba(232, 228, 240, 0.9);
+    margin: 0.5rem 0 0.75rem;
+}
+.ionrift-respite-app.ionrift-camp-dock .camp-minimal-lead {
+    font-size: 0.8rem;
+    margin: 0.35rem 0 0.5rem;
+}
+.ionrift-respite-app.ionrift-camp-dock .camp-minimal-lead kbd {
+    display: inline-block;
+    padding: 0.05rem 0.3rem;
+    font-size: 0.7rem;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.ionrift-respite-app .camp-pit-retry {
+    border-radius: 8px;
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid rgba(196, 181, 253, 0.25);
+}
+.ionrift-respite-app .camp-comfort-compact {
+    margin-top: 0.35rem;
+    margin-bottom: 0.5rem;
+}
+.ionrift-respite-app .campfire-canvas-drawer {
+    border-radius: 10px;
+    border: 1px solid rgba(196, 181, 253, 0.3);
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.6rem 0.65rem;
+}
+.ionrift-respite-app .campfire-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.4rem;
+}
+.ionrift-respite-app .btn-icon-dim {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    padding: 0.2rem 0.35rem;
+    border-radius: 4px;
+}
+.ionrift-respite-app .btn-icon-dim:hover {
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.06);
+}
+.ionrift-respite-app .camp-minimal-action {
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    justify-content: center;
+}
+.ionrift-respite-app.ionrift-camp-dock .camp-minimal-action {
+    margin-top: 0.35rem;
+    padding: 0.3rem 0.35rem;
+    font-size: 0.75rem;
+}
+
+/* Station dialog: personal camp gear at campfire */
+.ionrift-station-dialog .station-camp-gear {
+    border-radius: 8px;
+    border: 1px solid rgba(196, 181, 253, 0.22);
+    padding: 0.45rem 0.5rem 0.55rem;
+    margin: 0.4rem 0 0.5rem;
+}
+.ionrift-station-dialog .station-camp-gear-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.88);
+    margin-bottom: 0.2rem;
+}
+.ionrift-station-dialog .station-camp-gear-hint {
+    font-size: 0.7rem;
+    color: rgba(200, 200, 220, 0.75);
+    margin: 0 0 0.35rem;
+}
+.ionrift-station-dialog .station-camp-gear-slots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+.ionrift-station-dialog .station-camp-gear-slots .camp-gear-placeable-wrap {
+    min-width: 4.5rem;
+}
+
+/* Map-anchored Campfire dialog (ApplicationV2; not inside .ionrift-respite-app) */
+.application.ionrift-campfire-map-dialog .window-content {
+    padding: 0.7rem 0.85rem 0.8rem;
+}
+.application.ionrift-campfire-map-dialog .campfire-canvas-drawer {
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+}
+.campfire-map-dialog .campfire-canvas-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+.campfire-map-comfort {
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.22);
+    overflow: hidden;
+}
+.campfire-map-comfort-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0.55rem 0.3rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.camp-comfort-header-inline {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.55);
+}
+.campfire-map-comfort .campfire-map-comfort-line,
+.campfire-map-comfort .camp-comfort-reason.campfire-map-comfort-line {
+    margin: 0;
+    padding: 0.35rem 0.55rem 0.45rem;
+    font-style: normal;
+    color: rgba(220, 215, 235, 0.88);
+    font-size: 0.68rem;
+    line-height: 1.4;
+}
+.campfire-map-section-title {
+    margin: 0 0 0.35rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(200, 195, 220, 0.85);
+}
+.campfire-map-tier-footnote {
+    margin: 0.4rem 0 0;
+    font-size: 0.6rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.38);
+}
+.campfire-map-encounter-preview {
+    margin: 0;
+}
+.campfire-map-pledges {
+    margin: 0.2rem 0 0.15rem;
+}
+.campfire-map-dialog .camp-fire-flavor {
+    margin: 0.15rem 0 0.25rem;
+    font-size: 0.62rem;
+    line-height: 1.4;
+    color: rgba(230, 150, 50, 0.55);
+}
+.application.ionrift-campfire-map-dialog .camp-fuel-controls {
+    margin-top: 0.15rem;
+    padding-bottom: 0.1rem;
+}
+.application.ionrift-campfire-map-dialog .camp-fire-step1-lit {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+.application.ionrift-campfire-map-dialog .camp-fire-tier-label {
+    font-size: 0.66rem;
+}
+.application.ionrift-campfire-map-dialog .camp-fire-tier-body {
+    font-size: 0.56rem;
+}
+.application.ionrift-campfire-map-dialog .camp-fire-tier-comfort {
+    font-size: 0.54rem;
+}
+.application.ionrift-campfire-map-dialog .camp-fire-tier-cost {
+    font-size: 0.58rem;
+}
+
+/* Wider lighting menu fits all four tiers on a single row, matching the TotM picker. */
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.4rem;
+}
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip .camp-fire-tier-card .camp-fire-tier-body {
+    line-height: 1.32;
+}
+
+/* Lighting menu: tiers are a live picker, not a read-only display. Override the
+   read-only .camp-fire-tier-strip rule (pointer-events:none, dimmed) so the table
+   can click a tier, preview its comfort, and light at that level in one motion. */
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip .camp-fire-tier-card {
+    pointer-events: auto;
+    cursor: pointer;
+    opacity: 0.85;
+    text-align: left;
+    transition: opacity 0.12s, border-color 0.12s, box-shadow 0.12s, background 0.12s;
+}
+
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip .camp-fire-tier-card:hover {
+    opacity: 1;
+    border-color: rgba(251, 191, 36, 0.55);
+    background: rgba(251, 191, 36, 0.06);
+}
+
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip .camp-fire-tier-card.active,
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip .camp-fire-tier-card.selected {
+    opacity: 1;
+    border-color: rgba(251, 191, 36, 0.9);
+    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.5), 0 0 14px rgba(251, 191, 36, 0.22);
+    background: rgba(251, 191, 36, 0.1);
+}
+
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip .camp-fire-tier-card.cold-camp.active,
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip .camp-fire-tier-card.cold-camp.selected {
+    border-color: rgba(129, 178, 255, 0.85);
+    box-shadow: 0 0 0 1px rgba(129, 178, 255, 0.45), 0 0 14px rgba(129, 178, 255, 0.2);
+    background: rgba(129, 178, 255, 0.1);
+}
+
+.application.ionrift-campfire-map-dialog .camp-fire-tier-strip .camp-fire-tier-card:focus-visible {
+    outline: 2px solid rgba(251, 191, 36, 0.7);
+    outline-offset: 2px;
+}
+
+/* Lighting menu: personal rest outcome, color-coded, updates as tiers are previewed. */
+.application.ionrift-campfire-map-dialog .campfire-map-rest {
+    margin-top: 0.4rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.22);
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.2rem;
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest-label {
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.5);
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest .recovery-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    font-size: 0.62rem;
+    line-height: 1.35;
+    color: rgba(220, 215, 235, 0.9);
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest .recovery-line i {
+    margin-top: 0.08rem;
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest .recovery-line.success {
+    color: rgba(134, 239, 172, 0.95);
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest .recovery-line.success i {
+    color: rgba(134, 239, 172, 0.9);
+    opacity: 0.95;
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest .recovery-line.warning {
+    color: rgba(251, 191, 36, 0.95);
+    background: rgba(251, 191, 36, 0.06);
+    border-left: 2px solid rgba(251, 191, 36, 0.4);
+    border-radius: 4px;
+    padding: 0.15rem 0.35rem;
+    margin: 0.05rem -0.35rem 0;
+    font-weight: 600;
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest .recovery-line.warning i {
+    color: rgba(251, 191, 36, 0.9);
+    opacity: 0.95;
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest .recovery-line.danger {
+    color: rgba(220, 70, 60, 0.95);
+    background: rgba(220, 70, 60, 0.08);
+    border-left: 2px solid rgba(220, 70, 60, 0.5);
+    border-radius: 4px;
+    padding: 0.15rem 0.35rem;
+    margin: 0.05rem -0.35rem 0;
+    font-weight: 600;
+}
+.application.ionrift-campfire-map-dialog .campfire-map-rest .recovery-line.danger i {
+    color: rgba(220, 70, 60, 0.95);
+    opacity: 0.95;
+}
+
+/* Cold camp confirmation: the no-fire counterpart to the tinderbox light button. */
+.application.ionrift-campfire-map-dialog .camp-cold-confirm-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.application.ionrift-campfire-map-dialog .camp-fire-cold-note {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+    color: rgba(150, 185, 235, 0.85);
+}
+.application.ionrift-campfire-map-dialog .camp-fire-cold-note i {
+    color: rgba(129, 178, 255, 0.9);
+}
+.application.ionrift-campfire-map-dialog .camp-cold-confirm-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.7rem;
+    border-radius: 6px;
+    border: 1px solid rgba(129, 178, 255, 0.45);
+    background: rgba(129, 178, 255, 0.12);
+    color: rgba(220, 232, 255, 0.95);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.application.ionrift-campfire-map-dialog .camp-cold-confirm-btn:hover {
+    border-color: rgba(129, 178, 255, 0.8);
+    background: rgba(129, 178, 255, 0.2);
+    box-shadow: 0 0 12px rgba(129, 178, 255, 0.25);
+}
+.application.ionrift-campfire-map-dialog .camp-cold-confirm-btn i {
+    color: rgba(150, 195, 255, 0.95);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CRAFTING RESULT HERO PANEL
+   ═══════════════════════════════════════════════════════════════════ */
+
+.crafting-result-hero {
+    padding: 1.2rem 1rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.3);
+    text-align: center;
+}
+
+.crafting-result-hero.result-success {
+    border-left: 3px solid rgba(74, 222, 128, 0.6);
+    background: linear-gradient(135deg, rgba(74, 222, 128, 0.04), rgba(0, 0, 0, 0.3));
+}
+
+.crafting-result-hero.result-failure {
+    border-left: 3px solid rgba(248, 113, 113, 0.6);
+    background: linear-gradient(135deg, rgba(248, 113, 113, 0.04), rgba(0, 0, 0, 0.3));
+}
+
+/* Hero Section */
+.craft-result-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 0.75rem;
+}
+
+.craft-result-icon-wrap {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.craft-result-icon-wrap.glow-success {
+    background: radial-gradient(circle, rgba(74, 222, 128, 0.15) 0%, transparent 70%);
+    box-shadow: 0 0 30px rgba(74, 222, 128, 0.2), 0 0 60px rgba(74, 222, 128, 0.06);
+}
+
+.craft-result-icon-wrap.glow-failure {
+    background: radial-gradient(circle, rgba(248, 113, 113, 0.12) 0%, transparent 70%);
+    box-shadow: 0 0 30px rgba(248, 113, 113, 0.15), 0 0 60px rgba(248, 113, 113, 0.05);
+}
+
+.craft-result-icon {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    border-radius: 6px;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+.craft-result-fail-icon {
+    font-size: 2rem;
+    color: rgba(248, 113, 113, 0.6);
+}
+
+.craft-result-item-name {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.92);
+    letter-spacing: 0.01em;
+}
+
+.craft-result-qty {
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.9rem;
+}
+
+/* Success / Failure Badge */
+.craft-result-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.craft-result-badge.badge-success {
+    background: rgba(74, 222, 128, 0.12);
+    border: 1px solid rgba(74, 222, 128, 0.35);
+    color: rgba(74, 222, 128, 0.95);
+    box-shadow: 0 0 12px rgba(74, 222, 128, 0.15);
+}
+
+.craft-result-badge.badge-failure {
+    background: rgba(248, 113, 113, 0.10);
+    border: 1px solid rgba(248, 113, 113, 0.30);
+    color: rgba(248, 113, 113, 0.90);
+    box-shadow: 0 0 12px rgba(248, 113, 113, 0.12);
+}
+
+/* Divider */
+.craft-result-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+    margin: 0.1rem 1rem;
+}
+
+/* Detail Rows */
+.craft-result-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.75rem 1rem 0.25rem;
+}
+
+.craft-result-detail-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.craft-result-detail-row i {
+    width: 1rem;
+    text-align: center;
+    font-size: 0.7rem;
+    opacity: 0.5;
+}
+
+.craft-result-detail-row strong {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.craft-result-detail-row.narrative {
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.craft-result-detail-row.consumed {
+    color: rgba(255, 180, 100, 0.7);
+}
+
+.craft-result-detail-row.consumed i {
+    color: rgba(255, 150, 50, 0.6);
+    opacity: 1;
+}
+
+.craft-result-detail-row.preserved {
+    color: rgba(100, 200, 150, 0.7);
+}
+
+.craft-result-detail-row.preserved i {
+    color: rgba(100, 200, 150, 0.6);
+    opacity: 1;
+}
+
+/* ---- Panel Headings (Rations tab) ---- */
+.meal-panel-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 0 0.15rem 0.3rem;
+    margin-bottom: 0.15rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    width: 100%;
+    box-sizing: border-box;
+}
+.meal-panel-heading i { font-size: 0.55rem; }
+.food-panel .meal-panel-heading {
+    color: rgba(255, 200, 80, 0.55);
+    border-bottom-color: rgba(255, 200, 80, 0.08);
+}
+.water-panel .meal-panel-heading {
+    color: rgba(100, 180, 255, 0.55);
+    border-bottom-color: rgba(100, 180, 255, 0.08);
+}
+
+/* ---- Panel Dividers (between drop zone and inventory) ---- */
+.meal-panel-divider {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.06) 20%,
+        rgba(255, 255, 255, 0.1) 50%,
+        rgba(255, 255, 255, 0.06) 80%,
+        transparent 100%
+    );
+    margin: 0.3rem 0 0.15rem;
+}
+.food-panel .meal-panel-divider {
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 200, 80, 0.06) 20%,
+        rgba(255, 200, 80, 0.12) 50%,
+        rgba(255, 200, 80, 0.06) 80%,
+        transparent 100%
+    );
+}
+.water-panel .meal-panel-divider {
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(100, 180, 255, 0.06) 20%,
+        rgba(100, 180, 255, 0.12) 50%,
+        rgba(100, 180, 255, 0.06) 80%,
+        transparent 100%
+    );
+}
+
+/* ---- Panel Inner Ambience ---- */
+.ionrift-station-dialog .station-meal-embed .meal-panel {
+    position: relative;
+    overflow: hidden;
+}
+.ionrift-station-dialog .station-meal-embed .food-panel {
+    background: linear-gradient(180deg, rgba(255, 200, 80, 0.03) 0%, rgba(255, 200, 80, 0.01) 40%, rgba(255, 255, 255, 0.02) 100%);
+}
+.ionrift-station-dialog .station-meal-embed .water-panel {
+    background: linear-gradient(180deg, rgba(100, 180, 255, 0.03) 0%, rgba(100, 180, 255, 0.01) 40%, rgba(255, 255, 255, 0.02) 100%);
+}
+
+/* ---- Single-Item Centering (sparse water tray) ---- */
+.water-tray.meal-inventory-grid {
+    justify-items: center;
+}
+.water-tray .meal-inv-card:only-child {
+    grid-column: 1 / -1;
+    max-width: 110px;
+}
+
+/* ---- Horizontal drop zone header (Rations tab) ---- */
+.meal-drop-header-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem;
+}
+.meal-drop-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+.meal-drop-item-name {
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+}
+.meal-drop-item-qty {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+.meal-drop-hint-text {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+}
+
+/* ---- Feast Success Screen ---- */
+.feast-roster-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0;
+}
+.feast-roster-portraits {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.feast-portrait {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: visible;
+}
+.feast-portrait-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid transparent;
+}
+.feast-portrait.will-eat .feast-portrait-img {
+    border-color: #FFC850;
+    box-shadow: 0 0 6px rgba(255, 200, 80, 0.4);
+}
+.feast-portrait.already-fed .feast-portrait-img {
+    border-color: rgba(100, 255, 150, 0.5);
+    filter: brightness(0.7);
+}
+.feast-portrait-badge {
+    position: absolute;
+    bottom: -3px;
+    right: -3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.5rem;
+}
+.feast-portrait.will-eat .feast-portrait-badge {
+    background: #FFC850;
+    color: #1a1a2e;
+}
+.feast-portrait.already-fed .feast-portrait-badge {
+    background: rgba(100, 255, 150, 0.6);
+    color: #1a1a2e;
+}
+.feast-roster-label {
+    font-size: 0.72rem;
+    color: #FFC850;
+    font-weight: 600;
+}
+
+/* ---- Feast footer actions ---- */
+.feast-footer-actions {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem 0.25rem;
+    justify-content: stretch;
+}
+.feast-keep-btn {
+    flex: 1;
+}
+.btn-feast-serve {
+    flex: 1;
+    background: linear-gradient(135deg, #FFC850 0%, #e6a830 100%);
+    color: #1a1a2e;
+    font-weight: 700;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: 0 0 12px rgba(255, 200, 80, 0.3);
+}
+.btn-feast-serve:hover {
+    background: linear-gradient(135deg, #FFD870 0%, #FFC850 100%);
+    box-shadow: 0 0 18px rgba(255, 200, 80, 0.5);
+    transform: translateY(-1px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PLAYER LOCKDOWN: Quantity & Attunement restrictions
+   Applied via .respite-lock-quantity / .respite-lock-attune classes
+   injected by PlayerLockdownService on actor sheet render.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Quantity Lock: dnd5e sheet ─────────────────────────────────── */
+/* Hide the +/- adjustment buttons entirely */
+.respite-lock-quantity .item-quantity .adjustment-button {
+    display: none !important;
+}
+/* Make the quantity input read-only in appearance */
+.respite-lock-quantity .item-quantity input[data-name="system.quantity"] {
+    pointer-events: none !important;
+    background: transparent;
+    border-color: transparent;
+    cursor: default;
+    opacity: 0.7;
+}
+
+/* ── Quantity Lock: tidy5e sheet ─────────────────────────────────── */
+.respite-lock-quantity .item-quantity input.item-count,
+.respite-lock-quantity input.item-count[data-path="data.quantity"] {
+    pointer-events: none !important;
+    background: transparent;
+    border-color: transparent;
+    cursor: default;
+    opacity: 0.7;
+}
+
+/* ── Attunement Lock: dnd5e sheet ───────────────────────────────── */
+.respite-lock-attune [data-action="attune"] {
+    pointer-events: none !important;
+    opacity: 0.3;
+    cursor: not-allowed;
+    filter: grayscale(0.6);
+}
+
+/* ── Attunement Lock: tidy5e sheet ──────────────────────────────── */
+.respite-lock-attune .item-attunement {
+    pointer-events: none !important;
+    opacity: 0.3;
+    cursor: not-allowed;
+    filter: grayscale(0.6);
+}

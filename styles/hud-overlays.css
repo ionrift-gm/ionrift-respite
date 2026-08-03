@@ -1,0 +1,467 @@
+/* Respite: hud-overlays.css. Loaded via module.json after crafting-stations.css; before campfire.css. Do not reorder. */
+/* ============================================================
+   REJOIN BAR (player closed rest window while rest is active)
+   ============================================================ */
+
+#respite-rejoin-bar {
+    position: fixed;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 1rem;
+    background: rgba(20, 22, 30, 0.9);
+    border: 1px solid rgba(126, 184, 218, 0.3);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.85rem;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+#respite-rejoin-bar i {
+    color: #f0c040;
+}
+
+#respite-rejoin-btn {
+    padding: 0.25rem 0.75rem;
+    background: rgba(126, 184, 218, 0.2);
+    border: 1px solid rgba(126, 184, 218, 0.4);
+    border-radius: 4px;
+    color: #7eb8da;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background 0.2s;
+}
+
+#respite-rejoin-btn:hover {
+    background: rgba(126, 184, 218, 0.35);
+}
+
+/* Short Rest rejoin bar (player closed window, rest still active) */
+#respite-short-rest-rejoin-bar {
+    position: fixed;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 1rem;
+    background: rgba(20, 22, 30, 0.9);
+    border: 1px solid rgba(224, 160, 64, 0.35);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.85rem;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    animation: prep-fade-in 0.4s ease-out;
+}
+
+#respite-short-rest-rejoin-bar i {
+    color: #e0a040;
+}
+
+#respite-short-rest-rejoin-btn {
+    padding: 0.25rem 0.75rem;
+    background: rgba(224, 160, 64, 0.15);
+    border: 1px solid rgba(224, 160, 64, 0.4);
+    border-radius: 4px;
+    color: #e0a040;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background 0.2s;
+}
+
+#respite-short-rest-rejoin-btn:hover {
+    background: rgba(224, 160, 64, 0.3);
+}
+
+#respite-prep-bar {
+    position: fixed;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 1rem;
+    background: rgba(20, 22, 30, 0.9);
+    border: 1px solid rgba(180, 140, 255, 0.25);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    animation: prep-fade-in 0.4s ease-out;
+}
+#respite-prep-bar i {
+    color: rgba(240, 192, 64, 0.8);
+    animation: prep-pulse 2s ease-in-out infinite;
+}
+@keyframes prep-fade-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes prep-pulse {
+    0%, 100% { opacity: 0.6; }
+    50%      { opacity: 1; }
+}
+
+/* ============================================================
+   GM REST INDICATOR BAR
+   Shown when GM closes the rest window while a rest is still active.
+   ============================================================ */
+
+#respite-gm-rest-bar {
+    position: fixed;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 1rem;
+    background: rgba(20, 22, 30, 0.92);
+    border: 1px solid rgba(240, 192, 64, 0.4);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.85rem;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    animation: prep-fade-in 0.4s ease-out;
+}
+
+#respite-gm-rest-bar i {
+    color: #f0c040;
+    animation: prep-pulse 2s ease-in-out infinite;
+}
+
+#respite-gm-resume-btn {
+    padding: 0.25rem 0.75rem;
+    background: rgba(240, 192, 64, 0.15);
+    border: 1px solid rgba(240, 192, 64, 0.4);
+    border-radius: 4px;
+    color: #f0c040;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background 0.2s;
+}
+
+#respite-gm-resume-btn:hover {
+    background: rgba(240, 192, 64, 0.3);
+}
+
+/* Resume button: all activity tasks complete */
+@keyframes respite-resume-ready-pulse {
+    0%, 100% {
+        box-shadow: 0 0 4px rgba(240, 192, 64, 0.25);
+        border-color: rgba(240, 192, 64, 0.45);
+    }
+    50% {
+        box-shadow: 0 0 14px rgba(240, 192, 64, 0.7), 0 0 5px rgba(240, 192, 64, 0.35);
+        border-color: rgba(240, 192, 64, 0.95);
+        background: rgba(240, 192, 64, 0.28);
+    }
+}
+
+.respite-resume-ready {
+    animation: respite-resume-ready-pulse 1.6s ease-in-out infinite;
+}
+
+/* GM short rest indicator bar (short rest window closed, rest still active) */
+#respite-gm-short-rest-bar {
+    position: fixed;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 1rem;
+    background: rgba(20, 22, 30, 0.92);
+    border: 1px solid rgba(224, 160, 64, 0.4);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.85rem;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    animation: prep-fade-in 0.4s ease-out;
+}
+
+#respite-gm-short-rest-bar i {
+    color: #e0a040;
+    animation: prep-pulse 2s ease-in-out infinite;
+}
+
+#respite-gm-short-rest-resume-btn {
+    padding: 0.25rem 0.75rem;
+    background: rgba(224, 160, 64, 0.15);
+    border: 1px solid rgba(224, 160, 64, 0.4);
+    border-radius: 4px;
+    color: #e0a040;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background 0.2s;
+}
+
+#respite-gm-short-rest-resume-btn:hover {
+    background: rgba(224, 160, 64, 0.3);
+}
+
+/* ============================================================
+   ROLL FOR EVENTS BUTTON
+   ============================================================ */
+
+.btn-roll-events {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 4px rgba(240, 192, 64, 0.2); }
+    50% { box-shadow: 0 0 12px rgba(240, 192, 64, 0.5); }
+}
+
+.event-roll-prompt .event-description {
+    display: none;
+}
+
+/* Night Watch card: neutral outline border (no accent stripe) */
+.respite-event-card.event-roll-prompt {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+/* ---- Collapsible Encounter Threshold ---- */
+.encounter-details {
+    margin-top: 0.3rem;
+    border-radius: 6px;
+    background: rgba(155, 89, 182, 0.08);
+    border: 1px solid rgba(155, 89, 182, 0.2);
+    overflow: hidden;
+}
+
+.encounter-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    transition: background 0.15s ease;
+}
+
+.encounter-summary::-webkit-details-marker {
+    display: none;
+}
+
+.encounter-summary:hover {
+    background: rgba(155, 89, 182, 0.12);
+}
+
+.encounter-summary-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.45rem;
+    background: rgba(155, 89, 182, 0.25);
+    border: 1px solid rgba(155, 89, 182, 0.4);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--ionrift-accent, #9b59b6);
+    white-space: nowrap;
+}
+
+.encounter-summary-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    flex: 1;
+}
+
+.encounter-chevron {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.35);
+    transition: transform 0.2s ease;
+}
+
+.encounter-details[open] .encounter-chevron {
+    transform: rotate(180deg);
+}
+
+.encounter-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.3rem 0.5rem 0.4rem;
+    border-top: 1px solid rgba(155, 89, 182, 0.15);
+}
+
+/* Compact encounter threshold strip inside event-roll-prompt */
+.event-roll-prompt .event-check-header {
+    padding: 0.25rem 0.4rem;
+    margin-top: 0.2rem;
+    margin-bottom: 0.15rem;
+    gap: 0.4rem;
+    flex-wrap: nowrap;
+}
+.event-roll-prompt .event-dc-badge {
+    min-width: auto;
+    padding: 0.15rem 0.3rem;
+    flex-direction: row;
+    gap: 0.2rem;
+}
+.event-roll-prompt .event-dc-badge .dc-label {
+    font-size: 0.6rem;
+}
+.event-roll-prompt .event-dc-badge .dc-value {
+    font-size: 0.9rem;
+}
+.event-roll-prompt .event-check-info .check-skill-name {
+    font-size: 0.8rem;
+}
+.event-roll-prompt .event-outcome-advisory {
+    font-size: 0.65rem;
+}
+
+/* ============================================================
+   ENCOUNTER GATE (Combat Acknowledgment)
+   ============================================================ */
+
+.encounter-gate {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.encounter-instructions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(220, 120, 40, 0.15);
+    border: 1px solid rgba(220, 120, 40, 0.35);
+    border-radius: 4px;
+    color: rgba(255, 200, 120, 0.9);
+    font-size: 0.82rem;
+}
+
+.encounter-instructions i {
+    color: #dc7828;
+    flex-shrink: 0;
+}
+
+.btn-acknowledge-encounter {
+    background: rgba(220, 120, 40, 0.2) !important;
+    border-color: rgba(220, 120, 40, 0.5) !important;
+    color: #f0a848 !important;
+}
+
+.btn-acknowledge-encounter:hover {
+    background: rgba(220, 120, 40, 0.35) !important;
+}
+
+.btn-combat-pending {
+    opacity: 0.7;
+    animation: combat-pulse 2s ease-in-out infinite;
+}
+
+@keyframes combat-pulse {
+    0%, 100% { border-color: rgba(220, 120, 40, 0.3); }
+    50%      { border-color: rgba(220, 120, 40, 0.7); }
+}
+
+.combat-hint {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.45);
+    text-align: center;
+}
+
+/* ---- Combat Readiness Report ---- */
+
+.combat-readiness-report {
+    border-left: 3px solid rgba(126, 184, 218, 0.5);
+    background: rgba(126, 184, 218, 0.06);
+    border-radius: 0 4px 4px 0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.combat-readiness-header {
+    font-weight: 600;
+    color: #7eb8da;
+    font-size: 0.82rem;
+    margin-bottom: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.combat-readiness-header i {
+    font-size: 0.75rem;
+}
+
+.combat-readiness-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.combat-buff-entry {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding: 0.15rem 0;
+    line-height: 1.3;
+}
+
+.combat-buff-name {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    white-space: nowrap;
+}
+
+.combat-buff-activity {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.4);
+    white-space: nowrap;
+}
+
+.combat-buff-summary {
+    color: rgba(126, 184, 218, 0.9);
+    font-size: 0.78rem;
+}
+
+.combat-readiness-party {
+    margin-top: 0.35rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-style: italic;
+    color: rgba(240, 192, 64, 0.8);
+    font-size: 0.78rem;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.combat-readiness-party i {
+    font-size: 0.7rem;
+    color: rgba(240, 192, 64, 0.6);
+}
+
+.combat-readiness-none {
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 0.78rem;
+}

@@ -1,0 +1,966 @@
+/* Respite: pack-registry.css. Loaded via module.json after campfire.css; before party-roster.css. Do not reorder. */
+/* ============================================================
+   PACK REGISTRY
+   ============================================================ */
+
+/* Foundry ApplicationV2 overrides: kill red/warm color bleed */
+#respite-pack-registry {
+    --color-shadow-primary: rgba(0, 0, 0, 0.5) !important;
+    --color-border-highlight-alt: rgba(155, 89, 182, 0.3) !important;
+    --color-warm-2: rgba(155, 89, 182, 0.6) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.6) !important;
+}
+
+#respite-pack-registry *:focus,
+#respite-pack-registry *:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+#respite-pack-registry .window-body,
+#respite-pack-registry .window-content,
+.application#respite-pack-registry .window-body {
+    overflow-y: hidden !important;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.respite-pack-registry {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-height: 0;
+    flex: 1;
+}
+
+/* ---- Summary Bar ---- */
+
+.pack-summary-bar {
+    display: flex;
+    justify-content: space-around;
+    padding: 0.6rem 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    margin-bottom: 0.25rem;
+}
+
+.pack-summary-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+}
+
+.pack-summary-stat .stat-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1;
+}
+
+.pack-summary-stat .stat-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+/* ---- Pack Card ---- */
+
+.pack-card {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    transition: border-color 0.2s ease, opacity 0.3s ease;
+}
+
+.pack-card:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.pack-card.enabled {
+    border-color: rgba(155, 89, 182, 0.25);
+}
+
+.pack-card.disabled {
+    opacity: 0.5;
+    pointer-events: all; /* Override Foundry core .disabled rule so toggle remains clickable */
+}
+
+.pack-card.disabled:hover {
+    opacity: 0.7;
+}
+
+/* ---- Card Header ---- */
+
+.pack-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.65rem;
+}
+
+/* Custom toggle switch */
+.pack-toggle-label {
+    position: relative;
+    display: inline-block;
+    width: 34px;
+    height: 18px;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.pack-toggle-input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.pack-toggle-switch {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    transition: background 0.25s ease;
+}
+
+.pack-toggle-switch::after {
+    content: "";
+    position: absolute;
+    left: 2px;
+    top: 2px;
+    width: 14px;
+    height: 14px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    transition: transform 0.25s ease, background 0.25s ease;
+}
+
+.pack-toggle-input:checked + .pack-toggle-switch {
+    background: rgba(155, 89, 182, 0.35);
+}
+
+.pack-toggle-input:checked + .pack-toggle-switch::after {
+    transform: translateX(16px);
+    background: var(--ionrift-accent, #9b59b6);
+    box-shadow: 0 0 6px rgba(155, 89, 182, 0.4);
+}
+
+.pack-toggle-input:disabled + .pack-toggle-switch {
+    cursor: not-allowed;
+}
+
+.pack-toggle-input:disabled:checked + .pack-toggle-switch {
+    background: rgba(100, 200, 120, 0.2);
+}
+
+.pack-toggle-input:disabled:checked + .pack-toggle-switch::after {
+    background: rgba(100, 200, 120, 0.7);
+    box-shadow: 0 0 4px rgba(100, 200, 120, 0.3);
+}
+
+/* Title block */
+.pack-title-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.pack-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.pack-title i {
+    font-size: 0.7rem;
+    color: var(--ionrift-accent, #9b59b6);
+    opacity: 0.7;
+}
+
+.pack-desc {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.4);
+    line-height: 1.3;
+    font-style: italic;
+}
+
+.pack-version {
+    font-style: normal;
+    font-size: 0.58rem;
+    color: rgba(155, 89, 182, 0.5);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+/* Event count badge */
+.pack-event-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 22px;
+    padding: 0 0.4rem;
+    border-radius: 12px;
+    background: rgba(155, 89, 182, 0.12);
+    color: rgba(155, 89, 182, 0.8);
+    font-size: 0.72rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.pack-card.disabled .pack-event-count {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* ---- Card Body ---- */
+
+.pack-card-body {
+    padding: 0.25rem 0.65rem 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+/* Terrain badges */
+.pack-terrain-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.pack-terrain-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.12rem 0.45rem;
+    border-radius: 10px;
+    font-size: 0.65rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.55);
+    text-transform: capitalize;
+}
+
+.pack-terrain-badge i {
+    font-size: 0.55rem;
+    opacity: 0.6;
+}
+
+.pack-terrain-badge em {
+    font-style: normal;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+    margin-left: 0.1rem;
+}
+
+/* Disaster tier badge */
+.pack-tier-badge.disaster {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.12rem 0.45rem;
+    border-radius: 10px;
+    font-size: 0.6rem;
+    background: rgba(220, 70, 70, 0.1);
+    border: 1px solid rgba(220, 70, 70, 0.2);
+    color: rgba(220, 90, 90, 0.8);
+}
+
+.pack-tier-badge.disaster i {
+    font-size: 0.55rem;
+}
+
+/* Lock label (base pack) */
+.pack-lock-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.6rem;
+    color: rgba(100, 200, 120, 0.5);
+    margin-left: auto;
+}
+
+.pack-lock-label i {
+    font-size: 0.55rem;
+}
+
+/* ---- Pack Links (in footer) ---- */
+
+.pack-links {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    padding: 0.4rem 0;
+}
+
+.pack-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: rgba(180, 140, 255, 0.65);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.pack-links a:hover {
+    color: rgba(180, 140, 255, 1);
+}
+
+.pack-links a i {
+    font-size: 0.65rem;
+}
+
+/* ---- Actions (sticky footer) ---- */
+
+.pack-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 0.5rem 0 0;
+    margin-top: auto;
+    flex-shrink: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pack-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 1rem;
+    border-radius: 6px !important;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    line-height: 1;
+    /* Kill Foundry default red button bleed */
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+.pack-actions button:focus,
+.pack-actions button:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.pack-actions button i {
+    font-size: 0.7rem;
+}
+
+.pack-import-btn {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.pack-import-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.22);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.pack-save-btn {
+    border: 1px solid rgba(155, 89, 182, 0.35);
+    background: rgba(155, 89, 182, 0.15);
+    color: rgba(155, 89, 182, 0.9);
+}
+
+.pack-save-btn:hover {
+    background: rgba(155, 89, 182, 0.25);
+    border-color: rgba(155, 89, 182, 0.5);
+    box-shadow: 0 0 10px rgba(155, 89, 182, 0.15);
+}
+
+/* ---- Section Headers & Dividers ---- */
+
+.pack-section-header {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.35);
+    padding: 0.15rem 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.pack-section-header i {
+    font-size: 0.6rem;
+    color: var(--ionrift-accent, #9b59b6);
+    opacity: 0.5;
+}
+
+.pack-section-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.06);
+    margin: 0.25rem 0;
+}
+
+/* ---- Recipe Badges (profession packs) ---- */
+
+.pack-recipe-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.pack-recipe-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.12rem 0.45rem;
+    border-radius: 10px;
+    font-size: 0.63rem;
+    background: rgba(180, 140, 255, 0.06);
+    border: 1px solid rgba(180, 140, 255, 0.12);
+    color: rgba(180, 140, 255, 0.6);
+}
+
+.pack-recipe-badge i {
+    font-size: 0.5rem;
+    opacity: 0.5;
+}
+
+/* ---- Tab Bar ---- */
+
+.pack-tab-bar {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pack-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-bottom: 2px solid transparent !important;
+    border-radius: 6px 6px 0 0;
+    background: rgba(255, 255, 255, 0.04) !important;
+    color: rgba(255, 255, 255, 0.55) !important;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.pack-tab:hover {
+    background: rgba(0, 0, 0, 0.25) !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.pack-tab:focus,
+.pack-tab:focus-visible,
+.pack-tab:active {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.pack-tab.active {
+    background: rgba(155, 89, 182, 0.1) !important;
+    border-bottom-color: var(--ionrift-accent, #9b59b6) !important;
+    color: rgba(255, 255, 255, 0.85) !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.pack-tab i {
+    font-size: 0.7rem;
+}
+
+/* Amber count badge inside the Event Packs tab when updates are pending */
+.pack-tab-update-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 16px;
+    padding: 0 5px;
+    border-radius: 8px;
+    background: rgba(251, 191, 36, 0.2);
+    border: 1px solid rgba(251, 191, 36, 0.45);
+    color: #fbbf24;
+    font-size: 0.65rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* Update Now button hover override */
+.pack-update-now-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    background: rgba(251, 191, 36, 0.2);
+    border: 1px solid rgba(251, 191, 36, 0.6);
+    color: #fbbf24;
+    font-size: 0.75em;
+    font-weight: 600;
+    transition: background 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+    line-height: 1.3;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+.pack-update-now-btn:hover:not(:disabled) {
+    background: rgba(251, 191, 36, 0.35) !important;
+    border-color: rgba(251, 191, 36, 0.8) !important;
+    box-shadow: 0 0 8px rgba(251, 191, 36, 0.2) !important;
+}
+
+.pack-update-now-btn:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+
+/* ---- Updates Available Banner ---- */
+
+.pack-updates-banner {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.5rem 0.6rem;
+    background: rgba(251, 191, 36, 0.05);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    border-radius: 8px;
+    margin-bottom: 0.3rem;
+}
+
+.pack-updates-header {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #fbbf24;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.pack-updates-header i {
+    font-size: 0.65rem;
+}
+
+.pack-update-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    background: rgba(251, 191, 36, 0.06);
+    border: 1px solid rgba(251, 191, 36, 0.12);
+    border-radius: 6px;
+}
+
+.pack-update-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    min-width: 0;
+}
+
+.pack-update-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.pack-update-version {
+    font-size: 0.68rem;
+    color: rgba(251, 191, 36, 0.65);
+}
+
+/* Tier requirement label (shown when user tier is insufficient or not connected) */
+.pack-update-tier-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.73em;
+    font-weight: 500;
+    flex-shrink: 0;
+    line-height: 1.3;
+    cursor: default;
+}
+
+.pack-update-tier-label i {
+    font-size: 0.8em;
+    opacity: 0.6;
+}
+
+/* Patreon link variant (clickable, slightly warmer) */
+.pack-update-tier-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 5px;
+    background: rgba(255, 118, 117, 0.06);
+    border: 1px solid rgba(255, 118, 117, 0.2);
+    color: rgba(255, 118, 117, 0.7);
+    font-size: 0.73em;
+    font-weight: 500;
+    flex-shrink: 0;
+    line-height: 1.3;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.pack-update-tier-link:hover {
+    background: rgba(255, 118, 117, 0.12);
+    border-color: rgba(255, 118, 117, 0.35);
+    color: rgba(255, 118, 117, 0.9);
+}
+
+.pack-update-tier-link i {
+    font-size: 0.75em;
+}
+
+/* ---- Tab Panels ---- */
+
+.pack-tab-panel {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.pack-tab-panel.active {
+    display: flex;
+}
+
+/* Scrollable content area within each tab */
+.pack-tab-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-bottom: 0.25rem;
+}
+
+/* ---- Art Status Card ---- */
+
+.art-status-card {
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.art-status-card.active {
+    border-color: rgba(74, 222, 128, 0.25);
+}
+
+.art-status-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    margin-bottom: 0.4rem;
+}
+
+.art-status-card.active .art-status-header i {
+    color: #4ade80;
+}
+
+.art-status-card.inactive .art-status-header i {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.art-status-detail {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.art-path {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 0.7rem;
+    color: rgba(155, 89, 182, 0.7);
+}
+
+.art-hint {
+    font-style: italic;
+}
+
+/* ---- Art Instructions ---- */
+
+.art-instructions {
+    padding: 0.6rem 0.75rem;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.art-instructions p {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.45);
+    margin: 0 0 0.4rem;
+    line-height: 1.4;
+}
+
+.art-instructions p:last-child {
+    margin-bottom: 0;
+    margin-top: 0.4rem;
+}
+
+.art-instructions code {
+    display: block;
+    font-size: 0.68rem;
+    font-family: "Consolas", "Courier New", monospace;
+    color: rgba(167, 139, 250, 0.7);
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.4rem 0.6rem;
+    border-radius: 4px;
+    line-height: 1.6;
+}
+
+/* ---- Art Import Button ---- */
+
+.pack-import-art-btn {
+    border: 1px solid rgba(155, 89, 182, 0.35) !important;
+    background: rgba(155, 89, 182, 0.15) !important;
+    color: rgba(155, 89, 182, 0.9) !important;
+}
+
+.pack-import-art-btn:hover {
+    background: rgba(155, 89, 182, 0.25) !important;
+    border-color: rgba(155, 89, 182, 0.5) !important;
+    box-shadow: 0 0 10px rgba(155, 89, 182, 0.15);
+}
+
+/* ---- Art Pack Nudge Banner ---- */
+.art-nudge-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    background: rgba(30, 30, 40, 0.7);
+    border: 1px solid rgba(180, 142, 173, 0.3);
+    border-radius: 6px;
+    backdrop-filter: blur(6px);
+    font-size: 0.85em;
+    color: #ccc;
+}
+
+.art-nudge-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1 1 auto;
+    min-width: 200px;
+}
+
+.art-nudge-icon {
+    font-size: 1.4em;
+    color: var(--ionrift-purple-light, #b48ead);
+    flex-shrink: 0;
+}
+
+.art-nudge-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.art-nudge-title {
+    font-weight: 600;
+    color: #e0e0e0;
+}
+
+.art-nudge-subtitle {
+    font-size: 0.9em;
+    color: #999;
+}
+
+.art-nudge-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.art-nudge-btn {
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid rgba(180, 142, 173, 0.4);
+    background: rgba(50, 50, 60, 0.6);
+    color: #ccc;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.art-nudge-btn:hover {
+    background: rgba(70, 70, 80, 0.8);
+    border-color: rgba(180, 142, 173, 0.6);
+}
+
+.art-nudge-btn.primary {
+    background: rgba(180, 142, 173, 0.2);
+    border-color: rgba(180, 142, 173, 0.5);
+    color: var(--ionrift-purple-light, #b48ead);
+}
+
+.art-nudge-btn.primary:hover {
+    background: rgba(180, 142, 173, 0.35);
+}
+
+.art-nudge-dismiss {
+    padding: 4px 6px;
+    border: none;
+    background: transparent;
+    color: #777;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: color 0.2s;
+}
+
+.art-nudge-dismiss:hover {
+    color: #bbb;
+}
+
+.art-nudge-suppress {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8em;
+    color: #777;
+    padding-top: 4px;
+    justify-content: flex-end;
+    cursor: pointer;
+}
+
+.art-nudge-suppress input[type="checkbox"] {
+    accent-color: var(--ionrift-purple-light, #b48ead);
+}
+
+/* ---- Art Pack Card Elements ---- */
+
+.art-pack-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.art-pack-badge.installed {
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.25);
+    color: #4ade80;
+}
+
+.art-pack-note {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.4);
+    flex: 1;
+}
+
+.art-uninstall-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px !important;
+    font-size: 0.65rem;
+    cursor: pointer;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    color: rgba(255, 255, 255, 0.2) !important;
+    box-shadow: none !important;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.art-uninstall-btn:hover {
+    background: rgba(248, 113, 113, 0.15) !important;
+    border-color: rgba(248, 113, 113, 0.35) !important;
+    color: #f87171 !important;
+}
+
+/* ---- Art Empty State ---- */
+
+.art-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 1.5rem 1rem;
+    color: rgba(255, 255, 255, 0.3);
+    text-align: center;
+}
+
+.art-empty-state > i {
+    font-size: 2rem;
+    opacity: 0.45;
+}
+
+.art-empty-state p {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.art-empty-state span {
+    font-size: 0.72rem;
+    font-style: italic;
+}
+
+.art-format-hint {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.25);
+    font-style: normal;
+    margin-top: 0.3rem;
+}

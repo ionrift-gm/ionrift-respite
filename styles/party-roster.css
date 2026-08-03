@@ -1,0 +1,1218 @@
+/* Respite: party-roster.css. Loaded via module.json after pack-registry.css; before short-rest.css. Do not reorder. */
+/* ============================================================
+   PARTY ROSTER
+   ============================================================ */
+
+#respite-party-roster .window-body,
+#respite-party-roster .window-content,
+.application#respite-party-roster .window-body {
+    overflow-y: auto !important;
+    overflow-x: hidden;
+}
+
+.respite-party-roster {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-height: 0;
+}
+
+/* Summary bar */
+.roster-summary-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.65rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+}
+
+.roster-summary-count {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.roster-summary-count strong {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.85rem;
+}
+
+.roster-select-actions {
+    display: flex;
+    gap: 0.3rem;
+}
+
+.roster-select-actions button {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.65rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.5);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.roster-select-actions button:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* First-use hint */
+.roster-first-use-hint {
+    padding: 0.4rem 0.6rem;
+    background: rgba(100, 180, 255, 0.06);
+    border: 1px solid rgba(100, 180, 255, 0.15);
+    border-radius: 6px;
+    font-size: 0.7rem;
+    color: rgba(180, 210, 255, 0.7);
+    line-height: 1.4;
+}
+
+.roster-first-use-hint i {
+    margin-right: 0.3rem;
+    color: rgba(100, 180, 255, 0.6);
+}
+
+/* Actor list */
+.roster-actor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-height: 450px;
+    overflow-y: auto;
+}
+
+.roster-actor-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.roster-actor-row:hover {
+    background: rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.roster-actor-row.checked {
+    border-color: rgba(155, 89, 182, 0.25);
+}
+
+/* Checkbox */
+.roster-actor-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--ionrift-accent, #9b59b6);
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+/* Portrait */
+.roster-actor-portrait {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+
+.roster-actor-row:not(.checked) .roster-actor-portrait {
+    filter: grayscale(0.6);
+    opacity: 0.6;
+}
+
+/* Info block */
+.roster-actor-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.roster-actor-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.roster-actor-row:not(.checked) .roster-actor-name {
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.roster-actor-detail {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.35);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* NEW badge */
+.roster-new-badge {
+    display: inline-block;
+    padding: 0.05rem 0.3rem;
+    font-size: 0.5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: rgba(100, 200, 120, 0.15);
+    border: 1px solid rgba(100, 200, 120, 0.3);
+    border-radius: 3px;
+    color: rgba(100, 200, 120, 0.8);
+}
+
+/* Save button */
+.roster-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 0.4rem;
+}
+
+.roster-save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 1rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    line-height: 1;
+    border: 1px solid rgba(155, 89, 182, 0.35);
+    background: rgba(155, 89, 182, 0.15);
+    color: rgba(155, 89, 182, 0.9);
+}
+
+.roster-save-btn:hover {
+    background: rgba(155, 89, 182, 0.25);
+    border-color: rgba(155, 89, 182, 0.5);
+    box-shadow: 0 0 10px rgba(155, 89, 182, 0.15);
+}
+
+.roster-save-btn i {
+    font-size: 0.7rem;
+}
+
+/* ---- Roster Indicator (Setup Wizard) ---- */
+.roster-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+}
+
+.roster-indicator-portraits {
+    display: flex;
+    align-items: center;
+}
+
+.roster-indicator-portrait {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    margin-left: -4px;
+}
+
+.roster-indicator-portrait:first-child {
+    margin-left: 0;
+}
+
+.roster-indicator-overflow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.5);
+    margin-left: -4px;
+}
+
+.roster-indicator-label {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.45);
+    flex: 1;
+}
+
+.roster-indicator-edit {
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 4px;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.6rem;
+    transition: all 0.15s;
+}
+
+.roster-indicator-edit:hover {
+    background: rgba(155, 89, 182, 0.15);
+    border-color: rgba(155, 89, 182, 0.3);
+    color: rgba(155, 89, 182, 0.8);
+}
+
+/* 
+   MEAL PHASE
+    */
+
+.respite-meal-phase { padding: 0.75rem; }
+
+.meal-phase-header h3 {
+    margin: 0 0 0.35rem;
+    font-size: 1rem;
+    color: rgba(255, 220, 130, 0.9);
+    font-weight: 600;
+}
+
+.meal-terrain-note {
+    font-size: 0.75rem;
+    color: rgba(255, 180, 80, 0.7);
+    margin-bottom: 0.5rem;
+    padding: 0.3rem 0.5rem;
+    background: rgba(255, 180, 80, 0.06);
+    border: 1px solid rgba(255, 180, 80, 0.15);
+    border-radius: 6px;
+}
+
+.meal-terrain-note i { margin-right: 0.3rem; }
+
+/* Station rations: terrain alert + water pool bar */
+.meal-terrain-alert {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    border: 1px solid;
+}
+
+.meal-terrain-alert.terrain-desert {
+    border-color: rgba(251, 191, 36, 0.4);
+    background: rgba(251, 191, 36, 0.08);
+    color: #fbbf24;
+}
+
+.meal-terrain-alert.terrain-arctic {
+    border-color: rgba(96, 165, 250, 0.4);
+    background: rgba(96, 165, 250, 0.08);
+    color: #93c5fd;
+}
+
+.meal-terrain-alert.terrain-extreme {
+    border-color: rgba(248, 113, 113, 0.4);
+    background: rgba(248, 113, 113, 0.08);
+    color: #fca5a5;
+}
+
+.meal-panel-heading--water,
+.meal-panel-heading--food {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 0.35rem;
+}
+
+.meal-panel-heading-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.meal-panel-req-note {
+    margin-left: auto;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-weight: normal;
+}
+
+.water-pool-target {
+    margin: 0 auto 6px;
+}
+
+.water-pool-target.water-pool-target--complete {
+    border-style: solid;
+    border-color: rgba(74, 158, 255, 0.42);
+    background: rgba(74, 158, 255, 0.07);
+    cursor: default;
+}
+
+.water-pool-target.water-pool-target--complete.drop-hover {
+    border-color: rgba(74, 158, 255, 0.42);
+    box-shadow: none;
+}
+
+.water-pool-target .water-pool-complete-icon {
+    font-size: 2rem;
+    color: rgba(96, 165, 250, 0.92);
+    filter: drop-shadow(0 0 6px rgba(74, 158, 255, 0.45));
+}
+
+.water-pool-target.water-pool-target--complete .meal-drop-hint-text {
+    font-size: 0.58rem;
+    color: rgba(147, 197, 253, 0.85);
+}
+
+.water-pool-bar {
+    display: flex;
+    flex-direction: row;
+    align-self: stretch;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    gap: 2px;
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(100, 160, 255, 0.2);
+    margin: 0 0 6px;
+    min-width: 0;
+}
+
+.water-pool-segment {
+    flex: 1 1 0;
+    min-width: 0;
+    background: rgba(100, 160, 255, 0.1);
+    transition: background 0.3s ease;
+}
+
+.water-pool-segment.filled {
+    background: linear-gradient(135deg, #4a9eff, #2563eb);
+    box-shadow: 0 0 6px rgba(74, 158, 255, 0.3);
+}
+
+/* Meal-credited water: teal gradient to distinguish from manual water */
+.water-pool-segment.filled.bonus {
+    background: linear-gradient(135deg, #2dd4bf, #0d9488);
+    box-shadow: 0 0 6px rgba(45, 212, 191, 0.35);
+}
+
+.water-pool-status {
+    align-self: stretch;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+    font-size: 0.75rem;
+    padding: 0 0 4px;
+}
+
+.pool-status-ok { color: #4ade80; }
+
+.pool-status-partial { color: #fbbf24; }
+
+.pool-status-empty { color: rgba(255, 255, 255, 0.4); }
+
+.water-pool-sources {
+    display: flex;
+    align-self: stretch;
+    width: 100%;
+    box-sizing: border-box;
+    gap: 4px;
+    flex-wrap: wrap;
+    padding: 0 0 6px;
+    justify-content: center;
+}
+
+.pool-source-pill {
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: rgba(100, 160, 255, 0.15);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.pool-source-pill--meal {
+    background: rgba(45, 212, 191, 0.15);
+    border: 1px solid rgba(45, 212, 191, 0.25);
+    color: rgba(45, 212, 191, 0.9);
+}
+
+.pool-source-pill--meal i {
+    margin-right: 2px;
+    font-size: 0.55rem;
+}
+
+/* Days Since Last Rest stepper */
+.days-since-rest-block {
+    margin-top: 0.6rem;
+    padding: 0.5rem 0.6rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+}
+
+.days-since-rest-row { display: flex; align-items: center; justify-content: space-between; }
+.days-label { font-size: 0.78rem; color: rgba(255, 255, 255, 0.6); font-weight: 500; }
+.days-label i { margin-right: 0.3rem; color: rgba(255, 220, 130, 0.5); }
+.days-stepper { display: flex; align-items: center; gap: 0; }
+
+.days-btn {
+    width: 26px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem; cursor: pointer; transition: all 0.15s;
+}
+
+.days-btn:first-child { border-radius: 5px 0 0 5px; }
+.days-btn:last-child { border-radius: 0 5px 5px 0; }
+.days-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); }
+.days-btn:disabled { opacity: 0.3; cursor: default; }
+
+.days-value {
+    min-width: 32px; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255, 255, 255, 0.04);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.85); font-size: 0.8rem; font-weight: 600;
+}
+
+.days-hint { display: block; margin-top: 0.3rem; font-size: 0.68rem; color: rgba(255, 255, 255, 0.35); font-style: italic; }
+.days-hint.warning { color: rgba(255, 180, 50, 0.7); font-style: normal; }
+.days-hint.warning i { margin-right: 0.2rem; }
+
+.meal-days-info { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; color: rgba(255, 255, 255, 0.45); font-style: italic; }
+.meal-days-info i { margin-right: 0.2rem; }
+
+/* ---- Multi-Day Sustenance Progress Bar ---- */
+.sustenance-progress-container {
+    margin-bottom: 0.6rem;
+    padding: 0.4rem 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+}
+
+.sustenance-progress-label {
+    display: block;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.35);
+    margin-bottom: 0.3rem;
+    font-weight: 600;
+}
+
+.sustenance-progress { display: flex; gap: 3px; }
+
+.sustenance-segment {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.3rem 0.25rem;
+    border-radius: 5px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.sustenance-segment.completed {
+    background: rgba(240, 180, 50, 0.2);
+    border: 1px solid rgba(240, 180, 50, 0.4);
+    color: rgba(240, 200, 80, 0.9);
+}
+
+.sustenance-segment.completed i { font-size: 0.55rem; color: rgba(100, 220, 120, 0.9); }
+
+.sustenance-segment.active {
+    background: rgba(255, 220, 130, 0.08);
+    border: 1px solid rgba(255, 220, 130, 0.35);
+    color: rgba(255, 220, 130, 0.9);
+    box-shadow: 0 0 8px rgba(255, 220, 130, 0.15);
+}
+
+.sustenance-segment.pending {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.25);
+}
+
+/* ---- Meal Cards ---- */
+.meal-cards { display: flex; flex-direction: column; gap: 0.5rem; max-height: 380px; overflow-y: auto; padding-right: 0.2rem; }
+
+.meal-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px; padding: 0.5rem 0.6rem;
+}
+
+.meal-card-header { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem; }
+
+.meal-portrait {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1.5px solid rgba(255, 220, 130, 0.3); object-fit: cover;
+}
+
+.meal-actor-name { font-weight: 600; font-size: 0.82rem; color: rgba(255, 255, 255, 0.85); }
+
+/* ---- Two-Column Glass Panel Layout ---- */
+.meal-drop-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.3rem; }
+
+.meal-panel {
+    display: flex; flex-direction: column; align-items: center; gap: 0.35rem;
+    padding: 0.5rem 0.4rem 0.4rem; border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.02);
+    min-width: 0;
+}
+
+.food-panel { border-color: rgba(255, 200, 80, 0.12); }
+.water-panel { border-color: rgba(100, 180, 255, 0.12); }
+
+.panel-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin-bottom: 0.15rem; }
+.food-panel .panel-label { color: rgba(255, 200, 80, 0.6); }
+.water-panel .panel-label { color: rgba(100, 180, 255, 0.6); }
+
+.meal-drop-zone { width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.25s ease; position: relative; }
+.food-drop-zone { border: 2px dashed rgba(255, 200, 80, 0.2); background: rgba(255, 200, 80, 0.03); }
+.water-drop-zone { border: 2px dashed rgba(100, 180, 255, 0.2); background: rgba(100, 180, 255, 0.03); }
+
+.food-drop-zone.filled { border-style: solid; border-color: rgba(255, 200, 80, 0.5); background: rgba(255, 200, 80, 0.08); box-shadow: 0 0 16px rgba(255, 200, 80, 0.2), 0 0 32px rgba(255, 200, 80, 0.06); }
+.water-drop-zone.filled { border-style: solid; border-color: rgba(100, 180, 255, 0.5); background: rgba(100, 180, 255, 0.08); box-shadow: 0 0 16px rgba(100, 180, 255, 0.2), 0 0 32px rgba(100, 180, 255, 0.06); }
+
+.food-drop-zone.drop-hover { border-color: rgba(255, 200, 80, 0.8); background: rgba(255, 200, 80, 0.12); box-shadow: 0 0 24px rgba(255, 200, 80, 0.35); transform: scale(1.1); }
+.water-drop-zone.drop-hover { border-color: rgba(100, 180, 255, 0.8); background: rgba(100, 180, 255, 0.12); box-shadow: 0 0 24px rgba(100, 180, 255, 0.35); transform: scale(1.1); }
+
+/* Locked slots: consumed from inventory, not interactive */
+.meal-drop-zone.locked { cursor: not-allowed; pointer-events: none; opacity: 0.7; }
+.meal-drop-zone.locked::after {
+    content: "\f023"; /* fa-lock */
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    font-size: 0.55rem;
+    color: rgba(255, 255, 255, 0.4);
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+.food-drop-zone.locked { border-color: rgba(255, 200, 80, 0.3); }
+.water-drop-zone.locked { border-color: rgba(100, 180, 255, 0.3); }
+
+/* ---- Rectangular Drop Zones (Station Dialog) ---- */
+.meal-drop-zone.meal-drop-zone-rect {
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 56px;
+    border-radius: 8px;
+    flex-direction: row;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    box-sizing: border-box;
+}
+
+.meal-drop-zone-rect .drop-zone-silhouette {
+    flex-direction: row;
+    gap: 0.5rem;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.meal-drop-zone-rect .drop-zone-add-icon {
+    font-size: 1rem;
+    opacity: 0.3;
+}
+
+.food-drop-zone.meal-drop-zone-rect .drop-zone-add-icon { color: rgba(255, 200, 80, 0.5); }
+.water-drop-zone.meal-drop-zone-rect .drop-zone-add-icon { color: rgba(100, 180, 255, 0.5); }
+
+.meal-drop-zone-rect .drop-zone-hint {
+    font-size: 0.7rem;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.25);
+    white-space: nowrap;
+}
+
+.meal-drop-zone-rect .drop-zone-item-icon {
+    width: 28px;
+    height: 28px;
+}
+
+.meal-drop-zone-rect .drop-zone-item-label {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.meal-drop-zone-rect.drop-hover {
+    transform: scale(1.02);
+}
+
+/* ---- Plates/Goblets Row (Circle layout) ---- */
+.ionrift-station-dialog .food-plates-row,
+.ionrift-station-dialog .water-goblets-row {
+    flex-direction: row;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.ionrift-station-dialog .food-plate-slot,
+.ionrift-station-dialog .water-goblet-slot {
+    width: 100%;
+}
+
+/* ---- Scrollable Inventory Tray ---- */
+.meal-inventory-tray-scroll {
+    max-height: 120px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+    margin-top: 0.3rem;
+    padding-right: 0.35rem;
+}
+/* Themed scrollbars per panel. !important needed to beat the nuclear purple override. */
+.food-panel .meal-inventory-tray-scroll {
+    scrollbar-color: rgba(255, 200, 80, 0.35) rgba(255, 200, 80, 0.05) !important;
+}
+.food-panel .meal-inventory-tray-scroll::-webkit-scrollbar { width: 4px !important; }
+.food-panel .meal-inventory-tray-scroll::-webkit-scrollbar-track { background: rgba(255, 200, 80, 0.05) !important; border-radius: 2px; }
+.food-panel .meal-inventory-tray-scroll::-webkit-scrollbar-thumb { background: rgba(255, 200, 80, 0.35) !important; border-radius: 2px; }
+.food-panel .meal-inventory-tray-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 200, 80, 0.55) !important; }
+
+.water-panel .meal-inventory-tray-scroll {
+    scrollbar-color: rgba(100, 180, 255, 0.35) rgba(100, 180, 255, 0.05) !important;
+}
+.water-panel .meal-inventory-tray-scroll::-webkit-scrollbar { width: 4px !important; }
+.water-panel .meal-inventory-tray-scroll::-webkit-scrollbar-track { background: rgba(100, 180, 255, 0.05) !important; border-radius: 2px; }
+.water-panel .meal-inventory-tray-scroll::-webkit-scrollbar-thumb { background: rgba(100, 180, 255, 0.35) !important; border-radius: 2px; }
+.water-panel .meal-inventory-tray-scroll::-webkit-scrollbar-thumb:hover { background: rgba(100, 180, 255, 0.55) !important; }
+
+.drop-zone-silhouette { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; pointer-events: none; }
+.drop-zone-plate { font-size: 2rem; color: rgba(255, 200, 80, 0.18); pointer-events: none; }
+.drop-zone-goblet { font-size: 2rem; color: rgba(100, 180, 255, 0.18); pointer-events: none; }
+.drop-zone-item-icon { pointer-events: none; }
+.drop-zone-item-label { pointer-events: none; }
+.drop-zone-add-icon { pointer-events: none; }
+.drop-zone-hint { pointer-events: none; }
+.drop-zone-item-icon { width: 48px; height: 48px; object-fit: contain; filter: drop-shadow(0 0 6px rgba(255, 220, 130, 0.4)); }
+
+/* ---- Drop Zone Caption (right of circle when filled) ---- */
+.drop-zone-caption {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+    pointer-events: none;
+}
+.drop-zone-caption-name {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    text-align: left;
+    line-height: 1.2;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.food-plate-slot .drop-zone-caption-qty { color: rgba(255, 200, 80, 0.7); }
+.water-goblet-slot .drop-zone-caption-qty { color: rgba(100, 180, 255, 0.7); }
+.drop-zone-caption-qty {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.panel-item-name { font-size: 0.65rem; color: rgba(255, 255, 255, 0.6); text-align: center; min-height: 1em; line-height: 1.2; }
+.panel-empty-hint { color: rgba(255, 255, 255, 0.2); font-style: italic; }
+
+/* ---- Inventory Tray ---- */
+.meal-inventory-tray { display: flex; flex-wrap: wrap; gap: 0.2rem; justify-content: center; margin-top: 0.15rem; }
+
+.meal-inv-item {
+    display: flex; align-items: center; gap: 0.2rem; padding: 0.15rem 0.35rem;
+    border-radius: 10px; font-size: 0.6rem; cursor: grab; transition: all 0.15s;
+    background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.6);
+}
+
+.meal-inv-item:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.22); transform: translateY(-1px); }
+.meal-inv-item.dragging { opacity: 0.35; transform: scale(0.9); }
+.meal-inv-icon { width: 16px; height: 16px; object-fit: contain; }
+.meal-inv-qty { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 72px; }
+.serve-party-btn {
+    background: none; border: none; padding: 2px 3px; margin-left: 1px;
+    color: var(--ionrift-accent, #7ec8e3); cursor: pointer; font-size: 0.7rem;
+    opacity: 0.65; transition: opacity 0.15s, color 0.15s; line-height: 1;
+    flex-shrink: 0;
+}
+.serve-party-btn:hover { opacity: 1; color: var(--ionrift-accent-hover, #a5ddf5); }
+
+/* ---- Grid Card Inventory (Station Dialog) ---- */
+.meal-inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem;
+    padding: 0.25rem 0;
+    width: 100%;
+}
+.meal-inv-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.4rem 0.3rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: grab;
+    transition: all 0.15s;
+    position: relative;
+    min-height: 60px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+.meal-inv-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.18);
+    transform: translateY(-1px);
+}
+.meal-inv-card.dragging { opacity: 0.35; transform: scale(0.9); }
+.meal-inv-card-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 4px rgba(255, 220, 130, 0.3));
+    pointer-events: none;
+    user-select: none;
+}
+.meal-inv-card-qty {
+    position: absolute;
+    top: 0.2rem;
+    right: 0.3rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.6);
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.05rem 0.25rem;
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+.meal-inv-card-qty.meal-inv-card-qty--water {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.06rem;
+    padding: 0.08rem 0.22rem;
+    line-height: 1.08;
+}
+
+.meal-inv-card-qty--water .meal-inv-qty-stack {
+    font-size: 0.56rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.52);
+}
+
+.meal-inv-card-qty--water .meal-inv-qty-pints {
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: rgba(147, 197, 253, 0.95);
+}
+.meal-inv-card-name {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+    line-height: 1.2;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    pointer-events: none;
+    user-select: none;
+}
+.meal-inv-card .serve-party-btn { position: absolute; bottom: 0.2rem; right: 0.2rem; }
+.food-tray .meal-inv-card { border-color: rgba(255, 200, 80, 0.1); }
+.food-tray .meal-inv-card:hover { border-color: rgba(255, 200, 80, 0.25); }
+.water-tray .meal-inv-card { border-color: rgba(100, 180, 255, 0.1); }
+.water-tray .meal-inv-card:hover { border-color: rgba(100, 180, 255, 0.25); }
+
+/* ---- Advisory banners ---- */
+.meal-advisory { font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 4px; margin-top: 0.15rem; display: flex; align-items: center; gap: 0.35rem; }
+.meal-advisory.warning { background: rgba(255, 180, 50, 0.08); border: 1px solid rgba(255, 180, 50, 0.2); color: rgba(255, 200, 100, 0.85); }
+.meal-advisory.danger { background: rgba(255, 60, 60, 0.08); border: 1px solid rgba(255, 60, 60, 0.2); color: rgba(255, 120, 100, 0.9); }
+.meal-advisory.info { background: rgba(100, 180, 255, 0.06); border: 1px solid rgba(100, 180, 255, 0.15); color: rgba(140, 200, 255, 0.8); }
+.meal-advisory.ok { background: rgba(100, 200, 120, 0.08); border: 1px solid rgba(100, 200, 120, 0.2); color: rgba(130, 220, 150, 0.85); }
+
+/* ---- CON Save Results Panel ---- */
+.meal-results-panel {
+    margin: 0.5rem 0;
+    padding: 0.5rem 0.6rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+}
+.meal-results-panel h4 {
+    margin: 0 0 0.4rem;
+    font-size: 0.8rem;
+    color: rgba(255, 220, 130, 0.85);
+    font-weight: 600;
+}
+.meal-results-panel h4 i { margin-right: 0.3rem; }
+.meal-result-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+.meal-result-row:last-child { margin-bottom: 0; }
+.meal-result-row.result-pass {
+    background: rgba(100, 200, 120, 0.08);
+    border: 1px solid rgba(100, 200, 120, 0.2);
+    color: rgba(130, 220, 150, 0.9);
+}
+.meal-result-row.result-fail {
+    background: rgba(255, 60, 60, 0.08);
+    border: 1px solid rgba(255, 60, 60, 0.2);
+    color: rgba(255, 120, 100, 0.9);
+}
+.meal-result-row i { font-size: 0.7rem; }
+
+.meal-panel.panel-empty { opacity: 0.6; border-style: dashed; }
+
+.panel-no-inventory { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; padding: 1rem 0.5rem; color: rgba(255, 255, 255, 0.25); text-align: center; }
+.panel-no-inventory i { font-size: 1.4rem; opacity: 0.3; }
+.panel-no-inventory span { font-size: 0.65rem; font-style: italic; }
+
+.water-goblets-row { display: flex; gap: 0.5rem; justify-content: center; align-items: center; }
+.water-goblet-slot { display: flex; flex-direction: row; align-items: center; gap: 0.5rem; }
+.food-plates-row { display: flex; gap: 0.5rem; justify-content: center; align-items: center; }
+.food-plate-slot { display: flex; flex-direction: row; align-items: center; gap: 0.5rem; }
+
+.activity-phase-layout > .respite-meal-phase { flex: 1 1 auto; min-width: 0; overflow-y: auto; max-height: calc(100vh - 280px); }
+
+/* ---- Meal Submitted Summary ---- */
+.meal-submitted-summary {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.5rem;
+}
+
+.meal-submitted-summary h4 {
+    margin: 0 0 0.15rem;
+    font-size: 0.85rem;
+    color: rgba(255, 220, 130, 0.85);
+    font-weight: 600;
+}
+
+.meal-submitted-summary h4 i { margin-right: 0.3rem; }
+
+.meal-summary-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 0.4rem 0.5rem;
+}
+
+.meal-summary-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.3rem;
+}
+
+.meal-summary-days {
+    margin-left: auto;
+    font-size: 0.65rem;
+    color: rgba(255, 220, 130, 0.6);
+    font-weight: 600;
+    background: rgba(255, 220, 130, 0.08);
+    padding: 0.1rem 0.35rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 220, 130, 0.15);
+}
+
+.meal-summary-status {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.2rem;
+}
+
+.meal-summary-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.15rem 0.4rem;
+    border-radius: 6px;
+}
+
+.meal-summary-stat.stat-ok {
+    color: rgba(100, 220, 130, 0.9);
+    background: rgba(100, 220, 130, 0.08);
+    border: 1px solid rgba(100, 220, 130, 0.15);
+}
+
+.meal-summary-stat.stat-warn {
+    color: rgba(255, 180, 80, 0.9);
+    background: rgba(255, 180, 80, 0.08);
+    border: 1px solid rgba(255, 180, 80, 0.15);
+}
+
+.meal-summary-stat i { font-size: 0.6rem; }
+
+.meal-submitted-summary .phase-waiting-label {
+    text-align: center;
+    margin-top: 0.3rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* ---- Condition Advisory Chat Card ---- */
+
+.respite-condition-advisory {
+    padding: 0.6rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    background: linear-gradient(135deg, #1a1525 0%, #201830 100%);
+    border: 1px solid rgba(160, 120, 255, 0.2);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.respite-condition-advisory h3 hr,
+.respite-condition-advisory hr {
+    border: none;
+    border-top: 1px solid rgba(160, 120, 255, 0.15);
+    margin: 0.3rem 0;
+}
+
+.respite-condition-advisory h3 {
+    margin: 0 0 0.3rem;
+    font-size: 0.9rem;
+    color: rgba(255, 180, 80, 0.9);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.respite-condition-advisory .advisory-subtitle {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+    margin: 0 0 0.5rem;
+}
+
+.respite-condition-advisory .advisory-character {
+    margin-bottom: 0.5rem;
+    padding: 0.3rem 0.5rem;
+    background: rgba(0, 0, 0, 0.15);
+    border-left: 2px solid rgba(255, 180, 80, 0.4);
+    border-radius: 0 4px 4px 0;
+}
+
+.respite-condition-advisory .advisory-character strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.respite-condition-advisory .advisory-effect {
+    margin: 0.2rem 0;
+    padding-left: 0.5rem;
+}
+
+.respite-condition-advisory .advisory-effect i {
+    color: rgba(255, 120, 80, 0.8);
+    margin-right: 0.2rem;
+}
+
+.respite-condition-advisory .effect-label {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.respite-condition-advisory .effect-duration {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.respite-condition-advisory .effect-desc {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+}
+
+.respite-condition-advisory .advisory-effect.applied {
+    opacity: 0.6;
+}
+
+.respite-condition-advisory .effect-applied {
+    font-size: 0.65rem;
+    color: rgba(80, 200, 120, 0.9);
+    margin-left: 0.3rem;
+}
+
+/* ---- Force Pass/Fail Override Links ---- */
+
+.event-override-links {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 0.25rem;
+}
+
+.btn-override-link {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.72rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.btn-override-link:hover {
+    color: rgba(255, 255, 255, 0.85);
+    border-color: rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.07);
+    text-decoration: none;
+}
+
+.btn-override-link:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* ---- Combat Card: Hide Button ---- */
+
+.btn-hide-window {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.5);
+    padding: 0.35rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.2s ease;
+    margin-left: 0.5rem;
+}
+
+.btn-hide-window:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* ---- Encounter Awareness Advisory ---- */
+
+.encounter-awareness-advisory {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    margin: 0.35rem 0;
+    background: rgba(255, 200, 80, 0.08);
+    border-left: 2px solid rgba(255, 200, 80, 0.4);
+    border-radius: 0 4px 4px 0;
+    font-size: 0.75rem;
+    font-style: italic;
+    color: rgba(255, 200, 80, 0.8);
+    line-height: 1.4;
+}
+
+.encounter-awareness-advisory i {
+    margin-top: 0.1rem;
+    flex-shrink: 0;
+    color: rgba(255, 200, 80, 0.6);
+}
+
+/* ---- Campfire Token Advisory (GM Reflection Phase) ---- */
+
+.campfire-advisory {
+    margin-bottom: 0.6rem;
+    padding: 0.4rem 0.5rem;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.campfire-advisory-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 5px;
+}
+
+.campfire-advisory-row i {
+    flex-shrink: 0;
+    font-size: 0.65rem;
+}
+
+.campfire-advisory-row.advisory-ok {
+    background: rgba(100, 200, 120, 0.08);
+    border: 1px solid rgba(100, 200, 120, 0.15);
+    color: rgba(130, 220, 150, 0.85);
+}
+
+.campfire-advisory-row.advisory-warn {
+    background: rgba(255, 180, 50, 0.08);
+    border: 1px solid rgba(255, 180, 50, 0.2);
+    color: rgba(255, 200, 100, 0.85);
+}
+
+.campfire-advisory-row.advisory-info {
+    background: rgba(100, 180, 255, 0.06);
+    border: 1px solid rgba(100, 180, 255, 0.12);
+    color: rgba(140, 200, 255, 0.7);
+}

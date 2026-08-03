@@ -90,7 +90,18 @@
                       }
                   ],
     "styles":  [
-                   "styles/respite.css"
+                   "styles/_chrome.css",
+                   "styles/rest-setup.css",
+                   "styles/activity-picker.css",
+                   "styles/crafting-stations.css",
+                   "styles/hud-overlays.css",
+                   "styles/campfire.css",
+                   "styles/pack-registry.css",
+                   "styles/party-roster.css",
+                   "styles/short-rest.css",
+                   "styles/diet-travel.css",
+                   "styles/totm-make-camp.css",
+                   "styles/settings-editors.css"
                ],
     "relationships":  {
                           "requires":  [

@@ -1,0 +1,1145 @@
+/* Respite: campfire.css. Loaded via module.json after hud-overlays.css; before pack-registry.css. Do not reorder. */
+/* ============================================================
+   CAMPFIRE FIRE-LEVEL CONTROL
+   ============================================================ */
+
+.campfire-control {
+    text-align: center;
+    padding: 0.5rem 0 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    margin-bottom: 0.5rem;
+}
+
+.campfire-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.4rem;
+}
+
+.campfire-levels {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: center;
+}
+
+.campfire-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 90px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.campfire-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(240, 192, 64, 0.3);
+}
+
+.campfire-btn.active {
+    background: rgba(240, 192, 64, 0.12);
+    border-color: rgba(240, 192, 64, 0.5);
+    box-shadow: 0 0 8px rgba(240, 192, 64, 0.2);
+}
+
+.campfire-btn:disabled {
+    cursor: default;
+    opacity: 0.7;
+}
+
+.fire-icon {
+    font-size: 1.1rem;
+    margin-bottom: 0.15rem;
+}
+
+.fire-name {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.campfire-btn.active .fire-name {
+    color: rgba(240, 192, 64, 0.9);
+}
+
+.fire-effect {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.campfire-summary {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+}
+
+/* ============================================================
+   CAMPFIRE SIDE PANEL
+   ============================================================ */
+
+.campfire-panel {
+    background: linear-gradient(180deg, #0d0d12 0%, #1a1510 40%, #0d0d12 100%) !important;
+}
+
+.campfire-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0.25rem 0.5rem 0.5rem;
+    gap: 0.4rem;
+}
+
+/* -- Fire Area (big, clickable) -- */
+
+.campfire-fire-area {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    min-height: 240px;
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: background 0.5s;
+    background: radial-gradient(ellipse at center 90%, rgba(40, 20, 5, 0.4) 0%, transparent 60%);
+}
+
+.campfire-fire-area.fire-level-embers { background: radial-gradient(ellipse at center 90%, rgba(60, 25, 5, 0.35) 0%, transparent 50%); }
+.campfire-fire-area.fire-level-campfire { background: radial-gradient(ellipse at center 90%, rgba(80, 40, 8, 0.4) 0%, transparent 55%); }
+.campfire-fire-area.fire-level-bonfire { background: radial-gradient(ellipse at center 90%, rgba(100, 50, 10, 0.5) 0%, transparent 60%); }
+
+.campfire-physics-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 7;
+}
+
+/* -- Kindling (unlit) -- */
+
+.campfire-kindling {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    color: rgba(160, 120, 60, 0.5);
+    font-size: 3.5rem;
+    padding-bottom: 2rem;
+}
+
+.campfire-kindling span {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* -- CSS Fire: 6-Layer Flame System -- */
+
+.campfire-flames {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    margin-bottom: 0.5rem;
+}
+
+.flame {
+    position: absolute;
+    bottom: 0;
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    filter: blur(2px);
+    transform-origin: bottom center;
+    pointer-events: none;
+}
+
+/* Core: bright white-yellow center */
+.flame-core {
+    width: 28px; height: 55px;
+    left: 66px;
+    background: radial-gradient(ellipse at bottom, #fff8 0%, #ff6 20%, #fa0 50%, transparent 80%);
+    animation: flickerCore 0.6s ease-in-out infinite alternate;
+    z-index: 4;
+    filter: blur(1px);
+}
+
+/* Mid: orange body */
+.flame-mid {
+    width: 50px; height: 80px;
+    left: 55px;
+    background: radial-gradient(ellipse at bottom, #ff9500 0%, #f06000 50%, transparent 85%);
+    animation: flickerMid 0.85s ease-in-out infinite alternate;
+    z-index: 3;
+}
+
+/* Outer: wide red-orange envelope */
+.flame-outer {
+    width: 70px; height: 100px;
+    left: 45px;
+    background: radial-gradient(ellipse at bottom, #e04000 0%, #a02000 40%, transparent 80%);
+    animation: flickerOuter 1.1s ease-in-out infinite alternate;
+    z-index: 2;
+    filter: blur(4px);
+}
+
+/* Wisps: thin side flames */
+.flame-wisp {
+    width: 14px; height: 40px;
+    background: radial-gradient(ellipse at bottom, #ff8 0%, #f80 40%, transparent 80%);
+    z-index: 5;
+    filter: blur(1px);
+}
+
+.flame-wisp-1 {
+    left: 38px;
+    animation: flickerWisp1 0.7s ease-in-out infinite alternate;
+}
+
+.flame-wisp-2 {
+    left: 108px;
+    animation: flickerWisp2 0.9s ease-in-out infinite alternate;
+}
+
+/* Ember glow: ground-level pool of light */
+.flame-ember-glow {
+    width: 140px; height: 30px;
+    left: 10px; bottom: -5px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(255, 120, 20, 0.4) 0%, transparent 70%);
+    animation: glowPulse 2s ease-in-out infinite;
+    filter: blur(8px);
+    z-index: 1;
+}
+
+/* Scale flames by fire level */
+.fire-level-unlit .campfire-flames { display: none; }
+.fire-level-embers .flame { transform: scaleY(0.35) scaleX(0.5); opacity: 0.45; }
+.fire-level-campfire .flame { transform: scaleY(0.7) scaleX(0.8); opacity: 0.8; }
+.fire-level-bonfire .flame { transform: scaleY(1.0) scaleX(1.0); opacity: 1.0; }
+.fire-level-embers .flame-ember-glow { opacity: 0.25; }
+.fire-level-bonfire .flame-ember-glow { opacity: 0.7; width: 160px; left: 0; }
+
+/* Coals */
+.campfire-coals {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 18px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(200, 80, 20, 0.35) 0%, rgba(100, 30, 5, 0.2) 50%, transparent 80%);
+    animation: coalGlow 1.8s ease-in-out infinite alternate;
+    z-index: 0;
+}
+
+@keyframes coalGlow {
+    0% { opacity: 0.5; filter: brightness(0.8); }
+    100% { opacity: 0.9; filter: brightness(1.2); }
+}
+
+/* Flame flicker keyframes */
+@keyframes flickerCore {
+    0% { transform: scaleY(1) scaleX(1) rotate(-1deg); height: 55px; }
+    100% { transform: scaleY(0.88) scaleX(1.08) rotate(1.5deg); height: 50px; }
+}
+
+@keyframes flickerMid {
+    0% { transform: scaleY(1) scaleX(1) rotate(-2deg); }
+    100% { transform: scaleY(0.9) scaleX(1.06) rotate(2.5deg); }
+}
+
+@keyframes flickerOuter {
+    0% { transform: scaleY(1) scaleX(1) rotate(1.5deg); }
+    100% { transform: scaleY(0.92) scaleX(1.08) rotate(-2deg); }
+}
+
+@keyframes flickerWisp1 {
+    0% { transform: scaleY(1) rotate(-5deg); opacity: 0.7; }
+    100% { transform: scaleY(0.7) rotate(3deg); opacity: 0.3; }
+}
+
+@keyframes flickerWisp2 {
+    0% { transform: scaleY(0.8) rotate(4deg); opacity: 0.5; }
+    100% { transform: scaleY(1.1) rotate(-3deg); opacity: 0.8; }
+}
+
+@keyframes glowPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.7; }
+}
+
+/* -- Spark effect (strike flint) -- */
+
+.spark {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: #ff6;
+    border-radius: 50%;
+    box-shadow: 0 0 6px #fa0, 0 0 12px #f80;
+    animation: sparkRise 0.6s ease-out forwards;
+    pointer-events: none;
+}
+
+@keyframes sparkRise {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-40px) scale(0.3); }
+}
+
+/* -- Poke sparks (click-fire effect) -- */
+
+.poke-spark {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: #ffcc33;
+    border-radius: 50%;
+    box-shadow: 0 0 5px #fa0, 0 0 10px #f60;
+    animation: pokeSpark var(--duration, 0.7s) ease-out forwards;
+    pointer-events: none;
+    z-index: 10;
+}
+
+@keyframes pokeSpark {
+    0% { opacity: 1; transform: translateY(0) translateX(0) scale(1); }
+    100% { opacity: 0; transform: translateY(var(--rise, -40px)) translateX(var(--drift, 0px)) scale(0.15); }
+}
+
+/* -- Radial sparks (physics-based: momentum burst → decay → float up) -- */
+
+.radial-spark {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: #ffcc33;
+    border-radius: 50%;
+    box-shadow: 0 0 5px #fa0, 0 0 10px #f60;
+    pointer-events: none;
+    z-index: 10;
+    animation: radialSparkPhysics var(--duration, 0.8s) ease-out forwards;
+}
+
+@keyframes radialSparkPhysics {
+    /* 0%: at origin, full size */
+    0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+    }
+    /* 25%: burst outward along vector (fast momentum) */
+    25% {
+        opacity: 1;
+        transform: translate(var(--vx, 30px), var(--vy, -20px)) scale(0.9);
+    }
+    /* 50%: momentum decays, start floating up */
+    50% {
+        opacity: 0.8;
+        transform: translate(
+            calc(var(--vx, 30px) * 0.6),
+            calc(var(--vy, -20px) * 0.4 - 15px)
+        ) scale(0.6);
+    }
+    /* 100%: float up and fade */
+    100% {
+        opacity: 0;
+        transform: translate(
+            calc(var(--vx, 30px) * 0.15),
+            calc(var(--vy, -20px) * 0.1 - 50px)
+        ) scale(0.1);
+    }
+}
+
+/* -- Trinket flash -- */
+
+.trinket-flash {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    animation: trinketFlash 0.8s ease-out forwards;
+    z-index: 8;
+    border-radius: 10px;
+}
+
+@keyframes trinketFlash {
+    0% { opacity: 0; }
+    15% { opacity: 0.8; }
+    100% { opacity: 0; }
+}
+
+/* -- Emote wisps -- */
+
+.emote-wisp {
+    position: absolute;
+    bottom: 40%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    animation: emoteFloat 3s ease-out forwards;
+    pointer-events: none;
+    z-index: 12;
+}
+
+.emote-wisp i {
+    font-size: 1.3rem;
+    color: rgba(255, 220, 130, 0.9);
+    text-shadow: 0 0 8px rgba(255, 180, 50, 0.5);
+}
+
+.emote-wisp span {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+}
+
+@keyframes emoteFloat {
+    0% { opacity: 0; transform: translateY(0) scale(0.7); }
+    10% { opacity: 1; transform: translateY(-5px) scale(1); }
+    70% { opacity: 0.7; }
+    100% { opacity: 0; transform: translateY(-80px) scale(0.6); }
+}
+
+/* -- Whittle complete banner -- */
+
+.whittle-complete-banner {
+    position: absolute;
+    top: 15%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(160, 120, 60, 0.15);
+    border: 1px solid rgba(160, 120, 60, 0.4);
+    border-radius: 6px;
+    padding: 0.4rem 0.8rem;
+    color: rgba(200, 160, 80, 0.9);
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    animation: bannerFade 4s ease-in-out forwards;
+    z-index: 15;
+}
+
+/* -- Whittle shavings -- */
+
+.whittle-shaving {
+    position: absolute;
+    width: 8px;
+    height: 3px;
+    background: rgba(180, 140, 70, 0.6);
+    border-radius: 2px;
+    animation: shavingFall 0.8s ease-in forwards;
+    pointer-events: none;
+}
+
+@keyframes shavingFall {
+    0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+    100% { opacity: 0; transform: translateY(20px) rotate(60deg); }
+}
+
+/* -- Lit banner -- */
+
+.campfire-lit-banner {
+    position: absolute;
+    top: 15%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(240, 192, 64, 0.15);
+    border: 1px solid rgba(240, 192, 64, 0.4);
+    border-radius: 6px;
+    padding: 0.4rem 0.8rem;
+    color: rgba(240, 192, 64, 0.9);
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+    animation: bannerFade 3s ease-in-out forwards;
+    z-index: 15;
+}
+
+@keyframes bannerFade {
+    0% { opacity: 0; transform: translateX(-50%) translateY(5px); }
+    15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+.campfire-kindling {
+    color: rgba(240, 192, 64, 0.35);
+    transition: all 0.4s ease;
+}
+
+.campfire-kindling.has-kindling {
+    color: rgba(255, 170, 50, 0.9);
+}
+
+.campfire-kindling.has-kindling i {
+    animation: kindlingPulse 2s ease-in-out infinite;
+}
+
+@keyframes kindlingPulse {
+    0%, 100% { text-shadow: 0 0 8px rgba(255, 140, 30, 0.3); }
+    50% { text-shadow: 0 0 16px rgba(255, 140, 30, 0.7); }
+}
+
+/* -- Interactions strip -- */
+
+.campfire-interactions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+/* Strike area */
+.campfire-strike-area {
+    text-align: center;
+    padding: 0.5rem 0;
+}
+
+.fire-advisory {
+    font-size: 0.7rem;
+    color: rgba(240, 192, 64, 0.55);
+    text-align: center;
+    padding: 0.3rem 0.5rem 0;
+    font-style: italic;
+    line-height: 1.3;
+}
+
+/* Disabled ceremony buttons: tooltip on wrapper (native disabled skips hover). */
+.campfire-btn-tooltip-wrap {
+    display: inline-flex;
+    cursor: not-allowed;
+    vertical-align: middle;
+}
+
+.campfire-btn-tooltip-wrap .campfire-btn[disabled] {
+    pointer-events: none;
+}
+
+.campfire-btn.strike-btn,
+.campfire-btn.whittle-btn,
+.campfire-btn.firewood-btn {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 1rem;
+    background: rgba(240, 192, 64, 0.08);
+    border: 1px solid rgba(240, 192, 64, 0.25);
+    border-radius: 6px;
+    color: rgba(240, 192, 64, 0.8);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.campfire-btn.firewood-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.firewood-counter {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.3rem 0;
+    color: rgba(240, 192, 64, 0.7);
+    font-size: 0.85rem;
+}
+
+.firewood-count {
+    font-weight: 700;
+    font-size: 1rem;
+    min-width: 1.4em;
+    text-align: center;
+}
+
+.firewood-log {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 32px;
+    padding: 2px;
+    background: rgba(180, 130, 64, 0.12);
+    border: 1px solid rgba(180, 130, 64, 0.35);
+    border-radius: 6px;
+    cursor: grab;
+    transition: all 0.15s;
+    box-sizing: border-box;
+}
+
+.firewood-log-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    pointer-events: none;
+    border: none;
+    border-radius: 4px;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+
+.firewood-log:hover {
+    background: rgba(180, 130, 64, 0.3);
+    border-color: rgba(180, 130, 64, 0.7);
+    transform: scale(1.05);
+}
+
+.firewood-log.dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+}
+
+.firewood-empty {
+    font-size: 0.75rem;
+    color: rgba(240, 192, 64, 0.35);
+    font-style: italic;
+}
+
+.campfire-btn.strike-btn:hover,
+.campfire-btn.whittle-btn:hover {
+    background: rgba(240, 192, 64, 0.18);
+    border-color: rgba(240, 192, 64, 0.5);
+    transform: scale(1.02);
+}
+
+.campfire-btn.strike-btn:active,
+.campfire-btn.whittle-btn:active {
+    transform: scale(0.97);
+}
+
+.campfire-douse-row {
+    justify-content: center;
+    margin-top: 0.3rem;
+}
+
+.campfire-btn.douse-btn {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    min-width: 7.25rem;
+    width: auto;
+    padding: 0.45rem 1rem;
+    margin: 0 auto;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.25;
+    white-space: nowrap;
+    box-sizing: border-box;
+    background: rgba(120, 140, 160, 0.14);
+    border: 1px solid rgba(160, 180, 200, 0.32);
+    color: rgba(220, 230, 240, 0.9);
+}
+
+.campfire-btn.douse-btn .douse-btn-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.campfire-btn.douse-btn i {
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.campfire-btn.douse-btn:hover:not(:disabled) {
+    background: rgba(140, 165, 190, 0.22);
+    border-color: rgba(180, 200, 220, 0.45);
+    color: rgba(240, 245, 255, 0.95);
+    transform: scale(1.02);
+}
+
+.campfire-btn.douse-btn:active {
+    transform: scale(0.97);
+}
+
+.strike-hint {
+    display: block;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.2);
+    margin-top: 0.25rem;
+}
+
+/* Emote bar */
+.emote-bar {
+    display: flex;
+    justify-content: center;
+    gap: 0.35rem;
+}
+
+.emote-btn {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+    color: rgba(255, 220, 130, 0.5);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.emote-btn:hover {
+    background: rgba(255, 220, 130, 0.1);
+    border-color: rgba(255, 220, 130, 0.3);
+    color: rgba(255, 220, 130, 0.9);
+    transform: scale(1.1);
+}
+
+.emote-btn:active {
+    transform: scale(0.9);
+}
+
+/* Section labels */
+.section-label {
+    display: block;
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.2rem;
+}
+
+.section-label i { margin-right: 0.2rem; }
+
+/* Stick pile */
+.stick-section, .trinket-section {
+    padding: 0.2rem 0;
+}
+
+.stick-pile {
+    display: flex;
+    gap: 0.3rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.stick-item {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(120, 80, 30, 0.2);
+    border: 1px solid rgba(120, 80, 30, 0.3);
+    border-radius: 4px;
+    color: rgba(180, 130, 60, 0.6);
+    cursor: grab;
+    transition: all 0.15s;
+    font-size: 0.9rem;
+}
+
+.stick-item:hover {
+    background: rgba(120, 80, 30, 0.35);
+    border-color: rgba(180, 130, 60, 0.5);
+    color: rgba(180, 130, 60, 0.9);
+}
+
+.stick-item.dragging { opacity: 0.4; cursor: grabbing; }
+
+/* Trinket tray */
+.trinket-tray {
+    display: flex;
+    gap: 0.3rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.trinket-item {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    color: var(--trinket-color, rgba(255, 255, 255, 0.5));
+    cursor: grab;
+    transition: all 0.15s;
+    font-size: 0.8rem;
+}
+
+.trinket-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--trinket-color, rgba(255, 255, 255, 0.3));
+    transform: scale(1.1);
+}
+
+.trinket-item.dragging { opacity: 0.4; cursor: grabbing; }
+
+/* Whittle area */
+.whittle-area {
+    position: relative;
+    padding: 0.2rem 0;
+}
+
+.whittle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.whittle-row .whittle-progress-bar {
+    flex: 1;
+    max-width: 120px;
+}
+
+.whittle-progress-bar {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.whittle-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, rgba(180, 140, 70, 0.4) 0%, rgba(220, 170, 80, 0.7) 100%);
+    border-radius: 2px;
+    transition: width 0.2s;
+}
+
+/* Whittle tray: holds carved items ready to drag */
+.whittle-tray {
+    display: flex;
+    gap: 0.3rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    min-height: 28px;
+    margin-top: 0.3rem;
+    position: relative;
+}
+
+.whittle-tray:empty {
+    border: 1px dashed rgba(160, 120, 60, 0.2);
+    border-radius: 4px;
+}
+
+.whittle-tray:empty::after {
+    content: "drag to fire";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.55rem;
+    color: rgba(160, 120, 60, 0.3);
+    white-space: nowrap;
+    font-style: italic;
+}
+
+.whittled-item {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(160, 120, 60, 0.15);
+    border: 1px solid rgba(160, 120, 60, 0.3);
+    border-radius: 4px;
+    cursor: grab;
+    transition: all 0.15s;
+    font-size: 0.85rem;
+    animation: whittleAppear 0.3s ease-out;
+}
+
+.whittled-item:hover {
+    background: rgba(160, 120, 60, 0.3);
+    border-color: rgba(200, 160, 80, 0.5);
+    transform: scale(1.15);
+}
+
+.whittled-item.dragging { opacity: 0.4; cursor: grabbing; }
+
+@keyframes whittleAppear {
+    0% { opacity: 0; transform: scale(0.5); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+/* Pile figures: whittled items placed in the fire area */
+.pile-figure {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    pointer-events: none;
+    filter: drop-shadow(0 0 3px rgba(0,0,0,0.5));
+    animation: pileDrop 0.3s ease-out;
+    z-index: 6;
+    transform-origin: center;
+    translate: -50% -50%;
+}
+
+@keyframes pileDrop {
+    0% { opacity: 0; transform: translateY(-10px) scale(0.5); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Falling stick: gravity drop animation */
+.falling-stick {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(180, 130, 60, 0.8);
+    font-size: 1rem;
+    pointer-events: none;
+    z-index: 15;
+    animation: stickGravityDrop 0.5s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+@keyframes stickGravityDrop {
+    0% {
+        transform: translateY(0) translateX(var(--start-x, 0)) rotate(0deg);
+        opacity: 1;
+    }
+    70% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(var(--fall-distance, 100px)) translateX(0) rotate(180deg);
+        opacity: 0.6;
+    }
+}
+
+/* Falling pile figure: gravity drop modifier for pile-figure */
+.pile-figure.pile-figure-dropping {
+    animation: pileGravityDrop 0.6s cubic-bezier(0.4, 0, 0.8, 0.4) forwards;
+}
+
+@keyframes pileGravityDrop {
+    0% {
+        transform: translateY(var(--drop-offset, -80px)) rotate(0deg);
+        opacity: 0.9;
+    }
+    70% {
+        transform: translateY(2%) rotate(calc(var(--end-rotation, 10deg) * 0.8));
+        opacity: 1;
+    }
+    85% {
+        transform: translateY(-1%) rotate(var(--end-rotation, 10deg));
+    }
+    100% {
+        transform: translateY(0) rotate(var(--end-rotation, 10deg));
+        opacity: 1;
+    }
+}
+
+/* Pile figures: whittled items resting in the fire area */
+.pile-figure {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    pointer-events: none;
+    filter: drop-shadow(0 0 3px rgba(0,0,0,0.5));
+    z-index: 6;
+    transform-origin: center;
+    translate: -50% -50%;
+}
+
+/* Drop hover for fire area */
+.campfire-fire-area.drop-hover {
+    box-shadow: inset 0 0 25px rgba(240, 192, 64, 0.2);
+}
+
+/* -- Fire burst particles (stick add) -- */
+
+.fire-burst-particle {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    background: #fa0;
+    border-radius: 50%;
+    box-shadow: 0 0 4px #f80;
+    animation: burstUp 0.7s ease-out forwards;
+    pointer-events: none;
+    z-index: 10;
+}
+
+@keyframes burstUp {
+    0% { opacity: 1; transform: translateY(0) translateX(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-50px) translateX(var(--drift)) scale(0.2); }
+}
+
+/* -- Fire Meter -- */
+
+.fire-meter {
+    padding: 0.3rem 0 0.15rem;
+}
+
+.fire-meter-track {
+    position: relative;
+    height: 22px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    overflow: hidden;
+}
+
+.fire-meter-zone {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.55rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.28);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    z-index: 1;
+    transition: color 0.25s ease, font-weight 0.15s ease;
+}
+
+.fire-meter-zone:last-of-type { border-right: none; }
+
+.fire-meter-zone.is-active {
+    font-weight: 700;
+    color: rgba(255, 220, 140, 0.95);
+    text-shadow: 0 0 6px rgba(255, 180, 60, 0.35);
+}
+
+.fire-meter-zone.zone-cold-camp.is-active {
+    color: rgba(180, 200, 255, 0.9);
+    text-shadow: 0 0 6px rgba(140, 170, 255, 0.35);
+}
+
+.campfire-fire-area.fire-level-cold-camp .campfire-kindling {
+    color: rgba(180, 200, 255, 0.75);
+}
+
+.campfire-fire-area.fire-level-cold-camp .campfire-kindling i {
+    color: rgba(200, 210, 255, 0.85);
+}
+
+.activity-cold-camp-hint {
+    margin: 0 0 0.35rem;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    color: rgba(190, 205, 255, 0.85);
+}
+
+.fire-meter-fill {
+    position: absolute;
+    left: 0; top: 0;
+    height: 100%;
+    background: linear-gradient(90deg,
+        rgba(180, 120, 40, 0.4) 0%,
+        rgba(240, 160, 30, 0.5) 40%,
+        rgba(240, 80, 20, 0.5) 100%);
+    border-radius: 4px 0 0 4px;
+    transition: width 0.5s ease-out;
+}
+
+.fire-meter-needle {
+    position: absolute;
+    top: -2px;
+    width: 3px;
+    height: 26px;
+    background: rgba(255, 220, 100, 0.8);
+    border-radius: 2px;
+    box-shadow: 0 0 6px rgba(255, 200, 60, 0.5);
+    transform: translateX(-50%);
+    transition: left 0.5s ease-out;
+    animation: meterWobble 1.5s ease-in-out infinite;
+    z-index: 2;
+}
+
+@keyframes meterWobble {
+    0%, 100% { transform: translateX(-50%) translateX(-1px); }
+    33% { transform: translateX(-50%) translateX(2px); }
+    66% { transform: translateX(-50%) translateX(-1.5px); }
+}
+
+.fire-meter-peak {
+    position: absolute;
+    top: -4px;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid rgba(255, 120, 40, 0.9);
+    transform: translateX(-50%);
+    z-index: 3;
+    filter: drop-shadow(0 0 3px rgba(255, 100, 20, 0.6));
+    transition: left 0.3s ease-out;
+}
+
+/* -- Campfire notifications -- */
+
+.whittle-complete-banner {
+    position: absolute;
+    bottom: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(240, 192, 64, 0.15);
+    border: 1px solid rgba(240, 192, 64, 0.4);
+    border-radius: 6px;
+    padding: 0.4rem 0.8rem;
+    color: #ddd;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+    animation: bannerFade 4s ease-in-out forwards;
+    z-index: 15;
+}
+
+.whittle-complete-banner i {
+    margin-right: 4px;
+}
+
+.emote-wisp {
+    position: absolute;
+    bottom: 30%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 18px;
+    pointer-events: none;
+    z-index: 10;
+    animation: wispFloat 3s ease-out forwards;
+}
+
+.emote-wisp span {
+    font-size: 10px;
+    opacity: 0.8;
+}
+
+@keyframes wispFloat {
+    0% { opacity: 0; transform: translateY(0); }
+    15% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-80px); }
+}
+
+.campfire-physics-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 7;
+}
