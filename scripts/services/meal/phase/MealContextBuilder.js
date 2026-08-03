@@ -8,20 +8,95 @@ import { MODULE_ID, MEAL_DEFAULTS } from "../inventory/MealConstants.js";
 import { buildFoodOptions, buildWaterOptions, buildAdvisories } from "./MealOptionBuilder.js";
 
 /**
+ * Compute total per-actor food and water needs per day taking into account:
+ * - Base terrain/world rules
+ * - Actor flags (foodMultiplier, waterMultiplier, foodModifier, waterModifier, foodPerDay, waterPerDay)
+ * - Essence actor requirements
+ * - Sustenance ceiling caps (maxWaterPerDay, maxFoodPerDay)
+ * - Module hook `ionrift-respite.getActorMealNeeds`
+ *
+ * @param {Object} actor - Foundry Actor instance
+ * @param {Object} rules - Effective rules merged with terrain overrides
+ * @returns {Object} { foodPerDay, waterPerDay, needsEssence, foodMultiplier, waterMultiplier, foodModifier, waterModifier, isModified }
+ */
+export function getActorMealNeeds(actor, rules = {}) {
+    const effectiveRules = { ...MEAL_DEFAULTS, ...rules };
+    const baseFood = effectiveRules.foodPerDay ?? MEAL_DEFAULTS.foodPerDay;
+    const baseWater = effectiveRules.waterPerDay ?? MEAL_DEFAULTS.waterPerDay;
+
+    const rf = actor?.flags?.[MODULE_ID] ?? {};
+    const foodMult = typeof rf.foodMultiplier === "number" ? rf.foodMultiplier : 1;
+    const waterMult = typeof rf.waterMultiplier === "number" ? rf.waterMultiplier : 1;
+    const foodMod = typeof rf.foodModifier === "number" ? rf.foodModifier : 0;
+    const waterMod = typeof rf.waterModifier === "number" ? rf.waterModifier : 0;
+
+    let maxWaterCap = effectiveRules.maxWaterPerDay ?? MEAL_DEFAULTS.maxWaterPerDay ?? 4;
+    let maxFoodCap = effectiveRules.maxFoodPerDay ?? MEAL_DEFAULTS.maxFoodPerDay ?? 3;
+    try {
+        if (typeof game !== "undefined" && game?.settings?.get) {
+            const settingWaterCap = game.settings.get(MODULE_ID, "maxWaterPerDayCap");
+            if (typeof settingWaterCap === "number" && settingWaterCap > 0) maxWaterCap = settingWaterCap;
+            const settingFoodCap = game.settings.get(MODULE_ID, "maxFoodPerDayCap");
+            if (typeof settingFoodCap === "number" && settingFoodCap > 0) maxFoodCap = settingFoodCap;
+        }
+    } catch (_) {}
+
+    // Calculate actor extra from multipliers/modifiers relative to PHB baseline
+    const actorFoodExtra = Math.round(MEAL_DEFAULTS.foodPerDay * (foodMult - 1)) + foodMod;
+    const actorWaterExtra = Math.round(MEAL_DEFAULTS.waterPerDay * (waterMult - 1)) + waterMod;
+
+    let calculatedFood = baseFood + actorFoodExtra;
+    let calculatedWater = baseWater + actorWaterExtra;
+
+    if (typeof rf.foodPerDay === "number") calculatedFood = rf.foodPerDay;
+    if (typeof rf.waterPerDay === "number") calculatedWater = rf.waterPerDay;
+
+    let foodPerDay = Math.max(0, Math.min(maxFoodCap, calculatedFood));
+    let waterPerDay = Math.max(0, Math.min(maxWaterCap, calculatedWater));
+
+    const isEssence = actor ? ItemClassifier.requiresEssence(actor) : false;
+    if (isEssence) {
+        foodPerDay = Math.max(1, foodPerDay);
+        const diet = ItemClassifier.getDiet(actor);
+        const needsExoticDrink = diet.canDrink?.length > 0 && !diet.canDrink.includes("water");
+        if (needsExoticDrink) {
+            waterPerDay = Math.max(1, waterPerDay);
+        }
+    }
+
+    const isModified = foodMult !== 1 || waterMult !== 1 || foodMod !== 0 || waterMod !== 0 || typeof rf.foodPerDay === "number" || typeof rf.waterPerDay === "number";
+
+    const result = {
+        foodPerDay,
+        waterPerDay,
+        needsEssence: isEssence,
+        foodMultiplier: foodMult,
+        waterMultiplier: waterMult,
+        foodModifier: foodMod,
+        waterModifier: waterMod,
+        isModified
+    };
+
+    if (typeof Hooks !== "undefined" && Hooks.callAll) {
+        Hooks.callAll(`${MODULE_ID}.getActorMealNeeds`, actor, result, effectiveRules);
+    }
+
+    return result;
+}
+
+/**
  * Compute per-actor food/water slot counts. Essence actors always need at
  * least 1 food slot (terrain cannot "provide" custom essence items). For
  * water, essence actors with only exotic drinks (oil, not water) also need
  * at least 1 slot since the terrain only covers standard water.
  */
 export function actorMealSlots(actor, rules) {
-    const isEssence = ItemClassifier.requiresEssence(actor);
-    if (!isEssence) return { foodPerDay: rules.foodPerDay, waterPerDay: rules.waterPerDay, needsEssence: false };
-    const diet = ItemClassifier.getDiet(actor);
-    const needsExoticDrink = diet.canDrink.length > 0 && !diet.canDrink.includes("water");
+    const needs = getActorMealNeeds(actor, rules);
     return {
-        foodPerDay: Math.max(1, rules.foodPerDay),
-        waterPerDay: needsExoticDrink ? Math.max(1, rules.waterPerDay) : rules.waterPerDay,
-        needsEssence: true
+        foodPerDay: needs.foodPerDay,
+        waterPerDay: needs.waterPerDay,
+        needsEssence: needs.needsEssence,
+        isModified: needs.isModified
     };
 }
 

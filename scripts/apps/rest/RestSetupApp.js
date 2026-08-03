@@ -11113,6 +11113,18 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this.close({ resolved: true });
     }
 
+    /** @override */
+    async close(options = {}) {
+        if (options?.resolved && game.user?.isGM) {
+            try {
+                await clearCampTokens();
+            } catch (err) {
+                console.warn(`${MODULE_ID} | Error cleaning up camp tokens on rest complete:`, err);
+            }
+        }
+        return super.close(options);
+    }
+
     /** GM-only: open or focus the rest ledger popout. */
     static #onOpenLedger(event, target) {
         if (!game.user.isGM) return;
