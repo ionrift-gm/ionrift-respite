@@ -292,12 +292,19 @@ export class CampfireEmbed {
         };
     }
 
-    
+    /**
+     * Drop kindling/firewood into the pit with physics.
+     * Catch-fire only when the fire is already lit (feeding a live fire).
+     * Unlit Make Camp staging fills requirement slots via render, not this path.
+     * @param {number} x - normalized 0-1
+     * @param {number} y - normalized 0-1
+     * @param {object} [opts]
+     */
     _dropKindlingOnFire(x, y, opts = {}) {
         const drop = this._normalizeKindlingDrop(x, y);
         this._physics?.addFallingItem(drop.x, drop.y, null, "#b48240", {
             img: this._getKindlingDragImg(),
-            catchFire: true,
+            catchFire: !!this._lit,
             ...opts
         });
     }
@@ -1113,9 +1120,8 @@ export class CampfireEmbed {
                     if (!this._onStageCeremonyWood) return;
                     const staged = await this._onStageCeremonyWood();
                     if (!staged) return;
-                    this._dropKindlingOnFire(x, y, { label: "Kindling" });
-                    const actorName = this._getPlayerActor()?.name ?? game.user.name;
-                    this._pendingKindlingBanner = actorName;
+                    // Requirement slots update via ceremony render. No pit physics
+                    // or catch-fire until the fire is lit.
                     return;
                 }
 
@@ -1123,7 +1129,7 @@ export class CampfireEmbed {
                 if (!consumed) return;
 
                 if (this._lit) {
-                    this._dropKindlingOnFire(x, y, { label: "Firewood" });
+                    this._dropKindlingOnFire(x, y, { label: "Firewood", catchFire: true });
                     const countEl = this._container?.querySelector(".firewood-count");
                     const newCount = this._getFirewoodCount();
                     if (countEl) countEl.textContent = `\u00d7${newCount}`;
@@ -1136,7 +1142,8 @@ export class CampfireEmbed {
                     if (this._kindlingPlaced) return;
                     this._kindlingPlaced = true;
                     this._dropKindlingOnFire(x, y, {
-                        label: "Kindling"
+                        label: "Kindling",
+                        catchFire: false
                     });
                     const actorName = this._getPlayerActor()?.name ?? game.user.name;
                     this._pendingKindlingBanner = actorName;

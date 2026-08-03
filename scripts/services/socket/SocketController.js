@@ -214,6 +214,15 @@ export function emitActivityChoice(userId, choices, craftingResults = null, foll
 }
 
 /**
+ * Player ,  GM: meal ration choices for one or more characters.
+ * @param {string} userId
+ * @param {object} choices - Map of characterId to { food, water, ... }
+ */
+export function emitMealChoice(userId, choices) {
+    _emit(SOCKET_TYPES.MEAL_CHOICE, { userId, choices });
+}
+
+/**
  * Player ,  GM: training roll progress for one character.
  * @param {string} characterId
  * @param {object} trainingState

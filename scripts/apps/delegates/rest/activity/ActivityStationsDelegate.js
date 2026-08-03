@@ -36,7 +36,8 @@ import {
 import {
     emitRestSnapshot,
     emitActivityChoice,
-    emitCopySpellProposal
+    emitCopySpellProposal,
+    emitSubmissionUpdate
 } from "../../../../services/socket/SocketController.js";
 import { getPartyActors } from "../../../../services/party/partyActors.js";
 import { _refreshGmRestIndicator, _refreshRejoinBar } from "../../../../module.js";
@@ -1374,10 +1375,10 @@ export class ActivityStationsDelegate {
             };
         }
         emitSubmissionUpdate(submissions);
-        _refreshGmRestIndicator(this);
+        _refreshGmRestIndicator(app);
 
         if (app._phase === "activity" && isStationLayerActive()) {
-            refreshStationEmptyNoticeFade(this);
+            refreshStationEmptyNoticeFade(app);
             refreshStationPortraitsFromChoices(app._characterChoices, app._stationCanvasIdByCharacter);
             app._refreshStationOverlayMeals();
         }
