@@ -7,6 +7,7 @@ import { countPoolEventsForTerrain } from "../../services/events/catalog/EventCa
 import { pickPoolEvent } from "../events/AdHocEventDialogs.js";
 import { openEventPoolApp } from "../../services/events/catalog/EventPoolMigration.js";
 import { CraftingEngine } from "../../services/crafting/engine/CraftingEngine.js";
+import { applyCustomRecipesToEngine } from "../../services/crafting/recipes/RecipeCatalog.js";
 import { ResourcePoolRoller } from "../../services/rest/recovery/ResourcePoolRoller.js";
 import { GrantLedger } from "../../services/crafting/outcomes/GrantLedger.js";
 import {
@@ -79,7 +80,7 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 /**
  * F12: globalThis.DEBUG_IONRIFT_RESITE_SHEET = true logs GM rest sheet render/close/advance.
  */
-function _logGmRestSheet(phase, msg, extra = null) {
+export function _logGmRestSheet(phase, msg, extra = null) {
     try {
         if (typeof globalThis !== "undefined" && globalThis.DEBUG_IONRIFT_RESITE_SHEET) {
             Logger.log(`${MODULE_ID} | respite GM sheet [${phase}]`, msg, extra ?? "");
@@ -368,6 +369,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 for (const [profId, recipeList] of Object.entries(restData.recipes)) {
                     this._craftingEngine.load(profId, recipeList);
                 }
+                // Snapshot may predate mid-rest homebrew edits; world settings win.
+                applyCustomRecipesToEngine(this._craftingEngine);
             }
             // Player clone: engine needed so comfort/fire do not fall back to terrain defaults.
             this._engine = new RestFlowEngine({

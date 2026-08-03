@@ -4,7 +4,7 @@ import { RecoveryConfigApp } from "../../../apps/rest/RecoveryConfigApp.js";
 import { isComfortEnabled } from "../../camp/gear/ComfortCalculator.js";
 import { PlayerRestrictionsApp } from "../../../apps/rest/PlayerRestrictionsApp.js";
 import { RecipeEditorApp } from "../../../apps/crafting/RecipeEditorApp.js";
-import { applyCustomRecipesToEngine } from "../../crafting/recipes/RecipeCatalog.js";
+import { applyCustomRecipesToLiveEngines } from "../../crafting/recipes/RecipeCatalog.js";
 import { migrateFletchingYieldTier } from "../../crafting/settings/FletchingSettings.js";
 import { migrateTrainingXpTier } from "../../crafting/settings/TrainingSettings.js";
 import { migrateUseTravel } from "../../travel/settings/TravelSettings.js";
@@ -73,8 +73,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         default: {},
         restricted: true,
         onChange: () => {
-            const live = foundry.applications.instances.get("ionrift-respite-setup");
-            if (live?._craftingEngine) applyCustomRecipesToEngine(live._craftingEngine);
+            applyCustomRecipesToLiveEngines({ render: true });
         }
     });
 
@@ -253,6 +252,20 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         restricted: true
     });
 
+    game.settings.register(MODULE_ID, "enableBrewingAlcohol", {
+        name: "Alcoholic Ferments",
+        hint: "Allow alcoholic brewing recipes (wine, mead, draughts). Off for dry or younger tables. Steeps stay available.",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: true,
+        restricted: true,
+        onChange: () => {
+            const live = foundry.applications.instances.get("ionrift-respite-setup");
+            if (live?.render) live.render();
+        }
+    });
+
     game.settings.register(MODULE_ID, "chefTreatCookingOnly", {
         name: "Chef Treats Only (RAW)",
         hint: "Disable camp meal crafting. Chef feat Bolstering Treats still work.",
@@ -263,7 +276,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         restricted: true,
         onChange: () => {
             const live = foundry.applications.instances.get("ionrift-respite-setup");
-            if (live?._craftingEngine) applyCustomRecipesToEngine(live._craftingEngine);
+            applyCustomRecipesToLiveEngines({ render: true });
             if (live?.render) live.render();
         }
     });
@@ -380,7 +393,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         restricted: true,
         onChange: () => {
             const live = foundry.applications.instances.get("ionrift-respite-setup");
-            if (live?._craftingEngine) applyCustomRecipesToEngine(live._craftingEngine);
+            applyCustomRecipesToLiveEngines({ render: true });
             if (live?._travel?.getTravelResolver) {
                 import("../../travel/resolve/TravelProvisionIndex.js").then(async ({ applyTravelProvisionBatches }) => {
                     await applyTravelProvisionBatches(live._travel.getTravelResolver());
@@ -872,6 +885,7 @@ export const SETTING_KEYS = [
     "trainingXpTier",
     "trainingXpTierMigrated",
     "enableProfessions",
+    "enableBrewingAlcohol",
     "chefTreatCookingOnly",
     "enableFletching",
     "fletchingYieldTier",

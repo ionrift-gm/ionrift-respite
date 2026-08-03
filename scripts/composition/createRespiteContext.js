@@ -150,6 +150,10 @@ export function createRespiteContext(runtime) {
             ui.notifications.info("Next event roll will force an encounter.");
         },
         getActiveApp: () => runtime.activeRestSetupApp,
+        /** Live rest crafting engine (homebrew merges target this). */
+        get craftingEngine() {
+            return runtime.activeRestSetupApp?._craftingEngine ?? null;
+        },
         runTests: async () => {
             if (!game.user.isGM) { console.warn(`${MODULE_ID} | Tests are GM-only.`); return; }
             try {

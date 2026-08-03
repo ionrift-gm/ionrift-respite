@@ -147,5 +147,22 @@ export async function buffToActiveEffectPartsAsync(actor, buff) {
         return { changes, description: descriptions.join(" "), daeSpecialDuration: [], summaryLine };
     }
 
+    // Amber / kernel types (save_bonus, check_advantage, skill_advantage, and similar).
+    // Prefer library CookingBuffs so pack recipes need no Respite switch arms.
+    const kernelBuffs = game.ionrift?.library?.cooking?.buffs;
+    const kernelChanges = cookingAeChanges(buff, actor);
+    if (kernelChanges?.length || kernelBuffs?.hasType?.(buff.type)) {
+        const built = typeof kernelBuffs?.build === "function"
+            ? kernelBuffs.build(actor, buff)
+            : null;
+        return {
+            changes: kernelChanges ?? built?.changes ?? [],
+            description: built?.description ?? "",
+            daeSpecialDuration: built?.daeSpecialDuration ?? [],
+            summaryLine: built?.summaryLine ?? buff.type,
+            roll: built?.roll ?? null
+        };
+    }
+
     return { changes, description: "", daeSpecialDuration: [] };
 }
