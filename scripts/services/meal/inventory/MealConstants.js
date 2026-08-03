@@ -3,8 +3,6 @@ export { MODULE_ID };
 
 /** DnD5e uses "container"; PF2e uses "backpack". */
 export const CONTAINER_ITEM_TYPES = new Set(["container", "backpack"]);
-
-/** Shown when a player tries to eat spoiled inventory food. */
 export const SPOILED_FOOD_BLOCKED_MESSAGE = "Spoiled food cannot be eaten.";
 
 export const SPOILED_FOOD_TEMPLATE = {
@@ -21,10 +19,12 @@ export const SPOILED_FOOD_TEMPLATE = {
     flags: { [MODULE_ID]: { spoiled: true } }
 };
 
-/** Default meal requirements (PHB RAW baseline). */
+
 export const MEAL_DEFAULTS = {
     waterPerDay: 2,
     foodPerDay: 1,
     dehydrationDC: 15,
-    foodGraceDays: null  // null = 3 + CON mod (calculated per character)
+    foodGraceDays: null, // null = 3 + CON mod (calculated per character)
+    maxWaterPerDay: 4,
+    maxFoodPerDay: 3
 };
