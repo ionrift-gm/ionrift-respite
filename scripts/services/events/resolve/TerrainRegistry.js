@@ -1,5 +1,5 @@
 import { MODULE_ID } from "../../../data/moduleId.js";
-﻿import { Logger } from "../../../utils/Logger.js";
+import { Logger } from "../../../utils/Logger.js";
 /**
  * TerrainRegistry
  * Centralized, data-driven terrain configuration for Respite.
@@ -16,7 +16,16 @@ import { MODULE_ID } from "../../../data/moduleId.js";
  * instead of hardcoded arrays and objects.
  */
 
-import { normalizeTerrainCategory } from "../../../../../ionrift-library/scripts/services/terrain/TerrainRegistry.js";
+/** Prefer library bag; local fallback for vitest / library-not-ready. */
+function normalizeTerrainCategory(category) {
+    const fromLib = globalThis.game?.ionrift?.library?.normalizeTerrainCategory;
+    if (typeof fromLib === "function") return fromLib(category);
+    if (!category) return null;
+    const aliases = { dungeon: "built", urban: "built" };
+    const resolved = aliases[category] ?? category;
+    if (resolved === "built" || resolved === "safe-haven" || resolved === "wilderness") return resolved;
+    return null;
+}
 
 /** Camp comfort keys used by RestSetupApp and RestFlowEngine */
 const VALID_COMFORT = new Set(["safe", "sheltered", "rough", "hostile"]);
