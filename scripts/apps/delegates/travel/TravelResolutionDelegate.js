@@ -175,9 +175,7 @@ export class TravelResolutionDelegate {
         if (fromImportedPack) this.#resourcePoolsFromPack = true;
     }
 
-    /**
-     * @param {Record<string, { standard?: Object[], exceptional?: Object[] }>} yieldData
-     */
+    
     loadHuntYieldsFromData(yieldData) {
         if (!yieldData || typeof yieldData !== "object") return;
         this.#resolver.loadHuntYields(yieldData);
@@ -385,9 +383,7 @@ export class TravelResolutionDelegate {
         return payloads;
     }
 
-    /**
-     * @returns {boolean} false when the roll was ignored (already rolled or resolved).
-     */
+    
     receiveRollResult(actorId, total, day = null, natD20 = null) {
         const d = day ?? this.#activeDay;
         const entry = this._getEntry(d, actorId);
@@ -794,10 +790,7 @@ export class TravelResolutionDelegate {
         }
     }
 
-    /**
-     * @param {number} total - d20 + modifier
-     * @param {number|null} natD20 - d20 face; required for nat20 tier (same breakpoints as old setup UI)
-     */
+    
     _totalToScoutTier(total, natD20 = null) {
         if (total <= 1) return "nat1";
         if (total < 10) return "poor";
@@ -995,4 +988,767 @@ export class TravelResolutionDelegate {
         const sign = best >= 0 ? "+" : "";
         return `${sign}${best}`;
     }
+    async onSelfRollTravelCheck(event, target) {
+        const app = this._app;
+
+        event.preventDefault?.();
+        const actorId = target.dataset.actorId;
+        const day = parseInt(target.dataset.day) || (app._travelActiveDay ?? 1);
+        const activity = target.dataset.activity;
+        const dc = parseInt(target.dataset.dc) || 0;
+        if (!actorId || !activity) return;
+
+        const actor = game.actors.get(actorId);
+        if (!actor || !actor.isOwner) return;
+
+        if (app._playerTravelRolled?.[day]?.[actorId]) return;
+        if (app._syncedTravelRolled?.[day]?.[actorId]) return;
+        if (app._syncedTravelResolved?.[day]?.[actorId]) return;
+
+        if (activity === "forage") {
+            const terrainTag = app._selectedTerrain ?? app._engine?.terrainTag ?? "forest";
+            const gate = app._travel?.getForageGate?.(terrainTag);
+            if (gate?.disabled) {
+                try {
+                    ui.notifications?.warn(game.i18n.localize(
+                        gate.disabledReasonKey ?? "ionrift-respite.travel.forage.requires_pack"
+                    ));
+                } catch { /* noop */ }
+                return;
+            }
+        }
+
+        // Confirm the declaration to the GM first
+        emitTravelDeclaration({
+                    declarations: { [actorId]: activity },
+                    confirmed: true,
+                    day,
+                    userId: game.user.id
+                });
+
+        if (!app._playerTravelConfirmed) app._playerTravelConfirmed = {};
+        if (!app._playerTravelConfirmed[day]) app._playerTravelConfirmed[day] = {};
+        app._playerTravelConfirmed[day][actorId] = true;
+
+        let modifier, flavor;
+        const _adapter = game.ionrift?.respite?.adapter;
+        if (activity === "scout") {
+            const prc = _adapter ? _adapter.getSkillTotal(actor, "prc") : (actor.system?.skills?.prc?.total ?? 0);
+            const sur = _adapter ? _adapter.getSkillTotal(actor, "sur") : (actor.system?.skills?.sur?.total ?? 0);
+            modifier = Math.max(prc, sur);
+            const skillLabel = prc >= sur ? "Perception" : "Survival";
+            flavor = `<strong>${actor.name}</strong> - Scout (${skillLabel})`;
+        } else {
+            const sur = _adapter ? _adapter.getSkillTotal(actor, "sur") : (actor.system?.skills?.sur?.total ?? 0);
+            const nat = _adapter ? _adapter.getSkillTotal(actor, "nat") : (actor.system?.skills?.nat?.total ?? 0);
+            modifier = Math.max(sur, nat);
+            const actLabel = activity === "forage" ? "Forage" : "Hunt";
+            flavor = `<strong>${actor.name}</strong> - ${actLabel} (Survival)${dc ? ` DC ${dc}` : ""}`;
+        }
+
+        target.disabled = true;
+        target.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
+
+        const roll = await new Roll(`1d20 + ${modifier}`).evaluate();
+        await roll.toMessage({
+            speaker: ChatMessage.getSpeaker({ actor }),
+            flavor
+        });
+
+        if (game.modules.get("dice-so-nice")?.active) {
+            await new Promise(resolve => {
+                const timeout = setTimeout(resolve, 5000);
+                Hooks.once("diceSoNiceRollComplete", () => {
+                    clearTimeout(timeout);
+                    resolve();
+                });
+            });
+        }
+
+        if (!app._playerTravelRolled) app._playerTravelRolled = {};
+        if (!app._playerTravelRolled[day]) app._playerTravelRolled[day] = {};
+        app._playerTravelRolled[day][actorId] = true;
+
+        emitTravelRollResult({
+                    actorId,
+                    actorName: actor.name,
+                    total: roll.total,
+                    natD20: getNatD20FromRoll(roll),
+                    day
+                });
+
+        ui.notifications.info(`${actor.name} rolled ${roll.total}.`);
+        app.render();
+    
+    }
+
+    async onResolveTravelDay(event, target) {
+        const app = this._app;
+
+        if (!game.user.isGM) return;
+        const day = parseInt(target.dataset.day) || app._travel.activeDay;
+        const partyActors = getPartyActors();
+        const terrainTag = app._engine?.terrainTag ?? app._selectedTerrain ?? "forest";
+
+        await app._travel.resolveDay(day, partyActors, terrainTag);
+
+        if (app._travel.isFullyResolved()) {
+            app._applyScoutingFromTravel();
+        }
+
+        const perPlayerResults = {};
+        const allTravelPlayerUserIds = new Set();
+        for (const actor of partyActors) {
+            const ownerIds = Object.entries(actor.ownership ?? {})
+                .filter(([id, level]) => level >= 3 && id !== "default")
+                .map(([id]) => id);
+            for (const uid of ownerIds) {
+                allTravelPlayerUserIds.add(uid);
+            }
+            const debrief = app._travel.getPlayerDebrief(actor.id);
+            for (const uid of ownerIds) {
+                if (!perPlayerResults[uid]) perPlayerResults[uid] = [];
+                perPlayerResults[uid].push(...debrief);
+            }
+        }
+
+        const scoutingDebrief = app._travel.getScoutingDebrief(terrainTag);
+        app._scoutingDebrief = scoutingDebrief;
+
+        // Send debrief to each player with a character in the party (include empty `results` so flags still apply)
+        for (const userId of allTravelPlayerUserIds) {
+            emitTravelDebrief({
+                    targetUserId: userId,
+                    results: perPlayerResults[userId] ?? [],
+                    scoutingDone: !!scoutingDebrief,
+                    fullyResolved: app._travel.isFullyResolved()
+                });
+        }
+
+        // Auto-advance to camp phase as soon as all days are resolved ,  no second click needed.
+        if (app._travel.isFullyResolved()) {
+            app._phase = "camp";
+            app._campStep2Entered = false;
+            if (await app._skipCampForTheater()) return;
+            if (await app._skipCampForSafeRest()) return;
+            // Comfort off: waive the Make Camp fire phase
+            if (await app._skipCampForComfortOff()) return;
+            app._broadcastMakeCampPhaseSync();
+            await app._saveRestState();
+            app.render();
+            return;
+        }
+
+        emitPhaseChanged("travel", {
+                activeDay: app._travel.activeDay,
+                fullyResolved: app._travel.isFullyResolved(),
+                scoutingDone: !!scoutingDebrief
+            });
+
+        await app._saveRestState();
+        app.render();
+    
+    }
+
+    receiveTravelRollResult(data) {
+        const app = this._app;
+
+        const day = data.day ?? app._travel.activeDay;
+        const accepted = app._travel.receiveRollResult(
+            data.actorId, data.total, day, data.natD20 ?? null
+        );
+        if (!accepted) return;
+
+        emitPhaseChanged("travel", {
+                travelRollUpdate: {
+                    actorId: data.actorId,
+                    actorName: data.actorName,
+                    total: data.total,
+                    day
+                }
+            });
+
+        app.render();
+
+        const terrainTag = app._engine?.terrainTag ?? app._selectedTerrain ?? "forest";
+        const entry = app._travel._getEntry(day, data.actorId);
+        if (!entry || (entry.activity !== "forage" && entry.activity !== "hunt")) {
+            void app._saveRestState();
+            return;
+        }
+
+        void (async () => {
+            try {
+                const staged = await app._travel.processSkillRoll(data.actorId, day, terrainTag);
+                this._broadcastTravelDeclarations();
+
+                if (staged?.awaitingLoot) {
+                    const actor = game.actors.get(data.actorId);
+                    if (actor) {
+                        const ownerIds = Object.entries(actor.ownership ?? {})
+                            .filter(([id, level]) => id !== "default" && level >= 3)
+                            .map(([id]) => id);
+                        for (const uid of ownerIds) {
+                            emitTravelLootRollPrompt({
+                                targetUserId: uid,
+                                actorId: data.actorId,
+                                actorName: data.actorName ?? actor.name,
+                                day,
+                                activity: entry.activity,
+                                lootDraws: staged.lootDraws
+                            });
+                        }
+                    }
+                    return;
+                }
+
+                if (staged?.result) {
+                    await this.emitTravelIndividualDebriefForRow(staged, data.actorId);
+                }
+            } catch (err) {
+                console.error("[Respite] processSkillRoll", err);
+            } finally {
+                await app._saveRestState();
+                app.render();
+            }
+        })();
+    
+    }
+
+    _broadcastTravelDeclarations() {
+        const app = this._app;
+
+        const allDayDeclarations = {};
+        const rolledByDay = {};
+        const resolvedByDay = {};
+        const awaitingLootByDay = {};
+        const travelEntries = app._travel.serialize()?.entries ?? {};
+
+        for (const [key, entry] of Object.entries(travelEntries)) {
+            const colon = key.indexOf(":");
+            if (colon < 0) continue;
+            const day = parseInt(key.slice(0, colon), 10);
+            const actorId = key.slice(colon + 1);
+            if (!day || !actorId) continue;
+            if (entry.status === "rolled" || entry.status === "resolved" || entry.status === "awaiting_loot") {
+                rolledByDay[day] ??= {};
+                rolledByDay[day][actorId] = true;
+            }
+            if (entry.status === "awaiting_loot") {
+                awaitingLootByDay[day] ??= {};
+                awaitingLootByDay[day][actorId] = {
+                    lootDraws: entry.lootDraws ?? 1,
+                    activity: entry.activity
+                };
+            }
+            if (entry.status === "resolved") {
+                resolvedByDay[day] ??= {};
+                resolvedByDay[day][actorId] = true;
+            }
+        }
+
+        for (let d = 1; d <= app._travel.totalDays; d++) {
+            const decl = app._travel.getDayDeclarations(d);
+            const confirmed = {};
+            for (const actorId of Object.keys(decl)) {
+                if (app._travel.isConfirmed(actorId, d)) confirmed[actorId] = true;
+            }
+            decl._confirmed = confirmed;
+            allDayDeclarations[d] = decl;
+        }
+        emitTravelDeclarationsSync({
+                    declarations: allDayDeclarations,
+                    rolled: rolledByDay,
+                    resolved: resolvedByDay,
+                    awaitingLoot: awaitingLootByDay,
+                    activeDay: app._travel.activeDay,
+                    totalDays: app._travel.totalDays,
+                    scoutingAllowed: app._travel.scoutingAllowed,
+                    forageDC: app._travel.forageDC,
+                    huntDC: app._travel.huntDC,
+                    travelGather: app._buildTravelGatherPayload()
+                });
+    
+    }
+
+    _applyPlayerTravelRestore(pt) {
+        const app = this._app;
+
+        if (!pt || app._isGM) return;
+
+        if (pt.totalDays != null) app._travelTotalDays = pt.totalDays;
+        if (pt.activeDay != null) app._travelActiveDay = pt.activeDay;
+        if (pt.forageDC != null) app._travelForageDC = pt.forageDC;
+        if (pt.huntDC != null) app._travelHuntDC = pt.huntDC;
+        if (pt.scoutingAllowed != null) app._travelScoutingAllowed = pt.scoutingAllowed;
+
+        if (pt.declarations) {
+            app._playerTravelDeclarations = foundry.utils.mergeObject(
+                app._playerTravelDeclarations ?? {},
+                pt.declarations,
+                { inplace: false, insertKeys: true, insertValues: true }
+            );
+        }
+        if (pt.confirmed) {
+            app._playerTravelConfirmed = foundry.utils.mergeObject(
+                app._playerTravelConfirmed ?? {},
+                pt.confirmed,
+                { inplace: false, insertKeys: true, insertValues: true }
+            );
+        }
+        if (pt.rolled) {
+            app._playerTravelRolled = foundry.utils.mergeObject(
+                app._playerTravelRolled ?? {},
+                pt.rolled,
+                { inplace: false, insertKeys: true, insertValues: true }
+            );
+        }
+        if (pt.awaitingLoot) {
+            app._playerTravelAwaitingLoot = foundry.utils.mergeObject(
+                app._playerTravelAwaitingLoot ?? {},
+                pt.awaitingLoot,
+                { inplace: false, insertKeys: true, insertValues: true }
+            );
+        }
+        if (pt.debrief?.length) {
+            const merged = [...(app._travelDebrief ?? [])];
+            for (const row of pt.debrief) {
+                const actorId = row.result?.actorId;
+                const dup = merged.some(
+                    d => d.day === row.day && d.result?.actorId === actorId
+                );
+                if (!dup) merged.push(row);
+            }
+            app._travelDebrief = merged;
+        }
+        if (pt.fullyResolved != null) app._travelFullyResolved = !!pt.fullyResolved;
+        if (pt.scoutingDone != null) app._travelScoutingDone = !!pt.scoutingDone;
+    
+    }
+
+    async onRollTravelCheck(event, target) {
+        const app = this._app;
+
+        event.preventDefault?.();
+        const actorId = target.dataset.characterId ?? target.dataset.actorId;
+        const day = parseInt(target.dataset.day) || 1;
+        if (!actorId) return;
+
+        const actor = game.actors.get(actorId);
+        if (!actor || !actor.isOwner) return;
+
+        const pending = app._pendingTravelRoll;
+        if (!pending) return;
+        const entry = pending.activities?.find(a => a.actorId === actorId);
+        if (!entry) return;
+        if (pending.rolledCharacters?.has(actorId)) return;
+
+        let skillKey = entry.skill ?? "sur";
+        let flavor;
+        const dc = entry.dc ?? 0;
+
+        if (entry.activity === "scout") {
+            skillKey = pickBestSkill(actor, ["prc", "sur"]);
+            const skillLabel = skillKey === "prc" ? "Perception" : "Survival";
+            flavor = `<strong>${actor.name}</strong> - Scout (${skillLabel})`;
+        } else if (entry.activity === "other") {
+            skillKey = entry.skill ?? "sur";
+            flavor = `<strong>${actor.name}</strong> - ${entry.skillName ?? "Survival"} DC ${entry.dc}`;
+        } else {
+            skillKey = pickBestSkill(actor, ["sur", "nat"]);
+            const actLabel = entry.activity === "forage" ? "Forage" : "Hunt";
+            flavor = `<strong>${actor.name}</strong> - ${actLabel} (Survival) DC ${entry.dc}`;
+        }
+
+        const { total, roll } = await executePlayerRoll(actor, skillKey, dc, flavor, target);
+
+        if (!pending.rolledCharacters) pending.rolledCharacters = new Set();
+        pending.rolledCharacters.add(actorId);
+
+        emitTravelRollResult({
+                    actorId,
+                    actorName: actor.name,
+                    total,
+                    natD20: getNatD20FromRoll(roll),
+                    day
+                });
+
+        ui.notifications.info(`${actor.name} rolled ${total}.`);
+        app.render();
+    
+    }
+
+    async onSkipTravelPhase(event, target) {
+        const app = this._app;
+
+        if (!game.user.isGM) return;
+
+        if (app._travel && !app._travel.isFullyResolved() && app._travel.hasDeclarations()) {
+            const confirmed = await new Promise(resolve => {
+                const overlay = document.createElement("div");
+                overlay.classList.add("ionrift-armor-modal-overlay");
+                overlay.innerHTML = `
+                    <div class="ionrift-armor-modal">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Unresolved Travel Activities</h3>
+                        <p>Not all travel days have been resolved. Characters with pending foraging, hunting, or scouting rolls will lose their results.</p>
+                        <p>Are you sure you want to skip?</p>
+                        <div class="ionrift-armor-modal-buttons">
+                            <button class="btn-armor-confirm"><i class="fas fa-forward"></i> Skip Anyway</button>
+                            <button class="btn-armor-cancel"><i class="fas fa-clock"></i> Go Back</button>
+                        </div>
+                    </div>`;
+                document.body.appendChild(overlay);
+                overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => { overlay.remove(); resolve(true); });
+                overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => { overlay.remove(); resolve(false); });
+            });
+            if (!confirmed) return;
+        }
+
+        if (app._travel?.scoutingResult) {
+            app._applyScoutingFromTravel();
+        }
+
+        app._phase = "camp";
+        app._campStep2Entered = false;
+
+        if (await app._skipCampForTheater()) return;
+        if (await app._skipCampForSafeRest()) return;
+        // Comfort off: waive the Make Camp fire phase
+        if (await app._skipCampForComfortOff()) return;
+
+        app._broadcastMakeCampPhaseSync();
+
+        app._saveRestState();
+        app.render();
+    
+    }
+
+    async onRollTravelLoot(event, target) {
+        const app = this._app;
+
+        event.preventDefault?.();
+        const actorId = target.dataset.actorId;
+        const day = parseInt(target.dataset.day) || 1;
+        const draws = parseInt(target.dataset.draws) || 1;
+        if (!actorId) return;
+
+        const actor = game.actors.get(actorId);
+        if (!actor || !actor.isOwner) return;
+
+        const activity = target.dataset.activity ?? "forage";
+        const actLabel = activity === "hunt" ? "Hunt yield" : "Forage loot";
+        const rolls = [];
+
+        target.disabled = true;
+        target.innerHTML = `<i class="fas fa-spinner fa-spin"></i>`;
+
+        for (let index = 0; index < draws; index++) {
+            const flavor = draws > 1
+                ? `<strong>${actor.name}</strong> - ${actLabel} (${index + 1}/${draws})`
+                : `<strong>${actor.name}</strong> - ${actLabel}`;
+            const roll = await new Roll("1d100").evaluate();
+            await postRollToChat(actor, roll, flavor);
+            await waitForDiceSoNice();
+            rolls.push(roll.total);
+        }
+
+        if (app._playerTravelAwaitingLoot?.[day]) {
+            delete app._playerTravelAwaitingLoot[day][actorId];
+        }
+
+        emitTravelLootRollResult({
+            actorId,
+            actorName: actor.name,
+            rolls,
+            day
+        });
+
+        ui.notifications.info(`${actor.name} rolled loot (${rolls.join(", ")}).`);
+        app.render();
+    
+    }
+
+    onRequestTravelRolls(event, target) {
+        const app = this._app;
+
+        if (!game.user.isGM) return;
+        const day = parseInt(target.dataset.day) || app._travel.activeDay;
+        const payloads = app._travel.getAllRollRequestPayloads(day);
+        if (!payloads.length) return;
+
+        for (const p of payloads) {
+            app._travel.markRequested(p.actorId, day);
+        }
+
+        emitTravelRollRequest({
+                    activities: payloads,
+                    day
+                });
+
+        emitPhaseChanged("travel", {
+                travelRollRequest: { activities: payloads, day }
+            });
+
+        ui.notifications.info(`Day ${day} roll requests sent to ${payloads.length} character(s).`);
+        app._saveRestState();
+        app.render();
+    
+    }
+
+    onAdjustGlobalDC(event, target) {
+        const app = this._app;
+
+        event.preventDefault?.();
+        if (!game.user.isGM) return;
+        const activity = target.dataset.activity;
+        const delta = parseInt(target.dataset.delta) || 0;
+        if (!activity || !delta) return;
+        app._travel.adjustGlobalDC(activity, delta);
+        app._saveRestState();
+        app.render();
+    
+    }
+
+    async onRollTravelForPlayer(event, target) {
+        const app = this._app;
+
+        if (!game.user.isGM) return;
+        const actorId = target.dataset.actorId;
+        const day = parseInt(target.dataset.day) || app._travel.activeDay;
+        if (!actorId) return;
+
+        const entry = app._travel._getEntry(day, actorId);
+        if (!entry) return;
+        if (entry.status !== "idle" && entry.status !== "requested") return;
+
+        if (entry.activity === "nothing" && !entry.customDC) return;
+
+        const actor = game.actors.get(actorId);
+        if (!actor) return;
+
+        let skills, dcLabel;
+        if (entry.activity === "scout") {
+            skills = ["prc", "sur"];
+            dcLabel = "Scout";
+        } else if (entry.activity === "nothing" && entry.customDC) {
+            skills = [entry.customSkill ?? "sur"];
+            dcLabel = `Other (DC ${entry.customDC})`;
+        } else {
+            skills = ["sur", "nat"];
+            dcLabel = entry.activity === "forage" ? "Forage (Survival)" : "Hunt (Survival)";
+        }
+
+        const result = await rollForPlayer(actor, skills, entry.customDC ?? entry.dc ?? 0, dcLabel);
+
+        app.receiveTravelRollResult({
+            actorId,
+            actorName: actor.name,
+            total: result.total,
+            natD20: result.natD20,
+            day
+        });
+    
+    }
+
+    receiveTravelLootRollResult(data) {
+        const app = this._app;
+
+        const day = data.day ?? app._travel.activeDay;
+        const entry = app._travel._getEntry(day, data.actorId);
+        if (!entry || entry.status !== "awaiting_loot") return;
+
+        emitPhaseChanged("travel", {
+            travelLootRollUpdate: {
+                actorId: data.actorId,
+                actorName: data.actorName,
+                rolls: data.rolls,
+                day
+            }
+        });
+
+        app.render();
+
+        const terrainTag = app._engine?.terrainTag ?? app._selectedTerrain ?? "forest";
+        void (async () => {
+            try {
+                const row = await app._travel.resolveLootAndFinish(
+                    data.actorId,
+                    day,
+                    terrainTag,
+                    data.rolls ?? []
+                );
+                if (row) {
+                    await this.emitTravelIndividualDebriefForRow(row, data.actorId);
+                }
+                app._broadcastTravelDeclarations();
+            } catch (err) {
+                console.error("[Respite] resolveLootAndFinish", err);
+            } finally {
+                await app._saveRestState();
+                app.render();
+            }
+        })();
+    
+    }
+
+    async onRollTravelLootForPlayer(event, target) {
+        const app = this._app;
+
+        if (!game.user.isGM) return;
+        const actorId = target.dataset.actorId;
+        const day = parseInt(target.dataset.day) || app._travel.activeDay;
+        if (!actorId) return;
+
+        const entry = app._travel._getEntry(day, actorId);
+        if (!entry || entry.status !== "awaiting_loot") return;
+
+        const actor = game.actors.get(actorId);
+        if (!actor) return;
+
+        const draws = entry.lootDraws ?? 1;
+        const activity = entry.activity;
+        const actLabel = activity === "hunt" ? "Hunt yield" : "Forage loot";
+        const rolls = [];
+
+        for (let index = 0; index < draws; index++) {
+            const flavor = draws > 1
+                ? `<strong>${actor.name}</strong> - ${actLabel} (${index + 1}/${draws})`
+                : `<strong>${actor.name}</strong> - ${actLabel}`;
+            const roll = await new Roll("1d100").evaluate();
+            await postRollToChat(actor, roll, flavor);
+            await waitForDiceSoNice();
+            rolls.push(roll.total);
+        }
+
+        this.receiveTravelLootRollResult({
+            actorId,
+            actorName: actor.name,
+            rolls,
+            day
+        });
+    
+    }
+
+    onRequestOtherRoll(event, target) {
+        const app = this._app;
+
+        if (!game.user.isGM) return;
+        const actorId = target.dataset.actorId;
+        const day = parseInt(target.dataset.day) || app._travel.activeDay;
+        if (!actorId) return;
+
+        const row = target.closest(".travel-other-inline");
+        const dcInput = row?.querySelector(".travel-other-dc-input");
+        const dc = parseInt(dcInput?.value) || 12;
+
+        app._travel.setOtherCustomDC(actorId, dc, "sur", day);
+        app._travel.markRequested(actorId, day);
+
+        const payload = app._travel.getRollRequestPayload(actorId, day);
+        if (!payload) return;
+
+        emitTravelRollRequest({
+                    activities: [payload],
+                    day
+                });
+
+        emitPhaseChanged("travel", {
+                travelRollRequest: { activities: [payload], day }
+            });
+
+        ui.notifications.info(`Custom roll request (DC ${dc}) sent for ${game.actors.get(actorId)?.name ?? "character"}.`);
+        app._saveRestState();
+        app.render();
+    
+    }
+
+    async onResolveTravelPhase(event, target) {
+        const app = this._app;
+
+        const partyActors = getPartyActors();
+        const terrainTag = app._engine?.terrainTag ?? app._selectedTerrain ?? "forest";
+
+        await app._travel.resolveAll(partyActors, terrainTag);
+        this._applyScoutingFromTravel();
+
+        app._phase = "camp";
+        app._campStep2Entered = false;
+
+        if (await app._skipCampForTheater()) return;
+        if (await app._skipCampForSafeRest()) return;
+        // Comfort off: waive the Make Camp fire phase
+        if (await app._skipCampForComfortOff()) return;
+
+        app._broadcastMakeCampPhaseSync();
+
+        await app._saveRestState();
+        app.render();
+    
+    }
+
+    receiveTravelDeclaration(data) {
+        const app = this._app;
+
+        const { applied, rejected } = applyPlayerTravelDeclarationToGm({
+            travel: app._travel,
+            actorLookup: id => game.actors.get(id),
+            data
+        });
+        if (rejected.length) {
+            for (const r of rejected) {
+                console.warn(`${MODULE_ID} | travel declaration rejected for ${r.actorId}: ${r.reason}`);
+            }
+        }
+        if (!applied.length) return;
+
+        // GM's own render still fires so the confirmation badge appears even if
+        // the player-side sync errors.
+        try {
+            app._broadcastTravelDeclarations();
+        } catch (err) {
+            console.error(`${MODULE_ID} | _broadcastTravelDeclarations failed`, err);
+        }
+        app._saveRestState();
+        app.render();
+    
+    }
+
+    _applyScoutingFromTravel() {
+        const app = this._app;
+
+        if (!app._engine) return;
+        if (!isScoutingEnabled() || app._travel?.isEffectiveSafeRestSpot?.()) {
+            app._engine.scoutingResult = "none";
+            app._engine.scoutingComplication = false;
+            if (!app._engine._encounterBreakdown) app._engine._encounterBreakdown = {};
+            app._engine._encounterBreakdown.scouting = 0;
+            app._engine._encounterBreakdown.scoutingResult = "none";
+            const bd = app._engine._encounterBreakdown;
+            app._engine.shelterEncounterMod = (bd.shelter ?? 0) + (bd.weather ?? 0);
+            return;
+        }
+        const effects = app._travel.scoutingEffects;
+        const tier = app._travel.scoutingResult ?? "none";
+
+        app._engine.scoutingResult = tier;
+        app._engine.scoutingComplication = effects.complication;
+
+        if (!app._engine._encounterBreakdown) app._engine._encounterBreakdown = {};
+        app._engine._encounterBreakdown.scouting = effects.encounterDC;
+        app._engine._encounterBreakdown.scoutingResult = tier;
+
+        // Recalculate total shelter encounter mod. Scouting stays in the
+        // breakdown only; getEffectiveEncounterDC adds it once from there.
+        const bd = app._engine._encounterBreakdown;
+        app._engine.shelterEncounterMod = (bd.shelter ?? 0) + (bd.weather ?? 0);
+
+        if (effects.comfortBonus > 0) {
+            let rank = COMFORT_RANK[app._engine.comfort] ?? 0;
+            rank = Math.min(COMFORT_RANK.safe, rank + effects.comfortBonus);
+            app._engine.comfort = RANK_TO_KEY[rank];
+        }
+    
+    }
+
+
 }

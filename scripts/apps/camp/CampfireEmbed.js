@@ -158,9 +158,7 @@ export class CampfireEmbed {
         this._onRender();
     }
 
-    /**
-     * Returns true for terrain types where fire is provided (e.g. tavern hearth).
-     */
+    
     _isHearthTerrain() {
         const tag = this._terrainTag?.toLowerCase();
         return tag === "tavern" || tag?.startsWith("tavern_");
@@ -275,7 +273,7 @@ export class CampfireEmbed {
         return this.fireLevel;
     }
 
-    /** @returns {string} */
+    
     _getKindlingDragImg() {
         const item = findConsumableFirewoodItem(this._getPlayerActor());
         return item?.img || DEFAULT_KINDLING_IMG;
@@ -294,11 +292,7 @@ export class CampfireEmbed {
         };
     }
 
-    /**
-     * @param {number} x - normalized 0-1
-     * @param {number} y - normalized 0-1
-     * @param {object} [opts]
-     */
+    
     _dropKindlingOnFire(x, y, opts = {}) {
         const drop = this._normalizeKindlingDrop(x, y);
         this._physics?.addFallingItem(drop.x, drop.y, null, "#b48240", {
@@ -1067,7 +1061,6 @@ export class CampfireEmbed {
         const firewood = findConsumableFirewoodItem(actor);
         if (!firewood) return false;
 
-        // Check if current user can modify this actor's items
         const canModify = actor.isOwner;
         if (!canModify) {
             // Route through GM: emit socket, GM performs the mutation
@@ -1202,7 +1195,7 @@ export class CampfireEmbed {
         }, 3000);
     }
 
-    /** @param {HTMLElement|null} el */
+    
     _meterZoneOrder(el) {
         const hasCold = !!el?.querySelector(".zone-cold-camp");
         return hasCold

@@ -63,10 +63,7 @@ export class RestLedgerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     /** @type {Set<string>} Collapsed phase keys. */
     #collapsedPhases = new Set();
 
-    /**
-     * @param {object} options
-     * @param {import("../../services/rest/flow/RestLedger.js").RestLedger} ledger
-     */
+    
     constructor(options = {}, ledger = null) {
         super(options);
         this.#ledger = ledger;
