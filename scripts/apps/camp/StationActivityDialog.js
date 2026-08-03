@@ -18,22 +18,19 @@ import {
 import { buildActivityListItem, buildActivityDetailContext } from "../crafting/ActivityDetailBuilder.js";
 import { computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, getDetectMagicPlayerAccessReason, spawnDetectMagicCastRipple } from "../delegates/crafting/DetectMagicDelegate.js";
 import { canPlaceStation, actorHasBrewingTools } from "../../services/camp/props/CompoundCampPlacer.js";
-import { getPartyActors, getFoodBuffPartyActors, getMealEligiblePartyActors } from "../../services/party/partyActors.js";
-import { MealPhaseHandler } from "../../services/meal/phase/MealPhaseHandler.js";
+import { getPartyActors, getFoodBuffPartyActors } from "../../services/party/partyActors.js";
 import { MonstrousFeastBridge } from "../../services/meal/provisions/MonstrousFeastBridge.js";
 import { formatMealBuffPreview } from "../../services/meal/buffs/MealBuffPresets.js";
 import { buildCraftCommitSummary, resolveDefaultCraftRecipeId } from "../../services/crafting/engine/CraftCommitSummary.js";
 import { normalizeRecipeOutputImg } from "../../services/crafting/recipes/RecipeIcons.js";
 import { patchCraftingRiskUi } from "../../services/crafting/engine/CraftingRiskUiPatch.js";
-import { ItemClassifier } from "../../services/party/ItemClassifier.js";
 import { emitFeastServeRequest, emitActivityColdCampRequest } from "../../services/socket/SocketController.js";
 import { CampGearScanner } from "../../services/camp/gear/CampGearScanner.js";
-import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../../services/camp/props/StationInteractionLayer.js";
-import { TerrainRegistry } from "../../services/events/resolve/TerrainRegistry.js";
+import { isStationLayerActive } from "../../services/camp/props/StationInteractionLayer.js";
 import { guardEmbedItems } from "../../services/crafting/outcomes/MintGuard.js";
 import { GrantLedger } from "../../services/crafting/outcomes/GrantLedger.js";
 import { ItemOutcomeHandler } from "../../services/crafting/outcomes/ItemOutcomeHandler.js";
-import { refreshGmRestIndicator } from "../../services/ui/sheet/RejoinManager.js";
+import { CraftingDelegate } from "../delegates/crafting/CraftingDelegate.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -47,11 +44,7 @@ export function notifyWorkbenchIdentifyStagingTouched() {
     Hooks.callAll(`${MODULE_ID}.workbenchIdentifyStagingTouched`);
 }
 
-/**
- * Closes the open station dialog when it was built for a different actor than the
- * current roster or token focus (GM switches character while a picker is open).
- * @param {string|null|undefined} contextActorId
- */
+
 export function closeStationDialogIfDifferentActor(contextActorId) {
     if (!_openDialog || !contextActorId) return;
     if (_openDialog._actor?.id === contextActorId) return;
@@ -66,108 +59,11 @@ export function refreshOpenStationDialog() {
     }
 }
 
-/** Close any open canvas station dialog (rest abandoned, phase change, camp cleared, etc.). */
+
 export async function closeOpenStationDialog() {
     const dlg = _openDialog;
     if (!dlg) return;
     await dlg.close();
-}
-
-/**
- * Credit feast satiation in the active rest meal state for all recipients.
- * Fills and locks food/water slots from satiates, folds into consumedDays, marks rations submitted.
- */
-function _creditFeastMealState(restApp, partyIds, satiates) {
-    if (!restApp) return;
-    if (!restApp._mealChoices) restApp._mealChoices = new Map();
-    if (!restApp._activityMealRationsSubmitted) restApp._activityMealRationsSubmitted = new Set();
-
-    // Determine per-day slot counts from terrain meal rules
-    const terrainTag = restApp._engine?.terrainTag ?? restApp._selectedTerrain ?? "forest";
-    const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
-    const fpd = terrainMealRules.foodPerDay ?? 1;
-    const wpd = terrainMealRules.waterPerDay ?? 2;
-
-    for (const pid of partyIds) {
-        const actor = game.actors.get(pid);
-        if (!actor || !ItemClassifier.requiresSustenance(actor)) continue;
-        // Skip characters already submitted; feast credit is additive, not overwriting
-        if (restApp._activityMealRationsSubmitted.has(pid)) continue;
-
-        const existing = restApp._mealChoices.get(pid) ?? {};
-
-        if (satiates.includes("food")) {
-            const foodArr = Array.isArray(existing.food) ? [...existing.food] : [];
-            const foodLocked = Array.isArray(existing.foodLockedSlots) ? [...existing.foodLockedSlots] : [];
-            // Fill ALL remaining food slots up to fpd
-            for (let i = 0; i < fpd; i++) {
-                if (!foodArr[i] || foodArr[i] === "skip") {
-                    foodArr[i] = "__feast_food";
-                    if (!foodLocked.includes(i)) foodLocked.push(i);
-                }
-            }
-            existing.food = foodArr;
-            existing.foodLockedSlots = foodLocked;
-        }
-
-        if (satiates.includes("water")) {
-            const waterArr = Array.isArray(existing.water) ? [...existing.water] : [];
-            const waterLocked = Array.isArray(existing.waterLockedSlots) ? [...existing.waterLockedSlots] : [];
-            // Fill ALL remaining water slots up to wpd
-            for (let i = 0; i < wpd; i++) {
-                if (!waterArr[i] || waterArr[i] === "skip") {
-                    waterArr[i] = "__feast_water";
-                    if (!waterLocked.includes(i)) waterLocked.push(i);
-                }
-            }
-            existing.water = waterArr;
-            existing.waterLockedSlots = waterLocked;
-        }
-
-        // Fold filled selections into consumedDays and mark submitted
-        const consumedDays = Array.isArray(existing.consumedDays) ? [...existing.consumedDays] : [];
-        consumedDays.push({
-            food: [...(existing.food ?? [])],
-            water: [...(existing.water ?? [])],
-            essence: [...(existing.essence ?? [])]
-        });
-
-        restApp._mealChoices.set(pid, {
-            ...existing,
-            consumedDays,
-            currentDay: consumedDays.length,
-            food: [],
-            water: [],
-            essence: existing.essence ?? [],
-            itemsConsumed: true,
-            foodLockedSlots: existing.foodLockedSlots ?? [],
-            waterLockedSlots: existing.waterLockedSlots ?? []
-        });
-
-        restApp._activityMealRationsSubmitted.add(pid);
-    }
-
-    // Persist and broadcast
-    try {
-        if (typeof restApp._saveRestState === "function") restApp._saveRestState();
-    } catch (e) { console.warn(`${MODULE_ID} | _creditFeastMealState: save failed`, e); }
-
-    // Feast covers the whole party; mark meal as submitted so the snapshot
-    // carries mealSubmitted:true to players, replacing "Submit Meals" with
-    // "Waiting for GM to proceed".
-    restApp._mealSubmitted = true;
-
-    try {
-        const snap = typeof restApp.getRestSnapshot === "function" ? restApp.getRestSnapshot() : null;
-        if (snap) game.socket.emit(`module.${MODULE_ID}`, { type: "restSnapshot", snapshot: snap });
-    } catch (e) { console.warn(`${MODULE_ID} | _creditFeastMealState: broadcast failed`, e); }
-
-    notifyStationMealChoicesUpdated();
-    if (restApp.rendered) restApp.render();
-    refreshGmRestIndicator(restApp);
-    if (typeof restApp._refreshStationOverlayMeals === "function") restApp._refreshStationOverlayMeals();
-    if (isStationLayerActive()) refreshStationEmptyNoticeFade(restApp);
-    Logger.log(`${MODULE_ID} | _creditFeastMealState: credited ${partyIds.length} party members`, { satiates });
 }
 
 export const COOK_ACTIVITY_IDS = new Set(["act_cook", "act_brew"]);
@@ -234,22 +130,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         }
     };
 
-    /**
-     * @param {Object} options
-     * @param {Object}   options.station        - CAMP_STATIONS entry
-     * @param {Actor}    options.actor          - The choosing actor
-     * @param {Object[]} options.available      - Available activity schemas for this station
-     * @param {Object[]} options.faded          - Faded (prereq-blocked) activity schemas
-     * @param {Object}   options.restSession    - Current rest session context (fireLevel, etc.)
-     * @param {object|null} options.restApp - parent RestSetupApp instance (canvas flow)
-     * @param {string|null} options.canvasStationId - station id for overlay dimming
-     * @param {object|null} options.partyState       - buildPartyState(...) for advisories (from RestSetupApp)
-     * @param {Token|null} options.stationToken     - token to anchor position and track while open
-     * @param {boolean} [options.showStationTabs]    - campfire / cooking / workbench hub (multi-tab)
-     * @param {string} [options.initialStationTab]   - activity | meal | cooking | identify
-     * @param {Object[]} [options.cookingAvailable]  - act_cook / act_brew only (cooking station)
-     * @param {Object[]} [options.cookingFaded]
-     */
+    
     constructor({
         station,
         actor,
@@ -294,7 +175,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         /** @type {((...args: unknown[]) => void) | null} */
         this._mealHookBound    = null;
         this._trackStarted     = false;
-        /** Set when user manually drags the dialog; stops auto-tracking to token. */
+        
         this._userDragged      = false;
 
         /** @type {"list"|"detail"|"result"|"crafting"} */
@@ -450,14 +331,12 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const hasAnyGeneral = activityItems.length > 0;
         const hasCookingAvail = cookActItems.length > 0;
 
-        // Determine early whether this viewer can see the party-wide Identify tab.
         // GM and actors with the Identify spell prepared can see it.
         const _identifyGateData = (hubEligible && isWorkbenchIdentifyUiEnabled() && this._station?.id === "workbench" && this._restApp?.getStationIdentifyEmbedContext)
             ? this._restApp.getStationIdentifyEmbedContext({})
             : { identifyCasters: [], unidentifiedItems: [] };
         const isIdentifyCaster = _identifyGateData.identifyCasters?.some(c => c.id === this._actor?.id);
         this._canSeeSharedPool = !!game.user?.isGM || !!isIdentifyCaster;
-        // Group ALL party unidentified gear (not potions) by owner for the Identify tab list
         const _byOwner = new Map();
         for (const item of (_identifyGateData.unidentifiedItems ?? []).filter(it => !it.isPotion)) {
             if (!_byOwner.has(item.actorId)) {
@@ -837,7 +716,6 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             });
         }
 
-        // Include station tab bar so tabs persist during crafting
         const stationTabs = this._buildStationTabs();
         const showTabBar = stationTabs.length > 1;
 
@@ -1128,39 +1006,29 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
     static async #onCraftCommit() {
         if (this._craftRollPending || this._craftHasCrafted || !this._craftRecipeId) return;
-        const engine = this._restApp?._craftingEngine;
         const actor = this._actor;
         const restApp = this._restApp;
-        if (!engine || !actor) return;
-
-        if (restApp?.hasCompletedCrafting?.(actor.id, this._craftProfession)) {
-            ui.notifications.warn(`${actor.name} has already crafted during this rest.`);
-            return;
-        }
-
-        const ledger = restApp?._grantLedger;
-        const slotKey = GrantLedger.craftingSlotKey(actor.id, this._craftProfession, this._craftRecipeId);
-        if (ledger?.has(slotKey)) {
-            ui.notifications.warn("That recipe was already crafted this rest.");
-            return;
-        }
+        if (!restApp?._craftingEngine || !actor) return;
 
         this._partyMealOutcomeResolved = false;
-
-        const terrainTag = this._restApp?._engine?.terrainTag ?? this._restApp?._restData?.terrainTag ?? null;
-        const partySize = engine.getRecipePartySize(this._craftRecipeId, this._craftProfession);
 
         this._craftRollPending = true;
         this.render();
         try {
-            this._craftResult = await engine.resolve(
-                actor, this._craftRecipeId, this._craftProfession, this._craftRisk, terrainTag, partySize,
-                { ledger }
-            );
-            this._craftHasCrafted = true;
-            if (this._craftResult?.success) {
-                await this._autoCommitCraftResult();
-                this._resyncStationActivitiesFromRestApp();
+            const { ok, result } = await CraftingDelegate.commitCraftRoll({
+                restApp,
+                actor,
+                profession: this._craftProfession,
+                recipeId: this._craftRecipeId,
+                risk: this._craftRisk
+            });
+            if (ok) {
+                this._craftResult = result;
+                this._craftHasCrafted = true;
+                if (result?.success) {
+                    await this._autoCommitCraftResult();
+                    this._resyncStationActivitiesFromRestApp();
+                }
             }
         } finally {
             this._craftRollPending = false;
@@ -1587,57 +1455,18 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const actor = game.actors.get(this._actor?.id);
         if (!actor) return;
 
-        const item = actor.items?.find(i =>
-            i.name === craftResult.output?.name
-            && i.flags?.[MODULE_ID]?.partyMeal === true
-        );
-        if (!item) {
-            ui.notifications.warn("Could not find the feast item in inventory.");
-            return;
-        }
-
         this._feastServeInFlight = true;
         try {
-            const buffPartyIds = getFoodBuffPartyActors().map(a => a.id);
-            const satiationPartyIds = getMealEligiblePartyActors()
-                .filter(a => ItemClassifier.requiresSustenance(a))
-                .map(a => a.id);
-            const snapshot = item.toObject(false);
-
-            if (game.user.isGM) {
-                await MealPhaseHandler._dispatchWellFedMealServing({
-                    consumerActor: actor,
-                    itemSnapshot: snapshot,
-                    partyIds: buffPartyIds
-                });
-            } else {
-                emitFeastServeRequest({
-                    cookActorId: actor.id,
-                    itemSnapshot: snapshot,
-                    partyIds: buffPartyIds,
-                    feastMode: "feast"
-                });
+            const { ok } = await CraftingDelegate.serveFeastNow({
+                restApp: this._restApp,
+                actor,
+                craftResult
+            });
+            if (ok) {
+                await this._autoCommitCraftResult();
+                this._partyMealOutcomeResolved = true;
+                await this.render(true);
             }
-
-            const consumed = await MealPhaseHandler._consumeItem(actor, item.id, 1);
-            if (consumed < 1) {
-                ui.notifications.error("Serving finished but the feast item could not be removed from inventory.");
-                return;
-            }
-            ui.notifications.info(`${actor.name} serves ${craftResult.output.name} to the party!`);
-            await this._autoCommitCraftResult();
-            this._partyMealOutcomeResolved = true;
-
-            const restApp = this._restApp;
-            if (restApp) {
-                const feastFlags = snapshot.flags?.[MODULE_ID] ?? {};
-                const satiates = Array.isArray(feastFlags.satiates) ? feastFlags.satiates : [];
-                if (satiates.length) {
-                    _creditFeastMealState(restApp, satiationPartyIds, satiates);
-                }
-            }
-
-            await this.render(true);
         } finally {
             this._feastServeInFlight = false;
         }
@@ -1662,7 +1491,6 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             ui.notifications.warn("Item not found.");
             return;
         }
-        // Use the WorkbenchDelegate's existing identify pipeline
         const wb = this._restApp?._workbench;
         if (!wb) return;
         const did = await wb.identifyItem(itemActorId, itemId);
@@ -1820,7 +1648,6 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 this._actorHasCookingUtensils = this._stationHasCooking && this._station?.id === "cooking_station"
                     ? canPlaceStation(newActor, "cookingArea")
                     : false;
-                // Reset to list state so they start fresh
                 this._dialogState = "list";
                 this._selectedActivityId = null;
                 this.render();
@@ -1879,12 +1706,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         };
     }
 
-    /**
-     * @param {Token} stationToken
-     * @param {number} width
-     * @param {number} height
-     * @returns {{ left: number, top: number, rawLeft: number, rawTop: number, clamped: boolean } | null}
-     */
+    
     static _dialogScreenRect(stationToken, width, height) {
         const anchor = StationActivityDialog._anchorClientPoint(stationToken);
         if (!anchor) return null;
@@ -1903,13 +1725,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         };
     }
 
-    /**
-     * @param {number} left
-     * @param {number} top
-     * @param {number} w
-     * @param {number} h
-     * @returns {number} visible area ratio 0..1
-     */
+    
     static _visibleRatio(left, top, w, h) {
         const ix = Math.max(0, Math.min(window.innerWidth, left + w) - Math.max(0, left));
         const iy = Math.max(0, Math.min(window.innerHeight, top + h) - Math.max(0, top));
@@ -1990,9 +1806,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         }
     }
 
-    /**
-     * @returns {{ generalAvailable: Object[], generalFaded: Object[], cookingAvailable: Object[], cookingFaded: Object[], actorChoiceLocked: string|null }}
-     */
+    
     static _computeStationActivityLists(station, actor, activityResolver, restApp, restSession) {
         if (!activityResolver) {
             return {
@@ -2052,18 +1866,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         };
     }
 
-    /**
-     * Open the dialog for a station click.
-     * Closes any previously open dialog first.
-     *
-     * @param {Object} station         - CAMP_STATIONS entry
-     * @param {Actor}  actor           - The choosing actor
-     * @param {Object} activityResolver - ActivityResolver instance (for filtering)
-     * @param {Object} restSession     - { fireLevel, restType, ... }
-     * @param {Token}  stationToken    - The canvas token that was clicked (for positioning)
-     * @param {object|null} restApp - parent RestSetupApp instance
-     * @param {string|null} canvasStationId - station id (canvas hint; list comes from station.activities)
-     */
+    
     static async openForStation(station, actor, activityResolver, restSession, stationToken, restApp, canvasStationId = null) {
         if (_openDialog) {
             await _openDialog.close();

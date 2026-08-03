@@ -283,10 +283,7 @@ export class WorkbenchDelegate {
         if (this._app.rendered) this._app.render();
     }
 
-    /**
-     * @param {{ deferNotify?: boolean, deferRender?: boolean }} [options]
-     * @returns {Promise<boolean>}
-     */
+    
     async identifyItem(actorId, itemId, options = {}) {
         const { deferNotify = false, deferRender = false } = options;
         const actor = game.actors.get(actorId);

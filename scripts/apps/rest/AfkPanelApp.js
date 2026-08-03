@@ -11,11 +11,11 @@ import { MODULE_ID } from "../../data/moduleId.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
-/** @typedef {{ locked: boolean, left: number, top: number }} AfkPanelLayout */
+
 
 export class AfkPanelApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
-    /** @returns {number} */
+    
     static #defaultDockTop() {
         if (typeof window === "undefined" || typeof window.innerHeight !== "number") return 120;
         return Math.max(48, Math.round(window.innerHeight - 300));
@@ -57,9 +57,7 @@ export class AfkPanelApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._onAfkPanelPointerUp = this._onAfkPanelPointerUp.bind(this);
     }
 
-    /**
-     * @returns {AfkPanelLayout}
-     */
+    
     static #readLayout() {
         const raw = game.settings?.get?.(MODULE_ID, "afkPanelLayout");
         const base = { locked: true, left: 12, top: AfkPanelApp.#defaultDockTop() };
@@ -73,7 +71,7 @@ export class AfkPanelApp extends HandlebarsApplicationMixin(ApplicationV2) {
         };
     }
 
-    /** @param {string[]} ids */
+    
     static #emitBulk(ids, newState) {
         for (const id of ids) {
             setCharacterAfk(id, newState, "respite");
