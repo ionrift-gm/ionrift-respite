@@ -254,7 +254,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "enableBrewingAlcohol", {
         name: "Alcoholic Ferments",
-        hint: "Allow alcoholic brewing recipes (wine, mead, draughts). Off for dry or younger tables. Steeps stay available.",
+        hint: "Wine, mead, and draught recipes.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -268,7 +268,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "chefTreatCookingOnly", {
         name: "Chef Treats Only (RAW)",
-        hint: "Disable camp meal crafting. Chef feat Bolstering Treats still work.",
+        hint: "No camp meals; Chef Bolstering Treats only.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -330,7 +330,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "enablePrayMeditate", {
         name: "Pray / Meditate Activity",
-        hint: "Show Pray / Meditate. Religion or Insight for temp HP on success.",
+        hint: "Religion or Insight for temp HP; off hides bedroll option.",
         scope: "world",
         config: false,
         type: Boolean,
