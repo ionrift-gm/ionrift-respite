@@ -1,4 +1,3 @@
-import { PackManifestSchema } from "../../../../../ionrift-library/scripts/data/PackManifestSchema.js";
 import { TerrainRegistry } from "../resolve/TerrainRegistry.js";
 import {
     detectLegacyTerrainBinding,
@@ -11,7 +10,32 @@ import {
     showEventPackImportFailure
 } from "./EventPackValidation.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
-import { getWorldSetting, setWorldSetting } from "../../../../../ionrift-library/scripts/services/platform/connectOwnedSettings.js";
+
+function getWorldSetting(key) {
+    return game.ionrift?.library?.getWorldSetting?.(key);
+}
+
+async function setWorldSetting(key, value) {
+    const fn = game.ionrift?.library?.setWorldSetting;
+    if (typeof fn === "function") return fn(key, value);
+    throw new Error("Ionrift Library setWorldSetting is required.");
+}
+
+async function extractPackManifest(data) {
+    const fromBag = game.ionrift?.library?.PackManifestSchema?.extractFromJson;
+    if (typeof fromBag === "function") return fromBag(data);
+    try {
+        const url = foundry.utils.getRoute("modules/ionrift-library/scripts/data/PackManifestSchema.js");
+        const mod = await import(url);
+        return mod.PackManifestSchema.extractFromJson(data);
+    } catch (err) {
+        return {
+            valid: false,
+            manifest: null,
+            errors: [`PackManifestSchema unavailable: ${err.message}`]
+        };
+    }
+}
 
 /**
  * Writes an imported event pack into world settings and enables it.
@@ -129,7 +153,7 @@ export async function importEventPackFromFile() {
         return { success: false, packId: null, eventIds: [], eventCount: 0, errors: [msg], warnings: [], info: [] };
     }
 
-    const extracted = PackManifestSchema.extractFromJson(data);
+    const extracted = await extractPackManifest(data);
     if (!extracted.valid || !extracted.manifest) {
         const manifestErrors = extracted.errors.length
             ? extracted.errors

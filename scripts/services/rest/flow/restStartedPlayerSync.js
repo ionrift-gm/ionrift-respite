@@ -3,6 +3,11 @@ const restStateRequestAtByRestId = new Map();
 
 export const REST_STATE_REQUEST_COOLDOWN_MS = 5000;
 
+/** Clears the rest-state request cooldown map (tests / session teardown). */
+export function clearRestStateRequestCooldown() {
+    restStateRequestAtByRestId.clear();
+}
+
 /**
  * @param {object|null|undefined} app
  * @param {object|null|undefined} restData
