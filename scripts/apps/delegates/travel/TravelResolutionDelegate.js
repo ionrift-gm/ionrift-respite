@@ -10,6 +10,23 @@ import {
     isHuntingEnabled
 } from "../../../services/travel/settings/TravelSettings.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { getPartyActors } from "../../../services/party/partyActors.js";
+import {
+    executePlayerRoll,
+    waitForDiceSoNice,
+    postRollToChat
+} from "../../../services/ui/rollRequest/RollRequestManager.js";
+import {
+    emitTravelDeclaration,
+    emitTravelDeclarationsSync,
+    emitTravelRollRequest,
+    emitTravelRollResult,
+    emitTravelLootRollPrompt,
+    emitTravelLootRollResult,
+    emitTravelDebrief,
+    emitPhaseChanged
+} from "../../../services/socket/SocketController.js";
+import { applyPlayerTravelDeclarationToGm } from "../../../services/travel/settings/travelDeclarationSync.js";
 
 const MAX_TRAVEL_DAYS = 3;
 
@@ -61,6 +78,11 @@ export class TravelResolutionDelegate {
         this.#resolver = new TravelResolver();
         const idx = game.ionrift?.respite?.travelBasePoolIndex;
         if (idx) this.#resolver.loadBaseItems(idx, game.ionrift?.respite?.travelFolderPathMap);
+    }
+
+    /** Public alias for extracted RestSetupApp method bodies that use this._app. */
+    get _app() {
+        return this.#app;
     }
 
     /**

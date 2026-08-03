@@ -1,4 +1,20 @@
 import { MODULE_ID } from "../../../../data/moduleId.js";
+import {
+    executeAbilityRoll,
+    waitForDiceSoNice,
+    postRollToChat,
+    SKILL_DISPLAY_NAMES
+} from "../../../../services/ui/rollRequest/RollRequestManager.js";
+import {
+    isStationLayerActive,
+    refreshStationPortraitsFromChoices
+} from "../../../../services/camp/props/StationInteractionLayer.js";
+import {
+    emitTrainingComplete,
+    emitActivityChoice,
+    emitTrainingStateUpdate
+} from "../../../../services/socket/SocketController.js";
+
 export class RestTrainingDelegate {
     constructor(app) {
         this._app = app;

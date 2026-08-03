@@ -623,7 +623,7 @@ export class RestPrepareContext {
                     followUpValue: existingFollowUp,
                     armorRuleEnabled,
                     getArmorWarning: armorRuleEnabled
-                        ? (app.getArmorWarningForActivityDetail?.bind(this) ?? null)
+                        ? (app.getArmorWarningForActivityDetail?.bind(app) ?? null)
                         : null
                 }
             );

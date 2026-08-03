@@ -330,6 +330,8 @@ export class CampfirePhysics {
 
     /** Ignite delay, neighbor spread, and burn lifecycle (whittled figures and kindling). */
     _applyCatchFireOnSettle(obj) {
+        // Explicit catchFire: false (unlit kindling staging) skips zone auto-ignite.
+        if (obj.catchFire === false) return;
         if (obj.catchFire || this._isInFireZone(obj.x, obj.y)) {
             obj.igniteDelay = BURN_IGNITE_DELAY;
         }

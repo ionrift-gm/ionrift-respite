@@ -25,7 +25,7 @@ import {
     _refreshRejoinBar, _removeGmRestIndicator, _ensureRejoinBar,
     _removeRejoinBar, _showGmRestIndicator
 } from "../../../../module.js";
-import { RestSetupApp } from "../../../rest/RestSetupApp.js";
+import { RestSetupApp, _logGmRestSheet } from "../../../rest/RestSetupApp.js";
 import { MODULE_ID } from "../../../../data/moduleId.js";
 
 export class RestSnapshotSync {

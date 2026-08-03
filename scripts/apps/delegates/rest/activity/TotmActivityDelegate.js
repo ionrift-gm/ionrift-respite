@@ -1,4 +1,9 @@
 import { MODULE_ID } from "../../../../data/moduleId.js";
+import {
+    emitSubmissionUpdate,
+    emitActivityChoice
+} from "../../../../services/socket/SocketController.js";
+
 export class TotmActivityDelegate {
     constructor(app) {
         this._app = app;
