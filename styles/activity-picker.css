@@ -1,0 +1,197 @@
+/* Respite: activity-picker.css. Loaded via module.json after rest-setup.css; before crafting-stations.css. Do not reorder. */
+/* ============================================================
+   PLAYER ACTIVITY PICKER
+   ============================================================ */
+
+.respite-picker {
+    padding: 0;
+}
+
+.respite-picker-header {
+    padding: 0.75rem 1rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.respite-picker-header .picker-context {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.respite-picker-header .rest-type-badge {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.respite-picker-header .terrain-badge {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.respite-picker-header .picker-warning {
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: rgba(243, 156, 18, 0.15);
+    border: 1px solid rgba(243, 156, 18, 0.25);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: #f9d77e;
+}
+
+.respite-picker-characters {
+    padding: 1rem;
+}
+
+.respite-picker-characters .character-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.respite-submitted {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    gap: 0.75rem;
+}
+
+.respite-submitted .submitted-icon {
+    font-size: 2.5rem;
+    color: var(--ionrift-success, #2ecc71);
+}
+
+.respite-submitted .submitted-text {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Disabled button state */
+.respite-action-bar button[disabled] {
+    pointer-events: none;
+    opacity: 0.4;
+    filter: grayscale(1);
+}
+
+/* ---- Profession Badges ---- */
+
+.profession-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    margin-top: 0.1rem;
+}
+
+.profession-pill {
+    font-size: 0.6rem;
+    padding: 0.05rem 0.35rem;
+    border-radius: 2px;
+    background: rgba(155, 89, 182, 0.15);
+    color: #c39bd3;
+    border: 1px solid rgba(155, 89, 182, 0.2);
+    white-space: nowrap;
+}
+
+.profession-pill i {
+    margin-right: 0.15rem;
+    font-size: 0.55rem;
+}
+
+/* ---- Recovery Preview ---- */
+
+.recovery-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    align-items: center;
+    margin-right: auto;
+}
+
+.recovery-chip {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+    background: rgba(46, 204, 113, 0.12);
+    color: #82e0aa;
+    border: 1px solid rgba(46, 204, 113, 0.2);
+    white-space: nowrap;
+}
+
+.recovery-chip.failure {
+    background: rgba(231, 76, 60, 0.12);
+    color: #e88a82;
+    border-color: rgba(231, 76, 60, 0.25);
+}
+
+.gear-annotation {
+    font-size: 0.6rem;
+    color: rgba(130, 224, 170, 0.5);
+    font-style: italic;
+}
+
+.exhaustion-gained {
+    color: #f1948a;
+    font-weight: 600;
+}
+
+.exhaustion-recovered {
+    color: #82e0aa;
+    font-weight: 600;
+}
+
+.exhaustion-offset {
+    color: rgba(249, 215, 126, 0.6);
+    font-weight: 500;
+    font-style: italic;
+}
+
+.event-damage {
+    color: #e74c3c;
+    font-weight: 600;
+}
+
+.recovery-chip.has-damage {
+    border-color: rgba(231, 76, 60, 0.3);
+    background: rgba(231, 76, 60, 0.08);
+}
+
+.outcome-exhaustion-advisory {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: #f9d77e;
+    padding: 0.3rem 0.5rem;
+    margin-top: 0.4rem;
+    background: rgba(243, 156, 18, 0.08);
+    border: 1px solid rgba(243, 156, 18, 0.15);
+    border-radius: 4px;
+}
+
+.outcome-exhaustion-advisory i {
+    font-size: 0.7rem;
+    opacity: 0.8;
+}
+
+.outcome-exhaustion-advisory.hostile-note {
+    color: #f1948a;
+    background: rgba(231, 76, 60, 0.08);
+    border-color: rgba(231, 76, 60, 0.15);
+}
+
+.outcome-exhaustion-advisory.save-passed {
+    color: #82e0aa;
+    background: rgba(46, 204, 113, 0.08);
+    border-color: rgba(46, 204, 113, 0.15);
+}
+
+.outcome-exhaustion-advisory.save-failed {
+    color: #f1948a;
+    background: rgba(231, 76, 60, 0.08);
+    border-color: rgba(231, 76, 60, 0.15);
+}
