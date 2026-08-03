@@ -274,6 +274,7 @@ export function createRespiteContext(runtime) {
         placePerimeter,
         placeCamp,
         clearTorches,
+        clearCampTokens,
         toggleTorches,
         TorchTokenLinker,
         syncForageTables: async () => {

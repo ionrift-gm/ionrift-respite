@@ -196,6 +196,26 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         restricted: true,
     });
 
+    game.settings.register(MODULE_ID, "maxWaterPerDayCap", {
+        name: "Max Water Needs Cap",
+        hint: "Maximum water units required per character per day across all conditions and terrain.",
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 4,
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "maxFoodPerDayCap", {
+        name: "Max Food Needs Cap",
+        hint: "Maximum food units required per character per day across all conditions and terrain.",
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 3,
+        restricted: true
+    });
+
     game.settings.register(MODULE_ID, "enableTraining", {
         name: "Training Activity (legacy)",
         hint: "Legacy boolean. Migrated to trainingXpTier on first load.",

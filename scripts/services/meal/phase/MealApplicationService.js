@@ -9,6 +9,7 @@ import { ItemClassifier } from "../../party/ItemClassifier.js";
 import { consumeItem } from "../inventory/MealItemConsumer.js";
 import { dispatchWellFedMealServing } from "../buffs/WellFedService.js";
 import { MODULE_ID, MEAL_DEFAULTS } from "../inventory/MealConstants.js";
+import { getActorMealNeeds } from "./MealContextBuilder.js";
 
 /**
  * Wet meals and party meals credit water (and party meals credit food for allies
@@ -118,8 +119,9 @@ export async function applyMealChoices(mealChoices, daysSinceLastRest = 1, terra
             totalWaterFilled += (day.water ?? []).filter(id => id && id !== "skip").length;
         }
 
-        const foodNeeded = totalDays * rules.foodPerDay;
-        const waterNeeded = totalDays * rules.waterPerDay;
+        const actorNeeds = getActorMealNeeds(actor, rules);
+        const foodNeeded = totalDays * actorNeeds.foodPerDay;
+        const waterNeeded = totalDays * actorNeeds.waterPerDay;
 
         const effectiveFood = totalFoodFilled + (extraFoodByChar.get(charId) ?? 0);
 
