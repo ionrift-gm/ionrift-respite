@@ -351,8 +351,8 @@ export const CAMP_STATIONS = [
         label: "Cooking Station",
         icon: "fas fa-utensils",
         furnitureKey: "cookingArea",
-        tagline: "Cook",
-        activities: ["act_cook"],
+        tagline: "Cook, brew",
+        activities: ["act_cook", "act_brew"],
         terrainLabel: { tavern: "Hearth & Table" }
     }
 ];
@@ -504,14 +504,11 @@ export function applyActivityPortraitAssignments(item, assigned) {
 /** Shelter spell definitions. Used in setup phase for shelter detection. */
 export const SHELTER_SPELLS = [
     { id: "tiny_hut", name: "Tiny Hut", altNames: ["leomund's tiny hut", "tiny hut", "cozy cabin"], icon: "fas fa-igloo", comfortFloor: "sheltered", encounterMod: 5, restTypes: ["long"], blocksFire: true,
-        hint: "Impenetrable force dome. Comfort floor: Sheltered. Encounter DC +5. No campfire, cooking, or brewing (sealed dome).",
-        rpPrompt: "Who casts it? What color is the dome? Can you see out? What does the air feel like inside?" },
+        hint: "Impenetrable force dome. Comfort floor: Sheltered. Encounter DC +5. No campfire, cooking, or brewing (sealed dome)." },
     { id: "rope_trick", name: "Rope Trick", altNames: ["rope trick"], icon: "fas fa-hat-wizard", comfortFloor: null, encounterMod: 5, restTypes: ["short"], blocksFire: true,
-        hint: "Hidden extradimensional space. Short rest only (1 hr). Encounter DC +5. No campfire (no ventilation).",
-        rpPrompt: "Who casts it? Where does the rope lead? What does the space look like inside? Is it comfortable or unsettling?" },
+        hint: "Hidden extradimensional space. Short rest only (1 hr). Encounter DC +5. No campfire (no ventilation)." },
     { id: "magnificent_mansion", name: "Mansion", altNames: ["magnificent mansion", "mordenkainen's magnificent mansion", "mordenkainen", "resplendent mansion"], icon: "fas fa-chess-rook", comfortFloor: "safe", encounterMod: 99, restTypes: ["long"], blocksFire: true,
-        hint: "Separate dimension. No encounters. Safe rest guaranteed. Has its own hearth and kitchen.",
-        rpPrompt: "Describe the entrance. What does the foyer look like? What's on the menu tonight? Do the servants have names?" }
+        hint: "Separate dimension. No encounters. Safe rest guaranteed. Has its own hearth and kitchen." }
 ];
 
 /** Comfort tier tooltips for the camp status bar */

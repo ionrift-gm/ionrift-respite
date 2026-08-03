@@ -40,16 +40,6 @@ import {
 } from "../../services/socket/SocketController.js";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
-/** RP prompts -- one picked at random per rest. */
-const RP_PROMPTS = [
-    "The party catches their breath. Who tends whose wounds?",
-    "A brief pause. What does each character do with the quiet?",
-    "Weapons are sheathed. Bandages are unwound. What does the hour look like?",
-    "The adrenaline fades. Who sits, who paces, who stares at nothing?",
-    "An hour to rest. Who heals, who watches, who is lost in thought?",
-    "The fighting is done, for now. What do you do with the silence?",
-];
-
 /** All shelter options for short rest. "none" is always shown. */
 const SHORT_REST_SHELTERS = [
     { id: "none",      name: "Open Air",   icon: "fas fa-wind",       hint: "No shelter. Standard short rest." },
@@ -121,9 +111,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         /** Active shelter -- set from setup wizard, or 'none' by default */
         this._activeShelter = options.initialShelter ?? "none";
 
-        
-        this._rpPrompt = RP_PROMPTS[Math.floor(Math.random() * RP_PROMPTS.length)];
-
         /**
          * actorId -> Song of Rest bonus already applied this rest ("with first Hit Die" mode).
          * @type {Map<string, { total: number, formula: string, bardName: string }>}
@@ -194,7 +181,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     afkCharacterIds: RestAfkState.getAfkCharacterIds(),
                     finishedUserIds: [...this._finishedUsers],
                     activeShelter: this._activeShelter,
-                    rpPrompt: this._rpPrompt,
                     songVolunteer: this._songVolunteer,
                     chefVolunteer: this._chefVolunteer,
                     chefMealServedCount: this._chefMealServedCount,
@@ -690,7 +676,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             expandedCards,
             collapsedCards,
             shelterBadge,
-            rpPrompt: this._rpPrompt,
             roster,
             activeTab: this._activeTab,
             gmWorkbenchRosterPick,
@@ -1613,7 +1598,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._finishedUsers = new Set(data.finishedUserIds);
         }
         if (data.activeShelter) this._activeShelter = data.activeShelter;
-        if (data.rpPrompt) this._rpPrompt = data.rpPrompt;
         if (data.songVolunteer !== undefined) this._songVolunteer = data.songVolunteer ?? null;
         if (data.chefVolunteer !== undefined) this._chefVolunteer = data.chefVolunteer ?? null;
         if (data.chefMealServedCount !== undefined) this._chefMealServedCount = Number(data.chefMealServedCount) || 0;
@@ -1728,7 +1712,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             afkCharacterIds: [...this._afkCharacters],
             finishedUserIds: [...this._finishedUsers],
             activeShelter: this._activeShelter,
-            rpPrompt: this._rpPrompt,
             songVolunteer: this._songVolunteer,
             chefVolunteer: this._chefVolunteer,
             chefMealServedCount: this._chefMealServedCount,
@@ -1765,7 +1748,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         if (state.finishedUserIds) this._finishedUsers = new Set(state.finishedUserIds);
         if (state.activeShelter) this._activeShelter = state.activeShelter;
-        if (state.rpPrompt) this._rpPrompt = state.rpPrompt;
         if (state.songVolunteer !== undefined) this._songVolunteer = state.songVolunteer ?? null;
         if (state.chefVolunteer !== undefined) this._chefVolunteer = state.chefVolunteer ?? null;
         if (state.chefMealServedCount !== undefined) this._chefMealServedCount = Number(state.chefMealServedCount) || 0;

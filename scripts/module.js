@@ -311,10 +311,29 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
         console.warn(`${MODULE_ID} | Overlay materialiser update failed:`, err);
     }
 
-    // Art overlay
-    if (detail.overlayId === "respite-core-overlay") {
+    // Generative Core art companion.
+    if (detail.overlayId === "respite-core-art-overlay") {
         const disabled = !detail.installed || !detail.active;
         await game.settings.set(MODULE_ID, "artPackDisabled", disabled);
+        await ImageResolver.init();
+        return;
+    }
+
+    // Core data events unlock (reclaimed id). Also covers legacy art installs
+    // still registered as respite-core-overlay under core/free: ImageResolver
+    // probes those paths for art files without toggling artPackDisabled.
+    if (detail.overlayId === "respite-core-overlay") {
+        try {
+            const { OverlayEventLoader } = await import("./services/packs/overlays/OverlayEventLoader.js");
+            OverlayEventLoader.invalidate();
+        } catch { /* loader not available */ }
+        try {
+            const { TerrainRegistry } = await import("./services/events/resolve/TerrainRegistry.js");
+            TerrainRegistry.reset();
+            await TerrainRegistry.init();
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Terrain registry reset failed:`, e);
+        }
         await ImageResolver.init();
         return;
     }
@@ -339,6 +358,23 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
         || detail.overlayId === "respite-bone-dust-art-overlay"
     ) {
         await ImageResolver.init();
+        return;
+    }
+
+    // Optional craft professions drink icons (presence-based).
+    if (detail.overlayId === "respite-craft-professions-art-overlay") {
+        try {
+            const { CraftProfessionsArtPreference } = await import(
+                "./services/meal/provisions/CraftProfessionsArtPreference.js"
+            );
+            await CraftProfessionsArtPreference.apply(null, { notify: false });
+            const { OverlayProfessionLoader } = await import(
+                "./services/packs/overlays/OverlayProfessionLoader.js"
+            );
+            OverlayProfessionLoader.invalidate();
+        } catch (e) {
+            console.warn(`${MODULE_ID} | Craft professions art refresh failed:`, e);
+        }
         return;
     }
 
