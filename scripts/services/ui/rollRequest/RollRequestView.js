@@ -1,1 +1,5 @@
-export * from "../../../../../ionrift-library/scripts/services/rolls/RollRequestView.js";
+/**
+ * Re-export library roll-request view helpers.
+ * Absolute /modules/ path (Forge-safe); relative sibling imports 404 on Forge.
+ */
+export * from "/modules/ionrift-library/scripts/services/rolls/RollRequestView.js";
