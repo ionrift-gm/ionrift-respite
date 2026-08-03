@@ -22,7 +22,7 @@ import { getPartyActors, getFoodBuffPartyActors } from "../../services/party/par
 import { MonstrousFeastBridge } from "../../services/meal/provisions/MonstrousFeastBridge.js";
 import { formatMealBuffPreview } from "../../services/meal/buffs/MealBuffPresets.js";
 import { buildCraftCommitSummary, resolveDefaultCraftRecipeId } from "../../services/crafting/engine/CraftCommitSummary.js";
-import { normalizeRecipeOutputImg } from "../../services/crafting/recipes/RecipeIcons.js";
+import { buildCraftRecipeListContext } from "../../services/crafting/engine/CraftRecipeListBuilder.js";
 import { patchCraftingRiskUi } from "../../services/crafting/engine/CraftingRiskUiPatch.js";
 import { emitFeastServeRequest, emitActivityColdCampRequest } from "../../services/socket/SocketController.js";
 import { CampGearScanner } from "../../services/camp/gear/CampGearScanner.js";
@@ -637,15 +637,8 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         if (!actor || !engine) return { crafting: null };
 
         const professionId = this._craftProfession;
-        const professionLabels = {
-            cooking: "Cooking", alchemy: "Alchemy",
-            smithing: "Smithing", leatherworking: "Leatherworking",
-            brewing: "Brewing", tailoring: "Tailoring"
-        };
-
         const terrainTag = this._restApp?._engine?.terrainTag ?? this._restApp?._restData?.terrainTag ?? null;
         const partySize = getPartyActors().length;
-        const status = engine.getRecipeStatus(actor, professionId, terrainTag, partySize);
 
         if (!this._craftHasCrafted) {
             this._craftRecipeId = resolveDefaultCraftRecipeId({
@@ -659,62 +652,18 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             });
         }
 
-        const enrichRecipe = (recipe) => {
-            const dcBreakdown = recipe.noSkillCheck
-                ? { total: 0, base: 0, factors: [], hasModifiers: false }
-                : engine.getDcBreakdown(actor, recipe, this._craftRisk, terrainTag);
-            const flags = recipe.outputFlags?.["ionrift-respite"];
-            return {
-                ...recipe,
-                noSkillCheck: !!recipe.noSkillCheck,
-                dcDisplay: dcBreakdown.total,
-                dcBreakdown,
-                outputName: recipe.output?.name ?? "Unknown",
-                outputImg: normalizeRecipeOutputImg(recipe.output?.img),
-                ambitiousOutput: recipe.ambitiousOutput,
-                isSelected: recipe.id === this._craftRecipeId,
-                description: recipe.description ?? "",
-                buffPreview: this._formatBuffPreview(flags?.buff),
-                isPartyMeal: !!flags?.partyMeal,
-                isWellFed: !!flags?.wellFed,
-                satiates: flags?.satiates ?? [],
-                ambitiousBuffPreview: this._formatBuffPreview(
-                    recipe.ambitiousOutputFlags?.["ionrift-respite"]?.buff ?? flags?.buff
-                ),
-                ingredientList: (recipe.ingredients ?? []).map(ing => {
-                    const detail = recipe.ingredientStatus?.details?.find(d => d.name === ing.name);
-                    const invKey = ing.name.toLowerCase().trim();
-                    const invEntry = actor.items?.find(i => i.name.toLowerCase().trim() === invKey);
-                    const fallbackIcon = ing.resourceType === "water"
-                        ? "icons/magic/water/water-drop-swirl-blue.webp"
-                        : "icons/consumables/food/bread-loaf-round-white.webp";
-                    const rawImg = invEntry?.img;
-                    return {
-                        name: ing.name,
-                        required: ing.quantity ?? 1,
-                        available: detail?.available ?? 0,
-                        met: detail?.met ?? false,
-                        img: (rawImg && !rawImg.includes("mystery-man")) ? rawImg : fallbackIcon
-                    };
-                })
-            };
-        };
-
-        const available = status.available.map(r => enrichRecipe(r));
-        const partial = status.partial.map(r => enrichRecipe(r));
-        const selectedRecipe = available.find(r => r.id === this._craftRecipeId)
-            ?? partial.find(r => r.id === this._craftRecipeId);
-
-        let commitSummary = null;
-        if (selectedRecipe && !this._craftHasCrafted) {
-            commitSummary = buildCraftCommitSummary({
-                recipe: selectedRecipe,
-                risk: this._craftRisk,
-                actor,
-                engine,
-                terrainTag
-            });
-        }
+        const list = buildCraftRecipeListContext({
+            engine,
+            actor,
+            professionId,
+            risk: this._craftRisk,
+            terrainTag,
+            partySize,
+            selectedRecipeId: this._craftRecipeId,
+            hasCrafted: this._craftHasCrafted,
+            formatBuffPreview: (buff) => this._formatBuffPreview(buff)
+        });
+        const { available, missing, partial, selectedRecipe, commitSummary, noAvailableRecipes } = list;
 
         const stationTabs = this._buildStationTabs();
         const showTabBar = stationTabs.length > 1;
@@ -728,7 +677,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 && !this._craftHasCrafted
                 && MonstrousFeastBridge.ownsCooking(),
             crafting: {
-                profession: professionLabels[professionId] ?? professionId,
+                profession: list.profession,
                 professionId,
                 actorName: actor.name,
                 actorImg: actor.img,
@@ -743,9 +692,10 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                     { id: "ambitious", label: "Ambitious", hint: "DC +5 · Better yield", selected: this._craftRisk === "ambitious" }
                 ],
                 available,
+                missing,
                 partial,
                 selectedRecipe: selectedRecipe ?? null,
-                noAvailableRecipes: !this._craftHasCrafted && available.length === 0,
+                noAvailableRecipes,
                 commitSummary,
                 craftingResult: this._craftResult ? {
                     ...this._craftResult,

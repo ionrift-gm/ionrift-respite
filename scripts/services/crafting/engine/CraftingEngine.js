@@ -24,6 +24,7 @@ import { getPartyActors } from "../../party/partyActors.js";
 import { mergeRecipeLists } from "../recipes/RecipeCatalog.js";
 import { hasChefFeat, getChefTreatOutputQuantity, getChefProficiencyBonus } from "../../meal/buffs/ChefFeat.js";
 import { normalizeRecipeOutputImg } from "../recipes/RecipeIcons.js";
+import { isAlcoholBrewRecipeVisible } from "../settings/BrewingAlcoholSettings.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 
 /**
@@ -265,6 +266,10 @@ export class CraftingEngine {
                 continue; // Silently omit - not available in this terrain
             }
 
+            if (!isAlcoholBrewRecipeVisible(recipe)) {
+                continue;
+            }
+
             if (recipe.chefFeatRequired && !hasChefFeat(actor)) {
                 locked.push({ ...recipe, reason: "Requires Chef feat" });
                 continue;
@@ -305,6 +310,9 @@ export class CraftingEngine {
         const recipe = allRecipes.find(r => r.id === recipeId);
         if (!recipe) {
             return { success: false, error: "Recipe not found." };
+        }
+        if (!isAlcoholBrewRecipeVisible(recipe)) {
+            return { success: false, error: "Alcoholic brewing recipes are disabled for this world." };
         }
 
         const inventory = this._buildInventoryMap(actor);

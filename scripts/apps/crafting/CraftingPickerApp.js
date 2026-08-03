@@ -1,6 +1,6 @@
 import { CraftingEngine } from "../../services/crafting/engine/CraftingEngine.js";
 import { GrantLedger } from "../../services/crafting/outcomes/GrantLedger.js";
-import { normalizeRecipeOutputImg } from "../../services/crafting/recipes/RecipeIcons.js";
+import { buildCraftRecipeListContext } from "../../services/crafting/engine/CraftRecipeListBuilder.js";
 import { MonstrousFeastBridge } from "../../services/meal/provisions/MonstrousFeastBridge.js";
 import { MODULE_ID } from "../../data/moduleId.js";
 
@@ -72,48 +72,20 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
     async _prepareContext(options) {
         const status = this._engine.getRecipeStatus(this._actor, this._professionId, this._terrainTag);
         const relevantIngredients = this._getRelevantIngredients(status);
-
-        const professionLabels = {
-            cooking: "Cooking", alchemy: "Alchemy",
-            smithing: "Smithing", leatherworking: "Leatherworking",
-            brewing: "Brewing", tailoring: "Tailoring"
-        };
-
-        const available = status.available.map(r => this._enrichRecipe(r));
-        const partial = status.partial.map(r => this._enrichRecipe(r));
-
-        // Build the commitment summary if a recipe is selected
-        const selectedRecipe = available.find(r => r.id === this._selectedRecipeId);
-        let commitSummary = null;
-        if (selectedRecipe && !this._hasCrafted) {
-            const adjustedDc = this._engine.getAdjustedCraftingDc(
-                this._actor, selectedRecipe, this._selectedRisk, this._terrainTag
-            );
-
-            // Determine which output to show based on risk
-            const outputForRisk = this._selectedRisk === "ambitious" && selectedRecipe.ambitiousOutput
-                ? selectedRecipe.ambitiousOutput
-                : selectedRecipe.output;
-
-            commitSummary = {
-                recipeName: selectedRecipe.name,
-                dc: adjustedDc,
-                risk: this._selectedRisk,
-                riskLabel: { safe: "Safe", standard: "Standard", ambitious: "Ambitious" }[this._selectedRisk],
-                outputName: outputForRisk?.name ?? selectedRecipe.outputName,
-                outputQuantity: outputForRisk?.quantity ?? 1,
-                ingredientCost: (selectedRecipe.ingredients ?? []).map(i => `${i.quantity ?? 1}x ${i.name}`).join(", "),
-                failConsequence: this._selectedRisk === "safe"
-                    ? "Ingredients preserved on failure"
-                    : "Ingredients consumed on failure",
-                skill: (selectedRecipe.skill ?? "sur").toUpperCase()
-            };
-        }
+        const list = buildCraftRecipeListContext({
+            engine: this._engine,
+            actor: this._actor,
+            professionId: this._professionId,
+            risk: this._selectedRisk,
+            terrainTag: this._terrainTag,
+            selectedRecipeId: this._selectedRecipeId,
+            hasCrafted: this._hasCrafted
+        });
 
         return {
             actorName: this._actor.name,
             actorImg: this._actor.img,
-            profession: professionLabels[this._professionId] ?? this._professionId,
+            profession: list.profession,
             professionId: this._professionId,
             selectedRisk: this._selectedRisk,
             selectedRecipeId: this._selectedRecipeId,
@@ -121,43 +93,21 @@ export class CraftingPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
             showMissing: this._showMissing,
             mfCookbookAvailable: this._isMonsterCookbookAvailable(),
             riskTiers: [
-                { id: "safe", label: "Safe", hint: "DC −3 · Ingredients kept", selected: this._selectedRisk === "safe" },
+                { id: "safe", label: "Safe", hint: "DC -3 · Ingredients kept", selected: this._selectedRisk === "safe" },
                 { id: "standard", label: "Standard", hint: "Base DC · Ingredients used", selected: this._selectedRisk === "standard" },
                 { id: "ambitious", label: "Ambitious", hint: "DC +5 · Better yield", selected: this._selectedRisk === "ambitious" }
             ],
-            available,
-            partial,
+            available: list.available,
+            missing: list.missing,
+            partial: list.partial,
             ingredients: relevantIngredients,
-            commitSummary,
+            commitSummary: list.commitSummary,
             craftingResult: this._craftingResult
         };
     }
 
-    _enrichRecipe(recipe) {
-        const adjustedDc = this._engine.getAdjustedCraftingDc(
-            this._actor, recipe, this._selectedRisk, this._terrainTag
-        );
-        return {
-            ...recipe,
-            dcDisplay: adjustedDc,
-            outputName: recipe.output?.name ?? "Unknown",
-            outputImg: normalizeRecipeOutputImg(recipe.output?.img, "icons/svg/mystery-man.svg"),
-            ambitiousOutput: recipe.ambitiousOutput,
-            isSelected: recipe.id === this._selectedRecipeId,
-            ingredientList: (recipe.ingredients ?? []).map(ing => {
-                const detail = recipe.ingredientStatus?.details?.find(d => d.name === ing.name);
-                return {
-                    name: ing.name,
-                    required: ing.quantity ?? 1,
-                    available: detail?.available ?? 0,
-                    met: detail?.met ?? false
-                };
-            })
-        };
-    }
-
     _getRelevantIngredients(status) {
-        const allRecipes = [...status.available, ...status.partial, ...status.locked];
+        const allRecipes = [...(status.available ?? []), ...(status.partial ?? []), ...(status.locked ?? [])];
         const ingredientNames = new Set();
         for (const recipe of allRecipes) {
             for (const ing of (recipe.ingredients ?? [])) {

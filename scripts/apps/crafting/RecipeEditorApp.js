@@ -5,7 +5,7 @@
 
 import {
     CUSTOM_RECIPE_MAX_PER_PROFESSION,
-    applyCustomRecipesToEngine,
+    applyCustomRecipesToLiveEngines,
     applyProfessionToolToRecipe,
     describeRecipeSaveOverwrite,
     getHomebrewProfessionOptions,
@@ -1045,9 +1045,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
 
         stored[this.#professionId] = list;
         await game.settings.set(MODULE_ID, "customRecipes", sanitizeCustomRecipes(stored));
-
-        const engine = game.ionrift?.respite?.craftingEngine;
-        if (engine) applyCustomRecipesToEngine(engine);
+        applyCustomRecipesToLiveEngines({ render: true });
 
         this.#flashSavedIndex = savedIndex;
         this.#selectedIndex = savedIndex;
@@ -1088,6 +1086,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
         list.splice(this.#selectedIndex, 1);
         stored[this.#professionId] = list;
         await game.settings.set(MODULE_ID, "customRecipes", sanitizeCustomRecipes(stored));
+        applyCustomRecipesToLiveEngines({ render: true });
         this.#selectedIndex = Math.max(0, this.#selectedIndex - 1);
         this.#draft = null;
         const compendiumNote = outputName
@@ -1119,6 +1118,7 @@ export class RecipeEditorApp extends foundry.applications.api.ApplicationV2 {
                 const text = await file.text();
                 const parsed = JSON.parse(text);
                 await game.settings.set(MODULE_ID, "customRecipes", sanitizeCustomRecipes(parsed));
+                applyCustomRecipesToLiveEngines({ render: true });
                 ui.notifications.info("Custom recipes imported.");
                 this.#selectedIndex = 0;
                 this.#draft = null;

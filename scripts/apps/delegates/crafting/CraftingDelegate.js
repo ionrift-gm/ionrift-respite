@@ -1,5 +1,4 @@
 import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../../../services/camp/props/StationInteractionLayer.js";
-import { normalizeRecipeOutputImg } from "../../../services/crafting/recipes/RecipeIcons.js";
 import { GrantLedger } from "../../../services/crafting/outcomes/GrantLedger.js";
 import { MealPhaseHandler } from "../../../services/meal/phase/MealPhaseHandler.js";
 import { getFoodBuffPartyActors, getMealEligiblePartyActors } from "../../../services/party/partyActors.js";
@@ -9,6 +8,10 @@ import { TerrainRegistry } from "../../../services/events/resolve/TerrainRegistr
 import { refreshGmRestIndicator } from "../../../services/ui/sheet/RejoinManager.js";
 import { Logger } from "../../../utils/Logger.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import {
+    buildCraftRecipeListContext,
+    CRAFT_PROFESSION_LABELS
+} from "../../../services/crafting/engine/CraftRecipeListBuilder.js";
 
 export class CraftingDelegate {
 
@@ -25,69 +28,21 @@ export class CraftingDelegate {
         if (!actor) return null;
 
         const professionId = app._craftingDrawerProfession;
-        const professionLabels = {
-            cooking: "Cooking", alchemy: "Alchemy",
-            smithing: "Smithing", leatherworking: "Leatherworking",
-            brewing: "Brewing", tailoring: "Tailoring"
-        };
-
         const terrainTag = app._engine?.terrainTag ?? app._restData?.terrainTag ?? null;
-        const status = app._craftingEngine.getRecipeStatus(actor, professionId, terrainTag);
-
-        const enrichRecipe = (recipe) => {
-            const adjustedDc = app._craftingEngine.getAdjustedCraftingDc(
-                actor, recipe, app._craftingDrawerRisk, terrainTag
-            );
-            return {
-                ...recipe,
-                dcDisplay: adjustedDc,
-                outputName: recipe.output?.name ?? "Unknown",
-                outputImg: normalizeRecipeOutputImg(recipe.output?.img, "icons/svg/mystery-man.svg"),
-                ambitiousOutput: recipe.ambitiousOutput,
-                isSelected: recipe.id === app._craftingDrawerRecipeId,
-                ingredientList: (recipe.ingredients ?? []).map(ing => {
-                    const detail = recipe.ingredientStatus?.details?.find(d => d.name === ing.name);
-                    return {
-                        name: ing.name,
-                        required: ing.quantity ?? 1,
-                        available: detail?.available ?? 0,
-                        met: detail?.met ?? false
-                    };
-                })
-            };
-        };
-
-        const available = status.available.map(r => enrichRecipe(r));
-        const partial = status.partial.map(r => enrichRecipe(r));
-        const selectedRecipe = available.find(r => r.id === app._craftingDrawerRecipeId);
-
-        let commitSummary = null;
-        if (selectedRecipe && !app._craftingDrawerHasCrafted) {
-            const adjustedDc = app._craftingEngine.getAdjustedCraftingDc(
-                actor, selectedRecipe, app._craftingDrawerRisk, terrainTag
-            );
-            const outputForRisk = app._craftingDrawerRisk === "ambitious" && selectedRecipe.ambitiousOutput
-                ? selectedRecipe.ambitiousOutput
-                : selectedRecipe.output;
-
-            commitSummary = {
-                recipeName: selectedRecipe.name,
-                dc: adjustedDc,
-                risk: app._craftingDrawerRisk,
-                riskLabel: { safe: "Safe", standard: "Standard", ambitious: "Ambitious" }[app._craftingDrawerRisk],
-                outputName: outputForRisk?.name ?? selectedRecipe.outputName,
-                outputQuantity: outputForRisk?.quantity ?? 1,
-                ingredientCost: (selectedRecipe.ingredients ?? []).map(i => `${i.quantity ?? 1}x ${i.name}`).join(", "),
-                failConsequence: app._craftingDrawerRisk === "safe"
-                    ? "Ingredients preserved on failure"
-                    : "Ingredients consumed on failure",
-                skill: (selectedRecipe.skill ?? "sur").toUpperCase()
-            };
-        }
+        const list = buildCraftRecipeListContext({
+            engine: app._craftingEngine,
+            actor,
+            professionId,
+            risk: app._craftingDrawerRisk,
+            terrainTag,
+            selectedRecipeId: app._craftingDrawerRecipeId,
+            hasCrafted: !!app._craftingDrawerHasCrafted
+        });
+        const { available, missing, partial, selectedRecipe, commitSummary } = list;
 
         return {
             isOpen: true,
-            profession: professionLabels[professionId] ?? professionId,
+            profession: list.profession ?? CRAFT_PROFESSION_LABELS[professionId] ?? professionId,
             professionId,
             actorName: actor.name,
             selectedRisk: app._craftingDrawerRisk,
@@ -100,6 +55,7 @@ export class CraftingDelegate {
                 { id: "ambitious", label: "Ambitious", hint: "DC +5, enhanced output on success", selected: app._craftingDrawerRisk === "ambitious" }
             ],
             available,
+            missing,
             partial,
             commitSummary,
             craftingResult: app._craftingDrawerResult

@@ -4,9 +4,20 @@
 
 ### Added
 - Well Fed on Pathfinder 2e applies automatable deferred buffs as Effect items via the kernel applicator, with GM relay for cross-owner writes.
+- Alcoholic Ferments toggle under Travel & Activities. When off, wine, mead, and draught recipes stay hidden; teas and coolers still craft.
+- Craft Professions Pack brewing outputs materialise into **Respite: Craft Professions** (Brewing / Standard / Ambitious) for GM inspect and edit. Craft grants resolve those rows via itemRef.
 
 ### Fixed
 - Load crash from invalid trailing commas on class methods in `DnD5eAdapter`.
+
+## [3.3.13] - 2026-08-03
+
+### Added
+- Brew rest activity restored as its own profession slot (separate from Cook), gated on Brewer's Supplies, Alchemist's Supplies, or Herbalism Kit.
+- Optional Craft Professions generative icons when the `craft-professions-art` companion overlay is installed (presence-based; Foundry icons remain the fallback).
+
+### Fixed
+- Meal buffs from content packs that use Amber types (save bonus, check advantage, and similar) now apply through the shared cooking buff model instead of being dropped at Well Fed resolution.
 
 ## [3.3.12] - 2026-07-26
 

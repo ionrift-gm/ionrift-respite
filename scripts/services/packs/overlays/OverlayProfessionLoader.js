@@ -12,14 +12,35 @@
  * cached per session and invalidated on `ionrift.overlayContentChanged`.
  */
 import { Logger } from "../../../utils/Logger.js";
-import { PROFESSION_TOOL_REQUIRED } from "../../crafting/recipes/RecipeCatalog.js";
+import { mergeRecipeLists, PROFESSION_TOOL_REQUIRED } from "../../crafting/recipes/RecipeCatalog.js";
 import { CookingArtPreference } from "../../meal/provisions/CookingArtPreference.js";
+import { CraftProfessionsArtPreference } from "../../meal/provisions/CraftProfessionsArtPreference.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 
 /** @type {{ packId: string, sublayer: string, name: string, recipes: Object }[] | null} */
 let _cache = null;
 
 export class OverlayProfessionLoader {
+
+    /**
+     * Merge profession recipe lists from multiple overlay packs.
+     * Later packs override the same recipe id; different ids accumulate.
+     * Avoids last-pack-wins wiping an earlier catalogue (e.g. legacy
+     * `subscriber` brewing over Craft Professions Pack).
+     * @param {{ recipes?: Object }[]} packs
+     * @returns {Map<string, Object[]>}
+     */
+    static mergeProfessionRecipes(packs) {
+        /** @type {Map<string, Object[]>} */
+        const merged = new Map();
+        for (const pack of packs ?? []) {
+            for (const [profId, recipeList] of Object.entries(pack?.recipes ?? {})) {
+                if (!Array.isArray(recipeList) || !recipeList.length) continue;
+                merged.set(profId, mergeRecipeLists(merged.get(profId) ?? [], recipeList));
+            }
+        }
+        return merged;
+    }
 
     /**
      * Loads profession recipe data from all active overlay packs.
@@ -30,6 +51,10 @@ export class OverlayProfessionLoader {
 
         const overlay = game.ionrift?.library?.overlay;
         if (!overlay) return [];
+
+        // Presence probes before recipe img rewrite (cooking-art / craft-professions-art).
+        try { await CookingArtPreference.refreshPresence(); } catch { /* optional */ }
+        try { await CraftProfessionsArtPreference.refreshPresence(); } catch { /* optional */ }
 
         const results = [];
 
@@ -57,6 +82,7 @@ export class OverlayProfessionLoader {
 
                 if (data?.recipes && typeof data.recipes === "object") {
                     CookingArtPreference.applyToRecipeData(data);
+                    CraftProfessionsArtPreference.applyToRecipeData(data);
                     results.push({
                         packId: data.id ?? manifest.overlayId,
                         sublayer,
@@ -103,7 +129,7 @@ export class OverlayProfessionLoader {
 
     /**
      * Map each profession id to the overlay pack name that supplies it.
-     * First active overlay wins when multiple packs define the same profession.
+     * Last active overlay that defines the profession wins (matches recipe merge).
      * @returns {Promise<Map<string, string>>}
      */
     static async activeRecipeProfessionSources() {
@@ -117,7 +143,7 @@ export class OverlayProfessionLoader {
             for (const [profId, list] of Object.entries(recipes)) {
                 if (!Array.isArray(list) || !list.length) continue;
                 if (!Object.prototype.hasOwnProperty.call(PROFESSION_TOOL_REQUIRED, profId)) continue;
-                if (!sources.has(profId)) sources.set(profId, packLabel);
+                sources.set(profId, packLabel);
             }
         }
         return sources;

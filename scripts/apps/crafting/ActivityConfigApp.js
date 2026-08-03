@@ -67,6 +67,13 @@ const ACTIVITY_TOGGLES = [
         type: "boolean"
     },
     {
+        key: "enableBrewingAlcohol",
+        label: "Alcoholic Ferments",
+        icon: "fas fa-wine-bottle",
+        hint: "Craft pack ferments (wine, mead, draughts). Off for dry or younger tables. Steeps stay available.",
+        type: "boolean"
+    },
+    {
         key: "enableEncounters",
         label: "Night Encounters & Watch",
         icon: "fas fa-shield-alt",

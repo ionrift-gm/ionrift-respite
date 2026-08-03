@@ -376,3 +376,51 @@ export function applyCustomRecipesToEngine(engine) {
 
     applyChefTreatCookingOnlyToEngine(engine);
 }
+
+/**
+ * Live rest / picker engines that should receive homebrew recipe merges.
+ * @returns {Set<import("../engine/CraftingEngine.js").CraftingEngine>}
+ */
+export function collectLiveCraftingEngines() {
+    const engines = new Set();
+    try {
+        const active = game.ionrift?.respite?.getActiveApp?.();
+        if (active?._craftingEngine) engines.add(active._craftingEngine);
+    } catch { /* optional */ }
+    try {
+        const byId = foundry.applications?.instances?.get?.("ionrift-respite-setup");
+        if (byId?._craftingEngine) engines.add(byId._craftingEngine);
+    } catch { /* optional */ }
+    try {
+        const legacy = game.ionrift?.respite?.craftingEngine;
+        if (legacy) engines.add(legacy);
+    } catch { /* optional */ }
+    return engines;
+}
+
+/**
+ * Merge world customRecipes into every live crafting engine and refresh the
+ * active rest UI so homebrew appears in craft listings immediately.
+ * @param {{ render?: boolean }} [options]
+ * @returns {number} Engines updated
+ */
+export function applyCustomRecipesToLiveEngines(options = {}) {
+    const render = options.render !== false;
+    const engines = collectLiveCraftingEngines();
+    for (const engine of engines) applyCustomRecipesToEngine(engine);
+
+    if (render) {
+        try {
+            const active = game.ionrift?.respite?.getActiveApp?.();
+            if (active?.rendered) active.render(false);
+        } catch { /* optional */ }
+        try {
+            const byId = foundry.applications?.instances?.get?.("ionrift-respite-setup");
+            if (byId?.rendered && byId !== game.ionrift?.respite?.getActiveApp?.()) {
+                byId.render(false);
+            }
+        } catch { /* optional */ }
+    }
+
+    return engines.size;
+}
