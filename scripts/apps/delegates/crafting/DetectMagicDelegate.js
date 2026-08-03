@@ -56,9 +56,7 @@ function actorHasNamedSpellAccess(actor, spellNameLower) {
     return false;
 }
 
-/**
- * @returns {Set<string>}
- */
+
 function snapshotSceneTemplateIds() {
     const ids = new Set();
     for (const doc of canvas.scene?.templates?.contents ?? []) {
@@ -67,10 +65,7 @@ function snapshotSceneTemplateIds() {
     return ids;
 }
 
-/**
- * @param {string} uuid
- * @returns {Promise<void>}
- */
+
 async function deleteMeasuredTemplateUuid(uuid) {
     if (!uuid) return;
     try {
@@ -84,10 +79,7 @@ async function deleteMeasuredTemplateUuid(uuid) {
     }
 }
 
-/**
- * @param {string[]} templateUuids
- * @param {number} delayMs
- */
+
 function scheduleDetectMagicTemplateCleanup(templateUuids, delayMs = DETECT_MAGIC_TEMPLATE_CLEANUP_MS) {
     for (const uuid of templateUuids ?? []) {
         if (!uuid) continue;
@@ -110,10 +102,7 @@ export function cancelPendingDetectMagicTemplateCleanups() {
     pendingTemplateCleanupTimers.clear();
 }
 
-/**
- * @param {ActiveEffect} effect
- * @returns {boolean}
- */
+
 function isDetectMagicRestEffect(effect) {
     if (!effect) return false;
     const name = (effect.name ?? "").toLowerCase();
@@ -134,10 +123,7 @@ function isDetectMagicRestEffect(effect) {
     return false;
 }
 
-/**
- * @param {Actor[]} actors
- * @returns {Promise<void>}
- */
+
 async function purgeTrackedDetectMagicTemplates() {
     const uuids = [...trackedDetectMagicTemplateUuids];
     trackedDetectMagicTemplateUuids.clear();
@@ -268,7 +254,7 @@ export function computeCanShowDetectMagicScanButton(partyActors) {
     return computeCanTriggerDetectMagicScan(partyActors);
 }
 
-/** Player tooltip for scan access; null for GM or no access. */
+
 export function getDetectMagicPlayerAccessReason(partyActors) {
     if (game.user?.isGM) return null;
     for (const actor of partyActors) {
@@ -306,7 +292,7 @@ export function getDetectMagicPlayerAccessReason(partyActors) {
     return null;
 }
 
-/** @param {Actor[]} actors */
+
 export async function purgeDetectMagicEffects(actors) {
     const toDelete = [];
     for (const actor of actors ?? []) {

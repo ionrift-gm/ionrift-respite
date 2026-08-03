@@ -1,7 +1,7 @@
-import { Logger } from "../../../utils/Logger.js";
-import { RestFlowEngine } from "../../../services/rest/flow/RestFlowEngine.js";
-import { DecisionTreeResolver } from "../../../services/events/resolve/DecisionTreeResolver.js";
-import { getPartyActors } from "../../../services/party/partyActors.js";
+import { Logger } from "../../../../utils/Logger.js";
+import { RestFlowEngine } from "../../../../services/rest/flow/RestFlowEngine.js";
+import { DecisionTreeResolver } from "../../../../services/events/resolve/DecisionTreeResolver.js";
+import { getPartyActors } from "../../../../services/party/partyActors.js";
 
 /** GM console debug jumps for RestSetupApp (jumpToResolution, etc.). */
 export class RestSetupDebugJumps {
@@ -425,7 +425,6 @@ export class RestSetupDebugJumps {
             const actor = game.actors.get(o.characterId);
             const maxHp = actor?.system?.attributes?.hp?.max ?? 0;
         Logger.log(`[Respite:Debug] ${o.characterName}: maxHp=${maxHp}, recovery=${o.recovery?.hpRestored ?? "?"}, expected final=${maxHp} - 10 = ${maxHp - 10}`);
-            // Check if damage effects came through
             for (const sub of (o.outcomes ?? [])) {
                 if (sub.source === "event") {
 

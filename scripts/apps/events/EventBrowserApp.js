@@ -26,7 +26,7 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
     #allEvents = [];
     /** Pending selection before Save ({ id: true }). */
     #pendingSelection = {};
-    /** Whether pending selection differs from saved setting. */
+    
     #dirty = false;
     /** Index shown on the previous render, used to decide detail scroll reset. */
     #renderedIndex = -1;
@@ -274,13 +274,7 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
         this.render({ force: true });
     }
 
-    /**
-     * Renders the detail card for a single event.
-     *
-     * @param {object} evt
-     * @param {boolean} inPool
-     * @returns {string}
-     */
+    
     #renderEventCard(evt, inPool) {
         const sentiment = evt.sentiment ?? "neutral";
         const isDisaster = evt.tier === "disaster";
@@ -466,13 +460,13 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
         this.#resetScroll = false;
     }
 
-    /** Loads all catalog events for browsing and curation. */
+    
     async #loadEvents() {
         this.#allEvents = await loadAllCatalogEvents();
         this.#terrainFilter = normalizeEventPoolFilter(this.#terrainFilter, this.#allEvents);
     }
 
-    /** Applies the current terrain filter to the event list. */
+    
     #applyFilter() {
         if (this.#terrainFilter) {
             const filter = parseEventPoolFilter(this.#terrainFilter);
@@ -493,7 +487,7 @@ export class EventBrowserApp extends foundry.applications.api.ApplicationV2 {
         }
     }
 
-    /** Returns a FontAwesome icon class for a given event category. */
+    
     #getCategoryIcon(category) {
         const icons = {
             encounter: "fas fa-swords",

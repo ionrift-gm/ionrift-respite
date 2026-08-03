@@ -6,6 +6,13 @@ import { ItemClassifier } from "../../../services/party/ItemClassifier.js";
 import { getPartyActors } from "../../../services/party/partyActors.js";
 import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../../../services/camp/props/StationInteractionLayer.js";
 import { stampDeprivationExhaustionFloor } from "../../../services/meal/phase/MealExhaustionGuard.js";
+import { CampGearScanner } from "../../../services/camp/gear/CampGearScanner.js";
+import { RestLedger } from "../../../services/rest/flow/RestLedger.js";
+import { COMFORT_RANK, RANK_TO_KEY, SKILL_NAMES } from "../../../data/RestConstants.js";
+import { notifyStationMealChoicesUpdated } from "../../camp/StationActivityDialog.js";
+import { isTrailerFilmingMode as _isTrailerFilmingMode } from "../rest/layout/RestWindowLayout.js";
+import { emitPhaseChanged } from "../../../services/socket/SocketController.js";
+import { RestSetupApp } from "../../rest/RestSetupApp.js";
 
 export class MealDelegate {
 
@@ -216,11 +223,7 @@ export class MealDelegate {
         return out;
     }
 
-    /**
-     * @param {string[]} skippedSlots
-     * @param {string} charId
-     * @param {{ food?: unknown[], water?: unknown[] }} choice
-     */
+    
     _pushMealSlotWarnings(skippedSlots, charId, choice) {
         const MODULE_ID_LOCAL = "ionrift-respite";
         const actor = game.actors.get(charId);
@@ -256,10 +259,7 @@ export class MealDelegate {
         }
     }
 
-    /**
-     * @param {string[]} skippedSlots
-     * @returns {Promise<boolean>}
-     */
+    
     async _confirmSkipMeals(skippedSlots) {
         if (skippedSlots.length === 0) return true;
         return await new Promise(resolve => {
@@ -979,4 +979,549 @@ export class MealDelegate {
             });
         }
     }
+    _bindMealDragDrop(el) {
+        const app = this._app;
+
+        if (!el) return;
+        if (app._mealSubmitted) return; // Lock UI after submission
+
+        const stationEmbed = el?.closest?.(".station-meal-embed");
+        if (stationEmbed) {
+            const cid = stationEmbed.querySelector(".meal-drop-zone[data-character-id]")?.dataset?.characterId
+                ?? stationEmbed.querySelector("[data-character-id]")?.dataset?.characterId;
+            if (cid && app._activityMealRationsSubmitted?.has(cid)) return;
+        }
+
+        // Clear any stuck drag classes from previous render cycles or cancelled drags
+        el.querySelectorAll(".dragging").forEach(n => n.classList.remove("dragging"));
+        el.querySelectorAll(".drop-hover").forEach(n => n.classList.remove("drop-hover"));
+
+        const items = el.querySelectorAll(".meal-inv-item[draggable], .meal-inv-card[draggable]");
+        const dropZones = el.querySelectorAll(".meal-drop-zone");
+
+        // Helper: set choice for a slot (both food and water are arrays)
+        const setChoice = (charId, slot, itemId, slotIndex) => {
+            if (!app._mealChoices) app._mealChoices = new Map();
+            const existing = app._mealChoices.get(charId) ?? {};
+            const arr = Array.isArray(existing[slot]) ? [...existing[slot]] : [];
+
+            // Respect inventory-consumed locked slots
+            const lockedKey = slot === "food" ? "foodLockedSlots" : "waterLockedSlots";
+            const lockedSlots = Array.isArray(existing[lockedKey]) ? existing[lockedKey] : [];
+            if (slotIndex !== undefined && lockedSlots.includes(slotIndex)) return;
+
+            const trayItem = el.querySelector(
+                `.meal-inv-item[data-item-id="${itemId}"][data-slot="${slot}"][data-character-id="${charId}"],` +
+                `.meal-inv-card[data-item-id="${itemId}"][data-slot="${slot}"][data-character-id="${charId}"]`
+            );
+            const available = trayItem ? parseInt(trayItem.dataset.available || "1") : 1;
+            const alreadyAssigned = arr.filter(v => v === itemId).length;
+
+            // If assigning to a specific slot that already has this item, it's a re-assign (allow)
+            const isReassign = slotIndex !== undefined && arr[slotIndex] === itemId;
+            if (!isReassign && alreadyAssigned >= available) {
+                ui.notifications.warn(`Not enough ${slot === "food" ? "rations" : "water"} to fill another slot.`);
+                return;
+            }
+
+            if (slotIndex !== undefined) {
+                arr[slotIndex] = itemId;
+            } else {
+                // Fill first empty AND unlocked slot
+                const emptyIdx = arr.findIndex((v, i) => (!v || v === "skip") && !lockedSlots.includes(i));
+                if (emptyIdx >= 0) {
+                    arr[emptyIdx] = itemId;
+                } else {
+                    arr.push(itemId);
+                }
+            }
+            app._mealChoices.set(charId, { ...existing, [slot]: arr });
+            // When food with satiates:water is placed, trim excess water entries
+            if (slot === "food") app._autoTrimExcessWater(charId);
+            notifyStationMealChoicesUpdated();
+            app._refreshStationOverlayMeals();
+            if (app.rendered) app.render();
+        };
+
+        const fillWaterPool = (charId, itemId, elRoot) => {
+            if (!app._mealChoices) app._mealChoices = new Map();
+            const existing = app._mealChoices.get(charId) ?? {};
+            const arr = Array.isArray(existing.water) ? [...existing.water] : [];
+            const lockedSlots = Array.isArray(existing.waterLockedSlots) ? existing.waterLockedSlots : [];
+
+            const poolBar = elRoot.querySelector(".water-pool-bar");
+            const wpd = parseInt(poolBar?.dataset?.target ?? "2", 10) || 0;
+            while (arr.length < wpd) arr.push("skip");
+
+            // Account for meal-based water credits from food slots
+            const foodArr = Array.isArray(existing.food) ? existing.food : [];
+            const satiatesLookup = app._buildSatiatesLookup();
+            let bonusWater = 0;
+            const actor = game.actors.get(charId);
+            for (const fid of foodArr) {
+                if (!fid || fid === "skip" || fid.startsWith?.("__")) continue;
+                const fItem = actor?.items?.get(fid);
+                if (!fItem) continue;
+                const fFlags = fItem.flags?.[MODULE_ID] ?? {};
+                let fSat = fFlags.satiates;
+                if (!Array.isArray(fSat) && satiatesLookup) {
+                    fSat = satiatesLookup.get(fItem.name.toLowerCase().trim()) ?? null;
+                }
+                if (Array.isArray(fSat) && fSat.includes("water")) bonusWater++;
+            }
+
+            let slotsNeeded = 0;
+            for (let i = 0; i < wpd; i++) {
+                if (lockedSlots.includes(i)) continue;
+                const v = arr[i];
+                if (!v || v === "skip") slotsNeeded++;
+            }
+            // Subtract bonus water from meal credits
+            slotsNeeded = Math.max(0, slotsNeeded - bonusWater);
+            if (slotsNeeded <= 0) {
+                ui.notifications.info("Water is already sufficient.");
+                return;
+            }
+
+            const trayCard = elRoot.querySelector(
+                `.meal-inv-card[data-item-id="${itemId}"][data-slot="water"][data-character-id="${charId}"]`
+            );
+            let totalPints = parseInt(trayCard?.dataset?.totalPints ?? trayCard?.dataset?.available ?? "0", 10);
+            if (!Number.isFinite(totalPints) || totalPints < 0) totalPints = 0;
+            if (totalPints <= 0) {
+                ui.notifications.warn("This water source is empty.");
+                return;
+            }
+
+            const pintsToFill = Math.min(slotsNeeded, totalPints);
+            for (let i = 0; i < pintsToFill; i++) {
+                const emptyIdx = arr.findIndex((v, j) =>
+                    j < wpd && (!v || v === "skip") && !lockedSlots.includes(j));
+                if (emptyIdx >= 0) arr[emptyIdx] = itemId;
+                else break;
+            }
+            app._mealChoices.set(charId, { ...existing, water: arr });
+            notifyStationMealChoicesUpdated();
+            app._refreshStationOverlayMeals();
+            if (app.rendered) app.render();
+        };
+
+        // Draggable + clickable inventory items
+        for (const item of items) {
+            if (item._mealBound) continue;
+            item._mealBound = true;
+            item.addEventListener("dragstart", (e) => {
+                e.dataTransfer.setData("text/plain", `meal:${item.dataset.slot}:${item.dataset.itemId}:${item.dataset.characterId}`);
+                item.classList.add("dragging");
+            });
+            item.addEventListener("dragend", () => item.classList.remove("dragging"));
+
+            // Click to select
+            item.addEventListener("click", () => {
+                const slot = item.dataset.slot;
+                const charId = item.dataset.characterId;
+                const itemId = item.dataset.itemId;
+                if (!slot || !charId || !itemId) return;
+                if (slot === "water") {
+                    fillWaterPool(charId, itemId, el);
+                    return;
+                }
+                setChoice(charId, slot, itemId);
+            });
+        }
+
+        // Drop zones (plates and goblets)
+        for (const zone of dropZones) {
+            if (zone._mealBound) continue;
+            zone._mealBound = true;
+
+            // Slots consumed from inventory are locked ,  no interaction allowed
+            if (zone.dataset.locked === "true") continue;
+
+            const slot = zone.dataset.slot;
+            const charId = zone.dataset.characterId;
+            const slotIndex = zone.dataset.slotIndex !== undefined ? parseInt(zone.dataset.slotIndex) : undefined;
+
+            zone.addEventListener("dragover", (e) => {
+                if (slot === "water" && zone.dataset.poolFull === "true") return;
+                if (!e.dataTransfer.types.includes("text/plain")) return;
+                e.preventDefault();
+                zone.classList.add("drop-hover");
+            });
+
+            zone.addEventListener("dragleave", (e) => {
+                if (zone.contains(e.relatedTarget)) return;
+                zone.classList.remove("drop-hover");
+            });
+
+            zone.addEventListener("drop", (e) => {
+                e.preventDefault();
+                zone.classList.remove("drop-hover");
+                if (slot === "water" && zone.dataset.poolFull === "true") return;
+                const raw = e.dataTransfer.getData("text/plain");
+                if (!raw?.startsWith("meal:")) return;
+
+                const [, dragSlot, itemId, dragCharId] = raw.split(":");
+                if (dragSlot !== slot || dragCharId !== charId) return;
+                if (slot === "water") {
+                    fillWaterPool(charId, itemId, el);
+                    return;
+                }
+                setChoice(charId, slot, itemId, slotIndex);
+            });
+
+            // Click on filled zone = clear it
+            zone.addEventListener("click", () => {
+                if (!app._mealChoices) return;
+                if (slot === "water") {
+                    const existing = app._mealChoices.get(charId) ?? {};
+                    const lockedSlots = Array.isArray(existing.waterLockedSlots) ? existing.waterLockedSlots : [];
+                    const prev = Array.isArray(existing.water) ? existing.water : [];
+                    const poolBar = el.querySelector(".water-pool-bar");
+                    const wpd = parseInt(poolBar?.dataset?.target ?? "2", 10) || 0;
+                    const len = Math.max(wpd, prev.length);
+                    const arr = [];
+                    for (let i = 0; i < len; i++) {
+                        arr[i] = lockedSlots.includes(i) ? prev[i] : "skip";
+                    }
+                    app._mealChoices.set(charId, { ...existing, water: arr });
+                    notifyStationMealChoicesUpdated();
+                    app._refreshStationOverlayMeals();
+                    if (app.rendered) app.render();
+                    return;
+                }
+                const existing = app._mealChoices.get(charId) ?? {};
+                const arr = Array.isArray(existing[slot]) ? [...existing[slot]] : [];
+                if (slotIndex !== undefined && arr[slotIndex] && arr[slotIndex] !== "skip") {
+                    arr[slotIndex] = "skip";
+                    app._mealChoices.set(charId, { ...existing, [slot]: arr });
+                    notifyStationMealChoicesUpdated();
+                    app._refreshStationOverlayMeals();
+                    if (app.rendered) app.render();
+                }
+            });
+        }
+    
+    }
+
+    async _autoProcessRations() {
+        const app = this._app;
+
+        const rosterIds = new Set(getPartyActors().map(a => a.id));
+        const characterIds = app._engine?.characterChoices
+            ? Array.from(app._engine.characterChoices.keys()).filter(id => rosterIds.has(id))
+            : [];
+
+        if (!app._mealChoices) app._mealChoices = new Map();
+
+        const terrainTag = app._engine?.terrainTag ?? "forest";
+        const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
+        const totalDays = app._daysSinceLastRest ?? 1;
+
+        for (const charId of characterIds) {
+            if (!app._mealChoices.has(charId)) {
+                const cards = MealPhaseHandler.buildMealContext(
+                    [charId], terrainTag, terrainMealRules,
+                    totalDays, app._mealChoices
+                );
+                if (cards.length > 0) {
+                    app._mealChoices.set(charId, {
+                        food: cards[0].selectedFood,
+                        water: cards[0].selectedWater
+                    });
+                }
+            }
+        }
+
+        if (!app._spoilageProcessed) {
+            app._spoilageProcessed = true;
+            try {
+                await MealPhaseHandler.resolveSpoilage(characterIds, totalDays);
+            } catch (err) {
+
+                console.error(`[Respite:Meal] Auto-process spoilage error:`, err);
+            }
+        }
+
+        let mealResults = [];
+        if (!app._mealProcessed) {
+            app._mealProcessed = true;
+            try {
+                const outcome = await MealPhaseHandler.processAndApply(app._mealChoices, totalDays, terrainMealRules);
+                mealResults = outcome.results;
+                app._mealResults = mealResults;
+        Logger.log(`[Respite:Meal] Auto-process consumption results:`, mealResults);
+            } catch (err) {
+
+                console.error(`[Respite:Meal] Auto-process consumption error:`, err);
+            }
+
+            for (const r of mealResults) {
+                r.mealExhaustionApplied = 0;
+
+                if (r.starvationExhaustion > 0) {
+                    const actor = game.actors.get(r.characterId);
+                    if (!actor) continue;
+                    const adapter = game.ionrift?.respite?.adapter;
+                    const current = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+                    const newLevel = Math.min(6, current + r.starvationExhaustion);
+                    if (adapter) {
+                        await adapter.applyExhaustionDelta(actor, r.starvationExhaustion);
+                    } else {
+                        if (newLevel > current) {
+                            await actor.update({ "system.attributes.exhaustion": newLevel });
+                        }
+                    }
+                    r.mealExhaustionApplied += r.starvationExhaustion;
+                    await stampDeprivationExhaustionFloor(actor, newLevel);
+                    await ChatMessage.create({
+                        content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.starvationExhaustion}</strong> level${r.starvationExhaustion > 1 ? "s" : ""} of exhaustion from starvation.</div>`,
+                        speaker: ChatMessage.getSpeaker({ actor })
+                    });
+                }
+                if ((r.essenceExhaustion ?? 0) > 0) {
+                    const actor = game.actors.get(r.characterId);
+                    if (!actor) continue;
+                    const adapter = game.ionrift?.respite?.adapter;
+                    const current = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+                    const newLevel = Math.min(6, current + r.essenceExhaustion);
+                    if (adapter) {
+                        await adapter.applyExhaustionDelta(actor, r.essenceExhaustion);
+                    } else {
+                        if (newLevel > current) {
+                            await actor.update({ "system.attributes.exhaustion": newLevel });
+                        }
+                    }
+                    r.mealExhaustionApplied += r.essenceExhaustion;
+                    await stampDeprivationExhaustionFloor(actor, newLevel);
+                    await ChatMessage.create({
+                        content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains <strong>${r.essenceExhaustion}</strong> level${r.essenceExhaustion > 1 ? "s" : ""} of exhaustion from essence depletion.</div>`,
+                        speaker: ChatMessage.getSpeaker({ actor })
+                    });
+                }
+
+                if (r.dehydrationAutoFail) {
+                    const actor = game.actors.get(r.characterId);
+                    if (!actor) continue;
+                    const adapter = game.ionrift?.respite?.adapter;
+                    const current = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+                    const newLevel = Math.min(6, current + 1);
+                    if (adapter) {
+                        await adapter.applyExhaustionDelta(actor, 1);
+                    } else {
+                        if (newLevel > current) {
+                            await actor.update({ "system.attributes.exhaustion": newLevel });
+                        }
+                    }
+                    r.mealExhaustionApplied += 1;
+                    await stampDeprivationExhaustionFloor(actor, newLevel);
+                    const restsSinceWater = actor.getFlag("ionrift-respite", "restsSinceWater") ?? 0;
+                    await ChatMessage.create({
+                        content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains 1 level of exhaustion from severe dehydration (auto-fail, ${restsSinceWater} rests without water).</div>`,
+                        speaker: ChatMessage.getSpeaker({ actor })
+                    });
+                } else if (r.dehydrationSaveDC > 0) {
+                    const actor = game.actors.get(r.characterId);
+                    if (!actor) continue;
+                    const _adapter = game.ionrift?.respite?.adapter;
+                    const saveBonus = _adapter
+                        ? _adapter.getSaveBonus(actor, "con")
+                        : (() => {
+                            const conMod = actor.system?.abilities?.con?.mod ?? 0;
+                            const profBonus = actor.system?.abilities?.con?.save
+                                ? (actor.system?.attributes?.prof ?? 0) : 0;
+                            return conMod + profBonus;
+                        })();
+                    const roll = await new Roll(`1d20 + ${saveBonus}`).evaluate();
+                    if (game.dice3d) {
+                        await game.dice3d.showForRoll(roll, game.user, true);
+                    }
+                    if (roll.total < r.dehydrationSaveDC) {
+                        const adapter = game.ionrift?.respite?.adapter;
+                        const current = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
+                        const newLevel = Math.min(6, current + 1);
+                        if (adapter) {
+                            await adapter.applyExhaustionDelta(actor, 1);
+                        } else {
+                            if (newLevel > current) {
+                                await actor.update({ "system.attributes.exhaustion": newLevel });
+                            }
+                        }
+                        r.mealExhaustionApplied += 1;
+                        await stampDeprivationExhaustionFloor(actor, newLevel);
+                        await ChatMessage.create({
+                            content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> fails the CON save (${roll.total} vs DC ${r.dehydrationSaveDC}) and gains 1 level of exhaustion from dehydration.</div>`,
+                            speaker: ChatMessage.getSpeaker({ actor })
+                        });
+                    } else {
+                        await ChatMessage.create({
+                            content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> passes the CON save (${roll.total} vs DC ${r.dehydrationSaveDC}) and fights off dehydration.</div>`,
+                            speaker: ChatMessage.getSpeaker({ actor })
+                        });
+                    }
+                }
+            }
+        }
+    
+    }
+
+    async _advanceToEvents() {
+        const app = this._app;
+
+        if (app._phase === "activity") {
+            void app._detectMagic?.cleanupCastArtifactsOnPhaseExit(getPartyActors());
+        }
+        // Bedding / Zzz persist through events until resolve or encounter interrupt.
+
+        // Restore default window size and center on screen so the full events
+        // header is visible regardless of how the user moved the window.
+        if (!_isTrailerFilmingMode() && app.element) {
+            const defaultWidth = RestSetupApp.DEFAULT_OPTIONS.position?.width ?? 720;
+            app.setPosition({
+                width: defaultWidth,
+                left: Math.max(8, Math.round((window.innerWidth - defaultWidth) / 2))
+            });
+        }
+
+        if (app._engine?.safeRestSpot) {
+            if (app._engine) {
+                app._engine.fireRollModifier = 0;
+                app._engine.fireLevel = "campfire";
+            }
+            app._fireLevel = "campfire";
+            app._closeCampfire();
+            app._triggeredEvents = [];
+            app._eventsRolled = true;
+            app._pendingCampRolls = [];
+            await app._saveRestState();
+            await this._app._resolve.onResolveEvents(null, null);
+            return;
+        }
+
+        // Unlit: -1 comfort step | Embers: 0 | Campfire: 0 | Bonfire: +1 camp comfort
+        const FIRE_COMFORT_MOD = { unlit: -1, embers: 0, campfire: 0, bonfire: 1 };
+        const fireComfortMod = FIRE_COMFORT_MOD[app._fireLevel] ?? 0;
+        if (fireComfortMod !== 0 && app._engine) {
+            let rank = COMFORT_RANK[app._engine.comfort] ?? 1;
+            rank = Math.max(0, Math.min(3, rank + fireComfortMod));
+            app._engine.comfort = RANK_TO_KEY[rank];
+        }
+
+        if (app._engine) {
+            app._engine.fireRollModifier = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[app._fireLevel] ?? 0;
+            app._engine.fireLevel = app._fireLevel;
+        }
+
+        app._closeCampfire();
+
+        if (app._mealResults?.length) {
+            for (const r of app._mealResults) {
+                const entry = RestLedger.formatMealEntry(r);
+                if (entry) app._restLedger.add(entry);
+            }
+            for (const r of app._mealResults) {
+                const exhEntry = RestLedger.formatMealExhaustionEntry(r);
+                if (exhEntry) app._restLedger.add(exhEntry);
+            }
+            app._refreshLedgerApp();
+        }
+
+        app._eventsRolled = false;
+        app._phase = "events";
+        app._eventPoolQuietNightBypass = false;
+
+        app._pendingCampRolls = [];
+        const campActivities = (app._activities ?? []).filter(a => a.category === "camp");
+        const partyActors = getPartyActors();
+
+        for (const actor of partyActors) {
+            const gmOverride = app._gmOverrides.get(actor.id);
+            const playerChoice = app._getPlayerChoiceForCharacter(actor.id);
+            const activityId = gmOverride ?? playerChoice?.activityId ?? null;
+            if (!activityId) continue;
+
+            const activity = campActivities.find(a => a.id === activityId);
+            if (!activity) continue;
+
+            if (!activity.check) {
+                // Keep Watch: no check, auto-resolve immediately
+                app._earlyResults.set(actor.id, {
+                    source: "activity",
+                    activityId,
+                    result: "success",
+                    effects: activity.outcomes?.success?.effects ?? [],
+                    narrative: activity.outcomes?.success?.narrative ?? activity.description
+                });
+                continue;
+            }
+
+            const existingResult = app._earlyResults?.get(actor.id);
+            if (existingResult && existingResult.activityId === activityId
+                && existingResult.result !== "pending_approval") {
+                continue;
+            }
+
+            // Activity needs a player roll (Set Up Defenses, Scout Perimeter)
+            // Calculate adjusted DC with comfort friction
+            const comfortDcMod = { safe: 0, sheltered: 0, rough: 2, hostile: 5 };
+            const baseDc = activity.check.dc ?? 12;
+            const adjustedDc = baseDc + (comfortDcMod[app._engine?.comfort] ?? 0);
+
+            let skillKey = activity.check.skill;
+            if (activity.check.altSkill) {
+                const setupAdapter = game.ionrift?.respite?.adapter;
+                const primary = setupAdapter
+                    ? setupAdapter.getSkillTotal(actor, setupAdapter.normalizeSkillKey(activity.check.skill))
+                    : (actor.system?.skills?.[activity.check.skill]?.total ?? 0);
+                const alt = setupAdapter
+                    ? setupAdapter.getSkillTotal(actor, setupAdapter.normalizeSkillKey(activity.check.altSkill))
+                    : (actor.system?.skills?.[activity.check.altSkill]?.total ?? 0);
+                if (alt > primary) skillKey = activity.check.altSkill;
+            }
+            const skillName = SKILL_NAMES[skillKey] ?? skillKey;
+
+            app._pendingCampRolls.push({
+                characterId: actor.id,
+                characterName: actor.name,
+                activityId,
+                activityName: activity.name,
+                icon: activity.id === "act_defenses" ? "fas fa-shield-alt" : "fas fa-binoculars",
+                skill: skillKey,
+                skillName,
+                dc: adjustedDc,
+                baseDC: adjustedDc,
+                requested: false,
+                status: "pending",
+                total: null,
+                result: null
+            });
+        }
+
+        await app._saveRestState();
+
+        const effectiveDC = app._engine?.getEffectiveEncounterDC?.() ?? 0;
+        if (effectiveDC > 0) {
+            const bd = app._engine?._encounterBreakdown ?? {};
+            const modParts = [];
+            if (bd.shelter) modParts.push(`Shelter +${bd.shelter}`);
+            if (bd.weather) modParts.push(`Weather +${bd.weather}`);
+            if (bd.scouting) modParts.push(`Scouting +${bd.scouting}`);
+            app._restLedger.add({
+                phase: "events", category: "night_check", icon: "fas fa-dice-d20",
+                summary: `Night check threshold: ${effectiveDC}`,
+                detail: modParts.length ? modParts.join(", ") : ""
+            });
+            app._refreshLedgerApp();
+        }
+
+        emitPhaseChanged("events", {
+                eventsRolled: false,
+                fireLevel: app._fireLevel,
+                campStatus: app._campStatus
+            });
+
+        app.render();
+    
+    }
+
 }

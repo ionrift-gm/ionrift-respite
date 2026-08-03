@@ -84,7 +84,7 @@ const RECOVERY_SECTIONS = [
     }
 ];
 
-/** @returns {object[]} Flat setting definitions for save iteration. */
+
 function _allRecoverySettings() {
     return RECOVERY_SECTIONS.flatMap(section => section.settings);
 }

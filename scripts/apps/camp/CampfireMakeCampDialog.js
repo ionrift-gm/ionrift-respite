@@ -45,10 +45,7 @@ export class CampfireMakeCampDialog extends HandlebarsApplicationMixin(Applicati
         }
     };
 
-    /**
-     * @param {import("../rest/RestSetupApp.js").RestSetupApp} restApp
-     * @param {Token} stationToken
-     */
+    
     constructor({ restApp, stationToken } = {}, appOptions = {}) {
         super(appOptions);
         this._restApp = restApp;
@@ -56,14 +53,13 @@ export class CampfireMakeCampDialog extends HandlebarsApplicationMixin(Applicati
         this._tickerFn = null;
         this._canvasPanFn = null;
         this._trackStarted = false;
-        /** Set when user manually drags the dialog; stops auto-tracking to token. */
+        
         this._userDragged = false;
     }
 
     async _prepareContext() {
         const ctx = this._restApp?.buildCampfireDrawerContextForMapDialog?.() ?? null;
         if (!ctx) {
-            // buildCamp returns null when rest left Make Camp (e.g. activity phase). A stale
             // dialog would otherwise re-render the unlit + Cold camp fallback; close instead.
             if (_openMapCampfire === this) {
                 queueMicrotask(() => {
@@ -189,11 +185,7 @@ export class CampfireMakeCampDialog extends HandlebarsApplicationMixin(Applicati
         } catch { /* ignore */ }
     }
 
-    /**
-     * @param {import("../rest/RestSetupApp.js").RestSetupApp} restApp
-     * @param {Token} stationToken
-     * @returns {Promise<CampfireMakeCampDialog|null>}
-     */
+    
     static async open(restApp, stationToken) {
         if (!restApp || !stationToken) return null;
         if (typeof restApp.buildCampfireDrawerContextForMapDialog !== "function") return null;
@@ -252,9 +244,7 @@ export class CampfireMakeCampDialog extends HandlebarsApplicationMixin(Applicati
         }
     }
 
-    /**
-     * @param {import("../rest/RestSetupApp.js").RestSetupApp} restApp
-     */
+    
     static refreshIfOpen(restApp) {
         if (!_openMapCampfire || _openMapCampfire._restApp !== restApp) return;
         const ctx = restApp.buildCampfireDrawerContextForMapDialog?.() ?? null;

@@ -121,7 +121,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         /** Active shelter -- set from setup wizard, or 'none' by default */
         this._activeShelter = options.initialShelter ?? "none";
 
-        /** RP prompt (fixed for this rest) */
+        
         this._rpPrompt = RP_PROMPTS[Math.floor(Math.random() * RP_PROMPTS.length)];
 
         /**
@@ -303,10 +303,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         };
     }
 
-    /**
-     * @param {object} data
-     * @param {function} emitSync
-     */
+    
     applyWorkbenchStagingFromPlayer(data, emitSync) {
         const uid = data.userId;
         const user = game.users.get(uid);
@@ -329,9 +326,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (this.rendered) void this.render();
     }
 
-    /**
-     * @param {object} data
-     */
+    
     applyWorkbenchStateFromHost(data) {
         this._workbenchIdentifyStaging = new Map(data.workbenchStaging ?? []);
         this._workbenchIdentifyAcknowledge = new Map(data.workbenchAck ?? []);
@@ -401,7 +396,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
-        // Detect which shelter spells anyone in the party has prepared
         const preparedShelterIds = new Set(["none"]);
         for (const spell of SHORT_REST_SHELTERS) {
             if (!spell.altNames) continue;
@@ -415,7 +409,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (hasCaster) preparedShelterIds.add(spell.id);
         }
 
-        // Build shelter radio options (always show "Open Air", plus any detected spells)
         const shelterOptions = SHORT_REST_SHELTERS
             .filter(s => preparedShelterIds.has(s.id))
             .map(s => ({
@@ -431,7 +424,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const eligibleBards = HitDieModifiers.scanAllEligibleBards(partyActors);
         const eligibleChefs = scanEligibleChefs(partyActors);
 
-        // Build character cards
         const characters = partyActors.map(a => {
             const hp = a.system?.attributes?.hp ?? {};
             const currentHp = Number(hp.value) || 0;
@@ -445,7 +437,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const chefMealRecord = this._chefMealBonusByActor.get(a.id);
             const chefMealTotal = chefMealRecord?.total ?? 0;
 
-            // Build pip array
             const hdPips = [];
             for (let i = 0; i < hdData.max; i++) {
                 hdPips.push({ filled: i < hdData.remaining });
@@ -649,7 +640,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             };
         });
 
-        // Split cards: GM sees all expanded; players see only self expanded, rest collapsed
         let expandedCards, collapsedCards;
         if (this._isGM) {
             expandedCards = characters;
@@ -670,7 +660,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             icon: shelterDef?.icon ?? "fas fa-wind",
         };
 
-        // Roster strip: avatar chips with AFK + readiness state
         const gmWorkbenchRosterPick = this._isGM && this._activeTab === "workbench";
         const roster = partyActors.map(a => {
             const isAfk = RestAfkState.isAfk(a.id);
@@ -780,10 +769,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return { remaining: Math.max(0, level - spent), max: level, die: 8 };
     }
 
-    /**
-     * Get the denomination string (e.g. "d8") for the actor's primary HD class.
-     * DnD5e v4 rollHitDie() needs either a class item or denomination.
-     */
+    
     _getHdDenomination(actor) {
         // v4.x: iterate classes via actor.items
         const classItems = actor.items?.filter(i => i.type === "class") ?? [];
@@ -799,10 +785,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return "d8";
     }
 
-    /**
-     * @param {Actor} actor
-     * @param {object} state
-     */
+    
     static async #persistSpellRecoveryFlag(actor, state) {
         if (!state?.featureItem?.id) return;
         const selectionsArr = [...state.selections.entries()]
@@ -863,9 +846,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this.render();
     }
 
-    /**
-     * Player confirms their spell recovery selections; locks the controls.
-     */
+    
     static async #onConfirmRecovery(event, target) {
         if (this._completionPhase) return;
         const actorId = target.dataset.actorId;
@@ -877,9 +858,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this.render();
     }
 
-    /**
-     * Player un-confirms their spell recovery selections; unlocks the controls.
-     */
+    
     static async #onEditRecovery(event, target) {
         if (this._completionPhase) return;
         const actorId = target.dataset.actorId;
@@ -997,12 +976,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             .map(({ actorId, name, line }) => ({ actorId, name, line }));
     }
 
-    /**
-     * @param {string} bardName
-     * @param {string} recipientName
-     * @param {string} formula
-     * @param {number} total
-     */
+    
     static #buildSongImmediateChat(bardName, recipientName, formula, total) {
         const b = ShortRestApp.#escapeChat(bardName);
         const r = ShortRestApp.#escapeChat(recipientName);
@@ -1033,10 +1007,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             `Respite aligned short rest healing to <strong>+${adjustedTotal}</strong> HP.</p>${meta}</div>`;
     }
 
-    /**
-     * @param {string} bardName
-     * @param {Array<{ name: string, formula: string, total: number }>} entries
-     */
+    
     static #buildSongEndRestSummaryChat(bardName, entries) {
         const b = ShortRestApp.#escapeChat(bardName);
         const rows = entries.map(e =>
@@ -1143,9 +1114,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
     }
 
-    /**
-     * Player spends 1 Hit Die. Uses Foundry's native rollHitDie().
-     */
+    
     static async #onSpendHitDie(event, target) {
         if (this._completionPhase) return;
         const actorId = target.dataset.actorId;
@@ -1329,7 +1298,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
         }
 
-        // Broadcast to other clients
         game.socket.emit(`module.${MODULE_ID}`, {
             type: "shortRestHdSpent",
             actorId,
@@ -1658,18 +1626,14 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this.render({ force: true });
     }
 
-    /**
-     * @param {{ songVolunteer: object|null }} data
-     */
+    
     receiveSongVolunteer(data) {
         if (this._completionPhase) return;
         this._songVolunteer = data.songVolunteer ?? null;
         this.render();
     }
 
-    /**
-     * @param {{ chefVolunteer: object|null, chefMealServedCount?: number, chefMealBonuses?: object }} data
-     */
+    
     receiveChefVolunteer(data) {
         if (this._completionPhase) return;
         this._chefVolunteer = data.chefVolunteer ?? null;
@@ -1714,9 +1678,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return obj;
     }
 
-    /**
-     * @param {Record<string, { total: number, formula: string, bardName: string }>} obj
-     */
+    
     _deserializeSongBonuses(obj) {
         const map = new Map();
         if (!obj || typeof obj !== "object") return map;
@@ -1737,9 +1699,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return obj;
     }
 
-    /**
-     * @param {Record<string, { total: number, formula: string, chefName: string }>} obj
-     */
+    
     _deserializeChefMealBonuses(obj) {
         const map = new Map();
         if (!obj || typeof obj !== "object") return map;
@@ -1820,9 +1780,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return true;
     }
 
-    /**
-     * Clears persisted short rest state. Called on completion or abandonment.
-     */
+    
     async _clearShortRestState() {
         if (!game.user.isGM) return;
         try {
