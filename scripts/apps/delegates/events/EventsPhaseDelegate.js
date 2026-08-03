@@ -28,6 +28,7 @@ import {
 } from "../../../services/camp/props/StationInteractionLayer.js";
 import { getPartyActors } from "../../../services/party/partyActors.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { _refreshGmRestIndicator } from "../../../module.js";
 
 export class EventsPhaseDelegate {
 
@@ -2036,13 +2037,13 @@ export class EventsPhaseDelegate {
         app._saveRestState();
 
         if (app._phase === "activity" && isStationLayerActive()) {
-            refreshStationEmptyNoticeFade(this);
+            refreshStationEmptyNoticeFade(app);
             refreshStationPortraitsFromChoices(app._characterChoices, app._stationCanvasIdByCharacter);
             app._refreshStationOverlayMeals();
         }
         app.render();
         // Refresh the GM footer bar in-place (it bakes the count at creation time).
-        _refreshGmRestIndicator(this);
+        _refreshGmRestIndicator(app);
 
         const submissions = {};
         for (const [charId, actId] of app._characterChoices) {

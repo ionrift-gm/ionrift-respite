@@ -818,7 +818,7 @@ _shouldShowEventPoolNudge(terrainTag) {
         return this._windowLayout.recenterRestSetupWindow(...arguments);
     }
 
-    buildCampfireDrawerContextForMapDialog() { this._campCeremony.buildCampfireDrawerContextForMapDialog(); }
+    buildCampfireDrawerContextForMapDialog() { return this._campCeremony.buildCampfireDrawerContextForMapDialog(); }
 
     _setShowCampfireCanvasPanel(_v) {
     }
@@ -847,7 +847,7 @@ _shouldShowEventPoolNudge(terrainTag) {
         return RestSetupApp.#onSelectCampFireLevel.call(this, event, target);
     }
 
-    _buildEncounterPlayerFactors(params) { this._campCeremony._buildEncounterPlayerFactors(params); }
+    _buildEncounterPlayerFactors(params) { return this._campCeremony._buildEncounterPlayerFactors(params); }
 
 _buildCampConditionsBar(campScanData, { safeRestSpot = false, encountersEnabled = true } = {}) {
         if (this._phase !== "camp" || !this._engine) return null;
@@ -929,9 +929,9 @@ _resolveSetupWeather(terrainTag, candidate) {
 
     _buildCraftingDrawerContext() { return this._crafting.buildContext(); }
 
-    _buildArmorWarningForActor(a) { this._stations._buildArmorWarningForActor(a); }
+    _buildArmorWarningForActor(a) { return this._stations._buildArmorWarningForActor(a); }
 
-getArmorWarningForActivityDetail(actor, tile) {
+    getArmorWarningForActivityDetail(actor, tile) {
         const aw = this._buildArmorWarningForActor(actor);
         if (!aw || !tile) return null;
         if (aw.isDoffed) return aw;
@@ -941,11 +941,11 @@ getArmorWarningForActivityDetail(actor, tile) {
 
     _bindArmorToggleHandlers(element, onAfter) { this._session._bindArmorToggleHandlers(element, onAfter); }
 
-    _buildActivityDetailContext(selectedCharacter) { this._stations._buildActivityDetailContext(selectedCharacter); }
+    _buildActivityDetailContext(selectedCharacter) { return this._stations._buildActivityDetailContext(selectedCharacter); }
 
-    _formatCheckLabel(check, character) { this._session._formatCheckLabel(check, character); }
+    _formatCheckLabel(check, character) { return this._session._formatCheckLabel(check, character); }
 
-    getCampGearContextForActor(actorId) { this._stations.getCampGearContextForActor(actorId); }
+    getCampGearContextForActor(actorId) { return this._stations.getCampGearContextForActor(actorId); }
 
 isCampfireStationFlavorOnly() {
         return this._phase === "activity" && !this._isTotM && !isComfortEnabled();
@@ -963,9 +963,9 @@ getCampfireStationDialogTabs() {
         ];
     }
 
-    getCampGearFlavorPanelForActor(actorId) { this._stations.getCampGearFlavorPanelForActor(actorId); }
+    getCampGearFlavorPanelForActor(actorId) { return this._stations.getCampGearFlavorPanelForActor(actorId); }
 
-    _getCampScanDataForActivityStationDialog() { this._session._getCampScanDataForActivityStationDialog(); }
+    _getCampScanDataForActivityStationDialog() { return this._session._getCampScanDataForActivityStationDialog(); }
 
 getCampComfortAdvisoryForStationDialog() {
         if (this.isCampfireStationFlavorOnly()) return null;
@@ -982,7 +982,7 @@ getCampComfortAdvisoryForStationDialog() {
         return { mapComfortTier, mapComfortLabel, mapComfortLine, mapComfortTierClass };
     }
 
-    getFireTabContextForStationDialog() { this._campCeremony.getFireTabContextForStationDialog(); }
+    getFireTabContextForStationDialog() { return this._campCeremony.getFireTabContextForStationDialog(); }
 
 setStationFirePreviewLevel(level) {
         const next = ["embers", "campfire", "bonfire"].includes(level) ? level : null;
@@ -990,9 +990,9 @@ setStationFirePreviewLevel(level) {
         this._stationFirePreviewLevel = next;
     }
 
-    getCampPersonalCardForActor(actorId) { this._campCeremony.getCampPersonalCardForActor(actorId); }
+    getCampPersonalCardForActor(actorId) { return this._campCeremony.getCampPersonalCardForActor(actorId); }
 
-    _buildResolutionCards(outcomes) { this._resolve._buildResolutionCards(outcomes); }
+    _buildResolutionCards(outcomes) { return this._resolve._buildResolutionCards(outcomes); }
 
     _onRenderBindings(context, options) {
         this._renderBindings._onRenderBindings(context, options);
@@ -1542,18 +1542,6 @@ static async #onIdentifyScannedItem(event, target) {
 
     static async #onFinalize(event, target) { return this._events.onFinalize(event, target); }
 
-    /** @override */
-    async close(options = {}) {
-        if (options?.resolved && game.user?.isGM) {
-            try {
-                await clearCampTokens();
-            } catch (err) {
-                console.warn(`${MODULE_ID} | Error cleaning up camp tokens on rest complete:`, err);
-            }
-        }
-        return super.close(options);
-    }
-
 static #onOpenLedger(event, target) {
         if (!game.user.isGM) return;
         this.openLedgerPanel();
@@ -1600,11 +1588,11 @@ _ensureTrainingStateForLockedChoices() {
         }
     }
 
-    _findIncompleteTrainingCharacterId() { this._session._findIncompleteTrainingCharacterId(); }
+    _findIncompleteTrainingCharacterId() { return this._session._findIncompleteTrainingCharacterId(); }
 
     _syncIncompleteTrainingView() { this._training._syncIncompleteTrainingView(); }
 
-_clearStaleTrainingRollingFlags() {
+    _clearStaleTrainingRollingFlags() {
         for (const state of this._trainingStates?.values() ?? []) {
             state.rolling = false;
         }
@@ -1612,7 +1600,7 @@ _clearStaleTrainingRollingFlags() {
 
     _initTrainingState(characterId, activityId, actor) { this._session._initTrainingState(characterId, activityId, actor); }
 
-    _buildTrainingViewContext(characterId) { this._training._buildTrainingViewContext(characterId); }
+    _buildTrainingViewContext(characterId) { return this._training._buildTrainingViewContext(characterId); }
 
     static async #onTrainingRoll(event, target) { return this._training.onTrainingRoll(event, target); }
 

@@ -150,6 +150,10 @@ export function createRespiteContext(runtime) {
             ui.notifications.info("Next event roll will force an encounter.");
         },
         getActiveApp: () => runtime.activeRestSetupApp,
+        clearActiveRestApp: () => {
+            runtime.activeRestSetupApp = null;
+            runtime.activeRestData = null;
+        },
         /** Live rest crafting engine (homebrew merges target this). */
         get craftingEngine() {
             return runtime.activeRestSetupApp?._craftingEngine ?? null;
