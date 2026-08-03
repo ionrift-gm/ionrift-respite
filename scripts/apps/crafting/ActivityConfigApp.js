@@ -23,6 +23,7 @@ import {
     CAMP_FUEL_FIND_MAX_PERCENT,
     CAMP_FUEL_FIND_MIN_PERCENT
 } from "../../services/travel/settings/TravelSettings.js";
+import { shouldShowBrewingAlcoholSetting } from "../../services/crafting/settings/BrewingAlcoholSettings.js";
 import { MODULE_ID } from "../../data/moduleId.js";
 
 const TIER_SLIDER_META = {
@@ -56,7 +57,7 @@ const ACTIVITY_TOGGLES = [
         key: "chefTreatCookingOnly",
         label: "Chef Treats Only",
         icon: "fas fa-cookie-bite",
-        hint: "RAW: no camp meals. Chef feat bakes Bolstering Treats only.",
+        hint: "No camp meals; Chef Bolstering Treats only.",
         type: "boolean"
     },
     {
@@ -70,8 +71,9 @@ const ACTIVITY_TOGGLES = [
         key: "enableBrewingAlcohol",
         label: "Alcoholic Ferments",
         icon: "fas fa-wine-bottle",
-        hint: "Craft pack ferments (wine, mead, draughts). Off for dry or younger tables. Steeps stay available.",
-        type: "boolean"
+        hint: "Wine, mead, and draught recipes.",
+        type: "boolean",
+        requiresAlcoholBrewContent: true
     },
     {
         key: "enableEncounters",
@@ -98,7 +100,7 @@ const ACTIVITY_TOGGLES = [
         key: "enablePrayMeditate",
         label: "Pray / Meditate",
         icon: "fas fa-pray",
-        hint: "Religion or Insight for temp HP. Off removes bedroll Pray / Meditate.",
+        hint: "Religion or Insight for temp HP; off hides bedroll option.",
         type: "boolean"
     },
     {
@@ -175,6 +177,7 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
     async _prepareContext() {
         const useTravel = !!game.settings.get(MODULE_ID, "useTravel");
         const foragingOn = !!game.settings.get(MODULE_ID, "enableForaging");
+        const showBrewingAlcohol = await shouldShowBrewingAlcoholSetting();
 
         const resolveBooleanRow = (row) => {
             const disabled = (row.requiresUseTravel && !useTravel)
@@ -200,22 +203,24 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
             return resolveBooleanRow(child);
         };
 
-        const rows = ACTIVITY_TOGGLES.map(entry => {
-            if (entry.type === "group") {
+        const rows = ACTIVITY_TOGGLES
+            .filter(entry => !entry.requiresAlcoholBrewContent || showBrewingAlcohol)
+            .map(entry => {
+                if (entry.type === "group") {
+                    return {
+                        ...entry,
+                        children: entry.children.map(child => resolveTravelChild(child))
+                    };
+                }
+                if (entry.type === "tierSlider") {
+                    const meta = TIER_SLIDER_META[entry.key];
+                    return { ...entry, ...meta, value: meta.getValue() };
+                }
                 return {
                     ...entry,
-                    children: entry.children.map(child => resolveTravelChild(child))
+                    value: game.settings.get(MODULE_ID, entry.key)
                 };
-            }
-            if (entry.type === "tierSlider") {
-                const meta = TIER_SLIDER_META[entry.key];
-                return { ...entry, ...meta, value: meta.getValue() };
-            }
-            return {
-                ...entry,
-                value: game.settings.get(MODULE_ID, entry.key)
-            };
-        });
+            });
 
         return { rows, useTravel };
     }
