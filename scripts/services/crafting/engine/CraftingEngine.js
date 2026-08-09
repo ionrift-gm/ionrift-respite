@@ -1,19 +1,4 @@
-/**
- * CraftingEngine
- * Handles recipe-based crafting during rest activities.
- *
- * Responsibilities:
- * - Load recipe definitions per profession
- * - Scan actor inventory for matching ingredients
- * - Calculate available recipes (what can be made now)
- * - Apply risk tier modifiers to DCs
- * - Resolve crafting attempts (roll, consume ingredients, produce output)
- *
- * Risk Tiers:
- *   safe:      DC -3, produces standard output, no failure consequence
- *   standard:  Base DC, standard output
- *   ambitious:  DC +5, upgraded output on success, ingredient loss on failure
- */
+/** Recipe crafting during rest (ingredients, risk tiers, resolve). */
 
 import { waitForDiceSoNice } from "../../ui/rollRequest/RollRequestManager.js";
 import { SpoilageClock } from "../../meal/spoilage/SpoilageClock.js";
