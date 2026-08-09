@@ -26,10 +26,10 @@ Respite replaces the default rest dialog with a guided flow. Players pick their 
 Starting a rest opens one of three presets instead of a configuration screen. Pick the one that matches how much detail the table wants and the rest configures itself.
 
 - **Simple.** Activities then recovery. No rolls, no encounters, no decision trees. Just the party asleep and a continue button.
-- **Standard.** The full phased flow with events and the campfire, without the survival bookkeeping.
+- **Standard.** Activities, events, and the campfire, without the survival bookkeeping.
 - **Survival.** Adds comfort tiers, terrain penalties, the exhaustion save, and meal tracking for tables that want the whole ruleset.
 
-A custom card covers anything that deviates. Full settings live in three tidy submenus: Rest Activities, Recovery Rules, and Player Restrictions.
+A custom card covers anything that deviates. Settings live in three submenus: Rest Activities, Recovery Rules, and Player Restrictions.
 
 ---
 
@@ -52,7 +52,7 @@ Casters scan the party's gear from the workbench. Detect Magic sweeps inventory 
 
 ## Events
 
-Hand-written rest events across forest, desert, swamp, urban, dungeon, and tavern, collected over years of running a primitive version of this module at the table. Events have tiers, weighted probability, and narrative branching. The GM chooses how events are picked: random roll, improvise, or pick from the pool.
+Hand-written rest events across forest, desert, swamp, urban, dungeon, and tavern. Events have tiers, weighted probability, and narrative branching. The GM chooses how events are picked: random roll, improvise, or pick from the pool.
 
 When an event puts gear or coin at risk, the module rolls which items are affected and proposes the loss. The GM reviews, can re-roll a result that does not fit, and confirms before anything is removed. Nothing leaves a character sheet without GM sign-off. Force Pass or Force Fail is always available.
 
