@@ -1,27 +1,6 @@
 import { Logger } from "./Logger.js";
 import { MODULE_ID } from "../data/moduleId.js";
-/**
- * ImageResolver
- *
- * Centralizes image path resolution for Respite. Probes the filesystem
- * for an art source in priority order:
- *
- *   1. Manually installed overlay at
- *      `ionrift-data/overlays/ionrift-respite/<sublayer>/`. Prefer
- *      `core-art/` (generative companion); then `core/` / `free/` for
- *      legacy art installs during the Core data reclaim grace window.
- *   2. Zip-imported art pack at `ionrift-data/respite/art/` (legacy).
- *   3. Raw drop folder `ionrift-respite-art/` (legacy).
- *
- * The terrain and token directory shapes differ between sources. The
- * overlay layout is `art/terrains/` and `art/tokens/`; the legacy
- * layout is `data/terrains/` and `assets/tokens/`. Rather than
- * hard-coding either, the init walk records the absolute path where
- * it finds each and the resolvers build URLs from those captured roots.
- *
- * When per-terrain art ships in the base module, add the filenames to
- * KNOWN_BASE_IMAGES so they resolve without probing.
- */
+/** Resolves Respite art from overlay, then legacy pack paths. */
 
 /* global ForgeVTT, FilePicker */
 

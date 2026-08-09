@@ -1,19 +1,4 @@
-/**
- * ItemClassifier
- * Unified item classification service for Respite's food, water, fuel,
- * and ingredient systems. Single source of truth for "what is this item?"
- *
- * Classification cascade (first match wins):
- *   1. Explicit flag: item.flags["ionrift-respite"].resourceType
- *   2. DnD5e consumable subtype: system.type.value === "food" (after water exclusion)
- *   3. Name list fallback: built-in names + GM custom names
- *   4. Unclassified: no classification signal
- *
- * Also handles:
- *   - Per-character diet profiles (actor.flags["ionrift-respite"].diet)
- *   - Drink sub-categorisation (drinkType: water/alcohol/oil/other)
- *   - Legacy flag migration (foodType -> resourceType)
- */
+/** Classifies Respite food, water, fuel, and ingredient items. */
 
 import { stripSpoilageCohortSuffix } from "../meal/spoilage/spoilageName.js";
 import { MODULE_ID } from "../../data/moduleId.js";

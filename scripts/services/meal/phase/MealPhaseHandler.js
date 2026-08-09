@@ -1,20 +1,4 @@
-/**
- * MealPhaseHandler
- * Manages food and water consumption during the Meal phase of a long rest.
- *
- * Responsibilities:
- * - Track rests since last meal/drink per character (actor flags)
- * - Build meal options for each character (rations, waterskins, foraged, skip)
- * - Consume selected items from inventory (multi-day aware, handles partial supply)
- * - Generate advisories about starvation/dehydration consequences
- * - Apply exhaustion at resolution when thresholds are exceeded
- *
- * This class is the public entry point and orchestrator. The implementation is
- * split across cohesive modules (spoilage, context building, option building,
- * meal application, Well Fed serving, buff resolution, the cooking bridge, and
- * communal serving); the static methods below delegate to them so every
- * existing consumer keeps working unchanged.
- */
+/** Meal-phase entry: spoilage, options, apply, and Well Fed. */
 
 import { resolveSpoilage, resolveCalendarSpoilage } from "../spoilage/MealSpoilageService.js";
 import {
