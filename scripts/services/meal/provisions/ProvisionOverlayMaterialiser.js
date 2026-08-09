@@ -1,12 +1,4 @@
-/**
- * Respite adapter for the shared library OverlayItemMaterialiser.
- *
- * Turns overlay item payloads (ionrift-data/overlays/ionrift-respite/{sublayer}/
- * items/...) into world compendiums and registers them with the travel
- * provision pipeline, so an active overlay's forage/hunt items feed the
- * terrain RollTables. All the heavy lifting lives in the library service; this
- * file only supplies Respite's naming and consumer wiring.
- */
+/** Respite wiring for library OverlayItemMaterialiser (provisions + tables). */
 
 import {
     registerProvisionPack,

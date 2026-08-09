@@ -1,17 +1,4 @@
-/**
- * ComfortCalculator
- *
- * Single source of truth for comfort-tier arithmetic used by RestFlowEngine,
- * CampGearScanner, RestSetupApp, and RestConstants. Consolidates the
- * previously duplicated tier arrays, HD penalties, HP caps, exhaustion DCs,
- * and tier-stepping logic into one testable service.
- *
- * Design notes:
- *   - The canonical tier list uses four tiers: hostile ,  rough ,  sheltered ,  safe.
- *   - CampGearScanner's five-tier list (which includes "comfortable") is an
- *     aliased display concern: "comfortable" maps to "sheltered" mechanically.
- *   - Tier-stepping clamps to array bounds (hostile floor, safe ceiling).
- */
+/** Comfort-tier arithmetic (hostile / rough / sheltered / safe). */
 
 /**
  * Single gate for the entire comfort subsystem.
