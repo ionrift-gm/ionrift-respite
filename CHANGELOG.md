@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-08-10
+
+### Added
+- Identify as its own examination path, separate from Focus and Taste. Drop an item on the Identify zone when the character can cast the spell. Focus and Taste stay the same.
+- Identify and Potion Tasting toggle under Recovery Rules (off in Simple Quick Setup).
+
+### Changed
+- Short-rest Workbench tab renamed to Identify. The panel groups spells (Identify + Detect Magic) beside rest methods (Focus + Taste).
+- Ritual casting access now follows RAW. Wizards with Ritual Adept can use Identify or Detect Magic from the spellbook without preparing them (PHB 2024 p.115). Other casters need the spell prepared. Characters without the spell see a Spell badge, not a prepare hint.
+
 ## [3.4.0] - 2026-08-03
 
 ### Added

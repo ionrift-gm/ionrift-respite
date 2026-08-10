@@ -151,8 +151,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "enableWorkbenchIdentify", {
-        name: "Workbench Identify Tab (TotM)",
-        hint: "Show the Identify tab on the TotM workbench during Activities.",
+        name: "Identify and Potion Tasting",
+        hint: "Allow Identify, focus examination, and potion tasting during rests (TotM Examine tab, station Examine/Identify, short-rest Identify tab). Off in Simple Quick Setup.",
         scope: "world",
         config: false,
         type: Boolean,

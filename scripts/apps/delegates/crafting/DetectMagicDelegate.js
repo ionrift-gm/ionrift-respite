@@ -17,8 +17,189 @@ const trackedDetectMagicTemplateUuids = new Set();
 
 /** Wizard class (Ritual Adept: ritual from spellbook unprepared, PHB 2024 p.115). */
 function actorIsWizard(actor) {
+    if (!actor) return false;
     if (actor.classes?.wizard) return true;
     return !!(actor.items?.find(i2 => i2.type === "class" && i2.name?.toLowerCase() === "wizard"));
+}
+
+/**
+ * @param {Item} spellItem
+ * @returns {{ isRitual: boolean, mode: string|undefined, isPrepared: boolean }}
+ */
+function readSpellPrep(spellItem) {
+    const props = spellItem.system?.properties;
+    const isRitual = (props instanceof Set && props.has("ritual"))
+        || (Array.isArray(props) && props.includes("ritual"))
+        || props?.ritual === true
+        || spellItem.system?.components?.ritual === true
+        || spellItem.system?.ritual === true;
+    let mode;
+    let preparedRaw;
+    if (spellItem.system !== null && "method" in spellItem.system) {
+        mode = spellItem.system.method;
+        preparedRaw = spellItem.system.prepared;
+    } else {
+        const prep = spellItem.system?.preparation;
+        mode = prep?.mode;
+        preparedRaw = prep?.prepared;
+    }
+    if (preparedRaw === undefined && spellItem.system?.prepared !== undefined) {
+        preparedRaw = spellItem.system.prepared;
+    }
+    // dnd5e 4+/5+: prepared may be 0|1|2 (unprepared|prepared|always).
+    const isPrepared = preparedRaw === true || preparedRaw === 1 || preparedRaw === 2;
+    return { isRitual, mode, isPrepared };
+}
+
+/**
+ * @param {Item} spellItem
+ * @param {string} spellNameLower
+ * @returns {boolean}
+ */
+function spellItemMatchesName(spellItem, spellNameLower) {
+    const name = String(spellItem?.name ?? "").toLowerCase().trim();
+    if (name === spellNameLower) return true;
+    if (name.startsWith(`${spellNameLower} `) || name.startsWith(`${spellNameLower}(`)) return true;
+    const identifier = String(spellItem?.system?.identifier ?? "").toLowerCase();
+    if (identifier === spellNameLower || identifier === spellNameLower.replace(/\s+/g, "")) return true;
+    const source = String(
+        spellItem?.flags?.core?.sourceId
+        ?? spellItem?.system?.source?.revision
+        ?? spellItem?._stats?.compendiumSource
+        ?? ""
+    ).toLowerCase();
+    if (source.includes(`.${spellNameLower.replace(/\s+/g, "")}`) || source.includes(`/${spellNameLower}`)) {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * @param {Actor} actor
+ * @returns {Item[]}
+ */
+function actorSpellItems(actor) {
+    if (Array.isArray(actor?.itemTypes?.spell)) return actor.itemTypes.spell;
+    if (actor?.itemTypes?.spell) return [...actor.itemTypes.spell];
+    const items = actor?.items;
+    if (!items) return [];
+    if (typeof items.filter === "function") {
+        return items.filter(i => i.type === "spell");
+    }
+    const out = [];
+    for (const i of items) {
+        if (i?.type === "spell") out.push(i);
+    }
+    return out;
+}
+
+/**
+ * Per-actor access for Identify / Detect Magic.
+ * @param {Actor} actor
+ * @param {string} spellNameLower
+ * @returns {{
+ *   state: "available"|"unprepared"|"unavailable",
+ *   badge: ""|"Not prepared"|"Spell",
+ *   caption: string,
+ *   tooltip: string
+ * }}
+ */
+export function getNamedSpellAccess(actor, spellNameLower) {
+    const pretty = spellNameLower === "detect magic" ? "Detect Magic" : "Identify";
+    if (!actor) {
+        return {
+            state: "unavailable",
+            badge: "Spell",
+            caption: `Requires the ${pretty} spell.`,
+            tooltip: `Requires the ${pretty} spell.`
+        };
+    }
+    const isWizard = actorIsWizard(actor);
+    const unavailable = {
+        state: "unavailable",
+        badge: "Spell",
+        caption: isWizard
+            ? `${pretty} is not in the spellbook.`
+            : `Requires the ${pretty} spell.`,
+        tooltip: isWizard
+            ? `${pretty} is not in the spellbook.`
+            : `Requires the ${pretty} spell.`
+    };
+
+    let sawSpell = false;
+    for (const i of actorSpellItems(actor)) {
+        if (!spellItemMatchesName(i, spellNameLower)) continue;
+        sawSpell = true;
+        const level = i.system?.level ?? 0;
+        if (level === 0) {
+            return {
+                state: "available",
+                badge: "",
+                caption: `${actor.name} has ${pretty} as a cantrip.`,
+                tooltip: `${actor.name} has ${pretty} as a cantrip.`
+            };
+        }
+        const { isRitual, mode, isPrepared } = readSpellPrep(i);
+        // Ritual-only prep mode (Book of Ancient Secrets / Ritual Caster book).
+        if (mode === "ritual") {
+            return {
+                state: "available",
+                badge: "",
+                caption: `${actor.name} can cast ${pretty} as a ritual.`,
+                tooltip: `${actor.name} can cast ${pretty} as a ritual.`
+            };
+        }
+        if ((isRitual || mode === "ritual") && isWizard) {
+            return {
+                state: "available",
+                badge: "",
+                caption: `${actor.name} can cast ${pretty} as a ritual from the spellbook without preparing it (Wizard – Ritual Adept, PHB p.115).`,
+                tooltip: `${actor.name} can cast ${pretty} as a ritual from the spellbook without preparing it (Wizard – Ritual Adept, PHB p.115).`
+            };
+        }
+        if (mode === "innate") {
+            return {
+                state: "available",
+                badge: "",
+                caption: `${actor.name} can cast ${pretty} innately.`,
+                tooltip: `${actor.name} can cast ${pretty} innately.`
+            };
+        }
+        if (mode === "always" || mode === "atwill") {
+            return {
+                state: "available",
+                badge: "",
+                caption: mode === "atwill"
+                    ? `${actor.name} can cast ${pretty} at will.`
+                    : `${actor.name} always has ${pretty} available (Ritual Caster or similar, PHB p.204).`,
+                tooltip: mode === "atwill"
+                    ? `${actor.name} can cast ${pretty} at will.`
+                    : `${actor.name} always has ${pretty} available (Ritual Caster or similar, PHB p.204).`
+            };
+        }
+        if (isPrepared) {
+            return {
+                state: "available",
+                badge: "",
+                caption: isRitual
+                    ? `${actor.name} has ${pretty} prepared with the Ritual tag; can cast as a ritual.`
+                    : `${actor.name} has ${pretty} prepared.`,
+                tooltip: isRitual
+                    ? `${actor.name} has ${pretty} prepared with the Ritual tag; can cast as a ritual.`
+                    : `${actor.name} has ${pretty} prepared.`
+            };
+        }
+    }
+
+    if (sawSpell) {
+        return {
+            state: "unprepared",
+            badge: "Not prepared",
+            caption: `${pretty} is not prepared.`,
+            tooltip: `${pretty} is not prepared.`
+        };
+    }
+    return unavailable;
 }
 
 /**
@@ -26,34 +207,97 @@ function actorIsWizard(actor) {
  * Ritual Caster feat uses mode "always"; no separate branch.
  */
 function actorHasNamedSpellAccess(actor, spellNameLower) {
-    if (!actor?.items) return false;
-    for (const i of actor.items) {
-        if (i.type !== "spell") continue;
-        if (i.name?.toLowerCase() !== spellNameLower) continue;
-        const level = i.system?.level ?? 0;
-        if (level === 0) return true;
+    return getNamedSpellAccess(actor, spellNameLower).state === "available";
+}
 
-        // properties Set (modern) or components.ritual (legacy)
-        const isRitual = (i.system?.properties instanceof Set && i.system.properties.has("ritual"))
-            || i.system?.properties?.ritual === true
-            || i.system?.components?.ritual === true;
-        if (isRitual && actorIsWizard(actor)) return true;
+/**
+ * Shared SPELLS-column status for Identify + Detect Magic on one actor.
+ * @param {Actor|null} actor
+ * @param {{ magicScanActive?: boolean, isGmUser?: boolean }} [opts]
+ * @returns {{
+ *   identifyAccess: ReturnType<typeof getNamedSpellAccess>,
+ *   detectMagicAccess: ReturnType<typeof getNamedSpellAccess>,
+ *   identifyAvailable: boolean,
+ *   detectMagicAvailable: boolean,
+ *   arcaneBadge: string,
+ *   arcaneStatus: string,
+ *   detectMagicPill: string,
+ *   identifyPill: string
+ * }}
+ */
+export function buildArcaneWorkbenchAccess(actor, opts = {}) {
+    const identifyAccess = getNamedSpellAccess(actor, "identify");
+    const detectMagicAccess = getNamedSpellAccess(actor, "detect magic");
+    const identifyAvailable = identifyAccess.state === "available";
+    // GM may always trigger Detect Magic scan (party override).
+    const detectMagicAvailable = !!opts.isGmUser || detectMagicAccess.state === "available";
+    const isWizard = actorIsWizard(actor);
+    const actorName = actor?.name || "This character";
 
-        // Prefer dnd5e 5.1+ method/prepared; avoid deprecated preparation getter.
-        let mode, isPrepared;
-        if (i.system !== null && "method" in i.system) {
-            mode = i.system.method;
-            isPrepared = i.system.prepared;
+    let identifyPill = identifyAvailable ? "" : identifyAccess.badge;
+    let detectMagicPill = detectMagicAccess.state === "available" ? "" : detectMagicAccess.badge;
+    let arcaneStatus = "";
+
+    if (opts.magicScanActive) {
+        arcaneStatus = "Scan active.";
+        detectMagicPill = "";
+    } else if (opts.isGmUser && detectMagicAccess.state !== "available") {
+        // GM can run the scan; keep Identify reason so PHB/prep copy is not lost.
+        const idCap = !identifyAvailable ? (identifyAccess.caption || "") : "";
+        const gmCap = "GM override - cast Detect Magic on behalf of the party.";
+        arcaneStatus = [idCap, gmCap].filter(Boolean).join(" ");
+        detectMagicPill = "";
+    } else if (identifyAvailable && detectMagicAccess.state === "available") {
+        const idCap = identifyAccess.caption || "";
+        const dmCap = detectMagicAccess.caption || "";
+        if (idCap.includes("Ritual Adept") && dmCap.includes("Ritual Adept")) {
+            arcaneStatus = `${actorName} can cast Identify and Detect Magic as rituals from the spellbook without preparing them (Wizard – Ritual Adept, PHB p.115).`;
         } else {
-            const prep = i.system?.preparation;
-            mode = prep?.mode;
-            isPrepared = prep?.prepared;
+            arcaneStatus = [idCap, dmCap].filter(Boolean).join(" ");
         }
-
-        if (mode === "innate" || mode === "always") return true;
-        if (isPrepared === true) return true;
+        identifyPill = "";
+        detectMagicPill = "";
+    } else if (!identifyAvailable && detectMagicAccess.state !== "available") {
+        const idState = identifyAccess.state;
+        const dmState = detectMagicAccess.state;
+        if (idState === "unavailable" && dmState === "unavailable") {
+            arcaneStatus = isWizard
+                ? "Identify and Detect Magic are not in the spellbook."
+                : "Requires Identify or Detect Magic.";
+            identifyPill = "";
+            detectMagicPill = "";
+        } else if (idState === "unprepared" && dmState === "unprepared") {
+            arcaneStatus = "Identify and Detect Magic are not prepared.";
+            identifyPill = "";
+            detectMagicPill = "";
+        } else {
+            // Mixed blocked states: short line naming the blockers; keep per-control pills.
+            arcaneStatus = [identifyAccess.caption, detectMagicAccess.caption]
+                .filter(Boolean)
+                .join(" ");
+        }
+    } else if (!identifyAvailable) {
+        // Identify blocked, Detect Magic available: keep both (blocker + PHB / ritual attribution).
+        arcaneStatus = [identifyAccess.caption, detectMagicAccess.caption]
+            .filter(Boolean)
+            .join(" ");
+    } else {
+        // Identify available, Detect Magic blocked.
+        arcaneStatus = [identifyAccess.caption, detectMagicAccess.caption]
+            .filter(Boolean)
+            .join(" ");
     }
-    return false;
+
+    return {
+        identifyAccess,
+        detectMagicAccess,
+        identifyAvailable,
+        detectMagicAvailable,
+        arcaneBadge: identifyPill || detectMagicPill,
+        arcaneStatus,
+        detectMagicPill,
+        identifyPill
+    };
 }
 
 
@@ -257,39 +501,35 @@ export function computeCanShowDetectMagicScanButton(partyActors) {
 
 export function getDetectMagicPlayerAccessReason(partyActors) {
     if (game.user?.isGM) return null;
+    let blockedCaption = null;
     for (const actor of partyActors) {
         if (!actor.isOwner) continue;
-        for (const item of actor.items ?? []) {
-            if (item.type !== "spell") continue;
-            if (item.name?.toLowerCase() !== "detect magic") continue;
-            const level = item.system?.level ?? 0;
-            if (level === 0) {
-                return `${actor.name} has Detect Magic as a cantrip.`;
-            }
-            const isRitual = (item.system?.properties instanceof Set && item.system.properties.has("ritual"))
-                || item.system?.properties?.ritual === true
-                || item.system?.components?.ritual === true;
-            // Ritual Adept: Wizard may cast from spellbook unprepared.
-            if (isRitual && actorIsWizard(actor)) {
-                return `${actor.name} can cast Detect Magic as a ritual (Wizard – Ritual Adept, PHB p.115).`;
-            }
-            let mode, isPrepared;
-            if (item.system !== null && "method" in item.system) {
-                mode = item.system.method;
-                isPrepared = item.system.prepared;
-            } else {
-                const prep = item.system?.preparation;
-                mode = prep?.mode;
-                isPrepared = prep?.prepared;
-            }
-            if (mode === "innate") return `${actor.name} can cast Detect Magic innately.`;
-            // mode="always" covers Ritual Caster feat (PHB p.204) and similar always-prepared sources.
-            if (mode === "always") return `${actor.name} always has Detect Magic available (Ritual Caster or similar, PHB p.204).`;
-            if (isPrepared === true && isRitual) return `${actor.name} has Detect Magic prepared with the Ritual tag; can cast as a ritual.`;
-            if (isPrepared === true) return `${actor.name} has Detect Magic prepared.`;
-        }
+        const access = getNamedSpellAccess(actor, "detect magic");
+        if (access.state === "available") return access.caption;
+        if (!blockedCaption) blockedCaption = access.caption;
     }
-    return null;
+    return blockedCaption;
+}
+
+/**
+ * Tooltip when Detect Magic cannot be triggered by this user.
+ * @param {Actor[]} partyActors
+ * @param {Actor|null} [focusActor]
+ * @returns {string}
+ */
+export function getDetectMagicDisabledTooltip(partyActors, focusActor = null) {
+    if (game.user?.isGM) return "";
+    const actor = focusActor
+        || partyActors.find(a => a.isOwner && getNamedSpellAccess(a, "detect magic").state !== "unavailable")
+        || partyActors.find(a => a.isOwner)
+        || null;
+    if (!actor) return "Requires Detect Magic.";
+    const access = getNamedSpellAccess(actor, "detect magic");
+    if (access.state === "available") {
+        // Owned caster exists but trigger failed (e.g. no ownership race).
+        return "No Detect Magic available.";
+    }
+    return access.tooltip;
 }
 
 

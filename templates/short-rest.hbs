@@ -40,7 +40,7 @@
             <div class="roster-chip {{#if isAfk}}afk{{/if}} {{#if isFinished}}sr-finished{{/if}} {{#if isWorkbenchFocus}}sr-wb-roster-focus{{/if}} {{#if ../gmWorkbenchRosterPick}}sr-wb-roster-pickable{{/if}}"
                 data-roster-id="{{id}}"
                 {{#if ../gmWorkbenchRosterPick}}data-action="selectWorkbenchRosterActor"{{/if}}
-                data-tooltip="{{fullName}}{{#if ../gmWorkbenchRosterPick}}. GM: click to show this character's workbench.{{/if}}">
+                data-tooltip="{{fullName}}{{#if ../gmWorkbenchRosterPick}}. GM: click to show this character's Identify tab.{{/if}}">
                 <span class="roster-portrait-wrap">
                     <img class="roster-portrait" src="{{img}}" alt="{{name}}">
                     {{#if isAfk}}<span class="roster-afk-mug" aria-hidden="true"><i class="fas fa-mug-hot"></i></span>{{/if}}
@@ -60,6 +60,7 @@
     {{/if}}
 
     {{#unless completionPhase}}
+    {{#if workbenchIdentifyUiEnabled}}
     <div class="sr-tab-bar" role="tablist" aria-label="Short rest sections">
         <button type="button" role="tab" class="sr-tab {{#if (eq activeTab "recovery")}}active{{/if}}"
             data-action="switchShortRestTab" data-tab="recovery" {{#if (eq activeTab "recovery")}}aria-selected="true"{{else}}aria-selected="false"{{/if}}>
@@ -67,9 +68,10 @@
         </button>
         <button type="button" role="tab" class="sr-tab {{#if (eq activeTab "workbench")}}active{{/if}}"
             data-action="switchShortRestTab" data-tab="workbench" {{#if (eq activeTab "workbench")}}aria-selected="true"{{else}}aria-selected="false"{{/if}}>
-            <i class="fas fa-hammer"></i> Workbench
+            <i class="fas fa-search"></i> Identify
         </button>
     </div>
+    {{/if}}
 
     {{#if (eq activeTab "recovery")}}
     {{!-- Scrollable body: character cards --}}
