@@ -62,7 +62,7 @@ export const ACTIVITY_ICONS = {
     act_other: "fas fa-comments"
 };
 
-/** @returns {boolean} TotM Identify tab and workbench identify station UI. */
+/** @returns {boolean} Identify tab, Examine (focus/potion), and short-rest workbench. */
 export function isWorkbenchIdentifyUiEnabled() {
     try {
         return !!game.settings.get(MODULE_ID, "enableWorkbenchIdentify");
@@ -71,9 +71,9 @@ export function isWorkbenchIdentifyUiEnabled() {
     }
 }
 
-/** Focus identify and potion tasting at the workbench station (always available). */
+/** Focus, potion tasting, and spell Identify UI; same world toggle as Identify. */
 export function isWorkbenchExamineUiEnabled() {
-    return true;
+    return isWorkbenchIdentifyUiEnabled();
 }
 
 /**

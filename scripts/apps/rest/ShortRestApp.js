@@ -2,6 +2,7 @@ import { Logger } from "../../utils/Logger.js";
 import { HitDieModifiers } from "../../services/rest/recovery/HitDieModifiers.js";
 import { SpellSlotRecovery } from "../../services/rest/recovery/SpellSlotRecovery.js";
 import { MODULE_ID } from "../../data/moduleId.js";
+import { isWorkbenchIdentifyUiEnabled } from "../../data/RestConstants.js";
 import {
     registerActiveShortRestApp,
     clearActiveShortRestApp,
@@ -646,6 +647,10 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             icon: shelterDef?.icon ?? "fas fa-wind",
         };
 
+        const workbenchIdentifyUiEnabled = isWorkbenchIdentifyUiEnabled();
+        if (!workbenchIdentifyUiEnabled && this._activeTab === "workbench") {
+            this._activeTab = "recovery";
+        }
         const gmWorkbenchRosterPick = this._isGM && this._activeTab === "workbench";
         const roster = partyActors.map(a => {
             const isAfk = RestAfkState.isAfk(a.id);
@@ -678,8 +683,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             shelterBadge,
             roster,
             activeTab: this._activeTab,
+            workbenchIdentifyUiEnabled,
             gmWorkbenchRosterPick,
-            workbenchEmbed: this._getWorkbenchEmbedContext(),
+            workbenchEmbed: workbenchIdentifyUiEnabled ? this._getWorkbenchEmbedContext() : null,
             shortRestFooter: {
                 myFinished: this._finishedUsers.has(game.user.id),
             },
@@ -1005,6 +1011,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (this._completionPhase) return;
         const tab = target?.dataset?.tab;
         if (tab !== "recovery" && tab !== "workbench") return;
+        if (tab === "workbench" && !isWorkbenchIdentifyUiEnabled()) return;
         this._activeTab = tab;
         if (this._isGM) {
             void this._saveShortRestState();

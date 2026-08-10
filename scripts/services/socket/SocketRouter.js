@@ -364,7 +364,10 @@ export function dispatch(data, ctx) {
         case SOCKET_TYPES.WORKBENCH_IDENTIFY_REQUEST: {
             if (!game.user.isGM) break;
             const { actorId, itemId, requestId, targetUserId } = data;
-        Logger.log(`[Respite] WB-IDENTIFY GM received req=${requestId} actor=${actorId} item=${itemId} target=${targetUserId}`);
+            const intent = data.intent === "taste" || data.intent === "focus" || data.intent === "identify"
+                ? data.intent
+                : "focus";
+        Logger.log(`[Respite] WB-IDENTIFY GM received req=${requestId} actor=${actorId} item=${itemId} intent=${intent} target=${targetUserId}`);
             void (async () => {
                 const actor = game.actors.get(actorId);
                 const item = actor?.items?.get(itemId);
@@ -374,21 +377,40 @@ export function dispatch(data, ctx) {
                     emitWorkbenchIdentifyResult({ requestId, success: false, targetUserId });
                     return;
                 }
+                // Only spell Identify may use intent identify (poison truth). Default unknown to focus.
+                let safeIntent = intent;
+                if (safeIntent === "identify") {
+                    const { getNamedSpellAccess } = await import(
+                        "../../apps/delegates/crafting/DetectMagicDelegate.js"
+                    );
+                    const access = getNamedSpellAccess(actor, "identify");
+                    if (access.state !== "available") {
+                        safeIntent = "focus";
+                        Logger.log(`[Respite] WB-IDENTIFY GM: downgraded identify intent (no spell access)`);
+                    }
+                }
                 const qmActive = game.modules?.get("ionrift-quartermaster")?.active;
         Logger.log(`[Respite] WB-IDENTIFY GM: qmActive=${qmActive} item.name=${item.name} identified=${item.system?.identified}`);
                 const latentFlag = item.getFlag?.("ionrift-quartermaster", "latentMagic");
                 const cursedFlag = item.getFlag?.("ionrift-quartermaster", "cursedMeta");
         Logger.log(`[Respite] WB-IDENTIFY GM: latentMagic=${!!latentFlag} cursedMeta=${!!cursedFlag}`);
                 let success = false;
+                let resultItems = null;
                 if (qmActive) {
                     try {
                         const { IdentificationService } = await import(
                             "/modules/ionrift-quartermaster/scripts/services/identify/IdentificationService.js"
                         );
-        Logger.log(`[Respite] WB-IDENTIFY GM: calling IdentificationService.identify`);
-                        const result = await IdentificationService.identify(item, { silent: true });
+        Logger.log(`[Respite] WB-IDENTIFY GM: calling IdentificationService.identify intent=${safeIntent}`);
+                        const result = await IdentificationService.identify(item, {
+                            silent: true,
+                            intent: safeIntent
+                        });
         Logger.log(`[Respite] WB-IDENTIFY GM: QM result , `, result);
                         success = result.identified;
+                        if (success && Array.isArray(result.items) && result.items.length) {
+                            resultItems = result.items;
+                        }
                     } catch (err) {
 
                         console.error("[Respite] WB-IDENTIFY GM: QM import/identify failed", err);
@@ -408,17 +430,17 @@ export function dispatch(data, ctx) {
                 }
 
                 Logger.log(`[Respite] WB-IDENTIFY GM: emitting result success=${success} req=${requestId}`);
-                emitWorkbenchIdentifyResult({ requestId, success, targetUserId });
+                emitWorkbenchIdentifyResult({ requestId, success, items: resultItems, targetUserId });
             })();
             break;
         }
 
         case SOCKET_TYPES.WORKBENCH_IDENTIFY_RESULT: {
             if (data.targetUserId !== null && data.targetUserId !== game.user.id) break;
-            const { requestId, success } = data;
+            const { requestId, success, items } = data;
             const pendingCount = WorkbenchDelegate._pendingIdentifyRequests?.size ?? -1;
         Logger.log(`[Respite] WB-IDENTIFY player: result received success=${success} req=${requestId} pendingMapSize=${pendingCount}`);
-            WorkbenchDelegate._resolveIdentifyRequest(requestId, success);
+            WorkbenchDelegate._resolveIdentifyRequest(requestId, { success, items });
             break;
         }
 

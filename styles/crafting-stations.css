@@ -1512,37 +1512,11 @@
     border-left-color: rgba(100, 160, 255, 0.15);
 }
 
-/* Detect Magic: toolbar row (empty, button moved to footer toolbar). */
+/* Legacy identify toolbar slot (Detect Magic lives in SPELLS band). */
 .station-identify-toolbar { display: none; }
 
-/* ---- Identify Footer Toolbar ---- */
-.wb-ident-footer-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.5rem;
-    padding-top: 0.4rem;
-}
-/* Two-class selector beats .ionrift-station-dialog .station-meal-submit-row (0,2,0) */
-.ionrift-station-dialog .wb-ident-submit-row.wb-ident-footer-toolbar,
-.short-rest-container .wb-ident-footer-toolbar {
-    justify-content: space-between;
-    align-items: center;
-}
-.wb-ident-footer-toolbar .btn-detect-magic {
-    align-items: center;
-    padding: 0.35rem 0.65rem;
-    font-size: 0.68rem;
-    font-weight: 600;
-    max-width: none;
-}
-.wb-ident-footer-toolbar .btn-detect-magic:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-    filter: grayscale(0.6);
-}
-
-.wb-detect-magic-attribution {
+.wb-detect-magic-attribution,
+.wb-ident-arcane-status {
     margin: 0.2rem 0 0;
     padding: 0;
     font-size: 0.62rem;
@@ -3933,12 +3907,226 @@
     line-height: 1.35;
 }
 
-.ionrift-station-dialog .station-workbench-identify-embed .wb-ident-drop-columns {
+/* SPELLS | REST horizontal band */
+.station-workbench-identify-embed .wb-ident-band,
+.workbench-identify-panel .wb-ident-band {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0.55rem;
+    width: 100%;
+}
+.station-workbench-identify-embed .wb-ident-spells,
+.workbench-identify-panel .wb-ident-spells {
+    flex: 0 1 34%;
+    min-width: 7.5rem;
+    max-width: 11rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.station-workbench-identify-embed .wb-ident-rest,
+.workbench-identify-panel .wb-ident-rest {
+    flex: 1 1 66%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.station-workbench-identify-embed .wb-ident-band-divider,
+.workbench-identify-panel .wb-ident-band-divider {
+    flex: 0 0 1px;
+    align-self: stretch;
+    margin: 0.15rem 0;
+    background: rgba(180, 140, 240, 0.22);
+}
+.station-workbench-identify-embed .wb-ident-col-label,
+.workbench-identify-panel .wb-ident-col-label {
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(220, 220, 230, 0.45);
+    line-height: 1.2;
+}
+/* One card: Identify drop + Detect Magic + status */
+.station-workbench-identify-embed .wb-ident-arcane-card,
+.workbench-identify-panel .wb-ident-arcane-card {
+    flex: 1 1 auto;
+    width: 100%;
+    gap: 0.4rem;
+    border-color: rgba(160, 120, 220, 0.18);
+    background: rgba(160, 120, 220, 0.04);
+}
+.station-workbench-identify-embed .wb-ident-identify-block,
+.workbench-identify-panel .wb-ident-identify-block,
+.station-workbench-identify-embed .wb-ident-detect-block,
+.workbench-identify-panel .wb-ident-detect-block {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 0.2rem;
+}
+.station-workbench-identify-embed .wb-ident-rest-controls,
+.workbench-identify-panel .wb-ident-rest-controls {
+    display: flex;
+    flex-direction: row;
     gap: 0.35rem;
+    width: 100%;
+    flex: 1 1 auto;
+    align-items: stretch;
+    min-height: 0;
+}
+.station-workbench-identify-embed .wb-ident-rest-controls > .meal-panel,
+.workbench-identify-panel .wb-ident-rest-controls > .meal-panel {
+    flex: 1 1 0;
+    min-width: 0;
+    height: auto;
+    align-self: stretch;
+}
+.station-workbench-identify-embed .wb-ident-gear-slot-wrap,
+.workbench-identify-panel .wb-ident-gear-slot-wrap,
+.station-workbench-identify-embed .wb-ident-potion-slot-wrap,
+.workbench-identify-panel .wb-ident-potion-slot-wrap {
+    flex: 1 1 auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 0;
+    min-height: 72px;
+}
+.station-workbench-identify-embed .wb-ident-arcane-status,
+.workbench-identify-panel .wb-ident-arcane-status {
+    margin: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 0.58rem;
+    font-style: italic;
+    color: rgba(180, 140, 240, 0.55);
+    line-height: 1.3;
+}
+.station-workbench-identify-embed .wb-ident-rest-cite,
+.workbench-identify-panel .wb-ident-rest-cite {
+    margin: 0.15rem 0 0;
+    width: 100%;
+    text-align: center;
+    font-size: 0.55rem;
+    font-style: italic;
+    color: rgba(220, 220, 230, 0.42);
+    line-height: 1.3;
+}
+.station-workbench-identify-embed .wb-ident-detect-slot-wrap,
+.workbench-identify-panel .wb-ident-detect-slot-wrap {
+    display: flex;
+    justify-content: stretch;
+    align-items: center;
+    min-height: 0;
+    width: 100%;
+}
+.station-workbench-identify-embed .wb-ident-arcane-card .btn-detect-magic,
+.workbench-identify-panel .wb-ident-arcane-card .btn-detect-magic {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    width: 100%;
+    min-width: 0;
+    height: auto !important;
+    max-width: none;
+    padding: 0.4rem 0.45rem;
+    text-align: center;
+    flex-direction: row;
+    font-size: 0.62rem;
+    line-height: 1.2;
+}
+.station-workbench-identify-embed .wb-ident-arcane-card .btn-detect-magic-text,
+.workbench-identify-panel .wb-ident-arcane-card .btn-detect-magic-text {
+    white-space: nowrap;
+}
+.station-workbench-identify-embed .wb-ident-arcane-card .btn-detect-magic > .fas,
+.workbench-identify-panel .wb-ident-arcane-card .btn-detect-magic > .fas {
+    margin-top: 0;
+    font-size: 0.85rem;
+}
+.station-workbench-identify-embed .wb-ident-spell-slot-wrap,
+.workbench-identify-panel .wb-ident-spell-slot-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0;
+}
+.station-workbench-identify-embed .spell-identify-drop-zone,
+.workbench-identify-panel .spell-identify-drop-zone,
+.ionrift-station-dialog .spell-identify-drop-zone {
+    width: 72px;
+    height: 72px;
+    border: 2px dashed rgba(160, 120, 220, 0.4);
+    background: rgba(160, 120, 220, 0.06);
+}
+.station-workbench-identify-embed .spell-identify-drop-zone.filled,
+.workbench-identify-panel .spell-identify-drop-zone.filled,
+.ionrift-station-dialog .spell-identify-drop-zone.filled {
+    border-style: solid;
+    border-color: rgba(180, 140, 240, 0.6);
+    background: rgba(160, 120, 220, 0.12);
+    box-shadow: 0 0 14px rgba(160, 120, 220, 0.2);
+}
+.station-workbench-identify-embed .spell-identify-drop-zone.drop-hover,
+.ionrift-station-dialog .spell-identify-drop-zone.drop-hover {
+    border-color: rgba(200, 160, 255, 0.9);
+    background: rgba(160, 120, 220, 0.18);
+    transform: scale(1.06);
+}
+.station-workbench-identify-embed .drop-zone-spell-sil,
+.ionrift-station-dialog .drop-zone-spell-sil {
+    font-size: 1.45rem;
+    color: rgba(180, 140, 240, 0.28);
+}
+.station-workbench-identify-embed .wb-ident-arcane-card .panel-label,
+.workbench-identify-panel .wb-ident-arcane-card .panel-label {
+    color: rgba(180, 140, 240, 0.7);
 }
 
-.ionrift-station-dialog .station-workbench-identify-embed .wb-ident-drop-columns .meal-panel {
-    min-width: 0;
+.station-workbench-identify-embed .wb-ident-pill,
+.workbench-identify-panel .wb-ident-pill {
+    display: inline-block;
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.08rem 0.35rem;
+    border-radius: 999px;
+    line-height: 1.2;
+    margin-left: 0.15rem;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+.station-workbench-identify-embed .wb-ident-pill--unprepared,
+.workbench-identify-panel .wb-ident-pill--unprepared {
+    color: rgba(40, 28, 8, 0.92);
+    background: rgba(220, 170, 70, 0.85);
+}
+.station-workbench-identify-embed .wb-ident-pill--spell,
+.workbench-identify-panel .wb-ident-pill--spell {
+    color: rgba(220, 220, 230, 0.85);
+    background: rgba(120, 120, 140, 0.45);
+}
+.station-workbench-identify-embed .wb-ident-zone-unprepared,
+.workbench-identify-panel .wb-ident-zone-unprepared {
+    opacity: 0.62;
+}
+.station-workbench-identify-embed .wb-ident-zone-unavailable,
+.workbench-identify-panel .wb-ident-zone-unavailable {
+    opacity: 0.42;
+    filter: grayscale(0.35);
+}
+.station-workbench-identify-embed .wb-ident-submit-row,
+.workbench-identify-panel .wb-ident-submit-row {
+    margin-top: 0.45rem;
+}
+.station-workbench-identify-embed .wb-ident-submit-row .station-meal-submit-btn,
+.workbench-identify-panel .wb-ident-submit-row .station-meal-submit-btn {
+    width: 100%;
 }
 
 .ionrift-station-dialog .station-workbench-identify-embed .wb-ident-gear-panel .panel-label {
@@ -3960,19 +4148,13 @@
     text-transform: uppercase;
 }
 
-.ionrift-station-dialog .station-workbench-identify-embed .wb-ident-zone-blocked {
+.ionrift-station-dialog .station-workbench-identify-embed .wb-ident-zone-blocked,
+.workbench-identify-panel .wb-ident-zone-blocked {
     cursor: not-allowed;
 }
 
 .ionrift-station-dialog .station-workbench-identify-embed .wb-ident-potion-panel .panel-label {
     color: rgba(130, 220, 160, 0.65);
-}
-
-.ionrift-station-dialog .wb-ident-gear-slot-wrap,
-.ionrift-station-dialog .wb-ident-potion-slot-wrap {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 0.15rem;
 }
 
 .ionrift-station-dialog .gear-focus-drop-zone {
@@ -4095,8 +4277,7 @@
     position: relative;
 }
 
-.ionrift-station-dialog .station-workbench-identify-embed.wb-ident-submit-pending .wb-ident-drop-columns,
-.ionrift-station-dialog .station-workbench-identify-embed.wb-ident-submit-pending .wb-ident-footer-toolbar {
+.ionrift-station-dialog .station-workbench-identify-embed.wb-ident-submit-pending .wb-ident-band {
     pointer-events: none;
     opacity: 0.55;
 }
@@ -4124,8 +4305,7 @@
     cursor: wait;
 }
 
-.workbench-identify-panel .station-workbench-identify-embed.wb-ident-submit-pending .wb-ident-drop-columns,
-.workbench-identify-panel .station-workbench-identify-embed.wb-ident-submit-pending .wb-ident-footer-toolbar {
+.workbench-identify-panel .station-workbench-identify-embed.wb-ident-submit-pending .wb-ident-band {
     pointer-events: none;
     opacity: 0.55;
 }
@@ -4401,15 +4581,6 @@
     gap: 0.35rem;
 }
 
-.workbench-identify-panel .wb-ident-footer-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-    padding-top: 0.4rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
 .workbench-identify-panel .btn-detect-magic {
     display: inline-flex;
     align-items: center;
@@ -4517,13 +4688,6 @@
     height: 48px;
     object-fit: contain;
     border-radius: 4px;
-}
-
-.workbench-identify-panel .wb-ident-gear-slot-wrap,
-.workbench-identify-panel .wb-ident-potion-slot-wrap {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 0.15rem;
 }
 
 .workbench-identify-panel .panel-label {
