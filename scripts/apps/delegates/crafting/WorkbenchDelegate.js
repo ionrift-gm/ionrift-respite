@@ -5,9 +5,11 @@ import {
 } from "../../camp/StationActivityDialog.js";
 import { emitWorkbenchIdentifyRequest } from "../../../services/socket/SocketController.js";
 import {
+    buildArcaneWorkbenchAccess,
     collectPartyIdentifyEmbedData,
     computeCanShowDetectMagicScanButton,
     computeCanTriggerDetectMagicScan,
+    getDetectMagicDisabledTooltip,
     getDetectMagicPlayerAccessReason
 } from "./DetectMagicDelegate.js";
 import {
@@ -17,14 +19,22 @@ import {
     DETECT_MAGIC_BTN_TITLE_GM
 } from "../../../data/RestConstants.js";
 import { itemIsDnD5ePotionType, resolveItemFromDropEvent } from "../../../utils/itemDropUtils.js";
+import {
+    canStageFocus,
+    canStageIdentify,
+    validateWorkbenchZoneDrop
+} from "./WorkbenchZoneRules.js";
 
 /**
- * Unidentified for workbench: dnd5e identified===false or Quartermaster latent mask.
+ * Unidentified for workbench: dnd5e identified===false, Quartermaster latent mask,
+ * or infected stack still awaiting Identify split.
  */
 function itemIsWorkbenchUnidentified(actor, item) {
     if (!item || !actor?.items?.has(item.id)) return false;
     const validTypes = new Set(["weapon", "equipment", "consumable", "tool", "loot", "container"]);
     if (!validTypes.has(item.type)) return false;
+    const infectedCount = Number(item.getFlag?.("ionrift-quartermaster", "infectedCount") ?? 0) || 0;
+    if (infectedCount > 0) return true;
     const raw = item.toObject?.()?.system ?? {};
     const identifiedLive = item.system?.identified;
     const identifiedRaw = raw.identified;
@@ -74,7 +84,9 @@ export class WorkbenchDelegate {
         return {
             gearItemId: v?.gearItemId ?? null,
             gearActorId: v?.gearActorId ?? null,
-            potionItemId: v?.potionItemId ?? null
+            potionItemId: v?.potionItemId ?? null,
+            spellItemId: v?.spellItemId ?? null,
+            spellActorId: v?.spellActorId ?? null
         };
     }
 
@@ -86,12 +98,18 @@ export class WorkbenchDelegate {
         const nextGearActorId = resolvedGear
             ? (partial.gearActorId !== undefined ? partial.gearActorId : prev.gearActorId)
             : null;
+        const nextSpell = partial.spellItemId !== undefined ? partial.spellItemId : prev.spellItemId;
+        const nextSpellActorId = nextSpell
+            ? (partial.spellActorId !== undefined ? partial.spellActorId : prev.spellActorId)
+            : null;
         const next = {
             gearItemId: resolvedGear,
             gearActorId: nextGearActorId,
-            potionItemId: partial.potionItemId !== undefined ? partial.potionItemId : prev.potionItemId
+            potionItemId: partial.potionItemId !== undefined ? partial.potionItemId : prev.potionItemId,
+            spellItemId: nextSpell,
+            spellActorId: nextSpellActorId
         };
-        if (!next.gearItemId && !next.potionItemId) {
+        if (!next.gearItemId && !next.potionItemId && !next.spellItemId) {
             this._app._workbenchIdentifyStaging.delete(actorId);
         } else {
             this._app._workbenchIdentifyStaging.set(actorId, next);
@@ -105,21 +123,34 @@ export class WorkbenchDelegate {
         const app = this._app;
         const isGmUser = !!(game.user?.isGM || app._isGM);
         const scanComplete = !!app._magicScanComplete;
+        const magicScanActive = scanComplete;
+        const focusActor = game.actors.get(actorId) ?? null;
+        const arcane = buildArcaneWorkbenchAccess(focusActor, { magicScanActive, isGmUser });
+        const canTriggerDetectMagicScan = magicScanActive
+            ? true
+            : (isGmUser || computeCanTriggerDetectMagicScan(party));
+        const detectMagicDisabledTooltip = canTriggerDetectMagicScan
+            ? ""
+            : getDetectMagicDisabledTooltip(party, focusActor);
         return {
             ...partyData,
             ...wb,
+            ...arcane,
             isGmUser,
-            canShowDetectMagicScanButton: computeCanShowDetectMagicScanButton(party),
-            canTriggerDetectMagicScan: computeCanTriggerDetectMagicScan(party),
+            magicScanActive,
+            canShowDetectMagicScanButton: computeCanShowDetectMagicScanButton(party) || isGmUser,
+            canTriggerDetectMagicScan,
+            detectMagicDisabledTooltip,
             detectMagicScanButtonLabel: scanComplete
                 ? DETECT_MAGIC_BTN_LABEL_DISMISS
                 : (isGmUser ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER),
-            detectMagicScanButtonTitle: isGmUser
-                ? DETECT_MAGIC_BTN_TITLE_GM
-                : (getDetectMagicPlayerAccessReason(party) ?? ""),
+            detectMagicScanButtonTitle: magicScanActive
+                ? "Dismiss scan"
+                : (isGmUser
+                    ? DETECT_MAGIC_BTN_TITLE_GM
+                    : (detectMagicDisabledTooltip || getDetectMagicPlayerAccessReason(party) || "")),
             magicScanResults: app._magicScanResults ?? [],
-            magicScanComplete: scanComplete,
-            magicScanActive: scanComplete
+            magicScanComplete: scanComplete
         };
     }
 
@@ -128,6 +159,7 @@ export class WorkbenchDelegate {
             workbenchIdentifyActorId: null,
             workbenchGearChip: null,
             workbenchPotionChip: null,
+            workbenchSpellChip: null,
             workbenchSubmitLocked: true,
             workbenchSubmitPending: false,
             workbenchIdentifyAcknowledgement: null,
@@ -162,10 +194,26 @@ export class WorkbenchDelegate {
                 label: item.name || "Potion"
             };
         };
+        const resolveSpellChip = (itemId, spellActorId) => {
+            const owner = spellActorId ? game.actors.get(spellActorId) : actor;
+            const item = owner?.items.get(itemId);
+            if (!item) return null;
+            const isUnidentified = itemIsWorkbenchUnidentified(owner, item);
+            return {
+                itemId,
+                spellActorId: owner?.id ?? actorId,
+                img: item.img || "icons/svg/mystery-man.svg",
+                label: (isUnidentified ? (item.system?.unidentified?.name || item.name) : item.name) || "Item",
+                ownerName: owner?.name ?? "",
+                alreadyIdentified: !isUnidentified
+            };
+        };
         const workbenchGearChip = st.gearItemId ? resolveGearChip(st.gearItemId, st.gearActorId) : null;
         const workbenchPotionChip = st.potionItemId ? resolvePotionChip(st.potionItemId) : null;
+        const workbenchSpellChip = st.spellItemId ? resolveSpellChip(st.spellItemId, st.spellActorId) : null;
         const workbenchSubmitPending = this.submitPending.has(actorId);
-        const workbenchSubmitLocked = workbenchSubmitPending || (!workbenchGearChip && !workbenchPotionChip);
+        const workbenchSubmitLocked = workbenchSubmitPending
+            || (!workbenchGearChip && !workbenchPotionChip && !workbenchSpellChip);
         const ack = this.acknowledge?.get(actorId) ?? null;
         const workbenchIdentifyAcknowledgement = ack ? { items: ack.items } : null;
         const workbenchAckRevealReady = !ack || Date.now() >= ack.revealAt;
@@ -174,6 +222,7 @@ export class WorkbenchDelegate {
             workbenchIdentifyActorId: actorId,
             workbenchGearChip,
             workbenchPotionChip,
+            workbenchSpellChip,
             workbenchSubmitLocked,
             workbenchSubmitPending,
             workbenchIdentifyAcknowledgement,
@@ -206,8 +255,15 @@ export class WorkbenchDelegate {
         }
         if (this.submitPending.has(actorId)) return;
         const st = this.getStaging(actorId);
-        if (!st.gearItemId && !st.potionItemId) {
+        if (!st.gearItemId && !st.potionItemId && !st.spellItemId) {
             ui.notifications.warn("Drag at least one item onto the circles, then submit.");
+            return;
+        }
+        const arcane = buildArcaneWorkbenchAccess(actor, {
+            isGmUser: !!(game.user?.isGM || this._app?._isGM)
+        });
+        if (st.spellItemId && !arcane.identifyAvailable && !game.user?.isGM) {
+            ui.notifications.warn("Requires the Identify spell.");
             return;
         }
         this.submitPending.add(actorId);
@@ -215,33 +271,68 @@ export class WorkbenchDelegate {
         try {
             // (may belong to a different actor in shared pool mode)
             const order = [];
-            if (st.potionItemId) order.push({ itemId: st.potionItemId, ownerActorId: actorId });
-            if (st.gearItemId) order.push({ itemId: st.gearItemId, ownerActorId: st.gearActorId || actorId });
+            if (st.potionItemId) {
+                order.push({ itemId: st.potionItemId, ownerActorId: actorId, intent: "taste" });
+            }
+            if (st.gearItemId) {
+                order.push({
+                    itemId: st.gearItemId,
+                    ownerActorId: st.gearActorId || actorId,
+                    intent: "focus"
+                });
+            }
+            if (st.spellItemId) {
+                order.push({
+                    itemId: st.spellItemId,
+                    ownerActorId: st.spellActorId || actorId,
+                    intent: "identify"
+                });
+            }
             const revealed = [];
-            for (const { itemId, ownerActorId } of order) {
+            for (const { itemId, ownerActorId, intent } of order) {
                 const ownerActor = game.actors.get(ownerActorId);
                 if (!ownerActor) continue;
                 const itemBefore = ownerActor.items.get(itemId);
                 if (!itemBefore) continue;
-                const did = await this.identifyItem(ownerActorId, itemId, { deferNotify: true, deferRender: true });
-                if (!did) continue;
-                const itemAfter = ownerActor.items.get(itemId);
-                const trueName = resolveTrueName(ownerActor, itemId, itemBefore.name);
-                revealed.push({
-                    itemId,
-                    ownerActorId,
-                    name: trueName,
-                    img: itemAfter?.img ?? itemBefore.img ?? "icons/svg/mystery-man.svg",
-                    requiresAttunement: (att => att === "required" || att === 1)(itemAfter?.system?.attunement)
+                const result = await this.identifyItem(ownerActorId, itemId, {
+                    deferNotify: true,
+                    deferRender: true,
+                    intent
                 });
+                if (!result?.identified) continue;
+                if (Array.isArray(result.items) && result.items.length) {
+                    for (const row of result.items) {
+                        revealed.push({
+                            itemId: row.itemId,
+                            ownerActorId: row.ownerActorId ?? ownerActorId,
+                            name: row.name,
+                            img: row.img ?? "icons/svg/mystery-man.svg",
+                            requiresAttunement: false
+                        });
+                    }
+                } else {
+                    const itemAfter = ownerActor.items.get(itemId);
+                    const trueName = resolveTrueName(ownerActor, itemId, itemBefore.name);
+                    revealed.push({
+                        itemId,
+                        ownerActorId,
+                        name: trueName,
+                        img: itemAfter?.img ?? itemBefore.img ?? "icons/svg/mystery-man.svg",
+                        requiresAttunement: (att => att === "required" || att === 1)(itemAfter?.system?.attunement)
+                    });
+                }
                 // Notify the item owner when a different caster identifies their item
                 if (ownerActorId !== actorId) {
                     const ownerUsers = game.users.filter(
                         u => !u.isGM && ownerActor.testUserPermission(u, "OWNER")
                     );
                     if (ownerUsers.length > 0) {
+                        const names = (result.items ?? []).map(r => r.name).filter(Boolean);
+                        const label = names.length
+                            ? names.join(", ")
+                            : resolveTrueName(ownerActor, itemId, itemBefore.name);
                         ChatMessage.create({
-                            content: `<div class="ionrift-identify-reveal"><i class="fas fa-hat-wizard"></i> <strong>${actor.name}</strong> identified your <strong>${trueName}</strong>.</div>`,
+                            content: `<div class="ionrift-identify-reveal"><i class="fas fa-hat-wizard"></i> <strong>${actor.name}</strong> identified your <strong>${label}</strong>.</div>`,
                             speaker: ChatMessage.getSpeaker({ alias: "Respite" }),
                             whisper: ownerUsers.map(u => u.id)
                         });
@@ -284,13 +375,21 @@ export class WorkbenchDelegate {
     }
 
     
+    /**
+     * @returns {Promise<{identified: boolean, items?: object[]}|null>}
+     */
     async identifyItem(actorId, itemId, options = {}) {
-        const { deferNotify = false, deferRender = false } = options;
+        const { deferNotify = false, deferRender = false, intent = "identify" } = options;
+        const normalizedIntent = intent === "taste" || intent === "focus" || intent === "identify"
+            ? intent
+            : "identify";
         const actor = game.actors.get(actorId);
         const item = actor?.items?.get(itemId);
-        if (!item) return false;
+        if (!item) return null;
 
         let identified = false;
+        /** @type {object[]|null} */
+        let resultItems = null;
 
         if (game.user.isGM) {
             const qmActive = game.modules?.get("ionrift-quartermaster")?.active;
@@ -299,8 +398,14 @@ export class WorkbenchDelegate {
                     const { IdentificationService } = await import(
                         "/modules/ionrift-quartermaster/scripts/services/identify/IdentificationService.js"
                     );
-                    const result = await IdentificationService.identify(item, { silent: true });
-                    identified = result.identified;
+                    const result = await IdentificationService.identify(item, {
+                        silent: true,
+                        intent: normalizedIntent
+                    });
+                    identified = !!result.identified;
+                    if (identified && Array.isArray(result.items) && result.items.length) {
+                        resultItems = result.items;
+                    }
                     Logger.log(`[Respite] WorkbenchDelegate GM identify: QM result`, result);
                 } catch (err) {
                     console.error("[Respite] WorkbenchDelegate: QM import/identify failed", err);
@@ -318,13 +423,14 @@ export class WorkbenchDelegate {
                 } catch (err) {
                     console.error(`[Respite] Failed to identify item:`, err);
                     if (!deferNotify) ui.notifications.error("Failed to identify item.");
-                    return false;
+                    return null;
                 }
             }
         } else {
             const hasQmPayload = !!(
                 item.getFlag?.("ionrift-quartermaster", "latentMagic")
                 || item.getFlag?.("ionrift-quartermaster", "cursedMeta")
+                || (Number(item.getFlag?.("ionrift-quartermaster", "infectedCount") ?? 0) || 0) > 0
             );
             const qmActive = game.modules?.get("ionrift-quartermaster")?.active;
             if (hasQmPayload || qmActive) {
@@ -332,9 +438,15 @@ export class WorkbenchDelegate {
                 // writes on managed items. GM runs IdentificationService directly.
                 const requestId = foundry.utils.randomID();
                 const targetUserId = game.user.id;
-                identified = await new Promise((resolve) => {
+                const socketResult = await new Promise((resolve) => {
                     WorkbenchDelegate._pendingIdentifyRequests.set(requestId, resolve);
-                    emitWorkbenchIdentifyRequest({ actorId, itemId, requestId, targetUserId });
+                    emitWorkbenchIdentifyRequest({
+                        actorId,
+                        itemId,
+                        requestId,
+                        targetUserId,
+                        intent: normalizedIntent
+                    });
                     setTimeout(() => {
                         if (WorkbenchDelegate._pendingIdentifyRequests.has(requestId)) {
                             WorkbenchDelegate._pendingIdentifyRequests.delete(requestId);
@@ -342,18 +454,40 @@ export class WorkbenchDelegate {
                         }
                     }, 10000);
                 });
+                if (socketResult && typeof socketResult === "object") {
+                    identified = !!socketResult.success;
+                    if (Array.isArray(socketResult.items) && socketResult.items.length) {
+                        resultItems = socketResult.items;
+                    }
+                } else {
+                    identified = !!socketResult;
+                }
                 if (identified) {
-                    // The GM's item.update() propagates to the player via a separate
-                    // Foundry websocket message. Wait for updateItem to confirm the
-                    // actor collection is up-to-date before reading trueName/img.
+                    // Sync actor collection after GM update/create (infected split may create).
                     await new Promise(resolve => {
-                        const hookId = Hooks.once("updateItem", (updatedItem) => {
-                            if (updatedItem.id === itemId) resolve();
+                        let settled = false;
+                        const done = () => {
+                            if (settled) return;
+                            settled = true;
+                            resolve();
+                        };
+                        const updateHookId = Hooks.on("updateItem", (updatedItem) => {
+                            if (updatedItem.id === itemId || updatedItem.parent?.id === actorId) {
+                                Hooks.off("updateItem", updateHookId);
+                                done();
+                            }
+                        });
+                        const createHookId = Hooks.on("createItem", (createdItem) => {
+                            if (createdItem.parent?.id === actorId) {
+                                Hooks.off("createItem", createHookId);
+                                done();
+                            }
                         });
                         setTimeout(() => {
-                            Hooks.off("updateItem", hookId);
-                            console.warn(`[Respite] Workbench: updateItem sync timed out for item=${itemId}, proceeding anyway`);
-                            resolve();
+                            Hooks.off("updateItem", updateHookId);
+                            Hooks.off("createItem", createHookId);
+                            console.warn(`[Respite] Workbench: item sync timed out for item=${itemId}, proceeding anyway`);
+                            done();
                         }, 3000);
                     });
                 }
@@ -364,20 +498,32 @@ export class WorkbenchDelegate {
                 } catch (err) {
                     console.error(`[Respite] Failed to identify item:`, err);
                     if (!deferNotify) ui.notifications.error("Failed to identify item.");
-                    return false;
+                    return null;
                 }
             }
         }
 
         if (!identified) {
             if (!deferNotify) ui.notifications.error("Failed to identify item.");
-            return false;
+            return null;
         }
 
-        const trueName = resolveTrueName(actor, itemId, item.name);
-        if (!deferNotify) ui.notifications.info(`${trueName} identified by ${actor.name}.`);
+        if (!resultItems) {
+            const trueName = resolveTrueName(actor, itemId, item.name);
+            const fresh = actor.items.get(itemId);
+            resultItems = [{
+                itemId,
+                ownerActorId: actorId,
+                name: trueName,
+                img: fresh?.img ?? item.img ?? "icons/svg/mystery-man.svg"
+            }];
+            if (!deferNotify) ui.notifications.info(`${trueName} identified by ${actor.name}.`);
+        } else if (!deferNotify) {
+            const label = resultItems.map(r => r.name).filter(Boolean).join(", ");
+            ui.notifications.info(`${label} identified by ${actor.name}.`);
+        }
         if (!deferRender) this._app.render();
-        return true;
+        return { identified: true, items: resultItems };
     }
 
     clearAll() {
@@ -420,20 +566,16 @@ export class WorkbenchDelegate {
             }
             const item = itemOwner.items.get(itemId);
             if (!item) return { ok: false, msg: "Item not found." };
-            const isPotion = itemIsDnD5ePotionType(item);
-            if (zone === "gear") {
-                if (isPotion) return { ok: false, msg: "Drop potions onto the potion circle." };
-                // Accept identified gear too; rejecting would leak mundane vs magical.
-            }
-            if (zone === "potion" && !isPotion) {
-                return { ok: false, msg: "Drop that item onto the focus circle." };
-            }
-            return { ok: true };
+            return validateWorkbenchZoneDrop({
+                zone,
+                isPotion: itemIsDnD5ePotionType(item)
+            });
         };
 
         const assignGear = (itemId, itemActorId) => {
-            if (this.focusUsed.has(actorId)) {
-                ui.notifications.info("Focus identify already used this rest for this character.");
+            const focusGate = canStageFocus({ focusUsed: this.focusUsed.has(actorId) });
+            if (!focusGate.ok) {
+                ui.notifications.info(focusGate.msg);
                 return;
             }
             const v = validateDrop(itemId, "gear", itemActorId);
@@ -445,7 +587,9 @@ export class WorkbenchDelegate {
             this.setStaging(actorId, {
                 gearItemId: itemId,
                 gearActorId: itemActorId || actorId,
-                potionItemId: st.potionItemId
+                potionItemId: st.potionItemId,
+                spellItemId: st.spellItemId,
+                spellActorId: st.spellActorId
             });
             bump();
         };
@@ -457,7 +601,41 @@ export class WorkbenchDelegate {
                 return;
             }
             const st = this.getStaging(actorId);
-            this.setStaging(actorId, { gearItemId: st.gearItemId, potionItemId: itemId });
+            this.setStaging(actorId, {
+                gearItemId: st.gearItemId,
+                gearActorId: st.gearActorId,
+                potionItemId: itemId,
+                spellItemId: st.spellItemId,
+                spellActorId: st.spellActorId
+            });
+            bump();
+        };
+
+        const assignSpell = (itemId, itemActorId) => {
+            const caster = game.actors.get(actorId);
+            const isGmUser = !!(game.user?.isGM || this._app?._isGM);
+            const access = buildArcaneWorkbenchAccess(caster, { isGmUser });
+            const idGate = canStageIdentify({
+                identifyAvailable: access.identifyAvailable,
+                isGm: isGmUser
+            });
+            if (!idGate.ok) {
+                ui.notifications.warn(access.identifyAccess.tooltip || idGate.msg);
+                return;
+            }
+            const v = validateDrop(itemId, "spell", itemActorId);
+            if (!v.ok) {
+                ui.notifications.warn(v.msg);
+                return;
+            }
+            const st = this.getStaging(actorId);
+            this.setStaging(actorId, {
+                gearItemId: st.gearItemId,
+                gearActorId: st.gearActorId,
+                potionItemId: st.potionItemId,
+                spellItemId: itemId,
+                spellActorId: itemActorId || actorId
+            });
             bump();
         };
 
@@ -489,10 +667,11 @@ export class WorkbenchDelegate {
                     if (dragActorId !== actorId) return;
                     if (dragSlot === "potion" && zoneType === "potion") setPotion(itemId);
                     else if (dragSlot === "gear" && zoneType === "gear") assignGear(itemId);
+                    else if (dragSlot === "spell" && zoneType === "spell") assignSpell(itemId);
                     else if (dragSlot === "potion" && zoneType === "gear") {
-                        ui.notifications.warn("Drop potions onto the potion circle.");
+                        ui.notifications.warn("Drop potions onto the Taste circle.");
                     } else if (dragSlot === "gear" && zoneType === "potion") {
-                        ui.notifications.warn("Drop that item onto the focus circle.");
+                        ui.notifications.warn("Drop that item onto the Focus circle.");
                     }
                     return;
                 }
@@ -508,14 +687,20 @@ export class WorkbenchDelegate {
                     return;
                 }
                 if (zoneType === "gear") assignGear(item.id);
-                else setPotion(item.id);
+                else if (zoneType === "potion") setPotion(item.id);
+                else if (zoneType === "spell") assignSpell(item.id);
             });
 
             if (zoneType === "gear") {
                 zone.addEventListener("click", () => {
                     const st = this.getStaging(actorId);
                     if (!st.gearItemId) return;
-                    this.setStaging(actorId, { gearItemId: null, potionItemId: st.potionItemId });
+                    this.setStaging(actorId, {
+                        gearItemId: null,
+                        potionItemId: st.potionItemId,
+                        spellItemId: st.spellItemId,
+                        spellActorId: st.spellActorId
+                    });
                     bump();
                 });
             }
@@ -523,7 +708,26 @@ export class WorkbenchDelegate {
                 zone.addEventListener("click", () => {
                     const st = this.getStaging(actorId);
                     if (!st.potionItemId) return;
-                    this.setStaging(actorId, { gearItemId: st.gearItemId, potionItemId: null });
+                    this.setStaging(actorId, {
+                        gearItemId: st.gearItemId,
+                        gearActorId: st.gearActorId,
+                        potionItemId: null,
+                        spellItemId: st.spellItemId,
+                        spellActorId: st.spellActorId
+                    });
+                    bump();
+                });
+            }
+            if (zoneType === "spell") {
+                zone.addEventListener("click", () => {
+                    const st = this.getStaging(actorId);
+                    if (!st.spellItemId) return;
+                    this.setStaging(actorId, {
+                        gearItemId: st.gearItemId,
+                        gearActorId: st.gearActorId,
+                        potionItemId: st.potionItemId,
+                        spellItemId: null
+                    });
                     bump();
                 });
             }

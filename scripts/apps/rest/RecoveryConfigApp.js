@@ -32,9 +32,9 @@ const RECOVERY_SECTIONS = [
             },
             {
                 key: "enableWorkbenchIdentify",
-                label: "Workbench Identify (TotM)",
+                label: "Identify and Potion Tasting",
                 icon: "fas fa-search",
-                hint: "Theater of the Mind only. Shows the Identify tab during Activities for the workbench station.",
+                hint: "Identify, focus examination, and potion tasting during rests. TotM Examine tab, station Examine/Identify, and the short-rest Identify tab. Off in Simple Quick Setup.",
                 type: "boolean"
             },
             {

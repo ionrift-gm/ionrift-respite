@@ -16,7 +16,12 @@ import {
     isWorkbenchIdentifyUiEnabled
 } from "../../data/RestConstants.js";
 import { buildActivityListItem, buildActivityDetailContext } from "../crafting/ActivityDetailBuilder.js";
-import { computeCanShowDetectMagicScanButton, computeCanTriggerDetectMagicScan, getDetectMagicPlayerAccessReason, spawnDetectMagicCastRipple } from "../delegates/crafting/DetectMagicDelegate.js";
+import {
+    computeCanShowDetectMagicScanButton,
+    computeCanTriggerDetectMagicScan,
+    getDetectMagicPlayerAccessReason,
+    spawnDetectMagicCastRipple
+} from "../delegates/crafting/DetectMagicDelegate.js";
 import { canPlaceStation, actorHasBrewingTools } from "../../services/camp/props/CompoundCampPlacer.js";
 import { getPartyActors, getFoodBuffPartyActors } from "../../services/party/partyActors.js";
 import { MonstrousFeastBridge } from "../../services/meal/provisions/MonstrousFeastBridge.js";
@@ -426,17 +431,34 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             workbenchIdentifyActorId: null,
             workbenchGearChip: null,
             workbenchPotionChip: null,
+            workbenchSpellChip: null,
             workbenchSubmitLocked: true,
             workbenchSubmitPending: false,
             workbenchIdentifyAcknowledgement: null,
             workbenchAckRevealReady: true,
-            workbenchFocusExhausted: false
+            workbenchFocusExhausted: false,
+            identifyAvailable: false,
+            detectMagicAvailable: false,
+            identifyAccess: { state: "unavailable", badge: "Spell", tooltip: "Requires the Identify spell.", caption: "Requires the Identify spell." },
+            detectMagicAccess: { state: "unavailable", badge: "Spell", tooltip: "Requires the Detect Magic spell.", caption: "Requires the Detect Magic spell." },
+            identifyPill: "Spell",
+            detectMagicPill: "Spell",
+            arcaneBadge: "Spell",
+            arcaneStatus: "Requires Identify or Detect Magic.",
+            detectMagicDisabledTooltip: "Requires the Detect Magic spell."
         };
         const wbCtx = (isWorkbenchExamineUiEnabled()
             && this._station?.id === "workbench"
-            && this._restApp?.getWorkbenchIdentifyDragContext)
-            ? this._restApp.getWorkbenchIdentifyDragContext(this._actor?.id ?? null)
-            : wbWorkbenchDefaults;
+            && this._restApp?._workbench?.buildEmbedContext)
+            ? this._restApp._workbench.buildEmbedContext(this._actor?.id ?? null, getPartyActors)
+            : (isWorkbenchExamineUiEnabled()
+                && this._station?.id === "workbench"
+                && this._restApp?.getWorkbenchIdentifyDragContext)
+                ? {
+                    ...wbWorkbenchDefaults,
+                    ...this._restApp.getWorkbenchIdentifyDragContext(this._actor?.id ?? null)
+                }
+                : wbWorkbenchDefaults;
 
         return {
             activities:       [...activityItems, ...fadedItems],
@@ -466,17 +488,21 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             fireTabContext,
             hideNoActivitiesMessage: this._station?.id === "campfire",
             isGmUser:           !!game.user?.isGM,
-            canShowDetectMagicScanButton: computeCanShowDetectMagicScanButton(getPartyActors()),
-            canTriggerDetectMagicScan: computeCanTriggerDetectMagicScan(getPartyActors()),
-            detectMagicScanButtonLabel: this._restApp?._magicScanComplete
-                ? DETECT_MAGIC_BTN_LABEL_DISMISS
-                : (game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER),
-            detectMagicScanButtonTitle: game.user?.isGM
-                ? DETECT_MAGIC_BTN_TITLE_GM
-                : (getDetectMagicPlayerAccessReason(getPartyActors()) ?? ""),
-            magicScanResults: this._restApp?._magicScanResults ?? [],
-            magicScanComplete: !!this._restApp?._magicScanComplete,
-            magicScanActive: !!this._restApp?._magicScanComplete,
+            canShowDetectMagicScanButton: wbCtx.canShowDetectMagicScanButton
+                ?? computeCanShowDetectMagicScanButton(getPartyActors()),
+            canTriggerDetectMagicScan: wbCtx.canTriggerDetectMagicScan
+                ?? computeCanTriggerDetectMagicScan(getPartyActors()),
+            detectMagicScanButtonLabel: wbCtx.detectMagicScanButtonLabel
+                ?? (this._restApp?._magicScanComplete
+                    ? DETECT_MAGIC_BTN_LABEL_DISMISS
+                    : (game.user?.isGM ? DETECT_MAGIC_BTN_LABEL_GM : DETECT_MAGIC_BTN_LABEL_PLAYER)),
+            detectMagicScanButtonTitle: wbCtx.detectMagicScanButtonTitle
+                ?? (game.user?.isGM
+                    ? DETECT_MAGIC_BTN_TITLE_GM
+                    : (getDetectMagicPlayerAccessReason(getPartyActors()) ?? "")),
+            magicScanResults: wbCtx.magicScanResults ?? this._restApp?._magicScanResults ?? [],
+            magicScanComplete: wbCtx.magicScanComplete ?? !!this._restApp?._magicScanComplete,
+            magicScanActive: wbCtx.magicScanActive ?? !!this._restApp?._magicScanComplete,
             ...wbCtx,
             workbenchFocusExhausted: wbCtx.workbenchFocusExhausted ?? false
         };
@@ -1443,10 +1469,11 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         }
         const wb = this._restApp?._workbench;
         if (!wb) return;
-        const did = await wb.identifyItem(itemActorId, itemId);
-        if (!did) return;
+        const did = await wb.identifyItem(itemActorId, itemId, { intent: "identify" });
+        if (!did?.identified) return;
+        const names = (did.items ?? []).map(r => r.name).filter(Boolean);
         const itemAfter = ownerActor.items.get(itemId);
-        const trueName = itemAfter?.name ?? itemBefore.name;
+        const trueName = names.length ? names.join(", ") : (itemAfter?.name ?? itemBefore.name);
         ui.notifications.info(`Identified: ${trueName}`);
         // Notify the item owner when a different caster identifies their item
         if (caster && itemActorId !== caster.id) {
