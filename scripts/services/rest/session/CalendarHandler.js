@@ -16,19 +16,37 @@ function _isSimpleCalendarActive() {
 export class CalendarHandler {
 
     /**
-     * Returns true if a supported calendar module is active.
+     * Returns true if a supported calendar module or core Foundry game.time is active.
      * @returns {boolean}
      */
     static isAvailable() {
-        // Simple Calendar (original or Reborn fork)
         if (_isSimpleCalendarActive()) {
             return true;
         }
-        // Simple Timekeeping (TheRipper93) - uses core Foundry time API
         if (game.modules.get("simple-timekeeping")?.active) {
             return true;
         }
+        if (typeof game !== "undefined" && game.time) {
+            return true;
+        }
         return false;
+    }
+
+    /**
+     * Advances in-game world time based on rest type (long = 8h, short = 1h).
+     * @param {string} [restType="long"]
+     * @returns {Promise<void>}
+     */
+    static async advanceRestTime(restType = "long") {
+        if (!game.user?.isGM) return;
+        const seconds = restType === "short" ? 3600 : 28800;
+        try {
+            if (typeof game.time?.advance === "function") {
+                await game.time.advance(seconds);
+            }
+        } catch (e) {
+            console.warn(`${MODULE_ID} | CalendarHandler.advanceRestTime failed:`, e);
+        }
     }
 
     /**
@@ -41,8 +59,11 @@ export class CalendarHandler {
                 const dt = SimpleCalendar.api.currentDateTime();
                 return `${dt.year}-${dt.month}-${dt.day}`;
             }
-            // Simple Timekeeping: uses game.time.components
             if (game.modules.get("simple-timekeeping")?.active && game.time?.components) {
+                const tc = game.time.components;
+                return `${tc.year}-${tc.month}-${tc.day}`;
+            }
+            if (game.time?.components) {
                 const tc = game.time.components;
                 return `${tc.year}-${tc.month}-${tc.day}`;
             }
@@ -67,8 +88,11 @@ export class CalendarHandler {
                 }
                 return `Day ${dt.day + 1}, Month ${dt.month + 1}, Year ${dt.year}`;
             }
-            // Simple Timekeeping: uses game.time.components
             if (game.modules.get("simple-timekeeping")?.active && game.time?.components) {
+                const tc = game.time.components;
+                return `Day ${tc.day + 1}, Month ${tc.month + 1}, Year ${tc.year}`;
+            }
+            if (game.time?.components) {
                 const tc = game.time.components;
                 return `Day ${tc.day + 1}, Month ${tc.month + 1}, Year ${tc.year}`;
             }
@@ -107,7 +131,6 @@ export class CalendarHandler {
 
             await game.settings.set(MODULE_ID, "lastRestDate", dateKey);
 
-            // Post a chat message about the rest
             const formatted = this.getFormattedDate();
             const dateDisplay = formatted ?? dateKey;
             await ChatMessage.create({

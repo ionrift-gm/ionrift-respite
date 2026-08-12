@@ -628,7 +628,8 @@ export class RestResolveDelegate {
             }
         }
 
-        // Record rest date via calendar handler
+        const restType = app._engine?.restType ?? "long";
+        await CalendarHandler.advanceRestTime(restType);
         await CalendarHandler.recordRestDate();
 
         emitPhaseChanged("resolve", {
