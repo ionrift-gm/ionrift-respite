@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [3.5.1] - 2026-08-12
+
+### Fixed
+- Fixed in-game world time not advancing upon completing a rest.
+
 ## [3.5.0] - 2026-08-10
 
 ### Added
