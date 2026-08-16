@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [3.5.2] - 2026-08-16
+
+### Fixed
+- Rest cooldown and date display now work correctly with Calendaria. Previously the "Day NaN" chat message and a permanent "already rested today" lock occurred because Respite did not recognise Calendaria's date API.
+- Fixed a crash when clearing conditions during rest if an active effect had already been removed by another source.
+
 ## [3.5.1] - 2026-08-12
 
 ### Fixed
