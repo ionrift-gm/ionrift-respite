@@ -461,6 +461,11 @@ registerInventoryContextMenu();
         _scheduleSpoilageTick();
     });
 
+    // Calendaria fires its own date/time change hook
+    Hooks.on("calendaria.dateTimeChange", () => {
+        _scheduleSpoilageTick();
+    });
+
     async function _runSpoilageTick() {
         _spoilageDebounce = null;
 
