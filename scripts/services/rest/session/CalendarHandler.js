@@ -1,16 +1,24 @@
 /**
  * CalendarHandler
  * Centralizes all calendar interactions behind a stable adapter interface.
- * Supports Simple Calendar and Simple Timekeeping (by TheRipper93).
+ * Supports Simple Calendar, Calendaria (by 3 Death Saves),
+ * and Simple Timekeeping (by TheRipper93).
  * Additional providers can be added by extending detection and API mapping.
  */
 
-/** Check if either Simple Calendar variant is active */
 import { MODULE_ID } from "../../../data/moduleId.js";
+
+/** Check if either Simple Calendar variant is active */
 function _isSimpleCalendarActive() {
     return (game.modules.get("foundryvtt-simple-calendar")?.active
          || game.modules.get("foundryvtt-simple-calendar-reborn")?.active)
         && typeof SimpleCalendar !== "undefined";
+}
+
+/** Check if Calendaria is active */
+function _isCalendariaActive() {
+    return game.modules.get("calendaria")?.active
+        && typeof CALENDARIA !== "undefined";
 }
 
 export class CalendarHandler {
@@ -21,6 +29,9 @@ export class CalendarHandler {
      */
     static isAvailable() {
         if (_isSimpleCalendarActive()) {
+            return true;
+        }
+        if (_isCalendariaActive()) {
             return true;
         }
         if (game.modules.get("simple-timekeeping")?.active) {
@@ -39,8 +50,13 @@ export class CalendarHandler {
      */
     static async advanceRestTime(restType = "long") {
         if (!game.user?.isGM) return;
-        const seconds = restType === "short" ? 3600 : 28800;
+        const hours = restType === "short" ? 1 : 8;
         try {
+            if (_isCalendariaActive() && typeof CALENDARIA.api.advanceTime === "function") {
+                await CALENDARIA.api.advanceTime({ hour: hours });
+                return;
+            }
+            const seconds = hours * 3600;
             if (typeof game.time?.advance === "function") {
                 await game.time.advance(seconds);
             }
@@ -57,6 +73,10 @@ export class CalendarHandler {
         try {
             if (_isSimpleCalendarActive()) {
                 const dt = SimpleCalendar.api.currentDateTime();
+                return `${dt.year}-${dt.month}-${dt.day}`;
+            }
+            if (_isCalendariaActive()) {
+                const dt = CALENDARIA.api.getCurrentDateTime();
                 return `${dt.year}-${dt.month}-${dt.day}`;
             }
             if (game.modules.get("simple-timekeeping")?.active && game.time?.components) {
@@ -87,6 +107,14 @@ export class CalendarHandler {
                     return `Day ${dt.day + 1} of ${monthName}, Year ${dt.year}`;
                 }
                 return `Day ${dt.day + 1}, Month ${dt.month + 1}, Year ${dt.year}`;
+            }
+            if (_isCalendariaActive()) {
+                if (typeof CALENDARIA.api.formatDate === "function") {
+                    return CALENDARIA.api.formatDate(null, "dateLong");
+                }
+                // Calendaria uses 1-indexed month/day — no +1 needed
+                const dt = CALENDARIA.api.getCurrentDateTime();
+                return `Day ${dt.day}, Month ${dt.month}, Year ${dt.year}`;
             }
             if (game.modules.get("simple-timekeeping")?.active && game.time?.components) {
                 const tc = game.time.components;
