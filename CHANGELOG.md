@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [3.5.3] - 2026-08-18
+
+### Fixed
+- Hunting and foraging reward rolls work again. After passing a travel skill check, players now see the loot prompt as expected, and GMs can roll on a player's behalf.
+
 ## [3.5.2] - 2026-08-16
 
 ### Fixed
