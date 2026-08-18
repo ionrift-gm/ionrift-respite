@@ -70,8 +70,7 @@ import {
     emitRestResolved,
     emitPhaseChanged,
     emitCampFirewoodPledge,
-    emitCampFirewoodReclaim,
-    emitTravelIndividualDebrief
+    emitCampFirewoodReclaim
 } from "../../services/socket/SocketController.js";
 import { MODULE_ID } from "../../data/moduleId.js";
 
@@ -1835,6 +1834,7 @@ static #onConfirmTravelForPlayer(event, target) {
     receiveTravelLootRollResult(data) { this._travel.receiveTravelLootRollResult(data); }
 
 receiveTravelLootRollPrompt(data) {
+        this._pendingTravelRoll = null;
         const day = data.day ?? 1;
         if (!this._playerTravelAwaitingLoot) this._playerTravelAwaitingLoot = {};
         this._playerTravelAwaitingLoot[day] ??= {};
@@ -1843,21 +1843,6 @@ receiveTravelLootRollPrompt(data) {
             activity: data.activity
         };
         this.render();
-    }
-
-async #emitTravelIndividualDebriefForRow(row, actorId) {
-        const actor = game.actors.get(actorId);
-        if (!actor) return;
-        const ownerIds = Object.entries(actor.ownership ?? {})
-            .filter(([id, level]) => id !== "default" && level >= 3)
-            .map(([id]) => id);
-        for (const uid of ownerIds) {
-            emitTravelIndividualDebrief({
-                targetUserId: uid,
-                result: row,
-                playerTravel: this._buildPlayerTravelRestore(uid)
-            });
-        }
     }
 
     static async #onRollTravelLoot(event, target) { return this._travel.onRollTravelLoot(event, target); }

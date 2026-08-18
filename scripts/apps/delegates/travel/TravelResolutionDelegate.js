@@ -13,6 +13,9 @@ import { MODULE_ID } from "../../../data/moduleId.js";
 import { getPartyActors } from "../../../services/party/partyActors.js";
 import {
     executePlayerRoll,
+    rollForPlayer,
+    pickBestSkill,
+    getNatD20FromRoll,
     waitForDiceSoNice,
     postRollToChat
 } from "../../../services/ui/rollRequest/RollRequestManager.js";
@@ -24,8 +27,10 @@ import {
     emitTravelLootRollPrompt,
     emitTravelLootRollResult,
     emitTravelDebrief,
+    emitTravelIndividualDebrief,
     emitPhaseChanged
 } from "../../../services/socket/SocketController.js";
+import { COMFORT_RANK, RANK_TO_KEY } from "../../../data/RestConstants.js";
 import { applyPlayerTravelDeclarationToGm } from "../../../services/travel/settings/travelDeclarationSync.js";
 
 const MAX_TRAVEL_DAYS = 3;
@@ -1770,6 +1775,27 @@ export class TravelResolutionDelegate {
             app._engine.comfort = RANK_TO_KEY[rank];
         }
     
+    }
+
+    /**
+     * Send individual travel debrief to each owner of the given actor.
+     * Relocated from RestSetupApp#emitTravelIndividualDebriefForRow during
+     * delegate extraction (was left behind as an inaccessible private method).
+     */
+    async emitTravelIndividualDebriefForRow(row, actorId) {
+        const app = this._app;
+        const actor = game.actors.get(actorId);
+        if (!actor) return;
+        const ownerIds = Object.entries(actor.ownership ?? {})
+            .filter(([id, level]) => id !== "default" && level >= 3)
+            .map(([id]) => id);
+        for (const uid of ownerIds) {
+            emitTravelIndividualDebrief({
+                targetUserId: uid,
+                result: row,
+                playerTravel: app._buildPlayerTravelRestore(uid)
+            });
+        }
     }
 
 
