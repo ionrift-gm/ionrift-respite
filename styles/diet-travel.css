@@ -576,6 +576,16 @@
     color: rgba(100, 200, 100, 0.8);
 }
 
+.ionrift-window.ionrift-respite-app .travel-day-tab:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+.ionrift-window.ionrift-respite-app .travel-day-tab:focus-visible {
+    outline: 2px solid rgba(139, 92, 246, 0.9) !important;
+    outline-offset: 2px !important;
+    box-shadow: none !important;
+}
+
 .travel-day-tab i {
     font-size: 0.55rem;
     margin-left: 0.15rem;

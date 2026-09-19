@@ -33,7 +33,7 @@ import {
 import { COMFORT_RANK, RANK_TO_KEY } from "../../../data/RestConstants.js";
 import { applyPlayerTravelDeclarationToGm } from "../../../services/travel/settings/travelDeclarationSync.js";
 
-const MAX_TRAVEL_DAYS = 3;
+const MAX_TRAVEL_DAYS = 7;
 
 const SCOUTING_EFFECTS = {
     none:    { comfortBonus: 0, encounterDC: 0, complication: false, tier: "none" },

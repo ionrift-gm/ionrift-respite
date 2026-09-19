@@ -2,6 +2,7 @@ import { Logger } from "../../../utils/Logger.js";
 import { TerrainRegistry } from "../../../services/events/resolve/TerrainRegistry.js";
 import { DecisionTreeResolver } from "../../../services/events/resolve/DecisionTreeResolver.js";
 import { countPoolEventsForTerrain } from "../../../services/events/catalog/EventCatalogLoader.js";
+import { resolveNightWatchMode } from "../events/nightWatchMode.js";
 import { resolveDefaultCraftRecipeId } from "../../../services/crafting/engine/CraftCommitSummary.js";
 import { buildCraftRecipeListContext } from "../../../services/crafting/engine/CraftRecipeListBuilder.js";
 import { CampGearScanner } from "../../../services/camp/gear/CampGearScanner.js";
@@ -1246,25 +1247,30 @@ export class RestPrepareContext {
         // Whether the Meal phase runs as a distinct step this rest (drives the stepper).
         // Matches the gate in #beginEvents: tracked food, Theater of the Mind, a long
         // rest, not a safe spot, and a terrain that actually imposes meal rules.
+        // Gritty Realism: short rest is 8 hours overnight, so meals and events run.
         const _mealStepTerrain = app._engine?.terrainTag ?? app._selectedTerrain ?? "forest";
         const _mealStepRules = TerrainRegistry.getDefaults(_mealStepTerrain)?.mealRules ?? {};
+        const _isGrittyShortCtx = (app._selectedRestType ?? "long") === "short"
+            && (app._restVariant ?? "normal") === "gritty";
+        const _isLongOrGrittyShort = (app._selectedRestType ?? "long") === "long" || _isGrittyShortCtx;
         const showMealStep = !!trackFoodSetting
             && app._isTotM
             && !safeRestSpot
-            && (app._selectedRestType ?? "long") !== "short"
+            && _isLongOrGrittyShort
             && ((_mealStepRules.waterPerDay > 0) || (_mealStepRules.foodPerDay > 0));
 
         // Stepper pips: only show phases that actually run this rest, so the dot
         // count and labels match the real flow. Travel is long-rest + professions
-        // only (mirrors the skip in #beginRest). Events are skipped on short rests
-        // and safe rest spots (mirrors _advanceToEvents).
+        // only (mirrors the skip in #beginRest). Events are skipped on standard
+        // short rests and safe rest spots (mirrors _advanceToEvents).
+        // Gritty short rests include events (overnight camp).
         const _stepRestType = app._selectedRestType ?? "long";
         let _enableProfessions = false;
         try { _enableProfessions = !!game.settings.get(MODULE_ID, "enableProfessions"); } catch (e) { /* */ }
         let _useTravel = true;
         try { _useTravel = !!game.settings.get(MODULE_ID, "useTravel"); } catch (e) { /* */ }
         const _includeTravelStep = _stepRestType === "long" && _enableProfessions && _useTravel;
-        const _includeEventsStep = _stepRestType !== "short" && !setupSafeHaven;
+        const _includeEventsStep = _isLongOrGrittyShort && !setupSafeHaven;
         const _phaseStepDefs = [
             { key: "setup", label: "Setup", include: true },
             { key: "travel", label: "Travel", include: _includeTravelStep },
@@ -1990,18 +1996,17 @@ export class RestPrepareContext {
                 const terrainTag = app._engine?.terrainTag ?? app._selectedTerrain ?? "forest";
                 const poolCount = countPoolEventsForTerrain(app._eventResolver, terrainTag);
                 const terrain = TerrainRegistry.get(terrainTag);
-                const eventsMode = app._eventsMode ?? "random";
-                const pickAvailable = poolCount > 0;
-                const effectiveMode = (eventsMode === "pick" && !pickAvailable) ? "random" : eventsMode;
+                const nightWatch = resolveNightWatchMode(app._eventsMode ?? "random", poolCount);
                 return {
                     eventPoolCount: poolCount,
                     showEventPoolNudge: encountersEnabled && app._shouldShowEventPoolNudge(terrainTag),
                     eventPoolTerrainLabel: terrain?.label ?? terrainTag,
-                    eventsMode: effectiveMode,
-                    eventsModePickAvailable: pickAvailable,
-                    eventsModeIsRandom: effectiveMode === "random",
-                    eventsModeIsImprovise: effectiveMode === "improvise",
-                    eventsModeIsPick: effectiveMode === "pick"
+                    eventsMode: nightWatch.effectiveMode,
+                    eventsModePickAvailable: nightWatch.eventsModePickAvailable,
+                    eventsModeRandomAvailable: nightWatch.eventsModeRandomAvailable,
+                    eventsModeIsRandom: nightWatch.eventsModeIsRandom,
+                    eventsModeIsImprovise: nightWatch.eventsModeIsImprovise,
+                    eventsModeIsPick: nightWatch.eventsModeIsPick
                 };
             })() : {
                 eventPoolCount: null,
@@ -2009,6 +2014,7 @@ export class RestPrepareContext {
                 eventPoolTerrainLabel: "",
                 eventsMode: "random",
                 eventsModePickAvailable: false,
+                eventsModeRandomAvailable: false,
                 eventsModeIsRandom: true,
                 eventsModeIsImprovise: false,
                 eventsModeIsPick: false

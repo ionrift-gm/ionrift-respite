@@ -44,19 +44,31 @@ export class CalendarHandler {
     }
 
     /**
-     * Advances in-game world time based on rest type (long = 8h, short = 1h).
+     * Advances in-game world time based on rest type and variant.
+     * Normal: long = 8h, short = 1h.
+     * Gritty: long = 7d (168h), short = 8h.
+     * Epic:   long = 1h, short = 1min (rounds to 0h, skipped).
      * @param {string} [restType="long"]
      * @returns {Promise<void>}
      */
     static async advanceRestTime(restType = "long") {
         if (!game.user?.isGM) return;
-        const hours = restType === "short" ? 1 : 8;
+        const variant = game.ionrift?.respite?.adapter?.getRestVariant?.() ?? "normal";
+        let minutes;
+        if (restType === "short") {
+            minutes = variant === "gritty" ? 480 : variant === "epic" ? 1 : 60;
+        } else {
+            minutes = variant === "gritty" ? 10_080 : variant === "epic" ? 60 : 480;
+        }
+        if (minutes <= 0) return;
         try {
             if (_isCalendariaActive() && typeof CALENDARIA.api.advanceTime === "function") {
-                await CALENDARIA.api.advanceTime({ hour: hours });
+                const hours = Math.floor(minutes / 60);
+                const mins = minutes % 60;
+                await CALENDARIA.api.advanceTime({ hour: hours, ...(mins > 0 ? { minute: mins } : {}) });
                 return;
             }
-            const seconds = hours * 3600;
+            const seconds = minutes * 60;
             if (typeof game.time?.advance === "function") {
                 await game.time.advance(seconds);
             }
