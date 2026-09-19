@@ -504,6 +504,8 @@
 .days-hint { display: block; margin-top: 0.3rem; font-size: 0.68rem; color: rgba(255, 255, 255, 0.35); font-style: italic; }
 .days-hint.warning { color: rgba(255, 180, 50, 0.7); font-style: normal; }
 .days-hint.warning i { margin-right: 0.2rem; }
+.days-hint.variant-badge { color: rgba(200, 140, 255, 0.7); font-style: normal; margin-bottom: 0.3rem; }
+.days-hint.variant-badge i { margin-right: 0.2rem; }
 
 .meal-days-info { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; color: rgba(255, 255, 255, 0.45); font-style: italic; }
 .meal-days-info i { margin-right: 0.2rem; }

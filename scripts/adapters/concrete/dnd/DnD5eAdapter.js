@@ -90,6 +90,11 @@ export class DnD5eAdapter extends SystemAdapter {
         return actor.system?.attributes?.exhaustion ?? 0;
     }
 
+    getRestVariant() {
+        try { return game.settings.get("dnd5e", "restVariant") ?? "normal"; }
+        catch { return "normal"; }
+    }
+
     hasSpellbook(actor) {
         const classEntries = actor.classes ?? {};
         const classNames = new Set(

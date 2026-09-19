@@ -68,6 +68,7 @@ export class RestSnapshotSync {
             campfireSnapshot: RestSetupApp._campfireSnapshotFromFireLevel(app._fireLevel),
             campStatus: app._campStatus ?? null,
             daysSinceLastRest: app._daysSinceLastRest ?? 1,
+            restVariant: app._restVariant ?? "normal",
             selectedTerrain: app._selectedTerrain ?? "forest",
             campRollRequest: app._pendingCampRolls?.some(p => p.requested) ? {
                 activities: app._pendingCampRolls.filter(p => p.requested).map(p => ({
@@ -629,6 +630,9 @@ export class RestSnapshotSync {
         }
         if (snapshot.daysSinceLastRest) {
             app._daysSinceLastRest = snapshot.daysSinceLastRest;
+        }
+        if (snapshot.restVariant) {
+            app._restVariant = snapshot.restVariant;
         }
         if (snapshot.selectedTerrain) {
             app._selectedTerrain = snapshot.selectedTerrain;

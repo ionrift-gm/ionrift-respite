@@ -245,6 +245,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     constructor(options = {}, restData = null) {
         super(options);
         this._isGM = game.user.isGM;
+        this._restVariant = game.ionrift?.respite?.adapter?.getRestVariant?.() ?? "normal";
+        this._daysSinceLastRest = this._restVariant === "gritty" ? 7 : 1;
         this._engine = null;
         this._activityResolver = new ActivityResolver();
         this._eventResolver = new EventResolver();
