@@ -194,6 +194,13 @@ export class SystemAdapter {
     getFireCantrips() { return []; }
 
     /**
+     * Returns the active rest variant for the game system.
+     * "normal" = standard rules, "gritty" = longer rests, "epic" = shorter rests.
+     * @returns {"normal"|"gritty"|"epic"}
+     */
+    getRestVariant() { return "normal"; }
+
+    /**
      * Status or condition slugs applied when the camp beds down for the night.
      * First entry is the primary overlay; remaining entries are secondary posture cues.
      * @returns {string[]}
