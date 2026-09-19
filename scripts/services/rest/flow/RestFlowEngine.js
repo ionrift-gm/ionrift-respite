@@ -97,7 +97,9 @@ export class RestFlowEngine {
      * @returns {Object[]} Array of triggered events.
      */
     async resolveEvents(eventResolver, scoutTier = "none") {
-        if (this.restType === "short" || this.safeRestSpot) {
+        const variant = game.ionrift?.respite?.adapter?.getRestVariant?.() ?? "normal";
+        const isGrittyShort = this.restType === "short" && variant === "gritty";
+        if ((this.restType === "short" && !isGrittyShort) || this.safeRestSpot) {
             this._phase = "resolve";
             return [];
         }
@@ -288,9 +290,10 @@ export class RestFlowEngine {
                 void actor.unsetFlag("ionrift-respite", "travelMishapRecovery");
             }
 
+            const isShortSafe = this.restType === "short";
             return {
-                hpRestored: baseHpRestored,
-                hdRestored: baseHdRecovered + gearBonusHd + bonusHdFromActivity,
+                hpRestored: isShortSafe ? 0 : baseHpRestored,
+                hdRestored: isShortSafe ? 0 : (baseHdRecovered + gearBonusHd + bonusHdFromActivity),
                 spellSlotsRestored: this.restType === "long",
                 comfortLevel: effectiveComfort,
                 campComfort: this.comfort,
@@ -300,7 +303,7 @@ export class RestFlowEngine {
                 exhaustionAdvantage,
                 armorSleepPenalty: false,
                 gearBonuses: { hd: gearBonusHd, exhaustionAdvantage },
-                gearDescriptors
+                gearDescriptors: isShortSafe ? [] : gearDescriptors
             };
         }
 
@@ -416,19 +419,22 @@ export class RestFlowEngine {
             void actor.unsetFlag("ionrift-respite", "travelMishapRecovery");
         }
 
+        // Short rests do not restore HP or HD naturally (players spend HD manually).
+        // The full camp flow only runs for short rests under Gritty Realism.
+        const isShort = this.restType === "short";
         return {
-            hpRestored: baseHpRestored,
-            hdRestored: baseHdRecovered + gearBonusHd + bonusHdFromActivity,
+            hpRestored: isShort ? 0 : baseHpRestored,
+            hdRestored: isShort ? 0 : (baseHdRecovered + gearBonusHd + bonusHdFromActivity),
             spellSlotsRestored: this.restType === "long",
             comfortLevel: effectiveComfort,
             campComfort: this.comfort,
             restType: this.restType,
             restedFully: activitySchema?.id === "act_rest_fully",
-            exhaustionDC,
-            exhaustionAdvantage,
-            armorSleepPenalty,
+            exhaustionDC: isShort ? null : exhaustionDC,
+            exhaustionAdvantage: isShort ? false : exhaustionAdvantage,
+            armorSleepPenalty: isShort ? false : armorSleepPenalty,
             gearBonuses: { hd: gearBonusHd, exhaustionAdvantage },
-            gearDescriptors
+            gearDescriptors: isShort ? [] : gearDescriptors
         };
     }
 

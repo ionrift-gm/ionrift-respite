@@ -72,9 +72,21 @@ export class RestFlowActions {
         const form = app.element.querySelector("form");
         const formData = Object.fromEntries(new FormData(form));
 
-        if ((formData.restType ?? "long") === "short") {
-            this._app._launchShortRestFromSetup();
-            return;
+        const restType = formData.restType ?? "long";
+        if (restType === "short") {
+            const variant = app._restVariant ?? "normal";
+            if (variant !== "gritty") {
+                this._app._launchShortRestFromSetup();
+                return;
+            }
+            // Gritty Realism: short rest is 8 hours overnight.
+            // Run the full camp flow but trigger native shortRest at resolution.
+        }
+
+        // Default days since last rest: gritty long = 7, everything else = 1.
+        const isGrittyLong = restType === "long" && (app._restVariant ?? "normal") === "gritty";
+        if (!app._daysSinceLastRestUserSet) {
+            app._daysSinceLastRest = isGrittyLong ? 7 : 1;
         }
 
         const terrainTag = formData.terrain ?? app._selectedTerrain ?? "forest";
@@ -346,7 +358,9 @@ export class RestFlowActions {
         }
         app._refreshLedgerApp();
 
-        if (app._engine.restType === "short") {
+        const isGrittyShort = app._engine.restType === "short"
+            && (app._restVariant ?? "normal") === "gritty";
+        if (app._engine.restType === "short" && !isGrittyShort) {
             app._triggeredEvents = [];
             app._eventsRolled = true;
             SoundDelegate.stopAll();

@@ -3090,7 +3090,7 @@
         <div class="art-nudge-banner event-pool-nudge-banner">
             <div class="art-nudge-content">
                 <div class="art-nudge-text">
-                    <span class="art-nudge-title">Event Pool: {{eventPoolTerrainLabel}} - {{eventPoolCount}} events curated</span>
+                    <span class="art-nudge-title">Event Pool: {{eventPoolTerrainLabel}}, {{eventPoolCount}} events curated</span>
                 </div>
             </div>
             <div class="art-nudge-actions">
@@ -3110,7 +3110,8 @@
                     role="tab" aria-selected="{{#if eventsModeIsRandom}}true{{else}}false{{/if}}"
                     data-action="setEventsMode" data-mode="random"
                     {{#if eventsCommitPending}}disabled{{/if}}
-                    data-tooltip="Roll a d20 against the encounter threshold. Meet or beat it for a quiet night. Rolls below pull a random event from the terrain pool. Natural 1 pulls from the disaster pool.">
+                    data-tooltip="{{#if eventsModeRandomAvailable}}Roll a d20 against the encounter threshold. Meet or beat it for a quiet night. Rolls below pull a random event from the curated terrain pool. Natural 1 pulls from the disaster pool.{{else}}No events in the curated pool for this terrain. Curate the pool first.{{/if}}"
+                    {{#unless eventsModeRandomAvailable}}disabled{{/unless}}>
                     <i class="fas fa-dice-d20 nw-mode-icon"></i>
                     <span class="nw-mode-label">Random</span>
                 </button>
@@ -3118,7 +3119,7 @@
                     role="tab" aria-selected="{{#if eventsModeIsImprovise}}true{{else}}false{{/if}}"
                     data-action="setEventsMode" data-mode="improvise"
                     {{#if eventsCommitPending}}disabled{{/if}}
-                    data-tooltip="Skip the dice and narrate your own night event on the spot.">
+                    data-tooltip="Roll a d20 against the encounter threshold. Meet or beat it for a quiet night. Rolls below mean you narrate your own scenario at the table.">
                     <i class="fas fa-hat-wizard nw-mode-icon"></i>
                     <span class="nw-mode-label">Improvise</span>
                 </button>

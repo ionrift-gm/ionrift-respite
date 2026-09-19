@@ -466,6 +466,19 @@
     border-color: rgba(140, 170, 255, 0.4);
     color: rgba(190, 200, 255, 0.95);
 }
+.ionrift-window.short-rest-app .sr-finished-toggle:focus,
+.ionrift-window.short-rest-app .sr-complete-btn:focus,
+.ionrift-window.short-rest-app .sr-abandon-btn:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+.ionrift-window.short-rest-app .sr-finished-toggle:focus-visible,
+.ionrift-window.short-rest-app .sr-complete-btn:focus-visible,
+.ionrift-window.short-rest-app .sr-abandon-btn:focus-visible {
+    outline: 2px solid rgba(139, 92, 246, 0.9) !important;
+    outline-offset: 2px !important;
+    box-shadow: none !important;
+}
 .sr-complete-btn { background: rgba(80, 200, 120, 0.12); border: 1px solid rgba(80, 200, 120, 0.3); color: rgba(80, 200, 120, 0.9); padding: 0.35rem 0.85rem; border-radius: 5px; cursor: pointer; font-size: 0.78rem; font-weight: 600; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 0.3rem; }
 .sr-complete-btn:hover { background: rgba(80, 200, 120, 0.2); border-color: rgba(80, 200, 120, 0.5); box-shadow: 0 0 10px rgba(80, 200, 120, 0.15); }
 .sr-abandon-btn { background: rgba(192, 57, 43, 0.1); border: 1px solid rgba(192, 57, 43, 0.25); color: rgba(192, 57, 43, 0.7); padding: 0.35rem 0.65rem; border-radius: 5px; cursor: pointer; font-size: 0.72rem; font-weight: 500; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 0.3rem; }
