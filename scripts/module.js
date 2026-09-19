@@ -191,8 +191,12 @@ function _maybeShowAmbientAfkPanelAtReady() {
     void showAfkPanel();
 }
 
-/** Guard active flow and Simple Calendar one-rest-per-day. @returns {boolean} */
-function _canStartRest() {
+/**
+ * Guard active flow and calendar one-rest-per-day.
+ * @param {"long"|"short"} [restType="long"] - Only long rests are limited to once per day.
+ * @returns {boolean}
+ */
+function _canStartRest(restType = "long") {
     if (respiteFlowActive) {
         ui.notifications.warn("A rest is already in progress.");
         return false;
@@ -208,8 +212,8 @@ function _canStartRest() {
         }
     } catch { /* settings not registered yet */ }
 
-    // Calendar: 1 long rest per in-game day
-    if (CalendarHandler.hasRestedToday()) {
+    // Calendar: 1 long rest per in-game day (short rests are unlimited per RAW)
+    if (restType === "long" && CalendarHandler.hasRestedToday()) {
         ui.notifications.warn("The party has already rested today. Advance the calendar to rest again.");
         return false;
     }
@@ -1063,7 +1067,7 @@ function _interceptPartyRest(actor, type) {
     if (!game.settings.get(MODULE_ID, "interceptRests")) return true;
 
     // Cancel the native group rest regardless; only launch when one can start.
-    if (_canStartRest()) {
+    if (_canStartRest(type)) {
         if (type === "long") new RestSetupApp().render({ force: true });
         else new ShortRestApp().render({ force: true });
     }

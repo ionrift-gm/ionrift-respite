@@ -1307,11 +1307,17 @@ export class RestPrepareContext {
                 const comfortBypassTooltip = isTavernSetup
                     ? "Comfort bypassed: tavern rest is fully safe with automatic recovery."
                     : "Comfort bypassed: safe rest spot negates comfort penalties, fire, and exhaustion saves.";
-                return [
+                const variant = app._restVariant ?? "normal";
+                const isGritty = variant === "gritty";
+                const badges = [
                     { on: comfortActive, icon: "fas fa-temperature-half", label: "Comfort", tooltip: setupSafeHaven ? comfortBypassTooltip : comfort ? "Comfort tiers, fire, and exhaustion saves are on. Change under Recovery Rules." : "Comfort off: no fire phase and no terrain exhaustion saves. Change under Recovery Rules." },
                     { on: professionsActive, icon: "fas fa-hammer", label: "Professions", tooltip: isTavernSetup ? "Professions not offered at a tavern; personal activities only." : professions ? "Crafting professions and the travel phase are on. Change under Travel & Activities." : "Professions off: the travel phase is skipped. Change under Travel & Activities." },
                     { on: mealsActive, icon: "fas fa-drumstick-bite", label: "Meals", tooltip: isTavernSetup ? "Meals provided by the establishment; no ration tracking at a tavern." : meals ? "Food and water tracking is on; the Meal phase runs." : "Meal tracking off: no rations or dehydration saves. Change in module settings." }
                 ];
+                if (isGritty) {
+                    badges.unshift({ on: true, icon: "fas fa-skull-crossbones", label: "Gritty", tooltip: "Gritty Realism variant detected from dnd5e system settings. Long rest covers 7 days; short rests take 8 hours." });
+                }
+                return badges;
             })()
             : [];
 
@@ -1364,6 +1370,9 @@ export class RestPrepareContext {
                 };
             })(),
             trackFood: trackFoodSetting,
+            restVariant: app._restVariant ?? "normal",
+            isGrittyRealism: (app._restVariant ?? "normal") === "gritty",
+            showDaysStepper: !!trackFoodSetting || (app._restVariant ?? "normal") === "gritty",
             setupAdvancedOpen: !!app._setupAdvancedOpen,
             gmCopySpellProposal: app._gmCopySpellProposal ?? null,
             copySpellRollPrompt: app._copySpellRollPrompt ?? null,
