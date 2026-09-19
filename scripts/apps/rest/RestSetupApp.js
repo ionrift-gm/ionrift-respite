@@ -246,6 +246,7 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         super(options);
         this._isGM = game.user.isGM;
         this._restVariant = game.ionrift?.respite?.adapter?.getRestVariant?.() ?? "normal";
+        // Setup screen defaults to Long Rest. Gritty long = 7 days.
         this._daysSinceLastRest = this._restVariant === "gritty" ? 7 : 1;
         this._engine = null;
         this._activityResolver = new ActivityResolver();
@@ -1024,6 +1025,7 @@ static #onSetupBack(event, target) {
 static #onAdjustDaysSinceRest(event, target) {
         const delta = parseInt(target.dataset.delta, 10) || 0;
         this._daysSinceLastRest = Math.max(1, Math.min(9, (this._daysSinceLastRest ?? 1) + delta));
+        this._daysSinceLastRestUserSet = true;
         // Day stepper lives inside Advanced; keep the drawer open across re-render.
         this._setupAdvancedOpen = true;
         this.render();

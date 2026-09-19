@@ -134,6 +134,7 @@ export function getEventPoolSelection() {
  * @returns {number}
  */
 export function countPoolEventsForTerrain(resolver, terrainTag) {
+    if (!resolver?.events) return 0;
     let count = 0;
     for (const event of resolver.events.values()) {
         if (event.terrainTags?.includes(terrainTag)) count++;
