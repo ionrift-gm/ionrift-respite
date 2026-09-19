@@ -247,8 +247,11 @@
                     </button>
                 </div>
                 {{/if}}
-                {{#if trackFood}}
+                {{#if showDaysStepper}}
                 <div class="days-since-rest-block">
+                    {{#if isGrittyRealism}}
+                    <span class="days-hint variant-badge"><i class="fas fa-skull-crossbones"></i> Gritty Realism: long rest takes 7 days. Short rests take 8 hours.</span>
+                    {{/if}}
                     <div class="days-since-rest-row">
                         <span class="days-label"><i class="fas fa-calendar-day"></i> Days Since Last Rest</span>
                         <div class="days-stepper">
@@ -257,7 +260,11 @@
                             <button type="button" class="days-btn" data-action="adjustDaysSinceRest" data-delta="1" {{#if (gte daysSinceLastRest 9)}}disabled{{/if}}>+</button>
                         </div>
                     </div>
+                    {{#if isGrittyRealism}}
+                    <span class="days-hint"><i class="fas fa-book"></i> A long rest requires 7 days of light activity. (DMG, Gritty Realism)</span>
+                    {{else}}
                     <span class="days-hint"><i class="fas fa-book"></i> Characters can only benefit from one long rest per 24 hours. (PHB p.186)</span>
+                    {{/if}}
                     {{#if (gte daysSinceLastRest 2)}}
                     <span class="days-hint warning"><i class="fas fa-exclamation-triangle"></i> {{daysSinceLastRest}} days without rest. Characters are treated as having gone without food and water for that duration.</span>
                     {{/if}}
