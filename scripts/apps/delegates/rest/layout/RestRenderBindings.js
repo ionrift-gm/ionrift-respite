@@ -91,7 +91,10 @@ export class RestRenderBindings {
             if (!app._isTotM && app._isGM) {
                 app._healOrphanCampfirePlacementState();
             }
-            if (app._usesStationsMinimalCampShell() && app._isGM && !hasCampfirePlaced()
+            if (app._showFullMakeCampPanel() && !app._campToActivityDone && !app._campPitCursorInFlight
+                && isStationLayerActive()) {
+                void app._refreshCampPitNoticeLayer();
+            } else if (app._usesStationsMinimalCampShell() && app._isGM && !hasCampfirePlaced()
                 && !app._campPitCursorInFlight && !app._campPitPlacementCancelled) {
                 void app._startCampPitCursorFlow();
             } else if (app._usesStationsMinimalCampShell() && hasCampfirePlaced() && !app._campToActivityDone && !isStationLayerActive()) {

@@ -1,6 +1,7 @@
 import { DecisionTreeResolver } from "../../../services/events/resolve/DecisionTreeResolver.js";
 import { TerrainRegistry } from "../../../services/events/resolve/TerrainRegistry.js";
-import { listPoolEventsForTerrain } from "../../../services/events/catalog/EventCatalogLoader.js";
+import { countPoolEventsForTerrain, listPoolEventsForTerrain } from "../../../services/events/catalog/EventCatalogLoader.js";
+import { resolveNightWatchMode } from "./nightWatchMode.js";
 import { pickPoolEvent } from "../../events/AdHocEventDialogs.js";
 import {
     emitPhaseChanged,
@@ -813,8 +814,19 @@ export class EventsPhaseDelegate {
     
     }
 
+    _currentTerrainPoolCount() {
+        const app = this._app;
+        const terrainTag = app._engine?.terrainTag ?? app._selectedTerrain ?? "forest";
+        return countPoolEventsForTerrain(app._eventResolver, terrainTag);
+    }
+
     async onRollEvents(event, target) {
         const app = this._app;
+
+        if (!app._forceEncounter && this._currentTerrainPoolCount() === 0) {
+            ui.notifications.warn("No events in the curated pool for this terrain. Curate the pool first.");
+            return;
+        }
 
         if (app._forceEncounter) {
             app._forceEncounter = false;
@@ -1054,6 +1066,7 @@ export class EventsPhaseDelegate {
         if (app._phase !== "events" || app._eventsRolled) return;
         const mode = target?.dataset?.mode;
         if (!["random", "improvise", "pick"].includes(mode)) return;
+        if ((mode === "random" || mode === "pick") && this._currentTerrainPoolCount() === 0) return;
         if (app._eventsMode === mode) return;
         app._eventsMode = mode;
         app.render();
@@ -1064,11 +1077,12 @@ export class EventsPhaseDelegate {
         const app = this._app;
 
         if (!game.user.isGM) return;
+        const { effectiveMode } = resolveNightWatchMode(app._eventsMode, this._currentTerrainPoolCount());
         // Pick-from-pool opens a dialog; do not lock the parent UI until an event is chosen.
-        const lockParentUi = app._eventsMode !== "pick";
+        const lockParentUi = effectiveMode !== "pick";
         if (lockParentUi && !this.beginEventsCommit()) return;
         try {
-            switch (app._eventsMode) {
+            switch (effectiveMode) {
                 case "improvise":
                     await this.onImproviseEvent(event, target);
                     break;

@@ -37,6 +37,7 @@ import {
     activateStationLayer,
     deactivateStationLayer
 } from "../../../services/camp/props/StationInteractionLayer.js";
+import { shouldShowCampPitNoticeLayer } from "../../../services/camp/props/CampPitNoticePolicy.js";
 import { getPartyActors } from "../../../services/party/partyActors.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 
@@ -78,12 +79,34 @@ export class CampPlacementDelegate {
     
     }
 
+    _suspendTokenCampUiForPitPicker() {
+        CampfireMakeCampDialog.closeIfOpen();
+        void closeOpenStationDialog();
+        deactivateStationLayer();
+    }
+
+    _shouldShowCampPitNoticeLayer() {
+        const app = this._app;
+        return shouldShowCampPitNoticeLayer({
+            phase: app._phase,
+            campToActivityDone: !!app._campToActivityDone,
+            isTotM: !!app._isTotM,
+            showFullMakeCampPanel: !!app._showFullMakeCampPanel?.(),
+            comfortEnabled: isComfortEnabled(),
+            campfirePlaced: hasCampfirePlaced(),
+            canvasReady: !!canvas?.ready
+        });
+    }
+
     _pickPitWorldPoint(options = {}) {
         const app = this._app;
 
         this._cancelCampPlacementCanvasMode();
+        this._suspendTokenCampUiForPitPicker();
+        app._campPitCursorInFlight = true;
         return new Promise((resolve) => {
             if (!canvas?.ready) {
+                app._campPitCursorInFlight = false;
                 resolve(null);
                 return;
             }
@@ -190,6 +213,7 @@ export class CampPlacementDelegate {
                 if (app._campPitPickerCancel === cleanup) {
                     app._campPitPickerCancel = null;
                 }
+                app._campPitCursorInFlight = false;
                 canvas.stage?.off("pointermove", onPointerMove);
                 canvas.stage?.off("pointerdown", onPointerDown);
                 document.removeEventListener("keydown", onKeyDown);
@@ -290,10 +314,11 @@ export class CampPlacementDelegate {
     async _refreshCampPitNoticeLayer() {
         const app = this._app;
 
-        if (app._phase !== "camp" || !canvas?.ready) return;
-        if (!hasCampfirePlaced()) return;
-        if (app._campToActivityDone) return;
-        if (!isComfortEnabled()) return;
+        if (app._phase !== "camp" || app._campToActivityDone) return;
+        if (!this._shouldShowCampPitNoticeLayer()) {
+            this._suspendTokenCampUiForPitPicker();
+            return;
+        }
         const fireCommitted = !!app._fireLitBy
             || (app._fireLevel ?? "unlit") !== "unlit"
             || !!app._coldCampDecided;
@@ -309,6 +334,7 @@ export class CampPlacementDelegate {
         activateStationLayer(
             actorMap,
             (stationId, token) => {
+                if (app._campPitCursorInFlight) return;
                 if (stationId === "campfire" && token) {
                     void CampfireMakeCampDialog.open(app, token);
                 }
@@ -567,6 +593,8 @@ export class CampPlacementDelegate {
         if (app._stationsComfortAutoAdvanceAfterFireLit() && (app._fireLevel ?? "unlit") !== "unlit") {
             return;
         }
+
+        this._suspendTokenCampUiForPitPicker();
 
         if (!hasCampfirePlaced()) {
             this._healOrphanCampfirePlacementState();
@@ -849,7 +877,9 @@ export class CampPlacementDelegate {
             ?? app._selectedRestType
             ?? app._restData?.restType
             ?? "long";
-        if (restType === "short") return { ok: false, error: "Short rest" };
+        const isGrittyShort = restType === "short"
+            && (app._restVariant ?? "normal") === "gritty";
+        if (restType === "short" && !isGrittyShort) return { ok: false, error: "Short rest" };
         if (!["embers", "campfire", "bonfire"].includes(level)) return { ok: false, error: "Invalid level" };
 
         const cur = app._fireLevel ?? "unlit";

@@ -300,6 +300,26 @@ Hooks.once("init", async () => {
 
 });
 
+// ── Custom terrain import listeners ───────────────────────────────────
+Hooks.on("ionrift.terrainImported", (data) => {
+    // Register a custom terrain stub so the Respite picker shows it.
+    // If the import included a respite section with full comfort/weather/events,
+    // a future pass can store and use that data. For now, the stub is correct
+    // behavior: the terrain appears in the picker with "(custom)" and a note
+    // that travel/forage are off until a terrain pack is installed.
+    if (data?.id) {
+        TerrainRegistry.syncCustomTerrains([data.id]);
+    }
+});
+
+Hooks.on("ionrift.terrainRemoved", (id) => {
+    // Remove the custom stub if it exists. The picker will stop showing it
+    // after the next render.
+    if (id && TerrainRegistry._customTerrains.has(id)) {
+        TerrainRegistry._customTerrains.delete(id);
+    }
+});
+
 Hooks.on("ionrift.overlayContentChanged", async (detail) => {
     if (detail?.moduleId !== MODULE_ID) return;
 
@@ -1068,8 +1088,13 @@ function _interceptPartyRest(actor, type) {
 
     // Cancel the native group rest regardless; only launch when one can start.
     if (_canStartRest(type)) {
-        if (type === "long") new RestSetupApp().render({ force: true });
-        else new ShortRestApp().render({ force: true });
+        const variant = game.ionrift?.respite?.adapter?.getRestVariant?.() ?? "normal";
+        if (type === "short" && variant !== "gritty") {
+            new ShortRestApp().render({ force: true });
+        } else {
+            // Long rests and gritty short rests go through the full setup wizard.
+            new RestSetupApp().render({ force: true });
+        }
     }
     return false;
 }

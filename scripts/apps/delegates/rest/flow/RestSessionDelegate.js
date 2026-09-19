@@ -610,8 +610,9 @@ export class RestSessionDelegate {
             game.settings.set(MODULE_ID, "lastTerrain", app._selectedTerrain);
             app._daysSinceLastRest = app._daysSinceLastRest ?? 1;
 
-            // Short rest: advance to shelter step (step 2) instead of bypassing entirely
-            if (app._selectedRestType === "short") {
+            // Short rest: advance to shelter step (step 2) instead of bypassing entirely.
+            // Gritty Realism: short rest is 8 hours overnight, run full setup.
+            if (app._selectedRestType === "short" && (app._restVariant ?? "normal") !== "gritty") {
                 if (!app._shelterOverrides) app._shelterOverrides = {};
                 app._setupStep = 2;
                 app.render();
@@ -867,7 +868,9 @@ export class RestSessionDelegate {
             ?? app._selectedRestType
             ?? app._restData?.restType
             ?? "long";
-        if (restType === "short") return null;
+        const isGrittyShort = restType === "short"
+            && (app._restVariant ?? "normal") === "gritty";
+        if (restType === "short" && !isGrittyShort) return null;
         const terrainTagCamp = app._selectedTerrain ?? app._engine?.terrainTag ?? "forest";
         const terrainCamp = TerrainRegistry.get(terrainTagCamp);
         const shelterKey = (app._engine?.activeShelters ?? []).find(s => s !== "tent" && s !== "none");
