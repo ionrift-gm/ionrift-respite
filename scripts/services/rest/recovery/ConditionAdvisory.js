@@ -410,7 +410,11 @@ export class ConditionAdvisory {
             );
             if (effects.length === 0) continue;
 
-            const ids = effects.map(e => e.id).filter(id => actor.effects.has(id));
+            const ids = effects.map(e => e.id).filter(id => (
+                typeof actor.effects?.has === "function"
+                    ? actor.effects.has(id)
+                    : actor.effects?.some?.(e => e.id === id)
+            ));
             if (ids.length === 0) continue;
             await actor.deleteEmbeddedDocuments("ActiveEffect", ids);
             removed += ids.length;

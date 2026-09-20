@@ -4,6 +4,7 @@ import { RecoveryConfigApp } from "../../../apps/rest/RecoveryConfigApp.js";
 import { isComfortEnabled } from "../../camp/gear/ComfortCalculator.js";
 import { PlayerRestrictionsApp } from "../../../apps/rest/PlayerRestrictionsApp.js";
 import { RecipeEditorApp } from "../../../apps/crafting/RecipeEditorApp.js";
+import { ItemProvisionsApp } from "../../../apps/meal/ItemProvisionsApp.js";
 import { applyCustomRecipesToLiveEngines } from "../../crafting/recipes/RecipeCatalog.js";
 import { migrateFletchingYieldTier } from "../../crafting/settings/FletchingSettings.js";
 import { migrateTrainingXpTier } from "../../crafting/settings/TrainingSettings.js";
@@ -45,6 +46,15 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         hint: "Meal tracking, house rules, and per-character diets.",
         icon: "fas fa-utensils",
         type: DietConfigApp,
+        restricted: true
+    });
+
+    game.settings.registerMenu(MODULE_ID, "itemProvisionsConfig", {
+        name: "Item Provisions",
+        label: "Configure Item Provisions",
+        hint: "Audit world overrides, configure item spoilage countdowns, dietary tags, and drinking water classifications.",
+        icon: "fas fa-carrot",
+        type: ItemProvisionsApp,
         restricted: true
     });
 
@@ -682,6 +692,23 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         restricted: true
     });
 
+    game.settings.register(MODULE_ID, "hideTerrainBanners", {
+        name: "Hide Terrain Banners",
+        hint: "Omit the 120px terrain artwork banner at the top of rest windows for a more compact view.",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: false,
+        restricted: true,
+        onChange: () => {
+            for (const app of Object.values(ui.windows ?? {})) {
+                if (app.id === "ionrift-respite-setup" || app.id === "short-rest-app" || app.constructor?.name === "RestSetupApp" || app.constructor?.name === "ShortRestApp") {
+                    app.render(false);
+                }
+            }
+        }
+    });
+
     game.settings.register(MODULE_ID, "afkPanelLayout", {
         name: "AFK panel layout",
         scope: "client",
@@ -938,6 +965,7 @@ export const SETTING_KEYS = [
  */
 export const MENU_KEYS = [
     "dietConfigMenu",
+    "itemProvisionsConfig",
     "clearRestState"
 ];
 

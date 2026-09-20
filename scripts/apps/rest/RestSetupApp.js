@@ -245,6 +245,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     constructor(options = {}, restData = null) {
         super(options);
         this._isGM = game.user.isGM;
+        if (this._isGM) {
+            registerActiveRestApp(this);
+        }
         this._restVariant = game.ionrift?.respite?.adapter?.getRestVariant?.() ?? "normal";
         // Setup screen defaults to Long Rest. Gritty long = 7 days.
         this._daysSinceLastRest = this._restVariant === "gritty" ? 7 : 1;

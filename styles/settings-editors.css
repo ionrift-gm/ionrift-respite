@@ -2390,3 +2390,586 @@
     box-shadow: none !important;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   ITEM PROVISIONS & SPOILAGE CONFIGURATOR
+   ═══════════════════════════════════════════════════════════ */
+
+.respite-item-btn i {
+    color: #fb923c !important;
+}
+
+.respite-item-provisions-app {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.8rem;
+    color: #e2e8f0;
+}
+
+.respite-item-dropzone {
+    border: 1.5px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.25);
+    text-align: center;
+    transition: all 0.18s ease;
+    cursor: pointer;
+}
+
+.respite-item-dropzone.drag-hover {
+    border-color: rgba(251, 146, 60, 0.9);
+    background: rgba(251, 146, 60, 0.12);
+    box-shadow: 0 0 12px rgba(251, 146, 60, 0.25);
+    transform: scale(1.01);
+}
+
+.respite-item-dropzone--hero {
+    padding: 2.2rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.respite-dropzone-icon i {
+    font-size: 2.2rem;
+    color: rgba(251, 146, 60, 0.7);
+    margin-bottom: 0.3rem;
+}
+
+.respite-dropzone-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #f8fafc;
+}
+
+.respite-dropzone-desc {
+    margin: 0;
+    font-size: 0.74rem;
+    color: rgba(255, 255, 255, 0.5);
+    max-width: 320px;
+    line-height: 1.4;
+}
+
+.respite-item-dropzone--compact {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.72rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    color: rgba(255, 255, 255, 0.45);
+    border-style: dotted;
+}
+
+.respite-item-dropzone--compact:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.respite-item-provisions-hero {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.45rem 0.6rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 6px;
+}
+
+.respite-item-provisions-img {
+    width: 38px;
+    height: 38px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    object-fit: cover;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.respite-item-provisions-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.respite-item-provisions-title {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #f8fafc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.respite-item-provisions-subtitle {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.respite-badge {
+    padding: 0.05rem 0.3rem;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    text-transform: capitalize;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.respite-location {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.respite-item-provisions-warning {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.55rem;
+    border-radius: 4px;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    font-size: 0.72rem;
+}
+
+.respite-item-provisions-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.respite-field-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.respite-field-row--card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    padding: 0.45rem 0.6rem;
+}
+
+.respite-field-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.respite-field-label {
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.respite-field-hint {
+    margin: 0;
+    font-size: 0.67rem;
+    color: rgba(255, 255, 255, 0.4);
+    line-height: 1.3;
+}
+
+.respite-shelf-stable-note {
+    color: rgba(52, 211, 153, 0.75);
+    margin-top: 0.2rem;
+}
+
+.respite-select,
+.respite-input {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: #f1f5f9;
+    padding: 0.25rem 0.45rem;
+    font-size: 0.78rem;
+}
+
+.respite-select:focus,
+.respite-input:focus {
+    border-color: rgba(251, 146, 60, 0.6);
+    outline: none;
+}
+
+.respite-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: #e2e8f0;
+    cursor: pointer;
+    user-select: none;
+}
+
+.respite-checkbox-label input[type="checkbox"] {
+    margin: 0;
+}
+
+.respite-checkbox-group {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 0.15rem;
+}
+
+.respite-provisions-spoilage-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-top: 0.3rem;
+}
+
+.respite-spoilage-input-group {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.respite-input--number {
+    width: 75px;
+}
+
+.respite-select--inline {
+    flex: 1;
+}
+
+.respite-provisions-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.respite-btn {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: all 0.15s ease;
+}
+
+.respite-btn--primary {
+    background: rgba(251, 146, 60, 0.2);
+    border: 1px solid rgba(251, 146, 60, 0.5);
+    color: #fed7aa;
+}
+
+.respite-btn--primary:hover:not(:disabled) {
+    background: rgba(251, 146, 60, 0.35);
+    color: #fff;
+}
+
+.respite-btn--ghost {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.respite-btn--ghost:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+}
+
+.respite-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PROVISIONS & SPOILAGE AUDITOR (CENTRALIZED OVERRIDES)
+   ═══════════════════════════════════════════════════════════ */
+
+.respite-provisions-tab-bar {
+    display: flex;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 0.35rem;
+}
+
+.respite-provisions-tab-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.55);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.15s ease;
+}
+
+.respite-provisions-tab-btn:hover {
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.respite-provisions-tab-btn.active {
+    color: #fb923c;
+    background: rgba(251, 146, 60, 0.12);
+    border-color: rgba(251, 146, 60, 0.35);
+}
+
+.respite-provisions-tab-badge {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.65rem;
+    padding: 0.05rem 0.35rem;
+    border-radius: 10px;
+}
+
+.respite-provisions-tab-btn.active .respite-provisions-tab-badge {
+    background: rgba(251, 146, 60, 0.25);
+    color: #fed7aa;
+}
+
+.respite-auditor-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.respite-auditor-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.respite-auditor-search-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.respite-auditor-search-input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.78rem;
+    color: #f1f5f9;
+}
+
+.respite-auditor-search-input:focus {
+    border-color: rgba(251, 146, 60, 0.6);
+    outline: none;
+}
+
+.respite-auditor-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    align-items: center;
+}
+
+.respite-filter-pill {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    transition: all 0.12s ease;
+}
+
+.respite-filter-pill:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+.respite-filter-pill.active {
+    background: rgba(251, 146, 60, 0.2);
+    border-color: rgba(251, 146, 60, 0.45);
+    color: #fed7aa;
+}
+
+.respite-auditor-meta-bar {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.45);
+    padding: 0 0.15rem;
+}
+
+.respite-auditor-table-wrap {
+    max-height: 380px;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.respite-auditor-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.74rem;
+}
+
+.respite-auditor-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: rgba(20, 20, 25, 0.95);
+    backdrop-filter: blur(8px);
+    text-align: left;
+    padding: 0.35rem 0.5rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.respite-auditor-table td {
+    padding: 0.35rem 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    vertical-align: middle;
+}
+
+.respite-auditor-row:hover td {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.respite-auditor-item-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 140px;
+}
+
+.respite-auditor-item-img {
+    width: 24px;
+    height: 24px;
+    border-radius: 3px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.respite-auditor-item-name {
+    font-weight: 600;
+    color: #f1f5f9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 130px;
+}
+
+.respite-auditor-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.67rem;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.respite-auditor-badge--food {
+    background: rgba(234, 88, 12, 0.15);
+    color: #fdba74;
+}
+
+.respite-auditor-badge--water {
+    background: rgba(14, 165, 233, 0.15);
+    color: #7dd3fc;
+}
+
+.respite-auditor-badge--ingredient {
+    background: rgba(168, 85, 247, 0.15);
+    color: #d8b4fe;
+}
+
+.respite-auditor-badge--fuel {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fde68a;
+}
+
+.respite-auditor-badge--none {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+}
+
+.respite-auditor-badge--shelf {
+    background: rgba(52, 211, 153, 0.15);
+    color: #6ee7b7;
+}
+
+.respite-auditor-actions {
+    display: flex;
+    gap: 0.35rem;
+    justify-content: flex-end;
+}
+
+.respite-action-icon-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    padding: 0.2rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    transition: all 0.12s ease;
+}
+
+.respite-action-icon-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.respite-action-icon-btn--edit:hover {
+    color: #fb923c;
+    background: rgba(251, 146, 60, 0.15);
+}
+
+.respite-action-icon-btn--danger:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.15);
+}
+
+.respite-auditor-empty {
+    text-align: center;
+    padding: 2.5rem 1.5rem;
+    color: rgba(255, 255, 255, 0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.respite-auditor-empty i {
+    font-size: 2rem;
+    opacity: 0.35;
+    margin-bottom: 0.2rem;
+}
+
+.respite-auditor-empty h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #f1f5f9;
+}
+
+.respite-auditor-empty p {
+    margin: 0;
+    font-size: 0.74rem;
+    max-width: 320px;
+    line-height: 1.4;
+}
+
+

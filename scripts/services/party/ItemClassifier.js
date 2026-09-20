@@ -1,6 +1,7 @@
 /** Classifies Respite food, water, fuel, and ingredient items. */
 
 import { stripSpoilageCohortSuffix } from "../meal/spoilage/spoilageName.js";
+import { CONTAINER_ITEM_TYPES } from "../meal/inventory/MealConstants.js";
 import { MODULE_ID } from "../../data/moduleId.js";
 
 /** Built-in food item names (lowercase). */
@@ -29,6 +30,14 @@ const ESSENCE_NAMES = new Set([
     "oil flask", "lamp oil", "arcane crystal", "soul fragment",
     "ether shard", "residuum"
 ]);
+
+/**
+ * Item types eligible for provisions classification, spoilage, and diet rules.
+ * Restricts food/water/spoilage to physical consumable items and materials (loot/treasure).
+ * Explicitly excludes equipment, tools, weapons, containers, features, spells, classes, etc.
+ * @type {Readonly<Set<string>>}
+ */
+export const PROVISION_ITEM_TYPES = Object.freeze(new Set(["consumable", "loot", "treasure"]));
 
 /**
  * Valid resourceType values.
@@ -209,6 +218,19 @@ export class ItemClassifier {
     }
 
     /**
+     * Check if an item is a physical provision document type (consumable, loot, treasure).
+     * Excludes equipment, tools, weapons, containers, features, classes, spells, etc.
+     * @param {Item|object} item
+     * @returns {boolean}
+     */
+    static isProvisionEligible(item) {
+        if (!item) return false;
+        // In unit test mocks where item.type might be omitted, allow untyped objects
+        if (!item.type) return true;
+        return PROVISION_ITEM_TYPES.has(item.type);
+    }
+
+    /**
      * Classify an item's resource type.
      *
      * @param {Item} item - Foundry Item document
@@ -217,6 +239,15 @@ export class ItemClassifier {
      */
     static classify(item) {
         if (!item) return null;
+        if (!this.isProvisionEligible(item)) {
+            // Container items can only ever be water containers (e.g. Waterskin as container), never food or fuel
+            if (CONTAINER_ITEM_TYPES.has(item.type)) {
+                if (item.flags?.[MODULE_ID]?.resourceType === "water" || this._matchesWaterByName(item)) {
+                    return "water";
+                }
+            }
+            return null;
+        }
 
         // 1. Explicit flag (highest priority)
         const explicit = item.flags?.[MODULE_ID]?.resourceType;
@@ -286,7 +317,7 @@ export class ItemClassifier {
      * @returns {"meat"|"plant"|"prepared"|null}
      */
     static getFoodTag(item) {
-        if (!item) return null;
+        if (!item || !this.isProvisionEligible(item)) return null;
 
         const explicit = item.flags?.[MODULE_ID]?.foodTag;
         if (explicit && FOOD_TAGS.has(explicit)) return explicit;
@@ -314,7 +345,7 @@ export class ItemClassifier {
      * @returns {number|null} Days until spoilage, or null if shelf-stable
      */
     static getSpoilsAfter(item) {
-        if (!item) return null;
+        if (!item || !this.isProvisionEligible(item)) return null;
 
         const flags = item.flags?.[MODULE_ID] ?? {};
         if (flags.spoilsAfterHours) return null;
@@ -336,7 +367,7 @@ export class ItemClassifier {
      * @returns {number|null}
      */
     static getSpoilsAfterHours(item) {
-        if (!item) return null;
+        if (!item || !this.isProvisionEligible(item)) return null;
         const hours = item.flags?.[MODULE_ID]?.spoilsAfterHours;
         if (hours === null || hours === undefined) return null;
         const n = Number(hours);
@@ -352,7 +383,7 @@ export class ItemClassifier {
      * @returns {boolean}
      */
     static isFood(item, actor = null) {
-        if (!item) return false;
+        if (!item || !this.isProvisionEligible(item)) return false;
         if (this.isSpoiled(item)) return false;
 
         if (actor && !this.participatesInSustenance(actor)) return false;
@@ -425,6 +456,7 @@ export class ItemClassifier {
      */
     static isWater(item, actor = null) {
         if (!item) return false;
+        if (!this.isProvisionEligible(item) && !CONTAINER_ITEM_TYPES.has(item.type)) return false;
         if (this.isSpoiled(item)) return false;
 
         if (actor && !this.participatesInSustenance(actor)) return false;

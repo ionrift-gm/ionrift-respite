@@ -520,7 +520,7 @@ export class RestResolveDelegate {
         // Write training XP onto the sheet. Runs GM-side where this resolution
         // path executes, so the GM has permission to update every actor.
         try {
-            await RestSetupApp._applyTrainingXP(app._outcomes);
+            await app._session?._applyTrainingXP(app._outcomes);
         } catch (e) {
 
             console.warn(`${MODULE_ID} | Training XP application failed:`, e);

@@ -171,3 +171,9 @@
     background: linear-gradient(transparent, rgba(13, 17, 23, 1));
     pointer-events: none;
 }
+
+/* When the hideTerrainBanners setting is enabled, ensure banners take no space */
+.hide-terrain-banners .phase-banner,
+.hide-terrain-banners .sr-banner {
+    display: none !important;
+}
