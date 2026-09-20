@@ -1658,6 +1658,9 @@ export class RestPrepareContext {
             })(),
             terrainBannerFallback: ImageResolver.fallbackBanner,
             terrainBannerPos: "center", // banners are pre-cropped 640x120 strips
+            hideTerrainBanner: (() => {
+                try { return !!game.settings.get(MODULE_ID, "hideTerrainBanners"); } catch { return false; }
+            })(),
             selectedTerrainLabel: app._terrainLabel ?? "Forest",
             selectedRestType: app._selectedRestType ?? "long",
             selectedRestTypeLabel: app._selectedRestType === "short" ? "Short Rest" : "Long Rest",

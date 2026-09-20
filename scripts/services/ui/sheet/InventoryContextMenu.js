@@ -15,6 +15,7 @@
  */
 
 import { ItemClassifier } from "../../party/ItemClassifier.js";
+import { ItemProvisionsApp } from "../../../apps/meal/ItemProvisionsApp.js";
 import { MealPhaseHandler } from "../../meal/phase/MealPhaseHandler.js";
 import { SPOILED_FOOD_BLOCKED_MESSAGE } from "../../meal/inventory/MealConstants.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
@@ -25,6 +26,15 @@ import { MODULE_ID } from "../../../data/moduleId.js";
  */
 export function registerInventoryContextMenu() {
     Hooks.on("dnd5e.getItemContextOptions", (item, menuItems) => {
+        if (game?.user?.isGM && ItemClassifier.isProvisionEligible(item)) {
+            menuItems.push({
+                name: "Respite Provisions...",
+                icon: `<i class="fas fa-carrot respite-context-icon"></i>`,
+                group: "system",
+                callback: () => ItemProvisionsApp.openForItem(item)
+            });
+        }
+
         const actor = item.parent;
         if (!actor || actor.type !== "character") return;
 

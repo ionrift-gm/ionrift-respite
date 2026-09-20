@@ -554,7 +554,9 @@
     border-radius: 4px;
     color: rgba(255, 255, 255, 0.4);
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    outline: none !important;
+    box-shadow: none !important;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .travel-day-tab:hover {
@@ -564,8 +566,10 @@
 
 .travel-day-tab.active {
     background: rgba(155, 89, 182, 0.15);
-    border-color: rgba(155, 89, 182, 0.3);
+    border-color: rgba(155, 89, 182, 0.4);
     color: rgba(255, 255, 255, 0.85);
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 .travel-day-tab.resolved {
@@ -574,9 +578,16 @@
 
 .travel-day-tab.resolved.active {
     color: rgba(100, 200, 100, 0.8);
+    outline: none !important;
+    box-shadow: none !important;
 }
 
-.ionrift-window.ionrift-respite-app .travel-day-tab:focus {
+.travel-day-tab:focus,
+.travel-day-tab:active,
+.travel-day-tab.active,
+.ionrift-window.ionrift-respite-app .travel-day-tab:focus,
+.ionrift-window.ionrift-respite-app .travel-day-tab:active,
+.ionrift-window.ionrift-respite-app .travel-day-tab.active {
     outline: none !important;
     box-shadow: none !important;
 }
