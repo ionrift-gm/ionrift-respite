@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-## [3.6.0] - 2026-09-20
+## [3.6.1] - 2026-09-20
 
 ### Added
 - World Provisions & Spoilage Auditor: Centralized list to inspect and audit item as food/ingredients and their overrides across the campaign world.
