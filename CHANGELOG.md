@@ -9,7 +9,6 @@
 - Gritty Realism rest variant support: Long rests automatically scale to 7 days and short rests take 8 hours when the variant rule is active.
 - added Item sheet action to open spoilage config directly from items ui.
 - Compact rest banner setting to reduce header height during rest phases.
-- Custom rest banner illustration for tavern and inn resting locations.
 
 ### Fixed
 - Moving or placing the campfire pit on the scene canvas no longer errors out to involve token station overlays.

@@ -1,0 +1,94 @@
+name: Patch Discord Release Note
+
+on:
+  workflow_dispatch:
+    inputs:
+      message_id:
+        description: 'Discord Message ID to patch'
+        required: true
+        default: '1551230926623604920'
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch Discord Message
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          MESSAGE_ID: ${{ github.event.inputs.message_id }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+
+            // Extract version from first versioned ## heading (skip [Unreleased])
+            const versionMatch = changelog.match(/^## \[(?!Unreleased\])([^\]]+)\]/m);
+            const version = versionMatch ? versionMatch[1] : '3.6.0';
+
+            // Extract body between the matched heading and the next ## heading
+            const lines = changelog.split('\n');
+            let body = [];
+            let found = false;
+            const versionHeader = `## [${version}]`;
+            for (const line of lines) {
+              if (line.startsWith('## ')) {
+                if (found) break;
+                if (line.startsWith(versionHeader)) { found = true; }
+                continue;
+              }
+              if (found) {
+                // Convert ### sub-headers to bold
+                if (line.startsWith('### ')) {
+                  body.push('', `**${line.slice(4)}**`);
+                } else {
+                  body.push(line);
+                }
+              }
+            }
+            let desc = body.join('\n').trim();
+            if (desc.length > 3900) {
+              desc = desc.slice(0, 3900) + '\n\n_...see full notes on GitHub_';
+            }
+
+            const repo = process.env.GITHUB_REPOSITORY;
+            const payload = {
+              embeds: [{
+                title: `🔥 Ionrift Respite v${version}`,
+                description: desc,
+                color: 0xC9952A,
+                url: `https://github.com/${repo}/releases/tag/v${version}`
+              }]
+            };
+
+            const webhook = process.env.DISCORD_WEBHOOK;
+            if (!webhook) {
+              core.setFailed('DISCORD_WEBHOOK_URL secret is not set');
+              return;
+            }
+
+            const messageId = process.env.MESSAGE_ID;
+            const cleanWebhook = webhook.replace(/\/+$/, '');
+            const patchUrl = `${cleanWebhook}/messages/${messageId}`;
+
+            console.log(`Patching Discord message at: ${patchUrl.replace(/\/[^/]+$/, '/...')}`);
+            console.log(`Payload description:\n${desc}`);
+
+            const resp = await fetch(patchUrl, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+            const text = await resp.text();
+            console.log(`Discord response status: ${resp.status}`);
+            console.log(`Discord response body: ${text}`);
+
+            if (!resp.ok) {
+              core.setFailed(`Discord patch failed (${resp.status}): ${text}`);
+            } else {
+              console.log('Discord message patched successfully!');
+            }
