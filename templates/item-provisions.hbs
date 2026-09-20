@@ -1,0 +1,225 @@
+<div class="respite-item-provisions-app">
+
+    <nav class="respite-provisions-tab-bar">
+        <button type="button" class="respite-provisions-tab-btn {{#if (eq activeTab "editor")}}active{{/if}}" data-action="switchTab" data-tab="editor">
+            <i class="fas fa-carrot"></i> Configure Item
+        </button>
+        <button type="button" class="respite-provisions-tab-btn {{#if (eq activeTab "auditor")}}active{{/if}}" data-action="switchTab" data-tab="auditor">
+            <i class="fas fa-table-list"></i> World Overrides <span class="respite-provisions-tab-badge">{{auditorCount}}</span>
+        </button>
+    </nav>
+
+    {{#if (eq activeTab "editor")}}
+
+        {{#if hasItem}}
+        <div class="respite-item-dropzone respite-item-dropzone--compact" data-tooltip="Drop another item to switch">
+            <i class="fas fa-arrows-rotate"></i>
+            <span>Drop another item to switch</span>
+        </div>
+
+        <div class="respite-item-provisions-hero">
+            <img class="respite-item-provisions-img" src="{{itemImg}}" alt="{{itemName}}" />
+            <div class="respite-item-provisions-meta">
+                <h3 class="respite-item-provisions-title">{{itemName}}</h3>
+                <div class="respite-item-provisions-subtitle">
+                    <span class="respite-badge">{{itemType}}</span>
+                    <span class="respite-location">{{sourceLocation}}</span>
+                </div>
+            </div>
+        </div>
+
+        {{#if isLocked}}
+        <div class="respite-item-provisions-warning">
+            <i class="fas fa-lock"></i>
+            <span>This item is inside a locked Compendium. Unlock the compendium pack to save changes.</span>
+        </div>
+        {{/if}}
+
+        <div class="respite-item-provisions-fields">
+
+            <div class="respite-field-row">
+                <label class="respite-field-label">Sustenance Type</label>
+                <select name="resourceType" class="respite-select">
+                    {{#each resourceTypeOptions}}
+                    <option value="{{value}}" {{#if (eq value ../resourceType)}}selected{{/if}}>{{label}}</option>
+                    {{/each}}
+                </select>
+                <p class="respite-field-hint">Auto-detect uses item type and name. Inedible forces Respite to completely ignore this item.</p>
+            </div>
+
+            <div class="respite-field-row">
+                <label class="respite-field-label">Dietary Category</label>
+                <select name="foodTag" class="respite-select">
+                    {{#each foodTagOptions}}
+                    <option value="{{value}}" {{#if (eq value ../foodTag)}}selected{{/if}}>{{label}}</option>
+                    {{/each}}
+                </select>
+                <p class="respite-field-hint">Defines dietary compatibility. Prepared meals and rations are accepted by all character diets.</p>
+            </div>
+
+            <div class="respite-field-row">
+                <label class="respite-field-label">Liquid / Drink Type</label>
+                <select name="drinkType" class="respite-select">
+                    {{#each drinkTypeOptions}}
+                    <option value="{{value}}" {{#if (eq value ../drinkType)}}selected{{/if}}>{{label}}</option>
+                    {{/each}}
+                </select>
+                <p class="respite-field-hint">Used for drinking liquids, distinguishing water from ferments and oils.</p>
+            </div>
+
+            <div class="respite-field-row respite-field-row--card">
+                <div class="respite-field-header">
+                    <label class="respite-field-label">Spoilage Window</label>
+                    <label class="respite-checkbox-label">
+                        <input type="checkbox" name="isPerishable" data-action="togglePerishable" {{#if isPerishable}}checked{{/if}} />
+                        <span>Perishable</span>
+                    </label>
+                </div>
+
+                <div class="respite-provisions-spoilage-fields" style="{{#unless isPerishable}}display: none;{{/unless}}">
+                    <div class="respite-spoilage-input-group">
+                        <input type="number" name="spoilsValue" class="respite-input respite-input--number" value="{{spoilsValue}}" min="1" step="1" />
+                        <select name="spoilageUnit" class="respite-select respite-select--inline">
+                            <option value="days" {{#if (eq spoilageUnit "days")}}selected{{/if}}>Rests / Days</option>
+                            <option value="hours" {{#if (eq spoilageUnit "hours")}}selected{{/if}}>Hours</option>
+                        </select>
+                    </div>
+                    <p class="respite-field-hint">Items expire and turn to spoiled food after this duration passes.</p>
+                </div>
+                {{#unless isPerishable}}
+                <p class="respite-field-hint respite-shelf-stable-note">Shelf-stable: item will not spoil over time.</p>
+                {{/unless}}
+            </div>
+
+            <div class="respite-field-row respite-field-row--card">
+                <label class="respite-field-label">Sustenance Fulfillment</label>
+                <div class="respite-checkbox-group">
+                    <label class="respite-checkbox-label">
+                        <input type="checkbox" name="satiatesFood" {{#if satiatesFood}}checked{{/if}} />
+                        <span><i class="fas fa-utensils"></i> Satisfies Hunger</span>
+                    </label>
+                    <label class="respite-checkbox-label">
+                        <input type="checkbox" name="satiatesWater" {{#if satiatesWater}}checked{{/if}} />
+                        <span><i class="fas fa-tint"></i> Quenches Thirst</span>
+                    </label>
+                </div>
+                <p class="respite-field-hint">Selecting both enables dual credit (e.g. stews, broths, melons).</p>
+            </div>
+        </div>
+
+        <footer class="respite-provisions-footer">
+            <button type="button" class="respite-btn respite-btn--ghost" data-action="clearProvisions" {{#if isLocked}}disabled{{/if}}>
+                <i class="fas fa-trash-can"></i> Clear Respite Properties
+            </button>
+            <button type="button" class="respite-btn respite-btn--primary" data-action="saveProvisions" {{#if isLocked}}disabled{{/if}}>
+                <i class="fas fa-check"></i> Save Properties
+            </button>
+        </footer>
+
+        {{else}}
+        <div class="respite-item-dropzone respite-item-dropzone--hero">
+            <div class="respite-dropzone-icon">
+                <i class="fas fa-carrot"></i>
+            </div>
+            <h3 class="respite-dropzone-title">Drop an Item Here</h3>
+            <p class="respite-dropzone-desc">
+                Drag a consumable or loot item from a character sheet, the item directory, or a compendium pack to configure its sustenance, spoilage, and diet properties.
+            </p>
+            {{#if auditorCount}}
+            <button type="button" class="respite-btn respite-btn--ghost" data-action="switchTab" data-tab="auditor" style="margin-top: 0.5rem;">
+                <i class="fas fa-table-list"></i> View All Overrides ({{auditorCount}})
+            </button>
+            {{/if}}
+        </div>
+        {{/if}}
+
+    {{else}}
+
+        <div class="respite-auditor-container">
+            <div class="respite-auditor-toolbar">
+                <div class="respite-auditor-search-row">
+                    <input type="search" class="respite-auditor-search-input" placeholder="Search by item name or owner..." />
+                    <button type="button" class="respite-btn respite-btn--ghost" data-action="auditorRefresh" title="Refresh Audit List">
+                        <i class="fas fa-arrows-rotate"></i>
+                    </button>
+                </div>
+
+                <div class="respite-auditor-filters">
+                    <button type="button" class="respite-filter-pill active" data-action="auditorFilter" data-category="all">All ({{auditorCount}})</button>
+                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="food">Food</button>
+                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="water">Water</button>
+                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="ingredient">Ingredients</button>
+                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="fuel">Fuel</button>
+                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="shelf">Shelf-Stable</button>
+                </div>
+
+                <div class="respite-auditor-meta-bar">
+                    <span>Showing <strong class="respite-auditor-visible-count">{{auditorCount}}</strong> overrides across the world</span>
+                </div>
+            </div>
+
+            {{#if auditorItems.length}}
+            <div class="respite-auditor-table-wrap">
+                <table class="respite-auditor-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Location / Owner</th>
+                            <th>Sustenance</th>
+                            <th>Diet / Drink</th>
+                            <th>Spoilage</th>
+                            <th style="text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each auditorItems}}
+                        <tr class="respite-auditor-row" data-name="{{this.name}}" data-location="{{this.location}}" data-type="{{this.rawType}}" data-shelf="{{#if this.isShelfStable}}true{{else}}false{{/if}}">
+                            <td>
+                                <div class="respite-auditor-item-cell">
+                                    <img class="respite-auditor-item-img" src="{{this.img}}" alt="{{this.name}}" />
+                                    <span class="respite-auditor-item-name" title="{{this.name}}">{{this.name}}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="respite-location" title="{{this.location}}">{{this.location}}</span>
+                            </td>
+                            <td>
+                                <span class="respite-auditor-badge respite-auditor-badge--{{this.rawType}}">
+                                    <i class="fas {{this.typeIcon}}"></i> {{this.typeLabel}}
+                                </span>
+                            </td>
+                            <td>
+                                <span>{{this.detailLabel}}</span>
+                            </td>
+                            <td>
+                                <span class="respite-auditor-badge {{#if this.isShelfStable}}respite-auditor-badge--shelf{{/if}}">
+                                    {{this.spoilageLabel}}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="respite-auditor-actions">
+                                    <button type="button" class="respite-action-icon-btn respite-action-icon-btn--edit" data-action="auditorEdit" data-uuid="{{this.uuid}}" title="Edit Properties">
+                                        <i class="fas fa-pen-to-square"></i>
+                                    </button>
+                                    <button type="button" class="respite-action-icon-btn respite-action-icon-btn--danger" data-action="auditorClear" data-uuid="{{this.uuid}}" data-name="{{this.name}}" title="Clear Overrides">
+                                        <i class="fas fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+            </div>
+            {{else}}
+            <div class="respite-auditor-empty">
+                <i class="fas fa-clipboard-check"></i>
+                <h4>No Custom Overrides in World</h4>
+                <p>No items currently carry custom Respite provisions or spoilage flags. Drag an item into the Configure Item tab to create an override.</p>
+            </div>
+            {{/if}}
+        </div>
+
+    {{/if}}
+
+</div>

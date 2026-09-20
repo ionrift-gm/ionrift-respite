@@ -106,9 +106,11 @@
 
     {{!-- =============== SETUP PHASE =============== --}}
     {{#if (eq phase 'setup')}}
+    {{#unless hideTerrainBanner}}
     <div class="phase-banner">
         <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
+    {{/unless}}
 
     {{#if isGM}}
     {{#if emptyParty}}
@@ -308,9 +310,11 @@
 
     {{!-- =============== TRAVEL RESOLUTION PHASE =============== --}}
     {{#if (eq phase 'travel')}}
+    {{#unless hideTerrainBanner}}
     <div class="phase-banner">
         <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
+    {{/unless}}
     {{> rosterStrip}}
 
     {{#if travelContext}}
@@ -818,9 +822,11 @@
     {{!-- TotM or stations + comfort: unified Make Camp panel --}}
     {{#if showFullMakeCampPanel}}
     <div class="camp-phase-shell">
+    {{#unless hideTerrainBanner}}
     <div class="phase-banner">
         <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
+    {{/unless}}
     {{> rosterStrip}}
     <div class="respite-make-camp">
     <div class="totm-camp-layout make-camp-unified">
@@ -1212,9 +1218,11 @@
 
     {{!-- =============== ACTIVITY PHASE =============== --}}
     {{#if (eq phase 'activity')}}
+    {{#unless hideTerrainBanner}}
     <div class="phase-banner">
         <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
+    {{/unless}}
     {{> rosterStrip}}
 
     {{#unless isTheaterMode}}
@@ -1878,9 +1886,11 @@
 
     {{!-- =============== MEAL PHASE =============== --}}
     {{#if (eq phase 'meal')}}
+    {{#unless hideTerrainBanner}}
     <div class="phase-banner">
         <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
+    {{/unless}}
     {{> rosterStrip}}
     <div class="activity-phase-layout">
     <div class="respite-meal-phase">
@@ -2262,9 +2272,11 @@
 
     {{!-- =============== EVENTS PHASE =============== --}}
     {{#if (eq phase 'events')}}
+    {{#unless hideTerrainBanner}}
     <div class="phase-banner">
         <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
+    {{/unless}}
     {{> rosterStrip}}
     <div class="events-phase-body{{#if (and eventsCommitPending (not eventsRolled))}} is-commit-pending{{/if}}">
         {{#if (and eventsCommitPending (not eventsRolled))}}
@@ -3397,9 +3409,11 @@
 
     {{!-- =============== RESOLUTION PHASE =============== --}}
     {{#if (eq phase 'resolve')}}
+    {{#unless hideTerrainBanner}}
     <div class="phase-banner">
         <img src="{{terrainBanner}}" alt="" style="object-position: {{terrainBannerPos}}" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
     </div>
+    {{/unless}}
     {{> rosterStrip}}
 
     {{#*inline "resolutionSub"}}

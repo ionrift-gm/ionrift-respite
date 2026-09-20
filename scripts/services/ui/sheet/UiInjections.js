@@ -1,10 +1,13 @@
 import { SpoilageClock } from "../../meal/spoilage/SpoilageClock.js";
 import { DietConfigApp } from "../../../apps/meal/DietConfigApp.js";
+import { ItemProvisionsApp } from "../../../apps/meal/ItemProvisionsApp.js";
 import { injectPlayerLockdownClasses } from "./PlayerLockdownService.js";
 import {
     mountDietButtonInHeader,
+    mountHeaderButtonInHeader,
     resolveDietButtonClassName
 } from "./SheetInjectionUtils.js";
+import { ItemClassifier } from "../../party/ItemClassifier.js";
 import { syncCohortSuffixesOnSheetRender } from "../../meal/spoilage/SpoilageCohortSync.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 
@@ -48,6 +51,47 @@ export function injectDietButton(app, html) {
 
     btn.className = resolveDietButtonClassName(app);
     mountDietButtonInHeader(header, btn);
+}
+
+/**
+ * Injects a small "Provisions" icon button into Item sheet headers so GMs can
+ * open ItemProvisionsApp for that item with one click.
+ * @param {Application} app - The item sheet application.
+ * @param {HTMLElement|jQuery} html - The rendered HTML.
+ */
+export function injectItemProvisionsButton(app, html) {
+    if (!game?.user?.isGM) return;
+    const item = app.item ?? app.document;
+    if (!item || item.documentName !== "Item") return;
+    if (!ItemClassifier.isProvisionEligible(item)) return;
+
+    const el = html instanceof HTMLElement ? html
+        : html?.[0] instanceof HTMLElement ? html[0]
+        : html?.get?.(0)
+        ?? app.element;
+    if (!el) return;
+
+    const header = el.querySelector("header.window-header")
+        ?? el.closest?.(".app")?.querySelector("header.window-header")
+        ?? el.querySelector(".window-header");
+    if (!header) return;
+
+    let btn = header.querySelector(".respite-item-btn");
+    if (!btn) {
+        btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.tooltip = "Respite: Provisions & Spoilage";
+        btn.setAttribute("aria-label", "Respite: Provisions & Spoilage");
+        btn.innerHTML = `<i class="fas fa-carrot"></i>`;
+        btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            ItemProvisionsApp.openForItem(item);
+        });
+    }
+
+    btn.className = resolveDietButtonClassName(app).replace("respite-diet-btn", "respite-item-btn");
+    mountHeaderButtonInHeader(header, btn, "respite-item-btn");
 }
 
 /**
@@ -219,6 +263,19 @@ export function registerUiHooks() {
             if (actor?.type === "character") {
                 syncCohortSuffixesOnSheetRender(actor).catch(() => {});
             }
+        });
+    }
+
+    const itemSheetHooks = [
+        "renderItemSheet",
+        "renderItemSheetV2",
+        "renderItemSheet5e",
+        "renderItemSheet5e2"
+    ];
+
+    for (const hookName of itemSheetHooks) {
+        Hooks.on(hookName, (app, html) => {
+            injectItemProvisionsButton(app, html);
         });
     }
 

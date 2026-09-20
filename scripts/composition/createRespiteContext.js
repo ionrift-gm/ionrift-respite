@@ -17,6 +17,8 @@ import {
 import { clearCampTokens, resetCampSession } from "../services/camp/props/CompoundCampPlacer.js";
 import { ItemClassifier } from "../services/party/ItemClassifier.js";
 import { DietConfigApp } from "../apps/meal/DietConfigApp.js";
+import { ItemProvisionsApp } from "../apps/meal/ItemProvisionsApp.js";
+import { ProvisionsAuditScanner } from "../services/meal/provisions/ProvisionsAuditScanner.js";
 import {
     setDetectMagicInventoryGlowAdapter,
     getDetectMagicInventoryGlowAdapter
@@ -305,6 +307,9 @@ export function createRespiteContext(runtime) {
             );
             return result;
         },
+        openItemConfig: (item = null) => ItemProvisionsApp.openForItem(item),
+        openItemAuditor: () => ItemProvisionsApp.openAuditor(),
+        ProvisionsAuditScanner,
         get isRestActive() { return runtime.respiteFlowActive; },
     };
 

@@ -222,7 +222,7 @@ export class DnD5eAdapter extends SystemAdapter {
 
     async triggerNativeRest(actor, restType) {
         if (restType === "long") {
-            await actor.longRest({ dialog: false, chat: false, advanceTime: false });
+            await actor.longRest({ dialog: false, chat: false, advanceTime: false, exhaustionDelta: 0 });
         } else {
             await actor.shortRest({ dialog: false, chat: false, advanceTime: false });
         }

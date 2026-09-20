@@ -30,7 +30,9 @@
     </div>
 
     {{!-- Banner header --}}
+    {{#unless hideTerrainBanner}}
     <div class="sr-banner"><img src="{{banner}}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.src='{{bannerFallback}}'"></div>
+    {{/unless}}
 
     {{!-- Roster strip: readiness; .afk + fa-mug-hot badge (same language as TABLE panel) --}}
     {{#if roster.length}}

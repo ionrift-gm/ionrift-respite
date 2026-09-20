@@ -139,7 +139,7 @@ const GROUPS = [
     { title: "Start here", icon: "fas fa-flag", keys: ["restInterfaceMode", "eventBrowser"] },
     { title: "Rules & activities", icon: "fas fa-scroll", keys: ["recoveryConfig", "activityConfig", "dietConfigMenu"] },
     { title: "Players", icon: "fas fa-users", keys: ["playerRestrictions"] },
-    { title: "Display", icon: "fas fa-eye", keys: ["ambientAfkHud"] },
+    { title: "Display", icon: "fas fa-eye", keys: ["ambientAfkHud", "hideTerrainBanners"] },
     { title: "Tools", icon: "fas fa-wrench", keys: ["clearRestState"] }
 ];
 
