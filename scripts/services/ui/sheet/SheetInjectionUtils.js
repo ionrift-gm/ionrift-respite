@@ -28,36 +28,63 @@ export function resolveDietButtonClassName(app) {
 }
 
 /**
- * Node the diet button should sit immediately before in a sheet window header.
+ * Node a custom header button should sit immediately before in a sheet window header.
  * Prefers the leading edge of native header controls (Token, Configure, etc.)
  * rather than the close control, so the button stays left of system actions.
  * @param {HTMLElement|null|undefined} header
+ * @param {string} [buttonClass="respite-diet-btn"]
  * @returns {Element|null}
  */
-export function resolveDietButtonInsertBefore(header) {
+export function resolveHeaderButtonInsertBefore(header, buttonClass = "respite-diet-btn") {
     if (!header) return null;
 
     const v2Controls = header.querySelector(".header-controls");
     if (v2Controls) {
         for (const child of v2Controls.children) {
-            if (!child.classList.contains("respite-diet-btn")) return child;
+            if (!child.classList.contains(buttonClass) && !child.classList.contains("respite-diet-btn") && !child.classList.contains("respite-item-btn")) return child;
         }
         return null;
     }
 
     const firstHeaderButton = header.querySelector("a.header-button, button.header-button");
-    if (firstHeaderButton && !firstHeaderButton.classList.contains("respite-diet-btn")) {
+    if (firstHeaderButton && !firstHeaderButton.classList.contains(buttonClass) && !firstHeaderButton.classList.contains("respite-diet-btn") && !firstHeaderButton.classList.contains("respite-item-btn")) {
         return firstHeaderButton;
     }
 
     const closeControl = header.querySelector(
         "a.header-button.close, button.header-button.close, a.close, button.close, [data-action='close']"
     );
-    if (closeControl && !closeControl.classList.contains("respite-diet-btn")) {
+    if (closeControl && !closeControl.classList.contains(buttonClass) && !closeControl.classList.contains("respite-diet-btn") && !closeControl.classList.contains("respite-item-btn")) {
         return closeControl;
     }
 
     return null;
+}
+
+/**
+ * Node the diet button should sit immediately before in a sheet window header.
+ * @param {HTMLElement|null|undefined} header
+ * @returns {Element|null}
+ */
+export function resolveDietButtonInsertBefore(header) {
+    return resolveHeaderButtonInsertBefore(header, "respite-diet-btn");
+}
+
+/**
+ * Mounts or repositions a header button within a sheet header.
+ * @param {HTMLElement} header
+ * @param {HTMLButtonElement} btn
+ * @param {string} [buttonClass="respite-diet-btn"]
+ */
+export function mountHeaderButtonInHeader(header, btn, buttonClass = "respite-diet-btn") {
+    const insertBefore = resolveHeaderButtonInsertBefore(header, buttonClass);
+    if (insertBefore) {
+        insertBefore.before(btn);
+        return;
+    }
+    if (btn.parentElement !== header) {
+        header.appendChild(btn);
+    }
 }
 
 /**
@@ -66,12 +93,5 @@ export function resolveDietButtonInsertBefore(header) {
  * @param {HTMLButtonElement} btn
  */
 export function mountDietButtonInHeader(header, btn) {
-    const insertBefore = resolveDietButtonInsertBefore(header);
-    if (insertBefore) {
-        insertBefore.before(btn);
-        return;
-    }
-    if (btn.parentElement !== header) {
-        header.appendChild(btn);
-    }
+    mountHeaderButtonInHeader(header, btn, "respite-diet-btn");
 }

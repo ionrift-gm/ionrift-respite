@@ -27,6 +27,7 @@ export class RestRenderBindings {
 
     _onRenderBindings(context, options) {
         const app = this._app;
+        app.element?.classList.toggle("hide-terrain-banners", !!context?.hideTerrainBanner);
 
         if (game.user.isGM && app._phase === "activity" && app._isTavernTerrain()) {
             if (app._applyAutoOtherWhenSoleActivity()) {

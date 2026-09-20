@@ -709,6 +709,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 ? ImageResolver.terrainBanner("short-rest", "rope_trick.png")
                 : ImageResolver.terrainBanner("short-rest", "banner.png"),
             bannerFallback: ImageResolver.fallbackBanner,
+            hideTerrainBanner: (() => {
+                try { return !!game.settings.get(MODULE_ID, "hideTerrainBanners"); } catch { return false; }
+            })(),
             completionPhase,
             completionSummaryForUser,
             completionSummaryEmpty,
@@ -1777,5 +1780,10 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         } catch (e) {
             // Setting may not be registered yet
         }
+    }
+
+    _onRender(context, options) {
+        super._onRender?.(context, options);
+        this.element?.classList.toggle("hide-terrain-banners", !!context?.hideTerrainBanner);
     }
 }
