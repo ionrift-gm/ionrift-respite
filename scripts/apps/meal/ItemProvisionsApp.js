@@ -37,7 +37,7 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
             resizable: true
         },
         position: {
-            width: 560,
+            width: 740,
             height: "auto"
         },
         classes: ["ionrift-window", "glass-ui", "ionrift-respite-app", "respite-item-provisions-window"],
@@ -408,7 +408,8 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
     }
 
     _applyAuditorClientFilter(el) {
-        const query = (this.#searchQuery ?? "").toLowerCase().trim();
+        const searchInput = el.querySelector(".respite-auditor-search-input");
+        const query = (searchInput ? searchInput.value : (this.#searchQuery ?? "")).toLowerCase().trim();
         const cat = this.#filterCategory ?? "all";
         const rows = el.querySelectorAll(".respite-auditor-row");
         let visibleCount = 0;
@@ -435,6 +436,11 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
 
         const countEl = el.querySelector(".respite-auditor-visible-count");
         if (countEl) countEl.textContent = String(visibleCount);
+
+        const noMatchesRow = el.querySelector(".respite-auditor-no-matches");
+        if (noMatchesRow) {
+            noMatchesRow.style.display = (visibleCount === 0 && rows.length > 0) ? "" : "none";
+        }
     }
 
     static #onTogglePerishable(event, target) {

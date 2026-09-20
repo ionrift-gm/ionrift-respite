@@ -10,100 +10,103 @@
     </nav>
 
     {{#if (eq activeTab "editor")}}
+    <div class="respite-editor-container">
 
         {{#if hasItem}}
-        <div class="respite-item-dropzone respite-item-dropzone--compact" data-tooltip="Drop another item to switch">
-            <i class="fas fa-arrows-rotate"></i>
-            <span>Drop another item to switch</span>
-        </div>
-
-        <div class="respite-item-provisions-hero">
-            <img class="respite-item-provisions-img" src="{{itemImg}}" alt="{{itemName}}" />
-            <div class="respite-item-provisions-meta">
-                <h3 class="respite-item-provisions-title">{{itemName}}</h3>
-                <div class="respite-item-provisions-subtitle">
-                    <span class="respite-badge">{{itemType}}</span>
-                    <span class="respite-location">{{sourceLocation}}</span>
-                </div>
-            </div>
-        </div>
-
-        {{#if isLocked}}
-        <div class="respite-item-provisions-warning">
-            <i class="fas fa-lock"></i>
-            <span>This item is inside a locked Compendium. Unlock the compendium pack to save changes.</span>
-        </div>
-        {{/if}}
-
-        <div class="respite-item-provisions-fields">
-
-            <div class="respite-field-row">
-                <label class="respite-field-label">Sustenance Type</label>
-                <select name="resourceType" class="respite-select">
-                    {{#each resourceTypeOptions}}
-                    <option value="{{value}}" {{#if (eq value ../resourceType)}}selected{{/if}}>{{label}}</option>
-                    {{/each}}
-                </select>
-                <p class="respite-field-hint">Auto-detect uses item type and name. Inedible forces Respite to completely ignore this item.</p>
+        <div class="respite-item-editor-scroll ionrift-list">
+            <div class="respite-item-dropzone respite-item-dropzone--compact" data-tooltip="Drop another item to switch">
+                <i class="fas fa-arrows-rotate"></i>
+                <span>Drop another item to switch</span>
             </div>
 
-            <div class="respite-field-row">
-                <label class="respite-field-label">Dietary Category</label>
-                <select name="foodTag" class="respite-select">
-                    {{#each foodTagOptions}}
-                    <option value="{{value}}" {{#if (eq value ../foodTag)}}selected{{/if}}>{{label}}</option>
-                    {{/each}}
-                </select>
-                <p class="respite-field-hint">Defines dietary compatibility. Prepared meals and rations are accepted by all character diets.</p>
-            </div>
-
-            <div class="respite-field-row">
-                <label class="respite-field-label">Liquid / Drink Type</label>
-                <select name="drinkType" class="respite-select">
-                    {{#each drinkTypeOptions}}
-                    <option value="{{value}}" {{#if (eq value ../drinkType)}}selected{{/if}}>{{label}}</option>
-                    {{/each}}
-                </select>
-                <p class="respite-field-hint">Used for drinking liquids, distinguishing water from ferments and oils.</p>
-            </div>
-
-            <div class="respite-field-row respite-field-row--card">
-                <div class="respite-field-header">
-                    <label class="respite-field-label">Spoilage Window</label>
-                    <label class="respite-checkbox-label">
-                        <input type="checkbox" name="isPerishable" data-action="togglePerishable" {{#if isPerishable}}checked{{/if}} />
-                        <span>Perishable</span>
-                    </label>
-                </div>
-
-                <div class="respite-provisions-spoilage-fields" style="{{#unless isPerishable}}display: none;{{/unless}}">
-                    <div class="respite-spoilage-input-group">
-                        <input type="number" name="spoilsValue" class="respite-input respite-input--number" value="{{spoilsValue}}" min="1" step="1" />
-                        <select name="spoilageUnit" class="respite-select respite-select--inline">
-                            <option value="days" {{#if (eq spoilageUnit "days")}}selected{{/if}}>Rests / Days</option>
-                            <option value="hours" {{#if (eq spoilageUnit "hours")}}selected{{/if}}>Hours</option>
-                        </select>
+            <div class="respite-item-provisions-hero">
+                <img class="respite-item-provisions-img" src="{{itemImg}}" alt="{{itemName}}" />
+                <div class="respite-item-provisions-meta">
+                    <h3 class="respite-item-provisions-title">{{itemName}}</h3>
+                    <div class="respite-item-provisions-subtitle">
+                        <span class="respite-badge">{{itemType}}</span>
+                        <span class="respite-location">{{sourceLocation}}</span>
                     </div>
-                    <p class="respite-field-hint">Items expire and turn to spoiled food after this duration passes.</p>
                 </div>
-                {{#unless isPerishable}}
-                <p class="respite-field-hint respite-shelf-stable-note">Shelf-stable: item will not spoil over time.</p>
-                {{/unless}}
             </div>
 
-            <div class="respite-field-row respite-field-row--card">
-                <label class="respite-field-label">Sustenance Fulfillment</label>
-                <div class="respite-checkbox-group">
-                    <label class="respite-checkbox-label">
-                        <input type="checkbox" name="satiatesFood" {{#if satiatesFood}}checked{{/if}} />
-                        <span><i class="fas fa-utensils"></i> Satisfies Hunger</span>
-                    </label>
-                    <label class="respite-checkbox-label">
-                        <input type="checkbox" name="satiatesWater" {{#if satiatesWater}}checked{{/if}} />
-                        <span><i class="fas fa-tint"></i> Quenches Thirst</span>
-                    </label>
+            {{#if isLocked}}
+            <div class="respite-item-provisions-warning">
+                <i class="fas fa-lock"></i>
+                <span>This item is inside a locked Compendium. Unlock the compendium pack to save changes.</span>
+            </div>
+            {{/if}}
+
+            <div class="respite-item-provisions-fields">
+
+                <div class="respite-field-row">
+                    <label class="respite-field-label">Sustenance Type</label>
+                    <select name="resourceType" class="respite-select">
+                        {{#each resourceTypeOptions}}
+                        <option value="{{value}}" {{#if (eq value ../resourceType)}}selected{{/if}}>{{label}}</option>
+                        {{/each}}
+                    </select>
+                    <p class="respite-field-hint">Auto-detect uses item type and name. Inedible forces Respite to completely ignore this item.</p>
                 </div>
-                <p class="respite-field-hint">Selecting both enables dual credit (e.g. stews, broths, melons).</p>
+
+                <div class="respite-field-row">
+                    <label class="respite-field-label">Dietary Category</label>
+                    <select name="foodTag" class="respite-select">
+                        {{#each foodTagOptions}}
+                        <option value="{{value}}" {{#if (eq value ../foodTag)}}selected{{/if}}>{{label}}</option>
+                        {{/each}}
+                    </select>
+                    <p class="respite-field-hint">Defines dietary compatibility. Prepared meals and rations are accepted by all character diets.</p>
+                </div>
+
+                <div class="respite-field-row">
+                    <label class="respite-field-label">Liquid / Drink Type</label>
+                    <select name="drinkType" class="respite-select">
+                        {{#each drinkTypeOptions}}
+                        <option value="{{value}}" {{#if (eq value ../drinkType)}}selected{{/if}}>{{label}}</option>
+                        {{/each}}
+                    </select>
+                    <p class="respite-field-hint">Used for drinking liquids, distinguishing water from ferments and oils.</p>
+                </div>
+
+                <div class="respite-field-row respite-field-row--card">
+                    <div class="respite-field-header">
+                        <label class="respite-field-label">Spoilage Window</label>
+                        <label class="respite-checkbox-label">
+                            <input type="checkbox" name="isPerishable" data-action="togglePerishable" {{#if isPerishable}}checked{{/if}} />
+                            <span>Perishable</span>
+                        </label>
+                    </div>
+
+                    <div class="respite-provisions-spoilage-fields" style="{{#unless isPerishable}}display: none;{{/unless}}">
+                        <div class="respite-spoilage-input-group">
+                            <input type="number" name="spoilsValue" class="respite-input respite-input--number" value="{{spoilsValue}}" min="1" step="1" />
+                            <select name="spoilageUnit" class="respite-select respite-select--inline">
+                                <option value="days" {{#if (eq spoilageUnit "days")}}selected{{/if}}>Rests / Days</option>
+                                <option value="hours" {{#if (eq spoilageUnit "hours")}}selected{{/if}}>Hours</option>
+                            </select>
+                        </div>
+                        <p class="respite-field-hint">Items expire and turn to spoiled food after this duration passes.</p>
+                    </div>
+                    {{#unless isPerishable}}
+                    <p class="respite-field-hint respite-shelf-stable-note">Shelf-stable: item will not spoil over time.</p>
+                    {{/unless}}
+                </div>
+
+                <div class="respite-field-row respite-field-row--card">
+                    <label class="respite-field-label">Sustenance Fulfillment</label>
+                    <div class="respite-checkbox-group">
+                        <label class="respite-checkbox-label">
+                            <input type="checkbox" name="satiatesFood" {{#if satiatesFood}}checked{{/if}} />
+                            <span><i class="fas fa-utensils"></i> Satisfies Hunger</span>
+                        </label>
+                        <label class="respite-checkbox-label">
+                            <input type="checkbox" name="satiatesWater" {{#if satiatesWater}}checked{{/if}} />
+                            <span><i class="fas fa-tint"></i> Quenches Thirst</span>
+                        </label>
+                    </div>
+                    <p class="respite-field-hint">Selecting both enables dual credit (e.g. stews, broths, melons).</p>
+                </div>
             </div>
         </div>
 
@@ -133,6 +136,8 @@
         </div>
         {{/if}}
 
+    </div>
+
     {{else}}
 
         <div class="respite-auditor-container">
@@ -159,16 +164,16 @@
             </div>
 
             {{#if auditorItems.length}}
-            <div class="respite-auditor-table-wrap">
+            <div class="respite-auditor-table-wrap ionrift-list">
                 <table class="respite-auditor-table">
                     <thead>
                         <tr>
-                            <th>Item</th>
-                            <th>Location / Owner</th>
-                            <th>Sustenance</th>
-                            <th>Diet / Drink</th>
-                            <th>Spoilage</th>
-                            <th style="text-align: right;">Actions</th>
+                            <th class="col-item">Item</th>
+                            <th class="col-location">Location / Owner</th>
+                            <th class="col-sustenance">Sustenance</th>
+                            <th class="col-diet">Diet / Drink</th>
+                            <th class="col-spoilage">Spoilage</th>
+                            <th class="col-actions">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -189,7 +194,7 @@
                                 </span>
                             </td>
                             <td>
-                                <span>{{this.detailLabel}}</span>
+                                <span class="respite-diet-label">{{this.detailLabel}}</span>
                             </td>
                             <td>
                                 <span class="respite-auditor-badge {{#if this.isShelfStable}}respite-auditor-badge--shelf{{/if}}">
@@ -208,6 +213,13 @@
                             </td>
                         </tr>
                         {{/each}}
+                        <tr class="respite-auditor-no-matches" style="display: none;">
+                            <td colspan="6">
+                                <div class="respite-auditor-no-matches-msg">
+                                    <i class="fas fa-search"></i> No provisions overrides match your filter.
+                                </div>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
