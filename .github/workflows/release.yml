@@ -42,28 +42,45 @@ jobs:
 
       - name: Validate Assets
         run: |
+          echo "=== Auditing media assets & boundaries ==="
+
+          # 1. Strictly forbid any binary media under data/, scripts/, styles/, templates/, packs/
+          FORBIDDEN_MEDIA=$(find data scripts styles templates packs -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.webp" -o -name "*.gif" -o -name "*.svg" \) 2>/dev/null || true)
+          if [ -n "$FORBIDDEN_MEDIA" ]; then
+            echo "::error::Binary media found in forbidden code/data directory:"
+            echo "$FORBIDDEN_MEDIA"
+            echo "Data, script, and template directories must never contain binary media."
+            exit 1
+          fi
+          echo "OK: No media in forbidden directories"
+
+          # 2. Verify runtime assets in assets/ match strict allowlist
+          # Only placeholder-banner.webp and screenshots/ directory are permitted
+          UNAPPROVED_ROOT_ASSETS=$(find assets -maxdepth 1 -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.webp" -o -name "*.gif" -o -name "*.svg" \) ! -name "placeholder-banner.webp" 2>/dev/null || true)
+          if [ -n "$UNAPPROVED_ROOT_ASSETS" ]; then
+            echo "::error::Unapproved media file found in assets/: $UNAPPROVED_ROOT_ASSETS"
+            echo "All runtime assets must be vetted and recorded in ATTRIBUTION.md."
+            exit 1
+          fi
+          echo "OK: Runtime assets match allowlist"
+
+          # 3. Verify no loose media files in the repository root
+          ROOT_MEDIA=$(find . -maxdepth 1 -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.webp" \) 2>/dev/null || true)
+          if [ -n "$ROOT_MEDIA" ]; then
+            echo "::error::Loose media files found in repository root: $ROOT_MEDIA"
+            exit 1
+          fi
+          echo "OK: No loose root media files"
+
+          # 4. LFS pointer check on remaining valid assets
           FIRST_PNG=$(find assets -name '*.png' -type f | head -1)
-          if [ -z "$FIRST_PNG" ]; then
-            echo "WARNING: No PNG files found in assets/, skipping validation"
-          else
+          if [ -n "$FIRST_PNG" ]; then
             SIZE=$(wc -c < "$FIRST_PNG")
             if [ "$SIZE" -lt 1000 ]; then
-              echo "ERROR: $FIRST_PNG is only ${SIZE} bytes, likely an LFS pointer, not an image"
+              echo "::error::$FIRST_PNG is only ${SIZE} bytes, likely an LFS pointer, not an image"
               exit 1
             fi
             echo "OK: Asset files are real images (first file: $FIRST_PNG, ${SIZE} bytes)"
-          fi
-
-          FIRST_WEBM=$(find assets -name '*.webm' -type f | head -1)
-          if [ -z "$FIRST_WEBM" ]; then
-            echo "INFO: No WebM files found in assets/, skipping"
-          else
-            SIZE=$(wc -c < "$FIRST_WEBM")
-            if [ "$SIZE" -lt 1000 ]; then
-              echo "ERROR: $FIRST_WEBM is only ${SIZE} bytes, likely an LFS pointer"
-              exit 1
-            fi
-            echo "OK: WebM files are real assets (first file: $FIRST_WEBM, ${SIZE} bytes)"
           fi
 
       - name: Set up Node
