@@ -58,9 +58,11 @@ When an event puts gear or coin at risk, the module rolls which items are affect
 
 ---
 
-## Meals
+## Meals & Cooking
 
 When meal tracking is enabled in the Survival profile, players drag rations from inventory to fill plates and pour water from a shared pool. Missing meals trigger CON saves, and exhaustion stacks following the standard 5e variant rules.
+
+For monster harvesting and custom camp recipes, Respite pairs directly with **[Monstrous Feast](https://github.com/ionrift-gm/ionrift-monstrous-feast)**. Cooking activities can open the shared living cookbook and track ingredient spoilage across rests.
 
 ---
 
@@ -95,6 +97,7 @@ A separate single-screen flow with per-die Hit Die spending and live HP tracking
 
 - **[Ionrift Library](https://github.com/ionrift-gm/ionrift-library)**: Required dependency.
 - **System:** One of the 6 supported game systems listed above.
+- **[Monstrous Feast](https://github.com/ionrift-gm/ionrift-monstrous-feast)** (optional): Monster butchering, living cookbook, and camp meal buffs.
 - **[Simple Calendar](https://foundryvtt.com/packages/foundryvtt-simple-calendar)** (optional): Date tracking and "already rested today" checks.
 
 ---
@@ -121,6 +124,12 @@ Event narratives, terrain data, and item descriptions in `data/` are copyright I
 
 ---
 
-**Part of the [Ionrift Module Suite](https://github.com/ionrift-gm)**
+## Ionrift Module Suite
 
-[Wiki](https://github.com/ionrift-gm/ionrift-library/wiki) · [Discord](https://discord.gg/vFGXf7Fncj) · [Patreon](https://patreon.com/ionrift)
+- **[Monstrous Feast](https://github.com/ionrift-gm/ionrift-monstrous-feast)**: Butcher slain creatures and cook camp meals with buffs
+- **[Resonance](https://github.com/ionrift-gm/ionrift-resonance)**: Context-sensitive combat soundscapes and audio cues
+- **[Quartermaster](https://github.com/ionrift-gm/ionrift-quartermaster)**: Loot cache generation and inventory management
+- **[Waterline](https://github.com/ionrift-gm/ionrift-waterline)**: Traced water caustics and procedural border walls
+- **[Ionrift Library](https://github.com/ionrift-gm/ionrift-library)**: Shared ecosystem kernel and creature index
+
+[Wiki](https://github.com/ionrift-gm/ionrift-library/wiki) · [Website](https://ionrift.cloud) · [Discord](https://discord.gg/vFGXf7Fncj) · [Patreon](https://patreon.com/ionrift)
