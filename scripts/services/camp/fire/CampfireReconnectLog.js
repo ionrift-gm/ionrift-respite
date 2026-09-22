@@ -18,5 +18,5 @@ export function logCampfireReconnect(step, detail = {}) {
         phase: detail.phase ?? undefined,
         ...detail
     };
-    console.info(`[Respite:${TAG}] ${step}`, payload);
+    console.info(`[Respite:${TAG}] ${step}`, payload); // log-allow: reconnect trace, grepped from the console
 }
