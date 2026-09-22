@@ -5,7 +5,7 @@
 ## [3.6.2] - 2026-09-22
 
 ### Fixed
-- Fixed a manifest validation error preventing module installation and updates on modern Foundry versions.
+- Fixed a manifest validation error preventing module installation and updates on Foundry 14.
 
 ## [3.6.1] - 2026-09-20
 
