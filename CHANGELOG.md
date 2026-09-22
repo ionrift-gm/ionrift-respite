@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [3.6.2] - 2026-09-22
+
+### Fixed
+- Fixed a manifest validation error preventing module installation and updates on modern Foundry versions.
+
 ## [3.6.1] - 2026-09-20
 
 ### Added
