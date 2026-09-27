@@ -1158,6 +1158,7 @@ export class RestResolveDelegate {
         app._clearDetectMagicScanSession({ skipSave: true });
 
         emitRestAbandoned();
+        Hooks.callAll("ionrift.respite.restCleanup");
 
         // Clean up camp tokens on the placement scene (and any scene with this session)
         try {

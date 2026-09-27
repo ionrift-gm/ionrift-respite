@@ -1,6 +1,7 @@
 import { Logger } from "../../utils/Logger.js";
 import { refreshGmRestIndicator } from "../ui/sheet/RejoinManager.js";
 import { MODULE_ID } from "../../data/moduleId.js";
+import { clearAllZzzOverlays } from "../ui/sheet/UiInjections.js";
 import { RestSetupApp } from "../../apps/rest/RestSetupApp.js";
 import { ShortRestApp } from "../../apps/rest/ShortRestApp.js";
 import { setCharacterAfk } from "../afk/AfkBridgeService.js";
@@ -219,6 +220,7 @@ export function handleActivityChoice(data, ctx) {
 
 export function handleRestResolved(data, ctx) {
 
+    clearAllZzzOverlays();
     ctx.setPlayerRestActive(false);
     removeRejoinNotification();
     removeGmRestIndicator();
@@ -351,6 +353,8 @@ export function handleShortRestComplete(data, ctx) {
 }
 
 export function handleShortRestAbandoned(data, ctx) {
+    clearAllZzzOverlays();
+    Hooks.callAll("ionrift.respite.restCleanup");
     void closeOpenStationDialog().catch(err => console.warn(`${MODULE_ID} | closeOpenStationDialog`, err));
     const app = ctx.activeShortRestApp;
     if (app) {

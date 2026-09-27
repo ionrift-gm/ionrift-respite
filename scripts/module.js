@@ -57,6 +57,7 @@ import { dispatch as socketDispatch } from "./services/socket/SocketRouter.js";
 import { isNativeShortRestUnsuppressed } from "./services/rest/flow/NativeRestPass.js";
 import { reassertMealExhaustionFloor } from "./services/meal/phase/MealExhaustionGuard.js";
 import { getActiveRestSessionApp, emitRestSessionAbandoned } from "./services/rest/session/RestSessionSync.js";
+import { clearAllBeddingPoses } from "./services/rest/session/BeddingPose.js";
 import { MODULE_ID, MODULE_LABEL } from "./data/moduleId.js";
 
 // Shared logger reference; falls back to console if ionrift-lib unavailable.
@@ -813,6 +814,13 @@ Hooks.once("ready", async () => {
             }
         } catch {
             /* ignore */
+        }
+    });
+    Hooks.on("ionrift.respite.restCleanup", async () => {
+        try {
+            await clearAllBeddingPoses();
+        } catch (err) {
+            console.warn(`${MODULE_ID} | restCleanup bedding removal failed:`, err);
         }
     });
 
