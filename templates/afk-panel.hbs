@@ -1,4 +1,4 @@
-<aside class="ionrift-afk-panel ionrift-window {{#if hasAnyoneAfk}}ionrift-afk-panel--present{{else}}ionrift-afk-panel--idle{{/if}}" aria-label="Rest presence">
+<aside class="ionrift-afk-panel {{#if hasAnyoneAfk}}ionrift-afk-panel--present{{else}}ionrift-afk-panel--idle{{/if}}" aria-label="Rest presence">
     <header class="ionrift-afk-panel-header {{#unless panelLocked}}ionrift-afk-panel-header--draggable{{/unless}}">
         <button type="button" class="ionrift-afk-panel-lock-btn" data-action="afkPanelToggleLock"
             data-tooltip="{{#if panelLocked}}Unlock to drag this panel{{else}}Lock to pin at this spot{{/if}}"

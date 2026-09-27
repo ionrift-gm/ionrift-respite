@@ -1,0 +1,36 @@
+{{!-- Night Watch threshold. Stepper sits outside the summary so +/- does not toggle the breakdown.
+     dc: displayed encounter DC (same number the roll uses).
+     belowLabel: what a roll under the DC does in this mode.
+     hideDisaster: improvise has no disaster pool line. --}}
+<div class="encounter-details encounter-threshold">
+    <div class="encounter-threshold-head">
+        <div class="encounter-threshold-stepper">
+            <button type="button" class="encounter-adj-btn" data-action="adjustEncounterDc" data-delta="-1"
+                aria-label="Lower DC" data-tooltip="Lower DC"
+                {{#if eventsCommitPending}}disabled{{/if}}>−</button>
+            <span class="encounter-summary-badge">DC {{dc}}</span>
+            <button type="button" class="encounter-adj-btn" data-action="adjustEncounterDc" data-delta="1"
+                aria-label="Raise DC" data-tooltip="Raise DC"
+                {{#if eventsCommitPending}}disabled{{/if}}>+</button>
+        </div>
+        <details>
+            <summary class="encounter-summary">
+                <span class="encounter-summary-label">Encounter Threshold</span>
+                <i class="fas fa-chevron-down encounter-chevron"></i>
+            </summary>
+            <div class="encounter-breakdown">
+                <span class="event-outcome-advisory">
+                    <i class="fas fa-moon"></i> Roll {{dc}}+: quiet night
+                </span>
+                <span class="event-outcome-advisory warn">
+                    <i class="fas fa-exclamation-triangle"></i> Roll below {{dc}}: {{belowLabel}}
+                </span>
+                {{#unless hideDisaster}}
+                <span class="event-outcome-advisory disaster">
+                    <i class="fas fa-skull"></i> Natural 1: disaster pool
+                </span>
+                {{/unless}}
+            </div>
+        </details>
+    </div>
+</div>

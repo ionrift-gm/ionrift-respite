@@ -1,0 +1,280 @@
+{{!-- Shared Short Rest Hero Character Card Partial --}}
+{{#if heroCharacter}}
+{{#with heroCharacter}}
+<div class="rest-hero-card short-rest-card bivouac-char-card bivouac-hero-card ionrift-card-glass {{#if isAfk}}is-afk{{/if}} {{#if isStarving}}starving-card{{/if}} {{#if isSelfCard}}is-self-card{{/if}} {{#if isReady}}is-ready{{/if}}" data-actor-id="{{id}}">
+    {{!-- Card Header: Monogram badge + identity on left, sustenance/treat slots on right --}}
+    <div class="rest-card-header sr-card-header bivouac-card-header">
+        <div class="rest-identity-left sr-identity-left bivouac-identity-left">
+            <div class="companion-avatar-wrap hero-avatar-wrap">
+                <div class="monogram-badge" style="border-color: {{themeBorder}};" data-tooltip="{{name}} ({{subtext}})">
+                    <img class="monogram-portrait" src="{{#if img}}{{img}}{{else}}icons/svg/mystery-man.svg{{/if}}" alt="">
+                </div>
+                {{#if isReady}}
+                <span class="hero-avatar-pip pip-ready" data-tooltip="Finished resting"><i class="fas fa-check"></i></span>
+                {{/if}}
+            </div>
+            <div class="rest-identity-info sr-identity-info bivouac-identity-info">
+                <div class="rest-name-row sr-name-row bivouac-name-row">
+                    <span class="rest-char-name sr-name bivouac-char-name">{{name}}</span>
+                    {{#if isSelfCard}}<span class="badge-you">You</span>{{/if}}
+                    {{#if isReady}}<span class="badge-ready"><i class="fas fa-check"></i> Ready</span>{{/if}}
+                </div>
+                <span class="rest-subtext sr-subtext bivouac-subtext">{{subtext}}</span>
+            </div>
+        </div>
+
+        <div class="rest-header-right-slots">
+            {{!-- Header slot: Gritty Bivouac sustenance chips --}}
+            {{#if hasSustenanceSlot}}
+            <div class="bivouac-sustenance-slot rest-header-slot">
+                {{#if isChefFed}}
+                <button type="button" class="sustenance-chip chef" data-action="swapPlateFood" data-actor-id="{{id}}"
+                    {{#unless canInteract}}disabled{{/unless}} data-tooltip="Fed by Chef Replenishing Meal (+1d8 HD). Click to cycle food options.">
+                    <i class="fas fa-utensils"></i> Chef's Meal
+                </button>
+                {{else if isOutlanderShielded}}
+                <span class="sustenance-chip shielded" data-tooltip="{{#if foragerName}}{{foragerName}}'s Outlander feature (Wanderer) provides wild forage.{{else}}Outlander feature provides wild forage.{{/if}}">
+                    <i class="fas fa-leaf"></i> Wild Forage
+                </span>
+                {{else if platedItem}}
+                <button type="button" class="sustenance-chip food" data-action="swapPlateFood" data-actor-id="{{id}}"
+                    {{#unless canInteract}}disabled{{/unless}} data-tooltip="Personal provisions: {{platedItem.name}}. Click to cycle food options.">
+                    <i class="fas fa-drumstick-bite"></i> {{platedItem.name}}
+                </button>
+                {{else}}
+                <button type="button" class="sustenance-chip starving" data-action="swapPlateFood" data-actor-id="{{id}}"
+                    {{#unless canInteract}}disabled{{/unless}} data-tooltip="No food selected! Resting hungry will advance starvation. Click to select food.">
+                    <i class="fas fa-triangle-exclamation"></i> Starving
+                </button>
+                {{/if}}
+
+                {{#if waterPlate.isShielded}}
+                <span class="sustenance-chip water-shielded" data-tooltip="{{waterPlate.tooltip}}">
+                    <i class="fas fa-droplet"></i> Fresh Water
+                </span>
+                {{else if waterPlate.isDehydrated}}
+                <button type="button" class="sustenance-chip dehydrated" data-action="swapPlateWater" data-actor-id="{{id}}"
+                    {{#unless waterPlate.canInteract}}disabled{{/unless}} data-tooltip="{{waterPlate.tooltip}}">
+                    <i class="fas fa-droplet-slash"></i> Dehydrated
+                </button>
+                {{else if waterPlate}}
+                <button type="button" class="sustenance-chip water" data-action="swapPlateWater" data-actor-id="{{id}}"
+                    {{#unless waterPlate.canInteract}}disabled{{/unless}} data-tooltip="{{waterPlate.tooltip}}">
+                    <i class="fas fa-droplet"></i> {{waterPlate.label}}
+                </button>
+                {{/if}}
+            </div>
+            {{/if}}
+
+            {{!-- Chef Treat Slot --}}
+            {{#if (or hasClaimedChefTreat canClaimChefTreat)}}
+            <div class="sr-treat-slot rest-header-slot">
+                {{#if hasClaimedChefTreat}}
+                <span class="sr-treat-claimed-pill" data-tooltip="Chef's Treat claimed! Regain an extra 1d8 HP when spending Hit Dice.">
+                    <i class="fas fa-cookie-bite"></i> Chef's Treat (+1d8 HD)
+                </span>
+                {{else if canClaimChefTreat}}
+                <button type="button" class="sr-take-treat-btn" data-action="claimChefTreat" data-actor-id="{{id}}" data-tooltip="Take a chef's treat for +1d8 HP on Hit Dice">
+                    <i class="fas fa-cookie-bite"></i> Take Treat ({{chefMealsRemaining}} left)
+                </button>
+                {{/if}}
+            </div>
+            {{/if}}
+        </div>
+    </div>
+
+    {{!-- HP Section: separated text labels above slim progress bar --}}
+    <div class="hp-container">
+        <div class="hp-labels">
+            <span class="label-green"><i class="fas fa-heart"></i> Hit Points</span>
+            <span class="hp-val {{#if isFullHp}}full-hp{{/if}}">{{hpValue}} / {{hpMax}} HP{{#if isFullHp}} (Full){{/if}}</span>
+        </div>
+        <div class="hp-bar-track">
+            <div class="hp-bar-fill" style="width: {{hpPercent}}%;"></div>
+        </div>
+    </div>
+
+    {{!-- Hit Dice Well: recessed panel with purple square pips and spend button --}}
+    <div class="hd-well">
+        <div class="hd-well-top">
+            <span class="hd-well-label">Hit Dice (d{{hdDie}}):</span>
+            <span class="hd-well-avail {{#if noHdLeft}}zero-hd{{/if}}">
+                <strong>{{hdRemaining}}</strong> / {{hdMax}} Available
+            </span>
+        </div>
+        <div class="hd-well-action-row">
+            <div class="hd-pips">
+                {{#each hdPips}}
+                <span class="{{#if filled}}pip-square-purple{{else}}pip-square-spent{{/if}}"></span>
+                {{/each}}
+            </div>
+            <div class="hd-actions-right">
+                {{#if isOwner}}
+                {{#if isFullHp}}
+                <button type="button" class="btn-spend-purple disabled" disabled data-tooltip="Already at full HP.">
+                    Full HP
+                </button>
+                {{else if noHdLeft}}
+                <button type="button" class="btn-spend-purple disabled" disabled data-tooltip="No Hit Dice remaining.">
+                    No HD
+                </button>
+                {{else}}
+                <button type="button" class="btn-spend-purple" data-action="spendHitDie" data-actor-id="{{id}}">
+                    <i class="fas fa-dice-d20"></i> Spend HD (+1d{{hdDie}})
+                </button>
+                {{/if}}
+                {{/if}}
+            </div>
+        </div>
+    </div>
+
+    {{!-- Roll log (compressed after 3 rolls) --}}
+    {{#if rolls.length}}
+    <div class="sr-roll-log">
+        {{#if rollsCompressed}}
+        <span class="sr-roll-hidden-badge" data-tooltip="{{rollsHidden}} earlier rolls">+{{rollsHidden}} more</span>
+        {{/if}}
+        {{#each rollsToShow}}
+        <span class="sr-roll-entry" data-tooltip="d{{die}} + {{conMod}} CON{{#if annotations.length}} | {{#each annotations}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}">+{{total}}{{#if annotations.length}}<span class="sr-roll-mod-badge">{{#each annotations}}{{this}}{{#unless @last}} · {{/unless}}{{/each}}</span>{{/if}}</span>
+        {{/each}}
+        <span class="sr-roll-total">
+            <i class="fas fa-plus-circle"></i> {{totalHealed}} HP{{#if songBonusTotal}} <span class="sr-roll-song-addon">+ {{songBonusTotal}} Song</span>{{/if}}{{#if chefMealTotal}} <span class="sr-roll-chef-addon">+ {{chefMealTotal}} Chef</span>{{/if}}
+        </span>
+    </div>
+    {{else if hdHealedTotal}}
+    <div class="bivouac-roll-log-placeholder">
+        <div class="sr-roll-log">
+            <span class="sr-roll-total">
+                <i class="fas fa-plus-circle"></i> +{{hdHealedTotal}} HP ({{hdSpentThisRest}} spent)
+            </span>
+        </div>
+    </div>
+    {{/if}}
+
+    {{#if songCard}}
+    <div class="sr-song-card-line {{songCard.kind}}">
+        {{#if songCard.isPendingEnd}}
+        <i class="fas fa-hourglass-half"></i>
+        <span class="sr-song-card-text">Song: <strong>{{songCard.die}}</strong> on complete (spent HD)</span>
+        {{/if}}
+        {{#if songCard.isAppliedImmediate}}
+        <i class="fas fa-music"></i>
+        <span class="sr-song-card-text">Song: <strong>+{{songCard.total}} HP</strong> <span class="sr-song-formula">({{songCard.formula}})</span></span>
+        {{/if}}
+    </div>
+    {{/if}}
+
+    {{!-- Class Features Tray: Active Triggers vs Quiet Passive Badges --}}
+    {{#if hasFeatures}}
+    <div class="features-tray">
+        <div class="features-tray-header">
+            <span class="features-label">Class Features:</span>
+        </div>
+        <div class="features-pills-row">
+            {{!-- Bard Song of Rest Offer on Provider's Card --}}
+            {{#if isEligibleBard}}
+            {{#if hasVolunteeredSong}}
+            <button type="button" class="btn-feature-trigger btn-feature-purple active" data-action="volunteerSong" data-actor-id="{{id}}"
+                {{#unless canInteractSong}}disabled{{/unless}} data-tooltip="Cancel Song of Rest performance">
+                <i class="fas fa-music"></i> Performing Song of Rest ({{bardSongDie}})
+            </button>
+            {{else if canVolunteerSong}}
+            <button type="button" class="btn-feature-trigger btn-feature-purple" data-action="volunteerSong" data-actor-id="{{id}}"
+                {{#unless canInteractSong}}disabled{{/unless}} data-tooltip="Perform Song of Rest during this rest (adds {{bardSongDie}} extra healing to companions who spend Hit Dice)">
+                <i class="fas fa-music"></i> Perform Song of Rest ({{bardSongDie}})
+            </button>
+            {{else if songVolunteerLocked}}
+            <span class="badge-feature-passive"><i class="fas fa-music"></i> Another bard is performing</span>
+            {{/if}}
+            {{/if}}
+
+            {{!-- Chef Meal Offer on Provider's Card --}}
+            {{#if isEligibleChef}}
+            {{#if hasVolunteeredChef}}
+            <button type="button" class="btn-feature-trigger btn-feature-amber active" data-action="optOutChef" data-actor-id="{{id}}"
+                {{#unless canInteractChef}}disabled{{/unless}} data-tooltip="Cancel cooking replenishing meal">
+                <i class="fas fa-utensils"></i> Cooking Replenishing Meal ({{@root.chefMealsRemaining}} left)
+            </button>
+            {{else if canVolunteerChef}}
+            <button type="button" class="btn-feature-trigger btn-feature-amber" data-action="volunteerChefMeal" data-actor-id="{{id}}"
+                {{#unless canInteractChef}}disabled{{/unless}} data-tooltip="Cook replenishing meal for up to {{chefMealCapacity}} companions (+1d8 HD)">
+                <i class="fas fa-utensils"></i> {{#if @root.isGritty}}Cook Replenishing Meal{{else}}Offer Chef's Treats{{/if}} ({{chefMealCapacity}} servings)
+            </button>
+            {{else if chefVolunteerLocked}}
+            <span class="badge-feature-passive"><i class="fas fa-utensils"></i> Another chef is cooking</span>
+            {{else if cookingDisabled}}
+            <span class="badge-feature-passive"><i class="fas fa-fire-flame-curved"></i> Cold Camp (No Cooking)</span>
+            {{/if}}
+            {{/if}}
+
+            {{!-- Arcane Recovery / Spell Recovery Trigger & Badges --}}
+            {{#if spellRecovery}}
+            {{#if spellRecovery.exhausted}}
+            <span class="badge-feature-spent" data-tooltip="{{spellRecovery.exhaustedExplain}}">
+                <i class="fas fa-hat-wizard"></i> {{spellRecovery.featureName}} (Used)
+            </span>
+            {{else if spellRecovery.noRecoverableSlots}}
+            <span class="badge-feature-passive" data-tooltip="No spent slots to recover.">
+                <i class="fas fa-hat-wizard"></i> {{spellRecovery.featureName}} (0 / {{spellRecovery.maxBudget}} lvls)
+            </span>
+            {{else}}
+            <button type="button" class="btn-feature-trigger btn-feature-blue {{#if spellRecovery.confirmed}}confirmed{{/if}}" data-action="toggleSpellRecoveryDrawer" data-actor-id="{{id}}">
+                <i class="fas fa-hat-wizard"></i> {{spellRecovery.featureName}} ({{spellRecovery.currentSpend}} / {{spellRecovery.maxBudget}} lvls)
+                {{#if spellRecovery.confirmed}}<i class="fas fa-check-circle"></i>{{/if}}
+            </button>
+            {{/if}}
+            {{/if}}
+
+            {{!-- Quiet Passive Recharge Badges --}}
+            {{#each srRechargeBadges}}
+            <span class="badge-feature-passive" data-tooltip="Recharges on rest">{{this}}</span>
+            {{/each}}
+        </div>
+
+        {{!-- Spell recovery drawer if active --}}
+        {{#if (and spellRecovery (not spellRecovery.exhausted) (not spellRecovery.noRecoverableSlots))}}
+        <div class="sr-spell-recovery {{#if spellRecovery.confirmed}}confirmed{{/if}}">
+            <div class="sr-spell-slots">
+                {{#each spellRecovery.slots}}
+                <div class="sr-spell-slot-row">
+                    <span class="sr-spell-level">Level {{level}}</span>
+                    <span class="sr-spell-count">{{selected}} / {{spent}} spent</span>
+                    <div class="sr-spell-controls">
+                        {{#if canRemove}}
+                        <button type="button" class="sr-spell-btn sr-spell-minus" data-action="removeSpellSlot" data-actor-id="{{../spellRecovery.actorId}}" data-level="{{level}}">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        {{else}}
+                        <button type="button" class="sr-spell-btn sr-spell-minus faded" disabled>
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        {{/if}}
+                        {{#if canAdd}}
+                        <button type="button" class="sr-spell-btn sr-spell-plus" data-action="addSpellSlot" data-actor-id="{{../spellRecovery.actorId}}" data-level="{{level}}">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        {{else}}
+                        <button type="button" class="sr-spell-btn sr-spell-plus faded" disabled>
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        {{/if}}
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+            {{#if spellRecovery.confirmed}}
+            <button type="button" class="sr-spell-edit-btn" data-action="editRecovery" data-actor-id="{{spellRecovery.actorId}}">
+                <i class="fas fa-pen"></i> Edit
+            </button>
+            {{else if spellRecovery.hasSelections}}
+            <button type="button" class="sr-spell-confirm-btn" data-action="confirmRecovery" data-actor-id="{{spellRecovery.actorId}}">
+                <i class="fas fa-check"></i> Confirm
+            </button>
+            {{/if}}
+        </div>
+        {{/if}}
+    </div>
+    {{/if}}
+</div>
+{{/with}}
+{{/if}}

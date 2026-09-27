@@ -1,0 +1,131 @@
+<div class="respite-master-rest-card">
+
+    {{!-- Shared Terrain / Resolution Banner --}}
+    {{#if showBanner}}
+    <div class="master-card-banner {{bannerFireClass}}">
+        <img src="{{terrainBanner}}" alt="{{subtitle}} banner" style="object-position: {{terrainBannerPos}};" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
+        <div class="master-banner-fade"></div>
+        {{#if partyStatus}}
+        <span class="master-banner-badge {{partyStatus.class}}" title="{{partyStatus.label}}">
+            <i class="{{partyStatus.icon}}"></i> {{partyStatus.label}}
+        </span>
+        {{/if}}
+    </div>
+    {{/if}}
+
+    {{!-- Executive Header Ledger --}}
+    <div class="master-card-header">
+        <div class="master-title-row">
+            <span class="master-badge"><i class="fas fa-landmark"></i></span>
+            <div class="master-title-block">
+                <h3 class="master-title">{{title}}</h3>
+                <span class="master-subtitle">{{subtitle}}</span>
+            </div>
+        </div>
+        {{#unless showBanner}}
+        {{#if partyStatus}}
+        <div class="master-fallback-status" style="margin-top: 4px;">
+            <span class="master-party-status {{partyStatus.class}}" title="{{partyStatus.label}}">
+                <i class="{{partyStatus.icon}}"></i> {{partyStatus.label}}
+            </span>
+        </div>
+        {{/if}}
+        {{/unless}}
+    </div>
+
+    {{!-- Incidents / Discoveries Resolved (If any occurred) --}}
+    {{#if encounters.length}}
+    <details class="master-incidents-details {{incidentsMeta.containerClass}}" open>
+        <summary class="master-incidents-summary">
+            <div class="incidents-summary-left">
+                <i class="fas fa-chevron-right details-chevron"></i>
+                <span class="incidents-badge"><i class="{{incidentsMeta.badgeIcon}}"></i> {{incidentsMeta.badgeLabel}}</span>
+            </div>
+        </summary>
+        <ul class="encounters-list">
+            {{#each encounters}}
+            <li class="encounter-item {{itemClass}}">
+                <div class="encounter-item-header">
+                    <strong class="encounter-night"><i class="{{icon}}"></i> Night {{nightIndex}}:</strong>
+                    <span class="encounter-title {{#if isRewarding}}positive{{/if}}">{{title}}</span>
+                </div>
+                {{#if description}}
+                <div class="encounter-desc">{{description}}</div>
+                {{/if}}
+            </li>
+            {{/each}}
+        </ul>
+    </details>
+    {{/if}}
+
+    {{#if freshForageNote}}
+    <p class="master-forage-note">{{freshForageNote}}</p>
+    {{/if}}
+
+    {{!-- Per-Character Downtime Breakdown --}}
+    <div class="master-character-accordions">
+        {{#each characters}}
+        <details class="master-char-details">
+            <summary class="master-char-summary">
+                <div class="char-summary-identity">
+                    <i class="fas fa-chevron-right details-chevron"></i>
+                    {{#if img}}
+                    <img class="char-summary-portrait" src="{{img}}" alt="{{name}}">
+                    {{else}}
+                    <i class="fas fa-user char-fallback-icon"></i>
+                    {{/if}}
+                    <span class="char-summary-name" title="{{name}}">{{name}}</span>
+                </div>
+                <div class="char-summary-activities">
+                    <span class="char-act-pill">
+                        <i class="{{rolePill.icon}}"></i> {{rolePill.label}}
+                    </span>
+                    <span class="char-act-pill {{statusPill.class}}">
+                        <i class="{{statusPill.icon}}"></i> {{statusPill.label}}
+                    </span>
+                </div>
+            </summary>
+            <div class="master-char-content">
+                {{#if activitiesSummary.length}}
+                <ul class="master-char-outcomes">
+                    {{#each activitiesSummary}}
+                    <li><i class="fas fa-check" style="color: #a855f7; font-size: 0.65rem;"></i> {{this}}</li>
+                    {{/each}}
+                </ul>
+                {{/if}}
+
+                {{#if hasRolls}}
+                <details class="master-char-rolls-details">
+                    <summary class="master-rolls-summary">
+                        <i class="fas fa-dice-d20"></i> Daily Checks ({{totalRollCount}})
+                    </summary>
+                    <div class="master-rolls-section">
+                        {{#each groupedRolls}}
+                        <div class="roll-subgroup">
+                            <span class="roll-activity-label">{{activity}}:</span>
+                            <div class="roll-chips-row">
+                                {{#each checks}}
+                                <span class="roll-chip {{#if success}}success{{/if}}" data-tooltip="Day {{day}}: Total {{total}}{{#if yield}}, Yield: {{yield}} rations{{/if}}{{#if detail}} ({{detail}}){{/if}}">
+                                    [{{total}}]{{#if yield}} <i class="fas fa-seedling"></i>+{{yield}}{{/if}}
+                                </span>
+                                {{/each}}
+                            </div>
+                        </div>
+                        {{/each}}
+                    </div>
+                </details>
+                {{/if}}
+
+                {{#if notes.length}}
+                <ul class="master-char-notes">
+                    {{#each notes}}
+                    <li><i class="{{icon}}" style="color: {{color}}; font-size: 0.68rem;"></i> {{text}}</li>
+                    {{/each}}
+                </ul>
+                {{/if}}
+            </div>
+        </details>
+        {{/each}}
+    </div>
+
+</div>

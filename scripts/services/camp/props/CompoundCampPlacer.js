@@ -97,6 +97,8 @@ function findPlayerGearItem(actor, gearType) {
 }
 
 let _campSessionId = null;
+/** True while a campfire create is in flight, so a second drop cannot land. */
+let _placingCampfire = false;
 /** Scene where the current rest camp was placed (may differ from the active canvas). */
 let _campSceneId = null;
 /** Coalesce concurrent camp cleanup (abandon + close both call clearCampTokens). */
@@ -590,9 +592,22 @@ export async function placeCampfire(worldX, worldY, options = {}) {
         ui.notifications.warn("Only the GM can place the campfire.");
         return null;
     }
+    if (_placingCampfire || hasCampfirePlaced()) {
+        ui.notifications.warn("A campfire is already on the map.");
+        return null;
+    }
 
     const scene = canvas.scene;
     if (!scene) return null;
+    _placingCampfire = true;
+    try {
+        return await _placeCampfireNow(worldX, worldY, options, scene);
+    } finally {
+        _placingCampfire = false;
+    }
+}
+
+async function _placeCampfireNow(worldX, worldY, options, scene) {
 
     const gs = gridSize();
     const snapped = canvas.grid.getSnappedPoint({ x: worldX, y: worldY }, { mode: CONST.GRID_SNAPPING_MODES.CENTER });
@@ -918,15 +933,27 @@ export async function clearCampfireSite() {
 
     const sessionId = _campSessionId;
 
+    const isFireToken = (flags) => flags.furnitureKey === "campfire"
+        || flags.furnitureKey === "campfireFlame"
+        || flags.isCampfireBase
+        || flags.isCampfireToken;
+    const fireSessions = new Set();
+    if (sessionId) fireSessions.add(sessionId);
+    for (const token of scene.tokens) {
+        const flags = token.flags?.[MODULE_ID];
+        if (!flags?.isCampFurniture || flags.isPlayerGear) continue;
+        if (isFireToken(flags) && flags.campSessionId) fireSessions.add(flags.campSessionId);
+    }
+
     const toRemove = scene.tokens.filter(t => {
         const flags = t.flags?.[MODULE_ID];
         if (!flags?.isCampFurniture || flags.isPlayerGear) return false;
-        if (sessionId) return flags.campSessionId === sessionId;
-        return flags.furnitureKey === "campfire"
-            || flags.furnitureKey === "campfireFlame"
-            || flags.isPlaceholder
-            || !!flags.isSharedStation
-            || !!flags.targetStationKey;
+        if (isFireToken(flags)) return true;
+        if (flags.campSessionId && fireSessions.has(flags.campSessionId)) {
+            return !!flags.isPlaceholder || !!flags.isSharedStation || !!flags.targetStationKey;
+        }
+        if (sessionId) return false;
+        return !!flags.isPlaceholder || !!flags.isSharedStation || !!flags.targetStationKey;
     });
 
     if (!toRemove.length) {

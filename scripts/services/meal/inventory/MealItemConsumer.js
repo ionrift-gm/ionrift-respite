@@ -23,8 +23,8 @@ import {
  * @param {number} amount - Number of units to consume
  * @param {object} [opts]
  * @param {boolean} [opts.wholeUnit=false] - Skip charge tracking and
- *   decrement quantity directly. Used for water/drink consumption where
- *   1 slot = 1 whole container regardless of internal pint charges.
+ *   decrement quantity directly. Waterskins should leave this off so a
+ *   drink spends one charge, or one contained pint, and keeps the vessel.
  * @returns {number} Units actually consumed
  */
 export async function consumeItem(actor, itemId, amount = 1, { wholeUnit = false } = {}) {

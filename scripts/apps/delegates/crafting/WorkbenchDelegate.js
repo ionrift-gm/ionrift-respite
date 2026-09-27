@@ -72,6 +72,28 @@ export class WorkbenchDelegate {
         return this._app._workbenchFocusUsed;
     }
 
+    getFocusBudget(actorId) {
+        return this._app.getFocusBudget?.(actorId) ?? 1;
+    }
+
+    getFocusCount(actorId) {
+        if (this._app._workbenchFocusCounts instanceof Map) {
+            return this._app._workbenchFocusCounts.get(actorId) ?? 0;
+        }
+        return this.focusUsed.has(actorId) ? 1 : 0;
+    }
+
+    isFocusExhausted(actorId) {
+        return this.getFocusCount(actorId) >= this.getFocusBudget(actorId);
+    }
+
+    recordFocusUsed(actorId) {
+        if (!this._app._workbenchFocusCounts) this._app._workbenchFocusCounts = new Map();
+        const current = this.getFocusCount(actorId);
+        this._app._workbenchFocusCounts.set(actorId, current + 1);
+        this.focusUsed.add(actorId);
+    }
+
     get submitPending() {
         if (!this._app._workbenchIdentifySubmitPending) {
             this._app._workbenchIdentifySubmitPending = new Set();
@@ -94,7 +116,7 @@ export class WorkbenchDelegate {
         if (!this._app._workbenchIdentifyStaging) this._app._workbenchIdentifyStaging = new Map();
         const prev = this.getStaging(actorId);
         const nextGear = partial.gearItemId !== undefined ? partial.gearItemId : prev.gearItemId;
-        const resolvedGear = (nextGear && this.focusUsed.has(actorId)) ? prev.gearItemId : nextGear;
+        const resolvedGear = (nextGear && this.isFocusExhausted(actorId)) ? prev.gearItemId : nextGear;
         const nextGearActorId = resolvedGear
             ? (partial.gearActorId !== undefined ? partial.gearActorId : prev.gearActorId)
             : null;
@@ -164,7 +186,13 @@ export class WorkbenchDelegate {
             workbenchSubmitPending: false,
             workbenchIdentifyAcknowledgement: null,
             workbenchAckRevealReady: true,
-            workbenchFocusExhausted: false
+            workbenchFocusExhausted: false,
+            focusBudget: 1,
+            focusCount: 0,
+            focusRemaining: 1,
+            focusBudgetLabel: null,
+            focusTooltip: "",
+            restCiteText: ""
         };
         if (!actorId) return empty;
         const actor = game.actors.get(actorId);
@@ -217,7 +245,17 @@ export class WorkbenchDelegate {
         const ack = this.acknowledge?.get(actorId) ?? null;
         const workbenchIdentifyAcknowledgement = ack ? { items: ack.items } : null;
         const workbenchAckRevealReady = !ack || Date.now() >= ack.revealAt;
-        const workbenchFocusExhausted = this.focusUsed.has(actorId);
+        const focusBudget = this.getFocusBudget(actorId);
+        const focusCount = this.getFocusCount(actorId);
+        const workbenchFocusExhausted = this.isFocusExhausted(actorId);
+        const focusRemaining = Math.max(0, focusBudget - focusCount);
+        const focusBudgetLabel = focusBudget > 1 ? `${focusRemaining}/${focusBudget} left` : null;
+        const focusTooltip = focusBudget > 1
+            ? `Focus: ${focusRemaining} of ${focusBudget} items remaining this rest (DMG p.136). Click to clear.`
+            : "One non-potion item per rest (Identifying a Magic Item, DMG p.136). Click to clear.";
+        const restCiteText = focusBudget > 1
+            ? `Focus up to ${focusBudget} items this downtime (${focusRemaining} remaining); taste as needed (DMG p.136).`
+            : "Focus once per rest; taste as needed (DMG p.136).";
         return {
             workbenchIdentifyActorId: actorId,
             workbenchGearChip,
@@ -227,7 +265,13 @@ export class WorkbenchDelegate {
             workbenchSubmitPending,
             workbenchIdentifyAcknowledgement,
             workbenchAckRevealReady,
-            workbenchFocusExhausted
+            workbenchFocusExhausted,
+            focusBudget,
+            focusCount,
+            focusRemaining,
+            focusBudgetLabel,
+            focusTooltip,
+            restCiteText
         };
     }
 
@@ -351,11 +395,11 @@ export class WorkbenchDelegate {
                 revealAt: Date.now() + 900
             });
             if (st.gearItemId) {
-                this.focusUsed.add(actorId);
+                this.recordFocusUsed(actorId);
             }
             notifyWorkbenchIdentifyStagingTouched();
             if (this._app.rendered) this._app.render();
-            // "Wait..." button transitions to "Continue" automatically.
+            // "Wait..." button transitions to "Done" automatically.
             const REVEAL_MS = 950;
             setTimeout(() => {
                 if (this._app.rendered && this.acknowledge?.has(actorId)) {
@@ -530,6 +574,7 @@ export class WorkbenchDelegate {
         this.staging?.clear();
         this.acknowledge?.clear();
         this.focusUsed.clear();
+        this._app._workbenchFocusCounts?.clear();
         this.submitPending.clear();
     }
 
@@ -573,7 +618,10 @@ export class WorkbenchDelegate {
         };
 
         const assignGear = (itemId, itemActorId) => {
-            const focusGate = canStageFocus({ focusUsed: this.focusUsed.has(actorId) });
+            const focusGate = canStageFocus({
+                focusCount: this.getFocusCount(actorId),
+                focusBudget: this.getFocusBudget(actorId)
+            });
             if (!focusGate.ok) {
                 ui.notifications.info(focusGate.msg);
                 return;
@@ -738,7 +786,8 @@ export class WorkbenchDelegate {
         return {
             staging: Array.from(this.staging?.entries?.() ?? []),
             acknowledge: Array.from(this.acknowledge?.entries?.() ?? []),
-            focusUsed: Array.from(this.focusUsed)
+            focusUsed: Array.from(this.focusUsed),
+            focusCounts: Array.from(this._app._workbenchFocusCounts?.entries?.() ?? [])
         };
     }
 
@@ -747,6 +796,9 @@ export class WorkbenchDelegate {
         this._app._workbenchIdentifyStaging = new Map(state.staging ?? []);
         this._app._workbenchIdentifyAcknowledge = new Map(state.acknowledge ?? []);
         this._app._workbenchFocusUsed = new Set(state.focusUsed ?? []);
+        if (state.focusCounts) {
+            this._app._workbenchFocusCounts = new Map(state.focusCounts);
+        }
     }
 }
 

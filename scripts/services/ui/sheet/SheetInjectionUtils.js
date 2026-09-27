@@ -41,20 +41,20 @@ export function resolveHeaderButtonInsertBefore(header, buttonClass = "respite-d
     const v2Controls = header.querySelector(".header-controls");
     if (v2Controls) {
         for (const child of v2Controls.children) {
-            if (!child.classList.contains(buttonClass) && !child.classList.contains("respite-diet-btn") && !child.classList.contains("respite-item-btn")) return child;
+            if (!child.classList.contains(buttonClass) && !child.classList.contains("respite-diet-btn") && !child.classList.contains("respite-item-btn") && !child.classList.contains("respite-container-btn")) return child;
         }
         return null;
     }
 
     const firstHeaderButton = header.querySelector("a.header-button, button.header-button");
-    if (firstHeaderButton && !firstHeaderButton.classList.contains(buttonClass) && !firstHeaderButton.classList.contains("respite-diet-btn") && !firstHeaderButton.classList.contains("respite-item-btn")) {
+    if (firstHeaderButton && !firstHeaderButton.classList.contains(buttonClass) && !firstHeaderButton.classList.contains("respite-diet-btn") && !firstHeaderButton.classList.contains("respite-item-btn") && !firstHeaderButton.classList.contains("respite-container-btn")) {
         return firstHeaderButton;
     }
 
     const closeControl = header.querySelector(
         "a.header-button.close, button.header-button.close, a.close, button.close, [data-action='close']"
     );
-    if (closeControl && !closeControl.classList.contains(buttonClass) && !closeControl.classList.contains("respite-diet-btn") && !closeControl.classList.contains("respite-item-btn")) {
+    if (closeControl && !closeControl.classList.contains(buttonClass) && !closeControl.classList.contains("respite-diet-btn") && !closeControl.classList.contains("respite-item-btn") && !closeControl.classList.contains("respite-container-btn")) {
         return closeControl;
     }
 

@@ -3,12 +3,60 @@
    CRAFTING PICKER
    ============================================================ */
 
+.ionrift-crafting-app {
+    min-width: 540px;
+    min-height: 520px;
+}
+
 .ionrift-crafting-app .window-content {
-    padding: 0;
+    padding: 0.5rem 0.65rem 0.65rem;
     display: flex;
     flex-direction: column;
-    max-height: 80vh;
-    overflow-y: auto;
+    overflow: hidden;
+}
+
+.ionrift-crafting-app .crafting-picker {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.ionrift-crafting-app .crafting-split-body {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.ionrift-crafting-app .risk-selector {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.35rem;
+    width: 100%;
+}
+
+.ionrift-crafting-app .btn-risk {
+    padding: 0.35rem 0.25rem;
+    min-height: 3.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box;
+    border-radius: 4px;
+}
+
+.ionrift-crafting-app .risk-label {
+    flex-shrink: 0;
+    min-height: min-content;
+    line-height: 1.25;
+}
+
+.ionrift-crafting-app .risk-hint {
+    font-size: 0.62rem;
+    line-height: 1.15;
+    white-space: normal;
+    word-break: normal;
+    color: rgba(255, 255, 255, 0.45);
 }
 
 /* ---- Station-embedded Crafting Overrides ---- */
@@ -280,10 +328,10 @@
 .recipe-hero-name {
     margin: 0;
     font-size: 1rem;
-    font-weight: 600;
-    color: var(--ionrift-text, #e0e0e0);
-    line-height: 1.2;
-    word-break: break-word;
+    font-weight: 700;
+    color: #ffffff;
+    text-decoration: none !important;
+    border-bottom: none !important;
 }
 
 .recipe-hero-dc-row {
@@ -541,16 +589,16 @@
 
 .crafting-split .risk-selector {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     width: 100%;
-    gap: 0.25rem;
+    gap: 0.35rem;
 }
 
 .crafting-split .btn-risk {
-    padding: 0.3rem 0.25rem;
+    padding: 0.35rem 0.25rem;
     min-width: 0;
     width: 100%;
-    min-height: 3.1rem;
+    min-height: 3.5rem;
     flex: none;
     box-sizing: border-box;
 }
@@ -558,15 +606,16 @@
 .crafting-split .risk-label {
     font-size: 0.75rem;
     white-space: nowrap;
+    flex-shrink: 0;
+    min-height: min-content;
+    line-height: 1.25;
 }
 
 .crafting-split .risk-hint {
-    font-size: 0.55rem;
+    font-size: 0.6rem;
     line-height: 1.15;
-    color: rgba(255, 255, 255, 0.3);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: normal;
 }
 
 .crafting-split .craft-commit-panel {
@@ -603,17 +652,16 @@
 
 .station-crafting-panel .risk-selector {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     width: 100%;
-    gap: 0.25rem;
+    gap: 0.35rem;
 }
 
 .station-crafting-panel .btn-risk {
-    padding: 0.35rem 0.3rem;
+    padding: 0.35rem 0.25rem;
     min-width: 0;
     width: 100%;
-    min-height: 3.1rem;
-    overflow: hidden;
+    min-height: 3.5rem;
     box-sizing: border-box;
 }
 
@@ -622,22 +670,27 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 100%;
+    flex-shrink: 0;
+    min-height: min-content;
+    line-height: 1.25;
 }
 
 .station-crafting-panel .risk-hint {
     font-size: 0.6rem;
-    line-height: 1.2;
-    color: rgba(255, 255, 255, 0.35);
+    line-height: 1.15;
+    color: rgba(255, 255, 255, 0.6);
     margin-top: 0.15rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
 }
 
 .station-crafting-panel .crafting-footer {
-    padding: 0.5rem 0 0.25rem;
+    padding: 0.5rem 0.25rem 0.25rem;
     display: flex;
-    justify-content: center;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-shrink: 0;
 }
 
 .station-crafting-panel .crafting-footer .btn-secondary {
@@ -695,8 +748,8 @@
     margin-bottom: 0.35rem;
 }
 
-.station-crafting-panel.crafting-split .btn-hero-craft {
-    position: static;
+.station-crafting-panel.crafting-split .craft-commit-panel .btn-hero-craft {
+    display: none;
 }
 
 .crafting-picker {
@@ -725,15 +778,26 @@
 .crafting-header-info h2 {
     margin: 0;
     font-size: 1rem;
+    font-weight: 700;
     color: var(--ionrift-text, #e0e0e0);
+    text-decoration: none !important;
+    border-bottom: none !important;
 }
 
 .crafting-header-info h3 {
     margin: 0;
-    font-size: 0.8rem;
-    color: var(--ionrift-accent, #7eb8da);
+    font-size: 0.68rem;
+    color: #c084fc;
+    background: rgba(168, 85, 247, 0.14);
+    border: 1px solid rgba(168, 85, 247, 0.28);
+    border-radius: 3px;
+    padding: 1px 6px;
+    display: inline-block;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+    text-decoration: none !important;
+    border-bottom: 1px solid rgba(168, 85, 247, 0.28) !important;
 }
 
 /* ---- Steps ---- */
@@ -903,6 +967,9 @@
     font-weight: 600;
     font-size: 0.8rem;
     color: var(--ionrift-text, #e0e0e0);
+    flex-shrink: 0;
+    min-height: min-content;
+    line-height: 1.25;
 }
 
 .risk-hint {
@@ -2323,6 +2390,15 @@
     border-top: 1px solid rgba(255, 255, 255, 0.06);
     font-size: 0.65rem;
     color: rgba(255, 255, 255, 0.4);
+    opacity: 0.42;
+    filter: saturate(0.65) brightness(0.85);
+    transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.encounter-bar:hover,
+.encounter-bar:focus-within {
+    opacity: 1;
+    filter: saturate(1) brightness(1);
 }
 
 .encounter-bar-label-wrap {
@@ -3384,9 +3460,9 @@
     line-height: 1.25;
 }
 
-/* Station hub tabs (Camp/Fire, Rations/Cooking, Activities/Identify): match Short Rest
-   .sr-tab strip. Scope without relying on .application so Foundry button:focus cannot
-   paint the default warm ring after theme CSS order. */
+/* Station hub tabs (Camp/Fire, Rations/Cooking, Activities/Identify): match the
+   shared .rest-tab strip (see _chrome.css). Scope without relying on .application
+   so Foundry button:focus cannot paint the default warm ring after theme CSS order. */
 .ionrift-station-dialog .station-sub-tabs {
     display: flex;
     gap: 0.25rem;
@@ -3907,190 +3983,373 @@
     line-height: 1.35;
 }
 
-/* SPELLS | REST horizontal band */
-.station-workbench-identify-embed .wb-ident-band,
-.workbench-identify-panel .wb-ident-band {
+/* ── Refactored Examine & Identify Workbench ───────────────────────── */
+
+/* Utility Bar (Header Meta / Caster Hint + Detect Magic Recon Ping) */
+.station-workbench-identify-embed .wb-ident-utility-bar,
+.workbench-identify-panel .wb-ident-utility-bar {
     display: flex;
-    flex-direction: row;
-    align-items: stretch;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.2rem 0.2rem 0.4rem;
+    margin-bottom: 0.4rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.station-workbench-identify-embed .wb-ident-utility-meta,
+.workbench-identify-panel .wb-ident-utility-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.station-workbench-identify-embed .wb-ident-caster-hint,
+.workbench-identify-panel .wb-ident-caster-hint,
+.station-workbench-identify-embed .wb-ident-recon-hint,
+.workbench-identify-panel .wb-ident-recon-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: rgba(220, 215, 245, 0.85);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.station-workbench-identify-embed .wb-ident-caster-hint i,
+.workbench-identify-panel .wb-ident-caster-hint i {
+    color: #c4b5fd;
+    font-size: 0.75rem;
+}
+
+.station-workbench-identify-embed .wb-ident-recon-hint i,
+.workbench-identify-panel .wb-ident-recon-hint i {
+    color: #fbbf24;
+    font-size: 0.75rem;
+}
+
+/* Detect Magic Toggle in Utility Bar */
+.station-workbench-identify-embed .wb-ident-utility-recon,
+.workbench-identify-panel .wb-ident-utility-recon {
+    flex: 0 0 auto;
+}
+
+.station-workbench-identify-embed .btn-detect-magic-toggle,
+.workbench-identify-panel .btn-detect-magic-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.22rem 0.6rem;
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    border-radius: 4px;
+    background: rgba(139, 92, 246, 0.12);
+    border: 1px solid rgba(167, 139, 250, 0.35);
+    color: rgba(216, 180, 254, 0.95);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-image: none !important;
+}
+
+.station-workbench-identify-embed .btn-detect-magic-toggle:hover:not(:disabled),
+.workbench-identify-panel .btn-detect-magic-toggle:hover:not(:disabled) {
+    background: rgba(139, 92, 246, 0.25);
+    border-color: rgba(167, 139, 250, 0.65);
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+}
+
+.station-workbench-identify-embed .btn-detect-magic-toggle.is-active,
+.workbench-identify-panel .btn-detect-magic-toggle.is-active {
+    background: rgba(139, 92, 246, 0.35);
+    border-color: #c084fc;
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(192, 132, 252, 0.45);
+}
+
+.station-workbench-identify-embed .btn-detect-magic-toggle:disabled,
+.workbench-identify-panel .btn-detect-magic-toggle:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+/* 3-Bay Symmetrical Triage Grid */
+.station-workbench-identify-embed .wb-ident-triage-grid,
+.workbench-identify-panel .wb-ident-triage-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.55rem;
     width: 100%;
 }
-.station-workbench-identify-embed .wb-ident-spells,
-.workbench-identify-panel .wb-ident-spells {
-    flex: 0 1 34%;
-    min-width: 7.5rem;
-    max-width: 11rem;
+
+/* Symmetrical Workbench Cards */
+.station-workbench-identify-embed .wb-ident-card,
+.workbench-identify-panel .wb-ident-card {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    align-items: center;
+    justify-content: flex-start;
+    background: linear-gradient(180deg, rgba(24, 26, 38, 0.85) 0%, rgba(14, 16, 26, 0.95) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 0.55rem 0.45rem 0.5rem;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    min-height: 168px;
+    box-sizing: border-box;
+    position: relative;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.station-workbench-identify-embed .wb-ident-rest,
-.workbench-identify-panel .wb-ident-rest {
-    flex: 1 1 66%;
-    min-width: 0;
+
+.station-workbench-identify-embed .wb-ident-card--arcane,
+.workbench-identify-panel .wb-ident-card--arcane {
+    border-top: 2px solid #8b5cf6;
+}
+
+.station-workbench-identify-embed .wb-ident-card--focus,
+.workbench-identify-panel .wb-ident-card--focus {
+    border-top: 2px solid #f59e0b;
+}
+
+.station-workbench-identify-embed .wb-ident-card--taste,
+.workbench-identify-panel .wb-ident-card--taste {
+    border-top: 2px solid #10b981;
+}
+
+/* Card Header */
+.station-workbench-identify-embed .wb-ident-card-head,
+.workbench-identify-panel .wb-ident-card-head {
     display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-.station-workbench-identify-embed .wb-ident-band-divider,
-.workbench-identify-panel .wb-ident-band-divider {
-    flex: 0 0 1px;
-    align-self: stretch;
-    margin: 0.15rem 0;
-    background: rgba(180, 140, 240, 0.22);
-}
-.station-workbench-identify-embed .wb-ident-col-label,
-.workbench-identify-panel .wb-ident-col-label {
-    font-size: 0.55rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(220, 220, 230, 0.45);
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 0.4rem;
+    padding: 0 0.15rem;
     line-height: 1.2;
 }
-/* One card: Identify drop + Detect Magic + status */
-.station-workbench-identify-embed .wb-ident-arcane-card,
-.workbench-identify-panel .wb-ident-arcane-card {
-    flex: 1 1 auto;
-    width: 100%;
-    gap: 0.4rem;
-    border-color: rgba(160, 120, 220, 0.18);
-    background: rgba(160, 120, 220, 0.04);
-}
-.station-workbench-identify-embed .wb-ident-identify-block,
-.workbench-identify-panel .wb-ident-identify-block,
-.station-workbench-identify-embed .wb-ident-detect-block,
-.workbench-identify-panel .wb-ident-detect-block {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    width: 100%;
-    gap: 0.2rem;
-}
-.station-workbench-identify-embed .wb-ident-rest-controls,
-.workbench-identify-panel .wb-ident-rest-controls {
-    display: flex;
-    flex-direction: row;
-    gap: 0.35rem;
-    width: 100%;
-    flex: 1 1 auto;
-    align-items: stretch;
-    min-height: 0;
-}
-.station-workbench-identify-embed .wb-ident-rest-controls > .meal-panel,
-.workbench-identify-panel .wb-ident-rest-controls > .meal-panel {
-    flex: 1 1 0;
-    min-width: 0;
-    height: auto;
-    align-self: stretch;
-}
-.station-workbench-identify-embed .wb-ident-gear-slot-wrap,
-.workbench-identify-panel .wb-ident-gear-slot-wrap,
-.station-workbench-identify-embed .wb-ident-potion-slot-wrap,
-.workbench-identify-panel .wb-ident-potion-slot-wrap {
-    flex: 1 1 auto;
-    display: flex;
-    justify-content: center;
+
+.station-workbench-identify-embed .wb-ident-card-title,
+.workbench-identify-panel .wb-ident-card-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    display: inline-flex;
     align-items: center;
-    margin-bottom: 0;
-    min-height: 72px;
-}
-.station-workbench-identify-embed .wb-ident-arcane-status,
-.workbench-identify-panel .wb-ident-arcane-status {
+    gap: 0.25rem;
     margin: 0;
-    width: 100%;
-    text-align: center;
-    font-size: 0.58rem;
-    font-style: italic;
-    color: rgba(180, 140, 240, 0.55);
-    line-height: 1.3;
 }
-.station-workbench-identify-embed .wb-ident-rest-cite,
-.workbench-identify-panel .wb-ident-rest-cite {
-    margin: 0.15rem 0 0;
-    width: 100%;
-    text-align: center;
-    font-size: 0.55rem;
-    font-style: italic;
-    color: rgba(220, 220, 230, 0.42);
-    line-height: 1.3;
+
+.station-workbench-identify-embed .wb-ident-card--arcane .wb-ident-card-title,
+.workbench-identify-panel .wb-ident-card--arcane .wb-ident-card-title {
+    color: #c4b5fd;
 }
-.station-workbench-identify-embed .wb-ident-detect-slot-wrap,
-.workbench-identify-panel .wb-ident-detect-slot-wrap {
-    display: flex;
-    justify-content: stretch;
-    align-items: center;
-    min-height: 0;
-    width: 100%;
+
+.station-workbench-identify-embed .wb-ident-card--focus .wb-ident-card-title,
+.workbench-identify-panel .wb-ident-card--focus .wb-ident-card-title {
+    color: #fde68a;
 }
-.station-workbench-identify-embed .wb-ident-arcane-card .btn-detect-magic,
-.workbench-identify-panel .wb-ident-arcane-card .btn-detect-magic {
+
+.station-workbench-identify-embed .wb-ident-card--taste .wb-ident-card-title,
+.workbench-identify-panel .wb-ident-card--taste .wb-ident-card-title {
+    color: #a7f3d0;
+}
+
+.wb-ident-col-tip {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.35rem;
+    font-size: 0.72rem;
+    line-height: 1;
+    color: rgba(180, 140, 240, 0.55);
+    cursor: help;
+}
+.wb-ident-col-tip:hover,
+.wb-ident-col-tip:focus-visible {
+    color: rgba(210, 180, 255, 0.95);
+    outline: none;
+}
+
+/* Recessed Tabletop Drop Wells */
+.station-workbench-identify-embed .wb-ident-well-wrap,
+.workbench-identify-panel .wb-ident-well-wrap {
     width: 100%;
-    min-width: 0;
-    height: auto !important;
-    max-width: none;
-    padding: 0.4rem 0.45rem;
-    text-align: center;
-    flex-direction: row;
-    font-size: 0.62rem;
-    line-height: 1.2;
-}
-.station-workbench-identify-embed .wb-ident-arcane-card .btn-detect-magic-text,
-.workbench-identify-panel .wb-ident-arcane-card .btn-detect-magic-text {
-    white-space: nowrap;
-}
-.station-workbench-identify-embed .wb-ident-arcane-card .btn-detect-magic > .fas,
-.workbench-identify-panel .wb-ident-arcane-card .btn-detect-magic > .fas {
-    margin-top: 0;
-    font-size: 0.85rem;
-}
-.station-workbench-identify-embed .wb-ident-spell-slot-wrap,
-.workbench-identify-panel .wb-ident-spell-slot-wrap {
     display: flex;
     justify-content: center;
-    margin-bottom: 0;
+    margin-bottom: 0.4rem;
 }
+
+.station-workbench-identify-embed .wb-ident-drop-zone,
+.workbench-identify-panel .wb-ident-drop-zone,
+.ionrift-station-dialog .wb-ident-drop-zone {
+    width: 76px;
+    height: 76px;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    background: rgba(6, 8, 14, 0.85);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.75), 0 1px 1px rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
 .station-workbench-identify-embed .spell-identify-drop-zone,
 .workbench-identify-panel .spell-identify-drop-zone,
 .ionrift-station-dialog .spell-identify-drop-zone {
-    width: 72px;
-    height: 72px;
-    border: 2px dashed rgba(160, 120, 220, 0.4);
-    background: rgba(160, 120, 220, 0.06);
-}
-.station-workbench-identify-embed .spell-identify-drop-zone.filled,
-.workbench-identify-panel .spell-identify-drop-zone.filled,
-.ionrift-station-dialog .spell-identify-drop-zone.filled {
-    border-style: solid;
-    border-color: rgba(180, 140, 240, 0.6);
-    background: rgba(160, 120, 220, 0.12);
-    box-shadow: 0 0 14px rgba(160, 120, 220, 0.2);
-}
-.station-workbench-identify-embed .spell-identify-drop-zone.drop-hover,
-.ionrift-station-dialog .spell-identify-drop-zone.drop-hover {
-    border-color: rgba(200, 160, 255, 0.9);
-    background: rgba(160, 120, 220, 0.18);
-    transform: scale(1.06);
-}
-.station-workbench-identify-embed .drop-zone-spell-sil,
-.ionrift-station-dialog .drop-zone-spell-sil {
-    font-size: 1.45rem;
-    color: rgba(180, 140, 240, 0.28);
-}
-.station-workbench-identify-embed .wb-ident-arcane-card .panel-label,
-.workbench-identify-panel .wb-ident-arcane-card .panel-label {
-    color: rgba(180, 140, 240, 0.7);
+    border: 2px dashed rgba(167, 139, 250, 0.4);
 }
 
+.station-workbench-identify-embed .gear-focus-drop-zone,
+.workbench-identify-panel .gear-focus-drop-zone,
+.ionrift-station-dialog .gear-focus-drop-zone {
+    border: 2px dashed rgba(245, 158, 11, 0.4);
+}
+
+.station-workbench-identify-embed .potion-taste-drop-zone,
+.workbench-identify-panel .potion-taste-drop-zone,
+.ionrift-station-dialog .potion-taste-drop-zone {
+    border: 2px dashed rgba(52, 211, 153, 0.4);
+}
+
+/* Drop hover states */
+.wb-ident-drop-zone:hover {
+    border-style: solid;
+    transform: translateY(-1px);
+}
+.spell-identify-drop-zone:hover,
+.spell-identify-drop-zone.drop-hover {
+    border-color: #a78bfa;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.75), 0 0 14px rgba(167, 139, 250, 0.4);
+}
+.gear-focus-drop-zone:hover,
+.gear-focus-drop-zone.drop-hover {
+    border-color: #fbbf24;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.75), 0 0 14px rgba(245, 158, 11, 0.4);
+}
+.potion-taste-drop-zone:hover,
+.potion-taste-drop-zone.drop-hover {
+    border-color: #34d399;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.75), 0 0 14px rgba(52, 211, 153, 0.4);
+}
+
+/* Filled drop zone states */
+.wb-ident-drop-zone.filled {
+    border-style: solid;
+    background: rgba(12, 14, 24, 0.95);
+}
+.spell-identify-drop-zone.filled {
+    border-color: rgba(167, 139, 250, 0.75);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 12px rgba(167, 139, 250, 0.25);
+}
+.gear-focus-drop-zone.filled {
+    border-color: rgba(245, 158, 11, 0.75);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 12px rgba(245, 158, 11, 0.25);
+}
+.potion-taste-drop-zone.filled {
+    border-color: rgba(52, 211, 153, 0.75);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 12px rgba(52, 211, 153, 0.25);
+}
+
+/* High-Contrast Silhouettes (OLED legible) */
+.drop-zone-sil {
+    font-size: 2.1rem;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.drop-zone-spell-sil { color: rgba(196, 181, 253, 0.65); }
+.drop-zone-gear-sil  { color: rgba(253, 230, 138, 0.60); }
+.drop-zone-potion-sil{ color: rgba(167, 243, 208, 0.60); }
+
+.wb-ident-drop-zone:hover .drop-zone-sil {
+    transform: scale(1.08);
+}
+
+/* Staged Item Icon */
+.drop-zone-item-icon {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Clear Badge on Staged Items */
+.drop-zone-clear-badge {
+    display: none;
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 18px;
+    height: 18px;
+    background: #ef4444;
+    color: #ffffff;
+    border-radius: 50%;
+    font-size: 0.6rem;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    z-index: 2;
+}
+.wb-ident-drop-zone.filled:hover .drop-zone-clear-badge {
+    display: flex;
+}
+
+/* Card Metadata / Rules Footnote */
+.station-workbench-identify-embed .wb-ident-card-meta,
+.workbench-identify-panel .wb-ident-card-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.12rem;
+    width: 100%;
+}
+
+.wb-ident-method-tag {
+    font-size: 0.58rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.wb-ident-method-desc {
+    font-size: 0.52rem;
+    color: rgba(255, 255, 255, 0.38);
+    font-style: italic;
+    line-height: 1.2;
+}
+
+.wb-ident-staged-name {
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    padding: 0 0.2rem;
+}
+
+.wb-ident-staged-hint {
+    font-size: 0.52rem;
+    color: rgba(239, 68, 68, 0.75);
+    font-style: italic;
+}
+
+/* Badges & Pills */
 .station-workbench-identify-embed .wb-ident-pill,
 .workbench-identify-panel .wb-ident-pill {
     display: inline-block;
-    font-size: 0.55rem;
+    font-size: 0.54rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -4120,13 +4379,51 @@
     opacity: 0.42;
     filter: grayscale(0.35);
 }
+
+/* Dynamic Action Button */
 .station-workbench-identify-embed .wb-ident-submit-row,
 .workbench-identify-panel .wb-ident-submit-row {
-    margin-top: 0.45rem;
-}
-.station-workbench-identify-embed .wb-ident-submit-row .station-meal-submit-btn,
-.workbench-identify-panel .wb-ident-submit-row .station-meal-submit-btn {
+    margin-top: 0.55rem;
     width: 100%;
+}
+
+.station-workbench-identify-embed .btn-examine-commit,
+.workbench-identify-panel .btn-examine-commit {
+    width: 100%;
+    padding: 0.45rem 0.8rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.85) 0%, rgba(109, 40, 217, 0.95) 100%);
+    border: 1px solid rgba(167, 139, 250, 0.6);
+    color: #ffffff;
+    box-shadow: 0 2px 10px rgba(109, 40, 217, 0.35);
+    background-image: linear-gradient(135deg, rgba(139, 92, 246, 0.85) 0%, rgba(109, 40, 217, 0.95) 100%) !important;
+}
+
+.station-workbench-identify-embed .btn-examine-commit:hover:not(:disabled),
+.workbench-identify-panel .btn-examine-commit:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(167, 139, 250, 0.95) 0%, rgba(124, 58, 237, 1) 100%) !important;
+    box-shadow: 0 0 16px rgba(167, 139, 250, 0.55);
+    transform: translateY(-1px);
+}
+
+.station-workbench-identify-embed .btn-examine-commit:disabled,
+.workbench-identify-panel .btn-examine-commit:disabled {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.3);
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
 }
 
 .ionrift-station-dialog .station-workbench-identify-embed .wb-ident-gear-panel .panel-label {
@@ -4359,8 +4656,8 @@
     align-items: flex-start;
     width: 100%;
     margin: 0;
-    padding: 0.5rem 0.55rem 0.5rem 0.65rem;
-    min-height: 2.95rem;
+    padding: 0.32rem 0.55rem 0.32rem 0.65rem;
+    min-height: 0;
     height: auto;
     gap: 0.45rem;
     font-family: var(--ionrift-font-stack, "Signika", sans-serif);
@@ -4440,9 +4737,12 @@
     font-size: 0.6rem;
     font-weight: 400;
     color: rgba(255, 255, 255, 0.35);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
     white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
     line-height: 1.3;
 }
 
@@ -4796,6 +5096,27 @@
     width: 100%;
 }
 
+/* Rest window: the bench sits beside the fire rail. */
+.rest-sustenance-main .workbench-identify-panel {
+    padding: 0;
+}
+.rest-sustenance-main .workbench-identify-panel .station-workbench-identify-embed {
+    padding: 0;
+}
+.rest-sustenance-main .workbench-identify-panel .wb-ident-scroll {
+    max-height: none;
+    overflow: visible;
+}
+.rest-sustenance-main .workbench-identify-panel .wb-ident-triage-grid {
+    gap: 0.65rem;
+}
+.rest-sustenance-main .workbench-identify-panel .wb-ident-card {
+    min-height: 172px;
+}
+.rest-sustenance-main .workbench-identify-panel .wb-ident-submit-row {
+    margin-top: 0.65rem;
+}
+
 
 /* ── TotM Fire Panel ──────────────────────────────────────── */
 
@@ -4803,7 +5124,7 @@
 /* TotM activity: main column + permanent campfire side panel */
 .totm-activity-layout {
     display: flex;
-    align-items: stretch;
+    align-items: flex-start;
     gap: 0;
     max-height: 62vh;
     overflow: hidden;
@@ -4817,8 +5138,11 @@
     max-height: 62vh;
 }
 
+/* Aside is a supplementary fire-detail column now that the dock
+   hearth owns tier selection. Fits content, does not stretch to
+   dominate the sustenance / gather panes. */
 .totm-campfire-side-panel {
-    width: 268px;
+    width: 220px;
     flex-shrink: 0;
     padding: 0.35rem 0.4rem 0.5rem;
     box-sizing: border-box;
@@ -4827,11 +5151,30 @@
     overflow-y: auto;
     overflow-x: hidden;
     max-height: 62vh;
+    align-self: stretch;
+}
+
+/* On sustenance and gather tabs the aside is background info only;
+   collapse it into a slim column so the diegetic pile / vessel and
+   gather cards can breathe. Activities tab keeps the full aside. */
+.downtime-workflow-panel.workflow-sustenance .totm-campfire-side-panel,
+.downtime-workflow-panel.workflow-gather .totm-campfire-side-panel,
+.respite-form:has(.rest-dock-seg[data-step="sustenance"].active) .totm-campfire-side-panel,
+.respite-form:has(.rest-dock-seg[data-step="gather"].active) .totm-campfire-side-panel {
+    display: none;
+}
+
+.respite-form:has(.rest-dock-seg[data-step="sustenance"].active) .totm-activity-layout,
+.respite-form:has(.rest-dock-seg[data-step="gather"].active) .totm-activity-layout,
+.respite-form:has(.rest-dock-seg[data-step="activities"].active) .totm-activity-layout,
+.respite-form:has(.totm-crafting-deck) .totm-activity-layout {
+    max-height: none;
 }
 
 .totm-campfire-side-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.4rem;
     font-size: 0.68rem;
     font-weight: 700;
@@ -4841,8 +5184,42 @@
     margin-bottom: 0.35rem;
 }
 
+.totm-campfire-side-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.totm-campfire-side-title > i,
 .totm-campfire-side-header > i {
     font-size: 0.75rem;
+}
+
+.totm-camp-header-placement {
+    display: inline-flex;
+    align-items: center;
+}
+
+.totm-camp-header-placement .camp-drag-handle-compact {
+    padding: 1px 6px;
+    gap: 4px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    min-height: 22px;
+}
+
+.totm-camp-header-placement .camp-drag-handle-compact .camp-drag-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 0.7rem;
+}
+
+.totm-camp-header-placement .camp-drag-handle-compact .camp-drag-title {
+    font-size: 0.65rem;
+}
+
+.totm-camp-header-placement .camp-drag-handle-compact .camp-drag-grip {
+    font-size: 0.6rem;
 }
 
 .totm-campfire-minigame-note {
@@ -5127,6 +5504,12 @@
     font-size: 0.72rem;
     color: rgba(255, 255, 255, 0.55);
     font-style: normal;
+    white-space: nowrap;
+}
+
+.totm-camp-minigame-host .ceremony-row-center .ceremony-no-lighter {
+    white-space: nowrap;
+    font-size: 0.72rem;
 }
 
 .totm-camp-minigame-host .ceremony-row-right {
@@ -5548,8 +5931,8 @@
     align-items: flex-start;
     width: 100%;
     margin: 0;
-    padding: 0.5rem 0.55rem 0.5rem 0.65rem;
-    min-height: 2.95rem;
+    padding: 0.32rem 0.55rem 0.32rem 0.65rem;
+    min-height: 0;
     height: auto;
     gap: 0.45rem;
     font-family: var(--ionrift-font-stack, "Signika", sans-serif);
@@ -5631,9 +6014,12 @@
     font-size: 0.6rem;
     font-weight: 400;
     color: rgba(255, 255, 255, 0.35);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
     white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
     line-height: 1.3;
 }
 
@@ -5674,94 +6060,76 @@
 .totm-detail-view {
     display: flex;
     flex-direction: column;
-    gap: 0.55rem;
-    padding: 0.75rem 1.25rem 0.85rem;
-    max-width: 540px;
-    margin-left: auto;
-    margin-right: auto;
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(196, 181, 253, 0.18);
-    border-radius: 8px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
-    animation: totmDetailIn 0.15s ease;
+    gap: 0.65rem;
+    padding: 0.85rem 1.15rem 1rem;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(168, 140, 255, 0.22);
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    animation: totmDetailIn 0.15s ease-out;
 }
 
 @keyframes totmDetailIn {
-    from { opacity: 0; transform: translateY(4px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
 
-/* Crafting / profession panels need the full width for their split layout */
-.totm-detail-view:has(.totm-crafting-embed) {
-    max-width: min(760px, 100%);
-    width: 100%;
-    box-sizing: border-box;
-    padding-bottom: 0.4rem;
-    gap: 0.35rem;
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-.totm-detail-view:has(.totm-crafting-embed) .totm-detail-header {
-    flex-shrink: 0;
-}
-
-.totm-crafting-embed .risk-selector {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    width: 100%;
-    gap: 0.25rem;
-}
-
-.totm-crafting-embed .btn-risk {
-    width: 100%;
-    min-height: 3.1rem;
-    box-sizing: border-box;
-}
-
-.totm-crafting-embed .risk-hint {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
 
 .totm-detail-header {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    gap: 0.75rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .totm-detail-back {
     flex-shrink: 0;
-    width: 1.8rem;
-    height: 1.8rem;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.6);
+    width: 2rem;
+    height: 2rem;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(226, 232, 240, 0.8);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-    font-size: 0.75rem;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    font-size: 0.8rem;
     box-shadow: none !important;
     background-image: none !important;
 }
 
 .totm-detail-back:hover {
-    background: rgba(196, 181, 253, 0.15);
-    border-color: rgba(196, 181, 253, 0.35);
-    color: rgba(255, 255, 255, 0.9);
+    background: rgba(168, 140, 255, 0.2);
+    border-color: rgba(168, 140, 255, 0.45);
+    color: #ffffff;
+}
+
+.totm-detail-icon-wrap {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 8px;
+    background: rgba(124, 58, 237, 0.18);
+    border: 1px solid rgba(168, 140, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #c4b5fd;
+    font-size: 1.15rem;
+    flex-shrink: 0;
 }
 
 .totm-detail-icon {
-    font-size: 1.1rem;
-    color: rgba(196, 181, 253, 0.65);
+    font-size: 1.15rem;
+    color: #c4b5fd;
     flex-shrink: 0;
 }
 
@@ -5770,271 +6138,369 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.1rem;
+    gap: 0.15rem;
 }
 
 .totm-detail-name {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.92);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #ffffff;
     line-height: 1.2;
+    letter-spacing: -0.01em;
 }
 
 .totm-detail-actor {
-    font-size: 0.65rem;
-    color: rgba(255, 255, 255, 0.4);
+    margin-left: auto;
     display: flex;
     align-items: center;
-    gap: 0.3rem;
+    gap: 0.45rem;
+    padding: 0.25rem 0.6rem 0.25rem 0.35rem;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    flex-shrink: 0;
 }
 
 .totm-detail-portrait {
-    width: 1rem;
-    height: 1rem;
+    width: 1.85rem;
+    height: 1.85rem;
     border-radius: 50%;
     object-fit: cover;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1.5px solid rgba(168, 140, 255, 0.5);
+}
+
+.totm-detail-actor-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    letter-spacing: 0.01em;
 }
 
 .totm-detail-description {
-    font-size: 0.68rem;
-    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.82rem;
+    font-style: normal;
+    font-weight: 400;
+    color: rgba(226, 232, 240, 0.85);
     line-height: 1.45;
     margin: 0;
 }
 
-/* Outcome hints: success (green chevrons), failure (red), exceptional (gold) */
-.totm-detail-outcomes {
-    list-style: none;
-    margin: 0;
-    padding: 0;
+/* ── Unified Mechanics Surface (Consolidates check, advisory, outcomes) ── */
+.totm-detail-mechanics {
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
+    gap: 0.45rem;
+    padding: 0.65rem 0.85rem;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(168, 140, 255, 0.18);
+    border-radius: 8px;
 }
 
-.totm-outcome-hint {
-    font-size: 0.67rem;
+.totm-mechanics-header {
     display: flex;
-    align-items: flex-start;
-    gap: 0.35rem;
-    line-height: 1.35;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
-.totm-outcome-hint i { flex-shrink: 0; margin-top: 0.1rem; font-size: 0.55rem; }
-
-.totm-outcome-hint.success    { color: rgba(74, 222, 128, 0.85); }
-.totm-outcome-hint.exceptional { color: rgba(250, 204, 21, 0.9); }
-.totm-outcome-hint.failure     { color: rgba(248, 113, 113, 0.8); }
-
-/* Armor hint: positive (shield, green-tinted) or warning (triangle, amber) */
-.totm-detail-armor-hint {
-    font-size: 0.68rem;
-    border-radius: 4px;
-    padding: 0.35rem 0.5rem;
+.totm-mechanics-check {
     display: flex;
-    align-items: flex-start;
-    gap: 0.4rem;
-    line-height: 1.4;
+    align-items: baseline;
+    gap: 0.45rem;
 }
 
-.totm-detail-armor-hint i { flex-shrink: 0; margin-top: 0.1rem; }
-
-.totm-detail-armor-hint.warning {
-    color: rgba(251, 191, 36, 0.9);
-    background: rgba(251, 191, 36, 0.07);
-    border: 1px solid rgba(251, 191, 36, 0.2);
-}
-
-.totm-detail-armor-hint.positive {
-    color: rgba(74, 222, 128, 0.85);
-    background: rgba(74, 222, 128, 0.06);
-    border: 1px solid rgba(74, 222, 128, 0.18);
-}
-
-.totm-detail-advisory {
-    font-size: 0.68rem;
-    color: rgba(147, 197, 253, 0.9);
-    background: rgba(96, 165, 250, 0.07);
-    border: 1px solid rgba(96, 165, 250, 0.18);
-    border-radius: 4px;
-    padding: 0.35rem 0.5rem;
-    display: flex;
-    align-items: flex-start;
-    gap: 0.4rem;
-    line-height: 1.4;
-}
-
-.totm-detail-advisory.urgent {
-    color: rgba(255, 140, 80, 0.95);
-    background: rgba(255, 100, 50, 0.08);
-    border-color: rgba(255, 120, 60, 0.25);
-}
-
-.totm-detail-advisory i { flex-shrink: 0; margin-top: 0.1rem; }
-
-.totm-detail-check {
-    font-size: 0.68rem;
-    color: rgba(196, 181, 253, 0.8);
+.totm-mechanics-check-label {
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: #f8fafc;
     display: flex;
     align-items: center;
     gap: 0.4rem;
 }
 
-/* Neutral state indicator: not a success outcome, not a check to be made.
-   Muted to sit quietly below the description without competing with the
-   success-green outcome chevrons or the blue advisory pill. */
-.totm-detail-nocheck {
-    color: rgba(255, 255, 255, 0.5);
+.totm-mechanics-check-label i {
+    color: #a78bfa;
+    font-size: 0.9rem;
 }
 
-.totm-detail-nocheck i {
-    color: rgba(255, 255, 255, 0.35);
-}
-
-.totm-detail-followup {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    padding: 0.4rem 0.5rem;
-    background: rgba(0, 0, 0, 0.18);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+.totm-mechanics-status {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
     border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+    background: rgba(96, 165, 250, 0.1);
+    border: 1px solid rgba(96, 165, 250, 0.25);
+    color: #93c5fd;
 }
 
-.totm-detail-actions {
-    padding-top: 0.4rem;
+.totm-mechanics-status.urgent {
+    background: rgba(251, 146, 60, 0.12);
+    border-color: rgba(251, 146, 60, 0.35);
+    color: #fb923c;
+}
+
+.totm-mechanics-outcome {
+    font-size: 0.76rem;
+    font-weight: 500;
+    color: rgba(226, 232, 240, 0.9);
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    line-height: 1.35;
+    padding-top: 0.35rem;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.totm-detail-confirm-btn {
-    width: 100%;
+.totm-mechanics-outcome i {
+    color: #34d399;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+}
+
+.totm-mechanics-outcome.exceptional i { color: #fde047; }
+.totm-mechanics-outcome.failure i { color: #f87171; }
+.totm-mechanics-outcome.warning i { color: #fbbf24; }
+.totm-mechanics-outcome.positive i { color: #4ade80; }
+
+/* ── Streamlined Configuration (Direct option chips, no nested box) ── */
+.totm-detail-config {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.totm-config-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(148, 163, 184, 0.9);
+    font-weight: 700;
+}
+
+.totm-config-radios {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.totm-option-chip {
+    display: inline-flex;
+    align-items: center;
+    height: 34px;
+    padding: 0 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    cursor: pointer;
     font-size: 0.8rem;
-    padding: 0.55rem 0.75rem;
+    font-weight: 600;
+    color: rgba(226, 232, 240, 0.85);
+    transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+    user-select: none;
+}
+
+.totm-option-chip:hover {
+    background: rgba(168, 140, 255, 0.12);
+    border-color: rgba(168, 140, 255, 0.35);
+    color: #ffffff;
+}
+
+/* Hide native orange radio bullseye permanently */
+.totm-option-chip input[type="radio"],
+.totm-followup-radio {
+    position: absolute !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    pointer-events: none !important;
+    margin: 0 !important;
+}
+
+.totm-option-chip:has(:checked) {
+    background: rgba(124, 58, 237, 0.28) !important;
+    border-color: rgba(168, 140, 255, 0.65) !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 12px rgba(124, 58, 237, 0.3) !important;
+}
+
+/* ── Authoritative Action Footer ── */
+.totm-detail-actions {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 0.35rem;
-    border-radius: 4px;
-    cursor: pointer;
+    gap: 0.65rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    margin-top: 0.25rem;
+}
+
+.totm-detail-cancel-btn {
+    flex: 0 0 auto;
+    height: 36px;
+    padding: 0 18px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    color: rgba(226, 232, 240, 0.85);
+    font-size: 0.82rem;
     font-weight: 600;
-    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.55), rgba(99, 102, 241, 0.30)) !important;
-    border: 1px solid rgba(99, 102, 241, 0.6);
-    color: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 1px 6px rgba(99, 102, 241, 0.18) !important;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    transition: all 0.15s ease;
+}
+
+.totm-detail-cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+
+.totm-detail-confirm-btn {
+    flex: 1 1 auto;
+    height: 36px;
+    padding: 0 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 700;
+    transition: all 0.15s ease;
+    background: linear-gradient(180deg, #7c3aed, #5b21b6) !important;
+    border: 1px solid rgba(168, 140, 255, 0.55) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 10px rgba(124, 58, 237, 0.4) !important;
     text-shadow: none !important;
     filter: none !important;
 }
 
 .totm-detail-confirm-btn:hover {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.72), rgba(99, 102, 241, 0.45)) !important;
-    border-color: rgba(99, 102, 241, 0.85);
-    box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3) !important;
+    background: linear-gradient(180deg, #8b5cf6, #6d28d9) !important;
+    border-color: rgba(168, 140, 255, 0.85) !important;
+    box-shadow: 0 4px 16px rgba(124, 58, 237, 0.55) !important;
 }
 
-/* ── TotM Crafting Embed: shim to fit station crafting panel in detail view ── */
-
-.totm-crafting-embed {
-    margin: 0;
-    border: none;
-    border-radius: 0;
-    background: transparent;
-}
-
-/* TotM embed: fill space between roster and footer; detail panel scrolls without phantom tail room */
-.ionrift-respite-app .respite-form:has(.totm-crafting-embed) > .phase-banner,
-.ionrift-respite-app .respite-form:has(.totm-crafting-embed) > .roster-strip,
-.ionrift-respite-app .respite-form:has(.totm-crafting-embed) > .roster-tab-fade,
-.ionrift-respite-app .respite-form:has(.totm-crafting-embed) > .totm-activity-footer {
-    flex-shrink: 0;
-}
-
-.ionrift-respite-app .respite-form:has(.totm-crafting-embed) .totm-activity-layout {
-    flex: 1 1 auto;
-    min-height: 0;
-    max-height: none;
-    display: flex;
-}
-
-.ionrift-respite-app .respite-form:has(.totm-crafting-embed) .totm-activity-main {
-    flex: 1 1 auto;
-    min-height: 0;
-    max-height: none;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Crafting takes the full width: hide the campfire side panel while it is open */
-.ionrift-respite-app .respite-form:has(.totm-crafting-embed) .totm-campfire-side-panel {
-    display: none;
-}
-
-.totm-crafting-embed.crafting-picker {
-    padding: 0.45rem 0.5rem 0.2rem;
+.totm-commit-change-btn {
+    margin-left: auto;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    color: rgba(226, 232, 240, 0.85);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
     gap: 0.3rem;
-    flex: 1 1 auto;
-    min-height: 0;
+    transition: all 0.15s ease;
+}
+
+.totm-commit-change-btn:hover {
+    background: rgba(168, 140, 255, 0.2);
+    border-color: rgba(168, 140, 255, 0.4);
+    color: #ffffff;
+}
+
+/* ── TotM Crafting Launch Deck ── */
+
+.totm-crafting-deck {
     display: flex;
     flex-direction: column;
+    gap: 0.6rem;
+    padding-top: 0.2rem;
 }
 
-.totm-crafting-embed .crafting-split-body {
-    flex: 1 1 auto;
-    min-height: 0;
-    max-height: none;
-    overflow: visible;
-}
-
-.totm-crafting-embed.station-crafting-panel.crafting-split .crafting-split-body {
-    padding-bottom: 0.1rem;
-}
-
-.totm-crafting-embed.station-crafting-panel.crafting-split .crafting-detail-panel {
-    flex: 1 1 auto;
-    min-height: 0;
-    padding-bottom: 0.1rem;
-    scroll-padding-bottom: 0.1rem;
-}
-
-.totm-crafting-embed.station-crafting-panel.crafting-split .crafting-detail-panel::after {
-    content: none;
-    display: none;
-    height: 0;
-}
-
-.totm-crafting-embed.station-crafting-panel.crafting-split .craft-commit-panel {
-    margin-bottom: 0;
-}
-
-.ionrift-respite-app .respite-form:has(.totm-crafting-embed) .totm-activity-footer {
-    margin-top: 0;
-    padding: 0.3rem 0.65rem 0.35rem;
-}
-
-.totm-crafting-embed .crafting-roll-blocking-overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 25;
+.totm-craft-status-card,
+.totm-craft-result-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 0.75rem 0.85rem;
     display: flex;
     flex-direction: column;
+    gap: 0.5rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.totm-craft-status-header {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.totm-craft-status-icon {
+    font-size: 1.25rem;
+    color: rgba(126, 184, 218, 0.9);
+}
+
+.totm-craft-status-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.totm-craft-status-actor {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #fff;
+}
+
+.totm-craft-status-tag {
+    font-size: 0.68rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.totm-craft-status-hint {
+    font-size: 0.76rem;
+    color: rgba(255, 255, 255, 0.65);
+    line-height: 1.4;
+    margin: 0;
+}
+
+.totm-craft-deck-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.totm-open-kitchen-btn {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.45rem;
-    padding: 1rem;
-    text-align: center;
-    background: rgba(12, 10, 18, 0.78);
-    border-radius: 6px;
-    pointer-events: auto;
-    font-size: 0.78rem;
-    line-height: 1.35;
-    color: rgba(255, 255, 255, 0.78);
+    gap: 0.4rem;
+    padding: 0.45rem 1rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    background: linear-gradient(180deg, rgba(126, 184, 218, 0.25), rgba(126, 184, 218, 0.12));
+    border: 1px solid rgba(126, 184, 218, 0.4);
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-.totm-crafting-embed .crafting-roll-blocking-overlay .fa-spinner {
-    font-size: 1.35rem;
-    color: rgba(140, 190, 255, 0.9);
+.totm-open-kitchen-btn:hover {
+    background: linear-gradient(180deg, rgba(126, 184, 218, 0.35), rgba(126, 184, 218, 0.2));
+    border-color: rgba(126, 184, 218, 0.7);
+    box-shadow: 0 0 10px rgba(126, 184, 218, 0.25);
+}
+
+.totm-mf-cookbook-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
 }
 
 
@@ -6460,4 +6926,160 @@
 
 .resolution-complete i {
     color: #f0c040;
+}
+
+/* ── Crafting Promoted CTA & Guaranteed Step & Pantry ── */
+
+.crafting-footer-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-hero-craft-promoted {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.45rem 1.25rem;
+    border-radius: 4px;
+    background: linear-gradient(180deg, #10b981, #059669) !important;
+    border: 1px solid rgba(52, 211, 153, 0.6) !important;
+    color: #ffffff !important;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+    transition: all 0.15s ease;
+    text-shadow: none !important;
+}
+
+.btn-hero-craft-promoted:hover {
+    background: linear-gradient(180deg, #34d399, #10b981) !important;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.5);
+    border-color: rgba(110, 231, 183, 0.9) !important;
+}
+
+.crafting-step-guaranteed {
+    margin-bottom: 0.45rem;
+}
+
+.guaranteed-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 6px;
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    color: #86efac;
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+
+.guaranteed-badge i {
+    font-size: 0.95rem;
+    color: #4ade80;
+}
+
+.commit-inputs-free {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+    padding: 0.25rem 0.5rem;
+}
+
+.crafting-pantry-section {
+    margin-top: 0.85rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.crafting-pantry-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 0.45rem;
+}
+
+.crafting-pantry-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.pantry-token {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.45rem;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.7rem;
+    color: rgba(226, 232, 240, 0.85);
+}
+
+.pantry-token-img {
+    width: 18px;
+    height: 18px;
+    border-radius: 2px;
+    object-fit: cover;
+}
+
+.pantry-token-qty {
+    font-weight: 700;
+    color: #c084fc;
+    font-size: 0.72rem;
+}
+
+.pantry-token-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 110px;
+}
+
+/* ---- Monster Cookbook in Recipe Catalog ---- */
+.mf-cookbook-section {
+    margin-top: 0.6rem;
+    margin-bottom: 0.35rem;
+    flex-shrink: 0;
+}
+
+.btn-mf-cookbook,
+.mf-cookbook-btn {
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 4px;
+    background: rgba(126, 184, 218, 0.08);
+    border: 1px solid rgba(126, 184, 218, 0.25);
+    color: var(--ionrift-accent, #7eb8da);
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: all 0.15s ease;
+}
+
+.btn-mf-cookbook:hover,
+.mf-cookbook-btn:hover {
+    background: rgba(126, 184, 218, 0.16);
+    border-color: rgba(126, 184, 218, 0.5);
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(126, 184, 218, 0.25);
+}
+
+.btn-mf-cookbook i,
+.mf-cookbook-btn i {
+    font-size: 0.85rem;
 }

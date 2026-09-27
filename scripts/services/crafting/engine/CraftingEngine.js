@@ -1,6 +1,6 @@
 /** Recipe crafting during rest (ingredients, risk tiers, resolve). */
 
-import { waitForDiceSoNice } from "../../ui/rollRequest/RollRequestManager.js";
+import { postRollAndSettle } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
 import { SpoilageClock } from "../../meal/spoilage/SpoilageClock.js";
 import { ItemClassifier } from "../../party/ItemClassifier.js";
 import { stripSpoilageCohortSuffix } from "../../meal/spoilage/spoilageName.js";
@@ -329,12 +329,10 @@ export class CraftingEngine {
                 || (hasChefFeat(actor) && naturalRoll === 20))
         );
 
-        await roll.toMessage({
+        await postRollAndSettle(roll, {
             speaker: ChatMessage.getSpeaker({ actor }),
             flavor: `${recipe.name} (${skill.toUpperCase()}) - DC ${adjustedDc} [${riskTier}]`
         });
-
-        await waitForDiceSoNice();
 
         const success = roll.total >= adjustedDc;
 

@@ -1,0 +1,139 @@
+<div class="respite-master-rest-card">
+
+    {{!-- Shared Terrain / Resolution Banner --}}
+    {{#if showBanner}}
+    <div class="master-card-banner {{bannerFireClass}}">
+        <img src="{{terrainBanner}}" alt="{{subtitle}} banner" style="object-position: {{terrainBannerPos}};" onerror="this.onerror=null;this.src='{{terrainBannerFallback}}'">
+        <div class="master-banner-fade"></div>
+        {{#if partyStatus}}
+        <span class="master-banner-badge {{partyStatus.class}}" title="{{partyStatus.label}}">
+            <i class="{{partyStatus.icon}}"></i> {{partyStatus.label}}
+        </span>
+        {{/if}}
+    </div>
+    {{/if}}
+
+    {{!-- Executive Header Ledger --}}
+    <div class="master-card-header">
+        <div class="master-title-row">
+            <span class="master-badge"><i class="fas fa-sun"></i></span>
+            <div class="master-title-block">
+                <h3 class="master-title">{{title}}</h3>
+                <span class="master-subtitle">{{subtitle}}</span>
+            </div>
+        </div>
+        {{#unless showBanner}}
+        {{#if partyStatus}}
+        <div class="master-fallback-status" style="margin-top: 4px;">
+            <span class="master-party-status {{partyStatus.class}}" title="{{partyStatus.label}}">
+                <i class="{{partyStatus.icon}}"></i> {{partyStatus.label}}
+            </span>
+        </div>
+        {{/if}}
+        {{/unless}}
+    </div>
+
+    {{!-- Incidents / Events Resolved (If any occurred) --}}
+    {{#if incidents.length}}
+    <details class="master-incidents-details {{incidentsMeta.containerClass}}" open>
+        <summary class="master-incidents-summary">
+            <div class="incidents-summary-left">
+                <i class="fas fa-chevron-right details-chevron"></i>
+                <span class="incidents-badge"><i class="{{incidentsMeta.badgeIcon}}"></i> {{incidentsMeta.badgeLabel}}</span>
+            </div>
+        </summary>
+        <ul class="encounters-list">
+            {{#each incidents}}
+            <li class="encounter-item {{itemClass}}">
+                <div class="encounter-item-header">
+                    <strong class="encounter-night"><i class="{{icon}}"></i> {{name}}</strong>
+                    {{#if verdictLabel}}<span class="encounter-title {{#if isRewarding}}positive{{/if}}">· {{verdictLabel}}</span>{{/if}}
+                </div>
+                {{#if narrative}}<div class="encounter-desc">{{narrative}}</div>{{/if}}
+                {{#if consequences.length}}
+                <div class="encounter-consequences" style="margin-top: 4px; display: flex; flex-direction: column; gap: 2px;">
+                    {{#each consequences}}
+                    <div class="consequence-line" style="font-size: 0.7rem; color: {{#if isPositive}}#a7f3d0{{else}}#fca5a5{{/if}};">
+                        <i class="{{icon}}" style="color: {{#if isPositive}}#34d399{{else}}#f87171{{/if}};"></i> {{text}}
+                    </div>
+                    {{/each}}
+                </div>
+                {{/if}}
+            </li>
+            {{/each}}
+        </ul>
+    </details>
+    {{/if}}
+
+    {{!-- Disaster Losses Ledger (Cleanly Collapsed) --}}
+    {{#if partyLosses.length}}
+    <details class="master-losses-details">
+        <summary class="master-losses-summary">
+            <div class="losses-summary-left">
+                <i class="fas fa-chevron-right details-chevron"></i>
+                <span class="losses-badge">
+                    <i class="fas fa-box-open"></i> Resource Losses ({{totalLossCount}})
+                </span>
+            </div>
+            <span class="losses-summary-count">{{partyLosses.length}} character{{#if (gt partyLosses.length 1)}}s{{/if}} affected</span>
+        </summary>
+        <div class="master-losses-content">
+            {{#each partyLosses}}
+            <div class="actor-loss-card">
+                <div class="actor-loss-header">
+                    {{#if img}}<img src="{{img}}" class="actor-loss-avatar" alt="{{name}}">{{/if}}
+                    <span class="actor-loss-name">{{name}}</span>
+                </div>
+                <ul class="actor-loss-items">
+                    {{#each items}}
+                    <li class="actor-loss-item">
+                        {{#if img}}<img src="{{img}}" class="actor-loss-item-icon" alt="{{name}}">{{/if}}
+                        <span class="actor-loss-item-name">{{name}}</span>
+                        <span class="actor-loss-item-delta">-{{lossQty}}</span>
+                        {{#if isTotal}}<span class="actor-loss-pill-destroyed">Lost</span>{{/if}}
+                    </li>
+                    {{/each}}
+                </ul>
+            </div>
+            {{/each}}
+        </div>
+    </details>
+    {{/if}}
+
+    {{!-- Per-Character Breakdown --}}
+    <div class="master-character-accordions">
+        {{#each characters}}
+        <details class="master-char-details">
+            <summary class="master-char-summary">
+                <div class="char-summary-identity">
+                    <i class="fas fa-chevron-right details-chevron"></i>
+                    {{#if img}}
+                    <img class="char-summary-portrait" src="{{img}}" alt="{{name}}">
+                    {{else}}
+                    <i class="fas fa-user char-fallback-icon"></i>
+                    {{/if}}
+                    <span class="char-summary-name" title="{{name}}">{{name}}</span>
+                </div>
+                <div class="char-summary-activities">
+                    <span class="char-act-pill {{#if activitySuccess}}success{{else}}failed{{/if}}">
+                        <i class="{{activityIcon}}"></i> {{activityLabel}}
+                    </span>
+                    <span class="char-act-pill {{#if hasSetback}}setback{{else}}positive{{/if}}">
+                        {{vitalPill}}
+                    </span>
+                </div>
+            </summary>
+            <div class="master-char-content">
+                {{#if notes.length}}
+                <ul class="master-char-notes">
+                    {{#each notes}}
+                    <li>{{{this}}}</li>
+                    {{/each}}
+                </ul>
+                {{/if}}
+            </div>
+        </details>
+        {{/each}}
+    </div>
+
+</div>

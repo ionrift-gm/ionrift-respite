@@ -7,7 +7,7 @@
 import { Logger } from "../../../utils/Logger.js";
 import { ItemClassifier } from "../../party/ItemClassifier.js";
 import { consumeItem } from "../inventory/MealItemConsumer.js";
-import { dispatchWellFedMealServing } from "../buffs/WellFedService.js";
+import { servingsFromSnapshots } from "../buffs/MealBuffBeat.js";
 import { MODULE_ID, MEAL_DEFAULTS } from "../inventory/MealConstants.js";
 import { getActorMealNeeds } from "./MealContextBuilder.js";
 
@@ -170,24 +170,30 @@ export async function applyMealChoices(mealChoices, daysSinceLastRest = 1, terra
                     if (id && id !== "skip" && !id.startsWith("__")) waterUsage.set(id, (waterUsage.get(id) ?? 0) + 1);
                 }
             }
+            const eaten = [];
+            const drunk = [];
             for (const [itemId, amount] of foodUsage) {
                 const snapshot = snapMap.get(itemId);
                 const consumed = await consumeItem(actor, itemId, amount);
                 Logger.log(`[Respite:Meal] Consumed ${consumed}x food item ${itemId} from ${actor.name}`);
                 if (snapshot && consumed > 0) {
-                    for (let u = 0; u < consumed; u++) {
-                        await dispatchWellFedMealServing({
-                            consumerActor: actor,
-                            itemSnapshot: snapshot,
-                            partyIds
-                        });
-                    }
+                    for (let unit = 0; unit < consumed; unit++) eaten.push(snapshot);
                 }
             }
             for (const [itemId, amount] of waterUsage) {
+                const item = actor.items.get(itemId);
+                const snapshot = item?.toObject?.(false);
                 const consumed = await consumeItem(actor, itemId, amount);
                 Logger.log(`[Respite:Meal] Consumed ${consumed} pint(s) from water item ${itemId} from ${actor.name}`);
+                if (snapshot && consumed > 0) {
+                    for (let unit = 0; unit < consumed; unit++) drunk.push(snapshot);
+                }
             }
+            const servingMeta = { actorId: charId, actorName: actor.name, partyIds };
+            result.buffServings = [
+                ...servingsFromSnapshots(eaten, { ...servingMeta, kind: "food" }),
+                ...servingsFromSnapshots(drunk, { ...servingMeta, kind: "drink", seq: eaten.length })
+            ];
         }
 
         // Update tracking flags (tracks DAYS without adequate food/water, not units)

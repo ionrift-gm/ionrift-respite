@@ -1,0 +1,46 @@
+{{!-- Week planner stations. Same card as the night list (rest-night-card).
+     Up to three columns, so a short station sits beside a tall one
+     and the pane does not scroll. The day counter is the only gritty extra. --}}
+<div class="rest-night-columns cols-{{budget.columnStations.length}}">
+{{#each budget.columnStations}}
+<div class="rest-night-column">
+    {{#each this}}
+    <div class="rest-night-station">
+        <div class="rest-night-station-label">{{label}}</div>
+        {{#each activities}}
+        <div class="rest-night-card{{#if isActive}} sel{{/if}}{{#if isCapped}} is-capped{{/if}}">
+            <button type="button" class="rest-night-main"
+                data-action="dumpActivity" data-actor-id="{{../../../id}}" data-activity-id="{{id}}"
+                {{#unless ../../../canInteract}}disabled{{/unless}}
+                data-tooltip="{{hint}} (Click to assign remaining days, max {{maxDays}})">
+                {{#if icon}}<i class="{{icon}} rest-night-icon" aria-hidden="true"></i>{{/if}}
+                <span class="rest-night-copy">
+                    <strong>{{label}}</strong>
+                    {{#if hint}}<span>{{hint}}</span>{{/if}}
+                </span>
+            </button>
+            {{#if isActive}}
+            <div class="activity-stepper">
+                {{#if ../../../canInteract}}
+                <button type="button" class="act-step-btn" data-action="stepActivity" data-actor-id="{{../../../id}}" data-activity-id="{{id}}" data-delta="-1" {{#unless canStepDown}}disabled{{/unless}} aria-label="Decrease days" data-tooltip="Remove 1 day">
+                    <i class="fas fa-minus"></i>
+                </button>
+                {{/if}}
+                <span class="activity-days">{{assignedDays}}d</span>
+                {{#if ../../../canInteract}}
+                <button type="button" class="act-step-btn" data-action="stepActivity" data-actor-id="{{../../../id}}" data-activity-id="{{id}}" data-delta="1" {{#unless canStepUp}}disabled{{/unless}} aria-label="Increase days" data-tooltip="Add 1 day">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button type="button" class="act-clear-btn" data-action="clearActivity" data-actor-id="{{../../../id}}" data-activity-id="{{id}}" {{#unless canClear}}disabled{{/unless}} aria-label="Clear activity" data-tooltip="Clear days">
+                    <i class="fas fa-times"></i>
+                </button>
+                {{/if}}
+            </div>
+            {{/if}}
+        </div>
+        {{/each}}
+    </div>
+    {{/each}}
+</div>
+{{/each}}
+</div>

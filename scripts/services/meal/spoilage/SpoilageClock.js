@@ -82,6 +82,36 @@ export class SpoilageClock {
     }
 
     /**
+     * Fields for a sustenance chip. Empty when the item does not spoil.
+     * @param {foundry.documents.Item|object} itemLike
+     * @param {object} [clock]
+     * @returns {{ perishable?: boolean, spoilText?: string, spoilTooltip?: string, spoilClass?: string }}
+     */
+    static chipFields(itemLike, clock = {}) {
+        const badge = this.getSpoilageBadgeState(itemLike, clock);
+        if (!badge) return {};
+        return {
+            perishable: true,
+            spoilText: badge.text,
+            spoilTooltip: badge.tooltip,
+            spoilClass: badge.stateClass
+        };
+    }
+
+    /** Copy chip fields off an option that already ran chipFields. */
+    static viewFromOption(option) {
+        if (!option?.perishable) {
+            return { perishable: false, spoilText: "", spoilTooltip: "", spoilClass: "" };
+        }
+        return {
+            perishable: true,
+            spoilText: option.spoilText ?? "",
+            spoilTooltip: option.spoilTooltip ?? "",
+            spoilClass: option.spoilClass ?? ""
+        };
+    }
+
+    /**
      * Inventory badge content for spoilage indicators (days or hours).
      * @param {foundry.documents.Item|object} itemLike
      * @param {object} [clock]
@@ -97,7 +127,8 @@ export class SpoilageClock {
                     stateClass: "spoil-expired"
                 };
             }
-            if (daysLeft === 1) {
+            const displayDays = Math.ceil(daysLeft);
+            if (displayDays <= 1) {
                 return {
                     text: "1d",
                     tooltip: "Spoils within a day. Eat or cook it.",
@@ -105,8 +136,8 @@ export class SpoilageClock {
                 };
             }
             return {
-                text: `${daysLeft}d`,
-                tooltip: `${daysLeft} days until spoilage.`,
+                text: `${displayDays}d`,
+                tooltip: `${displayDays} days until spoilage.`,
                 stateClass: "spoil-fresh"
             };
         }

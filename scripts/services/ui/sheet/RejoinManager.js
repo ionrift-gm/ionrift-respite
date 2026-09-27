@@ -11,7 +11,8 @@ export function showRejoinNotification(app, rejoinFn) {
     removeRejoinNotification();
     const el = document.createElement("div");
     el.id = "respite-rejoin-bar";
-    const phaseLabel = app?._phase ? `Phase: ${app._phase}` : "active";
+    const awaitingCombat = app?._awaitingCombat;
+    const phaseLabel = awaitingCombat ? "Awaiting combat resolution" : (app?._phase ? `Phase: ${app._phase}` : "active");
     const isActivity = app?._phase === "activity";
     const partySize = isActivity ? (getPartyActors().length || 0) : 0;
     const activitiesResolved = isActivity ? (app?._characterChoices?.size ?? 0) : 0;
@@ -46,7 +47,7 @@ export function showRejoinNotification(app, rejoinFn) {
         <i class="fas fa-campground"></i>
         <span>Rest in progress (${phaseLabel})</span>
         ${progressHtml}
-        <button type="button" id="respite-rejoin-btn"${allDone ? ' class="respite-resume-ready"' : ""}>Resume</button>
+        <button type="button" id="respite-rejoin-btn"${allDone ? ' class="respite-resume-ready"' : ""}>${awaitingCombat ? "View" : "Resume"}</button>
     `;
     el.querySelector("#respite-rejoin-btn").addEventListener("click", () => {
         removeRejoinNotification();

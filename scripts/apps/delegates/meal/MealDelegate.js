@@ -1,18 +1,24 @@
 import { Logger } from "../../../utils/Logger.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 import { MealPhaseHandler } from "../../../services/meal/phase/MealPhaseHandler.js";
+import { enqueueProvision } from "../../../services/meal/buffs/MealBuffBeat.js";
 import { TerrainRegistry } from "../../../services/events/resolve/TerrainRegistry.js";
+import { actorMealSlots } from "../../../services/meal/phase/MealContextBuilder.js";
+import { rationSkipLines, restTerrainMealRules } from "../../../services/meal/phase/RationNeed.js";
+import { parseStackSources, pickStackMember } from "../../../services/meal/phase/SustenanceTray.js";
 import { ItemClassifier } from "../../../services/party/ItemClassifier.js";
 import { getPartyActors } from "../../../services/party/partyActors.js";
 import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../../../services/camp/props/StationInteractionLayer.js";
 import { stampDeprivationExhaustionFloor } from "../../../services/meal/phase/MealExhaustionGuard.js";
 import { CampGearScanner } from "../../../services/camp/gear/CampGearScanner.js";
 import { RestLedger } from "../../../services/rest/flow/RestLedger.js";
-import { COMFORT_RANK, RANK_TO_KEY, SKILL_NAMES } from "../../../data/RestConstants.js";
+import { SKILL_NAMES } from "../../../data/RestConstants.js";
+import { boostComfort, fireComfortDelta } from "../../../services/camp/gear/ComfortCalculator.js";
 import { notifyStationMealChoicesUpdated } from "../../camp/StationActivityDialog.js";
 import { isTrailerFilmingMode as _isTrailerFilmingMode } from "../rest/layout/RestWindowLayout.js";
 import { emitPhaseChanged } from "../../../services/socket/SocketController.js";
 import { RestSetupApp } from "../../rest/RestSetupApp.js";
+import { presentRoll } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
 
 export class MealDelegate {
 
@@ -80,6 +86,73 @@ export class MealDelegate {
         app.render();
     }
 
+    clearDiegeticSlot(actorId, kind, index) {
+        const app = this._app;
+        if (!actorId || !Number.isInteger(index) || index < 0) return;
+        if (!app._mealChoices) app._mealChoices = new Map();
+        const existing = app._mealChoices.get(actorId) ?? {};
+        const arr = Array.isArray(existing[kind]) ? [...existing[kind]] : [];
+
+        if (kind === "water") {
+            // Water in the vessel always collapses down to the bottom so there are no holes in the stack.
+            const filled = arr.filter(v => v && v !== "skip");
+            if (index < filled.length) {
+                filled.splice(index, 1);
+            } else if (filled.length > 0) {
+                filled.pop();
+            }
+            app._mealChoices.set(actorId, { ...existing, water: filled });
+            if (app._refreshStationOverlayMeals) app._refreshStationOverlayMeals();
+            app.render();
+            return;
+        }
+
+        while (arr.length <= index) arr.push("skip");
+        arr[index] = "skip";
+        app._mealChoices.set(actorId, { ...existing, [kind]: arr });
+        if (app._refreshStationOverlayMeals) app._refreshStationOverlayMeals();
+        app.render();
+    }
+
+    assignDiegeticItem(actorId, kind, itemId, slotIndex, available, sources) {
+        const app = this._app;
+        if (!actorId || !itemId) return;
+        if (!app._mealChoices) app._mealChoices = new Map();
+        const existing = app._mealChoices.get(actorId) ?? {};
+        const arr = Array.isArray(existing[kind]) ? [...existing[kind]] : [];
+        const rules = restTerrainMealRules(app);
+        const actor = game.actors?.get?.(actorId) ?? null;
+        const slots = actorMealSlots(actor, rules);
+        const need = kind === "water" ? slots.waterPerDay : slots.foodPerDay;
+        if (!need) return;
+        const members = parseStackSources(sources, itemId, available);
+
+        if (kind === "water") {
+            // Water fills contiguously from the bottom up without holes.
+            const filled = arr.filter(v => v && v !== "skip");
+            if (filled.length >= need) return;
+            const nextId = pickStackMember(members, filled);
+            if (!nextId) return;
+            filled.push(nextId);
+            app._mealChoices.set(actorId, { ...existing, water: filled });
+            if (app._refreshStationOverlayMeals) app._refreshStationOverlayMeals();
+            app.render();
+            return;
+        }
+
+        while (arr.length < need) arr.push("skip");
+        const nextId = pickStackMember(members, arr);
+        if (!nextId) return;
+        const preferred = Number.isInteger(slotIndex) ? slotIndex : -1;
+        const preferredOpen = preferred >= 0 && preferred < need && (!arr[preferred] || arr[preferred] === "skip");
+        const hole = preferredOpen ? preferred : arr.findIndex(value => !value || value === "skip");
+        if (hole < 0 || hole >= need) return;
+        arr[hole] = nextId;
+        app._mealChoices.set(actorId, { ...existing, [kind]: arr });
+        if (app._refreshStationOverlayMeals) app._refreshStationOverlayMeals();
+        app.render();
+    }
+
     async onConsumeMealDay(event, target) {
         const app = this._app;
         if (!app._mealChoices) app._mealChoices = new Map();
@@ -127,25 +200,36 @@ export class MealDelegate {
                     }
                 }
 
+                const partyIds = (app._myCharacterIds
+                    ? Array.from(app._myCharacterIds)
+                    : characterIds);
+                const drinkSnapshots = new Map();
+                for (const itemId of water) {
+                    if (itemId && itemId !== "skip") {
+                        const item = actor.items.get(itemId);
+                        if (item) drinkSnapshots.set(itemId, item.toObject(false));
+                    }
+                }
                 for (const itemId of food) {
                     if (itemId && itemId !== "skip") {
                         const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1);
                         const snapshot = foodSnapshots.get(itemId);
                         if (snapshot && consumed > 0) {
-                            const partyIds = (app._myCharacterIds
-                                ? Array.from(app._myCharacterIds)
-                                : characterIds);
-                            await MealPhaseHandler._dispatchWellFedMealServing({
-                                consumerActor: actor,
-                                itemSnapshot: snapshot,
-                                partyIds
+                            app._mealBuffQueue = enqueueProvision(app._mealBuffQueue, snapshot, {
+                                actorId: charId, actorName: actor.name, kind: "food", partyIds
                             });
                         }
                     }
                 }
                 for (const itemId of water) {
                     if (itemId && itemId !== "skip") {
-                        await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                        const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                        const snapshot = drinkSnapshots.get(itemId);
+                        if (snapshot && consumed > 0) {
+                            app._mealBuffQueue = enqueueProvision(app._mealBuffQueue, snapshot, {
+                                actorId: charId, actorName: actor.name, kind: "drink", partyIds
+                            });
+                        }
                     }
                 }
             }
@@ -225,38 +309,15 @@ export class MealDelegate {
 
     
     _pushMealSlotWarnings(skippedSlots, charId, choice) {
-        const MODULE_ID_LOCAL = "ionrift-respite";
+        const app = this._app;
         const actor = game.actors.get(charId);
-        const name = actor?.name ?? charId;
-        const foodArr = Array.isArray(choice.food) ? choice.food : [];
-        const foodEmpty = foodArr.filter(v => !v || v === "skip").length;
-        if (foodArr.length === 0 || foodEmpty > 0) {
-            skippedSlots.push(`${name}: ${foodArr.length === 0 ? "no food" : `${foodEmpty} food slot${foodEmpty > 1 ? "s" : ""} empty`}`);
-        }
-
-    // Count bonus water from food items that satiate water (e.g. Camp Porridge)
-        let bonusWater = 0;
-        if (actor) {
-            const satiatesLookup = this._app._buildSatiatesLookup?.() ?? null;
-            for (const itemId of foodArr) {
-                if (!itemId || itemId === "skip" || itemId.startsWith?.("__")) continue;
-                const item = actor.items.get(itemId);
-                if (!item) continue;
-                let satiates = item.flags?.[MODULE_ID_LOCAL]?.satiates;
-                if (!Array.isArray(satiates) && satiatesLookup) {
-                    satiates = satiatesLookup.get(item.name.toLowerCase().trim()) ?? null;
-                }
-                if (Array.isArray(satiates) && satiates.includes("water")) bonusWater++;
-            }
-        }
-
-        const waterArr = Array.isArray(choice.water) ? choice.water : [];
-        const waterEmpty = waterArr.filter(v => !v || v === "skip").length;
-        const effectiveWaterEmpty = Math.max(0, waterEmpty - bonusWater);
-        const effectiveNoWater = waterArr.length === 0 && bonusWater === 0;
-        if (effectiveNoWater || effectiveWaterEmpty > 0) {
-            skippedSlots.push(`${name}: ${effectiveNoWater ? "no water" : `${effectiveWaterEmpty} water slot${effectiveWaterEmpty > 1 ? "s" : ""} empty`}`);
-        }
+        const lines = rationSkipLines(
+            actor,
+            choice,
+            restTerrainMealRules(app),
+            app._buildSatiatesLookup?.() ?? null
+        );
+        skippedSlots.push(...lines);
     }
 
     
@@ -272,7 +333,7 @@ export class MealDelegate {
                         <ul>${skippedSlots.map(s => `<li>${s}</li>`).join("")}</ul>
                         <p>Skipping meals has consequences.</p>
                         <div class="ionrift-armor-modal-buttons">
-                            <button class="btn-armor-confirm"><i class="fas fa-check"></i> Continue</button>
+                            <button class="btn-armor-confirm"><i class="fas fa-check"></i> Skip Meals</button>
                             <button class="btn-armor-cancel"><i class="fas fa-arrow-left"></i> Go Back</button>
                         </div>
                     </div>`;
@@ -320,6 +381,7 @@ export class MealDelegate {
         });
 
         app._activityMealRationsSubmitted.add(actorId);
+        app.checkAndAutoMarkCharacterReady?.(actorId);
         const allRecorded = [...obligated].every(id => app._activityMealRationsSubmitted.has(id));
         if (allRecorded) app._mealSubmitted = true;
 
@@ -476,6 +538,7 @@ export class MealDelegate {
                 const outcome = await MealPhaseHandler.processAndApply(app._mealChoices, totalDays, terrainMealRules);
                 mealResults = outcome.results;
                 app._mealResults = mealResults;
+                app._mealBuffs?.absorb(mealResults);
                 Logger.log(`[Respite:Meal] Consumption results:`, mealResults);
             } catch (err) {
                 console.error(`[Respite:Meal] Error applying meal choices:`, err);
@@ -583,9 +646,7 @@ export class MealDelegate {
                         const total = roll.total;
                         const passed = total >= r.dehydrationSaveDC;
 
-                        if (game.dice3d) {
-                            await game.dice3d.showForRoll(roll, game.user, true);
-                        }
+                        await presentRoll(roll);
                         if (!passed) {
                             const current = saveAdapter ? saveAdapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
                             const newLevel = Math.min(6, current + 1);
@@ -669,7 +730,7 @@ export class MealDelegate {
     // Reflection phase skipped (v2.1); advance straight to events.
         await app._applyBeddingDown();
         Logger.log(`[Respite:Meal] Reflection skipped, advancing to events`);
-        await app._advanceToEvents();
+        await app._mealBuffs.continueAfterMeals();
     }
 
         async onSkipPendingSaves(event, target) {
@@ -796,22 +857,33 @@ export class MealDelegate {
             }
 
             const partyIds = [...(app._mealChoices?.keys() ?? [])];
+            const drinkSnapshots = new Map();
+            for (const itemId of water) {
+                if (itemId && itemId !== "skip") {
+                    const item = actor.items.get(itemId);
+                    if (item) drinkSnapshots.set(itemId, item.toObject(false));
+                }
+            }
             for (const itemId of food) {
                 if (itemId && itemId !== "skip") {
                     const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1);
                     const snapshot = foodSnapshots.get(itemId);
                     if (snapshot && consumed > 0) {
-                        await MealPhaseHandler._dispatchWellFedMealServing({
-                            consumerActor: actor,
-                            itemSnapshot: snapshot,
-                            partyIds
+                        app._mealBuffQueue = enqueueProvision(app._mealBuffQueue, snapshot, {
+                            actorId: charId, actorName: actor.name, kind: "food", partyIds
                         });
                     }
                 }
             }
             for (const itemId of water) {
                 if (itemId && itemId !== "skip") {
-                    await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                    const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                    const snapshot = drinkSnapshots.get(itemId);
+                    if (snapshot && consumed > 0) {
+                        app._mealBuffQueue = enqueueProvision(app._mealBuffQueue, snapshot, {
+                            actorId: charId, actorName: actor.name, kind: "drink", partyIds
+                        });
+                    }
                 }
             }
 
@@ -894,9 +966,7 @@ export class MealDelegate {
                 total = roll.total;
                 passed = total >= dc;
 
-                if (game.dice3d) {
-                    await game.dice3d.showForRoll(roll, game.user, true);
-                }
+                await presentRoll(roll);
             } catch (e) {
                 console.error(`[Respite] Dehydration save roll failed for ${actorName}:`, e);
                 ui.notifications.error(`Could not roll CON save for ${actorName}. Treating as failed.`);
@@ -1250,6 +1320,7 @@ export class MealDelegate {
                 const outcome = await MealPhaseHandler.processAndApply(app._mealChoices, totalDays, terrainMealRules);
                 mealResults = outcome.results;
                 app._mealResults = mealResults;
+                app._mealBuffs?.absorb(mealResults);
         Logger.log(`[Respite:Meal] Auto-process consumption results:`, mealResults);
             } catch (err) {
 
@@ -1333,9 +1404,7 @@ export class MealDelegate {
                             return conMod + profBonus;
                         })();
                     const roll = await new Roll(`1d20 + ${saveBonus}`).evaluate();
-                    if (game.dice3d) {
-                        await game.dice3d.showForRoll(roll, game.user, true);
-                    }
+                    await presentRoll(roll);
                     if (roll.total < r.dehydrationSaveDC) {
                         const adapter = game.ionrift?.respite?.adapter;
                         const current = adapter ? adapter.getExhaustion(actor) : (actor.system?.attributes?.exhaustion ?? 0);
@@ -1398,13 +1467,12 @@ export class MealDelegate {
             return;
         }
 
-        // Unlit: -1 comfort step | Embers: 0 | Campfire: 0 | Bonfire: +1 camp comfort
-        const FIRE_COMFORT_MOD = { unlit: -1, embers: 0, campfire: 0, bonfire: 1 };
-        const fireComfortMod = FIRE_COMFORT_MOD[app._fireLevel] ?? 0;
+        const fireLevelForComfort = (app._coldCampDecided && (app._fireLevel ?? "unlit") === "unlit")
+            ? "cold_camp"
+            : (app._fireLevel ?? "unlit");
+        const fireComfortMod = fireComfortDelta(fireLevelForComfort);
         if (fireComfortMod !== 0 && app._engine) {
-            let rank = COMFORT_RANK[app._engine.comfort] ?? 1;
-            rank = Math.max(0, Math.min(3, rank + fireComfortMod));
-            app._engine.comfort = RANK_TO_KEY[rank];
+            app._engine.comfort = boostComfort(app._engine.comfort, fireComfortMod);
         }
 
         if (app._engine) {
@@ -1431,7 +1499,7 @@ export class MealDelegate {
         app._eventPoolQuietNightBypass = false;
 
         app._pendingCampRolls = [];
-        const campActivities = (app._activities ?? []).filter(a => a.category === "camp");
+        const allActivities = app._activities ?? [];
         const partyActors = getPartyActors();
 
         for (const actor of partyActors) {
@@ -1440,11 +1508,11 @@ export class MealDelegate {
             const activityId = gmOverride ?? playerChoice?.activityId ?? null;
             if (!activityId) continue;
 
-            const activity = campActivities.find(a => a.id === activityId);
+            const activity = allActivities.find(a => a.id === activityId);
             if (!activity) continue;
 
             if (!activity.check) {
-                // Keep Watch: no check, auto-resolve immediately
+                // Keep Watch / Rest Fully: no check, auto-resolve immediately
                 app._earlyResults.set(actor.id, {
                     source: "activity",
                     activityId,
@@ -1461,31 +1529,28 @@ export class MealDelegate {
                 continue;
             }
 
-            // Activity needs a player roll (Set Up Defenses, Scout Perimeter)
-            // Calculate adjusted DC with comfort friction
-            const comfortDcMod = { safe: 0, sheltered: 0, rough: 2, hostile: 5 };
-            const baseDc = activity.check.dc ?? 12;
-            const adjustedDc = baseDc + (comfortDcMod[app._engine?.comfort] ?? 0);
+            // Training and multi-roll activities are tracked separately
+            if ((activity.check.rolls ?? 1) > 1) continue;
 
-            let skillKey = activity.check.skill;
-            if (activity.check.altSkill) {
-                const setupAdapter = game.ionrift?.respite?.adapter;
-                const primary = setupAdapter
-                    ? setupAdapter.getSkillTotal(actor, setupAdapter.normalizeSkillKey(activity.check.skill))
-                    : (actor.system?.skills?.[activity.check.skill]?.total ?? 0);
-                const alt = setupAdapter
-                    ? setupAdapter.getSkillTotal(actor, setupAdapter.normalizeSkillKey(activity.check.altSkill))
-                    : (actor.system?.skills?.[activity.check.altSkill]?.total ?? 0);
-                if (alt > primary) skillKey = activity.check.altSkill;
-            }
-            const skillName = SKILL_NAMES[skillKey] ?? skillKey;
+            // Activity needs a player roll (Set Up Defenses, Forage, Hunt, Fletch, Tell Tales, Pray, etc.)
+            const followUpValue = app._gmFollowUps?.get(actor.id) ?? app._getFollowUpForCharacter?.(actor.id);
+            const safeRestSpot = !!(app._engine?.safeRestSpot ?? app._restData?.safeRestSpot);
+            const comfort = app._engine?.comfort ?? app._restData?.comfort ?? "rough";
+            const checkDetails = app._activityResolver?.getCheckDetails?.(activityId, actor, comfort, {
+                followUpValue,
+                safeRestSpot
+            });
+
+            const adjustedDc = checkDetails?.adjustedDc ?? ((activity.check.dc ?? 12) + ({ safe: 0, sheltered: 0, rough: 2, hostile: 5 }[comfort] ?? 0));
+            const skillKey = checkDetails?.key ?? activity.check.skill ?? "wis";
+            const skillName = SKILL_NAMES[skillKey] ?? (checkDetails?.rollLabel ?? skillKey);
 
             app._pendingCampRolls.push({
                 characterId: actor.id,
                 characterName: actor.name,
                 activityId,
                 activityName: activity.name,
-                icon: activity.id === "act_defenses" ? "fas fa-shield-alt" : "fas fa-binoculars",
+                icon: activity.icon ?? (activity.id === "act_defenses" ? "fas fa-shield-alt" : "fas fa-dice-d20"),
                 skill: skillKey,
                 skillName,
                 dc: adjustedDc,
@@ -1499,13 +1564,12 @@ export class MealDelegate {
 
         await app._saveRestState();
 
-        const effectiveDC = app._engine?.getEffectiveEncounterDC?.() ?? 0;
+        const effectiveDC = app._engine?.getEffectiveEncounterDC?.({ earlyResults: app._earlyResults }) ?? 0;
         if (effectiveDC > 0) {
             const bd = app._engine?._encounterBreakdown ?? {};
             const modParts = [];
             if (bd.shelter) modParts.push(`Shelter +${bd.shelter}`);
             if (bd.weather) modParts.push(`Weather +${bd.weather}`);
-            if (bd.scouting) modParts.push(`Scouting +${bd.scouting}`);
             app._restLedger.add({
                 phase: "events", category: "night_check", icon: "fas fa-dice-d20",
                 summary: `Night check threshold: ${effectiveDC}`,

@@ -198,7 +198,18 @@ export class SystemAdapter {
      * "normal" = standard rules, "gritty" = longer rests, "epic" = shorter rests.
      * @returns {"normal"|"gritty"|"epic"}
      */
-    getRestVariant() { return "normal"; }
+    getRestVariant() {
+        if (this._devVariantOverride) return this._devVariantOverride;
+        return "normal";
+    }
+
+    /**
+     * Sets a development/session override for the rest variant ("normal" | "gritty" | "epic" | null).
+     * @param {"normal"|"gritty"|"epic"|null} variant
+     */
+    setDevRestVariant(variant) {
+        this._devVariantOverride = variant || null;
+    }
 
     /**
      * Status or condition slugs applied when the camp beds down for the night.

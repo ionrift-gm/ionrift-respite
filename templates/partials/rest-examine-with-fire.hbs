@@ -1,0 +1,17 @@
+{{!-- Normal rest Examine: the usual workbench (Identify, Focus, Taste) + Ready + fire rail. --}}
+<div class="rest-sustenance-with-fire">
+    <div class="rest-sustenance-main">
+        <div class="sust-section-label">EXAMINE</div>
+        {{#if workbenchIdentifyUiEnabled}}
+        {{> workbenchIdentifyPanel}}
+        {{else}}
+        <div class="rest-night-card sel">
+            <span class="rest-night-main">
+                <strong>Examine is off</strong>
+                <span>Turn it on in rest settings to identify, focus, and taste.</span>
+            </span>
+        </div>
+        {{/if}}
+    </div>
+    {{> restFireRail}}
+</div>

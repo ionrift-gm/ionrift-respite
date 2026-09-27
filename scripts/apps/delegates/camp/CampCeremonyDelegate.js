@@ -254,7 +254,11 @@ export class CampCeremonyDelegate {
             this._app._engine.fireLevel = level;
             this._app._engine.fireRollModifier = FIRE_MOD[level] ?? 0;
         }
-        await CampfireTokenLinker.setLightState(level !== "unlit", level !== "unlit" ? level : undefined);
+        await CampfireTokenLinker.setLightState(
+            level !== "unlit",
+            level !== "unlit" ? level : undefined,
+            { ignite: !!options.notifyFireLit && level !== "unlit" }
+        );
         const shouldNotifyFireLit = !!options.notifyFireLit
             && !!this.fireLitBy
             && level !== "unlit";
@@ -383,28 +387,14 @@ export class CampCeremonyDelegate {
             return;
         }
 
-        if (app._phase === "activity" && this._shouldShowTotmCampfirePanel()) {
-            if (!app._campfireApp) {
-                logCampfireReconnect("restoreCampfireUi:mount", { mode: "activity" });
-                this._mountCampfireEmbed("activity");
-                return;
-            }
-            logCampfireReconnect("restoreCampfireUi:syncExistingEmbed", {
-                fireLevel: app._fireLevel ?? "unlit",
-                embedLit: app._campfireApp?._lit,
-                embedHeat: app._campfireApp?._heat
-            });
-            app._campfireApp.syncFromRestFireLevel(
-                app._fireLevel ?? "unlit",
-                !!app._coldCampDecided,
-                { force: true }
-            );
-            registerCampfireEmbed(app._campfireApp);
-            await app._campfireApp.render();
-            logCampfireReconnect("restoreCampfireUi:embedRendered", {
-                embedLit: app._campfireApp?._lit,
-                embedFireLevel: app._campfireApp?.fireLevel
-            });
+        if (app._phase === "activity" && (this._shouldShowTotmCampfirePanel() || this._shouldMountFireRailEmbed())) {
+            logCampfireReconnect("restoreCampfireUi:mountOrRebind", { mode: "activity" });
+            this._mountCampfireEmbed("activity");
+            return;
+        }
+        if (app._phase === "meal" && this._shouldMountFireRailEmbed()) {
+            logCampfireReconnect("restoreCampfireUi:mountOrRebind", { mode: "activity", phase: "meal" });
+            this._mountCampfireEmbed("activity");
             return;
         }
 
@@ -515,14 +505,24 @@ export class CampCeremonyDelegate {
     
     }
 
+    /** Normal rest mounts the same fire into the fixed rail, not the old aside. */
+    _shouldMountFireRailEmbed() {
+        const app = this._app;
+        if (!["activity", "meal"].includes(app._phase)) return false;
+        if ((app._restVariant ?? "normal") === "gritty") return false;
+        if (!isCampfireMinigameEnabled()) return false;
+        return true;
+    }
+
     _shouldShowTotmCampfirePanel() {
         const app = this._app;
 
         if (app._phase !== "activity" || !app._isTotM || !isCampfireMinigameEnabled()) return false;
+        if ((app._restVariant ?? "normal") !== "gritty") return false;
+        const step = app._selectedWorkflowStep;
+        if (step === "sustenance" || step === "gather" || step === "examine") return false;
         if (!this._totmFireUiEnabled()) return false;
-        if (this._totmCampfireMinigamePanelEnabled()) return true;
-        return (app._fireLevel ?? "unlit") !== "unlit" || !!app._coldCampDecided;
-    
+        return true;
     }
 
     _campfireReconnectGateDetail() {
@@ -791,8 +791,9 @@ export class CampCeremonyDelegate {
     _syncCampCeremonyPreviewToEmbed(syncOpts = {}) {
         const app = this._app;
 
-        if (!app._campfireApp || !this._campCeremonyMinigameEnabled()) return;
-        const preview = this._isCampColdCampPreview()
+        const unlitActivity = app._phase === "activity" && (app._fireLevel ?? "unlit") === "unlit";
+        if (!app._campfireApp || (!this._campCeremonyMinigameEnabled() && !unlitActivity)) return;
+        const preview = (app._coldCampDecided || this._isCampColdCampPreview())
             ? "cold_camp"
             : (app._campFirePreviewLevel ?? "embers");
         const slots = this._buildMakeCampCeremonyRequirementSlots();
@@ -826,8 +827,9 @@ export class CampCeremonyDelegate {
     _campCeremonyMinigameEnabled() {
         const app = this._app;
 
-        if (!isCampfireMinigameEnabled() || app._phase !== "camp") return false;
-        if (!app._showFullMakeCampPanel()) return false;
+        if (!isCampfireMinigameEnabled()) return false;
+        if (app._phase !== "camp" && app._phase !== "activity") return false;
+        if (!app._showFullMakeCampPanel() && !app._isTotM) return false;
         let safeFromSetting = false;
         try {
             safeFromSetting = !!game.settings.get(MODULE_ID, "safeRestSpot");
@@ -836,7 +838,6 @@ export class CampCeremonyDelegate {
         if (effectiveSafe) return false;
         if ((app._fireLevel ?? "unlit") !== "unlit" || !!app._coldCampDecided) return false;
         return true;
-    
     }
 
     async _commitMakeCampCeremonyIgnite(opts = {}) {
@@ -844,7 +845,7 @@ export class CampCeremonyDelegate {
 
         if (app._commitMakeCampCeremonyInFlight) return;
         if (app._fireLitBy && (app._fireLevel ?? "unlit") !== "unlit") return;
-        if (app._phase !== "camp" || app._campToActivityDone) return;
+        if (app._phase !== "camp" && app._phase !== "activity") return;
         if (!this._campCeremonyMinigameEnabled()) return;
         if (this._isCampColdCampPreview()) return;
         if (app._campPitBlocksFireLighting()) {
@@ -873,7 +874,6 @@ export class CampCeremonyDelegate {
         if (!actorId) return;
 
         if ((app._fireLevel ?? "unlit") !== "unlit") {
-            if (game.user.isGM) await this._totmAdvanceCampAfterCeremonyIgnite();
             return;
         }
 
@@ -889,12 +889,30 @@ export class CampCeremonyDelegate {
                 actorId,
                 method,
                 chosenLevel,
-                { autoAdvanceTotm: app._isTotM }
+                { autoAdvanceTotm: false }
             );
+            await this._totmSpendMakeCampFirewood();
+            app._makeCampStagedWood = [];
+            app._makeCampStagedWoodTier = null;
+            if (app._campfireApp) {
+                app._campfireApp.setPanelMode({
+                    makeCampCeremony: false,
+                    showDouseBtn: true
+                });
+                this._syncTotmCampfireEmbedFromRest();
+            }
+            emitPhaseChanged(app._phase, {
+                campStatus: app._campStatus,
+                fireLevel: app._fireLevel,
+                fireLitBy: app._fireLitBy,
+                coldCampDecided: false,
+                makeCampStagedWood: []
+            });
+            await app._saveRestState();
+            app.render();
         } finally {
             app._commitMakeCampCeremonyInFlight = false;
         }
-    
     }
 
     async _totmAdvanceCampAfterCeremonyIgnite() {
@@ -1001,7 +1019,7 @@ export class CampCeremonyDelegate {
             logCampfireReconnect("mountCampfireEmbed:skip", { mode, reason: "camp ceremony disabled" });
             return;
         }
-        if (forTotmActivity && !this._shouldShowTotmCampfirePanel()) {
+        if (forTotmActivity && !this._shouldShowTotmCampfirePanel() && !this._shouldMountFireRailEmbed()) {
             logCampfireReconnect("mountCampfireEmbed:skip", {
                 mode,
                 reason: "shouldShowTotmCampfirePanel false",
@@ -1042,14 +1060,22 @@ export class CampCeremonyDelegate {
             embedHost: app._campfireEmbedHost
         });
 
+        const activityUnlit = forTotmActivity && (app._fireLevel ?? "unlit") === "unlit";
+        if (activityUnlit && app._coldCampDecided) {
+            app._coldCampDecided = false;
+            app._coldCampPreview = true;
+            app._campFirePreviewLevel = "cold_camp";
+        }
+        const isCeremony = forCamp || (!forStation && (this._campCeremonyMinigameEnabled() || activityUnlit));
+
         if (app._campfireApp) {
             app._campfireApp.setPanelMode({
-                makeCampCeremony: forCamp,
-                showDouseBtn: !forCamp
+                makeCampCeremony: isCeremony,
+                showDouseBtn: !isCeremony
             });
             app._campfireApp.rebindContainer(host);
             app._campfireApp.setContextActorId(app._selectedCharacterId);
-            if (forCamp) {
+            if (isCeremony) {
                 app._campfireApp.syncFromRestFireLevel("unlit", false);
                 this._syncCampCeremonyPreviewToEmbed();
             } else {
@@ -1070,8 +1096,8 @@ export class CampCeremonyDelegate {
             terrainTag,
             contextActorId: app._selectedCharacterId,
             disableDecay: true,
-            showDouseBtn: !forCamp,
-            makeCampCeremony: forCamp,
+            showDouseBtn: !isCeremony,
+            makeCampCeremony: isCeremony,
             canCommitCeremonyIgnite: () => !restApp._campPitBlocksFireLighting(),
             ceremonyIgniteBlockReason: () => restApp._campPitIgniteBlockMessage(),
             onStageCeremonyWood: () => {
@@ -1094,9 +1120,9 @@ export class CampCeremonyDelegate {
             }
         });
 
-        if (forCamp) {
+        if (isCeremony) {
             app._campfireApp.syncFromRestFireLevel("unlit", false);
-            this._syncCampCeremonyPreviewToEmbed();
+            this._syncCampCeremonyPreviewToEmbed({ force: true });
         } else {
             this._syncTotmCampfireEmbedFromRest();
         }
@@ -1695,9 +1721,6 @@ export class CampCeremonyDelegate {
             weather,
             weatherName,
             shelter,
-            scouting,
-            scoutingResult,
-            complication,
             fire,
             fireLevel,
             totalDefenses,
@@ -1717,7 +1740,7 @@ export class CampCeremonyDelegate {
             factors.push({
                 label: wx?.label ?? "Weather",
                 tone: (wx?.encounterDC ?? 0) > 0 ? "risk" : "neutral",
-                icon: "fas fa-cloud-sun-rain",
+                icon: wx?.icon ?? "fas fa-cloud-sun-rain",
                 tooltip: wx?.hint ?? "Weather shapes how exposed the camp feels tonight."
             });
         }
@@ -1728,26 +1751,6 @@ export class CampCeremonyDelegate {
                 tone: "help",
                 icon: "fas fa-campground",
                 tooltip: "Cover or a shelter spell hides the camp from wandering threats."
-            });
-        }
-
-        if (scouting !== 0) {
-            const tier = scoutingResult ?? "?";
-            const tierLabel = tier === "none" ? "Scouting" : `Scout (${tier})`;
-            factors.push({
-                label: tierLabel,
-                tone: scouting > 0 ? "help" : (scouting < 0 ? "risk" : "neutral"),
-                icon: "fas fa-binoculars",
-                tooltip: "Travel scouting shifts how prepared the camp is for the night."
-            });
-        }
-
-        if (complication) {
-            factors.push({
-                label: "Complication",
-                tone: "risk",
-                icon: "fas fa-exclamation-triangle",
-                tooltip: "Something from travel may surface during the night."
             });
         }
 

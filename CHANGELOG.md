@@ -1,6 +1,34 @@
 # Changelog
 
-## [Unreleased]
+## [4.0.0] - 2026-09-28
+
+### Added
+- Gritty Realism downtime rest flow with seven-day activity planning, nightly vigils, and dawn finalization.
+- Downtime Ledger application for allocating daily sustenance, camp defenses, crafting, attunement, spell copying, wound tending, and training.
+- Dynamic night danger checks with DC modifiers based on camp fortifications, guard assignments, hearth quality, and GM offsets.
+- Nightly vigil pacing view showing the active sentry token, passive perception, and danger threshold.
+- Encounter draft tools for the GM to roll danger checks or declare quiet nights.
+- Dawn finalization stage with automated saving throws for exhaustion recovery.
+- Master Downtime chat card reporting the full seven-day camp log, activities completed, yields gathered, and condition changes.
+- Bivouac HUD for streamlined eight-hour rests in gritty campaigns without full camp setup.
+- Real-time multiplayer synchronization keeping player rest interfaces up to date as the GM adjudicates camp progress.
+- Player-sanitized encounter pacing that reveals nightly vigils while keeping unrolled encounter details hidden.
+- Sustenance trays with daily ration pips and starvation risk alerts.
+- Meals displaying acquired buffs before rest completion.
+- Camp logistics drawer tracking party firewood, water reserves, and gear condition waivers.
+- Dynamic camp comfort ratings and condition bar updates based on terrain shelter and weather.
+- Keep Watch alert options for roll advantages and passive perception bonuses.
+
+### Changed
+- Standardized rest headers, workflow steppers, and avatar party strips across short rest, bivouac, long rest, and downtime.
+- Restored the 120px terrain artwork banner across all rest interfaces with condition badges.
+- Campfire animation frames tweaked for smoother ignition and dousing transitions.
+
+### Fixed
+- World time advances across seven-day downtime rest periods.
+- Departure meal and drink buffs persist properly into post-rest travel after multi-day rests.
+- Sentry passive perception calculates reliably across all actor sheets.
+- Campfire placement no longer creates errors with station overlays on the scene canvas.
 
 ## [3.6.2] - 2026-09-22
 

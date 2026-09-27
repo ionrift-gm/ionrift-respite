@@ -475,7 +475,7 @@ export class ItemOutcomeHandler {
      * @returns {Object[]}
      */
     static _normalize(items) {
-        const workshop = game.modules.get("ionrift-quartermaster");
+        const workshop = game.modules?.get?.("ionrift-quartermaster");
         if (workshop?.active && workshop.api?.items?.normalize) {
             return items.map(i => workshop.api.items.normalize(i));
         }

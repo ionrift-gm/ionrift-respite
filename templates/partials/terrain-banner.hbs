@@ -1,0 +1,6 @@
+{{!-- Shared Terrain Banner (120px) across Normal & Gritty Rest UIs --}}
+{{#unless hideTerrainBanner}}
+<div class="phase-banner rest-terrain-banner {{#if bannerFireClass}}{{bannerFireClass}}{{else}}{{#if isFireLit}}is-fire-lit{{else}}is-fire-unlit{{/if}}{{/if}}">
+    <img src="{{#if terrainBanner}}{{terrainBanner}}{{else}}{{banner}}{{/if}}" alt="Camp terrain banner" style="object-position: {{#if terrainBannerPos}}{{terrainBannerPos}}{{else}}center{{/if}};" onerror="this.onerror=null;this.src='{{#if terrainBannerFallback}}{{terrainBannerFallback}}{{else}}{{bannerFallback}}{{/if}}'">
+</div>
+{{/unless}}

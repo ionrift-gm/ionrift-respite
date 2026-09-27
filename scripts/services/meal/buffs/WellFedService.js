@@ -33,9 +33,10 @@ export function mealSnapshotAsSingleLeftover(itemSnapshot) {
 /**
  * Apply Well Fed + optional chat after one serving is removed from inventory.
  */
-export async function dispatchWellFedMealServing({ consumerActor, itemSnapshot, partyIds }) {
+export async function dispatchWellFedMealServing({ consumerActor, itemSnapshot, partyIds, verb = "eats" }) {
     const rf = itemSnapshot.flags?.[MODULE_ID] ?? {};
     const itemName = itemSnapshot.name ?? "Meal";
+    const action = verb === "drinks" ? "drinks" : "eats";
     if (rf.partyMeal) {
         const summaries = [];
         const partyRolls = [];
@@ -62,9 +63,10 @@ export async function dispatchWellFedMealServing({ consumerActor, itemSnapshot, 
                 speaker: ChatMessage.getSpeaker({ actor: consumerActor })
             });
         }
+        return { lines: summaries.map(line => line.replace(/<[^>]+>/g, "")) };
     } else {
         if (!ItemClassifier.acceptsFoodBuffs(consumerActor)) {
-            return;
+            return { lines: [] };
         }
         const alreadyWellFed = actorHasCookingSlot(consumerActor);
         if (alreadyWellFed) {
@@ -72,20 +74,61 @@ export async function dispatchWellFedMealServing({ consumerActor, itemSnapshot, 
             const ref = doc.flags?.[MODULE_ID]?.itemRef ?? doc.name ?? itemName;
             await grantMealItem(consumerActor, doc, ref, { separateItem: true });
             await ChatMessage.create({
-                content: `<div class="respite-recovery-chat"><p><i class="fas fa-box-open"></i> <strong>${consumerActor.name}</strong> could not eat another full meal yet. <strong>${itemName}</strong> was packed away.</p></div>`,
+                content: `<div class="respite-recovery-chat"><p><i class="fas fa-box-open"></i> <strong>${consumerActor.name}</strong> could not take another yet. <strong>${itemName}</strong> was packed away.</p></div>`,
                 speaker: ChatMessage.getSpeaker({ actor: consumerActor })
             });
+            return { lines: [`${itemName} packed away`] };
         } else {
             const { lines, rolls } = await applyWellFedEffect(consumerActor, itemSnapshot);
             if (lines?.length) {
                 await ChatMessage.create({
-                    content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>${consumerActor.name}</strong> eats <strong>${itemName}</strong>. Well Fed: ${lines.join("; ")}</p></div>`,
+                    content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>${consumerActor.name}</strong> ${action} <strong>${itemName}</strong>. ${lines.join("; ")}</p></div>`,
                     rolls: rolls ?? [],
                     speaker: ChatMessage.getSpeaker({ actor: consumerActor })
                 });
             }
+            return { lines: lines ?? [] };
         }
     }
+}
+
+/**
+ * Apply one consumed meal or drink. Chef treats, Well Fed meals, and
+ * drinks that carry a buff all come through here.
+ * @param {{ consumerActor: Actor, itemSnapshot: object, partyIds?: string[], kind?: "food"|"drink" }} args
+ * @returns {Promise<{ lines: string[] }>}
+ */
+export async function applyProvisionBuff({ consumerActor, itemSnapshot, partyIds = [], kind = "food" }) {
+    const flags = itemSnapshot?.flags?.[MODULE_ID] ?? {};
+    const verb = kind === "drink" ? "drinks" : "eats";
+    const wellFedPayload = flags.wellFed === true && flags.buff !== null && flags.buff !== undefined;
+    if (!wellFedPayload && flags.chefTreat) {
+        const pb = Number(flags.chefTreatProfBonus) || 0;
+        const resolved = await resolveBuff(
+            consumerActor,
+            { type: "temp_hp", formula: String(pb > 0 ? pb : 1) },
+            { chatDetail: true }
+        );
+        const line = resolved?.summary ?? "Bolstering Treat";
+        await ChatMessage.create({
+            content: `<div class="respite-recovery-chat"><p><i class="fas fa-utensils"></i> <strong>${consumerActor.name}</strong> ${verb} <strong>${itemSnapshot.name ?? "Treat"}</strong>. ${line}</p></div>`,
+            rolls: resolved?.roll ? [resolved.roll] : [],
+            speaker: ChatMessage.getSpeaker({ actor: consumerActor })
+        });
+        return { lines: [line] };
+    }
+    let snapshot = itemSnapshot;
+    if (!wellFedPayload && flags.buff) {
+        snapshot = foundry.utils.duplicate(itemSnapshot);
+        snapshot.flags = snapshot.flags ?? {};
+        snapshot.flags[MODULE_ID] = { ...(snapshot.flags[MODULE_ID] ?? {}), wellFed: true };
+    }
+    return dispatchWellFedMealServing({
+        consumerActor,
+        itemSnapshot: snapshot,
+        partyIds,
+        verb
+    });
 }
 
 /**
@@ -258,7 +301,12 @@ export async function stampWellFedDuration(actors) {
             const existing = ae.flags?.dae?.specialDuration ?? [];
             if (!existing.includes("longRest")) {
                 const merged = [...new Set([...existing, "longRest"])];
-                await ae.update({ "flags.dae.specialDuration": merged });
+                if (typeof ae?.update === "function") {
+                    await ae.update({ "flags.dae.specialDuration": merged });
+                } else if (ae?.flags) {
+                    ae.flags.dae = ae.flags.dae || {};
+                    ae.flags.dae.specialDuration = merged;
+                }
             }
         }
     }

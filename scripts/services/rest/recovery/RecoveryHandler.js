@@ -1,6 +1,7 @@
 import { Logger } from "../../../utils/Logger.js";
 import { mealExhaustionFloorFor } from "../../meal/phase/MealExhaustionGuard.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { postRollAndSettle } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
 /**
  * RecoveryHandler
  * Applies comfort-modified HP, Hit Dice, and exhaustion recovery to actors.
@@ -348,7 +349,7 @@ export class RecoveryHandler {
                             const roll = await new Roll(effect.formula ?? effect.roll).evaluate();
                             const damage = roll.total;
                             damageByActor.set(actorId, (damageByActor.get(actorId) ?? 0) + damage);
-                            await roll.toMessage({
+                            await postRollAndSettle(roll, {
                                 speaker: { alias: sub.eventName ?? "Rest Event" },
                                 flavor: `<strong>${actor.name}</strong>: ${effect.formula ?? effect.roll} ${effect.damageType ?? ""} damage<br><em>${effect.description ?? ""}</em>`,
                                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
@@ -498,8 +499,16 @@ export class RecoveryHandler {
 
         let penalty = 0;
 
-        // CON save at rough/hostile: fail = +1 exhaustion
-        if (recovery.exhaustionDC) {
+        // Dawn stage already rolled this save. Apply that result.
+        // Otherwise roll here (safe rest, or a path that skipped dawn).
+        if (recovery.exhaustionAdjudicated && recovery.exhaustionSaveResult) {
+            if (recovery.exhaustionSaveResult === "failed") {
+                penalty += 1;
+                Logger.log(`[Respite:Recovery] ${actor.name} failed the dawn exhaustion save, +1 exhaustion`);
+            } else {
+                Logger.log(`[Respite:Recovery] ${actor.name} dawn exhaustion save ${recovery.exhaustionSaveResult}`);
+            }
+        } else if (recovery.exhaustionDC) {
             const conMod = adapter
                 ? adapter.getSaveBonus(actor, "con")
                 : (actor.system?.abilities?.con?.mod ?? 0);
@@ -512,7 +521,7 @@ export class RecoveryHandler {
 
             // Post the save roll to chat (GM-whispered)
             const advLabel = advantage ? " (mess kit gives advantage)" : "";
-            await roll.toMessage({
+            await postRollAndSettle(roll, {
                 speaker: ChatMessage.getSpeaker({ actor }),
                 flavor: `<strong>${actor.name}</strong>: CON save vs exhaustion DC ${recovery.exhaustionDC}${advLabel}`,
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
@@ -622,7 +631,7 @@ export class RecoveryHandler {
                     const damage = roll.total;
                     totalDamage += damage;
 
-                    await roll.toMessage({
+                    await postRollAndSettle(roll, {
                         speaker: { alias: sub.eventName ?? "Rest Event" },
                         flavor: `<strong>${actor.name}</strong>: ${effect.formula ?? effect.roll} ${effect.damageType ?? ""} damage<br><em>${effect.description ?? ""}</em>`,
                         whisper: game.users.filter(u => u.isGM).map(u => u.id)

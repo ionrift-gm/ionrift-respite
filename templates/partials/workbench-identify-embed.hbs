@@ -1,14 +1,39 @@
-{{!-- Workbench Examine: SPELLS (Identify + Detect Magic) | REST (Focus + Taste) --}}
+{{!-- Refactored Workbench Examine: Top Utility Bar + 3-Bay Symmetrical Triage + Dynamic Action Footer --}}
 <div class="station-workbench-identify-embed station-identify-embed identify-tab{{#if workbenchSubmitPending}} wb-ident-submit-pending{{/if}}"
      data-workbench-actor-id="{{workbenchIdentifyActorId}}">
-    {{#if identifyCasters.length}}
-    <div class="identify-caster-advisory">
-        <i class="fas fa-hat-wizard"></i>
-        {{#each identifyCasters}}{{#unless @first}}, {{/unless}}{{name}}{{/each}}
-        can cast Identify
+
+    {{!-- Top Utility Bar: Header Info / Caster Hint + Detect Magic Reconnaissance Ping --}}
+    <div class="wb-ident-utility-bar">
+        <div class="wb-ident-utility-meta">
+            {{#if identifyCasters.length}}
+            <span class="wb-ident-caster-hint" data-tooltip="Available casters: {{#each identifyCasters}}{{#unless @first}}, {{/unless}}{{name}}{{/each}}">
+                <i class="fas fa-hat-wizard" aria-hidden="true"></i>
+                <span class="wb-ident-caster-text">{{#each identifyCasters}}{{#unless @first}}, {{/unless}}{{name}}{{/each}} can cast Identify</span>
+            </span>
+            {{else}}
+            <span class="wb-ident-recon-hint">
+                <i class="fas fa-sparkles" aria-hidden="true"></i>
+                <span>Examine &amp; identify mysterious items</span>
+            </span>
+            {{/if}}
+        </div>
+        <div class="wb-ident-utility-recon{{#unless detectMagicAvailable}}{{#unless magicScanActive}} wb-ident-zone-lacking{{#if (eq detectMagicAccess.state "unprepared")}} wb-ident-zone-unprepared{{else}} wb-ident-zone-unavailable{{/if}}{{/unless}}{{/unless}}">
+            <button type="button" class="btn-detect-magic btn-detect-magic-toggle{{#if magicScanActive}} is-active{{/if}}"
+                data-action="stationDetectMagicScan"
+                {{#unless canTriggerDetectMagicScan}}disabled{{/unless}}
+                {{#if workbenchSubmitPending}}disabled aria-disabled="true"{{/if}}
+                data-tooltip="{{#if workbenchSubmitPending}}Wait for submit to finish{{else}}{{#if magicScanActive}}Dismiss scan{{else}}{{#if canTriggerDetectMagicScan}}{{#if isGmUser}}Cast Detect Magic for the party{{else}}Cast Detect Magic{{/if}}{{else}}{{detectMagicDisabledTooltip}}{{/if}}{{/if}}{{/if}}">
+                <i class="fas {{#if magicScanActive}}fa-eye-slash{{else}}fa-eye{{/if}}" aria-hidden="true"></i>
+                <span class="btn-detect-magic-text">{{#if magicScanActive}}Dismiss{{else}}Detect Magic{{/if}}</span>
+                {{#if detectMagicPill}}
+                {{#unless magicScanActive}}
+                <span class="wb-ident-pill {{#if (eq detectMagicPill "Not prepared")}}wb-ident-pill--unprepared{{else}}wb-ident-pill--spell{{/if}}">{{detectMagicPill}}</span>
+                {{/unless}}
+                {{/if}}
+            </button>
+        </div>
     </div>
-    {{/if}}
-    <p class="wb-ident-hint">Focus or taste during the rest. Spells can reveal more.</p>
+
     <div class="identify-scroll-area station-identify-scroll wb-ident-scroll">
     {{#if workbenchSubmitPending}}
     <p class="wb-ident-pending-status" role="status" aria-live="polite">
@@ -16,106 +41,131 @@
     </p>
     {{/if}}
 
-    <div class="wb-ident-band">
-        <section class="wb-ident-spells" aria-label="Spells">
-            <span class="wb-ident-col-label">Spells</span>
-            <div class="meal-panel wb-ident-arcane-card">
-                <div class="wb-ident-identify-block{{#unless identifyAvailable}} wb-ident-zone-lacking{{#if (eq identifyAccess.state "unprepared")}} wb-ident-zone-unprepared{{else}} wb-ident-zone-unavailable{{/if}}{{/unless}}">
-                    <span class="panel-label">Identify
-                        {{#if identifyPill}}
-                        <span class="wb-ident-pill {{#if (eq identifyPill "Not prepared")}}wb-ident-pill--unprepared{{else}}wb-ident-pill--spell{{/if}}">{{identifyPill}}</span>
+    {{!-- Main Triage Bay: 3 Symmetrical Cards --}}
+    <div class="wb-ident-triage-grid">
+
+        {{!-- CARD 1: IDENTIFY (SPELL) --}}
+        <div class="meal-panel wb-ident-card wb-ident-card--arcane{{#unless identifyAvailable}} wb-ident-zone-lacking{{#if (eq identifyAccess.state "unprepared")}} wb-ident-zone-unprepared{{else}} wb-ident-zone-unavailable{{/if}}{{/unless}}">
+            <div class="wb-ident-card-head">
+                <span class="panel-label wb-ident-card-title">Identify
+                    {{#if identifyPill}}
+                    <span class="wb-ident-pill {{#if (eq identifyPill "Not prepared")}}wb-ident-pill--unprepared{{else}}wb-ident-pill--spell{{/if}}">{{identifyPill}}</span>
+                    {{/if}}
+                </span>
+                <span class="wb-ident-col-tip" tabindex="0" data-tooltip-direction="DOWN"
+                    data-tooltip="{{#if arcaneStatus}}{{arcaneStatus}}{{else}}Spells can reveal more.{{/if}}"
+                    aria-label="{{#if arcaneStatus}}{{arcaneStatus}}{{else}}Spells can reveal more.{{/if}}"><i class="fas fa-info-circle" aria-hidden="true"></i></span>
+            </div>
+            <div class="wb-ident-well-wrap">
+                <div class="meal-drop-zone wb-ident-drop-zone spell-identify-drop-zone {{#if workbenchSpellChip}}filled{{/if}}{{#unless identifyAvailable}} wb-ident-zone-blocked{{/unless}}"
+                     data-wb-zone="spell"
+                     data-tooltip="{{#if identifyAvailable}}Drop one item to cast Identify. Click to clear.{{else}}{{identifyAccess.tooltip}}{{/if}}">
+                    <div class="drop-zone-silhouette">
+                        {{#if workbenchSpellChip}}
+                        <img src="{{workbenchSpellChip.img}}" alt="" class="drop-zone-item-icon" onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
+                        <span class="drop-zone-clear-badge" title="Remove item"><i class="fas fa-times"></i></span>
+                        {{else}}
+                        <i class="fas fa-hat-wizard drop-zone-sil drop-zone-spell-sil"></i>
                         {{/if}}
-                    </span>
-                    <div class="wb-ident-spell-slot-wrap">
-                        <div class="meal-drop-zone wb-ident-drop-zone spell-identify-drop-zone {{#if workbenchSpellChip}}filled{{/if}}{{#unless identifyAvailable}} wb-ident-zone-blocked{{/unless}}"
-                             data-wb-zone="spell"
-                             data-tooltip="{{#if identifyAvailable}}Drop one item to cast Identify. Click to clear.{{else}}{{identifyAccess.tooltip}}{{/if}}">
-                            <div class="drop-zone-silhouette">
-                                {{#if workbenchSpellChip}}
-                                <img src="{{workbenchSpellChip.img}}" alt="" class="drop-zone-item-icon" onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
-                                {{else}}
-                                <i class="fas fa-hat-wizard drop-zone-spell-sil"></i>
-                                {{/if}}
-                            </div>
-                        </div>
                     </div>
                 </div>
-                <div class="wb-ident-detect-block{{#unless detectMagicAvailable}}{{#unless magicScanActive}} wb-ident-zone-lacking{{#if (eq detectMagicAccess.state "unprepared")}} wb-ident-zone-unprepared{{else}} wb-ident-zone-unavailable{{/if}}{{/unless}}{{/unless}}">
-                    <div class="wb-ident-detect-slot-wrap">
-                        <button type="button" class="btn-detect-magic{{#if magicScanActive}} is-active{{/if}}"
-                            data-action="stationDetectMagicScan"
-                            {{#unless canTriggerDetectMagicScan}}disabled{{/unless}}
-                            {{#if workbenchSubmitPending}}disabled aria-disabled="true"{{/if}}
-                            data-tooltip="{{#if workbenchSubmitPending}}Wait for submit to finish{{else}}{{#if magicScanActive}}Dismiss scan{{else}}{{#if canTriggerDetectMagicScan}}{{#if isGmUser}}Cast Detect Magic for the party{{else}}Cast Detect Magic{{/if}}{{else}}{{detectMagicDisabledTooltip}}{{/if}}{{/if}}{{/if}}">
-                            <i class="fas {{#if magicScanActive}}fa-eye-slash{{else}}fa-eye{{/if}}" aria-hidden="true"></i>
-                            <span class="btn-detect-magic-text">{{#if magicScanActive}}Dismiss{{else}}Detect Magic{{/if}}</span>
-                            {{#if detectMagicPill}}
-                            {{#unless magicScanActive}}
-                            <span class="wb-ident-pill {{#if (eq detectMagicPill "Not prepared")}}wb-ident-pill--unprepared{{else}}wb-ident-pill--spell{{/if}}">{{detectMagicPill}}</span>
-                            {{/unless}}
-                            {{/if}}
-                        </button>
-                    </div>
-                </div>
-                {{#if arcaneStatus}}
-                <p class="wb-ident-arcane-status" role="status">{{arcaneStatus}}</p>
+            </div>
+            <div class="wb-ident-card-meta">
+                {{#if workbenchSpellChip}}
+                <span class="wb-ident-staged-name" title="{{workbenchSpellChip.name}}">{{workbenchSpellChip.name}}</span>
+                <span class="wb-ident-staged-hint">Click slot to clear</span>
+                {{else}}
+                <span class="wb-ident-method-tag">1st-Level / Ritual</span>
+                <span class="wb-ident-method-desc">Reveals all properties</span>
                 {{/if}}
             </div>
-        </section>
+        </div>
 
-        <div class="wb-ident-band-divider" aria-hidden="true"></div>
-
-        <section class="wb-ident-rest" aria-label="Rest">
-            <span class="wb-ident-col-label">Rest</span>
-            <div class="wb-ident-rest-controls">
-                <div class="meal-panel wb-ident-gear-panel{{#if workbenchFocusExhausted}} wb-ident-exhausted{{/if}}">
-                    <span class="panel-label">Focus
-                        {{#if workbenchFocusExhausted}}<span class="wb-ident-used-badge">Used</span>{{/if}}
-                    </span>
-                    <div class="wb-ident-gear-slot-wrap">
-                        <div class="meal-drop-zone wb-ident-drop-zone gear-focus-drop-zone {{#if workbenchGearChip}}filled{{/if}}
-                            {{#if workbenchFocusExhausted}}wb-ident-zone-blocked{{/if}}"
-                            data-wb-zone="gear"
-                            data-tooltip="{{#if workbenchFocusExhausted}}Focus already used this rest{{else}}One non-potion item per rest (Identifying a Magic Item, DMG p.136). Click to clear.{{/if}}">
-                            <div class="drop-zone-silhouette">
-                                {{#if workbenchGearChip}}
-                                <img src="{{workbenchGearChip.img}}" alt="" class="drop-zone-item-icon" onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
-                                {{else}}
-                                <i class="fas fa-hand-holding drop-zone-gear-sil"></i>
-                                {{/if}}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="meal-panel wb-ident-potion-panel">
-                    <span class="panel-label">Taste</span>
-                    <div class="wb-ident-potion-slot-wrap">
-                        <div class="meal-drop-zone wb-ident-drop-zone potion-taste-drop-zone {{#if workbenchPotionChip}}filled{{/if}}"
-                             data-wb-zone="potion" data-tooltip="Potions: a little taste reveals what it does (DMG p.136). Click to clear.">
-                            <div class="drop-zone-silhouette">
-                                {{#if workbenchPotionChip}}
-                                <img src="{{workbenchPotionChip.img}}" alt="" class="drop-zone-item-icon" onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
-                                {{else}}
-                                <i class="fas fa-flask drop-zone-potion-sil"></i>
-                                {{/if}}
-                            </div>
-                        </div>
+        {{!-- CARD 2: FOCUS (SHORT REST) --}}
+        <div class="meal-panel wb-ident-card wb-ident-card--focus{{#if workbenchFocusExhausted}} wb-ident-exhausted{{/if}}">
+            <div class="wb-ident-card-head">
+                <span class="panel-label wb-ident-card-title">Focus
+                    {{#if focusBudgetLabel}}
+                    <span class="wb-ident-pill">{{focusBudgetLabel}}</span>
+                    {{else if workbenchFocusExhausted}}
+                    <span class="wb-ident-used-badge">Used</span>
+                    {{/if}}
+                </span>
+                <span class="wb-ident-col-tip" tabindex="0" data-tooltip-direction="DOWN"
+                    data-tooltip="{{#if restCiteText}}{{restCiteText}}{{else}}Focus once per rest (DMG p.136).{{/if}}"
+                    aria-label="{{#if restCiteText}}{{restCiteText}}{{else}}Focus once per rest (DMG p.136).{{/if}}"><i class="fas fa-info-circle" aria-hidden="true"></i></span>
+            </div>
+            <div class="wb-ident-well-wrap">
+                <div class="meal-drop-zone wb-ident-drop-zone gear-focus-drop-zone {{#if workbenchGearChip}}filled{{/if}}{{#if workbenchFocusExhausted}} wb-ident-zone-blocked{{/if}}"
+                    data-wb-zone="gear"
+                    data-tooltip="{{#if workbenchFocusExhausted}}Focus limit reached for this rest{{else if focusTooltip}}{{focusTooltip}}{{else}}One non-potion item per rest (Identifying a Magic Item, DMG p.136). Click to clear.{{/if}}">
+                    <div class="drop-zone-silhouette">
+                        {{#if workbenchGearChip}}
+                        <img src="{{workbenchGearChip.img}}" alt="" class="drop-zone-item-icon" onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
+                        <span class="drop-zone-clear-badge" title="Remove item"><i class="fas fa-times"></i></span>
+                        {{else}}
+                        <i class="fas fa-hand-holding drop-zone-sil drop-zone-gear-sil"></i>
+                        {{/if}}
                     </div>
                 </div>
             </div>
-            <p class="wb-ident-rest-cite">Focus once per rest; taste as needed (DMG p.136).</p>
-        </section>
+            <div class="wb-ident-card-meta">
+                {{#if workbenchGearChip}}
+                <span class="wb-ident-staged-name" title="{{workbenchGearChip.name}}">{{workbenchGearChip.name}}</span>
+                <span class="wb-ident-staged-hint">Click slot to clear</span>
+                {{else}}
+                <span class="wb-ident-method-tag">1 / Short Rest</span>
+                <span class="wb-ident-method-desc">Study via 1 hr handling</span>
+                {{/if}}
+            </div>
+        </div>
+
+        {{!-- CARD 3: TASTE (POTION) --}}
+        <div class="meal-panel wb-ident-card wb-ident-card--taste">
+            <div class="wb-ident-card-head">
+                <span class="panel-label wb-ident-card-title">Taste</span>
+                <span class="wb-ident-col-tip" tabindex="0" data-tooltip-direction="DOWN"
+                    data-tooltip="Potions: a little taste reveals what it does (DMG p.136)."
+                    aria-label="Potions: a little taste reveals what it does (DMG p.136)."><i class="fas fa-info-circle" aria-hidden="true"></i></span>
+            </div>
+            <div class="wb-ident-well-wrap">
+                <div class="meal-drop-zone wb-ident-drop-zone potion-taste-drop-zone {{#if workbenchPotionChip}}filled{{/if}}"
+                     data-wb-zone="potion" data-tooltip="Potions: a little taste reveals what it does (DMG p.136). Click to clear.">
+                    <div class="drop-zone-silhouette">
+                        {{#if workbenchPotionChip}}
+                        <img src="{{workbenchPotionChip.img}}" alt="" class="drop-zone-item-icon" onerror="this.onerror=null;this.src='icons/svg/mystery-man.svg'">
+                        <span class="drop-zone-clear-badge" title="Remove item"><i class="fas fa-times"></i></span>
+                        {{else}}
+                        <i class="fas fa-flask drop-zone-sil drop-zone-potion-sil"></i>
+                        {{/if}}
+                    </div>
+                </div>
+            </div>
+            <div class="wb-ident-card-meta">
+                {{#if workbenchPotionChip}}
+                <span class="wb-ident-staged-name" title="{{workbenchPotionChip.name}}">{{workbenchPotionChip.name}}</span>
+                <span class="wb-ident-staged-hint">Click slot to clear</span>
+                {{else}}
+                <span class="wb-ident-method-tag">Repeatable</span>
+                <span class="wb-ident-method-desc">A tiny sip reveals nature</span>
+                {{/if}}
+            </div>
+        </div>
+
     </div>
 
+    {{!-- Tabletop Dynamic Commit Action --}}
     <div class="station-meal-submit-row wb-ident-submit-row">
-        <button type="button" class="station-meal-submit-btn{{#if workbenchSubmitPending}} wb-ident-submit-btn--pending{{/if}}" data-action="submitWorkbenchIdentify"
+        <button type="button" class="station-meal-submit-btn btn-examine-commit{{#if workbenchSubmitPending}} wb-ident-submit-btn--pending is-pending{{/if}}" data-action="submitWorkbenchIdentify"
             data-workbench-actor-id="{{workbenchIdentifyActorId}}"
             {{#if workbenchSubmitLocked}}disabled{{/if}}
             {{#if workbenchSubmitPending}}aria-busy="true" data-tooltip="In progress"{{/if}}>
             {{#if workbenchSubmitPending}}
-            <i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Working...
+            <i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Examining Items...
+            {{else if workbenchSubmitLocked}}
+            <i class="fas fa-arrow-up-from-bracket" aria-hidden="true"></i> Place an Item Above to Examine
             {{else}}
-            Submit
+            <i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i> Perform Examination
             {{/if}}
         </button>
     </div>
@@ -137,8 +187,8 @@
             {{/each}}
             <button type="button" class="station-meal-submit-btn wb-ident-ack-btn" data-action="dismissWorkbenchIdentifyAck"
                 data-workbench-actor-id="{{workbenchIdentifyActorId}}"
-                {{#unless workbenchAckRevealReady}} disabled data-tooltip="Brief pause before you continue"{{/unless}}>
-                {{#if workbenchAckRevealReady}}Continue{{else}}Wait...{{/if}}
+                {{#unless workbenchAckRevealReady}} disabled data-tooltip="Brief pause before this can close"{{/unless}}>
+                {{#if workbenchAckRevealReady}}Done{{else}}Wait...{{/if}}
             </button>
         </div>
     </div>

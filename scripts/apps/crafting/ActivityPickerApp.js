@@ -2,6 +2,7 @@ import { ActivityResolver } from "../../services/rest/flow/ActivityResolver.js";
 import { CraftingEngine } from "../../services/crafting/engine/CraftingEngine.js";
 import { CraftingPickerApp } from "./CraftingPickerApp.js";
 import { MODULE_ID } from "../../data/moduleId.js";
+import { presentCombatModifiers } from "../../services/rest/flow/WatchAlertBenefit.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -91,6 +92,7 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 img: a.img || "icons/svg/mystery-man.svg",
                 activities: resolver.getAvailableActivities(a, this._restData.restType, forageOpts).map(act => ({
                     ...act,
+                    combatModifiers: presentCombatModifiers(act.combatModifiers),
                     isCrafting: act.crafting?.enabled ?? false,
                     craftingProfession: act.crafting?.profession ?? null
                 })),
@@ -239,7 +241,7 @@ export class ActivityPickerApp extends HandlebarsApplicationMixin(ApplicationV2)
         this._hasSubmitted = true;
         this.render();
 
-        ui.notifications.info("Choices submitted. Waiting for the GM to resolve the rest.");
+        ui.notifications.info("Choices submitted. Waiting for GM.");
     }
 
     /**

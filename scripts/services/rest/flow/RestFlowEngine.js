@@ -1,6 +1,7 @@
 import { Logger } from "../../../utils/Logger.js";
 import { getPartyActors } from "../../party/partyActors.js";
 import { boostComfort, getHdPenalty, getExhaustionDC, HP_FRACTION, isComfortEnabled } from "../../camp/gear/ComfortCalculator.js";
+import { watchAlertCombatLine } from "./WatchAlertBenefit.js";
 
 /**
  * RestFlowEngine
@@ -65,9 +66,10 @@ export class RestFlowEngine {
     registerChoice(characterId, activityId, options = {}) {
         this.characterChoices.set(characterId, { activityId, options });
 
-        // Build watch roster from "alert" activities (perimeter-facing characters)
-        const ALERT_ACTIVITIES = ["act_keep_watch", "act_scout", "act_defenses"];
-        if (ALERT_ACTIVITIES.includes(activityId)) {
+        // Awake at night is Keep Watch only. Set Up Defenses lowers the DC
+        // and does not keep that character up for event targets.
+        this.watchRoster = (this.watchRoster ?? []).filter(w => w.characterId !== characterId);
+        if (activityId === "act_keep_watch") {
             this.watchRoster.push({
                 characterId,
                 slot: options.watchSlot ?? "any"
@@ -76,27 +78,58 @@ export class RestFlowEngine {
     }
 
     /**
-     * Effective encounter threshold for the current rest (same math as the
-     * encounter bar and resolveEvents). Positive camp modifiers lower the DC.
+     * Defense term for the night check. Committed Set Up Defenses wins.
+     * Until that lands, each successful defense already in early results
+     * counts as 2 (encounter_reduction on act_defenses).
+     * @param {Iterable} [earlyResults]
      * @returns {number}
      */
-    getEffectiveEncounterDC() {
-        const campMods = (this.fireRollModifier ?? 0)
-            + (this.shelterEncounterMod ?? 0)
-            + (this._encounterBreakdown?.scouting ?? 0)
-            + (this._encounterBreakdown?.defenses ?? 0)
-            + (this._encounterBreakdown?.travelMishap ?? 0);
+    defenseContribution(earlyResults) {
+        const committed = this._encounterBreakdown?.defenses ?? 0;
+        if (committed !== 0) return committed;
+        if (!earlyResults || typeof earlyResults === "string" || typeof earlyResults[Symbol.iterator] !== "function") {
+            return 0;
+        }
+        let bonus = 0;
+        for (const entry of earlyResults) {
+            const er = Array.isArray(entry) ? entry[1] : entry;
+            if (er?.activityId === "act_defenses" && (er.result === "success" || er.result === "exceptional")) {
+                bonus += 2;
+            }
+        }
+        return bonus;
+    }
+
+    /**
+     * Effective encounter threshold for this rest. The encounter bar and the
+     * night roll both call this. Shelter, a positive fire modifier, defenses,
+     * and a positive travel mishap lower the DC. Weather raises it: the
+     * weather table's encounterDC is a danger bonus, not a shelter bonus.
+     * Pass fireModifier to preview an uncommitted fire on the camp screen.
+     * Pass earlyResults so a defense success counts before it is committed.
+     * @param {{ fireModifier?: number, earlyResults?: Iterable }} [options]
+     * @returns {number}
+     */
+    getEffectiveEncounterDC({ fireModifier, earlyResults } = {}) {
+        const bd = this._encounterBreakdown ?? {};
+        const fire = typeof fireModifier === "number" ? fireModifier : (this.fireRollModifier ?? 0);
+        const shelter = bd.shelter ?? this.shelterEncounterMod ?? 0;
+        const weather = bd.weather ?? 0;
+        const campMods = fire
+            + shelter
+            + this.defenseContribution(earlyResults)
+            + (bd.travelMishap ?? 0);
         const baseDC = this._baseDC ?? 15;
-        return Math.max(1, baseDC - campMods + (this.gmEncounterAdj ?? 0));
+        return Math.max(1, baseDC - campMods + weather + (this.gmEncounterAdj ?? 0));
     }
 
     /**
      * Phase 3: Resolve events. Rolls against the terrain event table.
      * @param {EventResolver} eventResolver
-     * @param {string} [scoutTier] - Scouting result tier (nat1, poor, average, good, nat20, none)
+     * @param {Iterable} [earlyResults] - Activity results not yet written onto the breakdown.
      * @returns {Object[]} Array of triggered events.
      */
-    async resolveEvents(eventResolver, scoutTier = "none") {
+    async resolveEvents(eventResolver, earlyResults) {
         const variant = game.ionrift?.respite?.adapter?.getRestVariant?.() ?? "normal";
         const isGrittyShort = this.restType === "short" && variant === "gritty";
         if ((this.restType === "short" && !isGrittyShort) || this.safeRestSpot) {
@@ -106,9 +139,9 @@ export class RestFlowEngine {
 
         this._phase = "events";
 
-        const effectiveDC = this.getEffectiveEncounterDC();
-        Logger.log(`[Respite:Engine] resolveEvents: effectiveDC=${effectiveDC}, scoutTier=${scoutTier}`);
-        const events = await eventResolver.roll(this.terrainTag, this.watchRoster, effectiveDC, scoutTier);
+        const effectiveDC = this.getEffectiveEncounterDC({ earlyResults });
+        Logger.log(`[Respite:Engine] resolveEvents: effectiveDC=${effectiveDC}`);
+        const events = await eventResolver.roll(this.terrainTag, this.watchRoster, effectiveDC);
         return events;
     }
 
@@ -393,18 +426,14 @@ export class RestFlowEngine {
 
         // Gear bonuses: bedroll and mess kit effects are part of comfort rules
         const gearBonusHd = (comfortEnabled && hasBedroll) ? 1 : 0;
-        // Mess Kit / Cook's Utensils: advantage on exhaustion save when fire is lit
-        const fireIsLit = this.fireLevel && this.fireLevel !== "unlit";
-        const exhaustionAdvantage = !!(comfortEnabled && hasDiningGear && fireIsLit && exhaustionDC);
+        // Mess Kit / Cook's Utensils: advantage on exhaustion save
+        const exhaustionAdvantage = !!(comfortEnabled && hasDiningGear && exhaustionDC);
 
         const gearDescriptors = [];
         if (comfortEnabled) {
             if (exhaustionAdvantage) {
                 const gearLabel = hasCooksUtensils ? "Cook's Utensils" : "Mess Kit";
                 gearDescriptors.push(`${gearLabel}: advantage on exhaustion save`);
-            } else if (hasDiningGear && !fireIsLit && exhaustionDC) {
-                const gearLabel = hasCooksUtensils ? "Cook's Utensils" : "Mess Kit";
-                gearDescriptors.push(`${gearLabel}: no fire (advantage inactive)`);
             }
             if (gearBonusHd > 0) gearDescriptors.push("Bedroll: +1 HD");
             if (bonusHdFromActivity > 0) gearDescriptors.push("Deep sleep: +1 HD");
@@ -435,6 +464,43 @@ export class RestFlowEngine {
             armorSleepPenalty: isShort ? false : armorSleepPenalty,
             gearBonuses: { hd: gearBonusHd, exhaustionAdvantage },
             gearDescriptors: isShort ? [] : gearDescriptors
+        };
+    }
+
+    /**
+     * Exhaustion save preview for the dawn stage. Does not clear travel flags
+     * or apply recovery. Camp comfort, activity and tend-wounds boosts, then
+     * bedroll, matching the rest shown on the character dock.
+     * @param {Actor} actor
+     * @param {object|null} activitySchema
+     * @returns {{ exhaustionDC: number|null, exhaustionAdvantage: boolean, comfortLevel: string }}
+     */
+    previewExhaustion(actor, activitySchema = null) {
+        if (this.safeRestSpot || this.restType === "short") {
+            return { exhaustionDC: null, exhaustionAdvantage: false, comfortLevel: "safe" };
+        }
+        let effectiveComfort = this.comfort;
+        const comfortEnabled = isComfortEnabled();
+        if (!comfortEnabled) {
+            effectiveComfort = "safe";
+        } else {
+            const hasComfortBoost = activitySchema?.outcomes?.success?.effects?.some(effect => effect.type === "comfort_boost");
+            if (hasComfortBoost) effectiveComfort = boostComfort(effectiveComfort, 1);
+            if (actor?.id && this._isTendWoundsTarget(actor.id)) {
+                effectiveComfort = boostComfort(effectiveComfort, 1);
+            }
+        }
+        const items = actor?.items?.map(item => item.name?.toLowerCase()) ?? [];
+        const hasBedroll = items.some(name => name?.includes("bedroll"));
+        if (comfortEnabled && hasBedroll) {
+            effectiveComfort = boostComfort(effectiveComfort, 1);
+        }
+        const exhaustionDC = getExhaustionDC(effectiveComfort);
+        const hasDiningGear = items.some(name => name?.includes("mess kit") || (name?.includes("cook") && name?.includes("utensil")));
+        return {
+            exhaustionDC,
+            exhaustionAdvantage: !!(comfortEnabled && hasDiningGear && exhaustionDC),
+            comfortLevel: effectiveComfort
         };
     }
 
@@ -483,7 +549,7 @@ export class RestFlowEngine {
                 lines.push(`${sign}${mods.initiative} initiative`);
             }
             if (mods.initiativeDisadvantage) lines.push("Disadvantage on initiative");
-            if (mods.surpriseImmune) lines.push("Cannot be surprised");
+            if (mods.surpriseImmune) lines.push(watchAlertCombatLine());
             if (mods.surpriseDisadvantage) lines.push("Disadvantage on surprise saves");
             if (mods.partyInitiative) {
                 partyInitiativeTotal += mods.partyInitiative;
@@ -535,8 +601,6 @@ export class RestFlowEngine {
             gmEncounterAdj: this.gmEncounterAdj ?? 0,
             activeShelters: this.activeShelters ?? [],
             weather: this.weather ?? "clear",
-            scoutingResult: this.scoutingResult ?? null,
-            scoutingComplication: this.scoutingComplication ?? false,
             fireRollModifier: this.fireRollModifier ?? 0,
             fireLevel: this.fireLevel ?? "unlit",
             _baseDC: this._baseDC ?? 15,
@@ -568,12 +632,22 @@ export class RestFlowEngine {
         engine.gmEncounterAdj = data.gmEncounterAdj ?? 0;
         engine.activeShelters = data.activeShelters ?? [];
         engine.weather = data.weather ?? "clear";
-        engine.scoutingResult = data.scoutingResult ?? null;
-        engine.scoutingComplication = data.scoutingComplication ?? false;
         engine.fireRollModifier = data.fireRollModifier ?? 0;
         engine.fireLevel = data.fireLevel ?? "unlit";
         engine._baseDC = data._baseDC ?? 15;
         engine.awaitingCombat = data.awaitingCombat ?? false;
         return engine;
     }
+}
+
+/**
+ * Terrain night-check base from the loaded event table.
+ * Falls back to 15 only when that table has no threshold.
+ * @param {{ tables?: { get: (tag: string) => { noEventThreshold?: number }|undefined } }} eventResolver
+ * @param {string} terrainTag
+ * @returns {number}
+ */
+export function readTerrainBaseDc(eventResolver, terrainTag) {
+    const threshold = eventResolver?.tables?.get(terrainTag)?.noEventThreshold;
+    return typeof threshold === "number" ? threshold : 15;
 }

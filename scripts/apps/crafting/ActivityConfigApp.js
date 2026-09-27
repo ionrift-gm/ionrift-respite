@@ -24,6 +24,11 @@ import {
     CAMP_FUEL_FIND_MIN_PERCENT
 } from "../../services/travel/settings/TravelSettings.js";
 import { shouldShowBrewingAlcoholSetting } from "../../services/crafting/settings/BrewingAlcoholSettings.js";
+import {
+    WATCH_ALERT_BONUS_DEFAULT,
+    WATCH_ALERT_BONUS_MAX,
+    WATCH_ALERT_BONUS_MIN
+} from "../../services/rest/flow/WatchAlertBenefit.js";
 import { MODULE_ID } from "../../data/moduleId.js";
 
 const TIER_SLIDER_META = {
@@ -79,8 +84,32 @@ const ACTIVITY_TOGGLES = [
         key: "enableEncounters",
         label: "Night Encounters & Watch",
         icon: "fas fa-shield-alt",
-        hint: "Watch, defenses, scouting, and the night encounter roll.",
+        hint: "Watch, defenses, and the night encounter roll.",
         type: "boolean"
+    },
+    {
+        key: "watchAlertMode",
+        label: "Watch alert",
+        icon: "fas fa-user-shield",
+        hint: "How Keep Watch states the alert on the combat readiness card. Cannot be surprised, advantage, or a flat bonus to rolls.",
+        type: "select",
+        choices: {
+            immune: "Cannot be surprised",
+            advantage: "Advantage",
+            bonus: "Bonus to rolls"
+        },
+        requiresEncounters: true
+    },
+    {
+        key: "watchAlertBonus",
+        label: "Bonus to rolls",
+        icon: "fas fa-plus",
+        hint: "The number added to rolls when Watch alert is a bonus.",
+        type: "number",
+        min: WATCH_ALERT_BONUS_MIN,
+        max: WATCH_ALERT_BONUS_MAX,
+        requiresEncounters: true,
+        requiresWatchBonus: true
     },
     {
         key: "fletchingYieldTier",
@@ -113,20 +142,14 @@ const ACTIVITY_TOGGLES = [
     {
         type: "group",
         id: "travel",
-        label: "Travel",
-        icon: "fas fa-route",
-        hint: "Pre-camp march: forage, hunt, optional final-day scouting.",
+        label: "Gathering & Provisions",
+        icon: "fas fa-seedling",
+        hint: "Foraging, hunting, and provision rules during rest.",
         children: [
             {
-                key: "useTravel",
-                label: "Use Travel Phase",
-                hint: "Travel phase on long rests. Off goes straight to camp."
-            },
-            {
                 key: "enableForaging",
-                label: "Travel Foraging",
-                hint: "Forage on travel days. Off removes it from declarations.",
-                requiresUseTravel: true
+                label: "Foraging",
+                hint: "Gather wild provisions during rest. Off removes the activity."
             },
             {
                 key: "campFuelFindChance",
@@ -136,20 +159,12 @@ const ACTIVITY_TOGGLES = [
                 min: CAMP_FUEL_FIND_MIN_PERCENT,
                 max: CAMP_FUEL_FIND_MAX_PERCENT,
                 step: 1,
-                requiresUseTravel: true,
                 requiresForaging: true
             },
             {
                 key: "enableHunting",
-                label: "Travel Hunting",
-                hint: "Hunt prey on travel days. Off removes it from declarations.",
-                requiresUseTravel: true
-            },
-            {
-                key: "enableScouting",
-                label: "Travel Scouting",
-                hint: "Scout on the last travel day. Sets comfort and the night check.",
-                requiresUseTravel: true
+                label: "Hunting",
+                hint: "Hunt game during rest. Off removes the activity."
             },
             {
                 key: "homebrewProvisionOnly",
@@ -165,7 +180,7 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
     static DEFAULT_OPTIONS = {
         id: "respite-activity-config",
         window: {
-            title: "Travel & Activities",
+            title: "Activities & Provisions",
             icon: "fas fa-campground",
             resizable: false
         },
@@ -175,13 +190,16 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
 
     /** @override */
     async _prepareContext() {
-        const useTravel = !!game.settings.get(MODULE_ID, "useTravel");
         const foragingOn = !!game.settings.get(MODULE_ID, "enableForaging");
+        const encountersOn = !!game.settings.get(MODULE_ID, "enableEncounters");
+        const storedWatchMode = game.settings.get(MODULE_ID, "watchAlertMode");
+        const watchMode = storedWatchMode === "advantage" || storedWatchMode === "bonus"
+            ? storedWatchMode
+            : "immune";
         const showBrewingAlcohol = await shouldShowBrewingAlcoholSetting();
 
         const resolveBooleanRow = (row) => {
-            const disabled = (row.requiresUseTravel && !useTravel)
-                || (row.requiresForaging && !foragingOn);
+            const disabled = (row.requiresForaging && !foragingOn);
             return {
                 ...row,
                 type: "boolean",
@@ -192,8 +210,7 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
 
         const resolveTravelChild = (child) => {
             if (child.type === "percentSlider") {
-                const disabled = (child.requiresUseTravel && !useTravel)
-                    || (child.requiresForaging && !foragingOn);
+                const disabled = (child.requiresForaging && !foragingOn);
                 const raw = game.settings.get(MODULE_ID, child.key);
                 const value = typeof raw === "number" && !Number.isNaN(raw)
                     ? raw
@@ -216,13 +233,26 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
                     const meta = TIER_SLIDER_META[entry.key];
                     return { ...entry, ...meta, value: meta.getValue() };
                 }
+                if (entry.type === "select" || entry.type === "number") {
+                    const disabled = (entry.requiresEncounters && !encountersOn)
+                        || (entry.requiresWatchBonus && watchMode !== "bonus");
+                    let value = game.settings.get(MODULE_ID, entry.key);
+                    if (entry.type === "select" && !entry.choices[value]) value = "immune";
+                    if (entry.type === "number") {
+                        const parsed = Number(value);
+                        value = Number.isFinite(parsed)
+                            ? Math.min(entry.max, Math.max(entry.min, Math.round(parsed)))
+                            : WATCH_ALERT_BONUS_DEFAULT;
+                    }
+                    return { ...entry, value, disabled };
+                }
                 return {
                     ...entry,
                     value: game.settings.get(MODULE_ID, entry.key)
                 };
             });
 
-        return { rows, useTravel };
+        return { rows };
     }
 
     /** @override */
@@ -234,7 +264,7 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
         const travelGroup = context.rows.find(row => row.type === "group" && row.id === "travel");
 
         let html = `
-        <p class="activity-config-lead">Pre-camp travel and evening activities. Training and fletching use tier sliders.</p>
+        <p class="activity-config-lead">Camp activities, gathering, and provision rules. Training and fletching use tier sliders.</p>
         <div class="activity-config-layout">
             <div class="activity-config-column activity-config-column--travel">`;
 
@@ -369,6 +399,18 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
                 <span class="activity-config-range-val" data-key="${row.key}">${row.value}%</span>
             </div>`;
         }
+        if (row.type === "select") {
+            const disabled = row.disabled ? " disabled" : "";
+            const options = Object.entries(row.choices)
+                .map(([k, v]) => `<option value="${k}" ${row.value === k ? "selected" : ""}>${v}</option>`)
+                .join("");
+            return `<select class="activity-config-select" data-key="${row.key}"${disabled}>${options}</select>`;
+        }
+        if (row.type === "number") {
+            const disabled = row.disabled ? " disabled" : "";
+            return `<input type="number" class="activity-config-number" data-key="${row.key}"
+                min="${row.min}" max="${row.max}" step="1" value="${row.value}"${disabled} />`;
+        }
         return "";
     }
 
@@ -387,28 +429,44 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
         });
 
         const syncTravelGroup = () => {
-            const useTravelCb = el.querySelector('.activity-config-cb[data-key="useTravel"]');
             const foragingCb = el.querySelector('.activity-config-cb[data-key="enableForaging"]');
-            const useTravelOn = !!useTravelCb?.checked;
             const foragingOn = !!foragingCb?.checked;
-            for (const travelChildKey of ["enableForaging", "enableHunting", "enableScouting", "campFuelFindChance"]) {
-                const childRow = el.querySelector(`.activity-config-row[data-key="${travelChildKey}"]`);
-                const childInput = childRow?.querySelector(".activity-config-cb, .activity-config-range");
-                if (childRow && childInput) {
-                    const needsForaging = travelChildKey === "campFuelFindChance";
-                    const childDisabled = !useTravelOn
-                        || (needsForaging && !foragingOn);
-                    childRow.classList.toggle("activity-config-row--disabled", childDisabled);
-                    childInput.disabled = childDisabled;
-                }
+            const fuelRow = el.querySelector('.activity-config-row[data-key="campFuelFindChance"]');
+            const fuelInput = fuelRow?.querySelector(".activity-config-range");
+            if (fuelRow && fuelInput) {
+                const childDisabled = !foragingOn;
+                fuelRow.classList.toggle("activity-config-row--disabled", childDisabled);
+                fuelInput.disabled = childDisabled;
             }
         };
 
-        el.querySelector('.activity-config-cb[data-key="useTravel"]')
-            ?.addEventListener("change", syncTravelGroup);
         el.querySelector('.activity-config-cb[data-key="enableForaging"]')
             ?.addEventListener("change", syncTravelGroup);
         syncTravelGroup();
+
+        const syncWatchAlert = () => {
+            const encountersOn = !!el.querySelector('.activity-config-cb[data-key="enableEncounters"]')?.checked;
+            const mode = el.querySelector('.activity-config-select[data-key="watchAlertMode"]')?.value ?? "immune";
+            const modeRow = el.querySelector('.activity-config-row[data-key="watchAlertMode"]');
+            const modeInput = modeRow?.querySelector(".activity-config-select");
+            const bonusRow = el.querySelector('.activity-config-row[data-key="watchAlertBonus"]');
+            const bonusInput = bonusRow?.querySelector(".activity-config-number");
+            if (modeRow && modeInput) {
+                modeRow.classList.toggle("activity-config-row--disabled", !encountersOn);
+                modeInput.disabled = !encountersOn;
+            }
+            if (bonusRow && bonusInput) {
+                const bonusOff = !encountersOn || mode !== "bonus";
+                bonusRow.classList.toggle("activity-config-row--disabled", bonusOff);
+                bonusInput.disabled = bonusOff;
+            }
+        };
+
+        el.querySelector('.activity-config-cb[data-key="enableEncounters"]')
+            ?.addEventListener("change", syncWatchAlert);
+        el.querySelector('.activity-config-select[data-key="watchAlertMode"]')
+            ?.addEventListener("change", syncWatchAlert);
+        syncWatchAlert();
 
         el.querySelectorAll(".activity-config-range").forEach(range => {
             range.addEventListener("input", () => {
@@ -445,9 +503,21 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
             } else if (row.type === "tierSlider") {
                 const range = el.querySelector(`.activity-config-range[data-key="${row.key}"]`);
                 if (range) await game.settings.set(MODULE_ID, row.key, Number(range.value));
+            } else if (row.type === "select") {
+                const sel = el.querySelector(`.activity-config-select[data-key="${row.key}"]`);
+                if (sel) await game.settings.set(MODULE_ID, row.key, sel.value);
+            } else if (row.type === "number") {
+                const input = el.querySelector(`.activity-config-number[data-key="${row.key}"]`);
+                if (input) {
+                    const parsed = Number(input.value);
+                    const value = Number.isFinite(parsed)
+                        ? Math.min(row.max, Math.max(row.min, Math.round(parsed)))
+                        : WATCH_ALERT_BONUS_DEFAULT;
+                    await game.settings.set(MODULE_ID, row.key, value);
+                }
             }
         }
-        ui.notifications.info("Travel and activity settings saved.");
+        ui.notifications.info("Activity and provision settings saved.");
         this.close();
     }
 }

@@ -11,10 +11,10 @@ import {
 } from "../../../../services/camp/props/StationInteractionLayer.js";
 import { isSimpleStationsMode } from "../../../../services/rest/flow/RestProfileSettings.js";
 import { isWorkbenchIdentifyUiEnabled } from "../../../../data/RestConstants.js";
+import { bindSustenanceMeters } from "../../meal/SustenanceMeterBinding.js";
 import { CampfireMakeCampDialog } from "../../../camp/CampfireMakeCampDialog.js";
 import { closeStationDialogIfDifferentActor } from "../../../camp/StationActivityDialog.js";
 import {
-    emitTravelDeclaration,
     emitCopySpellProposal,
     emitActivityChoice
 } from "../../../../services/socket/SocketController.js";
@@ -29,6 +29,13 @@ export class RestRenderBindings {
         const app = this._app;
         app.element?.classList.toggle("hide-terrain-banners", !!context?.hideTerrainBanner);
 
+        let currentTheme = "glass";
+        try {
+            currentTheme = game.settings.get(MODULE_ID, "uiTheme") ?? "glass";
+        } catch { /* ignore */ }
+        app.element?.classList.toggle("theme-ionrift-glass", currentTheme === "glass");
+        app.element?.classList.toggle("theme-respite-cockpit", currentTheme === "cockpit");
+
         if (game.user.isGM && app._phase === "activity" && app._isTavernTerrain()) {
             if (app._applyAutoOtherWhenSoleActivity()) {
                 void app._saveRestState();
@@ -37,7 +44,7 @@ export class RestRenderBindings {
 
         const showTotmCampfirePanelEarly = app._shouldShowTotmCampfirePanel();
         app._bindRestWindowUserMoveTracking();
-        if ((app._isTotM && (app._phase === "camp" || (app._phase === "activity" && showTotmCampfirePanelEarly)))
+        if ((app._isTotM && (app._phase === "camp" || ((app._phase === "activity" || app._phase === "meal") && showTotmCampfirePanelEarly)))
             || (app._phase === "camp" && app._showFullMakeCampPanel())) {
             app._bindRestWindowResizeObserver();
         } else {
@@ -45,13 +52,14 @@ export class RestRenderBindings {
         }
         app._scheduleRestWindowRecenter();
 
-        // Bind meal drag-drop when in meal phase
-        if (app._phase === "meal") {
+        // Bind meal drag-drop when in meal phase or previewing sustenance via stepper
+        if (app._phase === "meal" || (app._phase === "activity" && app._selectedWorkflowStep === "sustenance")) {
             app._bindMealDragDrop(app.element);
+            bindSustenanceMeters(app, app.element);
         }
 
-        // TotM Activity: bind workbench drag-drop when Identify tab is active
-        if (app._phase === "activity" && app._isTotM && app._totmActiveTab === "identify" && isWorkbenchIdentifyUiEnabled()) {
+        // TotM Activity: bind workbench drag-drop when Identify tab or detail panel is active
+        if (app._phase === "activity" && app._isTotM && (app._selectedWorkflowStep === "examine" || app._totmActiveTab === "identify" || app._totmFollowUpExpanded?.isIdentify || app._totmFollowUpExpanded?.activityId === "act_identify" || app._totmFollowUpExpanded?.activityId === "identify") && isWorkbenchIdentifyUiEnabled()) {
             app._workbench.bindDragDrop(app.element);
         }
 
@@ -71,7 +79,7 @@ export class RestRenderBindings {
         }
         const showCampCeremony = app._phase === "camp" && app._campCeremonyMinigameEnabled();
         const stationHostsEmbed = app._campfireEmbedHost === "station";
-        if (showTotmCampfirePanel) {
+        if (showTotmCampfirePanel || app._shouldMountFireRailEmbed?.()) {
             app._mountCampfireEmbed("activity");
         } else if (showCampCeremony) {
             app._mountCampfireEmbed("camp");
@@ -80,12 +88,16 @@ export class RestRenderBindings {
             app._tearDownCampfireEmbed("onRenderBindings:noPanel");
         }
 
+        // Bind camp drag handlers (campfire placement, gear handles) in camp, activity, and meal
+        if (app._phase === "camp" || app._phase === "activity" || app._phase === "meal") {
+            app._bindCampDragHandlers(app.element);
+        }
+
         // Camp: inline Make Camp panel, draggable campfire card, optional minigame embed
         if (app._phase === "camp") {
             if (!app._campCeremonyMinigameEnabled() && !stationHostsEmbed) {
                 app._tearDownCampfireEmbed("onRenderBindings:campCeremonyDisabled");
             }
-            app._bindCampDragHandlers(app.element);
             if (app.element) {
                 app.element.classList.toggle("totm-camp-active", app._showFullMakeCampPanel());
             }
@@ -136,64 +148,6 @@ export class RestRenderBindings {
             CampfireMakeCampDialog.refreshIfOpen(this);
         } else {
             if (app.element) app.element.classList.remove("totm-camp-active");
-        }
-
-        // Bind travel activity selects (change event, not click)
-        if (app._phase === "travel") {
-            if (app._isGM) {
-                app.element?.querySelectorAll(".travel-activity-select")?.forEach(sel => {
-                    sel.addEventListener("change", () => {
-                        const actorId = sel.dataset.actorId;
-                        const day = parseInt(sel.dataset.day) || app._travel.activeDay;
-                        app._travel.setDeclaration(actorId, sel.value, day);
-                        app._broadcastTravelDeclarations();
-                        app._saveRestState();
-                        app.render();
-                    });
-                });
-            } else {
-                app.element?.querySelectorAll(".travel-player-select")?.forEach(sel => {
-                    sel.addEventListener("change", () => {
-                        const actorId = sel.dataset.actorId;
-                        const day = parseInt(sel.dataset.day) || (app._travelActiveDay ?? 1);
-                        if (!app._playerTravelDeclarations) app._playerTravelDeclarations = {};
-                        if (!app._playerTravelDeclarations[day]) app._playerTravelDeclarations[day] = {};
-                        app._playerTravelDeclarations[day][actorId] = sel.value;
-
-                        emitTravelDeclaration({
-                    declarations: { [actorId]: sel.value },
-                    confirmed: false,
-                    day,
-                    userId: game.user.id
-                });
-
-                        if (app._playerTravelConfirmed?.[day]?.[actorId]) {
-                            app._playerTravelConfirmed[day][actorId] = false;
-                        }
-                        app.render();
-                    });
-                });
-
-                app.element?.querySelectorAll(".travel-confirm-btn")?.forEach(btn => {
-                    btn.addEventListener("click", () => {
-                        const actorId = btn.dataset.actorId;
-                        const day = parseInt(btn.dataset.day) || (app._travelActiveDay ?? 1);
-
-                        if (!app._playerTravelConfirmed) app._playerTravelConfirmed = {};
-                        if (!app._playerTravelConfirmed[day]) app._playerTravelConfirmed[day] = {};
-                        app._playerTravelConfirmed[day][actorId] = true;
-
-                        const activity = app._playerTravelDeclarations?.[day]?.[actorId] ?? "nothing";
-                        emitTravelDeclaration({
-                    declarations: { [actorId]: activity },
-                    confirmed: true,
-                    day,
-                    userId: game.user.id
-                });
-                        app.render();
-                    });
-                });
-            }
         }
 
         if (app._phase === "activity" && app._isTotM) {
@@ -251,26 +205,29 @@ export class RestRenderBindings {
         const restTypeInput = app.element.querySelector('[name="restType"]');
         const restTypeHint = app.element.querySelector('.rest-type-hint');
         if (restTypeButtons.length && restTypeInput) {
-            const hints = {
+            const isGritty = (app._restVariant ?? "normal") === "gritty";
+            const hints = isGritty ? {
+                long: "7 days of downtime rest (safe rest or wilderness). Recovers all spell slots and Hit Dice.",
+                short: "8 hrs overnight bivouac in the wild. Recovers short-rest class features, spend Hit Dice to heal, camp stance and campfire fuel."
+            } : {
                 long: "8 hrs. HP and Hit Dice recovery varies by comfort and conditions.",
                 short: "1 hr. Spend Hit Dice to heal. Continue to pick a shelter."
             };
             const _applyRestType = (value, rerender) => {
                 const isShort = value === "short";
+                const hideEnvAndWx = isShort && !isGritty;
                 restTypeInput.value = value;
                 app._selectedRestType = value;
                 restTypeButtons.forEach(btn => {
                     btn.classList.toggle("active", btn.dataset.restType === value);
                 });
                 if (restTypeHint) restTypeHint.textContent = hints[value] ?? "";
-                const daysBlock = app.element.querySelector(".days-since-rest-block");
-                if (daysBlock) daysBlock.style.display = isShort ? "none" : "";
                 const envBlock = app.element.querySelector(".scene-environment");
-                if (envBlock) envBlock.style.display = isShort ? "none" : "";
+                if (envBlock) envBlock.style.display = hideEnvAndWx ? "none" : "";
                 const wxBlock = app.element.querySelector(".scene-weather");
-                if (wxBlock) wxBlock.style.display = isShort ? "none" : "";
+                if (wxBlock) wxBlock.style.display = hideEnvAndWx ? "none" : "";
                 const advBlock = app.element.querySelector(".scene-advanced-drawer");
-                if (advBlock) advBlock.style.display = isShort ? "none" : "";
+                if (advBlock) advBlock.style.display = hideEnvAndWx ? "none" : "";
                 if (rerender) app.render();
             };
             restTypeButtons.forEach(btn => {
@@ -315,10 +272,13 @@ export class RestRenderBindings {
         const restModeSelect = app.element.querySelector('[name="restInterfaceMode"]');
         if (restModeSelect && game.user.isGM) {
             restModeSelect.addEventListener("change", async () => {
+                if (app._isGrittyLong) {
+                    app.render();
+                    return;
+                }
                 try {
                     await game.settings.set(MODULE_ID, "restInterfaceMode", restModeSelect.value);
                 } catch (e) {
-
                     console.warn(`${MODULE_ID} | restInterfaceMode setting`, e);
                 }
                 app.render();
@@ -383,6 +343,9 @@ export class RestRenderBindings {
                     return;
                 }
 
+                // Block non-crafting selection if character is locked or has completed crafting
+                if (app._lockedCharacters?.has(characterId) || app.hasCompletedCrafting?.(characterId)) return;
+
                 // Non-crafting tiles: open the detail preview panel
                 app._activityDetailId = activityId;
                 app.render();
@@ -397,8 +360,10 @@ export class RestRenderBindings {
                 const activityId = app._pendingSelections?.get(characterId);
                 if (!characterId || !activityId) return;
 
-                // Block if crafting picker is open for this character
-                if (app._craftingInProgress?.has(characterId)) return;
+                // Block if crafting picker is open for this character or character is locked
+                if (app._craftingInProgress?.has(characterId)
+                    || app._lockedCharacters?.has(characterId)
+                    || app.hasCompletedCrafting?.(characterId)) return;
 
                 const activity = app._activities?.find(a => a.id === activityId);
                 if (activity?.crafting?.enabled) {
@@ -408,88 +373,8 @@ export class RestRenderBindings {
                     return;
                 }
 
-                // Lock and submit
-                app._characterChoices.set(characterId, activityId);
-                app._lockedCharacters.add(characterId);
-                app._pendingSelections.delete(characterId);
-
-                // Early resolve: roll the activity now so the player sees results immediately
-                const actor = game.actors.get(characterId);
-
-                // Copy Spell: send proposal via socket instead of resolving immediately
-                // This runs outside the _engine guard because players don't have the engine
-                if (activityId === "act_scribe" && actor) {
-                    const followUpValue = app._gmFollowUps?.get(characterId) ?? app._getFollowUpForCharacter(characterId);
-                    const spellLevel = parseInt(followUpValue, 10) || 1;
-                    const cost = spellLevel * 50;
-                    const dc = 10 + spellLevel;
-
-                    if (game.user.isGM) {
-                        // GM initiated: send proposal to player for gold approval
-                        CopySpellHandler.sendProposal(characterId, spellLevel);
-                    } else {
-                        // Player initiated: notify GM
-                        emitCopySpellProposal({
-                    actorId: characterId,
-                    actorName: actor.name,
-                    spellLevel,
-                    cost,
-                    dc,
-                    initiatedBy: game.user.name
-                });
-                    }
-
-                    app._earlyResults.set(characterId, {
-                        source: "activity",
-                        activityId,
-                        result: "pending_approval",
-                        narrative: `Level ${spellLevel} spell (${cost}gp, DC ${dc}). Awaiting transaction.`
-                    });
-                    app.render();
-                } else if (activityId === "act_train" && actor && app._engine) {
-                    app._initTrainingState(characterId, activityId, actor);
-                    ui.notifications.info(`${actor.name}: Training started. Roll your sets in the rest window.`);
-                    app.render();
-                } else if (actor && app._engine) {
-                    const followUpValue = app._gmFollowUps?.get(characterId) ?? app._getFollowUpForCharacter(characterId);
-                    app._activityResolver.resolve(
-                        activityId, actor, app._engine.terrainTag, app._engine.comfort, {
-                            followUpValue,
-                            safeRestSpot: !!app._engine.safeRestSpot
-                        }
-                    ).then(result => {
-                        app._earlyResults.set(characterId, result);
-                        const tier = result.result === "exceptional" ? "Exceptional!"
-                            : result.result === "success" ? "Success"
-                            : result.result === "failure_complication" ? "Failed (complication)"
-                            : result.result === "failure" ? "Failed" : result.result;
-                        const actName = activity?.name ?? activityId;
-                        ui.notifications.info(`${actor.name}: ${actName} - ${tier}`);
-                        app.render();
-                    });
-                }
-
-                // Optimistic UI update
-                let mySub = app._playerSubmissions.get(game.user.id) || { choices: {}, userName: game.user.name, timestamp: Date.now() };
-                mySub.choices[characterId] = activityId;
-                app._playerSubmissions.set(game.user.id, mySub);
-
-                emitActivityChoice(
-                    game.user.id,
-                    Object.fromEntries(app._characterChoices),
-                    null,
-                    null,
-                    app._earlyResults?.size ? Object.fromEntries(app._earlyResults) : null
-                );
-
-                const actName = activity?.name ?? activityId;
-                ui.notifications.info(`${game.actors.get(characterId)?.name ?? "Character"} will ${actName}.`);
-                if (app._phase === "activity" && isStationLayerActive()) {
-                    refreshStationEmptyNoticeFade(this);
-                    refreshStationPortraitsFromChoices(app._characterChoices, app._stationCanvasIdByCharacter);
-                    app._refreshStationOverlayMeals();
-                }
-                app.render();
+                const followUpValue = app._gmFollowUps?.get(characterId) ?? app._getFollowUpForCharacter(characterId);
+                await app.finalizeActivityChoiceFromStation(characterId, activityId, null, { followUpValue });
             });
         }
 
@@ -497,9 +382,13 @@ export class RestRenderBindings {
         const rosterChips = app.element.querySelectorAll("[data-roster-id]");
         for (const chip of rosterChips) {
             chip.addEventListener("click", () => {
-                if (chip.classList.contains("not-owned")) return;
+                if (chip.classList.contains("not-owned") || chip.classList.contains("is-locked")) return;
                 const charId = chip.dataset.rosterId;
                 if (!charId || charId === app._selectedCharacterId) return;
+                if (!app._isGM) {
+                    const actor = game.actors.get(charId);
+                    if (!actor?.isOwner) return;
+                }
                 app._selectedCharacterId = charId;
                 closeStationDialogIfDifferentActor(charId);
                 app._canvasFocusedStationId = null;

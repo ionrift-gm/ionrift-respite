@@ -349,8 +349,7 @@ export class TerrainRegistry {
     }
 
     /**
-     * Whether this terrain supports travel resolution (forage, hunt, scout on the road).
-     * Prefer explicit {@link travelActivities}; legacy {@link scoutingAvailable} is honoured for older packs.
+     * Whether this terrain supports gathering resolution (forage, hunt on the road).
      * @param {string} tag
      * @returns {boolean}
      */
@@ -359,12 +358,11 @@ export class TerrainRegistry {
         if (!t) return false;
         if (Array.isArray(t.travelActivities)) return t.travelActivities.length > 0;
         if (t.travelAvailable !== undefined) return !!t.travelAvailable;
-        if (t.scoutingAvailable !== undefined) return !!t.scoutingAvailable;
         return true;
     }
 
     /**
-     * Get terrain defaults (comfort, mealRules, scout flavor, etc).
+     * Get terrain defaults (comfort, mealRules, etc).
      * @param {string} tag
      * @returns {object}
      */
@@ -379,7 +377,6 @@ export class TerrainRegistry {
         return {
             comfort,
             travelAvailable: TerrainRegistry.isTravelAvailable(tag),
-            scoutFlavor: t.scoutFlavor ?? null,
             mealRules: t.mealRules ?? { waterPerDay: 2, foodPerDay: 1 }
         };
     }

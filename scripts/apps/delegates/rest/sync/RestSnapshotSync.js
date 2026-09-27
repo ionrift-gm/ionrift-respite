@@ -27,6 +27,7 @@ import {
 } from "../../../../module.js";
 import { RestSetupApp, _logGmRestSheet } from "../../../rest/RestSetupApp.js";
 import { MODULE_ID } from "../../../../data/moduleId.js";
+import { applyCampProgress, campProgressForSnapshot } from "../../../../services/rest/session/campProgressState.js";
 
 export class RestSnapshotSync {
     constructor(app) {
@@ -44,6 +45,7 @@ export class RestSnapshotSync {
 
         return {
             phase: app._phase,
+            mealBuffQueue: app._mealBuffQueue ?? [],
             restId: app._restId ?? null,
             submissions,
             triggeredEvents: (app._triggeredEvents ?? []).map(e => ({
@@ -60,7 +62,9 @@ export class RestSnapshotSync {
             })),
             afkCharacters: RestAfkState.getAfkCharacterIds(),
             doffedArmor: app._doffedArmor ? [...app._doffedArmor] : [],
+            ...campProgressForSnapshot(app),
             eventsRolled: app._eventsRolled ?? false,
+            exhaustionDraft: app._dawn?.serialize() ?? [],
             fireLevel: app._fireLevel ?? "unlit",
             fireLitBy: app._fireLitBy ?? null,
             firewoodPledges: Array.from(app._firewoodPledges?.entries() ?? []),
@@ -152,6 +156,8 @@ export class RestSnapshotSync {
         }
         if (phaseData.activeTreeState) app._activeTreeState = phaseData.activeTreeState;
         if (phaseData.eventsRolled !== undefined) app._eventsRolled = phaseData.eventsRolled;
+        if (Array.isArray(phaseData.exhaustionDraft)) app._dawn?.restore(phaseData.exhaustionDraft);
+        if (Array.isArray(phaseData.mealBuffQueue)) app._mealBuffQueue = phaseData.mealBuffQueue;
         if (phaseData.fireLevel !== undefined && phaseData.fireLevel !== null) {
             app._fireLevel = phaseData.fireLevel;
             app._campFirePreviewLevel = null;
@@ -249,7 +255,7 @@ export class RestSnapshotSync {
         }
 
         if (phaseData.daysSinceLastRest !== null && phaseData.daysSinceLastRest !== undefined) {
-            app._daysSinceLastRest = phaseData.daysSinceLastRest;
+            app._daysSinceLastRest = 1;
         }
         if (phaseData.selectedTerrain) app._selectedTerrain = phaseData.selectedTerrain;
         if (phase === "meal") {
@@ -272,7 +278,7 @@ export class RestSnapshotSync {
                         }
                     }
                 }
-                if (saved?.daysSinceLastRest) app._daysSinceLastRest = saved.daysSinceLastRest;
+                app._daysSinceLastRest = 1;
             } catch (e) { /* setting may not exist */ }
         }
 
@@ -351,9 +357,20 @@ export class RestSnapshotSync {
             }
             return;
         }
-        // so the window appears centered at its natural width, not thin/off-right.
+
+        if (!app._isGM && phase === "events" && phaseData.awaitingCombat) {
+            if (app.rendered) {
+                ui.notifications.info("Encounter started. Rest window minimized to the status bar.");
+                await app.close({ retainPlayerApp: true });
+                return;
+            }
+            _ensureRejoinBar(app);
+            return;
+        }
+        // Keep the fire column on screen. A 720px player window clips the right
+        // edge; the host stays at the wider camp width.
         if (!app._isGM && prevPhase === "activity" && !isTrailerFilmingMode() && app.element) {
-            const defaultWidth = 720;
+            const defaultWidth = app._windowLayout?.campRestWindowTargetWidth?.() ?? 720;
             app.setPosition({
                 width: defaultWidth,
                 left: Math.max(0, (window.innerWidth - defaultWidth) / 2),
@@ -455,6 +472,9 @@ export class RestSnapshotSync {
         if (snapshot.phase) {
             app._phase = snapshot.phase;
         }
+        if (Array.isArray(snapshot.mealBuffQueue)) {
+            app._mealBuffQueue = snapshot.mealBuffQueue;
+        }
         if (snapshot.restId) {
             app._restId = snapshot.restId;
         }
@@ -535,6 +555,7 @@ export class RestSnapshotSync {
         }
         if (snapshot.outcomes?.length) app._outcomes = snapshot.outcomes;
         if (snapshot.eventsRolled !== undefined) app._eventsRolled = snapshot.eventsRolled;
+        if (Array.isArray(snapshot.exhaustionDraft)) app._dawn?.restore(snapshot.exhaustionDraft);
         if (snapshot.fireLevel !== undefined && snapshot.fireLevel !== null) {
             app._fireLevel = snapshot.fireLevel;
             if (app._engine) {
@@ -614,6 +635,8 @@ export class RestSnapshotSync {
             }
         }
 
+        applyCampProgress(app, snapshot, { merge: true });
+
         // Restore meal state from snapshot
         if (snapshot.mealChoices) {
             app._mealChoices = new Map(Object.entries(snapshot.mealChoices));
@@ -629,7 +652,7 @@ export class RestSnapshotSync {
             app._totmFeastServed = !!snapshot.totmFeastServed;
         }
         if (snapshot.daysSinceLastRest) {
-            app._daysSinceLastRest = snapshot.daysSinceLastRest;
+            app._daysSinceLastRest = 1;
         }
         if (snapshot.restVariant) {
             app._restVariant = snapshot.restVariant;

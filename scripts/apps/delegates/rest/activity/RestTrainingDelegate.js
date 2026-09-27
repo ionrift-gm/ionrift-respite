@@ -1,7 +1,7 @@
 import { MODULE_ID } from "../../../../data/moduleId.js";
 import {
     executeAbilityRoll,
-    waitForDiceSoNice,
+    armDiceSoNiceSettle,
     postRollToChat,
     SKILL_DISPLAY_NAMES
 } from "../../../../services/ui/rollRequest/RollRequestManager.js";
@@ -57,8 +57,14 @@ export class RestTrainingDelegate {
             if (game.user.isGM && !actor.isOwner) {
                 const roll = await new Roll(`1d20 + ${ctx.modifier ?? 0}`).evaluate();
                 const flavor = `<strong>Training</strong> Set ${setNumber}/${numRolls} (${abilityName}) · DC ${ctx.adjustedDc} [GM roll]`;
-                await postRollToChat(actor, roll, flavor);
-                await waitForDiceSoNice();
+                const gate = armDiceSoNiceSettle();
+                try {
+                    await postRollToChat(actor, roll, flavor);
+                } catch (err) {
+                    gate.cancel();
+                    throw err;
+                }
+                await gate.wait();
                 total = roll.total;
                 passed = total >= ctx.adjustedDc;
             } else {

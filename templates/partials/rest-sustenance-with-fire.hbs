@@ -1,0 +1,95 @@
+{{!-- Normal rest sustenance: pile/vessel, Ready, 268px fire rail.
+     Mock: ionrift_debug/mockups/rest-dock-across.html --}}
+<div class="rest-sustenance-with-fire">
+    <div class="rest-sustenance-main">
+        {{#if mealCommit}}
+        <div class="totm-detail-view rest-sustenance-panel sust-commit-card">
+            <div class="totm-detail-header">
+                <div class="totm-detail-icon-wrap sust-commit-icon-wrap{{#if mealCommit.primaryImg}} has-img{{/if}}">
+                    {{#if mealCommit.primaryImg}}
+                    <img src="{{mealCommit.primaryImg}}" alt="" class="totm-detail-icon-img" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-flex';">
+                    <i class="fas fa-utensils totm-detail-icon" style="display:none;" aria-hidden="true"></i>
+                    {{else}}
+                    <i class="fas fa-utensils totm-detail-icon" aria-hidden="true"></i>
+                    {{/if}}
+                </div>
+                <div class="totm-detail-titles">
+                    <div class="sust-commit-title-row">
+                        <span class="totm-detail-name sust-commit-title">{{mealCommit.title}}</span>
+                        <div class="sust-commit-badges">
+                            {{#if mealCommit.isFed}}
+                            <span class="sust-badge sust-badge-fed"><i class="fas fa-check" aria-hidden="true"></i> Fed</span>
+                            {{else}}
+                            <span class="sust-badge sust-badge-starving"><i class="fas fa-exclamation" aria-hidden="true"></i> Starving</span>
+                            {{/if}}
+                            {{#if mealCommit.isHydrated}}
+                            <span class="sust-badge sust-badge-hydrated"><i class="fas fa-tint" aria-hidden="true"></i> Hydrated</span>
+                            {{else}}
+                            <span class="sust-badge sust-badge-thirsty"><i class="fas fa-tint-slash" aria-hidden="true"></i> {{mealCommit.waterShortLabel}}</span>
+                            {{/if}}
+                        </div>
+                    </div>
+                </div>
+                {{#unless @root.characterReady}}
+                <button type="button" class="totm-commit-change-btn" data-action="unlockSustenance" data-actor-id="{{selectedCharacterId}}" data-tooltip="Change rations">
+                    <i class="fas fa-undo-alt" aria-hidden="true"></i> Change
+                </button>
+                {{/unless}}
+            </div>
+
+            {{#if mealCommit.items.length}}
+            <div class="sust-commit-items">
+                {{#each mealCommit.items}}
+                <div class="sust-commit-item{{#if hasBuff}} has-buff{{/if}}" data-tooltip="{{name}}{{#if qtyLabel}} ({{qtyLabel}}){{/if}}{{#if buffSummary}} · {{buffSummary}}{{/if}}">
+                    {{#if img}}
+                    <img src="{{img}}" alt="{{name}}" class="sust-commit-item-img" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-flex';">
+                    <span class="sust-commit-item-fallback-icon" style="display:none;"><i class="{{#if (eq type 'water')}}fas fa-tint{{else}}fas fa-drumstick-bite{{/if}}" aria-hidden="true"></i></span>
+                    {{else}}
+                    <span class="sust-commit-item-fallback-icon"><i class="{{#if (eq type 'water')}}fas fa-tint{{else}}fas fa-drumstick-bite{{/if}}" aria-hidden="true"></i></span>
+                    {{/if}}
+                    <span class="sust-commit-item-name">{{name}}</span>
+                    {{#if qtyLabel}}<b class="sust-commit-item-qty">{{qtyLabel}}</b>{{/if}}
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+
+            {{#if mealCommit.sendoff.hasBuff}}
+            <div class="sust-sendoff has-buff sust-commit-sendoff">
+                <span class="sust-sendoff-kicker"><i class="fas fa-sparkles" aria-hidden="true"></i> Send-off Buff</span>
+                <strong>{{mealCommit.sendoff.itemName}}</strong>
+                <div class="sust-sendoff-hero"><b>{{mealCommit.sendoff.buffSummary}}</b></div>
+            </div>
+            {{else}}
+            <div class="sust-sendoff empty sust-commit-sendoff">
+                <span class="sust-sendoff-kicker">Send-off</span>
+                <span class="sust-sendoff-dur">Sates only · No buff into the next day.</span>
+            </div>
+            {{/if}}
+
+            {{#if mealCommit.detail}}
+            <p class="totm-detail-description sust-commit-detail">{{mealCommit.detail}}</p>
+            {{/if}}
+        </div>
+        {{else if sustenanceDiegetic}}
+        {{> sustenanceDiegetic actorId=selectedCharacterId hoistComplete=true}}
+        {{> sustenanceCardFoot}}
+        {{else}}
+        {{> mealBody}}
+        {{/if}}
+        {{#if @root.characterPlanComplete}}
+        <div class="rest-step-pacing">
+            {{#if @root.characterReady}}
+            <button type="button" class="btn-step-ready rest-ready-btn is-ready" data-action="toggleCharacterReady" data-actor-id="{{selectedCharacterId}}">
+                <i class="fas fa-check-circle" aria-hidden="true"></i> <span>Ready (Edit Choices)</span>
+            </button>
+            {{else}}
+            <button type="button" class="btn-step-ready rest-ready-btn" data-action="toggleCharacterReady" data-actor-id="{{selectedCharacterId}}">
+                <i class="fas fa-check" aria-hidden="true"></i> <span>Ready for Night</span>
+            </button>
+            {{/if}}
+        </div>
+        {{/if}}
+    </div>
+    {{> restFireRail}}
+</div>

@@ -1,0 +1,63 @@
+{{!-- Shared partial: Daily sustenance pip timeline. Food + water daily breakdown. --}}
+{{#if isSustenanceDrawerOpen}}
+<div class="sustenance-breakdown-drawer">
+    <div class="breakdown-drawer-header">
+        <span class="drawer-header-title">Daily Provisions</span>
+        <span class="drawer-header-subtitle">Routine camp provisions + departure send-off</span>
+    </div>
+    <div class="breakdown-tracks-grid">
+        <!-- Food Strip -->
+        <div class="breakdown-track food-track">
+            <div class="track-header">
+                <span class="track-title"><i class="fas fa-bread-slice"></i> Daily Food Plan</span>
+                <span class="track-summary {{#if foodFlow.isShort}}shortfall{{else}}fulfilled{{/if}}">{{#if foodFlow.isShort}}{{foodFlow.shortfallDays}}d Short{{else}}All Days Fed{{/if}}</span>
+            </div>
+            <div class="daily-pip-strip">
+                {{#each foodDailyPips}}
+                <div class="daily-pip food-pip {{#if isFed}}fed{{else}}starving{{/if}} {{#if isDeparture}}departure{{/if}}" data-tooltip="{{tooltip}}" data-tooltip-direction="UP">
+                    <span class="pip-day">D{{day}}</span>
+                    {{#if img}}
+                    <img class="pip-asset-img" src="{{img}}" alt="{{name}}">
+                    {{else}}
+                    <i class="{{icon}}"></i>
+                    {{/if}}
+                </div>
+                {{/each}}
+            </div>
+            <div class="track-footer">
+                <span>Routine Provisions (Days 1–6)</span>
+                <span>Departure Meal</span>
+            </div>
+        </div>
+
+        <!-- Water Strip -->
+        <div class="breakdown-track water-track">
+            <div class="track-header">
+                <span class="track-title"><i class="fas fa-droplet"></i> Daily Hydration Track</span>
+                <span class="track-summary {{#if waterFlow.isShort}}shortfall{{else}}fulfilled{{/if}}">{{#if waterFlow.isShort}}{{waterFlow.shortfallUnits}}u Short{{else}}All Days Hydrated{{/if}}</span>
+            </div>
+            <div class="daily-pip-strip">
+                {{#each waterDailyPips}}
+                <div class="daily-pip water-pip {{#if isHydrated}}hydrated{{else}}parched{{/if}} {{#if isDeparture}}departure{{/if}}" data-tooltip="{{tooltip}}" data-tooltip-direction="UP">
+                    <span class="pip-day">D{{day}}</span>
+                    {{#if img}}
+                    <img class="pip-asset-img" src="{{img}}" alt="{{name}}">
+                    {{else}}
+                    <i class="{{icon}}"></i>
+                    {{/if}}
+                </div>
+                {{/each}}
+            </div>
+            <div class="track-footer">
+                {{#if waterFlow.isShort}}
+                <span class="water-warning"><i class="fas fa-triangle-exclamation"></i> {{waterFlow.shortfallUnits}}u short (No waterskins)</span>
+                <span class="water-action">Refill at stream or gather</span>
+                {{else}}
+                <span>Routine Water</span>
+                <span>Departure Drink</span>
+                {{/if}}
+            </div>
+        </div>
+    </div>
+</div>
+{{/if}}

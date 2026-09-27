@@ -415,6 +415,38 @@
     max-width: 8.5rem;
 }
 
+.respite-activity-config .activity-config-select,
+.respite-activity-config .activity-config-number {
+    flex-shrink: 0;
+    padding: 0.3rem 0.45rem;
+    font-size: 0.72rem;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+}
+
+.respite-activity-config .activity-config-select {
+    width: 11.5rem;
+}
+
+.respite-activity-config .activity-config-number {
+    width: 4.25rem;
+    text-align: right;
+}
+
+.respite-activity-config .activity-config-select:focus,
+.respite-activity-config .activity-config-number:focus {
+    outline: none;
+    border-color: rgba(200, 160, 60, 0.55);
+}
+
+.respite-activity-config .activity-config-select option {
+    background: #1a1a2e;
+    color: rgba(255, 255, 255, 0.85);
+}
+
 /* Select dropdown (Song of Rest, etc.) */
 .respite-settings-config .settings-config-select {
     width: 200px;
@@ -1617,6 +1649,15 @@
 .ionrift-roll-request .check-module-skill {
     font-size: 0.92rem;
     letter-spacing: 0.02em;
+    text-align: center;
+}
+
+.ionrift-roll-request .check-module-formula {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
 }
 
 .ionrift-roll-request .check-module-dc-row {
@@ -1721,6 +1762,12 @@
 
 .ionrift-roll-request__outcome--pass { color: #2ecc71; }
 .ionrift-roll-request__outcome--fail { color: #e74c3c; }
+.ionrift-roll-request__outcome--find {
+    color: #ddd6fe;
+    text-align: center;
+    max-width: 18rem;
+    line-height: 1.35;
+}
 
 .ionrift-roll-request__event-title {
     font-size: 0.78rem;
@@ -3040,6 +3087,12 @@
 .respite-auditor-badge--shelf {
     background: rgba(52, 211, 153, 0.15);
     color: #6ee7b7;
+}
+
+.respite-auditor-badge--container {
+    background: rgba(168, 85, 247, 0.2);
+    color: #c4b5fd;
+    border: 1px solid rgba(168, 85, 247, 0.35);
 }
 
 .respite-auditor-actions {
