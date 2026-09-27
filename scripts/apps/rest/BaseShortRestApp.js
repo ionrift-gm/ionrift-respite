@@ -169,7 +169,8 @@ export class BaseShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) 
     static async onAbandonRest(event, target) {
         const confirmed = await confirmAbandonRest();
         if (confirmed) {
-            this.close({ abandon: true });
+            Hooks.callAll("ionrift.respite.restCleanup");
+            this.close({ abandoned: true });
         }
     }
 

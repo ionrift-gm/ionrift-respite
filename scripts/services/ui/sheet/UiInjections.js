@@ -464,6 +464,23 @@ export function refreshZzzOverlay(token) {
 }
 
 /**
+ * Immediately destroys any Zzz and prone mark child sprites on all tokens currently on canvas.
+ */
+export function clearAllZzzOverlays() {
+    try {
+        const placeables = canvas?.tokens?.placeables ?? [];
+        for (const token of placeables) {
+            const zzz = token.getChildByName?.(ZZZ_CHILD_NAME);
+            const prone = token.getChildByName?.(PRONE_CHILD_NAME);
+            if (zzz) destroyMark(token, zzz);
+            if (prone) destroyMark(token, prone);
+        }
+    } catch {
+        /* canvas may not be initialized */
+    }
+}
+
+/**
  * Registers all UI injection hooks on actor sheet render events.
  * Call once from the module init or ready block.
  */

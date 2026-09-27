@@ -798,7 +798,9 @@ _shouldShowEventPoolNudge(terrainTag) {
                     this._terminated = true;
                     this._abandoned = true;
                     this._engine = null;
+                    await this._removeBeddingDown();
                     await this._clearRestState();
+                    Hooks.callAll("ionrift.respite.restCleanup");
                 }
                 this._tearDownStationLayerCanvas();
                 this._removeGmStationTokenSyncHook();

@@ -1,4 +1,5 @@
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { clearAllZzzOverlays } from "../../ui/sheet/UiInjections.js";
 
 /**
  * Sleep pose for the night watch.
@@ -165,4 +166,27 @@ export function createBeddingScheduler({ show, hide }) {
             }
         }
     };
+}
+
+/**
+ * Unconditionally clear all bedding flags, overlays, and canvas marks across all scenes.
+ * Safe to call at any time (abandon rest, rest cleanup, resolve).
+ */
+export async function clearAllBeddingPoses() {
+    if (globalThis.game?.user?.isGM && globalThis.game.scenes) {
+        for (const scene of globalThis.game.scenes) {
+            const down = scene.tokens?.filter(t => alreadyDown(t));
+            if (down?.length && scene.updateEmbeddedDocuments) {
+                const updates = buildBeddingHideUpdates(down);
+                if (updates.length) {
+                    try {
+                        await scene.updateEmbeddedDocuments("Token", updates);
+                    } catch (err) {
+                        console.warn(`[Respite] Failed to clear bedding flags on scene ${scene.id}:`, err);
+                    }
+                }
+            }
+        }
+    }
+    clearAllZzzOverlays();
 }
