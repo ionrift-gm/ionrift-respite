@@ -128,9 +128,9 @@
                                            {
                                                "id":  "ionrift-library",
                                                "type":  "module",
-                                               "manifest": "https://github.com/ionrift-gm/ionrift-library/releases/download/v2.7.0/module.json",
+                                               "manifest": "https://github.com/ionrift-gm/ionrift-library/releases/download/v3.0.0/module.json",
                                                "compatibility":  {
-                                                                     "minimum":  "2.7.0"
+                                                                     "minimum":  "3.0.0"
                                                                  }
                                            }
                                        ]
