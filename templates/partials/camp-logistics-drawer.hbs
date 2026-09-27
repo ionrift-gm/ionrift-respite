@@ -1,0 +1,70 @@
+{{!-- Shared partial: Camp logistics drawer. GM-only wilderness controls. --}}
+{{#if isGM}}
+<div class="camp-logistics-drawer {{#if logisticsDrawerOpen}}open{{/if}}">
+    <div class="camp-logistics-drawer-inner">
+        <span class="drawer-heading"><i class="fas fa-sliders"></i> Camp Logistics:</span>
+
+        <div class="logistics-control-group">
+            <span class="control-label"><i class="fas fa-leaf"></i> Forage DC:</span>
+            <div class="stepper-cluster">
+                <button type="button" class="stepper-btn" data-action="adjustSustenanceDC" data-activity="forage" data-delta="-1" aria-label="Decrease Forage DC">−</button>
+                <span class="stepper-val">{{forageDC}}</span>
+                <button type="button" class="stepper-btn" data-action="adjustSustenanceDC" data-activity="forage" data-delta="1" aria-label="Increase Forage DC">+</button>
+            </div>
+        </div>
+
+        <div class="logistics-control-group">
+            <span class="control-label"><i class="fas fa-crosshairs"></i> Hunt DC:</span>
+            <div class="stepper-cluster">
+                <button type="button" class="stepper-btn" data-action="adjustSustenanceDC" data-activity="hunt" data-delta="-1" aria-label="Decrease Hunt DC">−</button>
+                <span class="stepper-val">{{huntDC}}</span>
+                <button type="button" class="stepper-btn" data-action="adjustSustenanceDC" data-activity="hunt" data-delta="1" aria-label="Increase Hunt DC">+</button>
+            </div>
+        </div>
+
+        <div class="logistics-control-group">
+            <span class="control-label"><i class="fas fa-bread-slice"></i> Food Needed:</span>
+            <div class="stepper-cluster">
+                <button type="button" class="stepper-btn" data-action="stepFoodDays" data-delta="-1" aria-label="Decrease food days needed">−</button>
+                <span class="stepper-val">{{foodDaysNeeded}} Days</span>
+                <button type="button" class="stepper-btn" data-action="stepFoodDays" data-delta="1" aria-label="Increase food days needed">+</button>
+            </div>
+        </div>
+
+        <div class="logistics-control-group">
+            <span class="control-label"><i class="fas fa-fire"></i> Firewood:</span>
+            <button type="button" class="btn-logistics-action btn-gift-wood" data-action="giftWood" data-qty="2" data-tooltip="Grant 2 camp firewood to the party inventory">
+                <i class="fas fa-tree"></i> +2 Wood
+            </button>
+        </div>
+
+        <div class="logistics-control-group logistics-factors-group">
+            <span class="control-label"><i class="fas fa-shield-alt"></i> Gear Factors:</span>
+            <div class="logistics-factors-cluster">
+                <button type="button"
+                        class="logistics-factor-btn {{#if enforceTent}}enforced{{else}}waived{{/if}}"
+                        data-action="toggleGearFactor"
+                        data-factor="tent"
+                        data-tooltip="{{#if enforceTent}}Tent factor required: physical tents needed for weather shelter and night defense bonus. Click to waive.{{else}}Tent factor waived: characters receive full shelter benefits without physical items. Click to require.{{/if}}">
+                    <i class="fas fa-campground"></i> Tent: <span class="factor-state">{{#if enforceTent}}Required{{else}}Waived{{/if}}</span>
+                </button>
+                <button type="button"
+                        class="logistics-factor-btn {{#if enforceBedroll}}enforced{{else}}waived{{/if}}"
+                        data-action="toggleGearFactor"
+                        data-factor="bedroll"
+                        data-tooltip="{{#if enforceBedroll}}Bedroll factor required: physical bedrolls needed for +1 comfort tier and save advantages. Click to waive.{{else}}Bedroll factor waived: characters receive +1 comfort boost without physical items. Click to require.{{/if}}">
+                    <i class="fas fa-bed"></i> Bedroll: <span class="factor-state">{{#if enforceBedroll}}Required{{else}}Waived{{/if}}</span>
+                </button>
+                <button type="button"
+                        class="logistics-factor-btn {{#if enforceMessKit}}enforced{{else}}waived{{/if}}"
+                        data-action="toggleGearFactor"
+                        data-factor="messKit"
+                        data-tooltip="{{#if enforceMessKit}}Mess kit factor required: physical mess kit needed for sustenance preparation advantage. Click to waive.{{else}}Mess kit factor waived: characters receive preparation benefits without physical items. Click to require.{{/if}}">
+                    <i class="fas fa-utensils"></i> Mess Kit: <span class="factor-state">{{#if enforceMessKit}}Required{{else}}Waived{{/if}}</span>
+                </button>
+            </div>
+        </div>
+
+    </div>
+</div>
+{{/if}}

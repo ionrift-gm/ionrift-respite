@@ -1,0 +1,1013 @@
+<div class="downtime-ledger-container {{#if partyReadiness.isAllComplete}}party-committed{{else}}party-choosing{{/if}} {{#if pacingActive}}pacing-flow-active{{/if}}">
+
+    {{!-- Tier 1: Canonical Rest Header --}}
+    {{> restHeader}}
+
+    {{!-- Shared Terrain Artwork Banner (Suppressed during tactical pacing) --}}
+    {{#unless pacingActive}}
+    {{> terrainBanner}}
+    {{/unless}}
+
+    {{#if pacingActive}}
+    {{!-- =========================================================================
+         DEDICATED RESOLUTION FLOW (Single-Night Watch Rotation or Multi-Night Pacing)
+         Pacing through each day/night to resolve events, consultations, overrides & battles
+         ========================================================================= --}}
+    <div class="downtime-pacing-stage {{#if isSingleNight}}single-night-flow{{else}}multi-night-flow{{/if}}">
+        {{#if isSingleNight}}
+        {{!-- 1A. Single-Night 4-Watch Rotation Ribbon --}}
+        <div class="pacing-timeline-deck pacing-watch-deck">
+            <div class="pacing-timeline-header">
+                <span class="timeline-title"><i class="fas fa-shield-halved"></i> 8-Hour Watch Rotation</span>
+                <span class="timeline-subtitle">Target DC {{currentNightEntry.effectiveDC}} · {{#if currentNightEntry.isRolled}}{{#if currentNightEntry.isResolvedCombat}}Combat Resolved{{else if currentNightEntry.isRed}}Hostile Ambush{{else if currentNightEntry.isAmber}}Nocturnal Event{{else}}Quiet Rest{{/if}}{{else}}Awaiting Night Check{{/if}}</span>
+            </div>
+            <div class="pacing-watch-grid">
+                {{#each watchRotation}}
+                <div class="pacing-watch-card {{#if isSurprised}}surprised{{else if isVigilant}}vigilant{{/if}} {{#if isPeakHazard}}peak-hazard{{/if}}">
+                    <img class="watch-sentry-avatar" src="{{#if actorImg}}{{actorImg}}{{else}}icons/svg/mystery-man.svg{{/if}}" alt="{{actorName}}" data-tooltip="{{actorName}}">
+                    <div class="watch-card-meta">
+                        <span class="watch-slot-label"><i class="fas {{icon}}"></i> {{label}} ({{hours}})</span>
+                        <strong class="watch-sentry-name">{{actorName}}</strong>
+                        <span class="watch-pp-pill" data-tooltip="Passive Perception">PP {{passivePerception}}</span>
+                    </div>
+                    <div class="watch-status-tag">
+                        {{#if ../currentNightEntry.isRolled}}
+                            {{#if isSurprised}}
+                            <span class="status-badge surprised"><i class="fas fa-triangle-exclamation"></i> Surprised</span>
+                            {{else}}
+                            <span class="status-badge alert"><i class="fas fa-check"></i> Vigilant</span>
+                            {{/if}}
+                        {{else}}
+                            <span class="status-badge ready"><i class="fas fa-eye"></i> Staked</span>
+                        {{/if}}
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+        {{else}}
+        {{!-- 1B. Multi-Night Scrubber Timeline Deck with Progressive Fog of War --}}
+        <div class="pacing-timeline-deck">
+            <div class="pacing-timeline-header">
+                <span class="timeline-title"><i class="fas fa-shield-moon"></i> Nightly Watch Rotation</span>
+                <span class="timeline-subtitle">{{#if isDawnCheck}}Dawn · Final Check & Exhaustion Resolution{{else}}Select a night to review or adjudicate{{/if}}</span>
+            </div>
+            <div class="pacing-scrubber-grid">
+                {{#each pacingDraft}}
+                <div class="pacing-scrubber-item {{#if isCurrentNight}}is-active-night{{/if}} {{#if isDawnStep}}is-dawn-step{{/if}} {{#if isVeiled}}veiled{{else if isRed}}red{{else if isAmber}}amber{{else if isRolled}}green{{else}}unrolled{{/if}} {{#if isResolvedCombat}}combat-resolved{{/if}}"
+                     data-action="setPacingNight" data-night="{{nightIndex}}"
+                     data-tooltip="{{#if isDawnStep}}{{tooltip}}{{else}}Night {{nightIndex}}: {{#if isVeiled}}Veiled in darkness{{else if isResolvedCombat}}Combat Resolved{{else if isRolled}}{{statusLabel}} (d20: {{rollTotal}} vs DC {{effectiveDC}}){{else}}Awaiting Night Check (DC {{effectiveDC}}){{/if}}{{/if}}">
+                    <div class="scrubber-item-top">
+                        <span class="scrubber-night-num">{{#if isDawnStep}}Dawn{{else}}N{{nightIndex}}{{/if}}</span>
+                        <i class="fas {{#if isVeiled}}fa-cloud{{else if isResolvedCombat}}fa-check-circle{{else if isRolled}}{{statusIcon}}{{else if isDawnStep}}fa-sun{{else}}fa-hourglass-half{{/if}} scrubber-state-icon"></i>
+                    </div>
+                    <div class="scrubber-roll-pill">
+                        {{#if isDawnStep}}
+                        <span>🌅</span>
+                        {{else if isVeiled}}
+                        <span>☁️</span>
+                        {{else if isRolled}}
+                        <span>{{rollTotal}}</span>
+                        <span class="scrubber-dc-hint">/{{effectiveDC}}</span>
+                        {{else}}
+                        <span class="scrubber-unrolled-hint">DC {{effectiveDC}}</span>
+                        {{/if}}
+                    </div>
+                    <div class="scrubber-mods">
+                        {{#if isDawnStep}}
+                        <i class="fas fa-sparkles" data-tooltip="Exhaustion Adjudication"></i>
+                        {{else}}
+                        {{#if hasFortify}}<i class="fas fa-shield-alt" data-tooltip="Fortified (-2 DC)"></i>{{/if}}
+                        {{#if hasGuard}}<i class="fas fa-eye" data-tooltip="Guard on Watch"></i>{{/if}}
+                        {{/if}}
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+        {{/if}}
+
+        {{#if sendoffOpen}}
+        {{!-- Send-off beat, same card as a normal rest, before the last watch. --}}
+        <div class="events-phase-body">
+            {{> mealBuffBeat}}
+        </div>
+        {{else if isDawnCheck}}
+        {{!-- 2B. Dawn Finalization Spotlight Card (Clean 90/10 Pattern) --}}
+        <div class="pacing-spotlight-card pacing-dawn-stage clean-dawn-layout">
+            
+            {{!-- Compact Dawn Hero Header --}}
+            <div class="dawn-summary-strip">
+                <div class="dawn-lead-group">
+                    <div class="dawn-sun-emblem"><i class="fas fa-sun-cloud"></i></div>
+                    <div class="dawn-copy-block">
+                        <div class="dawn-lead-title">The Vigil Breaks · Morning Over Camp</div>
+                        <div class="dawn-lead-hint">Adjudicate environmental exposure & Constitution saves before concluding rest.</div>
+                    </div>
+                </div>
+
+                {{!-- High-Level Batch Orchestration (GM Only) --}}
+                {{#if isGM}}
+                <div class="dawn-batch-cluster">
+                    {{#if exhaustionSummary.pending}}
+                    <button type="button" class="btn-dawn-batch roll-all" data-action="rollAllExhaustionSaves"
+                            data-tooltip="Roll 3D Constitution saves for all {{exhaustionSummary.pending}} pending characters">
+                        <i class="fas fa-dice-d20"></i> Roll All Pending ({{exhaustionSummary.pending}})
+                    </button>
+                    <button type="button" class="btn-dawn-batch waive-all" data-action="waiveAllExhaustionSaves"
+                            data-tooltip="Waive exhaustion checks for the entire party (Safe Rest)">
+                        <i class="fas fa-shield-check"></i> Waive All
+                    </button>
+                    {{else}}
+                    <div class="dawn-settled-pill">
+                        <i class="fas fa-check-double"></i> All Saves Settled
+                    </div>
+                    {{/if}}
+                </div>
+                {{/if}}
+            </div>
+
+            {{!-- Streamlined Party Exhaustion Roster (Horizontal Ledger Rows) --}}
+            <div class="dawn-roster-stack">
+                {{#each exhaustionRoster}}
+                <div class="dawn-actor-row {{#if rolled}}{{#if passed}}is-passed{{else}}is-failed{{/if}}{{else if mustRoll}}is-pending{{else}}is-waived{{/if}} {{#if isOverrideOpen}}override-active{{/if}}"
+                     data-actor-id="{{actorId}}">
+                    
+                    {{!-- Character Identity Block --}}
+                    <div class="actor-identity-col">
+                        <img class="actor-avatar" src="{{#if actorImg}}{{actorImg}}{{else}}icons/svg/mystery-man.svg{{/if}}" alt="{{actorName}}">
+                        <div class="actor-name-group">
+                            <span class="actor-name">{{actorName}}</span>
+                            <div class="actor-badges">
+                                <span class="pill-con" data-tooltip="Constitution Save Modifier">CON {{conModString}}</span>
+                                <span class="pill-exh {{#if currentExhaustion}}has-exh{{/if}}" data-tooltip="Current Exhaustion Level">
+                                    Exh {{currentExhaustion}}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{!-- Diegetic Hazard Reason --}}
+                    <div class="actor-hazard-col" data-tooltip="{{reason}}">
+                        <i class="fas {{#if waived}}fa-shield-heart text-emerald{{else}}fa-campground text-amber{{/if}}"></i>
+                        <span class="hazard-text">{{reason}}</span>
+                    </div>
+
+                    {{!-- Computed Target & Roll Mode Indicator --}}
+                    <div class="actor-target-col">
+                        {{#if mustRoll}}
+                        <span class="target-dc-chip" data-tooltip="Constitution Save Target DC">DC <strong>{{dc}}</strong></span>
+                        <span class="target-mode-chip mode-{{advMode}}" data-tooltip="Roll Mode: {{advMode}}">
+                            {{#if (eq advMode 'adv')}}ADV{{else if (eq advMode 'dis')}}DIS{{else}}NORM{{/if}}
+                        </span>
+                        {{else}}
+                        <span class="target-exempt-chip"><i class="fas fa-check"></i> Exempt</span>
+                        {{/if}}
+                    </div>
+
+                    {{!-- Primary Resolution Action --}}
+                    <div class="actor-action-col">
+                        {{#if rolled}}
+                            {{#if passed}}
+                            <div class="result-badge passed" data-tooltip="Rolled {{rollTotal}} vs DC {{dc}}">
+                                <i class="fas fa-check-circle"></i> Saved ({{rollTotal}})
+                                {{#if ../isGM}}
+                                <button type="button" class="btn-mini-reroll" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}" data-tooltip="Reroll Save">
+                                    <i class="fas fa-rotate-right"></i>
+                                </button>
+                                {{/if}}
+                            </div>
+                            {{else}}
+                            <div class="result-badge failed" data-tooltip="Rolled {{rollTotal}} vs DC {{dc}} (+1 Exhaustion)">
+                                <i class="fas fa-skull"></i> Failed (+1 Exh) ({{rollTotal}})
+                                {{#if ../isGM}}
+                                <button type="button" class="btn-mini-reroll" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}" data-tooltip="Reroll Save">
+                                    <i class="fas fa-rotate-right"></i>
+                                </button>
+                                {{/if}}
+                            </div>
+                            {{/if}}
+                        {{else if mustRoll}}
+                            {{#if ../isGM}}
+                            <button type="button" class="btn-dawn-roll-trigger" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}"
+                                    data-tooltip="Roll Constitution Save (DC {{dc}})">
+                                <i class="fas fa-dice-d20"></i> Roll DC {{dc}}
+                            </button>
+                            {{else}}
+                            <span class="badge-waiting-gm"><i class="fas fa-hourglass-half"></i> Pending GM</span>
+                            {{/if}}
+                        {{else}}
+                            <span class="badge-waived-pill"><i class="fas fa-shield-heart"></i> Waived</span>
+                        {{/if}}
+                    </div>
+
+                    {{!-- Progressive Disclosure Trigger (GM Only) --}}
+                    {{#if ../isGM}}
+                    <div class="actor-override-col">
+                        <button type="button" class="btn-gear-override {{#if isOverrideOpen}}active{{/if}}"
+                                data-action="toggleExhaustionOverride" data-actor-id="{{actorId}}"
+                                data-tooltip="GM Adjustments (Override DC, Roll Mode, or Waive Save)">
+                            <i class="fas fa-sliders"></i>
+                        </button>
+                    </div>
+                    {{/if}}
+
+                    {{!-- Inline Progressive Disclosure Drawer (Hidden until ⚙ is toggled) --}}
+                    {{#if (and ../isGM isOverrideOpen)}}
+                    <div class="dawn-override-drawer">
+                        <div class="override-drawer-title"><i class="fas fa-sliders"></i> Adjustments: {{actorName}}</div>
+                        <div class="override-drawer-controls">
+                            {{!-- Waive / Require Toggle --}}
+                            <label class="override-checkbox-label">
+                                <input type="checkbox" class="dawn-toggle-must-roll" data-actor-id="{{actorId}}" {{#if mustRoll}}checked{{/if}}>
+                                <span>Require Save</span>
+                            </label>
+
+                            {{!-- DC Stepper --}}
+                            <div class="override-dc-stepper">
+                                <span class="stepper-label">DC</span>
+                                <button type="button" class="btn-step" data-action="adjustExhaustionDC" data-actor-id="{{actorId}}" data-delta="-1">−</button>
+                                <input type="number" class="dawn-dc-input" data-actor-id="{{actorId}}" value="{{dc}}" min="5" max="30">
+                                <button type="button" class="btn-step" data-action="adjustExhaustionDC" data-actor-id="{{actorId}}" data-delta="1">+</button>
+                            </div>
+
+                            {{!-- Roll Mode Segment --}}
+                            <div class="override-mode-segment" role="group">
+                                <button type="button" class="btn-mode adv {{#if (eq advMode 'adv')}}active{{/if}}"
+                                        data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="adv">ADV</button>
+                                <button type="button" class="btn-mode norm {{#if (eq advMode 'norm')}}active{{/if}}"
+                                        data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="norm">NORM</button>
+                                <button type="button" class="btn-mode dis {{#if (eq advMode 'dis')}}active{{/if}}"
+                                        data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="dis">DIS</button>
+                            </div>
+
+                            {{!-- Close Drawer Shortcut --}}
+                            <button type="button" class="btn-close-override" data-action="toggleExhaustionOverride" data-actor-id="{{actorId}}" data-tooltip="Close adjustments">
+                                <i class="fas fa-check"></i> Done
+                            </button>
+                        </div>
+                    </div>
+                    {{/if}}
+
+                </div>
+                {{/each}}
+            </div>
+
+        </div>
+
+        {{else}}
+        {{!-- 2A. Active Night Consultation Spotlight Card --}}
+        <div class="pacing-spotlight-card {{#if currentNightEntry.isRolled}}{{#if currentNightEntry.isRed}}red{{else if currentNightEntry.isAmber}}amber{{else}}green{{/if}}{{else}}unrolled{{/if}}">
+            <div class="spotlight-card-header">
+                <div class="spotlight-title-group">
+                    <span class="spotlight-kicker {{#if currentNightEntry.isRolled}}{{#if currentNightEntry.isRed}}kicker-combat{{else if currentNightEntry.isAmber}}kicker-event{{else}}kicker-safe{{/if}}{{else}}kicker-unrolled{{/if}}">
+                        <i class="fas {{#if currentNightEntry.isRed}}fa-swords{{else if currentNightEntry.isAmber}}fa-compass{{else if currentNightEntry.isRolled}}fa-moon{{else}}fa-hourglass-half{{/if}}"></i>
+                        {{#if currentNightEntry.isRolled}}
+                            {{#if currentNightEntry.isDisaster}}Disaster{{else if currentNightEntry.isRed}}Hostile Ambush{{else if currentNightEntry.isAmber}}Wilderness Event{{else}}Quiet Rest{{/if}}
+                        {{else}}
+                            Awaiting Check
+                        {{/if}}
+                    </span>
+                    {{#if currentNightEntry.isResolvedCombat}}
+                    <span class="spotlight-status-pill resolved-pill">
+                        <i class="fas fa-circle-check"></i> Combat Resolved
+                    </span>
+                    {{/if}}
+                </div>
+
+                {{!-- Transparent DC Derivation & Co-located Stepper (GM Only) --}}
+                {{#if isGM}}
+                <div class="spotlight-metrics-equation" data-tooltip="Encounter DC Breakdown: Base + Hearth − Defenses">
+                    <span class="eq-token">Base <strong>{{dangerDC}}</strong></span>
+                    {{#if currentNightEntry.hearthDelta}}<span class="eq-op">+</span><span class="eq-token fire">Fire <strong>{{currentNightEntry.hearthDeltaLabel}}</strong></span>{{/if}}
+                    {{#if currentNightEntry.hasFortify}}<span class="eq-op">-</span><span class="eq-token fortify">Def <strong>{{currentNightEntry.fortifyDeltaLabel}}</strong></span>{{/if}}
+                    <span class="eq-op">=</span>
+                    <div class="spotlight-dc-stepper">
+                        <button type="button" class="btn-stepper" data-action="adjustNightDC" data-night="{{activePacingNight}}" data-delta="-1" data-tooltip="Decrease DC">−</button>
+                        <span class="stepper-val">DC {{currentNightEntry.effectiveDC}}</span>
+                        <button type="button" class="btn-stepper" data-action="adjustNightDC" data-night="{{activePacingNight}}" data-delta="1" data-tooltip="Increase DC">+</button>
+                    </div>
+                    {{#if currentNightEntry.isRolled}}
+                    <span class="eq-roll-pill {{#if currentNightEntry.isRed}}red{{else if currentNightEntry.isAmber}}amber{{else}}green{{/if}}" data-tooltip="d20 Danger Check vs DC {{currentNightEntry.effectiveDC}}">
+                        <i class="fas fa-dice-d20"></i> {{currentNightEntry.rollTotal}}
+                    </span>
+                    {{/if}}
+                </div>
+                {{/if}}
+            </div>
+
+            {{!-- Spotlight Consultation Body --}}
+            <div class="spotlight-body">
+                {{#if currentNightEntry.isRolled}}
+                <div class="spotlight-narrative-zone">
+                    <h3 class="spotlight-event-title">
+                        {{#if currentNightEntry.event}}
+                            {{currentNightEntry.event.title}}
+                        {{else}}
+                            Quiet Night Under the Canopy
+                        {{/if}}
+                    </h3>
+                    <p class="spotlight-event-description">
+                        {{#if currentNightEntry.event}}
+                            {{currentNightEntry.event.description}}
+                        {{else}}
+                            The campfire burns steadily and the wilderness remains quiet through the night. The party rests peacefully without incident or disturbance.
+                        {{/if}}
+                    </p>
+
+                    {{!-- Sentry / Camp Awareness Callout with Portrait --}}
+                    <div class="spotlight-sentry-strip">
+                        <img class="sentry-strip-avatar" src="{{#if currentNightEntry.sentryImg}}{{currentNightEntry.sentryImg}}{{else}}icons/svg/mystery-man.svg{{/if}}" alt="{{currentNightEntry.sentryName}}">
+                        <div class="sentry-info">
+                            <span class="sentry-label">Watch on Duty:</span>
+                            <strong class="sentry-name">{{currentNightEntry.sentryName}}</strong>
+                            <span class="sentry-pp-badge" data-tooltip="Passive Perception">PP {{currentNightEntry.sentryPP}}</span>
+                            {{#if currentNightEntry.hasActiveGuard}}
+                            <span class="sentry-badge alert" data-tooltip="Dedicated Guard active: Sentry cannot be surprised!"><i class="fas fa-shield-alt"></i> Vigilant (Immune to Surprise)</span>
+                            {{else}}
+                            <span class="sentry-badge {{#if currentNightEntry.sentrySurprised}}surprised{{else}}alert{{/if}}" data-tooltip="Passive Perception vs Stealth DC 12">
+                                {{#if currentNightEntry.sentrySurprised}}<i class="fas fa-triangle-exclamation"></i> Surprised!{{else}}<i class="fas fa-check"></i> Alert{{/if}}
+                            </span>
+                            {{/if}}
+                        </div>
+                    </div>
+                </div>
+
+                {{!-- GM Overrides & Unified Tactical Adjudication --}}
+                {{#if isGM}}
+                <div class="spotlight-unified-adjudication">
+                    {{#if (or currentNightEntry.isRed currentNightEntry.isAmber)}}
+                    <div class="adjudication-tactical-cluster">
+                        {{#if currentNightEntry.isResolvedCombat}}
+                        <div class="adjudication-complete-tag">
+                            <i class="fas fa-check-double text-emerald"></i> Combat Concluded
+                        </div>
+                        {{else}}
+                        <button type="button" class="btn-tactical-action btn-combat-canvas" data-action="minimizeForCombat" data-tooltip="Minimize rest window to status bar and run tactical combat on the canvas">
+                            <i class="fas fa-window-minimize"></i> Run Combat on Canvas
+                        </button>
+                        <button type="button" class="btn-tactical-action btn-combat-quick-resolve" data-action="completeCombatForNight" data-tooltip="Mark combat completed at table or theater of mind without canvas battle">
+                            <i class="fas fa-circle-check"></i> Mark Resolved
+                        </button>
+                        {{/if}}
+                    </div>
+                    {{/if}}
+
+                    <div class="adjudication-overrides-cluster">
+                        <span class="cluster-label">Overrides:</span>
+                        <button type="button" class="btn-spotlight-curate" data-action="pickPoolNightEvent" data-night="{{activePacingNight}}" data-tooltip="Choose a specific event from your curated terrain pool to replace tonight's outcome">
+                            <i class="fas fa-book-open"></i> Pool
+                        </button>
+                        <button type="button" class="btn-spotlight-curate" data-action="improviseNightOverride" data-night="{{activePacingNight}}" data-tooltip="Switch to an improvised scenario to narrate table-side">
+                            <i class="fas fa-hat-wizard"></i> Improvise
+                        </button>
+                        <button type="button" class="btn-spotlight-curate safe" data-action="setNightQuiet" data-night="{{activePacingNight}}" data-tooltip="Override to a peaceful night with no event">
+                            <i class="fas fa-moon"></i> Quiet Rest
+                        </button>
+                        <button type="button" class="btn-spotlight-curate reroll" data-action="rerollNight" data-night="{{activePacingNight}}" data-tooltip="Reroll 1d20 danger check against Target DC {{currentNightEntry.effectiveDC}}">
+                            <i class="fas fa-dice"></i> Reroll
+                        </button>
+                    </div>
+                </div>
+                {{/if}}
+
+                {{else}}
+                {{!-- UNROLLED: THE CEREMONIAL VIGIL BEAT --}}
+                <div class="spotlight-unrolled-ceremony">
+                    <div class="ceremony-lead">
+                        <img class="ceremony-sentry-img" src="{{#if currentNightEntry.sentryImg}}{{currentNightEntry.sentryImg}}{{else}}icons/svg/mystery-man.svg{{/if}}" alt="{{currentNightEntry.sentryName}}">
+                        <div class="ceremony-narrative">
+                            <h3 class="ceremony-title">The Night Vigil Begins</h3>
+                            <p class="ceremony-prompt">
+                                <strong>{{currentNightEntry.sentryName}}</strong> stands watch with Passive Perception <strong>{{currentNightEntry.sentryPP}}</strong>. Target DC <strong>{{currentNightEntry.effectiveDC}}</strong>.
+                            </p>
+                        </div>
+                    </div>
+
+                    {{#if isGM}}
+                    <div class="spotlight-roll-ceremony-deck">
+                        <div class="nw-mode-selector" role="tablist" aria-label="How does the night unfold?">
+                            <button type="button" class="nw-mode-tab" data-action="rollNightCheck" data-night="{{activePacingNight}}"
+                                    data-tooltip="Roll a d20 against Target DC {{currentNightEntry.effectiveDC}}. Meet or beat it for a quiet night. Rolls below pull a random event from the curated terrain pool.">
+                                <i class="fas fa-dice-d20 nw-mode-icon"></i>
+                                <span class="nw-mode-label">Random Check</span>
+                            </button>
+                            <button type="button" class="nw-mode-tab" data-action="improviseNightCheck" data-night="{{activePacingNight}}"
+                                    data-tooltip="Roll 1d20 against Target DC {{currentNightEntry.effectiveDC}}. If an event triggers, run your own scenario at the table.">
+                                <i class="fas fa-hat-wizard nw-mode-icon"></i>
+                                <span class="nw-mode-label">Improvise</span>
+                            </button>
+                            <button type="button" class="nw-mode-tab" data-action="pickPoolNightEvent" data-night="{{activePacingNight}}"
+                                    data-tooltip="Choose a specific event from your curated terrain pool. Bypasses the threshold check.">
+                                <i class="fas fa-book-open nw-mode-icon"></i>
+                                <span class="nw-mode-label">Pick from Pool</span>
+                            </button>
+                            <button type="button" class="nw-mode-tab safe-bypass" data-action="setNightQuiet" data-night="{{activePacingNight}}"
+                                    data-tooltip="GM override: skip the check and declare a quiet night with no event.">
+                                <i class="fas fa-moon nw-mode-icon"></i>
+                                <span class="nw-mode-label">Quiet Rest</span>
+                            </button>
+                        </div>
+                    </div>
+                    {{else}}
+                    <div class="player-pacing-waiting">
+                        <i class="fas fa-hourglass-half"></i>
+                        <span>The GM is preparing the night vigil check...</span>
+                    </div>
+                    {{/if}}
+                </div>
+                {{/if}}
+            </div>
+        </div>
+        {{/if}}
+
+        {{!-- 3. Dedicated Pacing Footer Controls --}}
+        <div class="downtime-pacing-footer">
+            {{#if isSingleNight}}
+            {{#if isDawnCheck}}
+            {{!-- Single Night Dawn Footer --}}
+            <button type="button" class="btn-pacing-nav prev" data-action="previousPacingNight" data-tooltip="Return to the Overnight Vigil">
+                <i class="fas fa-arrow-left"></i> Back to Vigil
+            </button>
+            <div class="pacing-footer-status">
+                <span>Dawn · Final Adjudication</span>
+            </div>
+            {{#if isGM}}
+                {{#if exhaustionSummary.pending}}
+                <button type="button" class="btn-pacing-nav disabled-pacing" disabled data-tooltip="Roll or waive each exhaustion save before completing the rest">
+                    <i class="fas fa-hourglass-half"></i> Awaiting Exhaustion Saves
+                </button>
+                {{else}}
+                <button type="button" class="btn-resolve-downtime btn-pacing-finalize" data-action="resolveDowntime" data-tooltip="Complete rest, apply recovery and conclude downtime">
+                    <i class="fas fa-check-double"></i> Complete Rest
+                </button>
+                {{/if}}
+            {{else}}
+            <div class="player-pacing-footer-note"><span>Waiting for GM...</span></div>
+            {{/if}}
+
+            {{else}}
+            {{!-- Single Night Vigil Footer --}}
+            {{#if canReturnToPlanning}}
+            <button type="button" class="btn-pacing-nav prev" data-action="returnToPlanning" data-tooltip="Return to camp planning overview">
+                <i class="fas fa-arrow-left"></i> Camp Planning
+            </button>
+            {{else}}
+            <div class="pacing-footer-spacer"></div>
+            {{/if}}
+            <div class="pacing-footer-status">
+                <span>8-Hour Overnight Rest</span>
+            </div>
+            {{#if isGM}}
+                {{#if currentNightEntry.isRolled}}
+                <button type="button" class="btn-pacing-nav next" data-action="nextPacingNight" data-tooltip="Advance to Dawn Finalization & Exhaustion Resolution">
+                    <span>Dawn Finalization</span> <i class="fas fa-sun"></i>
+                </button>
+                {{else}}
+                <button type="button" class="btn-pacing-nav disabled-pacing" disabled data-tooltip="Roll the night check first">
+                    <i class="fas fa-hourglass-half"></i> Awaiting Night Check
+                </button>
+                {{/if}}
+            {{else}}
+            <div class="player-pacing-footer-note">
+                <span>Waiting for GM...</span>
+            </div>
+            {{/if}}
+            {{/if}}
+
+            {{else}}
+            {{!-- Multi-Night Footer --}}
+            <button type="button" class="btn-pacing-nav prev" data-action="previousPacingNight" {{#unless prevPacingNight}}disabled{{/unless}} data-tooltip="{{#if prevPacingNight}}Inspect Night {{prevPacingNight}}{{else}}Already on first night{{/if}}">
+                <i class="fas fa-chevron-left"></i> Previous {{#if prevPacingNight}}(N{{prevPacingNight}}){{else}}Night{{/if}}
+            </button>
+
+            <div class="pacing-footer-status">
+                {{#if isDawnCheck}}
+                <span>Dawn · Final Check</span>
+                {{else}}
+                <span>Night {{activePacingNight}} of {{totalNights}}</span>
+                {{/if}}
+            </div>
+
+            {{#if isGM}}
+                {{#if isDawnCheck}}
+                    {{#if exhaustionSummary.pending}}
+                    <button type="button" class="btn-pacing-nav disabled-pacing" disabled data-tooltip="Roll or waive each exhaustion save before completing the rest">
+                        <i class="fas fa-hourglass-half"></i> Awaiting Exhaustion Saves
+                    </button>
+                    {{else}}
+                    <button type="button" class="btn-resolve-downtime btn-pacing-finalize" data-action="resolveDowntime" data-tooltip="Complete downtime rest, apply full recovery and post Master Chat Card">
+                        <i class="fas fa-check-double"></i> Complete Rest
+                    </button>
+                    {{/if}}
+                {{else if isFinalPacingNight}}
+                <button type="button" class="btn-pacing-nav next" data-action="nextPacingNight" data-tooltip="Advance to Dawn Finalization & Exhaustion Checks">
+                    <span>Dawn Finalization</span> <i class="fas fa-sun"></i>
+                </button>
+                {{else if sendoffOpen}}
+                    {{#if mealBuffPending}}
+                    <button type="button" class="btn-pacing-nav disabled-pacing" disabled data-tooltip="Apply each meal and drink before the last watch">
+                        <i class="fas fa-hourglass-half"></i> Apply the send-off
+                    </button>
+                    {{else}}
+                    <button type="button" class="btn-pacing-nav next" data-action="nextPacingNight" data-tooltip="The send-off is in place. Open the last watch.">
+                        <span>Last watch</span> <i class="fas fa-moon"></i>
+                    </button>
+                    {{/if}}
+                {{else if sendoffReady}}
+                <button type="button" class="btn-pacing-nav next" data-action="nextPacingNight" data-tooltip="Apply each meal and drink before the last watch">
+                    <span>Send-off</span> <i class="fas fa-utensils"></i>
+                </button>
+                {{else}}
+                <button type="button" class="btn-pacing-nav next" data-action="nextPacingNight" data-tooltip="Advance to next night">
+                    <span>Next Night (N{{nextPacingNight}})</span> <i class="fas fa-chevron-right"></i>
+                </button>
+                {{/if}}
+            {{else}}
+            <div class="player-pacing-footer-note">
+                {{#if sendoffOpen}}
+                <span>{{#if mealBuffPending}}Apply your meal or drink{{else}}Waiting on the last watch{{/if}}</span>
+                {{else}}
+                <span>Waiting for GM...</span>
+                {{/if}}
+            </div>
+            {{/if}}
+            {{/if}}
+        </div>
+    </div>
+    {{else}}
+
+    {{!-- Safe Rest Haven Strip (Civilized / Safe Haven) --}}
+    {{#if (or isCivilized campConditionsBar.safeRestSpot)}}
+    <div class="downtime-haven-strip haven-civilized">
+        <div class="downtime-conditions-indicator" role="status" aria-label="Camp conditions">
+            <span class="camp-status-chip terrain-chip" data-tooltip="{{campConditionsBar.terrainTooltip}}">
+                <i class="{{campConditionsBar.terrainIcon}}" aria-hidden="true"></i> {{campConditionsBar.terrainLabel}}
+            </span>
+            <span class="camp-status-chip comfort-safe" data-tooltip="No comfort penalties or night events.">
+                <i class="fas fa-shield-halved" aria-hidden="true"></i> Safe rest spot
+            </span>
+        </div>
+        <div class="downtime-commissary-strip">
+            <div class="commissary-pill civilized" data-tooltip="All party meals and lodging covered by settlement lifestyle expenses.">
+                <i class="fas fa-utensils"></i> Lodgings & Meals Covered (0 Rations Needed)
+            </div>
+        </div>
+    </div>
+    {{/if}}
+
+    {{!-- Character Dock: identity card + party switcher (mock: rest-dock-gritty).
+         The dock owns the switcher on the downtime ledger, so no separate
+         roster strip is rendered here. Starvation and dehydration warnings
+         appear as glyphs on the mini portraits. --}}
+    {{#if isWilderness}}
+    {{> restDock}}
+    {{else}}
+    {{> rosterStrip}}
+    {{/if}}
+
+    {{!-- Main Area: Unified Content-Only Workflow Panel.
+         The workflow segments and Examine live on the dock nav
+         (mock: rest-dock-gritty). This panel is content-only for both GM and players. --}}
+    <div class="downtime-workflow-panel workflow-{{selectedWorkflowStep}}">
+        {{!-- GM Roster Rows --}}
+        <div class="downtime-gm-roster">
+            {{#each characters}}
+            <div class="gm-character-row-wrap expanded {{#if hasStarvationRisk}}starvation-risk{{/if}} {{#unless (eq id ../selectedCharacterId)}}tab-hidden{{/unless}}" data-actor-id="{{id}}">
+                <div class="gm-char-drilldown-panel">
+                    <div class="downtime-tiers-stack">
+
+                    <div class="downtime-tier-card tier-examine">
+                        <div class="examine-diegetic">
+                            <div class="sust-section-label">EXAMINE</div>
+                            {{#if workbenchEmbed}}
+                            {{#with workbenchEmbed}}
+                            {{> workbenchIdentifyPanel}}
+                            {{/with}}
+                            {{else}}
+                            <div class="rest-night-card sel">
+                                <span class="rest-night-main">
+                                    <strong>Examine is off</strong>
+                                    <span>Turn it on in rest settings to identify, focus, and taste.</span>
+                                </span>
+                            </div>
+                            {{/if}}
+                        </div>
+                    </div>
+
+                    {{!-- TIER 1: Station Activities --}}
+                    <div class="downtime-tier-card tier-activities">
+                        <div class="sust-section-label">ACTIVITIES</div>
+                        <div class="act-planner">
+                            <div class="sust-planner-head">
+                                <span class="sust-grow"></span>
+                                <span class="sust-budget{{#if isCommitted}} done{{/if}}">{{#if isCommitted}}Locked{{else if budget.isComplete}}Ready to lock{{else}}{{budget.unallocatedDays}}d unallocated{{/if}}</span>
+                            </div>
+                        <div class="tier-card-header">
+                            <span class="tier-title"><i class="fas fa-hammer"></i> Activities</span>
+                            <div class="tier-header-badges">
+                                {{#if (and (or ../workbenchIdentifyUiEnabled workbenchIdentifyUiEnabled) canInteract)}}
+                                <button type="button" class="btn-tier-override btn-identify-toggle {{#if isIdentifyOpen}}active{{/if}}"
+                                    data-action="toggleIdentifyDrawer" data-actor-id="{{id}}"
+                                    data-tooltip="{{#if isIdentifyOpen}}Close Identify workbench{{else}}Open Identify workbench (Focus: {{focusRemaining}}/{{focusBudget}} left){{/if}}">
+                                    <i class="fas fa-magnifying-glass"></i> Identify{{#if identifyDays}} ({{identifyDays}}d){{/if}}
+                                </button>
+                                {{/if}}
+                                {{#if isCommitted}}
+                                <span class="tier-status-pill complete" data-tooltip="Activities are committed and locked in">
+                                    <i class="fas fa-lock"></i> Choices Locked
+                                </span>
+                                {{#if isGM}}
+                                <button type="button" class="btn-tier-override" data-action="unlockActivities" data-actor-id="{{id}}" data-tooltip="GM: Reset to allow re-allocation">
+                                    <i class="fas fa-rotate-left"></i> Reset
+                                </button>
+                                {{/if}}
+                                {{else}}
+                                <span class="tier-status-pill pending">
+                                    {{#if budget.isComplete}}Ready to lock{{else}}{{budget.unallocatedDays}}d unallocated{{/if}}
+                                </span>
+                                {{/if}}
+                            </div>
+                        </div>
+
+                        {{!-- 7-day segment bar (mock: rest-dock-gritty activities).
+                             Mirrors the player view; GM sees the same rollup. --}}
+                        {{#unless isCommitted}}
+                        <div class="downtime-segment-bar gm-segment-bar">
+                            {{#each budget.segments}}
+                            <div class="segment-pip {{#if filled}}filled{{/if}} {{#if isRollable}}rollable roll-{{rollStatus}}{{/if}}"
+                                {{#if canRollPip}}data-action="rollActivityDay"{{/if}}
+                                data-activity="{{activityId}}"
+                                data-day="{{dayNumber}}"
+                                data-actor-id="{{../id}}"
+                                data-tooltip="{{pipTooltip}}">
+                                <span class="pip-day">D{{dayNumber}}</span>
+                                {{#if filled}}<b class="pip-act">{{label}}</b>{{/if}}
+                                {{#if (eq rollStatus "pass")}}<i class="fas fa-check pip-roll-badge pass"></i>{{/if}}
+                                {{#if (eq rollStatus "fail")}}<i class="fas fa-times pip-roll-badge fail"></i>{{/if}}
+                                {{#if (eq rollStatus "pending")}}<i class="fas fa-circle-dot pip-roll-badge pending"></i>{{/if}}
+                            </div>
+                            {{/each}}
+                        </div>
+                        {{/unless}}
+
+                        <div class="tier-card-body tier-activities-body">
+                            {{#if isCommitted}}
+                            {{!-- Locked State: Clean Itinerary Docket --}}
+                            <div class="tier-content-zone locked-activities-docket">
+                                <div class="locked-docket-header">
+                                    <span class="docket-title"><i class="fas fa-calendar-check"></i> Itinerary</span>
+                                    <span class="docket-total">All Days Assigned</span>
+                                </div>
+                                <div class="locked-docket-items">
+                                    {{#each activeActivities}}
+                                    <div class="locked-activity-pill" data-tooltip="{{hint}}">
+                                        <span class="locked-act-icon"><i class="{{icon}}"></i></span>
+                                        <span class="locked-act-label">{{label}}</span>
+                                        <span class="locked-act-days">{{assignedDays}}d</span>
+                                    </div>
+                                    {{/each}}
+                                </div>
+                            </div>
+                            {{else}}
+                            {{!-- Left Zone: Station Activities Chips --}}
+                            <div class="tier-content-zone downtime-activity-picker rest-night-stations">
+                                {{> downtimeActivityStations}}
+                            </div>
+                            {{/if}}
+
+                            {{!-- Right Zone: 180px Action Rail --}}
+                            <div class="tier-action-rail">
+                                {{#if isCommitted}}
+                                    {{#if hasDefenseRolls}}
+                                    {{#if fortifySummary.isAllRolled}}
+                                        <div class="badge-tier-resolved defenses {{fortifySummary.resultClass}}" data-tooltip="{{fortifySummary.tooltip}}">
+                                            <i class="{{fortifySummary.resultIcon}}"></i>
+                                            <span>{{fortifySummary.resultLabel}}</span>
+                                        </div>
+                                        {{#if (or isGM ../isGM)}}
+                                        <button type="button" class="btn-tier-override"
+                                            data-action="rollAllActivities" data-roll-kind="defense" data-actor-id="{{id}}"
+                                            data-tooltip="GM: Reroll all defense checks">
+                                            <i class="fas fa-redo"></i>
+                                            <span>Reroll</span>
+                                        </button>
+                                        {{/if}}
+                                    {{else}}
+                                        {{#if canInteract}}
+                                        <button type="button" class="btn-tier-action btn-roll-defenses"
+                                            data-action="rollAllActivities" data-roll-kind="defense" data-actor-id="{{id}}"
+                                            data-tooltip="Roll all unrolled defense checks">
+                                            <i class="fas fa-dice-d20"></i>
+                                            <span>Roll Defenses{{#if fortifySummary.unrolledCount}} ({{fortifySummary.unrolledCount}}d){{/if}}</span>
+                                        </button>
+                                        {{else}}
+                                        <span class="tier-action-placeholder">
+                                            <i class="fas fa-hourglass-half"></i> Awaiting Roll
+                                        </span>
+                                        {{/if}}
+                                    {{/if}}
+                                    {{/if}}
+
+                                    {{#if hasSkillChecks}}
+                                    {{#if skillCheckSummary.isAllRolled}}
+                                        <div class="badge-tier-resolved" data-tooltip="{{skillCheckSummary.tooltip}}">
+                                            <i class="fas fa-check-double"></i>
+                                            <span>{{skillCheckSummary.resultLabel}}</span>
+                                        </div>
+                                        {{#if (or isGM ../isGM)}}
+                                        <button type="button" class="btn-tier-override"
+                                            data-action="rollAllActivities" data-roll-kind="skill" data-actor-id="{{id}}"
+                                            data-tooltip="GM: Reroll these activity checks">
+                                            <i class="fas fa-redo"></i>
+                                            <span>Reroll</span>
+                                        </button>
+                                        {{/if}}
+                                    {{else}}
+                                        {{#if canInteract}}
+                                        <button type="button" class="btn-tier-action btn-roll-defenses"
+                                            data-action="rollAllActivities" data-roll-kind="skill" data-actor-id="{{id}}"
+                                            data-tooltip="{{skillCheckSummary.tooltip}}">
+                                            <i class="fas fa-dice-d20"></i>
+                                            <span>Roll {{skillCheckSummary.label}}{{#if skillCheckSummary.unrolledCount}} ({{skillCheckSummary.unrolledCount}}d){{/if}}</span>
+                                        </button>
+                                        {{else}}
+                                        <span class="tier-action-placeholder">
+                                            <i class="fas fa-hourglass-half"></i> Awaiting Roll
+                                        </span>
+                                        {{/if}}
+                                    {{/if}}
+                                    {{/if}}
+
+                                    {{#if hasCraftingActivities}}
+                                    {{#if isAllCraftsResolved}}
+                                    <div class="badge-tier-resolved craft"
+                                        data-tooltip="All {{craftDaysCount}} craft days resolved">
+                                        <i class="fas fa-check-double"></i>
+                                        <span>Crafts Complete ({{craftDaysCount}}d)</span>
+                                    </div>
+                                    {{else}}
+                                    {{#if canChangeCraftPlan}}
+                                    <button type="button" class="btn-tier-action"
+                                        data-action="unlockActivities" data-actor-id="{{id}}"
+                                        data-tooltip="No recipe can be made. Unlock the plan and assign those days to something else.">
+                                        <i class="fas fa-rotate-left"></i>
+                                        <span>Change plan</span>
+                                    </button>
+                                    {{/if}}
+                                    <button type="button" class="btn-tier-action btn-resolve-crafts in-progress"
+                                        data-action="openCraftQueue" data-actor-id="{{id}}"
+                                        {{#unless canInteract}}disabled{{/unless}}
+                                        data-tooltip="Resolve {{craftDaysRemaining}} craft days (Click to pick recipe, Shift+Click to quick-roll DC 12)">
+                                        <i class="fas fa-utensils"></i>
+                                        <span>Resolve Crafts ({{craftDaysRemaining}}d)</span>
+                                    </button>
+                                    {{/if}}
+                                    {{/if}}
+
+                                    {{#unless (or hasRollableActivities hasCraftingActivities)}}
+                                    <span class="tier-action-placeholder">
+                                        <i class="fas fa-check"></i> <span>No Checks Required</span>
+                                    </span>
+                                    {{/unless}}
+                                {{else}}
+                                    {{#if budget.isComplete}}
+                                    <button type="button" class="btn-tier-action btn-commit"
+                                        data-action="commitActivities" data-actor-id="{{id}}"
+                                        {{#unless canInteract}}disabled{{/unless}}
+                                        data-tooltip="Lock in your downtime plan and proceed to rolling checks">
+                                        <i class="fas fa-lock"></i> <span>Lock In Choices</span>
+                                    </button>
+                                    {{else}}
+                                    <button type="button" class="btn-tier-action btn-commit" disabled
+                                        data-tooltip="Assign all days to lock in choices">
+                                        <i class="fas fa-lock"></i> <span>Assign All Days</span>
+                                    </button>
+                                    {{/if}}
+                                {{/if}}
+                            </div>
+                        </div>
+                        {{#if (or isCommitted budget.isComplete)}}
+                        <div class="rest-step-pacing">
+                            <button type="button" class="btn-step-next" data-action="switchWorkflow" data-step="sustenance">
+                                <span>Next: Sustenance</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        {{/if}}
+                        </div>
+                        {{#if (and isIdentifyOpen workbenchEmbed)}}
+                        <div class="downtime-workbench-drawer examine-diegetic">
+                            <div class="sust-section-label">EXAMINE</div>
+                            {{#with workbenchEmbed}}
+                            {{> workbenchIdentifyPanel}}
+                            {{/with}}
+                        </div>
+                        {{/if}}
+                    </div>
+
+                    {{!-- TIER 2: Gathering [Wilderness Only] --}}
+                    {{#if ../isWilderness}}
+                    <div class="downtime-tier-card tier-gathering">
+                        <div class="sust-section-label">GATHER PROVISIONS</div>
+                        <div class="act-planner">
+                            <div class="sust-planner-head">
+                                {{#if gatheringSummary.isAllRolled}}
+                                <span class="harvest-done"><i class="fas fa-check" aria-hidden="true"></i> Harvested</span>
+                                {{/if}}
+                                <span class="sust-grow"></span>
+                                <span class="gather-dc-pill">Forage DC {{forageDC}}</span>
+                                <span class="gather-dc-pill hunt">Hunt DC {{huntDC}}</span>
+                                <span class="gather-surv-pill">Survival {{survivalModFormatted}}</span>
+                            </div>
+                        <div class="tier-card-header">
+                            <span class="tier-title"><i class="fas fa-seedling"></i> Gathering</span>
+                            {{#if gatheringSummary.isAllRolled}}
+                            <span class="tier-status-pill complete" data-tooltip="All gathering days resolved">
+                                <i class="fas fa-check"></i> Harvested
+                            </span>
+                            {{else}}
+                            <div class="gathering-dc-readouts">
+                                <span class="gathering-dc-badge forage" data-tooltip="Survival DC to forage wild roots, berries, and water"><i class="fas fa-leaf"></i> DC {{forageDC}}</span>
+                                <span class="gathering-dc-badge hunt" data-tooltip="Survival DC to track and harvest wild game"><i class="fas fa-crosshairs"></i> DC {{huntDC}}</span>
+                            </div>
+                            <span class="tier-status-pill survival" data-tooltip="Survival Check Modifier">Survival {{survivalModFormatted}}</span>
+                            {{/if}}
+                        </div>
+                        <div class="tier-card-body tier-gathering-body">
+                            {{!-- 7-Day Schedule Strip (always 100% width, 44px height, clean landscape cards) --}}
+                            <div class="tier-content-zone gathering-schedule-strip">
+                                {{#each gatheringSchedule}}
+                                <div class="gathering-day-cell {{mode}} {{#if isSkip}}skip{{else if rolled}}{{#if success}}rolled pass{{else}}rolled fail{{/if}}{{/if}}" data-tooltip="{{tooltip}}">
+                                    <button type="button" class="btn-day-toggle" data-action="toggleGatheringDay" data-actor-id="{{../id}}" data-day="{{day}}" {{#unless canToggle}}disabled{{/unless}}>
+                                        <span class="day-label">D{{day}}</span>
+                                        <b class="day-mode">{{#if modeLabel}}{{modeLabel}}{{else}}{{label}}{{/if}}</b>
+                                        {{#if rolled}}
+                                        {{#unless isSkip}}
+                                        <span class="day-yield {{#if success}}pass{{else}}fail{{/if}}">
+                                            {{#if success}}<i class="fas fa-check"></i> found{{else}}<i class="fas fa-xmark"></i> nothing{{/if}}
+                                        </span>
+                                        {{/unless}}
+                                        {{/if}}
+                                    </button>
+                                </div>
+                                {{/each}}
+                            </div>
+
+                            {{!-- Action Rail (shown when days remain unrolled) --}}
+                            {{#unless gatheringSummary.isAllRolled}}
+                            <div class="tier-action-rail">
+                                {{#if canInteract}}
+                                <button type="button" class="btn-tier-action btn-roll-all-gathering" data-action="rollAllGathering" data-actor-id="{{id}}" data-tooltip="Roll all unrolled days">
+                                    <i class="fas fa-dice-d20"></i>
+                                    <span>Roll All ({{gatheringSummary.unrolledCount}}d)</span>
+                                </button>
+                                {{else}}
+                                <span class="tier-action-placeholder">
+                                    <i class="fas fa-hourglass-half"></i> Awaiting Roll
+                                </span>
+                                {{/if}}
+                            </div>
+                            {{/unless}}
+
+                            {{!-- Harvest Report (below the 7-day strip once all days are rolled or skipped) --}}
+                            {{#if gatheringSummary.isAllRolled}}
+                            <div class="tier-content-zone gather-report">
+                                {{#if gatheringSummary.hasFinds}}
+                                <div class="gather-find-list">
+                                    {{#each gatheringSchedule}}
+                                    {{#if finds.length}}
+                                    <div class="gather-find-day">
+                                        <span class="gather-find-day-label">D{{day}}</span>
+                                        {{#each finds}}
+                                        <span class="gather-find" data-tooltip="{{name}}{{#if qtyLabel}}, {{qtyLabel}}{{/if}}">
+                                            {{#if img}}<img src="{{img}}" alt="">{{/if}}
+                                            <span class="gather-find-name">{{name}}</span>
+                                            {{#if qtyLabel}}<b>{{qtyLabel}}</b>{{/if}}
+                                        </span>
+                                        {{/each}}
+                                    </div>
+                                    {{/if}}
+                                    {{/each}}
+                                </div>
+                                {{else}}
+                                <div class="gather-empty-report">
+                                    <i class="fas fa-seedling"></i>
+                                    <span>No provisions gathered from this week's foraging or hunting.</span>
+                                </div>
+                                {{/if}}
+                                {{#if gatheringSummary.reportLine}}
+                                <p class="harvest-tally">{{gatheringSummary.reportLine}}</p>
+                                {{/if}}
+                                {{#if gatheringSummary.freshForageNote}}
+                                <p class="harvest-spoil-note">{{gatheringSummary.freshForageNote}}</p>
+                                {{/if}}
+                            </div>
+                            {{/if}}
+                        </div>
+                        <div class="rest-step-pacing">
+                            <button type="button" class="btn-step-next" data-action="switchWorkflow" data-step="activities">
+                                <span>Next: Activity</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        </div>
+                    </div>
+                    {{/if}}
+
+                    {{!-- TIER 3: Sustenance --}}
+                    <div class="downtime-tier-card tier-food {{#if hasDehydrationRisk}}dehydration{{else if hasStarvationRisk}}starvation{{/if}}">
+                        {{#if (eq ../selectedWorkflowStep "sustenance")}}
+                        {{!-- Diegetic two-column pile/vessel (mock target) --}}
+                        {{> sustenanceDiegetic actorId=id}}
+                        {{else}}
+                        {{!-- Compact summary on non-sustenance tabs --}}
+                        <div class="tier-card-header">
+                            <div class="tier-title-cluster">
+                                <span class="tier-title"><i class="fas fa-utensils"></i> Sustenance</span>
+                                {{#if climateLabel}}
+                                <span class="tier-climate-pill {{#if isTraitPill}}tier-trait-pill{{/if}}" data-tooltip="{{climateTooltip}}">{{climateLabel}}</span>
+                                {{/if}}
+                            </div>
+                            <div class="tier-header-badges">
+                                <span class="tier-status-pill {{#if hasStarvationRisk}}shortfall starvation{{else}}complete{{/if}}" data-tooltip="{{foodTooltip}}">
+                                    <i class="fas {{#if hasStarvationRisk}}fa-triangle-exclamation{{else}}fa-check{{/if}}"></i> {{#if hasStarvationRisk}}Food: {{foodFlow.shortfallDays}}d Short{{else}}Food: Fed{{/if}}
+                                </span>
+                                {{#if isWilderness}}
+                                <span class="tier-status-pill {{#if hasDehydrationRisk}}shortfall dehydration{{else}}complete{{/if}}" data-tooltip="{{autoWaterTooltip}}">
+                                    <i class="fas {{#if hasDehydrationRisk}}fa-droplet-slash{{else}}fa-droplet{{/if}}"></i> {{#if hasDehydrationRisk}}Water: {{waterFlow.shortfallDays}}d Short{{else}}Water: Hydrated{{/if}}
+                                </span>
+                                {{/if}}
+                                {{#if selectedDepartureMeal.hasBuff}}
+                                <span class="tier-status-pill buff-active" data-tooltip="Departure Send-off: {{selectedDepartureMeal.name}}, {{selectedDepartureMeal.buffSummary}}">
+                                    <i class="fas fa-wand-magic-sparkles"></i> {{selectedDepartureMeal.buffSummary}}
+                                </span>
+                                {{/if}}
+                                {{#if selectedDepartureDrink.hasBuff}}
+                                <span class="tier-status-pill buff-active" data-tooltip="Departure Drink: {{selectedDepartureDrink.name}}, {{selectedDepartureDrink.buffSummary}}">
+                                    <i class="fas fa-wine-glass"></i> {{selectedDepartureDrink.buffSummary}}
+                                </span>
+                                {{/if}}
+                            </div>
+                        </div>
+                        {{/if}}
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        {{/each}}
+    </div>
+    </div>
+
+    {{#if isGM}}
+    {{#if isWilderness}}
+    {{> campLogisticsDrawer}}
+    {{/if}}
+    {{/if}}
+
+    {{!-- Unified Footer Bar (mock: rest-dock-gritty footer).
+         Logistics · Encounter DC · Ready count · Proceed --}}
+    <div class="downtime-footer-bar rest-footer-unified">
+        {{#if isGM}}
+        {{#if isWilderness}}
+        <button type="button"
+            class="btn-gm-logistics{{#if logisticsDrawerOpen}} active{{/if}}"
+            data-action="toggleLogisticsDrawer"
+            data-tooltip="{{#if logisticsDrawerOpen}}Close camp logistics{{else}}{{{logisticsTooltip}}}{{/if}}">
+            <i class="fas fa-sliders"></i> Logistics
+        </button>
+
+        {{> encounterDcStepper dc=dangerDC adjustAction="adjustDraftDC" tooltip="Encounter DC. Rolls below this threshold trigger night encounters."}}
+        {{/if}}
+
+        <span class="rest-footer-ready" data-tooltip="{{partyReadiness.unreadyTooltip}}">
+            <i class="fas fa-hourglass-half"></i>
+            {{partyReadiness.readyCount}} / {{partyReadiness.totalCount}} ready
+        </span>
+
+        {{#if partyReadiness.isAllComplete}}
+            {{#if isWilderness}}
+            <button type="button" class="rest-footer-proceed" data-action="proceedToResolutionFlow" data-tooltip="Advance to nightly watches">
+                <i class="fas fa-play"></i> Proceed to the nights
+            </button>
+            {{else}}
+            <button type="button" class="btn-primary-green" data-action="resolveDowntime" data-tooltip="Complete the rest">
+                <i class="fas fa-check-double"></i> Complete Rest
+            </button>
+            {{/if}}
+        {{else}}
+        <button type="button" class="rest-footer-proceed" disabled data-tooltip="{{partyReadiness.unreadyTooltip}}">
+            <i class="fas fa-play"></i> {{#if isWilderness}}Proceed to the nights{{else}}Complete Rest{{/if}}
+        </button>
+        {{/if}}
+
+        {{else}}
+        <span class="rest-footer-ready">
+            <i class="fas fa-hourglass-half"></i>
+            {{partyReadiness.readyCount}} / {{partyReadiness.totalCount}} ready
+        </span>
+        <span class="rest-footer-waiting">Waiting for the GM</span>
+        {{/if}}
+    </div>
+    {{/if}}
+
+</div>

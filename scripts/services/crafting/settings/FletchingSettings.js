@@ -87,19 +87,6 @@ export function getFletchingYieldFormula(tier = getFletchingTier()) {
 }
 
 /**
- * End-user-readable yield hint for activity cards (includes soft floor at prof 2).
- * @param {number} [tier]
- * @param {number} [prof]
- * @returns {string}
- */
-export function getFletchingYieldHint(tier = getFletchingTier(), prof = 2) {
-    const formula = getFletchingYieldFormula(tier);
-    if (!formula) return "Fletching is off for this world";
-    const floor = getFletchingYieldFloor(tier, prof);
-    return `${formula} on success (at least ${floor} at +${prof} prof)`;
-}
-
-/**
  * One-time migration from legacy enableFletching boolean to fletchingYieldTier.
  */
 export function migrateFletchingYieldTier() {

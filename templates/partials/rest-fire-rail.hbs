@@ -1,0 +1,54 @@
+{{!-- Campfire column. Same header, tiers, and ceremony as the main campfire panel. --}}
+<aside class="rest-fire-rail" aria-label="Campfire">
+    <div class="totm-camp-fire-header">
+        <span class="totm-camp-fire-title"><i class="fas fa-fire" aria-hidden="true"></i> Campfire</span>
+        {{#if campFireIsLit}}
+        <span class="totm-camp-fire-status lit"><i class="fas fa-circle" aria-hidden="true"></i> {{campFireLabel}}</span>
+        {{else if campColdCampDecided}}
+        <span class="totm-camp-fire-status cold"><i class="fas fa-moon" aria-hidden="true"></i> Cold</span>
+        {{else}}
+        <span class="totm-camp-fire-status unlit"><i class="fas fa-circle" aria-hidden="true"></i> Unlit</span>
+        {{/if}}
+    </div>
+    {{!-- Tier picks are for lighting. Once lit, wood and dousing change the level. --}}
+    {{#unless campFireIsLit}}
+    <div class="totm-fire-segment-wrap">
+        <div class="totm-fire-segments" role="radiogroup" aria-label="Fire intensity tiers">
+            <button type="button"
+                    class="totm-fire-segment cold-camp {{#if campColdCampDecided}}selected{{else if campPreviewIsColdCamp}}selected{{/if}}"
+                    data-tier="cold_camp"
+                    role="radio"
+                    {{#if campColdCampDecided}}aria-checked="true"{{else if campPreviewIsColdCamp}}aria-checked="true"{{else}}aria-checked="false"{{/if}}
+                    {{#unless campColdCampDecided}}data-action="selectCampColdCamp"{{/unless}}>
+                <i class="fas fa-moon" aria-hidden="true"></i>
+                <span class="totm-fire-segment-label">Cold</span>
+                <span class="totm-fire-segment-cost">No fire</span>
+            </button>
+            {{#each campFirePickerLevels}}
+            <button type="button"
+                    class="totm-fire-segment {{#if selected}}selected{{/if}} {{#if disabled}}{{#unless @root.isGM}}disabled{{/unless}}{{/if}}"
+                    data-tier="{{id}}"
+                    role="radio"
+                    {{#if disabled}}{{#unless @root.isGM}}disabled{{/unless}} data-tooltip="{{disabledReason}}"{{/if}}
+                    {{#if selected}}aria-checked="true"{{else}}aria-checked="false"{{/if}}
+                    {{#unless selected}}data-action="selectCampFireLevel" data-fire-level="{{id}}"{{/unless}}>
+                <span class="totm-fire-segment-label">{{label}}</span>
+                <span class="totm-fire-segment-cost">{{costLabel}}</span>
+            </button>
+            {{/each}}
+        </div>
+        {{#if campColdCampDecided}}
+        <p class="totm-fire-segment-desc">No cooking. Comfort drops. Harder for enemies to spot.</p>
+        {{else if campPreviewIsColdCamp}}
+        <p class="totm-fire-segment-desc">No cooking. Comfort drops. Harder for enemies to spot.</p>
+        {{else}}
+        {{#each campFirePickerLevels}}
+        {{#if selected}}
+        <p class="totm-fire-segment-desc">{{> fireTierBody}}</p>
+        {{/if}}
+        {{/each}}
+        {{/if}}
+    </div>
+    {{/unless}}
+    <div class="totm-campfire-minigame-host totm-camp-minigame-host rest-fire-host" aria-label="Campfire"></div>
+</aside>

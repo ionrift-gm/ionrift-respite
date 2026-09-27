@@ -59,7 +59,8 @@ export class CampfireEmbed {
         this._heat = 0;
         this._lit = false;
         this._litBy = null;
-        this._strikeCount = 0;
+        /** @type {Map<string, number>} Flint strikes per character. Not shared across the party. */
+        this._strikeCounts = new Map();
         this._decayInterval = null;
         this._litNotifyTimer = null;
         this._showLitBanner = false;
@@ -76,6 +77,7 @@ export class CampfireEmbed {
         this._lastWhittledFigure = null;
         this._peakHeat = 0;
         this._kindlingPlaced = false;
+        this._stagingKindling = false;
         this._autoLitApplied = false;
         /** @type {CampfirePhysics|null} */
         this._physics = null;
@@ -233,7 +235,7 @@ export class CampfireEmbed {
             fireCantrip: fireCantrip?.name ?? null,
             kindlingPlaced: this._kindlingPlaced,
             fireLevelAdvisory: this._getFireLevelAdvisory(),
-            strikeCount: this._strikeCount,
+            strikeCount: this._strikeCountFor(this._getPlayerActor()?.id),
             trinkets: TRINKETS,
             emotes: EMOTES,
             whittleProgress: this._whittleProgress,
@@ -261,8 +263,9 @@ export class CampfireEmbed {
                 || "Place the campfire on the map before lighting.",
             activityFirePanel,
             coldCampActive: this._coldCampActive,
-            showFireMeter: this._makeCampCeremony ? this._lit : activityFirePanel,
+            showFireMeter: this._lit && (this._makeCampCeremony || activityFirePanel),
             meterLevel,
+            isGM: !!game.user?.isGM,
             showGiftWoodBtn: activityFirePanel && !this._lit && !!game.user?.isGM && !!this._onGiftCeremonyWood
         };
     }
@@ -382,6 +385,7 @@ export class CampfireEmbed {
             this._heat = 0;
             this._peakHeat = 0;
             this._coldCampActive = !!coldCamp;
+            // A douse is a fresh pit. Kindling staged before the fire caught does not carry over.
             if (wasLitBefore) this._kindlingPlaced = false;
             this._lastFireLevel = "unlit";
         } else {
@@ -501,6 +505,17 @@ export class CampfireEmbed {
         if (cantripBtn && !cantripBtn._bound) {
             cantripBtn._bound = true;
             cantripBtn.addEventListener("click", () => this._onCantripIgnite());
+        }
+
+        // GM Direct Light Fire
+        const gmLightBtn = el.querySelector('[data-action="gmLightFire"]');
+        if (gmLightBtn && !gmLightBtn._bound) {
+            gmLightBtn._bound = true;
+            gmLightBtn.addEventListener("click", () => {
+                if (!game.user?.isGM) return;
+                this._kindlingPlaced = true;
+                this._ignite(game.user.name, { method: "GM Fiat" });
+            });
         }
 
         const giftBtn = el.querySelector('[data-action="giftCeremonyWood"]');
@@ -871,22 +886,16 @@ export class CampfireEmbed {
             ui.notifications.warn("Place enough kindling for this tier first.");
             return;
         }
-        this._strikeCount++;
+        const strikeCount = this._bumpStrikeCount(lighter.actorId);
         this._playSpark();
 
         const hint = this._container?.querySelector(".ceremony-pit-strike-attempt")
             ?? this._container?.querySelector(".strike-hint");
-        if (hint) {
-            hint.textContent = this._strikeCount > FLINT_STRIKE_GUARANTEE_AFTER
-                ? `Attempt ${this._strikeCount} · It catches!`
-                : this._strikeCount === FLINT_STRIKE_GUARANTEE_AFTER
-                    ? `Attempt ${this._strikeCount} · Sure spark`
-                    : `Attempt ${this._strikeCount} · Keep trying!`;
-        }
+        if (hint) hint.textContent = this._strikeHint(strikeCount);
 
-        const chance = Math.min(this._strikeCount * 3, 20);
+        const chance = Math.min(strikeCount * 3, 20);
         const roll = Math.floor(Math.random() * 100);
-        const success = this._strikeCount > FLINT_STRIKE_GUARANTEE_AFTER || roll < chance;
+        const success = strikeCount > FLINT_STRIKE_GUARANTEE_AFTER || roll < chance;
 
         game.socket.emit(`module.${MODULE_ID}`, {
             type: "campfireStrike",
@@ -895,7 +904,7 @@ export class CampfireEmbed {
             actorName: lighter.actorName,
             actorId: lighter.actorId,
             method: lighter.method ?? "Tinderbox",
-            strikeCount: this._strikeCount,
+            strikeCount,
             success
         });
 
@@ -909,7 +918,7 @@ export class CampfireEmbed {
 
     receiveStrike(data) {
         if (data.userId === game.user.id) return;
-        this._strikeCount = data.strikeCount;
+        if (data.actorId) this._strikeCounts.set(data.actorId, Number(data.strikeCount) || 0);
         if (this._lit) return;
         if (!this._lit) this._playSpark();
         if (data.success) {
@@ -936,7 +945,7 @@ export class CampfireEmbed {
         // Make Camp ceremony: panel can show a lit minigame before the table commits;
         // map token stays off until RestSetupApp commits via onCeremonyIgnited.
         if (!this._makeCampCeremony) {
-            CampfireTokenLinker.setLightState(true, this.fireLevel);
+            CampfireTokenLinker.setLightState(true, this.fireLevel, { ignite: true });
         }
 
         if (this._litNotifyTimer) clearTimeout(this._litNotifyTimer);
@@ -988,6 +997,21 @@ export class CampfireEmbed {
         if (!actor) return false;
         if (game.user?.isGM) return true;
         return actor.isOwner;
+    }
+
+    _strikeCountFor(actorId) {
+        if (!actorId) return 0;
+        return this._strikeCounts.get(actorId) ?? 0;
+    }
+
+    _bumpStrikeCount(actorId) {
+        const next = this._strikeCountFor(actorId) + 1;
+        if (actorId) this._strikeCounts.set(actorId, next);
+        return next;
+    }
+
+    _strikeHint(count) {
+        return `Attempt ${count}`;
     }
 
     _hasTinderbox() {
@@ -1094,6 +1118,7 @@ export class CampfireEmbed {
             log._bound = true;
             log.addEventListener("dragstart", (e) => {
                 e.dataTransfer.setData("text/plain", "firewood");
+                e.dataTransfer.effectAllowed = "copy";
                 log.classList.add("dragging");
             });
             log.addEventListener("dragend", () => log.classList.remove("dragging"));
@@ -1102,61 +1127,72 @@ export class CampfireEmbed {
         if (dropZone && !dropZone._firewoodBound) {
             dropZone._firewoodBound = true;
             dropZone.addEventListener("dragover", (e) => {
+                if (![...e.dataTransfer.types].includes("text/plain")) return;
                 e.preventDefault();
                 dropZone.classList.add("drop-hover");
             });
-            dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drop-hover"));
-            dropZone.addEventListener("drop", async (e) => {
+            dropZone.addEventListener("dragleave", (e) => {
+                if (e.relatedTarget && dropZone.contains(e.relatedTarget)) return;
+                dropZone.classList.remove("drop-hover");
+            });
+            dropZone.addEventListener("drop", (e) => {
                 const data = e.dataTransfer.getData("text/plain");
                 if (data !== "firewood") return;
                 e.preventDefault();
                 dropZone.classList.remove("drop-hover");
 
-                const rect = dropZone.getBoundingClientRect();
-                const x = (e.clientX - rect.left) / rect.width;
-                const y = (e.clientY - rect.top) / rect.height;
-
-                if (this._makeCampCeremony && !this._lit) {
-                    if (!this._onStageCeremonyWood) return;
-                    const staged = await this._onStageCeremonyWood();
-                    if (!staged) return;
-                    // Requirement slots update via ceremony render. No pit physics
-                    // or catch-fire until the fire is lit.
-                    return;
-                }
-
-                const consumed = await this._consumeFirewood();
-                if (!consumed) return;
-
-                if (this._lit) {
-                    this._dropKindlingOnFire(x, y, { label: "Firewood", catchFire: true });
-                    const countEl = this._container?.querySelector(".firewood-count");
-                    const newCount = this._getFirewoodCount();
-                    if (countEl) countEl.textContent = `\u00d7${newCount}`;
-                    if (newCount <= 0) {
-                        const logEl = this._container?.querySelector(".firewood-log");
-                        if (logEl) logEl.remove();
-                        if (countEl) countEl.textContent = "";
-                    }
-                } else {
-                    if (this._kindlingPlaced) return;
-                    this._kindlingPlaced = true;
-                    this._dropKindlingOnFire(x, y, {
-                        label: "Kindling",
-                        catchFire: false
-                    });
-                    const actorName = this._getPlayerActor()?.name ?? game.user.name;
-                    this._pendingKindlingBanner = actorName;
-                    this.render();
-                }
-
-                this._emitCampfireStickDebounced({
-                    type: "campfireStick", userName: game.user.name,
-                    actorName: this._getPlayerActor()?.name ?? game.user.name,
-                    x, y, preLit: !this._lit
-                });
+                const rect = (el.querySelector(".campfire-fire-area") ?? dropZone).getBoundingClientRect();
+                const x = rect.width ? (e.clientX - rect.left) / rect.width : 0.5;
+                const y = rect.height ? (e.clientY - rect.top) / rect.height : 0.6;
+                void this._onFirewoodPlaced(x, y);
             });
         }
+    }
+
+    /**
+     * Spend one log only after the drop is accepted.
+     * Unlit: one log stages kindling. Lit: the log feeds the fire.
+     */
+    async _onFirewoodPlaced(x, y) {
+        if (this._makeCampCeremony && !this._lit) {
+            if (!this._onStageCeremonyWood) return;
+            const staged = await this._onStageCeremonyWood();
+            if (!staged) return;
+            return;
+        }
+
+        if (!this._lit) {
+            if (this._kindlingPlaced || this._stagingKindling) return;
+            this._stagingKindling = true;
+            const consumed = await this._consumeFirewood();
+            this._stagingKindling = false;
+            if (!consumed) return;
+            this._kindlingPlaced = true;
+            this._dropKindlingOnFire(x, y, {
+                label: "Kindling",
+                catchFire: false
+            });
+            this._pendingKindlingBanner = this._getPlayerActor()?.name ?? game.user.name;
+            this.render();
+        } else {
+            const consumed = await this._consumeFirewood();
+            if (!consumed) return;
+            this._dropKindlingOnFire(x, y, { label: "Firewood", catchFire: true });
+            const countEl = this._container?.querySelector(".firewood-count");
+            const newCount = this._getFirewoodCount();
+            if (countEl) countEl.textContent = `\u00d7${newCount}`;
+            if (newCount <= 0) {
+                const logEl = this._container?.querySelector(".firewood-log");
+                if (logEl) logEl.remove();
+                if (countEl) countEl.textContent = "";
+            }
+        }
+
+        this._emitCampfireStickDebounced({
+            type: "campfireStick", userName: game.user.name,
+            actorName: this._getPlayerActor()?.name ?? game.user.name,
+            x, y, preLit: !this._lit
+        });
     }
 
     _showKindlingBanner(actorName) {
@@ -1273,7 +1309,8 @@ export class CampfireEmbed {
     getSnapshot() {
         return {
             lit: this._lit, litBy: this._litBy, heat: this._heat,
-            strikeCount: this._strikeCount,
+            strikeCount: this._strikeCountFor(this._getPlayerActor()?.id),
+            strikeCounts: Object.fromEntries(this._strikeCounts),
             pile: this._physics?.getSettledItems() ?? []
         };
     }
@@ -1283,7 +1320,13 @@ export class CampfireEmbed {
         this._lit = snap.lit ?? false;
         this._litBy = snap.litBy ?? null;
         this._heat = snap.heat ?? 0;
-        this._strikeCount = snap.strikeCount ?? 0;
+        this._strikeCounts = new Map();
+        if (snap.strikeCounts && typeof snap.strikeCounts === "object") {
+            for (const [actorId, count] of Object.entries(snap.strikeCounts)) {
+                const value = Number(count);
+                if (actorId && Number.isFinite(value)) this._strikeCounts.set(actorId, value);
+            }
+        }
         if (snap.pile && this._physics) {
             this._physics.restoreSettledItems(snap.pile);
         }

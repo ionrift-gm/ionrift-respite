@@ -264,6 +264,49 @@ async function applyModuleFlags(doc, rf) {
 }
 
 /**
+ * dnd5e consumables store type as an object. Pathfinder items do not.
+ * Merging that blob into a Pathfinder item drops the name change.
+ * @param {import("@league-of-foundry-developers/foundry-vtt-types").Item} doc
+ * @param {Object} prepared
+ * @returns {Object}
+ */
+function compendiumUpdatePatch(doc, prepared) {
+    const dndShaped = doc.system?.type && typeof doc.system.type === "object";
+    if (dndShaped) {
+        const mergedSystem = foundry.utils.mergeObject(
+            foundry.utils.duplicate(doc.system ?? {}),
+            prepared.system ?? {},
+            { inplace: false }
+        );
+        return {
+            name: prepared.name,
+            type: prepared.type,
+            img: prepared.img,
+            folder: prepared.folder,
+            system: mergedSystem
+        };
+    }
+
+    const patch = {
+        name: prepared.name,
+        img: prepared.img,
+        folder: prepared.folder
+    };
+    const description = prepared.system?.description?.value;
+    if (description && doc.system?.description) {
+        patch["system.description.value"] = description;
+    }
+    // Pathfinder shows the identified name stored on the item, not the document name.
+    if (doc.system?.identification) {
+        patch["system.identification.identified.name"] = prepared.name;
+        if (description) {
+            patch["system.identification.identified.data.description.value"] = description;
+        }
+    }
+    return patch;
+}
+
+/**
  * @param {import("@league-of-foundry-developers/foundry-vtt-types").CompendiumCollection} pack
  * @param {string} itemRef
  * @param {Object} data
@@ -300,19 +343,16 @@ async function upsertCompendiumItem(pack, itemRef, data, knownId, outputName, fo
                     continue;
                 }
 
-                const mergedSystem = foundry.utils.mergeObject(
-                    foundry.utils.duplicate(doc.system ?? {}),
-                    prepared.system ?? {},
-                    { inplace: false }
-                );
-
-                await doc.update({
-                    name: prepared.name,
-                    type: prepared.type,
-                    img: prepared.img,
-                    folder: prepared.folder,
-                    system: mergedSystem
-                });
+                await doc.update(compendiumUpdatePatch(doc, prepared));
+                if (prepared.name && doc.system?.identification) {
+                    await doc.update({
+                        "system.identification.status": "identified",
+                        "system.identification.identified.name": prepared.name
+                    });
+                }
+                if (prepared.name && doc.name !== prepared.name) {
+                    await doc.update({ name: prepared.name });
+                }
 
                 await applyModuleFlags(doc, moduleFlags);
                 await refreshPackSidebar(pack);

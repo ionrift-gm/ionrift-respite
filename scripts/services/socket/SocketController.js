@@ -18,6 +18,7 @@ export const SOCKET_TYPES = Object.freeze({
     FORCE_RELOAD:          "forceReload",
 
     ACTIVITY_CHOICE:       "activityChoice",
+    CAMP_PROGRESS:         "campProgress",
 
     CAMP_FIRE_LEVEL_REQUEST:  "campFireLevelRequest",
     ACTIVITY_FIRE_LEVEL_REQUEST: "activityFireLevelRequest",
@@ -61,17 +62,10 @@ export const SOCKET_TYPES = Object.freeze({
 
     CAMP_ROLL_RESULT:      "campRollResult",
 
+    DAWN_SAVE_RESULT:      "dawnSaveResult",
+
     TRAINING_STATE_UPDATE: "trainingStateUpdate",
     TRAINING_COMPLETE:     "trainingComplete",
-
-    TRAVEL_DECLARATION:        "travelDeclaration",
-    TRAVEL_DECLARATIONS_SYNC:  "travelDeclarationsSync",
-    TRAVEL_ROLL_REQUEST:       "travelRollRequest",
-    TRAVEL_ROLL_RESULT:        "travelRollResult",
-    TRAVEL_LOOT_ROLL_PROMPT:   "travelLootRollPrompt",
-    TRAVEL_LOOT_ROLL_RESULT:   "travelLootRollResult",
-    TRAVEL_DEBRIEF:            "travelDebrief",
-    TRAVEL_INDIVIDUAL_DEBRIEF: "travelIndividualDebrief",
 
     AFK_UPDATE:            "afkUpdate",
 
@@ -102,6 +96,7 @@ export const SOCKET_TYPES = Object.freeze({
     SHORT_REST_AFK_UPDATE: "shortRestAfkUpdate",
     SHORT_REST_PLAYER_FINISHED: "shortRestPlayerFinished",
     SHORT_REST_SONG_VOLUNTEER:  "shortRestSongVolunteer",
+    SHORT_REST_CHEF_VOLUNTEER:  "shortRestChefVolunteer",
     SHORT_REST_HD_SPENT:   "shortRestHdSpent",
     /** GM ,  players: in-window summary before native shortRest() runs */
     SHORT_REST_COMPLETION_SUMMARY: "shortRestCompletionSummary",
@@ -211,6 +206,14 @@ export function emitForceReload() {
  */
 export function emitActivityChoice(userId, choices, craftingResults = null, followUps = null, earlyResults = null) {
     _emit(SOCKET_TYPES.ACTIVITY_CHOICE, { userId, choices, craftingResults, followUps, earlyResults });
+}
+
+/**
+ * Player to GM: gather result, gather skip, or a ready toggle.
+ * @param {object} patch
+ */
+export function emitCampProgress(patch) {
+    _emit(SOCKET_TYPES.CAMP_PROGRESS, patch ?? {});
 }
 
 /**
@@ -366,70 +369,6 @@ export function emitTreeRollResult(data) {
  */
 export function emitCampRollResult(data) {
     _emit(SOCKET_TYPES.CAMP_ROLL_RESULT, data);
-}
-
-/**
- * Player ,  GM: travel activity declaration.
- * @param {object} data
- */
-export function emitTravelDeclaration(data) {
-    _emit(SOCKET_TYPES.TRAVEL_DECLARATION, data);
-}
-
-/**
- * GM ,  Players: live sync of all travel declarations.
- * @param {object} data
- */
-export function emitTravelDeclarationsSync(data) {
-    _emit(SOCKET_TYPES.TRAVEL_DECLARATIONS_SYNC, data);
-}
-
-/**
- * GM ,  Players: travel roll request.
- * @param {object} data
- */
-export function emitTravelRollRequest(data) {
-    _emit(SOCKET_TYPES.TRAVEL_ROLL_REQUEST, data);
-}
-
-/**
- * Player ,  GM: travel roll result.
- * @param {object} data
- */
-export function emitTravelRollResult(data) {
-    _emit(SOCKET_TYPES.TRAVEL_ROLL_RESULT, data);
-}
-
-/**
- * GM ,  Player: prompt for forage/hunt loot table roll(s) after a successful skill check.
- * @param {object} data
- */
-export function emitTravelLootRollPrompt(data) {
-    _emit(SOCKET_TYPES.TRAVEL_LOOT_ROLL_PROMPT, data);
-}
-
-/**
- * Player ,  GM: loot table d100 roll result(s).
- * @param {object} data
- */
-export function emitTravelLootRollResult(data) {
-    _emit(SOCKET_TYPES.TRAVEL_LOOT_ROLL_RESULT, data);
-}
-
-/**
- * GM ,  specific Player: private travel debrief.
- * @param {object} data
- */
-export function emitTravelDebrief(data) {
-    _emit(SOCKET_TYPES.TRAVEL_DEBRIEF, data);
-}
-
-/**
- * GM ,  specific Player: one forage/hunt result.
- * @param {object} data
- */
-export function emitTravelIndividualDebrief(data) {
-    _emit(SOCKET_TYPES.TRAVEL_INDIVIDUAL_DEBRIEF, data);
 }
 
 /**
@@ -606,4 +545,12 @@ export function emitWorkbenchIdentifyRequest(data) {
  */
 export function emitWorkbenchIdentifyResult(data) {
     _emit(SOCKET_TYPES.WORKBENCH_IDENTIFY_RESULT, data);
+}
+
+/**
+ * Player to GM: broadcast Constitution save outcome during Dawn phase.
+ * @param {{ actorId: string, rollTotal: number, passed: boolean }} data
+ */
+export function emitDawnSaveResult(data) {
+    _emit(SOCKET_TYPES.DAWN_SAVE_RESULT, data);
 }

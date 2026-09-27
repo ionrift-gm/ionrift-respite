@@ -1,4 +1,4 @@
-<div class="crafting-picker">
+<div class="crafting-picker station-crafting-panel crafting-split">
     {{!-- Header --}}
     <div class="crafting-header">
         <img class="crafting-actor-img" src="{{actorImg}}" alt="{{actorName}}">
@@ -10,153 +10,295 @@
 
     {{!-- ═══════════ AFTER CRAFTING ═══════════ --}}
     {{#if hasCrafted}}
-
-    <div
-        class="crafting-section crafting-result {{#if craftingResult.success}}result-success{{else}}result-failure{{/if}}">
-        <h4>
+    <div class="crafting-section crafting-result crafting-result-hero {{#if craftingResult.success}}result-success{{else}}result-failure{{/if}}">
+        <div class="craft-result-hero">
+            <div class="craft-result-icon-wrap {{#if craftingResult.success}}glow-success{{else}}glow-failure{{/if}}">
+                {{#if craftingResult.success}}
+                <img src="{{craftingResult.output.img}}" alt="{{craftingResult.output.name}}" class="craft-result-icon">
+                {{else}}
+                <i class="fas fa-times craft-result-fail-icon"></i>
+                {{/if}}
+            </div>
             {{#if craftingResult.success}}
-            <i class="fas fa-check-circle"></i> Success
+            <div class="craft-result-item-name">{{craftingResult.output.name}}{{#if craftingResult.output.quantity}} <span class="craft-result-qty">(&times;{{craftingResult.output.quantity}})</span>{{/if}}</div>
+            <div class="craft-result-badge badge-success"><i class="fas fa-check"></i> Crafted Successfully</div>
             {{else}}
-            <i class="fas fa-times-circle"></i> Failed
+            <div class="craft-result-item-name">{{craftingResult.recipeName}}</div>
+            <div class="craft-result-badge badge-failure"><i class="fas fa-times"></i> Crafting Failed</div>
             {{/if}}
-        </h4>
-        <div class="result-roll">
-            Rolled <strong>{{craftingResult.roll}}</strong> vs DC <strong>{{craftingResult.dc}}</strong>
-            <span class="risk-tag risk-{{craftingResult.riskTier}}">{{craftingResult.riskTier}}</span>
         </div>
-        <div class="result-narrative">{{craftingResult.narrative}}</div>
-        {{#if craftingResult.success}}
-        <div class="result-output">
-            <i class="fas fa-plus-circle"></i> Created: <strong>{{craftingResult.output.name}}</strong>
-            {{#if craftingResult.output.quantity}}(x{{craftingResult.output.quantity}}){{/if}}
+        <div class="craft-result-divider"></div>
+        <div class="craft-result-details">
+            {{#unless craftingResult.noSkillCheck}}
+            <div class="craft-result-detail-row">
+                <i class="fas fa-dice-d20"></i>
+                <span>Rolled <strong>{{craftingResult.roll}}</strong> vs DC <strong>{{craftingResult.dc}}</strong></span>
+                <span class="risk-tag risk-{{craftingResult.riskTier}}">{{craftingResult.riskTier}}</span>
+            </div>
+            {{/unless}}
+            <div class="craft-result-detail-row narrative">
+                <i class="fas fa-feather-alt"></i>
+                <span>{{craftingResult.narrative}}</span>
+            </div>
+            {{#if craftingResult.ingredientsConsumed}}
+            <div class="craft-result-detail-row consumed">
+                <i class="fas fa-fire"></i>
+                <span>Ingredients consumed</span>
+            </div>
+            {{else}}
+            <div class="craft-result-detail-row preserved">
+                <i class="fas fa-shield-alt"></i>
+                <span>Ingredients preserved</span>
+            </div>
+            {{/if}}
         </div>
-        {{/if}}
-        {{#if craftingResult.ingredientsConsumed}}
-        <div class="result-consumed"><i class="fas fa-fire"></i> Ingredients consumed</div>
-        {{else}}
-        <div class="result-preserved"><i class="fas fa-shield-alt"></i> Ingredients preserved</div>
-        {{/if}}
-    </div>
 
-    <div class="crafting-done-message">
-        <i class="fas fa-moon"></i> Crafting complete for this rest. Close to return.
+        {{#if craftingResult.isPartyMeal}}
+        {{#if craftingResult.success}}
+        <div class="feast-roster-section">
+            <div class="feast-roster-portraits">
+                {{#each craftingResult.partyRoster}}
+                <div class="feast-portrait {{#if alreadyWellFed}}already-fed{{else}}will-eat{{/if}}"
+                     data-tooltip="{{name}}{{#if alreadyWellFed}}: already Well Fed{{else}}: will eat now{{/if}}">
+                    <img src="{{img}}" alt="{{name}}" class="feast-portrait-img">
+                    <span class="feast-portrait-badge">
+                        {{#if alreadyWellFed}}
+                        <i class="fas fa-box-open"></i>
+                        {{else}}
+                        <i class="fas fa-check"></i>
+                        {{/if}}
+                    </span>
+                </div>
+                {{/each}}
+            </div>
+            <span class="feast-roster-label">Feeds {{craftingResult.partyRoster.length}} party members</span>
+        </div>
+
+        {{#unless craftingResult.partyMealDispositionDone}}
+        <div class="feast-footer-actions">
+            <button type="button" class="btn-secondary feast-keep-btn" data-action="closePicker">
+                <i class="fas fa-box"></i> Keep in inventory
+            </button>
+            <button type="button" class="btn-feast-serve" data-action="serveFeastNow">
+                <i class="fas fa-utensils"></i> Serve Now
+            </button>
+        </div>
+        {{else}}
+        <div class="crafting-done-message">
+            <i class="fas fa-utensils"></i> Serving complete. The shared dish has been served to the party.
+        </div>
+        {{/unless}}
+        {{else}}
+        <div class="crafting-done-message">
+            <i class="fas fa-moon"></i> Crafting complete for this rest.
+        </div>
+        {{/if}}
+        {{else}}
+        <div class="crafting-done-message">
+            <i class="fas fa-moon"></i> Crafting complete for this rest.
+        </div>
+        {{/if}}
     </div>
 
     {{else}}
-    {{!-- ═══════════ BEFORE CRAFTING ═══════════ --}}
+    {{!-- ═══════════ BEFORE CRAFTING: 2-COLUMN WORKBENCH ═══════════ --}}
+    <div class="crafting-split-body">
 
-    {{!-- Step 1: Choose Recipe --}}
-    <div class="crafting-step">
-        <div class="step-label"><span class="step-num">1</span> Choose a Recipe</div>
-        {{#if available.length}}
-        <div class="recipe-list">
-            {{#each available}}
-            <div class="recipe-card {{#if isSelected}}selected{{/if}}" data-action="selectRecipe"
-                data-recipe-id="{{id}}">
-                <img src="{{outputImg}}" alt="{{name}}" class="recipe-icon">
-                <div class="recipe-info">
-                    <div class="recipe-name">{{name}}</div>
-                    <div class="recipe-brief">
-                        {{#each ingredientList}}
-                        <span class="ingredient-pill met">{{required}}x {{name}}</span>
-                        {{/each}}
+        {{!-- ── LEFT PANEL: Recipe Catalog ── --}}
+        <div class="crafting-list-panel">
+            <div class="crafting-list-heading">
+                <i class="fas fa-scroll"></i> Recipes
+            </div>
+            {{#if available.length}}
+            <div class="recipe-list recipe-list-compact">
+                {{#each available}}
+                <div class="recipe-card recipe-card-compact {{#if isSelected}}selected{{/if}}" data-action="selectRecipe"
+                    data-recipe-id="{{id}}">
+                    <img src="{{outputImg}}" alt="{{name}}" class="recipe-icon recipe-icon-compact">
+                    <div class="recipe-info">
+                        <div class="recipe-name">{{name}}</div>
+                        <div class="recipe-brief">
+                            {{#each ingredientList}}
+                            <span class="ingredient-pill met">{{required}}x {{name}}</span>
+                            {{/each}}
+                        </div>
                     </div>
                 </div>
-                <div class="recipe-select-indicator">
-                    {{#if isSelected}}<i class="fas fa-check-circle"></i>{{else}}<i class="far fa-circle"></i>{{/if}}
+                {{/each}}
+            </div>
+            {{else}}
+            <div class="crafting-empty">No recipes available with current ingredients.</div>
+            {{/if}}
+
+            {{!-- Missing Recipes --}}
+            {{#if missing.length}}
+            <div class="missing-toggle" data-action="toggleMissing">
+                <i class="fas fa-caret-{{#if showMissing}}down{{else}}right{{/if}}"></i>
+                Missing ({{missing.length}})
+            </div>
+            {{#if showMissing}}
+            <div class="missing-recipes">
+                {{#each missing}}
+                <div class="recipe-card recipe-card-compact partial">
+                    <img src="{{outputImg}}" alt="{{name}}" class="recipe-icon-sm">
+                    <div class="recipe-info">
+                        <div class="recipe-name">{{name}}</div>
+                        <div class="recipe-brief">
+                            {{#each ingredientList}}
+                            <span class="ingredient-pill {{#if met}}met{{else}}unmet{{/if}}">{{required}}x {{name}}</span>
+                            {{else}}
+                            {{#if lockReason}}<span class="ingredient-pill unmet">{{lockReason}}</span>{{/if}}
+                            {{/each}}
+                        </div>
+                    </div>
                 </div>
+                {{/each}}
             </div>
-            {{/each}}
-        </div>
-        {{else}}
-        <div class="crafting-empty">No recipes available with current ingredients.</div>
-        {{/if}}
-    </div>
+            {{/if}}
+            {{/if}}
 
-    {{!-- Step 2: Choose Risk --}}
-    <div class="crafting-step">
-        <div class="step-label"><span class="step-num">2</span> Choose Your Approach</div>
-        <div class="risk-selector">
-            {{#each riskTiers}}
-            <button type="button" class="btn-risk {{#if selected}}selected{{/if}}" data-action="selectRisk"
-                data-risk="{{id}}">
-                <div class="risk-label">{{label}}</div>
-                <div class="risk-hint">{{hint}}</div>
-            </button>
-            {{/each}}
-        </div>
-    </div>
+            {{!-- Monster Cookbook alternative --}}
+            {{#if mfCookbookAvailable}}
+            <div class="mf-cookbook-section">
+                <button type="button" class="btn-mf-cookbook" data-action="openMonsterCookbook"
+                    data-tooltip="Cook from the Monster Cookbook instead. A finished cook uses this rest's cooking activity.">
+                    <i class="fas fa-book-open"></i> Monster Cookbook
+                </button>
+            </div>
+            {{/if}}
 
-    {{!-- Commitment Summary + Hero Craft Button --}}
-    {{#if commitSummary}}
-    <div class="craft-commit-panel">
-        <div class="commit-header">Ready to Craft</div>
-        <div class="commit-body">
-            <div class="commit-row">
-                <span class="commit-label">Recipe</span>
-                <span class="commit-value">{{commitSummary.recipeName}}</span>
-            </div>
-            <div class="commit-row">
-                <span class="commit-label">Skill Check</span>
-                <span class="commit-value">{{commitSummary.skill}} vs DC {{commitSummary.dc}}</span>
-            </div>
-            <div class="commit-row">
-                <span class="commit-label">Approach</span>
-                <span class="commit-value risk-tag risk-{{commitSummary.risk}}">{{commitSummary.riskLabel}}</span>
-            </div>
-            <div class="commit-row">
-                <span class="commit-label">Uses</span>
-                <span class="commit-value">{{commitSummary.ingredientCost}}</span>
-            </div>
-            <div class="commit-row">
-                <span class="commit-label">Produces</span>
-                <span class="commit-value output-highlight">{{commitSummary.outputName}}</span>
-            </div>
-            <div class="commit-row commit-warning">
-                <span class="commit-label">If Unsuccessful</span>
-                <span class="commit-value">{{commitSummary.failConsequence}}</span>
-            </div>
-        </div>
-        <button type="button" class="btn-hero-craft" data-action="craftRecipe">
-            <i class="fas fa-hammer"></i> Craft
-        </button>
-    </div>
-    {{else}}
-    <div class="craft-commit-panel empty">
-        <div class="commit-placeholder">
-            <i class="fas fa-hand-pointer"></i> Select a recipe to see your crafting plan
-        </div>
-    </div>
-    {{/if}}
-
-    {{!-- Collapsible: Missing Recipes (partial matches + fully unmet / locked) --}}
-    {{#if missing.length}}
-    <div class="missing-toggle" data-action="toggleMissing">
-        <i class="fas fa-caret-{{#if showMissing}}down{{else}}right{{/if}}"></i>
-        Missing Ingredients ({{missing.length}} recipes)
-    </div>
-    {{#if showMissing}}
-    <div class="missing-recipes">
-        {{#each missing}}
-        <div class="recipe-card partial">
-            <img src="{{outputImg}}" alt="{{name}}" class="recipe-icon-sm">
-            <div class="recipe-info">
-                <div class="recipe-name">{{name}} <span class="recipe-dc-sm">DC {{dcDisplay}}</span></div>
-                <div class="recipe-brief">
-                    {{#each ingredientList}}
-                    <span class="ingredient-pill {{#if met}}met{{else}}unmet{{/if}}">{{required}}x {{name}} {{#unless
-                        met}}(need {{required}}){{/unless}}</span>
-                    {{else}}
-                    {{#if lockReason}}<span class="ingredient-pill unmet">{{lockReason}}</span>{{/if}}
+            {{!-- Carried stock / ingredients in inventory --}}
+            {{#if ingredients.length}}
+            <div class="crafting-pantry-section">
+                <div class="crafting-pantry-heading">
+                    <i class="fas fa-boxes-stacked"></i> Stock &amp; Ingredients
+                </div>
+                <div class="crafting-pantry-grid">
+                    {{#each ingredients}}
+                    <div class="pantry-token" data-tooltip="{{name}} (&times;{{quantity}})">
+                        <img src="{{img}}" alt="{{name}}" class="pantry-token-img">
+                        <span class="pantry-token-qty">&times;{{quantity}}</span>
+                        <span class="pantry-token-name">{{name}}</span>
+                    </div>
                     {{/each}}
                 </div>
             </div>
+            {{/if}}
         </div>
-        {{/each}}
-    </div>
-    {{/if}}
-    {{/if}}
 
+        {{!-- ── RIGHT PANEL: Recipe Hero & Commitment ── --}}
+        <div class="crafting-detail-panel">
+            {{#if selectedRecipe}}
+            <div class="recipe-hero">
+                <div class="recipe-hero-header">
+                    <img src="{{selectedRecipe.outputImg}}" alt="{{selectedRecipe.name}}" class="recipe-hero-icon">
+                    <div class="recipe-hero-titles">
+                        <h3 class="recipe-hero-name">{{selectedRecipe.name}}</h3>
+                        {{#unless selectedRecipe.noSkillCheck}}
+                        <div class="recipe-hero-dc-row">
+                            <span class="recipe-hero-dc"><i class="fas fa-dice-d20"></i> DC {{selectedRecipe.dcDisplay}}</span>
+                            {{#if selectedRecipe.dcBreakdown.hasModifiers}}
+                            <span class="dc-base-hint">{{selectedRecipe.dcBreakdown.base}} base</span>
+                            {{#each selectedRecipe.dcBreakdown.factors}}
+                            <span class="dc-factor-pill dc-factor-{{sign}}">{{label}}</span>
+                            {{/each}}
+                            {{/if}}
+                        </div>
+                        {{/unless}}
+                        {{#if selectedRecipe.isPartyMeal}}
+                        <span class="recipe-hero-badge badge-party-meal"><i class="fas fa-users"></i> Feeds the Party</span>
+                        {{/if}}
+                    </div>
+                </div>
+                {{#if selectedRecipe.description}}
+                <p class="recipe-hero-description">{{selectedRecipe.description}}</p>
+                {{/if}}
+
+                {{!-- Ingredient tokens --}}
+                {{#if selectedRecipe.ingredientList.length}}
+                <div class="recipe-hero-ingredients">
+                    {{#each selectedRecipe.ingredientList}}
+                    <div class="hero-ingredient-token {{#if met}}met{{else}}unmet{{/if}}" data-tooltip="{{required}}x {{name}} (have {{available}})">
+                        <img src="{{img}}" alt="{{name}}" class="hero-ingredient-icon">
+                        <span class="hero-ingredient-qty">{{required}}</span>
+                        <span class="hero-ingredient-name">{{name}}</span>
+                    </div>
+                    {{/each}}
+                </div>
+                {{/if}}
+
+                {{!-- Buff preview --}}
+                {{#if selectedRecipe.buffPreview}}
+                <div class="recipe-hero-buff">
+                    <span class="hero-buff-pill">
+                        <i class="fas fa-magic"></i>
+                        {{selectedRecipe.buffPreview.label}}{{#if selectedRecipe.buffPreview.formula}}: {{selectedRecipe.buffPreview.formula}}{{/if}}
+                    </span>
+                    <span class="hero-buff-duration">{{selectedRecipe.buffPreview.duration}}</span>
+                    {{#if (eq selectedRecipe.buffPreview.target "party")}}
+                    <span class="hero-buff-target"><i class="fas fa-users"></i> Party</span>
+                    {{/if}}
+                </div>
+                {{/if}}
+
+                {{!-- Satiation badges --}}
+                {{#if selectedRecipe.satiates.length}}
+                <div class="recipe-hero-satiates">
+                    {{#each selectedRecipe.satiates}}
+                    <span class="hero-satiate-badge satiate-{{this}}">
+                        {{#if (eq this "food")}}<i class="fas fa-drumstick-bite"></i> Food{{/if}}
+                        {{#if (eq this "water")}}<i class="fas fa-tint"></i> Water{{/if}}
+                    </span>
+                    {{/each}}
+                    {{#if selectedRecipe.isWellFed}}
+                    <span class="hero-satiate-badge satiate-wellfed"><i class="fas fa-heart"></i> Well Fed</span>
+                    {{/if}}
+                </div>
+                {{/if}}
+            </div>
+            {{else}}
+            <div class="recipe-hero recipe-hero-empty">
+                <div class="recipe-hero-placeholder">
+                    {{#if noAvailableRecipes}}
+                    <i class="fas fa-box-open"></i>
+                    <span>No ingredients for any recipe. Forage or check inventory.</span>
+                    {{else}}
+                    <i class="fas fa-utensils"></i>
+                    <span>Select a recipe to see details</span>
+                    {{/if}}
+                </div>
+            </div>
+            {{/if}}
+
+            {{!-- Step 2: Choose Approach --}}
+            {{#if hideRiskTiers}}
+            {{#if selectedRecipe}}
+            <div class="crafting-step crafting-step-guaranteed">
+                <div class="guaranteed-badge">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Guaranteed Preparation · No skill check or ingredients required</span>
+                </div>
+            </div>
+            {{/if}}
+            {{else}}
+            <div class="crafting-step crafting-step-approach">
+                <div class="step-label"><span class="step-num">2</span> Choose Your Approach</div>
+                <div class="risk-selector">
+                    {{#each riskTiers}}
+                    <button type="button" class="btn-risk {{#if selected}}selected{{/if}}" data-action="selectRisk"
+                        data-risk="{{id}}">
+                        <div class="risk-label">{{label}}</div>
+                        <div class="risk-hint">{{hint}}</div>
+                    </button>
+                    {{/each}}
+                </div>
+            </div>
+            {{/if}}
+
+            {{!-- Commitment Summary + Craft Button --}}
+            {{> craftCommitPanel commitSummary=commitSummary noAvailableRecipes=noAvailableRecipes}}
+        </div>
+    </div>
     {{/if}}
 
     {{!-- Footer --}}
@@ -164,11 +306,12 @@
         <button type="button" class="btn-secondary" data-action="closePicker">
             {{#if hasCrafted}}Close{{else}}Cancel{{/if}}
         </button>
-        {{#if mfCookbookAvailable}}
-        <button type="button" class="btn-secondary mf-cookbook-btn" data-action="openMonsterCookbook"
-            data-tooltip="Cook from the Monster Cookbook instead. A finished cook uses this rest's cooking activity.">
-            <i class="fas fa-book-open"></i> Monster Cookbook
+        {{#unless hasCrafted}}
+        {{#if commitSummary}}
+        <button type="button" class="btn-hero-craft btn-hero-craft-promoted" data-action="craftCommit">
+            <i class="fas fa-hammer"></i> <span>{{#if commitSummary.actionLabel}}{{commitSummary.actionLabel}}{{else}}Craft{{/if}}</span>
         </button>
         {{/if}}
+        {{/unless}}
     </div>
 </div>

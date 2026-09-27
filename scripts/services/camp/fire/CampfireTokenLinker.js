@@ -167,13 +167,16 @@ export class CampfireTokenLinker {
      * Only the GM should call this directly; players route through socket.
      * @param {boolean} lit - true to turn light on, false to turn off
      * @param {string|null} [fireLevel] - embers | campfire | bonfire when lit; defaults to campfire if omitted
+     * @param {{ ignite?: boolean }} [options] - ignite plays the one-shot before the crackle loop
      */
-    static async setLightState(lit, fireLevel = null) {
+    static async setLightState(lit, fireLevel = null, options = {}) {
+        const ignite = !!options.ignite && !!lit;
         if (!game.user.isGM) {
             game.socket.emit(`module.${MODULE_ID}`, {
                 type: "campfireTokenSync",
                 lit,
-                fireLevel: lit ? (fireLevel ?? "campfire") : null
+                fireLevel: lit ? (fireLevel ?? "campfire") : null,
+                ignite
             });
             return;
         }
@@ -183,6 +186,13 @@ export class CampfireTokenLinker {
         if (!token) {
             Logger.log(`${MODULE_ID} | CampfireTokenLinker: no campfire token found on scene`);
             if (base && !lit) await base.update({ hidden: true });
+            Hooks.callAll("ionrift.respite.campfireStateChanged", {
+                lit: !!lit,
+                fireLevel: lit ? (fireLevel ?? "campfire") : "unlit",
+                token: null,
+                inHud: true,
+                ignite
+            });
             return;
         }
 
@@ -210,6 +220,13 @@ export class CampfireTokenLinker {
             });
             if (base) await base.update({ hidden: true });
             Logger.log(`${MODULE_ID} | CampfireTokenLinker: light ON (${tierKey}), flame visible to players`);
+            Hooks.callAll("ionrift.respite.campfireStateChanged", {
+                lit: true,
+                fireLevel: tierKey,
+                token,
+                inHud: false,
+                ignite
+            });
         } else {
             const { x, y, width, height } = CampfireTokenLinker.#patchCenterPreserving(token, 1, 1);
             await token.update({
@@ -225,6 +242,13 @@ export class CampfireTokenLinker {
             });
             if (base) await base.update({ hidden: true });
             Logger.log(`${MODULE_ID} | CampfireTokenLinker: light OFF, campfire hidden from players`);
+            Hooks.callAll("ionrift.respite.campfireStateChanged", {
+                lit: false,
+                fireLevel: "unlit",
+                token,
+                inHud: false,
+                ignite: false
+            });
         }
     }
 

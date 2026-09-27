@@ -5,6 +5,7 @@ import {
     placeStation,
     placePlayerGear,
     clearCampTokens,
+    clearCampfireSite,
     relocateCampfireSite,
     clearPlayerCampGear,
     clearPlayerCampGearType,
@@ -70,7 +71,7 @@ export class CampPlacementDelegate {
     _campPlacementStillActive() {
         const app = this._app;
 
-        if (app._phase !== "camp" || app._terminated) return false;
+        if (!["camp", "activity", "meal"].includes(app._phase) || app._terminated) return false;
         // The live rest app is tracked module-side and exposed via getActiveApp().
         // Treat a missing global ref as still-active when app instance is mounted,
         // covering the registration gap the socket self-heal also guards against.
@@ -115,7 +116,8 @@ export class CampPlacementDelegate {
             const canvasEl = document.getElementById("board");
             const originalCursor = canvasEl?.style.cursor;
             if (canvasEl) canvasEl.style.cursor = "crosshair";
-            ui.notifications.info("Click the map to place the campfire pit. Right-click or Escape to cancel.");
+            ui.notifications.info(options.prompt
+                ?? "Click the map to place the campfire pit. Right-click or Escape to cancel.");
 
             const gs = canvas.grid?.size ?? canvas.dimensions?.size ?? 100;
             const snapMode = CONST.GRID_SNAPPING_MODES?.CENTER ?? 1;
@@ -193,7 +195,7 @@ export class CampPlacementDelegate {
                 const snapped = canvas.grid?.getSnappedPoint?.({ x: wx, y: wy }, { mode: snapMode });
                 const cx = snapped?.x ?? wx;
                 const cy = snapped?.y ?? wy;
-                updateStubGhosts(cx, cy);
+                if (!app._isTotM) updateStubGhosts(cx, cy);
                 if (spr) {
                     spr.x = cx;
                     spr.y = cy;
@@ -287,7 +289,7 @@ export class CampPlacementDelegate {
     async _startCampPitCursorFlow() {
         const app = this._app;
 
-        if (!game.user.isGM || app._phase !== "camp" || app._campPitCursorInFlight) return;
+        if (!game.user.isGM || !["camp", "activity", "meal"].includes(app._phase) || app._campPitCursorInFlight) return;
         if (hasCampfirePlaced()) return;
         app._campPitCursorInFlight = true;
         try {
@@ -470,18 +472,10 @@ export class CampPlacementDelegate {
         if (data?.type === "ionrift-campfire-only" || data?.type === "ionrift-compound-camp") {
             if (!game.user.isGM) return;
             if (app._isTotM) {
-                await placeCampfire(x, y, { pitBaseTextureSrc: pickCampfirePitBaseTexture() });
-                if (app._phase === "camp") {
-                    await CampfireTokenLinker.setLightState(false);
-                    await app._saveRestState();
-                    if (game.user.isGM) app._broadcastMakeCampPhaseSync();
-                } else {
-                    await CampfireTokenLinker.setLightState(false);
-                }
-                app.render();
+                await this._commitTotmMapCampfire(x, y);
                 return;
             }
-            if (app._phase !== "camp" || !isComfortEnabled()) return;
+            if ((app._phase !== "camp" && app._phase !== "activity") || !isComfortEnabled()) return;
             if (hasCampfirePlaced()) {
                 const moved = await relocateCampfireSite(x, y, {
                     safeRestSpot: !!app._engine?.safeRestSpot,
@@ -584,12 +578,44 @@ export class CampPlacementDelegate {
     
     }
 
+    async _commitTotmMapCampfire(worldX, worldY) {
+        const app = this._app;
+
+        if (!game.user.isGM || !this._campPlacementStillActive()) return false;
+        const placed = await placeCampfire(worldX, worldY, {
+            pitBaseTextureSrc: pickCampfirePitBaseTexture()
+        });
+        if (!placed) return false;
+        await CampfireTokenLinker.setLightState(false);
+        if (app._phase === "camp") {
+            await app._saveRestState();
+            if (game.user.isGM) app._broadcastMakeCampPhaseSync();
+        }
+        app.render();
+        return true;
+    }
+
     async onReclaimCampfire(event, target) {
         const app = this._app;
 
         event.preventDefault?.();
         event.stopPropagation?.();
-        if (!game.user.isGM || app._phase !== "camp") return;
+        if (!game.user.isGM || !["camp", "activity", "meal"].includes(app._phase)) return;
+
+        if (app._isTotM) {
+            if (!hasCampfirePlaced()) {
+                ui.notifications.info("Campfire is not on the map.");
+                app.render({ force: true });
+                return;
+            }
+            const removed = await clearCampfireSite();
+            ui.notifications.info(removed > 0
+                ? "Campfire taken off the map."
+                : "No campfire on the map.");
+            app.render({ force: true });
+            return;
+        }
+
         if (app._stationsComfortAutoAdvanceAfterFireLit() && (app._fireLevel ?? "unlit") !== "unlit") {
             return;
         }
@@ -828,6 +854,7 @@ export class CampPlacementDelegate {
             }
         }
 
+        const wasUnlit = (app._fireLevel ?? "unlit") === "unlit";
         if (level === (app._fireLevel ?? "unlit")) return;
 
         app._coldCampDecided = false;
@@ -841,7 +868,7 @@ export class CampPlacementDelegate {
             app._engine.fireRollModifier = FIRE_ENCOUNTER_MOD[level] ?? 0;
         }
 
-        await CampfireTokenLinker.setLightState(true, level);
+        await CampfireTokenLinker.setLightState(true, level, { ignite: wasUnlit });
 
         emitPhaseChanged("camp", {
                 fireLevel: level,
@@ -949,7 +976,7 @@ export class CampPlacementDelegate {
             app._engine.fireRollModifier = FIRE_ENCOUNTER_MOD[level] ?? 0;
         }
 
-        await CampfireTokenLinker.setLightState(true, level);
+        await CampfireTokenLinker.setLightState(true, level, { ignite: cur === "unlit" });
 
         const label = level.charAt(0).toUpperCase() + level.slice(1);
         if (newCost > curCost && (newCost - curCost) > 0) {
@@ -983,12 +1010,18 @@ export class CampPlacementDelegate {
 
         if (!game.user.isGM) return { ok: false };
         if (app._phase !== "activity") return { ok: false };
-        if (app._coldCampDecided && (app._fireLevel ?? "unlit") === "unlit") return { ok: true };
+        if ((app._fireLevel ?? "unlit") === "unlit" && (app._coldCampPreview || app._campFirePreviewLevel === "cold_camp")) {
+            return { ok: true };
+        }
 
-        app._coldCampDecided = true;
+        // Same unlit ceremony as lighting. Cold is the selected tier, not a separate panel.
+        app._coldCampDecided = false;
+        app._coldCampPreview = true;
+        app._campFirePreviewLevel = "cold_camp";
         app._fireLitBy = null;
         app._fireLevel = "unlit";
-        app._campFirePreviewLevel = null;
+        app._makeCampStagedWood = [];
+        app._makeCampStagedWoodTier = null;
         const FIRE_MOD = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL;
         if (app._engine) {
             app._engine.fireLevel = "unlit";
@@ -997,21 +1030,22 @@ export class CampPlacementDelegate {
         await CampfireTokenLinker.setLightState(false);
 
         emitPhaseChanged("activity", {
-            coldCampDecided: true,
+            coldCampDecided: false,
+            coldCampPreview: true,
+            campFirePreviewLevel: "cold_camp",
             fireLevel: "unlit",
             fireLitBy: null,
+            makeCampStagedWood: [],
             selectedTerrain: app._selectedTerrain ?? null,
             comfort: app._engine?.comfort ?? null,
             activeShelters: app._engine?.activeShelters ?? []
         });
 
         await app._saveRestState();
-        app._syncTotmCampfireEmbedFromRest();
+        app._campfireApp?.setPanelMode({ makeCampCeremony: true, showDouseBtn: false });
+        app._syncCampCeremonyPreviewToEmbed({ force: true });
         app.render();
         void refreshOpenStationDialog();
-        if (!fromPlayer) {
-            ui.notifications.info("Cold camp set.");
-        }
         return { ok: true };
     
     }
@@ -1026,6 +1060,32 @@ export class CampPlacementDelegate {
         // Activity-phase fire changes use a separate socket + handler
         // so the GM runs changeFireLevelDuringActivity (which confirms cost deltas).
         if (app._phase === "activity" && app._isTotM) {
+            const isUnlit = (app._fireLevel ?? "unlit") === "unlit";
+            if (isUnlit) {
+                if (!game.user.isGM) {
+                    emitCampFireLevelRequest(level, game.user.id);
+                    return;
+                }
+                app._maybeClearStagedWoodOnTierChange(level);
+                app._campFirePreviewLevel = level;
+                app._coldCampPreview = false;
+                app._coldCampDecided = false;
+                if (app._engine) {
+                    app._engine.fireLevel = "unlit";
+                    app._engine.fireRollModifier = 0;
+                }
+                emitPhaseChanged(app._phase, {
+                    campFirePreviewLevel: level,
+                    coldCampPreview: false,
+                    coldCampDecided: false,
+                    makeCampStagedWood: [...(app._makeCampStagedWood ?? [])],
+                    selectedTerrain: app._selectedTerrain ?? null
+                });
+                app._syncCampCeremonyPreviewToEmbed();
+                app.render();
+                return;
+            }
+
             if (!game.user.isGM) {
                 // Player-side pre-validation with modal dialogs
                 const cur = app._fireLevel ?? "unlit";
@@ -1143,6 +1203,32 @@ export class CampPlacementDelegate {
         const app = this._app;
 
         if (app._phase === "activity") {
+            const isUnlit = (app._fireLevel ?? "unlit") === "unlit";
+            if (isUnlit) {
+                if (!game.user.isGM) {
+                    emitCampColdCampRequest(game.user.id);
+                    return;
+                }
+                app._maybeClearStagedWoodOnTierChange("cold_camp");
+                app._coldCampDecided = false;
+                app._coldCampPreview = true;
+                app._campFirePreviewLevel = "cold_camp";
+                if (app._engine) {
+                    app._engine.fireLevel = "unlit";
+                    app._engine.fireRollModifier = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL.cold_camp ?? 0;
+                }
+                void app.clearCeremonyStagedWood({ silent: true });
+                emitPhaseChanged(app._phase, {
+                    coldCampDecided: false,
+                    coldCampPreview: true,
+                    campFirePreviewLevel: "cold_camp",
+                    makeCampStagedWood: [],
+                    selectedTerrain: app._selectedTerrain ?? null
+                });
+                app._syncCampCeremonyPreviewToEmbed();
+                app.render();
+                return;
+            }
             if (!game.user.isGM) {
                 emitActivityColdCampRequest(game.user.id);
                 return;

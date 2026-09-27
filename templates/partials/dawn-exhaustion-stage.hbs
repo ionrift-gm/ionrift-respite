@@ -1,0 +1,301 @@
+{{!-- Dawn close for a normal rest. Dual-mode Hero Card vs GM Neutral Overview --}}
+<div class="pacing-spotlight-card pacing-dawn-stage clean-dawn-layout">
+    <div class="dawn-summary-strip">
+        <div class="dawn-lead-group">
+            <div class="dawn-sun-emblem"><i class="fas fa-sun"></i></div>
+            <div class="dawn-copy-block">
+                <div class="dawn-lead-title">The vigil breaks</div>
+                <div class="dawn-lead-hint">Constitution saves for the night, then the rest ends.</div>
+            </div>
+        </div>
+        {{#if isGM}}
+        <div class="dawn-batch-cluster">
+            {{#if exhaustionSummary.pending}}
+            <div class="check-module-dc-row dawn-global-dc-row">
+                <button type="button" class="dc-nudge" data-action="adjustAllExhaustionDC" data-delta="-1" data-tooltip="Lower DC for all characters (−1)">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <div class="event-dc-badge circular" data-tooltip="Party Constitution save DC">
+                    <span class="dc-label">DC</span>
+                    <span class="dc-value">{{commonDc}}</span>
+                </div>
+                <button type="button" class="dc-nudge" data-action="adjustAllExhaustionDC" data-delta="1" data-tooltip="Raise DC for all characters (+1)">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div class="override-mode-segment dawn-global-mode-segment" role="group">
+                <button type="button" class="btn-mode adv {{#if (eq commonAdvMode "adv")}}active{{/if}}"
+                        data-action="setAllExhaustionAdvMode" data-mode="adv" data-tooltip="Set all to Advantage">ADV</button>
+                <button type="button" class="btn-mode norm {{#if (eq commonAdvMode "norm")}}active{{/if}}"
+                        data-action="setAllExhaustionAdvMode" data-mode="norm" data-tooltip="Set all to Normal">NORM</button>
+                <button type="button" class="btn-mode dis {{#if (eq commonAdvMode "dis")}}active{{/if}}"
+                        data-action="setAllExhaustionAdvMode" data-mode="dis" data-tooltip="Set all to Disadvantage">DIS</button>
+            </div>
+            <button type="button" class="btn-dawn-batch roll-all" data-action="rollAllExhaustionSaves"
+                    data-tooltip="Roll Constitution saves for remaining unresponsive characters">
+                <i class="fas fa-dice-d20"></i> Roll pending ({{exhaustionSummary.pending}})
+            </button>
+            <button type="button" class="btn-dawn-batch waive-all" data-action="waiveAllExhaustionSaves"
+                    data-tooltip="Waive exhaustion checks for the party">
+                <i class="fas fa-shield-check"></i> Waive all
+            </button>
+            {{else}}
+            <div class="dawn-settled-pill">
+                <i class="fas fa-check-double"></i> Saves settled
+            </div>
+            {{/if}}
+        </div>
+        {{/if}}
+    </div>
+
+    {{#if isGmNeutralView}}
+    {{!-- ══════════════════════════════════════════════════════════════════ --}}
+    {{!-- 1. GM NEUTRAL OVERVIEW (Balanced Party Ledger)                      --}}
+    {{!-- ══════════════════════════════════════════════════════════════════ --}}
+    <div class="dawn-roster-stack">
+        {{#each exhaustionRoster}}
+        <div class="dawn-actor-row {{#if rolled}}{{#if passed}}is-passed{{else}}is-failed{{/if}}{{else if mustRoll}}is-pending{{else}}is-waived{{/if}} {{#if isOverrideOpen}}override-active{{/if}}"
+             data-actor-id="{{actorId}}">
+            <div class="actor-identity-col">
+                <img class="actor-avatar" src="{{actorImg}}" alt="{{actorName}}">
+                <div class="actor-name-group">
+                    <span class="actor-name">{{actorName}}</span>
+                    <div class="actor-badges">
+                        <span class="pill-con" data-tooltip="Constitution save modifier">CON {{conModString}}</span>
+                        <span class="pill-exh {{#if currentExhaustion}}has-exh{{/if}}" data-tooltip="Current exhaustion">Exh {{currentExhaustion}}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="actor-hazard-col" data-tooltip="{{reason}}">
+                <i class="fas {{#if waived}}fa-shield-heart{{else}}fa-campground{{/if}}"></i>
+                <span class="hazard-text">{{reason}}</span>
+            </div>
+            <div class="actor-target-col">
+                {{#if mustRoll}}
+                    {{#if rolled}}
+                    <span class="target-dc-chip" data-tooltip="Constitution save DC">DC <strong>{{dc}}</strong></span>
+                    {{#if (ne advMode "norm")}}
+                    <span class="target-mode-chip mode-{{advMode}}" data-tooltip="Roll mode">
+                        {{#if (eq advMode "adv")}}ADV{{else}}DIS{{/if}}
+                    </span>
+                    {{/if}}
+                    {{else}}
+                    <div class="actor-dc-stepper">
+                        <button type="button" class="dc-nudge mini" data-action="adjustExhaustionDC" data-actor-id="{{actorId}}" data-delta="-1" data-tooltip="Lower DC for {{actorName}}">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <span class="target-dc-chip" data-tooltip="Constitution save DC">DC <strong>{{dc}}</strong></span>
+                        <button type="button" class="dc-nudge mini" data-action="adjustExhaustionDC" data-actor-id="{{actorId}}" data-delta="1" data-tooltip="Raise DC for {{actorName}}">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <button type="button" class="target-mode-chip mode-{{advMode}} clickable"
+                            data-action="cycleExhaustionAdvMode" data-actor-id="{{actorId}}"
+                            data-tooltip="{{actorName}} · {{#if (eq advMode "adv")}}Advantage{{else if (eq advMode "dis")}}Disadvantage{{else}}Normal{{/if}} (click to cycle)">
+                        {{#if (eq advMode "adv")}}ADV{{else if (eq advMode "dis")}}DIS{{else}}NORM{{/if}}
+                    </button>
+                    {{/if}}
+                {{else}}
+                <span class="target-exempt-chip"><i class="fas fa-check"></i> Exempt</span>
+                {{/if}}
+            </div>
+            <div class="actor-action-col">
+                {{#if rolled}}
+                    {{#if passed}}
+                    <div class="result-badge passed" data-tooltip="Rolled {{rollTotal}} vs DC {{dc}}">
+                        <i class="fas fa-check-circle"></i> Saved ({{rollTotal}})
+                        {{#if ../isGM}}
+                        <button type="button" class="btn-mini-reroll" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}" data-tooltip="Reroll save">
+                            <i class="fas fa-rotate-right"></i>
+                        </button>
+                        {{/if}}
+                    </div>
+                    {{else}}
+                    <div class="result-badge failed" data-tooltip="Rolled {{rollTotal}} vs DC {{dc}}. +1 exhaustion.">
+                        <i class="fas fa-skull"></i> Failed ({{rollTotal}})
+                        {{#if ../isGM}}
+                        <button type="button" class="btn-mini-reroll" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}" data-tooltip="Reroll save">
+                            <i class="fas fa-rotate-right"></i>
+                        </button>
+                        {{/if}}
+                    </div>
+                    {{/if}}
+                {{else if mustRoll}}
+                    {{#if ../isGM}}
+                    <div class="gm-awaiting-roll-cell">
+                        <span class="badge-waiting-player" data-tooltip="Awaiting player to roll their Constitution save">
+                            <i class="fas fa-hourglass-half"></i> Pending
+                        </span>
+                        <button type="button" class="btn-dawn-fallback-roll" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}"
+                                data-tooltip="Roll on behalf of {{actorName}} (if AFK)">
+                            <i class="fas fa-dice-d20"></i>
+                        </button>
+                    </div>
+                    {{else}}
+                    <span class="badge-waiting-gm"><i class="fas fa-hourglass-half"></i> Pending</span>
+                    {{/if}}
+                {{else}}
+                    <span class="badge-waived-pill"><i class="fas fa-shield-heart"></i> Waived</span>
+                {{/if}}
+            </div>
+            {{#if ../isGM}}
+            <div class="actor-override-col">
+                <button type="button" class="btn-gear-override {{#if isOverrideOpen}}active{{/if}}"
+                        data-action="toggleExhaustionOverride" data-actor-id="{{actorId}}"
+                        data-tooltip="Adjust DC, roll mode, or waive the save">
+                    <i class="fas fa-sliders"></i>
+                </button>
+            </div>
+            {{/if}}
+            {{#if (and ../isGM isOverrideOpen)}}
+            <div class="dawn-override-drawer">
+                <div class="override-drawer-title"><i class="fas fa-sliders"></i> {{actorName}}</div>
+                <div class="override-drawer-controls">
+                    <label class="override-checkbox-label">
+                        <input type="checkbox" data-action="toggleMustRollExhaustion" data-actor-id="{{actorId}}" {{#if mustRoll}}checked{{/if}}>
+                        <span>Require save</span>
+                    </label>
+                    <div class="override-dc-stepper">
+                        <span class="stepper-label">DC</span>
+                        <button type="button" class="btn-step" data-action="adjustExhaustionDC" data-actor-id="{{actorId}}" data-delta="-1">−</button>
+                        <span class="dawn-dc-readout">{{dc}}</span>
+                        <button type="button" class="btn-step" data-action="adjustExhaustionDC" data-actor-id="{{actorId}}" data-delta="1">+</button>
+                    </div>
+                    <div class="override-mode-segment" role="group">
+                        <button type="button" class="btn-mode adv {{#if (eq advMode "adv")}}active{{/if}}"
+                                data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="adv">ADV</button>
+                        <button type="button" class="btn-mode norm {{#if (eq advMode "norm")}}active{{/if}}"
+                                data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="norm">NORM</button>
+                        <button type="button" class="btn-mode dis {{#if (eq advMode "dis")}}active{{/if}}"
+                                data-action="setExhaustionAdvMode" data-actor-id="{{actorId}}" data-mode="dis">DIS</button>
+                    </div>
+                    <button type="button" class="btn-close-override" data-action="toggleExhaustionOverride" data-actor-id="{{actorId}}" data-tooltip="Close adjustments">
+                        <i class="fas fa-check"></i> Done
+                    </button>
+                </div>
+            </div>
+            {{/if}}
+        </div>
+        {{/each}}
+    </div>
+
+    {{else}}
+    {{!-- ══════════════════════════════════════════════════════════════════ --}}
+    {{!-- 2. PLAYER HERO VIEW (Hero Card + Companion Deck)                   --}}
+    {{!-- ══════════════════════════════════════════════════════════════════ --}}
+    <div class="dawn-player-flow">
+        {{#if heroCharacter}}
+        {{#with heroCharacter}}
+        <div class="dawn-hero-card ionrift-card-glass {{#if rolled}}{{#if passed}}hero-passed{{else}}hero-failed{{/if}}{{else if mustRoll}}hero-pending{{else}}hero-waived{{/if}}" data-actor-id="{{actorId}}">
+            <div class="dawn-hero-header">
+                <div class="dawn-hero-identity">
+                    <img class="dawn-hero-avatar" src="{{actorImg}}" alt="{{actorName}}">
+                    <div class="dawn-hero-meta">
+                        <div class="dawn-hero-name-row">
+                            <span class="dawn-hero-name">{{actorName}}</span>
+                            {{#if isSelf}}<span class="badge-you">You</span>{{/if}}
+                        </div>
+                        <div class="dawn-hero-vitals-row">
+                            <span class="hero-vital-pill con" data-tooltip="Constitution save modifier"><i class="fas fa-shield-heart"></i> CON Save {{conModString}}</span>
+                            <span class="hero-vital-pill exh {{#if currentExhaustion}}has-exh{{/if}}" data-tooltip="Current exhaustion level">
+                                <i class="fas fa-person-falling-burst"></i> Exhaustion {{currentExhaustion}}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dawn-hero-stakes-badge" data-tooltip="{{reason}}">
+                    <i class="fas {{#if waived}}fa-shield-check{{else}}fa-campground{{/if}}"></i>
+                    <span>{{reason}}</span>
+                </div>
+            </div>
+
+            <div class="dawn-hero-action-surface">
+                {{#if rolled}}
+                    {{#if passed}}
+                    <div class="hero-outcome-banner passed">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                        <div class="outcome-copy">
+                            <span class="outcome-verdict">Constitution Save Passed</span>
+                            <span class="outcome-detail">Rolled <strong>{{rollTotal}}</strong> vs DC {{dc}}. No exhaustion gained.</span>
+                        </div>
+                    </div>
+                    {{else}}
+                    <div class="hero-outcome-banner failed">
+                        <i class="fas fa-skull-crossbones fa-2x"></i>
+                        <div class="outcome-copy">
+                            <span class="outcome-verdict">Constitution Save Failed</span>
+                            <span class="outcome-detail">Rolled <strong>{{rollTotal}}</strong> vs DC {{dc}}. +1 Exhaustion gained.</span>
+                        </div>
+                    </div>
+                    {{/if}}
+                {{else if mustRoll}}
+                    <div class="hero-roll-prompt">
+                        <div class="roll-prompt-stakes">
+                            <span class="stakes-dc">DC <strong>{{dc}}</strong></span>
+                            {{#if (eq advMode "adv")}}
+                            <span class="stakes-mode mode-adv"><i class="fas fa-angles-up"></i> Advantage</span>
+                            {{else if (eq advMode "dis")}}
+                            <span class="stakes-mode mode-dis"><i class="fas fa-angles-down"></i> Disadvantage</span>
+                            {{/if}}
+                        </div>
+                        <button type="button" class="btn-hero-roll-dawn" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}">
+                            <i class="fas fa-dice-d20"></i> Roll Constitution Save
+                        </button>
+                    </div>
+                {{else}}
+                    <div class="hero-outcome-banner waived">
+                        <i class="fas fa-shield-heart fa-2x"></i>
+                        <div class="outcome-copy">
+                            <span class="outcome-verdict">Exempt</span>
+                            <span class="outcome-detail">No exhaustion check required this morning.</span>
+                        </div>
+                    </div>
+                {{/if}}
+            </div>
+        </div>
+        {{/with}}
+        {{/if}}
+
+        {{!-- Companion Deck --}}
+        {{#if companionCharacters.length}}
+        <div class="dawn-companions-deck-section">
+            <div class="dawn-companions-header">
+                <i class="fas fa-users"></i> Companion Status
+            </div>
+            <div class="dawn-companions-grid">
+                {{#each companionCharacters}}
+                <div class="dawn-companion-chip ionrift-card-glass {{#if rolled}}{{#if passed}}chip-passed{{else}}chip-failed{{/if}}{{else if mustRoll}}chip-pending{{else}}chip-waived{{/if}}" data-actor-id="{{actorId}}">
+                    <img class="comp-chip-avatar" src="{{actorImg}}" alt="{{actorName}}">
+                    <div class="comp-chip-info">
+                        <div class="comp-chip-name-row">
+                            <span class="comp-chip-name">{{actorName}}</span>
+                            {{#if isSelf}}<span class="badge-you mini">You</span>{{/if}}
+                        </div>
+                        <div class="comp-chip-status">
+                            {{#if rolled}}
+                                {{#if passed}}
+                                <span class="chip-status passed"><i class="fas fa-check"></i> Saved ({{rollTotal}})</span>
+                                {{else}}
+                                <span class="chip-status failed"><i class="fas fa-skull"></i> Failed ({{rollTotal}})</span>
+                                {{/if}}
+                            {{else if mustRoll}}
+                                {{#if isOwner}}
+                                <button type="button" class="btn-comp-roll" data-action="rollActorExhaustionSave" data-actor-id="{{actorId}}" data-tooltip="Roll save for {{actorName}}">
+                                    <i class="fas fa-dice-d20"></i> Roll DC {{dc}}
+                                </button>
+                                {{else}}
+                                <span class="chip-status pending"><i class="fas fa-hourglass-half"></i> Pending</span>
+                                {{/if}}
+                            {{else}}
+                                <span class="chip-status waived"><i class="fas fa-shield-heart"></i> Exempt</span>
+                            {{/if}}
+                        </div>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+        {{/if}}
+    </div>
+    {{/if}}
+</div>

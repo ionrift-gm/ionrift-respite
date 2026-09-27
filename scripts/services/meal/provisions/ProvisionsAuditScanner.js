@@ -16,7 +16,9 @@ const OVERRIDE_KEYS = [
     "drinkType",
     "spoilsAfter",
     "spoilsAfterHours",
-    "satiates"
+    "satiates",
+    "coldStorage",
+    "preservationMultiplier"
 ];
 
 export class ProvisionsAuditScanner {
@@ -41,6 +43,33 @@ export class ProvisionsAuditScanner {
      */
     static formatAuditEntry(item, sourceLocation, actor = null) {
         const flags = item.flags?.[MODULE_ID] ?? {};
+
+        // Container items: special audit display
+        if (ItemClassifier.isContainer(item)) {
+            const isCold = flags.coldStorage === true;
+            const mult = Number(flags.preservationMultiplier ?? 2);
+            const multLabel = mult === 0 ? "Stasis (indefinite)" : `${mult}× shelf life`;
+            return {
+                id: item.id,
+                uuid: item.uuid,
+                name: item.name,
+                img: item.img ?? "icons/svg/item-bag.svg",
+                itemType: item.type,
+                location: sourceLocation,
+                actorId: actor?.id ?? null,
+                actorName: actor?.name ?? null,
+                rawType: "container",
+                typeLabel: isCold ? "Cold Storage" : "Container",
+                typeIcon: isCold ? "fa-snowflake" : "fa-box-archive",
+                detailLabel: isCold ? multLabel : "Normal Storage",
+                foodTag: "",
+                drinkType: "",
+                spoilageLabel: isCold ? multLabel : "-",
+                isShelfStable: false,
+                satiatesLabel: "-",
+                flags: foundry.utils?.deepClone ? foundry.utils.deepClone(flags) : { ...flags }
+            };
+        }
 
         // Sustenance classification
         const rawType = flags.resourceType;

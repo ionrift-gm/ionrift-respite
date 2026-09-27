@@ -1,10 +1,12 @@
 import { Logger } from "../../../../utils/Logger.js";
 import { MODULE_ID } from "../../../../data/moduleId.js";
+import { applyCampProgress, campProgressPayload } from "../../../../services/rest/session/campProgressState.js";
 import { STUB_RECIPES } from "../../../../data/stub-content.js";
 import { applyCustomRecipesToEngine } from "../../../../services/crafting/recipes/RecipeCatalog.js";
 import { GrantLedger } from "../../../../services/crafting/outcomes/GrantLedger.js";
 import { RestFlowEngine } from "../../../../services/rest/flow/RestFlowEngine.js";
 import { RestLedger } from "../../../../services/rest/flow/RestLedger.js";
+import { GatherYieldService } from "../../../../services/rest/forage/GatherYieldService.js";
 import { TerrainRegistry } from "../../../../services/events/resolve/TerrainRegistry.js";
 import { CampGearScanner } from "../../../../services/camp/gear/CampGearScanner.js";
 import { isComfortEnabled } from "../../../../services/camp/gear/ComfortCalculator.js";
@@ -35,6 +37,12 @@ import {
     emitTrainingStateUpdate
 } from "../../../../services/socket/SocketController.js";
 import { getPartyActors } from "../../../../services/party/partyActors.js";
+import {
+    beddingStatusImage,
+    buildBeddingHideUpdates,
+    buildBeddingShowUpdates,
+    createBeddingScheduler
+} from "../../../../services/rest/session/BeddingPose.js";
 import { RestSetupApp, _logGmRestSheet } from "../../../rest/RestSetupApp.js";
 
 export class RestSessionDelegate {
@@ -192,10 +200,19 @@ export class RestSessionDelegate {
     async _skipCampForTheater() {
         const app = this._app;
 
-        // Theater mode now shows an inline Make Camp phase instead of skipping.
-        // Return false so the camp phase renders normally in the RestSetupApp window.
-        return false;
-    
+        if (!app._isTotM) return false;
+
+        app._phase = "activity";
+        app._applyLoseActivityTravelLocks();
+        app._applyAutoOtherWhenSoleActivity();
+
+        emitPhaseChanged(app._phase, {
+            campStatus: app._campStatus,
+            fireLevel: app._fireLevel ?? "unlit"
+        });
+        await this._saveRestState();
+        app.render({ force: true });
+        return true;
     }
 
     async _skipCampForComfortOff() {
@@ -265,6 +282,7 @@ export class RestSessionDelegate {
         app._phase = state.phase ?? "setup";
         app._triggeredEvents = state.triggeredEvents ?? [];
         app._eventsRolled = state.eventsRolled ?? false;
+        app._dawn?.restore(state.exhaustionDraft);
         app._activeTreeState = state.activeTreeState ?? null;
         app._campCeremony.restore(state);
         restoreCampPlacementState({
@@ -273,6 +291,13 @@ export class RestSessionDelegate {
         });
         app._campFireWoodSpendUserId = state.campFireWoodSpendUserId ?? null;
         app._campStep2Entered = state.campStep2Entered ?? false;
+        if (Array.isArray(state.makeCampStagedWood)) {
+            app._makeCampStagedWood = [...state.makeCampStagedWood];
+        }
+        if (state.campFirePreviewLevel !== undefined) {
+            app._campFirePreviewLevel = state.campFirePreviewLevel;
+        }
+        if (state.workbench) app._workbench?.restore?.(state.workbench);
         app._selectedTerrain = state.selectedTerrain;
         app._selectedRestType = state.selectedRestType;
         app._selectedWeather = state.selectedWeather;
@@ -298,6 +323,7 @@ export class RestSessionDelegate {
             Logger.warn(`[state-restore] Pruned ${pruned} invalid (non-userId) entries from _playerSubmissions. This indicates a prior schema corruption that has now been fixed.`);
         }
         app._lockedCharacters = new Set(state.lockedCharacters ?? []);
+        applyCampProgress(app, state);
         app._gmFollowUps = new Map(state.gmFollowUps ?? []);
         app._craftingResults = new Map(state.craftingResults ?? []);
         app._trainingStates = new Map(state.trainingStates ?? []);
@@ -305,11 +331,12 @@ export class RestSessionDelegate {
         app._awaitingCombat = state.awaitingCombat ?? false;
         app._gmCopySpellProposal = state.gmCopySpellProposal ?? null;
         app._mealChoices = new Map(state.mealChoices ?? []);
+        if (Array.isArray(state.mealBuffQueue)) app._mealBuffQueue = state.mealBuffQueue;
         app._mealResults = state.mealResults ?? null;
         app._mealSubmissions = new Map(state.mealSubmissions ?? []);
         app._activityMealRationsSubmitted = new Set(state.activityMealRationsSubmitted ?? []);
         app._totmFeastServed = state.totmFeastServed ?? false;
-        app._daysSinceLastRest = state.daysSinceLastRest ?? 1;
+        app._daysSinceLastRest = 1;
 
         app._magicScanResults = state.magicScanResults ?? null;
         app._magicScanComplete = state.magicScanComplete ?? false;
@@ -321,10 +348,6 @@ export class RestSessionDelegate {
         app._restLedger.deserialize(state.restLedger ?? null);
         if (app._restLedgerApp?.rendered) {
             app._restLedgerApp.setLedger(app._restLedger);
-        }
-
-        if (state.travelState) {
-            app._travel.deserialize(state.travelState);
         }
 
         if (state.tavernTotmOverride !== undefined) {
@@ -368,17 +391,22 @@ export class RestSessionDelegate {
     async _saveRestState() {
         const app = this._app;
 
-        if (!game.user.isGM || !app._engine || app._restApplied) return;
+        if (!game.user.isGM || !app._engine || app._restApplied || app._terminated || app._abandoned) return;
         const state = {
             restId: app._restId ?? null,
             engine: app._engine.serialize(),
             phase: app._phase,
+            mealBuffQueue: app._mealBuffQueue ?? [],
             triggeredEvents: app._triggeredEvents,
             eventsRolled: app._eventsRolled ?? false,
+            exhaustionDraft: app._dawn?.serialize() ?? [],
             activeTreeState: app._activeTreeState,
             ...app._campCeremony.serialize(),
             campFireWoodSpendUserId: app._campFireWoodSpendUserId ?? null,
             campStep2Entered: app._campStep2Entered ?? false,
+            makeCampStagedWood: [...(app._makeCampStagedWood ?? [])],
+            campFirePreviewLevel: app._campFirePreviewLevel ?? null,
+            workbench: app._workbench?.serialize?.() ?? null,
             selectedTerrain: app._selectedTerrain,
             selectedRestType: app._selectedRestType,
             selectedWeather: app._selectedWeather,
@@ -387,6 +415,7 @@ export class RestSessionDelegate {
             gmOverrides: Array.from(app._gmOverrides.entries()),
             playerSubmissions: Array.from(app._playerSubmissions.entries()),
             lockedCharacters: Array.from(app._lockedCharacters),
+            ...campProgressPayload(app),
             gmFollowUps: Array.from(app._gmFollowUps.entries()),
             craftingResults: Array.from(app._craftingResults.entries()),
             trainingStates: app._trainingStates?.size
@@ -401,7 +430,6 @@ export class RestSessionDelegate {
             totmFeastServed: app._totmFeastServed ?? false,
             daysSinceLastRest: app._daysSinceLastRest ?? 1,
             campfireSnapshot: RestSetupApp._campfireSnapshotFromFireLevel(app._fireLevel),
-            travelState: app._travel?.serialize() ?? null,
             grantLedger: app._grantLedger?.serialize() ?? null,
             restLedger: app._restLedger?.serialize() ?? null,
             magicScanComplete: app._magicScanComplete ?? false,
@@ -452,8 +480,8 @@ export class RestSessionDelegate {
                 }
 
                 // Resource Pools
-                if (Array.isArray(packData.resourcePools) && packData.resourcePools.length && app._travel) {
-                    app._travel.loadPoolsFromData(packData.resourcePools, { fromImportedPack: true });
+                if (Array.isArray(packData.resourcePools) && packData.resourcePools.length) {
+                    GatherYieldService.getResolver?.().loadPools(packData.resourcePools);
                     totalPools += packData.resourcePools.length;
                     loaded.push(`${packData.resourcePools.length} pools`);
                 }
@@ -482,8 +510,8 @@ export class RestSessionDelegate {
             }
 
             const huntYields = await OverlayProfessionLoader.loadHuntYields();
-            if (huntYields && app._travel) {
-                app._travel.loadHuntYieldsFromData(huntYields);
+            if (huntYields) {
+                GatherYieldService.getResolver?.().loadHuntYields(huntYields);
                 Logger.log(`${MODULE_ID} | Overlay hunt yields: ${Object.keys(huntYields).length} terrain(s)`);
             }
         } catch (e) {
@@ -551,7 +579,21 @@ export class RestSessionDelegate {
             }
         }
 
-    
+        // Dock hearth select (mock: rest-dock-gritty). Routes to the
+        // existing setFireLevel action so activity + meal phases can
+        // change tier from the dock without re-selecting on the legacy
+        // Campfire panel.
+        if (app.element) {
+            app.element.querySelectorAll("select.hearth-tier-select").forEach(select => {
+                if (select.dataset.hearthBound === "1") return;
+                select.dataset.hearthBound = "1";
+                select.addEventListener("change", event => {
+                    const target = event.currentTarget;
+                    target.dataset.fireLevel = target.value;
+                    app._campCeremony?.onSetFireLevel?.(event, target);
+                });
+            });
+        }
     }
 
     _bindArmorToggleHandlers(element, onAfter) {
@@ -673,8 +715,8 @@ export class RestSessionDelegate {
             // Ensure the travel delegate's resolver has base pool items from the
             // shipped compendium. The delegate constructor may have fired before
             // the compendium index was ready (race condition on startup/restore).
-            if (app._travel && game.ionrift?.respite?.travelBasePoolIndex) {
-                const resolver = app._travel.getTravelResolver();
+            if (game.ionrift?.respite?.travelBasePoolIndex) {
+                const resolver = GatherYieldService.getResolver?.();
                 if (resolver && resolver.basePoolCoverage.length === 0) {
                     resolver.loadBaseItems(game.ionrift.respite.travelBasePoolIndex);
                 }
@@ -782,57 +824,71 @@ export class RestSessionDelegate {
     
     }
 
+    _beddingScheduler() {
+        if (this._bedding) return this._bedding;
+        this._bedding = createBeddingScheduler({
+            show: () => this._showBeddingPose(),
+            hide: () => this._hideBeddingPose()
+        });
+        return this._bedding;
+    }
+
+    _sleepingTokenDocs() {
+        const app = this._app;
+        const scene = game.scenes?.active;
+        if (!scene?.tokens) return [];
+        const keepWatchIds = app._nightWatchActorIds();
+        const docs = [];
+        for (const actor of getPartyActors()) {
+            if (keepWatchIds.has(actor.id)) continue;
+            for (const tokenDoc of scene.tokens.filter(t => t.actor?.id === actor.id)) {
+                docs.push(tokenDoc);
+            }
+        }
+        return docs;
+    }
+
+    async _showBeddingPose() {
+        const scene = game.scenes?.active;
+        if (!scene?.updateEmbeddedDocuments) return;
+        const [primaryId, postureId] = this._app._beddingStatusIds();
+        const updates = buildBeddingShowUpdates(this._sleepingTokenDocs(), {
+            overlayImg: beddingStatusImage(primaryId),
+            postureId: postureId ?? ""
+        });
+        if (!updates.length) return;
+        await scene.updateEmbeddedDocuments("Token", updates);
+    }
+
+    async _hideBeddingPose() {
+        const scene = game.scenes?.active;
+        if (!scene?.tokens || !scene.updateEmbeddedDocuments) return;
+        const down = scene.tokens.filter(t => t.getFlag?.(MODULE_ID, "beddingDown"));
+        const updates = buildBeddingHideUpdates(down);
+        if (!updates.length) return;
+        await scene.updateEmbeddedDocuments("Token", updates);
+    }
+
     async _applyBeddingDown() {
         const app = this._app;
 
         if (!game.user?.isGM) return;
-        const keepWatchIds = app._nightWatchActorIds();
-        const [primaryId, ...rest] = app._beddingStatusIds();
-        const scene = game.scenes?.active;
-        for (const actor of getPartyActors()) {
-            if (keepWatchIds.has(actor.id)) continue;
-            try {
-                await actor.toggleStatusEffect(primaryId, { active: true, overlay: true });
-                for (const id of rest) {
-                    await actor.toggleStatusEffect(id, { active: true });
-                }
-            } catch (err) {
+        // Safe rest resolves in this same turn, so the pose would be applied
+        // and cleared before paint. Simple mode still dwells on the night
+        // screen; wake before that paint cancels the pose instead.
+        this._beddingScheduler().requestShow({
+            safeRestSpot: !!app._engine?.safeRestSpot
+        });
 
-                console.warn(`[Respite] Could not apply sleep effects to ${actor.name}:`, err);
-            }
-            if (scene) {
-                const tokens = scene.tokens.filter(t => t.actor?.id === actor.id);
-                for (const td of tokens) {
-                    await td.setFlag(MODULE_ID, "beddingDown", true).catch(() => {});
-                }
-            }
-        }
-    
+        Hooks.callAll("ionrift.respite.sleepStarted", {
+            restType: app._engine?.restType ?? "long",
+            isGritty: false
+        });
     }
 
     async _removeBeddingDown() {
-        const app = this._app;
-
         if (!game.user?.isGM) return;
-        const statusIds = app._beddingStatusIds();
-        const scene = game.scenes?.active;
-        for (const actor of getPartyActors()) {
-            for (const id of statusIds) {
-                try {
-                    await actor.toggleStatusEffect(id, { active: false });
-                } catch (err) {
-
-                    console.warn(`[Respite] Could not remove ${id} from ${actor.name}:`, err);
-                }
-            }
-            if (scene) {
-                const tokens = scene.tokens.filter(t => t.actor?.id === actor.id);
-                for (const td of tokens) {
-                    await td.unsetFlag(MODULE_ID, "beddingDown").catch(() => {});
-                }
-            }
-        }
-    
+        await this._beddingScheduler().requestHide();
     }
 
     _formatCheckLabel(check, character) {

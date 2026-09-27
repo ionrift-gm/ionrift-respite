@@ -1,0 +1,158 @@
+<div class="bivouac-hud-container">
+
+    {{!-- Tier 1: Canonical Rest Header --}}
+    {{> restHeader}}
+
+    {{!-- Shared Terrain Artwork Banner --}}
+    {{> terrainBanner}}
+
+    {{!-- Tier 2: Camp Operations Ribbon --}}
+    {{#if (or showCampfireRibbon (and chefStatus.eligible chefVolunteered) outlanderStatus.isEligible songOfRest)}}
+    <div class="bivouac-operations-ribbon">
+        {{#if showCampfireRibbon}}
+        <div class="bivouac-stance-cluster">
+            <div class="bivouac-stance-toggles">
+                <button type="button" class="bivouac-stance-btn {{#if isWarm}}active{{/if}}"
+                    data-action="toggleStance" data-stance="warm"
+                    data-tooltip="Warm Camp: Campfire lit, {{fireWarmthLabel}} healing per Hit Die. Consumes 1 fuel.">
+                    <i class="fas fa-fire"></i> Warm Camp
+                </button>
+                <button type="button" class="bivouac-stance-btn {{#if isColdDark}}active{{/if}}"
+                    data-action="toggleStance" data-stance="cold_dark"
+                    data-tooltip="Cold & Dark: No fire, -3 Encounter DC (stealth). Consumes 0 fuel.">
+                    <i class="fas fa-moon"></i> Cold & Dark
+                </button>
+            </div>
+
+            {{#if isWarm}}
+            {{!-- Campfire Fuel Status Pill --}}
+            <div class="bivouac-firewood-pill {{#if (gt totalFirewood 0)}}warm{{else}}empty{{/if}}"
+                data-tooltip="Campfire Fuel: 1 unit will be consumed upon rest completion. Party currently has {{totalFirewood}} fuel in stock.">
+                <i class="fas {{#if (gt totalFirewood 0)}}fa-fire{{else}}fa-triangle-exclamation{{/if}}"></i>
+                <span class="firewood-usage">{{#if (gt totalFirewood 0)}}1 Fuel{{else}}0 Fuel{{/if}}</span>
+            </div>
+            {{/if}}
+
+            {{#if shelterActive}}
+            <span class="bivouac-status-badge shelter-badge" data-tooltip="Concealed / Magical Shelter active: cancels campfire detection penalty.">
+                <i class="fas fa-shield-halved"></i> Sheltered
+            </span>
+            {{/if}}
+
+            {{#if stanceCooldownSeconds}}
+            <span class="bivouac-cooldown-pill" data-tooltip="Cooldown active to prevent toggle conflicts">
+                <i class="fas fa-hourglass-half"></i> {{stanceCooldownSeconds}}s
+            </span>
+            {{/if}}
+        </div>
+        {{/if}}
+
+        {{!-- Camp Perks Cluster --}}
+        {{#if (or (and chefStatus.eligible chefVolunteered) outlanderStatus.isEligible songOfRest)}}
+        <div class="bivouac-perks-cluster">
+            {{#if songOfRest}}
+            <div class="bivouac-perk-chip sr-song-chip" data-tooltip="Song of Rest: {{songOfRest.bardName}} rolls {{songOfRest.songDie}} extra healing for each character who spends at least one Hit Die.">
+                <i class="fas fa-music"></i>
+                <span>{{songOfRest.bardName}} · {{songOfRest.songDie}}</span>
+            </div>
+            {{/if}}
+
+            {{#if outlanderStatus.isEligible}}
+            <div class="bivouac-perk-chip outlander-chip" data-tooltip="{{#if outlanderStatus.foragerName}}{{outlanderStatus.foragerName}}'s Outlander feature (Wanderer) gathered wild forage. All party rations covered tonight.{{else}}Wanderer feature gathered wild forage. All party rations covered tonight.{{/if}}">
+                <i class="fas fa-tree"></i> Foraged Meals
+            </div>
+            {{/if}}
+
+            {{#if (and chefStatus.eligible chefVolunteered)}}
+            <div class="bivouac-perk-chip chef-chip {{#if (gt chefMealsRemaining 0)}}chef-glowing-badge{{else}}chef-exhausted-badge{{/if}}"
+                 data-tooltip="Chef's Replenishing Meal ({{#if chefVolunteer}}{{chefVolunteer.chefName}}{{else}}{{chefStatus.leadChef.chefName}}{{/if}}): (+1d8 HP on Hit Dice). {{chefMealsRemaining}} servings remaining.">
+                <i class="fas fa-utensils"></i>
+                <span>Chef: <strong>{{#if chefVolunteer}}{{chefVolunteer.chefName}}{{else}}{{chefStatus.leadChef.chefName}}{{/if}}</strong></span>
+                <span class="chef-servings">({{chefMealsRemaining}} left)</span>
+                {{#if canManageChef}}
+                <button type="button" class="btn-chef-optout" data-action="optOutChef" data-tooltip="Cancel chef meal volunteering">✕</button>
+                {{/if}}
+            </div>
+            {{/if}}
+        </div>
+        {{/if}}
+    </div>
+    {{/if}}
+
+    {{#if workbenchIdentifyUiEnabled}}
+    <div class="sr-nav-row" role="tablist" aria-label="Overnight rest sections">
+        <div class="rest-dock-segments">
+            <button type="button" role="tab" class="rest-dock-seg {{#if (eq activeTab "camp")}}active{{/if}}"
+                data-action="switchBivouacTab" data-tab="camp" {{#if (eq activeTab "camp")}}aria-selected="true"{{else}}aria-selected="false"{{/if}}>
+                <i class="fas fa-campground"></i> Camp
+            </button>
+            <button type="button" role="tab" class="rest-dock-seg {{#if (eq activeTab "workbench")}}active{{/if}}"
+                data-action="switchBivouacTab" data-tab="workbench" {{#if (eq activeTab "workbench")}}aria-selected="true"{{else}}aria-selected="false"{{/if}}>
+                <i class="fas fa-search"></i> Identify
+            </button>
+        </div>
+    </div>
+    {{/if}}
+
+    {{#if (eq activeTab "camp")}}
+    <div class="bivouac-camp-flow rest-camp-flow">
+        {{#if isGmNeutralView}}
+            {{> restGmPartyDeck}}
+        {{else}}
+            {{#if isGM}}
+            <div class="sr-focused-nav">
+                <button type="button" class="btn-party-overview" data-action="clearSelectedCharacter" data-tooltip="Return to party overview">
+                    <i class="fas fa-arrow-left"></i> All Characters
+                </button>
+                <span class="sr-focused-title"><i class="fas fa-user-shield"></i> Managing <strong>{{heroCharacter.name}}</strong></span>
+            </div>
+            {{/if}}
+            {{> restHeroCard}}
+            {{> restCompanionDeck}}
+        {{/if}}
+    </div>
+    {{else}}
+    <div class="bivouac-workbench-container">
+        <div class="bivouac-workbench-body">
+            {{#with workbenchEmbed}}
+            {{> workbenchIdentifyPanel}}
+            {{/with}}
+        </div>
+    </div>
+    {{/if}}
+
+    {{!-- Standardized Bottom Footer --}}
+    <div class="bivouac-footer-bar">
+        <div class="bivouac-footer-left">
+            {{#if isGM}}
+            {{#if safePassage}}
+            <div class="bivouac-safe-status" data-tooltip="Safe Rest active from setup: overnight encounter checks are suppressed.">
+                <i class="fas fa-shield-halved"></i> Safe Rest
+            </div>
+            {{else}}
+            <div class="bivouac-dc-stepper" data-tooltip="Encounter DC: overnight encounter check threshold. Roll d20 below this DC triggers an encounter.">
+                <span class="bivouac-dc-label">Danger DC</span>
+                <button type="button" class="btn-dc-stepper" data-action="adjustBivouacDC" data-delta="-1" data-tooltip="Decrease DC">−</button>
+                <span class="bivouac-dc-value">{{dangerDC}}</span>
+                <button type="button" class="btn-dc-stepper" data-action="adjustBivouacDC" data-delta="1" data-tooltip="Increase DC">+</button>
+            </div>
+            {{/if}}
+            {{/if}}
+        </div>
+
+        {{#if isGM}}
+        <button type="button" class="btn-primary-green" data-action="passTheNight">
+            <i class="fas fa-check"></i> Complete Overnight Rest
+        </button>
+        {{else}}
+        <button type="button" class="sr-finished-toggle {{#if bivouacFooter.myFinished}}active{{/if}}" data-action="toggleBivouacFinished">
+            {{#if bivouacFooter.myFinished}}
+            <i class="fas fa-undo"></i> Still resting
+            {{else}}
+            <i class="fas fa-flag-checkered"></i> I'm finished
+            {{/if}}
+        </button>
+        {{/if}}
+    </div>
+
+</div>

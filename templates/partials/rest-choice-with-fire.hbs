@@ -1,0 +1,111 @@
+{{!-- Normal rest Gather / Activities: night-cards + Ready + 268px fire rail. --}}
+<div class="rest-sustenance-with-fire">
+    <div class="rest-sustenance-main">
+        {{#if (eq selectedWorkflowStep "gather")}}
+        {{#if gatherPanel}}
+        <div class="totm-detail-view rest-gather-panel">
+            <div class="totm-detail-header">
+                <div class="totm-detail-icon-wrap">
+                    <i class="{{gatherPanel.icon}} totm-detail-icon" aria-hidden="true"></i>
+                </div>
+                <div class="totm-detail-titles">
+                    <span class="totm-detail-name">{{gatherPanel.name}}</span>
+                </div>
+            </div>
+            {{#if gatherPanel.canConfirmSkip}}
+            <p class="totm-detail-description">Remain at camp. No forage or hunt.</p>
+            <div class="totm-detail-actions">
+                <button type="button" class="totm-detail-cancel-btn" data-action="cancelGather">
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i> Back
+                </button>
+                <button type="button" class="totm-detail-confirm-btn" data-action="confirmGatherSkip">
+                    <i class="fas fa-check" aria-hidden="true"></i> Confirm Skip
+                </button>
+            </div>
+            {{else if gatherPanel.finds.length}}
+            <div class="gather-find-list">
+                {{#each gatherPanel.finds}}
+                <span class="gather-find" data-tooltip="{{name}}{{#if qtyLabel}}, {{qtyLabel}}{{/if}}">
+                    {{#if img}}<img src="{{img}}" alt="">{{/if}}
+                    <span class="gather-find-name">{{name}}</span>
+                    {{#if qtyLabel}}<b>{{qtyLabel}}</b>{{/if}}
+                </span>
+                {{/each}}
+            </div>
+            <div class="rest-step-pacing">
+                <button type="button" class="btn-step-next" data-action="switchWorkflow" data-step="activities">
+                    <span>Next: Activity</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                </button>
+            </div>
+            {{else if gatherPanel.detail}}
+            <p class="totm-detail-description">{{gatherPanel.detail}}</p>
+            <div class="rest-step-pacing">
+                <button type="button" class="btn-step-next" data-action="switchWorkflow" data-step="activities">
+                    <span>Next: Activity</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                </button>
+            </div>
+            {{else if gatherPanel.canRollCheck}}
+            <div class="totm-detail-mechanics">
+                <div class="totm-mechanics-header">
+                    <div class="totm-mechanics-check">
+                        <span class="totm-mechanics-check-label">
+                            <i class="fas fa-dice-d20" aria-hidden="true"></i>
+                            Survival check · DC {{gatherPanel.dc}}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="totm-detail-actions">
+                <button type="button" class="totm-detail-cancel-btn" data-action="cancelGather">
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i> Back
+                </button>
+                <button type="button" class="totm-detail-confirm-btn rest-gather-roll" data-action="rollGather" data-character-id="{{gatherPanel.characterId}}">
+                    <i class="fas fa-dice-d20" aria-hidden="true"></i> Roll Survival
+                </button>
+            </div>
+            {{else if gatherPanel.findingsOpen}}
+            <p class="totm-detail-description">Check passed! Roll on the findings table.</p>
+            <div class="totm-detail-actions">
+                <button type="button" class="totm-detail-confirm-btn rest-gather-roll" data-action="rollGather" data-character-id="{{gatherPanel.characterId}}">
+                    <i class="fas fa-dice-d20" aria-hidden="true"></i> Roll findings
+                </button>
+            </div>
+            {{/if}}
+        </div>
+        {{else}}
+        {{> restChoicePicker}}
+        {{/if}}
+        {{else}}
+        {{#if activityCommit}}
+        <div class="totm-detail-view rest-activity-panel">
+            <div class="totm-detail-header">
+                <div class="totm-detail-icon-wrap">
+                    <i class="{{#if activityCommit.icon}}{{activityCommit.icon}}{{else}}fas fa-moon{{/if}} totm-detail-icon" aria-hidden="true"></i>
+                </div>
+                <div class="totm-detail-titles">
+                    <span class="totm-detail-name">{{activityCommit.title}}</span>
+                </div>
+                {{#unless @root.characterReady}}
+                {{#unless activityCommit.cannotChange}}
+                <button type="button" class="totm-commit-change-btn" data-action="unlockTotmActivity" data-tooltip="Change selected activity">
+                    <i class="fas fa-undo-alt" aria-hidden="true"></i> Change
+                </button>
+                {{/unless}}
+                {{/unless}}
+            </div>
+            {{#if activityCommit.detail}}
+            <p class="totm-detail-description">{{activityCommit.detail}}</p>
+            {{/if}}
+            <div class="rest-step-pacing">
+                <button type="button" class="btn-step-next" data-action="switchWorkflow" data-step="sustenance">
+                    <span>Next: Sustenance</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+        {{else}}
+        {{> restChoicePicker}}
+        {{/if}}
+        {{/if}}
+    </div>
+    {{> restFireRail}}
+</div>

@@ -1,0 +1,207 @@
+{{!-- Canonical Rest Command Footer: Unified Bottom Rail across Rest Interfaces --}}
+<footer class="respite-unified-footer {{#if encounterBar}}{{#unless encounterBar.isGM}}respite-unified-footer--player{{/unless}}{{/if}}">
+    {{!-- ZONE 1: GM Encounter Risk & Logistics Calibration / Player Exposure.
+         Mock order (rest-dock-gritty footer): Logistics · Encounter DC · stepper. --}}
+    <div class="footer-zone footer-zone--risk">
+        {{#if encounterBar}}
+            {{#if encounterBar.isGM}}
+            {{#unless safeRestSpot}}
+            <button type="button"
+                    class="btn-gm-logistics {{#if logisticsDrawerOpen}}active{{/if}}"
+                    data-action="toggleLogisticsDrawer"
+                    data-tooltip="{{#if logisticsDrawerOpen}}Close camp logistics{{else}}Forage DC · Hunt DC · Gear Factors{{/if}}">
+                <i class="fas fa-sliders" aria-hidden="true"></i>
+                <span>Logistics</span>
+            </button>
+            {{/unless}}
+            {{#if showFireRail}}
+            {{> encounterDcStepper dc=encounterBar.effectiveDC adjustAction="adjustEncounterDc" tooltip="Encounter DC. Rolls below this threshold trigger a night event."}}
+            {{else}}
+            <span class="encounter-bar-label-wrap">
+                <span class="encounter-bar-label" data-tooltip="Base threshold: {{encounterBar.terrainLabel}} ({{encounterBar.baseDC}}). Roll a d20; meet or beat the final DC for a quiet night. Shelter, fire, and defenses shift this number.">
+                    <i class="fas fa-dice-d20" aria-hidden="true"></i>
+                    {{encounterBar.totalLabel}}
+                </span>
+            </span>
+            <span class="encounter-gm-adj">
+                <button type="button" class="encounter-adj-btn" data-action="encounterAdjDown" data-tooltip="Reduce DC">−</button>
+                <button type="button" class="encounter-adj-btn" data-action="encounterAdjUp" data-tooltip="Increase DC">+</button>
+            </span>
+            {{/if}}
+            {{else}}
+            <span class="encounter-bar-label-wrap">
+                <span class="encounter-bar-label">Camp exposure</span>
+            </span>
+            {{#if encounterBar.playerFactors.length}}
+            <span class="encounter-bar-chips encounter-bar-chips--player">
+                {{#each encounterBar.playerFactors}}
+                {{#unless @first}}<span class="encounter-factor-sep" aria-hidden="true">|</span>{{/unless}}
+                <span class="encounter-chip encounter-chip--{{tone}}"{{#if tooltip}} data-tooltip="{{tooltip}}"{{/if}}>
+                    {{#if icon}}<i class="{{icon}}" aria-hidden="true"></i>{{/if}}{{label}}
+                </span>
+                {{/each}}
+            </span>
+            {{/if}}
+            {{/if}}
+        {{else if safeRestSpot}}
+            <span class="encounter-bar-label-wrap">
+                <span class="encounter-bar-label safe-spot-label" data-tooltip="Safe rest spot: no encounter checks tonight.">
+                    <i class="fas fa-shield-halved" aria-hidden="true"></i> Sanctuary
+                </span>
+            </span>
+        {{/if}}
+    </div>
+
+    {{!-- ZONE 2: Party Assignment & Workflow Progress --}}
+    <div class="footer-zone footer-zone--status">
+        {{#if (eq phase 'activity')}}
+            {{#if showMealContent}}
+            {{#unless showFireRail}}
+            {{#if allMealsConsumed}}
+            <span class="totm-footer-stat">
+                <i class="fas fa-utensils" aria-hidden="true"></i>
+                {{#if pendingDehydrationSaves}}
+                {{pendingDehydrationSaves}} pending CON save(s)
+                {{else}}
+                All rations assigned
+                {{/if}}
+            </span>
+            {{/if}}
+            {{/unless}}
+            {{else}}
+            {{#unless showFireRail}}
+            {{#if activityPhasePlayerOverview}}
+            <span class="totm-footer-stat">
+                <i class="fas fa-users" aria-hidden="true"></i>
+                {{#if activityPhasePlayerOverview.viewerHasSubmitted}}
+                {{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}} completed
+                {{else if isGM}}
+                {{activityPhasePlayerOverview.resolvedCount}} / {{activityPhasePlayerOverview.totalCharacters}} activities assigned
+                {{else}}
+                Choose one activity
+                {{/if}}
+            </span>
+            {{/if}}
+            {{/unless}}
+            {{/if}}
+        {{else if (eq phase 'meal')}}
+            {{#if allMealsConsumed}}
+            <span class="totm-footer-stat">
+                <i class="fas fa-utensils" aria-hidden="true"></i>
+                {{#if pendingDehydrationSaves}}
+                {{pendingDehydrationSaves}} pending CON save(s)
+                {{else}}
+                All rations assigned
+                {{/if}}
+            </span>
+            {{/if}}
+        {{/if}}
+    </div>
+
+    {{!-- ZONE 3: Tactical Actions & Phase Advance --}}
+    <div class="footer-zone footer-zone--actions">
+        {{#if (eq phase 'camp')}}
+            {{> campfireDragHandle}}
+            {{#if isGM}}
+                {{#if canProceedFromMakeCamp}}
+                <button type="button" class="btn-primary totm-camp-proceed" data-action="proceedFromMakeCamp">
+                    <i class="fas fa-arrow-right" aria-hidden="true"></i> Proceed to Activities
+                </button>
+                {{else}}
+                <button type="button" class="btn-primary totm-camp-proceed disabled" disabled data-tooltip="{{proceedBlockedHint}}">
+                    <i class="fas fa-lock" aria-hidden="true"></i> Proceed to Activities
+                </button>
+                {{/if}}
+            {{else}}
+                <span class="totm-camp-player-wait">
+                    <i class="fas fa-campground" aria-hidden="true"></i>
+                    {{#if canProceedFromMakeCamp}}
+                    Camp is set. Waiting for GM.
+                    {{else}}
+                    Setting up camp...
+                    {{/if}}
+                </span>
+            {{/if}}
+        {{else if (eq phase 'activity')}}
+            {{> campfireDragHandle}}
+            {{#if readyTotal}}
+            <span class="rest-ready-count" data-tooltip="Characters marked ready.">{{readyCount}} / {{readyTotal}} ready</span>
+            {{/if}}
+            {{#if activityProceedEnabled}}
+                {{#if isGM}}
+                <button type="button" class="btn-primary totm-footer-proceed" data-action="submitActivities">
+                    <i class="{{activityProceed.icon}}"></i> {{activityProceed.label}}
+                </button>
+                {{else}}
+                <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Waiting on GM</span>
+                {{/if}}
+            {{else if isGM}}
+                <button type="button" class="btn-primary totm-footer-proceed disabled" disabled
+                        data-tooltip="{{#if holdPhaseProceed}}Use Next on this card first.{{else}}{{readyCount}} / {{readyTotal}} ready. Everyone must be ready.{{/if}}">
+                    <i class="fas fa-lock" aria-hidden="true"></i> {{activityProceed.label}}
+                </button>
+            {{else if activityPhasePlayerOverview.viewerHasSubmitted}}
+                <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Waiting for others</span>
+            {{/if}}
+        {{else if (eq phase 'meal')}}
+            {{> campfireDragHandle}}
+            {{#if readyTotal}}
+            <span class="rest-ready-count" data-tooltip="Characters marked ready.">{{readyCount}} / {{readyTotal}} ready</span>
+            {{/if}}
+            {{#if isGM}}
+                {{#if allMealsConsumed}}
+                    {{#if mealProcessed}}
+                        {{#if pendingDehydrationSaves}}
+                            {{#if allDehydrationResolved}}
+                            <button type="button" class="{{#if encountersEnabled}}btn-primary{{else}}btn-primary-green{{/if}}" data-action="proceedFromMeal" draggable="false">
+                                {{#if encountersEnabled}}<i class="fas fa-moon"></i> Proceed to Night Events{{else}}<i class="fas fa-check-circle"></i> Complete Long Rest{{/if}}
+                            </button>
+                            {{else}}
+                            <button type="button" class="btn-primary" disabled draggable="false">
+                                <i class="fas fa-hourglass-half"></i> Waiting for {{pendingDehydrationSaves}} CON save(s)...
+                            </button>
+                            {{#if hasUnresolvedSaves}}
+                            <button type="button" class="btn-secondary" data-action="skipPendingSaves" data-tooltip="Auto-fail all pending saves and apply exhaustion" draggable="false">
+                                <i class="fas fa-forward"></i> Skip Pending Saves
+                            </button>
+                            {{/if}}
+                            {{/if}}
+                        {{else}}
+                        <button type="button" class="{{#if encountersEnabled}}btn-primary{{else}}btn-primary-green{{/if}}" data-action="proceedFromMeal" draggable="false">
+                            {{#if encountersEnabled}}<i class="fas fa-moon"></i> Proceed to Night Events{{else}}<i class="fas fa-check-circle"></i> Complete Long Rest{{/if}}
+                        </button>
+                        {{/if}}
+                    {{else}}
+                    <button type="button" class="{{#if encountersEnabled}}btn-primary{{else}}btn-primary-green{{/if}}" data-action="proceedFromMeal" draggable="false">
+                        {{#if encountersEnabled}}<i class="fas fa-moon"></i> Proceed to Night Events{{else}}<i class="fas fa-check-circle"></i> Complete Long Rest{{/if}}
+                    </button>
+                    {{/if}}
+                {{else}}
+                    {{#with (lookup mealCards 0)}}
+                    {{#if (and isMultiDay (not allDaysConsumed))}}
+                    <button type="button" class="btn-primary btn-consume-day" data-action="consumeMealDay">
+                        <i class="fas fa-utensils"></i> Consume Day {{currentDay}}
+                    </button>
+                    {{else if allDaysConsumed}}
+                    <button type="button" class="btn-primary" disabled>
+                        <i class="fas fa-check"></i> {{actorName}} - All days consumed
+                    </button>
+                    {{/if}}
+                    {{/with}}
+                {{/if}}
+            {{else}}
+                {{#with (lookup mealCards 0)}}
+                {{#if (and isMultiDay (not allDaysConsumed))}}
+                <button type="button" class="btn-primary btn-consume-day" data-action="consumeMealDay">
+                    <i class="fas fa-utensils"></i> Consume Day {{currentDay}}
+                </button>
+                {{else}}
+                <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Waiting on GM</span>
+                {{/if}}
+                {{else}}
+                <span class="totm-footer-waiting"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Waiting on GM</span>
+                {{/with}}
+            {{/if}}
+        {{/if}}
+    </div>
+</footer>

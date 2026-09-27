@@ -287,64 +287,6 @@
         "category": "recovery"
     },
     {
-        "id": "act_scout",
-        "disabled": true,
-        "name": "Scout Perimeter",
-        "professions": [],
-        "description": "Move through the surrounding area. Identify approaches and spot threats before they arrive.",
-        "restTypes": [
-            "long"
-        ],
-        "prerequisites": {
-            "proficiencies": [],
-            "tools": [],
-            "minimumLevel": 1
-        },
-        "check": {
-            "skill": "ste",
-            "altSkill": "prc",
-            "dc": 14,
-            "advantageIf": [
-                "terrain_familiar"
-            ]
-        },
-        "outcomes": {
-            "success": {
-                "narrative": "You mapped the exits and checked the blind spots. If trouble comes, you will see it first.",
-                "items": [],
-                "effects": [
-                    {
-                        "type": "early_warning",
-                        "description": "Advantage on initiative and surprise. Approaches mapped, blind spots covered."
-                    }
-                ]
-            },
-            "exceptional": {
-                "threshold": 18,
-                "narrative": "You found a secondary escape route and identified natural chokepoints.",
-                "items": [],
-                "effects": [
-                    {
-                        "type": "tactical_advantage",
-                        "description": "Party may choose starting positions if an encounter triggers."
-                    }
-                ]
-            },
-            "failure": {
-                "narrative": "A twig snaps underfoot. Nothing useful learned.",
-                "items": [],
-                "effects": []
-            }
-        },
-        "combatModifiers": {
-            "initiativeAdvantage": true,
-            "surpriseAdvantage": true,
-            "description": "Advantage on initiative and surprise saves. Outside camp, aware of approaches."
-        },
-        "armorSleepWaiver": true,
-        "category": "camp"
-    },
-    {
         "id": "act_tell_tales",
         "name": "Tell Tales",
         "professions": [],
@@ -551,20 +493,15 @@
     },
     {
         "id": "act_identify",
-        "name": "Identify Items",
+        "name": "Examine & Identify",
         "professions": [],
         "minor": true,
-        "description": "Cast Identify as a ritual (1 minute) to reveal magical item properties. Does not consume your rest activity.",
+        "description": "Examine mysterious items, focus on magic properties, or cast Identify.",
         "restTypes": [
             "long",
             "short"
         ],
-        "prerequisites": {
-            "spells": [
-                "Identify",
-                "Detect Magic"
-            ]
-        },
+        "prerequisites": {},
         "check": null,
         "outcomes": {
             "success": {
@@ -733,6 +670,90 @@
             "actorFlag": "trainingStreak",
             "resetsOnDifferentActivity": true
         }
+    },
+    {
+        "id": "act_forage",
+        "name": "Forage",
+        "professions": [],
+        "description": "Scavenge the surrounding terrain for edible plants, wild herbs, kindling, and provisions.",
+        "restTypes": [
+            "long"
+        ],
+        "prerequisites": {
+            "proficiencies": [],
+            "tools": [],
+            "minimumLevel": 1
+        },
+        "check": {
+            "skill": "sur",
+            "altSkill": "nat",
+            "dc": 10,
+            "advantageIf": []
+        },
+        "outcomes": {
+            "success": {
+                "narrative": "You scavenge edible roots, berries, and useful supplies from the wild.",
+                "items": [],
+                "effects": []
+            },
+            "exceptional": {
+                "threshold": 20,
+                "narrative": "A bountiful haul. You find abundant wild provisions and prime kindling.",
+                "items": [],
+                "effects": []
+            },
+            "failure": {
+                "narrative": "The wilderness yields little of value.",
+                "items": [],
+                "effects": []
+            }
+        },
+        "combatModifiers": {
+            "description": "Normal readiness. Aware of the surroundings."
+        },
+        "category": "camp"
+    },
+    {
+        "id": "act_hunt",
+        "name": "Hunt",
+        "professions": [],
+        "description": "Track and hunt wild game in the vicinity to secure fresh meat and provisions for camp.",
+        "restTypes": [
+            "long"
+        ],
+        "prerequisites": {
+            "proficiencies": [],
+            "tools": [],
+            "minimumLevel": 1
+        },
+        "check": {
+            "skill": "sur",
+            "altSkill": "ste",
+            "dc": 12,
+            "advantageIf": []
+        },
+        "outcomes": {
+            "success": {
+                "narrative": "Your hunt is successful, bringing fresh game back to camp.",
+                "items": [],
+                "effects": []
+            },
+            "exceptional": {
+                "threshold": 20,
+                "narrative": "A clean takedown of prime game, securing a feast of fresh meat.",
+                "items": [],
+                "effects": []
+            },
+            "failure": {
+                "narrative": "Your quarry slips away into the brush.",
+                "items": [],
+                "effects": []
+            }
+        },
+        "combatModifiers": {
+            "description": "Normal readiness. Aware of the surroundings."
+        },
+        "category": "camp"
     },
     {
         "id": "act_other",

@@ -595,8 +595,8 @@ export class DetectMagicDelegate {
             if (!skipSave) {
                 if (this._app._engine && typeof this._app._saveRestState === "function") {
                     void this._app._saveRestState();
-                } else if (typeof this._app._saveShortRestState === "function") {
-                    void this._app._saveShortRestState();
+                } else if (typeof this._app._saveSessionState === "function") {
+                    void this._app._saveSessionState();
                 }
             }
         }
@@ -615,8 +615,8 @@ export class DetectMagicDelegate {
         if (game.user.isGM) {
             if (this._app._engine && typeof this._app._saveRestState === "function") {
                 void this._app._saveRestState();
-            } else if (typeof this._app._saveShortRestState === "function") {
-                void this._app._saveShortRestState();
+            } else if (typeof this._app._saveSessionState === "function") {
+                void this._app._saveSessionState();
             }
         }
     }

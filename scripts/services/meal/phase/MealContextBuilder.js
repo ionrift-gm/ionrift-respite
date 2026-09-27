@@ -147,13 +147,17 @@ export function buildMealContext(characterIds, terrainTag, terrainMealRules = {}
             // Ate on consumed day: counter = days elapsed since that meal
             restsSinceFood = currentDay - (lastFedDay + 1);
         } else {
-            restsSinceFood = (actor.getFlag(MODULE_ID, "restsSinceFood") ?? 0) + daysSinceLastRest;
+            const histFood = actor.getFlag(MODULE_ID, "restsSinceFood") ?? 0;
+            const isGritty = (game.ionrift?.respite?.adapter?.getRestVariant?.() ?? "normal") === "gritty";
+            restsSinceFood = isGritty ? histFood + currentDay : histFood + daysSinceLastRest;
         }
 
         if (lastWateredDay >= 0) {
             restsSinceWater = currentDay - (lastWateredDay + 1);
         } else {
-            restsSinceWater = (actor.getFlag(MODULE_ID, "restsSinceWater") ?? 0) + daysSinceLastRest;
+            const histWater = actor.getFlag(MODULE_ID, "restsSinceWater") ?? 0;
+            const isGritty = (game.ionrift?.respite?.adapter?.getRestVariant?.() ?? "normal") === "gritty";
+            restsSinceWater = isGritty ? histWater + currentDay : histWater + daysSinceLastRest;
         }
 
         // Build food/water options from inventory (already reflects consumed items)
@@ -187,7 +191,9 @@ export function buildMealContext(characterIds, terrainTag, terrainMealRules = {}
         const foodSufficient = foodFilledCount >= fpd;
 
         // Build water slots (1 per unit required)
-        const waterArr = Array.isArray(currentChoice.water) ? currentChoice.water : (currentChoice.water && currentChoice.water !== "skip" ? [currentChoice.water] : []);
+        const rawWater = Array.isArray(currentChoice.water) ? currentChoice.water : (currentChoice.water && currentChoice.water !== "skip" ? [currentChoice.water] : []);
+        // Always collapse filled water contiguously from bottom up so there are no holes in the stack
+        const waterArr = rawWater.filter(sel => sel && sel !== "skip");
         const waterLockedSlots = Array.isArray(currentChoice.waterLockedSlots) ? currentChoice.waterLockedSlots : [];
         const waterSlots = [];
         for (let i = 0; i < wpd; i++) {

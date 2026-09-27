@@ -8,83 +8,29 @@ import {
 import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "../../crafting/settings/TrainingSettings.js";
 import { isProfessionActivityEnabled, isChefTreatCookingOnly } from "../../travel/settings/TravelSettings.js";
 import { hasChefFeat } from "../../meal/buffs/ChefFeat.js";
+import { GatherYieldService } from "../forage/GatherYieldService.js";
+import { postRollAndSettle } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
+import { CARD_FADED_HINTS, cardHintNotPrepared } from "../../../data/activityCardHint.js";
+import {
+    ActivityEligibility,
+    isActivityExcludedForRestOptions,
+    isPrayMeditateEnabled,
+    areEncountersEnabled,
+    SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS,
+    TAVERN_REST_EXCLUDED_ACTIVITY_IDS,
+    COMFORT_EXCLUDED_ACTIVITY_IDS,
+    ENCOUNTER_ACTIVITY_IDS
+} from "./ActivityEligibility.js";
 
-/** Activities hidden when the GM marks a safe rest spot (no encounter risk; no redundant camp duties). */
-export const SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS = new Set([
-    "act_keep_watch",
-    "act_defenses",
-    "act_scout",
-    "act_tend_wounds"
-]);
-
-/** Extra exclusions for tavern terrain (full recovery is automatic; no profession crafting). */
-export const TAVERN_REST_EXCLUDED_ACTIVITY_IDS = new Set([
-    "act_rest_fully"
-]);
-
-/**
- * @param {Object} activity
- * @param {{ safeRestSpot?: boolean, tavernRest?: boolean }} options
- * @returns {boolean}
- */
-export function isActivityExcludedForRestOptions(activity, options = {}) {
-    if (options.tavernRest) {
-        if (SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) return true;
-        if (TAVERN_REST_EXCLUDED_ACTIVITY_IDS.has(activity.id)) return true;
-        if (activity.category === "profession") return true;
-        return false;
-    }
-    if (options.safeRestSpot && SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) return true;
-    return false;
-}
-
-/**
- * Activities hidden when the comfort subsystem is disabled. These are the soft
- * recovery and morale activities: full rest, tending wounds, and fireside
- * tales for Inspiration. With comfort off the rest stays close to RAW,
- * leaving Other as the open-ended evening choice. Pray / Meditate is gated
- * separately via enablePrayMeditate.
- */
-const COMFORT_EXCLUDED_ACTIVITY_IDS = new Set([
-    "act_rest_fully",
-    "act_tend_wounds",
-    "act_tell_tales"
-]);
-
-/** Activities that only exist to feed the night encounter layer; hidden when encounters are off. */
-const ENCOUNTER_ACTIVITY_IDS = new Set([
-    "act_keep_watch",
-    "act_defenses",
-    "act_scout"
-]);
-
-/**
- * Whether the night encounter layer is on. When off, the watch/defenses/scout
- * activities and the encounter threshold roll are suppressed for a rest closer
- * to RAW. Defaults to true if the setting is not yet registered.
- * @returns {boolean}
- */
-function areEncountersEnabled() {
-    try {
-        const value = game.settings.get("ionrift-respite", "enableEncounters");
-        return value === undefined || value === null ? true : !!value;
-    } catch (e) {
-        return true;
-    }
-}
-
-/**
- * Whether Pray / Meditate is offered during rests. Defaults to true if unset.
- * @returns {boolean}
- */
-export function isPrayMeditateEnabled() {
-    try {
-        const value = game.settings.get("ionrift-respite", "enablePrayMeditate");
-        return value === undefined || value === null ? false : !!value;
-    } catch (e) {
-        return false;
-    }
-}
+export {
+    isActivityExcludedForRestOptions,
+    isPrayMeditateEnabled,
+    areEncountersEnabled,
+    SAFE_REST_SPOT_EXCLUDED_ACTIVITY_IDS,
+    TAVERN_REST_EXCLUDED_ACTIVITY_IDS,
+    COMFORT_EXCLUDED_ACTIVITY_IDS,
+    ENCOUNTER_ACTIVITY_IDS
+};
 
 /**
  * ActivityResolver
@@ -119,38 +65,118 @@ export class ActivityResolver {
         const available = [];
         for (const activity of this.activities.values()) {
             if (!activity.restTypes.includes(restType)) continue;
-            if (activity.disabled) continue;
-            if (isActivityExcludedForRestOptions(activity, options)) continue;
-            if (!isComfortEnabled() && COMFORT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
-            if (!areEncountersEnabled() && ENCOUNTER_ACTIVITY_IDS.has(activity.id)) continue;
-
-            // Gate Training behind XP tier (0 = off)
-            if (activity.id === "act_train" && !isTrainingEnabled()) continue;
-
-            // Gate profession activities (cook, brew, tailor, craft)
-            if (activity.category === "profession") {
-                if (!isProfessionActivityEnabled(activity)) continue;
-                if (isChefTreatCookingOnly() && activity.id === "act_cook" && !hasChefFeat(actor)) continue;
-            }
-
-            // Gate Fletching behind yield tier (0 = off)
-            if (activity.id === "act_fletch" && !isFletchingEnabled()) continue;
-
-            // Gate Copy Spell behind module setting
-            if (activity.id === "act_scribe") {
-                try {
-                    if (!game.settings.get("ionrift-respite", "enableCopySpell")) continue;
-                } catch (e) { /* setting may not exist yet */ }
-            }
-
-            // Gate Pray / Meditate behind module setting
-            if (activity.id === "act_pray" && !isPrayMeditateEnabled()) continue;
-
-            if (this._meetsPrerequisites(actor, activity.prerequisites)) {
-                available.push(activity);
-            }
+            if (!ActivityEligibility.isEligible(actor, activity, options)) continue;
+            available.push(activity);
         }
         return available;
+    }
+
+    /**
+     * Inspects an activity's check definition and computes the actor's modifier,
+     * skill/ability key, comfort-adjusted DC, and display labels without rolling.
+     * @param {string} activityId
+     * @param {Actor} actor
+     * @param {string} comfort
+     * @param {Object} [options]
+     * @returns {Object|null}
+     */
+    getCheckDetails(activityId, actor, comfort, options = {}) {
+        const activity = this.activities.get(activityId);
+        if (!activity?.check || (activity.check.rolls ?? 1) > 1) return null;
+
+        const safeRestSpot = !!options.safeRestSpot;
+        const baseDc = activity.check.dc ?? 12;
+        const comfortForDc = safeRestSpot ? "safe" : comfort;
+        const adjustedDc = baseDc + getComfortDcMod(comfortForDc);
+
+        const rollAdapter = game.ionrift?.respite?.adapter;
+        const getAbilityMod = (abilityKey) => rollAdapter
+            ? rollAdapter.getAbilityMod(actor, abilityKey)
+            : (actor.system?.abilities?.[abilityKey]?.mod ?? 0);
+        const getSkillTotal = (skillKey) => {
+            if (rollAdapter) {
+                const nativeKey = rollAdapter.normalizeSkillKey(skillKey);
+                return rollAdapter.getSkillTotal(actor, nativeKey);
+            }
+            const skill = actor.system?.skills?.[skillKey];
+            return skill?.total ?? skill?.mod ?? 0;
+        };
+        const hasSkillKey = (skillKey) => {
+            if (rollAdapter) {
+                const nativeKey = rollAdapter.normalizeSkillKey(skillKey);
+                const skillKeys = rollAdapter.getSkillKeys(actor);
+                return skillKeys.includes(nativeKey);
+            }
+            return !!actor.system?.skills?.[skillKey];
+        };
+
+        let chosenKey = activity.check.skill;
+        let modifier;
+        let rollLabel;
+        const isAbility = Boolean(activity.check.ability);
+
+        if (isAbility) {
+            let abilityKey = activity.check.ability;
+            if (abilityKey === "best") {
+                const abilities = actor.system?.abilities ?? {};
+                let bestKey = "str";
+                let bestMod = -99;
+                for (const [key] of Object.entries(abilities)) {
+                    const mod = getAbilityMod(key);
+                    if (mod > bestMod) { bestMod = mod; bestKey = key; }
+                }
+                abilityKey = bestKey;
+            }
+            const ABILITY_MAP = { str: "str", dex: "dex", con: "con", int: "int", wis: "wis", cha: "cha" };
+            chosenKey = ABILITY_MAP[abilityKey] ?? abilityKey;
+            modifier = getAbilityMod(chosenKey);
+            rollLabel = chosenKey.toUpperCase();
+        } else {
+            if (chosenKey === "best") {
+                const followUpSkill = options.followUpValue;
+                if (followUpSkill && hasSkillKey(followUpSkill)) {
+                    chosenKey = followUpSkill;
+                } else {
+                    const skills = rollAdapter
+                        ? rollAdapter.getSkillKeys(actor)
+                        : Object.keys(actor.system?.skills ?? {});
+                    let bestKey = null;
+                    let bestTotal = -99;
+                    for (const key of skills) {
+                        const total = getSkillTotal(key);
+                        if (total > bestTotal) { bestTotal = total; bestKey = key; }
+                    }
+                    if (bestKey) chosenKey = bestKey;
+                }
+            } else if (activity.check.altSkill) {
+                const primary = getSkillTotal(activity.check.skill);
+                const alt = getSkillTotal(activity.check.altSkill);
+                if (alt > primary) chosenKey = activity.check.altSkill;
+            }
+            modifier = getSkillTotal(chosenKey);
+            rollLabel = chosenKey.toUpperCase();
+        }
+
+        let rollAdvantage = false;
+        if (activity.check.advantageIf?.length) {
+            for (const cond of activity.check.advantageIf) {
+                if (cond === "healer_kit") {
+                    const kit = actor.items?.find(i => i.name?.toLowerCase().includes("healer") && i.name?.toLowerCase().includes("kit"));
+                    if (kit && (kit.system?.quantity ?? kit.system?.uses?.value ?? 1) > 0) rollAdvantage = true;
+                }
+            }
+        }
+
+        return {
+            activity,
+            baseDc,
+            adjustedDc,
+            type: isAbility ? "ability" : "skill",
+            key: chosenKey,
+            modifier,
+            rollLabel,
+            rollAdvantage
+        };
     }
 
     /**
@@ -160,7 +186,7 @@ export class ActivityResolver {
      * @param {string} terrainTag
      * @param {string} comfort
      * @param {Object} options
-     * @param {Object} options - { followUpValue, comfort overrides, etc. }
+     * @param {Object} options - { followUpValue, comfort overrides, rollTotal, preEvaluated, etc. }
      * @returns {Object} Activity outcome fragment.
      */
     async resolve(activityId, actor, terrainTag, comfort, options = {}) {
@@ -208,122 +234,53 @@ export class ActivityResolver {
             return await this._resolveMultiRoll(activity, activityId, actor, comfort, safeRestSpot);
         }
 
-        // Calculate DC with comfort friction (safe rest spot: none)
-        const baseDc = activity.check.dc ?? 12;
-        const comfortForDc = safeRestSpot ? "safe" : comfort;
-        const adjustedDc = baseDc + getComfortDcMod(comfortForDc);
-
-        // Roll skill check directly (avoids midi-qol / libWrapper collision)
-        // If check.ability is defined, use a flat ability check instead of a skill
-        const rollAdapter = game.ionrift?.respite?.adapter;
-        const getAbilityMod = (abilityKey) => rollAdapter
-            ? rollAdapter.getAbilityMod(actor, abilityKey)
-            : (actor.system?.abilities?.[abilityKey]?.mod ?? 0);
-        const getSkillTotal = (skillKey) => {
-            if (rollAdapter) {
-                const nativeKey = rollAdapter.normalizeSkillKey(skillKey);
-                return rollAdapter.getSkillTotal(actor, nativeKey);
-            }
-            const skill = actor.system?.skills?.[skillKey];
-            return skill?.total ?? skill?.mod ?? 0;
-        };
-        const hasSkillKey = (skillKey) => {
-            if (rollAdapter) {
-                const nativeKey = rollAdapter.normalizeSkillKey(skillKey);
-                const skillKeys = rollAdapter.getSkillKeys(actor);
-                return skillKeys.includes(nativeKey);
-            }
-            return !!actor.system?.skills?.[skillKey];
-        };
-
-        let chosenSkillKey = activity.check.skill;
-        let modifier;
-        let rollLabel;
-
-        if (activity.check.ability) {
-            // Flat ability check (e.g. Training uses "best")
-            let abilityKey = activity.check.ability;
-
-            if (abilityKey === "best") {
-                // Resolve to the actor's highest ability modifier
-                const abilities = actor.system?.abilities ?? {};
-                let bestKey = "str";
-                let bestMod = -99;
-                for (const [key] of Object.entries(abilities)) {
-                    const mod = getAbilityMod(key);
-                    if (mod > bestMod) { bestMod = mod; bestKey = key; }
-                }
-                abilityKey = bestKey;
-            }
-
-            const ABILITY_MAP = { str: "str", dex: "dex", con: "con", int: "int", wis: "wis", cha: "cha" };
-            const aKey = ABILITY_MAP[abilityKey] ?? abilityKey;
-            modifier = getAbilityMod(aKey);
-            rollLabel = aKey.toUpperCase();
-        } else {
-            // Skill check: pick whichever gives the actor a higher modifier
-            if (chosenSkillKey === "best") {
-                // "best" means the player picks a skill via followUp. Use that
-                // selection when available; otherwise fall back to the actor's
-                // highest-total skill.
-                const followUpSkill = options.followUpValue;
-                if (followUpSkill && hasSkillKey(followUpSkill)) {
-                    chosenSkillKey = followUpSkill;
-                } else {
-                    // No followUp or invalid key, pick the actor's best skill
-                    const skills = rollAdapter
-                        ? rollAdapter.getSkillKeys(actor)
-                        : Object.keys(actor.system?.skills ?? {});
-                    let bestKey = null;
-                    let bestTotal = -99;
-                    for (const key of skills) {
-                        const total = getSkillTotal(key);
-                        if (total > bestTotal) { bestTotal = total; bestKey = key; }
-                    }
-                    if (bestKey) chosenSkillKey = bestKey;
-                }
-            } else if (activity.check.altSkill) {
-                const primary = getSkillTotal(activity.check.skill);
-                const alt = getSkillTotal(activity.check.altSkill);
-                if (alt > primary) chosenSkillKey = activity.check.altSkill;
-            }
-            modifier = getSkillTotal(chosenSkillKey);
-            rollLabel = chosenSkillKey.toUpperCase();
+        const details = this.getCheckDetails(activityId, actor, comfort, options);
+        if (!details) {
+            return {
+                source: "activity",
+                activityId,
+                result: "invalid",
+                items: [],
+                effects: [],
+                narrative: "Could not evaluate activity check."
+            };
         }
-        // Resolve advantageIf conditions from the activity check definition
-        let rollAdvantage = false;
-        if (activity.check.advantageIf?.length) {
-            for (const cond of activity.check.advantageIf) {
-                if (cond === "healer_kit") {
-                    const kit = actor.items?.find(i => i.name?.toLowerCase().includes("healer") && i.name?.toLowerCase().includes("kit"));
-                    if (kit && (kit.system?.quantity ?? kit.system?.uses?.value ?? 1) > 0) rollAdvantage = true;
-                }
-            }
-        }
+
+        const adjustedDc = details.adjustedDc;
+        const rollLabel = details.rollLabel;
+        const rollAdvantage = details.rollAdvantage;
 
         const travelPenalty = typeof actor.getFlag === "function"
             ? (actor.getFlag("ionrift-respite", "travelMishapPenalty") ?? null)
             : null;
-
-        let rollFormula;
-        if (rollAdvantage && travelPenalty === "activity_disadvantage") {
-            rollFormula = `1d20 + ${modifier}`;
-        } else if (travelPenalty === "activity_disadvantage") {
-            rollFormula = `2d20kl + ${modifier}`;
-        } else if (rollAdvantage) {
-            rollFormula = `2d20kh + ${modifier}`;
-        } else {
-            rollFormula = `1d20 + ${modifier}`;
-        }
-
         const hadTravelDis = travelPenalty === "activity_disadvantage";
-        const roll = await new Roll(rollFormula).evaluate();
+
+        const preEvaluated = Number.isFinite(options.rollTotal);
+        let roll = options.roll ?? null;
+        let total;
+
+        if (preEvaluated) {
+            total = options.rollTotal;
+        } else {
+            let rollFormula;
+            if (rollAdvantage && hadTravelDis) {
+                rollFormula = `1d20 + ${details.modifier}`;
+            } else if (hadTravelDis) {
+                rollFormula = `2d20kl + ${details.modifier}`;
+            } else if (rollAdvantage) {
+                rollFormula = `2d20kh + ${details.modifier}`;
+            } else {
+                rollFormula = `1d20 + ${details.modifier}`;
+            }
+
+            roll = await new Roll(rollFormula).evaluate();
+            total = roll.total;
+        }
 
         if (hadTravelDis && activity.check) {
             await actor.unsetFlag("ionrift-respite", "travelMishapPenalty");
         }
 
-        const total = roll.total;
         const rollModNote = hadTravelDis
             ? " (disadvantage)"
             : (rollAdvantage ? " (advantage)" : "");
@@ -339,12 +296,20 @@ export class ActivityResolver {
 
             // Hostile comfort: failure triggers complication (not in safe rest spot)
             if (!safeRestSpot && (comfort === "hostile" || comfort === "rough")) {
-                const ownerIds = game.users.filter(u => actor.testUserPermission(u, "OWNER")).map(u => u.id);
-                await roll.toMessage({
-                    speaker: ChatMessage.getSpeaker({ actor }),
-                    flavor: `<strong>${activity.name}</strong> (${rollLabel}${rollModNote}) - DC ${adjustedDc}<br><em style="color:#e88;">Failed.</em> ${activity.outcomes.failure?.narrative ?? "The attempt fails."}`,
-                    whisper: ownerIds
-                });
+                const ownerIds = game.users.filter(u => actor.testUserPermission(u, "OWNER") || u.isGM).map(u => u.id);
+                if (!preEvaluated && roll) {
+                    await roll.toMessage({
+                        speaker: ChatMessage.getSpeaker({ actor }),
+                        flavor: `<strong>${activity.name}</strong> (${rollLabel}${rollModNote}) · DC ${adjustedDc}<br><em style="color:#e88;">Failed.</em> ${activity.outcomes.failure?.narrative ?? "The attempt fails."}`,
+                        whisper: ownerIds
+                    });
+                } else if (preEvaluated) {
+                    await ChatMessage.create({
+                        speaker: ChatMessage.getSpeaker({ actor }),
+                        content: `<strong>${activity.name}</strong> (${rollLabel}${rollModNote}) · DC ${adjustedDc}<br><em style="color:#e88;">Failed.</em> ${activity.outcomes.failure?.narrative ?? "The attempt fails."}`,
+                        whisper: ownerIds
+                    });
+                }
 
                 return {
                     source: "activity",
@@ -362,15 +327,87 @@ export class ActivityResolver {
 
         const outcome = activity.outcomes[resultTier] ?? activity.outcomes.success;
 
+        // Foraging and Hunting: resolve gathered provisions via GatherYieldService
+        if (activityId === "act_forage" || activityId === "act_hunt") {
+            const mode = activityId === "act_hunt" ? "hunt" : "forage";
+            const gathered = await GatherYieldService.resolveGatherDay({
+                actor,
+                mode,
+                terrainTag: terrainTag ?? "forest",
+                total,
+                dc: adjustedDc
+            });
+            let gatherItems = [];
+            if (gathered.items?.length) {
+                gatherItems = gathered.items.map(e => ({
+                    itemRef: e.itemRef ?? null,
+                    itemData: e.itemData ?? null,
+                    name: e.itemData?.name ?? e.name ?? (mode === "hunt" ? "Fresh Game" : "Foraged Provisions"),
+                    quantity: e.quantity ?? 1
+                }));
+            } else if (gathered.rations > 0) {
+                gatherItems = [{
+                    itemRef: "rations",
+                    name: "Rations",
+                    quantity: gathered.rations
+                }];
+            }
+            const narrativeParts = [outcome.narrative];
+            if (gathered.mishap) narrativeParts.push(gathered.mishap);
+            const haulDesc = gathered.fromTable
+                ? GatherYieldService.describeItems(gathered.items)
+                : (gathered.rations > 0 ? `${gathered.rations} rations` : "");
+            if (haulDesc) narrativeParts.push(`Yield: ${haulDesc}`);
+
+            const tierLabel = resultTier === "exceptional" ? "Exceptional!" : resultTier === "success" ? "Success" : "Failed";
+            const tierColor = resultTier === "exceptional" ? "#ffd700" : resultTier === "success" ? "#7eb8da" : "#e88";
+            const yieldSuffix = haulDesc ? `<br><strong>Yield:</strong> ${haulDesc}` : "";
+            const mishapSuffix = gathered.mishap ? `<br><em style="color:#e88;">${gathered.mishap}</em>` : "";
+
+            const ownerIds = game.users.filter(u => actor.testUserPermission(u, "OWNER") || u.isGM).map(u => u.id);
+            if (!preEvaluated && roll) {
+                await roll.toMessage({
+                    speaker: ChatMessage.getSpeaker({ actor }),
+                    flavor: `<strong>${activity.name}</strong> (${rollLabel}${rollModNote}) · DC ${adjustedDc}<br><em style="color:${tierColor};">${tierLabel}.</em> ${outcome.narrative ?? ""}${yieldSuffix}${mishapSuffix}`,
+                    whisper: ownerIds
+                });
+            } else if (preEvaluated) {
+                await ChatMessage.create({
+                    speaker: ChatMessage.getSpeaker({ actor }),
+                    content: `<strong>${activity.name}</strong> (${rollLabel}${rollModNote}) · DC ${adjustedDc}<br><em style="color:${tierColor};">${tierLabel}.</em> ${outcome.narrative ?? ""}${yieldSuffix}${mishapSuffix}`,
+                    whisper: ownerIds
+                });
+            }
+
+            return {
+                source: "activity",
+                activityId,
+                result: resultTier,
+                items: gatherItems,
+                effects: outcome.effects ?? [],
+                narrative: narrativeParts.filter(Boolean).join(". ")
+            };
+        }
+
         // Whisper roll + outcome to actor owner and GM
         const tierLabel = resultTier === "exceptional" ? "Exceptional!" : resultTier === "success" ? "Success" : "Failed";
         const tierColor = resultTier === "exceptional" ? "#ffd700" : resultTier === "success" ? "#7eb8da" : "#e88";
         const ownerIds = game.users.filter(u => actor.testUserPermission(u, "OWNER") || u.isGM).map(u => u.id);
-        await roll.toMessage({
-            speaker: ChatMessage.getSpeaker({ actor }),
-            flavor: `<strong>${activity.name}</strong> (${rollLabel}${rollModNote}) - DC ${adjustedDc}<br><em style="color:${tierColor};">${tierLabel}.</em> ${outcome.narrative ?? ""}`,
-            whisper: ownerIds
-        });
+        const fletchYieldPending = activityId === "act_fletch"
+            && (resultTier === "success" || resultTier === "exceptional");
+        if (!fletchYieldPending && !preEvaluated && roll) {
+            await roll.toMessage({
+                speaker: ChatMessage.getSpeaker({ actor }),
+                flavor: `<strong>${activity.name}</strong> (${rollLabel}${rollModNote}) · DC ${adjustedDc}<br><em style="color:${tierColor};">${tierLabel}.</em> ${outcome.narrative ?? ""}`,
+                whisper: ownerIds
+            });
+        } else if (!fletchYieldPending && preEvaluated) {
+            await ChatMessage.create({
+                speaker: ChatMessage.getSpeaker({ actor }),
+                content: `<strong>${activity.name}</strong> (${rollLabel}${rollModNote}) · DC ${adjustedDc}<br><em style="color:${tierColor};">${tierLabel}.</em> ${outcome.narrative ?? ""}`,
+                whisper: ownerIds
+            });
+        }
 
         // Tend Wounds: apply immediate HP to the target before encounters (not safe rest spot)
         if (!safeRestSpot && activityId === "act_tend_wounds" && options.followUpValue) {
@@ -396,13 +433,14 @@ export class ActivityResolver {
                 if (missing > 0) {
                     let healed = 0;
                     let healLabel = "";
+                    let healRoll = null;
                     const chatParts = [];
 
                     if (resultTier === "success" || resultTier === "exceptional") {
                         if (hasHealerFeat && hasKit) {
                             // Healer feat formula: 1d6 + 4 + target's total HD
                             const targetLevel = target.system?.details?.level ?? target.system?.attributes?.hd?.max ?? 1;
-                            const healRoll = await new Roll(`1d6 + 4 + ${targetLevel}`).evaluate();
+                            healRoll = await new Roll(`1d6 + 4 + ${targetLevel}`).evaluate();
                             healed = Math.min(Math.max(healRoll.total, 1), missing);
                             healLabel = `1d6+4+${targetLevel} = ${healRoll.total}`;
                             chatParts.push("Healer feat");
@@ -421,18 +459,18 @@ export class ActivityResolver {
 
                             if (hasKit) {
                                 // Kit bonus: roll an extra d4 on top
-                                const healRoll = await new Roll(`${die} + ${conMod} + 1d4`).evaluate();
+                                healRoll = await new Roll(`${die} + ${conMod} + 1d4`).evaluate();
                                 healed = Math.min(Math.max(healRoll.total, 1), missing);
                                 healLabel = `${die}+${conMod}+1d4 = ${healRoll.total}`;
                                 chatParts.push("Healer's Kit");
                             } else {
-                                const healRoll = await new Roll(`${die} + ${conMod}`).evaluate();
+                                healRoll = await new Roll(`${die} + ${conMod}`).evaluate();
                                 healed = Math.min(Math.max(healRoll.total, 1), missing);
                                 healLabel = `${die}+${conMod} = ${healRoll.total}`;
                             }
                         }
                     } else {
-                        // Failure: tender's WIS mod (min 1), kit adds +2
+                        // Failure: tender's WIS mod (min 1), kit adds +2. No die.
                         const wisMod = Math.max(1, actor.system?.abilities?.wis?.mod ?? 1);
                         const kitBonus = hasKit ? 2 : 0;
                         healed = Math.min(wisMod + kitBonus, missing);
@@ -453,6 +491,14 @@ export class ActivityResolver {
                     }
 
                     if (healed > 0) {
+                        const chatWhisper = game.users.filter(u => u.isGM || target.testUserPermission(u, "OWNER")).map(u => u.id);
+                        if (healRoll) {
+                            await postRollAndSettle(healRoll, {
+                                speaker: ChatMessage.getSpeaker({ actor }),
+                                flavor: `<strong>${actor.name}</strong> tends <strong>${target.name}</strong>`,
+                                whisper: chatWhisper
+                            });
+                        }
                         const healAdapter = game.ionrift?.respite?.adapter;
                         if (healAdapter) {
                             await healAdapter.applyHPRestore(target, healed);
@@ -460,7 +506,6 @@ export class ActivityResolver {
                             await target.update({ "system.attributes.hp.value": currentHp + healed });
                         }
                         const suffix = chatParts.length ? ` (${chatParts.join(", ")})` : "";
-                        const chatWhisper = game.users.filter(u => u.isGM || target.testUserPermission(u, "OWNER")).map(u => u.id);
                         await ChatMessage.create({
                             speaker: ChatMessage.getSpeaker({ actor }),
                             content: `<div class="respite-recovery-chat"><strong>${actor.name}</strong> tends to <strong>${target.name}</strong>.<br>Immediate healing: <strong>${healed} HP</strong> (${healLabel})${suffix}.</div>`,
@@ -485,12 +530,13 @@ export class ActivityResolver {
                     const tierFormula = getFletchingYieldFormula();
                     if (tierFormula) expr = tierFormula;
                 }
-                const formula = expr.replace(/prof/gi, prof);
+                const formula = expr.replace(/prof/gi, String(prof));
                 try {
-                    const roll = await new Roll(formula).evaluate();
-                    qty = roll.total;
                     if (activity.id === "act_fletch") {
-                        qty = applyFletchingYieldFloor(qty, getFletchingTier(), prof);
+                        qty = await this.#rollFletchYield(actor, formula, prof, options.followUpValue);
+                    } else {
+                        const rolled = await new Roll(formula).evaluate();
+                        qty = rolled.total;
                     }
                 } catch (e) {
                     console.error("Respite | Failed to roll item quantity:", expr, e);
@@ -529,15 +575,63 @@ export class ActivityResolver {
             await actor.setFlag("ionrift-respite", flagKey, streak + 1);
         }
 
+        let narrative = outcome.narrative ?? "";
+        if (fletchYieldPending) {
+            const made = items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+            const bolts = options.followUpValue === "bolts";
+            const noun = made === 1 ? (bolts ? "bolt" : "arrow") : (bolts ? "bolts" : "arrows");
+            if (made > 0) narrative = `${narrative} ${made} ${noun}.`;
+            await ChatMessage.create({
+                speaker: ChatMessage.getSpeaker({ actor }),
+                content: `<strong>${activity.name}</strong> (${rollLabel}${rollModNote}) · DC ${adjustedDc}<br><em style="color:${tierColor};">${tierLabel}.</em> ${narrative}`,
+                whisper: ownerIds
+            });
+        }
+
         return {
             source: "activity",
             activityId,
             result: resultTier,
             items,
             effects: outcome.effects ?? [],
-            narrative: outcome.narrative ?? "",
+            narrative,
             xpReduction
         };
+    }
+
+    /**
+     * Player rolls the fletch yield. The dialog names the dice and the count.
+     * A missing roll service falls back to a quiet evaluate so the grant still lands.
+     * @param {Actor} actor
+     * @param {string} formula Proficiency already substituted.
+     * @param {number} prof
+     * @param {string} [followUpValue]
+     * @returns {Promise<number>}
+     */
+    async #rollFletchYield(actor, formula, prof, followUpValue) {
+        const tier = getFletchingTier();
+        const bolts = followUpValue === "bolts";
+        const noun = bolts ? "bolts" : "arrows";
+        const one = bolts ? "bolt" : "arrow";
+        const grant = (total) => applyFletchingYieldFloor(total, tier, prof);
+        const request = game.ionrift?.library?.rollRequest?.request;
+        if (typeof request === "function") {
+            const result = await request({
+                actorId: actor.id,
+                actorUuid: actor.uuid,
+                type: "formula",
+                formula,
+                title: `How many ${noun}`,
+                tableLabel: formula,
+                describeOutcome: async ({ total }) => {
+                    const made = grant(total);
+                    return `${made} ${made === 1 ? one : noun}`;
+                }
+            });
+            return grant(result?.total);
+        }
+        const rolled = await new Roll(formula).evaluate();
+        return grant(rolled.total);
     }
 
     /**
@@ -711,87 +805,7 @@ export class ActivityResolver {
      * @returns {boolean}
      */
     _meetsPrerequisites(actor, prereqs) {
-        if (!prereqs) return true;
-
-        // Check tool proficiencies
-        if (prereqs.tools?.length > 0) {
-            const actorTools = this._getActorToolProficiencies(actor);
-            if (!prereqs.tools.some(t => actorTools.includes(t))) return false;
-        }
-
-        // Check skill proficiencies
-        if (prereqs.proficiencies?.length > 0) {
-            const prereqAdapter = game.ionrift?.respite?.adapter;
-            const actorSkills = prereqAdapter
-                ? prereqAdapter.getProficientSkillKeys(actor)
-                : Object.keys(actor.system?.skills ?? {}).filter(s => actor.system.skills[s]?.proficient > 0);
-            // Also check with normalized keys for cross-system compatibility
-            const normalizedPrereqs = prereqAdapter
-                ? prereqs.proficiencies.map(p => prereqAdapter.normalizeSkillKey(p))
-                : prereqs.proficiencies;
-            if (!normalizedPrereqs.some(p => actorSkills.includes(p)) &&
-                !prereqs.proficiencies.some(p => actorSkills.includes(p))) return false;
-        }
-
-        // Check minimum level
-        if (prereqs.minimumLevel) {
-            const prereqAdapter = game.ionrift?.respite?.adapter;
-            const level = prereqAdapter ? prereqAdapter.getLevel(actor) : (actor.system?.details?.level ?? 0);
-            if (level < prereqs.minimumLevel) return false;
-        }
-
-        // Check maximum level (e.g. Training capped at level 5)
-        if (prereqs.maximumLevel) {
-            const prereqAdapter = game.ionrift?.respite?.adapter;
-            const level = prereqAdapter ? prereqAdapter.getLevel(actor) : (actor.system?.details?.level ?? 0);
-            if (level > prereqs.maximumLevel) return false;
-        }
-
-        // Check spell prerequisites (actor must have at least one PREPARED)
-        if (prereqs.spells?.length > 0) {
-            const { prepared } = this._getActorSpells(actor);
-            if (!prereqs.spells.some(s => prepared.has(s.toLowerCase()))) return false;
-        }
-
-        // Check isSpellcaster (actor must have at least one spell slot level)
-        if (prereqs.isSpellcaster) {
-            const prereqAdapter = game.ionrift?.respite?.adapter;
-            const hasSlots = prereqAdapter ? prereqAdapter.isSpellcaster(actor) : (() => {
-                const spells = actor.system?.spells ?? {};
-                return Object.keys(spells).some(k => (spells[k]?.max ?? 0) > 0);
-            })();
-            if (!hasSlots) return false;
-        }
-
-        // Check requiresSpellbook (Wizard class, or Warlock with Book of Shadows)
-        if (prereqs.requiresSpellbook) {
-            const prereqAdapter = game.ionrift?.respite?.adapter;
-            if (prereqAdapter) {
-                if (!prereqAdapter.hasSpellbook(actor)) return false;
-            } else {
-                const classEntries = actor.classes ?? {};
-                const classNames = new Set(
-                    Object.values(classEntries).map(c => c.name?.toLowerCase().trim())
-                );
-                const isWizard = !!classEntries.wizard || classNames.has("wizard");
-                if (!isWizard) {
-                    // Warlock with Pact of the Tome (Book of Shadows) is the only
-                    // other class that transcribes spells into a book.
-                    const isWarlock = !!classEntries.warlock || classNames.has("warlock");
-                    const hasSpellbook = isWarlock && (actor.items ?? []).some(i =>
-                        i.name?.toLowerCase().includes("spellbook") || i.name?.toLowerCase().includes("book of shadows")
-                    );
-                    if (!hasSpellbook) return false;
-                }
-            }
-        }
-
-        // Runtime checks (checked separately, not from JSON prereqs)
-        if (prereqs._requiresAttuneableItems) {
-            if (!this._hasAttuneableItems(actor)) return false;
-        }
-
-        return true;
+        return ActivityEligibility.meetsPrerequisites(actor, prereqs);
     }
 
     /**
@@ -819,56 +833,33 @@ export class ActivityResolver {
         const fireAllowsCooking = resolvedFireLevel === "campfire" || resolvedFireLevel === "bonfire";
 
         for (const activity of this.activities.values()) {
-            if (activity.disabled) continue;
             if (!activity.restTypes.includes(restType)) continue;
-            if (isActivityExcludedForRestOptions(activity, options)) continue;
-            if (!isComfortEnabled() && COMFORT_EXCLUDED_ACTIVITY_IDS.has(activity.id)) continue;
-            if (!areEncountersEnabled() && ENCOUNTER_ACTIVITY_IDS.has(activity.id)) continue;
+            if (ActivityEligibility.isGatedBySettings(actor, activity, options)) continue;
 
-            // Gate Training behind XP tier (0 = off)
-            if (activity.id === "act_train" && !isTrainingEnabled()) continue;
-
-            // Gate profession activities (cook, brew, tailor, craft)
-            if (activity.category === "profession") {
-                if (!isProfessionActivityEnabled(activity)) continue;
-                if (isChefTreatCookingOnly() && activity.id === "act_cook" && !hasChefFeat(actor)) continue;
-            }
-
-            // Gate Fletching behind yield tier (0 = off)
-            if (activity.id === "act_fletch" && !isFletchingEnabled()) continue;
-
-            // Gate Copy Spell behind module setting
-            if (activity.id === "act_scribe") {
-                try {
-                    if (!game.settings.get("ionrift-respite", "enableCopySpell")) continue;
-                } catch (e) { /* setting may not exist yet */ }
-            }
-
-            // Gate Pray / Meditate behind module setting
-            if (activity.id === "act_pray" && !isPrayMeditateEnabled()) continue;
-
-            // Runtime attunement check
-            if (activity.id === "act_attune" && !this._hasAttuneableItems(actor)) {
-                continue;
-            }
-
-            if (this._meetsPrerequisites(actor, activity.prerequisites)) {
+            if (ActivityEligibility.meetsPrerequisites(actor, activity.prerequisites)) {
                 // requiresFire: cooking needs campfire or bonfire (embers counts as lit but not hot enough)
                 if (activity.requiresFire) {
                     if (!fireIsBurning) {
                         faded.push({
                             ...activity,
-                            fadedHint: "Requires a lit fire."
+                            fadedHint: CARD_FADED_HINTS.needsFire
                         });
                         continue;
                     }
                     if (!fireAllowsCooking) {
                         faded.push({
                             ...activity,
-                            fadedHint: "Raise the fire to campfire or bonfire to cook."
+                            fadedHint: CARD_FADED_HINTS.needsHotFire
                         });
                         continue;
                     }
+                }
+                if (activity.id === "act_forage" && options.forageActivityGate?.disabled) {
+                    faded.push({
+                        ...activity,
+                        fadedHint: CARD_FADED_HINTS.noForage
+                    });
+                    continue;
                 }
                 if (activity.minor) {
                     minor.push(activity);
@@ -877,12 +868,11 @@ export class ActivityResolver {
                 }
             } else if (activity.prerequisites?.spells?.length > 0) {
                 // Check if the spell is KNOWN but just not prepared (faded tile)
-                const { known, prepared } = this._getActorSpells(actor);
+                const { known, prepared } = ActivityEligibility.getActorSpells(actor);
                 const knownSpells = activity.prerequisites.spells.filter(s => known.has(s.toLowerCase()));
                 const preparedSpells = activity.prerequisites.spells.filter(s => prepared.has(s.toLowerCase()));
                 if (knownSpells.length > 0 && preparedSpells.length === 0) {
-                    const unpreparedList = knownSpells.join(" / ");
-                    const hint = `${unpreparedList} is in the spellbook but not prepared.`;
+                    const hint = cardHintNotPrepared(knownSpells);
                     if (activity.minor) {
                         fadedMinor.push({ ...activity, fadedHint: hint });
                     } else {
@@ -901,37 +891,7 @@ export class ActivityResolver {
      * @returns {{ prepared: Set<string>, known: Set<string> }}
      */
     _getActorSpells(actor) {
-        const prepared = new Set();
-        const known = new Set();
-
-        for (const item of actor.items ?? []) {
-            if (item.type !== "spell") continue;
-            const name = item.name?.toLowerCase();
-            if (!name) continue;
-
-            known.add(name);
-
-            // Use toObject() to avoid DnD5e 5.1 deprecation warnings on SpellData#preparation
-            const raw = item.toObject?.()?.system ?? {};
-
-            // DnD5e 5.1+: top-level method replaces preparation.mode
-            //             top-level prepared replaces preparation.prepared
-            const mode = raw.method ?? raw.preparation?.mode ?? "";
-            const isPrepared = raw.prepared ?? raw.preparation?.prepared ?? false;
-
-            // Always-prepared, innate, pact, and atwill spells
-            if (mode === "always" || mode === "innate" || mode === "pact" || mode === "atwill") {
-                prepared.add(name);
-                continue;
-            }
-
-            // Standard prepared spell (wizard/cleric/druid/paladin)
-            if (isPrepared) {
-                prepared.add(name);
-            }
-        }
-
-        return { prepared, known };
+        return ActivityEligibility.getActorSpells(actor);
     }
 
     /**
@@ -940,57 +900,15 @@ export class ActivityResolver {
      * @returns {boolean}
      */
     _hasAttuneableItems(actor) {
-        for (const item of actor.items ?? []) {
-            const attunement = item.system?.attunement;
-            // dnd5e v3: attunement is a string "required" when not attuned
-            // or a boolean/number in some versions
-            if ((attunement === "required" || attunement === 1) && !item.system?.attuned) {
-                return true;
-            }
-        }
-        return false;
+        return ActivityEligibility.hasAttuneableItems(actor);
     }
 
     /**
      * Extracts tool proficiency keys from an actor.
-     * Routes through the adapter when available.
      * @param {Actor} actor
      * @returns {string[]}
      */
     _getActorToolProficiencies(actor) {
-        const toolAdapter = game.ionrift?.respite?.adapter;
-        if (toolAdapter?.getToolProficiencies) {
-            return toolAdapter.getToolProficiencies(actor);
-        }
-
-        const profKeys = new Set();
-
-        const tools = actor.system?.tools ?? {};
-        for (const [key, data] of Object.entries(tools)) {
-            if ((data?.value ?? 0) > 0 || (data?.effectValue ?? 0) > 0) {
-                profKeys.add(key);
-            }
-        }
-
-        for (const item of actor.items ?? []) {
-            const baseItem = item.system?.type?.baseItem;
-            if (baseItem) profKeys.add(baseItem);
-
-            const nameLower = (item.name ?? "").toLowerCase();
-            if (nameLower.includes("cook")) profKeys.add("cook");
-            if (nameLower.includes("herbalism")) profKeys.add("herb");
-            if (nameLower.includes("alchemist")) profKeys.add("alchemist");
-            if (nameLower.includes("brewer")) profKeys.add("brewer");
-            if (nameLower.includes("tinker")) profKeys.add("tinker");
-            if (nameLower.includes("smith")) profKeys.add("smith");
-            if (nameLower.includes("thiev")) profKeys.add("thief");
-            if (nameLower.includes("potter")) profKeys.add("potter");
-            if (nameLower.includes("glassblower")) profKeys.add("glassblower");
-            if (nameLower.includes("mason")) profKeys.add("mason");
-            if (nameLower.includes("calligrapher")) profKeys.add("calligrapher");
-            if (nameLower.includes("cartographer")) profKeys.add("cartographer");
-        }
-
-        return [...profKeys];
+        return ActivityEligibility.getActorToolProficiencies(actor);
     }
 }

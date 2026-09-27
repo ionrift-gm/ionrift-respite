@@ -8,19 +8,7 @@
  * Renders FontAwesome icons via ctx.fillText() for pile items.
  */
 
-// FontAwesome unicode map for whittled figures and sticks
-const FA_UNICODE = {
-    "fas fa-dog": "\uf6d3",
-    "fas fa-dove": "\uf4ba",
-    "fas fa-star": "\uf005",
-    "fas fa-shield-alt": "\uf3ed",
-    "fas fa-paw": "\uf1b0",
-    "fas fa-dragon": "\uf6d5",
-    "fas fa-tree": "\uf1bb",
-    "fas fa-fish": "\uf578",
-    "fas fa-grip-lines-vertical": "\uf7a5",
-    "fas fa-fire-alt": "\uf7e4"
-};
+import { CampfireAssetCache } from "./CampfireAssetCache.js";
 
 /** Physics constants */
 const GRAVITY = 600;          // px/s²
@@ -84,14 +72,8 @@ export class CampfirePhysics {
     _flashes = [];
     /** Callback when an item burns to ash: (item) => void */
     onItemBurned = null;
-    /** @type {Map<string, Map<string, OffscreenCanvas>>} icon class -> color -> rendered canvas */
-    _iconCache = new Map();
-    /** @type {Map<string, HTMLCanvasElement>} src@size -> rendered canvas */
-    _imageCache = new Map();
-    /** @type {Set<string>} */
-    _imageLoadPending = new Set();
-    /** Whether icon font is ready */
-    _fontReady = false;
+    /** @type {CampfireAssetCache} */
+    _assetCache = new CampfireAssetCache();
 
     /**
      * @param {HTMLCanvasElement} canvas
@@ -104,12 +86,6 @@ export class CampfirePhysics {
         this._lastTime = performance.now();
         this._tick = this._tick.bind(this);
         this._animFrame = requestAnimationFrame(this._tick);
-
-        // Pre-render icons once fonts are loaded
-        document.fonts.ready.then(() => {
-            this._fontReady = true;
-            this._iconCache.clear();
-        });
     }
 
     /** Resize canvas to match its CSS dimensions. */
@@ -210,7 +186,9 @@ export class CampfirePhysics {
             owner: opts.owner ?? "",
             onSettle: opts.onSettle ?? null,
             burstOnSettle: opts.burstOnSettle ?? false,
-            catchFire: opts.catchFire ?? false
+            // Omit means "ignite if it settles in the fire zone" (whittled figures).
+            // false is an explicit opt-out (unlit kindling staging). true always ignites.
+            ...(opts.catchFire !== undefined ? { catchFire: opts.catchFire } : {})
         });
     }
 
@@ -471,7 +449,7 @@ export class CampfirePhysics {
 
             // Ignition delay countdown for fire-zone / kindling items
             if (item.igniteDelay !== undefined && item.igniteDelay > 0 && !item.burning) {
-                if (item.catchFire && Math.random() < dt * 10) {
+                if (Math.random() < dt * 10) {
                     const nx = item.x / this._displayWidth;
                     const ny = item.y / this._displayHeight;
                     this.emitSparks(nx, ny, item.color ?? "#ffaa33", 2);
@@ -705,7 +683,7 @@ export class CampfirePhysics {
         if (obj.img) {
             cached = this._getCachedImage(obj.img, obj.size);
         } else {
-            if (!obj.icon || !this._fontReady) return;
+            if (!obj.icon || !this._assetCache.isFontReady) return;
             cached = this._getCachedIcon(obj.icon, color, obj.size);
         }
         if (!cached) return;
@@ -720,18 +698,28 @@ export class CampfirePhysics {
             const flicker = 6 + Math.sin(obj.burnTimer * 15) * 4;
             ctx.shadowColor = `rgba(255, ${100 + Math.random() * 50|0}, 0, 0.8)`;
             ctx.shadowBlur = flicker;
-        } else if (obj.catchFire && obj.igniteDelay !== undefined && obj.igniteDelay > 0) {
+        } else if (obj.igniteDelay !== undefined && obj.igniteDelay > 0) {
             const smolder = 1 - (obj.igniteDelay / BURN_IGNITE_DELAY);
             ctx.shadowColor = `rgba(255, 150, 50, ${0.35 + smolder * 0.45})`;
             ctx.shadowBlur = 4 + smolder * 8;
-        } else {
-            ctx.shadowColor = "rgba(0,0,0,0.6)";
-            ctx.shadowBlur = 4;
         }
 
         const scale = renderSize / obj.size;
-        const drawSize = cached.width * scale;
-        ctx.drawImage(cached, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+        const drawW = cached.width * scale;
+        const drawH = cached.height * scale;
+        const glowing = (obj.burning && obj.burnTimer !== undefined)
+            || (obj.igniteDelay !== undefined && obj.igniteDelay > 0);
+        if (!glowing) {
+            // Blur on a glyph blit smears the font baseline into a visible stroke.
+            ctx.shadowBlur = 0;
+            ctx.shadowColor = "transparent";
+            ctx.globalAlpha = alpha * 0.4;
+            ctx.filter = "brightness(0)";
+            ctx.drawImage(cached, -drawW / 2 + 1, -drawH / 2 + 1, drawW, drawH);
+            ctx.filter = "none";
+            ctx.globalAlpha = alpha;
+        }
+        ctx.drawImage(cached, -drawW / 2, -drawH / 2, drawW, drawH);
 
         ctx.shadowBlur = 0;
         ctx.globalAlpha = 1;
@@ -740,76 +728,17 @@ export class CampfirePhysics {
 
     /** Warm the image cache before the first kindling drop. */
     preloadImage(src, size = 24) {
-        if (src) this._getCachedImage(src, size);
+        this._assetCache.preloadImage(src, size);
     }
 
     /** @param {string} src @param {number} size @returns {HTMLCanvasElement|null} */
     _getCachedImage(src, size) {
-        const key = `${src}@${size}`;
-        if (this._imageCache.has(key)) return this._imageCache.get(key);
-        if (this._imageLoadPending.has(key)) return null;
-
-        this._imageLoadPending.add(key);
-        const img = new Image();
-        img.addEventListener("load", () => {
-            const padding = 4;
-            const canvasSize = size + padding * 2;
-            const offscreen = document.createElement("canvas");
-            offscreen.width = canvasSize;
-            offscreen.height = canvasSize;
-            const octx = offscreen.getContext("2d");
-            octx.drawImage(img, padding, padding, size, size);
-            this._imageCache.set(key, offscreen);
-            this._imageLoadPending.delete(key);
-        }, { once: true });
-        img.addEventListener("error", () => {
-            this._imageLoadPending.delete(key);
-        }, { once: true });
-        img.src = src;
-        return null;
+        return this._assetCache.getCachedImage(src, size);
     }
 
     /** Get or create a cached icon rendering by probing the DOM for the actual FA glyph. */
     _getCachedIcon(iconClass, color, size) {
-        const key = `${iconClass}|${color}`;
-        if (this._iconCache.has(key)) return this._iconCache.get(key);
-
-        // Probe the DOM: create a temporary FA element, read its computed glyph + font
-        const probe = document.createElement("i");
-        probe.className = iconClass;
-        probe.style.cssText = "position:absolute;left:-9999px;top:-9999px;visibility:hidden;font-size:16px;";
-        document.body.appendChild(probe);
-
-        const computed = window.getComputedStyle(probe, "::before");
-        const content = computed.content;  // e.g. '"\\f6d3"' or '"\uf6d3"'
-        const fontFamily = computed.fontFamily;
-        const fontWeight = computed.fontWeight || "900";
-        document.body.removeChild(probe);
-
-        // Extract the actual character from the content property
-        // content comes as '"X"' where X is the unicode char
-        let glyph = null;
-        if (content && content !== "none" && content !== "normal" && content.length >= 3) {
-            glyph = content.replace(/['"]/g, "");
-        }
-        if (!glyph) return null;
-
-        // Render to offscreen canvas
-        const padding = 8;
-        const canvasSize = size + padding * 2;
-        const offscreen = document.createElement("canvas");
-        offscreen.width = canvasSize;
-        offscreen.height = canvasSize;
-        const octx = offscreen.getContext("2d");
-
-        octx.font = `${fontWeight} ${size}px ${fontFamily}`;
-        octx.fillStyle = color;
-        octx.textAlign = "center";
-        octx.textBaseline = "middle";
-        octx.fillText(glyph, canvasSize / 2, canvasSize / 2);
-
-        this._iconCache.set(key, offscreen);
-        return offscreen;
+        return this._assetCache.getCachedIcon(iconClass, color, size);
     }
 
     /** Blend item color toward char black as it burns. */
@@ -848,5 +777,6 @@ export class CampfirePhysics {
         this._objects = [];
         this._settledPile = [];
         this._flashes = [];
+        this._assetCache.clear();
     }
 }

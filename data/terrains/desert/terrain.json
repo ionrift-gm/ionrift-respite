@@ -4,7 +4,7 @@
     "category": "wilderness",
     "icon": "fas fa-sun",
     "comfort": "hostile",
-    "comfortReason": "Extreme heat, zero shade, no water. Survival without shelter is a gamble.",
+    "comfortReason": "Barren wastes and harsh exposure with zero natural shelter or surface water.",
     "scoutFlavor": {
         "nat1":    ["A sheltered dune with good shade from a rock face.", "Rock overhang with shade. Looks like a solid spot.", "A small oasis with clear water and palm cover."],
         "poor":    ["Open sand. No shade, no cover.", "A shallow depression. Better than nothing.", "Rocky ground. Hard, hot, exposed."],

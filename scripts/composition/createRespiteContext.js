@@ -5,6 +5,9 @@ import { EventResolver } from "../services/events/resolve/EventResolver.js";
 import { ResourcePoolRoller } from "../services/rest/recovery/ResourcePoolRoller.js";
 import { TerrainRegistry } from "../services/events/resolve/TerrainRegistry.js";
 import { RestSetupApp } from "../apps/rest/RestSetupApp.js";
+import { ShortRestApp } from "../apps/rest/ShortRestApp.js";
+import { BivouacApp } from "../apps/bivouac/BivouacApp.js";
+import { DowntimeLedgerApp } from "../apps/downtime/DowntimeLedgerApp.js";
 import { TorchTokenLinker } from "../services/camp/props/TorchTokenLinker.js";
 import {
     placeTorch,
@@ -87,9 +90,35 @@ export function createRespiteContext(runtime) {
         ActivityResolver,
         EventResolver,
         ResourcePoolRoller,
-        openRestSetup: () => {
+        BivouacApp,
+        DowntimeLedgerApp,
+        ShortRestApp,
+        RestSetupApp,
+        openRestSetup: (options) => {
             if (!game.user.isGM) return;
-            new RestSetupApp().render({ force: true });
+            new RestSetupApp(options).render({ force: true });
+        },
+        openShortRest: (options) => {
+            if (!game.user.isGM) return;
+            new ShortRestApp(options).render({ force: true });
+        },
+        openBivouac: (options) => {
+            if (!game.user.isGM) return;
+            new BivouacApp(options).render({ force: true });
+        },
+        openDowntime: (options) => {
+            if (!game.user.isGM) return;
+            new DowntimeLedgerApp(options).render({ force: true });
+        },
+        toggleTheme: async (theme) => {
+            let next = theme;
+            if (!next) {
+                const cur = game.settings.get(MODULE_ID, "uiTheme") ?? "glass";
+                next = cur === "glass" ? "cockpit" : "glass";
+            }
+            await game.settings.set(MODULE_ID, "uiTheme", next);
+            RespiteLog.log(`UI theme set to: ${next}`);
+            return next;
         },
         openPlayerGuide: async (pageId) => {
             const GUIDE_PAGES = {

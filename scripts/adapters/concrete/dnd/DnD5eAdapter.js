@@ -86,13 +86,42 @@ export class DnD5eAdapter extends SystemAdapter {
         return false;
     }
 
+    /**
+     * dnd5e stores the live exhaustion level on the exhaustion ActiveEffect.
+     * system.attributes.exhaustion is derived from that effect and can stay
+     * stale after the effect is removed. Reading the effect itself avoids
+     * rest resolution putting a cleared level back.
+     * @param {Actor} actor
+     * @returns {ActiveEffect|null}
+     */
+    _exhaustionEffect(actor) {
+        const effects = actor?.effects;
+        if (!effects) return null;
+        return effects.get?.("dnd5eexhaustion0")
+            ?? effects.find?.(entry => entry?.statuses?.has?.("exhaustion"))
+            ?? null;
+    }
+
     getExhaustion(actor) {
-        return actor.system?.attributes?.exhaustion ?? 0;
+        const effects = actor?.effects;
+        if (!(effects?.get || effects?.find)) {
+            return actor.system?.attributes?.exhaustion ?? 0;
+        }
+        const effect = this._exhaustionEffect(actor);
+        if (!effect) return 0;
+        const level = effect.getFlag?.("dnd5e", "exhaustionLevel")
+            ?? effect.flags?.dnd5e?.exhaustionLevel;
+        return Number.isFinite(level) ? level : 1;
     }
 
     getRestVariant() {
+        if (this._devVariantOverride) return this._devVariantOverride;
         try { return game.settings.get("dnd5e", "restVariant") ?? "normal"; }
         catch { return "normal"; }
+    }
+
+    setDevRestVariant(variant) {
+        this._devVariantOverride = variant || null;
     }
 
     hasSpellbook(actor) {
@@ -195,8 +224,22 @@ export class DnD5eAdapter extends SystemAdapter {
     async applyExhaustionDelta(actor, delta) {
         const current = this.getExhaustion(actor);
         const next = Math.max(0, Math.min(6, current + delta));
-        if (next !== current) {
-            await actor.update({ "system.attributes.exhaustion": next });
+        if (next === current) return;
+        await actor.update({ "system.attributes.exhaustion": next });
+        if (next < 1) await this._waitForExhaustionCleared(actor);
+    }
+
+    /**
+     * The dnd5e update hook removes the exhaustion effect without being awaited.
+     * Resolution snapshots the level as soon as this returns, so wait until the
+     * effect is actually gone. Do not delete it here; a second delete is logged
+     * as a missing document.
+     * @param {Actor} actor
+     */
+    async _waitForExhaustionCleared(actor) {
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+            if (!this._exhaustionEffect(actor)) return;
+            await new Promise(resolve => setTimeout(resolve, 50));
         }
     }
 

@@ -129,7 +129,13 @@
                         {{/if}}
                     </div>
                     <div class="ceremony-row-center">
+                        {{#if hasTinderbox}}
                         <span class="strike-hint">Attempt {{strikeCount}}</span>
+                        {{else}}
+                        {{#unless hasFireCantrip}}
+                        <span class="guided-label ceremony-no-lighter" data-tooltip="Needs a tinderbox or a fire cantrip.">No tinderbox</span>
+                        {{/unless}}
+                        {{/if}}
                     </div>
                     <div class="ceremony-row-right">
                         {{#if hasFireCantrip}}
@@ -158,11 +164,6 @@
                         </button>
                         {{/if}}
                         {{/if}}
-                        {{#unless hasTinderbox}}
-                        {{#unless hasFireCantrip}}
-                        <span class="guided-label">This character needs a tinderbox or fire cantrip</span>
-                        {{/unless}}
-                        {{/unless}}
                     </div>
                 </div>
                 </div>
@@ -177,58 +178,6 @@
             {{#if previewFirewoodShortfall}}
             <p class="campfire-preview-shortfall-hint">Party is short on firewood for this tier.</p>
             {{/if}}
-            {{/if}}
-            {{else}}
-            {{!-- Activity phase: relight after douse or cold camp --}}
-            {{#if coldCampActive}}
-            <p class="guided-label activity-cold-camp-hint">Cold camp. Comfort −1. Drag kindling, then strike flint or use a cantrip to relight.</p>
-            {{/if}}
-            {{#unless kindlingPlaced}}
-                {{!-- Step 1: Place kindling --}}
-                {{#if firewoodCount}}
-                <div class="campfire-guided-step">
-                    <div class="firewood-log" draggable="true" data-tooltip="Drag kindling to the fire pit">
-                        <img class="firewood-log-icon" src="{{kindlingDragImg}}" alt="" draggable="false">
-                    </div>
-                    <span class="guided-label">Drag firewood to start a fire</span>
-                </div>
-                {{else}}
-                <div class="campfire-guided-step dimmed">
-                    <i class="fas fa-fire"></i>
-                    <span class="guided-label">No firewood in inventory</span>
-                </div>
-                {{/if}}
-            {{else}}
-                {{!-- Step 2: Ignite (tinderbox and/or cantrip) --}}
-                {{#if hasFireCantrip}}
-                <div class="campfire-guided-step">
-                    <button type="button" data-action="cantripIgnite" class="campfire-btn strike-btn cantrip-btn">
-                        <i class="fas fa-hat-wizard"></i> {{fireCantrip}}
-                    </button>
-                </div>
-                {{/if}}
-                {{#if hasTinderbox}}
-                <div class="campfire-guided-step">
-                    <button type="button" data-action="strikeFlint" class="campfire-btn strike-btn">
-                        <i class="fas fa-hand-sparkles"></i> Strike Flint
-                    </button>
-                    <span class="strike-hint">Attempt {{strikeCount}}</span>
-                </div>
-                {{/if}}
-                {{#unless hasTinderbox}}
-                {{#unless hasFireCantrip}}
-                <div class="campfire-guided-step dimmed">
-                    <i class="fas fa-hand-sparkles"></i>
-                    <span class="guided-label">Needs a Tinderbox or fire cantrip</span>
-                </div>
-                {{/unless}}
-                {{/unless}}
-            {{/unless}}
-            {{#if showGiftWoodBtn}}
-            <button type="button" class="campfire-btn ceremony-gift-wood-btn" data-action="giftCeremonyWood"
-                    data-tooltip="Add kindling to {{giftKindlingTargetName}}'s sheet">
-                <i class="fas fa-gift" aria-hidden="true"></i> Gift wood
-            </button>
             {{/if}}
             {{/if}}
         {{else}}
@@ -266,9 +215,9 @@
         {{/unless}}
     </div>
 
-    {{!-- Fire meter (activity panel: always; ceremony: only when lit) --}}
+    {{!-- Heat meter only while the fire is burning. Cold camp uses the tier strip. --}}
     {{#if showFireMeter}}
-    <div class="fire-meter">
+    <div class="fire-meter is-live">
         <div class="fire-meter-track">
             <div class="fire-meter-fill"></div>
             <div class="fire-meter-needle"></div>

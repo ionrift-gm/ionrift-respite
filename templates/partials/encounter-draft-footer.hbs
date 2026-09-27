@@ -1,0 +1,59 @@
+{{!-- Shared partial: Encounter draft footer. GM-only wilderness encounter planning. --}}
+{{#if isGM}}
+<div class="encounter-draft-panel downtime-encounter-draft-panel">
+    <div class="draft-header">
+        <span class="draft-title"><i class="fas fa-shield-halved"></i> Encounter Draft (GM Only)</span>
+        <div class="draft-master-actions">
+            <div class="draft-dc-stepper" data-tooltip="Encounter DC: roll d20 against this threshold. Rolls below DC trigger an encounter.">
+                <span class="draft-dc-label">Encounter DC</span>
+                <button type="button" class="btn-draft-dc" data-action="adjustDraftDC" data-delta="-1" data-tooltip="Decrease DC for all nights (Lower Encounter Chance)">−</button>
+                <span class="draft-dc-value">{{dangerDC}}</span>
+                <button type="button" class="btn-draft-dc" data-action="adjustDraftDC" data-delta="1" data-tooltip="Increase DC for all nights (Higher Encounter Chance)">+</button>
+            </div>
+            <button type="button" class="btn-draft-action" data-action="rerollAllDraft" data-tooltip="Reroll all nights">
+                <i class="fas fa-dice"></i> Reroll All
+            </button>
+        </div>
+    </div>
+
+    <div class="draft-nights-grid">
+        {{#each encounterDraft}}
+        <div class="draft-night-card {{#if isRed}}red{{else if isAmber}}amber{{else}}green{{/if}}">
+            <div class="night-card-top">
+                <span class="night-label">
+                    N{{nightIndex}}
+                    {{#if hasFortify}}<i class="fas fa-shield-alt night-mod-icon fortify" data-tooltip="{{fortifyTooltip}}"></i>{{/if}}
+                    {{#if hasGuard}}<i class="fas fa-eye night-mod-icon guard" data-tooltip="{{guardTooltip}}"></i>{{/if}}
+                </span>
+                <div class="night-actions">
+                    <button type="button" class="night-btn cycle-btn" data-action="cycleNightState" data-night="{{nightIndex}}" data-tooltip="Cycle state: Safe (Green) → Event (Amber) → Ambush (Red)">
+                        <i class="fas fa-arrows-rotate"></i>
+                    </button>
+                    <button type="button" class="night-btn" data-action="rerollNight" data-night="{{nightIndex}}" data-tooltip="Reroll this night">
+                        <i class="fas fa-dice"></i>
+                    </button>
+                    {{#if (or isRed isAmber)}}
+                    <button type="button" class="night-btn drop-btn" data-action="dropNight" data-night="{{nightIndex}}" data-tooltip="Mark safe (Green)">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    {{/if}}
+                </div>
+            </div>
+            <div class="night-card-roll-row">
+                <span class="night-roll-pill {{#if isRed}}red{{else if isAmber}}amber{{else}}green{{/if}}" data-tooltip="Night {{nightIndex}} Roll: {{rollTotal}} vs DC {{effectiveDC}}">
+                    <i class="fas fa-dice-d20"></i> {{rollTotal}}
+                </span>
+                <div class="night-dc-stepper" data-tooltip="{{dcTooltip}}">
+                    <button type="button" class="night-dc-btn" data-action="adjustNightDC" data-night="{{nightIndex}}" data-delta="-1" data-tooltip="Decrease Night {{nightIndex}} DC">−</button>
+                    <span class="night-dc-val {{#if isReducedDC}}reduced{{else if isIncreasedDC}}increased{{/if}}">DC {{effectiveDC}}</span>
+                    <button type="button" class="night-dc-btn" data-action="adjustNightDC" data-night="{{nightIndex}}" data-delta="1" data-tooltip="Increase Night {{nightIndex}} DC">+</button>
+                </div>
+            </div>
+            <span class="night-status {{#if isRed}}red{{else if isAmber}}amber{{else}}green{{/if}}" title="{{#if event}}{{event.title}}: {{event.description}}{{else}}Quiet Night{{/if}}">
+                <i class="{{statusIcon}}"></i> {{statusLabel}}
+            </span>
+        </div>
+        {{/each}}
+    </div>
+</div>
+{{/if}}

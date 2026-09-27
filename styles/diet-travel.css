@@ -2423,6 +2423,62 @@
     border: 1px solid rgba(180, 40, 40, 0.5);
 }
 
+.respite-spoil-badge.spoil-cold {
+    background: rgba(168, 85, 247, 0.2);
+    color: #e9d5ff;
+    border: 1px solid rgba(168, 85, 247, 0.45);
+    box-shadow: 0 0 6px rgba(168, 85, 247, 0.25);
+    letter-spacing: 0.04em;
+}
+
+.respite-spoil-badge.in-cold-storage {
+    border-color: rgba(168, 85, 247, 0.4);
+}
+
+/* ---- Container Storage: Item Sheet Header Button ---- */
+
+.respite-container-btn {
+    background: none;
+    border: none;
+    color: rgba(200, 195, 220, 0.45);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 2px 4px;
+    margin: 0 2px;
+    transition: all 0.2s ease;
+}
+
+.respite-container-btn:hover {
+    color: rgba(220, 215, 240, 0.9);
+}
+
+.respite-container-btn.cold-active {
+    color: #c4b5fd;
+    text-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+}
+
+.respite-container-btn.cold-active:hover {
+    color: #ffffff;
+    text-shadow: 0 0 10px rgba(192, 132, 252, 0.9);
+}
+
+/* App V1 legacy container sheets */
+.respite-container-btn--appv1 {
+    flex: 0 0 24px;
+    width: 24px;
+    min-width: 24px;
+    max-width: 24px;
+    height: 24px;
+    font-size: 12px;
+    line-height: 24px;
+    padding: 0;
+    margin: 0 2px;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 /* ---- Diet Config: Actor Sheet Header Button ---- */
 
 .respite-diet-btn {
@@ -3569,11 +3625,6 @@
 }
 .ionrift-respite-app.ionrift-camp-dock .phase-label {
     font-size: 0.72rem;
-}
-.ionrift-respite-app.ionrift-camp-dock .btn-phase-guide {
-    width: 18px;
-    height: 18px;
-    font-size: 0.7rem;
 }
 .ionrift-respite-app .camp-minimal-lead {
     font-size: 0.85rem;
