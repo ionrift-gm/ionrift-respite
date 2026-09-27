@@ -148,6 +148,7 @@ export function emitRestResolved() {
  * GM ,  Players: rest abandoned by the GM.
  */
 export function emitRestAbandoned() {
+    Hooks.callAll("ionrift.respite.restCleanup");
     _emit(SOCKET_TYPES.REST_ABANDONED);
 }
 

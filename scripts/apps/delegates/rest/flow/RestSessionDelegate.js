@@ -41,7 +41,8 @@ import {
     beddingStatusImage,
     buildBeddingHideUpdates,
     buildBeddingShowUpdates,
-    createBeddingScheduler
+    createBeddingScheduler,
+    clearAllBeddingPoses
 } from "../../../../services/rest/session/BeddingPose.js";
 import { RestSetupApp, _logGmRestSheet } from "../../../rest/RestSetupApp.js";
 
@@ -835,7 +836,7 @@ export class RestSessionDelegate {
 
     _sleepingTokenDocs() {
         const app = this._app;
-        const scene = game.scenes?.active;
+        const scene = canvas?.scene ?? game.scenes?.active;
         if (!scene?.tokens) return [];
         const keepWatchIds = app._nightWatchActorIds();
         const docs = [];
@@ -849,7 +850,7 @@ export class RestSessionDelegate {
     }
 
     async _showBeddingPose() {
-        const scene = game.scenes?.active;
+        const scene = canvas?.scene ?? game.scenes?.active;
         if (!scene?.updateEmbeddedDocuments) return;
         const [primaryId, postureId] = this._app._beddingStatusIds();
         const updates = buildBeddingShowUpdates(this._sleepingTokenDocs(), {
@@ -861,12 +862,7 @@ export class RestSessionDelegate {
     }
 
     async _hideBeddingPose() {
-        const scene = game.scenes?.active;
-        if (!scene?.tokens || !scene.updateEmbeddedDocuments) return;
-        const down = scene.tokens.filter(t => t.getFlag?.(MODULE_ID, "beddingDown"));
-        const updates = buildBeddingHideUpdates(down);
-        if (!updates.length) return;
-        await scene.updateEmbeddedDocuments("Token", updates);
+        await clearAllBeddingPoses();
     }
 
     async _applyBeddingDown() {
@@ -889,6 +885,7 @@ export class RestSessionDelegate {
     async _removeBeddingDown() {
         if (!game.user?.isGM) return;
         await this._beddingScheduler().requestHide();
+        await clearAllBeddingPoses();
     }
 
     _formatCheckLabel(check, character) {
