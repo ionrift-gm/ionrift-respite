@@ -1,4 +1,4 @@
-import { RestFlowEngine } from "../../../../services/rest/flow/RestFlowEngine.js";
+import { RestFlowEngine, readTerrainBaseDc } from "../../../../services/rest/flow/RestFlowEngine.js";
 import { TerrainRegistry } from "../../../../services/events/resolve/TerrainRegistry.js";
 import { ResourceSink } from "../../../../services/rest/recovery/ResourceSink.js";
 import { ConditionAdvisory } from "../../../../services/rest/recovery/ConditionAdvisory.js";
@@ -6,20 +6,21 @@ import { MealPhaseHandler } from "../../../../services/meal/phase/MealPhaseHandl
 import { clearDeprivationExhaustionFloors } from "../../../../services/meal/phase/MealExhaustionGuard.js";
 import { CampfireTokenLinker } from "../../../../services/camp/fire/CampfireTokenLinker.js";
 import {
+    deactivateStationLayer,
     isStationLayerActive,
     refreshStationEmptyNoticeFade,
     refreshStationPortraitsFromChoices
 } from "../../../../services/camp/props/StationInteractionLayer.js";
 import { closeOpenStationDialog } from "../../../camp/StationActivityDialog.js";
+import { DowntimeLedgerApp } from "../../../downtime/DowntimeLedgerApp.js";
+import { CampGearScanner } from "../../../../services/camp/gear/CampGearScanner.js";
+import { emitRestSessionStarted } from "../../../../services/rest/session/RestSessionSync.js";
 import { WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY } from "../../../../data/RestConstants.js";
-import { isScoutingEnabled } from "../../../../services/travel/settings/ScoutingSettings.js";
-import { shouldRunTravelPhase } from "../../../../services/travel/settings/TravelSettings.js";
 import {
     executePlayerRoll,
     pickBestSkill
 } from "../../../../services/ui/rollRequest/RollRequestManager.js";
 import { buildRollTargetLabel } from "../../../../services/ui/rollRequest/RollRequestView.js";
-import { SoundDelegate } from "../SoundDelegate.js";
 import { isTrailerFilmingMode as _isTrailerFilmingMode } from "../layout/RestWindowLayout.js";
 import {
     setActiveRestData
@@ -73,21 +74,75 @@ export class RestFlowActions {
         const formData = Object.fromEntries(new FormData(form));
 
         const restType = formData.restType ?? "long";
+        const isGritty = (app._restVariant ?? "normal") === "gritty";
+
         if (restType === "short") {
-            const variant = app._restVariant ?? "normal";
-            if (variant !== "gritty") {
-                this._app._launchShortRestFromSetup();
-                return;
-            }
-            // Gritty Realism: short rest is 8 hours overnight.
-            // Run the full camp flow but trigger native shortRest at resolution.
+            await app._launchShortRestFromSetup();
+            return;
         }
 
-        // Default days since last rest: gritty long = 7, everything else = 1.
-        const isGrittyLong = restType === "long" && (app._restVariant ?? "normal") === "gritty";
-        if (!app._daysSinceLastRestUserSet) {
-            app._daysSinceLastRest = isGrittyLong ? 7 : 1;
+        if (isGritty && restType === "long") {
+            deactivateStationLayer();
+            const terrainTag = formData.terrain ?? app._selectedTerrain ?? "forest";
+            game.settings.set(MODULE_ID, "lastTerrain", terrainTag);
+            const isSafeHaven = !!(formData.safeRestSpot || app._effectiveSafeRestSpot?.() || terrainTag === "tavern");
+            const haven = isSafeHaven ? "civilized" : "wilderness";
+            await app._loadTerrainEvents(terrainTag);
+            const dangerDC = readTerrainBaseDc(app._eventResolver, terrainTag);
+
+            const weather = formData.weather ?? app._selectedWeather ?? app._resolveSetupWeather?.(terrainTag) ?? "clear";
+            const activeShelters = Object.entries(app._shelterOverrides ?? {})
+                .filter(([, v]) => v)
+                .map(([id]) => id);
+
+            if (activeShelters.length === 0 && !isSafeHaven) {
+                const party = getPartyActors();
+                const hasTent = party.some(a => CampGearScanner.scanActor(a).hasTent);
+                if (hasTent) activeShelters.push("tent");
+            }
+
+            const fireLevel = (formData.fireLevel && formData.fireLevel !== "unlit")
+                ? formData.fireLevel
+                : (app._fireLevel && app._fireLevel !== "unlit" ? app._fireLevel : null);
+
+            const campScanData = CampGearScanner.scan(
+                TerrainRegistry.get(terrainTag)?.comfort ?? "rough",
+                fireLevel ?? "campfire",
+                activeShelters.find(s => ["tiny_hut", "magnificent_mansion"].includes(s)) ?? null,
+                TerrainRegistry.get(terrainTag)?.comfortReason ?? "",
+                TerrainRegistry.get(terrainTag)?.label ?? terrainTag,
+                0,
+                isSafeHaven
+            );
+            const campComfort = isSafeHaven ? "safe" : (campScanData?.campComfort ?? "rough");
+
+            await app.close({});
+            game.settings.set(MODULE_ID, "activeRest", {}).catch(() => {});
+            new DowntimeLedgerApp({
+                terrainTag,
+                haven,
+                dangerDC,
+                weather,
+                campComfort,
+                activeShelters,
+                campScanData,
+                fireLevel
+            }).render({ force: true });
+            emitRestSessionStarted("downtime", {
+                terrainTag,
+                haven,
+                dangerDC,
+                weather,
+                campComfort,
+                activeShelters,
+                campScanData,
+                fireLevel
+            });
+            return;
         }
+
+        // A normal rest is one night. A week of travel is the gritty ledger.
+        app._daysSinceLastRest = 1;
 
         const terrainTag = formData.terrain ?? app._selectedTerrain ?? "forest";
         app._selectedTerrain = terrainTag;
@@ -168,19 +223,15 @@ export class RestFlowActions {
             comfort: effectiveComfort,
             safeRestSpot
         });
-        app._engine.shelterEncounterMod = shelterEncounterMod + weatherEncounterMod;
+        app._engine.shelterEncounterMod = shelterEncounterMod;
         app._engine._encounterBreakdown = {
             shelter: shelterEncounterMod,
             weather: weatherEncounterMod,
-            scouting: 0,
-            weatherName: weather,
-            scoutingResult: "none"
+            weatherName: weather
         };
         app._engine.gmEncounterAdj = app._engine.gmEncounterAdj ?? 0;
         app._engine.activeShelters = activeShelters;
         app._engine.weather = weather;
-        app._engine.scoutingResult = "none";
-        app._engine.scoutingComplication = false;
         const terrainTable = app._eventResolver?.tables?.get(terrainTag);
         app._engine._baseDC = terrainTable?.noEventThreshold ?? 15;
         app._engine.setup();
@@ -191,13 +242,10 @@ export class RestFlowActions {
             app._engine._encounterBreakdown = {
                 shelter: 0,
                 weather: 0,
-                scouting: 0,
                 defenses: 0,
                 travelMishap: 0,
-                weatherName: weather,
-                scoutingResult: "none"
+                weatherName: weather
             };
-            app._engine.scoutingComplication = false;
             app._engine.fireRollModifier = 0;
             app._engine.fireLevel = "campfire";
             app._engine.gmEncounterAdj = 0;
@@ -217,24 +265,14 @@ export class RestFlowActions {
 
         app._restId = restPayload.restId;
 
-        // are both on (forage/hunt need professions; Use Travel skips the phase entirely).
-        if (app._engine.restType === "long") {
-            if (!shouldRunTravelPhase()) {
-                app._phase = "camp";
-            } else {
-                app._phase = "travel";
-                app._travel.setTotalDays(app._daysSinceLastRest ?? 1);
-                app._travel.scoutingAllowed = isScoutingEnabled() && (app._scoutingAllowed ?? true);
-            }
-        } else {
-            app._phase = "camp";
-        }
+        // Unified Rest Cockpit: Rest begins directly at Activity / Planning phase with Hearth ceremony embedded
+        app._phase = "activity";
+        app._campStep2Entered = true;
+        app._campToActivityDone = true;
+        app._applyLoseActivityTravelLocks();
+        app._applyAutoOtherWhenSoleActivity();
 
         restPayload.phase = app._phase;
-        if (app._phase === "travel") {
-            restPayload.travelGather = app._buildTravelGatherPayload();
-        }
-        app._campStep2Entered = false;
 
         setActiveRestData(restPayload);
 
@@ -248,13 +286,16 @@ export class RestFlowActions {
         app._restLedger.add({
             phase: "setup", category: "weather", icon: "fas fa-cloud-sun",
             summary: `Weather: ${weather}`,
-            detail: weatherPenalty > 0 ? `Comfort penalty: ${weatherPenalty}` : ""
+            detail: [
+                weatherPenalty > 0 ? `Comfort penalty: ${weatherPenalty}` : "",
+                weatherEncounterMod > 0 ? `Night check +${weatherEncounterMod}` : ""
+            ].filter(Boolean).join(". ")
         });
         if (activeShelters.length > 0) {
             app._restLedger.add({
                 phase: "setup", category: "shelter", icon: "fas fa-campground",
                 summary: `Shelter: ${activeShelters.join(", ")}`,
-                detail: shelterEncounterMod > 0 ? `Encounter DC +${shelterEncounterMod}` : ""
+                detail: shelterEncounterMod > 0 ? `Night check -${shelterEncounterMod}` : ""
             });
         }
         app._restLedger.add({
@@ -265,17 +306,6 @@ export class RestFlowActions {
         app._refreshLedgerApp();
 
         ui.notifications.info("Rest phase started. Activity pickers sent to all players.");
-
-        if (app._phase === "travel") {
-            setTimeout(() => {
-                emitPhaseChanged("travel", {
-                    selectedTerrain: app._selectedTerrain ?? "forest",
-                    travelDays: app._travel.totalDays,
-                    scoutingAllowed: app._travel.scoutingAllowed
-                });
-                app._broadcastTravelDeclarations();
-            }, 200);
-        }
 
         // Campfire token: ensure hidden at rest start (fire not lit yet).
         // Trailer filming keeps a pre-placed canvas token; hiding it here made the pit vanish on resume.
@@ -298,31 +328,37 @@ export class RestFlowActions {
         await clearDeprivationExhaustionFloors(getPartyActors());
         await app._saveRestState();
 
-        if (app._phase === "camp" && await app._skipCampForTheater()) return;
-        if (app._phase === "camp" && await app._skipCampForSafeRest()) return;
-        // Comfort off: the fire ceremony has no mechanical effect, so waive it.
-        if (app._phase === "camp" && await app._skipCampForComfortOff()) return;
-
-        const enteringCampFromSetup = app._phase === "camp";
-        if (enteringCampFromSetup && !_isTrailerFilmingMode() && !app._restWindowUserPositioned) {
-            app._beginRestWindowRecenterSuppression();
-            app._presetRestWindowForCampEntry();
+        if (!app._isTotM) {
+            app._activateCanvasStationLayer();
         }
 
-        app.render();
+        emitPhaseChanged(app._phase, {
+            campStatus: app._campStatus,
+            fireLevel: app._fireLevel ?? "unlit",
+            fireLitBy: app._fireLitBy ?? null,
+            coldCampDecided: app._coldCampDecided ?? false,
+            makeCampStagedWood: []
+        });
 
-        if (enteringCampFromSetup) {
-            void app._finalizeCampPhaseWindowLayout();
-        }
-
-        if (app._phase === "camp") {
-            app._broadcastMakeCampPhaseSync();
-        }
-    
+        app.render({ force: true });
     }
 
     async onSubmitActivities(event, target) {
         const app = this._app;
+
+        if ((app._fireLevel ?? "unlit") === "unlit" && !app._coldCampDecided && !app._engine?.safeRestSpot) {
+            const proceedWithCold = await game.ionrift?.library?.confirm({
+                title: "No fire",
+                content: "<p>Cold camp is <strong>-1 comfort</strong> and a quieter night.</p>",
+                yesLabel: "Cold camp",
+                noLabel: "Light fire",
+                yesIcon: "fas fa-moon",
+                noIcon: "fas fa-arrow-left",
+                defaultYes: false
+            });
+            if (!proceedWithCold) return;
+            await app._campCeremony.decideColdCamp();
+        }
 
         await closeOpenStationDialog();
         app._tearDownStationLayerCanvas();
@@ -363,45 +399,29 @@ export class RestFlowActions {
         if (app._engine.restType === "short" && !isGrittyShort) {
             app._triggeredEvents = [];
             app._eventsRolled = true;
-            SoundDelegate.stopAll();
-            app._phase = "resolve";
-        } else {
-            const trackFood = game.settings.get(MODULE_ID, "trackFood");
-            const terrainTag = app._engine?.terrainTag ?? "forest";
-            const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
-            const hasMealRules = terrainMealRules.waterPerDay > 0 || terrainMealRules.foodPerDay > 0;
-
-            if (trackFood && hasMealRules && app._isTotM) {
-                // _activityMealRationsSubmitted may already have feast-covered characters
-                // from #onTotmFeastServeNow; those cards show the feast advisory banner.
-                app._mealChoices = app._mealChoices ?? new Map();
-                app._daysSinceLastRest = app._daysSinceLastRest ?? 1;
-                app._phase = "meal";
-            } else if (trackFood && hasMealRules) {
-                app._mealChoices = app._mealChoices ?? new Map();
-                app._daysSinceLastRest = app._daysSinceLastRest ?? 1;
-                await app._autoProcessRations();
-                await app._applyBeddingDown();
-                // Reflection phase skipped (v2.1); advance straight to events.
-                await app._advanceToEvents();
-                return;
-            } else {
-                await app._applyBeddingDown();
-                // Reflection phase skipped (v2.1); advance straight to events.
-                await app._advanceToEvents();
-                return;
-            }
+            await app._resolve.onResolveEvents(null, null);
+            return;
         }
 
-        emitPhaseChanged(app._phase, {
-                campStatus: app._campStatus,
-                daysSinceLastRest: app._daysSinceLastRest ?? 1,
-                selectedTerrain: app._selectedTerrain ?? "forest"
-            });
+        const trackFood = game.settings.get(MODULE_ID, "trackFood");
+        const terrainTag = app._engine?.terrainTag ?? "forest";
+        const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
+        const hasMealRules = terrainMealRules.waterPerDay > 0 || terrainMealRules.foodPerDay > 0;
 
-        await app._saveRestState();
-        app.render();
-    
+        if (trackFood && hasMealRules) {
+            // Sustenance is already assigned in this panel. Consume it and enter night.
+            app._mealChoices = app._mealChoices ?? new Map();
+            app._daysSinceLastRest = app._daysSinceLastRest ?? 1;
+            await app._autoProcessRations();
+            await app._applyBeddingDown();
+            // Meal and drink buffs pause here when someone has one.
+            await app._mealBuffs.continueAfterMeals();
+            return;
+        }
+
+        await app._applyBeddingDown();
+        // Reflection phase skipped (v2.1); advance straight to events.
+        await app._advanceToEvents();
     }
 
     onActivityDetailConfirm(event, target) {

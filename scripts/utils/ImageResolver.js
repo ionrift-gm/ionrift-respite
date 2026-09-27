@@ -428,6 +428,68 @@ export class ImageResolver {
         return STATION_CORE_FALLBACKS[resolvedKey] ?? STATION_CORE_FALLBACKS[stationKey] ?? "icons/svg/circle.svg";
     }
 
+    /**
+     * Resolve unified rest banner presentation data for templates.
+     * @param {string} [terrainTag="forest"]
+     * @param {string} [phase="camp"]
+     * @returns {{
+     *   terrainBanner: string,
+     *   terrainBannerFallback: string,
+     *   terrainBannerPos: string,
+     *   hideTerrainBanner: boolean,
+     *   banner: string,
+     *   bannerFallback: string
+     * }}
+     */
+    static resolveRestBannerContext(terrainTag = "forest", phase = "camp") {
+        const t = terrainTag || "forest";
+        let filename;
+        if (phase === "rope_trick") {
+            filename = "rope_trick.png";
+        } else if (phase === "resolve" || phase === "dawn" || phase === "resolution") {
+            filename = "resolve.png";
+        } else if (phase === "events" || phase === "night" || phase === "reflection") {
+            filename = "events.png";
+        } else if (phase === "setup") {
+            filename = "setup.png";
+        } else {
+            filename = "banner.png";
+        }
+
+        const terrainBanner = this.terrainBanner(t, filename);
+        const terrainBannerFallback = filename !== "banner.png"
+            ? this.terrainBanner(t, "banner.png")
+            : this.fallbackBanner;
+        let hideTerrainBanner = false;
+        try {
+            hideTerrainBanner = !!game.settings?.get(MODULE_ID, "hideTerrainBanners");
+        } catch {
+            hideTerrainBanner = false;
+        }
+
+        return {
+            terrainBanner,
+            terrainBannerFallback,
+            terrainBannerPos: "center",
+            hideTerrainBanner,
+            banner: terrainBanner,
+            bannerFallback: terrainBannerFallback
+        };
+    }
+
+    /**
+     * Saturation class for the terrain banner.
+     * Cold and unlit sit at the floor, embers sit between, and campfire
+     * and bonfire share the ceiling.
+     * @param {string|null|undefined} fireLevel
+     * @returns {"is-fire-cold"|"is-fire-embers"|"is-fire-lit"}
+     */
+    static bannerFireClass(fireLevel) {
+        if (fireLevel === "embers") return "is-fire-embers";
+        if (fireLevel === "campfire" || fireLevel === "bonfire") return "is-fire-lit";
+        return "is-fire-cold";
+    }
+
     /** Universal fallback banner path. */
     static get fallbackBanner() {
         return FALLBACK_BANNER;

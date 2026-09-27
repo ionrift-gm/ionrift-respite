@@ -1,0 +1,35 @@
+{{!-- Open picker for Gather or Activities. Hidden once that step is committed. --}}
+{{#if totmStationCards.length}}
+<div class="sust-section-label">{{#if (eq selectedWorkflowStep "gather")}}GATHER PROVISIONS{{else}}ACTIVITIES{{/if}}</div>
+<div class="rest-night-stations{{#if (eq selectedWorkflowStep "gather")}} is-gather{{/if}}">
+    {{#each totmStationCards}}
+    <div class="rest-night-station">
+        {{#unless (eq @root.selectedWorkflowStep "gather")}}
+        <div class="rest-night-station-label">{{this.label}}</div>
+        {{/unless}}
+        {{#each this.tiles}}
+        {{#if this.available}}
+        <button type="button"
+            class="rest-night-card{{#if this.selected}} sel{{/if}}"
+            data-action="{{#if (eq this.id "gather_skip")}}skipGather{{else}}selectTotmActivity{{/if}}"
+            data-activity-id="{{this.id}}">
+            {{#if this.icon}}<i class="{{this.icon}} rest-night-icon" aria-hidden="true"></i>{{/if}}
+            <span class="rest-night-main">
+                <strong>{{this.name}}</strong>
+                {{#if this.hint}}<span>{{this.hint}}</span>{{/if}}
+            </span>
+        </button>
+        {{else}}
+        <div class="rest-night-card is-faded" data-tooltip="{{this.fadedHint}}">
+            {{#if this.icon}}<i class="{{this.icon}} rest-night-icon" aria-hidden="true"></i>{{/if}}
+            <span class="rest-night-main">
+                <strong>{{this.name}}</strong>
+                {{#if this.hint}}<span>{{this.hint}}</span>{{/if}}
+            </span>
+        </div>
+        {{/if}}
+        {{/each}}
+    </div>
+    {{/each}}
+</div>
+{{/if}}

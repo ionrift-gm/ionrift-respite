@@ -1,0 +1,58 @@
+{{!-- Meal and drink buffs, before the night watch. Only rendered when someone has one. --}}
+<div class="pacing-spotlight-card pacing-dawn-stage clean-dawn-layout">
+    <div class="dawn-summary-strip">
+        <div class="dawn-lead-group">
+            <div class="dawn-sun-emblem"><i class="fas fa-utensils"></i></div>
+            <div class="dawn-copy-block">
+                <div class="dawn-lead-title">{{#if mealBuffTitle}}{{mealBuffTitle}}{{else}}The meal takes hold{{/if}}</div>
+                <div class="dawn-lead-hint">{{#if mealBuffHint}}{{mealBuffHint}}{{else}}These are in place before the watch.{{/if}}</div>
+            </div>
+        </div>
+        {{#if isGM}}
+        <div class="dawn-batch-cluster">
+            {{#if mealBuffPending}}
+            <button type="button" class="btn-dawn-batch roll-all" data-action="applyMealBuffs"
+                    data-tooltip="Apply {{mealBuffPending}} still waiting">
+                <i class="fas fa-dice-d20"></i> Apply ({{mealBuffPending}})
+            </button>
+            {{else}}
+            <div class="dawn-settled-pill">
+                <i class="fas fa-check-double"></i> Applied
+            </div>
+            {{/if}}
+        </div>
+        {{/if}}
+    </div>
+
+    <div class="dawn-roster-stack">
+        {{#each mealBuffRoster}}
+        <div class="dawn-actor-row {{#if applied}}is-passed{{else}}is-pending{{/if}}" data-row-id="{{id}}">
+            <div class="actor-identity-col">
+                <div class="actor-name-group">
+                    <span class="actor-name">{{actorName}}</span>
+                    <div class="actor-badges">
+                        <span class="pill-con">{{#if (eq kind "drink")}}Drink{{else}}Meal{{/if}}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="actor-hazard-col">
+                <i class="fas {{#if (eq kind "drink")}}fa-tint{{else}}fa-utensils{{/if}}"></i>
+                <span class="hazard-text">{{itemName}}. {{buffSummary}}</span>
+            </div>
+            <div class="actor-action-col">
+                {{#if applied}}
+                <div class="result-badge passed">
+                    <i class="fas fa-check-circle"></i> {{#if resultLine}}{{resultLine}}{{else}}Applied{{/if}}
+                </div>
+                {{else if (or ../isGM canApply)}}
+                <button type="button" class="btn-dawn-batch roll-all" data-action="applyOneMealBuff" data-row-id="{{id}}">
+                    <i class="fas fa-dice-d20"></i> Apply
+                </button>
+                {{else}}
+                <span class="target-exempt-chip">Waiting</span>
+                {{/if}}
+            </div>
+        </div>
+        {{/each}}
+    </div>
+</div>

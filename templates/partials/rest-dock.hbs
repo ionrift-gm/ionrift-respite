@@ -1,0 +1,197 @@
+{{!-- Shared Rest Dock (long-rest twin: DowntimeLedgerApp only).
+     Identity card for the focused character plus a switcher with the
+     rest of the party, and a nav row carrying the workflow segments,
+     Examine, and the hearth. Mirrors ionrift_debug/mockups/rest-dock-gritty.html.
+     Starvation and dehydration warnings surface as glyphs on the mini
+     portraits.
+
+     Context: restDock (built by RestDockContext.buildDockContext).
+       - selected:   { id, name, img, kit[], comfortTier, comfortLabel,
+                       comfortFlashing, recoveryBenefit, isSelfCard }
+       - companions: [{ id, name, img, isSelected, isReady,
+                        hasStarvationRisk, hasDehydrationRisk,
+                        statusLabel, tooltip }]
+--}}
+{{#if restDock.selected}}
+{{#with restDock.selected}}
+<div class="rest-dock" data-actor-id="{{id}}">
+    <div class="rest-dock-top">
+        <img class="rest-dock-portrait{{#if isSelfCard}} is-self{{/if}}{{#if @root.characterReady}} is-ready{{/if}}" src="{{img}}" alt="{{name}}">
+        <div class="rest-dock-who">
+            <div class="rest-dock-name">{{name}}</div>
+            <div class="rest-dock-kit">
+                {{#each kit}}
+                <span class="rest-dock-slot{{#if present}} on{{/if}}{{#if waived}} waived{{/if}}"
+                    {{#if tooltip}}data-tooltip="{{tooltip}}"{{/if}}>
+                    {{shortLabel}}
+                </span>
+                {{/each}}
+            </div>
+        </div>
+        {{#if comfortTier}}
+        <div class="rest-dock-outcome comfort-{{comfortTier}}">
+            <div class="rest-dock-tier{{#if comfortFlashing}} is-flashing{{/if}}"
+                {{#if comfortTooltip}}data-tooltip="{{comfortTooltip}}"{{/if}}>
+                {{#if recoveryHazard}}
+                <i class="fas fa-triangle-exclamation rest-dock-tier-icon" aria-hidden="true"></i>
+                {{else}}
+                <i class="fas fa-shield-alt rest-dock-tier-icon" aria-hidden="true"></i>
+                {{/if}}
+                <span>{{comfortLabel}}</span>
+            </div>
+            <div class="rest-dock-outcome-details">
+                {{#if recoveryBenefitText}}
+                <span class="rest-dock-perks" {{#if recoveryTooltip}}data-tooltip="{{recoveryTooltip}}"{{/if}}>
+                    <i class="fas fa-heart text-emerald" aria-hidden="true"></i> {{recoveryBenefitText}}
+                </span>
+                {{else if recoveryBenefit}}
+                <span class="rest-dock-benefit" {{#if recoveryTooltip}}data-tooltip="{{recoveryTooltip}}"{{/if}}>{{recoveryBenefit}}</span>
+                {{/if}}
+
+                {{#if recoveryHazard}}
+                <button type="button"
+                    class="rest-dock-hazard-chip severity-{{recoveryHazard.severity}}"
+                    data-action="rollExhaustionSave"
+                    data-actor-id="{{id}}"
+                    data-tooltip="{{recoveryHazard.tooltip}}">
+                    <i class="fas {{recoveryHazard.icon}}" aria-hidden="true"></i>
+                    <span class="hazard-label">{{recoveryHazard.label}}</span>
+                    {{#if recoveryHazard.hasAdvantage}}
+                    <span class="hazard-adv-tag" title="Advantage from Mess Kit (fire lit)">ADV</span>
+                    {{/if}}
+                </button>
+                {{/if}}
+            </div>
+        </div>
+        {{/if}}
+        {{#if @root.restDock.companions.length}}
+        <div class="rest-dock-switcher">
+            {{#each @root.restDock.companions}}
+            <button type="button"
+                class="rest-dock-mini{{#if isSelected}} is-selected{{/if}}{{#if isReady}} is-ready{{/if}}{{#unless canSelect}} is-locked{{/unless}}{{#if hasExhaustionRisk}} has-warning exhaustion{{/if}}{{#if hasStarvationRisk}} has-warning starvation{{/if}}{{#if hasDehydrationRisk}} has-warning dehydration{{/if}}"
+                {{#if canSelect}}
+                data-action="selectRosterCharacter"
+                data-actor-id="{{id}}"
+                data-roster-id="{{id}}"
+                {{else}}
+                disabled
+                {{/if}}
+                data-tooltip="{{tooltip}}">
+                <span class="rest-dock-mini-face">
+                    <img class="rest-dock-mini-portrait" src="{{img}}" alt="{{name}}">
+                    {{#if hasExhaustionRisk}}
+                    <i class="fas fa-dice-d20 rest-dock-mini-warn exhaustion" aria-hidden="true"></i>
+                    {{else if hasStarvationRisk}}
+                    <i class="fas fa-triangle-exclamation rest-dock-mini-warn starvation" aria-hidden="true"></i>
+                    {{else if hasDehydrationRisk}}
+                    <i class="fas fa-tint-slash rest-dock-mini-warn dehydration" aria-hidden="true"></i>
+                    {{/if}}
+                </span>
+                <span class="rest-dock-mini-name">{{name}}</span>
+            </button>
+            {{/each}}
+        </div>
+        {{/if}}
+    </div>
+
+    {{!-- Dock nav: Gather / Activities / Sustenance + Examine + Hearth --}}
+    <div class="rest-dock-nav">
+        <div class="rest-dock-segments" role="tablist" aria-label="Workflow segments">
+            {{#if @root.showGatherStep}}
+            <button type="button"
+                class="rest-dock-seg{{#if (eq @root.selectedWorkflowStep 'gather')}} active{{/if}}{{#if (eq @root.workflowMark.gather 'complete')}} is-complete{{else if (eq @root.workflowMark.gather 'draft')}} is-draft{{else if @root.workflowComplete.gather}} is-complete{{else}} is-draft{{/if}}"
+                data-action="switchWorkflow" data-step="gather" role="tab"
+                data-tooltip="{{#if (eq @root.workflowMark.gather 'complete')}}Gathering rolled{{else if (eq @root.workflowMark.gather 'draft')}}Gathering still open{{else if @root.workflowComplete.gather}}Gathering rolled{{else}}Gathering still open{{/if}}">
+                Gather
+                {{#if (eq @root.workflowMark.gather 'complete')}}<i class="fas fa-check seg-check" aria-hidden="true"></i>
+                {{else if (eq @root.workflowMark.gather 'draft')}}<i class="fas fa-pencil seg-mark" aria-hidden="true"></i>
+                {{else if @root.workflowComplete.gather}}<i class="fas fa-check seg-check" aria-hidden="true"></i>
+                {{else}}<i class="fas fa-pencil seg-mark" aria-hidden="true"></i>
+                {{/if}}
+            </button>
+            {{/if}}
+            <button type="button"
+                class="rest-dock-seg{{#if (eq @root.selectedWorkflowStep 'activities')}} active{{/if}}{{#if (eq @root.workflowMark.activities 'complete')}} is-complete{{else if (eq @root.workflowMark.activities 'locked')}} is-locked{{else if (eq @root.workflowMark.activities 'draft')}} is-draft{{else if @root.workflowComplete.activities}} is-complete{{else}} is-draft{{/if}}"
+                data-action="switchWorkflow" data-step="activities" role="tab"
+                data-tooltip="{{#if (eq @root.workflowMark.activities 'complete')}}Activities finished{{else if (eq @root.workflowMark.activities 'locked')}}Choices locked, rolls still open{{else if (eq @root.workflowMark.activities 'draft')}}Activities still a draft{{else if @root.workflowComplete.activities}}Activities finished{{else}}Activities still a draft{{/if}}">
+                Activities
+                {{#if (eq @root.workflowMark.activities 'complete')}}<i class="fas fa-check seg-check" aria-hidden="true"></i>
+                {{else if (eq @root.workflowMark.activities 'locked')}}<i class="fas fa-lock seg-mark" aria-hidden="true"></i>
+                {{else if (eq @root.workflowMark.activities 'draft')}}<i class="fas fa-pencil seg-mark" aria-hidden="true"></i>
+                {{else if @root.workflowComplete.activities}}<i class="fas fa-check seg-check" aria-hidden="true"></i>
+                {{else}}<i class="fas fa-pencil seg-mark" aria-hidden="true"></i>
+                {{/if}}
+            </button>
+            <button type="button"
+                class="rest-dock-seg{{#if (eq @root.selectedWorkflowStep 'sustenance')}} active{{/if}}{{#if (eq @root.workflowMark.sustenance 'complete')}} is-complete{{else if (eq @root.workflowMark.sustenance 'draft')}} is-draft{{else if @root.workflowComplete.sustenance}} is-complete{{else}} is-draft{{/if}}"
+                data-action="switchWorkflow" data-step="sustenance" role="tab"
+                data-tooltip="{{#if (eq @root.workflowMark.sustenance 'complete')}}Meals locked{{else if (eq @root.workflowMark.sustenance 'draft')}}Meals still a draft{{else if @root.workflowComplete.sustenance}}Meals locked{{else}}Meals still a draft{{/if}}">
+                Sustenance
+                {{#if (eq @root.workflowMark.sustenance 'complete')}}<i class="fas fa-check seg-check" aria-hidden="true"></i>
+                {{else if (eq @root.workflowMark.sustenance 'draft')}}<i class="fas fa-pencil seg-mark" aria-hidden="true"></i>
+                {{else if @root.workflowComplete.sustenance}}<i class="fas fa-check seg-check" aria-hidden="true"></i>
+                {{else}}<i class="fas fa-pencil seg-mark" aria-hidden="true"></i>
+                {{/if}}
+            </button>
+        </div>
+
+        {{#if @root.workbenchIdentifyUiEnabled}}
+        <button type="button"
+            class="rest-dock-examine{{#if @root.isIdentifyActive}} active{{/if}}"
+            data-action="toggleExamine"
+            data-tooltip="Examine and identify mysterious items in inventory">Examine</button>
+        {{/if}}
+
+        <span class="rest-dock-nav-spacer"></span>
+
+        {{!-- Hearth lives on the gritty dock. Normal rest uses the 268px fire rail. --}}
+        {{#if @root.isGrittyLongRest}}
+        {{#if @root.isWilderness}}
+        <div class="rest-dock-hearth" data-tooltip="{{{@root.fuelStockTooltip}}}">
+            <span class="rest-dock-fuel {{#unless @root.hasEnoughFuel}}is-short{{/unless}}">
+                <strong>{{@root.fuelStockTotal}}</strong> Fuel
+                {{#if (gt @root.fuelBurnCost 0)}}<span class="rest-dock-fuel-burn">(-{{@root.fuelBurnCost}})</span>{{/if}}
+            </span>
+            <select class="rest-dock-hearth-select hearth-tier-select tier-{{@root.fireLevel}}"
+                aria-label="Campfire intensity">
+                {{#each @root.fireTierOptions}}
+                <option value="{{id}}" {{#if selected}}selected{{/if}} {{#if disabled}}disabled{{/if}}>
+                    {{label}} ({{costLabel}}{{#if dcDelta}} · {{dcDelta}}{{/if}}){{#if disabledReason}}; {{disabledReason}}{{/if}}
+                </option>
+                {{/each}}
+            </select>
+        </div>
+        {{/if}}
+        {{else}}
+        <div class="rest-dock-ready-zone">
+            {{#if @root.characterReady}}
+            <button type="button"
+                class="rest-dock-ready-btn is-ready"
+                data-action="toggleCharacterReady"
+                data-actor-id="{{id}}"
+                data-tooltip="{{name}} is marked ready. Click to edit choices.">
+                <i class="fas fa-check-circle" aria-hidden="true"></i>
+                <span>Ready</span>
+                <span class="rest-dock-ready-action">Edit</span>
+            </button>
+            {{else if @root.characterPlanComplete}}
+            <button type="button"
+                class="rest-dock-ready-btn is-complete"
+                data-action="toggleCharacterReady"
+                data-actor-id="{{id}}"
+                data-tooltip="All rest duties complete. Mark {{name}} ready for the night.">
+                <i class="fas fa-check" aria-hidden="true"></i>
+                <span>Mark Ready</span>
+            </button>
+            {{else}}
+            <span class="rest-dock-ready-status" data-tooltip="Complete Gather, Activities, and Sustenance to ready up">
+                <span class="rest-dock-ready-dot"></span>
+                <span>{{@root.stepsCompletedCount}} / {{@root.stepsTotalCount}} Steps</span>
+            </span>
+            {{/if}}
+        </div>
+        {{/if}}
+    </div>
+</div>
+{{/with}}
+{{/if}}

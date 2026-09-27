@@ -3,7 +3,6 @@ import { refreshGmRestIndicator } from "../ui/sheet/RejoinManager.js";
 import { MODULE_ID } from "../../data/moduleId.js";
 import { RestSetupApp } from "../../apps/rest/RestSetupApp.js";
 import { ShortRestApp } from "../../apps/rest/ShortRestApp.js";
-import * as RestAfkState from "../rest/session/RestAfkState.js";
 import { setCharacterAfk } from "../afk/AfkBridgeService.js";
 import { CopySpellHandler } from "../crafting/outcomes/CopySpellHandler.js";
 import { CampfireTokenLinker } from "../camp/fire/CampfireTokenLinker.js";
@@ -24,8 +23,9 @@ import {
 import {
     emitShortRestStarted, emitRestStarted, emitShortRestWorkbenchSync,
     emitCampGearPlaced, emitCampStationPlaced, emitCampSceneCleared,
-    emitRequestRestState, emitRequestShortRestState
+    emitRequestRestState, emitRequestShortRestState, emitRestSnapshot
 } from "./SocketController.js";
+import { applyCampProgress } from "../rest/session/campProgressState.js";
 import {
     showRejoinNotification, removeRejoinNotification,
     showShortRestRejoinNotification, removeShortRestRejoinNotification,
@@ -38,8 +38,6 @@ import {
     applyRestDataToExistingPlayerApp,
     shouldRequestRestStateForExistingApp
 } from "../rest/flow/restStartedPlayerSync.js";
-import { buildTravelGatherPayload } from "../travel/resolve/TravelGatherPayload.js";
-import { TerrainRegistry } from "../events/resolve/TerrainRegistry.js";
 
 export function handleRestStarted(data, ctx) {
     if (data.targetUserId && data.targetUserId !== game.user.id) return;
@@ -252,6 +250,20 @@ export function handleSubmissionUpdate(data, ctx) {
     ctx.activePlayerRestApp?.receiveSubmissionUpdate?.(data.submissions);
 }
 
+export function handleCampProgress(data, ctx) {
+    if (!game.user.isGM) return;
+    const app = ctx.activeRestSetupApp;
+    if (!app) {
+        console.warn(`${MODULE_ID} | handleCampProgress: no GM rest session; dropping camp progress`);
+        return;
+    }
+    applyCampProgress(app, data, { merge: true });
+    void app._saveRestState?.();
+    const snapshot = app.getRestSnapshot?.();
+    if (snapshot) emitRestSnapshot(snapshot);
+    app.render?.();
+}
+
 export function handleRequestRestState(data, ctx) {
     if (!ctx.activeRestData) {
         logCampfireReconnect("handleRequestRestState:skip", { reason: "no activeRestData" });
@@ -264,16 +276,6 @@ export function handleRequestRestState(data, ctx) {
         : (gmApp?.getRestSnapshot?.() ?? null);
     const gmPhase = gmApp?._phase ?? ctx.activeRestData.phase;
     const gmTerrain = gmApp?._engine?.terrainTag ?? gmApp?._selectedTerrain ?? ctx.activeRestData.terrainTag;
-    let resolvedTravelGather = null;
-    if (gmApp && gmPhase === "travel") {
-        const terrainTag = gmTerrain ?? "forest";
-        const terrain = TerrainRegistry.get(terrainTag);
-        resolvedTravelGather = buildTravelGatherPayload({
-            terrainActivities: terrain?.travelActivities,
-            safeRestSpot: !!(gmApp._engine?.safeRestSpot ?? gmApp._restData?.safeRestSpot),
-            scoutingAllowed: gmApp._travel?.scoutingAllowed ?? true
-        });
-    }
     const restData = {
         ...ctx.activeRestData,
         ...(gmApp ? {
@@ -283,8 +285,7 @@ export function handleRequestRestState(data, ctx) {
             comfort: gmApp._engine?.comfort ?? ctx.activeRestData.comfort,
             safeRestSpot: !!(gmApp._engine?.safeRestSpot ?? ctx.activeRestData.safeRestSpot),
             terrainTag: gmTerrain,
-            activities: gmApp._activities?.length ? gmApp._activities : ctx.activeRestData.activities,
-            ...(resolvedTravelGather ? { travelGather: resolvedTravelGather } : {})
+            activities: gmApp._activities?.length ? gmApp._activities : ctx.activeRestData.activities
         } : {})
     };
     logCampfireReconnect("handleRequestRestState:emit", {
@@ -375,11 +376,6 @@ export function handleShortRestDismissed(data, ctx) {
     });
 }
 
-function _workbenchStateFromApp(app) {
-    if (!app?._serializeWorkbenchStateForNet) return undefined;
-    return app._serializeWorkbenchStateForNet();
-}
-
 export function handleRequestShortRestState(data, ctx) {
     const app = ctx.activeShortRestApp;
     if (!app) {
@@ -391,31 +387,13 @@ export function handleRequestShortRestState(data, ctx) {
         ctx.registerActiveShortRestApp(newApp);
         emitShortRestStarted({
             targetUserId: data.userId ?? null,
-            rolls: newApp._serializeRolls(),
-            songBonuses: newApp._serializeSongBonuses(),
-            afkCharacterIds: RestAfkState.getAfkCharacterIds(),
-            finishedUserIds: [...newApp._finishedUsers],
-            activeShelter: newApp._activeShelter,
-            songVolunteer: newApp._songVolunteer,
-            chefVolunteer: newApp._chefVolunteer,
-            chefMealServedCount: newApp._chefMealServedCount,
-            chefMealBonuses: newApp._serializeChefMealBonuses(),
-            workbench: _workbenchStateFromApp(newApp),
+            ...newApp._exportSnapshot()
         });
         return;
     }
     emitShortRestStarted({
         targetUserId: data.userId ?? null,
-        rolls: app._serializeRolls(),
-        songBonuses: app._serializeSongBonuses(),
-        afkCharacterIds: RestAfkState.getAfkCharacterIds(),
-        finishedUserIds: [...app._finishedUsers],
-        activeShelter: app._activeShelter,
-        songVolunteer: app._songVolunteer,
-        chefVolunteer: app._chefVolunteer,
-        chefMealServedCount: app._chefMealServedCount,
-        chefMealBonuses: app._serializeChefMealBonuses(),
-        workbench: _workbenchStateFromApp(app),
+        ...app._exportSnapshot()
     });
 }
 

@@ -1,5 +1,6 @@
 import { Logger } from "../../../utils/Logger.js";
 import { getPartyActors } from "../../party/partyActors.js";
+import { postRollAndSettle } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
 
 /**
  * EventResolver
@@ -56,10 +57,9 @@ export class EventResolver {
      * @param {string} terrainTag
      * @param {Object[]} watchRoster - Characters on watch.
      * @param {number} effectiveDC - Final encounter DC (all modifiers baked in).
-     * @param {string} [scoutTier] - Scouting result tier (nat1, nat20, etc.)
      * @returns {Object[]} Array of triggered event results.
      */
-    async roll(terrainTag, watchRoster = [], effectiveDC = 15, scoutTier = "none") {
+    async roll(terrainTag, watchRoster = [], effectiveDC = 15) {
         const table = this.tables.get(terrainTag);
         if (!table) {
             // No table for this terrain - check if we have any events at all
@@ -70,36 +70,6 @@ export class EventResolver {
         const results = [];
         const hasWatch = watchRoster.length > 0;
 
-        if (scoutTier === "nat1") {
-            const bonus = this._pickFromPool(terrainTag, {
-                tier: "normal",
-                sentiment: "negative",
-                hasWatch
-            });
-            if (bonus) {
-                results.push(this._buildResult(bonus, watchRoster, {
-                    rollTotal: null,
-                    result: "scouting_hazard",
-                    narrativePrefix: "Poor campsite. "
-                }));
-            }
-        }
-
-        if (scoutTier === "nat20") {
-            const bonus = this._pickFromPool(terrainTag, {
-                tier: "normal",
-                sentiment: "positive",
-                hasWatch
-            });
-            if (bonus) {
-                results.push(this._buildResult(bonus, watchRoster, {
-                    rollTotal: null,
-                    result: "scouting_bonus",
-                    narrativePrefix: "Perfect campsite. "
-                }));
-            }
-        }
-
         const rollFormula = table?.rollFormula ?? "1d20";
         const roll = await new Roll(rollFormula).evaluate();
         const rawDie = roll.total;
@@ -107,19 +77,13 @@ export class EventResolver {
         Logger.log(`[Respite:EventResolver] roll - terrain=${terrainTag}, rawDie=${rawDie}, effectiveDC=${effectiveDC}, passesThreshold=${rawDie >= effectiveDC}`);
 
         if (rawDie === 1) {
-            await roll.toMessage({
+            await postRollAndSettle(roll, {
                 speaker: { alias: "Night Watch" },
                 flavor: `<strong>Night check</strong> (${terrainTag}) threshold ${effectiveDC}<br><em style="color:#e74c3c;">Natural 1. Worst possible night check. Pick an event from the disaster pool.</em>`,
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
-            if (game.modules.get("dice-so-nice")?.active) {
-                await new Promise(resolve => {
-                    const timeout = setTimeout(resolve, 5000);
-                    Hooks.once("diceSoNiceRollComplete", () => { clearTimeout(timeout); resolve(); });
-                });
-            }
 
-            // Exclude events already picked by scouting
+            // Exclude already picked events
             const existingIds = results.map(r => r.id).filter(Boolean);
 
             const buildOption = (evt) => {
@@ -179,17 +143,11 @@ export class EventResolver {
         }
 
         if (rawDie >= effectiveDC) {
-            await roll.toMessage({
+            await postRollAndSettle(roll, {
                 speaker: { alias: "Night Watch" },
                 flavor: `<strong>Night check</strong> (${terrainTag}) threshold ${effectiveDC}<br>${rawDie} meets or beats the threshold. The night passes without incident from this roll.`,
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
-            if (game.modules.get("dice-so-nice")?.active) {
-                await new Promise(resolve => {
-                    const timeout = setTimeout(resolve, 5000);
-                    Hooks.once("diceSoNiceRollComplete", () => { clearTimeout(timeout); resolve(); });
-                });
-            }
             return results;
         }
 
@@ -203,32 +161,20 @@ export class EventResolver {
         if (!event) {
             // Pool exhausted or all packs disabled for this terrain
             console.warn(`[Respite:EventResolver] No events available for terrain "${terrainTag}". Check Content Packs settings.`);
-            await roll.toMessage({
+            await postRollAndSettle(roll, {
                 speaker: { alias: "Night Watch" },
                 flavor: `<strong>Night check</strong> (${terrainTag}) threshold ${effectiveDC}<br><em>Roll is below threshold, but no events are in your pool for this terrain. Open <strong>Curate Event Pool</strong> in module settings to add events.</em>`,
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
             });
-            if (game.modules.get("dice-so-nice")?.active) {
-                await new Promise(resolve => {
-                    const timeout = setTimeout(resolve, 5000);
-                    Hooks.once("diceSoNiceRollComplete", () => { clearTimeout(timeout); resolve(); });
-                });
-            }
             return results;
         }
 
         // Post event roll to chat (GM only)
-        await roll.toMessage({
+        await postRollAndSettle(roll, {
             speaker: { alias: "Night Watch" },
             flavor: `<strong>Night check</strong> (${terrainTag}) threshold ${effectiveDC}<br><em>${event.name}</em> triggered (roll below threshold).`,
             whisper: game.users.filter(u => u.isGM).map(u => u.id)
         });
-        if (game.modules.get("dice-so-nice")?.active) {
-            await new Promise(resolve => {
-                const timeout = setTimeout(resolve, 5000);
-                Hooks.once("diceSoNiceRollComplete", () => { clearTimeout(timeout); resolve(); });
-            });
-        }
 
         results.push(this._buildResult(event, watchRoster, {
             rollTotal: rawDie,

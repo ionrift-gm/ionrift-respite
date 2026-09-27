@@ -27,7 +27,8 @@ export class RestWindowLayout {
             && (app._campCeremonyMinigameEnabled?.() || app._totmCampfireMinigamePanelEnabled?.());
         const activityWithCampfirePanel = app._phase === "activity"
             && app._totmCampfireMinigamePanelEnabled?.();
-        if (campWithMinigame || activityWithCampfirePanel) {
+        const fireRail = app._shouldMountFireRailEmbed?.();
+        if (campWithMinigame || activityWithCampfirePanel || fireRail) {
             return Math.min(780, Math.round(window.innerWidth * 0.92));
         }
         return 720;
@@ -334,8 +335,8 @@ export class RestWindowLayout {
         const top = Math.max(10, Math.round((window.innerHeight - h) / 2));
         const pos = { top };
 
-        if ((app._phase === "camp" || app._phase === "activity")
-            && (app._campCeremonyMinigameEnabled?.() || app._totmCampfireMinigamePanelEnabled?.())) {
+        if ((app._phase === "camp" || app._phase === "activity" || app._phase === "meal")
+            && (app._campCeremonyMinigameEnabled?.() || app._totmCampfireMinigamePanelEnabled?.() || app._shouldMountFireRailEmbed?.())) {
             const targetW = this.campRestWindowTargetWidth();
             pos.width = targetW;
             pos.left = Math.max(20, Math.round((window.innerWidth - targetW) / 2));

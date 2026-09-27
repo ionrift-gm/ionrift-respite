@@ -1,0 +1,71 @@
+{{!-- Canonical Rest Header: Unified Top Bar across all Rest Interfaces --}}
+<div class="respite-phase-header rest-header-bar {{headerClasses}}">
+    {{#if phaseSteps.length}}
+    <div class="phase-indicator" role="progressbar" aria-label="Rest progress">
+        {{#each phaseSteps}}
+        <div class="phase-dot {{#if active}}active{{/if}} {{#if complete}}complete{{/if}}"
+             data-tooltip="{{label}}"></div>
+        {{/each}}
+    </div>
+    {{/if}}
+
+    {{#if restHeaderTitle}}
+    <span class="phase-label rest-header-title">{{restHeaderTitle}}</span>
+    {{else if restHeaderTag}}
+    <span class="rest-header-env-pill {{restHeaderTagClass}}">{{restHeaderTag}}</span>
+    {{/if}}
+
+    {{#if campConditionsBar}}
+    <div class="rest-header-conditions" role="status" aria-label="Camp conditions">
+        <div class="rest-header-env-cluster"
+             data-tooltip="{{campConditionsBar.terrainLabel}} · {{campConditionsBar.weatherLabel}}{{#if campConditionsBar.weatherImpact}} ({{campConditionsBar.weatherImpact}}){{/if}}{{#if campConditionsBar.weatherShieldNote}} · {{campConditionsBar.weatherShieldNote}}{{/if}}">
+            <span class="env-icon terrain-icon" aria-label="{{campConditionsBar.terrainLabel}}">
+                <i class="{{campConditionsBar.terrainIcon}}" aria-hidden="true"></i>
+            </span>
+            <span class="env-icon weather-icon {{#if campConditionsBar.weatherIsNeutral}}weather-neutral{{/if}}" aria-label="{{campConditionsBar.weatherLabel}}">
+                <i class="{{campConditionsBar.weatherIcon}}" aria-hidden="true"></i>
+            </span>
+        </div>
+    </div>
+    {{/if}}
+    <div class="rest-header-actions">
+        {{#if campConditionsBar}}
+        {{#if campConditionsBar.safeRestSpot}}
+        <span class="camp-status-chip camp-status-icon-chip comfort-safe {{#if (or campComfortFlashing campConditionsBar.flashing)}}is-flashing{{/if}}"
+              data-tooltip="{{campConditionsBar.campComfortTooltip}}">
+            {{campConditionsBar.campComfortLabel}}
+        </span>
+        {{else}}
+        <span class="camp-status-chip camp-status-icon-chip comfort-{{campConditionsBar.campComfort}} {{#if (or campComfortFlashing campConditionsBar.flashing)}}is-flashing{{/if}}"
+              data-tooltip="{{campConditionsBar.campComfortTooltip}}">
+            {{campConditionsBar.campComfortLabel}}
+        </span>
+        {{/if}}
+        {{/if}}
+
+        {{#if isGM}}
+        {{#if pacingActive}}
+        {{#if canReturnToPlanning}}
+        <button type="button" class="btn-abandon-rest btn-pacing-return" data-action="returnToPlanning" data-tooltip="Return to camp planning overview">
+            <i class="fas fa-arrow-left"></i> Camp Planning
+        </button>
+        {{/if}}
+        {{else}}
+        {{#unless isResolvePhase}}
+        <button type="button" class="btn-abandon-rest" data-action="{{abandonAction}}"
+                data-tooltip="{{#if eventsCommitPending}}Wait for the night check to finish.{{else}}Cancel and abandon this rest{{/if}}"
+                {{#if eventsCommitPending}}disabled{{/if}}>
+            <i class="fas fa-ban"></i> Abandon Rest
+        </button>
+        {{/unless}}
+        {{/if}}
+        {{/if}}
+
+        {{#if showDevUiToggle}}
+        <button type="button" class="btn-theme-toggle" data-action="toggleUiTheme"
+                data-tooltip="{{#if isGlassTheme}}Switch to Tactical Obsidian (High Contrast){{else}}Switch to Ionrift Glass (Translucent){{/if}}">
+            <i class="fas {{#if isGlassTheme}}fa-gem{{else}}fa-shield-halved{{/if}}" aria-hidden="true"></i>
+        </button>
+        {{/if}}
+    </div>
+</div>

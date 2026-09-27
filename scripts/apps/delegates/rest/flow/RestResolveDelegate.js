@@ -1,6 +1,7 @@
 import { Logger } from "../../../../utils/Logger.js";
 import { ResourceSink } from "../../../../services/rest/recovery/ResourceSink.js";
 import { RecoveryHandler } from "../../../../services/rest/recovery/RecoveryHandler.js";
+import { stampExhaustionRecovery } from "../../../../services/rest/recovery/ExhaustionStage.js";
 import { ConditionAdvisory } from "../../../../services/rest/recovery/ConditionAdvisory.js";
 import { CalendarHandler } from "../../../../services/rest/session/CalendarHandler.js";
 import { MealPhaseHandler } from "../../../../services/meal/phase/MealPhaseHandler.js";
@@ -18,12 +19,14 @@ import {
     resetCampSession
 } from "../../../../services/camp/props/CompoundCampPlacer.js";
 import {
-    emitPhaseChanged,
     emitRestAbandoned
 } from "../../../../services/socket/SocketController.js";
 import { getPartyActors } from "../../../../services/party/partyActors.js";
 import { RestSetupApp } from "../../../rest/RestSetupApp.js";
+import { confirmAbandonRest } from "../../../rest/confirmAbandonRest.js";
 import { MODULE_ID } from "../../../../data/moduleId.js";
+import { TerrainRegistry } from "../../../../services/events/resolve/TerrainRegistry.js";
+import { ImageResolver } from "../../../../utils/ImageResolver.js";
 
 export class RestResolveDelegate {
     constructor(app) {
@@ -31,6 +34,20 @@ export class RestResolveDelegate {
     }
 
     async onResolveEvents(event, target) {
+        const app = this._app;
+        if (app._resolveInFlight) return;
+        app._resolveInFlight = true;
+        await app.render();
+        try {
+            await this._onResolveEvents(event, target);
+        } finally {
+            const stillOpen = app.rendered && app._phase !== "resolve";
+            app._resolveInFlight = false;
+            if (stillOpen) app.render();
+        }
+    }
+
+    async _onResolveEvents(event, target) {
         const app = this._app;
 
         // Collect ALL resource-loss effects from resolved tree and stall penalties.
@@ -107,6 +124,21 @@ export class RestResolveDelegate {
                 if (p.totalLoss > 0) await ResourceSink.applyGoldLossProposal(p);
             }
 
+            // Record approved losses for the master rest resolution card
+            const approvedLossesByActor = new Map();
+            const recordActorLoss = (actorId, actorName, itemData) => {
+                if (!approvedLossesByActor.has(actorId)) {
+                    const actor = game.actors.get(actorId);
+                    approvedLossesByActor.set(actorId, {
+                        id: actorId,
+                        name: actor?.name ?? actorName,
+                        img: actor?.img ?? "icons/svg/mystery-man.svg",
+                        items: []
+                    });
+                }
+                approvedLossesByActor.get(actorId).items.push(itemData);
+            };
+
             // Whisper each player what they lost
             const lossByActor = new Map();
             function addLoss(actorId, actorName, line) {
@@ -116,24 +148,50 @@ export class RestResolveDelegate {
 
             for (const p of unified.supplyProposals) {
                 for (const e of p.breakdown) {
-                    addLoss(e.actorId, e.actorName,
-                        `<i class="fas fa-box-open" style="color:#f1948a;"></i> <strong>${e.itemName ?? "Supplies"}</strong> &times;${e.lossQty} lost`);
+                    if (e.lossQty > 0) {
+                        const cleanLabel = this._sanitizeItemLabel(e.itemName ?? "Supplies");
+                        recordActorLoss(e.actorId, e.actorName, {
+                            name: cleanLabel,
+                            img: e.img ?? "icons/containers/bags/pack-leather-brown.webp",
+                            lossQty: e.lossQty,
+                            isTotal: (e.currentQty - e.lossQty) <= 0
+                        });
+                        addLoss(e.actorId, e.actorName,
+                            `<i class="fas fa-box-open" style="color:#f87171;"></i> <strong>${cleanLabel}</strong> &times;${e.lossQty} lost`);
+                    }
                 }
             }
             for (const p of unified.itemAtRiskProposals) {
                 for (const c of p.candidates) {
                     if (!c._approved) continue;
-                    const label = c.lossQty > 1 ? `${c.item.name} &times;${c.lossQty}` : c.item.name;
+                    const cleanLabel = this._sanitizeItemLabel(c.item.name);
+                    const qty = c.lossQty ?? 1;
+                    const label = qty > 1 ? `${cleanLabel} &times;${qty}` : cleanLabel;
+                    recordActorLoss(c.actor.id, c.actor.name, {
+                        name: cleanLabel,
+                        img: c.item.img ?? "icons/svg/item-bag.svg",
+                        lossQty: qty,
+                        isTotal: (c.currentQty - qty) <= 0
+                    });
                     addLoss(c.actor.id, c.actor.name,
-                        `<i class="fas fa-times-circle" style="color:#f1948a;"></i> <strong>${label}</strong> lost`);
+                        `<i class="fas fa-times-circle" style="color:#f87171;"></i> <strong>${label}</strong> lost`);
                 }
             }
             for (const p of unified.goldProposals) {
                 for (const e of p.breakdown) {
-                    addLoss(e.actorId, e.actorName,
-                        `<i class="fas fa-coins" style="color:#f1948a;"></i> <strong>${e.lossGp} gp</strong> lost`);
+                    if (e.lossGp > 0) {
+                        recordActorLoss(e.actorId, e.actorName, {
+                            name: "Gold",
+                            img: "icons/commodities/currency/coins-plain-stack-gold.webp",
+                            lossQty: `${e.lossGp} gp`,
+                            isTotal: false
+                        });
+                        addLoss(e.actorId, e.actorName,
+                            `<i class="fas fa-coins" style="color:#f87171;"></i> <strong>${e.lossGp} gp</strong> lost`);
+                    }
                 }
             }
+            app._approvedLossesByActor = approvedLossesByActor;
 
             for (const [actorId, data] of lossByActor) {
                 if (data.lines.length === 0) continue;
@@ -144,13 +202,12 @@ export class RestResolveDelegate {
 
                 try {
                     await ChatMessage.create({
-                        content: `<h3><i class="fas fa-water"></i> ${data.name}'s Disaster Losses</h3>\n${data.lines.join("\n")}`,
+                        content: `<h3><i class="fas fa-box-open"></i> ${data.name}'s Disaster Losses</h3>\n${data.lines.join("\n")}`,
                         whisper: whisperTargets,
                         speaker: { alias: "Respite" },
                         flags: { [MODULE_ID]: { type: "disasterLoss" } }
                     });
                 } catch (e) {
-
                     console.warn(`${MODULE_ID} | Failed to whisper disaster loss to ${data.name}:`, e);
                 }
             }
@@ -294,6 +351,10 @@ export class RestResolveDelegate {
 
         SoundDelegate.stopAll();
         app._phase = "resolve";
+        Hooks.callAll("ionrift.respite.resolutionEntered", {
+            restType: app._engine?.restType ?? "long",
+            isGritty: false
+        });
         await app._clearRestState();
 
         // Auto re-equip doffed armor if no encounter occurred
@@ -330,6 +391,7 @@ export class RestResolveDelegate {
                 app._doffedArmor.clear();
             }
         }
+        app._reequippedArmor = reequippedArmor;
 
         // PHB p.185: exhaustion recovery requires adequate food and drink.
         // Stamp recovery objects so RecoveryHandler blocks the -1 reduction
@@ -352,6 +414,10 @@ export class RestResolveDelegate {
         }
 
         const skipRecovery = game.settings.get(MODULE_ID, "restRecoveryDetected");
+        for (const outcome of app._outcomes) {
+            const entry = app._exhaustionDraft?.get(outcome.characterId);
+            if (entry) stampExhaustionRecovery(outcome.recovery, entry);
+        }
         const recoveryResults = await RecoveryHandler.applyAll(app._outcomes, skipRecovery);
 
         for (const outcome of app._outcomes) {
@@ -547,103 +613,52 @@ export class RestResolveDelegate {
         }
         app._preAppliedConditions = null;
 
-        // Send private whispered rest summary to each player
-        for (const outcome of app._outcomes) {
-            const actor = game.actors.get(outcome.characterId);
-            if (!actor) continue;
-
-            const ownerUser = game.users.find(u =>
-                !u.isGM && actor.testUserPermission(u, "OWNER")
-            );
-            if (!ownerUser) continue;
-
-            const lines = [`<h3>${actor.name}'s Rest</h3>`];
-            for (const sub of (outcome.outcomes ?? [])) {
-                lines.push(`<p><em>${sub.narrative}</em></p>`);
-                if (sub.training?.rolls?.length) {
-                    lines.push(RestSetupApp._buildTrainingProgressBar(sub.training));
-                }
-                if (sub.items?.length) {
-                    for (const item of sub.items) {
-                        const qty = item.quantity > 1 ? ` x${item.quantity}` : "";
-                        lines.push(`<p><i class="fas fa-plus-circle"></i> <strong>${item.name || item.itemRef}${qty}</strong></p>`);
-                    }
-                }
-            }
-
-            const recovery = outcome.recovery;
-            if (recovery) {
-                const recParts = [];
-                if (recovery.hpRestored > 0) recParts.push(`+${recovery.hpRestored} HP`);
-                if (recovery.hdRestored > 0) recParts.push(`+${recovery.hdRestored} HD`);
-                if (recParts.length) {
-                    lines.push(`<p><i class="fas fa-heartbeat"></i> ${recParts.join(", ")} restored</p>`);
-                }
-                // Exhaustion change with reason
-                if (recovery.exhaustionDelta < 0) {
-                    lines.push(`<p><i class="fas fa-arrow-down" style="color:#82e0aa;"></i> <span style="color:#82e0aa;">${Math.abs(recovery.exhaustionDelta)} exhaustion recovered</span></p>`);
-                } else if (recovery.exhaustionDelta > 0) {
-                    const reason = recovery.exhaustionDC ? `failed CON save DC ${recovery.exhaustionDC}` : "rest conditions";
-                    lines.push(`<p><i class="fas fa-arrow-up" style="color:#f1948a;"></i> <span style="color:#f1948a;">+${recovery.exhaustionDelta} exhaustion (${reason})</span></p>`);
-                } else if (recovery.exhaustionDelta === 0 && recovery.exhaustionSaveResult === "failed") {
-                    lines.push(`<p><i class="fas fa-arrow-right" style="color:#f9d77e;"></i> <span style="color:#f9d77e;">Failed CON save DC ${recovery.exhaustionDC} (+1 exhaustion, offset by rest recovery -1)</span></p>`);
-                }
-                if (recovery.comfortLevel === "hostile") {
-                    lines.push(`<p style="font-size:0.85em;color:#f9d77e;"><i class="fas fa-skull"></i> Hostile conditions prevent natural exhaustion recovery</p>`);
-                }
-                if (recovery.noFoodOrWater) {
-                    lines.push(`<p style="font-size:0.85em;color:#f9d77e;"><i class="fas fa-tint-slash"></i> Lack of food or water prevents exhaustion recovery</p>`);
-                }
-                // Surface gear contributions so the player sees their inventory mattered
-                if (recovery.gearDescriptors?.length) {
-                    const gearLine = recovery.gearDescriptors.map(d => `<i class="fas fa-cog"></i> ${d}`).join("<br>");
-                    lines.push(`<p style="font-size:0.85em;opacity:0.8;">${gearLine}</p>`);
-                }
-                
-                // Display event damage visually
-                if (recovery.eventDamage > 0) {
-                    const dmgEvents = (outcome.outcomes ?? [])
-                        .filter(sub => sub.source === "event" && sub.effects?.some(e => e.type === "damage"))
-                        .map(sub => sub.eventName);
-                    const sourceText = dmgEvents.length > 0 ? dmgEvents.join(", ") : "an event";
-                    lines.push(`<p><i class="fas fa-tint" style="color:#e74c3c;"></i> <strong style="color:#e74c3c;">Took ${recovery.eventDamage} damage</strong> from ${sourceText}</p>`);
-                }
-            }
-
-            const reequipped = reequippedArmor.get(outcome.characterId);
-            if (reequipped) {
-                lines.push(`<p><i class="fas fa-shield-alt"></i> You don your <strong>${reequipped}</strong> as you break camp.</p>`);
-            }
-
-            try {
-                await ChatMessage.create({
-                    content: lines.join("\n"),
-                    whisper: [ownerUser.id],
-                    speaker: { alias: "Respite" },
-                    flags: { [MODULE_ID]: { type: "restSummary" } }
-                });
-            } catch (e) {
-
-                console.warn(`${MODULE_ID} | Failed to whisper rest summary to ${ownerUser.name}:`, e);
-            }
-        }
+        // The dawn screen repeated the chat summary. Post the card and close.
+        app._masterCardPosted = false;
 
         const restType = app._engine?.restType ?? "long";
         await CalendarHandler.advanceRestTime(restType);
         await CalendarHandler.recordRestDate();
 
-        emitPhaseChanged("resolve", {
-                outcomes: app._outcomes.map(o => ({
-                    characterId: o.characterId,
-                    characterName: o.characterName,
-                    outcomes: o.outcomes,
-                    recovery: o.recovery
-                }))
-            });
-
         app._restApplied = true;
-        app.render();
-    
+        try {
+            await this.postMasterRestCard();
+        } catch (err) {
+            console.warn(`${MODULE_ID} | Failed to post master rest card:`, err);
+        }
+        await app.close({ resolved: true });
+    }
+
+    rehydrateItemLossProposal(eff) {
+        if (this._app?._events?.rehydrateItemLossProposal) {
+            return this._app._events.rehydrateItemLossProposal(eff);
+        }
+        const candidates = [];
+        for (const li of (eff._lockedItems ?? [])) {
+            const actor = game.actors.get(li.actorId);
+            const item = actor?.items?.get(li.itemId);
+            if (!actor || !item) continue;
+            candidates.push({
+                actor,
+                item,
+                currentQty: item.system?.quantity ?? li.currentQty ?? 1,
+                lossQty: li.lossQty
+            });
+        }
+        return {
+            type: "item_at_risk",
+            candidates,
+            narrative: eff.narrative ?? "Some items were lost.",
+            severity: eff.severity ?? 1
+        };
+    }
+
+    _sanitizeItemLabel(raw) {
+        if (!raw) return "";
+        return String(raw)
+            .replace(/\s*\([a-z0-9]{4,8}\)$/i, "")
+            .replace(/\s*\[[a-z0-9]{4,8}\]$/i, "")
+            .trim();
     }
 
     async showResourceLossApproval(unified) {
@@ -659,7 +674,14 @@ export class RestResolveDelegate {
         const byActor = new Map();
 
         function ensureActor(actorId, actorName) {
-            if (!byActor.has(actorId)) byActor.set(actorId, { name: actorName, rows: [] });
+            if (!byActor.has(actorId)) {
+                const actor = game.actors.get(actorId);
+                byActor.set(actorId, {
+                    name: actor?.name ?? actorName,
+                    img: actor?.img ?? "icons/svg/mystery-man.svg",
+                    rows: []
+                });
+            }
             return byActor.get(actorId);
         }
 
@@ -669,13 +691,17 @@ export class RestResolveDelegate {
                 const actor = game.actors.get(entry.actorId);
                 const item = actor?.items.get(entry.itemId);
                 const img = item?.img ?? "icons/containers/bags/pack-leather-brown.webp";
-                const remaining = entry.currentQty - entry.lossQty;
+                const cleanName = this._sanitizeItemLabel(item?.name ?? entry.itemName ?? "Supplies");
+                const remaining = Math.max(0, entry.currentQty - entry.lossQty);
                 entry._uid = uid;
+                entry.img = img;
                 allEntries.push({ uid });
                 ensureActor(entry.actorId, entry.actorName).rows.push({
-                    uid, img, name: item?.name ?? entry.itemName,
+                    uid,
+                    img,
+                    name: cleanName,
                     qtyLabel: `-${entry.lossQty}`,
-                    rangeLabel: `${entry.currentQty} to ${remaining}`
+                    rangeLabel: `${entry.currentQty} &rarr; ${remaining}`
                 });
             }
         }
@@ -684,13 +710,15 @@ export class RestResolveDelegate {
             for (const candidate of proposal.candidates) {
                 const uid = `item-${candidate.actor.id}-${candidate.item.id}`;
                 candidate._uid = uid;
-                const remaining = candidate.currentQty - candidate.lossQty;
+                const cleanName = this._sanitizeItemLabel(candidate.item.name);
+                const remaining = Math.max(0, candidate.currentQty - candidate.lossQty);
                 allEntries.push({ uid });
                 ensureActor(candidate.actor.id, candidate.actor.name).rows.push({
-                    uid, img: candidate.item.img ?? "icons/svg/mystery-man.svg",
-                    name: candidate.item.name,
-                    qtyLabel: candidate.lossQty > 1 ? `-${candidate.lossQty}` : "lost",
-                    rangeLabel: candidate.currentQty > 1 ? `${candidate.currentQty} to ${remaining}` : "removed"
+                    uid,
+                    img: candidate.item.img ?? "icons/svg/mystery-man.svg",
+                    name: cleanName,
+                    qtyLabel: candidate.lossQty > 1 ? `-${candidate.lossQty}` : "Lost",
+                    rangeLabel: candidate.currentQty > 1 ? `${candidate.currentQty} &rarr; ${remaining}` : "Destroyed"
                 });
             }
         }
@@ -699,36 +727,21 @@ export class RestResolveDelegate {
             for (const entry of proposal.breakdown) {
                 const uid = `gold-${entry.actorId}`;
                 entry._uid = uid;
-                const remaining = entry.currentGp - entry.lossGp;
+                const remaining = Math.max(0, entry.currentGp - entry.lossGp);
                 allEntries.push({ uid });
                 ensureActor(entry.actorId, entry.actorName).rows.push({
-                    uid, img: "icons/commodities/currency/coins-assorted-mix-copper-silver-gold.webp",
+                    uid,
+                    img: "icons/commodities/currency/coins-assorted-mix-copper-silver-gold.webp",
                     name: "Gold",
                     qtyLabel: `-${entry.lossGp} gp`,
-                    rangeLabel: `${entry.currentGp} to ${remaining} gp`
+                    rangeLabel: `${entry.currentGp} &rarr; ${remaining} gp`
                 });
             }
         }
 
-        // If nothing to show at all
+        // If nothing to show at all, proceed immediately without blocking
         if (allEntries.length === 0) {
-            return new Promise(resolve => {
-                const overlay = document.createElement("div");
-                overlay.classList.add("ionrift-armor-modal-overlay");
-                overlay.innerHTML = `
-                    <div class="ionrift-armor-modal" style="max-width:420px;">
-                        <h3><i class="fas fa-water"></i> Disaster Losses</h3>
-                        <p>The disaster had no material impact. No supplies, items, or gold were at risk.</p>
-                        <div class="ionrift-armor-modal-buttons">
-                            <button class="btn-armor-confirm"><i class="fas fa-check"></i> Acknowledged</button>
-                        </div>
-                    </div>`;
-                document.body.appendChild(overlay);
-                overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => {
-                    overlay.remove();
-                    resolve(true);
-                });
-            });
+            return true;
         }
 
         let scrollContent = "";
@@ -738,65 +751,120 @@ export class RestResolveDelegate {
                 rows += `
                     <label class="loss-item-row" data-uid="${r.uid}">
                         <input type="checkbox" checked data-uid="${r.uid}" class="loss-checkbox" />
-                        <img src="${r.img}" width="20" height="20" style="border-radius:3px; border:1px solid rgba(255,255,255,0.1);" />
-                        <span class="loss-item-name">${r.name}</span>
+                        <img src="${r.img}" class="loss-item-img" alt="${r.name}" />
+                        <span class="loss-item-name" title="${r.name}">${r.name}</span>
                         <span class="loss-item-qty">${r.qtyLabel}</span>
                         <span class="loss-item-current">${r.rangeLabel}</span>
                     </label>`;
             }
             scrollContent += `
                 <div class="loss-actor-section">
-                    <div class="loss-section-label"><i class="fas fa-user"></i> ${group.name}</div>
-                    ${rows}
+                    <div class="loss-actor-header-row">
+                        <img class="loss-actor-portrait" src="${group.img}" alt="${group.name}">
+                        <span class="loss-actor-name">${group.name}</span>
+                    </div>
+                    <div class="loss-actor-rows">
+                        ${rows}
+                    </div>
                 </div>`;
         }
 
         return new Promise(resolve => {
             const overlay = document.createElement("div");
-            overlay.classList.add("ionrift-armor-modal-overlay");
+            overlay.classList.add("respite-disaster-modal-overlay");
+            overlay.setAttribute("role", "dialog");
+            overlay.setAttribute("aria-modal", "true");
             overlay.innerHTML = `
-                <div class="ionrift-armor-modal" style="max-width:520px;">
-                    <h3><i class="fas fa-water"></i> Disaster Loss Approval</h3>
-                    <div class="loss-summary">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <span>The disaster proposes <strong>${allEntries.length}</strong> losses across the party. Review and confirm.</span>
+                <div class="respite-disaster-modal">
+                    <div class="respite-disaster-modal-header">
+                        <div class="modal-title-group">
+                            <i class="fas fa-triangle-exclamation modal-title-icon"></i>
+                            <h3>Disaster Loss Reconciliation</h3>
+                        </div>
+                        <button type="button" class="btn-modal-close" title="Close"><i class="fas fa-times"></i></button>
                     </div>
-                    <div class="loss-controls">
-                        <button type="button" class="loss-select-all"><i class="fas fa-check-double"></i> Select All</button>
-                        <button type="button" class="loss-select-none"><i class="fas fa-times"></i> Select None</button>
+                    <div class="loss-summary-banner">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span>The incident proposes <strong>${allEntries.length}</strong> casualty/resource losses across the party. Review and uncheck any to preserve.</span>
+                    </div>
+                    <div class="loss-controls-bar">
+                        <div class="loss-batch-actions">
+                            <button type="button" class="loss-btn-subtle loss-select-all"><i class="fas fa-check-double"></i> Select All</button>
+                            <button type="button" class="loss-btn-subtle loss-select-none"><i class="fas fa-times"></i> Select None</button>
+                        </div>
+                        <span class="loss-controls-hint">Uncheck to preserve items</span>
                     </div>
                     <div class="loss-scrollable">
                         ${scrollContent}
                     </div>
-                    <div class="loss-tally">
-                        <i class="fas fa-calculator"></i>
-                        <span class="loss-tally-count">${allEntries.length} losses selected</span>
-                    </div>
-                    <div class="ionrift-armor-modal-buttons">
-                        <button class="btn-armor-confirm"><i class="fas fa-check"></i> Confirm Losses</button>
-                        <button class="btn-armor-cancel"><i class="fas fa-times"></i> Cancel</button>
+                    <div class="respite-disaster-modal-footer">
+                        <div class="loss-tally">
+                            <i class="fas fa-boxes-stacked"></i>
+                            <span class="loss-tally-count">${allEntries.length} losses approved</span>
+                        </div>
+                        <div class="modal-footer-actions">
+                            <button type="button" class="btn-loss-cancel"><i class="fas fa-times"></i> Cancel</button>
+                            <button type="button" class="btn-loss-confirm"><i class="fas fa-check"></i> <span>Confirm Losses (${allEntries.length})</span></button>
+                        </div>
                     </div>
                 </div>`;
             document.body.appendChild(overlay);
 
+            const cleanup = (result) => {
+                window.removeEventListener("keydown", onKeyDown);
+                overlay.remove();
+                resolve(result);
+            };
+
+            const onKeyDown = (e) => {
+                if (e.key === "Escape") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    cleanup(false);
+                }
+            };
+            window.addEventListener("keydown", onKeyDown);
+
+            overlay.addEventListener("click", (e) => {
+                if (e.target === overlay) cleanup(false);
+            });
+
+            overlay.querySelector(".btn-modal-close").addEventListener("click", () => cleanup(false));
+            overlay.querySelector(".btn-loss-cancel").addEventListener("click", () => cleanup(false));
+
             function updateTally() {
                 const count = overlay.querySelectorAll(".loss-checkbox:checked").length;
                 const tally = overlay.querySelector(".loss-tally-count");
-                if (tally) tally.textContent = `${count} losses selected`;
+                if (tally) tally.textContent = `${count} loss${count === 1 ? "" : "es"} approved`;
+                const confirmSpan = overlay.querySelector(".btn-loss-confirm span");
+                if (confirmSpan) confirmSpan.textContent = `Confirm Losses (${count})`;
             }
 
             overlay.querySelector(".loss-select-all").addEventListener("click", () => {
-                overlay.querySelectorAll(".loss-checkbox").forEach(cb => cb.checked = true);
+                overlay.querySelectorAll(".loss-checkbox").forEach(cb => {
+                    cb.checked = true;
+                    cb.closest(".loss-item-row")?.classList.remove("is-excluded");
+                });
                 updateTally();
             });
+
             overlay.querySelector(".loss-select-none").addEventListener("click", () => {
-                overlay.querySelectorAll(".loss-checkbox").forEach(cb => cb.checked = false);
+                overlay.querySelectorAll(".loss-checkbox").forEach(cb => {
+                    cb.checked = false;
+                    cb.closest(".loss-item-row")?.classList.add("is-excluded");
+                });
                 updateTally();
             });
-            overlay.querySelectorAll(".loss-checkbox").forEach(cb => cb.addEventListener("change", updateTally));
+
+            overlay.querySelectorAll(".loss-checkbox").forEach(cb => {
+                cb.addEventListener("change", () => {
+                    cb.closest(".loss-item-row")?.classList.toggle("is-excluded", !cb.checked);
+                    updateTally();
+                });
+            });
 
             // Confirm: mark approved entries on the original proposals
-            overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => {
+            overlay.querySelector(".btn-loss-confirm").addEventListener("click", () => {
                 const checked = new Set(
                     [...overlay.querySelectorAll(".loss-checkbox:checked")].map(cb => cb.dataset.uid)
                 );
@@ -813,16 +881,9 @@ export class RestResolveDelegate {
                     p.totalLoss = p.breakdown.reduce((s, e) => s + e.lossGp, 0);
                 }
 
-                overlay.remove();
-                resolve(true);
-            });
-
-            overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => {
-                overlay.remove();
-                resolve(false);
+                cleanup(true);
             });
         });
-    
     }
 
     _buildResolutionCards(outcomes) {
@@ -1077,37 +1138,20 @@ export class RestResolveDelegate {
         if (!game.user.isGM) return;
         if (app._eventsCommitPending) return;
 
-        const confirmed = await new Promise(resolve => {
-            const overlay = document.createElement("div");
-            overlay.classList.add("ionrift-armor-modal-overlay");
-            overlay.innerHTML = `
-                <div class="ionrift-armor-modal">
-                    <h3><i class="fas fa-exclamation-triangle"></i> Abandon Rest?</h3>
-                    <p>This will cancel the rest for all players. Any unsaved progress will be lost.</p>
-                    <div class="ionrift-armor-modal-buttons">
-                        <button class="btn-armor-confirm"><i class="fas fa-times"></i> Abandon</button>
-                        <button class="btn-armor-cancel"><i class="fas fa-arrow-left"></i> Continue Resting</button>
-                    </div>
-                </div>`;
-            document.body.appendChild(overlay);
-            overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => {
-                overlay.remove();
-                resolve(true);
-            });
-            overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => {
-                overlay.remove();
-                resolve(false);
-            });
-        });
+        const confirmed = await confirmAbandonRest();
         if (!confirmed) return;
 
         app._terminated = true;
+        app._abandoned = true;
+        app._engine = null;
         app._cancelCampPlacementCanvasMode();
 
         await app._removeBeddingDown();
 
         // Clear persisted rest state
         await game.settings.set(MODULE_ID, "activeRest", {});
+        await game.settings.set(MODULE_ID, "activeShortRest", {});
+        await game.settings.set(MODULE_ID, "activeGrittyRest", {});
         app._clearTavernTotmOverride();
 
         // Detect Magic + workbench staging (skip save: activeRest already cleared)
@@ -1137,5 +1181,320 @@ export class RestResolveDelegate {
         ui.notifications.info("Rest abandoned.");
         app.close({ resolved: true, abandoned: true });
     
+    }
+
+    _resolveActivityName(activityId) {
+        if (!activityId) return "Rested";
+        const normalized = activityId === "act_set_defenses" ? "act_defenses" : activityId;
+        const act = this._app._activityResolver?.activities?.get(normalized);
+        if (act?.name) return act.name;
+        return normalized
+            .replace(/^act_/, "")
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    _humanizeItemLabel(item) {
+        let label = item?.name || item?.itemRef || "";
+        label = label.replace(/^compendium\./, "").replace(/^[a-z0-9_-]+-items\./, "");
+        if (!label) return "Supplies";
+        if (label.includes("_")) {
+            return label.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+        }
+        return label;
+    }
+
+    async postMasterRestCard() {
+        const app = this._app;
+        if (app._masterCardPosted) return;
+        if (!game.user.isGM) return;
+
+        const outcomes = app._outcomes ?? [];
+        if (!outcomes.length) return;
+
+        const terrainTag = app._selectedTerrain ?? app._engine?.terrainTag ?? "forest";
+        const terrainEntry = TerrainRegistry.get(terrainTag);
+        const terrainLabel = terrainEntry?.label ?? (terrainTag.charAt(0).toUpperCase() + terrainTag.slice(1));
+        const comfort = app._campStatus?.comfort ?? app._engine?.comfort ?? "rough";
+        const comfortLabel = comfort.charAt(0).toUpperCase() + comfort.slice(1);
+
+        const restType = app._engine?.restType ?? "long";
+        const title = restType === "long" ? "Long Rest Complete — Dawn Breaks" : "Short Rest Complete";
+
+        const activeShelters = app._engine?.activeShelters ?? [];
+        const shelterNames = activeShelters.map(s => {
+            if (s === "tent") return "Tent pitched";
+            if (s === "tiny_hut") return "Tiny Hut";
+            if (s === "rope_trick") return "Rope Trick";
+            if (s === "magnificent_mansion") return "Mansion";
+            return s;
+        });
+        const shelterSummary = shelterNames.length ? shelterNames.join(", ") : "Open Sky";
+
+        // Summary metrics
+        const totalHpRestored = outcomes.reduce((sum, o) => sum + (o.recovery?.hpRestored ?? 0), 0);
+        const totalHdRestored = outcomes.reduce((sum, o) => sum + (o.recovery?.hdRestored ?? 0), 0);
+        const totalExhaustionGained = outcomes.reduce((sum, o) => sum + Math.max(0, o.recovery?.exhaustionDelta ?? 0), 0);
+
+        let vitalSummary = "Full Vital Recovery";
+        if (totalExhaustionGained > 0) {
+            vitalSummary = `+${totalHpRestored} HP, +${totalHdRestored} HD (+${totalExhaustionGained} Exh)`;
+        } else if (totalHpRestored > 0 || totalHdRestored > 0) {
+            vitalSummary = `+${totalHpRestored} HP, +${totalHdRestored} HD`;
+        }
+        const vitalDetail = "Spell slots, hit dice & features reset";
+
+        const incidentsCount = (app._triggeredEvents ?? []).length;
+
+        const fireLevel = app._fireLevel ?? "unlit";
+        const hearthLabel = fireLevel !== "unlit" ? fireLevel.charAt(0).toUpperCase() + fireLevel.slice(1) : "Cold Camp";
+        const shelterDetail = shelterSummary;
+
+        const mealLabel = app._mealResults?.length ? "Camp Meal Consumed" : "Rations Accounted";
+        const mealDetail = "Adequate sustenance for the night";
+
+        // Incidents
+        const incidents = (app._triggeredEvents ?? []).map(evt => {
+            const consequences = [];
+            const isSuccess = evt.resolvedOutcome && ["success", "triumph"].includes(evt.resolvedOutcome);
+            const isFailure = evt.resolvedOutcome === "failure";
+
+            if (isSuccess) {
+                if (evt.items?.length) {
+                    for (const it of evt.items) {
+                        const qty = it.quantity ? ` (${it.quantity})` : "";
+                        const label = this._humanizeItemLabel(it);
+                        consequences.push({ icon: "fas fa-gem", text: `Discovered ${label}${qty}`, isPositive: true });
+                    }
+                }
+            } else {
+                if (evt.mechanical?.onFailure?.effects) {
+                    for (const eff of evt.mechanical.onFailure.effects) {
+                        if (eff.type === "damage") {
+                            consequences.push({ icon: "fas fa-heart-broken", text: `${eff.formula ?? eff.amount} damage taken`, isPositive: false });
+                        } else if (eff.type === "condition") {
+                            consequences.push({ icon: "fas fa-skull-crossbones", text: `Gained ${eff.condition}`, isPositive: false });
+                        } else if (eff.type === "supply_loss") {
+                            consequences.push({ icon: "fas fa-box-open", text: "Supplies lost", isPositive: false });
+                        }
+                    }
+                }
+            }
+
+            const category = evt.category ?? "ambient";
+            const isRewarding = category === "discovery" || (consequences.some(c => c.isPositive) && !consequences.some(c => !c.isPositive));
+            const isDanger = category === "encounter" || isFailure || consequences.some(c => !c.isPositive);
+
+            let itemClass = "ambient";
+            let icon = "fas fa-moon";
+            if (isRewarding) {
+                itemClass = "rewarding";
+                icon = "fas fa-gem";
+            } else if (isDanger) {
+                itemClass = "danger";
+                icon = "fas fa-shield-halved";
+            } else if (category === "complication") {
+                itemClass = "complication";
+                icon = "fas fa-triangle-exclamation";
+            }
+
+            return {
+                name: evt.name ?? "Night Event",
+                verdictLabel: evt.resolvedOutcome ? (evt.resolvedOutcome === "success" ? "Passed" : (evt.resolvedOutcome === "triumph" ? "Triumph" : "Failed")) : null,
+                narrative: evt.narrative ?? evt.description ?? "",
+                consequences,
+                category,
+                isRewarding,
+                isDanger,
+                itemClass,
+                icon
+            };
+        });
+
+        const allRewarding = incidents.length > 0 && incidents.every(i => i.isRewarding);
+        const anyDanger = incidents.some(i => i.isDanger);
+
+        let containerClass = "ambient";
+        let badgeIcon = "fas fa-campground";
+        let badgeLabel = `Night Events (${incidents.length})`;
+
+        if (allRewarding) {
+            containerClass = "rewarding";
+            badgeIcon = "fas fa-gem";
+            badgeLabel = `Discoveries (${incidents.length})`;
+        } else if (anyDanger) {
+            containerClass = "hostile";
+            badgeIcon = "fas fa-shield-halved";
+            badgeLabel = `Incidents Resolved (${incidents.length})`;
+        }
+
+        const incidentsMeta = { containerClass, badgeIcon, badgeLabel };
+
+        let securityLabel = "Night Security";
+        let securityIcon = "fas fa-shield-halved";
+        let securityValue = incidents.length === 0 ? "Quiet Night" : `${incidents.length} Incident${incidents.length > 1 ? "s" : ""}`;
+        let securityPositive = incidents.length === 0;
+        let securityDetail = "Watch completed without incident";
+
+        if (allRewarding) {
+            securityLabel = "Discoveries";
+            securityIcon = "fas fa-gem";
+            securityValue = `${incidents.length} Found`;
+            securityPositive = true;
+            securityDetail = "Watch uncovered beneficial discoveries";
+        } else if (anyDanger) {
+            securityLabel = "Night Security";
+            securityIcon = "fas fa-shield-halved";
+            securityValue = `${incidents.filter(i => i.isDanger).length} Threat${incidents.filter(i => i.isDanger).length > 1 ? "s" : ""}`;
+            securityPositive = false;
+            securityDetail = "Resolved during watch";
+        } else if (incidents.length > 0) {
+            securityLabel = "Night Events";
+            securityIcon = "fas fa-campground";
+            securityValue = `${incidents.length} Resolved`;
+            securityPositive = true;
+            securityDetail = "Events resolved during watch";
+        }
+
+        // Characters
+        const characters = outcomes
+            .filter(o => o.characterId)
+            .map(o => {
+            const actor = game.actors.get(o.characterId);
+            const recovery = o.recovery ?? {};
+
+            // Activity
+            const actSub = (o.outcomes ?? []).find(s => s.source === "activity");
+            let activityLabel = "Rested";
+            let activityIcon = "fas fa-bed";
+            let activitySuccess = true;
+            if (actSub?.activityId) {
+                activityLabel = this._resolveActivityName(actSub.activityId);
+                activitySuccess = actSub.result !== "failure" && actSub.result !== "failure_complication";
+                if (actSub.activityId.includes("watch")) activityIcon = "fas fa-eye";
+                else if (actSub.activityId.includes("cook")) activityIcon = "fas fa-utensils";
+                else if (actSub.activityId.includes("defenses")) activityIcon = "fas fa-shield-alt";
+                else if (actSub.activityId.includes("forage") || actSub.activityId.includes("gather")) activityIcon = "fas fa-seedling";
+                else if (actSub.activityId.includes("craft") || actSub.activityId.includes("fletch")) activityIcon = "fas fa-hammer";
+            }
+
+            const exhaustionDelta = recovery.exhaustionDelta ?? 0;
+            const hasSetback = exhaustionDelta > 0 || (recovery.eventDamage ?? 0) > 0 || recovery.exhaustionSaveResult === "failed";
+
+            let vitalPill = "Max HP, Max HD";
+            if (exhaustionDelta > 0) {
+                vitalPill = `+${exhaustionDelta} Exhaustion`;
+            } else if (recovery.eventDamage > 0) {
+                vitalPill = `-${recovery.eventDamage} HP`;
+            } else if (recovery.hpRestored > 0 || recovery.hdRestored > 0) {
+                vitalPill = `+${recovery.hpRestored} HP, +${recovery.hdRestored} HD`;
+            }
+
+            const notes = [];
+            if (recovery.hpRestored > 0 || recovery.hdRestored > 0) {
+                const parts = [];
+                if (recovery.hpRestored > 0) parts.push(`+${recovery.hpRestored} HP`);
+                if (recovery.hdRestored > 0) parts.push(`+${recovery.hdRestored} HD`);
+                if (recovery.gearBonuses?.hd) parts.push(`(+1 bedroll bonus)`);
+                notes.push(`<i class="fas fa-heartbeat" style="color:#10b981;"></i> <strong>${parts.join(", ")}</strong> restored`);
+            } else {
+                notes.push(`<i class="fas fa-heart" style="color:#10b981;"></i> Vital recovery maxed (Full HP & HD)`);
+            }
+
+            if (recovery.exhaustionDelta < 0) {
+                notes.push(`<i class="fas fa-arrow-down" style="color:#10b981;"></i> ${Math.abs(recovery.exhaustionDelta)} exhaustion recovered`);
+            } else if (recovery.exhaustionDelta > 0) {
+                const reason = recovery.exhaustionDC ? `failed CON save DC ${recovery.exhaustionDC}` : "rest conditions";
+                notes.push(`<i class="fas fa-arrow-up" style="color:#f87171;"></i> <strong>+${recovery.exhaustionDelta} Exhaustion</strong> (${reason})`);
+            } else if (recovery.exhaustionSaveResult === "failed") {
+                notes.push(`<i class="fas fa-arrow-right" style="color:#fbbf24;"></i> Failed CON save DC ${recovery.exhaustionDC} (+1 exhaustion offset by rest)`);
+            } else if (recovery.exhaustionSaveResult === "passed") {
+                notes.push(`<i class="fas fa-shield" style="color:#10b981;"></i> Passed CON save DC ${recovery.exhaustionDC}`);
+            }
+
+            for (const sub of (o.outcomes ?? [])) {
+                if (sub.items?.length) {
+                    for (const item of sub.items) {
+                        const qty = item.quantity > 1 ? ` &times;${item.quantity}` : "";
+                        const icon = sub.source === "event" ? "fas fa-gem" : "fas fa-plus-circle";
+                        const color = sub.source === "event" ? "#fbbf24" : "#10b981";
+                        const label = this._humanizeItemLabel(item);
+                        notes.push(`<i class="${icon}" style="color:${color};"></i> Obtained <strong>${label}${qty}</strong>`);
+                    }
+                }
+            }
+
+            if (recovery.eventDamage > 0) {
+                notes.push(`<i class="fas fa-tint" style="color:#ef4444;"></i> <strong>Took ${recovery.eventDamage} damage</strong> during night`);
+            }
+
+            const reequipped = app._reequippedArmor?.get(o.characterId);
+            if (reequipped) {
+                notes.push(`<i class="fas fa-shield-alt"></i> Donned <strong>${reequipped}</strong> upon breaking camp`);
+            }
+
+            return {
+                id: o.characterId,
+                name: actor?.name ?? o.characterName,
+                img: actor?.img ?? "icons/svg/mystery-man.svg",
+                activityLabel,
+                activityIcon,
+                activitySuccess,
+                vitalPill,
+                hasSetback,
+                notes
+            };
+        });
+
+        const bannerContext = ImageResolver.resolveRestBannerContext(terrainTag, "resolve");
+        const bannerFireClass = ImageResolver.bannerFireClass(fireLevel);
+        const showBanner = !bannerContext.hideTerrainBanner && !!bannerContext.terrainBanner;
+
+        const anySetback = outcomes.some(o => o.hasSetback);
+        const partyStatus = anySetback
+            ? { label: "Setbacks Incurred", icon: "fas fa-triangle-exclamation", class: "setback" }
+            : { label: "All Rested", icon: "fas fa-sparkles", class: "positive" };
+
+        const subtitleParts = [terrainLabel, comfortLabel, shelterSummary];
+        if (hearthLabel) subtitleParts.push(hearthLabel);
+
+        const partyLosses = [];
+        let totalLossCount = 0;
+        for (const [actorId, data] of (app._approvedLossesByActor ?? new Map())) {
+            if (!data.items?.length) continue;
+            const actor = game.actors.get(actorId);
+            totalLossCount += data.items.reduce((acc, it) => acc + (typeof it.lossQty === "number" ? it.lossQty : 1), 0);
+            partyLosses.push({
+                id: actorId,
+                name: actor?.name ?? data.name,
+                img: actor?.img ?? data.img ?? "icons/svg/mystery-man.svg",
+                items: data.items
+            });
+        }
+
+        const templateData = {
+            title,
+            subtitle: subtitleParts.join(" · "),
+            terrainBanner: bannerContext.terrainBanner,
+            terrainBannerFallback: bannerContext.terrainBannerFallback,
+            terrainBannerPos: bannerContext.terrainBannerPos ?? "center",
+            bannerFireClass,
+            showBanner,
+            partyStatus,
+            incidentsMeta,
+            incidents,
+            characters,
+            partyLosses,
+            totalLossCount
+        };
+
+        const cardHtml = await renderTemplate("modules/ionrift-respite/templates/master-rest-card.hbs", templateData);
+
+        await ChatMessage.create({
+            content: cardHtml,
+            speaker: { alias: "Respite Rest Resolution" }
+        });
+
+        app._masterCardPosted = true;
     }
 }

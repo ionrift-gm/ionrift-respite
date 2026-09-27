@@ -113,7 +113,7 @@
                     {{#if activityDetail.armorWarning.isDoffed}}
                     {{activityDetail.armorWarning.name}} removed for rest
                     {{else}}
-                    {{activityDetail.armorWarning.name}} ({{activityDetail.armorWarning.type}}) - don time: {{activityDetail.armorWarning.donTime}}
+                    {{activityDetail.armorWarning.name}} ({{activityDetail.armorWarning.type}}), don time: {{activityDetail.armorWarning.donTime}}
                     {{/if}}
                 </span>
                 <button type="button" class="btn-armor-toggle"
@@ -167,6 +167,30 @@
         <div class="crafting-roll-blocking-overlay" role="status" aria-live="polite">
             <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
             <span>Waiting for the roll to finish...</span>
+        </div>
+        {{/if}}
+
+        {{#if crafting.armorWarning}}
+        <div class="armor-advisory {{#if crafting.armorWarning.isDoffed}}doffed{{/if}}" data-tooltip="{{crafting.armorWarning.hint}}">
+            <i class="fas fa-shield-alt"></i>
+            <span class="armor-advisory-text">
+                {{#if crafting.armorWarning.isDoffed}}
+                {{crafting.armorWarning.name}} removed for rest
+                {{else}}
+                {{crafting.armorWarning.name}} ({{crafting.armorWarning.type}}), don time: {{crafting.armorWarning.donTime}}
+                {{/if}}
+            </span>
+            <button type="button" class="btn-armor-toggle"
+                data-actor-id="{{crafting.armorWarning.actorId}}"
+                data-item-id="{{crafting.armorWarning.itemId}}"
+                data-is-doffed="{{crafting.armorWarning.isDoffed}}"
+                data-tooltip="{{#if crafting.armorWarning.isDoffed}}Re-equip armor{{else}}Remove armor for rest{{/if}}">
+                {{#if crafting.armorWarning.isDoffed}}
+                <i class="fas fa-shield-alt"></i> Don
+                {{else}}
+                <i class="fas fa-bed"></i> Doff
+                {{/if}}
+            </button>
         </div>
         {{/if}}
 

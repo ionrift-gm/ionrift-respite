@@ -440,6 +440,30 @@ export function formatSingleBuffSummary(buff, ctx = {}) {
 }
 
 /**
+ * Player-facing line for a provision already in inventory.
+ * Chef treats, recipe buffs, and a Well Fed flag with no extra buff.
+ * @param {object|null|undefined} flags ionrift-respite item flags
+ * @returns {{ hasBuff: boolean, buffSummary: string }}
+ */
+export function describeItemMealBuff(flags) {
+    if (!flags) return { hasBuff: false, buffSummary: "" };
+    if (flags.chefTreat) {
+        const pb = Number(flags.chefTreatProfBonus) || 0;
+        return { hasBuff: true, buffSummary: `Bolstering Treat (+${pb > 0 ? pb : 1} temp HP)` };
+    }
+    if (flags.buff) {
+        const buffs = Array.isArray(flags.buff) ? flags.buff : [flags.buff];
+        const summary = buffs
+            .map(buff => formatSingleBuffSummary(buff, { partyMeal: flags.partyMeal }))
+            .filter(Boolean)
+            .join("; ");
+        if (summary) return { hasBuff: true, buffSummary: summary };
+    }
+    if (flags.wellFed) return { hasBuff: true, buffSummary: "Well Fed" };
+    return { hasBuff: false, buffSummary: "" };
+}
+
+/**
  * Primary picker label: buff type and parameters, not meal name.
  * @param {MealBuffPreset|null|undefined} preset
  * @returns {string}
@@ -529,7 +553,7 @@ export function groupMealBuffPresetsByCategory(presets) {
  * @param {Object|null|undefined} buff
  * @returns {Object|null}
  */
-export function formatMealBuffPreview(buff) {
+export function formatMealBuffPreview(buff, actor = null) {
     if (!buff) return null;
     const primary = Array.isArray(buff) ? buff[0] : buff;
     if (!primary?.type) return null;
@@ -537,6 +561,10 @@ export function formatMealBuffPreview(buff) {
     const label = MEAL_BUFF_TYPE_LABELS[primary.type] ?? primary.type;
     const duration = MEAL_BUFF_DURATION_LABELS[primary.duration] ?? primary.duration ?? "";
     let detail = primary.formula ?? "";
+    if (detail && typeof detail === "string" && detail.includes("@prof")) {
+        const pb = actor?.system?.attributes?.prof ?? null;
+        detail = pb != null ? detail.replace(/@prof/g, `+${pb} (PB)`) : (actor ? "PB" : detail);
+    }
     if (primary.type === "advantage") {
         const ab = primary.save?.ability ?? primary.formula ?? "con";
         detail = String(ab).toUpperCase();

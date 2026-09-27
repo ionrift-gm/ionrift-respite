@@ -1,7 +1,13 @@
 import { Logger } from "../../../../utils/Logger.js";
-import { TerrainRegistry } from "../../../../services/events/resolve/TerrainRegistry.js";
 import { CopySpellHandler } from "../../../../services/crafting/outcomes/CopySpellHandler.js";
 import { MealPhaseHandler } from "../../../../services/meal/phase/MealPhaseHandler.js";
+import { enqueueProvision } from "../../../../services/meal/buffs/MealBuffBeat.js";
+import {
+    evaluateDayRations,
+    rationSkipLines,
+    restTerrainMealRules,
+    restTerrainTag
+} from "../../../../services/meal/phase/RationNeed.js";
 import {
     activateStationLayer,
     isStationLayerActive,
@@ -43,6 +49,9 @@ import { getPartyActors } from "../../../../services/party/partyActors.js";
 import { _refreshGmRestIndicator, _refreshRejoinBar } from "../../../../module.js";
 import { _noteEngineFreePath } from "../../../rest/RestSetupApp.js";
 import { MODULE_ID } from "../../../../data/moduleId.js";
+import { applyWatchAlertPhrase, presentCombatModifiers } from "../../../../services/rest/flow/WatchAlertBenefit.js";
+import { activityFocusAfterCommit, publishCampProgress } from "../../../../services/rest/session/campProgressState.js";
+import { getFletchingTierLabel } from "../../../../services/crafting/settings/FletchingSettings.js";
 
 export class ActivityStationsDelegate {
     constructor(app) {
@@ -53,13 +62,24 @@ export class ActivityStationsDelegate {
         const app = this._app;
 
         if (!characterId || !activityId) return null;
+        if (activityId === "act_forage" || activityId === "act_hunt") {
+            await app._totm?.selectGatherChoice?.(characterId, activityId);
+            return { source: "gather", activityId };
+        }
         if (app._craftingInProgress?.has(characterId)) return null;
 
         // Look up activity from the resolver, then fall back to known crafting IDs
         const CRAFTING_PROFESSIONS = { act_cook: "cooking", act_brew: "brewing" };
         const activity = app._activityResolver?.activities?.get(activityId);
         const craftingProfession = activity?.crafting?.profession ?? CRAFTING_PROFESSIONS[activityId];
-        if (activity?.crafting?.enabled || craftingProfession) {
+        const isCrafting = !!(activity?.crafting?.enabled || craftingProfession);
+
+        if (!isCrafting && (app._lockedCharacters?.has(characterId) || app.hasCompletedCrafting?.(characterId))) {
+            ui.notifications.warn("This character has already submitted their activity.");
+            return null;
+        }
+
+        if (isCrafting) {
             const syntheticTarget = { dataset: { characterId, profession: craftingProfession } };
             app.openCraftingDrawer(null, syntheticTarget);
             return { source: "activity", activityId, result: "crafting_redirect" };
@@ -103,12 +123,68 @@ export class ActivityStationsDelegate {
             app._initTrainingState(characterId, activityId, actor);
             ui.notifications.info(`${actor.name}: Training started. Roll your sets in the rest window.`);
             if (app.rendered) app.render();
-        } else if (actor && app._engine) {
-            const followUpValue = options.followUpValue ?? app._gmFollowUps?.get(characterId) ?? app._getFollowUpForCharacter(characterId);
+        } else if (actor && (app._engine || app._activityResolver)) {
+            const terrainTag = app._engine?.terrainTag ?? app._restData?.terrainTag ?? app._selectedTerrain ?? "forest";
+            const comfort = app._engine?.comfort ?? app._restData?.comfort ?? "rough";
+            const safeRestSpot = !!(app._engine?.safeRestSpot ?? app._restData?.safeRestSpot);
+            const followUpValue = options.followUpValue ?? app._gmFollowUps?.get(characterId) ?? app._getFollowUpForCharacter?.(characterId);
+
+            const checkDetails = app._activityResolver?.getCheckDetails?.(activityId, actor, comfort, {
+                followUpValue,
+                safeRestSpot
+            });
+
+            let rollTotal = null;
+            if (checkDetails) {
+                const travelPenalty = typeof actor.getFlag === "function"
+                    ? (actor.getFlag("ionrift-respite", "travelMishapPenalty") ?? null)
+                    : null;
+                const hadTravelDis = travelPenalty === "activity_disadvantage";
+                const rollMode = checkDetails.rollAdvantage && hadTravelDis
+                    ? "normal"
+                    : (hadTravelDis ? "disadvantage" : (checkDetails.rollAdvantage ? "advantage" : "normal"));
+
+                const rollRequestFn = game.ionrift?.library?.rollRequest?.request;
+                if (typeof rollRequestFn === "function") {
+                    try {
+                        const actName = checkDetails.activity?.name ?? "Activity";
+                        let flavor = `${actName} Check (DC ${checkDetails.adjustedDc})`;
+                        if (activityId === "act_fletch") {
+                            const yieldLabel = getFletchingTierLabel();
+                            const kind = followUpValue === "bolts" ? "bolts" : "arrows";
+                            if (yieldLabel && yieldLabel !== "Off") {
+                                flavor = `Pass DC ${checkDetails.adjustedDc}. Then roll ${yieldLabel} for how many ${kind}.`;
+                            }
+                        }
+                        const reqResult = await rollRequestFn({
+                            actorId: actor.id,
+                            actorUuid: actor.uuid,
+                            type: checkDetails.type,
+                            key: checkDetails.key,
+                            dc: checkDetails.adjustedDc,
+                            rollMode,
+                            title: actName,
+                            flavor
+                        });
+                        rollTotal = reqResult?.total ?? null;
+                    } catch (err) {
+                        if (err?.code === "dismissed" || err?.message === "declined" || err?.message?.includes?.("dismissed")) {
+                            app._characterChoices.delete(characterId);
+                            app._lockedCharacters.delete(characterId);
+                            if (app.rendered) app.render();
+                            return null;
+                        }
+                        Logger.warn("ActivityStationsDelegate", "Roll request rejected or failed:", err);
+                    }
+                }
+            }
+
             activityResult = await app._activityResolver.resolve(
-                activityId, actor, app._engine.terrainTag, app._engine.comfort, {
+                activityId, actor, terrainTag, comfort, {
+                    rollTotal,
+                    preEvaluated: Number.isFinite(rollTotal),
                     followUpValue,
-                    safeRestSpot: !!app._engine.safeRestSpot
+                    safeRestSpot
                 }
             );
             app._earlyResults.set(characterId, activityResult);
@@ -117,13 +193,14 @@ export class ActivityStationsDelegate {
                 : activityResult.result === "failure_complication" ? "Failed (complication)"
                 : activityResult.result === "failure" ? "Failed" : activityResult.result;
             const actName = activity?.name ?? activityId;
-            ui.notifications.info(`${actor.name}: ${actName} - ${tier}`);
+            ui.notifications.info(`${actor.name}: ${actName}: ${tier}`);
             if (app.rendered) app.render();
         }
 
         let mySub = app._playerSubmissions.get(game.user.id) || { choices: {}, userName: game.user.name, timestamp: Date.now() };
         mySub.choices[characterId] = activityId;
         app._playerSubmissions.set(game.user.id, mySub);
+        app.checkAndAutoMarkCharacterReady?.(characterId);
         app._saveRestState();
 
         const followUps = {};
@@ -152,15 +229,17 @@ export class ActivityStationsDelegate {
         app._updateRestBarProgress();
         _refreshRejoinBar(app);
 
-        // GM: advance focus to the next unchosen party member so overlays
-        // reflect who still needs to pick, not the character who just committed.
-        if (app._isGM && app._phase === "activity") {
-            const partyActors = getPartyActors();
-            const nextUnchosen = partyActors.find(a => !app._characterChoices.has(a.id));
-            if (nextUnchosen) {
-                app._selectedCharacterId = nextUnchosen.id;
-            }
-        }
+        // Station canvas advances to the next unchosen member so the overlays
+        // show who still needs to pick. The one-window rest stays put: jumping
+        // here reopens gather and the activity cards for someone else.
+        app._selectedCharacterId = activityFocusAfterCommit({
+            isGM: app._isGM,
+            isTotM: app._isTotM,
+            phase: app._phase,
+            partyIds: getPartyActors().map(actor => actor.id),
+            choices: app._characterChoices,
+            currentId: app._selectedCharacterId
+        });
 
         if (app._phase === "activity" && isStationLayerActive()) {
             resetStationOverlaysLocal();
@@ -224,14 +303,10 @@ export class ActivityStationsDelegate {
         if (!actorId || !game.settings.get(MODULE_ID, "trackFood") || app._phase !== "activity") {
             return false;
         }
-        const terrainTag = app._engine?.terrainTag ?? app._selectedTerrain ?? app._restData?.terrainTag ?? "forest";
-        const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
-        const fp = terrainMealRules.foodPerDay ?? 0;
-        const wp = terrainMealRules.waterPerDay ?? 0;
-        const terrainFoodWater = fp > 0 || wp > 0;
         const card = this.getStationMealCardForActor(actorId);
         if (!card || card.playerSubmitted) return false;
-        if (!terrainFoodWater && !(card.needsEssence && card.essenceRequired > 0)) return false;
+        const owed = evaluateDayRations(game.actors.get(actorId), {}, restTerrainMealRules(app));
+        if (owed.foodPerDay <= 0 && owed.waterPerDay <= 0) return false;
         return true;
     
     }
@@ -565,11 +640,7 @@ export class ActivityStationsDelegate {
         const app = this._app;
 
         const partyActors = getPartyActors();
-        const _bd = app._engine?._encounterBreakdown ?? {};
-        const _baseDC = app._eventResolver?.tables?.get(app._engine?.terrainTag)?.noEventThreshold ?? 15;
-        const _mods = (_bd.shelter ?? 0) + (_bd.weather ?? 0) + (_bd.scouting ?? 0) + (app._engine?.fireRollModifier ?? 0);
-        const _defenses = _bd.defenses ?? 0;
-        const _currentDC = Math.max(1, _baseDC - _mods + (app._engine?.gmEncounterAdj ?? 0) - _defenses);
+        const _currentDC = app._engine?.getEffectiveEncounterDC?.({ earlyResults: app._earlyResults }) ?? 15;
         // Merge confirmed choices, GM overrides, and pending selections into one view.
         // Pending wins over confirmed (latest player intent); GM overrides win over both.
         const allSelections = new Map([
@@ -586,8 +657,8 @@ export class ActivityStationsDelegate {
 
         if (!actorId || !game.settings.get(MODULE_ID, "trackFood")) return null;
         // Players don't have a RestFlowEngine ,  derive terrainTag from snapshot state instead.
-        const terrainTag = app._engine?.terrainTag ?? app._selectedTerrain ?? "forest";
-        const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
+        const terrainTag = restTerrainTag(app);
+        const terrainMealRules = restTerrainMealRules(app);
         const cards = MealPhaseHandler.buildMealContext(
             [actorId],
             terrainTag,
@@ -638,26 +709,10 @@ export class ActivityStationsDelegate {
         const actor = game.actors.get(charId);
         if (!actor) return;
 
-        const foodArr = Array.isArray(choice.food) ? choice.food : [];
         const satiatesLookup = this._buildSatiatesLookup();
-
-        let bonusWater = 0;
-        for (const itemId of foodArr) {
-            if (!itemId || itemId === "skip" || itemId.startsWith?.("__")) continue;
-            const item = actor.items.get(itemId);
-            if (!item) continue;
-            const flags = item.flags?.[MODULE_ID] ?? {};
-            let satiates = flags.satiates;
-            if (!Array.isArray(satiates) && satiatesLookup) {
-                satiates = satiatesLookup.get(item.name.toLowerCase().trim()) ?? null;
-            }
-            if (Array.isArray(satiates) && satiates.includes("water")) bonusWater++;
-        }
-        if (bonusWater <= 0) return;
-
-        const terrainTag = app._engine?.terrainTag ?? app._selectedTerrain ?? "forest";
-        const wpd = TerrainRegistry.getDefaults(terrainTag)?.mealRules?.waterPerDay ?? 2;
-        const manualNeeded = Math.max(0, wpd - bonusWater);
+        const owed = evaluateDayRations(actor, choice, restTerrainMealRules(app), satiatesLookup);
+        if (owed.bonusWater <= 0) return;
+        const manualNeeded = Math.max(0, owed.waterPerDay - owed.bonusWater);
 
         const waterArr = Array.isArray(choice.water) ? [...choice.water] : [];
         const lockedSlots = Array.isArray(choice.waterLockedSlots) ? choice.waterLockedSlots : [];
@@ -748,44 +803,11 @@ export class ActivityStationsDelegate {
 
         if (app._isGM) {
             if (app._activityMealRationsSubmitted?.has(actorId)) return;
-            const skippedSlots = [];
             const choice = app._mealChoices?.get(actorId) ?? {};
-            const foodArr = Array.isArray(choice.food) ? choice.food : [];
-            const foodEmpty = foodArr.filter(v => !v || v === "skip").length;
-            if (foodArr.length === 0 || foodEmpty > 0) {
-                skippedSlots.push(
-                    foodArr.length === 0
-                        ? `${actor.name}: no food`
-                        : `${actor.name}: ${foodEmpty} food slot${foodEmpty > 1 ? "s" : ""} empty`
-                );
-            }
-            const waterArr = Array.isArray(choice.water) ? choice.water : [];
-            // Account for food-based water credits before raising a skip warning.
-            // Matches the smart-submit logic below so the dialog fires only when
-            // water is genuinely short after food credits are applied.
-            let warnBonusWater = 0;
-            const warnSatiatesLookup = this._buildSatiatesLookup();
-            for (const fid of foodArr) {
-                if (!fid || fid === "skip" || fid.startsWith?.("__")) continue;
-                const fItem = actor.items.get(fid);
-                if (!fItem) continue;
-                const fFlags = fItem.flags?.[MODULE_ID] ?? {};
-                let fSat = fFlags.satiates;
-                if (!Array.isArray(fSat) && warnSatiatesLookup) {
-                    fSat = warnSatiatesLookup.get(fItem.name.toLowerCase().trim()) ?? null;
-                }
-                if (Array.isArray(fSat) && fSat.includes("water")) warnBonusWater++;
-            }
-            const warnTerrainTag = app._engine?.terrainTag ?? app._selectedTerrain ?? "forest";
-            const warnWpd = TerrainRegistry.getDefaults(warnTerrainTag)?.mealRules?.waterPerDay ?? 2;
-            const warnWaterNeeded = Math.max(0, warnWpd - warnBonusWater);
-            const waterFilled = waterArr.filter(v => v && v !== "skip" && !v.startsWith?.("__")).length;
-            const waterShortfall = Math.max(0, warnWaterNeeded - waterFilled);
-            if (warnWaterNeeded > 0 && waterArr.length === 0 && waterShortfall > 0) {
-                skippedSlots.push(`${actor.name}: no water`);
-            } else if (waterShortfall > 0) {
-                skippedSlots.push(`${actor.name}: ${waterShortfall} water pint${waterShortfall > 1 ? "s" : ""} still needed`);
-            }
+            const satiatesLookup = this._buildSatiatesLookup();
+            const mealRules = restTerrainMealRules(app);
+            const owed = evaluateDayRations(actor, choice, mealRules, satiatesLookup);
+            const skippedSlots = rationSkipLines(actor, choice, mealRules, satiatesLookup);
             if (skippedSlots.length > 0) {
                 const confirmed = await new Promise(resolve => {
                     const overlay = document.createElement("div");
@@ -797,7 +819,7 @@ export class ActivityStationsDelegate {
                         <ul>${skippedSlots.map(s => `<li>${s}</li>`).join("")}</ul>
                         <p>Skipping meals has consequences.</p>
                         <div class="ionrift-armor-modal-buttons">
-                            <button class="btn-armor-confirm"><i class="fas fa-check"></i> Continue</button>
+                            <button class="btn-armor-confirm"><i class="fas fa-check"></i> Skip Meals</button>
                             <button class="btn-armor-cancel"><i class="fas fa-arrow-left"></i> Go Back</button>
                         </div>
                     </div>`;
@@ -830,41 +852,40 @@ export class ActivityStationsDelegate {
             }
 
             const partyIds = app._mealChoices ? [...app._mealChoices.keys()] : [actorId];
+            let foodLeft = owed.foodPerDay;
             for (const itemId of food) {
+                if (foodLeft <= 0) break;
                 if (itemId && itemId !== "skip" && !itemId.startsWith("__")) {
                     const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1);
                     const snapshot = foodSnapshots.get(itemId);
                     if (snapshot && consumed > 0) {
-                        await MealPhaseHandler._dispatchWellFedMealServing({
-                            consumerActor: actor,
-                            itemSnapshot: snapshot,
-                            partyIds
+                        foodLeft--;
+                        app._mealBuffQueue = enqueueProvision(app._mealBuffQueue, snapshot, {
+                            actorId, actorName: actor.name, kind: "food", partyIds
                         });
                     }
                 }
             }
-            let submitBonusWater = 0;
-            const submitSatiatesLookup = this._buildSatiatesLookup();
-            for (const fid of food) {
-                if (!fid || fid === "skip" || fid.startsWith?.("__")) continue;
-                const fItem = actor.items.get(fid);
-                if (!fItem) continue;
-                const fFlags = fItem.flags?.[MODULE_ID] ?? {};
-                let fSat = fFlags.satiates;
-                if (!Array.isArray(fSat) && submitSatiatesLookup) {
-                    fSat = submitSatiatesLookup.get(fItem.name.toLowerCase().trim()) ?? null;
+            const drinkSnapshots = new Map();
+            for (const itemId of water) {
+                if (itemId && itemId !== "skip" && !itemId.startsWith("__")) {
+                    const item = actor.items.get(itemId);
+                    if (item) drinkSnapshots.set(itemId, item.toObject(false));
                 }
-                if (Array.isArray(fSat) && fSat.includes("water")) submitBonusWater++;
             }
-            const submitTerrainTag = app._engine?.terrainTag ?? app._selectedTerrain ?? "forest";
-            const submitWpd = TerrainRegistry.getDefaults(submitTerrainTag)?.mealRules?.waterPerDay ?? 2;
-            const waterToConsume = Math.max(0, submitWpd - submitBonusWater);
+            const waterToConsume = Math.max(0, owed.waterPerDay - owed.bonusWater);
             let waterConsumed = 0;
             for (const itemId of water) {
                 if (waterConsumed >= waterToConsume) break;
                 if (itemId && itemId !== "skip" && !itemId.startsWith("__")) {
-                    await MealPhaseHandler._consumeItem(actor, itemId, 1);
+                    const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1);
                     waterConsumed++;
+                    const snapshot = drinkSnapshots.get(itemId);
+                    if (snapshot && consumed > 0) {
+                        app._mealBuffQueue = enqueueProvision(app._mealBuffQueue, snapshot, {
+                            actorId, actorName: actor.name, kind: "drink", partyIds
+                        });
+                    }
                 }
             }
             for (const itemId of essence) {
@@ -876,7 +897,7 @@ export class ActivityStationsDelegate {
             // Fold selections into consumedDays so processAndApply won't
             // re-consume them during the meal phase resolution
             const consumedDays = Array.isArray(choice.consumedDays) ? [...choice.consumedDays] : [];
-            consumedDays.push({ food, water, essence });
+            consumedDays.push({ food, water, essence, bonusWater: owed.bonusWater });
             app._mealChoices.set(actorId, {
                 ...choice,
                 consumedDays,
@@ -892,6 +913,7 @@ export class ActivityStationsDelegate {
 
             if (!app._activityMealRationsSubmitted) app._activityMealRationsSubmitted = new Set();
             app._activityMealRationsSubmitted.add(actorId);
+            app.checkAndAutoMarkCharacterReady?.(actorId);
             await app._saveRestState();
             const snapshot = app.getRestSnapshot();
             if (snapshot) {
@@ -910,6 +932,7 @@ export class ActivityStationsDelegate {
 
         if (!app._myCharacterIds?.has(actorId)) return;
         await app._meals.onSubmitStationMealChoices(actorId);
+        app.checkAndAutoMarkCharacterReady?.(actorId);
         notifyStationMealChoicesUpdated();
         if (isStationLayerActive()) {
             refreshStationEmptyNoticeFade(app);
@@ -919,6 +942,103 @@ export class ActivityStationsDelegate {
         _refreshRejoinBar(app);
     
     }
+
+    async unlockSustenance(actorId) {
+        const app = this._app;
+        if (!actorId) return;
+
+        const actor = game.actors.get(actorId);
+        if (!actor) return;
+        if (!app._isGM && !app._myCharacterIds?.has(actorId)) return;
+
+        // 1. Remove character ready state if set
+        if (app._finishedActorIds?.has(actorId)) {
+            app._finishedActorIds.delete(actorId);
+            publishCampProgress(app, {
+                finishedActorId: actorId,
+                finished: false
+            });
+        }
+
+        // 2. Remove from submitted set
+        if (app._activityMealRationsSubmitted?.has(actorId)) {
+            app._activityMealRationsSubmitted.delete(actorId);
+        }
+        app._mealBuffQueue = (app._mealBuffQueue ?? []).filter(row => row.applied || row.actorId !== actorId);
+        if (!app._isGM && app._mealSubmitted) {
+            app._mealSubmitted = false;
+        }
+
+        // 3. Restore draft state from consumedDays if present
+        const choice = app._mealChoices?.get(actorId);
+        if (choice && Array.isArray(choice.consumedDays) && choice.consumedDays.length > 0) {
+            const consumedDays = [...choice.consumedDays];
+            const lastDay = consumedDays.pop();
+
+            // Refund consumed items back to actor inventory if GM consumed them
+            if (app._isGM && choice.itemsConsumed) {
+                await MealPhaseHandler._removeWellFedEffects(actor);
+
+                for (const itemId of (lastDay.food ?? [])) {
+                    if (!itemId || itemId === "skip" || itemId.startsWith("__")) continue;
+                    const item = actor.items.get(itemId);
+                    if (item) {
+                        const uses = item.system?.uses;
+                        const isV5 = uses && ("spent" in uses);
+                        if (isV5 && typeof uses.spent === "number" && uses.spent > 0) {
+                            await item.update({ "system.uses.spent": Math.max(0, uses.spent - 1) });
+                        } else if (uses && typeof uses.value === "number" && uses.max > 0) {
+                            await item.update({ "system.uses.value": Math.min(uses.max, uses.value + 1) });
+                        } else {
+                            await item.update({ "system.quantity": (item.system?.quantity ?? 1) + 1 });
+                        }
+                    }
+                }
+
+                for (const itemId of (lastDay.water ?? [])) {
+                    if (!itemId || itemId === "skip" || itemId.startsWith("__")) continue;
+                    const item = actor.items.get(itemId);
+                    if (item) {
+                        const uses = item.system?.uses;
+                        const isV5 = uses && ("spent" in uses);
+                        if (isV5 && typeof uses.spent === "number" && uses.spent > 0) {
+                            await item.update({ "system.uses.spent": Math.max(0, uses.spent - 1) });
+                        } else if (uses && typeof uses.value === "number" && uses.max > 0) {
+                            await item.update({ "system.uses.value": Math.min(uses.max, uses.value + 1) });
+                        } else {
+                            await item.update({ "system.quantity": (item.system?.quantity ?? 1) + 1 });
+                        }
+                    }
+                }
+            }
+
+            app._mealChoices.set(actorId, {
+                ...choice,
+                consumedDays,
+                currentDay: Math.max(0, consumedDays.length),
+                food: lastDay.food ?? [],
+                water: lastDay.water ?? [],
+                essence: lastDay.essence ?? [],
+                itemsConsumed: false,
+                foodLockedSlots: choice.foodLockedSlots ?? [],
+                waterLockedSlots: choice.waterLockedSlots ?? []
+            });
+        }
+
+        await app._saveRestState?.();
+        const snapshot = app.getRestSnapshot?.();
+        if (snapshot) emitRestSnapshot(snapshot);
+        notifyStationMealChoicesUpdated();
+        if (isStationLayerActive()) {
+            refreshStationEmptyNoticeFade(app);
+            this._refreshStationOverlayMeals();
+        }
+        if (app.rendered) app.render();
+        _refreshGmRestIndicator(app);
+        _refreshRejoinBar(app);
+        ui.notifications.info(`${actor.name}: sustenance unlocked for editing.`);
+    }
+
     _buildActivityDetailContext(selectedCharacter) {
         const app = this._app;
 
@@ -936,17 +1056,17 @@ export class ActivityStationsDelegate {
         const outcomeHints = [];
         if (tile.outcomes?.success?.effects?.length) {
             for (const eff of tile.outcomes.success.effects) {
-                outcomeHints.push({ text: eff.description, type: "success" });
+                outcomeHints.push({ text: applyWatchAlertPhrase(eff.description), type: "success" });
             }
         }
         if (tile.outcomes?.exceptional?.effects?.length) {
             for (const eff of tile.outcomes.exceptional.effects) {
-                outcomeHints.push({ text: eff.description, type: "exceptional" });
+                outcomeHints.push({ text: applyWatchAlertPhrase(eff.description), type: "exceptional" });
             }
         }
         if (tile.outcomes?.failure?.effects?.length) {
             for (const eff of tile.outcomes.failure.effects) {
-                outcomeHints.push({ text: eff.description, type: "failure" });
+                outcomeHints.push({ text: applyWatchAlertPhrase(eff.description), type: "failure" });
             }
         }
 
@@ -1054,7 +1174,7 @@ export class ActivityStationsDelegate {
             profession: tile.profession,
             check: tile.check ? app._formatCheckLabel(tile.check, selectedCharacter) : null,
             outcomeHints,
-            combatModifiers: tile.combatModifiers ?? null,
+            combatModifiers: presentCombatModifiers(tile.combatModifiers),
             followUpData,
             armorHint,
             armorWarning,
@@ -1241,23 +1361,37 @@ export class ActivityStationsDelegate {
     onOpenCrafting(event, target) {
         const app = this._app;
 
-        const characterId = target.dataset.characterId;
-        const profession = target.dataset.profession;
+        const characterId = target.dataset.characterId || app._selectedCharacterId;
+        const profession = target.dataset.profession || app._totmFollowUpExpanded?.profession || "cooking";
         if (!characterId || !profession) return;
 
+        const terrainTag = app._engine?.terrainTag ?? app._restData?.terrainTag ?? null;
+        const actor = game.actors.get(characterId);
+        if (!actor) return;
+
         if (app._lockedCharacters?.has(characterId) || app.hasCompletedCrafting(characterId, profession)) {
+            const priorResult = app._craftingResults?.get(characterId);
+            if (priorResult) {
+                const picker = new CraftingPickerApp(
+                    actor, profession, app._craftingEngine,
+                    () => { if (app.rendered) app.render(); },
+                    terrainTag,
+                    app._grantLedger,
+                    { restApp: app }
+                );
+                picker._craftingResult = priorResult;
+                picker._hasCrafted = true;
+                picker.render(true);
+                return;
+            }
             ui.notifications.warn("This character has already completed crafting for this rest.");
             return;
         }
 
-        const actor = game.actors.get(characterId);
-        if (!actor) return;
-
         if (!app._craftingInProgress) app._craftingInProgress = new Set();
         app._craftingInProgress.add(characterId);
         app._pendingSelections?.delete(characterId);
-
-        const terrainTag = app._engine?.terrainTag ?? app._restData?.terrainTag ?? null;
+        if (app.rendered) app.render();
 
         // Open the standalone crafting picker window
         const picker = new CraftingPickerApp(
@@ -1266,7 +1400,7 @@ export class ActivityStationsDelegate {
                 // Completion callback: commit the crafting result
                 app._craftingInProgress?.delete(characterId);
                 if (!result) {
-                    // Crafting cancelled or no result ,  re-enable selection
+                    // Crafting cancelled or no result - re-enable selection
                     if (app.rendered) app.render();
                     return;
                 }
@@ -1278,6 +1412,11 @@ export class ActivityStationsDelegate {
                     a => a.crafting?.profession === profession
                 ) : null;
                 const activityId = craftAct?.id ?? `act_cook`;
+
+                app._lockedCharacters = app._lockedCharacters ?? new Set();
+                app._lockedCharacters.add(characterId);
+                app._totmFollowUpExpanded = null;
+                app._characterChoices.set(characterId, activityId);
 
                 if (app._isGM) {
                     app._gmOverrides.set(characterId, activityId);
@@ -1293,9 +1432,6 @@ export class ActivityStationsDelegate {
                     }
                     game.socket.emit(`module.ionrift-respite`, { type: "submissionUpdate", submissions });
                 } else {
-                    app._characterChoices.set(characterId, activityId);
-                    app._lockedCharacters = app._lockedCharacters ?? new Set();
-                    app._lockedCharacters.add(characterId);
                     game.socket.emit(`module.ionrift-respite`, {
                         type: "activityChoice",
                         userId: game.user.id,
@@ -1304,10 +1440,12 @@ export class ActivityStationsDelegate {
                     });
                     ui.notifications.info(`${actor.name}'s activity submitted.`);
                 }
+                app._saveRestState?.();
                 if (app.rendered) app.render();
             },
             terrainTag,
-            app._grantLedger
+            app._grantLedger,
+            { restApp: app }
         );
         picker.render({ force: true });
     

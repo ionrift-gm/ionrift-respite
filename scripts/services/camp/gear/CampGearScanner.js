@@ -67,6 +67,30 @@ export function actorHasTinderbox(actor) {
 
 export class CampGearScanner {
 
+    /**
+     * @param {Actor} actor
+     * @returns {number}
+     */
+    static countActorFirewood(actor) {
+        return countActorFirewood(actor);
+    }
+
+    /**
+     * @param {Actor} actor
+     * @returns {boolean}
+     */
+    static actorHasTinderbox(actor) {
+        return actorHasTinderbox(actor);
+    }
+
+    /**
+     * @param {Actor} actor
+     * @returns {Item|null}
+     */
+    static findConsumableFirewoodItem(actor) {
+        return findConsumableFirewoodItem(actor);
+    }
+
     static getRules(tier) {
         return {
             hpFraction: getHpFraction(tier),
@@ -76,7 +100,89 @@ export class CampGearScanner {
         };
     }
 
-    /** Firewood spent when the party commits this fire level during Make Camp. */
+    /**
+     * Concise recovery rule summary for a given comfort tier.
+     * @param {string} tier - "safe" | "sheltered" | "rough" | "hostile"
+     * @returns {string}
+     */
+    static getSummary(tier) {
+        switch (tier) {
+            case "safe":
+                return "Full HP & HD recovery, no exhaustion check";
+            case "sheltered":
+                return "Full HP, normal HD recovery, no exhaustion check";
+            case "rough":
+                return "Full HP, -1 HD recovery penalty, DC 10 Con save vs exhaustion";
+            case "hostile":
+                return "75% max HP cap, -2 HD recovery penalty, DC 15 Con save vs exhaustion";
+            default:
+                return "Normal rest recovery";
+        }
+    }
+
+    /**
+     * Format a clear, non-punitive Hit Dice recovery label.
+     * @param {object} params
+     * @param {number} params.currentHd
+     * @param {number} params.totalHd
+     * @param {number} params.hdRecovered
+     * @param {number} [params.hdPenalty=0]
+     * @returns {string}
+     */
+    static formatHdRecoveryLabel({ currentHd, totalHd, hdRecovered, hdPenalty = 0 }) {
+        if (totalHd <= 0) return "No Hit Dice";
+        if (currentHd >= totalHd) {
+            return `Already at max Hit Dice (${totalHd}/${totalHd})`;
+        }
+        if (hdRecovered <= 0) {
+            const penaltyText = hdPenalty > 0 ? ` (comfort −${hdPenalty} · remains ${currentHd}/${totalHd})` : ` (remains ${currentHd}/${totalHd})`;
+            return `No Hit Dice recovered${penaltyText}`;
+        }
+        const needed = totalHd - currentHd;
+        const effective = Math.min(hdRecovered, needed);
+        const singPlur = effective === 1 ? "Hit Die" : "Hit Dice";
+        const exitHd = currentHd + effective;
+        const penaltyText = hdPenalty > 0 ? ` (comfort −${hdPenalty})` : "";
+        return `Recover ${effective} ${singPlur}, will be ${exitHd}/${totalHd} after rest${penaltyText}`;
+    }
+
+    /**
+     * Format the compact recovery benefit summary for chips/badges.
+     * @param {object} params
+     * @param {string} params.personalComfort - "safe" | "sheltered" | "rough" | "hostile"
+     * @param {boolean} params.isAlreadyFull - whether character is already at max Hit Dice
+     * @param {number} [params.hpFraction=1.0]
+     * @returns {string} e.g. "Full HP · Max HD · DC 10 Save" or "Full HP · −1 HD Pen · DC 10 Save"
+     */
+    static formatBenefitSummary({ personalComfort, isAlreadyFull, hpFraction = 1.0 }) {
+        const hpText = hpFraction < 1.0 ? `${Math.round(hpFraction * 100)}% HP` : "Full HP";
+        const hdText = isAlreadyFull
+            ? "Max HD"
+            : (personalComfort === "rough" ? "−1 HD Pen" : personalComfort === "hostile" ? "−2 HD Pen" : "Normal HD");
+        const saveText = personalComfort === "rough"
+            ? " · DC 10 Save"
+            : personalComfort === "hostile"
+                ? " · DC 15 Save"
+                : "";
+        return `${hpText} · ${hdText}${saveText}`;
+    }
+
+    /**
+     * Format positive recovery perks without the exhaustion save attached.
+     * @param {object} params
+     * @param {string} params.personalComfort
+     * @param {boolean} params.isAlreadyFull
+     * @param {number} [params.hpFraction=1.0]
+     * @returns {string} e.g. "Full HP · Max HD" or "Full HP · −1 HD Pen"
+     */
+    static formatPositiveBenefitSummary({ personalComfort, isAlreadyFull, hpFraction = 1.0 }) {
+        const hpText = hpFraction < 1.0 ? `${Math.round(hpFraction * 100)}% HP` : "Full HP";
+        const hdText = isAlreadyFull
+            ? "Max HD"
+            : (personalComfort === "rough" ? "−1 HD Pen" : personalComfort === "hostile" ? "−2 HD Pen" : "Normal HD");
+        return `${hpText} · ${hdText}`;
+    }
+
     static FIREWOOD_COST_BY_LEVEL = Object.freeze({
         embers: 1,
         campfire: 2,
@@ -95,7 +201,7 @@ export class CampGearScanner {
      * DESIGN RULE, DO NOT CHANGE WITHOUT A FAILING TEST:
      * Fire is a BEACON. A campfire attracts wandering monsters; a bonfire more so.
      * These values are NEGATIVE so that, in the RestFlowEngine formula
-     *   effectiveDC = baseDC − campMods   (where campMods = shelter + weather + scouting + fire)
+     *   effectiveDC = baseDC − campMods   (where campMods = shelter + weather + fire)
      * a negative fire value subtracts a negative, i.e. RAISES effectiveDC.
      * Higher effectiveDC = harder to roll over = more encounters. That is correct.
      *
@@ -213,7 +319,12 @@ export class CampGearScanner {
      * @param {boolean} [safeRestSpot] - When true, skip comfort tiers and encounter fire modifier; fire reads as campfire for previews.
      * @returns {Object} Full camp scan results with comfort breakdown.
      */
-    static scan(terrainComfort, fireLevel = "unlit", shelterSpell = null, comfortReason = "", terrainLabel = "", fireEncounterMod = 1, safeRestSpot = false) {
+    static scan(terrainComfort, fireLevel = "unlit", shelterSpell = null, comfortReason = "", terrainLabel = "", fireEncounterMod = 1, safeRestSpot = false, options = {}) {
+        const {
+            enforceBedroll = true,
+            enforceTent = true,
+            enforceMessKit = true
+        } = options;
         const actors = getPartyActors();
         const members = actors.map(a => this.scanActor(a));
 
@@ -223,18 +334,32 @@ export class CampGearScanner {
             const fireLevelEff = "campfire";
             const fireIsLit = true;
             const personalCards = members.map(m => {
+                const effectiveHasBedroll = !enforceBedroll || m.hasBedroll;
+                const effectiveHasTent = !enforceTent || m.hasTent;
+                const effectiveHasMessKit = !enforceMessKit || m.hasMessKit;
                 const actor = actors.find(a => a.id === m.actorId);
                 const totalHd = actor?.system?.attributes?.hd?.max ?? actor?.system?.details?.level ?? 0;
                 const rawHdRecovery = Math.max(1, Math.floor(totalHd / 2));
-                const hdRecovered = Math.max(0, rawHdRecovery - rules.hdPenalty + (m.hasBedroll ? 1 : 0));
+                const hdRecovered = Math.max(0, rawHdRecovery - rules.hdPenalty + (effectiveHasBedroll ? 1 : 0));
                 const currentHd = actor?.system?.attributes?.hd?.value ?? totalHd;
                 const exitHd = Math.min(totalHd, currentHd + hdRecovered);
+                const isAlreadyFull = currentHd >= totalHd;
                 const breakdown = [];
-                if (m.hasBedroll) {
-                    breakdown.push({ label: "Bedroll", icon: "fas fa-bed", delta: 1 });
+                if (effectiveHasBedroll) {
+                    breakdown.push({
+                        label: !enforceBedroll && !m.hasBedroll ? "Bedroll (Waived)" : "Bedroll",
+                        icon: "fas fa-bed",
+                        delta: 1
+                    });
                 }
                 return {
                     ...m,
+                    hasBedroll: effectiveHasBedroll,
+                    hasTent: effectiveHasTent,
+                    hasMessKit: effectiveHasMessKit,
+                    bedrollWaived: !enforceBedroll && !m.hasBedroll,
+                    tentWaived: !enforceTent && !m.hasTent,
+                    messKitWaived: !enforceMessKit && !m.hasMessKit,
                     personalComfort: campComfort,
                     personalComfortLabel: rules.label,
                     personalMatchesCamp: true,
@@ -243,16 +368,25 @@ export class CampGearScanner {
                         hpFull: true,
                         hpLabel: "Regain all HP",
                         hpSeverity: "",
-                        hdLabel: (() => {
-                            const singPlur = hdRecovered === 1 ? "Hit Die" : "Hit Dice";
-                            const pool = `will be ${exitHd}/${totalHd} after rest`;
-                            return `Recover ${hdRecovered} ${singPlur}, ${pool}`;
-                        })(),
+                        hdLabel: this.formatHdRecoveryLabel({
+                            currentHd,
+                            totalHd,
+                            hdRecovered,
+                            hdPenalty: rules.hdPenalty
+                        }),
                         hdSeverity: "",
                         hdRecovered,
                         totalHd,
+                        currentHd,
+                        isAlreadyFull,
+                        benefitSummary: this.formatBenefitSummary({
+                            personalComfort: campComfort,
+                            isAlreadyFull,
+                            hpFraction: 1.0
+                        }),
                         exhaustionDC: null,
                         exhaustionSeverity: null,
+                        exhaustionAdvantage: false,
                         exhaustionLabel: "No exhaustion risk"
                     }
                 };
@@ -306,13 +440,23 @@ export class CampGearScanner {
             const campComfort = "safe";
             const rules = this.getRules(campComfort);
             const personalCards = members.map(m => {
+                const effectiveHasBedroll = !enforceBedroll || m.hasBedroll;
+                const effectiveHasTent = !enforceTent || m.hasTent;
+                const effectiveHasMessKit = !enforceMessKit || m.hasMessKit;
                 const actor = actors.find(a => a.id === m.actorId);
                 const totalHd = actor?.system?.attributes?.hd?.max ?? actor?.system?.details?.level ?? 0;
                 const rawHdRecovery = Math.max(1, Math.floor(totalHd / 2));
                 const currentHd = actor?.system?.attributes?.hd?.value ?? totalHd;
                 const exitHd = Math.min(totalHd, currentHd + rawHdRecovery);
+                const isAlreadyFull = currentHd >= totalHd;
                 return {
                     ...m,
+                    hasBedroll: effectiveHasBedroll,
+                    hasTent: effectiveHasTent,
+                    hasMessKit: effectiveHasMessKit,
+                    bedrollWaived: !enforceBedroll && !m.hasBedroll,
+                    tentWaived: !enforceTent && !m.hasTent,
+                    messKitWaived: !enforceMessKit && !m.hasMessKit,
                     personalComfort: campComfort,
                     personalComfortLabel: rules.label,
                     personalMatchesCamp: true,
@@ -321,12 +465,25 @@ export class CampGearScanner {
                         hpFull: true,
                         hpLabel: "Regain all HP",
                         hpSeverity: "",
-                        hdLabel: `Recover ${rawHdRecovery} ${rawHdRecovery === 1 ? "Hit Die" : "Hit Dice"}, will be ${exitHd}/${totalHd} after rest`,
+                        hdLabel: this.formatHdRecoveryLabel({
+                            currentHd,
+                            totalHd,
+                            hdRecovered: rawHdRecovery,
+                            hdPenalty: 0
+                        }),
                         hdSeverity: "",
                         hdRecovered: rawHdRecovery,
                         totalHd,
+                        currentHd,
+                        isAlreadyFull,
+                        benefitSummary: this.formatBenefitSummary({
+                            personalComfort: campComfort,
+                            isAlreadyFull,
+                            hpFraction: 1.0
+                        }),
                         exhaustionDC: null,
                         exhaustionSeverity: null,
+                        exhaustionAdvantage: false,
                         exhaustionLabel: "No exhaustion risk"
                     }
                 };
@@ -402,7 +559,7 @@ export class CampGearScanner {
         const _tr = this.getRules(campComfort);
         const _tipParts = [];
         _tipParts.push(_tr.hpFraction < 1 ? `${Math.round(_tr.hpFraction * 100)}% HP recovery` : "Full HP recovery");
-        if (_tr.hdPenalty > 0) _tipParts.push(`-${_tr.hdPenalty} HD`);
+        if (_tr.hdPenalty > 0) _tipParts.push(`−${_tr.hdPenalty} HD recovery`);
         if (_tr.exhaustionDC) _tipParts.push(`CON save DC ${_tr.exhaustionDC} or gain exhaustion`);
         else _tipParts.push("No exhaustion risk");
         const comfortTooltip = _tipParts.join(", ");
@@ -411,8 +568,16 @@ export class CampGearScanner {
             let personalComfort = campComfort;
             const breakdown = [];
 
-            if (m.hasBedroll) {
-                breakdown.push({ label: "Bedroll", icon: "fas fa-bed", delta: 1 });
+            const effectiveHasBedroll = !enforceBedroll || m.hasBedroll;
+            const effectiveHasTent = !enforceTent || m.hasTent;
+            const effectiveHasMessKit = !enforceMessKit || m.hasMessKit;
+
+            if (effectiveHasBedroll) {
+                breakdown.push({
+                    label: !enforceBedroll && !m.hasBedroll ? "Bedroll (Waived)" : "Bedroll",
+                    icon: "fas fa-bed",
+                    delta: 1
+                });
                 personalComfort = boostComfort(personalComfort, 1);
             }
             // Tent: camp-wide weather shield and encounter DC buff. Benefits all party members, not personal comfort.
@@ -423,18 +588,26 @@ export class CampGearScanner {
             const actor = actors.find(a => a.id === m.actorId);
             const totalHd = actor?.system?.attributes?.hd?.max ?? actor?.system?.details?.level ?? 0;
             const rawHdRecovery = Math.max(1, Math.floor(totalHd / 2));
-            const hdRecovered = Math.max(0, rawHdRecovery - rules.hdPenalty + (m.hasBedroll ? 1 : 0));
+            const hdRecovered = Math.max(0, rawHdRecovery - rules.hdPenalty + (effectiveHasBedroll ? 1 : 0));
 
             const currentHd = actor?.system?.attributes?.hd?.value ?? totalHd;
             const exitHd = Math.min(totalHd, currentHd + hdRecovered);
 
             const hpSeverity = rules.hpFraction < 1.0 ? "danger" : "";
+            const isAlreadyFull = currentHd >= totalHd;
             let hdSeverity = "";
-            if (hdRecovered === 0) hdSeverity = "danger";
+            if (isAlreadyFull) hdSeverity = "";
+            else if (hdRecovered === 0) hdSeverity = "danger";
             else if (rules.hdPenalty > 0) hdSeverity = "warning";
 
             return {
                 ...m,
+                hasBedroll: effectiveHasBedroll,
+                hasTent: effectiveHasTent,
+                hasMessKit: effectiveHasMessKit,
+                bedrollWaived: !enforceBedroll && !m.hasBedroll,
+                tentWaived: !enforceTent && !m.hasTent,
+                messKitWaived: !enforceMessKit && !m.hasMessKit,
                 personalComfort,
                 personalComfortLabel: rules.label,
                 personalMatchesCamp: personalComfort === campComfort,
@@ -443,24 +616,30 @@ export class CampGearScanner {
                     hpFull: rules.hpFraction >= 1.0,
                     hpLabel: rules.hpFraction >= 1.0 ? "Regain all HP" : `Regain ${Math.round(rules.hpFraction * 100)}% of max HP`,
                     hpSeverity,
-                    hdLabel: (() => {
-                        const singPlur = hdRecovered === 1 ? "Hit Die" : "Hit Dice";
-                        const pool = `will be ${exitHd}/${totalHd} after rest`;
-                        if (rules.hdPenalty > 0) {
-                            return `Recover ${hdRecovered} ${singPlur}, ${pool} (comfort −${rules.hdPenalty})`;
-                        }
-                        return `Recover ${hdRecovered} ${singPlur}, ${pool}`;
-                    })(),
+                    hdLabel: this.formatHdRecoveryLabel({
+                        currentHd,
+                        totalHd,
+                        hdRecovered,
+                        hdPenalty: rules.hdPenalty
+                    }),
                     hdSeverity,
                     hdRecovered,
                     totalHd,
+                    currentHd,
+                    isAlreadyFull,
+                    benefitSummary: this.formatBenefitSummary({
+                        personalComfort,
+                        isAlreadyFull,
+                        hpFraction: rules.hpFraction
+                    }),
                     exhaustionDC: rules.exhaustionDC,
                     exhaustionSeverity: rules.exhaustionDC ? (personalComfort === "hostile" ? "danger" : "warning") : null,
+                    exhaustionAdvantage: Boolean(rules.exhaustionDC && effectiveHasMessKit),
                     exhaustionLabel: (() => {
                         if (!rules.exhaustionDC) return "No exhaustion risk";
                         const reasons = [];
                         if (!fireIsLit) reasons.push("no campfire");
-                        if (!m.hasBedroll) reasons.push("no bedroll");
+                        if (!effectiveHasBedroll) reasons.push("no bedroll");
                         let context = reasons.length > 0 ? reasons.join(", ") : "harsh terrain";
                         context = context.charAt(0).toUpperCase() + context.slice(1);
                         return `${context}. CON save DC ${rules.exhaustionDC} or gain exhaustion`;

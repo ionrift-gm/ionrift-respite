@@ -1,0 +1,35 @@
+{{!-- Lock / submit for the sustenance card.
+     Normal rest hoists this into .rest-sustenance-main so the ration
+     list can scroll without taking the button with it. --}}
+{{#if sustenanceDiegetic.isMultiDay}}
+<div class="rest-step-pacing sust-card-foot">
+    {{#if sustenanceDiegetic.mealsLocked}}
+    <span class="sust-meals-state"><i class="fas fa-lock" aria-hidden="true"></i> Choices Locked</span>
+    {{#if sustenanceDiegetic.canUnlock}}
+    <button type="button" class="btn-step-ready rest-ready-btn is-ready" data-action="unlockMeals" data-actor-id="{{sustenanceDiegetic.actorId}}" data-tooltip="Unlock choices to edit">
+        <i class="fas fa-check-circle" aria-hidden="true"></i> <span>Ready (Edit Choices)</span>
+    </button>
+    {{/if}}
+    {{else}}
+    {{#if sustenanceDiegetic.canInteract}}
+    <button type="button" class="btn-step-ready rest-ready-btn" data-action="lockMeals" data-actor-id="{{sustenanceDiegetic.actorId}}" data-tooltip="Lock in choices and mark ready">
+        <i class="fas fa-check" aria-hidden="true"></i> <span>Ready for Rest</span>
+    </button>
+    {{else}}
+    <span class="tier-action-placeholder">
+        <i class="fas fa-hourglass-half"></i> <span>Awaiting Choices</span>
+    </span>
+    {{/if}}
+    {{/if}}
+</div>
+{{else}}
+<div class="sust-card-foot sust-card-foot-single">
+    {{#if sustenanceDiegetic.mealsSubmitted}}
+    <span class="sust-meals-state is-submitted"><i class="fas fa-check-circle" aria-hidden="true"></i> Rations consumed</span>
+    {{else}}
+    <button type="button" class="sust-lock-meals btn-submit-meals" data-action="submitMealChoices" data-actor-id="{{sustenanceDiegetic.actorId}}" data-tooltip="Submit food and water rations">
+        <i class="fas fa-utensils" aria-hidden="true"></i> Submit rations
+    </button>
+    {{/if}}
+</div>
+{{/if}}

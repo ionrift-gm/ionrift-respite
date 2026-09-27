@@ -19,7 +19,7 @@ import {
 } from "../ui/sheet/RejoinManager.js";
 import {
     handleRestStarted, handleActivityChoice, handleRestResolved,
-    handleSubmissionUpdate, handleRequestRestState,
+    handleSubmissionUpdate, handleCampProgress, handleRequestRestState,
     handleShortRestStarted, handleShortRestCompletionSummary, handleShortRestComplete, handleShortRestAbandoned,
     handleShortRestDismissed, handleRequestShortRestState,
     handleShortRestWorkbenchStagingFromPlayer, handleShortRestWorkbenchSync,
@@ -30,6 +30,7 @@ import {
     handleFeastServeRequest,
     handleTrainingStateUpdate, handleTrainingComplete
 } from "./SocketRouterHandlers.js";
+import { handleRestSessionSocketMessage } from "../rest/session/RestSessionSync.js";
 
 /**
  * @typedef {object} SocketContext
@@ -54,7 +55,11 @@ import {
  */
 export function dispatch(data, ctx) {
     if (!data?.type) return;
-        Logger.log(`${MODULE_ID} | Socket received:`, data.type, `isGM=${game.user.isGM}`);
+    Logger.log(`${MODULE_ID} | Socket received:`, data.type, `isGM=${game.user.isGM}`);
+
+    if (handleRestSessionSocketMessage(data)) {
+        return;
+    }
 
     switch (data.type) {
 
@@ -72,6 +77,11 @@ export function dispatch(data, ctx) {
         case SOCKET_TYPES.ACTIVITY_CHOICE:
             if (!game.user.isGM) return;
             handleActivityChoice(data, ctx);
+            break;
+
+        case SOCKET_TYPES.CAMP_PROGRESS:
+            if (!game.user.isGM) return;
+            handleCampProgress(data, ctx);
             break;
 
         case SOCKET_TYPES.TRAINING_STATE_UPDATE:
@@ -469,119 +479,9 @@ export function dispatch(data, ctx) {
             ctx.activeRestSetupApp?.receiveCampRollResult?.(data);
             break;
 
-        case SOCKET_TYPES.TRAVEL_DECLARATION:
+        case SOCKET_TYPES.DAWN_SAVE_RESULT:
             if (!game.user.isGM) return;
-            ctx.activeRestSetupApp?.receiveTravelDeclaration?.(data);
-            break;
-
-        case SOCKET_TYPES.TRAVEL_DECLARATIONS_SYNC:
-            if (game.user.isGM) return;
-            if (ctx.activePlayerRestApp) {
-                const app = ctx.activePlayerRestApp;
-                app._syncedTravelDeclarations = data.declarations ?? {};
-                app._syncedTravelRolled = data.rolled ?? {};
-                app._syncedTravelResolved = data.resolved ?? {};
-                if (data.activeDay !== null) app._travelActiveDay = data.activeDay;
-                if (data.totalDays !== null) app._travelTotalDays = data.totalDays;
-                if (data.scoutingAllowed !== null) app._travelScoutingAllowed = data.scoutingAllowed;
-                if (data.forageDC !== null) app._travelForageDC = data.forageDC;
-                if (data.huntDC !== null) app._travelHuntDC = data.huntDC;
-                if (data.travelGather && typeof data.travelGather === "object") {
-                    app._syncedTravelGather = { ...data.travelGather };
-                }
-                if (!app._syncedTravelAwaitingLoot) app._syncedTravelAwaitingLoot = {};
-                for (const [dayKey, actors] of Object.entries(data.awaitingLoot ?? {})) {
-                    const day = parseInt(dayKey, 10);
-                    if (!day) continue;
-                    app._syncedTravelAwaitingLoot[day] = { ...(actors ?? {}) };
-                }
-                if (!app._playerTravelRolled) app._playerTravelRolled = {};
-                for (const [dayKey, actors] of Object.entries(data.rolled ?? {})) {
-                    const day = parseInt(dayKey, 10);
-                    if (!day) continue;
-                    app._playerTravelRolled[day] ??= {};
-                    for (const actorId of Object.keys(actors ?? {})) {
-                        if (actors[actorId]) app._playerTravelRolled[day][actorId] = true;
-                    }
-                }
-                app.render();
-            }
-            break;
-
-        case SOCKET_TYPES.TRAVEL_ROLL_REQUEST:
-            if (game.user.isGM) return;
-            ctx.activePlayerRestApp?.receiveTravelRollRequest?.(data);
-            break;
-
-        case SOCKET_TYPES.TRAVEL_ROLL_RESULT:
-            if (!game.user.isGM) return;
-            ctx.activeRestSetupApp?.receiveTravelRollResult?.(data);
-            break;
-
-        case SOCKET_TYPES.TRAVEL_LOOT_ROLL_PROMPT:
-            if (game.user.isGM) return;
-            if (data.targetUserId !== game.user.id) return;
-            ctx.activePlayerRestApp?.receiveTravelLootRollPrompt?.(data);
-            break;
-
-        case SOCKET_TYPES.TRAVEL_LOOT_ROLL_RESULT:
-            if (!game.user.isGM) return;
-            ctx.activeRestSetupApp?.receiveTravelLootRollResult?.(data);
-            break;
-
-        case SOCKET_TYPES.TRAVEL_DEBRIEF:
-            if (game.user.isGM) return;
-            if (data.targetUserId !== game.user.id) return;
-            if (ctx.activePlayerRestApp) {
-                const results = data.results ?? [];
-                const declarations = {};
-                const confirmed = {};
-                const rolled = {};
-                for (const row of results) {
-                    const day = row.day;
-                    const actorId = row.result?.actorId;
-                    if (!day || !actorId) continue;
-                    declarations[day] ??= {};
-                    declarations[day][actorId] = row.activity ?? "nothing";
-                    confirmed[day] ??= {};
-                    confirmed[day][actorId] = true;
-                    rolled[day] ??= {};
-                    rolled[day][actorId] = true;
-                }
-                ctx.activePlayerRestApp.receiveTravelPlayerState?.({
-                    debrief: results,
-                    declarations: Object.keys(declarations).length ? declarations : null,
-                    confirmed: Object.keys(confirmed).length ? confirmed : null,
-                    rolled: Object.keys(rolled).length ? rolled : null,
-                    fullyResolved: !!data.fullyResolved,
-                    scoutingDone: !!data.scoutingDone
-                });
-            }
-            break;
-
-        case SOCKET_TYPES.TRAVEL_INDIVIDUAL_DEBRIEF:
-            if (game.user.isGM) return;
-            if (data.targetUserId !== game.user.id) return;
-            if (ctx.activePlayerRestApp) {
-                if (data.playerTravel) {
-                    ctx.activePlayerRestApp.receiveTravelPlayerState?.(data.playerTravel);
-                } else if (data.result) {
-                    ctx.activePlayerRestApp.receiveTravelPlayerState?.({
-                        debrief: [data.result],
-                        declarations: data.result.day != null && data.result.result?.actorId
-                            ? { [data.result.day]: { [data.result.result.actorId]: data.result.activity } }
-                            : null,
-                        confirmed: data.result.day != null && data.result.result?.actorId
-                            ? { [data.result.day]: { [data.result.result.actorId]: true } }
-                            : null,
-                        rolled: data.result.day != null && data.result.result?.actorId
-                            ? { [data.result.day]: { [data.result.result.actorId]: true } }
-                            : null
-                    });
-                } else {
-                    ctx.activePlayerRestApp.render();
-                }
-            }
+            ctx.activeRestSetupApp?._dawn?.receivePlayerRoll?.(data);
             break;
 
         case SOCKET_TYPES.AFK_UPDATE:
@@ -627,7 +527,7 @@ export function dispatch(data, ctx) {
 
         case SOCKET_TYPES.CAMPFIRE_TOKEN_SYNC:
             if (!game.user.isGM) return;
-            CampfireTokenLinker.setLightState(data.lit, data.fireLevel ?? null);
+            CampfireTokenLinker.setLightState(data.lit, data.fireLevel ?? null, { ignite: !!data.ignite });
             break;
 
         case SOCKET_TYPES.CAMPFIRE_STRIKE:

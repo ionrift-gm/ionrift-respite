@@ -16,6 +16,14 @@
  * @returns {string} Best skill abbreviation.
  */
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { armDiceSoNiceSettle } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
+
+export {
+    armDiceSoNiceSettle,
+    postRollAndSettle,
+    presentRoll,
+    waitForDiceSoNice
+} from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
 export function pickBestSkill(actor, skills) {
     if (!skills?.length) return "dex";
     let best = skills[0];
@@ -84,27 +92,6 @@ export async function postRollToChat(actor, roll, flavor) {
 }
 
 /**
- * Waits for Dice So Nice animation to complete, with a safety timeout.
- * No-op if DSN is not installed.
- * @param {number} [timeoutMs=5000] - Maximum wait time.
- * @returns {Promise<void>}
- */
-export async function waitForDiceSoNice(timeoutMs = 5000) {
-    if (!game.modules?.get?.("dice-so-nice")?.active) return;
-    return new Promise(resolve => {
-        const timeout = setTimeout(resolve, timeoutMs);
-        Hooks.once("diceSoNiceRollComplete", () => {
-            clearTimeout(timeout);
-            resolve();
-        });
-    });
-}
-
-/**
- * Disables a roll button and shows a spinner.
- * @param {HTMLElement} target - The button element.
- */
-/**
  * Natural d20 face from a standard 1d20+mod skill roll (Foundry v12+ Roll terms).
  * @param {Roll} roll
  * @returns {number|null}
@@ -145,8 +132,14 @@ export async function rollForPlayer(actor, skills, dc, context = "Skill check", 
     const modeLabel = rollMode === "advantage" ? " [Advantage]" : rollMode === "disadvantage" ? " [Disadvantage]" : "";
     const flavor = `<strong>${actor.name}</strong> - ${context} (${skillName}, DC ${dc}) [GM roll]${modeLabel}`;
 
-    await postRollToChat(actor, roll, flavor);
-    await waitForDiceSoNice();
+    const gate = armDiceSoNiceSettle();
+    try {
+        await postRollToChat(actor, roll, flavor);
+    } catch (err) {
+        gate.cancel();
+        throw err;
+    }
+    await gate.wait();
 
     return { total: roll.total, passed, skill, modifier, natD20: getNatD20FromRoll(roll) };
 }
@@ -169,11 +162,16 @@ export async function executePlayerRoll(actor, skillKey, dc, flavorText, buttonT
 
     if (buttonTarget) disableRollButton(buttonTarget);
 
-    // Dice So Nice animates automatically from the chat message; posting and then
-    // awaiting completion gives a single throw, not the double animation that an
-    // explicit showForRoll call would add on top.
-    await postRollToChat(actor, roll, flavorText);
-    await waitForDiceSoNice();
+    // Dice So Nice animates from the chat message. Arm the gate first so a
+    // fast throw cannot finish before the listener exists.
+    const gate = armDiceSoNiceSettle();
+    try {
+        await postRollToChat(actor, roll, flavorText);
+    } catch (err) {
+        gate.cancel();
+        throw err;
+    }
+    await gate.wait();
 
     return { total: roll.total, passed: roll.total >= dc, roll };
 }
@@ -200,8 +198,14 @@ export async function executeAbilityRoll(actor, abilityKey, modifier, dc, flavor
 
     if (buttonTarget) disableRollButton(buttonTarget);
 
-    await postRollToChat(actor, roll, flavorText);
-    await waitForDiceSoNice();
+    const gate = armDiceSoNiceSettle();
+    try {
+        await postRollToChat(actor, roll, flavorText);
+    } catch (err) {
+        gate.cancel();
+        throw err;
+    }
+    await gate.wait();
 
     return { total: roll.total, passed: roll.total >= dc, roll };
 }
@@ -216,7 +220,7 @@ export const SKILL_DISPLAY_NAMES = {
     ins: "Insight", itm: "Intimidation", inv: "Investigation",
     med: "Medicine", nat: "Nature", prc: "Perception",
     prf: "Performance", per: "Persuasion", rel: "Religion",
-    slt: "Sleight of Hand", ste: "Stealth", sur: "Survival",
+    sle: "Sleight of Hand", slt: "Sleight of Hand", ste: "Stealth", sur: "Survival",
     // Ability abbreviations
     str: "Strength", dex: "Dexterity", con: "Constitution",
     int: "Intelligence", wis: "Wisdom", cha: "Charisma"

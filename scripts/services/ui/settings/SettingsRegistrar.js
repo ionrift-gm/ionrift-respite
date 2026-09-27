@@ -107,7 +107,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "restInterfaceMode", {
         name: "Rest Interface Mode",
-        hint: "One window: full rest in a panel. Camp stations: place camp pieces on the scene and move tokens to act.",
+        hint: "One window: full rest in a panel. Camp stations: place camp pieces on the scene and move tokens to act (standard rests; 7-day downtime uses one window).",
         scope: "world",
         config: true,
         type: String,
@@ -205,6 +205,28 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         restricted: true,
     });
 
+    game.settings.register(MODULE_ID, "shortRestFireWarmth", {
+        name: "Campfire Warmth",
+        hint: "When enabled, an overnight rest presents the campfire stance ribbon. A Warm Camp expends 1 fuel and grants warmth healing when spending Hit Dice.",
+        scope: "world",
+        config: false,
+        type: String,
+        default: "none",
+        choices: {
+            none: "Disabled (No campfire requirement)",
+            "1": "+1 Hit Point per Hit Die",
+            "1d4": "+1d4 Hit Points per Hit Die"
+        },
+        restricted: true,
+        onChange: () => {
+            Object.values(ui.windows).forEach(w => {
+                if (w?.constructor?.name === "BivouacApp" || w?.constructor?.name === "ShortRestApp") {
+                    w.render();
+                }
+            });
+        }
+    });
+
     game.settings.register(MODULE_ID, "maxWaterPerDayCap", {
         name: "Max Water Needs Cap",
         hint: "Maximum water units required per character per day across all conditions and terrain.",
@@ -227,7 +249,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "enableTraining", {
         name: "Training Activity (legacy)",
-        hint: "Legacy boolean. Migrated to trainingXpTier on first load.",
+        hint: "Legacy toggle. Migrated to trainingXpTier on first load.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -291,9 +313,19 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         }
     });
 
+    game.settings.register(MODULE_ID, "chefTreatsProvideSustenance", {
+        name: "Chef Treats Provide Sustenance",
+        hint: "Whether Chef treats and replenishing meals satisfy a character's daily food requirement during rest.",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: true,
+        restricted: true
+    });
+
     game.settings.register(MODULE_ID, "enableFletching", {
         name: "Fletching Activity (legacy)",
-        hint: "Legacy boolean. Migrated to fletchingYieldTier on first load.",
+        hint: "Legacy toggle. Migrated to fletchingYieldTier on first load.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -328,6 +360,32 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         restricted: true
     });
 
+    game.settings.register(MODULE_ID, "watchAlertMode", {
+        name: "Watch Alert",
+        hint: "How Keep Watch states the alert benefit. Cannot be surprised, advantage, or a flat bonus to rolls.",
+        scope: "world",
+        config: false,
+        type: String,
+        default: "immune",
+        choices: {
+            immune: "Cannot be surprised",
+            advantage: "Advantage",
+            bonus: "Bonus to rolls"
+        },
+        restricted: true
+    });
+
+    game.settings.register(MODULE_ID, "watchAlertBonus", {
+        name: "Watch Alert Bonus",
+        hint: "The number added to rolls when Watch alert is a bonus.",
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 2,
+        range: { min: 1, max: 20, step: 1 },
+        restricted: true
+    });
+
     game.settings.register(MODULE_ID, "enableCopySpell", {
         name: "Copy Spell Activity",
         hint: "Show Copy Spell on long rests for wizards with a spellbook.",
@@ -341,16 +399,6 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     game.settings.register(MODULE_ID, "enablePrayMeditate", {
         name: "Pray / Meditate Activity",
         hint: "Religion or Insight for temp HP; off hides bedroll option.",
-        scope: "world",
-        config: false,
-        type: Boolean,
-        default: false,
-        restricted: true
-    });
-
-    game.settings.register(MODULE_ID, "enableScouting", {
-        name: "Travel Scouting",
-        hint: "Scout on the last travel day. Requires Use Travel.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -404,12 +452,14 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         onChange: () => {
             const live = foundry.applications.instances.get("ionrift-respite-setup");
             applyCustomRecipesToLiveEngines({ render: true });
-            if (live?._travel?.getTravelResolver) {
-                import("../../travel/resolve/TravelProvisionIndex.js").then(async ({ applyTravelProvisionBatches }) => {
-                    await applyTravelProvisionBatches(live._travel.getTravelResolver());
-                    if (live.render) await live.render();
-                });
-            }
+            import("../../rest/forage/GatherYieldService.js").then(async ({ GatherYieldService }) => {
+                const resolver = GatherYieldService.getResolver();
+                if (resolver) {
+                    const { applyTravelProvisionBatches } = await import("../../travel/resolve/TravelProvisionIndex.js");
+                    await applyTravelProvisionBatches(resolver);
+                }
+                if (live?.render) await live.render();
+            });
             import("../../travel/forage/ForageTableSync.js").then(({ ForageTableSync }) => {
                 ForageTableSync.scheduleSync();
             });
@@ -598,6 +648,13 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         default: {}
     });
 
+    game.settings.register(MODULE_ID, "activeGrittyRest", {
+        scope: "world",
+        config: false,
+        type: Object,
+        default: {}
+    });
+
     game.settings.register(MODULE_ID, "enabledPacks", {
         scope: "world",
         config: false,
@@ -668,24 +725,17 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         default: false
     });
 
-    // PF2e early-support advisory (one-time)
-    game.settings.register(MODULE_ID, "pf2eAdvisoryShown", {
-        scope: "world",
-        config: false,
-        type: Boolean,
-        default: false
-    });
-
     const SettingsLayout = game.ionrift?.library?.SettingsLayout;
     SettingsLayout?.registerFooter(MODULE_ID, {
         wiki: "https://github.com/ionrift-gm/ionrift-respite/wiki"
     });
 
+    // Parked. Kept registered so existing worlds still load. Not shown in settings.
     game.settings.register(MODULE_ID, "ambientAfkHud", {
         name: "Ambient AFK HUD",
-        hint: "Keep the AFK strip visible outside active rests. Off: only during rest.",
+        hint: "Parked. The AFK strip stays hidden until this HUD is revised.",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: false,
         onChange: onAmbientAfkChange,
@@ -703,6 +753,34 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         onChange: () => {
             for (const app of Object.values(ui.windows ?? {})) {
                 if (app.id === "ionrift-respite-setup" || app.id === "short-rest-app" || app.constructor?.name === "RestSetupApp" || app.constructor?.name === "ShortRestApp") {
+                    app.render(false);
+                }
+            }
+        }
+    });
+
+    game.settings.register(MODULE_ID, "uiTheme", {
+        name: "UI Theme",
+        hint: "Choose between Ionrift Glass (translucent frosted glass) or Gilded Slate (opaque cockpit).",
+        scope: "client",
+        config: true,
+        type: String,
+        choices: {
+            "glass": "Ionrift Glass (Translucent)",
+            "cockpit": "Gilded Slate (Overhaul)"
+        },
+        default: "glass",
+        onChange: (theme) => {
+            const apps = [
+                ...Object.values(ui.windows ?? {}),
+                ...(foundry.applications?.instances ? Array.from(foundry.applications.instances.values()) : [])
+            ];
+            for (const app of apps) {
+                if (app.element) {
+                    app.element.classList.toggle("theme-ionrift-glass", theme === "glass");
+                    app.element.classList.toggle("theme-respite-cockpit", theme === "cockpit");
+                }
+                if (app.id === "ionrift-respite-setup" || app.id === "short-rest-app" || app.id === "ionrift-bivouac-hud" || app.constructor?.name === "RestSetupApp" || app.constructor?.name === "ShortRestApp" || app.constructor?.name === "BivouacApp") {
                     app.render(false);
                 }
             }
@@ -908,19 +986,22 @@ export const SETTING_KEYS = [
     "spellRecoveryMaxLevel",
     "songOfRestTiming",
     "maxValueHitDice",
+    "shortRestFireWarmth",
     "enableTraining",
     "trainingXpTier",
     "trainingXpTierMigrated",
     "enableProfessions",
     "enableBrewingAlcohol",
     "chefTreatCookingOnly",
+    "chefTreatsProvideSustenance",
     "enableFletching",
     "fletchingYieldTier",
     "fletchingYieldTierMigrated",
     "enableEncounters",
+    "watchAlertMode",
+    "watchAlertBonus",
     "enableCopySpell",
     "enablePrayMeditate",
-    "enableScouting",
     "enableForaging",
     "enableHunting",
     "campFuelFindChance",
@@ -954,10 +1035,10 @@ export const SETTING_KEYS = [
     "artPackCache",
     "artNudgeSnoozedUntil",
     "artNudgeSuppressed",
-    "pf2eAdvisoryShown",
     "ambientAfkHud",
     "afkPanelLayout",
-    "debug"
+    "debug",
+    "uiTheme"
 ];
 
 /**

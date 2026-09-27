@@ -6,7 +6,7 @@
  * as well as a centralized campaign-wide audit view of all item overrides.
  */
 
-import { ItemClassifier } from "../../services/party/ItemClassifier.js";
+import { ItemClassifier, STORAGE_TYPES } from "../../services/party/ItemClassifier.js";
 import { ProvisionsAuditScanner } from "../../services/meal/provisions/ProvisionsAuditScanner.js";
 import { CalendarHandler } from "../../services/rest/session/CalendarHandler.js";
 import { refreshSpoilageBadgesOnOpenSheets } from "../../services/ui/sheet/UiInjections.js";
@@ -17,16 +17,16 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /** @type {Item|null} Currently loaded item document. */
-    #item = null;
+    _item = null;
 
     /** @type {"editor"|"auditor"} Active window tab. */
-    #activeTab = "editor";
+    _activeTab = "editor";
 
     /** @type {string} Search query for the auditor list. */
-    #searchQuery = "";
+    _searchQuery = "";
 
     /** @type {string} Active filter category. */
-    #filterCategory = "all";
+    _filterCategory = "all";
 
     static DEFAULT_OPTIONS = {
         id: "respite-item-provisions",
@@ -42,14 +42,14 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         },
         classes: ["ionrift-window", "glass-ui", "ionrift-respite-app", "respite-item-provisions-window"],
         actions: {
-            saveProvisions: ItemProvisionsApp.#onSaveAction,
-            clearProvisions: ItemProvisionsApp.#onClearAction,
-            togglePerishable: ItemProvisionsApp.#onTogglePerishable,
-            switchTab: ItemProvisionsApp.#onSwitchTab,
-            auditorEdit: ItemProvisionsApp.#onAuditorEdit,
-            auditorClear: ItemProvisionsApp.#onAuditorClear,
-            auditorRefresh: ItemProvisionsApp.#onAuditorRefresh,
-            auditorFilter: ItemProvisionsApp.#onAuditorFilter
+            saveProvisions: ItemProvisionsApp._onSaveAction,
+            clearProvisions: ItemProvisionsApp._onClearAction,
+            togglePerishable: ItemProvisionsApp._onTogglePerishable,
+            switchTab: ItemProvisionsApp._onSwitchTab,
+            auditorEdit: ItemProvisionsApp._onAuditorEdit,
+            auditorClear: ItemProvisionsApp._onAuditorClear,
+            auditorRefresh: ItemProvisionsApp._onAuditorRefresh,
+            auditorFilter: ItemProvisionsApp._onAuditorFilter
         }
     };
 
@@ -70,8 +70,8 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
             return null;
         }
 
-        if (item && !ItemClassifier.isProvisionEligible(item)) {
-            ui.notifications?.warn(`"${item.name}" (${item.type}) cannot be configured as provisions. Only consumable and loot items are supported.`);
+        if (item && !ItemClassifier.isConfigurableItem(item)) {
+            ui.notifications?.warn(`"${item.name}" (${item.type}) cannot be configured as provisions or containers in Respite.`);
             return null;
         }
 
@@ -125,11 +125,11 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
 
     constructor(options = {}) {
         super(options);
-        if (options.item && ItemClassifier.isProvisionEligible(options.item)) {
-            this.#item = options.item;
+        if (options.item && ItemClassifier.isConfigurableItem(options.item)) {
+            this._item = options.item;
         }
         if (options.initialTab) {
-            this.#activeTab = options.initialTab;
+            this._activeTab = options.initialTab;
         }
     }
 
@@ -138,7 +138,7 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
      * @param {"editor"|"auditor"} tab
      */
     setTab(tab) {
-        this.#activeTab = tab === "auditor" ? "auditor" : "editor";
+        this._activeTab = tab === "auditor" ? "auditor" : "editor";
         this.render({ force: true });
     }
 
@@ -148,11 +148,11 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
      */
     setItem(item) {
         if (!item) return;
-        if (!ItemClassifier.isProvisionEligible(item)) {
-            ui.notifications?.warn(`"${item.name}" (${item.type}) cannot be configured as provisions. Only consumable and loot items are supported.`);
+        if (!ItemClassifier.isConfigurableItem(item)) {
+            ui.notifications?.warn(`"${item.name}" (${item.type}) cannot be configured as provisions or containers in Respite.`);
             return;
         }
-        this.#item = item;
+        this._item = item;
         this.render({ force: true });
     }
 
@@ -162,17 +162,17 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         const auditorCount = auditorItems.length;
 
         const baseContext = {
-            activeTab: this.#activeTab,
-            isEditorTab: this.#activeTab === "editor",
-            isAuditorTab: this.#activeTab === "auditor",
+            activeTab: this._activeTab,
+            isEditorTab: this._activeTab === "editor",
+            isAuditorTab: this._activeTab === "auditor",
             auditorCount,
             auditorItems,
-            searchQuery: this.#searchQuery,
-            filterCategory: this.#filterCategory
+            searchQuery: this._searchQuery,
+            filterCategory: this._filterCategory
         };
 
-        const item = this.#item;
-        if (!item || !ItemClassifier.isProvisionEligible(item)) {
+        const item = this._item;
+        if (!item || !ItemClassifier.isConfigurableItem(item)) {
             return {
                 ...baseContext,
                 hasItem: false
@@ -181,6 +181,48 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
 
         const flags = item.flags?.[MODULE_ID] ?? {};
         const isLocked = item.compendium?.locked ?? false;
+
+        // Context location label
+        let sourceLocation = "World Item";
+        if (item.parent?.documentName === "Actor") {
+            sourceLocation = `Carried by ${item.parent.name}`;
+        } else if (item.compendium) {
+            sourceLocation = `Compendium: ${item.compendium.metadata?.label ?? item.compendium.collection}`;
+        }
+
+        const isContainer = ItemClassifier.isContainer(item);
+        if (isContainer) {
+            const coldStorage = flags.coldStorage ?? false;
+            const preservationMultiplier = flags.preservationMultiplier !== undefined
+                ? Number(flags.preservationMultiplier)
+                : 2;
+            const matchedPreset = ItemClassifier.getStorageTypePreset(preservationMultiplier);
+            const selectedStoragePreset = matchedPreset ? matchedPreset.id : "custom";
+            const isCustomMultiplier = selectedStoragePreset === "custom";
+
+            const storagePresets = STORAGE_TYPES.map(preset => ({
+                id: preset.id,
+                label: preset.multiplier !== null ? `${preset.label} (${preset.badge} shelf life)` : preset.label,
+                multiplier: preset.multiplier,
+                description: preset.description
+            }));
+
+            return {
+                ...baseContext,
+                hasItem: true,
+                isContainer: true,
+                isLocked,
+                itemName: item.name,
+                itemImg: item.img ?? "icons/svg/item-bag.svg",
+                itemType: item.type,
+                sourceLocation,
+                coldStorage,
+                preservationMultiplier,
+                selectedStoragePreset,
+                isCustomMultiplier,
+                storagePresets
+            };
+        }
 
         // Current explicit or inferred values
         const currentType = flags.resourceType ?? "";
@@ -236,14 +278,6 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
             else satiatesFood = true;
         }
 
-        // Context location label
-        let sourceLocation = "World Item";
-        if (item.parent?.documentName === "Actor") {
-            sourceLocation = `Carried by ${item.parent.name}`;
-        } else if (item.compendium) {
-            sourceLocation = `Compendium: ${item.compendium.metadata?.label ?? item.compendium.collection}`;
-        }
-
         return {
             ...baseContext,
             hasItem: true,
@@ -270,9 +304,9 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
             ],
             foodTagOptions: [
                 { value: "", label: inferredTag ? `Default (Inferred: ${inferredTag})` : "Default (Universal)" },
-                { value: "meat", label: "Raw Meat / Protein (Carnivore / Omnivore)" },
-                { value: "plant", label: "Foraged Plant / Produce (Herbivore / Omnivore)" },
-                { value: "prepared", label: "Prepared Meal / Rations (Universal)" }
+                { value: "meat", label: "Raw Meat (Carnivore / Omnivore)" },
+                { value: "plant", label: "Foraged Produce (Herbivore / Omnivore)" },
+                { value: "prepared", label: "Prepared Meal (Universal)" }
             ],
             drinkTypeOptions: [
                 { value: "", label: inferredDrink ? `Default (Inferred: ${inferredDrink})` : "Auto-Detect / Default" },
@@ -292,45 +326,64 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         // Dropzones in editor
         const dropZones = el.querySelectorAll(".respite-item-dropzone");
         for (const zone of dropZones) {
-            zone.addEventListener("dragover", this.#onDragOver.bind(this));
-            zone.addEventListener("dragleave", this.#onDragLeave.bind(this));
-            zone.addEventListener("drop", this.#onDrop.bind(this));
+            zone.addEventListener("dragover", this._onDragOver.bind(this));
+            zone.addEventListener("dragleave", this._onDragLeave.bind(this));
+            zone.addEventListener("drop", this._onDrop.bind(this));
         }
 
-        if (!context.hasItem && this.#activeTab === "editor") {
-            el.addEventListener("dragover", this.#onDragOver.bind(this));
-            el.addEventListener("dragleave", this.#onDragLeave.bind(this));
-            el.addEventListener("drop", this.#onDrop.bind(this));
+        if (!context.hasItem && this._activeTab === "editor") {
+            el.addEventListener("dragover", this._onDragOver.bind(this));
+            el.addEventListener("dragleave", this._onDragLeave.bind(this));
+            el.addEventListener("drop", this._onDrop.bind(this));
         }
 
         // Auditor search filtering
         const searchInput = el.querySelector(".respite-auditor-search-input");
         if (searchInput) {
-            searchInput.value = this.#searchQuery;
+            searchInput.value = this._searchQuery;
             searchInput.addEventListener("input", (e) => {
-                this.#searchQuery = e.target.value;
+                this._searchQuery = e.target.value;
                 this._applyAuditorClientFilter(el);
             });
         }
 
-        if (this.#activeTab === "auditor") {
+        if (this._activeTab === "auditor") {
             this._applyAuditorClientFilter(el);
+        }
+
+        // Storage preset dropdown change
+        const storagePresetSelect = el.querySelector('[name="storagePreset"]');
+        const customMultiplierRow = el.querySelector(".respite-custom-multiplier-row");
+        const customInput = el.querySelector('[name="customPreservationMultiplier"]');
+
+        if (storagePresetSelect && customMultiplierRow) {
+            storagePresetSelect.addEventListener("change", (e) => {
+                const val = e.target.value;
+                const isCustom = val === "custom";
+                customMultiplierRow.style.display = isCustom ? "flex" : "none";
+                if (!isCustom) {
+                    const preset = STORAGE_TYPES.find(p => p.id === val);
+                    if (preset && customInput && preset.multiplier !== null) {
+                        customInput.value = preset.multiplier;
+                    }
+                }
+            });
         }
     }
 
-    #onDragOver(event) {
+    _onDragOver(event) {
         event.preventDefault();
         event.dataTransfer.dropEffect = "copy";
         const zone = this.element.querySelector(".respite-item-dropzone");
         zone?.classList.add("drag-hover");
     }
 
-    #onDragLeave(event) {
+    _onDragLeave(event) {
         const zone = this.element.querySelector(".respite-item-dropzone");
         zone?.classList.remove("drag-hover");
     }
 
-    async #onDrop(event) {
+    async _onDrop(event) {
         event.preventDefault();
         const zone = this.element.querySelector(".respite-item-dropzone");
         zone?.classList.remove("drag-hover");
@@ -353,8 +406,8 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
             return;
         }
 
-        if (!ItemClassifier.isProvisionEligible(item)) {
-            ui.notifications?.warn(`"${item.name}" (${item.type}) cannot be configured as provisions. Only consumable and loot items are supported.`);
+        if (!ItemClassifier.isConfigurableItem(item)) {
+            ui.notifications?.warn(`"${item.name}" (${item.type}) cannot be configured in Respite. Only provisions (consumable, loot) and containers are supported.`);
             return;
         }
 
@@ -362,12 +415,12 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         this.setTab("editor");
     }
 
-    static #onSwitchTab(event, target) {
+    static _onSwitchTab(event, target) {
         const tab = target.dataset.tab;
         if (tab) this.setTab(tab);
     }
 
-    static async #onAuditorEdit(event, target) {
+    static async _onAuditorEdit(event, target) {
         const uuid = target.dataset.uuid;
         if (!uuid) return;
         const item = await fromUuid(uuid);
@@ -379,7 +432,7 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         this.setTab("editor");
     }
 
-    static async #onAuditorClear(event, target) {
+    static async _onAuditorClear(event, target) {
         const uuid = target.dataset.uuid;
         const name = target.dataset.name ?? "Item";
         if (!uuid) return;
@@ -391,13 +444,13 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         this.render({ force: true });
     }
 
-    static #onAuditorRefresh(event, target) {
+    static _onAuditorRefresh(event, target) {
         this.render({ force: true });
     }
 
-    static #onAuditorFilter(event, target) {
+    static _onAuditorFilter(event, target) {
         const category = target.dataset.category ?? "all";
-        this.#filterCategory = category;
+        this._filterCategory = category;
 
         const pills = this.element.querySelectorAll(".respite-filter-pill");
         for (const pill of pills) {
@@ -409,8 +462,8 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
 
     _applyAuditorClientFilter(el) {
         const searchInput = el.querySelector(".respite-auditor-search-input");
-        const query = (searchInput ? searchInput.value : (this.#searchQuery ?? "")).toLowerCase().trim();
-        const cat = this.#filterCategory ?? "all";
+        const query = (searchInput ? searchInput.value : (this._searchQuery ?? "")).toLowerCase().trim();
+        const cat = this._filterCategory ?? "all";
         const rows = el.querySelectorAll(".respite-auditor-row");
         let visibleCount = 0;
 
@@ -425,6 +478,7 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
             else if (cat === "water") matchesCat = type === "water";
             else if (cat === "ingredient") matchesCat = type === "ingredient";
             else if (cat === "fuel") matchesCat = type === "fuel";
+            else if (cat === "container") matchesCat = type === "container";
             else if (cat === "shelf") matchesCat = isShelf;
 
             const matchesSearch = !query || name.includes(query) || loc.includes(query);
@@ -443,7 +497,7 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         }
     }
 
-    static #onTogglePerishable(event, target) {
+    static _onTogglePerishable(event, target) {
         const form = this.element;
         const perishableFields = form.querySelector(".respite-provisions-spoilage-fields");
         if (!perishableFields) return;
@@ -451,16 +505,47 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         perishableFields.style.display = checked ? "flex" : "none";
     }
 
-    static async #onSaveAction(event, target) {
+    static async _onSaveAction(event, target) {
         event.preventDefault();
-        if (!this.#item) return;
+        if (!this._item) return;
 
-        if (this.#item.compendium?.locked) {
+        if (this._item.compendium?.locked) {
             ui.notifications?.warn("Cannot update item: compendium is locked. Unlock it in the Compendium tab to make changes.");
             return;
         }
 
         const form = this.element;
+
+        if (ItemClassifier.isContainer(this._item)) {
+            const coldStorage = form.querySelector('[name="coldStorage"]')?.checked ?? false;
+            const presetId = form.querySelector('[name="storagePreset"]')?.value ?? "coolbox";
+            let preservationMultiplier = 2;
+
+            if (presetId === "custom") {
+                const rawCustom = form.querySelector('[name="customPreservationMultiplier"]')?.value;
+                const parsed = parseFloat(rawCustom);
+                preservationMultiplier = !Number.isNaN(parsed) && parsed >= 0 ? parsed : 2;
+            } else {
+                const preset = STORAGE_TYPES.find(p => p.id === presetId);
+                preservationMultiplier = preset && preset.multiplier !== null ? preset.multiplier : 2;
+            }
+
+            const updates = {
+                [`flags.${MODULE_ID}.coldStorage`]: coldStorage,
+                [`flags.${MODULE_ID}.preservationMultiplier`]: preservationMultiplier
+            };
+            try {
+                await this._item.update(updates);
+                refreshSpoilageBadgesOnOpenSheets();
+                const multLabel = preservationMultiplier === 0 ? "Stasis (no spoilage)" : `${preservationMultiplier}× shelf life`;
+                ui.notifications?.info(`Updated storage settings for "${this._item.name}": Cold Storage ${coldStorage ? `Active (${multLabel})` : "Disabled"}.`);
+                this.render({ force: true });
+            } catch (err) {
+                console.error(`${MODULE_ID} | Failed to update container storage settings:`, err);
+                ui.notifications?.error(`Failed to update item: ${err.message}`);
+            }
+            return;
+        }
         const resourceType = form.querySelector('[name="resourceType"]')?.value || null;
         const foodTag = form.querySelector('[name="foodTag"]')?.value || null;
         const drinkType = form.querySelector('[name="drinkType"]')?.value || null;
@@ -503,8 +588,8 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         };
 
         // If the item is in an actor's inventory and perishable, stamp initial harvest date if missing
-        if (isPerishable && this.#item.parent?.documentName === "Actor") {
-            const existingHarvest = this.#item.flags?.[MODULE_ID]?.harvestedDate;
+        if (isPerishable && this._item.parent?.documentName === "Actor") {
+            const existingHarvest = this._item.flags?.[MODULE_ID]?.harvestedDate;
             if (!existingHarvest) {
                 const harvestDate = spoilageUnit === "hours"
                     ? String(game.time.worldTime)
@@ -514,9 +599,9 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         }
 
         try {
-            await this.#item.update(updates);
+            await this._item.update(updates);
             refreshSpoilageBadgesOnOpenSheets();
-            ui.notifications?.info(`Updated Respite provisions for "${this.#item.name}".`);
+            ui.notifications?.info(`Updated Respite provisions for "${this._item.name}".`);
             this.render({ force: true });
         } catch (err) {
             console.error(`${MODULE_ID} | Failed to update item provisions:`, err);
@@ -524,18 +609,18 @@ export class ItemProvisionsApp extends HandlebarsApplicationMixin(ApplicationV2)
         }
     }
 
-    static async #onClearAction(event, target) {
+    static async _onClearAction(event, target) {
         event.preventDefault();
-        if (!this.#item) return;
+        if (!this._item) return;
 
-        if (this.#item.compendium?.locked) {
+        if (this._item.compendium?.locked) {
             ui.notifications?.warn("Cannot update item: compendium is locked. Unlock it in the Compendium tab to make changes.");
             return;
         }
 
         try {
-            await ProvisionsAuditScanner.clearItemOverrides(this.#item);
-            ui.notifications?.info(`Cleared Respite provisions for "${this.#item.name}".`);
+            await ProvisionsAuditScanner.clearItemOverrides(this._item);
+            ui.notifications?.info(`Cleared Respite provisions for "${this._item.name}".`);
             this.render({ force: true });
         } catch (err) {
             console.error(`${MODULE_ID} | Failed to clear item provisions:`, err);

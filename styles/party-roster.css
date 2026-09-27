@@ -314,7 +314,8 @@
     margin-bottom: 8px;
     border-radius: 6px;
     font-size: 0.8rem;
-    border: 1px solid;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    color: rgba(226, 232, 240, 0.85);
 }
 
 .meal-terrain-alert.terrain-desert {
@@ -463,52 +464,6 @@
     margin-right: 2px;
     font-size: 0.55rem;
 }
-
-/* Days Since Last Rest stepper */
-.days-since-rest-block {
-    margin-top: 0.6rem;
-    padding: 0.5rem 0.6rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 6px;
-}
-
-.days-since-rest-row { display: flex; align-items: center; justify-content: space-between; }
-.days-label { font-size: 0.78rem; color: rgba(255, 255, 255, 0.6); font-weight: 500; }
-.days-label i { margin-right: 0.3rem; color: rgba(255, 220, 130, 0.5); }
-.days-stepper { display: flex; align-items: center; gap: 0; }
-
-.days-btn {
-    width: 26px; height: 26px;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.85rem; cursor: pointer; transition: all 0.15s;
-}
-
-.days-btn:first-child { border-radius: 5px 0 0 5px; }
-.days-btn:last-child { border-radius: 0 5px 5px 0; }
-.days-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); }
-.days-btn:disabled { opacity: 0.3; cursor: default; }
-
-.days-value {
-    min-width: 32px; height: 26px;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(255, 255, 255, 0.04);
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-    color: rgba(255, 255, 255, 0.85); font-size: 0.8rem; font-weight: 600;
-}
-
-.days-hint { display: block; margin-top: 0.3rem; font-size: 0.68rem; color: rgba(255, 255, 255, 0.35); font-style: italic; }
-.days-hint.warning { color: rgba(255, 180, 50, 0.7); font-style: normal; }
-.days-hint.warning i { margin-right: 0.2rem; }
-.days-hint.variant-badge { color: rgba(200, 140, 255, 0.7); font-style: normal; margin-bottom: 0.3rem; }
-.days-hint.variant-badge i { margin-right: 0.2rem; }
-
-.meal-days-info { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; color: rgba(255, 255, 255, 0.45); font-style: italic; }
-.meal-days-info i { margin-right: 0.2rem; }
 
 /* ---- Multi-Day Sustenance Progress Bar ---- */
 .sustenance-progress-container {

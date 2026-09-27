@@ -1111,3 +1111,111 @@
     line-height: 1;
     margin-bottom: -0.1rem;
 }
+
+/* Hearth side panel compact adjustments */
+.totm-campfire-side-panel .totm-fire-segment-wrap {
+    margin-bottom: 0.35rem;
+}
+
+.totm-campfire-side-panel .totm-fire-segments {
+    border-radius: 6px;
+}
+
+.totm-campfire-side-panel .totm-fire-segment {
+    padding: 0.25rem 0.1rem 0.2rem;
+    min-height: 2.2rem;
+    font-size: 0.65rem;
+    gap: 0.1rem;
+}
+
+.totm-campfire-side-panel .totm-fire-segment-cost {
+    font-size: 0.52rem;
+}
+
+.totm-campfire-side-panel .totm-fire-segment-desc {
+    font-size: 0.62rem;
+    line-height: 1.25;
+    padding: 0.1rem 0.05rem;
+}
+
+.totm-campfire-side-panel .totm-camp-fire-status {
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.totm-campfire-side-panel .totm-camp-fire-status.lit {
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.15);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.totm-campfire-side-panel .totm-camp-fire-status.cold {
+    color: #93c5fd;
+    background: rgba(147, 197, 253, 0.15);
+    border: 1px solid rgba(147, 197, 253, 0.3);
+}
+
+.totm-campfire-side-panel .totm-camp-fire-status.unlit {
+    color: #fb923c;
+    background: rgba(251, 146, 60, 0.15);
+    border: 1px solid rgba(251, 146, 60, 0.3);
+}
+
+/* Hearth side panel ceremony and ergonomics optimizations */
+.totm-campfire-side-panel .campfire-preview-center {
+    display: none !important;
+}
+
+.totm-campfire-side-panel .campfire-fire-area {
+    min-height: 110px;
+    max-height: 130px;
+}
+
+.totm-campfire-side-panel .campfire-preview-req-piece {
+    width: 2.2rem;
+    height: 2.2rem;
+}
+
+.totm-campfire-side-panel .campfire-preview-req-img {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+}
+
+.totm-campfire-side-panel .firewood-log {
+    width: 34px;
+    height: 30px;
+}
+
+.totm-campfire-side-panel .firewood-log-icon {
+    width: 24px !important;
+    height: 24px !important;
+}
+
+/* Footer GM campfire placement control */
+.totm-activity-footer-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-left: auto;
+}
+
+.totm-activity-footer .totm-camp-footer-placement {
+    min-width: 7.5rem;
+}
+
+.totm-activity-footer-controls .totm-footer-proceed,
+.totm-activity-footer-controls .totm-footer-waiting {
+    margin-left: 0 !important;
+}
+
+.respite-action-bar .totm-camp-footer-placement {
+    margin-right: 0.5rem;
+}
+

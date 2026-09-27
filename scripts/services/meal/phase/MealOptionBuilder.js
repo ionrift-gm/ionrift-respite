@@ -4,11 +4,11 @@
  */
 
 import { ItemClassifier } from "../../party/ItemClassifier.js";
+import { SpoilageClock } from "../spoilage/SpoilageClock.js";
 import { MODULE_ID } from "../inventory/MealConstants.js";
+import { describeItemMealBuff } from "../buffs/MealBuffPresets.js";
 import {
     iterInventoryItems,
-    isContainerType,
-    getContainerParentId,
     collectWaterSourceContainerIds
 } from "../inventory/MealInventoryHelpers.js";
 
@@ -38,6 +38,7 @@ export function buildFoodOptions(actor) {
             : ItemClassifier.isMealSubstitute(item, actor);
         if (!allowed) continue;
 
+        const mealBuff = describeItemMealBuff(item.flags?.[MODULE_ID]);
         options.push({
             value: item.id,
             label: `${item.name} (\u00d7${qty})`,
@@ -45,7 +46,10 @@ export function buildFoodOptions(actor) {
             itemId: item.id,
             available: qty,
             icon: (item.img && !item.img.includes("mystery-man")) ? item.img : defaultFoodIcon,
-            partyMeal: item.flags?.[MODULE_ID]?.partyMeal ?? false
+            partyMeal: item.flags?.[MODULE_ID]?.partyMeal ?? false,
+            hasBuff: mealBuff.hasBuff,
+            buffSummary: mealBuff.buffSummary,
+            ...SpoilageClock.chipFields(item)
         });
     }
 
@@ -65,12 +69,10 @@ export function buildWaterOptions(actor, rules) {
         const qty = item.system?.quantity ?? 1;
         if (qty <= 0) continue;
 
-        // Only skip items stored inside a water-source container
-        // (e.g. Water Pints inside a Waterskin container); their
-        // pints are accounted for by the parent container entry.
-        // Items inside mundane containers (backpacks) pass through.
-        const parentId = getContainerParentId(item);
-        if (parentId && waterContainerIds.has(parentId)) continue;
+        // A waterskin container is the vessel. Offer the pints inside it
+        // so drinking does not consume the container. Items in a mundane
+        // backpack still pass through on their own.
+        if (waterContainerIds.has(item.id)) continue;
 
         const isWater = ItemClassifier.isWater(item, actor);
         if (!isWater) continue;
@@ -85,14 +87,17 @@ export function buildWaterOptions(actor, rules) {
         let remainingCharges = null;
         let label;
 
-        if (rawMax <= 0) {
-            totalPints = avail;
-            label = `${item.name} (\u00d7${avail})`;
-        } else if (rawMax <= 1) {
-            const rcRaw = isV5 ? (uses.max - (uses.spent ?? 0)) : uses.value;
+        if (rawMax <= 1) {
+            const rcRaw = rawMax <= 0
+                ? avail
+                : (isV5 ? (uses.max - (uses.spent ?? 0)) : uses.value);
             const rc = (rcRaw !== null && rcRaw !== undefined) ? Math.max(0, rcRaw) : avail;
-            totalPints = Math.min(avail, rc);
-            label = `${item.name} (${totalPints} pint${totalPints === 1 ? "" : "s"})`;
+            // max of 1 means each item in the stack is one pint. A stack of
+            // four is four drinks. Only a lone empty charge is nothing.
+            totalPints = avail > 1 ? avail : Math.min(avail, rc);
+            label = rawMax <= 0
+                ? `${item.name} (\u00d7${totalPints})`
+                : `${item.name} (${totalPints} pint${totalPints === 1 ? "" : "s"})`;
         } else {
             maxCharges = rawMax;
             const top = isV5 ? (uses.max - (uses.spent ?? 0)) : (uses.value ?? 0);
@@ -101,32 +106,22 @@ export function buildWaterOptions(actor, rules) {
             label = `${item.name} (${totalPints} pints)`;
         }
 
-        // Container-type items (DnD5e Waterskin as container): count
-        // contained water items instead of the container's own quantity.
-        if (isContainerType(item) && rawMax <= 0) {
-            let containedPints = 0;
-            for (const child of inventoryItems) {
-                if (getContainerParentId(child) !== item.id) continue;
-                if (!ItemClassifier.isWater(child, actor)) continue;
-                containedPints += child.system?.quantity ?? 1;
-            }
-            if (containedPints <= 0) continue;
-            totalPints = containedPints;
-            label = `${item.name} (${totalPints} pint${totalPints === 1 ? "" : "s"})`;
-        }
-
         if (totalPints <= 0) continue;
 
+        const mealBuff = describeItemMealBuff(item.flags?.[MODULE_ID]);
         options.push({
             value: item.id,
             label,
             name: item.name,
             itemId: item.id,
-            available: avail,
+            available: totalPints,
             maxCharges,
             remainingCharges,
             totalPints,
-            icon: (item.img && !item.img.includes("mystery-man")) ? item.img : "icons/magic/water/water-drop-swirl-blue.webp"
+            icon: (item.img && !item.img.includes("mystery-man")) ? item.img : "icons/magic/water/water-drop-swirl-blue.webp",
+            hasBuff: mealBuff.hasBuff,
+            buffSummary: mealBuff.buffSummary,
+            ...SpoilageClock.chipFields(item)
         });
     }
 
@@ -204,6 +199,29 @@ export function buildAdvisories(restsSinceFood, restsSinceWater, foodGrace, rule
 }
 
 /**
+ * Send-off card for food or drink already placed on the night.
+ * A buffed portion wins over a plain one.
+ * @param {object[]} placedOptions
+ * @returns {{ empty: boolean, itemName?: string, hasBuff?: boolean, buffSummary?: string }}
+ */
+export function sendoffFromPlaced(placedOptions) {
+    const placed = (placedOptions ?? []).filter(option => option?.name);
+    const withBuff = placed.find(option => option.hasBuff && option.buffSummary);
+    if (withBuff) {
+        return {
+            empty: false,
+            itemName: withBuff.name,
+            hasBuff: true,
+            buffSummary: withBuff.buffSummary
+        };
+    }
+    if (placed.length) {
+        return { empty: false, itemName: placed[0].name, hasBuff: false, buffSummary: "" };
+    }
+    return { empty: true };
+}
+
+/**
  * Build essence/recharge options from actor inventory.
  * For non-biological characters that require essence.
  */
@@ -226,4 +244,23 @@ export function buildEssenceOptions(actor) {
     }
 
     return options;
+}
+
+/**
+ * Normalize an item name into a CSS beverage class.
+ * Matches: waterskin, canteen, flask, wine, ale, tea, broth.
+ * Defaults to "waterskin".
+ *
+ * @param {string} [name=""]
+ * @returns {"waterskin"|"canteen"|"flask"|"wine"|"ale"|"tea"|"broth"}
+ */
+export function normalizeBeverageClass(name = "") {
+    const n = String(name || "").toLowerCase().trim();
+    if (n.includes("canteen")) return "canteen";
+    if (n.includes("flask")) return "flask";
+    if (n.includes("wine")) return "wine";
+    if (n.includes("ale") || n.includes("beer") || n.includes("mead")) return "ale";
+    if (n.includes("tea")) return "tea";
+    if (n.includes("broth") || n.includes("soup")) return "broth";
+    return "waterskin";
 }

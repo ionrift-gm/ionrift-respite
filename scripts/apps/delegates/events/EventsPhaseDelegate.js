@@ -29,6 +29,7 @@ import {
 } from "../../../services/camp/props/StationInteractionLayer.js";
 import { getPartyActors } from "../../../services/party/partyActors.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { lockSubmittedActivities } from "../../../services/rest/session/campProgressState.js";
 import { _refreshGmRestIndicator } from "../../../module.js";
 
 export class EventsPhaseDelegate {
@@ -86,13 +87,8 @@ export class EventsPhaseDelegate {
             const resolvedOutcome = this._computeEventOutcome(triggeredEvent, rolls, dc);
             Object.assign(triggeredEvent, resolvedOutcome);
 
-            // Let the last dice animation settle before showing verdict
-            if (game.modules.get("dice-so-nice")?.active) {
-                await new Promise(resolve => {
-                    const timeout = setTimeout(resolve, 4000);
-                    Hooks.once("diceSoNiceRollComplete", () => { clearTimeout(timeout); resolve(); });
-                });
-            }
+            // Let the last dice animation settle before showing the verdict.
+            await waitForDiceSoNice(4000);
         }
 
         this._broadcastEventsState();
@@ -567,13 +563,13 @@ export class EventsPhaseDelegate {
                     }];
                     ui.notifications.info(`Forced encounter: ${ev.name}`);
                 } else {
-                    app._triggeredEvents = await app._engine.resolveEvents(app._eventResolver, app._engine._encounterBreakdown?.scoutingResult);
+                    app._triggeredEvents = await app._engine.resolveEvents(app._eventResolver, app._earlyResults);
                 }
             } else {
-                app._triggeredEvents = await app._engine.resolveEvents(app._eventResolver, app._engine._encounterBreakdown?.scoutingResult);
+                app._triggeredEvents = await app._engine.resolveEvents(app._eventResolver, app._earlyResults);
             }
         } else {
-            app._triggeredEvents = await app._engine.resolveEvents(app._eventResolver, app._engine._encounterBreakdown?.scoutingResult);
+            app._triggeredEvents = await app._engine.resolveEvents(app._eventResolver, app._earlyResults);
         }
 
         if (app._triggeredEvents.disasterChoice) {
@@ -597,7 +593,7 @@ export class EventsPhaseDelegate {
         if (!game.user.isGM) return;
         if (!app._engine || app._phase !== "events" || app._eventsRolled) return;
 
-        const effectiveDC = app._engine.getEffectiveEncounterDC();
+        const effectiveDC = app._engine.getEffectiveEncounterDC({ earlyResults: app._earlyResults });
         const roll = await new Roll("1d20").evaluate();
         const rawDie = roll.total;
         const triggered = rawDie === 1 || rawDie < effectiveDC;
@@ -851,13 +847,13 @@ export class EventsPhaseDelegate {
                     }];
                     ui.notifications.info(`Forced encounter: ${ev.name}`);
                 } else {
-                    app._triggeredEvents = await app._engine.resolveEvents(app._eventResolver, app._engine._encounterBreakdown?.scoutingResult);
+                    app._triggeredEvents = await app._engine.resolveEvents(app._eventResolver, app._earlyResults);
                 }
             } else {
-                app._triggeredEvents = await app._engine.resolveEvents(app._eventResolver, app._engine._encounterBreakdown?.scoutingResult);
+                app._triggeredEvents = await app._engine.resolveEvents(app._eventResolver, app._earlyResults);
             }
         } else {
-            app._triggeredEvents = await app._engine.resolveEvents(app._eventResolver, app._engine._encounterBreakdown?.scoutingResult);
+            app._triggeredEvents = await app._engine.resolveEvents(app._eventResolver, app._earlyResults);
         }
 
         if (app._triggeredEvents.disasterChoice) {
@@ -940,7 +936,7 @@ export class EventsPhaseDelegate {
         if (!game.user.isGM) return;
         if (!app._engine || app._phase !== "events" || app._eventsRolled) return;
 
-        const effectiveDC = app._engine.getEffectiveEncounterDC();
+        const effectiveDC = app._engine.getEffectiveEncounterDC({ earlyResults: app._earlyResults });
         const roll = await new Roll("1d20").evaluate();
         const rawDie = roll.total;
         const triggered = rawDie === 1 || rawDie < effectiveDC;
@@ -1506,7 +1502,7 @@ export class EventsPhaseDelegate {
     
     }
 
-    receiveCampRollResult(data) {
+    async receiveCampRollResult(data) {
         const app = this._app;
 
         if (!app._pendingCampRolls) return;
@@ -1519,13 +1515,35 @@ export class EventsPhaseDelegate {
         entry.total = data.total;
         entry.status = data.total >= entry.dc ? "pass" : "fail";
 
+        const actor = game.actors.get(data.characterId);
+        const terrainTag = app._engine?.terrainTag ?? app._restData?.terrainTag ?? "forest";
+        const comfort = app._engine?.comfort ?? app._restData?.comfort ?? "rough";
+        const safeRestSpot = !!(app._engine?.safeRestSpot ?? app._restData?.safeRestSpot);
+        const followUpValue = app._gmFollowUps?.get(data.characterId) ?? app._getFollowUpForCharacter?.(data.characterId);
+
+        let resolvedResult = null;
+        if (app._activityResolver && actor) {
+            resolvedResult = await app._activityResolver.resolve(
+                data.activityId,
+                actor,
+                terrainTag,
+                comfort,
+                {
+                    rollTotal: data.total,
+                    preEvaluated: true,
+                    followUpValue,
+                    safeRestSpot
+                }
+            );
+        }
+
         // Look up the activity for narrative/effect data
         const activity = app._activities?.find(a => a.id === data.activityId);
         const outcomeKey = entry.status === "pass" ? "success" : "failure";
         const outcome = activity?.outcomes?.[outcomeKey];
 
-        entry.narrative = outcome?.narrative ?? "";
-        entry.effectDescriptions = (outcome?.effects ?? []).map(e => e.description).filter(Boolean);
+        entry.narrative = resolvedResult?.narrative ?? outcome?.narrative ?? "";
+        entry.effectDescriptions = (resolvedResult?.effects ?? outcome?.effects ?? []).map(e => e.description).filter(Boolean);
 
         // Consume encounter_reduction effect for Set Up Defenses success
         if (entry.status === "pass" && entry.activityId === "act_defenses") {
@@ -1535,7 +1553,7 @@ export class EventsPhaseDelegate {
             }
         }
 
-        app._earlyResults.set(data.characterId, {
+        app._earlyResults.set(data.characterId, resolvedResult ?? {
             source: "activity",
             activityId: data.activityId,
             result: entry.status === "pass" ? "success" : "failure",
@@ -1867,8 +1885,6 @@ export class EventsPhaseDelegate {
                 return this._app._flowActions.onRollTreeCheck(event, target);
             case "camp":
                 return this.onRollCampCheck(event, target);
-            case "travel":
-                return this._app._travel.onRollTravelCheck(event, target);
             case "copySpell":
                 return this._app._copySpell.onRollArcana(event, target);
             default:
@@ -1933,8 +1949,9 @@ export class EventsPhaseDelegate {
                         </div>
                     </div>`;
                 document.body.appendChild(overlay);
-                overlay.querySelector(".btn-armor-confirm").addEventListener("click", () => {
+                overlay.querySelector(".btn-armor-confirm").addEventListener("click", async () => {
                     overlay.remove();
+                    await app._resolve?.postMasterRestCard?.();
                     app.close({ resolved: true });
                 });
                 overlay.querySelector(".btn-armor-cancel").addEventListener("click", () => {
@@ -1943,6 +1960,7 @@ export class EventsPhaseDelegate {
                 return;
             }
         }
+        await app._resolve?.postMasterRestCard?.();
         app.close({ resolved: true });
     
     }
@@ -1966,7 +1984,7 @@ export class EventsPhaseDelegate {
         const result = await rollForPlayer(actor, [entry.skill], entry.dc, context);
 
         // Feed through the normal collection path
-        this.receiveCampRollResult({
+        await this.receiveCampRollResult({
             characterId,
             characterName: actor.name,
             activityId: entry.activityId,
@@ -2047,6 +2065,7 @@ export class EventsPhaseDelegate {
         }
 
         app._rebuildCharacterChoices();
+        lockSubmittedActivities(app, choices);
         app._pruneEarlyResultsWithoutChoice();
         app._saveRestState();
 

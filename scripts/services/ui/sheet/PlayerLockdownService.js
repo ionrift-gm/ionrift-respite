@@ -17,6 +17,8 @@ function isRestActive() {
         if (savedLong?.engine) return true;
         const savedShort = game.settings.get(MODULE_ID, "activeShortRest");
         if (savedShort?.timestamp) return true;
+        const savedGritty = game.settings.get(MODULE_ID, "activeGrittyRest");
+        if (savedGritty?.type) return true;
     } catch { /* settings not registered yet */ }
 
     return false;

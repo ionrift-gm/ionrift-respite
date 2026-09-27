@@ -160,16 +160,21 @@ export class CalendarHandler {
     }
 
     /**
-     * Records the current date as the last rest date and posts a chat announcement.
+     * Records the current date as the last rest date, gating the next long rest.
+     *
+     * @param {object} [options]
+     * @param {boolean} [options.announce=true] - Post the generic "Rest Complete"
+     *   card. Flows that already post their own summary pass false.
      * @returns {Promise<void>}
      */
-    static async recordRestDate() {
+    static async recordRestDate({ announce = true } = {}) {
         if (!this.isAvailable()) return;
         try {
             const dateKey = this.getCurrentDate();
             if (!dateKey) return;
 
             await game.settings.set(MODULE_ID, "lastRestDate", dateKey);
+            if (!announce) return;
 
             const formatted = this.getFormattedDate();
             const dateDisplay = formatted ?? dateKey;

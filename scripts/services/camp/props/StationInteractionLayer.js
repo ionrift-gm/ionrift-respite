@@ -17,6 +17,7 @@ import { CAMP_STATIONS, getStationsForTerrain, STATION_RANGE_SQUARES, inferCanva
 import { isSimpleStationsMode } from "../../rest/flow/RestProfileSettings.js";
 import { isGearDeployed, measureWorldDistanceFeet } from "./CompoundCampPlacer.js";
 import { getPartyActors } from "../../party/partyActors.js";
+import { getActiveRestSessionApp } from "../../rest/session/RestSessionSync.js";
 
 // furnitureKeys that remain interactive after an activity is chosen (meals)
 const MEAL_STATION_KEYS = new Set(["campfire", "cookingArea"]);
@@ -1348,6 +1349,10 @@ export function activateStationLayer(actorMap, onStationClick, options = {}) {
             const restApp = respite?.activeRestSetupApp ?? respite?.activePlayerRestApp;
             if (restApp?._isTotM) {
                 Logger.log(`${MODULE_ID} | StationInteractionLayer.activate skipped (theater mode)`);
+                return;
+            }
+            if (getActiveRestSessionApp?.("downtime")) {
+                Logger.log(`${MODULE_ID} | StationInteractionLayer.activate skipped (downtime active)`);
                 return;
             }
             if (game.settings.get(MODULE_ID, "restInterfaceMode") === "theater") {

@@ -1,42 +1,45 @@
 import { isGearDeployed } from "../services/camp/props/CompoundCampPlacer.js";
 import { HD_PENALTY, boostComfort, isComfortEnabled, getComfortDcMod, COMFORT_RANK, RANK_TO_KEY } from "../services/camp/gear/ComfortCalculator.js";
 import { isSimpleStationsMode } from "../services/rest/flow/RestProfileSettings.js";
-import { getFletchingYieldHint, isFletchingEnabled } from "../services/crafting/settings/FletchingSettings.js";
+import { isFletchingEnabled } from "../services/crafting/settings/FletchingSettings.js";
 import { getTrainingXpValues, getTrainingXpReduction, isTrainingEnabled } from "../services/crafting/settings/TrainingSettings.js";
 import { isPrayMeditateEnabled } from "../services/rest/flow/ActivityResolver.js";
+import { isForagingEnabled, isHuntingEnabled } from "../services/travel/settings/TravelSettings.js";
 import { MODULE_ID } from "./moduleId.js";
+import { clipCardHintName } from "./activityCardHint.js";
+import { watchAlertCardClause } from "../services/rest/flow/WatchAlertBenefit.js";
 
 /**
- * Weather master table. Each entry defines comfort penalty, encounter DC modifier,
- * and tent interaction. `tentReduces` means tent lowers penalty by 1 (partial help).
+ * Weather master table. `encounterDC` raises the night check when positive.
+ * `tentReduces` means a tent lowers the comfort penalty by 1.
  */
 export const WEATHER_TABLE = {
-    clear:          { label: "Clear",          hint: "No effect on comfort or encounters.",                                       comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    overcast:       { label: "Overcast",       hint: "No effect. Dimmer light, neutral conditions.",                              comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    fog:            { label: "Fog",            hint: "Encounter DC +2. Weather hides camp, but also masks approaching threats.",  comfortPenalty: 0, encounterDC: 2, tentCancels: true,  tentReduces: false },
-    rain:           { label: "Rain",           hint: "Comfort -1 step if unsheltered. Tent cancels.",                             comfortPenalty: 1, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    heavy_rain:     { label: "Heavy Rain",     hint: "Comfort -1. Encounter DC +1. Tent cancels.",                               comfortPenalty: 1, encounterDC: 1, tentCancels: true,  tentReduces: false },
-    thunderstorm:   { label: "Thunderstorm",   hint: "Comfort -2. Encounter DC +2. Tent reduces to -1. Hut cancels.",            comfortPenalty: 2, encounterDC: 2, tentCancels: false, tentReduces: true },
-    snow:           { label: "Snow",           hint: "Comfort -1 step if unsheltered. Tent cancels.",                             comfortPenalty: 1, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    blizzard:       { label: "Blizzard",       hint: "Comfort -2. Encounter DC +1. Tent reduces to -1. Hut cancels.",            comfortPenalty: 2, encounterDC: 1, tentCancels: false, tentReduces: true },
-    extreme_cold:   { label: "Extreme Cold",   hint: "Comfort -1. Extra CON DC 10 or +1 exhaustion. Tent: partial.",             comfortPenalty: 1, encounterDC: 0, tentCancels: false, tentReduces: true },
-    extreme_heat:   { label: "Extreme Heat",   hint: "Comfort -1. Extra CON DC 10 or +1 exhaustion. Tent does not help.",        comfortPenalty: 1, encounterDC: 0, tentCancels: false, tentReduces: false },
-    sandstorm:      { label: "Sandstorm",      hint: "Comfort -2. Encounter DC +2. Tent: partial. Hut cancels.",                 comfortPenalty: 2, encounterDC: 2, tentCancels: false, tentReduces: true },
-    hail:           { label: "Hail",           hint: "Comfort -1. Minor damage risk. Tent cancels.",                             comfortPenalty: 1, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    volcanic_ash:   { label: "Volcanic Ash",   hint: "Comfort -1. Encounter DC +1. Difficult breathing.",                        comfortPenalty: 1, encounterDC: 1, tentCancels: false, tentReduces: true },
-    fungal_spores:  { label: "Fungal Spores",  hint: "Comfort -1. CON save or poisoned. Tent: partial.",                         comfortPenalty: 1, encounterDC: 0, tentCancels: false, tentReduces: true },
-    faerzress:      { label: "Faerzress",      hint: "No comfort penalty. Wild magic risk on spellcasting during rest.",          comfortPenalty: 0, encounterDC: 0, tentCancels: false, tentReduces: false },
+    clear:          { label: "Clear",            icon: "fas fa-sun",                 hint: "No effect on comfort or encounters.",                                       comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
+    overcast:       { label: "Overcast",         icon: "fas fa-cloud",               hint: "No effect. Dimmer light, neutral conditions.",                              comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
+    fog:            { label: "Fog",              icon: "fas fa-smog",                hint: "Night check +2. Hard to see what is approaching.",                          comfortPenalty: 0, encounterDC: 2, tentCancels: true,  tentReduces: false },
+    rain:           { label: "Rain",             icon: "fas fa-cloud-rain",          hint: "Comfort -1 step if unsheltered. Tent cancels.",                             comfortPenalty: 1, encounterDC: 0, tentCancels: true,  tentReduces: false },
+    heavy_rain:     { label: "Heavy Rain",       icon: "fas fa-cloud-showers-heavy", hint: "Comfort -1. Night check +1. Tent cancels.",                                comfortPenalty: 1, encounterDC: 1, tentCancels: true,  tentReduces: false },
+    thunderstorm:   { label: "Thunderstorm",     icon: "fas fa-bolt",                hint: "Comfort -2. Night check +2. Tent reduces comfort loss to -1. Hut cancels.", comfortPenalty: 2, encounterDC: 2, tentCancels: false, tentReduces: true },
+    snow:           { label: "Snow",             icon: "fas fa-snowflake",           hint: "Comfort -1 step if unsheltered. Tent cancels.",                             comfortPenalty: 1, encounterDC: 0, tentCancels: true,  tentReduces: false },
+    blizzard:       { label: "Blizzard",         icon: "fas fa-icicles",             hint: "Comfort -2. Night check +1. Tent reduces comfort loss to -1. Hut cancels.", comfortPenalty: 2, encounterDC: 1, tentCancels: false, tentReduces: true },
+    extreme_cold:   { label: "Extreme Cold",     icon: "fas fa-temperature-low",     hint: "Comfort -1. Extra CON DC 10 or +1 exhaustion. Tent: partial.",             comfortPenalty: 1, encounterDC: 0, tentCancels: false, tentReduces: true },
+    extreme_heat:   { label: "Extreme Heat",     icon: "fas fa-temperature-high",    hint: "Comfort -1. Extra CON DC 10 or +1 exhaustion. Tent does not help.",        comfortPenalty: 1, encounterDC: 0, tentCancels: false, tentReduces: false },
+    sandstorm:      { label: "Sandstorm",        icon: "fas fa-wind",                hint: "Comfort -2. Night check +2. Tent: partial. Hut cancels.",                  comfortPenalty: 2, encounterDC: 2, tentCancels: false, tentReduces: true },
+    hail:           { label: "Hail",             icon: "fas fa-cloud-meatball",      hint: "Comfort -1. Minor damage risk. Tent cancels.",                             comfortPenalty: 1, encounterDC: 0, tentCancels: true,  tentReduces: false },
+    volcanic_ash:   { label: "Volcanic Ash",     icon: "fas fa-fire",                hint: "Comfort -1. Night check +1. Difficult breathing.",                         comfortPenalty: 1, encounterDC: 1, tentCancels: false, tentReduces: true },
+    fungal_spores:  { label: "Fungal Spores",    icon: "fas fa-biohazard",           hint: "Comfort -1. CON save or poisoned. Tent: partial.",                         comfortPenalty: 1, encounterDC: 0, tentCancels: false, tentReduces: true },
+    faerzress:      { label: "Faerzress",        icon: "fas fa-magic",               hint: "No comfort penalty. Wild magic risk on spellcasting during rest.",          comfortPenalty: 0, encounterDC: 0, tentCancels: false, tentReduces: false },
     // Tavern atmosphere (flavor only, zero mechanical effect)
-    tavern_rain:    { label: "Raining Outside",  hint: "Rain patters on the windows. A somber, reflective evening.",              comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    tavern_storm:   { label: "Stormy Outside",   hint: "Thunder rattles the shutters. Good night to be indoors.",                 comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
+    tavern_rain:    { label: "Raining Outside",  icon: "fas fa-cloud-rain",          hint: "Rain patters on the windows. A somber, reflective evening.",              comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
+    tavern_storm:   { label: "Stormy Outside",   icon: "fas fa-bolt",                hint: "Thunder rattles the shutters. Good night to be indoors.",                 comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
     // Tavern grades (flavor only, zero mechanical effect)
-    tavern_flophouse: { label: "Flophouse",      hint: "Hard beds, thin walls, sounds you'd rather not identify.",               comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    tavern_modest:    { label: "Modest Inn",      hint: "Clean sheets, warm stew. Nothing fancy, nothing wrong.",                comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    tavern_fine:      { label: "Fine Lodgings",   hint: "Feather pillows, a hot bath, and someone else's cooking.",              comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    tavern_luxury:    { label: "Luxury Suite",    hint: "You could get used to this. You probably shouldn't.",                   comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
+    tavern_flophouse: { label: "Flophouse",      icon: "fas fa-bed",                 hint: "Hard beds, thin walls, sounds you'd rather not identify.",               comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
+    tavern_modest:    { label: "Modest Inn",     icon: "fas fa-home",                hint: "Clean sheets, warm stew. Nothing fancy, nothing wrong.",                comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
+    tavern_fine:      { label: "Fine Lodgings",  icon: "fas fa-concierge-bell",      hint: "Feather pillows, a hot bath, and someone else's cooking.",              comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
+    tavern_luxury:    { label: "Luxury Suite",   icon: "fas fa-gem",                 hint: "You could get used to this. You probably shouldn't.",                   comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
     // Underground atmosphere (flavor)
-    dungeon_normal:   { label: "Normal",          hint: "Still air. Unremarkable conditions.",                                   comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
-    dungeon_damp:     { label: "Damp",            hint: "Water drips from the ceiling. Everything feels clammy.",                comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false }
+    dungeon_normal:   { label: "Normal",         icon: "fas fa-dungeon",             hint: "Still air. Unremarkable conditions.",                                   comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false },
+    dungeon_damp:     { label: "Damp",           icon: "fas fa-tint",                hint: "Water drips from the ceiling. Everything feels clammy.",                comfortPenalty: 0, encounterDC: 0, tentCancels: true,  tentReduces: false }
 };
 
 /** DnD5e skill abbreviation -> readable name */
@@ -53,10 +56,11 @@ export { COMFORT_RANK, RANK_TO_KEY };
 /** Activity icon mapping */
 export const ACTIVITY_ICONS = {
     act_keep_watch: "fas fa-eye", act_rest_fully: "fas fa-bed",
-    act_scout: "fas fa-binoculars", act_tell_tales: "fas fa-theater-masks",
+    act_forage: "fas fa-seedling", act_hunt: "fas fa-crosshairs",
+    act_tell_tales: "fas fa-theater-masks",
     act_tend_wounds: "fas fa-hand-holding-medical", act_pray: "fas fa-pray",
-    act_cook: "fas fa-utensils", act_tailor: "fas fa-cut",
-    act_craft: "fas fa-tools", act_fletch: "fas fa-crosshairs",
+    act_cook: "fas fa-utensils", act_brew: "fas fa-flask-vial", act_tailor: "fas fa-cut",
+    act_craft: "fas fa-tools", act_fletch: "fas fa-feather-alt",
     act_defenses: "fas fa-shield-alt", act_train: "fas fa-dumbbell",
     act_identify: "fas fa-search", act_scribe: "fas fa-scroll",
     act_other: "fas fa-comments"
@@ -77,16 +81,21 @@ export function isWorkbenchExamineUiEnabled() {
 }
 
 /**
- * Static fallback hints surfaced on the activity card and the detail-panel advisory pill.
- * Keep these complementary to the activity description and to the lavender check label.
+ * One-line status for activities with no dynamic advisory.
+ * The detail view keeps activity.description. Stay within CARD_HINT_MAX_CHARS.
  * Do not restate the skill or DC; the check label already shows them.
- * Do not restate "no check required"; the neutral chip below the detail already says it.
  */
-const ACTIVITY_HINTS_STATIC = {
-    act_tell_tales: "Inspires one ally. All allies on exceptional roll",
-    act_cook: "Prepare a meal from ingredients",
-    act_tailor: "Stitch materials into gear",
-    act_craft: "Work raw materials into items"
+export const ACTIVITY_CARD_HINTS = {
+    act_tell_tales: "Inspires an ally",
+    act_cook: "A meal from ingredients",
+    act_tailor: "Stitch gear",
+    act_craft: "Work raw materials",
+    act_brew: "A trail drink",
+    act_identify: "Examine an item",
+    act_attune: "Bond with a magic item",
+    act_other: "Your own evening",
+    act_forage: "Plants, herbs, and kindling",
+    act_hunt: "Fresh meat and provisions"
 };
 
 /**
@@ -119,10 +128,10 @@ export function getActivityAdvisory(activityId, actor, partyState) {
         case "act_keep_watch": {
             const watchers = partyState.watcherCount ?? 0;
             if (!partyState.hasWatcher)
-                return { text: "No one on watch yet. Take the first shift.", urgent: true };
+                return { text: "No one on watch", urgent: true };
             if (watchers >= 2)
-                return { text: `${watchers} watchers already assigned. Consider another activity`, urgent: false };
-            return { text: "+3 initiative, surprise immune, +1 party initiative on alarm", urgent: false, cardOnly: true };
+                return { text: `${watchers} already on watch`, urgent: false };
+            return { text: `+3 initiative, ${watchAlertCardClause()}`, urgent: false, cardOnly: true };
         }
         case "act_tend_wounds": {
             const injured = partyState.injuredMembers.filter(m => m.id !== actor.id);
@@ -131,23 +140,19 @@ export function getActivityAdvisory(activityId, actor, partyState) {
                 && ((i.system?.uses?.value ?? i.system?.quantity ?? 0) > 0)
             );
             const hasFeat = actor.items?.some(i => i.type === "feat" && i.name?.toLowerCase() === "healer");
-            const gearNote = hasFeat && hasKit ? ", Healer feat + kit"
-                : hasKit ? ", kit gives advantage"
+            const gearNote = hasFeat && hasKit ? " + Healer"
+                : hasKit ? " + kit"
                 : "";
             if (!injured.length)
-                return { text: "No one is injured", urgent: false, nonViable: true };
+                return { text: "No one injured", urgent: false, nonViable: true };
             const worst = injured[0];
-            return { text: `${worst.name} at ${worst.hpPct}% HP${gearNote}`, urgent: worst.hpPct < 50 };
+            const suffix = ` at ${worst.hpPct}%${gearNote}`;
+            return { text: `${clipCardHintName(worst.name, suffix)}${suffix}`, urgent: worst.hpPct < 50 };
         }
         case "act_defenses": {
             if (partyState.hasDefenses)
-                return { text: "Someone is already setting defenses. Consider another activity", urgent: false };
-            return { text: "Lowers encounter chance by 2, grants +1 party initiative on success", urgent: false, cardOnly: true };
-        }
-        case "act_scout": {
-            if (partyState.hasScout)
-                return { text: "Someone is already scouting. Consider another activity", urgent: false };
-            return { text: "Advantage on initiative and surprise on success", urgent: false, cardOnly: true };
+                return { text: "Defenses already set", urgent: false };
+            return { text: "Fewer encounters, +1 initiative", urgent: false, cardOnly: true };
         }
         case "act_rest_fully": {
             const comfortTier = partyState.comfort ?? "sheltered";
@@ -167,84 +172,87 @@ export function getActivityAdvisory(activityId, actor, partyState) {
             // Safe rest spot: Rest Fully's main value is the extra -1 exhaustion
             if (isSafe) {
                 if (exhaustion >= 2)
-                    return { text: `${exhaustion} exhaustion. Rest Fully reduces an extra level beyond the long rest base`, urgent: true };
+                    return { text: `${exhaustion} exhaustion, one extra level`, urgent: true };
                 if (exhaustion === 1)
-                    return { text: "1 exhaustion. Rest Fully clears it entirely (base -1 + bonus -1)", urgent: false };
+                    return { text: "Clears the last exhaustion", urgent: false };
                 if (hdDeficit >= 1 && effectiveGain > 0)
-                    return { text: `Missing ${hdDeficit} HD. Rest Fully recovers +${effectiveGain} extra HD`, urgent: false };
-                return { text: "Full recovery guaranteed. No additional benefit", urgent: false, nonViable: true };
+                    return { text: `+${effectiveGain} Hit Dice`, urgent: false };
+                return { text: "No extra benefit", urgent: false, nonViable: true };
             }
             if (isHostile) {
                 if (hdDeficit >= 1)
-                    return { text: `Hostile camp. Rest Fully recovers ${effectiveGain || 1} extra HD, removes HP cap`, urgent: true };
+                    return { text: `Hostile. +${effectiveGain || 1} Hit Dice`, urgent: true };
                 if (hpPct < 100)
-                    return { text: "Hostile camp. Rest Fully restores full HP recovery", urgent: true };
-                return { text: "All HD and HP full. No recovery benefit", urgent: false, nonViable: true };
+                    return { text: "Hostile. Full HP recovery", urgent: true };
+                return { text: "No recovery benefit", urgent: false, nonViable: true };
             }
             if (isRough) {
-                if (effectiveGain > 0) {
-                    const exNote = exhaustion >= 1 ? ", clears exhaustion DC" : "";
-                    return { text: `Rough camp. Rest Fully recovers ${effectiveGain} extra HD${exNote}`, urgent: true };
-                }
+                if (effectiveGain > 0)
+                    return { text: `Rough. +${effectiveGain} Hit Dice`, urgent: true };
                 if (exhaustion >= 1)
-                    return { text: `Rough camp + ${exhaustion} exhaustion. Rest Fully clears exhaustion DC`, urgent: true };
+                    return { text: "Rough. Clears exhaustion", urgent: true };
                 if (hdDeficit >= 1)
-                    return { text: "Recovery at this comfort covers all missing HD", urgent: false, nonViable: true };
-                return { text: "No recovery benefit at this comfort", urgent: false, nonViable: true };
+                    return { text: "Comfort covers your Hit Dice", urgent: false, nonViable: true };
+                return { text: "No benefit at this comfort", urgent: false, nonViable: true };
             }
             if (effectiveGain > 0)
-                return { text: `Missing ${hdDeficit} HD. Rest Fully recovers +${effectiveGain} extra HD`, urgent: false };
+                return { text: `+${effectiveGain} Hit Dice`, urgent: false };
             if (hdDeficit >= 1)
-                return { text: "Recovery at this comfort covers all missing HD", urgent: false, nonViable: true };
-            return { text: "All HD and HP full. No recovery benefit", urgent: false, nonViable: true };
+                return { text: "Comfort covers your Hit Dice", urgent: false, nonViable: true };
+            return { text: "No recovery benefit", urgent: false, nonViable: true };
         }
         case "act_pray": {
             if (!isPrayMeditateEnabled())
-                return { text: "Pray / Meditate is off for this world", urgent: false, nonViable: true };
+                return { text: "Pray is off", urgent: false, nonViable: true };
             const prof = actor.system?.attributes?.prof ?? 2;
-            return { text: `+${prof} temp HP on success`, urgent: false };
+            return { text: `+${prof} temp HP`, urgent: false };
         }
         case "act_fletch": {
             if (!isFletchingEnabled())
-                return { text: "Fletching is off for this world", urgent: false, nonViable: true };
-            const ammo = _countAmmo(actor);
-            const prof = actor.system?.attributes?.prof ?? 2;
-            const yieldHint = getFletchingYieldHint(undefined, prof);
-            if (ammo !== null && ammo < 10)
-                return { text: `Low ammo: ${ammo} remaining. ${yieldHint}`, urgent: true };
-            return { text: `Craft arrows or bolts. ${yieldHint}`, urgent: false };
+                return { text: "Fletching is off", urgent: false, nonViable: true };
+            const ammo = _ammoStock(actor);
+            if (ammo && ammo.total < 10)
+                return { text: ammo.text, urgent: true };
+            return { text: "Arrows or bolts", urgent: false };
         }
         case "act_train": {
             if (!isTrainingEnabled())
-                return { text: "Training is off for this world", urgent: false, nonViable: true };
+                return { text: "Training is off", urgent: false, nonViable: true };
             const level = actor.system?.details?.level ?? 1;
             if (level > 5)
-                return { text: "Training has no effect above level 5", urgent: false, nonViable: true };
+                return { text: "No effect above level 5", urgent: false, nonViable: true };
             const xpValues = getTrainingXpValues();
             const passXp = xpValues?.passXp ?? 10;
-            const failXp = xpValues?.failXp ?? 3;
             const xp = actor.system?.details?.xp ?? {};
             const gap = (xp.max && xp.value !== null && xp.value !== undefined) ? (xp.max - xp.value) : null;
             const streak = actor.getFlag?.("ionrift-respite", "trainingStreak") ?? 0;
             const baseXP = 3 * passXp;
-            const effectiveFailXP = 3 * failXp;
             const reduction = getTrainingXpReduction(streak);
             const effectiveXP = Math.max(baseXP - reduction, 0);
-            const effectiveFailTotal = Math.max(effectiveFailXP - reduction, 0);
             if (effectiveXP <= 0)
-                return { text: "Diminishing returns: no XP gain this rest. Try something else", urgent: false, nonViable: true };
+                return { text: "No XP this rest", urgent: false, nonViable: true };
             if (gap !== null && gap > 0 && gap <= effectiveXP)
-                return { text: `${gap} XP to level up. Training can close that gap this rest`, urgent: true };
+                return { text: `${gap} XP to level`, urgent: true };
             if (streak >= 1)
-                return { text: `Training streak (${streak}): three sets, up to ${effectiveXP} XP, as low as ${effectiveFailTotal}`, urgent: false };
+                return { text: `Streak ${streak}, up to ${effectiveXP} XP`, urgent: false };
             if (gap !== null && gap > 0)
-                return { text: `${gap} XP to next level. Three sets, up to ${effectiveXP} XP, as low as ${effectiveFailTotal}`, urgent: false };
-            return { text: `Three sets, up to ${effectiveXP} XP, as low as ${effectiveFailTotal}`, urgent: false };
+                return { text: `${gap} XP away, up to ${effectiveXP}`, urgent: false };
+            return { text: `Up to ${effectiveXP} XP`, urgent: false };
         }
         case "act_scribe":
-            return { text: "50gp per spell level. Scroll consumed regardless of success", urgent: false };
+            return { text: "50 gp per spell level", urgent: false };
+        case "act_forage": {
+            if (!isForagingEnabled())
+                return { text: "Foraging is off", urgent: false, nonViable: true };
+            return { text: ACTIVITY_CARD_HINTS.act_forage, urgent: false };
+        }
+        case "act_hunt": {
+            if (!isHuntingEnabled())
+                return { text: "Hunting is off", urgent: false, nonViable: true };
+            return { text: ACTIVITY_CARD_HINTS.act_hunt, urgent: false };
+        }
         default:
-            return { text: ACTIVITY_HINTS_STATIC[activityId] ?? null, urgent: false };
+            return { text: ACTIVITY_CARD_HINTS[activityId] ?? null, urgent: false };
     }
 }
 
@@ -260,7 +268,6 @@ export function buildPartyState(partyActors, pendingSelections, encounterDC, com
     const picks = [...(pendingSelections?.values() ?? [])];
     const watcherCount = picks.filter(id => id === "act_keep_watch").length;
     const hasWatcher = watcherCount > 0;
-    const hasScout = picks.includes("act_scout");
     const hasDefenses = picks.includes("act_defenses");
     const partySize = partyActors.length;
 
@@ -274,7 +281,7 @@ export function buildPartyState(partyActors, pendingSelections, encounterDC, com
         .sort((a, b) => a.hpPct - b.hpPct);
 
     return {
-        hasWatcher, watcherCount, hasScout, hasDefenses,
+        hasWatcher, watcherCount, hasDefenses,
         partySize,
         injuredMembers,
         encounterDC: encounterDC ?? 14,
@@ -282,19 +289,34 @@ export function buildPartyState(partyActors, pendingSelections, encounterDC, com
     };
 }
 
-/** Count ammunition (arrows, bolts, darts) in an actor's inventory */
-function _countAmmo(actor) {
-    const AMMO_NAMES = /arrow|bolt|dart|sling bullet/i;
-    let total = 0;
+/**
+ * Ammunition on hand, named by kind so a low count is not just "8 left".
+ * @param {Actor} actor
+ * @returns {{ total: number, text: string }|null}
+ */
+function _ammoStock(actor) {
+    const kinds = [
+        { test: /bolt/i, one: "bolt", many: "bolts", count: 0 },
+        { test: /arrow/i, one: "arrow", many: "arrows", count: 0 },
+        { test: /dart/i, one: "dart", many: "darts", count: 0 },
+        { test: /sling bullet|bullet/i, one: "bullet", many: "bullets", count: 0 }
+    ];
     let found = false;
     for (const item of actor.items ?? []) {
-        if (item.type === "consumable" && item.system?.type?.value === "ammo" &&
-            AMMO_NAMES.test(item.name)) {
-            total += item.system?.quantity ?? 0;
-            found = true;
-        }
+        if (item.type !== "consumable" || item.system?.type?.value !== "ammo") continue;
+        const name = item.name ?? "";
+        const kind = kinds.find(entry => entry.test.test(name));
+        if (!kind) continue;
+        kind.count += item.system?.quantity ?? 0;
+        found = true;
     }
-    return found ? total : null;
+    if (!found) return null;
+    const parts = kinds
+        .filter(entry => entry.count > 0)
+        .map(entry => `${entry.count} ${entry.count === 1 ? entry.one : entry.many}`);
+    const total = kinds.reduce((sum, entry) => sum + entry.count, 0);
+    const text = parts.length === 1 ? `${parts[0]} left` : `${parts.join(", ")} left`;
+    return { total, text };
 }
 
 /**
@@ -333,8 +355,8 @@ export const CAMP_STATIONS = [
         label: "Your Bedroll",
         icon: "fas fa-bed",
         furnitureKey: null,
-        tagline: "Rest, pray, train, tales, craft, other",
-        activities: ["act_rest_fully", "act_pray", "act_train", "act_tell_tales", "act_craft", "act_other"],
+        tagline: "Rest, pray, train, tales, craft, forage, hunt, other",
+        activities: ["act_rest_fully", "act_pray", "act_train", "act_tell_tales", "act_craft", "act_forage", "act_hunt", "act_other"],
         terrainLabel: { tavern: "Your Room" }
     },
     {
@@ -449,12 +471,10 @@ export function getStationOfferedActivityIds(terrainTag, safeRestSpot, available
     const available = availableIds instanceof Set ? availableIds : new Set(availableIds);
     const stations = getStationsForTerrain(terrainTag, safeRestSpot, options);
     const skipStations = new Set(["campfire"]);
-    const identifyTabIds = new Set(["act_identify"]);
     const offered = new Set();
     for (const station of stations) {
         if (skipStations.has(station.id)) continue;
         for (const id of station.activities ?? []) {
-            if (identifyTabIds.has(id)) continue;
             if (available.has(id)) offered.add(id);
         }
     }
@@ -504,9 +524,9 @@ export function applyActivityPortraitAssignments(item, assigned) {
 /** Shelter spell definitions. Used in setup phase for shelter detection. */
 export const SHELTER_SPELLS = [
     { id: "tiny_hut", name: "Tiny Hut", altNames: ["leomund's tiny hut", "tiny hut", "cozy cabin"], icon: "fas fa-igloo", comfortFloor: "sheltered", encounterMod: 5, restTypes: ["long"], blocksFire: true,
-        hint: "Impenetrable force dome. Comfort floor: Sheltered. Encounter DC +5. No campfire, cooking, or brewing (sealed dome)." },
+        hint: "Impenetrable force dome. Comfort floor: Sheltered. Night check -5. No campfire, cooking, or brewing (sealed dome)." },
     { id: "rope_trick", name: "Rope Trick", altNames: ["rope trick"], icon: "fas fa-hat-wizard", comfortFloor: null, encounterMod: 5, restTypes: ["short"], blocksFire: true,
-        hint: "Hidden extradimensional space. Short rest only (1 hr). Encounter DC +5. No campfire (no ventilation)." },
+        hint: "Hidden extradimensional space. Short rest only (1 hr). Night check -5. No campfire (no ventilation)." },
     { id: "magnificent_mansion", name: "Mansion", altNames: ["magnificent mansion", "mordenkainen's magnificent mansion", "mordenkainen", "resplendent mansion"], icon: "fas fa-chess-rook", comfortFloor: "safe", encounterMod: 99, restTypes: ["long"], blocksFire: true,
         hint: "Separate dimension. No encounters. Safe rest guaranteed. Has its own hearth and kitchen." }
 ];
@@ -515,10 +535,10 @@ export const SHELTER_SPELLS = [
 export function getComfortTip(tier) {
     if (!isComfortEnabled()) return "Comfort rules disabled, full recovery";
     const tips = {
-        hostile: "Hostile: regain 75% max HP, -2 HD, CON DC 15 or +1 exhaustion",
-        rough: "Rough: full HP, -1 HD, CON DC 10 or +1 exhaustion",
-        sheltered: "Sheltered: full HP, full HD recovery",
-        safe: "Safe: full HP, full HD recovery, no encounter risk"
+        hostile: "Hostile: 75% max HP cap, -2 HD penalty, DC 15 Con save vs exhaustion",
+        rough: "Rough: full HP, -1 HD penalty, DC 10 Con save vs exhaustion",
+        sheltered: "Sheltered: full HP, normal HD recovery, no exhaustion check",
+        safe: "Safe: full HP & HD recovery, no nocturnal encounter danger"
     };
     return tips[tier] ?? tips.sheltered;
 }
@@ -693,7 +713,9 @@ export function buildCheckLabelForActivity(activity, actor, comfort = "sheltered
             const alt = rcAdapter ? rcAdapter.getSkillTotal(actor, rcAdapter.normalizeSkillKey(activity.check.altSkill)) : (actor.system?.skills?.[activity.check.altSkill]?.total ?? 0);
             if (alt > primary) chosenSkill = activity.check.altSkill;
         }
-        checkKind = chosenSkill.charAt(0).toUpperCase() + chosenSkill.slice(1);
+        const skillCfg = CONFIG.DND5E?.skills?.[chosenSkill];
+        const localized = skillCfg?.label ? (game.i18n?.localize ? game.i18n.localize(skillCfg.label) : skillCfg.label) : null;
+        checkKind = localized || (rcAdapter?.getSkillLabel ? rcAdapter.getSkillLabel(chosenSkill) : null) || (chosenSkill.charAt(0).toUpperCase() + chosenSkill.slice(1));
     } else if (activity.check.ability) {
         let abilityKey = activity.check.ability;
         if (abilityKey === "best" && actor) {
