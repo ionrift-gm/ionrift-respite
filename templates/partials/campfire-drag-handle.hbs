@@ -1,0 +1,50 @@
+{{!-- Shared partial: Campfire placement handle / button (GM only) --}}
+{{#if isGM}}
+{{#if campfireDragCard.show}}
+<div class="totm-camp-footer-placement">
+    {{#if campfireDragCard.placed}}
+    {{#if campfireDragCard.canReclaim}}
+    <button type="button"
+            class="camp-drag-handle camp-drag-handle-compact camp-drag-handle-placed camp-drag-handle-reclaim"
+            data-action="reclaimCampfire"
+            aria-label="{{campfireDragCard.ariaLabel}}"
+            data-tooltip="{{campfireDragCard.tooltip}}" data-tooltip-direction="UP">
+        <span class="camp-drag-icon"><i class="fas fa-fire" aria-hidden="true"></i></span>
+        <span class="camp-drag-label">
+            <span class="camp-drag-title">{{campfireDragCard.shortLabel}}</span>
+        </span>
+    </button>
+    {{else}}
+    <div class="camp-drag-handle camp-drag-handle-compact camp-drag-handle-placed"
+         aria-label="Campfire placed"
+         data-tooltip="{{campfireDragCard.tooltip}}" data-tooltip-direction="UP">
+        <div class="camp-drag-icon"><i class="fas fa-check" aria-hidden="true"></i></div>
+        <div class="camp-drag-label">
+            <span class="camp-drag-title">{{campfireDragCard.shortLabel}}</span>
+        </div>
+    </div>
+    {{/if}}
+    {{else if campfireDragCard.canDrag}}
+    <div class="camp-drag-handle camp-drag-handle-compact {{#if campfireDragCard.required}}camp-drag-handle-required{{/if}}"
+         draggable="true"
+         {{#if campfireDragCard.placementClick}}data-camp-placement-click="1"{{/if}}
+         aria-label="{{#if campfireDragCard.placementClick}}Place campfire on the map (click or drag){{else}}Drag campfire to the map{{/if}}"
+         data-tooltip="{{campfireDragCard.tooltip}}" data-tooltip-direction="UP">
+        <div class="camp-drag-icon"><i class="fas fa-fire" aria-hidden="true"></i></div>
+        <div class="camp-drag-label">
+            <span class="camp-drag-title">{{campfireDragCard.shortLabel}}{{#if campfireDragCard.required}}<span class="camp-drag-required-badge">Req</span>{{/if}}</span>
+        </div>
+        <i class="fas fa-grip-vertical camp-drag-grip" aria-hidden="true"></i>
+    </div>
+    {{else}}
+    <div class="camp-drag-handle camp-drag-handle-compact camp-drag-handle-wait"
+         data-tooltip="{{campfireDragCard.tooltip}}" data-tooltip-direction="UP">
+        <div class="camp-drag-icon"><i class="fas fa-fire" aria-hidden="true"></i></div>
+        <div class="camp-drag-label">
+            <span class="camp-drag-title">{{campfireDragCard.shortLabel}}</span>
+        </div>
+    </div>
+    {{/if}}
+</div>
+{{/if}}
+{{/if}}

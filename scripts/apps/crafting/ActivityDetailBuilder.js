@@ -17,6 +17,10 @@ import {
     buildFollowUpDataForActivity,
     buildCheckLabelForActivity
 } from "../../data/RestConstants.js";
+import { CARD_FADED_HINTS, clipToCardHint } from "../../data/activityCardHint.js";
+import { MODULE_ID } from "../../data/moduleId.js";
+import { applyWatchAlertPhrase, presentCombatModifiers } from "../../services/rest/flow/WatchAlertBenefit.js";
+import { getFletchingTierLabel } from "../../services/crafting/settings/FletchingSettings.js";
 
 /**
  * Resolve the armour sleep hint for an actor doing a given activity.
@@ -42,11 +46,50 @@ function _resolveArmorHint(actor, activity, armorRuleEnabled) {
     return { text: "Sleeping in armor. Recover only 1/4 Hit Dice, exhaustion not reduced (Xanathar's). Consider doffing first.", type: "warning" };
 }
 
+function equippedRestArmor(actor) {
+    return (actor?.items ?? []).find(item => {
+        if (item.type !== "equipment" || !item.system?.equipped) return false;
+        const armorType = item.system?.type?.value ?? item.system?.armor?.type ?? "";
+        return armorType === "medium" || armorType === "heavy";
+    }) ?? null;
+}
+
+/**
+ * Cooking and crafting skip the activity detail, so they never reached the
+ * doff prompt. Same gate as a normal confirm: proceed, or stop and doff.
+ * @param {object} actor
+ * @param {object} activity
+ * @returns {Promise<boolean>}
+ */
+export async function promptArmorSleepIfNeeded(actor, activity) {
+    if (!actor || activity?.armorSleepWaiver) return true;
+    let armorRuleEnabled = false;
+    try {
+        armorRuleEnabled = !!game.settings.get(MODULE_ID, "armorDoffRule");
+    } catch {
+        return true;
+    }
+    if (!armorRuleEnabled) return true;
+    const equippedArmor = equippedRestArmor(actor);
+    if (!equippedArmor) return true;
+    const confirmFn = game.ionrift?.library?.confirm ?? Dialog.confirm.bind(Dialog);
+    const proceed = await confirmFn({
+        title: "Sleeping in Armor",
+        content: `<p><strong>${equippedArmor.name}</strong> is equipped. Sleeping in medium or heavy armor limits recovery to 1/4 Hit Dice and prevents exhaustion reduction (Xanathar's rules).</p><p>Doff the armor before confirming, or proceed and accept the penalty.</p>`,
+        yesLabel: "Confirm Anyway",
+        noLabel: "Cancel",
+        yesIcon: "fas fa-check",
+        noIcon: "fas fa-times",
+        defaultYes: false
+    });
+    return !!proceed;
+}
+
 /**
  * Build a single card-list item for an activity.
  *
  * This is the canonical source for card hints in both TotM and Spatial modes.
- * - Available card: advisory text if present, else activity.description
+ * - Available card: advisory text if present. Description stays on the detail view.
  * - Faded card: act.fadedHint from the activity schema
  * - nonViable: advisory.nonViable (e.g. no injured party members for Tend Wounds)
  *
@@ -68,14 +111,14 @@ export function buildActivityListItem(activityId, activity, actor, partyState, i
             ? String(advisory.text).trim()
             : "";
         const hasAdvisory = advRaw.length > 0;
-        const hintText = hasAdvisory ? advRaw : (activity?.description ?? "").trim();
+        const hintText = hasAdvisory ? advRaw : "";
         const nv = !!advisory.nonViable;
 
         return {
             id:         activityId,
             name:       activity?.name ?? activityId,
             icon,
-            hint:       hintText,
+            hint:       clipToCardHint(hintText),
             hintUrgent: hasAdvisory && !!advisory.urgent,
             available:  !nv,
             nonViable:  nv,
@@ -87,12 +130,12 @@ export function buildActivityListItem(activityId, activity, actor, partyState, i
     }
 
     // Faded: always show the schema's fadedHint, not an advisory
-    const fadedText = activity?.fadedHint ?? "Not available.";
+    const fadedText = activity?.fadedHint ?? CARD_FADED_HINTS.unavailable;
     return {
         id:         activityId,
         name:       activity?.name ?? activityId,
         icon,
-        hint:       fadedText,
+        hint:       clipToCardHint(fadedText),
         hintUrgent: false,
         available:  false,
         nonViable:  false,
@@ -147,8 +190,16 @@ export function buildActivityDetailContext(activityId, activity, actor, partySta
     const outcomeHints = [];
     for (const tier of ["success", "exceptional", "failure"]) {
         for (const eff of (activity.outcomes?.[tier]?.effects ?? [])) {
-            if (eff.description) outcomeHints.push({ text: eff.description, type: tier });
+            if (eff.description) outcomeHints.push({ text: applyWatchAlertPhrase(eff.description), type: tier });
         }
+    }
+    if (activityId === "act_fletch" && !outcomeHints.length) {
+        const yieldLabel = getFletchingTierLabel();
+        const kind = followUpValue === "bolts" ? "bolts" : "arrows";
+        const text = yieldLabel && yieldLabel !== "Off"
+            ? `Pass the check, then roll ${yieldLabel} ${kind}.`
+            : "Replenishes ammunition on a successful check.";
+        outcomeHints.push({ text, type: "success" });
     }
 
     const checkLabel = buildCheckLabelForActivity(activity, actor, comfort, followUpValue);
@@ -166,9 +217,14 @@ export function buildActivityDetailContext(activityId, activity, actor, partySta
     const advisory = actor && partyState
         ? getActivityAdvisory(activityId, actor, partyState)
         : null;
-    const advText = (advisory?.text !== null && advisory?.text !== undefined && !advisory?.cardOnly)
+    let advText = (advisory?.text !== null && advisory?.text !== undefined && !advisory?.cardOnly)
         ? String(advisory.text).trim()
         : "";
+    let advUrgent = !!advisory?.urgent;
+    if (activityId === "act_watch" && advText.toLowerCase().includes("no one on watch")) {
+        advUrgent = false;
+        advText = "Party currently has no guard assigned to watch.";
+    }
 
     return {
         id:               activityId,
@@ -178,12 +234,12 @@ export function buildActivityDetailContext(activityId, activity, actor, partySta
         checkLabel,
         hasNoCheck:       !activity.check,
         advisory:         advText || null,
-        advisoryUrgent:   !!advisory?.urgent,
+        advisoryUrgent:   advUrgent,
         outcomeHints,
         followUpData,
         armorHint,
         armorWarning,
-        combatModifiers:  activity.combatModifiers ?? null,
+        combatModifiers:  presentCombatModifiers(activity.combatModifiers),
         isCrafting:       !!activity.crafting?.enabled,
         characterId:      actor?.id ?? null
     };

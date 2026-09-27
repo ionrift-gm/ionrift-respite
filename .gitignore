@@ -48,6 +48,7 @@ packs/respite-guide-gm/
 audit_*.json
 audit_*.txt
 audit_*.js
+assets/screenshots/adversarial-audit/
 packs/src/archive/
 
 # Agent handoff specs (ephemeral, see DEV_PROTOCOLS.md §30)
@@ -78,4 +79,10 @@ ionrift-respite.lock
 
 # Internal brand/workspace content - must never be committed to public module repos
 ionrift-brand/
+
+# Internal engineering docs and strategy files (DEV_PROTOCOLS §22)
+docs/
+*_STRATEGY.md
+*_PLAN.md
+*_SPEC.md
 

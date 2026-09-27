@@ -295,8 +295,46 @@
     transition: transform 0.2s ease;
 }
 
-.encounter-details[open] .encounter-chevron {
+.encounter-details[open] .encounter-chevron,
+.encounter-threshold details[open] .encounter-chevron {
     transform: rotate(180deg);
+}
+
+.encounter-threshold-head {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+}
+
+.encounter-threshold-stepper {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    height: 2rem;
+    padding: 0 0 0 0.45rem;
+    box-sizing: border-box;
+}
+
+.encounter-threshold-head > details {
+    min-width: 0;
+}
+
+.encounter-threshold .encounter-summary {
+    display: flex;
+    align-items: center;
+    height: 2rem;
+    margin: 0;
+    padding: 0 0.5rem;
+    box-sizing: border-box;
+}
+
+.encounter-threshold .encounter-summary::marker {
+    content: none;
+}
+
+.encounter-adj-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
 }
 
 .encounter-breakdown {
@@ -383,9 +421,19 @@
 }
 
 .combat-hint {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    font-size: 0.74rem;
+    color: rgba(255, 255, 255, 0.55);
     text-align: center;
+    margin-top: 0.15rem;
+}
+
+.combat-hint i {
+    color: rgba(240, 192, 64, 0.7);
+    font-size: 0.72rem;
 }
 
 /* ---- Combat Readiness Report ---- */

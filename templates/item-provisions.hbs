@@ -39,6 +39,38 @@
 
             <div class="respite-item-provisions-fields">
 
+                {{#if isContainer}}
+                <div class="respite-field-row respite-field-row--card">
+                    <div class="respite-field-header">
+                        <label class="respite-field-label">Cold Storage</label>
+                        <label class="respite-checkbox-label">
+                            <input type="checkbox" name="coldStorage" {{#if coldStorage}}checked{{/if}} />
+                            <span><i class="fas fa-snowflake"></i> Preserve Food &amp; Ingredients</span>
+                        </label>
+                    </div>
+                    <p class="respite-field-hint">When enabled, perishable food and harvested monster ingredients placed inside this container have their shelf life extended.</p>
+                </div>
+
+                <div class="respite-field-row respite-field-row--card">
+                    <label class="respite-field-label">Preservation Storage Type</label>
+                    <select name="storagePreset" class="respite-select">
+                        {{#each storagePresets}}
+                        <option value="{{id}}" {{#if (eq id ../selectedStoragePreset)}}selected{{/if}}>{{label}}</option>
+                        {{/each}}
+                    </select>
+                    <p class="respite-field-hint">Multiplier applied to base spoilage duration for contents inside this container.</p>
+                </div>
+
+                <div class="respite-field-row respite-field-row--card respite-custom-multiplier-row" style="{{#unless isCustomMultiplier}}display: none;{{/unless}}">
+                    <label class="respite-field-label">Custom Multiplier</label>
+                    <div class="respite-input-group">
+                        <input type="number" step="0.1" min="0" name="customPreservationMultiplier" class="respite-input" value="{{preservationMultiplier}}" />
+                        <span class="respite-input-suffix">× shelf life (0 = stasis)</span>
+                    </div>
+                    <p class="respite-field-hint">Custom factor multiplied against base spoilage duration.</p>
+                </div>
+                {{else}}
+
                 <div class="respite-field-row">
                     <label class="respite-field-label">Sustenance Type</label>
                     <select name="resourceType" class="respite-select">
@@ -107,6 +139,7 @@
                     </div>
                     <p class="respite-field-hint">Selecting both enables dual credit (e.g. stews, broths, melons).</p>
                 </div>
+                {{/if}}
             </div>
         </div>
 
@@ -126,7 +159,7 @@
             </div>
             <h3 class="respite-dropzone-title">Drop an Item Here</h3>
             <p class="respite-dropzone-desc">
-                Drag a consumable or loot item from a character sheet, the item directory, or a compendium pack to configure its sustenance, spoilage, and diet properties.
+                Drag a consumable, loot, or container item from a character sheet, the item directory, or a compendium pack to configure its sustenance, spoilage, or cold storage properties.
             </p>
             {{#if auditorCount}}
             <button type="button" class="respite-btn respite-btn--ghost" data-action="switchTab" data-tab="auditor" style="margin-top: 0.5rem;">
@@ -155,6 +188,7 @@
                     <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="water">Water</button>
                     <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="ingredient">Ingredients</button>
                     <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="fuel">Fuel</button>
+                    <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="container">Containers</button>
                     <button type="button" class="respite-filter-pill" data-action="auditorFilter" data-category="shelf">Shelf-Stable</button>
                 </div>
 

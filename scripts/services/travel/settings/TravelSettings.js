@@ -13,9 +13,7 @@ export function isProfessionsEnabled() {
 }
 
 /**
- * Whether the travel concept is enabled in module config (Use Travel).
- * When off, long rests skip the travel phase entirely. Scouting config
- * and runtime scouting both depend on this.
+ * (Deprecated) Whether the legacy travel phase is enabled.
  * @returns {boolean}
  */
 export function isTravelPhaseUsed() {
@@ -59,7 +57,7 @@ export function isHuntingEnabled() {
  * @returns {{ canForage: boolean, canHunt: boolean }}
  */
 export function getTravelGatherAvailability(terrainActivities) {
-    const allowed = terrainActivities ?? ["forage", "hunt", "scout"];
+    const allowed = terrainActivities ?? ["forage", "hunt"];
     return {
         canForage: allowed.includes("forage") && isForagingEnabled(),
         canHunt: allowed.includes("hunt") && isHuntingEnabled()

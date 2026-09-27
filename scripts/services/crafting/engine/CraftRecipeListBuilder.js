@@ -78,13 +78,14 @@ export function enrichCraftRecipe(recipe, {
         ambitiousOutput: recipe.ambitiousOutput,
         isSelected: !!selectedRecipeId && recipe.id === selectedRecipeId,
         description: recipe.description ?? "",
-        buffPreview: formatBuffPreview(flags?.buff),
+        buffPreview: formatBuffPreview(flags?.buff, actor),
         isPartyMeal: !!flags?.partyMeal,
         isWellFed: !!flags?.wellFed,
         satiates: flags?.satiates ?? [],
         ambitiousName: recipe.ambitiousOutput?.name ?? null,
         ambitiousBuffPreview: formatBuffPreview(
-            recipe.ambitiousOutputFlags?.[MODULE_ID]?.buff ?? flags?.buff
+            recipe.ambitiousOutputFlags?.[MODULE_ID]?.buff ?? flags?.buff,
+            actor
         ),
         lockReason: recipe.reason ?? null,
         ingredientList: (recipe.ingredients ?? []).map(ing => {

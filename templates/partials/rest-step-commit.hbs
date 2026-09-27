@@ -1,0 +1,17 @@
+{{!-- Locked result for one rest step. The picker is gone; the choice stays. --}}
+<div class="rest-step-commit">
+    <div class="sust-section-label">{{kicker}}</div>
+    <div class="rest-night-card sel is-commit">
+        <span class="rest-night-main">
+            <strong>{{title}}</strong>
+            {{#if detail}}<span>{{detail}}</span>{{/if}}
+        </span>
+        {{#unless @root.characterReady}}
+        {{#unless cannotChange}}
+        <button type="button" class="totm-commit-change-btn" data-action="unlockTotmActivity" data-tooltip="Change selected activity">
+            <i class="fas fa-undo-alt" aria-hidden="true"></i> Change
+        </button>
+        {{/unless}}
+        {{/unless}}
+    </div>
+</div>

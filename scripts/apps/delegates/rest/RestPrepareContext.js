@@ -4,29 +4,39 @@ import { DecisionTreeResolver } from "../../../services/events/resolve/DecisionT
 import { countPoolEventsForTerrain } from "../../../services/events/catalog/EventCatalogLoader.js";
 import { resolveNightWatchMode } from "../events/nightWatchMode.js";
 import { resolveDefaultCraftRecipeId } from "../../../services/crafting/engine/CraftCommitSummary.js";
-import { buildCraftRecipeListContext } from "../../../services/crafting/engine/CraftRecipeListBuilder.js";
+import { buildCraftRecipeListContext, CRAFT_PROFESSION_LABELS } from "../../../services/crafting/engine/CraftRecipeListBuilder.js";
+import { MonstrousFeastBridge } from "../../../services/meal/provisions/MonstrousFeastBridge.js";
 import { CampGearScanner } from "../../../services/camp/gear/CampGearScanner.js";
 import { CampfireTokenLinker } from "../../../services/camp/fire/CampfireTokenLinker.js";
 import { hasCampPlaced, hasCampfirePlaced } from "../../../services/camp/props/CompoundCampPlacer.js";
 import { ImageResolver } from "../../../utils/ImageResolver.js";
+import { RestPresentationHelper } from "../../../utils/RestPresentationHelper.js";
+import { RestDockContext } from "../../../utils/RestDockContext.js";
 import {
     WEATHER_TABLE, SKILL_NAMES, COMFORT_RANK, RANK_TO_KEY, ACTIVITY_ICONS, SHELTER_SPELLS,
     getComfortTip, getStationsForTerrain, getActivityAdvisory, buildActivityAssignments,
     applyActivityPortraitAssignments, foldOrphanedAssignmentsOntoOther, isWorkbenchIdentifyUiEnabled
 } from "../../../data/RestConstants.js";
-import { isComfortEnabled, COMFORT_TIERS } from "../../../services/camp/gear/ComfortCalculator.js";
+import { isComfortEnabled, COMFORT_TIERS, boostComfort, pendingFireComfortDelta } from "../../../services/camp/gear/ComfortCalculator.js";
 import { isSimpleStationsMode, requiresMapCampFire } from "../../../services/rest/flow/RestProfileSettings.js";
-import { isScoutingEnabled } from "../../../services/travel/settings/ScoutingSettings.js";
-import { getTravelGatherAvailability } from "../../../services/travel/settings/TravelSettings.js";
+import { isForagingEnabled, isHuntingEnabled } from "../../../services/travel/settings/TravelSettings.js";
 import { buildActivityListItem, buildActivityDetailContext } from "../../crafting/ActivityDetailBuilder.js";
 import { closeStationDialogIfDifferentActor } from "../../camp/StationActivityDialog.js";
 import {
     buildEventPlayerRollContext, buildEventGmRollContext, buildTreePlayerRollContext,
-    buildCampActivityRollContext, buildTravelActivityRollContext, buildCopySpellRollContext
+    buildCampActivityRollContext, buildCopySpellRollContext
 } from "../../../services/ui/rollRequest/RollRequestView.js";
 import { getPartyActors } from "../../../services/party/partyActors.js";
 import * as RestAfkState from "../../../services/rest/session/RestAfkState.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { applyWatchAlertPhrase, presentCombatModifiers } from "../../../services/rest/flow/WatchAlertBenefit.js";
+import { SpoilageClock } from "../../../services/meal/spoilage/SpoilageClock.js";
+import { normalizeBeverageClass, sendoffFromPlaced } from "../../../services/meal/phase/MealOptionBuilder.js";
+import { sustenanceTrayRows } from "../../../services/meal/phase/SustenanceTray.js";
+import { GatherYieldService } from "../../../services/rest/forage/GatherYieldService.js";
+import { activityOfferingsClosed, dailyChoiceStatus, releaseGatherFromActivity } from "../../../services/rest/session/campProgressState.js";
+import { canGmProceedFromActivity, partyFullyReady } from "../../../services/rest/session/activityProceedGate.js";
+import { describeItemMealBuff } from "../../../services/meal/buffs/MealBuffPresets.js";
 
 export class RestPrepareContext {
     constructor(app) {
@@ -97,6 +107,13 @@ export class RestPrepareContext {
                 && game.settings.get(MODULE_ID, "restInterfaceMode") === "stations";
         } catch { /* settings not ready */ }
 
+        const isGrittyLong = (app._restVariant ?? "normal") === "gritty" && currentRestType !== "short";
+        let grittyForcesTotm = false;
+        try {
+            grittyForcesTotm = isGrittyLong
+                && game.settings.get(MODULE_ID, "restInterfaceMode") === "stations";
+        } catch { /* settings not ready */ }
+
         let encountersEnabled = true;
         try {
             encountersEnabled = !!game.settings.get(MODULE_ID, "enableEncounters");
@@ -146,7 +163,7 @@ export class RestPrepareContext {
                 icon: "fas fa-campground",
                 available: tentAvailable,
                 casterNames: tentOwnerNames,
-                hint: tentAvailable ? `Carried by ${tentOwnerNames}. Weather shield. Encounter DC +2.` : "No tent in party inventory.",
+                hint: tentAvailable ? `Carried by ${tentOwnerNames}. Weather shield. Night check -2.` : "No tent in party inventory.",
                 comfortFloor: null,
                 encounterMod: 2,
                 active: !!app._shelterOverrides.tent
@@ -241,7 +258,7 @@ export class RestPrepareContext {
                     }
                 }
                 if (act.outcomes?.success?.effects?.length) {
-                    lines.push(act.outcomes.success.effects.map(e => e.description).join(". "));
+                    lines.push(act.outcomes.success.effects.map(e => applyWatchAlertPhrase(e.description)).join(". "));
                 }
                 if (act.outcomes?.success?.items?.length) {
                     lines.push(act.outcomes.success.items.map(i => {
@@ -274,7 +291,7 @@ export class RestPrepareContext {
                     isDisabled: false,
                     check: act.check ?? null,
                     outcomes: act.outcomes ?? null,
-                    combatModifiers: act.combatModifiers ?? null,
+                    combatModifiers: presentCombatModifiers(act.combatModifiers),
                     followUp: act.followUp ?? null,
                     armorSleepWaiver: act.armorSleepWaiver ?? false,
 
@@ -300,7 +317,7 @@ export class RestPrepareContext {
                     isDisabled: true,
                     isFaded: true,
                     fadedHint: act.fadedHint,
-                    combatModifiers: act.combatModifiers ?? null,
+                    combatModifiers: presentCombatModifiers(act.combatModifiers),
                     followUp: act.followUp ?? null,
                     armorSleepWaiver: act.armorSleepWaiver ?? false
                 };
@@ -412,14 +429,17 @@ export class RestPrepareContext {
             };
         });
 
-        // Early-init: ensure _selectedCharacterId is set before card builders use it.
-        // On first render _selectedCharacterId is null; pick the first owned character.
-        if (!app._selectedCharacterId && partyActors.length > 0) {
+        // The header stays on a character this client may open.
+        // A GM can move through the party. A player stays on a character they own.
+        if (partyActors.length > 0) {
             if (app._isGM) {
-                app._selectedCharacterId = partyActors[0].id;
+                if (!app._selectedCharacterId) app._selectedCharacterId = partyActors[0].id;
             } else {
-                const owned = partyActors.find(a => a.isOwner);
-                app._selectedCharacterId = owned?.id ?? partyActors[0].id;
+                const current = partyActors.find(a => a.id === app._selectedCharacterId);
+                if (!current?.isOwner) {
+                    const owned = partyActors.find(a => a.isOwner);
+                    if (owned) app._selectedCharacterId = owned.id;
+                }
             }
         }
 
@@ -444,11 +464,11 @@ export class RestPrepareContext {
             const actorsToScan = selectedActor ? [selectedActor] : partyActors;
 
             for (const a of actorsToScan) {
-                const { available: avail, faded } = app._activityResolver.getAvailableActivitiesWithFaded(a, restType, resolverOpts);
-                for (const act of [...avail, ...faded]) {
+                const { available: avail, faded, minor = [] } = app._activityResolver.getAvailableActivitiesWithFaded(a, restType, resolverOpts);
+                for (const act of [...avail, ...faded, ...minor]) {
                     if (seenIds.has(act.id)) continue;
                     seenIds.add(act.id);
-                    const isAvail = avail.some(x => x.id === act.id);
+                    const isAvail = avail.some(x => x.id === act.id) || minor.some(x => x.id === act.id);
                     unionTiles.push(buildActivityListItem(act.id, act, a, partyState, isAvail));
                 }
             }
@@ -459,9 +479,17 @@ export class RestPrepareContext {
                 applyActivityPortraitAssignments(tile, assignments[tile.id] ?? []);
             }
 
-            // If the selected character already has a locked activity, downgrade all tiles to faded
-            const charLocked = app._lockedCharacters?.has(app._selectedCharacterId)
-                || (app._isGM && app._gmOverrides?.has(app._selectedCharacterId));
+            // A finished activity or craft closes the activity list. Gather is a
+            // separate choice, so forage and hunt stay available on that step.
+            const showGather = !setupSafeHaven && (isForagingEnabled() || isHuntingEnabled());
+            const currentWorkflowStep = app._selectedWorkflowStep ?? (showGather ? "gather" : "activities");
+            const onGatherStep = currentWorkflowStep === "gather" && showGather;
+            const charLocked = !onGatherStep && (
+                app._lockedCharacters?.has(app._selectedCharacterId)
+                || (app._isGM && app._gmOverrides?.has(app._selectedCharacterId))
+                || app._craftingInProgress?.has(app._selectedCharacterId)
+                || app.hasCompletedCrafting?.(app._selectedCharacterId)
+            );
             if (charLocked) {
                 for (const tile of unionTiles) {
                     tile.available = false;
@@ -476,11 +504,44 @@ export class RestPrepareContext {
             const terrain = app._selectedTerrain ?? app._engine?.terrainTag ?? "forest";
             const terrainStations = getStationsForTerrain(terrain, safeRestSpot);
 
-            // Identify goes to a future tab; deduplicate activities across stations.
+            if (onGatherStep) {
+                releaseGatherFromActivity(app, app._selectedCharacterId);
+                const gatherChoice = app._gatherChoices?.get(app._selectedCharacterId) ?? null;
+                const gatherResult = app._gatherResults?.get(app._selectedCharacterId);
+                const gatherSkipped = app._gatherSkipIds?.has(app._selectedCharacterId);
+                const gatherTiles = ["act_forage", "act_hunt"]
+                    .map(id => tileMap.get(id))
+                    .filter(Boolean)
+                    .map(tile => ({
+                        ...tile,
+                        selected: !gatherSkipped && tile.id === gatherChoice,
+                        hint: gatherResult && tile.id === gatherChoice ? gatherResult.haul : tile.hint
+                    }));
+                gatherTiles.push({
+                    id: "gather_skip",
+                    name: "Skip",
+                    hint: "Remain at camp. No forage or hunt.",
+                    available: true,
+                    selected: !!gatherSkipped,
+                    fadedHint: "",
+                    nonViable: false
+                });
+                return [{
+                    id: "gather_provisions",
+                    label: "Gather Provisions",
+                    icon: "fas fa-seedling",
+                    tiles: gatherTiles
+                }];
+            }
+
+            // Exclude gathering activities (which live in Gather step) and identify (which lives in stepper Examine chip)
+            const EXCLUDE_FROM_ACTIVITIES = new Set(["act_forage", "act_hunt", "act_identify"]);
+
+            // Deduplicate activities across stations.
             const SKIP_STATIONS = new Set(["campfire"]);
-            const IDENTIFY_TAB_IDS = new Set(["act_identify"]);
-            const TOTM_LABELS = { medical_bed: "First Aid" };
-            const TOTM_ORDER = { weapon_rack: 0, workbench: 1, cooking_station: 2, medical_bed: 3, bedroll: 4 };
+            const TOTM_LABELS = { medical_bed: "First Aid", cooking_station: "Cooking", bedroll: "Your Bedroll" };
+            const TOTM_ORDER = { weapon_rack: 0, cooking_station: 1, medical_bed: 2, bedroll: 3, workbench: 4 };
+            const BEDROLL_OWNED = new Set(["act_rest_fully", "act_other", "act_train", "act_pray", "act_tell_tales"]);
             const usedIds = new Set();
 
             const cards = [];
@@ -488,18 +549,20 @@ export class RestPrepareContext {
                 if (SKIP_STATIONS.has(station.id)) continue;
 
                 const tiles = station.activities
-                    .filter(id => !IDENTIFY_TAB_IDS.has(id) && !usedIds.has(id))
+                    .filter(id => !usedIds.has(id) && !EXCLUDE_FROM_ACTIVITIES.has(id))
+                    .filter(id => station.id === "bedroll" || !BEDROLL_OWNED.has(id))
                     .map(id => tileMap.get(id))
                     .filter(Boolean);
 
                 for (const t of tiles) usedIds.add(t.id);
 
                 if (!tiles.length) continue;
+                const chosenId = app._characterChoices?.get(app._selectedCharacterId);
                 cards.push({
                     id: station.id,
                     label: TOTM_LABELS[station.id] ?? station.label,
                     icon: station.icon,
-                    tiles
+                    tiles: tiles.map(tile => ({ ...tile, selected: tile.id === chosenId }))
                 });
             }
             cards.sort((a, b) => (TOTM_ORDER[a.id] ?? 99) - (TOTM_ORDER[b.id] ?? 99));
@@ -510,6 +573,11 @@ export class RestPrepareContext {
         const totmDetailPanel = (() => {
             if (app._phase !== "activity") return null;
             if (!app._isTotM) return null;
+            // An open activity belongs to the Activities tab. Other tabs show their own screen.
+            const workflowStep = app._selectedWorkflowStep;
+            if (workflowStep === "gather" || workflowStep === "sustenance" || workflowStep === "examine") {
+                return null;
+            }
 
             let expanded = app._totmFollowUpExpanded;
             const selectedId = app._selectedCharacterId;
@@ -526,87 +594,51 @@ export class RestPrepareContext {
             const expandActor = game.actors.get(expanded.characterId);
             if (!expandActor) return null;
 
-            // so the template can reuse the station split-panel markup verbatim (no split-brain).
+            if (expanded.isIdentify || expanded.activityId === "act_identify" || expanded.activityId === "identify") {
+                return {
+                    id: expanded.activityId,
+                    name: "Examine & Identify",
+                    icon: "fas fa-search",
+                    actorName: expandActor.name,
+                    actorPortrait: expandActor.img ?? expandActor.prototypeToken?.texture?.src ?? "icons/svg/mystery-man.svg",
+                    isIdentify: true
+                };
+            }
+
             if (expanded.isCrafting) {
-                const professionId = expanded.profession;
-                const engine = app._craftingEngine;
-                const terrainTag = app._engine?.terrainTag ?? app._restData?.terrainTag ?? null;
-                const risk = app._totmCraftRisk ?? "standard";
-                const partySize = getPartyActors().length;
+                const professionId = expanded.profession ?? "cooking";
+                const characterId = expanded.characterId;
+                const craftResult = app._craftingResults?.get(characterId) ?? app._totmCraftResult ?? null;
+                const hasCrafted = !!craftResult || !!app._totmCraftHasCrafted || (app._grantLedger?.hasCraftingForActor(characterId, professionId) ?? false);
+                const mfCookbookAvailable = professionId === "cooking" && !hasCrafted && MonstrousFeastBridge.ownsCooking();
+                const professionLabel = CRAFT_PROFESSION_LABELS[professionId] ?? (professionId === "cooking" ? "Cooking" : professionId);
 
-                // still-valid prior selection; falls back to the first available recipe.
-                if (!app._totmCraftHasCrafted) {
-                    app._totmCraftRecipeId = resolveDefaultCraftRecipeId({
-                        engine,
-                        actor: expandActor,
-                        profession: professionId,
-                        terrainTag,
-                        partySize,
-                        currentId: app._totmCraftRecipeId,
-                        hasCrafted: false
-                    });
-                }
-
-                const list = buildCraftRecipeListContext({
-                    engine,
-                    actor: expandActor,
-                    professionId,
-                    risk,
-                    terrainTag,
-                    partySize,
-                    selectedRecipeId: app._totmCraftRecipeId,
-                    hasCrafted: !!app._totmCraftHasCrafted
-                });
-                const {
-                    available,
-                    missing,
-                    partial,
-                    selectedRecipe,
-                    commitSummary,
-                    noAvailableRecipes,
-                    isAmbitiousSelected
-                } = list;
+                const craftActivity = app._activityResolver?.activities?.get(expanded.activityId)
+                    ?? { armorSleepWaiver: false };
+                const armorWarning = app.getArmorWarningForActivityDetail?.(expandActor, craftActivity) ?? null;
 
                 return {
                     isCrafting: true,
-                    name: list.profession,
-                    icon: "fas fa-hammer",
+                    characterId,
+                    professionId,
+                    name: professionLabel,
+                    armorWarning,
+                    icon: professionId === "cooking" ? "fas fa-utensils" : "fas fa-hammer",
                     actorName: expandActor.name,
                     actorPortrait: expandActor.img ?? expandActor.prototypeToken?.texture?.src ?? "icons/svg/mystery-man.svg",
-                    // Station-compatible `crafting` sub-object (same shape as StationActivityDialog)
-                    crafting: {
-                        profession: list.profession,
-                        professionId,
-                        actorName: expandActor.name,
-                        actorImg: expandActor.img,
-                        selectedRisk: risk,
-                        selectedRecipeId: app._totmCraftRecipeId,
-                        hasCrafted: !!app._totmCraftHasCrafted,
-                        rollPending: !!app._totmCraftRollPending,
-                        showMissing: !!app._totmCraftShowMissing,
-                        riskTiers: [
-                            { id: "standard", label: "Standard", hint: "Base DC · Ingredients used", selected: risk === "standard" },
-                            { id: "ambitious", label: "Ambitious", hint: "DC +5 · Better yield", selected: risk === "ambitious" }
-                        ],
-                        available,
-                        missing,
-                        partial,
-                        noAvailableRecipes,
-                        selectedRecipe: selectedRecipe ?? null,
-                        isAmbitiousSelected,
-                        commitSummary,
-                        craftingResult: app._totmCraftResult ? {
-                            ...app._totmCraftResult,
-                            isPartyMeal: !!(selectedRecipe?.isPartyMeal ?? false),
-                            partyMealDispositionDone: !!app._totmFeastServed,
-                            partyRoster: getPartyActors().map(a => ({
-                                id: a.id,
-                                name: a.name,
-                                img: a.img || "icons/svg/mystery-man.svg",
-                                alreadyWellFed: a.effects?.some(e => e.flags?.[MODULE_ID]?.wellFed === true) ?? false
-                            }))
-                        } : null
-                    }
+                    hasCrafted,
+                    mfCookbookAvailable,
+                    craftingResult: craftResult ? {
+                        ...craftResult,
+                        isPartyMeal: !!(craftResult.outputFlags?.[MODULE_ID]?.partyMeal ?? craftResult.isPartyMeal),
+                        partyMealDispositionDone: !!app._totmFeastServed || !!craftResult.partyMealDispositionDone,
+                        partyRoster: getPartyActors().map(a => ({
+                            id: a.id,
+                            name: a.name,
+                            img: a.img || "icons/svg/mystery-man.svg",
+                            alreadyWellFed: a.effects?.some(e => e.flags?.[MODULE_ID]?.wellFed === true) ?? false
+                        }))
+                    } : null
                 };
             }
 
@@ -647,6 +679,9 @@ export class RestPrepareContext {
         const heroCharacters = app._isGM
             ? characterStatuses
             : characterStatuses.filter(c => c.isOwner);
+        if (!app._selectedCharacterId && heroCharacters.length) {
+            app._selectedCharacterId = heroCharacters[0].id;
+        }
         const partyCharacters = app._isGM
             ? []
             : characterStatuses.filter(c => !c.isOwner);
@@ -747,19 +782,6 @@ export class RestPrepareContext {
             if (actId) {
                 const act = app._activities?.find(a => a.id === actId);
                 activityLabel = act?.name ?? null;
-            }
-
-            // Travel phase: surface the travel declaration as the activity label
-            if (!activityLabel && app._phase === "travel") {
-                const activeDay = app._travelActiveDay ?? 1;
-                const decl = app._isGM
-                    ? (app._travel?.getDayDeclarations?.(activeDay)?.[c.id] ?? "nothing")
-                    : (app._playerTravelDeclarations?.[activeDay]?.[c.id]
-                        ?? app._syncedTravelDeclarations?.[activeDay]?.[c.id]
-                        ?? app._syncedTravelDeclarations?.[c.id]
-                        ?? "nothing");
-                const TRAVEL_LABELS = { forage: "Forage", hunt: "Hunt", scout: "Scout" };
-                activityLabel = TRAVEL_LABELS[decl] ?? null;
             }
 
             const isBeddedDown = (app._phase === "events" || app._phase === "reflection")
@@ -889,10 +911,12 @@ export class RestPrepareContext {
             for (const o of scopedOutcomes) {
                 for (const sub of (o.outcomes ?? [])) {
                     if (sub.source === "activity" && sub.activityId) {
-                        const act = app._activityResolver?.activities?.get(sub.activityId);
+                        const actId = sub.activityId === "act_set_defenses" ? "act_defenses" : sub.activityId;
+                        const act = app._activityResolver?.activities?.get(actId);
+                        const humanName = act?.name ?? actId.replace(/^act_/, "").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
                         activitySummary.push({
                             name: o.characterName,
-                            activityName: act?.name ?? sub.activityId ?? "Activity",
+                            activityName: humanName,
                             result: sub.result ?? "success"
                         });
                     }
@@ -932,9 +956,75 @@ export class RestPrepareContext {
             ? app._outcomes
             : (app._outcomes ?? []).filter(o => app._myCharacterIds?.has(o.characterId));
 
-        // (positive) cluster and a Setbacks (negative) cluster so the report card no
-        // longer interlaces pass/fail badges. Verdicts carry the activity/event name
-        // so a "Failed" badge reads in context.
+        // Resolution Phase: Build streamlined Dawn Cards
+        const dawnCards = app._phase === "resolve" ? (personalOutcomes ?? []).map(o => {
+            const actor = game.actors?.get(o.characterId);
+            const recovery = o.recovery ?? {};
+
+            let hpAtMax = false;
+            let hdAtMax = false;
+            if (actor) {
+                const hp = actor.system?.attributes?.hp;
+                if (hp) hpAtMax = (hp.value ?? 0) >= (hp.max ?? 1);
+                const classes = actor.items?.filter(i => i.type === "class") ?? [];
+                const totalHdSpent = classes.reduce((sum, cls) => {
+                    return sum + (cls.system?.hd?.spent ?? cls.system?.hitDiceUsed ?? 0);
+                }, 0);
+                hdAtMax = totalHdSpent <= 0;
+            }
+
+            const hpRestored = recovery.hpRestored ?? 0;
+            const hdRestored = recovery.hdRestored ?? 0;
+            const hpLabel = hpAtMax ? "Max HP" : (hpRestored > 0 ? `+${hpRestored} HP` : "0 HP");
+            const hdLabel = hdAtMax ? "Max HD" : (hdRestored > 0 ? `+${hdRestored} HD` : "0 HD");
+            const hasBedroll = !!recovery.gearBonuses?.hd;
+
+            // Activity
+            const actSub = (o.outcomes ?? []).find(s => s.source === "activity");
+            let activityLabel = "Rested";
+            let activityIcon = "fas fa-bed";
+            let activitySuccess = true;
+            if (actSub?.activityId) {
+                const actId = actSub.activityId === "act_set_defenses" ? "act_defenses" : actSub.activityId;
+                const act = app._activityResolver?.activities?.get(actId);
+                activityLabel = act?.name ?? actId.replace(/^act_/, "").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+                activitySuccess = actSub.result !== "failure" && actSub.result !== "failure_complication";
+                if (actId.includes("watch")) activityIcon = "fas fa-eye";
+                else if (actId.includes("cook")) activityIcon = "fas fa-utensils";
+                else if (actId.includes("defenses")) activityIcon = "fas fa-shield-alt";
+                else if (actId.includes("forage") || actId.includes("gather")) activityIcon = "fas fa-seedling";
+                else if (actId.includes("craft") || actId.includes("fletch")) activityIcon = "fas fa-hammer";
+            }
+
+            const exhaustionDelta = recovery.exhaustionDelta ?? 0;
+            const exhaustionDC = recovery.exhaustionDC ?? null;
+            const savePassed = !!exhaustionDC && recovery.exhaustionSaveResult === "passed";
+            const saveFailed = !!exhaustionDC && recovery.exhaustionSaveResult === "failed";
+            const eventDamage = recovery.eventDamage ?? 0;
+            const eventDisrupted = !!o.eventDisrupted;
+            const hasSetback = exhaustionDelta > 0 || saveFailed || eventDamage > 0 || eventDisrupted;
+
+            return {
+                characterId: o.characterId,
+                name: actor?.name ?? o.characterName,
+                img: actor?.img ?? "icons/svg/mystery-man.svg",
+                hpLabel,
+                hdLabel,
+                hpAtMax,
+                hdAtMax,
+                hasBedroll,
+                activityLabel,
+                activityIcon,
+                activitySuccess,
+                exhaustionDelta,
+                exhaustionDC,
+                savePassed,
+                saveFailed,
+                eventDamage,
+                hasSetback
+            };
+        }) : [];
+
         const resolutionCards = app._phase === "resolve"
             ? app._buildResolutionCards(personalOutcomes ?? [])
             : [];
@@ -947,8 +1037,7 @@ export class RestPrepareContext {
         let campFireGateLevel = false;
         let campColdCampDecided = false;
         let campComfortIsHostile = false;
-        const _needsFireData = app._phase === "camp"
-            || (app._phase === "activity" && app._isTotM && app._totmFireTabVisible());
+        const _needsFireData = app._phase === "camp" || app._phase === "activity" || app._phase === "meal";
         if (_needsFireData) {
             const terrainTagCamp = app._selectedTerrain ?? app._engine?.terrainTag ?? "forest";
             const terrainCamp = TerrainRegistry.get(terrainTagCamp);
@@ -1156,25 +1245,54 @@ export class RestPrepareContext {
         if (campScanData) {
             campComfortIsHostile = (campScanData.campComfort ?? "rough") === "hostile";
         }
+        if (!app._selectedCharacterId && campScanData?.personalCards?.length) {
+            const viewerActor = getPartyActors().find(a => a.isOwner && !game.user?.isGM);
+            app._selectedCharacterId = viewerActor?.id ?? campScanData.personalCards[0].actorId;
+        }
 
         const campPersonalSelected = campScanData && app._selectedCharacterId
             ? (campScanData.personalCards.find(p => p.actorId === app._selectedCharacterId) ?? null)
             : null;
-        const campfirePlaced = app._phase === "camp" && hasCampfirePlaced();
+        if (campPersonalSelected) {
+            const bulletTip = (title, lines) => {
+                const filtered = lines.filter(Boolean);
+                if (!filtered.length) return title;
+                return `<strong>${title}</strong><ul style='margin:4px 0 0 16px;padding:0;'>${filtered.map(l => `<li>${l}</li>`).join("")}</ul>`;
+            };
+            campPersonalSelected.bedrollTooltip = campPersonalSelected.hasBedroll
+                ? bulletTip(campPersonalSelected.bedrollWaived ? "Bedroll (Waived)" : "Bedroll", ["+1 personal comfort", "Protects Hit Dice", campPersonalSelected.bedrollWaived ? "Factor waived by GM" : "Clears the exhaustion save"])
+                : bulletTip("No bedroll", ["Resting at the camp's comfort"]);
+            campPersonalSelected.tentTooltip = campPersonalSelected.hasTent
+                ? bulletTip(campPersonalSelected.tentWaived ? "Tent (Waived)" : "Tent", ["Shields weather penalties", "Lowers encounter risk", ...(campPersonalSelected.tentWaived ? ["Factor waived by GM"] : [])])
+                : bulletTip("No tent", ["Exposed to the weather"]);
+            campPersonalSelected.messKitTooltip = campPersonalSelected.hasMessKit
+                ? bulletTip(campPersonalSelected.messKitWaived ? "Mess kit (Waived)" : "Mess kit", ["Advantage on exhaustion saves", ...(campPersonalSelected.messKitWaived ? ["Factor waived by GM"] : [])])
+                : "No mess kit. Exhaustion saves are normal.";
+            campPersonalSelected.recoveryTooltip = bulletTip("Recovery", [
+                campPersonalSelected.recovery?.hdLabel,
+                campPersonalSelected.recovery?.exhaustionDC
+                    ? `Constitution save DC ${campPersonalSelected.recovery.exhaustionDC}, or exhaustion`
+                    : "No exhaustion risk"
+            ]);
+        }
+        const campfirePlaced = ["camp", "activity", "meal"].includes(app._phase) && hasCampfirePlaced();
 
         const campfireDragCard = (() => {
-            if (app._phase !== "camp" || safeRestSpot || !app._isGM) return { show: false };
+            if (!["camp", "activity", "meal"].includes(app._phase) || safeRestSpot || !app._isGM) return { show: false };
             const placed = campfirePlaced;
             if (app._isTotM) {
                 const hint = placed
-                    ? "On the map for this rest. Removed when the rest ends."
-                    : "Optional. Drag onto the scene for a visual campfire.";
+                    ? "On the map for this rest."
+                    : "Optional. Drag onto the map.";
                 const shortLabel = placed
-                    ? (app._isGM ? "Move fire" : "On map")
-                    : "Campfire";
+                    ? (app._isGM ? "Remove fire" : "On map")
+                    : "Place on map";
                 const tooltip = placed && app._isGM
-                    ? "Click to pick a new map spot."
-                    : hint;
+                    ? "Click to take the campfire off the map."
+                    : "Drag onto the map. One campfire. Click the button again to take it off.";
+                const ariaLabel = placed && app._isGM
+                    ? "Remove campfire from the map"
+                    : "Drag campfire onto the map";
                 return {
                     show: true,
                     placed,
@@ -1183,7 +1301,8 @@ export class RestPrepareContext {
                     canReclaim: app._isGM && placed,
                     hint,
                     shortLabel,
-                    tooltip
+                    tooltip,
+                    ariaLabel
                 };
             }
             if (!isComfortEnabled()) return { show: false };
@@ -1198,6 +1317,9 @@ export class RestPrepareContext {
             const tooltip = placed && app._isGM
                 ? "Click to pick a new map spot. Station markers move with the campfire."
                 : hint;
+            const ariaLabel = placed && app._isGM
+                ? "Pick up campfire to place elsewhere"
+                : (app._isGM ? "Place campfire on the map (click or drag)" : "Campfire");
             return {
                 show: true,
                 placed,
@@ -1207,11 +1329,12 @@ export class RestPrepareContext {
                 placementClick: app._isGM && !placed,
                 hint,
                 shortLabel,
-                tooltip
+                tooltip,
+                ariaLabel
             };
         })();
 
-        const campfireCanMove = app._phase === "camp"
+        const campfireCanMove = (app._phase === "camp" || app._phase === "activity")
             && app._usesStationsMinimalCampShell()
             && app._isGM
             && campfirePlaced;
@@ -1259,28 +1382,21 @@ export class RestPrepareContext {
             && _isLongOrGrittyShort
             && ((_mealStepRules.waterPerDay > 0) || (_mealStepRules.foodPerDay > 0));
 
-        // Stepper pips: only show phases that actually run this rest, so the dot
-        // count and labels match the real flow. Travel is long-rest + professions
-        // only (mirrors the skip in #beginRest). Events are skipped on standard
-        // short rests and safe rest spots (mirrors _advanceToEvents).
-        // Gritty short rests include events (overnight camp).
-        const _stepRestType = app._selectedRestType ?? "long";
-        let _enableProfessions = false;
-        try { _enableProfessions = !!game.settings.get(MODULE_ID, "enableProfessions"); } catch (e) { /* */ }
-        let _useTravel = true;
-        try { _useTravel = !!game.settings.get(MODULE_ID, "useTravel"); } catch (e) { /* */ }
-        const _includeTravelStep = _stepRestType === "long" && _enableProfessions && _useTravel;
+        // Header pips are the rest itself. Gather, Activities, Sustenance, and
+        // Examine are tabs inside Camp, not their own stages. Night drops out
+        // at a safe spot (Setup, Camp). Wilderness adds Night, then Dawn for
+        // the exhaustion saves. Completing dawn posts the chat card and closes.
         const _includeEventsStep = _isLongOrGrittyShort && !setupSafeHaven;
+        const _headerPhase = (app._phase === "meal" || app._phase === "camp") ? "activity"
+            : (app._phase === "resolve" ? "dawn" : app._phase);
         const _phaseStepDefs = [
             { key: "setup", label: "Setup", include: true },
-            { key: "travel", label: "Travel", include: _includeTravelStep },
-            { key: "camp", label: "Make Camp", include: true },
-            { key: "activity", label: "Activities", include: true },
-            { key: "meal", label: "Meal", include: showMealStep },
-            { key: "events", label: "Events", include: _includeEventsStep },
-            { key: "resolve", label: "Resolution", include: true }
+            { key: "activity", label: "Camp", include: true },
+            { key: "supper", label: "Meal", include: app._phase === "supper" },
+            { key: "events", label: "Night", include: _includeEventsStep },
+            { key: "dawn", label: "Dawn", include: _includeEventsStep }
         ].filter(s => s.include);
-        const _currentStepIndex = _phaseStepDefs.findIndex(s => s.key === app._phase);
+        const _currentStepIndex = _phaseStepDefs.findIndex(s => s.key === _headerPhase);
         const phaseSteps = _phaseStepDefs.map((s, i) => ({
             key: s.key,
             label: s.label,
@@ -1293,10 +1409,31 @@ export class RestPrepareContext {
         // never promises a Rations stage that this configuration skips.
         const _activityNextStep = showMealStep ? "meal" : (_includeEventsStep ? "events" : "resolve");
         const activityProceed = ({
-            meal:    { label: "Proceed to Rations", icon: "fas fa-arrow-right" },
+            meal:    { label: "Proceed to Sustenance", icon: "fas fa-arrow-right" },
             events:  { label: "Proceed to Events", icon: "fas fa-moon" },
-            resolve: { label: "Proceed to Resolution", icon: "fas fa-arrow-right" }
+            resolve: { label: "Break Camp", icon: "fas fa-campground" }
         })[_activityNextStep];
+
+        // Whether meal context data should be built this render pass.
+        // True when the real phase is "meal" OR the stepper is previewing sustenance.
+        const _resolvedWorkflowStep = (app._phase === "meal")
+            ? "sustenance"
+            : (app._phase === "activity" || app._phase === "camp")
+                ? (app._selectedWorkflowStep ?? (!setupSafeHaven && (isForagingEnabled() || isHuntingEnabled()) ? "gather" : "activities"))
+                : null;
+        const showMealContent = app._phase === "meal"
+            || (app._phase === "activity" && _resolvedWorkflowStep === "sustenance");
+        const showIdentifyContent = _resolvedWorkflowStep === "examine"
+            || Boolean(
+                app._totmFollowUpExpanded?.isIdentify
+                || app._totmFollowUpExpanded?.activityId === "act_identify"
+                || app._totmFollowUpExpanded?.activityId === "identify"
+            );
+        const activityProceedView = ((app._restVariant ?? "normal") !== "gritty"
+            && ["activity", "meal"].includes(app._phase)
+            && _activityNextStep !== "resolve")
+            ? { label: "Proceed to Night", icon: "fas fa-moon" }
+            : activityProceed;
 
         // Setup-screen summary of the settings that reshape this rest, so global
         // toggles read as local context instead of silently changing the flow.
@@ -1327,6 +1464,35 @@ export class RestPrepareContext {
             })()
             : [];
 
+        const campConditionsBar = app._buildCampConditionsBar(campScanData, { safeRestSpot, encountersEnabled });
+        const currentCampComfort = campConditionsBar?.campComfort ?? null;
+        const campComfortFlashing = app._lastTrackedCampComfort !== undefined && app._lastTrackedCampComfort !== currentCampComfort;
+        app._lastTrackedCampComfort = currentCampComfort;
+        if (campConditionsBar) campConditionsBar.flashing = campComfortFlashing;
+
+        const currentPersonalComfort = campPersonalSelected?.personalComfort ?? null;
+        if (!(app._personalComfortMemory instanceof Map)) app._personalComfortMemory = new Map();
+        const personalComfortFlashing = RestDockContext.noteComfortFlash(
+            app._personalComfortMemory,
+            campPersonalSelected?.actorId ?? app._selectedCharacterId ?? null,
+            currentPersonalComfort
+        );
+        if (campPersonalSelected) campPersonalSelected.flashing = personalComfortFlashing;
+
+        const activityPartyIds = partyActors.map(actor => actor?.id).filter(Boolean);
+        const activityFinishedIds = app._finishedActorIds ?? new Set();
+        const cardHoldsProceed = phaseProceedHeld(
+            app, _resolvedWorkflowStep, totmDetailPanel, showMealContent, showIdentifyContent, totmStationCards
+        );
+        const partyReadyForNight = partyFullyReady(activityPartyIds, activityFinishedIds);
+        const activityProceedEnabled = canGmProceedFromActivity({
+            allResolved,
+            cardHoldsProceed,
+            partyIds: activityPartyIds,
+            finishedIds: activityFinishedIds
+        });
+        const holdPhaseProceed = cardHoldsProceed && !partyReadyForNight;
+
         return {
             isGM: app._isGM,
             isTheaterMode: app._isTotM,
@@ -1338,7 +1504,18 @@ export class RestPrepareContext {
             showMealStep,
             phaseSteps,
             phaseLabel,
-            activityProceed,
+            ...RestPresentationHelper.resolveRestHeaderContext({
+                type: (app._restVariant ?? "normal") === "gritty" ? "downtime" : "long",
+                terrainTag: app._selectedTerrain ?? app._engine?.terrainTag ?? "forest",
+                terrainLabel: app._terrainLabel ?? "Forest",
+                phase: app._phase,
+                phaseLabel,
+                phaseSteps,
+                abandonAction: "abandonRest",
+                isGM: app._isGM,
+                eventsCommitPending: Boolean(app._eventsCommitPending)
+            }),
+            activityProceed: activityProceedView,
             restConfigBadges,
             totmActiveTab: app._totmActiveTab,
             showTotmCampfirePanel: app._shouldShowTotmCampfirePanel(),
@@ -1355,7 +1532,7 @@ export class RestPrepareContext {
                 const act = actId ? app._activityResolver?.activities?.get(actId) : null;
                 return act?.name ?? actId ?? "an activity";
             })(),
-            ...(app._isTotM && app._phase === "activity" && app._totmActiveTab === "identify" && isWorkbenchIdentifyUiEnabled() ? (() => {
+            ...(app._isTotM && app._phase === "activity" && (_resolvedWorkflowStep === "examine" || app._totmActiveTab === "identify" || app._totmFollowUpExpanded?.isIdentify || app._totmFollowUpExpanded?.activityId === "act_identify" || app._totmFollowUpExpanded?.activityId === "identify") && isWorkbenchIdentifyUiEnabled() ? (() => {
                 const rosterSelected = app._selectedCharacterId || getPartyActors()[0]?.id || null;
                 return app._workbench.buildEmbedContext(rosterSelected, getPartyActors);
             })() : {}),
@@ -1378,7 +1555,6 @@ export class RestPrepareContext {
             trackFood: trackFoodSetting,
             restVariant: app._restVariant ?? "normal",
             isGrittyRealism: (app._restVariant ?? "normal") === "gritty",
-            showDaysStepper: !!trackFoodSetting || (app._restVariant ?? "normal") === "gritty",
             setupAdvancedOpen: !!app._setupAdvancedOpen,
             gmCopySpellProposal: app._gmCopySpellProposal ?? null,
             copySpellRollPrompt: app._copySpellRollPrompt ?? null,
@@ -1386,193 +1562,7 @@ export class RestPrepareContext {
             phase: app._phase,
             postStationChoiceReview: !app._isGM && app._phase === "activity" && !!app._postStationChoiceReview,
             activitySubTab: null,
-            travelContext: (() => {
-                if (app._phase !== "travel") return null;
-                const terrainTag = app._selectedTerrain ?? app._engine?.terrainTag ?? "forest";
-                if (app._isGM) {
-                    return app._travel.buildContext(partyActors, terrainTag);
-                }
-                // Player-side context: multi-day aware
-                const terrain = TerrainRegistry.get(terrainTag);
-                const allowed = terrain?.travelActivities ?? ["forage", "hunt", "scout"];
-                const syncedGather = app._syncedTravelGather;
-                const { canForage, canHunt } = syncedGather
-                    ? { canForage: !!syncedGather.canForage, canHunt: !!syncedGather.canHunt }
-                    : getTravelGatherAvailability(terrain?.travelActivities);
-                const scoutAllowed = isScoutingEnabled() && (app._travelScoutingAllowed ?? true);
-                const canScout = syncedGather?.canScout != null
-                    ? !!syncedGather.canScout
-                    : (!safeRestSpot && allowed.includes("scout") && scoutAllowed);
-                const hasTravelOptions = canForage || canHunt || canScout;
-                let disabledReason = null;
-                if (!canForage && !canHunt) {
-                    const label = terrain?.label ?? terrainTag;
-                    if (terrainTag === "tavern") {
-                        disabledReason = `No need to forage or hunt at a ${label}. Supplies are available for purchase.`;
-                    } else if (terrainTag === "dungeon") {
-                        disabledReason = `Foraging and hunting are not possible in a ${label}. The party must rely on supplies.`;
-                    } else if (terrainTag === "urban") {
-                        disabledReason = `Foraging and hunting are not available in an ${label} environment. Markets and shops serve that need.`;
-                    } else {
-                        disabledReason = `Foraging and hunting are not available in ${label}.`;
-                    }
-                }
-                const totalDays = app._travelTotalDays ?? 1;
-                const activeDay = app._travelActiveDay ?? 1;
-                const localDecl = app._playerTravelDeclarations ?? {};
-                const syncedDecl = app._syncedTravelDeclarations ?? {};
-
-                const buildChars = (day) => {
-                    const dayLocal = localDecl[day] ?? {};
-                    const daySynced = syncedDecl[day] ?? syncedDecl; // fallback flat for compat
-                    const chars = partyActors.map(a => {
-                        const decl = a.isOwner
-                            ? (dayLocal[a.id] ?? daySynced[a.id] ?? "nothing")
-                            : (daySynced[a.id] ?? "nothing");
-                        const lastAct = a.getFlag?.("ionrift-respite", "lastTravelActivity") ?? null;
-                        const lastLabel = lastAct === "forage" ? "Forage"
-                            : lastAct === "hunt" ? "Hunt"
-                            : lastAct === "scout" ? "Scout" : null;
-                        const confirmed = a.isOwner
-                            ? !!(app._playerTravelConfirmed?.[day]?.[a.id]
-                                || daySynced._confirmed?.[a.id])
-                            : !!(syncedDecl[day]?._confirmed?.[a.id] ?? daySynced._confirmed?.[a.id]);
-                        const rolled = !!(app._playerTravelRolled?.[day]?.[a.id]
-                            || app._syncedTravelRolled?.[day]?.[a.id]
-                            || app._syncedTravelResolved?.[day]?.[a.id]);
-                        const awaitingLootInfo = app._playerTravelAwaitingLoot?.[day]?.[a.id]
-                            ?? app._syncedTravelAwaitingLoot?.[day]?.[a.id];
-                        const awaitingLoot = !!awaitingLootInfo;
-                        const lootDraws = awaitingLootInfo?.lootDraws ?? 1;
-                        const forageDC = app._travelForageDC ?? 12;
-                        const huntDC = app._travelHuntDC ?? 14;
-                        return {
-                            id: a.id,
-                            name: a.name,
-                            img: a.img ?? "icons/svg/mystery-man.svg",
-                            isOwner: a.isOwner,
-                            confirmed,
-                            rolled,
-                            awaitingLoot,
-                            lootDraws,
-                            lastActivity: lastLabel,
-                            showLastHint: !!(lastLabel && lastAct !== decl),
-                            survivalMod: (() => {
-                                const _adapter = game.ionrift?.respite?.adapter;
-                                const sur = _adapter ? _adapter.getSkillTotal(a, "sur") : (a.system?.skills?.sur?.total ?? 0);
-                                const nat = _adapter ? _adapter.getSkillTotal(a, "nat") : (a.system?.skills?.nat?.total ?? 0);
-                                const best = Math.max(sur, nat);
-                                return (best >= 0 ? "+" : "") + best;
-                            })(),
-                            declaration: decl,
-                            declarationIcon: decl === "forage" ? "fa-seedling"
-                                : decl === "hunt" ? "fa-crosshairs"
-                                : decl === "scout" ? "fa-binoculars" : null,
-                            declarationLabel: decl === "forage" ? "Forage"
-                                : decl === "hunt" ? "Hunt"
-                                : decl === "scout" ? "Scout" : null,
-                            activityFlavor: decl === "forage"
-                                ? `Search for edible plants and fungi along the route. A strong roll yields exceptional finds. Survival, DC ${forageDC}.`
-                                : decl === "hunt"
-                                ? `Track and bring down game while travelling. Harder than foraging, but a good result means more food for the party. Survival, DC ${huntDC}.`
-                                : decl === "scout"
-                                ? `Survey the terrain on arrival to find a good campsite. Better scouting improves camp comfort and reduces the chance of a night encounter.`
-                                : `Travel without a specific task. Tend wounds, keep watch, or handle personal business. Let the GM know what you're up to.`
-                        };
-                    });
-                    chars.sort((a, b) => (b.isOwner ? 1 : 0) - (a.isOwner ? 1 : 0));
-                    return chars;
-                };
-
-                const days = [];
-                for (let d = 1; d <= totalDays; d++) {
-                    const isFinalDay = d === totalDays;
-                    const chars = buildChars(d);
-                    const owned = chars.filter(c => c.isOwner);
-                    days.push({
-                        day: d,
-                        label: totalDays === 1 ? null : `Day ${d}`,
-                        isFinalDay,
-                        canScout: isFinalDay && canScout,
-                        isActive: d === activeDay,
-                        characters: chars,
-                        playerDone: owned.length > 0 && owned.every(c => c.confirmed || (c.rolled && !c.awaitingLoot))
-                    });
-                }
-
-                const forageGate = app._travel?.getForageGate?.(terrainTag)
-                    ?? { disabled: true, disabledReasonKey: "ionrift-respite.travel.forage.requires_pack" };
-                const forageDisabled = canForage && forageGate.disabled;
-                const forageDisabledReasonKey = forageDisabled ? forageGate.disabledReasonKey : null;
-
-                // so the travel phase can use {{> rosterStrip}} like every other phase.
-                const activeChars = (days.find(d => d.isActive)?.characters ?? []);
-                const travelPeerRoster = activeChars
-                    .filter(c => !c.isOwner)
-                    .map(c => ({
-                        id: c.id,
-                        name: c.name.split(" ")[0],
-                        fullName: c.name,
-                        img: c.img ?? "icons/svg/mystery-man.svg",
-                        source: c.confirmed ? "player" : "pending",
-                        isOwner: false,
-                        isSelected: false,
-                        isAfk: false,
-                        isBeddedDown: false,
-                        exhaustion: null,
-                        pendingRoll: false,
-                        rolledResult: c.rolled ? "done" : null,
-                        // Show declaration as the activity label (Forage, Hunt, Scout, or null for Other)
-                        activityLabel: c.declarationLabel ?? null,
-                        mealStatus: null
-                    }));
-
-                return {
-                    days,
-                    totalDays,
-                    isMultiDay: totalDays > 1,
-                    activeDay,
-                    canForage, canHunt, canScout, hasTravelOptions,
-                    travelSkipRecommended: !canForage && !canHunt,
-                    disabledReason,
-                    terrainTag,
-                    terrainLabel: terrain?.label ?? terrainTag,
-                    hasOwnedCharacters: partyActors.some(a => a.isOwner),
-                    forageDC: app._travelForageDC ?? 12,
-                    huntDC: app._travelHuntDC ?? 14,
-                    forageDisabled,
-                    forageDisabledReasonKey,
-                    forageDisabledTooltip: forageDisabledReasonKey
-                        ? game.i18n.localize(forageDisabledReasonKey)
-                        : null,
-                    travelPeerRoster
-                };
-            })(),
-            pendingTravelRoll: app._pendingTravelRoll ? (() => {
-                const activities = (app._pendingTravelRoll.activities ?? []).map(a => {
-                    const actor = game.actors.get(a.actorId);
-                    const isOwner = actor?.isOwner ?? false;
-                    const rolled = app._pendingTravelRoll.rolledCharacters?.has(a.actorId) ?? false;
-                    const enriched = { ...a, isOwner, rolled, actorName: actor?.name ?? a.actorId, activityLabel: a.activityLabel ?? a.activity };
-                    return {
-                        ...enriched,
-                        rollRequest: buildTravelActivityRollContext(enriched, app._pendingTravelRoll.rolledCharacters)
-                    };
-                });
-                return { activities };
-            })() : null,
-            travelDebrief: app._travelDebrief?.length ? app._travelDebrief : null,
-            travelFullyResolved: app._travelFullyResolved ?? false,
-            travelScoutingDone: app._travelScoutingDone ?? false,
-            scoutingDebrief: app._isGM ? (() => {
-                if (app._travel?.isEffectiveSafeRestSpot?.()) return null;
-                if (app._travel?.scoutingResult) {
-                    const terrainTag = app._selectedTerrain ?? app._engine?.terrainTag ?? "forest";
-                    app._scoutingDebrief ??= app._travel.getScoutingDebrief(terrainTag);
-                    return app._scoutingDebrief;
-                }
-                return null;
-            })() : null,
+            travelContext: null,
             terrainOptionGroups: (() => {
                 const lastTerrain = game.settings.get(MODULE_ID, "lastTerrain");
                 return TerrainRegistry.getOptionGroups({ lastTerrain });
@@ -1585,7 +1575,7 @@ export class RestPrepareContext {
                     ? (isTavernSetup
                         ? "Tavern rest: no travel activities."
                         : "Travel activities are skipped for a safe rest spot.")
-                    : (d.travelAvailable ? "Travel available (forage, hunt, scout)." : "No travel activities.");
+                    : (d.travelAvailable ? "Gathering available (forage, hunt)." : "No gathering activities.");
                 return `Implied comfort: ${comfort}. ${travel}`;
             })(),
             setupStatusLine: (() => {
@@ -1604,6 +1594,7 @@ export class RestPrepareContext {
                 }
                 if (!setupSafeHaven && d.travelAvailable) parts.push("travel available");
                 if (tavernForcesTotm) parts.push("one-window flow for tavern");
+                if (grittyForcesTotm) parts.push("one-window flow for 7-day downtime");
                 return parts.join(" · ");
             })(),
             weatherOptions: (() => {
@@ -1640,6 +1631,12 @@ export class RestPrepareContext {
             })(),
             comfortReason: TerrainRegistry.get(app._selectedTerrain ?? "forest")?.comfortReason ?? "",
             restModeOptions: (() => {
+                if (isGrittyLong) {
+                    return [
+                        { value: "theater", label: "One window", selected: true },
+                        { value: "stations", label: "Camp stations (unavailable for 7-day downtime)", selected: false, disabled: true }
+                    ];
+                }
                 const current = app._isTotM ? "theater" : "stations";
                 return [
                     { value: "theater", label: "One window", selected: current === "theater" },
@@ -1648,23 +1645,18 @@ export class RestPrepareContext {
             })(),
             setupStep: app._setupStep ?? 1,
             selectedTerrain: app._selectedTerrain ?? "forest",
-            terrainBanner: (() => {
-                const t = app._selectedTerrain ?? app._engine?.terrainTag ?? "forest";
-                const p = app._phase ?? "setup";
-                
-                // All terrains look in their specific folder.
-                const filename = (p === "activity" || p === "meal" || p === "travel" || p === "camp") ? "banner.png" : `${p}.png`;
-                return ImageResolver.terrainBanner(t, filename);
-            })(),
-            terrainBannerFallback: ImageResolver.fallbackBanner,
-            terrainBannerPos: "center", // banners are pre-cropped 640x120 strips
-            hideTerrainBanner: (() => {
-                try { return !!game.settings.get(MODULE_ID, "hideTerrainBanners"); } catch { return false; }
-            })(),
+            ...ImageResolver.resolveRestBannerContext(
+                app._selectedTerrain ?? app._engine?.terrainTag ?? "forest",
+                app._phase ?? "setup"
+            ),
             selectedTerrainLabel: app._terrainLabel ?? "Forest",
             selectedRestType: app._selectedRestType ?? "long",
             selectedRestTypeLabel: app._selectedRestType === "short" ? "Short Rest" : "Long Rest",
             isShortRest: (app._selectedRestType ?? "long") === "short",
+            showEnvironment: (app._selectedRestType ?? "long") !== "short" || (app._restVariant ?? "normal") === "gritty",
+            showWeather: (app._selectedRestType ?? "long") !== "short" || (app._restVariant ?? "normal") === "gritty",
+            showConfigSummary: (app._selectedRestType ?? "long") !== "short" || (app._restVariant ?? "normal") === "gritty",
+            showStatusLine: (app._selectedRestType ?? "long") !== "short" || (app._restVariant ?? "normal") === "gritty",
             safeRestSpot,
             safeRestSpotDisplay: setupSafeHaven,
             safeRestLocked: isTavernSetup,
@@ -1675,6 +1667,8 @@ export class RestPrepareContext {
             setupSafeHaven,
             isTavernSetup,
             tavernForcesTotm,
+            isGrittyLongRest: isGrittyLong,
+            grittyForcesTotm,
             selectedWeatherLabel: WEATHER_TABLE[app._resolveSetupWeather(app._selectedTerrain ?? "forest")]?.label ?? "Clear",
             shelterNeeded: (app._selectedTerrain ?? "forest") !== "tavern",
             defaultComfort,
@@ -1684,7 +1678,61 @@ export class RestPrepareContext {
             heroCharacters,
             roster,
             canvasFocusedStationId: app._canvasFocusedStationId ?? null,
-            selectedCharacter,
+            selectedWorkflowStep: _resolvedWorkflowStep,
+            ...(() => {
+                const actorId = app._selectedCharacterId
+                    ?? (app._isGM ? getPartyActors()[0]?.id : (app._myCharacterIds?.values().next().value ?? getPartyActors()[0]?.id));
+                const gatherOn = !setupSafeHaven && (isForagingEnabled() || isHuntingEnabled());
+                const { gatherDone, activityDone } = dailyChoiceStatus(app, actorId, gatherOn);
+                let trackFoodOn = false;
+                let sustenanceDone = false;
+                try {
+                    trackFoodOn = !!game.settings.get(MODULE_ID, "trackFood");
+                    if (!trackFoodOn) {
+                        sustenanceDone = true;
+                    } else {
+                        const card = app.getStationMealCardForActor(actorId);
+                        sustenanceDone = Boolean(app._activityMealRationsSubmitted?.has(actorId))
+                            || Boolean(card?.playerSubmitted);
+                    }
+                } catch { /* settings not ready */ }
+
+                let stepsTotalCount = 1;
+                let stepsCompletedCount = activityDone ? 1 : 0;
+                if (gatherOn) {
+                    stepsTotalCount++;
+                    if (gatherDone) stepsCompletedCount++;
+                }
+                if (trackFoodOn) {
+                    stepsTotalCount++;
+                    if (sustenanceDone) stepsCompletedCount++;
+                }
+                const characterPlanComplete = (gatherOn ? gatherDone : true)
+                    && activityDone
+                    && (trackFoodOn ? sustenanceDone : true);
+
+                return {
+                    workflowComplete: { gather: gatherDone, activities: activityDone, sustenance: sustenanceDone },
+                    workflowMark: {
+                        gather: gatherDone ? "complete" : "draft",
+                        activities: activityDone ? "complete" : "draft",
+                        sustenance: sustenanceDone ? "complete" : "draft"
+                    },
+                    stepsTotalCount,
+                    stepsCompletedCount,
+                    characterPlanComplete
+                };
+            })(),
+            showGatherStep: !setupSafeHaven && (isForagingEnabled() || isHuntingEnabled()),
+            gatherPanel: buildGatherPanel(app, _resolvedWorkflowStep),
+            activityCommit: buildActivityCommit(app, totmStationCards),
+            holdPhaseProceed,
+            activityProceedEnabled,
+            mealCommit: buildMealCommit(app),
+            showMealContent,
+            showIdentifyContent,
+            isIdentifyActive: showIdentifyContent,
+            scopingCharacterName: selectedCharacter?.name?.split(" ")?.[0] ?? selectedCharacter?.name ?? null,
             partyCharacters,
             totalCharacters,
             resolvedCount,
@@ -1692,6 +1740,9 @@ export class RestPrepareContext {
             activityPhasePlayerOverview,
             outcomes: personalOutcomes ?? [],
             resolutionCards,
+            dawnCards,
+            isResolvePhase: app._phase === "resolve",
+            incidentsCount: (app._triggeredEvents ?? []).length,
             triggeredEvents: (app._triggeredEvents ?? []).map((e, eventIndex) => {
                 // Resolve target IDs to actor names for the template
                 const eventRollModes = e.rollModes ?? {};
@@ -1725,11 +1776,13 @@ export class RestPrepareContext {
                 const checkContext = e.checkContext ?? catalog?.checkContext
                     ?? (skillName ? `${skillName} check for ${targetScope}.` : null);
                 const readAloud = gmPrompt || description || e.narrative || null;
-                // Enrich resolved rolls with ownership for player-side filtering
+                // Enrich resolved rolls with ownership and token avatar for display
                 const resolvedRolls = (e.resolvedRolls ?? []).map(r => ({
                     ...r,
+                    img: game.actors.get(r.characterId)?.img || "icons/svg/mystery-man.svg",
                     isOwner: game.actors.get(r.characterId)?.isOwner ?? false
                 }));
+                const isGroupAveraged = (e.mechanical?.checkPolicy ?? "group") === "group";
                 // Player-facing forewarning of locked consequences. Once the GM
                 // locks a hit or a loss, each affected player sees what is coming
                 // on the far side of the rest, phrased without GM mechanics.
@@ -1771,7 +1824,7 @@ export class RestPrepareContext {
                         }
                     }
                 }
-                return { ...e, targetNames, targetActors, skillName, gmPrompt, gmGuidance, description, checkContext, readAloud, resolvedRolls, playerConsequences,
+                return { ...e, targetNames, targetActors, skillName, gmPrompt, gmGuidance, description, checkContext, readAloud, resolvedRolls, playerConsequences, isGroupAveraged,
                     gmRollRequest: e.awaitingRolls && app._isGM ? buildEventGmRollContext({ ...e, skillName, checkContext }, eventIndex) : null
                 };
             }),
@@ -1823,6 +1876,12 @@ export class RestPrepareContext {
             })(),
             eventsRolled: app._eventsRolled ?? false,
             eventsCommitPending: app._eventsCommitPending ?? false,
+            resolvingRest: !!app._resolveInFlight,
+            ...(app._phase === "dawn" ? (app._dawn?.templateContext() ?? {}) : {}),
+            ...(app._phase === "supper" ? {
+                mealBuffRoster: app._mealBuffQueue ?? [],
+                mealBuffPending: (app._mealBuffQueue ?? []).filter(row => row && !row.applied).length
+            } : {}),
             pendingCampRolls: app._pendingCampRolls ?? [],
             campPrepsResolved: !app._pendingCampRolls?.length || app._pendingCampRolls.every(p => p.status !== "pending"),
             pendingCampRoll: app._pendingCampRoll ? {
@@ -1919,6 +1978,15 @@ export class RestPrepareContext {
                     const who = (ts.options?.length === 2) ? "Both choices" : "Every choice";
                     treeDcAdjNote = `${who} are ${mag} DC ${tier}`;
                 }
+                const hasLockedLosses = (finalEffects ?? []).some(eff => {
+                    if (!eff._locked) return false;
+                    if (eff.type === "supply_loss" && eff._lockedSupply?.breakdown?.length) return true;
+                    if (eff.type === "item_at_risk" && eff._lockedItems?.length) return true;
+                    if (eff.type === "consume_gold" && eff._lockedGold?.breakdown?.length) return true;
+                    if (eff.type === "damage" && eff._lockedTargets?.length) return true;
+                    if (eff.type === "consume_resource" && (eff._lockedLoss?.breakdown?.length || eff._lockedLoss?.gear?.length)) return true;
+                    return false;
+                });
                 return {
                     ...ts,
                     gmPrompt,
@@ -1929,6 +1997,7 @@ export class RestPrepareContext {
                     options,
                     pendingRollsEnriched,
                     finalEffects,
+                    hasLockedLosses,
                     eventIndex
                 };
             })(),
@@ -1940,16 +2009,11 @@ export class RestPrepareContext {
             activityDetail: app._buildActivityDetailContext(selectedCharacter),
             campStatus: app._engine ? (() => {
                 const rawComfort = app._engine.comfort;
-                const fireIsLit = (app._fireLevel ?? "unlit") !== "unlit";
-                const activeShelters = app._engine.activeShelters ?? [];
-                const shelterSpell = activeShelters.find(s => s !== "tent" && s !== "none") ? SHELTER_SPELLS[activeShelters.find(s => s !== "tent" && s !== "none")]?.label ?? null : null;
-                const tiers = RANK_TO_KEY;
-                let effectiveIdx = COMFORT_RANK[rawComfort] ?? COMFORT_RANK.rough;
-                if (shelterSpell) {
-                    effectiveIdx = Math.max(effectiveIdx, COMFORT_RANK.sheltered);
-                }
-                if (fireIsLit) effectiveIdx = Math.min(COMFORT_RANK.safe, effectiveIdx + 1);
-                const comfort = RANK_TO_KEY[effectiveIdx];
+                // Fire comfort is written onto the rest when the night starts.
+                // Before that, preview the same table dawn will use. Do not add it twice.
+                const fireBaked = app._phase === "events" || app._phase === "resolve";
+                const fireSteps = fireBaked ? 0 : pendingFireComfortDelta(app._fireLevel, app._coldCampDecided);
+                const comfort = boostComfort(rawComfort, fireSteps);
 
                 const weatherKey = app._engine.weather ?? "clear";
                 const wx = WEATHER_TABLE[weatherKey] ?? WEATHER_TABLE.clear;
@@ -1975,6 +2039,7 @@ export class RestPrepareContext {
                     comfortTooltip: getComfortTip(comfort),
                     weather: weatherKey !== "clear" ? weatherKey : null,
                     weatherLabel: wx.label,
+                    weatherIcon: wx.icon ?? "fas fa-sun",
                     weatherTooltip: weatherParts.length ? `${wx.label}: ${weatherParts.join(", ")}` : wx.label,
                     fireLevel: app._fireLevel ?? "unlit",
                     fireTooltip: FIRE_TIPS[app._fireLevel ?? "unlit"] ?? "Fire",
@@ -1986,9 +2051,17 @@ export class RestPrepareContext {
                     })
                 };
             })() : app._campStatus ?? null,
-            campConditionsBar: app._buildCampConditionsBar(campScanData, { safeRestSpot, encountersEnabled }),
+            campConditionsBar,
+            campComfortFlashing,
+            personalComfortFlashing,
             campScan: campScanData,
             comfortEnabled: isComfortEnabled(),
+            isFireLit: (app._fireLevel ?? "unlit") !== "unlit" && !app._coldCampDecided,
+            bannerFireClass: (app._phase === "dawn" || app._phase === "resolve")
+                ? "is-fire-lit"
+                : ImageResolver.bannerFireClass(
+                    app._coldCampDecided ? "cold_camp" : (app._fireLevel ?? "unlit")
+                ),
             canProceedFromCamp: canProceedFromMakeCamp,
             canProceedFromMakeCamp,
             proceedBlockedHint,
@@ -2055,48 +2128,95 @@ export class RestPrepareContext {
             campComfortIsHostile,
             campFireTierCards,
             campFireTotalPledged,
-            campViewerCanLight,
-            campPitBlocksFireLighting: app._phase === "camp" && app._campPitBlocksFireLighting(),
+            campPitBlocksFireLighting: (app._phase === "camp" || app._phase === "activity") && app._campPitBlocksFireLighting(),
             campFireOtherLighterCount,
             campFireLighterNames,
             campPersonalSelected,
+            // Rest Dock (mock: rest-dock-gritty). Renders on activity + meal
+            // phases; setup and camp keep their bespoke chrome.
+            characterReady: (["activity", "meal"].includes(app._phase))
+                ? !!(app._finishedActorIds?.has?.(
+                    app._selectedCharacterId
+                    ?? game.user.character?.id
+                    ?? getPartyActors()[0]?.id
+                ))
+                : false,
+            showFireRail: ["activity", "meal"].includes(app._phase)
+                && (app._restVariant ?? "normal") !== "gritty",
+            selectedCharacterId: app._selectedCharacterId,
+            readyCount: activityPartyIds.filter(id => activityFinishedIds.has(id)).length,
+            readyTotal: (["activity", "meal"].includes(app._phase))
+                ? (partyActors ?? []).length
+                : 0,
+            restDock: (["activity", "meal"].includes(app._phase))
+                ? RestDockContext.buildDockContext({
+                    party: partyActors,
+                    selectedId: app._selectedCharacterId,
+                    personalScan: campPersonalSelected,
+                    comfortFlashing: personalComfortFlashing,
+                    finishedActorIds: new Set((partyActors ?? [])
+                        .filter(a => a && a.id && (app._finishedActorIds?.has?.(a.id) ?? false))
+                        .map(a => a.id)),
+                    characterState: new Map((partyActors ?? [])
+                        .filter(a => a && a.id)
+                        .map(a => {
+                            const pCard = campScanData?.personalCards?.find(p => p.actorId === a.id);
+                            return [a.id, {
+                                hasExhaustionRisk: Boolean(pCard?.recovery?.exhaustionDC),
+                                exhaustionDC: pCard?.recovery?.exhaustionDC ?? null,
+                                statusLabel: ""
+                            }];
+                        })),
+                    isGM: app._isGM
+                })
+                : null,
+            // Aliases so the shared dock partial can read hearth data from
+            // both apps without a compat shim.
+            fuelStockTotal: campPartyFirewood,
+            fuelBurnCost: campSelectedFirewoodCost,
+            hasEnoughFuel: campHasEnoughFirewood,
+            hasTinderbox: campScanData?.hasTinderbox ?? false,
+            fuelStockTooltip: `${campPartyFirewood} firewood in the party · ${campSelectedFirewoodCost} used for ${(app._fireLevel ?? "unlit")}`,
+            fireLevel: app._fireLevel ?? "unlit",
+            fireTierOptions: ["cold_camp", "embers", "campfire", "bonfire"].map(id => ({
+                id,
+                label: ({ cold_camp: "Cold", embers: "Embers", campfire: "Campfire", bonfire: "Bonfire" })[id],
+                costLabel: ({ cold_camp: "No fire", embers: "1 wood", campfire: "2 wood", bonfire: "3 wood" })[id],
+                dcDelta: "",
+                selected: (app._fireLevel ?? "unlit") === id || ((app._fireLevel ?? "unlit") === "unlit" && id === "embers"),
+                disabled: false,
+                disabledReason: null
+            })),
+            isWilderness: !safeRestSpot && !isTavernSetup,
             campfirePlaced,
             craftingDrawer: app._buildCraftingDrawerContext(),
             encounterBar: (app._engine && !app._eventsRolled && !app._engine.safeRestSpot && encountersEnabled) ? (() => {
                 const bd = app._engine._encounterBreakdown ?? {};
                 const shelter = bd.shelter ?? 0;
                 const weather = bd.weather ?? 0;
-                const scouting = bd.scouting ?? 0;
                 const fireUncommitted = (app._fireLevel ?? "unlit") === "unlit" && !app._coldCampDecided;
-                const fire = (app._phase === "camp" && fireUncommitted)
+                const fire = ((app._phase === "camp" || app._phase === "activity") && fireUncommitted)
                     ? (CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[app._campFirePreviewLevel ?? "embers"] ?? 0)
                     : (app._engine.fireRollModifier ?? 0);
                 const gmAdj = app._engine.gmEncounterAdj ?? 0;
-                const complication = app._engine.scoutingComplication ?? false;
-                const defenses = bd.defenses ?? 0;
-                let earlyDefenseBonus = 0;
-                if (defenses === 0) {
-                    for (const [, er] of (app._earlyResults ?? [])) {
-                        if (er.activityId === "act_defenses" && (er.result === "success" || er.result === "exceptional")) {
-                            earlyDefenseBonus += 2;
-                        }
-                    }
-                }
-                const totalDefenses = defenses + earlyDefenseBonus;
-                const total = shelter + weather + scouting + fire;
-                const terrainTable = app._eventResolver?.tables?.get(app._engine.terrainTag);
-                const baseDC = terrainTable?.noEventThreshold ?? 15;
-                const effectiveDC = Math.max(1, baseDC - total + gmAdj - totalDefenses);
-        Logger.log(`[Respite:UI] encounterBar: baseDC=${baseDC}, shelter=${shelter}, weather=${weather}, scouting=${scouting}, fire=${fire}, total=${total}, defenses=${defenses}, earlyDefenseBonus=${earlyDefenseBonus}, gmAdj=${gmAdj}, effectiveDC=${effectiveDC}`);
+                const travelMishap = bd.travelMishap ?? 0;
+                // One formula for the badge and the roll. Do not recompute here.
+                const totalDefenses = app._engine.defenseContribution(app._earlyResults);
+                const total = shelter + weather + fire;
+                const baseDC = app._engine._baseDC ?? 15;
+                const effectiveDC = app._engine.getEffectiveEncounterDC({
+                    fireModifier: fire,
+                    earlyResults: app._earlyResults
+                });
+                Logger.log(`[Respite:UI] encounterBar: baseDC=${baseDC}, shelter=${shelter}, weather=${weather}, fire=${fire}, total=${total}, defenses=${totalDefenses}, travelMishap=${travelMishap}, gmAdj=${gmAdj}, effectiveDC=${effectiveDC}`);
                 const fmt = (v) => v > 0 ? `+${v}` : `${v}`;
                 const terrainObj = TerrainRegistry.get(app._engine.terrainTag);
                 const terrainLabel = terrainObj?.label ?? app._engine.terrainTag ?? "Terrain";
                 const chips = [];
-                if (weather !== 0) chips.push({ label: bd.weatherName ?? "Weather", value: fmt(-weather), icon: "fas fa-cloud-sun-rain", tooltip: "Weather shifts the night check. Rough weather makes a camp event more likely. The value is this factor's effect on the DC." });
+                if (weather !== 0) chips.push({ label: bd.weatherName ?? "Weather", value: fmt(weather), icon: WEATHER_TABLE[bd.weatherName]?.icon ?? "fas fa-cloud-sun-rain", tooltip: "Weather shifts the night check. Rough weather makes a camp event more likely. The value is this factor's effect on the DC." });
                 if (shelter !== 0) chips.push({ label: "Shelter", value: fmt(-shelter), icon: "fas fa-campground", tooltip: "A tent or shelter spell hides the camp and lowers the encounter DC, so a night event is less likely." });
-                if (scouting !== 0) chips.push({ label: `Scout: ${bd.scoutingResult ?? "?"}`, value: fmt(-scouting), icon: "fas fa-binoculars", tooltip: "Scouting result during travel. A good scout lowers the encounter DC; a poor scout raises it. The value is this factor's effect on the DC." });
-                if (complication) chips.push({ label: "Complication", value: "", icon: "fas fa-exclamation-triangle", warn: true, tooltip: "A failed scout left a hidden complication that will trigger during events." });
                 if (fire !== 0) chips.push({ label: app._fireLevel ?? "Fire", value: fmt(-fire), icon: "fas fa-fire", tooltip: "A lit fire is a beacon. A larger fire raises the encounter DC and draws attention." });
+                if (travelMishap !== 0) chips.push({ label: "Travel", value: fmt(-travelMishap), icon: "fas fa-route", tooltip: "A travel mishap shifted the night check." });
                 const defensesAttempted = app._pendingCampRolls?.some(p => p.activityId === "act_defenses");
                 const defensesChosen = [...(app._characterChoices?.values() ?? [])].includes("act_defenses");
                 let defensesFailed = false;
@@ -2123,9 +2243,6 @@ export class RestPrepareContext {
                     weather,
                     weatherName: bd.weatherName,
                     shelter,
-                    scouting,
-                    scoutingResult: bd.scoutingResult,
-                    complication,
                     fire,
                     fireLevel: app._fireLevel ?? "unlit",
                     totalDefenses,
@@ -2141,7 +2258,6 @@ export class RestPrepareContext {
                     totalLabel: `Encounter DC ${effectiveDC}`,
                     chips,
                     playerFactors,
-                    complication,
                     isGM: game.user.isGM,
                     gmAdj
                 };
@@ -2151,19 +2267,21 @@ export class RestPrepareContext {
 
             // Meal phase context
             mealCards: (() => {
-                if (app._phase !== "meal") return null;
+                if (!showMealContent) return null;
 
                 // GM: roster characters only. Player: only owned + rostered characters.
                 const rosterIds = new Set(getPartyActors().map(a => a.id));
                 let characterIds;
                 if (app._isGM) {
-                    characterIds = app._engine?.characterChoices
-                        ? Array.from(app._engine.characterChoices.keys()).filter(id => rosterIds.has(id))
-                        : [];
+                    const choices = app._engine?.characterChoices;
+                    characterIds = (choices && choices.size > 0)
+                        ? Array.from(choices.keys()).filter(id => rosterIds.has(id))
+                        : Array.from(rosterIds);
                 } else {
-                    characterIds = app._myCharacterIds
-                        ? Array.from(app._myCharacterIds).filter(id => rosterIds.has(id))
-                        : [];
+                    const myIds = app._myCharacterIds;
+                    characterIds = (myIds && myIds.size > 0)
+                        ? Array.from(myIds).filter(id => rosterIds.has(id))
+                        : Array.from(rosterIds);
                 }
 
                 const allCards = characterIds
@@ -2200,14 +2318,117 @@ export class RestPrepareContext {
 
                 return allCards;
             })(),
+            sustenanceDiegetic: (() => {
+                if (!showMealContent) return null;
+                const mealActorId = app._isGM
+                    ? (app._selectedCharacterId ?? getPartyActors()[0]?.id)
+                    : (app._myCharacterIds?.values().next().value ?? getPartyActors()[0]?.id);
+                const card = app.getStationMealCardForActor(mealActorId);
+                if (!card) return null;
+                const rawFoodSlots = card.foodSlots ?? [];
+                const placedFood = [];
+                const foodSlots = rawFoodSlots.map((slot, i) => {
+                    const opt = slot.filled
+                        ? (card.foodOptions ?? []).find(o => o.value === slot.selected)
+                        : null;
+                    if (opt) placedFood.push(opt);
+                    return {
+                        day: i + 1,
+                        isEmpty: !slot.filled,
+                        name: opt?.name ?? "",
+                        img: opt?.icon ?? "",
+                        isSend: false,
+                        isBuff: Boolean(opt?.hasBuff),
+                        ...SpoilageClock.viewFromOption(opt)
+                    };
+                });
+                const waterNeed = card.waterRequired ?? 0;
+                const foodNeed = card.foodRequired ?? foodSlots.length;
+                const foodFilled = card.foodFilledCount ?? foodSlots.filter(slot => !slot.isEmpty).length;
+                const foodBudgetText = foodNeed <= 0
+                    ? "Not needed"
+                    : (card.foodSufficient ? "Fed" : (foodNeed > 1 ? `${foodFilled}/${foodNeed}` : "Hungry"));
+                const waterFilled = card.waterFilledCount ?? 0;
+                // Compact water slots so filled slots always pack from the bottom up (no holes in the stack)
+                const filledSlots = (card.waterSlots ?? []).filter(s => s && s.filled && s.selected && s.selected !== "skip");
+                const filledCount = filledSlots.length;
+                const activeCount = filledCount > 0 ? filledCount : waterFilled;
+                const pints = [];
+                const placedWater = [];
+                for (let p = 0; p < waterNeed; p++) {
+                    const slot = p < filledSlots.length ? filledSlots[p] : null;
+                    const filled = slot ? Boolean(slot.filled) : p < waterFilled;
+                    const opt = filled
+                        ? (card.waterOptions ?? []).find(o => o.value === slot?.selected)
+                        : null;
+                    if (opt) placedWater.push(opt);
+                    const isSurface = filled && (p === activeCount - 1);
+                    pints.push({
+                        filled,
+                        isSurface,
+                        isBuff: Boolean(opt?.hasBuff),
+                        sourceId: opt?.value ?? "waterskin",
+                        sourceClass: normalizeBeverageClass(opt?.name),
+                        name: opt?.name ?? "",
+                        img: opt?.icon ?? "",
+                        ...SpoilageClock.viewFromOption(filled ? opt : null)
+                    });
+                }
+                const foodInv = sustenanceTrayRows(card.foodOptions, rawFoodSlots).map(row => ({
+                    ...row,
+                    isSelected: false,
+                    ...SpoilageClock.viewFromOption((card.foodOptions ?? []).find(o => o.value === row.id))
+                }));
+                const waterInv = sustenanceTrayRows(card.waterOptions, card.waterSlots).map(row => ({
+                    ...row,
+                    isSelected: false,
+                    ...SpoilageClock.viewFromOption((card.waterOptions ?? []).find(o => o.value === row.id))
+                }));
+                const mealsSubmitted = Boolean(app._activityMealRationsSubmitted?.has(mealActorId))
+                    || Boolean(card?.playerSubmitted);
+                return {
+                    actorId: mealActorId,
+                    isMultiDay: false,
+                    mealsSubmitted,
+                    mealsLocked: mealsSubmitted,
+                    trait: null,
+                    terrainNote: card.terrainNote ?? null,
+                    terrainAlertClass: card.terrainAlertClass ?? "",
+                    terrainAlertIcon: card.terrainAlertIcon ?? "fas fa-info-circle",
+                    food: {
+                        budget: {
+                            text: foodBudgetText,
+                            isDone: foodNeed <= 0 || Boolean(card.foodSufficient)
+                        },
+                        slots: foodSlots,
+                        sendoff: sendoffFromPlaced(placedFood),
+                        inventory: foodInv
+                    },
+                    water: {
+                        budget: {
+                            text: waterNeed <= 0
+                                ? "Not needed"
+                                : (card.waterSufficient ? "Hydrated" : `${Math.max(0, waterNeed - waterFilled)} short`),
+                            isDone: waterNeed <= 0 || Boolean(card.waterSufficient)
+                        },
+                        days: [{ day: 1, isSend: false, hasBuff: placedWater.some(opt => opt.hasBuff), dayIndex: 0, pints }],
+                        sendoff: sendoffFromPlaced(placedWater),
+                        inventory: waterInv,
+                        need: waterNeed
+                    }
+                };
+            })(),
             mealSubmitted: app._mealSubmitted ?? false,
             mealSubmissions: app._mealSubmissions ? Object.fromEntries(app._mealSubmissions) : {},
             daysSinceLastRest: app._daysSinceLastRest ?? 1,
             // Global multi-day flags (computed from ALL characters, not roster-filtered)
             allMealsConsumed: (() => {
-                if (app._phase !== "meal") return false;
-                const characterIds = app._engine?.characterChoices ? Array.from(app._engine.characterChoices.keys()) : [];
-                if (!characterIds.length) return false;
+                if (!showMealContent) return false;
+                const partyList = getPartyActors();
+                const characterIds = app._engine?.characterChoices?.size
+                    ? Array.from(app._engine.characterChoices.keys())
+                    : partyList.map(a => a.id);
+                if (!characterIds.length) return true;
                 const totalDays = Math.max(1, app._daysSinceLastRest ?? 1);
                 if (totalDays <= 1) return true; // single-day: no consume step needed
                 for (const charId of characterIds) {
@@ -2234,7 +2455,7 @@ export class RestPrepareContext {
             })(),
             isMultiDay: (app._daysSinceLastRest ?? 1) > 1,
             mealCurrentDay: (() => {
-                if (app._phase !== "meal") return 1;
+                if (!showMealContent) return 1;
                 const characterIds = app._engine?.characterChoices ? Array.from(app._engine.characterChoices.keys()) : [];
                 if (!characterIds.length) return 1;
                 let minDay = Infinity;
@@ -2251,3 +2472,309 @@ export class RestPrepareContext {
     
     }
 }
+
+/**
+ * Gather sub-panel. Opens once Hunt, Forage, or Skip is chosen and
+ * replaces the card list. The Survival check and the findings roll live here.
+ * @param {object} app
+ * @param {string} workflowStep
+ * @returns {object|null}
+ */
+function buildGatherPanel(app, workflowStep) {
+    if (workflowStep !== "gather") return null;
+    const cid = app._selectedCharacterId;
+    if (!cid) return null;
+    const actor = game.actors.get(cid);
+    if (!actor) return null;
+
+    const result = app._gatherResults?.get(cid);
+    const pending = app._gatherPending?.characterId === cid ? app._gatherPending : null;
+    const choice = result?.activityId ?? pending?.activityId ?? app._gatherChoices?.get(cid);
+    const skipped = app._gatherSkipIds?.has(cid);
+    const skipDraft = pending?.activityId === "gather_skip" && !skipped;
+    if (choice !== "act_hunt" && choice !== "act_forage" && !skipped && !skipDraft) return null;
+
+    const isHunt = choice === "act_hunt";
+    const isSkip = skipped || skipDraft;
+    const act = (!isSkip && choice) ? app._activityResolver?.activities?.get(choice) : null;
+    const locked = !!result || skipped || pending?.phase === "findings";
+    return {
+        name: isSkip ? "Skip" : (act?.name ?? (isHunt ? "Hunt" : "Forage")),
+        icon: isSkip ? "fas fa-campground" : (act?.icon ?? (isHunt ? "fas fa-paw" : "fas fa-leaf")),
+        actorName: actor.name,
+        actorPortrait: actor.img ?? actor.prototypeToken?.texture?.src ?? "icons/svg/mystery-man.svg",
+        locked,
+        characterId: cid,
+        dc: pending?.dc ?? null,
+        canRollCheck: pending?.phase === "check",
+        canConfirmSkip: skipDraft,
+        findingsOpen: pending?.phase === "findings",
+        finds: result
+            ? GatherYieldService.presentItems(result.items, {
+                rations: result.fromTable ? 0 : (result.rations ?? 0)
+            })
+            : [],
+        detail: result?.haul || (skipped ? "Remain at camp. No forage or hunt." : "")
+    };
+}
+
+/**
+ * Locked result for a confirmed activity. Forage and hunt stay on Gather.
+ * @param {object} app
+ * @param {Array<{tiles?: Array<{id: string, hint?: string}>}>} totmStationCards
+ * @returns {{kicker: string, title: string, detail: string}|null}
+ */
+function buildActivityCommit(app, totmStationCards) {
+    const cid = app._selectedCharacterId;
+    if (!cid) return null;
+    if (!activityOfferingsClosed(app, cid)) return null;
+    const actId = app._gmOverrides?.get(cid) ?? app._characterChoices?.get(cid);
+    const act = app._activityResolver?.activities?.get(actId);
+    const early = app._earlyResults?.get(cid);
+    const craft = app._craftingResults?.get(cid);
+    let detail = "";
+    if (early?.activityId === actId && early.narrative) {
+        detail = early.narrative;
+    } else if (craft && (craft.activityId === actId || !craft.activityId)) {
+        detail = craft.narrative || craft.summary || "";
+    }
+    if (!detail) {
+        for (const station of totmStationCards ?? []) {
+            const tile = station.tiles?.find(t => t.id === actId);
+            if (tile?.hint) {
+                detail = tile.hint;
+                break;
+            }
+        }
+    }
+    const cannotChange = !!(early || craft || app.hasCompletedCrafting?.(cid));
+    return { kicker: "ACTIVITIES", title: act?.name ?? actId, detail, icon: act?.icon ?? "fas fa-moon", cannotChange };
+}
+
+/**
+ * True while the open card is showing Next.
+ * A party that is already fully ready is released in canGmProceedFromActivity.
+ */
+function phaseProceedHeld(app, workflowStep, detailPanel, mealOpen, identifyOpen, stationCards) {
+    if (app._phase !== "activity") return false;
+    if (detailPanel || mealOpen || identifyOpen) return false;
+    const gatherPanel = buildGatherPanel(app, workflowStep);
+    if (workflowStep === "gather" && gatherPanel) {
+        if (gatherPanel.canConfirmSkip) return false;
+        if (gatherPanel.finds?.length) return true;
+        if (gatherPanel.detail) return true;
+        return false;
+    }
+    return workflowStep !== "gather" && !!buildActivityCommit(app, stationCards);
+}
+
+/**
+ * Locked result once rations are submitted or food/water are consumed.
+ * @param {object} app
+ * @returns {{kicker: string, title: string, detail: string, isFed: boolean, isHydrated: boolean, waterShortLabel?: string, buff?: string}|null}
+ */
+function buildMealCommit(app) {
+    const mealActorId = app._selectedCharacterId
+        ?? (app._isGM ? getPartyActors()[0]?.id : (app._myCharacterIds?.values().next().value ?? getPartyActors()[0]?.id));
+    if (!mealActorId) return null;
+
+    const actor = game.actors.get(mealActorId);
+    if (!actor) return null;
+
+    const isSubmitted = Boolean(app._activityMealRationsSubmitted?.has(mealActorId));
+    const card = typeof app.getStationMealCardForActor === "function" ? app.getStationMealCardForActor(mealActorId) : null;
+    const isPlayerSubmitted = Boolean(card?.playerSubmitted);
+    const choice = app._mealChoices?.get(mealActorId);
+    const consumedDays = Array.isArray(choice?.consumedDays) ? choice.consumedDays : [];
+
+    const totalDays = app._daysSinceLastRest ?? app._engine?.durationDays ?? 1;
+    const allDaysDone = consumedDays.length >= totalDays;
+    if (!isSubmitted && !isPlayerSubmitted && !allDaysDone) return null;
+
+    // Collect all consumed items from consumedDays, or fall back to choice.food/water
+    const sourceDays = consumedDays.length > 0
+        ? consumedDays
+        : [{ food: choice?.food ?? [], water: choice?.water ?? [], essence: choice?.essence ?? [] }];
+
+    const foodItemIds = [];
+    const waterItemIds = [];
+    for (const day of sourceDays) {
+        for (const fid of (day.food ?? [])) {
+            if (fid && fid !== "skip") foodItemIds.push(fid);
+        }
+        for (const wid of (day.water ?? [])) {
+            if (wid && wid !== "skip") waterItemIds.push(wid);
+        }
+    }
+
+    const resolveItemName = (id) => {
+        if (!id) return "";
+        if (id.startsWith?.("__")) {
+            return id === "__feast" ? "Feast" : id.replace(/^__/, "");
+        }
+        const item = actor.items.get(id);
+        if (item?.name) return item.name;
+        const opt = (card?.foodOptions ?? []).find(o => o.value === id)
+            ?? (card?.waterOptions ?? []).find(o => o.value === id);
+        return opt?.name ?? "Ration";
+    };
+
+    const defaultFoodImg = "icons/consumables/food/bread-loaf-round-white.webp";
+    const defaultWaterImg = "icons/magic/water/water-drop-swirl-blue.webp";
+    const resolveItemImg = (id, type) => {
+        if (!id) return type === "water" ? defaultWaterImg : defaultFoodImg;
+        if (id === "__feast") return "icons/consumables/food/platter-roasted-turkey-garnish-brown.webp";
+        const item = actor.items.get(id);
+        if (item?.img && !item.img.includes("mystery-man")) return item.img;
+        const opt = (card?.foodOptions ?? []).find(o => o.value === id)
+            ?? (card?.waterOptions ?? []).find(o => o.value === id);
+        if (opt?.icon && !opt.icon.includes("mystery-man")) return opt.icon;
+        return type === "water" ? defaultWaterImg : defaultFoodImg;
+    };
+
+    const extractItemBuffSummary = (id) => {
+        if (!id || id.startsWith?.("__")) return "";
+        const item = actor.items.get(id);
+        return describeItemMealBuff(item?.flags?.[MODULE_ID]).buffSummary;
+    };
+
+    const itemMap = new Map();
+    for (const fid of foodItemIds) {
+        if (!fid || fid === "skip") continue;
+        if (!itemMap.has(fid)) {
+            const name = resolveItemName(fid);
+            const img = resolveItemImg(fid, "food");
+            const buffSummary = extractItemBuffSummary(fid);
+            itemMap.set(fid, {
+                id: fid,
+                name,
+                img,
+                count: 0,
+                type: "food",
+                buffSummary,
+                hasBuff: Boolean(buffSummary)
+            });
+        }
+        itemMap.get(fid).count++;
+    }
+
+    for (const wid of waterItemIds) {
+        if (!wid || wid === "skip") continue;
+        if (!itemMap.has(wid)) {
+            const name = resolveItemName(wid);
+            const img = resolveItemImg(wid, "water");
+            const buffSummary = extractItemBuffSummary(wid);
+            itemMap.set(wid, {
+                id: wid,
+                name,
+                img,
+                count: 0,
+                type: "water",
+                buffSummary,
+                hasBuff: Boolean(buffSummary)
+            });
+        }
+        itemMap.get(wid).count++;
+    }
+
+    const items = [...itemMap.values()].map(item => ({
+        ...item,
+        qtyLabel: item.type === "water" ? `${item.count} pt` : (item.count > 1 ? `×${item.count}` : null)
+    }));
+
+    const primaryImg = items.find(i => i.type === "food")?.img
+        ?? items.find(i => i.type === "water")?.img
+        ?? null;
+
+    let sendoffItemName = "";
+    let sendoffBuffSummary = "";
+
+    // 1. Check consumed items for explicit buffs
+    for (const item of items) {
+        if (item.hasBuff && item.buffSummary) {
+            sendoffItemName = item.name;
+            sendoffBuffSummary = item.buffSummary;
+            break;
+        }
+    }
+
+    // 2. Check actor's active effects for Well Fed
+    if (!sendoffBuffSummary) {
+        const wellFedEffect = actor.effects?.find(e => e.flags?.[MODULE_ID]?.wellFed === true);
+        if (wellFedEffect) {
+            sendoffItemName = items.find(i => i.type === "food")?.name ?? "Meal";
+            sendoffBuffSummary = wellFedEffect.name || "Well Fed: +5 Temp HP & Advantage on Initiative";
+        }
+    }
+
+    const sendoff = sendoffBuffSummary
+        ? { hasBuff: true, itemName: sendoffItemName, buffSummary: sendoffBuffSummary }
+        : { hasBuff: false, text: "Sates only · No buff into the next day." };
+
+    const countMap = (arr) => {
+        const map = new Map();
+        for (const id of arr) {
+            const name = resolveItemName(id);
+            if (!name) continue;
+            map.set(name, (map.get(name) ?? 0) + 1);
+        }
+        return [...map.entries()].map(([name, count]) => count > 1 ? `${name} ×${count}` : name);
+    };
+
+    const foodNames = countMap(foodItemIds);
+    const waterNames = countMap(waterItemIds);
+
+    const terrainTag = app._selectedTerrain ?? app._engine?.terrainTag ?? "forest";
+    const mealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? { foodPerDay: 1, waterPerDay: 2 };
+    const totalFpd = (mealRules.foodPerDay ?? 1) * (consumedDays.length || 1);
+    const totalWpd = (mealRules.waterPerDay ?? 2) * (consumedDays.length || 1);
+
+    let bonusWater = 0;
+    const satiatesLookup = typeof app._stations?._buildSatiatesLookup === "function"
+        ? app._stations._buildSatiatesLookup()
+        : (typeof app._activityStations?._buildSatiatesLookup === "function" ? app._activityStations._buildSatiatesLookup() : null);
+    for (const fid of foodItemIds) {
+        if (!fid || fid === "skip" || fid.startsWith?.("__")) continue;
+        const fItem = actor.items.get(fid);
+        let fSat = fItem?.flags?.[MODULE_ID]?.satiates;
+        if (!Array.isArray(fSat) && satiatesLookup && fItem?.name) {
+            fSat = satiatesLookup.get(fItem.name.toLowerCase().trim()) ?? null;
+        }
+        if (Array.isArray(fSat) && fSat.includes("water")) bonusWater++;
+    }
+
+    const isFed = foodItemIds.length >= totalFpd;
+    const effectiveWater = waterItemIds.length + bonusWater;
+    const isHydrated = effectiveWater >= totalWpd;
+
+    let title = totalDays > 1 ? "Rest Rations" : "Night's Rations";
+    if (!isFed && !isHydrated) {
+        title = "Fasting";
+    } else if (!isFed) {
+        title = "Water Only";
+    } else if (!isHydrated) {
+        title = "Food Only";
+    }
+
+    const detail = (isFed && isHydrated)
+        ? (sendoff.hasBuff ? "Sated · No exhaustion risk · Send-off buff active" : "Sated · No exhaustion risk")
+        : (!isFed && !isHydrated)
+            ? "Starving and dehydrated · Starvation & Dehydration saves required"
+            : !isFed
+                ? "Fasting · Exhaustion save required if already starving"
+                : "Water deficit · CON save against dehydration required";
+
+    return {
+        kicker: "SUSTENANCE",
+        title,
+        detail,
+        isFed,
+        isHydrated,
+        waterShortLabel: `${Math.max(0, totalWpd - effectiveWater)} short`,
+        items,
+        primaryImg,
+        sendoff,
+        buff: sendoff.hasBuff ? sendoff.buffSummary : null
+    };
+}
+

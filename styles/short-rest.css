@@ -13,9 +13,6 @@
 .short-rest-container {
     display: flex;
     flex-direction: column;
-    gap: 0;
-    height: 100%;
-    overflow: hidden;
 }
 
 /* Header bar: matches the long rest .respite-phase-header. Flex row, button pushed right. */
@@ -31,20 +28,22 @@
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
-    padding: 0.2rem 0.55rem;
-    background: rgba(220, 80, 80, 0.12);
-    border: 1px solid rgba(220, 80, 80, 0.3);
-    border-radius: 4px;
-    color: rgba(220, 130, 130, 0.85);
-    font-size: 0.7rem;
+    padding: 4px 9px !important;
+    min-height: 26px !important;
+    background: rgba(239, 68, 68, 0.12) !important;
+    border: 1px solid rgba(239, 68, 68, 0.35) !important;
+    border-radius: 4px !important;
+    color: #fca5a5 !important;
+    font-size: 0.74rem !important;
     font-weight: 500;
     cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition: all 0.15s ease;
 }
 
 .btn-abandon-rest:hover {
-    background: rgba(220, 80, 80, 0.25);
-    color: #ef9a9a;
+    background: rgba(239, 68, 68, 0.25) !important;
+    border-color: rgba(239, 68, 68, 0.6) !important;
+    color: #ffffff !important;
 }
 
 /* ---- Banner ---- */
@@ -122,12 +121,34 @@
 }
 .sr-song-chip i { color: rgba(200, 150, 255, 0.9); margin-right: 0.15rem; }
 
+@keyframes slowGlow {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(245, 158, 11, 0.35), inset 0 0 6px rgba(245, 158, 11, 0.15);
+        border-color: rgba(245, 158, 11, 0.55);
+    }
+    50% {
+        box-shadow: 0 0 14px rgba(245, 158, 11, 0.75), inset 0 0 10px rgba(245, 158, 11, 0.35);
+        border-color: rgba(251, 191, 36, 0.95);
+    }
+}
+
 .sr-chef-chip {
     background: rgba(210, 140, 70, 0.2) !important;
     border-color: rgba(230, 170, 90, 0.45) !important;
     color: rgba(255, 235, 210, 0.98) !important;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 .sr-chef-chip i { color: rgba(255, 190, 120, 0.9); margin-right: 0.15rem; }
+.sr-chef-chip.chef-glowing-badge {
+    animation: slowGlow 2.4s infinite ease-in-out;
+}
+.sr-chef-chip.chef-exhausted-badge {
+    opacity: 0.6;
+    cursor: default;
+    box-shadow: none !important;
+    animation: none !important;
+}
 
 .sr-roll-chef-addon {
     color: rgba(255, 190, 120, 0.85);
@@ -170,31 +191,36 @@
 
 /* ---- Scrollable body ---- */
 .sr-scroll-body {
-    flex: 1 1 0;
+    flex: 1 1 auto;
+    max-height: 520px;
     overflow-y: auto;
-    min-height: 0;
+    padding-right: 4px;
 }
 
 /* ---- Character Cards ---- */
-.short-rest-cards {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    padding: 0.5rem 0.75rem;
+.short-rest-cards.sr-hero-deck {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 0 !important;
+    width: 100% !important;
 }
-/* GM sees all cards expanded in a 2-column grid */
+
+.short-rest-cards,
 .short-rest-cards.sr-gm-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 0.4rem;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    padding: 0.5rem 0.75rem;
 }
 
 .short-rest-card {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    padding: 0.45rem 0.6rem;
-    transition: border-color 0.2s ease;
+    background: linear-gradient(180deg, rgba(22, 29, 46, 0.85) 0%, rgba(14, 18, 28, 0.9) 100%) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 6px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 6px !important;
+    padding: 0.5rem 0.65rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 /* ---- Collapsed party cards (player view, non-self) ---- */
@@ -231,11 +257,24 @@
     width: 7px;
     height: 7px;
 }
-.short-rest-card:hover { border-color: rgba(255, 255, 255, 0.12); }
+.short-rest-card:hover { border-color: rgba(255, 255, 255, 0.14); }
 
-.sr-card-header { display: flex; align-items: center; gap: 0.5rem; }
-.sr-portrait { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255, 255, 255, 0.12); flex-shrink: 0; }
+.sr-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
+.sr-portrait {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 4px !important;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    flex-shrink: 0;
+}
 .sr-identity { flex: 1; min-width: 0; }
+.sr-identity-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem;
+}
 .sr-name {
     font-size: 0.8rem;
     font-weight: 600;
@@ -257,15 +296,13 @@
     color: rgba(245, 235, 255, 0.98);
 }
 .short-rest-card.is-self-card {
-    border: 2px solid rgba(180, 140, 255, 0.55);
-    background: rgba(180, 140, 255, 0.12);
-    box-shadow:
-        0 0 0 1px rgba(140, 100, 220, 0.22),
-        0 0 20px rgba(120, 80, 200, 0.18);
+    border: 1px solid rgba(168, 85, 247, 0.55) !important;
+    background: linear-gradient(180deg, rgba(30, 27, 58, 0.85) 0%, rgba(18, 16, 36, 0.92) 100%) !important;
+    box-shadow: inset 0 1px 0 rgba(216, 180, 254, 0.15), 0 0 16px rgba(168, 85, 247, 0.16) !important;
 }
 .short-rest-card.is-self-card .sr-portrait {
-    border-color: rgba(200, 170, 255, 0.65);
-    box-shadow: 0 0 0 2px rgba(180, 140, 255, 0.3);
+    border-color: rgba(192, 132, 252, 0.6) !important;
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.35);
 }
 .short-rest-card.is-self-card.is-afk {
     border-color: rgba(224, 160, 64, 0.55);
@@ -273,18 +310,112 @@
         0 0 0 1px rgba(224, 160, 64, 0.22),
         inset 0 0 0 1px rgba(224, 160, 64, 0.1);
 }
-.sr-hp-row { display: flex; gap: 0.65rem; margin-top: 0.1rem; }
-.sr-hp { font-size: 0.72rem; color: rgba(220, 90, 90, 0.85); }
-.sr-hp.full { color: rgba(80, 200, 120, 0.85); }
-.sr-hp i, .sr-hd-count i { margin-right: 0.15rem; font-size: 0.6rem; }
-.sr-hd-count { font-size: 0.72rem; color: rgba(180, 140, 255, 0.8); }
+
+.sr-treat-slot {
+    display: flex;
+    align-items: center;
+}
+
+.sr-treat-claimed-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 0.12rem 0.45rem;
+    border-radius: 4px;
+    background: rgba(147, 51, 234, 0.25);
+    border: 1px solid rgba(168, 85, 247, 0.5);
+    color: #f3e8ff;
+    white-space: nowrap;
+}
+
+.sr-take-treat-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    background: rgba(245, 158, 11, 0.2);
+    border: 1px solid rgba(245, 158, 11, 0.5);
+    color: #fef3c7;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.sr-take-treat-btn:hover {
+    background: rgba(245, 158, 11, 0.35);
+    border-color: rgba(251, 191, 36, 0.8);
+    color: #ffffff;
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.3);
+}
+
+.sr-hp-progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.sr-char-hp-bar {
+    position: relative;
+    height: 14px;
+    flex: 1;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sr-hp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #059669);
+    transition: width 0.3s ease;
+}
+
+.sr-hp-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+    pointer-events: none;
+}
+
+.sr-hd-count {
+    font-size: 0.72rem;
+    color: rgba(216, 180, 254, 0.9);
+    white-space: nowrap;
+}
+.sr-hd-count i { margin-right: 0.15rem; font-size: 0.6rem; }
 
 /* ---- HD Pips + Spend in one row ---- */
 .sr-card-action-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.3rem; }
 .sr-hd-pips { display: flex; gap: 3px; flex-wrap: wrap; flex: 1; }
-.sr-pip { width: 9px; height: 9px; border-radius: 50%; border: 1px solid rgba(180, 140, 255, 0.35); transition: all 0.2s ease; }
-.sr-pip.filled { background: rgba(180, 140, 255, 0.6); border-color: rgba(180, 140, 255, 0.7); box-shadow: 0 0 4px rgba(180, 140, 255, 0.3); }
-.sr-pip.empty { background: rgba(255, 255, 255, 0.08); border-color: rgba(200, 200, 220, 0.28); }
+.sr-pip {
+    width: 10px !important;
+    height: 10px !important;
+    border-radius: 2px !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    transition: all 0.2s ease;
+}
+.sr-pip.filled {
+    background: linear-gradient(135deg, #a855f7, #7c3aed) !important;
+    border-color: #c084fc !important;
+    box-shadow: 0 0 5px rgba(168, 85, 247, 0.45) !important;
+}
+.sr-pip.empty {
+    background: rgba(0, 0, 0, 0.45) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    opacity: 0.45;
+}
 
 /* ---- Roll Log ---- */
 .sr-roll-log { display: flex; align-items: center; gap: 0.3rem; margin-top: 0.3rem; flex-wrap: wrap; }
@@ -294,8 +425,28 @@
 .sr-roll-total i { margin-right: 0.15rem; }
 
 /* ---- Actions (spend button sits in action row now) ---- */
-.sr-spend-btn { background: rgba(180, 140, 255, 0.12); border: 1px solid rgba(180, 140, 255, 0.3); color: rgba(180, 140, 255, 0.9); padding: 0.2rem 0.55rem; border-radius: 5px; cursor: pointer; font-size: 0.68rem; font-weight: 600; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 0.25rem; flex-shrink: 0; white-space: nowrap; }
-.sr-spend-btn:hover { background: rgba(180, 140, 255, 0.2); border-color: rgba(180, 140, 255, 0.5); box-shadow: 0 0 8px rgba(180, 140, 255, 0.15); }
+.sr-spend-btn {
+    background: rgba(168, 85, 247, 0.18) !important;
+    border: 1px solid rgba(168, 85, 247, 0.45) !important;
+    color: #e9d5ff !important;
+    padding: 0.25rem 0.65rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: 600;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.sr-spend-btn:hover {
+    background: rgba(168, 85, 247, 0.3) !important;
+    border-color: rgba(192, 132, 252, 0.7) !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.35) !important;
+}
 .sr-spend-btn.faded {
     opacity: 1;
     cursor: not-allowed;
@@ -439,7 +590,16 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    gap: 0.4rem;
+}
+.sr-footer-row.is-gm {
+    justify-content: space-between;
+}
+.sr-footer-end {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
     gap: 0.4rem;
 }
 .sr-finished-toggle {
@@ -505,78 +665,8 @@
 .sr-spell-recovery-static.exhausted .sr-spell-static-msg { color: rgba(255, 210, 210, 0.85); }
 .sr-spell-budget-muted { opacity: 0.65; }
 
-/* Short rest tabs: Foundry .application button:focus styles load after module CSS
-   and draw a warm/red ring. Nuclear reset + module app scope (see IONRIFT_UI_HANDBOOK §3). */
-.short-rest-app .short-rest-container .sr-tab-bar {
-    display: flex;
-    gap: 0.25rem;
-    padding: 0.25rem 0.5rem 0.35rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.short-rest-app .short-rest-container .sr-tab {
-    all: unset !important;
-}
-
-.short-rest-app .short-rest-container .sr-tab {
-    box-sizing: border-box !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    flex: 1 1 0 !important;
-    min-width: 0 !important;
-    margin: 0 !important;
-    padding: 0.35rem 0.5rem !important;
-    font-family: inherit !important;
-    font-size: 0.78rem !important;
-    font-weight: 600 !important;
-    text-align: center !important;
-    line-height: 1.2 !important;
-    color: rgba(200, 210, 255, 0.55) !important;
-    background: rgba(0, 0, 0, 0.15) !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    border-radius: 5px 5px 0 0 !important;
-    cursor: pointer !important;
-    outline: none !important;
-    box-shadow: none !important;
-    transition: color 0.2s, background 0.2s, border-color 0.2s !important;
-}
-
-.short-rest-app .short-rest-container .sr-tab i {
-    margin-right: 0.2rem;
-    opacity: 0.85;
-}
-
-.short-rest-app .short-rest-container .sr-tab:hover {
-    color: rgba(220, 230, 255, 0.85) !important;
-}
-
-.short-rest-app .short-rest-container .sr-tab.active {
-    color: rgba(220, 230, 255, 0.95) !important;
-    background: rgba(100, 140, 200, 0.12) !important;
-    border-color: rgba(167, 139, 250, 0.4) !important;
-    border-bottom-color: transparent !important;
-    box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.22) !important;
-}
-
-.short-rest-app .short-rest-container .sr-tab:focus {
-    outline: none !important;
-    box-shadow: none !important;
-}
-
-.short-rest-app .short-rest-container .sr-tab.active:focus {
-    box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.22) !important;
-}
-
-.short-rest-app .short-rest-container .sr-tab:focus-visible {
-    outline: 2px solid rgba(139, 92, 246, 0.9) !important;
-    outline-offset: 2px !important;
-    box-shadow: none !important;
-}
-
-.short-rest-app .short-rest-container .sr-tab.active:focus-visible {
-    box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.28) !important;
-}
+/* Tab bar styling lives in _chrome.css as .rest-tab-bar / .rest-tab.
+   Template uses shared class names; data-action stays per-app. */
 
 .sr-recharge-badges {
     display: flex;
@@ -1118,43 +1208,52 @@
 .tree-stall-area {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     flex-wrap: wrap;
-    gap: 0.4rem 0.6rem;
+    gap: 0.5rem 0.75rem;
     margin: 0.65rem 0 0.25rem;
-    padding: 0.45rem 0.55rem;
-    background: rgba(255, 255, 255, 0.03);
+    padding: 0.5rem 0.75rem;
+    background: rgba(14, 18, 28, 0.85);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 6px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-.btn-stall-penalty {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.4rem 0.85rem;
-    background: rgba(255, 80, 50, 0.12);
-    border: 1px solid rgba(255, 80, 50, 0.4);
-    border-radius: 5px;
-    color: rgba(255, 140, 90, 0.95);
-    font-size: 0.78rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-    flex-shrink: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+.btn-stall-penalty,
+button.btn-stall-penalty {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    background-image: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.4rem !important;
+    padding: 0.4rem 0.85rem !important;
+    background: rgba(245, 158, 11, 0.15) !important;
+    border: 1px solid rgba(245, 158, 11, 0.45) !important;
+    border-radius: 5px !important;
+    color: #fef3c7 !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    box-shadow: none !important;
 }
 
-.btn-stall-penalty:hover {
-    background: rgba(255, 80, 50, 0.22);
-    border-color: rgba(255, 80, 50, 0.6);
-    box-shadow: 0 0 12px rgba(255, 80, 50, 0.2), 0 0 4px rgba(255, 80, 50, 0.1) inset;
-    color: rgba(255, 160, 110, 1);
+.btn-stall-penalty:hover,
+button.btn-stall-penalty:hover {
+    background: rgba(245, 158, 11, 0.28) !important;
+    border-color: rgba(245, 158, 11, 0.7) !important;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.3) !important;
+    color: #ffffff !important;
 }
 
 .btn-stall-penalty i {
     font-size: 0.7rem;
+    color: #fbbf24;
 }
 
 .stall-hint {
@@ -1780,154 +1879,6 @@
     font-style: italic;
 }
 
-/* ---- Supply Loss Approval Modal ---- */
-
-.ionrift-supply-loss-modal {
-    padding: 0.4rem 0;
-}
-
-.loss-summary {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.6rem;
-    background: rgba(255, 80, 50, 0.08);
-    border: 1px solid rgba(255, 80, 50, 0.2);
-    border-radius: 6px;
-    margin-bottom: 0.5rem;
-    font-size: 0.85rem;
-    color: rgba(255, 140, 90, 0.95);
-}
-
-.loss-summary i {
-    font-size: 0.8rem;
-    color: rgba(255, 180, 80, 0.7);
-}
-
-.loss-summary.loss-empty {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.loss-summary.loss-empty i { color: rgba(255, 255, 255, 0.3); }
-
-.loss-note {
-    font-size: 0.78rem;
-    color: rgba(255, 255, 255, 0.5);
-    line-height: 1.5;
-    padding: 0.3rem 0.4rem;
-}
-
-.loss-note strong { color: rgba(255, 200, 130, 0.7); }
-
-.loss-controls {
-    display: flex;
-    gap: 0.3rem;
-    margin-bottom: 0.4rem;
-}
-
-.loss-controls button {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 0.7rem;
-    padding: 0.2rem 0.5rem;
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.loss-controls button:hover {
-    background: rgba(255, 255, 255, 0.12);
-    color: rgba(255, 255, 255, 0.85);
-}
-
-.loss-controls button i { margin-right: 0.2rem; }
-
-.loss-scrollable {
-    max-height: 280px;
-    overflow-y: auto;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 6px;
-    background: rgba(0, 0, 0, 0.1);
-    padding: 0.3rem;
-    margin-bottom: 0.4rem;
-}
-
-.loss-actor-section {
-    margin-bottom: 0.3rem;
-}
-
-.loss-actor-section:last-child { margin-bottom: 0; }
-
-.loss-actor-header {
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: rgba(255, 220, 130, 0.8);
-    padding: 0.25rem 0.4rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
-.loss-item-row {
-    display: grid;
-    grid-template-columns: 1.4rem 1.4rem 3fr 1fr 2fr;
-    gap: 0.3rem;
-    align-items: center;
-    padding: 0.25rem 0.4rem;
-    font-size: 0.78rem;
-    color: rgba(255, 255, 255, 0.75);
-    cursor: pointer;
-    border-radius: 3px;
-    transition: background 0.1s;
-}
-
-.loss-item-row:hover { background: rgba(255, 255, 255, 0.04); }
-
-.loss-item-row input[type="checkbox"] {
-    width: 0.85rem;
-    height: 0.85rem;
-    margin: 0;
-    accent-color: rgba(255, 120, 80, 0.8);
-}
-
-.loss-item-name { font-weight: 500; }
-
-.loss-item-qty {
-    color: rgba(255, 100, 70, 0.9);
-    font-weight: 700;
-    text-align: right;
-}
-
-.loss-item-current {
-    font-size: 0.7rem;
-    color: rgba(255, 255, 255, 0.4);
-    text-align: right;
-}
-
-.loss-tally {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.3rem 0.5rem;
-    font-size: 0.72rem;
-    color: rgba(255, 180, 80, 0.7);
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.loss-tally i { font-size: 0.65rem; }
-
-.loss-section-label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: rgba(255, 120, 80, 0.6);
-    padding: 0.3rem 0.4rem 0.15rem;
-}
-
 /* ═══════════════════════════════════════════════════
    Event Browser
    ═══════════════════════════════════════════════════ */
@@ -2299,7 +2250,7 @@
     padding: 8px 14px;
     gap: 8px;
     background: transparent;
-    border: 1px solid rgba(200, 160, 60, 0.35);
+    border: 1px solid rgba(168, 85, 247, 0.35);
     border-radius: 6px;
     backdrop-filter: none;
 }
@@ -2307,7 +2258,7 @@
     min-width: 0;
 }
 .event-pool-nudge-banner .art-nudge-icon {
-    color: rgba(200, 160, 60, 0.8);
+    color: rgba(168, 85, 247, 0.9);
     font-size: 1.1em;
 }
 .event-pool-nudge-banner .art-nudge-text {
@@ -2315,12 +2266,12 @@
 }
 .event-pool-nudge-banner .art-nudge-title {
     font-size: 0.82em;
-    color: rgba(220, 190, 100, 0.95);
+    color: #f5f3ff;
 }
 .event-pool-nudge-banner .art-nudge-subtitle {
     font-size: 0.72em;
     line-height: 1.3;
-    color: rgba(200, 180, 120, 0.6);
+    color: rgba(216, 180, 254, 0.7);
 }
 .event-pool-nudge-banner .art-nudge-actions {
     flex-direction: row;
@@ -2329,18 +2280,18 @@
     flex-shrink: 0;
 }
 .event-pool-nudge-banner .art-nudge-btn.primary {
-    background: rgba(200, 160, 60, 0.15);
-    border-color: rgba(200, 160, 60, 0.4);
-    color: rgba(220, 190, 100, 0.95);
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(168, 85, 247, 0.4);
+    color: #f5f3ff;
 }
 .event-pool-nudge-banner .art-nudge-btn.primary:hover {
-    background: rgba(200, 160, 60, 0.25);
+    background: rgba(139, 92, 246, 0.25);
 }
 .event-pool-nudge-banner .art-nudge-dismiss {
-    color: rgba(200, 160, 60, 0.5);
+    color: rgba(168, 85, 247, 0.5);
 }
 .event-pool-nudge-banner .art-nudge-dismiss:hover {
-    color: rgba(200, 160, 60, 0.8);
+    color: rgba(168, 85, 247, 0.85);
 }
 
 .event-pool-curator-intro {

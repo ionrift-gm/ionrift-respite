@@ -18,6 +18,7 @@ import { ItemClassifier } from "../../party/ItemClassifier.js";
 import { ItemProvisionsApp } from "../../../apps/meal/ItemProvisionsApp.js";
 import { MealPhaseHandler } from "../../meal/phase/MealPhaseHandler.js";
 import { SPOILED_FOOD_BLOCKED_MESSAGE } from "../../meal/inventory/MealConstants.js";
+import { refreshSpoilageBadgesOnOpenSheets } from "./UiInjections.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 
 /**
@@ -30,6 +31,32 @@ export function registerInventoryContextMenu() {
             menuItems.push({
                 name: "Respite Provisions...",
                 icon: `<i class="fas fa-carrot respite-context-icon"></i>`,
+                group: "system",
+                callback: () => ItemProvisionsApp.openForItem(item)
+            });
+        }
+
+        if (game?.user?.isGM && ItemClassifier.isContainer(item)) {
+            const isCold = ItemClassifier.isColdStorageContainer(item);
+            menuItems.push({
+                name: isCold ? "Disable Cold Storage" : "Enable Cold Storage",
+                icon: `<i class="fas fa-snowflake respite-context-icon"></i>`,
+                group: "system",
+                callback: async () => {
+                    const next = !isCold;
+                    await item.setFlag(MODULE_ID, "coldStorage", next);
+                    if (next && item.flags?.[MODULE_ID]?.preservationMultiplier === undefined) {
+                        await item.setFlag(MODULE_ID, "preservationMultiplier", 2);
+                    }
+                    const mult = ItemClassifier.getPreservationMultiplier(item);
+                    const multLabel = mult === 0 ? "Stasis" : `${mult}×`;
+                    ui.notifications?.info(`${item.name}: Cold Storage ${next ? `Enabled (${multLabel})` : "Disabled"}`);
+                    refreshSpoilageBadgesOnOpenSheets();
+                }
+            });
+            menuItems.push({
+                name: "Configure Storage...",
+                icon: `<i class="fas fa-box-archive respite-context-icon"></i>`,
                 group: "system",
                 callback: () => ItemProvisionsApp.openForItem(item)
             });
@@ -116,7 +143,7 @@ async function _consumeFromInventory(actor, item, isFood) {
     const itemName = item.name;
     const itemId = item.id;
 
-    const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1, { wholeUnit: !isFood });
+    const consumed = await MealPhaseHandler._consumeItem(actor, itemId, 1);
     if (consumed <= 0) {
         ui.notifications.warn(ItemClassifier.isSpoiled(item)
             ? SPOILED_FOOD_BLOCKED_MESSAGE

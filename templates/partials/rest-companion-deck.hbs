@@ -1,0 +1,54 @@
+{{!-- Shared Short Rest Companion Deck Partial --}}
+{{#if companionCharacters.length}}
+<div class="rest-companions-section sr-companions-section bivouac-companions-section">
+    <div class="rest-companions-header sr-companions-header bivouac-companions-header">
+        <span class="companions-title"><i class="fas fa-users"></i> {{#if @root.isGM}}Party Members{{else}}Other Party Members{{/if}}</span>
+    </div>
+    <div class="rest-companions-deck bivouac-companions-deck sr-collapsed-cards">
+        {{#each companionCharacters}}
+        <div class="rest-companion-card bivouac-companion-card short-rest-card is-collapsed ionrift-card-glass {{#if isAfk}}is-afk{{/if}} {{#if isStarving}}is-starving{{/if}} {{#if waterPlate.isDehydrated}}is-dehydrated{{/if}} {{#if isReady}}is-ready{{/if}}{{#unless @root.isGM}} is-locked{{/unless}}"
+             {{#if @root.isGM}}
+             data-action="selectRosterCharacter"
+             data-actor-id="{{id}}"
+             data-roster-id="{{id}}"
+             role="button" tabindex="0" data-tooltip="Click to inspect {{name}}"
+             {{else}}
+             data-tooltip="{{name}}"
+             {{/if}}>
+            <div class="companion-avatar-wrap">
+                <div class="monogram-badge companion-badge" style="border-color: {{themeBorder}};">
+                    <img class="monogram-portrait" src="{{#if img}}{{img}}{{else}}icons/svg/mystery-man.svg{{/if}}" alt="">
+                </div>
+                {{#if isReady}}
+                <span class="companion-avatar-pip pip-ready" data-tooltip="Finished resting"><i class="fas fa-check"></i></span>
+                {{/if}}
+                {{#if isStarving}}
+                <span class="companion-avatar-pip pip-starving" data-tooltip="Starving"><i class="fas fa-triangle-exclamation"></i></span>
+                {{/if}}
+                {{#if waterPlate.isDehydrated}}
+                <span class="companion-avatar-pip pip-dehydrated" data-tooltip="Dehydrated"><i class="fas fa-droplet-slash"></i></span>
+                {{/if}}
+            </div>
+            <div class="companion-body">
+                <div class="companion-row top-row">
+                    <div class="companion-name-wrap">
+                        <span class="companion-name">{{name}}</span>
+                        {{#if isSelfCard}}<span class="badge-you mini">You</span>{{/if}}
+                        {{#if isReady}}<span class="companion-ready-pill"><i class="fas fa-check"></i> Ready</span>{{/if}}
+                    </div>
+                    <span class="companion-hp {{#if isFullHp}}full{{/if}}">
+                        <i class="fas fa-heart"></i> {{hpValue}}/{{hpMax}}
+                    </span>
+                </div>
+                <div class="companion-row bottom-row">
+                    <span class="companion-subtext">{{subtext}}</span>
+                    <span class="companion-hd {{#if (or noHdLeft (eq hdRemaining 0))}}empty{{/if}}">
+                        <i class="fas fa-dice-d20"></i> {{hdRemaining}}/{{hdMax}} HD
+                    </span>
+                </div>
+            </div>
+        </div>
+        {{/each}}
+    </div>
+</div>
+{{/if}}

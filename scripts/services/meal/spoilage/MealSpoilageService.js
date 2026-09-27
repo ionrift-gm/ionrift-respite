@@ -29,13 +29,16 @@ async function postSpoilageChat(report, intro, gmContext) {
     });
 
     const totalSpoiled = report.reduce((sum, r) => sum + r.spoiled.reduce((s, i) => s + i.qty, 0), 0);
-    await ChatMessage.create({
+    const msgData = {
         content: `<p><i class="fas fa-info-circle"></i> <strong>Spoilage Report:</strong> ${totalSpoiled} item(s) spoiled across ${report.length} character(s) ${gmContext}.</p>`,
         speaker: { alias: "Respite" },
         whisper: ChatMessage.getWhisperRecipients?.("GM")
-            ?? game.users.filter(u => u.isGM).map(u => u.id),
-        type: CONST.CHAT_MESSAGE_TYPES.WHISPER ?? 4
-    });
+            ?? game.users.filter(u => u.isGM).map(u => u.id)
+    };
+    if (typeof CONST !== "undefined" && CONST.CHAT_MESSAGE_STYLES?.WHISPER !== undefined) {
+        msgData.style = CONST.CHAT_MESSAGE_STYLES.WHISPER;
+    }
+    await ChatMessage.create(msgData);
 }
 
 /**

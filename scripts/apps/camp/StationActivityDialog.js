@@ -15,7 +15,8 @@ import {
     isWorkbenchExamineUiEnabled,
     isWorkbenchIdentifyUiEnabled
 } from "../../data/RestConstants.js";
-import { buildActivityListItem, buildActivityDetailContext } from "../crafting/ActivityDetailBuilder.js";
+import { cardHintTakenBy } from "../../data/activityCardHint.js";
+import { buildActivityListItem, buildActivityDetailContext, promptArmorSleepIfNeeded } from "../crafting/ActivityDetailBuilder.js";
 import {
     computeCanShowDetectMagicScanButton,
     computeCanTriggerDetectMagicScan,
@@ -693,6 +694,9 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
 
         const stationTabs = this._buildStationTabs();
         const showTabBar = stationTabs.length > 1;
+        const craftAct = this._restApp?._activityResolver?.activities?.get(this._selectedActivityId)
+            ?? { armorSleepWaiver: false };
+        const armorWarning = this._restApp?.getArmorWarningForActivityDetail?.(actor, craftAct) ?? null;
 
         return {
             showTabBar,
@@ -723,6 +727,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
                 selectedRecipe: selectedRecipe ?? null,
                 noAvailableRecipes,
                 commitSummary,
+                armorWarning,
                 craftingResult: this._craftResult ? {
                     ...this._craftResult,
                     isPartyMeal: !!(selectedRecipe?.isPartyMeal ?? false),
@@ -1033,14 +1038,17 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
         const restApp     = this._restApp;
         if (!restApp || !characterId) return;
 
+        const resolver = restApp._activityResolver;
+        const craftAct = resolver?.activities
+            ? [...resolver.activities.values()].find(a => a.crafting?.profession === profession)
+            : null;
+        const proceed = await promptArmorSleepIfNeeded(this._actor, craftAct ?? { armorSleepWaiver: false });
+        if (!proceed) return;
+
         this._craftCommitted = true;
 
         restApp._craftingResults?.set(characterId, result);
 
-        const resolver  = restApp._activityResolver;
-        const craftAct  = resolver?.activities
-            ? [...resolver.activities.values()].find(a => a.crafting?.profession === profession)
-            : null;
         const activityId = craftAct?.id ?? this._selectedActivityId;
         Logger.log(`ionrift-respite | _autoCommitCraftResult DEBUG`, {
             profession,
@@ -1816,7 +1824,7 @@ export class StationActivityDialog extends HandlebarsApplicationMixin(Applicatio
             actorChoiceLocked = chosenAct?.name ?? chosenId;
             // Move all available activities to faded so they show dimmed/read-only
             for (const act of available) {
-                faded.push({ ...act, fadedHint: `Already assigned to ${actorChoiceLocked}` });
+                faded.push({ ...act, fadedHint: cardHintTakenBy(actorChoiceLocked) });
             }
             available = [];
         }

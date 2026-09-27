@@ -2,7 +2,10 @@ import { Logger as RespiteLog } from "./utils/Logger.js";
 import { CalendarHandler } from "./services/rest/session/CalendarHandler.js";
 import { TerrainRegistry } from "./services/events/resolve/TerrainRegistry.js";
 import { RestSetupApp } from "./apps/rest/RestSetupApp.js";
+import { RestSetupDebugJumps } from "./apps/delegates/rest/debug/RestSetupDebugJumps.js";
 import { ShortRestApp } from "./apps/rest/ShortRestApp.js";
+import { BivouacApp } from "./apps/bivouac/BivouacApp.js";
+import { DowntimeLedgerApp } from "./apps/downtime/DowntimeLedgerApp.js";
 import { TorchTokenLinker } from "./services/camp/props/TorchTokenLinker.js";
 import { placeTorch, placePerimeter, clearTorches, toggleTorches, placeCampfire, placeCamp } from "./services/camp/props/CampPropPlacer.js";
 import {
@@ -21,26 +24,19 @@ import {
 import { createRespiteContext } from "./composition/createRespiteContext.js";
 import { ImageResolver } from "./utils/ImageResolver.js";
 import { DietConfigApp } from "./apps/meal/DietConfigApp.js";
-import { AfkPanelApp } from "./apps/rest/AfkPanelApp.js";
 import * as RestAfkState from "./services/rest/session/RestAfkState.js";
 import {
     setRestSessionAfkEmitter,
     setAfkUiRefresh
 } from "./services/rest/session/restSessionAfkEmit.js";
-import {
-    initAfkBridge,
-    reconcileFromAdapters
-} from "./services/afk/AfkBridgeService.js";
+import { initAfkBridge } from "./services/afk/AfkBridgeService.js";
 import { MealPhaseHandler } from "./services/meal/phase/MealPhaseHandler.js";
 import {
     emitForceReload,
     emitRequestRestState,
-    emitRequestShortRestState,
     emitRestStarted,
     emitRestSnapshot,
     emitRestResolved,
-    emitShortRestAbandoned,
-    emitShortRestAfkUpdate,
     emitAfkUpdate,
 } from "./services/socket/SocketController.js";
 import { registerAllSettings, registerItemEnrichments } from "./services/ui/settings/SettingsRegistrar.js";
@@ -60,6 +56,7 @@ import {
 import { dispatch as socketDispatch } from "./services/socket/SocketRouter.js";
 import { isNativeShortRestUnsuppressed } from "./services/rest/flow/NativeRestPass.js";
 import { reassertMealExhaustionFloor } from "./services/meal/phase/MealExhaustionGuard.js";
+import { getActiveRestSessionApp, emitRestSessionAbandoned } from "./services/rest/session/RestSessionSync.js";
 import { MODULE_ID, MODULE_LABEL } from "./data/moduleId.js";
 
 // Shared logger reference; falls back to console if ionrift-lib unavailable.
@@ -136,17 +133,21 @@ export function notifyShortRestActive() {
     _showShortRestRejoinNotification();
 }
 
-/** @type {AfkPanelApp|null} */
+export function setRespiteFlowActive(active) {
+    respiteFlowActive = Boolean(active);
+}
+
+/** @type {object|null} */
 let activeAfkPanel = null;
 
+/**
+ * Parked. The AFK strip is unfit and stays closed until it is revised.
+ * Callers may still invoke this; it only dismisses a panel that is already open.
+ */
 export function showAfkPanel() {
-    reconcileFromAdapters();
-    if (activeAfkPanel?.rendered) {
-        activeAfkPanel.render({ force: true });
-        return;
-    }
-    activeAfkPanel = new AfkPanelApp();
-    void activeAfkPanel.render({ force: true });
+    if (!activeAfkPanel) return;
+    activeAfkPanel.close();
+    activeAfkPanel = null;
 }
 
 export function hideAfkPanel() {
@@ -157,26 +158,16 @@ export function hideAfkPanel() {
     RestAfkState.clear();
 }
 
-/** Long vs short socket type for AFK sync. */
+/** AFK status uses one channel for every rest mode. */
 export function emitAfkSocket(characterId, isAfk) {
-    const longRest = !!(activeRestSetupApp ?? activePlayerRestApp);
-    const shortOnly = !!activeShortRestApp && !longRest;
-    if (shortOnly) {
-        emitShortRestAfkUpdate(characterId, isAfk);
-    } else {
-        emitAfkUpdate(characterId, isAfk);
-    }
+    emitAfkUpdate(characterId, isAfk);
 }
 
 /**
  * @returns {boolean}
  */
 function _ambientAfkHudWorldEnabled() {
-    try {
-        return !!game.settings.get(MODULE_ID, "ambientAfkHud");
-    } catch {
-        return false;
-    }
+    return false;
 }
 
 /** After rest ends: clear AFK, then ambient HUD if the world allows it. */
@@ -196,19 +187,87 @@ function _maybeShowAmbientAfkPanelAtReady() {
  * @param {"long"|"short"} [restType="long"] - Only long rests are limited to once per day.
  * @returns {boolean}
  */
+function _revealInProgressRest() {
+    if (!game.user?.isGM) return;
+    if (document.getElementById("respite-gm-resume-btn") || document.getElementById("respite-gm-short-rest-resume-btn")) return;
+
+    if (activeRestSetupApp) {
+        if (activeRestSetupApp.rendered) {
+            activeRestSetupApp.bringToFront?.();
+            return;
+        }
+        _showGmRestIndicator(activeRestSetupApp);
+        return;
+    }
+    if (activeShortRestApp && !activeShortRestApp.rendered) {
+        _showGmShortRestIndicator();
+        return;
+    }
+    const gritty = getActiveRestSessionApp?.("downtime") || getActiveRestSessionApp?.("bivouac");
+    if (gritty && !gritty.rendered) {
+        _showGmRestIndicator(gritty);
+        return;
+    }
+    try {
+        const savedShort = game.settings.get(MODULE_ID, "activeShortRest");
+        if (savedShort?.timestamp) {
+            _showGmShortRestIndicator();
+            return;
+        }
+        const savedGritty = game.settings.get(MODULE_ID, "activeGrittyRest");
+        if (savedGritty?.type) {
+            _showGmRestIndicator({
+                _phase: savedGritty.type,
+                render() {
+                    const app = savedGritty.type === "bivouac"
+                        ? new BivouacApp(savedGritty)
+                        : new DowntimeLedgerApp(savedGritty);
+                    app._rehydrate?.(savedGritty);
+                    app.render({ force: true });
+                }
+            });
+        }
+    } catch { /* settings not registered yet */ }
+}
+
 function _canStartRest(restType = "long") {
-    if (respiteFlowActive) {
+    const hasResumeIndicator = Boolean(
+        document.getElementById("respite-gm-resume-btn")
+        || document.getElementById("respite-gm-short-rest-resume-btn")
+    );
+
+    const renderedApp = (activeRestSetupApp?.rendered ? activeRestSetupApp : null)
+        || (activeShortRestApp?.rendered ? activeShortRestApp : null)
+        || (getActiveRestSessionApp?.("downtime")?.rendered ? getActiveRestSessionApp("downtime") : null)
+        || (getActiveRestSessionApp?.("bivouac")?.rendered ? getActiveRestSessionApp("bivouac") : null);
+
+    if (renderedApp) {
+        renderedApp.bringToFront?.();
         ui.notifications.warn("A rest is already in progress.");
         return false;
     }
 
-    // Belt-and-suspenders: check world settings in case respiteFlowActive lost sync
+    if (hasResumeIndicator) {
+        ui.notifications.warn("A rest is in progress. Use the resume button in the status bar.");
+        return false;
+    }
+
+    // If respiteFlowActive is true or world settings have residual keys, but no UI is running and no indicator exists,
+    // this is an orphaned/ghost state (e.g. from an abandoned rest or interrupted session). Self-heal immediately.
+    if (respiteFlowActive) {
+        clearActiveRestApp();
+        clearActiveShortRestApp();
+        respiteFlowActive = false;
+    }
+
     try {
         const savedLong = game.settings.get(MODULE_ID, "activeRest");
         const savedShort = game.settings.get(MODULE_ID, "activeShortRest");
-        if (savedLong?.engine || savedShort?.timestamp) {
-            ui.notifications.warn("A rest is already in progress. Clear it from module settings if stuck.");
-            return false;
+        const savedGritty = game.settings.get(MODULE_ID, "activeGrittyRest");
+        if (savedLong?.engine || savedShort?.timestamp || savedGritty?.type) {
+            game.settings.set(MODULE_ID, "activeRest", {}).catch(() => {});
+            game.settings.set(MODULE_ID, "activeShortRest", {}).catch(() => {});
+            game.settings.set(MODULE_ID, "activeGrittyRest", {}).catch(() => {});
         }
     } catch { /* settings not registered yet */ }
 
@@ -272,6 +331,32 @@ Hooks.once("init", async () => {
     _registerPartial("fire-tier-body.hbs", "fireTierBody");
     _registerPartial("_training-panel.hbs", "trainingPanel");
     _registerPartial("craft-commit-panel.hbs", "craftCommitPanel");
+    _registerPartial("camp-logistics-drawer.hbs", "campLogisticsDrawer");
+    _registerPartial("encounter-draft-footer.hbs", "encounterDraftFooter");
+    _registerPartial("daily-sustenance-pips.hbs", "dailySustenancePips");
+    _registerPartial("workflow-stepper.hbs", "workflowStepper");
+    _registerPartial("terrain-banner.hbs", "terrainBanner");
+    _registerPartial("rest-header.hbs", "restHeader");
+    _registerPartial("rest-footer.hbs", "restFooter");
+    _registerPartial("encounter-dc-stepper.hbs", "encounterDcStepper");
+    _registerPartial("encounter-threshold.hbs", "encounterThreshold");
+    _registerPartial("meal-body.hbs", "mealBody");
+    _registerPartial("campfire-drag-handle.hbs", "campfireDragHandle");
+    _registerPartial("rest-hero-card.hbs", "restHeroCard");
+    _registerPartial("rest-dock.hbs", "restDock");
+    _registerPartial("dawn-exhaustion-stage.hbs", "dawnExhaustionStage");
+    _registerPartial("meal-buff-beat.hbs", "mealBuffBeat");
+    _registerPartial("rest-companion-deck.hbs", "restCompanionDeck");
+    _registerPartial("rest-gm-party-deck.hbs", "restGmPartyDeck");
+    _registerPartial("sustenance-diegetic.hbs", "sustenanceDiegetic");
+    _registerPartial("sustenance-card-foot.hbs", "sustenanceCardFoot");
+    _registerPartial("rest-fire-rail.hbs", "restFireRail");
+    _registerPartial("rest-sustenance-with-fire.hbs", "restSustenanceWithFire");
+    _registerPartial("rest-examine-with-fire.hbs", "restExamineWithFire");
+    _registerPartial("rest-choice-with-fire.hbs", "restChoiceWithFire");
+    _registerPartial("rest-choice-picker.hbs", "restChoicePicker");
+    _registerPartial("rest-step-commit.hbs", "restStepCommit");
+    _registerPartial("downtime-activity-stations.hbs", "downtimeActivityStations");
 
     // Expose API via composition root
     const respiteRuntime = {
@@ -286,12 +371,12 @@ Hooks.once("init", async () => {
         hideAfkPanel
     };
     createRespiteContext(respiteRuntime);
+    game.ionrift.respite.fillRestParty = () => RestSetupDebugJumps.fillRestParty();
 
     registerAllSettings({
         DietConfigApp,
-        onAmbientAfkChange: (value) => {
-            if (value) void showAfkPanel();
-            else if (!respiteFlowActive) hideAfkPanel();
+        onAmbientAfkChange: () => {
+            if (!respiteFlowActive) hideAfkPanel();
         }
     });
 
@@ -450,11 +535,23 @@ Hooks.on("getSceneControlButtons", (controls) => {
     }
 });
 
-// Chat command: /respite
+// Chat commands: /respite, /bivouac, /downtime
 Hooks.on("chatMessage", (log, message, chatData) => {
     if (!game.user.isGM) return;
-    if (message.trim().toLowerCase() === "/respite") {
-        if (!_canStartRest()) return false;
+    const msg = message.trim().toLowerCase();
+
+    if (msg === "/bivouac") {
+        if (!_canStartRest("short")) return false;
+        new RestSetupApp({ restType: "short" }).render({ force: true });
+        return false;
+    }
+    if (msg === "/downtime") {
+        if (!_canStartRest("long")) return false;
+        new RestSetupApp({ restType: "long" }).render({ force: true });
+        return false;
+    }
+    if (msg === "/respite") {
+        if (!_canStartRest("long")) return false;
         new RestSetupApp().render({ force: true });
         return false;
     }
@@ -769,9 +866,62 @@ Hooks.once("ready", async () => {
         const requestRestAndShortRestState = (label) => {
             RespiteLog.log(`${MODULE_ID} | Player requesting rest state (${label})...`);
             emitRequestRestState(game.user.id);
-            emitRequestShortRestState(game.user.id);
+            import("./services/rest/session/RestSessionSync.js").then(m => m.emitRestSessionRequestState(game.user.id)).catch(() => {});
         };
         setTimeout(() => requestRestAndShortRestState("initial"), 1000);
+
+        // Opens or refreshes the player-side window for a gritty session.
+        // Reuses a live app so a repeated start or snapshot cannot stack
+        // duplicate windows on the same client.
+        const openOrSyncGrittyApp = (restType, state) => {
+            const existing = getActiveRestSessionApp(restType);
+            if (existing) {
+                existing._rehydrate?.(state);
+                void existing.render({ force: true });
+                return;
+            }
+            const app = restType === "bivouac"
+                ? new BivouacApp(state ?? {})
+                : new DowntimeLedgerApp(state ?? {});
+            app._rehydrate?.(state);
+            void app.render({ force: true });
+        };
+
+        const openOrSyncShortRest = (state) => {
+            const existing = getActiveRestSessionApp("shortrest") ?? activeShortRestApp;
+            if (existing) {
+                existing._rehydrate?.(state);
+                void existing.render({ force: true });
+                return;
+            }
+            const app = new ShortRestApp();
+            app._rehydrate?.(state);
+            registerActiveShortRestApp(app);
+            void app.render({ force: true });
+            void showAfkPanel();
+        };
+
+        // Listen for GM-initiated gritty rests (opens player UI)
+        Hooks.on("respite:grittyRestStarted", ({ restType, data }) => {
+            if (game.user.isGM) return;
+            if (restType === "shortrest") {
+                openOrSyncShortRest(data ?? {});
+                return;
+            }
+            if (restType !== "bivouac" && restType !== "downtime") return;
+            openOrSyncGrittyApp(restType, data ?? {});
+        });
+
+        // Listen for gritty snapshots (player F5 reconnect)
+        Hooks.on("respite:grittySnapshot", ({ restType, state }) => {
+            if (game.user.isGM) return;
+            if (restType === "shortrest") {
+                openOrSyncShortRest(state ?? {});
+                return;
+            }
+            if (restType !== "bivouac" && restType !== "downtime") return;
+            openOrSyncGrittyApp(restType, state ?? {});
+        });
         setTimeout(() => {
             if (!_playerRestActive && !activeShortRestApp) {
                 requestRestAndShortRestState("retry");
@@ -789,9 +939,17 @@ Hooks.once("ready", async () => {
                     RespiteLog.log(`${MODULE_ID} | Tab visible, resyncing rest state...`);
                     emitRequestRestState(game.user.id);
                 }
-                if (activeShortRestApp) {
+                if (activeShortRestApp || getActiveRestSessionApp("shortrest")) {
                     RespiteLog.log(`${MODULE_ID} | Tab visible, resyncing short rest state...`);
-                    emitRequestShortRestState(game.user.id);
+                    import("./services/rest/session/RestSessionSync.js")
+                        .then(m => m.emitRestSessionRequestState(game.user.id))
+                        .catch(() => {});
+                }
+                if (getActiveRestSessionApp("bivouac") || getActiveRestSessionApp("downtime")) {
+                    RespiteLog.log(`${MODULE_ID} | Tab visible, resyncing gritty rest state...`);
+                    import("./services/rest/session/RestSessionSync.js")
+                        .then(m => m.emitRestSessionRequestState(game.user.id))
+                        .catch(() => {});
                 }
             }
         });
@@ -821,39 +979,6 @@ Hooks.once("ready", async () => {
         Logger.log?.(MODULE_LABEL, "Quartermaster detected. Items will be normalized via WorkshopItemFactory.");
     } else {
         Logger.log?.(MODULE_LABEL, "Quartermaster not detected. Items will be created with minimal normalization.");
-    }
-
-    if (game.system.id === "pf2e") {
-        try {
-            const shown = game.settings.get(MODULE_ID, "pf2eAdvisoryShown");
-            if (!shown) {
-                const openDiscord = await game.ionrift.library.confirm({
-                    title: "Pathfinder 2e: Early Support",
-                    content: `
-                        <p>Respite's <strong>Pathfinder 2e support is early</strong>. The core rest flow (activities, campfire, terrain events, comfort tiers, and recovery) is functional.</p>
-                        <p>However, some PF2e-specific mechanics are <strong>not yet implemented</strong>:</p>
-                        <ul>
-                            <li>Treat Wounds (Medicine activity)</li>
-                            <li>Refocus (Focus Point recovery activity)</li>
-                            <li>Repair (Shield / equipment repair)</li>
-                            <li>Subsist (Earn income / forage equivalent)</li>
-                        </ul>
-                        <p>If you hit a bug or have a suggestion, please report it on Discord. Your feedback shapes what gets built next.</p>
-                    `,
-                    yesLabel: "Join Discord",
-                    noLabel: "Got It",
-                    yesIcon: "fab fa-discord",
-                    noIcon: "fas fa-check",
-                    defaultYes: false
-                });
-                if (openDiscord) {
-                    window.open("https://discord.gg/vFGXf7Fncj", "_blank");
-                }
-                game.settings.set(MODULE_ID, "pf2eAdvisoryShown", true);
-            }
-        } catch (e) {
-            // Graceful fail ,  don't block startup for an advisory
-        }
     }
 
     // Check for interrupted rest state saved in world settings
@@ -969,6 +1094,57 @@ Hooks.once("ready", async () => {
         }
     }
 
+    // Check for interrupted gritty rest (Bivouac or Downtime Ledger)
+    const isAlreadyRunning = Boolean(getActiveRestSessionApp?.("downtime") || getActiveRestSessionApp?.("bivouac") || document.getElementById("respite-gm-rest-bar"));
+    if (!respiteFlowActive && !isAlreadyRunning) {
+        try {
+            const savedGritty = game.settings.get(MODULE_ID, "activeGrittyRest");
+            if (savedGritty?.type) {
+                const age = Date.now() - (savedGritty.timestamp ?? 0);
+                const ageLabel = age < 3600000
+                    ? `${Math.round(age / 60000)} minutes ago`
+                    : age < 86400000
+                        ? `${Math.round(age / 3600000)} hours ago`
+                        : `${Math.round(age / 86400000)} days ago`;
+
+                const typeLabel = savedGritty.type === "bivouac" ? "Overnight Rest (Short Rest)" : "7-Day Downtime (Long Rest)";
+                let resume = false;
+                try {
+                    resume = await game.ionrift.library.confirm({
+                        title: "Interrupted Gritty Rest Found",
+                        content: `<p>A ${typeLabel} was interrupted (saved ${ageLabel}).</p><p><strong>Terrain:</strong> ${savedGritty.terrainTag ?? "unknown"}</p>`,
+                        yesLabel: "Resume",
+                        noLabel: "Discard",
+                        yesIcon: "fas fa-campground",
+                        noIcon: "fas fa-trash",
+                        defaultYes: true
+                    });
+                } catch (e) {
+                    console.error(`${MODULE_ID} | Gritty resume dialog failed:`, e);
+                    await game.settings.set(MODULE_ID, "activeGrittyRest", {});
+                }
+
+                if (resume) {
+                    if (savedGritty.type === "bivouac") {
+                        const app = new BivouacApp(savedGritty);
+                        app._rehydrate?.(savedGritty);
+                        app.render({ force: true });
+                    } else {
+                        const app = new DowntimeLedgerApp(savedGritty);
+                        app._rehydrate?.(savedGritty);
+                        app.render({ force: true });
+                    }
+                    ui.notifications.info("Interrupted gritty rest resumed.");
+                } else {
+                    await game.settings.set(MODULE_ID, "activeGrittyRest", {});
+                }
+            }
+        } catch (e) {
+            // Setting may not be registered yet on first load
+            console.warn(`${MODULE_ID} | Gritty rest resume check skipped:`, e.message);
+        }
+    }
+
     const savedShortRest = game.settings.get(MODULE_ID, "activeShortRest");
     if (savedShortRest?.timestamp && !respiteFlowActive) {
         const age = Date.now() - (savedShortRest.timestamp ?? 0);
@@ -1019,21 +1195,31 @@ Hooks.once("ready", async () => {
         } else {
             respiteFlowActive = false;
             await game.settings.set(MODULE_ID, "activeShortRest", {});
-            emitShortRestAbandoned();
+            emitRestSessionAbandoned("shortrest");
             Logger.log?.(MODULE_LABEL, "Discarded interrupted short rest.");
         }
     }
 
     // When combat ends and a rest is awaiting combat resolution, resume the rest flow
     Hooks.on("deleteCombat", (combat, options, userId) => {
-        if (!activeRestSetupApp) return;
-        if (!activeRestSetupApp._awaitingCombat) return;
-        activeRestSetupApp._awaitingCombat = false;
-        activeRestSetupApp._combatAcknowledged = true;
-        activeRestSetupApp._saveRestState();
-        activeRestSetupApp.render({ force: true });
-        ui.notifications.info("Combat resolved. Rest may now proceed.");
-        Logger.log?.(MODULE_LABEL, "Combat ended, rest flow unblocked.");
+        if (activeRestSetupApp?._awaitingCombat) {
+            activeRestSetupApp._awaitingCombat = false;
+            activeRestSetupApp._combatAcknowledged = true;
+            activeRestSetupApp._saveRestState();
+            activeRestSetupApp.render({ force: true });
+            ui.notifications.info("Combat resolved. Rest may now proceed.");
+            Logger.log?.(MODULE_LABEL, "Combat ended, rest flow unblocked.");
+        }
+        const grittyDowntime = getActiveRestSessionApp?.("downtime");
+        if (grittyDowntime?._awaitingCombat) {
+            grittyDowntime._awaitingCombat = false;
+            grittyDowntime._completedCombatNights.add(grittyDowntime._activePacingNight);
+            grittyDowntime._saveSessionState();
+            grittyDowntime._broadcastSync();
+            grittyDowntime.render({ force: true });
+            ui.notifications.info(`Combat resolved for Night ${grittyDowntime._activePacingNight}. Camp resolution resumed.`);
+            Logger.log?.(MODULE_LABEL, `Night ${grittyDowntime._activePacingNight} combat ended, downtime flow resumed.`);
+        }
     });
 
     _maybeShowAmbientAfkPanelAtReady();
@@ -1042,6 +1228,7 @@ Hooks.once("ready", async () => {
 
     RespiteLog.log(`${MODULE_ID} | Boot complete.`);
     if (game.user.isGM) {
+        RespiteLog.log("  game.ionrift.respite.fillRestParty()");
         RespiteLog.log("  ,  game.ionrift.respite.rollRequest.openPreview()");
         RespiteLog.log("  ,  game.ionrift.respite.rollRequest.debugAnimation()");
         RespiteLog.log("  ,  game.ionrift.respite.rollRequest.watchAnimation()");
@@ -1088,13 +1275,7 @@ function _interceptPartyRest(actor, type) {
 
     // Cancel the native group rest regardless; only launch when one can start.
     if (_canStartRest(type)) {
-        const variant = game.ionrift?.respite?.adapter?.getRestVariant?.() ?? "normal";
-        if (type === "short" && variant !== "gritty") {
-            new ShortRestApp().render({ force: true });
-        } else {
-            // Long rests and gritty short rests go through the full setup wizard.
-            new RestSetupApp().render({ force: true });
-        }
+        new RestSetupApp({ restType: type }).render({ force: true });
     }
     return false;
 }
@@ -1175,7 +1356,9 @@ function _showShortRestRejoinNotification() {
  */
 function _rejoinShortRest() {
     removeShortRestRejoinNotification();
-    emitRequestShortRestState(game.user.id);
+    import("./services/rest/session/RestSessionSync.js")
+        .then(m => m.emitRestSessionRequestState(game.user.id))
+        .catch(() => {});
 }
 
 /**

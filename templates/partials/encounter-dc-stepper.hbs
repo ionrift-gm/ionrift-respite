@@ -1,0 +1,16 @@
+{{!-- Shared Encounter DC stepper.
+     showArm: prepend a checkbox and shield so a rest can opt into the check.
+     adjustAction: button action. Each button sets data-delta to -1 or 1.
+     armAction: checkbox action, used only when showArm is set. --}}
+<div class="rest-footer-dc-stepper{{#if showArm}} has-arm{{/if}}{{#if armed}} is-armed{{/if}}"{{#if tooltip}} data-tooltip="{{tooltip}}"{{/if}}>
+    {{#if showArm}}
+    <label class="rest-footer-dc-arm">
+        <input type="checkbox" data-action="{{armAction}}" {{#if armed}}checked{{/if}} aria-label="Run the encounter check">
+        <i class="fas fa-shield-halved" aria-hidden="true"></i>
+    </label>
+    {{/if}}
+    <span class="rest-footer-dc-label">Encounter DC</span>
+    <button type="button" class="rest-footer-dc-btn" data-action="{{adjustAction}}" data-delta="-1" aria-label="Lower encounter DC">−</button>
+    <strong class="rest-footer-dc-val">{{dc}}</strong>
+    <button type="button" class="rest-footer-dc-btn" data-action="{{adjustAction}}" data-delta="1" aria-label="Raise encounter DC">+</button>
+</div>

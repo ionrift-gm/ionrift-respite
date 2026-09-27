@@ -89,3 +89,38 @@ export function getComfortDcMod(tier) {
     if (!isComfortEnabled()) return 0;
     return { safe: 0, sheltered: 0, rough: 2, hostile: 5 }[tier] ?? 0;
 }
+
+/**
+ * Comfort steps from the fire that was actually set.
+ * Unlit and a cold camp are -1. Embers and a campfire are 0. A bonfire is +1.
+ * This is the table dawn uses. The camp chip must use it too.
+ */
+export const FIRE_COMFORT_DELTA = Object.freeze({
+    cold_camp: -1,
+    unlit: -1,
+    embers: 0,
+    campfire: 0,
+    bonfire: 1
+});
+
+/**
+ * @param {string} fireLevel
+ * @returns {number}
+ */
+export function fireComfortDelta(fireLevel) {
+    if (!isComfortEnabled()) return 0;
+    return FIRE_COMFORT_DELTA[fireLevel] ?? 0;
+}
+
+/**
+ * Comfort preview before the night phase writes the fire onto the rest.
+ * An undecided unlit fire is 0. A chosen cold camp is -1.
+ * @param {string} fireLevel
+ * @param {boolean} coldCampDecided
+ * @returns {number}
+ */
+export function pendingFireComfortDelta(fireLevel, coldCampDecided) {
+    if (coldCampDecided && (fireLevel ?? "unlit") === "unlit") return fireComfortDelta("cold_camp");
+    if (!fireLevel || fireLevel === "unlit") return 0;
+    return fireComfortDelta(fireLevel);
+}

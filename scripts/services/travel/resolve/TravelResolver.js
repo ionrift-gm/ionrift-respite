@@ -5,6 +5,7 @@ import { resolvePoolFromFolderPath } from "../../packs/registry/CompendiumFolder
 import { STUB_HUNT_YIELDS } from "../../../data/stub-content.js";
 import { isHomebrewProvisionOnly, getCampFuelFindChance } from "../settings/TravelSettings.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { TerrainRegistry } from "../../events/resolve/TerrainRegistry.js";
 
 const FORAGE_DC = 12;
 const HUNT_DC = 14;
@@ -225,7 +226,14 @@ export class TravelResolver {
         if (nat1) {
             mishap = this._rollHuntMishap(terrainTag);
         } else if (success) {
-            items.push(...await this._getHuntYieldWithFallback(terrainTag, exceptional));
+            if (lootRolls.length) {
+                items.push(...await this._pickHuntYield(terrainTag, exceptional, lootRolls[0]));
+                if (lootRolls.length >= 2 && exceptional && !nat20) {
+                    items.push(...await this._pickHuntYield(terrainTag, true, lootRolls[1]));
+                }
+            } else {
+                items.push(...await this._getHuntYieldWithFallback(terrainTag, exceptional));
+            }
             if (nat20) {
                 const rareRoll = lootRolls.length >= 2 ? lootRolls[1] : lootRolls[0];
                 const rareItems = await this._rollHuntRarePool(terrainTag, rareRoll);
@@ -246,6 +254,111 @@ export class TravelResolver {
             items,
             mishap
         };
+    }
+
+    /**
+     * Name the table a findings d100 is about to hit.
+     * Nat 20 hunt spends the second draw on the rare pool.
+     * @param {object} [params]
+     * @returns {string}
+     */
+    findingsTableLabel({ mode = "forage", terrainTag = "wilderness", drawIndex = 0, nat20 = false } = {}) {
+        const terrain = this.#terrainLabel(terrainTag);
+        if (mode === "hunt" && drawIndex > 0 && nat20) return `${terrain} rare hunt table`;
+        if (mode === "hunt") return `${terrain} hunt table`;
+        return `${terrain} forage table`;
+    }
+
+    /**
+     * One findings draw, using the same row the later grant will use.
+     * @param {object} params
+     * @returns {Promise<{ tableLabel: string, items: object[] }>}
+     */
+    async describeFindingsDraw({
+        mode = "forage",
+        terrainTag = "wilderness",
+        roll,
+        drawIndex = 0,
+        exceptional = false,
+        nat20 = false
+    } = {}) {
+        const tableLabel = this.findingsTableLabel({ mode, terrainTag, drawIndex, nat20 });
+        const items = mode === "hunt"
+            ? await this.#huntDrawItems(terrainTag, roll, drawIndex, exceptional, nat20)
+            : await this.#forageDrawItems(terrainTag, roll, drawIndex, exceptional, nat20);
+        return { tableLabel, items };
+    }
+
+    /**
+     * @param {string} terrainTag
+     * @returns {string}
+     */
+    #terrainLabel(terrainTag) {
+        const tag = String(terrainTag || "wilderness");
+        let registered = null;
+        try {
+            registered = TerrainRegistry.get(tag);
+        } catch {
+            registered = null;
+        }
+        const label = String(registered?.label ?? "").trim();
+        if (label) return label;
+        const words = tag.split(/[_-]+/).filter(Boolean);
+        if (!words.length) return "Wilderness";
+        return words.map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+    }
+
+    /**
+     * @param {string} terrainTag
+     * @param {number} roll
+     * @param {number} drawIndex
+     * @param {boolean} exceptional
+     * @param {boolean} nat20
+     * @returns {Promise<object[]>}
+     */
+    async #huntDrawItems(terrainTag, roll, drawIndex, exceptional, nat20) {
+        if (drawIndex > 0 && nat20) return this._rollHuntRarePool(terrainTag, roll);
+        const useExceptional = drawIndex > 0 ? true : !!exceptional;
+        return this._pickHuntYield(terrainTag, useExceptional, roll);
+    }
+
+    /**
+     * @param {string} terrainTag
+     * @param {number} roll
+     * @param {number} drawIndex
+     * @param {boolean} exceptional
+     * @param {boolean} nat20
+     * @returns {Promise<object[]>}
+     */
+    async #forageDrawItems(terrainTag, roll, drawIndex, exceptional, nat20) {
+        const { ForageTableSync } = await import("../forage/ForageTableSync.js");
+        const fromTable = await ForageTableSync.resolveRollValues(terrainTag, [roll]);
+        if (fromTable.length) return fromTable;
+
+        const rare = drawIndex > 0 && (exceptional || nat20);
+        const poolId = rare
+            ? `resource_pool_${terrainTag}_rare`
+            : `resource_pool_${terrainTag}`;
+        const selected = this.#poolRoller.pickWithPercentileRoll(poolId, roll);
+        if (selected?.itemRef || selected?.itemData) {
+            const { resolveProvisionPoolEntry } = await import("./TravelProvisionIndex.js");
+            const itemData = selected.itemData
+                ?? await resolveProvisionPoolEntry({
+                    itemRef: selected.itemRef,
+                    packId: selected.packId
+                });
+            if (itemData || selected.itemRef) {
+                return [{
+                    itemRef: selected.itemRef,
+                    quantity: selected.quantity ?? 1,
+                    itemData: itemData ?? undefined
+                }];
+            }
+        }
+
+        // Same last step the grant uses. A table that exists but does not
+        // resolve this face still pays out from the terrain forage pool.
+        return this._drawFromBasePoolWithRoll(terrainTag, "forage", roll);
     }
 
     /**
@@ -596,6 +709,19 @@ export class TravelResolver {
     _yieldEntryToItem(entry) {
         const qty = entry.qty ?? 1;
         if (entry.itemRef) {
+            const known = this._itemFromRef(entry.itemRef, qty);
+            if (known) {
+                if (entry.desc && known.itemData) {
+                    known.itemData = {
+                        ...known.itemData,
+                        system: {
+                            ...(known.itemData.system ?? {}),
+                            description: { value: entry.desc }
+                        }
+                    };
+                }
+                return known;
+            }
             const resolved = { itemRef: entry.itemRef, quantity: qty };
             if (entry.desc) {
                 resolved.itemData = { system: { description: { value: entry.desc } } };
@@ -615,6 +741,17 @@ export class TravelResolver {
                 return this._makeVenomSac(qty);
             default:
                 return this._makeMeat(qty, entry.desc);
+        }
+    }
+
+    _itemFromRef(ref, quantity = 1) {
+        switch (ref) {
+            case "fresh_meat": return this._makeMeat(quantity);
+            case "fresh_fish": return this._makeFish(quantity);
+            case "choice_cut": return this._makeChoiceCut(quantity);
+            case "animal_fat": return this._makeAnimalFat(quantity);
+            case "venom_sac": return this._makeVenomSac(quantity);
+            default: return null;
         }
     }
 
@@ -702,6 +839,21 @@ export class TravelResolver {
                 }
             }
         };
+    }
+
+    /**
+     * One hunt find chosen by a player d100. The unattended week path
+     * still uses the full tier when no roll is supplied.
+     * @param {string} terrainTag
+     * @param {boolean} exceptional
+     * @param {number} rollValue
+     */
+    async _pickHuntYield(terrainTag, exceptional, rollValue) {
+        const all = this._getHuntYield(terrainTag, exceptional);
+        const clamped = Math.max(1, Math.min(100, Math.floor(Number(rollValue) || 0)));
+        if (!all.length) return this._drawFromBasePoolWithRoll(terrainTag, "hunt", clamped);
+        const index = Math.min(all.length - 1, Math.floor((clamped - 1) / 100 * all.length));
+        return all[index] ? [all[index]] : [];
     }
 
     /**

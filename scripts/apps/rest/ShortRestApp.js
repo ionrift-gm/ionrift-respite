@@ -1,6 +1,8 @@
 import { Logger } from "../../utils/Logger.js";
 import { HitDieModifiers } from "../../services/rest/recovery/HitDieModifiers.js";
+import { HitDiceService } from "../../services/rest/recovery/HitDiceService.js";
 import { SpellSlotRecovery } from "../../services/rest/recovery/SpellSlotRecovery.js";
+import { confirmAbandonRest } from "./confirmAbandonRest.js";
 import { MODULE_ID } from "../../data/moduleId.js";
 import { isWorkbenchIdentifyUiEnabled } from "../../data/RestConstants.js";
 import {
@@ -10,9 +12,23 @@ import {
     _removeGmShortRestIndicator,
     notifyShortRestActive,
     showAfkPanel,
-    hideAfkPanelAfterRest
+    hideAfkPanelAfterRest,
+    setRespiteFlowActive
 } from "../../module.js";
 import { getPartyActors } from "../../services/party/partyActors.js";
+import { CalendarHandler } from "../../services/rest/session/CalendarHandler.js";
+import { SHORT_REST_STATE_SCHEMA } from "../../services/rest/session/restSessionSchemas.js";
+import {
+    registerRestSessionApp,
+    unregisterRestSessionApp,
+    emitRestSessionStarted,
+    emitRestSessionSync,
+    emitRestSessionDelta,
+    emitRestSessionResolved,
+    emitRestSessionAbandoned,
+    emitRestSessionDismissed,
+    userControlsActor
+} from "../../services/rest/session/RestSessionSync.js";
 import * as RestAfkState from "../../services/rest/session/RestAfkState.js";
 import { pushAllStateToAdapters } from "../../services/afk/AfkBridgeService.js";
 
@@ -31,15 +47,10 @@ import {
     spawnDetectMagicCastRipple
 } from "../delegates/crafting/DetectMagicDelegate.js";
 import { getShortRestRechargeLabels } from "../../services/rest/recovery/ShortRestRecharge.js";
-import { scanEligibleChefs, rollChefMealBonus } from "../../services/meal/buffs/ChefFeat.js";
+import { RestPresentationHelper } from "../../utils/RestPresentationHelper.js";
+import { scanEligibleChefs } from "../../services/meal/buffs/ChefFeat.js";
 import { setNativeShortRestUnsuppressed } from "../../services/rest/flow/NativeRestPass.js";
-import {
-    emitShortRestWorkbenchSync,
-    emitShortRestWorkbenchStagingFromPlayer,
-    emitShortRestCompletionSummary,
-    emitShortRestComplete
-} from "../../services/socket/SocketController.js";
-const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+import { BaseShortRestApp } from "./BaseShortRestApp.js";
 
 /** All shelter options for short rest. "none" is always shown. */
 const SHORT_REST_SHELTERS = [
@@ -50,11 +61,11 @@ const SHORT_REST_SHELTERS = [
       altNames: ["leomund's tiny hut", "tiny hut"] },
 ];
 
-export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
+export class ShortRestApp extends BaseShortRestApp {
 
     static DEFAULT_OPTIONS = {
         id: "ionrift-short-rest",
-        classes: ["ionrift-window", "short-rest-app"],
+        classes: ["ionrift-window", "glass-ui", "short-rest-app"],
         tag: "div",
         window: {
             title: "Short Rest",
@@ -62,8 +73,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             resizable: true,
         },
         position: {
-            width: 700,
-            height: 700,
+            width: 720,
+            height: "auto",
         },
         actions: {
             spendHitDie:            ShortRestApp.#onSpendHitDie,
@@ -74,9 +85,18 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             confirmRecovery:      ShortRestApp.#onConfirmRecovery,
             editRecovery:         ShortRestApp.#onEditRecovery,
             volunteerSong:             ShortRestApp.#onVolunteerSong,
+            volunteerChef:             ShortRestApp.#onVolunteerChefMeal,
             volunteerChefMeal:         ShortRestApp.#onVolunteerChefMeal,
+            optOutChef:                ShortRestApp.#onOptOutChef,
+            claimChefTreat:            ShortRestApp.#onClaimChefTreat,
+            claimChefTreatFromBadge:   ShortRestApp.#onClaimChefTreatFromBadge,
+            claimChefFromBadge:        ShortRestApp.#onClaimChefTreatFromBadge,
             toggleShortRestFinished:   ShortRestApp.#onToggleShortRestFinished,
+            togglePatrolCheck:         ShortRestApp.#onTogglePatrolCheck,
+            adjustShortRestDc:         ShortRestApp.#onAdjustShortRestDc,
             switchShortRestTab:        ShortRestApp.#onSwitchTab,
+            selectRosterCharacter:     ShortRestApp.#onSelectRosterCharacter,
+            clearSelectedCharacter:    ShortRestApp.#onClearSelectedCharacter,
             selectWorkbenchRosterActor: ShortRestApp.#onSelectWorkbenchRosterActor,
             stationDetectMagicScan:    ShortRestApp.#onStationDetectMagicScan,
             stationIdentifyScannedItem:  ShortRestApp.#onStationIdentifyScannedItem,
@@ -163,32 +183,34 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         /** @type {number|null} */
         this._workbenchHookId = null;
 
-        /** True after GM confirms complete: summary shown, native shortRest not yet run. */
+        /** True after song and spell recovery are applied, before native short rest finishes. */
         this._completionPhase = false;
         /** @type {Array<{ actorId: string, name: string, line: string }>|null} */
         this._completionSummaryLines = null;
-        /** Prevents double-submit on Apply native recovery. */
+        /** Prevents a second complete from running native short rest twice. */
         this._finalizeShortRestBusy = false;
+        /** Covers the confirm dialogs before native short rest starts. */
+        this._completeShortRestBusy = false;
+        /** First GM render opens player windows; later renders only sync state. */
+        this._sessionAnnounced = false;
+        /** Optional short-rest encounter check. Starts at DC 6. Result stays with the GM. */
+        this._patrolCheckEnabled = false;
+        this._encounterDc = 6;
     }
 
     async render(options = {}) {
+        registerRestSessionApp("shortrest", this);
         if (this._isGM) {
             registerActiveShortRestApp(this);
             if (!this._completionPhase) {
-                game.socket.emit(`module.${MODULE_ID}`, {
-                    type: "shortRestStarted",
-                    rolls: this._serializeRolls(),
-                    songBonuses: this._serializeSongBonuses(),
-                    afkCharacterIds: RestAfkState.getAfkCharacterIds(),
-                    finishedUserIds: [...this._finishedUsers],
-                    activeShelter: this._activeShelter,
-                    songVolunteer: this._songVolunteer,
-                    chefVolunteer: this._chefVolunteer,
-                    chefMealServedCount: this._chefMealServedCount,
-                    chefMealBonuses: this._serializeChefMealBonuses(),
-                    workbench: this._serializeWorkbenchStateForNet(),
-                });
-                void this._saveShortRestState();
+                const snapshot = this._exportSnapshot();
+                if (!this._sessionAnnounced) {
+                    this._sessionAnnounced = true;
+                    emitRestSessionStarted("shortrest", snapshot);
+                } else {
+                    emitRestSessionSync("shortrest", snapshot);
+                }
+                void this._saveSessionState();
             }
         }
         // Live sync: party roster actors (not only hasPlayerOwner) so GM-owned roster PCs
@@ -220,6 +242,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     async close(options = {}) {
+        if (options.abandoned || options.resolved) this._isTerminating = true;
+        // A GM dismiss keeps the session registered so a rejoin still gets a snapshot.
+        if (this._isTerminating || !this._isGM) unregisterRestSessionApp("shortrest");
         // Unhook live-sync listeners
         if (this._actorHookId) {
             Hooks.off("updateActor", this._actorHookId);
@@ -254,12 +279,18 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._activeTab = "recovery";
             this._workbenchFocusActorId = null;
             hideAfkPanelAfterRest();
+            if (!this._isGM && options.abandoned) {
+                ui.notifications.info("The GM has abandoned the short rest.");
+            }
+            if (!this._isGM && options.resolved) {
+                ui.notifications.info("Short rest complete. Class features recovered.");
+            }
         } else if (this._isGM) {
             // GM dismissed the window but the rest persists.
             // State already saved on last render. Show resume bar.
             clearActiveShortRestApp();
             _showGmShortRestIndicator();
-            game.socket.emit(`module.${MODULE_ID}`, { type: "shortRestDismissed" });
+            emitRestSessionDismissed("shortrest");
         } else if (!this._isGM) {
             // Player dismissed the window. Show rejoin bar.
             notifyShortRestActive();
@@ -270,28 +301,17 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     _onWorkbenchStagingTouchedFromHook() {
         if (game.user.isGM) {
-            void this._saveShortRestState();
-            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+            void this._saveSessionState();
+            this._broadcastSync();
             return;
         }
-        emitShortRestWorkbenchStagingFromPlayer({
+        emitRestSessionDelta("shortrest", "WORKBENCH_STAGING", {
             userId: game.user.id,
-            staging: Array.from(this._workbenchIdentifyStaging?.entries() ?? []),
+            staging: Array.from(this._workbenchIdentifyStaging?.entries() ?? [])
         });
     }
 
-    _serializeWorkbenchStateForNet() {
-        return {
-            workbenchStaging: Array.from(this._workbenchIdentifyStaging?.entries() ?? []),
-            workbenchAck: Array.from(this._workbenchIdentifyAcknowledge?.entries() ?? []),
-            magicScanResults: this._magicScanResults,
-            magicScanComplete: !!this._magicScanComplete,
-            workbenchFocusActorId: this._workbenchFocusActorId,
-        };
-    }
-
-    
-    applyWorkbenchStagingFromPlayer(data, emitSync) {
+    applyWorkbenchStagingFromPlayer(data) {
         const uid = data.userId;
         const user = game.users.get(uid);
         if (!user) return;
@@ -308,8 +328,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (data.workbenchFocusActorId) {
             this._workbenchFocusActorId = data.workbenchFocusActorId;
         }
-        void this._saveShortRestState();
-        emitSync(this._serializeWorkbenchStateForNet());
+        void this._saveSessionState();
+        this._broadcastSync();
         if (this.rendered) void this.render();
     }
 
@@ -415,6 +435,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const hp = a.system?.attributes?.hp ?? {};
             const currentHp = Number(hp.value) || 0;
             const maxHp = hp.max ?? 0;
+            const hpPercent = maxHp > 0 ? Math.clamp(Math.round((currentHp / maxHp) * 100), 0, 100) : 100;
 
             const hdData = this._getHitDiceInfo(a);
             const rolls = this._rolls.get(a.id) ?? [];
@@ -423,6 +444,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const songBonusTotal = songBonusRecord?.total ?? 0;
             const chefMealRecord = this._chefMealBonusByActor.get(a.id);
             const chefMealTotal = chefMealRecord?.total ?? 0;
+            const hasClaimedChefTreat = this._chefMealBonusByActor.has(a.id);
 
             const hdPips = [];
             for (let i = 0; i < hdData.max; i++) {
@@ -471,19 +493,33 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const chefMealsRemaining = this._chefVolunteer
                 ? Math.max(0, this._chefVolunteer.mealCapacity - this._chefMealServedCount)
                 : 0;
+            const canClaimChefTreat = !hasClaimedChefTreat && !!this._chefVolunteer && chefMealsRemaining > 0 && (this._isGM || a.isOwner);
 
-            const linkedId = game.user.character?.id ?? null;
-            const isSelfCard = !this._isGM && (
-                (linkedId ? linkedId === a.id : false)
+            // Parity with BaseShortRestApp: hero accent follows character
+            // ownership, not GM state. See Rest UI Reunification F3 (short).
+            const linkedId = a.prototypeToken?.actorLink ? a.id : null;
+            const isSelfCard = Boolean(
+                (game.user.character && (game.user.character.id === a.id
+                    || (linkedId && game.user.character.id === linkedId)))
                 || (!linkedId && a.testUserPermission(game.user, "OWNER"))
             );
+
+            const pres = RestPresentationHelper.getActorPresentation(a);
+            const isReady = ShortRestApp.#isCharacterReady.call(this, a);
 
             const baseCharacter = {
                 id: a.id,
                 name: a.name,
                 img: a.img || "icons/svg/mystery-man.svg",
+                initial: pres.initial,
+                subtext: pres.subtext,
+                themeGradient: pres.themeGradient,
+                themeBorder: pres.themeBorder,
                 currentHp,
+                hpValue: currentHp,
                 maxHp,
+                hpMax: maxHp,
+                hpPercent,
                 isFullHp: currentHp >= maxHp,
                 hdRemaining: hdData.remaining,
                 hdMax: hdData.max,
@@ -493,9 +529,13 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 totalHealed,
                 songBonusTotal,
                 chefMealTotal,
+                chefMealRecord,
+                hasClaimedChefTreat,
+                canClaimChefTreat,
                 songCard,
                 noHdLeft: hdData.remaining <= 0,
                 isOwner: this._isGM || a.isOwner,
+                isReady,
                 conMod: a.system?.abilities?.con?.mod ?? 0,
                 isAfk: RestAfkState.isAfk(a.id),
                 isSelfCard,
@@ -503,11 +543,13 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 rollsToShow,
                 rollsHidden,
                 isEligibleBard,
+                canInteractSong,
                 canVolunteerSong: canInteractSong && !songAlreadyClaimed,
                 hasVolunteeredSong,
                 songVolunteerLocked: songAlreadyClaimed,
                 bardSongDie: bardInfo?.songDie ?? null,
                 isEligibleChef,
+                canInteractChef,
                 canVolunteerChef: canInteractChef && !chefAlreadyClaimed,
                 hasVolunteeredChef,
                 chefVolunteerLocked: chefAlreadyClaimed,
@@ -620,52 +662,65 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
             const srRechargeBadges = getShortRestRechargeLabels(a);
 
+            const hasFeatures = Boolean(
+                baseCharacter.isEligibleBard
+                || baseCharacter.isEligibleChef
+                || spellRecovery
+                || (srRechargeBadges && srRechargeBadges.length)
+            );
+            const canTriggerFeatures = Boolean(
+                baseCharacter.canVolunteerSong
+                || baseCharacter.canVolunteerChef
+                || (spellRecovery && !spellRecovery.exhausted && !spellRecovery.noRecoverableSlots)
+            );
+
             return {
                 ...baseCharacter,
                 spellRecovery,
                 srRechargeBadges,
+                hasFeatures,
+                canTriggerFeatures,
             };
         });
 
-        let expandedCards, collapsedCards;
-        if (this._isGM) {
-            expandedCards = characters;
-            collapsedCards = [];
-        } else {
-            expandedCards = characters.filter(c => c.isSelfCard);
-            collapsedCards = characters.filter(c => !c.isSelfCard);
-        }
+        const isGmNeutralView = this._isGM && !this._selectedCharacterId;
+        const selectedId = this._selectedCharacterId || (!this._isGM ? (partyActors.find(a => a.isOwner)?.id ?? partyActors[0]?.id) : null);
+        this._selectedCharacterId = this._selectedCharacterId ?? null;
+
+        const heroCharacter = selectedId ? (characters.find(c => c.id === selectedId) || null) : null;
+        const companionCharacters = heroCharacter ? characters.filter(c => c.id !== heroCharacter.id) : [];
+        const expandedCards = heroCharacter ? [heroCharacter] : characters;
+        const collapsedCards = companionCharacters;
+
+        const readyCount = characters.filter(c => c.isReady).length;
+        const totalPartyCount = characters.length;
+        const allCharactersReady = totalPartyCount > 0 && readyCount === totalPartyCount;
+        const waitingNames = characters.filter(c => !c.isReady && !c.isAfk).map(c => c.name);
+        const canCompleteShortRest = waitingNames.length === 0;
+        const completeBlockedHint = waitingNames.length
+            ? `Waiting on ${waitingNames.join(", ")}.`
+            : "";
 
         const isRopeTrick = this._activeShelter === "rope_trick";
 
-        // Shelter badge for display (selection happened in setup wizard)
+        // Shelter badge for display (selection happened in setup wizard; open air is assumed and omitted)
         const shelterDef = SHORT_REST_SHELTERS.find(s => s.id === this._activeShelter)
             ?? SHORT_REST_SHELTERS.find(s => s.id === "none");
-        const shelterBadge = {
+        const shelterBadge = (this._activeShelter && this._activeShelter !== "none") ? {
             id: this._activeShelter,
             name: shelterDef?.name ?? "Open Air",
             icon: shelterDef?.icon ?? "fas fa-wind",
-        };
+        } : null;
 
         const workbenchIdentifyUiEnabled = isWorkbenchIdentifyUiEnabled();
         if (!workbenchIdentifyUiEnabled && this._activeTab === "workbench") {
             this._activeTab = "recovery";
         }
         const gmWorkbenchRosterPick = this._isGM && this._activeTab === "workbench";
-        const roster = partyActors.map(a => {
-            const isAfk = RestAfkState.isAfk(a.id);
-            const ownerUser = game.users.find(u => !u.isGM && u.active && a.testUserPermission(u, "OWNER"));
-            const isFinished = ownerUser ? this._finishedUsers.has(ownerUser.id) : false;
-            return {
-                id: a.id,
-                name: (a.name ?? "").split(" ")[0],
-                fullName: a.name,
-                img: a.img || "icons/svg/mystery-man.svg",
-                isAfk,
-                isFinished,
-                isOwner: this._isGM || a.isOwner,
-                isWorkbenchFocus: gmWorkbenchRosterPick && this._workbenchFocusActorId === a.id,
-            };
+        const roster = RestPresentationHelper.getPartyRoster(partyActors, {
+            selectedCharacterId: selectedId,
+            finishedUserIds: this._finishedUsers,
+            isGM: this._isGM
         });
 
         const rawCompletionLines = this._completionSummaryLines ?? [];
@@ -677,11 +732,20 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         return {
             isGM: this._isGM,
+            isGmNeutralView,
+            readyCount,
+            totalPartyCount,
+            allCharactersReady,
+            canCompleteShortRest,
+            completeBlockedHint,
             characters,
+            heroCharacter,
+            companionCharacters,
             expandedCards,
             collapsedCards,
             shelterBadge,
             roster,
+            partyRoster: RestPresentationHelper.getPartyRosterPills(partyActors, { finishedActorIds: this._finishedUsers }),
             activeTab: this._activeTab,
             workbenchIdentifyUiEnabled,
             gmWorkbenchRosterPick,
@@ -703,16 +767,31 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     chefName: this._chefVolunteer.chefName,
                     mealCapacity: this._chefVolunteer.mealCapacity,
                     mealsRemaining: Math.max(0, this._chefVolunteer.mealCapacity - this._chefMealServedCount),
+                    hasRemaining: (this._chefVolunteer.mealCapacity - this._chefMealServedCount) > 0,
                 }
                 : null,
-            banner: isRopeTrick
-                ? ImageResolver.terrainBanner("short-rest", "rope_trick.png")
-                : ImageResolver.terrainBanner("short-rest", "banner.png"),
-            bannerFallback: ImageResolver.fallbackBanner,
-            hideTerrainBanner: (() => {
-                try { return !!game.settings.get(MODULE_ID, "hideTerrainBanners"); } catch { return false; }
-            })(),
+            chefMealsRemaining: this._chefVolunteer
+                ? Math.max(0, this._chefVolunteer.mealCapacity - this._chefMealServedCount)
+                : 0,
+            ...ImageResolver.resolveRestBannerContext("short-rest", isRopeTrick ? "rope_trick" : "camp"),
+            ...RestPresentationHelper.resolveRestHeaderContext({
+                type: "short",
+                terrainTag: "forest",
+                terrainLabel: "Forest",
+                phase: completionPhase ? "completion" : "recovery",
+                abandonAction: "abandonShortRest",
+                isGM: this._isGM
+            }),
             completionPhase,
+            patrolCheckEnabled: Boolean(this._patrolCheckEnabled),
+            encounterDcStepper: {
+                dc: this._encounterDc ?? 6,
+                adjustAction: "adjustShortRestDc",
+                showArm: true,
+                armed: Boolean(this._patrolCheckEnabled),
+                armAction: "togglePatrolCheck",
+                tooltip: "Check the box to roll 1d20 against this DC when the short rest completes. A 1, or a roll at least 5 under the DC, stops the rest. Any other roll under the DC still completes it. The result stays with the GM."
+            },
             completionSummaryForUser,
             completionSummaryEmpty,
         };
@@ -724,59 +803,12 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Falls back to system.attributes.hd for older versions.
      */
     _getHitDiceInfo(actor) {
-        const classItems = actor.items?.filter(i => i.type === "class") ?? [];
-
-        if (classItems.length) {
-            let totalMax = 0;
-            let totalUsed = 0;
-
-            for (const cls of classItems) {
-                totalMax += cls.system?.levels ?? 0;
-                totalUsed += cls.system?.hitDiceUsed ?? cls.system?.hd?.spent ?? 0;
-            }
-
-            // Primary die = highest-level class (first if tied)
-            const sorted = [...classItems].sort((a, b) =>
-                (b.system?.levels ?? 0) - (a.system?.levels ?? 0)
-            );
-            const rawDie = sorted[0]?.system?.hitDice
-                ?? sorted[0]?.system?.hd?.denomination
-                ?? "d8";
-            const primaryDie = typeof rawDie === "string"
-                ? parseInt(rawDie.replace("d", "")) || 8
-                : rawDie;
-
-            return {
-                remaining: Math.max(0, totalMax - totalUsed),
-                max: totalMax,
-                die: primaryDie,
-            };
-        }
-
-        // Fallback: no class items (legacy or unusual actor)
-        const hd = actor.system?.attributes?.hd;
-        if (hd && typeof hd.value === "number") {
-            return { remaining: hd.value, max: hd.max ?? 0, die: 8 };
-        }
-        const level = actor.system?.details?.level ?? 0;
-        const spent = hd?.spent ?? 0;
-        return { remaining: Math.max(0, level - spent), max: level, die: 8 };
+        return HitDiceService.getHitDiceInfo(actor);
     }
 
     
     _getHdDenomination(actor) {
-        // v4.x: iterate classes via actor.items
-        const classItems = actor.items?.filter(i => i.type === "class") ?? [];
-        if (classItems.length) {
-            const cls = classItems[0];
-            const hd = cls.system?.hitDice ?? cls.system?.hd?.denomination ?? cls.hitDice;
-            if (typeof hd === "string") return hd;           // already "d8"
-            if (typeof hd === "number") return `d${hd}`;
-        }
-        // Fallback from system data
-        const hd = actor.system?.attributes?.hd;
-        if (typeof hd === "string") return hd;
-        return "d8";
+        return HitDiceService.getHdDenomination(actor);
     }
 
     
@@ -864,6 +896,18 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this.render();
     }
 
+    /**
+     * A character is ready once their player has marked the rest finished.
+     * Actors with no player owner match on the actor id instead.
+     * @param {Actor} actor
+     * @returns {boolean}
+     */
+    static #isCharacterReady(actor) {
+        const allUsers = game.users?.contents ?? Array.from(game.users ?? []);
+        const ownerUser = allUsers.find(u => !u.isGM && actor.testUserPermission(u, "OWNER"));
+        return ownerUser ? this._finishedUsers.has(ownerUser.id) : this._finishedUsers.has(actor.id);
+    }
+
     static #onToggleShortRestFinished(event, target) {
         if (this._completionPhase) return;
         event.preventDefault?.();
@@ -872,11 +916,24 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (next) this._finishedUsers.add(uid);
         else this._finishedUsers.delete(uid);
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "shortRestPlayerFinished",
-            userId: uid,
-            finished: next,
-        });
+        this._publishSession("PLAYER_FINISHED", { userId: uid, finished: next });
+        this.render();
+    }
+
+    static #onTogglePatrolCheck(event, target) {
+        if (!this._isGM || this._completionPhase) return;
+        this._patrolCheckEnabled = target.type === "checkbox" ? target.checked : !this._patrolCheckEnabled;
+        void this._saveSessionState();
+        this.render();
+    }
+
+    static #onAdjustShortRestDc(event, target) {
+        if (!this._isGM || this._completionPhase) return;
+        const delta = Number(target.dataset.delta) || 0;
+        const next = Math.max(1, Math.min(30, (this._encounterDc ?? 6) + delta));
+        if (next === this._encounterDc) return;
+        this._encounterDc = next;
+        void this._saveSessionState();
         this.render();
     }
 
@@ -899,11 +956,10 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "shortRestSongVolunteer",
-            songVolunteer: this._songVolunteer,
+        this._publishSession("SONG_VOLUNTEER", {
+            actorId,
+            songVolunteer: this._songVolunteer
         });
-        if (this._isGM) this._saveShortRestState();
         this.render();
     }
 
@@ -929,14 +985,120 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "shortRestChefVolunteer",
+        this._publishSession("CHEF_VOLUNTEER", {
+            actorId,
             chefVolunteer: this._chefVolunteer,
             chefMealServedCount: this._chefMealServedCount,
-            chefMealBonuses: this._serializeChefMealBonuses(),
+            chefMealBonuses: [...this._chefMealBonusByActor]
         });
-        if (this._isGM) this._saveShortRestState();
         this.render();
+    }
+
+    static async #onOptOutChef(event, target) {
+        if (this._completionPhase) return;
+        const actorId = target?.dataset?.actorId ?? this._chefVolunteer?.actorId;
+        if (!actorId) return;
+        const actor = game.actors.get(actorId);
+        if (!actor) return;
+        if (!this._isGM && !actor.isOwner) return;
+
+        if (this._chefVolunteer?.actorId === actorId || this._isGM) {
+            this._chefVolunteer = null;
+            this._chefMealServedCount = 0;
+            this._chefMealBonusByActor.clear();
+            this._publishSession("CHEF_VOLUNTEER", {
+                actorId,
+                chefVolunteer: null,
+                chefMealServedCount: 0,
+                chefMealBonuses: []
+            });
+            this.render();
+        }
+    }
+
+    static async #onClaimChefTreat(event, target) {
+        if (this._completionPhase) return;
+        const actorId = target?.dataset?.actorId;
+        if (!actorId) return;
+        const actor = game.actors.get(actorId);
+        if (!actor) return;
+        if (!this._isGM && !actor.isOwner) return;
+
+        if (!this._chefVolunteer) return;
+        const remaining = this._chefVolunteer.mealCapacity - this._chefMealServedCount;
+        if (remaining <= 0) return;
+        if (this._chefMealBonusByActor.has(actorId)) return;
+
+        const rolls = this._rolls.get(actorId) ?? [];
+        const hasSpentHd = rolls.length > 0;
+
+        const chefBonusRecord = {
+            claimed: true,
+            applied: false,
+            chefName: this._chefVolunteer.chefName,
+            total: 0,
+            formula: "1d8",
+        };
+
+        this._chefMealServedCount += 1;
+
+        if (hasSpentHd) {
+            const chefRoll = await HitDiceService.applyChefBonus(actor, this._chefVolunteer);
+            if (chefRoll) {
+                chefBonusRecord.applied = true;
+                chefBonusRecord.total = chefRoll.total;
+                chefBonusRecord.formula = chefRoll.formula;
+
+                try {
+                    await ChatMessage.create({
+                        content: ShortRestApp.#buildChefMealChat(
+                            this._chefVolunteer.chefName,
+                            actor.name,
+                            chefRoll.formula,
+                            chefRoll.total
+                        ),
+                        speaker: ChatMessage.getSpeaker({
+                            actor: game.actors.get(this._chefVolunteer.actorId) ?? actor
+                        }),
+                    });
+                } catch (err) {
+                    Logger.warn(`${MODULE_ID} | Chef Replenishing Meal chat message failed:`, err);
+                }
+            }
+        }
+
+        this._chefMealBonusByActor.set(actorId, chefBonusRecord);
+
+        this._publishSession("CHEF_CLAIM_TREAT", {
+            actorId,
+            chefMealBonus: chefBonusRecord,
+            chefMealServedCount: this._chefMealServedCount
+        });
+        this.render();
+    }
+
+    static async #onClaimChefTreatFromBadge(event, target) {
+        if (this._completionPhase) return;
+        if (!this._chefVolunteer) return;
+        const remaining = this._chefVolunteer.mealCapacity - this._chefMealServedCount;
+        if (remaining <= 0) return;
+
+        const partyActors = getPartyActors();
+        const linkedId = game.user?.character?.id ?? null;
+        let candidate = null;
+        if (linkedId) {
+            const linked = partyActors.find(a => a.id === linkedId);
+            if (linked && (this._isGM || linked.isOwner) && !this._chefMealBonusByActor.has(linked.id)) {
+                candidate = linked;
+            }
+        }
+        if (!candidate) {
+            candidate = partyActors.find(a => (this._isGM || a.isOwner) && !this._chefMealBonusByActor.has(a.id));
+        }
+        if (!candidate) return;
+
+        const mockTarget = { dataset: { actorId: candidate.id } };
+        return ShortRestApp.#onClaimChefTreat.call(this, event, mockTarget);
     }
 
     static #escapeChat(str) {
@@ -1017,12 +1179,12 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (tab === "workbench" && !isWorkbenchIdentifyUiEnabled()) return;
         this._activeTab = tab;
         if (this._isGM) {
-            void this._saveShortRestState();
-            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+            void this._saveSessionState();
+            this._broadcastSync();
         } else {
-            emitShortRestWorkbenchStagingFromPlayer({
+            emitRestSessionDelta("shortrest", "WORKBENCH_STAGING", {
                 userId: game.user.id,
-                staging: Array.from(this._workbenchIdentifyStaging?.entries() ?? []),
+                staging: Array.from(this._workbenchIdentifyStaging?.entries() ?? [])
             });
         }
         this.render();
@@ -1037,8 +1199,41 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const party = getPartyActors();
         if (!party.some((a) => a.id === id)) return;
         this._workbenchFocusActorId = id;
-        void this._saveShortRestState();
-        emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+        void this._saveSessionState();
+        this._broadcastSync();
+        this.render();
+    }
+
+    static #onSelectRosterCharacter(event, target) {
+        if (this._completionPhase) return;
+        if (!this._isGM) return;
+        const chip = target?.closest?.(".roster-chip, .rest-companion-card, .gm-party-card, [data-actor-id]");
+        if (!chip) return;
+        const id = chip.dataset.actorId || chip.dataset.rosterId;
+        if (!id) return;
+        const party = getPartyActors();
+        if (!party.some((a) => a.id === id)) return;
+        if (id === this._selectedCharacterId) {
+            this._selectedCharacterId = null;
+        } else {
+            this._selectedCharacterId = id;
+        }
+        if (this._activeTab === "workbench") {
+            this._workbenchFocusActorId = this._selectedCharacterId;
+            void this._saveSessionState();
+            this._broadcastSync();
+        }
+        this.render();
+    }
+
+    static #onClearSelectedCharacter(event, target) {
+        if (!this._isGM) return;
+        this._selectedCharacterId = null;
+        if (this._activeTab === "workbench") {
+            this._workbenchFocusActorId = null;
+            void this._saveSessionState();
+            this._broadcastSync();
+        }
         this.render();
     }
 
@@ -1053,8 +1248,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         } else {
             await this._detectMagic.runScan(getPartyActors);
             if (this._isGM) {
-                void this._saveShortRestState();
-                emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+                void this._saveSessionState();
+                this._broadcastSync();
             }
         }
     }
@@ -1066,8 +1261,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!actorId || !itemId) return;
         await this._detectMagic.identifyScannedItem(actorId, itemId, getPartyActors);
         if (this._isGM) {
-            void this._saveShortRestState();
-            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+            void this._saveSessionState();
+            this._broadcastSync();
         }
     }
 
@@ -1078,8 +1273,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!actorId) return;
         await this._workbench.submitFromStation(actorId);
         if (this._isGM) {
-            void this._saveShortRestState();
-            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+            void this._saveSessionState();
+            this._broadcastSync();
         }
     }
 
@@ -1090,8 +1285,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!actorId) return;
         this._workbench.removePotionFromStation(actorId);
         if (this._isGM) {
-            void this._saveShortRestState();
-            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+            void this._saveSessionState();
+            this._broadcastSync();
         }
     }
 
@@ -1104,8 +1299,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!ack || Date.now() < ack.revealAt) return;
         this._workbench.dismissAcknowledgement(actorId);
         if (this._isGM) {
-            void this._saveShortRestState();
-            emitShortRestWorkbenchSync(this._serializeWorkbenchStateForNet());
+            void this._saveSessionState();
+            this._broadcastSync();
         }
     }
 
@@ -1118,74 +1313,19 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         if (!this._isGM && !actor.isOwner) return;
 
-        const hdData = this._getHitDiceInfo(actor);
-        if (hdData.remaining <= 0) {
-            ui.notifications.warn(`${actor.name} has no Hit Dice remaining.`);
-            return;
-        }
+        const spendResult = await HitDiceService.spendHitDie(actor);
+        if (!spendResult) return;
 
-        const hpSnapshot = actor.system?.attributes?.hp?.value ?? 0;
-        const hpMax = actor.system?.attributes?.hp?.max ?? 0;
+        const { rollTotal, adjustedTotal, die, conMod, annotations } = spendResult;
 
-        // DnD5e v4 signature: rollHitDie(denomination, options)
-        // v3 signature: rollHitDie(options)
-        // We try v4 first, fall back to no-arg if that fails.
-        let roll;
-        try {
-            const denom = this._getHdDenomination(actor);
-            roll = await actor.rollHitDie(denom, { dialog: false });
-        } catch (e) {
-            Logger.warn(`rollHitDie v4-style failed, trying legacy:`, e);
-            try {
-                roll = await actor.rollHitDie({ dialog: false });
-            } catch (e2) {
-                console.error(`${MODULE_ID} | rollHitDie failed entirely:`, e2);
-                ui.notifications.error("Could not roll Hit Die. See console for details.");
-                return;
-            }
-        }
-
-        if (!roll) return; // Cancelled
-
-        // DnD5e v5.x returns an array of Roll objects; unwrap if needed
-        const singleRoll = Array.isArray(roll) ? roll[0] : roll;
-        const rollTotal = Number(singleRoll?.total) || 0;
-
-        const conMod = actor.system?.abilities?.con?.mod ?? 0;
-
-        const modifiers = HitDieModifiers.scan(actor);
-        let rawDie = rollTotal - conMod;
-        const maxHdEnabled = !!game.settings.get(MODULE_ID, MAX_VALUE_HD_KEY);
-        const maxOverride = HitDieModifiers.applyMaxValueOverride(maxHdEnabled, rawDie, hdData.die);
-        rawDie = maxOverride.rawDie;
-        const { adjustedTotal, annotations } = HitDieModifiers.modifyRoll(rawDie, conMod, modifiers);
-        const mergedAnnotations = [...maxOverride.annotations, ...annotations];
-
-        // Apply HP: anchor to pre-roll snapshot to avoid stale-read race with rollHitDie's own update.
-        // When max-value override is active this is the only correct path.
-        // For non-override rolls it still applies correctly (adjustedTotal === rollTotal means native
-        // roll already did the right thing, but overwriting with the same value is harmless).
         if (adjustedTotal !== rollTotal) {
-            const targetHp = Math.min(hpSnapshot + adjustedTotal, hpMax);
-            const hpAdapter = game.ionrift?.respite?.adapter;
-            const hpData = hpAdapter ? hpAdapter.getHP(actor) : { value: actor.system?.attributes?.hp?.value ?? 0 };
-            if (targetHp !== hpData.value) {
-                const hpDelta = targetHp - hpData.value;
-                if (hpAdapter && hpDelta > 0) {
-                    await hpAdapter.applyHPRestore(actor, hpDelta);
-                } else if (hpAdapter && hpDelta < 0) {
-                    await hpAdapter.applyHPDamage(actor, -hpDelta);
-                } else {
-                    await actor.update({ "system.attributes.hp.value": targetHp });
-                }
-            }
             try {
                 await ChatMessage.create({
                     content: ShortRestApp.#buildHitDieCorrectionChat(
                         actor.name,
                         rollTotal,
                         adjustedTotal,
-                        mergedAnnotations
+                        annotations
                     ),
                     speaker: ChatMessage.getSpeaker({ actor }),
                 });
@@ -1198,9 +1338,9 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!this._rolls.has(actorId)) this._rolls.set(actorId, []);
         this._rolls.get(actorId).push({
             total: adjustedTotal,
-            die: hdData.die,
+            die,
             conMod,
-            annotations: [...mergedAnnotations],
+            annotations: [...annotations],
         });
 
         const songTiming = game.settings.get(MODULE_ID, SONG_TIMING_KEY) ?? "endOfRest";
@@ -1208,114 +1348,105 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         let songBonusUpdate = null;
 
         if (songTiming === "withFirstHitDie" && this._rolls.get(actorId).length === 1 && this._songVolunteer?.songDie) {
-            const songRoll = await HitDieModifiers.rollSongBonus(this._songVolunteer.songDie, this._songVolunteer.bardName);
-            const songAdapter = game.ionrift?.respite?.adapter;
-            if (songRoll.total > 0) {
-                if (songAdapter) {
-                    await songAdapter.applyHPRestore(actor, songRoll.total);
-                } else {
-                    const hpNow = actor.system?.attributes?.hp;
-                    if (hpNow) {
-                        const newHp = Math.min((hpNow.value ?? 0) + songRoll.total, hpNow.max ?? 0);
-                        await actor.update({ "system.attributes.hp.value": newHp });
-                    }
-                }
-            }
-            this._songBonusByActor.set(actorId, {
-                total: songRoll.total,
-                formula: songRoll.formula,
-                bardName: this._songVolunteer.bardName,
-            });
-            songBonusUpdate = {
-                actorId,
-                total: songRoll.total,
-                formula: songRoll.formula,
-                bardName: this._songVolunteer.bardName,
-            };
-            try {
-                await ChatMessage.create({
-                    content: ShortRestApp.#buildSongImmediateChat(
-                        this._songVolunteer.bardName,
-                        actor.name,
-                        songRoll.formula,
-                        songRoll.total
-                    ),
-                    speaker: ChatMessage.getSpeaker({ actor }),
+            const songRoll = await HitDiceService.applySongBonus(actor, this._songVolunteer);
+            if (songRoll) {
+                this._songBonusByActor.set(actorId, {
+                    total: songRoll.total,
+                    formula: songRoll.formula,
+                    bardName: songRoll.bardName,
                 });
-            } catch (err) {
-                Logger.warn(`${MODULE_ID} | Song of Rest chat message failed:`, err);
+                songBonusUpdate = {
+                    actorId,
+                    total: songRoll.total,
+                    formula: songRoll.formula,
+                    bardName: songRoll.bardName,
+                };
+                try {
+                    await ChatMessage.create({
+                        content: ShortRestApp.#buildSongImmediateChat(
+                            this._songVolunteer.bardName,
+                            actor.name,
+                            songRoll.formula,
+                            songRoll.total
+                        ),
+                        speaker: ChatMessage.getSpeaker({ actor }),
+                    });
+                } catch (err) {
+                    Logger.warn(`${MODULE_ID} | Song of Rest chat message failed:`, err);
+                }
             }
         }
 
         /** @type {{ actorId: string, total: number, formula: string, chefName: string }|null} */
         let chefMealBonusUpdate = null;
 
-        if (this._chefVolunteer
-            && this._chefMealServedCount < this._chefVolunteer.mealCapacity
-            && !this._chefMealBonusByActor.has(actorId)) {
-            const chefRoll = await rollChefMealBonus();
-            const mealAdapter = game.ionrift?.respite?.adapter;
-            if (chefRoll.total > 0) {
-                if (mealAdapter) {
-                    await mealAdapter.applyHPRestore(actor, chefRoll.total);
-                } else {
-                    const hpNow = actor.system?.attributes?.hp;
-                    if (hpNow) {
-                        const newHp = Math.min((hpNow.value ?? 0) + chefRoll.total, hpNow.max ?? 0);
-                        await actor.update({ "system.attributes.hp.value": newHp });
-                    }
-                }
-            }
-            this._chefMealServedCount += 1;
-            this._chefMealBonusByActor.set(actorId, {
-                total: chefRoll.total,
-                formula: chefRoll.formula,
-                chefName: this._chefVolunteer.chefName,
+        const claimedChefRecord = this._chefMealBonusByActor.get(actorId);
+        if (claimedChefRecord && !claimedChefRecord.applied) {
+            const chefRoll = await HitDiceService.applyChefBonus(actor, {
+                chefName: claimedChefRecord.chefName
             });
-            chefMealBonusUpdate = {
-                actorId,
-                total: chefRoll.total,
-                formula: chefRoll.formula,
-                chefName: this._chefVolunteer.chefName,
-            };
-            try {
-                await ChatMessage.create({
-                    content: ShortRestApp.#buildChefMealChat(
-                        this._chefVolunteer.chefName,
-                        actor.name,
-                        chefRoll.formula,
-                        chefRoll.total
-                    ),
-                    speaker: ChatMessage.getSpeaker({ actor: game.actors.get(this._chefVolunteer.actorId) }),
-                });
-            } catch (err) {
-                Logger.warn(`${MODULE_ID} | Chef meal chat message failed:`, err);
+            if (chefRoll) {
+                claimedChefRecord.applied = true;
+                claimedChefRecord.total = chefRoll.total;
+                claimedChefRecord.formula = chefRoll.formula;
+                this._chefMealBonusByActor.set(actorId, claimedChefRecord);
+
+                chefMealBonusUpdate = {
+                    actorId,
+                    total: chefRoll.total,
+                    formula: chefRoll.formula,
+                    chefName: claimedChefRecord.chefName,
+                    applied: true,
+                    claimed: true,
+                };
+                try {
+                    await ChatMessage.create({
+                        content: ShortRestApp.#buildChefMealChat(
+                            claimedChefRecord.chefName,
+                            actor.name,
+                            chefRoll.formula,
+                            chefRoll.total
+                        ),
+                        speaker: ChatMessage.getSpeaker({
+                            actor: this._chefVolunteer ? game.actors.get(this._chefVolunteer.actorId) : actor
+                        }),
+                    });
+                } catch (err) {
+                    Logger.warn(`${MODULE_ID} | Chef meal chat message failed:`, err);
+                }
             }
         }
 
-        game.socket.emit(`module.${MODULE_ID}`, {
-            type: "shortRestHdSpent",
+        this._publishSession("SPEND_HIT_DIE", {
             actorId,
-            rollTotal: adjustedTotal,
-            die: hdData.die,
-            conMod,
-            annotations: [...mergedAnnotations],
+            roll: { total: adjustedTotal, die, conMod, annotations: [...annotations] },
             ...(songBonusUpdate ? { songBonusUpdate } : {}),
             ...(chefMealBonusUpdate ? { chefMealBonusUpdate } : {}),
-            chefMealServedCount: this._chefMealServedCount,
+            chefMealServedCount: this._chefMealServedCount
         });
 
         this.render();
     }
 
     /**
-     * GM completes the short rest. Calls actor.shortRest() for class feature recovery.
+     * GM completes the short rest: song and spell recovery, then native short rest, then close.
      */
     static async #onCompleteShortRest(event, target) {
         if (!this._isGM) return;
-        if (this._completionPhase) return;
+        if (this._finalizeShortRestBusy || this._completeShortRestBusy) return;
+        this._completeShortRestBusy = true;
+        try {
+        if (this._completionPhase) {
+            await ShortRestApp.#onFinalizeShortRestRecovery.call(this);
+            return;
+        }
 
         const partyActorsPreCheck = getPartyActors();
+        const waitingNames = partyActorsPreCheck
+            .filter(actor => !RestAfkState.isAfk(actor.id) && !ShortRestApp.#isCharacterReady.call(this, actor))
+            .map(actor => actor.name);
+        if (waitingNames.length > 0) return;
+
         const afkCharNames = partyActorsPreCheck
             .filter(a => RestAfkState.isAfk(a.id))
             .map(a => a.name);
@@ -1336,25 +1467,6 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (!proceed) return;
         }
 
-        // Warn GM if any players haven't marked themselves finished
-        const unfinishedPlayers = game.users
-            .filter(u => !u.isGM && u.active && !this._finishedUsers.has(u.id))
-            .filter(u => partyActorsPreCheck.some(a => a.testUserPermission(u, "OWNER")));
-        if (unfinishedPlayers.length > 0) {
-            const names = unfinishedPlayers.map(u => u.name);
-            const confirmFn = game.ionrift?.library?.confirm ?? Dialog.confirm.bind(Dialog);
-            const proceed = await confirmFn({
-                title: "Players Still Resting",
-                content: `<p>The following players haven't finished resting:</p><ul>${names.map(n => `<li><strong>${n}</strong></li>`).join("")}</ul><p>Complete the short rest anyway?</p>`,
-                yesLabel: "Complete Anyway",
-                noLabel: "Wait",
-                yesIcon: "fas fa-forward",
-                noIcon: "fas fa-hourglass-half",
-                defaultYes: false,
-            });
-            if (!proceed) return;
-        }
-
         // Warn GM if any characters have unconfirmed spell recovery selections
         const unconfirmed = [];
         for (const [actorId, state] of this._spellRecovery) {
@@ -1368,8 +1480,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const confirmFn = game.ionrift?.library?.confirm ?? Dialog.confirm.bind(Dialog);
             const proceed = await confirmFn({
                 title: "Unconfirmed Spell Recovery",
-                content: `<p>The following characters have spell recovery selections that haven't been confirmed:</p><ul>${unconfirmed.map(n => `<li><strong>${n}</strong></li>`).join("")}</ul><p>Their selections will still be applied. Continue?</p>`,
-                yesLabel: "Continue",
+                content: `<p>The following characters have spell recovery selections that haven't been confirmed:</p><ul>${unconfirmed.map(n => `<li><strong>${n}</strong></li>`).join("")}</ul><p>Their selections will still be applied.</p>`,
+                yesLabel: "Apply Anyway",
                 noLabel: "Cancel",
                 yesIcon: "fas fa-check",
                 noIcon: "fas fa-times",
@@ -1380,26 +1492,36 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const partyActors = getPartyActors();
 
+        // Optional encounter check. Uses the Encounter DC stepper. A roll at least 5 under
+        // the DC, or a 1, stops the rest. The roll is not posted to chat.
+        if (this._isGM && this._patrolCheckEnabled) {
+            const dc = this._encounterDc ?? 6;
+            const roll = await new Roll("1d20").evaluate();
+            const rollTotal = roll.total;
+            const isRed = rollTotal === 1 || rollTotal < dc - 4;
+            const isAmber = !isRed && rollTotal < dc;
+
+            if (isRed) {
+                ui.notifications.warn(`Encounter DC ${dc}. Roll ${rollTotal}. Encounter. Rest interrupted.`);
+                return;
+            }
+            if (isAmber) {
+                ui.notifications.info(`Encounter DC ${dc}. Roll ${rollTotal}. Below DC. Rest completes.`);
+            } else {
+                ui.notifications.info(`Encounter DC ${dc}. Roll ${rollTotal}. Clear.`);
+            }
+        }
+
         const songTiming = game.settings.get(MODULE_ID, SONG_TIMING_KEY) ?? "endOfRest";
         const anyHdSpent = [...this._rolls.values()].some(rolls => rolls.length > 0);
         if (songTiming === "endOfRest" && anyHdSpent && this._songVolunteer?.songDie) {
             const entries = [];
             for (const actor of partyActors) {
                 if (!this._rolls.has(actor.id) || this._rolls.get(actor.id).length === 0) continue;
-                const songRoll = await HitDieModifiers.rollSongBonus(this._songVolunteer.songDie, this._songVolunteer.bardName);
-                if (songRoll.total > 0) {
-                    const endSongAdapter = game.ionrift?.respite?.adapter;
-                    if (endSongAdapter) {
-                        await endSongAdapter.applyHPRestore(actor, songRoll.total);
-                    } else {
-                        const hp = actor.system?.attributes?.hp;
-                        if (hp) {
-                            const newHp = Math.min((hp.value ?? 0) + songRoll.total, hp.max ?? 0);
-                            await actor.update({ "system.attributes.hp.value": newHp });
-                        }
-                    }
+                const songRoll = await HitDiceService.applySongBonus(actor, this._songVolunteer);
+                if (songRoll) {
+                    entries.push({ name: actor.name, formula: songRoll.formula, total: songRoll.total });
                 }
-                entries.push({ name: actor.name, formula: songRoll.formula, total: songRoll.total });
             }
             if (entries.length) {
                 try {
@@ -1448,32 +1570,17 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             this._spellRecovery.delete(actor.id);
         }
 
-        const summaryLines = [];
-        for (const a of partyActors) {
-            const rolls = this._rolls.get(a.id) ?? [];
-            const healed = rolls.reduce((sum, r) => sum + (Number(r.total) || 0), 0);
-            const song = this._songBonusByActor.get(a.id)?.total ?? 0;
-            const chefMeal = this._chefMealBonusByActor.get(a.id)?.total ?? 0;
-            const badges = getShortRestRechargeLabels(a);
-            const parts = [];
-            if (healed) parts.push(`+${healed} HP from Hit Dice`);
-            if (song) parts.push(`+${song} HP from Song of Rest (tracked above)`);
-            if (chefMeal) parts.push(`+${chefMeal} HP from Replenishing Meal (tracked above)`);
-            if (badges.length) parts.push(`Typical recharges: ${badges.join(", ")}`);
-            const line = parts.length
-                ? parts.join(". ") + "."
-                : "No HD healing from this window.";
-            summaryLines.push({ actorId: a.id, name: a.name, line });
-        }
-
-        this._completionSummaryLines = summaryLines;
         this._completionPhase = true;
-        emitShortRestCompletionSummary({ lines: summaryLines });
-        await this.render(true);
+        await this._saveSessionState();
+        this._broadcastSync();
+        await ShortRestApp.#onFinalizeShortRestRecovery.call(this);
+        } finally {
+            this._completeShortRestBusy = false;
+        }
     }
 
     /**
-     * GM second step: run native shortRest(), then close for everyone.
+     * Run native short rest, then close the window for everyone.
      */
     static async #onFinalizeShortRestRecovery() {
         if (!this._isGM) return;
@@ -1484,6 +1591,10 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const partyActors = getPartyActors();
 
         try {
+            // Variant-aware: 1 hour normal, 1 minute epic. Gritty short rests
+            // run through BivouacApp, which advances its own 8 hours.
+            await CalendarHandler.advanceRestTime("short");
+
             setNativeShortRestUnsuppressed(true);
             try {
                 const shortAdapter = game.ionrift?.respite?.adapter;
@@ -1510,7 +1621,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
             }
 
             await this._clearShortRestState();
-            emitShortRestComplete();
+            emitRestSessionResolved("shortrest");
             ui.notifications.info("Short rest complete. Class features recovered.");
             this._completionPhase = false;
             this._completionSummaryLines = null;
@@ -1530,15 +1641,11 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onAbandonShortRest(event, target) {
         if (!this._isGM) return;
 
-        const confirmFn = game.ionrift?.library?.confirm ?? Dialog.confirm.bind(Dialog);
-        const proceed = await confirmFn({
-            title: "Abandon Short Rest",
-            content: `<p>Abandon this short rest? HP gained from Hit Dice already spent will remain, but class feature recovery will not be applied.</p>`,
-            yesLabel: "Abandon",
-            noLabel: "Cancel",
-            yesIcon: "fas fa-times",
-            noIcon: "fas fa-undo",
-            defaultYes: false,
+        const proceed = await confirmAbandonRest({
+            title: "Abandon Short Rest?",
+            message: "Abandon this short rest? HP gained from Hit Dice already spent will remain, but class feature recovery will not be applied.",
+            confirmLabel: "Abandon",
+            cancelLabel: "Continue Resting"
         });
         if (!proceed) return;
 
@@ -1546,7 +1653,7 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._completionSummaryLines = null;
 
         await this._clearShortRestState();
-        game.socket.emit(`module.${MODULE_ID}`, { type: "shortRestAbandoned" });
+        emitRestSessionAbandoned("shortrest");
         ui.notifications.info("Short rest abandoned.");
         this._isTerminating = true;
         // Clear Detect Magic glow state before closing so it doesn't persist
@@ -1596,27 +1703,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Called on player side when GM starts (or re-broadcasts) a short rest.
      */
     receiveStarted(data) {
-        if (data.rolls) this._rolls = this._deserializeRolls(data.rolls);
-        if (data.songBonuses !== undefined) {
-            this._songBonusByActor = this._deserializeSongBonuses(data.songBonuses);
-        }
-        if (data.afkCharacterIds !== undefined) {
-            RestAfkState.replaceAll(data.afkCharacterIds);
-            pushAllStateToAdapters();
-        }
-        if (data.finishedUserIds !== undefined) {
-            this._finishedUsers = new Set(data.finishedUserIds);
-        }
-        if (data.activeShelter) this._activeShelter = data.activeShelter;
-        if (data.songVolunteer !== undefined) this._songVolunteer = data.songVolunteer ?? null;
-        if (data.chefVolunteer !== undefined) this._chefVolunteer = data.chefVolunteer ?? null;
-        if (data.chefMealServedCount !== undefined) this._chefMealServedCount = Number(data.chefMealServedCount) || 0;
-        if (data.chefMealBonuses !== undefined) {
-            this._chefMealBonusByActor = this._deserializeChefMealBonuses(data.chefMealBonuses);
-        }
-        if (data.workbench) {
-            this.applyWorkbenchStateFromHost(data.workbench);
-        }
+        this._rehydrate(data);
+        if (data.workbench) this.applyWorkbenchStateFromHost(data.workbench);
         this.render({ force: true });
     }
 
@@ -1630,13 +1718,8 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
     
     receiveChefVolunteer(data) {
         if (this._completionPhase) return;
-        this._chefVolunteer = data.chefVolunteer ?? null;
-        if (data.chefMealServedCount !== undefined) {
-            this._chefMealServedCount = Number(data.chefMealServedCount) || 0;
-        }
-        if (data.chefMealBonuses !== undefined) {
-            this._chefMealBonusByActor = this._deserializeChefMealBonuses(data.chefMealBonuses);
-        } else if (!this._chefVolunteer) {
+        SHORT_REST_STATE_SCHEMA.apply(this, data);
+        if (data.chefMealBonuses === undefined && !this._chefVolunteer) {
             this._chefMealBonusByActor.clear();
             this._chefMealServedCount = 0;
         }
@@ -1654,91 +1737,134 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this.render();
     }
 
-    _serializeRolls() {
-        const obj = {};
-        for (const [key, val] of this._rolls) obj[key] = val;
-        return obj;
-    }
-
-    _deserializeRolls(obj) {
-        const map = new Map();
-        for (const [key, val] of Object.entries(obj)) map.set(key, val);
-        return map;
-    }
-
-    _serializeSongBonuses() {
-        const obj = {};
-        for (const [key, val] of this._songBonusByActor) obj[key] = val;
-        return obj;
-    }
-
-    
-    _deserializeSongBonuses(obj) {
-        const map = new Map();
-        if (!obj || typeof obj !== "object") return map;
-        for (const [key, val] of Object.entries(obj)) {
-            if (!val || typeof val !== "object") continue;
-            map.set(key, {
-                total: Number(val.total) || 0,
-                formula: String(val.formula ?? ""),
-                bardName: String(val.bardName ?? ""),
-            });
+    /**
+     * GM pushes the snapshot. A player names the change and waits for that push.
+     */
+    _publishSession(action, payload) {
+        if (this._isGM) {
+            this._broadcastSync();
+            void this._saveSessionState();
+            return;
         }
-        return map;
+        emitRestSessionDelta("shortrest", action, payload);
     }
 
-    _serializeChefMealBonuses() {
-        const obj = {};
-        for (const [key, val] of this._chefMealBonusByActor) obj[key] = val;
-        return obj;
+    _broadcastSync() {
+        if (!this._isGM) return;
+        emitRestSessionSync("shortrest", this._exportSnapshot());
     }
 
-    
-    _deserializeChefMealBonuses(obj) {
-        const map = new Map();
-        if (!obj || typeof obj !== "object") return map;
-        for (const [key, val] of Object.entries(obj)) {
-            if (!val || typeof val !== "object") continue;
-            map.set(key, {
-                total: Number(val.total) || 0,
-                formula: String(val.formula ?? ""),
-                chefName: String(val.chefName ?? ""),
-            });
+    /**
+     * GM applies a player delta, then pushes the resulting snapshot.
+     * @param {string} action
+     * @param {object} payload
+     * @param {string} userId
+     */
+    onReceiveDelta(action, payload, userId) {
+        if (!this._isGM || this._completionPhase) return;
+        const actorId = payload?.actorId;
+        if (actorId && !userControlsActor(userId, actorId)) return;
+
+        switch (action) {
+            case "SONG_VOLUNTEER":
+                this._songVolunteer = payload.songVolunteer ?? null;
+                break;
+            case "CHEF_VOLUNTEER":
+                SHORT_REST_STATE_SCHEMA.apply(this, payload);
+                if (!this._chefVolunteer) {
+                    this._chefMealBonusByActor.clear();
+                    this._chefMealServedCount = 0;
+                }
+                break;
+            case "WORKBENCH_STAGING":
+                this.applyWorkbenchStagingFromPlayer(payload);
+                return;
+            case "CHEF_CLAIM_TREAT":
+                if (payload.actorId && payload.chefMealBonus) {
+                    this._chefMealBonusByActor.set(payload.actorId, payload.chefMealBonus);
+                    if (payload.chefMealServedCount !== undefined) {
+                        this._chefMealServedCount = Number(payload.chefMealServedCount) || 0;
+                    }
+                }
+                break;
+            case "PLAYER_FINISHED":
+                if (payload.userId !== userId) return;
+                if (payload.finished) this._finishedUsers.add(userId);
+                else this._finishedUsers.delete(userId);
+                break;
+            case "SPEND_HIT_DIE":
+                if (actorId && payload.roll) {
+                    if (!this._rolls.has(actorId)) this._rolls.set(actorId, []);
+                    this._rolls.get(actorId).push(payload.roll);
+                }
+                if (actorId && payload.songBonusUpdate) {
+                    const song = payload.songBonusUpdate;
+                    this._songBonusByActor.set(actorId, {
+                        total: song.total,
+                        formula: song.formula,
+                        bardName: song.bardName
+                    });
+                }
+                if (payload.chefMealBonusUpdate?.actorId) {
+                    const bonus = payload.chefMealBonusUpdate;
+                    this._chefMealBonusByActor.set(bonus.actorId, {
+                        total: bonus.total,
+                        formula: bonus.formula,
+                        chefName: bonus.chefName
+                    });
+                }
+                if (payload.chefMealServedCount !== undefined) {
+                    this._chefMealServedCount = Number(payload.chefMealServedCount) || 0;
+                }
+                break;
+            default:
+                return;
         }
-        return map;
+        this._broadcastSync();
+        void this._saveSessionState();
+        this.render();
+    }
+
+    /** @param {object} state */
+    onReceiveSync(state) {
+        if (this._isGM) return;
+        this._rehydrate(state);
+        this.render();
+    }
+
+    /**
+     * Player-safe snapshot for live start/reconnect. Drops the schema `type`
+     * so it cannot overwrite the socket message type on emit.
+     *
+     * @returns {object}
+     */
+    _exportSnapshot() {
+        this._afkCharacters = new Set(RestAfkState.getAfkCharacterIds());
+        const { type, ...state } = SHORT_REST_STATE_SCHEMA.serializeForPlayers(this);
+        return state;
+    }
+
+    /**
+     * Applies a persisted blob or a live snapshot. AFK only updates when the
+     * payload carried it, so a partial chef/song message cannot wipe the set.
+     *
+     * @param {object} saved
+     */
+    _rehydrate(saved) {
+        SHORT_REST_STATE_SCHEMA.apply(this, saved);
+        if (saved?.afkCharacterIds !== undefined) {
+            RestAfkState.replaceAll([...this._afkCharacters]);
+            pushAllStateToAdapters();
+        }
     }
 
     /**
      * Persists current short rest state to a world setting.
      * GM only. Called on render and after every state-mutating action.
      */
-    async _saveShortRestState() {
-        if (!game.user.isGM) return;
-        // Keep local mirror in sync with the module-scoped singleton before saving.
+    async _saveSessionState() {
         this._afkCharacters = new Set(RestAfkState.getAfkCharacterIds());
-        const state = {
-            rolls: this._serializeRolls(),
-            songBonuses: this._serializeSongBonuses(),
-            afkCharacterIds: [...this._afkCharacters],
-            finishedUserIds: [...this._finishedUsers],
-            activeShelter: this._activeShelter,
-            songVolunteer: this._songVolunteer,
-            chefVolunteer: this._chefVolunteer,
-            chefMealServedCount: this._chefMealServedCount,
-            chefMealBonuses: this._serializeChefMealBonuses(),
-            confirmedRecovery: [...this._confirmedRecovery],
-            workbenchFocusActorId: this._workbenchFocusActorId,
-            magicScanResults: this._magicScanResults,
-            magicScanComplete: this._magicScanComplete,
-            workbenchStaging: Array.from(this._workbenchIdentifyStaging?.entries() ?? []),
-            workbenchAck: Array.from(this._workbenchIdentifyAcknowledge?.entries() ?? []),
-            timestamp: Date.now(),
-        };
-        try {
-            await game.settings.set(MODULE_ID, "activeShortRest", state);
-        } catch (e) {
-            console.warn(`${MODULE_ID} | Failed to save short rest state:`, e);
-        }
+        await SHORT_REST_STATE_SCHEMA.save(this);
     }
 
     /**
@@ -1746,44 +1872,21 @@ export class ShortRestApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @returns {boolean} True if state was found and restored.
      */
     _loadShortRestState() {
-        const state = game.settings.get(MODULE_ID, "activeShortRest");
-        if (!state?.timestamp) return false;
-
-        if (state.rolls) this._rolls = this._deserializeRolls(state.rolls);
-        if (state.songBonuses) this._songBonusByActor = this._deserializeSongBonuses(state.songBonuses);
-        if (state.afkCharacterIds) {
-            RestAfkState.replaceAll(state.afkCharacterIds);
-            pushAllStateToAdapters();
-            this._afkCharacters = new Set(state.afkCharacterIds);
-        }
-        if (state.finishedUserIds) this._finishedUsers = new Set(state.finishedUserIds);
-        if (state.activeShelter) this._activeShelter = state.activeShelter;
-        if (state.songVolunteer !== undefined) this._songVolunteer = state.songVolunteer ?? null;
-        if (state.chefVolunteer !== undefined) this._chefVolunteer = state.chefVolunteer ?? null;
-        if (state.chefMealServedCount !== undefined) this._chefMealServedCount = Number(state.chefMealServedCount) || 0;
-        if (state.chefMealBonuses) this._chefMealBonusByActor = this._deserializeChefMealBonuses(state.chefMealBonuses);
-        if (state.confirmedRecovery) this._confirmedRecovery = new Set(state.confirmedRecovery);
-        if (state.workbenchFocusActorId !== undefined) this._workbenchFocusActorId = state.workbenchFocusActorId;
-        this._magicScanResults = state.magicScanResults ?? null;
-        this._magicScanComplete = !!state.magicScanComplete;
-        this._workbenchIdentifyStaging = new Map(state.workbenchStaging ?? []);
-        this._workbenchIdentifyAcknowledge = new Map(state.workbenchAck ?? []);
-
+        if (!SHORT_REST_STATE_SCHEMA.load(this)) return false;
+        RestAfkState.replaceAll([...this._afkCharacters]);
+        pushAllStateToAdapters();
         return true;
     }
 
-    
     async _clearShortRestState() {
-        if (!game.user.isGM) return;
-        try {
-            await game.settings.set(MODULE_ID, "activeShortRest", {});
-        } catch (e) {
-            // Setting may not be registered yet
-        }
+        await SHORT_REST_STATE_SCHEMA.clear();
     }
 
     _onRender(context, options) {
         super._onRender?.(context, options);
+        registerRestSessionApp("shortrest", this);
+        setRespiteFlowActive(true);
         this.element?.classList.toggle("hide-terrain-banners", !!context?.hideTerrainBanner);
     }
 }
+

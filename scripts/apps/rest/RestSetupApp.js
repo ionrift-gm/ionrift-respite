@@ -1,5 +1,5 @@
 import { Logger } from "../../utils/Logger.js";
-import { RestFlowEngine } from "../../services/rest/flow/RestFlowEngine.js";
+import { RestFlowEngine, readTerrainBaseDc } from "../../services/rest/flow/RestFlowEngine.js";
 import { TerrainRegistry } from "../../services/events/resolve/TerrainRegistry.js";
 import { ActivityResolver } from "../../services/rest/flow/ActivityResolver.js";
 import { EventResolver } from "../../services/events/resolve/EventResolver.js";
@@ -22,13 +22,23 @@ import {
     getCampSceneId
 } from "../../services/camp/props/CompoundCampPlacer.js";
 import { CraftingPickerApp } from "../crafting/CraftingPickerApp.js";
+import { MonstrousFeastBridge } from "../../services/meal/provisions/MonstrousFeastBridge.js";
 import { CraftingDelegate } from "../delegates/crafting/CraftingDelegate.js";
 import { MealDelegate } from "../delegates/meal/MealDelegate.js";
+import { sustenanceActorId } from "../delegates/meal/SustenanceMeterBinding.js";
 import { CopySpellDelegate } from "../delegates/crafting/CopySpellDelegate.js";
-import { TravelResolutionDelegate } from "../delegates/travel/TravelResolutionDelegate.js";
+import { GatherYieldService } from "../../services/rest/forage/GatherYieldService.js";
+import {
+    dailyChoiceStatus,
+    gatherAlreadyResolved,
+    publishCampProgress
+} from "../../services/rest/session/campProgressState.js";
+import { ForageActivityValidator } from "../../services/travel/forage/ForageActivityValidator.js";
+import { isForagingEnabled, isHuntingEnabled } from "../../services/travel/settings/TravelSettings.js";
 import { RestSetupDebugJumps } from "../delegates/rest/debug/RestSetupDebugJumps.js";
 import { CampCeremonyDelegate } from "../delegates/camp/CampCeremonyDelegate.js";
 import { CampPlacementDelegate } from "../delegates/camp/CampPlacementDelegate.js";
+import { CampLogisticsDelegate } from "../delegates/camp/CampLogisticsDelegate.js";
 import { RestWindowLayout } from "../delegates/rest/layout/RestWindowLayout.js";
 import { RestPrepareContext } from "../delegates/rest/RestPrepareContext.js";
 import { RestFlowActions } from "../delegates/rest/flow/RestFlowActions.js";
@@ -37,6 +47,8 @@ import { TotmActivityDelegate } from "../delegates/rest/activity/TotmActivityDel
 import { RestTrainingDelegate } from "../delegates/rest/activity/RestTrainingDelegate.js";
 import { RestRenderBindings } from "../delegates/rest/layout/RestRenderBindings.js";
 import { RestResolveDelegate } from "../delegates/rest/flow/RestResolveDelegate.js";
+import { DawnExhaustionDelegate } from "../delegates/rest/flow/DawnExhaustionDelegate.js";
+import { MealBuffBeatDelegate } from "../delegates/rest/flow/MealBuffBeatDelegate.js";
 import { RestSnapshotSync } from "../delegates/rest/sync/RestSnapshotSync.js";
 import { ActivityStationsDelegate } from "../delegates/rest/activity/ActivityStationsDelegate.js";
 import { EventsPhaseDelegate } from "../delegates/events/EventsPhaseDelegate.js";
@@ -44,7 +56,7 @@ import { WorkbenchDelegate } from "../delegates/crafting/WorkbenchDelegate.js";
 import { DetectMagicDelegate, collectPartyIdentifyEmbedData, spawnDetectMagicCastRipple } from "../delegates/crafting/DetectMagicDelegate.js";
 import { WEATHER_TABLE, getComfortTip, inferCanvasStationForActivity } from "../../data/RestConstants.js";
 import { isComfortEnabled } from "../../services/camp/gear/ComfortCalculator.js";
-import { buildTravelGatherPayload } from "../../services/travel/resolve/TravelGatherPayload.js";
+import { buildCampConditionsBar } from "../../services/camp/gear/CampConditionsBarBuilder.js";
 import { deactivateStationLayer } from "../../services/camp/props/StationInteractionLayer.js";
 import {
     closeOpenStationDialog,
@@ -54,6 +66,9 @@ import { CampfireMakeCampDialog } from "../camp/CampfireMakeCampDialog.js";
 import { RestLedger } from "../../services/rest/flow/RestLedger.js";
 import { RestLedgerApp } from "./RestLedgerApp.js";
 import { ShortRestApp } from "./ShortRestApp.js";
+import { BivouacApp } from "../bivouac/BivouacApp.js";
+import { DowntimeLedgerApp } from "../downtime/DowntimeLedgerApp.js";
+import { emitRestSessionStarted } from "../../services/rest/session/RestSessionSync.js";
 import {
     registerActiveRestApp,
     clearActiveRestApp,
@@ -118,12 +133,30 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             setEventsMode: RestSetupApp.#onSetEventsMode,
             commitEventsMode: RestSetupApp.#onCommitEventsMode,
             resolveEvents: RestSetupApp.#onResolveEvents,
+            enterDawn: RestSetupApp.#onEnterDawn,
+            applyMealBuffs: RestSetupApp.#onApplyMealBuffs,
+            applyOneMealBuff: RestSetupApp.#onApplyOneMealBuff,
+            continueToNight: RestSetupApp.#onContinueToNight,
+            returnToNight: RestSetupApp.#onReturnToNight,
+            completeDawn: RestSetupApp.#onCompleteDawn,
+            rollActorExhaustionSave: RestSetupApp.#onRollActorExhaustionSave,
+            rollAllExhaustionSaves: RestSetupApp.#onRollAllExhaustionSaves,
+            waiveAllExhaustionSaves: RestSetupApp.#onWaiveAllExhaustionSaves,
+            toggleMustRollExhaustion: RestSetupApp.#onToggleMustRollExhaustion,
+            toggleExhaustionOverride: RestSetupApp.#onToggleExhaustionOverride,
+            adjustExhaustionDC: RestSetupApp.#onAdjustExhaustionDC,
+            adjustAllExhaustionDC: RestSetupApp.#onAdjustAllExhaustionDC,
+            setExhaustionAdvMode: RestSetupApp.#onSetExhaustionAdvMode,
+            setAllExhaustionAdvMode: RestSetupApp.#onSetAllExhaustionAdvMode,
+            cycleExhaustionAdvMode: RestSetupApp.#onCycleExhaustionAdvMode,
             resolveTreeChoice: RestSetupApp.#onResolveTreeChoice,
             applyStallPenalty: RestSetupApp.#onApplyStallPenalty,
             treeDcAdjUp: RestSetupApp.#onTreeDcAdjUp,
             treeDcAdjDown: RestSetupApp.#onTreeDcAdjDown,
             acknowledgeEncounter: RestSetupApp.#onAcknowledgeEncounter,
             openCrafting: RestSetupApp.#onOpenCrafting,
+            openCraftingPopout: RestSetupApp.#onOpenCrafting,
+            openMonsterCookbook: RestSetupApp.#onOpenMonsterCookbook,
             craftDrawerSelectRecipe: RestSetupApp.#onCraftDrawerSelectRecipe,
             craftDrawerSelectRisk: RestSetupApp.#onCraftDrawerSelectRisk,
             craftDrawerCraft: RestSetupApp.#onCraftDrawerCraft,
@@ -133,18 +166,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             activityDetailBack: RestSetupApp.#onActivityDetailBack,
             finalize: RestSetupApp.#onFinalize,
             gmOverride: RestSetupApp.#onGmOverride,
+            selectRosterCharacter: RestSetupApp.#onSelectRosterCharacter,
+            rollExhaustionSave: RestSetupApp.#onRollExhaustionSave,
             toggleShelter: RestSetupApp.#onToggleShelter,
             setupContinue: RestSetupApp.#onSetupContinue,
             setupBack: RestSetupApp.#onSetupBack,
             setupDefaults: RestSetupApp.#onSetupDefaults,
             encounterAdjUp: RestSetupApp.#onEncounterAdjUp,
             encounterAdjDown: RestSetupApp.#onEncounterAdjDown,
+            adjustEncounterDc: RestSetupApp.#onAdjustEncounterDc,
             resolveSkillCheck: RestSetupApp.#onResolveSkillCheck,
             lockEventConsequence: RestSetupApp.#onLockEventConsequence,
             adjustEventDc: RestSetupApp.#onAdjustEventDc,
             cycleEventRollMode: RestSetupApp.#onCycleEventRollMode,
             rollEventCheck: RestSetupApp.#onRollEventCheck,
             ionriftRoll: RestSetupApp.#onIonriftRoll,
+            rollGather: RestSetupApp.#onRollGather,
+            cancelGather: RestSetupApp.#onCancelGather,
             disasterChoice: RestSetupApp.#onDisasterChoice,
             rollCampCheck: RestSetupApp.#onRollCampCheck,
             adjustCampDC: RestSetupApp.#onAdjustCampDC,
@@ -154,7 +192,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             detectMagicScan: RestSetupApp.#onDetectMagicScan,
             identifyScannedItem: RestSetupApp.#onIdentifyScannedItem,
             abandonRest: RestSetupApp.#onAbandonRest,
-            openGuide: RestSetupApp.#onOpenGuide,
             approveCopySpell: RestSetupApp.#onApproveCopySpell,
             declineCopySpell: RestSetupApp.#onDeclineCopySpell,
             processGmCopySpell: RestSetupApp.#onProcessGmCopySpell,
@@ -167,7 +204,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             proceedFromMeal: RestSetupApp.#onProceedFromMeal,
             submitMealChoices: RestSetupApp.#onSubmitMealChoices,
             consumeMealDay: RestSetupApp.#onConsumeMealDay,
-            adjustDaysSinceRest: RestSetupApp.#onAdjustDaysSinceRest,
             skipPendingSaves: RestSetupApp.#onSkipPendingSaves,
             hideWindow: RestSetupApp.#onHideWindow,
             rollTreeForPlayer: RestSetupApp.#onRollTreeForPlayer,
@@ -178,19 +214,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             rollTreeCheck: RestSetupApp.#onRollTreeCheck,
             sendTreeRollRequest: RestSetupApp.#onSendTreeRollRequest,
             toggleGmGuidance: RestSetupApp.#onToggleGmGuidance,
-            resolveTravelPhase: RestSetupApp.#onResolveTravelPhase,
-            resolveTravelDay: RestSetupApp.#onResolveTravelDay,
-            switchTravelDay: RestSetupApp.#onSwitchTravelDay,
-            skipTravelPhase: RestSetupApp.#onSkipTravelPhase,
-            adjustGlobalDC: RestSetupApp.#onAdjustGlobalDC,
-            requestTravelRolls: RestSetupApp.#onRequestTravelRolls,
-            requestOtherRoll: RestSetupApp.#onRequestOtherRoll,
-            confirmTravelForPlayer: RestSetupApp.#onConfirmTravelForPlayer,
-            rollTravelCheck: RestSetupApp.#onRollTravelCheck,
-            selfRollTravelCheck: RestSetupApp.#onSelfRollTravelCheck,
-            rollTravelLoot: RestSetupApp.#onRollTravelLoot,
-            rollTravelLootForPlayer: RestSetupApp.#onRollTravelLootForPlayer,
-            rollTravelForPlayer: RestSetupApp.#onRollTravelForPlayer,
             lightCampfire: RestSetupApp.#onLightCampfire,
             campLightFire: RestSetupApp.#onCampLightFire,
             campPledgeFirewood: RestSetupApp.#onCampPledgeFirewood,
@@ -215,6 +238,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             selectTotmActivity: RestSetupApp.#onSelectTotmActivity,
             confirmTotmFollowUp: RestSetupApp.#onConfirmTotmFollowUp,
             cancelTotmFollowUp: RestSetupApp.#onCancelTotmFollowUp,
+            unlockTotmActivity: RestSetupApp.#onUnlockTotmActivity,
+            unlockSustenance: RestSetupApp.#onUnlockSustenance,
             proceedFromTotmCamp: RestSetupApp.#onProceedFromMakeCamp,
             switchTotmTab: RestSetupApp.#onSwitchTotmTab,
             submitWorkbenchIdentify: RestSetupApp.#onSubmitWorkbenchIdentifyTotm,
@@ -227,7 +252,23 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             craftClose: RestSetupApp.#onTotmCraftClose,
             feastServeNow: RestSetupApp.#onTotmFeastServeNow,
             trainingRoll: RestSetupApp.#onTrainingRoll,
-            openLedger: RestSetupApp.#onOpenLedger
+            openLedger: RestSetupApp.#onOpenLedger,
+            toggleLogisticsDrawer: RestSetupApp.#onToggleLogisticsDrawer,
+            adjustSustenanceDC: RestSetupApp.#onAdjustSustenanceDC,
+            stepFoodDays: RestSetupApp.#onStepFoodDays,
+            giftWood: RestSetupApp.#onGiftWood,
+            toggleGearFactor: RestSetupApp.#onToggleGearFactor,
+            switchWorkflow: RestSetupApp.#onSwitchWorkflow,
+            toggleExamine: RestSetupApp.#onToggleExamine,
+            skipGather: RestSetupApp.#onSkipGather,
+            confirmGatherSkip: RestSetupApp.#onConfirmGatherSkip,
+            toggleCharacterReady: RestSetupApp.#onToggleCharacterReady,
+            clearSustenanceFood: RestSetupApp.#onClearSustenanceFood,
+            assignSustenanceFood: RestSetupApp.#onAssignSustenanceFood,
+            clearSustenanceWater: RestSetupApp.#onClearSustenanceWater,
+            assignSustenanceWater: RestSetupApp.#onAssignSustenanceWater,
+            toggleDevRestVariant: RestSetupApp.#onToggleDevRestVariant,
+            toggleUiTheme: RestSetupApp.#onToggleUiTheme
         }
     };
 
@@ -249,8 +290,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             registerActiveRestApp(this);
         }
         this._restVariant = game.ionrift?.respite?.adapter?.getRestVariant?.() ?? "normal";
-        // Setup screen defaults to Long Rest. Gritty long = 7 days.
-        this._daysSinceLastRest = this._restVariant === "gritty" ? 7 : 1;
+        this._selectedRestType = options.restType ?? (restData?.restType ?? "long");
+        // Setup screen default: always 1 day.
+        this._daysSinceLastRest = 1;
         this._engine = null;
         this._activityResolver = new ActivityResolver();
         this._eventResolver = new EventResolver();
@@ -286,6 +328,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         /** @type {import("../camp/StationActivityDialog.js").StationActivityDialog|null} */
         this._stationFireMinigameDialog = null;
         this._selectedCharacterId = null;
+        this._finishedActorIds = new Set();
+        this._gatherSkipIds = new Set();
+        /** @type {Map<string, "act_forage"|"act_hunt">} */
+        this._gatherChoices = new Map();
+        /** @type {Map<string, { activityId: string, haul: string, success: boolean }>} */
+        this._gatherResults = new Map();
         this._activitySubTab = "identify"; // identify | activity | meal
         /** @type {"activities"|"identify"|"fire"} */
         this._totmActiveTab = "activities";
@@ -341,7 +389,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._crafting = new CraftingDelegate(this);
         this._meals = new MealDelegate(this);
         this._copySpell = new CopySpellDelegate(this);
-        this._travel = new TravelResolutionDelegate(this);
         this._campCeremony = new CampCeremonyDelegate(this);
         this._campPlacement = new CampPlacementDelegate(this);
         this._windowLayout = new RestWindowLayout(this);
@@ -352,11 +399,17 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._training = new RestTrainingDelegate(this);
         this._renderBindings = new RestRenderBindings(this);
         this._resolve = new RestResolveDelegate(this);
+        this._exhaustionDraft = new Map();
+        this._expandedExhaustionOverrides = new Set();
+        this._dawn = new DawnExhaustionDelegate(this);
+        this._mealBuffQueue = [];
+        this._mealBuffs = new MealBuffBeatDelegate(this);
         this._sync = new RestSnapshotSync(this);
         this._stations = new ActivityStationsDelegate(this);
         this._events = new EventsPhaseDelegate(this);
         this._workbench = new WorkbenchDelegate(this);
         this._detectMagic = new DetectMagicDelegate(this);
+        this._campLogistics = new CampLogisticsDelegate(this);
 
         this._restData = restData;
         if (restData) {
@@ -420,7 +473,12 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         game.ionrift.respite.jumpToDamageTest = () => this._debugJumps.jumpToDamageTest();
         game.ionrift.respite.jumpToHostileComfort = () => this._debugJumps.jumpToHostileComfort();
         game.ionrift.respite.jumpToSingleEvent = () => this._debugJumps.jumpToSingleEvent();
+        game.ionrift.respite.jumpToNights = () => this._debugJumps.jumpToNights();
+        game.ionrift.respite.jumpToExhaustion = () => this._debugJumps.jumpToExhaustion();
+        game.ionrift.respite.jumpToLosses = () => this._debugJumps.jumpToLosses();
+        game.ionrift.respite.fillRestParty = () => RestSetupDebugJumps.fillRestParty();
         game.ionrift.respite.addSupplies = (qty = 50) => RestSetupDebugJumps.addSupplies(qty);
+        game.ionrift.respite.toggleRestVariant = () => this.toggleDevRestVariant();
 
         this._inventoryDebounce = null;
         this._inventoryHookHandler = (item) => {
@@ -439,9 +497,15 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         ];
     }
 
-    /** TotM when override or restInterfaceMode === "theater"; unset setting falls back to theater. */
+    /** True when this session is a Gritty Realism 7-day long rest. */
+    get _isGrittyLong() {
+        return (this._restVariant ?? "normal") === "gritty" && (this._selectedRestType ?? "long") !== "short";
+    }
+
+    /** TotM when override, gritty long rest, or restInterfaceMode === "theater"; unset setting falls back to theater. */
     get _isTotM() {
         if (this._tavernTotmOverride) return true;
+        if (this._isGrittyLong) return true;
         try { return game.settings.get(MODULE_ID, "restInterfaceMode") === "theater"; }
         catch { return true; }
     }
@@ -625,15 +689,17 @@ _refreshLedgerApp() {
 
     async _loadContentPacks() { return this._session._loadContentPacks(); }
 
-_forageResolverOpts() {
+    _forageResolverOpts() {
         const terrainTag = this._engine?.terrainTag ?? this._selectedTerrain ?? this._restData?.terrainTag ?? "forest";
-        const gate = this._travel?.getForageGate?.(terrainTag) ?? null;
+        const travelResolver = GatherYieldService.getResolver?.() ?? null;
+        const available = ForageActivityValidator.isForageAvailable(travelResolver, terrainTag);
+        const gate = available ? { disabled: false, disabledReasonKey: null } : { disabled: true, disabledReasonKey: "ionrift-respite.travel.forage.requires_pack" };
         return {
             forageActivityGate: gate,
             terrainTag,
-            resourcePoolsFromPack: this._travel?.resourcePoolsFromPack ?? false,
-            resourcePoolRoller: this._travel?.getResourcePoolRoller?.() ?? null,
-            travelResolver: this._travel?.getTravelResolver?.() ?? null
+            resourcePoolsFromPack: false,
+            resourcePoolRoller: travelResolver?.resourcePoolRoller ?? null,
+            travelResolver
         };
     }
 
@@ -695,50 +761,13 @@ _shouldShowEventPoolNudge(terrainTag) {
         this._tearDownCampfireEmbed();
         await closeOpenStationDialog();
         if (this._isGM) {
-            // If rest is in resolution phase but auto-apply hasn't completed, confirm
-            if (this._phase === "resolve" && !this._restApplied && !options.resolved) {
-                let ungrantedCount = 0;
-                if (this._grantLedger && this._outcomes?.length) {
-                    const seenEvents = new Set();
-                    for (const o of this._outcomes) {
-                        for (const sub of (o.outcomes ?? [])) {
-                            if (sub.source === "event" && sub.items?.length && !seenEvents.has(sub.eventId)) {
-                                seenEvents.add(sub.eventId);
-                                for (const item of sub.items) {
-                                    const key = `${sub.eventId}:${item.itemRef ?? item.name}`;
-                                    if (!this._hasDiscoveryGrant(key)) ungrantedCount++;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                const ungrantedNote = ungrantedCount > 0
-                    ? `<p><strong>${ungrantedCount} discovered item${ungrantedCount > 1 ? "s have" : " has"} not been granted.</strong> These will be lost.</p>`
-                    : "";
-
-                const confirmed = await game.ionrift.library.confirm({
-                    title: "Discard Rest?",
-                    content: `<p>The rest has not been applied yet. Closing now will discard all results.</p>${ungrantedNote}`,
-                    yesLabel: "Discard",
-                    noLabel: "Go Back",
-                    yesIcon: "fas fa-times",
-                    noIcon: "fas fa-arrow-left",
-                    defaultYes: false
-                });
-
-                if (confirmed) {
-                    emitRestResolved();
-                    clearCampTokens(getCampSceneId()).catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
-                    resetCampSession();
-                    this._clearDetectMagicScanSession();
-                    await super.close(options);
-                }
-                return;
+            // Resolution phase: closing the window (X, Escape, or close()) breaks camp and posts to chat
+            if (this._phase === "resolve" && !options.abandoned) {
+                options.resolved = true;
             }
 
             // Mid-rest (camp, activity, events, etc.): X minimizes to the status bar. No modal.
-            // Setup and resolve: no indicator; resolve uses the discard confirm branch above.
+            // Setup: closes app; Resolve: breaks camp and posts to chat; Mid-rest: minimizes to status bar indicator.
             const restActive = this._phase && this._phase !== "resolve" && this._phase !== "setup";
             if (options?.retainGmRestApp) {
                 this._gmMinimizedToFooter = true;
@@ -750,12 +779,26 @@ _shouldShowEventPoolNudge(terrainTag) {
             } else {
                 this._gmMinimizedToFooter = false;
                 if (options.resolved && !options.abandoned) {
+                    if (this._phase === "resolve" && !this._masterCardPosted) {
+                        try {
+                            await this._resolve?.postMasterRestCard?.();
+                        } catch (err) {
+                            console.warn(`${MODULE_ID} | Failed to post master rest card:`, err);
+                        }
+                    }
                     await this._clearRestState();
                     clearMealExhaustionFloors();
                     await clearDeprivationExhaustionFloors(getPartyActors());
                     emitRestResolved();
                     clearCampTokens(getCampSceneId()).catch(err => console.warn(`${MODULE_ID} | Camp cleanup failed:`, err));
                     resetCampSession();
+                    Hooks.callAll("ionrift.respite.restCleanup");
+                }
+                if (options.abandoned) {
+                    this._terminated = true;
+                    this._abandoned = true;
+                    this._engine = null;
+                    await this._clearRestState();
                 }
                 this._tearDownStationLayerCanvas();
                 this._removeGmStationTokenSyncHook();
@@ -854,69 +897,23 @@ _shouldShowEventPoolNudge(terrainTag) {
 
     _buildEncounterPlayerFactors(params) { return this._campCeremony._buildEncounterPlayerFactors(params); }
 
-_buildCampConditionsBar(campScanData, { safeRestSpot = false, encountersEnabled = true } = {}) {
-        if (this._phase !== "camp" || !this._engine) return null;
-
-        const terrainTag = this._engine.terrainTag ?? "forest";
-        const terrain = TerrainRegistry.get(terrainTag);
-        const terrainLabel = terrain?.label ?? terrainTag;
-        const terrainIcon = terrain?.icon ?? "fas fa-mountain";
-
-        if (safeRestSpot) {
-            return {
-                safeRestSpot: true,
-                terrainLabel,
-                terrainIcon
-            };
-        }
-
-        if (!isComfortEnabled()) return null;
-
-        const weatherKey = this._engine.weather ?? "clear";
-        const wx = WEATHER_TABLE[weatherKey] ?? WEATHER_TABLE.clear;
-        const campComfort = campScanData?.campComfort ?? this._engine.comfort ?? "rough";
-        const campComfortLabel = campScanData?.campComfortLabel ?? CampGearScanner.getRules(campComfort).label;
-
-        const impactParts = [];
-        if (wx.comfortPenalty > 0) impactParts.push(`Comfort −${wx.comfortPenalty}`);
-        if (wx.encounterDC > 0) impactParts.push(`Night +${wx.encounterDC}`);
-        if (wx.encounterDC < 0) impactParts.push(`Night ${wx.encounterDC}`);
-
-        const activeShelters = this._engine.activeShelters ?? [];
-        const hasTent = activeShelters.includes("tent");
-        const hasHut = activeShelters.some(s => ["tiny_hut", "magnificent_mansion"].includes(s));
-
-        let weatherShieldNote = null;
-        if (hasHut) {
-            weatherShieldNote = "Shelter spell cancels weather penalties";
-        } else if (hasTent && wx.tentCancels && (wx.comfortPenalty > 0 || wx.encounterDC !== 0)) {
-            weatherShieldNote = "Tent cancels these weather effects";
-        } else if (hasTent && wx.tentReduces && wx.comfortPenalty > 0) {
-            weatherShieldNote = "Tent reduces weather comfort penalty by 1";
-        }
-
-        let comfortContext = null;
-        if (campScanData?.campBreakdown?.length > 1) {
-            comfortContext = campScanData.campBreakdown.map(b => b.label).join(", ");
-        } else if (campScanData?.comfortReason) {
-            comfortContext = campScanData.comfortReason;
-        }
-
-        return {
-            terrainLabel,
-            terrainIcon,
-            campComfort,
-            campComfortLabel,
-            campComfortTooltip: getComfortTip(campComfort),
-            comfortContext,
-            weatherLabel: wx.label,
-            weatherKey,
-            weatherTooltip: wx.hint,
-            weatherImpact: impactParts.length ? impactParts.join(" · ") : null,
-            weatherIsNeutral: impactParts.length === 0,
-            weatherShieldNote,
-            showEncounterHint: encountersEnabled
-        };
+    _buildCampConditionsBar(campScanData, { safeRestSpot = false, encountersEnabled = true } = {}) {
+        if ((this._phase !== "camp" && this._phase !== "activity") || !this._engine) return null;
+        const effectiveFire = (this._campColdCampDecided || this._coldCampPreview)
+            ? "cold_camp"
+            : (this._fireLevel && this._fireLevel !== "unlit")
+                ? this._fireLevel
+                : (this._campFirePreviewLevel ?? this._engine?.fireLevel ?? "embers");
+        return buildCampConditionsBar({
+            terrainTag: this._engine.terrainTag ?? "forest",
+            weatherKey: this._engine.weather ?? "clear",
+            fireLevel: effectiveFire,
+            activeShelters: this._engine.activeShelters ?? [],
+            campScanData,
+            safeRestSpot,
+            encountersEnabled,
+            isGM: game.user?.isGM
+        });
     }
 
 _resolveSetupWeather(terrainTag, candidate) {
@@ -930,7 +927,14 @@ _resolveSetupWeather(terrainTag, candidate) {
         return valid.includes(pick) ? pick : defaultKey;
     }
 
-    async _prepareContext(options) { return this._prepareCtx.build(options); }
+    async _prepareContext(options) {
+        if (!this._activities || this._activities.length === 0) {
+            await this._loadData();
+        }
+        const ctx = await this._prepareCtx.build(options);
+        if (ctx && !ctx.isLoading) this._campLogistics.mergeContext(ctx);
+        return ctx;
+    }
 
     _buildCraftingDrawerContext() { return this._crafting.buildContext(); }
 
@@ -1025,13 +1029,47 @@ static #onSetupBack(event, target) {
         this.render();
     }
 
-static #onAdjustDaysSinceRest(event, target) {
-        const delta = parseInt(target.dataset.delta, 10) || 0;
-        this._daysSinceLastRest = Math.max(1, Math.min(9, (this._daysSinceLastRest ?? 1) + delta));
-        this._daysSinceLastRestUserSet = true;
-        // Day stepper lives inside Advanced; keep the drawer open across re-render.
-        this._setupAdvancedOpen = true;
+    /**
+     * Short-term dev toggle to switch between Normal and Gritty Realism rest variants.
+     */
+    static async #onToggleDevRestVariant(event, target) {
+        if (!game.user.isGM) return;
+
+        const form = this.element?.querySelector("form");
+        if (form) {
+            const formData = Object.fromEntries(new FormData(form));
+            if (formData.terrain) this._selectedTerrain = formData.terrain;
+            if (formData.weather) this._selectedWeather = formData.weather;
+            if (formData.restType) this._selectedRestType = formData.restType;
+        }
+
+        const current = this._restVariant ?? "normal";
+        const next = current === "gritty" ? "normal" : "gritty";
+        this._restVariant = next;
+
+        const adapter = game.ionrift?.respite?.adapter;
+        if (adapter) {
+            if (typeof adapter.setDevRestVariant === "function") {
+                adapter.setDevRestVariant(next);
+            } else {
+                adapter._devVariantOverride = next;
+            }
+        }
+
+        if (game.system?.id === "dnd5e" && game.settings.settings.has("dnd5e.restVariant")) {
+            try {
+                await game.settings.set("dnd5e", "restVariant", next);
+            } catch (err) {
+                Logger.warn("[Respite] Could not sync dnd5e.restVariant setting:", err);
+            }
+        }
+
+        ui.notifications.info(`Rest variant switched to ${next === "gritty" ? "Gritty Realism" : "Normal"}.`);
         this.render();
+    }
+
+    async toggleDevRestVariant() {
+        return RestSetupApp.#onToggleDevRestVariant.call(this, null, null);
     }
 
 static #onSetupDefaults(event, target) {
@@ -1060,6 +1098,14 @@ static #onSetupDefaults(event, target) {
         this.render({ force: true });
     }
 
+    static #onAdjustEncounterDc(event, target) {
+        if (!game.user.isGM || !this._engine) return;
+        const delta = Number(target.dataset.delta) || 0;
+        if (!delta) return;
+        this._engine.gmEncounterAdj = (this._engine.gmEncounterAdj ?? 0) + delta;
+        this.render({ force: true });
+    }
+
     static async #onRollCampCheck(event, target) { return this._events.onRollCampCheck(event, target); }
 
 static #onAdjustCampDC(event, target) {
@@ -1081,7 +1127,7 @@ static #onAdjustCampDC(event, target) {
 
     static #onRequestCampRoll(event, target) { this._events.onRequestCampRoll(event, target); }
 
-    receiveCampRollResult(data) { this._events.receiveCampRollResult(data); }
+    async receiveCampRollResult(data) { await this._events.receiveCampRollResult(data); }
 
     /** Local-only until the roll request broadcasts; players never see mid-adjust DC. */
     static #onAdjustEventDc(event, target) {
@@ -1167,6 +1213,7 @@ static #formatGmGuidance(text) {
                 top: Math.round(rect.top),
                 width: this.element.offsetWidth || this.position?.width
             };
+            if (typeof this.position.height === "number") savedPos.height = this.position.height;
         }
         const result = await super.render(options);
         if (savedPos && Number.isFinite(savedPos.left) && Number.isFinite(savedPos.top)) {
@@ -1178,6 +1225,26 @@ static #formatGmGuidance(text) {
     _onRender(context, options) { this._session._onRender(context, options); }
 
     static async #onIonriftRoll(event, target) { return this._events.onIonriftRoll(event, target); }
+    static async #onRollGather(event, target) { return this._totm.onRollGather(event, target); }
+
+    static #onCancelGather() {
+        const actorId = this._selectedCharacterId;
+        if (!actorId) return;
+        if (this._gatherResults?.has(actorId)) return;
+        const pending = this._gatherPending;
+        if (pending?.characterId === actorId && pending.phase === "findings") return;
+        if (pending?.characterId === actorId) this._gatherPending = null;
+        this._gatherChoices?.delete(actorId);
+        this._gatherSkipIds?.delete(actorId);
+        if (this._finishedActorIds?.has(actorId)) {
+            this._finishedActorIds.delete(actorId);
+            publishCampProgress(this, {
+                finishedActorId: actorId,
+                finished: false
+            });
+        }
+        this.render();
+    }
 
     static async #onRollEventCheck(event, target) { return this._events.onRollEventCheck(event, target); }
 
@@ -1207,12 +1274,29 @@ static _buildTrainingProgressBar(training) {
 
     async _autoGrantPartyDiscoveries() { return this._resolve._autoGrantPartyDiscoveries(); }
 
-    static async #onBeginShortRest(event, target) { this._launchShortRestFromSetup(); }
+    static async #onBeginShortRest(event, target) { return this._launchShortRestFromSetup(); }
 
-    _launchShortRestFromSetup() {
+    /** Sole launch point for a short rest, for both the short and long submit paths. */
+    async _launchShortRestFromSetup() {
+        const form = this.element?.querySelector("form");
+        const formData = form ? Object.fromEntries(new FormData(form)) : {};
+        const terrainTag = formData.terrain ?? this._selectedTerrain ?? "forest";
+        game.settings.set(MODULE_ID, "lastTerrain", terrainTag);
+
+        if (this._restVariant === "gritty") {
+            const isSafeRest = !!(formData.safeRestSpot || this._effectiveSafeRestSpot?.() || terrainTag === "tavern");
+            await this._loadTerrainEvents(terrainTag);
+            const dangerDC = readTerrainBaseDc(this._eventResolver, terrainTag);
+            await this.close({});
+            game.settings.set(MODULE_ID, "activeRest", {}).catch(() => {});
+            new BivouacApp({ terrainTag, safePassage: isSafeRest, dangerDC }).render({ force: true });
+            emitRestSessionStarted("bivouac", { terrainTag, safePassage: isSafeRest, dangerDC });
+            return;
+        }
+
         const activeShelter = Object.entries(this._shelterOverrides ?? {})
             .find(([, v]) => v)?.[0] ?? "none";
-        this.close();
+        await this.close({});
         new ShortRestApp({ initialShelter: activeShelter }).render({ force: true });
     }
 
@@ -1234,12 +1318,65 @@ static _buildTrainingProgressBar(training) {
 
     static #onGmOverride(event, target) { this._events.onGmOverride(event, target); }
 
+    static #onSelectRosterCharacter(event, target) {
+        const chip = target?.closest?.(".roster-chip, .rest-dock-mini") || target;
+        if (chip?.classList?.contains("not-owned") || chip?.classList?.contains("is-locked")) return;
+        const charId = chip?.dataset?.actorId || chip?.dataset?.rosterId;
+        if (!charId || charId === this._selectedCharacterId) return;
+        if (!this._isGM) {
+            const actor = game.actors.get(charId);
+            if (!actor?.isOwner) return;
+        }
+        this._selectedCharacterId = charId;
+        this._activityDetailId = null;
+        this._craftingDrawerOpen = false;
+        this.render();
+    }
+
+    static async #onRollExhaustionSave(event, target) {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+        const actorId = target?.dataset?.actorId || this._selectedCharacterId;
+        const actor = game.actors.get(actorId);
+        if (!actor) return;
+        if (typeof actor.rollSavingThrow === "function") {
+            return actor.rollSavingThrow({ ability: "con" });
+        } else if (typeof actor.rollAbilitySave === "function") {
+            return actor.rollAbilitySave("con");
+        } else if (typeof actor.saves?.fortitude?.roll === "function") {
+            return actor.saves.fortitude.roll(event);
+        }
+    }
+
 openCraftingDrawer(event, target) {
         return RestSetupApp.#onOpenCrafting.call(this, event, target);
     }
 
     static #onOpenCrafting(event, target) {
         this._stations.onOpenCrafting(event, target);
+    }
+
+    static #onOpenMonsterCookbook(event, target) {
+        const charId = target?.dataset?.characterId || this._selectedCharacterId;
+        const actor = charId ? game.actors.get(charId) : null;
+        if (!actor) return;
+        const opened = MonstrousFeastBridge.openCooking(actor, {
+            onCooked: () => {
+                const craftResult = {
+                    success: true,
+                    narrative: "Cooked from the Monster Cookbook.",
+                    recipeId: null,
+                    monstrousFeast: true,
+                    ingredientsConsumed: true
+                };
+                this._craftingResults.set(charId, craftResult);
+                this.finalizeActivityChoiceFromStation(charId, "act_cook", null, { craftResult });
+                this.render();
+            }
+        });
+        if (!opened) {
+            ui.notifications.warn("The Monster Cooking book is not available right now.");
+        }
     }
 
     static #onCraftDrawerSelectRecipe(event, target) { this._crafting.onSelectRecipe(event, target); }
@@ -1255,7 +1392,7 @@ static #onActivityDetailBack(event, target) {
         this.render();
     }
 
-    /** Sleep status id. watchRoster includes defenses/scout; only Keep Watch stays alert. */
+    /** Sleep status id. Only Keep Watch stays alert. Defenses do not. */
     _beddingStatusEffectId() {
         const fromConfig = CONFIG.statusEffects?.find?.(e => e.id === "incapacitated");
         if (fromConfig) return "incapacitated";
@@ -1311,6 +1448,7 @@ static #onActivityDetailBack(event, target) {
     _totmCampfireMinigamePanelEnabled() { return this._campCeremony._totmCampfireMinigamePanelEnabled(...arguments); }
 
     _shouldShowTotmCampfirePanel() { return this._campCeremony._shouldShowTotmCampfirePanel(...arguments); }
+    _shouldMountFireRailEmbed() { return this._campCeremony._shouldMountFireRailEmbed(...arguments); }
 
     _campfireReconnectGateDetail() { return this._campCeremony._campfireReconnectGateDetail(...arguments); }
 
@@ -1410,10 +1548,16 @@ static _formatCampFirewoodDonors(names) {
 static async #onConsumeMealDay(event, target) { await this._meals.onConsumeMealDay(event, target); }
 
 static async #onSubmitMealChoices(event, target) {
+        const targetActorId = target?.dataset?.actorId
+            ?? target?.closest?.("[data-actor-id]")?.dataset?.actorId
+            ?? target?.closest?.("[data-character-id]")?.dataset?.characterId;
         if (this._isGM) {
-            const charId = this._selectedCharacterId
-                ?? target.closest("[data-character-id]")?.dataset.characterId;
+            const charId = targetActorId ?? this._selectedCharacterId;
             if (charId) await this.submitActivityMealRationsFromStation(charId);
+            return;
+        }
+        if (targetActorId && this._myCharacterIds?.has(targetActorId)) {
+            await this.submitActivityMealRationsFromStation(targetActorId);
             return;
         }
         const submitted = this._activityMealRationsSubmitted ?? new Set();
@@ -1542,15 +1686,95 @@ static async #onIdentifyScannedItem(event, target) {
 
     static async #showResourceLossApproval(unified) { return this._resolve.showResourceLossApproval(unified); }
 
-    static #rehydrateItemLossProposal(eff) { this._events.rehydrateItemLossProposal(eff); }
+    static #rehydrateItemLossProposal(eff) { return this._events.rehydrateItemLossProposal(eff); }
 
     static async #onResolveEvents(event, target) { return this._resolve.onResolveEvents(event, target); }
+
+    static async #onEnterDawn(event, target) { return this._dawn.enterDawn(); }
+
+    static async #onApplyMealBuffs(event, target) { return this._mealBuffs.applyAll(); }
+
+    static async #onApplyOneMealBuff(event, target) {
+        return this._mealBuffs.applyOne(target?.dataset?.rowId);
+    }
+
+    static async #onContinueToNight(event, target) { return this._mealBuffs.continueToNight(); }
+
+    static async #onReturnToNight(event, target) { return this._dawn.returnToNight(); }
+
+    static async #onCompleteDawn(event, target) { return this._dawn.completeDawn(event, target); }
+
+    static async #onRollActorExhaustionSave(event, target) {
+        return this._dawn.rollActor(target?.dataset?.actorId);
+    }
+
+    static async #onRollAllExhaustionSaves(event, target) { return this._dawn.rollAll(); }
+
+    static #onWaiveAllExhaustionSaves(event, target) { return this._dawn.waiveAll(); }
+
+    static #onToggleMustRollExhaustion(event, target) {
+        const input = target?.matches?.("input") ? target : target?.querySelector?.("input");
+        const required = input?.checked ?? target?.checked;
+        return this._dawn.toggleMustRoll(target?.dataset?.actorId, required);
+    }
+
+    static #onToggleExhaustionOverride(event, target) {
+        return this._dawn.toggleOverride(target?.dataset?.actorId);
+    }
+
+    static #onAdjustExhaustionDC(event, target) {
+        return this._dawn.adjustDc(target?.dataset?.actorId, Number(target?.dataset?.delta));
+    }
+
+    static #onAdjustAllExhaustionDC(event, target) {
+        return this._dawn.adjustAllDc(Number(target?.dataset?.delta));
+    }
+
+    static #onSetExhaustionAdvMode(event, target) {
+        return this._dawn.setAdvMode(target?.dataset?.actorId, target?.dataset?.mode);
+    }
+
+    static #onSetAllExhaustionAdvMode(event, target) {
+        return this._dawn.setAllAdvMode(target?.dataset?.mode);
+    }
+
+    static #onCycleExhaustionAdvMode(event, target) {
+        return this._dawn.cycleAdvMode(target?.dataset?.actorId);
+    }
 
     static async #onFinalize(event, target) { return this._events.onFinalize(event, target); }
 
 static #onOpenLedger(event, target) {
         if (!game.user.isGM) return;
         this.openLedgerPanel();
+    }
+
+    /* ── Camp Logistics Delegate Handlers ── */
+
+    static #onToggleLogisticsDrawer(event, target) {
+        if (!this._isGM) return;
+        this._campLogistics.toggleDrawer();
+    }
+
+    static #onAdjustSustenanceDC(event, target) {
+        if (!this._isGM) return;
+        this._campLogistics.adjustSustenanceDC(target.dataset.activity, target.dataset.delta);
+    }
+
+    static #onStepFoodDays(event, target) {
+        if (!this._isGM) return;
+        this._campLogistics.stepFoodDays(target.dataset.delta);
+    }
+
+    static async #onGiftWood(event, target) {
+        if (!this._isGM) return;
+        const qty = Number(target?.dataset?.qty) || 2;
+        await this._campLogistics.giftWood(qty);
+    }
+
+    static #onToggleGearFactor(event, target) {
+        if (!this._isGM) return;
+        this._campLogistics.toggleGearFactor(target?.dataset?.factor);
     }
 
 openLedgerPanel() {
@@ -1667,6 +1891,8 @@ static _inferCanvasStationForActivity(activityId, actorId = null) {
 
     async submitActivityMealRationsFromStation(actorId) { return await this._stations.submitActivityMealRationsFromStation(...arguments); }
 
+    async unlockSustenance(actorId) { return await this._stations.unlockSustenance(...arguments); }
+
     _getPlayerChoiceForCharacter(characterId) {
         for (const [userId, submission] of this._playerSubmissions) {
             if (!submission?.choices || typeof submission.choices !== "object") continue;
@@ -1689,117 +1915,6 @@ static _inferCanvasStationForActivity(activityId, actorId = null) {
         return null;
     }
 
-static buildPlayerTravelRestoreFromSerialized(travelState, userId, opts = {}) {
-        if (!travelState?.entries || !userId) return null;
-
-        const ownedActorIds = new Set();
-        for (const actor of getPartyActors()) {
-            const owners = Object.entries(actor.ownership ?? {})
-                .filter(([id, level]) => id !== "default" && level >= 3)
-                .map(([id]) => id);
-            if (owners.includes(userId)) ownedActorIds.add(actor.id);
-        }
-        if (!ownedActorIds.size) return null;
-
-        const declarations = {};
-        const confirmed = {};
-        const rolled = {};
-        const awaitingLoot = {};
-        const debrief = [];
-
-        for (const [key, entry] of Object.entries(travelState.entries)) {
-            const colon = key.indexOf(":");
-            if (colon < 0) continue;
-            const day = parseInt(key.slice(0, colon), 10);
-            const actorId = key.slice(colon + 1);
-            if (!day || !ownedActorIds.has(actorId)) continue;
-
-            declarations[day] ??= {};
-            declarations[day][actorId] = entry.activity ?? "nothing";
-
-            if (travelState.confirmed?.[`${day}:${actorId}`]) {
-                confirmed[day] ??= {};
-                confirmed[day][actorId] = true;
-            }
-
-            if (entry.status === "rolled" || entry.status === "resolved" || entry.status === "awaiting_loot") {
-                rolled[day] ??= {};
-                rolled[day][actorId] = true;
-            }
-
-            if (entry.status === "awaiting_loot") {
-                awaitingLoot[day] ??= {};
-                awaitingLoot[day][actorId] = {
-                    lootDraws: entry.lootDraws ?? 1,
-                    activity: entry.activity
-                };
-            }
-
-            if (entry.status === "resolved" && entry.result
-                && entry.activity !== "scout") {
-                debrief.push({
-                    day,
-                    activity: entry.activity,
-                    result: entry.result
-                });
-            }
-        }
-
-        if (!Object.keys(declarations).length && !debrief.length) return null;
-
-        const totalDays = travelState.totalDays ?? 1;
-        let fullyResolved = !!opts.fullyResolved;
-        if (opts.fullyResolved === undefined && travelState.dayResolved) {
-            fullyResolved = true;
-            for (let d = 1; d <= totalDays; d++) {
-                const resolved = travelState.dayResolved[d] ?? travelState.dayResolved[String(d)];
-                if (!resolved) {
-                    fullyResolved = false;
-                    break;
-                }
-            }
-        }
-
-        return {
-            declarations,
-            confirmed,
-            rolled,
-            awaitingLoot: Object.keys(awaitingLoot).length ? awaitingLoot : null,
-            debrief: debrief.length ? debrief : null,
-            totalDays,
-            activeDay: travelState.activeDay ?? 1,
-            forageDC: opts.forageDC ?? null,
-            huntDC: opts.huntDC ?? null,
-            scoutingAllowed: travelState.scoutingAllowed ?? null,
-            fullyResolved,
-            scoutingDone: !!opts.scoutingDone || !!travelState.scoutingResult
-        };
-    }
-
-_buildPlayerTravelRestore(userId) {
-        if (!this._travel || !userId) return null;
-        const base = RestSetupApp.buildPlayerTravelRestoreFromSerialized(
-            this._travel.serialize(),
-            userId,
-            {
-                fullyResolved: this._travel.isFullyResolved(),
-                scoutingDone: !!this._scoutingDebrief
-            }
-        );
-        if (!base) return null;
-        base.forageDC = this._travel.forageDC;
-        base.huntDC = this._travel.huntDC;
-        base.scoutingAllowed = this._travel.scoutingAllowed;
-        return base;
-    }
-
-    _applyPlayerTravelRestore(pt) { this._travel._applyPlayerTravelRestore(pt); }
-
-receiveTravelPlayerState(pt) {
-        this._applyPlayerTravelRestore(pt);
-        this.render();
-    }
-
     getRestSnapshot() { return this._sync.getRestSnapshot(...arguments); }
 
     getRestSnapshotForUser(userId) { return this._sync.getRestSnapshotForUser(...arguments); }
@@ -1812,92 +1927,7 @@ receiveTravelPlayerState(pt) {
 
     receiveArmorToggle(actorId, itemId, isDoffed) { return this._sync.receiveArmorToggle(...arguments); }
 
-    static #onAdjustGlobalDC(event, target) { this._travel.onAdjustGlobalDC(event, target); }
-
-    static #onRequestTravelRolls(event, target) { this._travel.onRequestTravelRolls(event, target); }
-
-    static #onRequestOtherRoll(event, target) { this._travel.onRequestOtherRoll(event, target); }
-
-static #onConfirmTravelForPlayer(event, target) {
-        event.preventDefault?.();
-        if (!game.user.isGM) return;
-        const actorId = target.dataset.actorId;
-        const day = parseInt(target.dataset.day) || this._travel?.activeDay;
-        if (!actorId) return;
-        this._travel.setConfirmed(actorId, day, true);
-        this._broadcastTravelDeclarations();
-        this._saveRestState();
-        this.render();
-    }
-
-    static async #onRollTravelCheck(event, target) { return this._travel.onRollTravelCheck(event, target); }
-
-    static async #onSelfRollTravelCheck(event, target) { return this._travel.onSelfRollTravelCheck(event, target); }
-
-    static async #onRollTravelForPlayer(event, target) { return this._travel.onRollTravelForPlayer(event, target); }
-
-    receiveTravelRollResult(data) { this._travel.receiveTravelRollResult(data); }
-
-    receiveTravelLootRollResult(data) { this._travel.receiveTravelLootRollResult(data); }
-
-receiveTravelLootRollPrompt(data) {
-        this._pendingTravelRoll = null;
-        const day = data.day ?? 1;
-        if (!this._playerTravelAwaitingLoot) this._playerTravelAwaitingLoot = {};
-        this._playerTravelAwaitingLoot[day] ??= {};
-        this._playerTravelAwaitingLoot[day][data.actorId] = {
-            lootDraws: data.lootDraws ?? 1,
-            activity: data.activity
-        };
-        this.render();
-    }
-
-    static async #onRollTravelLoot(event, target) { return this._travel.onRollTravelLoot(event, target); }
-
-    static async #onRollTravelLootForPlayer(event, target) { return this._travel.onRollTravelLootForPlayer(event, target); }
-
-static #onSwitchTravelDay(event, target) {
-        if (!game.user.isGM) return;
-        const day = parseInt(target.dataset.day);
-        if (!day) return;
-        this._travel.setActiveDay(day);
-        this._saveRestState();
-        this.render();
-    }
-
-    static async #onResolveTravelDay(event, target) { return this._travel.onResolveTravelDay(event, target); }
-
-    static async #onResolveTravelPhase(event, target) { return this._travel.onResolveTravelPhase(event, target); }
-
-    static async #onSkipTravelPhase(event, target) { return this._travel.onSkipTravelPhase(event, target); }
-
-receiveTravelRollRequest(data) {
-        this._pendingTravelRoll = {
-            activities: data.activities ?? [],
-            rolledCharacters: new Set()
-        };
-        this.render();
-    }
-
-    _broadcastTravelDeclarations() { this._travel._broadcastTravelDeclarations(); }
-
-_buildTravelGatherPayload() {
-        const terrainTag = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
-        const terrain = TerrainRegistry.get(terrainTag);
-        const safeRest = this._travel?.isEffectiveSafeRestSpot?.()
-            ?? !!(this._engine?.safeRestSpot ?? this._restData?.safeRestSpot);
-        return buildTravelGatherPayload({
-            terrainActivities: terrain?.travelActivities,
-            safeRestSpot: safeRest,
-            scoutingAllowed: this._travel?.scoutingAllowed ?? this._travelScoutingAllowed ?? true
-        });
-    }
-
-    receiveTravelDeclaration(data) { this._travel.receiveTravelDeclaration(data); }
-
-    _applyScoutingFromTravel() { this._travel._applyScoutingFromTravel(); }
-
-static async #onLightCampfire(event, target) {
+    static async #onLightCampfire(event, target) {
         await RestSetupApp.#onSelectCampFireLevel.call(this, event, { dataset: { fireLevel: "campfire" } });
     }
 
@@ -1965,13 +1995,6 @@ async _advanceCampToActivity() { return this._session._advanceCampToActivity(); 
         return await this._campPlacement.onRetryCampPitPlacement(...arguments);
     }
 
-static async #onOpenGuide(event, _target) {
-        event?.preventDefault?.();
-        event?.stopPropagation?.();
-        const pageId = game.user?.isGM ? "dvr4TYdYmX88MCCf" : "aQc3PtQPrYDi9Mlx";
-        await game.ionrift?.respite?.openPlayerGuide?.(pageId);
-    }
-
     static async #onDismissEventPoolNudge(event, target) {
         const snoozeUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
         await game.settings.set(MODULE_ID, "eventPoolNudgeSnoozedUntil", snoozeUntil);
@@ -1989,6 +2012,17 @@ static async #onOpenGuide(event, _target) {
     static async #onConfirmTotmFollowUp(event, target) { return this._totm.onConfirmTotmFollowUp(event, target); }
 
     static #onCancelTotmFollowUp() { this._totm.onCancelTotmFollowUp(); }
+
+    static async #onUnlockTotmActivity(event, target) { return this._totm.onUnlockTotmActivity(event, target); }
+
+    static async #onUnlockSustenance(event, target) {
+        const actorId = target?.dataset?.actorId
+            ?? target?.closest?.("[data-actor-id]")?.dataset?.actorId
+            ?? this._selectedCharacterId
+            ?? (this._isGM ? null : this._myCharacterIds?.values().next().value);
+        if (!actorId) return;
+        await this._stations.unlockSustenance(actorId);
+    }
 
     static #onSwitchTotmTab(event, target) { this._totm.onSwitchTotmTab(event, target); }
 
@@ -2098,6 +2132,165 @@ static async #onContinueToCampLayout(event, target) {
         ui.notifications?.info("Use the campfire on the map to finish Make Camp.");
     }
 
+    #holdWindowHeight() {
+        const height = this.element?.offsetHeight;
+        if (height > 0) this.position.height = height;
+    }
+
+    static #onSwitchWorkflow(event, target) {
+        const step = target.dataset.step;
+        if (!step || !["gather", "activities", "sustenance"].includes(step)) return;
+        if (step === this._selectedWorkflowStep) return;
+        this.#holdWindowHeight();
+        this._selectedWorkflowStep = step;
+        // Leave the activity screen so the chosen tab shows its own view.
+        // Training stays open and comes back when Activities is selected again.
+        if (this._totmFollowUpExpanded?.activityId !== "act_train") {
+            this._totmFollowUpExpanded = null;
+        }
+        // Stepper is visual sub-navigation only. Never mutate _phase.
+        // Phase transitions are owned by RestFlowActions.
+        this.render({ force: true });
+    }
+
+    static #onToggleExamine(event, target) {
+        this.#holdWindowHeight();
+        if (this._selectedWorkflowStep === "examine") {
+            this._selectedWorkflowStep = this._lastWorkflowStep || "activities";
+            this._totmFollowUpExpanded = null;
+        } else {
+            const actorId = this._selectedCharacterId ?? game.user.character?.id ?? getPartyActors()[0]?.id;
+            this._lastWorkflowStep = this._selectedWorkflowStep;
+            this._selectedWorkflowStep = "examine";
+            this._totmFollowUpExpanded = { activityId: "act_identify", characterId: actorId, isIdentify: true };
+        }
+        this.render({ force: true });
+    }
+
+    static #onSkipGather(event, target) {
+        const actorId = this._selectedCharacterId ?? game.user.character?.id ?? getPartyActors()[0]?.id;
+        if (!actorId) return;
+        if (gatherAlreadyResolved(this, actorId)) {
+            ui.notifications.info("Already gathered this rest.");
+            return;
+        }
+        if (this._gatherPending?.characterId === actorId && this._gatherPending.phase === "findings") {
+            ui.notifications.info("Roll for findings before skipping.");
+            return;
+        }
+        if (this._gatherSkipIds?.has(actorId)) return;
+        this._gatherPending = {
+            characterId: actorId,
+            activityId: "gather_skip",
+            phase: "confirm"
+        };
+        this.render({ force: true });
+    }
+
+    static #onConfirmGatherSkip() {
+        const actorId = this._selectedCharacterId ?? game.user.character?.id ?? getPartyActors()[0]?.id;
+        const pending = this._gatherPending;
+        if (!actorId || pending?.characterId !== actorId || pending.activityId !== "gather_skip") return;
+        if (!this._gatherSkipIds) this._gatherSkipIds = new Set();
+        this._gatherSkipIds.add(actorId);
+        this._gatherPending = null;
+        this._gatherChoices?.delete(actorId);
+        publishCampProgress(this, {
+            characterId: actorId,
+            gatherSkip: true,
+            gatherPending: null
+        });
+        const current = this._characterChoices?.get(actorId);
+        if (current === "act_forage" || current === "act_hunt") {
+            this._characterChoices.delete(actorId);
+        }
+        this.checkAndAutoMarkCharacterReady(actorId);
+        this.render({ force: true });
+    }
+
+    static #onClearSustenanceFood(event, target) {
+        const actorId = sustenanceActorId(target, this);
+        const slot = Number(target.dataset.slot);
+        if (!actorId || Number.isNaN(slot)) return;
+        this._meals.clearDiegeticSlot(actorId, "food", slot);
+    }
+
+    static #onAssignSustenanceFood(event, target) {
+        this.applySustenanceChip("food", target.dataset.item, sustenanceActorId(target, this), {
+            name: target.dataset.name
+        });
+    }
+
+    static #onClearSustenanceWater(event, target) {
+        const actorId = sustenanceActorId(target, this);
+        const pint = Number(target.dataset.pint);
+        if (!actorId || Number.isNaN(pint)) return;
+        this._meals.clearDiegeticSlot(actorId, "water", pint);
+    }
+
+    static #onAssignSustenanceWater(event, target) {
+        this.applySustenanceChip("water", target.dataset.item, sustenanceActorId(target, this), {
+            name: target.dataset.name
+        });
+    }
+
+    applySustenanceChip(kind, itemId, actorId, target = {}) {
+        const id = actorId || this._selectedCharacterId;
+        if (!id || !itemId) return;
+        const slot = kind === "food" && Number.isInteger(target.foodSlot) ? target.foodSlot : undefined;
+        this._meals.assignDiegeticItem(id, kind === "water" ? "water" : "food", itemId, slot, target.available, target.sources);
+    }
+
+    static #onToggleCharacterReady(event, target) {
+        const actorId = target?.dataset?.actorId
+            ?? this._selectedCharacterId
+            ?? game.user.character?.id;
+        if (!actorId) return;
+        if (!this._finishedActorIds) this._finishedActorIds = new Set();
+        if (this._finishedActorIds.has(actorId)) this._finishedActorIds.delete(actorId);
+        else this._finishedActorIds.add(actorId);
+        publishCampProgress(this, {
+            finishedActorId: actorId,
+            finished: this._finishedActorIds.has(actorId)
+        });
+        this.render({ force: true });
+    }
+
+    checkAndAutoMarkCharacterReady(actorId) {
+        if (!actorId) return;
+        const setupSafeHaven = (this._selectedTerrain ?? this._engine?.terrainTag ?? "forest") === "tavern"
+            || !!this._engine?.isSafeHaven;
+        const gatherOn = !setupSafeHaven && (isForagingEnabled() || isHuntingEnabled());
+        const { gatherDone, activityDone } = dailyChoiceStatus(this, actorId, gatherOn);
+        let trackFoodOn = false;
+        let sustenanceDone = false;
+        try {
+            trackFoodOn = !!game.settings.get(MODULE_ID, "trackFood");
+            if (!trackFoodOn) {
+                sustenanceDone = true;
+            } else {
+                const card = this.getStationMealCardForActor(actorId);
+                sustenanceDone = Boolean(this._activityMealRationsSubmitted?.has(actorId))
+                    || Boolean(card?.playerSubmitted);
+            }
+        } catch { /* settings not ready */ }
+
+        const complete = (gatherOn ? gatherDone : true)
+            && activityDone
+            && (trackFoodOn ? sustenanceDone : true);
+
+        if (complete) {
+            if (!this._finishedActorIds) this._finishedActorIds = new Set();
+            if (!this._finishedActorIds.has(actorId)) {
+                this._finishedActorIds.add(actorId);
+                publishCampProgress(this, {
+                    finishedActorId: actorId,
+                    finished: true
+                });
+            }
+        }
+    }
+
     static async #onProceedFromMakeCamp(event, target) { return await this._campPlacement.onProceedFromMakeCamp(...arguments); }
 
     static async #onReclaimCampfire(event, target) { return await this._campPlacement.onReclaimCampfire(...arguments); }
@@ -2119,5 +2312,18 @@ static async reclaimCampGearFromDialog(restApp, event, target) {
     _bindCampDragHandlers(html) { return this._campPlacement._bindCampDragHandlers(...arguments); }
 
     async _onCampCanvasDrop(event) { return await this._campPlacement._onCampCanvasDrop(...arguments); }
+
+    static async #onToggleUiTheme(event, target) {
+        let currentTheme = "glass";
+        try {
+            currentTheme = game.settings.get(MODULE_ID, "uiTheme") ?? "glass";
+        } catch { /* ignore */ }
+        const nextTheme = currentTheme === "glass" ? "cockpit" : "glass";
+        try {
+            await game.settings.set(MODULE_ID, "uiTheme", nextTheme);
+        } catch (e) {
+            console.error("Failed to update uiTheme setting:", e);
+        }
+    }
 
 }

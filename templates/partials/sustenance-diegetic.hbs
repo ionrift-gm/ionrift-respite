@@ -1,0 +1,163 @@
+{{!-- sustenance-diegetic.hbs
+     Mock-aligned two-column pile / vessel sustenance layout.
+     Gritty (7-day): planner card with Lock in meals.
+     Normal (1-day): bare station-columns, no planner chrome.
+     Context: sustenanceDiegetic from buildSustenanceDiegetic(). --}}
+
+<div class="sust-diegetic{{#if sustenanceDiegetic.mealsLocked}} is-locked{{/if}}" data-sustenance-actor="{{sustenanceDiegetic.actorId}}"{{#if sustenanceDiegetic.mealsLocked}} data-meals-locked="1"{{/if}}>
+    <div class="sust-section-label">SUSTENANCE</div>
+    {{#if sustenanceDiegetic.terrainNote}}
+    <div class="meal-terrain-alert {{sustenanceDiegetic.terrainAlertClass}}">
+        <i class="{{sustenanceDiegetic.terrainAlertIcon}}" aria-hidden="true"></i>
+        <span>{{sustenanceDiegetic.terrainNote}}</span>
+    </div>
+    {{/if}}
+
+    {{#if sustenanceDiegetic.isMultiDay}}
+    <div class="sust-planner">
+    {{/if}}
+        <div class="sust-station-columns">
+            {{!-- FOOD column --}}
+            <div class="sust-station">
+                <div class="sust-station-head">
+                    <span class="sust-station-label">Food</span>
+                    <span class="sust-budget{{#if sustenanceDiegetic.food.budget.isDone}} done{{/if}}">{{sustenanceDiegetic.food.budget.text}}</span>
+                </div>
+                <div class="sust-pile{{#unless sustenanceDiegetic.isMultiDay}} night{{/unless}}" aria-label="{{#if sustenanceDiegetic.isMultiDay}}Food for the week{{else}}Food for the night{{/if}}">
+                    {{#each sustenanceDiegetic.food.slots}}
+                    <span class="sust-portion-well{{#if isSend}} send{{/if}}" data-drop="food" data-slot="{{@index}}">
+                        {{#if isEmpty}}
+                        <span class="sust-portion{{#if isSend}} send{{/if}}">
+                            {{#unless ../sustenanceDiegetic.isMultiDay}}
+                            <span class="sust-night-empty-hint"><i class="fas fa-drumstick-bite" aria-hidden="true"></i> Drag food here</span>
+                            {{/unless}}
+                        </span>
+                        {{else}}
+                        <button type="button" class="sust-portion on{{#if isSend}} send{{/if}}{{#if isBuff}} buff{{/if}}{{#if img}} has-img{{else}} no-img{{/if}}" title="{{name}}, day {{day}}" data-tooltip="{{name}}.{{#if perishable}} {{spoilTooltip}}{{/if}} Click to take this off the day" data-action="clearSustenanceFood" data-actor-id="{{../sustenanceDiegetic.actorId}}" data-sust="food" data-slot="{{@index}}">
+                            {{#if img}}
+                            <img src="{{img}}" alt="{{name}}" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';">
+                            <div class="sust-portion-fallback" style="display:none;">
+                                <i class="fas fa-drumstick-bite" aria-hidden="true"></i>
+                                <b class="sust-portion-text-fallback">{{name}}</b>
+                            </div>
+                            {{else}}
+                            <div class="sust-portion-fallback">
+                                <i class="fas fa-drumstick-bite" aria-hidden="true"></i>
+                                <b class="sust-portion-text-fallback">{{name}}</b>
+                            </div>
+                            {{/if}}
+                            {{#if perishable}}<span class="sust-spoil {{spoilClass}}">{{spoilText}}</span>{{/if}}
+                        </button>
+                        {{/if}}
+                    </span>
+                    {{/each}}
+                </div>
+                {{!-- Send-off card --}}
+                {{#if sustenanceDiegetic.food.sendoff.empty}}
+                <div class="sust-sendoff empty">
+                    <span class="sust-sendoff-kicker">Send-off</span>
+                    <span class="sust-sendoff-dur">Nothing set for the next day.</span>
+                </div>
+                {{else}}
+                <div class="sust-sendoff{{#if sustenanceDiegetic.food.sendoff.hasBuff}} has-buff{{/if}}">
+                    <span class="sust-sendoff-kicker">Send-off</span>
+                    <strong>{{sustenanceDiegetic.food.sendoff.itemName}}</strong>
+                    {{#if sustenanceDiegetic.food.sendoff.hasBuff}}
+                    <div class="sust-sendoff-hero"><b>{{sustenanceDiegetic.food.sendoff.buffSummary}}</b></div>
+                    {{else}}
+                    <span class="sust-sendoff-dur">Sates only. No buff into the next day.</span>
+                    {{/if}}
+                </div>
+                {{/if}}
+                {{!-- Crumb tray --}}
+                <div class="sust-crumb-tray">
+                    {{#each sustenanceDiegetic.food.inventory}}
+                    {{#unless isDry}}
+                    <button type="button" class="sust-crumb{{#if isSelected}} on{{/if}}{{#if hasBuff}} buff{{/if}}{{#if perishable}} perishable{{/if}}" data-tooltip="{{name}}, {{available}} left.{{#if perishable}} {{spoilTooltip}}{{/if}} Click to fill the first open day, or drag onto the pile" data-sust="food" data-item="{{id}}" data-sources="{{sourcesAttr}}" data-name="{{name}}" data-img="{{img}}" data-available="{{#if stock}}{{stock}}{{else}}{{available}}{{/if}}">
+                        {{#if img}}
+                        <img src="{{img}}" alt="{{name}}" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-flex';">
+                        <span class="sust-crumb-fallback-icon" style="display:none;"><i class="fas fa-drumstick-bite" aria-hidden="true"></i></span>
+                        <span class="sust-crumb-label">{{name}}</span>
+                        {{else}}
+                        <span class="sust-crumb-fallback-icon"><i class="fas fa-drumstick-bite" aria-hidden="true"></i></span>
+                        <span class="sust-crumb-label">{{name}}</span>
+                        {{/if}}
+                        {{#if perishable}}<span class="sust-spoil {{spoilClass}}">{{spoilText}}</span>{{/if}}
+                        <b>&times;{{available}}</b>
+                    </button>
+                    {{/unless}}
+                    {{/each}}
+                </div>
+            </div>
+
+            {{!-- WATER column --}}
+            <div class="sust-station">
+                <div class="sust-station-head">
+                    <span class="sust-station-label">Water</span>
+                    <span class="sust-budget water{{#if sustenanceDiegetic.water.budget.isDone}} done{{/if}}">{{sustenanceDiegetic.water.budget.text}}</span>
+                </div>
+                <div class="sust-vessel{{#if sustenanceDiegetic.isMultiDay}} days{{else}} night{{#if sustenanceDiegetic.water.sendoff.hasBuff}} send{{/if}}{{/if}}" aria-label="{{#if sustenanceDiegetic.isMultiDay}}Water for the week{{else}}Water for the night{{/if}}">
+                    {{#each sustenanceDiegetic.water.days}}
+                    <span class="sust-day-fill{{#if isSend}} send{{/if}}{{#if hasBuff}} buff{{/if}}" data-drop="water" data-wday="{{@index}}">
+                        {{#each pints}}
+                        {{#if filled}}
+                        <button type="button" class="on src-{{#if sourceClass}}{{sourceClass}}{{else if sourceId}}{{sourceId}}{{else}}waterskin{{/if}}{{#if isBuff}} buff{{/if}}{{#if isSurface}} is-surface{{/if}}" title="{{name}}" data-tooltip="{{#if name}}{{name}}. {{/if}}{{#if perishable}}{{spoilTooltip}} {{/if}}Click to take this pint off the day" data-action="clearSustenanceWater" data-actor-id="{{../../sustenanceDiegetic.actorId}}" data-sust="water" data-wday="{{../dayIndex}}" data-pint="{{@index}}">
+                            <span class="sust-pint-liquid"></span>
+                            {{#if perishable}}<span class="sust-spoil {{spoilClass}}">{{spoilText}}</span>{{/if}}
+                        </button>
+                        {{else}}
+                        <i title="Empty"></i>
+                        {{/if}}
+                        {{/each}}
+                    </span>
+                    {{/each}}
+                </div>
+                {{!-- Send-off card --}}
+                {{#if sustenanceDiegetic.water.sendoff.empty}}
+                <div class="sust-sendoff empty">
+                    <span class="sust-sendoff-kicker">Send-off</span>
+                    <span class="sust-sendoff-dur">Nothing set for the next day.</span>
+                </div>
+                {{else}}
+                <div class="sust-sendoff{{#if sustenanceDiegetic.water.sendoff.hasBuff}} has-buff{{/if}}">
+                    <span class="sust-sendoff-kicker">Send-off</span>
+                    <strong>{{sustenanceDiegetic.water.sendoff.itemName}}</strong>
+                    {{#if sustenanceDiegetic.water.sendoff.hasBuff}}
+                    <div class="sust-sendoff-hero"><b>{{sustenanceDiegetic.water.sendoff.buffSummary}}</b></div>
+                    {{else}}
+                    <span class="sust-sendoff-dur">Sates only. No buff into the next day.</span>
+                    {{/if}}
+                </div>
+                {{/if}}
+                {{!-- Crumb tray --}}
+                <div class="sust-crumb-tray">
+                    {{#each sustenanceDiegetic.water.inventory}}
+                    {{#unless isDry}}
+                    <button type="button" class="sust-crumb{{#if isSelected}} on{{/if}}{{#if hasBuff}} buff{{/if}}{{#if perishable}} perishable{{/if}}" data-tooltip="{{name}}, {{available}} left.{{#if perishable}} {{spoilTooltip}}{{/if}} Click to pour into the first open day, or drag onto the vessel" data-sust="water" data-item="{{id}}" data-sources="{{sourcesAttr}}" data-name="{{name}}" data-img="{{img}}" data-available="{{#if stock}}{{stock}}{{else}}{{available}}{{/if}}">
+                        {{#if img}}
+                        <img src="{{img}}" alt="{{name}}" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-flex';">
+                        <span class="sust-crumb-fallback-icon" style="display:none;"><i class="fas fa-tint" aria-hidden="true"></i></span>
+                        <span class="sust-crumb-label">{{name}}</span>
+                        {{else}}
+                        <span class="sust-crumb-fallback-icon"><i class="fas fa-tint" aria-hidden="true"></i></span>
+                        <span class="sust-crumb-label">{{name}}</span>
+                        {{/if}}
+                        {{#if perishable}}<span class="sust-spoil {{spoilClass}}">{{spoilText}}</span>{{/if}}
+                        <b>&times;{{available}}</b>
+                    </button>
+                    {{/unless}}
+                    {{/each}}
+                </div>
+            </div>
+        </div>
+    {{#if sustenanceDiegetic.isMultiDay}}
+        {{#unless hoistComplete}}
+        {{> sustenanceCardFoot}}
+        {{/unless}}
+    </div>
+    {{else}}
+        {{#unless hoistComplete}}
+        {{> sustenanceCardFoot}}
+        {{/unless}}
+    {{/if}}
+</div>

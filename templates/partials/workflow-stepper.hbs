@@ -1,0 +1,38 @@
+{{!-- Workflow Stepper (Shared Partial): 1 Gather -> 2 Activities -> 3 Sustenance + Optional Examine --}}
+<nav class="workflow-stepper" role="navigation" aria-label="Workflow steps">
+    <div class="workflow-steps-group">
+        {{#if showGatherStep}}
+        <button type="button" class="workflow-step-btn {{#if (eq selectedWorkflowStep 'gather')}}active{{/if}}"
+                data-action="switchWorkflow" data-step="gather">
+            <span class="step-number">1</span>
+            <i class="fas fa-seedling"></i>
+            <span class="step-label">Gather</span>
+        </button>
+        <span class="step-connector">—</span>
+        {{/if}}
+        <button type="button" class="workflow-step-btn {{#if (eq selectedWorkflowStep 'activities')}}active{{/if}}"
+                data-action="switchWorkflow" data-step="activities">
+            <span class="step-number">{{#if showGatherStep}}2{{else}}1{{/if}}</span>
+            <i class="fas fa-hammer"></i>
+            <span class="step-label">Activities</span>
+        </button>
+        <span class="step-connector">—</span>
+        <button type="button" class="workflow-step-btn {{#if (eq selectedWorkflowStep 'sustenance')}}active{{/if}}"
+                data-action="switchWorkflow" data-step="sustenance">
+            <span class="step-number">{{#if showGatherStep}}3{{else}}2{{/if}}</span>
+            <i class="fas fa-utensils"></i>
+            <span class="step-label">Sustenance</span>
+        </button>
+    </div>
+    {{#if workbenchIdentifyUiEnabled}}
+    <div class="workflow-optional-actions">
+        <button type="button" class="workflow-optional-chip {{#if isIdentifyActive}}active{{/if}}"
+                data-action="toggleExamine"
+                data-tooltip="Examine & Identify mysterious items in inventory">
+            <i class="fas fa-search"></i>
+            <span class="chip-label">Examine</span>
+            <span class="optional-tag">Optional</span>
+        </button>
+    </div>
+    {{/if}}
+</nav>

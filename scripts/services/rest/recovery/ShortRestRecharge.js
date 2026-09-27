@@ -9,8 +9,9 @@ export function getShortRestRechargeLabels(actor) {
     const labels = [];
     for (const item of actor.items) {
         const rec = item.system?.uses?.recovery;
-        if (!Array.isArray(rec) || !rec.length) continue;
-        if (rec.some((r) => r.period === "sr")) {
+        const hasV4Sr = Array.isArray(rec) && rec.some((r) => r.period === "sr");
+        const hasLegacySr = item.system?.uses?.per === "sr";
+        if (hasV4Sr || hasLegacySr) {
             if (item.name) labels.push(item.name);
         }
     }

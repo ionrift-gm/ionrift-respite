@@ -40,6 +40,19 @@ const ESSENCE_NAMES = new Set([
 export const PROVISION_ITEM_TYPES = Object.freeze(new Set(["consumable", "loot", "treasure"]));
 
 /**
+ * Storage types and preservation multipliers for containers.
+ * Multiplier extends base spoilage duration. Custom covers any other factor, including 0 (no spoilage).
+ * @type {Readonly<Array<{ id: string, label: string, multiplier: number|null, badge: string, description: string }>>}
+ */
+export const STORAGE_TYPES = Object.freeze([
+    { id: "ventilated", label: "Ventilated", multiplier: 1.3, badge: "1.3×", description: "Breezy or dry storage extending shelf life slightly." },
+    { id: "cellar", label: "Cellar", multiplier: 1.5, badge: "1.5×", description: "Cool, shaded storage slowing spoilage." },
+    { id: "coolbox", label: "Cool Box", multiplier: 2.0, badge: "2×", description: "Insulated ice container doubling shelf life." },
+    { id: "deepchill", label: "Deep Chill", multiplier: 3.0, badge: "3×", description: "Packed in salt and ice, tripling shelf life." },
+    { id: "custom", label: "Custom Multiplier", multiplier: null, badge: "CUSTOM", description: "Custom shelf life multiplier." }
+]);
+
+/**
  * Valid resourceType values.
  * @type {Set<string>}
  */
@@ -231,6 +244,84 @@ export class ItemClassifier {
     }
 
     /**
+     * Check if an item is a container document type (container, backpack).
+     * @param {Item|object} item
+     * @returns {boolean}
+     */
+    static isContainer(item) {
+        if (!item) return false;
+        return CONTAINER_ITEM_TYPES.has(item.type);
+    }
+
+    /**
+     * Check if an item can be configured in ItemProvisionsApp (provisions or containers).
+     * @param {Item|object} item
+     * @returns {boolean}
+     */
+    static isConfigurableItem(item) {
+        if (!item) return false;
+        return this.isProvisionEligible(item) || this.isContainer(item);
+    }
+
+    /**
+     * Check whether a container document carries active cold storage flags.
+     * @param {Item|object} container
+     * @returns {boolean}
+     */
+    static isColdStorageContainer(container) {
+        if (!container) return false;
+        const flags = container.flags?.[MODULE_ID] ?? {};
+        return flags.coldStorage === true;
+    }
+
+    /**
+     * Get the shelf life preservation multiplier for a cold storage container.
+     * 2 = doubles shelf life (half spoilage rate). 0 = stasis/frozen (indefinite shelf life).
+     * @param {Item|object} container
+     * @returns {number}
+     */
+    static getPreservationMultiplier(container) {
+        if (!container) return 1;
+        const flags = container.flags?.[MODULE_ID] ?? {};
+        if (!flags.coldStorage) return 1;
+        const mult = Number(flags.preservationMultiplier);
+        return !Number.isNaN(mult) && mult >= 0 ? mult : 2;
+    }
+
+    /**
+     * Get preset matching a given preservation multiplier.
+     * @param {number} mult
+     * @returns {object|null}
+     */
+    static getStorageTypePreset(mult) {
+        if (mult === undefined || mult === null) return null;
+        const num = Number(mult);
+        return STORAGE_TYPES.find(p => p.multiplier !== null && Math.abs(p.multiplier - num) < 0.01) ?? null;
+    }
+
+    /**
+     * Resolves the parent container document for an item, if stored inside one.
+     * Checks item.container, item.system.container against actor items, or item._container test mock.
+     * @param {Item|object} item
+     * @returns {Item|object|null}
+     */
+    static getParentContainer(item) {
+        if (!item) return null;
+        if (item.container) return item.container;
+        if (item._container) return item._container;
+        const containerId = item.system?.container;
+        if (containerId && item.parent?.items) {
+            if (typeof item.parent.items.get === "function") {
+                return item.parent.items.get(containerId) ?? null;
+            }
+            if (Array.isArray(item.parent.items)) {
+                return item.parent.items.find(i => i.id === containerId || i._id === containerId) ?? null;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Classify an item's resource type.
      *
      * @param {Item} item - Foundry Item document
@@ -350,15 +441,29 @@ export class ItemClassifier {
         const flags = item.flags?.[MODULE_ID] ?? {};
         if (flags.spoilsAfterHours) return null;
 
+        let baseSpoils = null;
         // Explicit flag takes priority
         const explicit = item.flags?.[MODULE_ID]?.spoilsAfter;
-        if (explicit !== null && explicit !== undefined) return explicit > 0 ? explicit : null;
+        if (explicit !== null && explicit !== undefined) {
+            baseSpoils = explicit > 0 ? explicit : null;
+        } else {
+            // Infer from food tag
+            const tag = this.getFoodTag(item);
+            baseSpoils = tag ? (DEFAULT_SPOILS_AFTER[tag] ?? null) : null;
+        }
 
-        // Infer from food tag
-        const tag = this.getFoodTag(item);
-        if (!tag) return null;
+        if (baseSpoils === null) return null;
 
-        return DEFAULT_SPOILS_AFTER[tag] ?? null;
+        // Apply container cold storage preservation
+        const container = this.getParentContainer(item);
+        if (container && this.isColdStorageContainer(container)) {
+            const mult = this.getPreservationMultiplier(container);
+            if (mult === 0) return null; // Stasis / indefinite preservation
+            const result = baseSpoils * mult;
+            return Math.max(1, Number.isInteger(result) ? result : Number(result.toFixed(2)));
+        }
+
+        return baseSpoils;
     }
 
     /**
@@ -371,7 +476,19 @@ export class ItemClassifier {
         const hours = item.flags?.[MODULE_ID]?.spoilsAfterHours;
         if (hours === null || hours === undefined) return null;
         const n = Number(hours);
-        return n > 0 ? n : null;
+        let baseHours = n > 0 ? n : null;
+        if (baseHours === null) return null;
+
+        // Apply container cold storage preservation
+        const container = this.getParentContainer(item);
+        if (container && this.isColdStorageContainer(container)) {
+            const mult = this.getPreservationMultiplier(container);
+            if (mult === 0) return null;
+            const result = baseHours * mult;
+            return Math.max(1, Number.isInteger(result) ? result : Number(result.toFixed(2)));
+        }
+
+        return baseHours;
     }
 
     /**
@@ -420,13 +537,15 @@ export class ItemClassifier {
     }
 
     /**
-     * Items that can fill a rest rations food slot (excludes Chef treats).
+     * Items that can fill a rest rations food slot (excludes Chef treats unless configured).
      * @param {Item} item
      * @param {Actor} [actor]
      * @returns {boolean}
      */
     static isMealSubstitute(item, actor = null) {
-        if (!item || this.isChefTreat(item)) return false;
+        const settingVal = game.settings?.get?.(MODULE_ID, "chefTreatsProvideSustenance");
+        const treatsProvideSustenance = typeof settingVal === "boolean" ? settingVal : true;
+        if (!item || (!treatsProvideSustenance && this.isChefTreat(item))) return false;
         if (actor && this.requiresEssence(actor)) {
             return this.isEssenceMealFoodOption(item, actor);
         }
@@ -443,7 +562,9 @@ export class ItemClassifier {
         if (!itemId || itemId === "skip") return false;
         if (String(itemId).startsWith("__")) return false;
         const item = actor?.items?.get(itemId);
-        if (item && this.isChefTreat(item)) return false;
+        const settingVal = game.settings?.get?.(MODULE_ID, "chefTreatsProvideSustenance");
+        const treatsProvideSustenance = typeof settingVal === "boolean" ? settingVal : true;
+        if (item && !treatsProvideSustenance && this.isChefTreat(item)) return false;
         return true;
     }
 
@@ -775,3 +896,4 @@ ItemClassifier.WATER_NAMES = WATER_NAMES;
 ItemClassifier.FUEL_NAMES = FUEL_NAMES;
 ItemClassifier.ESSENCE_NAMES = ESSENCE_NAMES;
 ItemClassifier.INGREDIENT_NAMES = INGREDIENT_NAMES;
+ItemClassifier.STORAGE_TYPES = STORAGE_TYPES;

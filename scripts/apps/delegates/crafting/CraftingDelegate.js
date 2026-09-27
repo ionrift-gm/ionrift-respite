@@ -183,12 +183,12 @@ export class CraftingDelegate {
     async onTotmFeastServeNow() {
         const app = this._app;
         if (app._totmFeastServed || app._totmFeastInFlight) return;
-        const craftResult = app._totmCraftResult;
+        const expanded = app._totmFollowUpExpanded;
+        const charId = expanded?.characterId ?? app._selectedCharacterId;
+        const craftResult = app._totmCraftResult ?? (charId ? app._craftingResults?.get(charId) : null);
         if (!craftResult?.output) return;
 
-        const expanded = app._totmFollowUpExpanded;
-        if (!expanded?.isCrafting) return;
-        const actor = game.actors.get(expanded.characterId);
+        const actor = charId ? game.actors.get(charId) : null;
         if (!actor) return;
 
         app._totmFeastInFlight = true;

@@ -25,7 +25,7 @@ const VALID_PHASES = new Set([
 ]);
 
 const VALID_CATEGORIES = new Set([
-    "terrain", "weather", "shelter", "fire", "comfort", "scouting",
+    "terrain", "weather", "shelter", "fire", "comfort",
     "activity", "meal", "event", "encounter", "recovery", "override",
     "cold_camp", "meal_rations", "meal_missing", "meal_buff",
     "night_check", "night_pass", "exhaustion"

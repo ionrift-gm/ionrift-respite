@@ -79,6 +79,25 @@ const RECOVERY_SECTIONS = [
                 icon: "fas fa-dice-d20",
                 hint: "During short rests, each Hit Die heals for the die's maximum roll plus CON modifier instead of a random roll. Optional, not RAW.",
                 type: "boolean"
+            },
+            {
+                key: "chefTreatsProvideSustenance",
+                label: "Chef Treats Provide Sustenance",
+                icon: "fas fa-cookie-bite",
+                hint: "Whether Chef treats and replenishing meals satisfy a character's daily food requirement during rest.",
+                type: "boolean"
+            },
+            {
+                key: "shortRestFireWarmth",
+                label: "Campfire Warmth",
+                icon: "fas fa-fire",
+                hint: "Enables the Campfire Stance ribbon during overnight Bivouac. A Warm Camp expends 1 fuel and grants warmth healing when spending Hit Dice.",
+                type: "select",
+                choices: {
+                    none: "Disabled (No campfire requirement)",
+                    "1": "+1 Hit Point per Hit Die",
+                    "1d4": "+1d4 Hit Points per Hit Die"
+                }
             }
         ]
     }
