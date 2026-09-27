@@ -688,60 +688,6 @@
     gap: 0.5rem;
 }
 
-.dev-rest-variant-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    font-size: 0.65rem;
-    font-weight: 600;
-    line-height: 1;
-    padding: 0.25rem 0.45rem;
-    border-radius: 6px;
-    border: 1px solid rgba(138, 168, 222, 0.35);
-    background: rgba(138, 168, 222, 0.08);
-    color: rgba(200, 220, 255, 0.85);
-    cursor: pointer;
-    white-space: nowrap;
-    text-transform: none;
-    letter-spacing: 0.02em;
-    user-select: none;
-    transition: all 0.2s ease;
-}
-
-.dev-rest-variant-toggle:hover {
-    background: rgba(138, 168, 222, 0.18);
-    border-color: rgba(138, 168, 222, 0.6);
-    color: #fff;
-    box-shadow: 0 0 6px rgba(138, 168, 222, 0.25);
-}
-
-.dev-rest-variant-toggle.is-gritty {
-    border-color: rgba(245, 158, 11, 0.5);
-    background: rgba(245, 158, 11, 0.12);
-    color: #fbbf24;
-}
-
-.dev-rest-variant-toggle.is-gritty:hover {
-    background: rgba(245, 158, 11, 0.22);
-    border-color: rgba(245, 158, 11, 0.8);
-    box-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
-}
-
-.dev-rest-variant-toggle .dev-variant-badge {
-    font-size: 0.55rem;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    padding: 0.1rem 0.3rem;
-    border-radius: 3px;
-    background: rgba(255, 255, 255, 0.12);
-    color: inherit;
-    font-weight: 700;
-}
-
-.dev-rest-variant-toggle .dev-variant-label {
-    font-weight: 600;
-}
-
 .rest-type-toggle {
     display: flex;
     flex-shrink: 0;
