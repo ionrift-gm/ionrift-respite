@@ -764,6 +764,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         hint: "Choose between Ionrift Glass (translucent frosted glass) or Gilded Slate (opaque cockpit).",
         scope: "client",
         config: true,
+        restricted: true,
         type: String,
         choices: {
             "glass": "Ionrift Glass (Translucent)",
