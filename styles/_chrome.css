@@ -4092,6 +4092,43 @@
     color: #ffffff;
 }
 
+.btn-toggle-ready {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    color: #94a3b8;
+    font-size: 0.68rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    padding: 0;
+}
+
+.btn-toggle-ready:hover {
+    background: rgba(34, 197, 94, 0.25);
+    border-color: rgba(34, 197, 94, 0.5);
+    color: #4ade80;
+}
+
+.btn-toggle-ready.is-ready {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: rgba(34, 197, 94, 0.4);
+    color: #4ade80;
+}
+
+.sr-complete-btn--waiting {
+    opacity: 0.85;
+    border-style: dashed !important;
+}
+
+.sr-complete-btn--waiting:hover {
+    opacity: 1;
+}
+
 .gm-card-hp-section {
     display: flex;
     flex-direction: column;

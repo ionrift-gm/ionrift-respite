@@ -3,14 +3,13 @@
 <div class="roster-strip">
     <div class="roster-players">
         {{#each roster}}
-        <div class="roster-chip {{#if isSelected}}selected{{/if}} {{source}} {{#unless isOwner}}not-owned{{/unless}} {{#if isAfk}}afk{{/if}} {{#if mealStatus}}meal-{{mealStatus.state}}{{/if}} {{#if isReady}}ready{{/if}}"
+        <div class="roster-chip {{#if isSelected}}selected{{/if}} {{source}} {{#unless isOwner}}not-owned{{/unless}} {{#if mealStatus}}meal-{{mealStatus.state}}{{/if}} {{#if isReady}}ready{{/if}}"
             data-action="selectRosterCharacter"
             data-actor-id="{{id}}"
             data-roster-id="{{id}}"
             data-tooltip="{{fullName}}">
             <span class="roster-portrait-wrap">
                 <img class="roster-portrait" src="{{img}}" alt="{{name}}">
-                {{#if isAfk}}<span class="roster-afk-mug" aria-hidden="true"><i class="fas fa-mug-hot"></i></span>{{/if}}
                 {{#if isBeddedDown}}<span class="roster-zzz" aria-hidden="true">Zzz</span>{{/if}}
                 {{#if hasStarvationRisk}}<span class="roster-starvation-warning" aria-hidden="true" data-tooltip="Starvation Risk"><i class="fas fa-triangle-exclamation"></i></span>{{/if}}
             </span>

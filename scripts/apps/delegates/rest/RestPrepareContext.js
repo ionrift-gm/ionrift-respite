@@ -1742,6 +1742,7 @@ export class RestPrepareContext {
             resolutionCards,
             dawnCards,
             isResolvePhase: app._phase === "resolve",
+            isSetupPhase: app._phase === "setup",
             incidentsCount: (app._triggeredEvents ?? []).length,
             triggeredEvents: (app._triggeredEvents ?? []).map((e, eventIndex) => {
                 // Resolve target IDs to actor names for the template

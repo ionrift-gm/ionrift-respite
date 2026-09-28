@@ -51,7 +51,7 @@
         </button>
         {{/if}}
         {{else}}
-        {{#unless isResolvePhase}}
+        {{#unless (or isResolvePhase isSetupPhase)}}
         <button type="button" class="btn-abandon-rest" data-action="{{abandonAction}}"
                 data-tooltip="{{#if eventsCommitPending}}Wait for the night check to finish.{{else}}Cancel and abandon this rest{{/if}}"
                 {{#if eventsCommitPending}}disabled{{/if}}>

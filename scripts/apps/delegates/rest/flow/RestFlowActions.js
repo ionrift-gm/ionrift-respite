@@ -23,7 +23,8 @@ import {
 import { buildRollTargetLabel } from "../../../../services/ui/rollRequest/RollRequestView.js";
 import { isTrailerFilmingMode as _isTrailerFilmingMode } from "../layout/RestWindowLayout.js";
 import {
-    setActiveRestData
+    setActiveRestData,
+    registerActiveRestApp
 } from "../../../../module.js";
 import {
     emitRestStarted,
@@ -275,6 +276,7 @@ export class RestFlowActions {
         restPayload.phase = app._phase;
 
         setActiveRestData(restPayload);
+        if (app._isGM) registerActiveRestApp(app);
 
         emitRestStarted(restPayload);
 

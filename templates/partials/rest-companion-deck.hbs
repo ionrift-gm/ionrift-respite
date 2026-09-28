@@ -6,12 +6,12 @@
     </div>
     <div class="rest-companions-deck bivouac-companions-deck sr-collapsed-cards">
         {{#each companionCharacters}}
-        <div class="rest-companion-card bivouac-companion-card short-rest-card is-collapsed ionrift-card-glass {{#if isAfk}}is-afk{{/if}} {{#if isStarving}}is-starving{{/if}} {{#if waterPlate.isDehydrated}}is-dehydrated{{/if}} {{#if isReady}}is-ready{{/if}}{{#unless @root.isGM}} is-locked{{/unless}}"
-             {{#if @root.isGM}}
+        <div class="rest-companion-card bivouac-companion-card short-rest-card is-collapsed ionrift-card-glass {{#if isAfk}}is-afk{{/if}} {{#if isStarving}}is-starving{{/if}} {{#if waterPlate.isDehydrated}}is-dehydrated{{/if}} {{#if isReady}}is-ready{{/if}}{{#unless (or @root.isGM isOwner)}} is-locked{{/unless}}"
+             {{#if (or @root.isGM isOwner)}}
              data-action="selectRosterCharacter"
              data-actor-id="{{id}}"
              data-roster-id="{{id}}"
-             role="button" tabindex="0" data-tooltip="Click to inspect {{name}}"
+             role="button" tabindex="0" data-tooltip="Click to inspect and manage {{name}}"
              {{else}}
              data-tooltip="{{name}}"
              {{/if}}>

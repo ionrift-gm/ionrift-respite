@@ -92,6 +92,7 @@ export class ShortRestApp extends BaseShortRestApp {
             claimChefTreatFromBadge:   ShortRestApp.#onClaimChefTreatFromBadge,
             claimChefFromBadge:        ShortRestApp.#onClaimChefTreatFromBadge,
             toggleShortRestFinished:   ShortRestApp.#onToggleShortRestFinished,
+            toggleActorReady:          ShortRestApp.#onToggleActorReady,
             togglePatrolCheck:         ShortRestApp.#onTogglePatrolCheck,
             adjustShortRestDc:         ShortRestApp.#onAdjustShortRestDc,
             switchShortRestTab:        ShortRestApp.#onSwitchTab,
@@ -128,6 +129,9 @@ export class ShortRestApp extends BaseShortRestApp {
 
         /** Actors whose spell recovery selections have been confirmed/locked. */
         this._confirmedRecovery = new Set();
+
+        /** actorId -> Array<[level, count]> spell recovery selections synced across sessions. */
+        this._spellRecoverySelections = new Map();
 
         /** Active shelter -- set from setup wizard, or 'none' by default */
         this._activeShelter = options.initialShelter ?? "none";
@@ -598,10 +602,17 @@ export class ShortRestApp extends BaseShortRestApp {
 
                     if (!this._spellRecovery.has(a.id)) {
                         const selections = new Map();
-                        const flag = a.getFlag(MODULE_ID, SPELL_RECOVERY_FLAG);
-                        if (flag?.featureItemId === recoveryInfo.featureItem?.id && flag.selections?.length) {
-                            for (const { level, count } of flag.selections) {
-                                selections.set(level, count);
+                        const sessionSelections = this._spellRecoverySelections?.get(a.id);
+                        if (Array.isArray(sessionSelections)) {
+                            for (const [level, count] of sessionSelections) {
+                                selections.set(Number(level), Number(count));
+                            }
+                        } else {
+                            const flag = a.getFlag(MODULE_ID, SPELL_RECOVERY_FLAG);
+                            if (flag?.featureItemId === recoveryInfo.featureItem?.id && flag.selections?.length) {
+                                for (const { level, count } of flag.selections) {
+                                    selections.set(level, count);
+                                }
                             }
                         }
                         this._spellRecovery.set(a.id, {
@@ -615,6 +626,10 @@ export class ShortRestApp extends BaseShortRestApp {
                         });
                     } else {
                         const state = this._spellRecovery.get(a.id);
+                        const sessionSelections = this._spellRecoverySelections?.get(a.id);
+                        if (Array.isArray(sessionSelections) && (!a.isOwner || this._isGM)) {
+                            state.selections = new Map(sessionSelections.map(([lvl, cnt]) => [Number(lvl), Number(cnt)]));
+                        }
                         const slotSig = (slots) =>
                             (slots ?? []).map((s) => `${s.level}:${s.spent}`).join("|");
                         const prevSig = slotSig(state.recoverableSlots);
@@ -695,7 +710,7 @@ export class ShortRestApp extends BaseShortRestApp {
         const readyCount = characters.filter(c => c.isReady).length;
         const totalPartyCount = characters.length;
         const allCharactersReady = totalPartyCount > 0 && readyCount === totalPartyCount;
-        const waitingNames = characters.filter(c => !c.isReady && !c.isAfk).map(c => c.name);
+        const waitingNames = characters.filter(c => !c.isReady).map(c => c.name);
         const canCompleteShortRest = waitingNames.length === 0;
         const completeBlockedHint = waitingNames.length
             ? `Waiting on ${waitingNames.join(", ")}.`
@@ -751,7 +766,9 @@ export class ShortRestApp extends BaseShortRestApp {
             gmWorkbenchRosterPick,
             workbenchEmbed: workbenchIdentifyUiEnabled ? this._getWorkbenchEmbedContext() : null,
             shortRestFooter: {
-                myFinished: this._finishedUsers.has(game.user.id),
+                myFinished: heroCharacter
+                    ? ShortRestApp.#isCharacterReady.call(this, partyActors.find(a => a.id === heroCharacter.id) || heroCharacter)
+                    : this._finishedUsers.has(game.user.id),
             },
             allSpent: characters.every(c => c.isFullHp || c.noHdLeft || !c.isOwner),
             songOfRest: this._songVolunteer
@@ -848,6 +865,10 @@ export class ShortRestApp extends BaseShortRestApp {
 
         state.selections.set(level, currentForLevel + 1);
         await ShortRestApp.#persistSpellRecoveryFlag(actor, state);
+        const selections = [...state.selections.entries()];
+        if (!this._spellRecoverySelections) this._spellRecoverySelections = new Map();
+        this._spellRecoverySelections.set(actorId, selections);
+        this._publishSession("UPDATE_SPELL_RECOVERY", { actorId, selections });
         this.render();
     }
 
@@ -869,10 +890,13 @@ export class ShortRestApp extends BaseShortRestApp {
         if (state.selections.get(level) === 0) state.selections.delete(level);
         await ShortRestApp.#persistSpellRecoveryFlag(actor, state);
         this._confirmedRecovery.delete(actorId);
+        const selections = [...state.selections.entries()];
+        if (!this._spellRecoverySelections) this._spellRecoverySelections = new Map();
+        this._spellRecoverySelections.set(actorId, selections);
+        this._publishSession("UPDATE_SPELL_RECOVERY", { actorId, selections, unconfirm: true });
         this.render();
     }
 
-    
     static async #onConfirmRecovery(event, target) {
         if (this._completionPhase) return;
         const actorId = target.dataset.actorId;
@@ -881,10 +905,10 @@ export class ShortRestApp extends BaseShortRestApp {
         if (!this._isGM && !actor.isOwner) return;
 
         this._confirmedRecovery.add(actorId);
+        this._publishSession("CONFIRM_SPELL_RECOVERY", { actorId, confirmed: true });
         this.render();
     }
 
-    
     static async #onEditRecovery(event, target) {
         if (this._completionPhase) return;
         const actorId = target.dataset.actorId;
@@ -893,30 +917,79 @@ export class ShortRestApp extends BaseShortRestApp {
         if (!this._isGM && !actor.isOwner) return;
 
         this._confirmedRecovery.delete(actorId);
+        this._publishSession("CONFIRM_SPELL_RECOVERY", { actorId, confirmed: false });
         this.render();
     }
 
     /**
      * A character is ready once their player has marked the rest finished.
-     * Actors with no player owner match on the actor id instead.
+     * Actors with no player owner or whose player controls multiple characters
+     * match on the actor id.
      * @param {Actor} actor
      * @returns {boolean}
      */
     static #isCharacterReady(actor) {
+        if (!actor) return false;
+        if (this._finishedUsers.has(actor.id)) return true;
         const allUsers = game.users?.contents ?? Array.from(game.users ?? []);
         const ownerUser = allUsers.find(u => !u.isGM && actor.testUserPermission(u, "OWNER"));
-        return ownerUser ? this._finishedUsers.has(ownerUser.id) : this._finishedUsers.has(actor.id);
+        if (!ownerUser) return this._finishedUsers.has(actor.id);
+        const party = getPartyActors();
+        const ownedInParty = party.filter(a => a.testUserPermission(ownerUser, "OWNER"));
+        if (ownedInParty.length <= 1) {
+            return this._finishedUsers.has(ownerUser.id);
+        }
+        return this._finishedUsers.has(actor.id) || this._finishedUsers.has(ownerUser.id);
     }
 
     static #onToggleShortRestFinished(event, target) {
         if (this._completionPhase) return;
         event.preventDefault?.();
-        const uid = game.user.id;
-        const next = !this._finishedUsers.has(uid);
-        if (next) this._finishedUsers.add(uid);
-        else this._finishedUsers.delete(uid);
+        const party = getPartyActors();
+        const myPartyActors = party.filter(a => a.isOwner);
+        const heroId = this._selectedCharacterId || myPartyActors[0]?.id;
 
-        this._publishSession("PLAYER_FINISHED", { userId: uid, finished: next });
+        if (myPartyActors.length > 1 && heroId) {
+            const heroActor = party.find(a => a.id === heroId);
+            const current = ShortRestApp.#isCharacterReady.call(this, heroActor);
+            const next = !current;
+            if (next) this._finishedUsers.add(heroId);
+            else this._finishedUsers.delete(heroId);
+
+            const allMineDone = myPartyActors.every(a => (a.id === heroId ? next : ShortRestApp.#isCharacterReady.call(this, a)));
+            if (allMineDone) this._finishedUsers.add(game.user.id);
+            else this._finishedUsers.delete(game.user.id);
+
+            this._publishSession("TOGGLE_ACTOR_READY", { actorId: heroId, ready: next, userId: game.user.id, allReady: allMineDone });
+        } else {
+            const uid = game.user.id;
+            const next = !this._finishedUsers.has(uid);
+            if (next) {
+                this._finishedUsers.add(uid);
+                if (heroId) this._finishedUsers.add(heroId);
+            } else {
+                this._finishedUsers.delete(uid);
+                if (heroId) this._finishedUsers.delete(heroId);
+            }
+            this._publishSession("PLAYER_FINISHED", { userId: uid, actorId: heroId, finished: next });
+        }
+        this.render();
+    }
+
+    static async #onToggleActorReady(event, target) {
+        if (!this._isGM || this._completionPhase) return;
+        event.stopPropagation?.();
+        const actorId = target.dataset.actorId || target.closest("[data-actor-id]")?.dataset.actorId;
+        if (!actorId) return;
+        const party = getPartyActors();
+        const actor = party.find(a => a.id === actorId);
+        if (!actor) return;
+        const current = ShortRestApp.#isCharacterReady.call(this, actor);
+        const next = !current;
+        if (next) this._finishedUsers.add(actorId);
+        else this._finishedUsers.delete(actorId);
+        this._broadcastSync();
+        void this._saveSessionState();
         this.render();
     }
 
@@ -1206,19 +1279,20 @@ export class ShortRestApp extends BaseShortRestApp {
 
     static #onSelectRosterCharacter(event, target) {
         if (this._completionPhase) return;
-        if (!this._isGM) return;
         const chip = target?.closest?.(".roster-chip, .rest-companion-card, .gm-party-card, [data-actor-id]");
         if (!chip) return;
         const id = chip.dataset.actorId || chip.dataset.rosterId;
         if (!id) return;
         const party = getPartyActors();
-        if (!party.some((a) => a.id === id)) return;
+        const targetActor = party.find((a) => a.id === id);
+        if (!targetActor) return;
+        if (!this._isGM && !targetActor.isOwner) return;
         if (id === this._selectedCharacterId) {
-            this._selectedCharacterId = null;
+            this._selectedCharacterId = this._isGM ? null : id;
         } else {
             this._selectedCharacterId = id;
         }
-        if (this._activeTab === "workbench") {
+        if (this._isGM && this._activeTab === "workbench") {
             this._workbenchFocusActorId = this._selectedCharacterId;
             void this._saveSessionState();
             this._broadcastSync();
@@ -1443,21 +1517,13 @@ export class ShortRestApp extends BaseShortRestApp {
 
         const partyActorsPreCheck = getPartyActors();
         const waitingNames = partyActorsPreCheck
-            .filter(actor => !RestAfkState.isAfk(actor.id) && !ShortRestApp.#isCharacterReady.call(this, actor))
+            .filter(actor => !ShortRestApp.#isCharacterReady.call(this, actor))
             .map(actor => actor.name);
-        if (waitingNames.length > 0) return;
-
-        const afkCharNames = partyActorsPreCheck
-            .filter(a => RestAfkState.isAfk(a.id))
-            .map(a => a.name);
-        const gmIsAfk = RestAfkState.isAfk("gm");
-        if (afkCharNames.length > 0 || gmIsAfk) {
-            const afkList = [...afkCharNames];
-            if (gmIsAfk) afkList.unshift("GM");
+        if (waitingNames.length > 0) {
             const confirmFn = game.ionrift?.library?.confirm ?? Dialog.confirm.bind(Dialog);
             const proceed = await confirmFn({
-                title: "AFK Characters",
-                content: `<p>The following are currently marked AFK:</p><ul>${afkList.map(n => `<li><strong>${n}</strong></li>`).join("")}</ul><p>They may miss the rest benefits. Complete anyway?</p>`,
+                title: "Characters Still Resting",
+                content: `<p>The following characters have not marked themselves finished:</p><ul>${waitingNames.map(n => `<li><strong>${n}</strong></li>`).join("")}</ul><p>Complete the short rest for the party anyway?</p>`,
                 yesLabel: "Complete Anyway",
                 noLabel: "Cancel",
                 yesIcon: "fas fa-forward",
@@ -1537,13 +1603,28 @@ export class ShortRestApp extends BaseShortRestApp {
 
         // Spell slot recovery
         for (const actor of partyActors) {
-            const pending = actor.getFlag(MODULE_ID, SPELL_RECOVERY_FLAG);
+            let pending = actor.getFlag(MODULE_ID, SPELL_RECOVERY_FLAG);
+            if (!pending?.selections?.length && this._spellRecoverySelections?.has(actor.id)) {
+                const selections = this._spellRecoverySelections.get(actor.id);
+                if (selections?.length) {
+                    const state = this._spellRecovery.get(actor.id);
+                    const recoveryInfo = SpellSlotRecovery.detect(actor);
+                    const featureItem = state?.featureItem ?? recoveryInfo.featureItem;
+                    if (featureItem) {
+                        pending = {
+                            featureItemId: featureItem.id,
+                            selections: selections.map(([lvl, cnt]) => ({ level: Number(lvl), count: Number(cnt) }))
+                        };
+                    }
+                }
+            }
             if (!pending?.selections?.length) continue;
 
             const featureItem = actor.items.get(pending.featureItemId);
             if (!featureItem) {
                 await actor.unsetFlag(MODULE_ID, SPELL_RECOVERY_FLAG);
                 this._spellRecovery.delete(actor.id);
+                this._spellRecoverySelections?.delete(actor.id);
                 continue;
             }
 
@@ -1568,6 +1649,8 @@ export class ShortRestApp extends BaseShortRestApp {
 
             await actor.unsetFlag(MODULE_ID, SPELL_RECOVERY_FLAG);
             this._spellRecovery.delete(actor.id);
+            this._spellRecoverySelections?.delete(actor.id);
+            this._confirmedRecovery.delete(actor.id);
         }
 
         this._completionPhase = true;
@@ -1789,8 +1872,40 @@ export class ShortRestApp extends BaseShortRestApp {
                 break;
             case "PLAYER_FINISHED":
                 if (payload.userId !== userId) return;
-                if (payload.finished) this._finishedUsers.add(userId);
-                else this._finishedUsers.delete(userId);
+                if (payload.finished) {
+                    this._finishedUsers.add(userId);
+                    if (payload.actorId) this._finishedUsers.add(payload.actorId);
+                } else {
+                    this._finishedUsers.delete(userId);
+                    if (payload.actorId) this._finishedUsers.delete(payload.actorId);
+                }
+                break;
+            case "TOGGLE_ACTOR_READY":
+                if (actorId) {
+                    if (payload.ready) this._finishedUsers.add(actorId);
+                    else this._finishedUsers.delete(actorId);
+                    if (payload.userId) {
+                        if (payload.allReady) this._finishedUsers.add(payload.userId);
+                        else this._finishedUsers.delete(payload.userId);
+                    }
+                }
+                break;
+            case "CONFIRM_SPELL_RECOVERY":
+                if (actorId) {
+                    if (payload.confirmed) this._confirmedRecovery.add(actorId);
+                    else this._confirmedRecovery.delete(actorId);
+                }
+                break;
+            case "UPDATE_SPELL_RECOVERY":
+                if (actorId && Array.isArray(payload.selections)) {
+                    if (!this._spellRecoverySelections) this._spellRecoverySelections = new Map();
+                    this._spellRecoverySelections.set(actorId, payload.selections);
+                    if (payload.unconfirm) this._confirmedRecovery.delete(actorId);
+                    const state = this._spellRecovery.get(actorId);
+                    if (state) {
+                        state.selections = new Map(payload.selections.map(([lvl, cnt]) => [Number(lvl), Number(cnt)]));
+                    }
+                }
                 break;
             case "SPEND_HIT_DIE":
                 if (actorId && payload.roll) {
@@ -1852,6 +1967,14 @@ export class ShortRestApp extends BaseShortRestApp {
      */
     _rehydrate(saved) {
         SHORT_REST_STATE_SCHEMA.apply(this, saved);
+        if (this._spellRecoverySelections) {
+            for (const [actorId, selList] of this._spellRecoverySelections.entries()) {
+                const state = this._spellRecovery.get(actorId);
+                if (state && Array.isArray(selList)) {
+                    state.selections = new Map(selList.map(([l, c]) => [Number(l), Number(c)]));
+                }
+            }
+        }
         if (saved?.afkCharacterIds !== undefined) {
             RestAfkState.replaceAll([...this._afkCharacters]);
             pushAllStateToAdapters();
