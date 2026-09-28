@@ -274,6 +274,8 @@ export class RestPresentationHelper {
             pacingActive,
             activePacingNight,
             canReturnToPlanning,
+            isResolvePhase: phase === "resolve",
+            isSetupPhase: phase === "setup",
             uiTheme,
             isGlassTheme,
             showDevUiToggle

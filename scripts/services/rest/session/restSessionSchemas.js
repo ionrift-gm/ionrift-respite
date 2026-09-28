@@ -58,7 +58,7 @@ function migrateDowntime(state) {
  */
 function migrateShortRest(state) {
     const next = { ...state };
-    for (const key of ["rolls", "songBonuses", "chefMealBonuses"]) {
+    for (const key of ["rolls", "songBonuses", "chefMealBonuses", "spellRecoverySelections"]) {
         const value = next[key];
         if (value && !Array.isArray(value) && typeof value === "object") {
             next[key] = Object.entries(value);
@@ -81,6 +81,7 @@ export const SHORT_REST_STATE_SCHEMA = new RestSessionSchema({
         field({ key: "chefMealServedCount", type: "number" }),
         field({ key: "chefMealBonuses", kind: "map", prop: "_chefMealBonusByActor" }),
         field({ key: "confirmedRecovery", kind: "set" }),
+        field({ key: "spellRecoverySelections", kind: "map" }),
         field({ key: "finishedUserIds", kind: "set", prop: "_finishedUsers" }),
         // Mirror of the module-scoped AFK singleton. ShortRestApp pushes it
         // back into RestAfkState after a load; the codec only moves the copy.

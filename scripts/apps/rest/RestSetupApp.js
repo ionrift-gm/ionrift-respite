@@ -286,7 +286,8 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
     constructor(options = {}, restData = null) {
         super(options);
         this._isGM = game.user.isGM;
-        if (this._isGM) {
+        this._phase = restData?.phase ?? (restData ? "activity" : "setup");
+        if (this._isGM && this._phase !== "setup") {
             registerActiveRestApp(this);
         }
         this._restVariant = game.ionrift?.respite?.adapter?.getRestVariant?.() ?? "normal";
@@ -298,7 +299,6 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._eventResolver = new EventResolver();
         this._craftingEngine = new CraftingEngine();
         this._poolRoller = new ResourcePoolRoller();
-        this._phase = restData?.phase ?? (restData ? "activity" : "setup");
         this._outcomes = [];
         this._triggeredEvents = [];
         this._activeTreeState = null;

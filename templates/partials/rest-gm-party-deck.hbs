@@ -38,9 +38,9 @@
                 </div>
 
                 <div class="gm-card-header-actions">
-                    {{#if isReady}}
-                    <span class="companion-ready-pill" data-tooltip="Ready"><i class="fas fa-check"></i> Ready</span>
-                    {{/if}}
+                    <button type="button" class="btn-toggle-ready {{#if isReady}}is-ready{{/if}}" data-action="toggleActorReady" data-actor-id="{{id}}" data-tooltip="{{#if isReady}}Character is ready (click to mark resting){{else}}Mark ready{{/if}}">
+                        <i class="fas {{#if isReady}}fa-check-circle{{else}}fa-circle-check{{/if}}"></i>
+                    </button>
                     <button type="button" class="btn-inspect-char" data-action="selectRosterCharacter" data-actor-id="{{id}}" data-tooltip="Inspect and manage {{name}}">
                         <i class="fas fa-magnifying-glass"></i>
                     </button>

@@ -1386,15 +1386,16 @@ export class BivouacApp extends BaseShortRestApp {
     }
 
     static #onSelectRosterCharacter(event, target) {
-        if (!this._isGM) return;
-        const chip = target?.closest?.(".roster-chip");
+        const chip = target?.closest?.(".roster-chip, .rest-companion-card, [data-actor-id]");
         if (!chip) return;
         const id = chip.dataset.actorId || chip.dataset.rosterId;
         if (!id || id === this._selectedCharacterId) return;
         const party = getPartyActors();
-        if (!party.some((a) => a.id === id)) return;
+        const targetActor = party.find((a) => a.id === id);
+        if (!targetActor) return;
+        if (!this._isGM && !targetActor.isOwner) return;
         this._selectedCharacterId = id;
-        if (this._activeTab === "workbench") {
+        if (this._isGM && this._activeTab === "workbench") {
             this._workbenchFocusActorId = id;
             void this._saveSessionState();
             this._broadcastSync();

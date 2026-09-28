@@ -92,7 +92,7 @@
                 <i class="fas fa-check"></i> Complete Short Rest
             </button>
             {{else}}
-            <button type="button" class="btn-primary-green sr-complete-btn" disabled data-tooltip="{{completeBlockedHint}}">
+            <button type="button" class="btn-primary-green sr-complete-btn sr-complete-btn--waiting" data-action="completeShortRest" data-tooltip="{{completeBlockedHint}} Click to complete anyway.">
                 <i class="fas fa-hourglass-half"></i> Complete Short Rest
             </button>
             {{/if}}

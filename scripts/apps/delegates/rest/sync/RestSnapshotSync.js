@@ -637,9 +637,22 @@ export class RestSnapshotSync {
 
         applyCampProgress(app, snapshot, { merge: true });
 
-        // Restore meal state from snapshot
+        // Restore meal state from snapshot, preserving uncommitted choices for owned characters
         if (snapshot.mealChoices) {
-            app._mealChoices = new Map(Object.entries(snapshot.mealChoices));
+            const incomingChoices = new Map(
+                Array.isArray(snapshot.mealChoices) ? snapshot.mealChoices : Object.entries(snapshot.mealChoices)
+            );
+            if (!app._isGM && app._mealChoices) {
+                for (const [charId, choice] of incomingChoices) {
+                    const actor = game.actors.get(charId);
+                    if (actor?.isOwner && app._mealChoices.has(charId)) {
+                        continue;
+                    }
+                    app._mealChoices.set(charId, choice);
+                }
+            } else {
+                app._mealChoices = incomingChoices;
+            }
         }
         // Only set mealSubmitted to true, never clear it (player's local state takes precedence)
         if (snapshot.mealSubmitted) {
