@@ -1,5 +1,14 @@
 # Changelog
 
+## [4.0.1] - 2026-09-28
+
+### Fixed
+- Short rest spell recovery selections no longer reset when other players act.
+- Camp meal selections no longer reset mid-choice when other players act.
+- Players controlling multiple characters can now switch to and manage secondary characters.
+- Added GM character ready toggles and completion override for short rests.
+- Rest setup screen no longer prematurely starts a rest session or shows Abandon Rest.
+
 ## [4.0.0] - 2026-09-28
 
 ### Added
