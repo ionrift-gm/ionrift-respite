@@ -27,7 +27,7 @@ jobs:
 
       - name: Verify branch sync
         run: |
-          git fetch origin master dev 2>/dev/null || true
+          git fetch origin main dev 2>/dev/null || true
           if git rev-parse origin/dev >/dev/null 2>&1; then
             if ! git merge-base --is-ancestor origin/dev HEAD; then
               echo "::error::dev branch contains commits not in this release. Sync branches before tagging."
