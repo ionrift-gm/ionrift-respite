@@ -585,7 +585,7 @@ export class BivouacApp extends BaseShortRestApp {
             characters,
             heroCharacter,
             companionCharacters,
-            ...ImageResolver.resolveRestBannerContext(this._terrainTag, "bivouac"),
+            ...ImageResolver.resolveRestBannerContext(this._terrainTag, "night"),
             ...RestPresentationHelper.resolveRestHeaderContext({
                 type: "bivouac",
                 terrainTag: this._terrainTag,

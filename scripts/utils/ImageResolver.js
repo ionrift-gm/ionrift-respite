@@ -448,7 +448,7 @@ export class ImageResolver {
             filename = "rope_trick.png";
         } else if (phase === "resolve" || phase === "dawn" || phase === "resolution") {
             filename = "resolve.png";
-        } else if (phase === "events" || phase === "night" || phase === "reflection") {
+        } else if (phase === "events" || phase === "night" || phase === "reflection" || phase === "bivouac") {
             filename = "events.png";
         } else if (phase === "setup") {
             filename = "setup.png";

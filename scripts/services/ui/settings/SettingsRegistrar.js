@@ -761,7 +761,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "uiTheme", {
         name: "UI Theme",
-        hint: "Choose between Ionrift Glass (translucent frosted glass) or Gilded Slate (opaque cockpit).",
+        hint: "Choose between Ionrift Glass (translucent frosted glass) or Gilded Slate (opaque panel).",
         scope: "client",
         config: true,
         restricted: true,

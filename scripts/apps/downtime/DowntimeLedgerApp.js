@@ -3308,7 +3308,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
             characterReady: Boolean(characters.find(c => c.id === this._selectedCharacterId)?.isReady),
             characters,
             roster,
-            ...ImageResolver.resolveRestBannerContext(this._terrainTag, "downtime"),
+            ...ImageResolver.resolveRestBannerContext(this._terrainTag, headerPhase),
             ...RestPresentationHelper.resolveRestHeaderContext({
                 type: "downtime",
                 terrainTag: this._terrainTag,
