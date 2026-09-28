@@ -1,10 +1,12 @@
 # Ionrift Respite
-![Downloads](https://img.shields.io/github/downloads/ionrift-gm/ionrift-respite/latest/total?color=violet&label=Downloads)
+![Downloads](https://img.shields.io/github/downloads/ionrift-gm/ionrift-respite/total?color=violet&label=Downloads)
 ![Version](https://img.shields.io/github/v/release/ionrift-gm/ionrift-respite?color=violet&label=Latest%20Version)
 ![Foundry Version](https://img.shields.io/badge/Foundry-v12-333333?style=flat&logo=foundryvirtualtabletop)
-![Systems](https://img.shields.io/badge/system-dnd5e%20%7C%20pf2e-blue)
+![Systems](https://img.shields.io/badge/systems-dnd5e%20%7C%20pf2e-blue)
 
-**Structured long and short rest phases for DnD 5e and Pathfinder 2e.**
+**Structured rest phases and 7-day downtime management for DnD 5e and Pathfinder 2e.**
+
+[![Watch the video walkthrough](https://img.youtube.com/vi/nKByCDttG3M/maxresdefault.jpg)](https://youtu.be/nKByCDttG3M)
 
 ### Support Ionrift
 
@@ -13,106 +15,109 @@
 
 > Documentation, setup guides, and troubleshooting: **[Ionrift Wiki](https://github.com/ionrift-gm/ionrift-library/wiki)**
 
-Long rests have a bottleneck. Everyone wants to do something during downtime: identify a ring, copy a spell, attune new gear, cook for the party. The GM has to field each request one at a time or cut the whole thing short to keep the session moving.
-
-Breaking out of character to run rest logistics player by player is the problem most tables solve by skipping the interesting parts entirely.
-
-Respite replaces the default rest dialog with a guided flow. Players pick their own activities and handle their own downtime. The GM runs the encounter roll and the events. The bookkeeping that can eat the better part of an hour is handled by the module.
+Respite replaces the default rest dialog with guided tabletop rest workflows. Players choose camp activities and manage their downtime independently. The GM adjudicates danger rolls, events, and camp progression.
 
 ---
 
-## Rest profiles
+## Rest Profiles
 
-Starting a rest opens one of three presets instead of a configuration screen. Pick the one that matches how much detail the table wants and the rest configures itself.
+Opening a rest presents setup presets tailored to table detail level:
 
-- **Simple.** Activities then recovery. No rolls, no encounters, no decision trees. Just the party asleep and a continue button.
-- **Standard.** Activities, events, and the campfire, without the survival bookkeeping.
-- **Survival.** Adds comfort tiers, terrain penalties, the exhaustion save, and meal tracking for tables that want the whole ruleset.
-
-A custom card covers anything that deviates. Settings live in three submenus: Rest Activities, Recovery Rules, and Player Restrictions.
-
----
-
-## How it works
-
-1. **Setup.** The GM picks terrain, weather, and shelter. The module calculates an encounter DC and shows the breakdown.
-2. **Activities.** Each player picks what they are doing. Keep watch, rest fully, or specialist options like Attune, Identify, and Copy Spell.
-3. **Events.** The GM rolls against the encounter threshold. Events pull from terrain-specific pools with four outcome tiers, or suggest a combat outcome with surprise and initiative.
-4. **Resolution.** HP and Hit Die recovery scale with comfort level. Each player sees the full results of their rest privately.
-
-There is tension between guarding the camp and getting rest. Someone on watch is ready if combat breaks out but recovers less. Someone resting fully recovers better but wakes up groggy. Sleeping in armor avoids the scramble to gear up but costs recovery (optional Xanathar's rule). These tradeoffs are shown to the player with buttons to decide, so the GM does not have to explain or manage them.
+- **Simple.** Quick recovery without encounter checks or survival tracking.
+- **Standard.** Activities, events, and campfire management.
+- **Survival.** Comfort tiers, weather penalties, exhaustion saves, and meal tracking.
+- **Gritty Realism.** Automatically active when the DnD 5e Gritty Realism variant rule is selected. Long rests scale to the 7-day Downtime Ledger, and short rests use the overnight Bivouac HUD.
 
 ---
 
-## Identify and attune without the GM running each request
+## Gritty Realism Downtime
 
-Casters scan the party's gear from the workbench. Detect Magic sweeps inventory with animated cues. Identify resolves names and properties in a Revelation card. Copy Spell runs the full gold cost, Arcana DC, and approval flow. Most of this is self-serve; the GM only steps in where the rules require it.
+When Gritty Realism is active, rest flows adapt automatically:
 
----
+- **7-Day Downtime Ledger.** Allocates activities across three views:
+  - **Gather.** Multi-day foraging and hunting checks.
+  - **Activities.** Crafting queues, spell copying, wound tending, study, training, and defenses.
+  - **Sustenance.** Daily ration and water pips with starvation alerts.
+- **Camp Logistics Drawer.** Slide-out panel tracking party firewood reserves, water stocks, and gear condition waivers.
+- **Nightly Vigils.** Step-by-step night pacing (Nights 1 to 7) showing active sentry tokens, passive perception scores, and danger DC modifiers. The GM rolls danger checks or declares quiet nights, while players see a sanitized timeline.
+- **Dawn Finalization.** Automated Constitution saving throws for exhaustion recovery, departure meal and drink selections providing persistent travel buffs, and a Master Downtime chat log card.
+- **Bivouac HUD.** Single-screen 8-hour overnight rest for short rests in gritty campaigns. Includes Camp Stances: **Warm Camp** (consumes 1 firewood, enables cooking, grants bonus warmth healing per spent Hit Die) or **Cold & Dark** (stealth rest, reduces encounter DC by 3).
 
-## Events
-
-Hand-written rest events across forest, desert, swamp, urban, dungeon, and tavern. Events have tiers, weighted probability, and narrative branching. The GM chooses how events are picked: random roll, improvise, or pick from the pool.
-
-When an event puts gear or coin at risk, the module rolls which items are affected and proposes the loss. The GM reviews, can re-roll a result that does not fit, and confirms before anything is removed. Nothing leaves a character sheet without GM sign-off. Force Pass or Force Fail is always available.
-
----
-
-## Meals & Cooking
-
-When meal tracking is enabled in the Survival profile, players drag rations from inventory to fill plates and pour water from a shared pool. Missing meals trigger CON saves, and exhaustion stacks following the standard 5e variant rules.
-
-For monster harvesting and custom camp recipes, Respite pairs directly with **[Monstrous Feast](https://github.com/ionrift-gm/ionrift-monstrous-feast)**. Cooking activities can open the shared living cookbook and track ingredient spoilage across rests.
+<img src="assets/screenshots/downtime-ledger-planning.png" alt="7-Day Downtime Ledger planning view" width="560" />
 
 ---
 
-## Camp systems
+## Standard Rest Flow
 
-- **Encounter DC.** Terrain baseline plus shelter, fire, scouting, defenses, and weather, with a visible breakdown in the UI.
-- **Comfort tiers.** Hostile, Rough, Sheltered, Safe. Drives HP and Hit Die recovery scaling.
-- **Safe Rest Spot.** Mark a tavern or allied fortress as safe to skip encounters, comfort penalties, and meals while activities still work.
-- **Shelter spells.** Tiny Hut, Rope Trick, and Mansion auto-detected from party spell lists.
-- **Gear badges.** Bedroll, Mess Kit, and Tent benefits detected from inventory.
-- **Campfire.** Interactive fire panel with a whittle mechanic and three stages: embers, campfire, bonfire.
+1. **Setup.** The GM selects terrain, shelter, and weather. The encounter DC updates live with a visible modifier breakdown under a 120px terrain artwork banner.
+2. **Camp.** Optional on-scene station tokens (campfire, workbench, medical bedding). Campfire token linking syncs ignition and canvas lights to scene tokens named `Campfire` and auto-links `Perimeter Torch` tokens.
+3. **Activities.** Players select tasks: Keep Watch, Set Defenses, Tend Wounds, Rest Fully, Fletch Arrows, Pray, or Train.
+4. **Identify & Workbench.** Three examination paths:
+   - **Identify Spell.** Casters scan party inventory. Follows 2024 RAW rules where Wizards with Ritual Adept cast from unmemorized spellbooks.
+   - **Focus.** Physical examination.
+   - **Taste.** Potion identification.
+5. **Events.** Terrain-specific random tables resolving across four outcome tiers (Triumph, Success, Mixed, Failure) with GM force controls.
+6. **Resolution.** Scales HP, Hit Die, and exhaustion recovery to camp comfort and meal status.
+
+<img src="assets/screenshots/workbench-identify-tab.png" alt="Workbench hub with Identify and ritual analysis" width="560" />
 
 ---
 
-## Short rest
+## Provisions, Spoilage & Cold Storage
 
-A separate single-screen flow with per-die Hit Die spending and live HP tracking. Bards can volunteer Song of Rest, wizards and druids get an Arcane or Natural Recovery picker, and supported feats and items (Durable, Periapt of Wound Closure) are detected from the sheet.
+- **World Provisions Auditor.** Centralized GM interface to audit, search, and override food, water, shelf life, and dietary flags across world items.
+- **Sheet Actions.** Item sheet header button and inventory context menu entries open provision settings directly.
+- **Cold Storage Containers.** Toggles on container items (e.g. Ice Chest, Bag of Holding) with configurable shelf-life multipliers or total stasis (0x spoilage).
+- **Perishable Cohorts.** Optional setting appends shelf-life suffixes to perishable item names on grant (e.g. `Bird Eggs (3d)`), preventing automated inventory stacking from wiping timers.
 
 ---
 
-## System support
+## Short Rest Wizard
 
-- **DnD 5e.** Full. Activities, recovery, events, campfire, cooking, and short rest. Verified on Foundry v14, compatible back to v12.
-- **Pathfinder 2e.** Early. Core rest flow, campfire, events, activity grid, and HP/Focus recovery. PF2e-specific activities and condition automation are in progress.
-- **Starfinder 1e.** Initial. Core rest flow, campfire, and Stamina-aware HD recovery. 
-- **Pathfinder 1e & D&D 3.5e.** Initial. Core rest flow, campfire, and HP recovery. (Native rest flows are suppressed to prevent double-dipping).
-- **Old-School Essentials.** Initial. Core rest flow, campfire, HP/scores recovery, and spell slot refresh on long rest.
+Single-screen rest wizard featuring:
+- **Live Hit Die Spending.** Interactive dice rolling with instant HP updates.
+- **Campfire Warmth.** Optional warmth bonus (+1 or +1d4 HP per Hit Die) when an overnight campfire is maintained.
+- **Class Recovery.** Integrated Arcane Recovery and Natural Recovery selectors.
+- **Song of Rest & Chef Feats.** Support for Bard Song of Rest timing and Chef treat distribution.
+
+<img src="assets/screenshots/short-rest-wizard.png" alt="Short Rest wizard with Hit Die spending and class recovery" width="560" />
+
+---
+
+## System Support
+
+- **DnD 5e.** Complete support. Activities, recovery, events, campfire, cooking, gritty realism, and short rest. Verified on Foundry v14, compatible back to v12.
+- **Pathfinder 2e.** Core rest flow, campfire, events, activity grid, and HP/Focus recovery.
+- **Starfinder 1e.** Core rest flow, campfire, and Stamina-aware Hit Die recovery.
+- **DnD 3.5e & Pathfinder 1e.** Core rest flow, campfire, and HP recovery.
+- **Old-School Essentials.** Core rest flow, campfire, HP/scores recovery, and spell slot refresh.
 
 ---
 
 ## Requirements
 
-- **[Ionrift Library](https://github.com/ionrift-gm/ionrift-library)**: Required dependency.
-- **System:** One of the 6 supported game systems listed above.
-- **[Monstrous Feast](https://github.com/ionrift-gm/ionrift-monstrous-feast)** (optional): Monster butchering, living cookbook, and camp meal buffs.
-- **[Simple Calendar](https://foundryvtt.com/packages/foundryvtt-simple-calendar)** (optional): Date tracking and "already rested today" checks.
+- **[Ionrift Library](https://github.com/ionrift-gm/ionrift-library)**: Required kernel dependency.
+- **Game System:** One of the supported game systems listed above.
+- **[Simple Calendar](https://foundryvtt.com/packages/foundryvtt-simple-calendar)** (optional): Calendar date integration and rest cooldown tracking.
+- **[Monstrous Feast](https://github.com/ionrift-gm/ionrift-monstrous-feast)** (optional): Monster harvesting, party cookbook, and camp meal buffs.
 
 ---
 
-## Settings
+## Settings & Maintenance
 
-All under **Game Settings > Module Settings > Ionrift Respite**: default comfort level, rest interception, armor advisory, meal tracking, content packs, debug logging.
+Configurable under **Game Settings > Module Settings > Ionrift Respite**:
+- **Interface Themes:** Select between translucent Ionrift Glass and opaque Gilded Slate.
+- **Compact Banners:** Toggle the 120px terrain artwork banner.
+- **Watch Alert Benefit:** Configure sentry bonuses: immune to surprise, advantage on rolls, or flat bonus (+1 to +20).
+- **Reset Rest State:** Clean maintenance tool to clear rest locks, cooldown locks, and orphaned tokens, then reload connected clients.
 
 ---
 
-## Bug reports
+## Bug Reports
 
-1. **[Ionrift Wiki](https://github.com/ionrift-gm/ionrift-library/wiki)** for common fixes.
-2. **[Ionrift Discord](https://discord.gg/vFGXf7Fncj)** with Foundry version, module versions, and console errors.
-3. **[GitHub Issues](https://github.com/ionrift-gm/ionrift-respite/issues)**.
+1. Check the **[Ionrift Wiki](https://github.com/ionrift-gm/ionrift-library/wiki)** for common fixes.
+2. Post to the **[Ionrift Discord](https://discord.gg/vFGXf7Fncj)** with Foundry version, module versions, and any console errors (F12).
+3. Open a **[GitHub Issue](https://github.com/ionrift-gm/ionrift-respite/issues)**.
 
 ---
 
@@ -124,12 +129,6 @@ Event narratives, terrain data, and item descriptions in `data/` are copyright I
 
 ---
 
-## Ionrift Module Suite
+**Part of the [Ionrift Module Suite](https://github.com/ionrift-gm)**
 
-- **[Monstrous Feast](https://github.com/ionrift-gm/ionrift-monstrous-feast)**: Butcher slain creatures and cook camp meals with buffs
-- **[Resonance](https://github.com/ionrift-gm/ionrift-resonance)**: Context-sensitive combat soundscapes and audio cues
-- **[Quartermaster](https://github.com/ionrift-gm/ionrift-quartermaster)**: Loot cache generation and inventory management
-- **[Waterline](https://github.com/ionrift-gm/ionrift-waterline)**: Traced water caustics and procedural border walls
-- **[Ionrift Library](https://github.com/ionrift-gm/ionrift-library)**: Shared ecosystem kernel and creature index
-
-[Wiki](https://github.com/ionrift-gm/ionrift-library/wiki) · [Website](https://ionrift.cloud) · [Discord](https://discord.gg/vFGXf7Fncj) · [Patreon](https://patreon.com/ionrift)
+[Wiki](https://github.com/ionrift-gm/ionrift-library/wiki) · [Discord](https://discord.gg/vFGXf7Fncj) · [Patreon](https://patreon.com/ionrift)
