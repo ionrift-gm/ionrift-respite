@@ -241,7 +241,7 @@
 }
 
 .recipe-card-compact.selected {
-    border-color: var(--ionrift-accent, #7eb8da);
+    border-color: var(--ionrift-accent, #9b59b6);
     background: rgba(126, 184, 218, 0.08);
     box-shadow: 0 0 6px rgba(126, 184, 218, 0.12);
 }
@@ -343,7 +343,7 @@
 
 .recipe-hero-dc {
     font-size: 0.75rem;
-    color: var(--ionrift-accent, #7eb8da);
+    color: var(--ionrift-accent, #9b59b6);
 }
 
 .recipe-hero-dc i {
@@ -824,7 +824,7 @@
     width: 18px;
     height: 18px;
     border-radius: 50%;
-    background: var(--ionrift-accent, #7eb8da);
+    background: var(--ionrift-accent, #9b59b6);
     color: #0d1117;
     font-size: 0.65rem;
     font-weight: 700;
@@ -856,7 +856,7 @@
 }
 
 .recipe-card.selected {
-    border-color: var(--ionrift-accent, #7eb8da);
+    border-color: var(--ionrift-accent, #9b59b6);
     background: rgba(126, 184, 218, 0.08);
 }
 
@@ -926,7 +926,7 @@
 }
 
 .recipe-card.selected .recipe-select-indicator {
-    color: var(--ionrift-accent, #7eb8da);
+    color: var(--ionrift-accent, #9b59b6);
 }
 
 .crafting-empty {
@@ -959,7 +959,7 @@
 }
 
 .btn-risk.selected {
-    border-color: var(--ionrift-accent, #7eb8da);
+    border-color: var(--ionrift-accent, #9b59b6);
     background: rgba(126, 184, 218, 0.1);
 }
 
@@ -1024,7 +1024,7 @@
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: var(--ionrift-accent, #7eb8da);
+    color: var(--ionrift-accent, #9b59b6);
     padding: 0.35rem 0.6rem;
     background: rgba(126, 184, 218, 0.06);
     border-bottom: 1px solid rgba(126, 184, 218, 0.1);
@@ -1379,7 +1379,7 @@
 
 .result-roll {
     font-size: 0.8rem;
-    color: var(--ionrift-accent, #7eb8da);
+    color: var(--ionrift-accent, #9b59b6);
     margin: 0.2rem 0;
 }
 
@@ -1428,7 +1428,7 @@
     background: rgba(126, 184, 218, 0.15);
     border: 1px solid rgba(126, 184, 218, 0.3);
     border-radius: 3px;
-    color: var(--ionrift-accent, #7eb8da);
+    color: var(--ionrift-accent, #9b59b6);
     cursor: pointer;
     font-size: 0.75rem;
     margin-top: 0.3rem;
@@ -1443,7 +1443,7 @@
 
 .outcome-craft-detail {
     font-size: 0.75rem;
-    color: var(--ionrift-accent, #7eb8da);
+    color: var(--ionrift-accent, #9b59b6);
     margin: 0.15rem 0;
 }
 
@@ -6796,9 +6796,9 @@
 }
 
 .ionrift-station-dialog .result-tier-success {
-    color: #7eb8da;
-    background: rgba(126, 184, 218, 0.12);
-    border: 1px solid rgba(126, 184, 218, 0.3);
+    color: var(--ionrift-tier-safe, #4ade80);
+    background: var(--ionrift-tier-safe-bg, rgba(74, 222, 128, 0.15));
+    border: 1px solid var(--ionrift-tier-safe-border, rgba(74, 222, 128, 0.35));
 }
 
 .ionrift-station-dialog .result-tier-failure {
@@ -6859,7 +6859,7 @@
     font-size: 2rem;
     margin-bottom: 0.75rem;
     display: block;
-    color: var(--ionrift-accent, #7eb8da);
+    color: var(--ionrift-accent, #9b59b6);
 }
 
 .respite-waiting-message p {
@@ -6921,7 +6921,7 @@
 
 .tree-waiting i {
     margin-right: 0.4rem;
-    color: var(--ionrift-accent, #7eb8da);
+    color: var(--ionrift-accent, #9b59b6);
 }
 
 .resolution-complete i {
@@ -7063,7 +7063,7 @@
     border-radius: 4px;
     background: rgba(126, 184, 218, 0.08);
     border: 1px solid rgba(126, 184, 218, 0.25);
-    color: var(--ionrift-accent, #7eb8da);
+    color: var(--ionrift-accent, #9b59b6);
     font-size: 0.76rem;
     font-weight: 600;
     cursor: pointer;
