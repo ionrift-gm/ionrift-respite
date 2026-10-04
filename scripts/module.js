@@ -502,25 +502,38 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
 
 // Scene Controls: Campfire button in the token controls group
 Hooks.on("getSceneControlButtons", (controls) => {
-    if (!game.user.isGM) return;
-
-    // Foundry v13+: controls is an object with named groups (controls.tokens)
-    // Foundry v12:  controls is an array, use .find()
-    const tokenGroup = Array.isArray(controls)
-        ? controls.find(c => c.name === "token")
-        : controls.tokens;
-    if (!tokenGroup) return;
+    if (!game.user?.isGM || !controls) return;
 
     const startRest = () => {
         if (!_canStartRest()) return;
         new RestSetupApp().render({ force: true });
     };
 
+    if (game.ionrift?.hud?.registerSceneControl) {
+        game.ionrift.hud.registerSceneControl(controls, {
+            group: "tokens",
+            name: "respite",
+            title: "Begin Rest (Respite)",
+            icon: "fas fa-campground",
+            order: 10,
+            onClick: startRest
+        });
+        return;
+    }
+
+    // Foundry v13+: controls is an object with named groups (controls.tokens)
+    // Foundry v12:  controls is an array, use .find()
+    const tokenGroup = Array.isArray(controls)
+        ? controls.find(c => c.name === "token" || c.name === "tokens")
+        : (controls.tokens || controls.token);
+    if (!tokenGroup) return;
+
     const toolDef = {
         name: "respite",
         title: "Begin Rest (Respite)",
         icon: "fas fa-campground",
-        button: true
+        button: true,
+        order: 10
     };
 
     // v13 uses an object map for tools with onChange(event, active); v12 uses
@@ -529,7 +542,6 @@ Hooks.on("getSceneControlButtons", (controls) => {
         toolDef.onClick = startRest;
         tokenGroup.tools.push(toolDef);
     } else {
-        toolDef.order = Object.keys(tokenGroup.tools).length;
         toolDef.visible = true;
         toolDef.onChange = startRest;
         tokenGroup.tools[toolDef.name] = toolDef;
