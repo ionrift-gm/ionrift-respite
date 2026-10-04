@@ -82,10 +82,10 @@
     line-height: 1;
 }
 
-.ionrift-respite-app .totm-camp-comfort-tier-big.comfort-hostile  { color: #f87171; }
-.ionrift-respite-app .totm-camp-comfort-tier-big.comfort-rough    { color: #fb923c; }
-.ionrift-respite-app .totm-camp-comfort-tier-big.comfort-sheltered { color: #facc15; }
-.ionrift-respite-app .totm-camp-comfort-tier-big.comfort-safe     { color: #4ade80; }
+.ionrift-respite-app .totm-camp-comfort-tier-big.comfort-hostile   { color: var(--ionrift-tier-hostile, #ef4444); }
+.ionrift-respite-app .totm-camp-comfort-tier-big.comfort-rough     { color: var(--ionrift-tier-rough, #f59e0b); }
+.ionrift-respite-app .totm-camp-comfort-tier-big.comfort-sheltered { color: var(--ionrift-tier-sheltered, #60a5fa); }
+.ionrift-respite-app .totm-camp-comfort-tier-big.comfort-safe      { color: var(--ionrift-tier-safe, #4ade80); }
 
 .ionrift-respite-app .totm-camp-comfort-reason {
     margin: 0;
