@@ -1,12 +1,20 @@
 # Changelog
 
-## [Unreleased]
+## [4.1.0] - 2026-10-04
 
 ### Changed
 - A day of water is 1 gallon (8 pints). Desert heat is 2 gallons (16 pints). A waterskin still holds 4 pints.
 - Drinking at least half of the day's water calls for a DC 15 Constitution save. Less than half is exhaustion, with no save.
-- Water for a day is one glass. A click fills it from that source. Click the surface to take the last pour off, or Empty to clear it.
-- A normal rest starts at 1 day of food. The day stepper changes how many days the rest covers. A gritty week still starts at 7.
+- Each day's water is one glass. Click a source to fill it. Click the glass to undo the last fill, or Empty to clear it.
+- A normal rest starts with 1 day of food. Set more days to cover a longer rest. A gritty week still starts at 7.
+- Frost & Stone, Dust & Bone, cooking and brewing art now come in the free Core art pack.
+- Respite picks up installed art packs automatically.
+- Rest windows use matching card and button colours.
+- The Respite scene control keeps a fixed place in the toolbar.
+- Requires Ionrift Library 3.1.0.
+
+### Fixed
+- Rest banners show the art for the current phase.
 
 ## [4.0.1] - 2026-09-28
 
