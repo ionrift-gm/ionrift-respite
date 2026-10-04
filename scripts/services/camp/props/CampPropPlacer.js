@@ -20,7 +20,7 @@ import { MODULE_ID } from "../../../data/moduleId.js";
 
 import { CAMPFIRE_FLAME_FLOOR_SORT, CAMPFIRE_PIT_SORT } from "./CompoundCampPlacer.js";
 
-// Asset paths: Foundry core icons (premium art overridden via ImageResolver when art pack present)
+// Asset paths: Foundry core icons (installed art overrides via ImageResolver)
 const TORCH_STAKES = [
     "icons/svg/light.svg",
 ];

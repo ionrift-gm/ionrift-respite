@@ -1,5 +1,6 @@
 import { MODULE_ID } from "../../../data/moduleId.js";
-import { CRAFT_PROFESSIONS_OVERLAY_ID } from "../../meal/provisions/CraftProfessionsArtPreference.js";
+
+const CRAFT_PROFESSIONS_OVERLAY_ID = "respite-craft-professions-overlay";
 
 /**
  * World toggle for alcoholic ferment recipes (Craft Professions brewing).

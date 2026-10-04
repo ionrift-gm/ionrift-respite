@@ -697,6 +697,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         default: {}
     });
 
+    // Legacy: no longer read. Art follows each overlay's active state.
     game.settings.register(MODULE_ID, "artPackDisabled", {
         scope: "world",
         config: false,
@@ -704,6 +705,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         default: false
     });
 
+    // ArtOverlayCatalog writes the GM's merged art scan here for players.
     game.settings.register(MODULE_ID, "artPackCache", {
         scope: "world",
         config: false,
