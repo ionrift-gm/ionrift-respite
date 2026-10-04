@@ -180,7 +180,14 @@ function buildSustenanceDiegetic({
         if (lastFilledIdx >= 0) {
             pints[lastFilledIdx].isSurface = true;
         }
-        return { day: pip.day ?? i + 1, isSend, hasBuff: pip.hasBuff ?? false, dayIndex: i, pints };
+        return {
+            day: pip.day ?? i + 1,
+            isSend,
+            hasBuff: pip.hasBuff ?? false,
+            dayIndex: i,
+            pints,
+            ...waterGlassFromPints(pints)
+        };
     });
 
     const foodSendoff = selectedDepartureMeal
@@ -223,7 +230,7 @@ function buildSustenanceDiegetic({
 }
 import { getActorMealNeeds } from "../../services/meal/phase/MealContextBuilder.js";
 import {
-    addPint, applySustenancePlan, clonePours, ensureSustenancePlan, pourCount, removePint
+    addPints, applySustenancePlan, clonePours, ensureSustenancePlan, pourCount, removeLastPour, waterGlassFromPints
 } from "../../services/meal/phase/SustenanceEditPlan.js";
 import { bindSustenanceMeters, sustenanceActorId } from "../delegates/meal/SustenanceMeterBinding.js";
 import { MEAL_DEFAULTS } from "../../services/meal/inventory/MealConstants.js";
@@ -1382,7 +1389,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
 
             // Sustenance needs & climate rules (Unified Centralized Terrain & Actor flags)
             const terrainDefaults = TerrainRegistry.getDefaults(this._terrainTag);
-            const terrainMealRules = terrainDefaults?.mealRules ?? { waterPerDay: 2, foodPerDay: 1 };
+            const terrainMealRules = terrainDefaults?.mealRules ?? { waterPerDay: MEAL_DEFAULTS.waterPerDay, foodPerDay: MEAL_DEFAULTS.foodPerDay };
             const effectiveRules = { ...MEAL_DEFAULTS, ...terrainMealRules };
             const mealNeeds = getActorMealNeeds(actor, terrainMealRules);
             const fpd = Math.max(0, mealNeeds?.foodPerDay ?? effectiveRules.foodPerDay);
@@ -4162,13 +4169,12 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
     static #onClearSustenanceWater(event, target) {
         const actorId = sustenanceActorId(target, this);
         const dayIndex = Number(target.dataset.wday);
-        const pintIndex = Number(target.dataset.pint);
-        if (!actorId || Number.isNaN(dayIndex) || Number.isNaN(pintIndex)) return;
+        if (!actorId || Number.isNaN(dayIndex)) return;
         const snap = this._sustenanceSnapshot.get(actorId);
         const day = snap?.water?.[dayIndex];
         if (!day?.editable || this.#mealsAreLocked(actorId)) return;
         const plan = ensureSustenancePlan(this._sustenanceEdits, actorId);
-        plan.water[dayIndex] = removePint(day.pours, pintIndex);
+        plan.water[dayIndex] = target.dataset.undo === "all" ? [] : removeLastPour(day.pours);
         this.#commitSustenanceEdit(actorId);
     }
 
@@ -4186,7 +4192,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         const item = actor?.items?.get?.(itemId);
         const name = target.name || item?.name || "";
         const img = target.img || item?.img || "";
-        if (kind === "water") this.#pourSustenanceChip(id, itemId, name, target.waterDay, img);
+        if (kind === "water") this.#pourSustenanceChip(id, itemId, name, target.waterDay, img, target.available);
         else this.#placeSustenanceChip(id, itemId, name, target.foodSlot, img);
     }
 
@@ -4204,7 +4210,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         this.#commitSustenanceEdit(actorId);
     }
 
-    #pourSustenanceChip(actorId, itemId, name, dayIndex, img) {
+    #pourSustenanceChip(actorId, itemId, name, dayIndex, img, available) {
         const snap = this._sustenanceSnapshot.get(actorId);
         if (!snap?.water?.length) return;
         const open = (index) => {
@@ -4218,8 +4224,17 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
             ? preferred
             : snap.water.findIndex((_, index) => open(index));
         if (hole < 0) return;
+        const day = snap.water[hole];
+        const room = (day.need || 0) - pourCount(day.pours);
+        const already = (day.pours ?? [])
+            .filter(pour => pour.itemId === itemId)
+            .reduce((sum, pour) => sum + (pour.pints || 0), 0);
+        const stock = Number(available);
+        const left = Number.isFinite(stock) ? Math.max(0, stock - already) : room;
+        const take = Math.min(room, left);
+        if (take <= 0) return;
         const plan = ensureSustenancePlan(this._sustenanceEdits, actorId);
-        plan.water[hole] = addPint(snap.water[hole].pours, itemId, name || "Waterskin", img);
+        plan.water[hole] = addPints(day.pours, itemId, name || "Waterskin", img, take);
         this.#commitSustenanceEdit(actorId);
     }
 

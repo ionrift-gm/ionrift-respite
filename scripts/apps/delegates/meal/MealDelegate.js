@@ -6,6 +6,7 @@ import { TerrainRegistry } from "../../../services/events/resolve/TerrainRegistr
 import { actorMealSlots } from "../../../services/meal/phase/MealContextBuilder.js";
 import { rationSkipLines, restTerrainMealRules } from "../../../services/meal/phase/RationNeed.js";
 import { parseStackSources, pickStackMember } from "../../../services/meal/phase/SustenanceTray.js";
+import { undoWaterAssignment } from "../../../services/meal/phase/SustenanceEditPlan.js";
 import { ItemClassifier } from "../../../services/party/ItemClassifier.js";
 import { getPartyActors } from "../../../services/party/partyActors.js";
 import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../../../services/camp/props/StationInteractionLayer.js";
@@ -94,22 +95,24 @@ export class MealDelegate {
         const arr = Array.isArray(existing[kind]) ? [...existing[kind]] : [];
 
         if (kind === "water") {
-            // Water in the vessel always collapses down to the bottom so there are no holes in the stack.
-            const filled = arr.filter(v => v && v !== "skip");
-            if (index < filled.length) {
-                filled.splice(index, 1);
-            } else if (filled.length > 0) {
-                filled.pop();
-            }
-            app._mealChoices.set(actorId, { ...existing, water: filled });
-            if (app._refreshStationOverlayMeals) app._refreshStationOverlayMeals();
-            app.render();
+            this.clearDiegeticWater(actorId, "pour");
             return;
         }
 
         while (arr.length <= index) arr.push("skip");
         arr[index] = "skip";
         app._mealChoices.set(actorId, { ...existing, [kind]: arr });
+        if (app._refreshStationOverlayMeals) app._refreshStationOverlayMeals();
+        app.render();
+    }
+
+    clearDiegeticWater(actorId, mode) {
+        const app = this._app;
+        if (!actorId) return;
+        if (!app._mealChoices) app._mealChoices = new Map();
+        const existing = app._mealChoices.get(actorId) ?? {};
+        const next = undoWaterAssignment(existing.water, existing.waterPours, mode === "all" ? "all" : "pour");
+        app._mealChoices.set(actorId, { ...existing, water: next.water, waterPours: next.waterPours });
         if (app._refreshStationOverlayMeals) app._refreshStationOverlayMeals();
         app.render();
     }
@@ -128,13 +131,21 @@ export class MealDelegate {
         const members = parseStackSources(sources, itemId, available);
 
         if (kind === "water") {
-            // Water fills contiguously from the bottom up without holes.
-            const filled = arr.filter(v => v && v !== "skip");
-            if (filled.length >= need) return;
-            const nextId = pickStackMember(members, filled);
-            if (!nextId) return;
-            filled.push(nextId);
-            app._mealChoices.set(actorId, { ...existing, water: filled });
+            const filled = arr.filter(value => value && value !== "skip");
+            const room = need - filled.length;
+            if (room <= 0) return;
+            const added = [];
+            for (let i = 0; i < room; i++) {
+                const nextId = pickStackMember(members, filled.concat(added));
+                if (!nextId) break;
+                added.push(nextId);
+            }
+            if (!added.length) return;
+            let pours = Array.isArray(existing.waterPours) ? [...existing.waterPours] : [];
+            const recorded = pours.reduce((total, count) => total + count, 0);
+            if (recorded !== filled.length) pours = filled.length ? [filled.length] : [];
+            pours.push(added.length);
+            app._mealChoices.set(actorId, { ...existing, water: filled.concat(added), waterPours: pours });
             if (app._refreshStationOverlayMeals) app._refreshStationOverlayMeals();
             app.render();
             return;
@@ -596,9 +607,8 @@ export class MealDelegate {
                         }
                         r.mealExhaustionApplied = (r.mealExhaustionApplied ?? 0) + 1;
                         await stampDeprivationExhaustionFloor(actor, newLevel);
-                        const restsSinceWater = actor.getFlag("ionrift-respite", "restsSinceWater") ?? 0;
                         await ChatMessage.create({
-                            content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains 1 level of exhaustion from severe dehydration (auto-fail, ${restsSinceWater} rests without water).</div>`,
+                            content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains 1 level of exhaustion from dehydration (less than half the day's water).</div>`,
                             speaker: ChatMessage.getSpeaker({ actor })
                         });
                         app._pendingDehydrationSaves.push({
@@ -608,7 +618,7 @@ export class MealDelegate {
                             resolved: true,
                             passed: false,
                             total: 0,
-                            reason: `dehydration auto-fail (${restsSinceWater} rests without water)`
+                            reason: "dehydration, less than half the day's water"
                         });
                     }
                 } else if (r.dehydrationSaveDC > 0) {
@@ -1386,9 +1396,8 @@ export class MealDelegate {
                     }
                     r.mealExhaustionApplied += 1;
                     await stampDeprivationExhaustionFloor(actor, newLevel);
-                    const restsSinceWater = actor.getFlag("ionrift-respite", "restsSinceWater") ?? 0;
                     await ChatMessage.create({
-                        content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains 1 level of exhaustion from severe dehydration (auto-fail, ${restsSinceWater} rests without water).</div>`,
+                        content: `<div class="respite-recovery-chat"><strong>${r.actorName}</strong> gains 1 level of exhaustion from dehydration (less than half the day's water).</div>`,
                         speaker: ChatMessage.getSpeaker({ actor })
                     });
                 } else if (r.dehydrationSaveDC > 0) {

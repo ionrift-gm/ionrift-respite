@@ -321,10 +321,11 @@ export function buildMealContext(characterIds, terrainTag, terrainMealRules = {}
             waterPoolSources.push({ name: "Covered by meal", pintsUsed: bonusWater, isMealCredit: true });
         }
 
-        const isNonStandard = rules.waterPerDay > 2 || rules.foodPerDay > 1;
+        const normalWater = MEAL_DEFAULTS.waterPerDay;
+        const isNonStandard = rules.waterPerDay > normalWater || rules.foodPerDay > MEAL_DEFAULTS.foodPerDay;
         let terrainAlertClass = "";
         let terrainAlertIcon = "fas fa-info-circle";
-        if (rules.waterPerDay >= 4) {
+        if (rules.waterPerDay >= normalWater * 2) {
             terrainAlertClass = "terrain-desert";
             terrainAlertIcon = "fas fa-sun";
         } else if (rules.foodPerDay >= 2) {

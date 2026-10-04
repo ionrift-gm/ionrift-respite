@@ -1277,12 +1277,26 @@ export class BivouacApp extends BaseShortRestApp {
 
             const waterResult = await SustenanceEngine.resolveBivouacActorWater(actor, {
                 isOutlanderShielded: outlanderStatus.isEligible,
-                selectedItemId: (wChoice === "thirsty") ? null : selectedWaterItemId
+                selectedItemId: (wChoice === "thirsty") ? null : selectedWaterItemId,
+                terrainTag: this._terrainTag
             });
 
-            if (waterResult.drank) {
+            if (waterResult.dehydrationAutoFail) {
+                const adapter = game.ionrift?.respite?.adapter;
+                if (adapter?.applyExhaustionDelta) {
+                    await adapter.applyExhaustionDelta(actor, 1);
+                } else {
+                    const current = actor.system?.attributes?.exhaustion ?? 0;
+                    if (current < 6 && actor.update) {
+                        await actor.update({ "system.attributes.exhaustion": current + 1 });
+                    }
+                }
+                sustenanceLines.push(`<li><strong style="color:#ef4444;">${actor.name}</strong> drank less than half the day's water. 1 level of exhaustion, no save.</li>`);
+            } else if (waterResult.dehydrationSaveDC > 0) {
+                sustenanceLines.push(`<li><strong>${actor.name}</strong> drank ${waterResult.unitsDeducted} pints, half the day's water. Constitution save DC ${waterResult.dehydrationSaveDC}.</li>`);
+            } else if (waterResult.drank) {
                 sustenanceLines.push(`<li><strong>${actor.name}</strong> drank <em>${waterResult.itemName}</em> (${waterResult.source})</li>`);
-            } else {
+            } else if (waterResult.dehydrated) {
                 sustenanceLines.push(`<li><strong style="color:#ef4444;">${actor.name}</strong> is dehydrated! (Missed water: ${waterResult.restsSinceWater} rests)</li>`);
             }
         }

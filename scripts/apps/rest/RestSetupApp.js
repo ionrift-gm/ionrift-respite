@@ -38,7 +38,7 @@ import { isForagingEnabled, isHuntingEnabled } from "../../services/travel/setti
 import { RestSetupDebugJumps } from "../delegates/rest/debug/RestSetupDebugJumps.js";
 import { CampCeremonyDelegate } from "../delegates/camp/CampCeremonyDelegate.js";
 import { CampPlacementDelegate } from "../delegates/camp/CampPlacementDelegate.js";
-import { CampLogisticsDelegate } from "../delegates/camp/CampLogisticsDelegate.js";
+import { CampLogisticsDelegate, defaultFoodDaysNeeded } from "../delegates/camp/CampLogisticsDelegate.js";
 import { RestWindowLayout } from "../delegates/rest/layout/RestWindowLayout.js";
 import { RestPrepareContext } from "../delegates/rest/RestPrepareContext.js";
 import { RestFlowActions } from "../delegates/rest/flow/RestFlowActions.js";
@@ -410,6 +410,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this._workbench = new WorkbenchDelegate(this);
         this._detectMagic = new DetectMagicDelegate(this);
         this._campLogistics = new CampLogisticsDelegate(this);
+        if (!this._isGrittyLong) {
+            this._campLogistics._foodDaysNeeded = defaultFoodDaysNeeded(false);
+        }
 
         this._restData = restData;
         if (restData) {
@@ -1048,6 +1051,12 @@ static #onSetupBack(event, target) {
         const current = this._restVariant ?? "normal";
         const next = current === "gritty" ? "normal" : "gritty";
         this._restVariant = next;
+        if (this._isGrittyLong) {
+            this._campLogistics._foodDaysNeeded = defaultFoodDaysNeeded(true);
+        } else {
+            this._daysSinceLastRest = 1;
+            this._campLogistics._foodDaysNeeded = defaultFoodDaysNeeded(false);
+        }
 
         const adapter = game.ionrift?.respite?.adapter;
         if (adapter) {
@@ -1765,6 +1774,11 @@ static #onOpenLedger(event, target) {
 
     static #onStepFoodDays(event, target) {
         if (!this._isGM) return;
+        if (!this._isGrittyLong) {
+            const delta = Number(target.dataset.delta) || 0;
+            const next = Math.max(1, Math.min(30, this._campLogistics._foodDaysNeeded + delta));
+            this._daysSinceLastRest = next;
+        }
         this._campLogistics.stepFoodDays(target.dataset.delta);
     }
 
@@ -2225,9 +2239,8 @@ static async #onContinueToCampLayout(event, target) {
 
     static #onClearSustenanceWater(event, target) {
         const actorId = sustenanceActorId(target, this);
-        const pint = Number(target.dataset.pint);
-        if (!actorId || Number.isNaN(pint)) return;
-        this._meals.clearDiegeticSlot(actorId, "water", pint);
+        if (!actorId) return;
+        this._meals.clearDiegeticWater(actorId, target.dataset.undo === "all" ? "all" : "pour");
     }
 
     static #onAssignSustenanceWater(event, target) {

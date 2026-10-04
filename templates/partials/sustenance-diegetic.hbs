@@ -98,17 +98,18 @@
                 </div>
                 <div class="sust-vessel{{#if sustenanceDiegetic.isMultiDay}} days{{else}} night{{#if sustenanceDiegetic.water.sendoff.hasBuff}} send{{/if}}{{/if}}" aria-label="{{#if sustenanceDiegetic.isMultiDay}}Water for the week{{else}}Water for the night{{/if}}">
                     {{#each sustenanceDiegetic.water.days}}
-                    <span class="sust-day-fill{{#if isSend}} send{{/if}}{{#if hasBuff}} buff{{/if}}" data-drop="water" data-wday="{{@index}}">
-                        {{#each pints}}
-                        {{#if filled}}
-                        <button type="button" class="on src-{{#if sourceClass}}{{sourceClass}}{{else if sourceId}}{{sourceId}}{{else}}waterskin{{/if}}{{#if isBuff}} buff{{/if}}{{#if isSurface}} is-surface{{/if}}" title="{{name}}" data-tooltip="{{#if name}}{{name}}. {{/if}}{{#if perishable}}{{spoilTooltip}} {{/if}}Click to take this pint off the day" data-action="clearSustenanceWater" data-actor-id="{{../../sustenanceDiegetic.actorId}}" data-sust="water" data-wday="{{../dayIndex}}" data-pint="{{@index}}">
-                            <span class="sust-pint-liquid"></span>
-                            {{#if perishable}}<span class="sust-spoil {{spoilClass}}">{{spoilText}}</span>{{/if}}
-                        </button>
-                        {{else}}
-                        <i title="Empty"></i>
-                        {{/if}}
-                        {{/each}}
+                    <span class="sust-day-fill{{#if isSend}} send{{/if}}{{#if hasBuff}} buff{{/if}}" data-drop="water" data-wday="{{dayIndex}}">
+                        <span class="sust-water-glass" style="--fill: {{fillPercent}}%;">
+                            {{#if showHalf}}
+                            <span class="sust-water-half" title="Half the day's water. Constitution save."></span>
+                            {{/if}}
+                            {{#if canUndo}}
+                            <button type="button" class="sust-water-level{{#if sourceClass}} src-{{sourceClass}}{{/if}}" style="height: {{fillPercent}}%;" data-action="clearSustenanceWater" data-undo="pour" data-actor-id="{{../sustenanceDiegetic.actorId}}" data-wday="{{dayIndex}}" data-tooltip="{{#if surfaceName}}{{surfaceName}}. {{/if}}Click to take this pour off."></button>
+                            {{/if}}
+                            {{#if canEmpty}}
+                            <button type="button" class="sust-water-empty" data-action="clearSustenanceWater" data-undo="all" data-actor-id="{{../sustenanceDiegetic.actorId}}" data-wday="{{dayIndex}}" data-tooltip="Empty this day">Empty</button>
+                            {{/if}}
+                        </span>
                     </span>
                     {{/each}}
                 </div>
@@ -133,7 +134,7 @@
                 <div class="sust-crumb-tray">
                     {{#each sustenanceDiegetic.water.inventory}}
                     {{#unless isDry}}
-                    <button type="button" class="sust-crumb{{#if isSelected}} on{{/if}}{{#if hasBuff}} buff{{/if}}{{#if perishable}} perishable{{/if}}" data-tooltip="{{name}}, {{available}} left.{{#if perishable}} {{spoilTooltip}}{{/if}} Click to pour into the first open day, or drag onto the vessel" data-sust="water" data-item="{{id}}" data-sources="{{sourcesAttr}}" data-name="{{name}}" data-img="{{img}}" data-available="{{#if stock}}{{stock}}{{else}}{{available}}{{/if}}">
+                    <button type="button" class="sust-crumb{{#if isSelected}} on{{/if}}{{#if hasBuff}} buff{{/if}}{{#if perishable}} perishable{{/if}}" data-tooltip="{{name}}, {{available}} left.{{#if perishable}} {{spoilTooltip}}{{/if}} Click to fill the day from this, or drag onto a glass" data-sust="water" data-item="{{id}}" data-sources="{{sourcesAttr}}" data-name="{{name}}" data-img="{{img}}" data-available="{{#if stock}}{{stock}}{{else}}{{available}}{{/if}}">
                         {{#if img}}
                         <img src="{{img}}" alt="{{name}}" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-flex';">
                         <span class="sust-crumb-fallback-icon" style="display:none;"><i class="fas fa-tint" aria-hidden="true"></i></span>

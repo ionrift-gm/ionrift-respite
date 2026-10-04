@@ -13,6 +13,7 @@ import {
 import { CampGearScanner, findConsumableFirewoodItem } from "../camp/gear/CampGearScanner.js";
 import { TerrainRegistry } from "../events/resolve/TerrainRegistry.js";
 import { getActorMealNeeds } from "../meal/phase/MealContextBuilder.js";
+import { MEAL_DEFAULTS } from "../meal/inventory/MealConstants.js";
 import { buildWaterOptions } from "../meal/phase/MealOptionBuilder.js";
 import { FRESH_FORAGE_NOTE, GatherYieldService } from "../rest/forage/GatherYieldService.js";
 
@@ -520,7 +521,7 @@ export class DowntimeBatchEngine {
 
         // ─── SUPPLY COMMISSARY RESOLUTION (Days 1–6 Sustenance & Water) ─────────
         const terrainDefaults = TerrainRegistry.getDefaults(terrainTag);
-        const terrainMealRules = terrainDefaults?.mealRules ?? { waterPerDay: 2, foodPerDay: 1 };
+        const terrainMealRules = terrainDefaults?.mealRules ?? { waterPerDay: MEAL_DEFAULTS.waterPerDay, foodPerDay: MEAL_DEFAULTS.foodPerDay };
         const characterFoodShortfalls = new Map();
         const characterWaterShortfalls = new Map();
 
@@ -536,7 +537,7 @@ export class DowntimeBatchEngine {
                 const outcome = characterOutcomes.get(actor.id);
                 const mealNeeds = getActorMealNeeds(actor, terrainMealRules);
                 const fpd = Math.max(1, mealNeeds?.foodPerDay ?? 1);
-                const wpd = Math.max(0, mealNeeds?.waterPerDay ?? 2);
+                const wpd = Math.max(0, mealNeeds?.waterPerDay ?? MEAL_DEFAULTS.waterPerDay);
 
                 const alreadyFedDay7 = fedDay7ActorIds.has(actor.id);
                 const actorDays = alreadyFedDay7 ? Math.max(0, effectiveDaysNeeded - 1) : effectiveDaysNeeded;

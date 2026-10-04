@@ -1,5 +1,6 @@
 import { MODULE_ID } from "../../../data/moduleId.js";
 import { Logger } from "../../../utils/Logger.js";
+import { MEAL_DEFAULTS } from "../../meal/inventory/MealConstants.js";
 /**
  * TerrainRegistry
  * Centralized, data-driven terrain configuration for Respite.
@@ -368,7 +369,7 @@ export class TerrainRegistry {
      */
     static getDefaults(tag) {
         const t = this.get(tag);
-        if (!t) return { comfort: "sheltered", travelAvailable: false, mealRules: { waterPerDay: 2, foodPerDay: 1 } };
+        if (!t) return { comfort: "sheltered", travelAvailable: false, mealRules: { waterPerDay: MEAL_DEFAULTS.waterPerDay, foodPerDay: MEAL_DEFAULTS.foodPerDay } };
         const rawComfort = t.comfort ?? "sheltered";
         const comfort = VALID_COMFORT.has(rawComfort) ? rawComfort : "rough";
         if (!VALID_COMFORT.has(rawComfort)) {
@@ -377,7 +378,7 @@ export class TerrainRegistry {
         return {
             comfort,
             travelAvailable: TerrainRegistry.isTravelAvailable(tag),
-            mealRules: t.mealRules ?? { waterPerDay: 2, foodPerDay: 1 }
+            mealRules: t.mealRules ?? { waterPerDay: MEAL_DEFAULTS.waterPerDay, foodPerDay: MEAL_DEFAULTS.foodPerDay }
         };
     }
 
