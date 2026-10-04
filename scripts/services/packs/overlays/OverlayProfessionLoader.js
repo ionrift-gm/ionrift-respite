@@ -13,8 +13,8 @@
  */
 import { Logger } from "../../../utils/Logger.js";
 import { mergeRecipeLists, PROFESSION_TOOL_REQUIRED } from "../../crafting/recipes/RecipeCatalog.js";
-import { CookingArtPreference } from "../../meal/provisions/CookingArtPreference.js";
-import { CraftProfessionsArtPreference } from "../../meal/provisions/CraftProfessionsArtPreference.js";
+import { ArtOverlayCatalog } from "../../art/ArtOverlayCatalog.js";
+import { ItemArtSync } from "../../art/ItemArtSync.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
 
 /** @type {{ packId: string, sublayer: string, name: string, recipes: Object }[] | null} */
@@ -52,9 +52,8 @@ export class OverlayProfessionLoader {
         const overlay = game.ionrift?.library?.overlay;
         if (!overlay) return [];
 
-        // Presence probes before recipe img rewrite (cooking-art / craft-professions-art).
-        try { await CookingArtPreference.refreshPresence(); } catch { /* optional */ }
-        try { await CraftProfessionsArtPreference.refreshPresence(); } catch { /* optional */ }
+        // Art catalog must be loaded before recipe img rewrite.
+        try { await ArtOverlayCatalog.ensureLoaded(); } catch { /* optional */ }
 
         const results = [];
 
@@ -81,8 +80,7 @@ export class OverlayProfessionLoader {
                 }
 
                 if (data?.recipes && typeof data.recipes === "object") {
-                    CookingArtPreference.applyToRecipeData(data);
-                    CraftProfessionsArtPreference.applyToRecipeData(data);
+                    ItemArtSync.applyToRecipeData(data);
                     results.push({
                         packId: data.id ?? manifest.overlayId,
                         sublayer,

@@ -5,18 +5,7 @@ import {
     unregisterProvisionPack
 } from "../../travel/resolve/TravelProvisionIndex.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
-import {
-    COOKING_OVERLAY_ID,
-    COOKING_ART_OVERLAY_ID,
-    COOKING_ART_SUBLAYER,
-    CookingArtPreference
-} from "./CookingArtPreference.js";
-import {
-    CRAFT_PROFESSIONS_OVERLAY_ID,
-    CRAFT_PROFESSIONS_ART_OVERLAY_ID,
-    CRAFT_PROFESSIONS_ART_SUBLAYER,
-    CraftProfessionsArtPreference
-} from "./CraftProfessionsArtPreference.js";
+import { ItemArtSync } from "../../art/ItemArtSync.js";
 
 /** Cooking overlay packDirs with fixed wrapper labels. */
 const COOKING_SECTION_LABELS = Object.freeze({
@@ -94,60 +83,22 @@ export class ProvisionOverlayMaterialiser {
     static async materialiseAll() {
         const materialiser = game.ionrift?.library?.materialiser;
         if (!materialiser) return;
-        await CookingArtPreference.ensureAvailable();
-        await CraftProfessionsArtPreference.ensureAvailable();
         await materialiser.materialiseAll(this.config());
-        const cookingImages = await CookingArtPreference.synchronizeCompendium();
-        await CookingArtPreference.synchronizeActorItems(cookingImages);
-        const craftImages = await CraftProfessionsArtPreference.synchronizeCompendium();
-        await CraftProfessionsArtPreference.synchronizeActorItems(craftImages);
+        await ItemArtSync.apply();
     }
 
     /**
      * React to a Library overlay enable/disable/uninstall for this module.
+     * Item icon sync runs afterwards from the module.js overlay hook.
      * @param {{ moduleId?: string, sublayer?: string, overlayId?: string, installed?: boolean, active?: boolean }} detail
      */
     static async onOverlayContentChanged(detail) {
         const materialiser = game.ionrift?.library?.materialiser;
         if (!materialiser || detail?.moduleId !== MODULE_ID) return;
 
-        if (
-            detail.overlayId === COOKING_ART_OVERLAY_ID
-            || detail.sublayer === COOKING_ART_SUBLAYER
-            || detail.overlayId === COOKING_OVERLAY_ID
-        ) {
-            await CookingArtPreference.ensureAvailable();
-            if (detail.overlayId === COOKING_ART_OVERLAY_ID
-                || detail.sublayer === COOKING_ART_SUBLAYER) {
-                return;
-            }
-        }
-
-        if (
-            detail.overlayId === CRAFT_PROFESSIONS_ART_OVERLAY_ID
-            || detail.sublayer === CRAFT_PROFESSIONS_ART_SUBLAYER
-            || detail.overlayId === CRAFT_PROFESSIONS_OVERLAY_ID
-        ) {
-            await CraftProfessionsArtPreference.ensureAvailable();
-            if (detail.overlayId === CRAFT_PROFESSIONS_ART_OVERLAY_ID
-                || detail.sublayer === CRAFT_PROFESSIONS_ART_SUBLAYER) {
-                const images = await CraftProfessionsArtPreference.synchronizeCompendium();
-                await CraftProfessionsArtPreference.synchronizeActorItems(images);
-                return;
-            }
-        }
-
         const config = this.config();
         if (detail.installed && detail.active) {
             await materialiser.materialiseSublayer(detail.sublayer, config);
-            if (detail.sublayer === "cooking") {
-                const images = await CookingArtPreference.synchronizeCompendium();
-                await CookingArtPreference.synchronizeActorItems(images);
-            }
-            if (detail.sublayer === "craft-professions") {
-                const images = await CraftProfessionsArtPreference.synchronizeCompendium();
-                await CraftProfessionsArtPreference.synchronizeActorItems(images);
-            }
         } else if (detail.installed && detail.overlayId) {
             await materialiser.setOverlayActive(detail.overlayId, false, config);
         } else if (!detail.installed && detail.overlayId) {

@@ -421,17 +421,17 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
         console.warn(`${MODULE_ID} | Overlay materialiser update failed:`, err);
     }
 
-    // Generative Core art companion.
-    if (detail.overlayId === "respite-core-art-overlay") {
-        const disabled = !detail.installed || !detail.active;
-        await game.settings.set(MODULE_ID, "artPackDisabled", disabled);
+    // Installed art may have changed with any overlay. Re-scan, then sync
+    // item icons against whatever art is now present.
+    try {
         await ImageResolver.init();
-        return;
+        const { ItemArtSync } = await import("./services/art/ItemArtSync.js");
+        await ItemArtSync.apply();
+    } catch (e) {
+        console.warn(`${MODULE_ID} | Art refresh failed:`, e);
     }
 
-    // Core data events unlock (reclaimed id). Also covers legacy art installs
-    // still registered as respite-core-overlay under core/free: ImageResolver
-    // probes those paths for art files without toggling artPackDisabled.
+    // Core data events unlock (reclaimed id).
     if (detail.overlayId === "respite-core-overlay") {
         try {
             const { OverlayEventLoader } = await import("./services/packs/overlays/OverlayEventLoader.js");
@@ -444,46 +444,18 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
         } catch (e) {
             console.warn(`${MODULE_ID} | Terrain registry reset failed:`, e);
         }
-        await ImageResolver.init();
         return;
     }
 
     // Terrain data unlocks (Frost & Stone, Bone & Dust). These gate which
     // terrains the local registry surfaces.
     if (detail.overlayId === "respite-frost-stone-overlay" || detail.overlayId === "respite-bone-dust-overlay") {
-        await ImageResolver.init();
         try {
             const { TerrainRegistry } = await import("./services/events/resolve/TerrainRegistry.js");
             TerrainRegistry.reset();
             await TerrainRegistry.init();
         } catch (e) {
             console.warn(`${MODULE_ID} | Terrain registry reset failed:`, e);
-        }
-        return;
-    }
-
-    // Optional generative terrain art companions (presence-based).
-    if (
-        detail.overlayId === "respite-frost-stone-art-overlay"
-        || detail.overlayId === "respite-bone-dust-art-overlay"
-    ) {
-        await ImageResolver.init();
-        return;
-    }
-
-    // Optional craft professions drink icons (presence-based).
-    if (detail.overlayId === "respite-craft-professions-art-overlay") {
-        try {
-            const { CraftProfessionsArtPreference } = await import(
-                "./services/meal/provisions/CraftProfessionsArtPreference.js"
-            );
-            await CraftProfessionsArtPreference.apply(null, { notify: false });
-            const { OverlayProfessionLoader } = await import(
-                "./services/packs/overlays/OverlayProfessionLoader.js"
-            );
-            OverlayProfessionLoader.invalidate();
-        } catch (e) {
-            console.warn(`${MODULE_ID} | Craft professions art refresh failed:`, e);
         }
         return;
     }
