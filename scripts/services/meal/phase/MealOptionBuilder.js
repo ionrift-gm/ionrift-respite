@@ -6,6 +6,7 @@
 import { ItemClassifier } from "../../party/ItemClassifier.js";
 import { SpoilageClock } from "../spoilage/SpoilageClock.js";
 import { MODULE_ID } from "../inventory/MealConstants.js";
+import { dehydrationOutcome } from "./DehydrationCheck.js";
 import { describeItemMealBuff } from "../buffs/MealBuffPresets.js";
 import {
     iterInventoryItems,
@@ -134,7 +135,6 @@ export function buildWaterOptions(actor, rules) {
 export function buildAdvisories(restsSinceFood, restsSinceWater, foodGrace, rules, terrainTag, foodSufficient = false, foodFilledCount = 0, waterSufficient = false, waterFilledCount = 0, partialSustenance = true) {
     const advisories = [];
     const isPartialFood = !foodSufficient && foodFilledCount > 0 && rules.foodPerDay > 1;
-    const isPartialWater = !waterSufficient && waterFilledCount > 0 && rules.waterPerDay > 1;
 
     // Food advisories
     if (restsSinceFood > 0 && restsSinceFood <= foodGrace) {
@@ -168,21 +168,27 @@ export function buildAdvisories(restsSinceFood, restsSinceWater, foodGrace, rule
         });
     }
 
-    // Water advisories
+    // Water advisories. The band is this rest's pints, not a running day count.
     if (restsSinceWater > 0) {
-        const reducedDC = rules.dehydrationDC - 2;
-        let partialNote = "";
-        if (isPartialWater) {
-            partialNote = partialSustenance
-                ? ` ${waterFilledCount} of ${rules.waterPerDay} filled. CON save at DC ${reducedDC} (+2 bonus from partial hydration).`
-                : ` Only ${waterFilledCount} of ${rules.waterPerDay} units. Partial water gives no benefit per RAW.`;
+        const saveDC = rules.dehydrationDC ?? 15;
+        const band = dehydrationOutcome(waterFilledCount, rules.waterPerDay ?? 0, saveDC);
+        let bandNote = "";
+        if (!waterSufficient && (rules.waterPerDay ?? 0) > 0) {
+            if (band.dehydrationAutoFail) {
+                bandNote = ` ${waterFilledCount} of ${rules.waterPerDay} pints. Less than half the day's water. Exhaustion, no save.`;
+            } else if (band.dehydrationSaveDC > 0) {
+                const shownDC = partialSustenance ? band.dehydrationSaveDC - 2 : band.dehydrationSaveDC;
+                bandNote = partialSustenance
+                    ? ` ${waterFilledCount} of ${rules.waterPerDay} pints. Half the day's water. CON save at DC ${shownDC} (+2 from partial hydration).`
+                    : ` ${waterFilledCount} of ${rules.waterPerDay} pints. Half the day's water. CON save DC ${band.dehydrationSaveDC}.`;
+            }
         }
         advisories.push({
-            level: waterSufficient ? "ok" : (isPartialWater && partialSustenance ? "warning" : "danger"),
+            level: waterSufficient ? "ok" : (band.dehydrationSaveDC > 0 && partialSustenance ? "warning" : "danger"),
             icon: waterSufficient ? "fas fa-check-circle" : "fas fa-tint-slash",
             message: waterSufficient
                 ? `Drinking this rest.${rules.waterPerDay > 1 ? ` All ${rules.waterPerDay} units filled.` : ""}`
-                : `Has not had water since ${restsSinceWater === 1 ? "last rest" : `${restsSinceWater} rests ago`}.${partialNote}${!isPartialWater ? ` Skipping triggers CON save DC ${rules.dehydrationDC} or exhaustion.` : ""}`
+                : `Has not had water since ${restsSinceWater === 1 ? "last rest" : `${restsSinceWater} rests ago`}.${bandNote}`
         });
     }
 

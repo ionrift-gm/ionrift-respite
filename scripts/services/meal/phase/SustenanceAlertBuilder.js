@@ -4,6 +4,8 @@
  * concise, unambiguous status pills and explanatory tooltips.
  */
 
+import { MEAL_DEFAULTS } from "../inventory/MealConstants.js";
+
 export class SustenanceAlertBuilder {
     /**
      * Build climate/trait label and rich tooltip for sustenance display.
@@ -15,9 +17,10 @@ export class SustenanceAlertBuilder {
      * @returns {{ label: string|null, tooltip: string|null, isTraitPill: boolean }}
      */
     static build({ terrainLabel = "Standard", terrainMealRules = {}, effectiveRules = {}, mealNeeds = null }) {
-        const baseWater = effectiveRules.waterPerDay ?? 2;
-        const baseFood = effectiveRules.foodPerDay ?? 1;
-        const isNonStandardTerrain = baseWater > 2 || baseFood > 1;
+        const normalWater = MEAL_DEFAULTS.waterPerDay;
+        const baseWater = effectiveRules.waterPerDay ?? normalWater;
+        const baseFood = effectiveRules.foodPerDay ?? MEAL_DEFAULTS.foodPerDay;
+        const isNonStandardTerrain = baseWater > normalWater || baseFood > MEAL_DEFAULTS.foodPerDay;
 
         const fpd = Math.max(0, mealNeeds?.foodPerDay ?? baseFood);
         const wpd = Math.max(0, mealNeeds?.waterPerDay ?? baseWater);
@@ -26,8 +29,8 @@ export class SustenanceAlertBuilder {
         let tooltip = null;
         let isTraitPill = false;
 
-        if (baseWater >= 4) {
-            const wMult = (baseWater / 2).toFixed(1).replace(/\.0$/, "");
+        if (baseWater >= normalWater * 2) {
+            const wMult = (baseWater / normalWater).toFixed(1).replace(/\.0$/, "");
             label = `☀️ Arid (${wMult}× Water)`;
             tooltip = terrainMealRules.note ?? `Arid climate: consumes ${baseWater} water units per day.`;
         } else if (baseFood >= 2) {

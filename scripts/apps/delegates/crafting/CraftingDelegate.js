@@ -1,6 +1,7 @@
 import { isStationLayerActive, refreshStationEmptyNoticeFade } from "../../../services/camp/props/StationInteractionLayer.js";
 import { GrantLedger } from "../../../services/crafting/outcomes/GrantLedger.js";
 import { MealPhaseHandler } from "../../../services/meal/phase/MealPhaseHandler.js";
+import { MEAL_DEFAULTS } from "../../../services/meal/inventory/MealConstants.js";
 import { getFoodBuffPartyActors, getMealEligiblePartyActors } from "../../../services/party/partyActors.js";
 import { ItemClassifier } from "../../../services/party/ItemClassifier.js";
 import { emitFeastServeRequest } from "../../../services/socket/SocketController.js";
@@ -293,7 +294,7 @@ export class CraftingDelegate {
         const terrainTag = restApp._engine?.terrainTag ?? restApp._selectedTerrain ?? "forest";
         const terrainMealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
         const fpd = terrainMealRules.foodPerDay ?? 1;
-        const wpd = terrainMealRules.waterPerDay ?? 2;
+        const wpd = terrainMealRules.waterPerDay ?? MEAL_DEFAULTS.waterPerDay;
 
         for (const pid of partyIds) {
             const actor = game.actors.get(pid);

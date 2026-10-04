@@ -10,6 +10,7 @@ import { consumeItem } from "../inventory/MealItemConsumer.js";
 import { servingsFromSnapshots } from "../buffs/MealBuffBeat.js";
 import { MODULE_ID, MEAL_DEFAULTS } from "../inventory/MealConstants.js";
 import { getActorMealNeeds } from "./MealContextBuilder.js";
+import { dehydrationOutcome } from "./DehydrationCheck.js";
 
 /**
  * Wet meals and party meals credit water (and party meals credit food for allies
@@ -220,16 +221,15 @@ export async function applyMealChoices(mealChoices, daysSinceLastRest = 1, terra
             result.starvationExhaustion = restsSinceFood - foodGrace;
         }
 
-        // Any day without water: CON save DC 15 or gain 1 exhaustion
-        // If already dehydrated (2+ rests): auto-fail (no save)
-        const restsSinceWater = actor.getFlag(MODULE_ID, "restsSinceWater") ?? 0;
-        if (restsSinceWater > 0) {
-            if (restsSinceWater >= 2) {
-                result.dehydrationAutoFail = true;
-            } else {
-                result.dehydrationSaveDC = rules.dehydrationDC ?? 15;
-            }
-        }
+        // Same rest, not a running day count. Full water is no check.
+        // At least half is a Constitution save. Less than half is exhaustion.
+        const band = dehydrationOutcome(
+            effectiveWater,
+            waterNeeded,
+            rules.dehydrationDC ?? MEAL_DEFAULTS.dehydrationDC
+        );
+        result.dehydrationSaveDC = band.dehydrationSaveDC;
+        result.dehydrationAutoFail = band.dehydrationAutoFail;
 
         results.push(result);
     }

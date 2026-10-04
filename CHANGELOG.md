@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- A day of water is 1 gallon (8 pints). Desert heat is 2 gallons (16 pints). A waterskin still holds 4 pints.
+- Drinking at least half of the day's water calls for a DC 15 Constitution save. Less than half is exhaustion, with no save.
+- Water for a day is one glass. A click fills it from that source. Click the surface to take the last pour off, or Empty to clear it.
+- A normal rest starts at 1 day of food. The day stepper changes how many days the rest covers. A gritty week still starts at 7.
+
 ## [4.0.1] - 2026-09-28
 
 ### Fixed

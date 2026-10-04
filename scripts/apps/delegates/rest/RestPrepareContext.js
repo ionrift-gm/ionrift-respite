@@ -1,5 +1,6 @@
 import { Logger } from "../../../utils/Logger.js";
 import { TerrainRegistry } from "../../../services/events/resolve/TerrainRegistry.js";
+import { MEAL_DEFAULTS } from "../../../services/meal/inventory/MealConstants.js";
 import { DecisionTreeResolver } from "../../../services/events/resolve/DecisionTreeResolver.js";
 import { countPoolEventsForTerrain } from "../../../services/events/catalog/EventCatalogLoader.js";
 import { resolveNightWatchMode } from "../events/nightWatchMode.js";
@@ -32,6 +33,7 @@ import { MODULE_ID } from "../../../data/moduleId.js";
 import { applyWatchAlertPhrase, presentCombatModifiers } from "../../../services/rest/flow/WatchAlertBenefit.js";
 import { SpoilageClock } from "../../../services/meal/spoilage/SpoilageClock.js";
 import { normalizeBeverageClass, sendoffFromPlaced } from "../../../services/meal/phase/MealOptionBuilder.js";
+import { waterGlassFromPints } from "../../../services/meal/phase/SustenanceEditPlan.js";
 import { sustenanceTrayRows } from "../../../services/meal/phase/SustenanceTray.js";
 import { GatherYieldService } from "../../../services/rest/forage/GatherYieldService.js";
 import { activityOfferingsClosed, dailyChoiceStatus, releaseGatherFromActivity } from "../../../services/rest/session/campProgressState.js";
@@ -2412,7 +2414,14 @@ export class RestPrepareContext {
                                 : (card.waterSufficient ? "Hydrated" : `${Math.max(0, waterNeed - waterFilled)} short`),
                             isDone: waterNeed <= 0 || Boolean(card.waterSufficient)
                         },
-                        days: [{ day: 1, isSend: false, hasBuff: placedWater.some(opt => opt.hasBuff), dayIndex: 0, pints }],
+                        days: [{
+                            day: 1,
+                            isSend: false,
+                            hasBuff: placedWater.some(opt => opt.hasBuff),
+                            dayIndex: 0,
+                            pints,
+                            ...waterGlassFromPints(pints)
+                        }],
                         sendoff: sendoffFromPlaced(placedWater),
                         inventory: waterInv,
                         need: waterNeed
@@ -2726,9 +2735,9 @@ function buildMealCommit(app) {
     const waterNames = countMap(waterItemIds);
 
     const terrainTag = app._selectedTerrain ?? app._engine?.terrainTag ?? "forest";
-    const mealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? { foodPerDay: 1, waterPerDay: 2 };
+    const mealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? { foodPerDay: MEAL_DEFAULTS.foodPerDay, waterPerDay: MEAL_DEFAULTS.waterPerDay };
     const totalFpd = (mealRules.foodPerDay ?? 1) * (consumedDays.length || 1);
-    const totalWpd = (mealRules.waterPerDay ?? 2) * (consumedDays.length || 1);
+    const totalWpd = (mealRules.waterPerDay ?? MEAL_DEFAULTS.waterPerDay) * (consumedDays.length || 1);
 
     let bonusWater = 0;
     const satiatesLookup = typeof app._stations?._buildSatiatesLookup === "function"

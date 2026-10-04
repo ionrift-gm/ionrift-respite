@@ -2,6 +2,9 @@ import { MODULE_ID } from "../../../data/moduleId.js";
 import { ItemClassifier } from "../../party/ItemClassifier.js";
 import { consumeItem } from "../../meal/inventory/MealItemConsumer.js";
 import { scanEligibleChefs } from "../../meal/buffs/ChefFeat.js";
+import { getActorMealNeeds } from "../../meal/phase/MealContextBuilder.js";
+import { dehydrationOutcome } from "../../meal/phase/DehydrationCheck.js";
+import { TerrainRegistry } from "../../events/resolve/TerrainRegistry.js";
 
 /** Terrains where passive wild foraging (e.g. Outlander Wanderer) cannot gather forage. */
 export const INELIGIBLE_FORAGE_TERRAINS = Object.freeze(new Set([
@@ -271,21 +274,29 @@ export class SustenanceEngine {
      * @param {object} [options]
      * @param {boolean} [options.isOutlanderShielded=false]
      * @param {string} [options.selectedItemId=null]
+     * @param {string} [options.terrainTag]
      * @returns {Promise<{
      *   drank: boolean,
      *   source: "outlander"|"inventory"|"none",
      *   itemName: string,
      *   unitsDeducted: number,
      *   dehydrated: boolean,
-     *   restsSinceWater: number
+     *   restsSinceWater: number,
+     *   dehydrationSaveDC: number,
+     *   dehydrationAutoFail: boolean
      * }>}
      */
     static async resolveBivouacActorWater(actor, {
         isOutlanderShielded = false,
-        selectedItemId = null
+        selectedItemId = null,
+        terrainTag = null
     } = {}) {
+        const clear = {
+            dehydrationSaveDC: 0,
+            dehydrationAutoFail: false
+        };
         if (!actor) {
-            return { drank: false, source: "none", itemName: "", unitsDeducted: 0, dehydrated: true, restsSinceWater: 1 };
+            return { drank: false, source: "none", itemName: "", unitsDeducted: 0, dehydrated: true, restsSinceWater: 1, ...clear, dehydrationAutoFail: true };
         }
 
         // Outlander shield covers fresh water for the camp
@@ -297,11 +308,27 @@ export class SustenanceEngine {
                 itemName: "Fresh Spring Water",
                 unitsDeducted: 0,
                 dehydrated: false,
-                restsSinceWater: 0
+                restsSinceWater: 0,
+                ...clear
             };
         }
 
-        // Personal water consumption
+        const mealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
+        const needed = getActorMealNeeds(actor, mealRules).waterPerDay;
+        if (needed <= 0) {
+            await actor.setFlag(MODULE_ID, "restsSinceWater", 0);
+            return {
+                drank: false,
+                source: "none",
+                itemName: "",
+                unitsDeducted: 0,
+                dehydrated: false,
+                restsSinceWater: 0,
+                ...clear
+            };
+        }
+
+        // Personal water consumption. One pint does not clear a gallon.
         let candidateItem = null;
         if (selectedItemId) {
             candidateItem = actor.items?.get(selectedItemId) ?? null;
@@ -309,33 +336,37 @@ export class SustenanceEngine {
             candidateItem = this.getCandidateWater(actor);
         }
 
-        if (candidateItem) {
-            const consumed = await consumeItem(actor, candidateItem.id, 1);
-            if (consumed > 0) {
-                await actor.setFlag(MODULE_ID, "restsSinceWater", 0);
-                return {
-                    drank: true,
-                    source: "inventory",
-                    itemName: candidateItem.name,
-                    unitsDeducted: consumed,
-                    dehydrated: false,
-                    restsSinceWater: 0
-                };
-            }
+        let consumed = 0;
+        if (candidateItem && needed > 0) {
+            consumed = await consumeItem(actor, candidateItem.id, needed);
         }
 
-        // Dehydration: no water available or selected
+        const band = dehydrationOutcome(consumed, needed);
+        if (!band.dehydrationAutoFail && band.dehydrationSaveDC === 0) {
+            await actor.setFlag(MODULE_ID, "restsSinceWater", 0);
+            return {
+                drank: true,
+                source: consumed > 0 ? "inventory" : "none",
+                itemName: candidateItem?.name ?? "",
+                unitsDeducted: consumed,
+                dehydrated: false,
+                restsSinceWater: 0,
+                ...band
+            };
+        }
+
         const currentRests = Number(actor.getFlag(MODULE_ID, "restsSinceWater") ?? 0);
         const newRests = currentRests + 1;
         await actor.setFlag(MODULE_ID, "restsSinceWater", newRests);
 
         return {
-            drank: false,
-            source: "none",
-            itemName: "",
-            unitsDeducted: 0,
+            drank: consumed > 0,
+            source: consumed > 0 ? "inventory" : "none",
+            itemName: candidateItem?.name ?? "",
+            unitsDeducted: consumed,
             dehydrated: true,
-            restsSinceWater: newRests
+            restsSinceWater: newRests,
+            ...band
         };
     }
 }

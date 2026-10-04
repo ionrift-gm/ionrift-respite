@@ -144,3 +144,77 @@ export function addPint(pours, itemId, name, img) {
     }
     return next;
 }
+
+/**
+ * One click is one pour, kept as its own layer so it can come off in one step.
+ * @param {object[]} pours
+ * @param {string} itemId
+ * @param {string} name
+ * @param {string} img
+ * @param {number} count
+ */
+export function addPints(pours, itemId, name, img, count) {
+    const n = Math.max(0, Math.floor(Number(count) || 0));
+    const next = clonePours(pours);
+    if (!n) return next;
+    next.push({ itemId, name: name || "", img: img || null, pints: n });
+    return next;
+}
+
+/** Drop the most recent pour, not a single pint. */
+export function removeLastPour(pours) {
+    const next = clonePours(pours);
+    next.pop();
+    return next;
+}
+
+/**
+ * Take the last click off a night's water, or empty the glass.
+ * `waterPours` is the pint count of each click. If it does not match the
+ * filled ids, the trailing run of the same source comes off instead.
+ * @param {string[]} water
+ * @param {number[]} pourSizes
+ * @param {"pour"|"all"} mode
+ */
+export function undoWaterAssignment(water, pourSizes, mode) {
+    const filled = (Array.isArray(water) ? water : []).filter(value => value && value !== "skip");
+    if (mode === "all" || filled.length === 0) return { water: [], waterPours: [] };
+    const sizes = (Array.isArray(pourSizes) ? pourSizes : [])
+        .map(count => Math.floor(Number(count) || 0))
+        .filter(count => count > 0);
+    const sum = sizes.reduce((total, count) => total + count, 0);
+    if (sizes.length && sum === filled.length) {
+        const last = sizes.pop();
+        return { water: filled.slice(0, filled.length - last), waterPours: sizes };
+    }
+    const id = filled[filled.length - 1];
+    let cut = filled.length;
+    while (cut > 0 && filled[cut - 1] === id) cut -= 1;
+    return { water: filled.slice(0, cut), waterPours: [] };
+}
+
+/**
+ * Fill ratio for one day's glass. `pints` is the expanded stack, empty cells included.
+ * @param {object[]} pints
+ */
+export function waterGlassFromPints(pints) {
+    const list = Array.isArray(pints) ? pints : [];
+    const need = list.length;
+    let filled = 0;
+    let surface = null;
+    for (const pint of list) {
+        if (!pint?.filled) continue;
+        filled += 1;
+        surface = pint;
+    }
+    return {
+        need,
+        filled,
+        fillPercent: need > 0 ? Math.round((filled / need) * 100) : 0,
+        showHalf: need > 1,
+        sourceClass: surface?.sourceClass || "",
+        surfaceName: surface?.name || "",
+        canUndo: filled > 0,
+        canEmpty: filled > 0
+    };
+}

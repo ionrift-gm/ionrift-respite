@@ -21,10 +21,10 @@ export const SPOILED_FOOD_TEMPLATE = {
 
 
 export const MEAL_DEFAULTS = {
-    waterPerDay: 2,
+    waterPerDay: 8, // 1 gallon
     foodPerDay: 1,
     dehydrationDC: 15,
     foodGraceDays: null, // null = 3 + CON mod (calculated per character)
-    maxWaterPerDay: 4,
+    maxWaterPerDay: 16, // hot weather, 2 gallons
     maxFoodPerDay: 3
 };

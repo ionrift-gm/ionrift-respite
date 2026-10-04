@@ -5,6 +5,7 @@ import { DecisionTreeResolver } from "../../../../services/events/resolve/Decisi
 import { getPartyActors } from "../../../../services/party/partyActors.js";
 import { ItemClassifier } from "../../../../services/party/ItemClassifier.js";
 import { getActorMealNeeds } from "../../../../services/meal/phase/MealContextBuilder.js";
+import { MEAL_DEFAULTS } from "../../../../services/meal/inventory/MealConstants.js";
 import { buildWaterOptions } from "../../../../services/meal/phase/MealOptionBuilder.js";
 import { TerrainRegistry } from "../../../../services/events/resolve/TerrainRegistry.js";
 import { getActiveRestSessionApp, registerRestSessionApp } from "../../../../services/rest/session/RestSessionSync.js";
@@ -779,7 +780,7 @@ export class RestSetupDebugJumps {
         const days = Math.max(0, app._campLogistics?._foodDaysNeeded ?? 7);
         const terrainTag = app._terrainTag ?? "forest";
         const mealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules
-            ?? { foodPerDay: 1, waterPerDay: 2 };
+            ?? { foodPerDay: MEAL_DEFAULTS.foodPerDay, waterPerDay: MEAL_DEFAULTS.waterPerDay };
 
         for (const actor of actors) {
             app._budgetDelegate.clearDays(actor.id, "other");
@@ -804,7 +805,7 @@ export class RestSetupDebugJumps {
 
             const needs = getActorMealNeeds(actor, mealRules);
             const foodNeed = days * Math.max(1, needs?.foodPerDay ?? 1);
-            const waterNeed = days * Math.max(0, needs?.waterPerDay ?? 2);
+            const waterNeed = days * Math.max(0, needs?.waterPerDay ?? MEAL_DEFAULTS.waterPerDay);
             await RestSetupDebugJumps.#topUpProvision(actor, {
                 name: "Rations",
                 needed: foodNeed,

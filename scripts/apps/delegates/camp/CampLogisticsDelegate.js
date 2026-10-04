@@ -12,6 +12,11 @@ import { Logger } from "../../../utils/Logger.js";
  * @param {string|null|undefined} fireLevel
  * @returns {number}
  */
+/** A normal overnight is one day. A gritty week opens at seven. */
+export function defaultFoodDaysNeeded(isGrittyLong) {
+    return isGrittyLong ? 7 : 1;
+}
+
 export function fireEncounterDcNudge(fireLevel) {
     if (!fireLevel) return 0;
     const stored = CampGearScanner.FIRE_ENCOUNTER_MOD_BY_LEVEL[fireLevel];

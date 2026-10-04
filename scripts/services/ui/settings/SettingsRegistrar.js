@@ -229,11 +229,11 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "maxWaterPerDayCap", {
         name: "Max Water Needs Cap",
-        hint: "Maximum water units required per character per day across all conditions and terrain.",
+        hint: "Maximum pints required per character per day across all conditions and terrain.",
         scope: "world",
         config: false,
         type: Number,
-        default: 4,
+        default: 16,
         restricted: true
     });
 
@@ -763,8 +763,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         name: "UI Theme",
         hint: "Choose between Ionrift Glass (translucent frosted glass) or Gilded Slate (opaque panel).",
         scope: "client",
-        config: true,
-        restricted: true,
+        config: false,
         type: String,
         choices: {
             "glass": "Ionrift Glass (Translucent)",
@@ -894,8 +893,8 @@ export function registerItemEnrichments() {
         },
 
         "waterskin": {
-            html: `<hr><p><strong>Respite:</strong> Consumed during the <strong>Meal Phase</strong> of a long rest. Each character requires 1 waterskin per day (desert and arid terrains require 2). Dehydration is tracked separately from hunger and triggers a CON save. Waterskins are automatically decremented during the rest flow.</p>`,
-            tags: ["Meal Phase (1/day)", "Dehydration Tracking"]
+            html: `<hr><p><strong>Respite:</strong> Used during the <strong>Meal Phase</strong> of a long rest. Each remaining use is <strong>1 pint</strong>. A full waterskin holds 4. A character needs <strong>8 pints</strong> a day (1 gallon); desert needs <strong>16</strong>. Half that amount calls for a <strong>DC 15 Constitution save</strong>. Less than half is exhaustion, with no save. The rest spends those uses and leaves the waterskin on the sheet.</p>`,
+            tags: ["8 pints/day", "Dehydration Tracking"]
         },
 
         "herbalism kit": {
