@@ -2060,11 +2060,13 @@ export class RestPrepareContext {
             campScan: campScanData,
             comfortEnabled: isComfortEnabled(),
             isFireLit: (app._fireLevel ?? "unlit") !== "unlit" && !app._coldCampDecided,
-            bannerFireClass: (app._phase === "dawn" || app._phase === "resolve")
-                ? "is-fire-lit"
-                : ImageResolver.bannerFireClass(
-                    app._coldCampDecided ? "cold_camp" : (app._fireLevel ?? "unlit")
-                ),
+            bannerFireClass: (app._phase === "camp" || app._phase === "activity" || app._phase === "meal")
+                ? ImageResolver.bannerFireClass(
+                    (app._coldCampDecided || app._isCampColdCampPreview?.())
+                        ? "cold_camp"
+                        : (app._fireLevel ?? "unlit")
+                )
+                : "is-fire-lit",
             canProceedFromCamp: canProceedFromMakeCamp,
             canProceedFromMakeCamp,
             proceedBlockedHint,
