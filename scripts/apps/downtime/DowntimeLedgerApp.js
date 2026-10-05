@@ -3309,7 +3309,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
             fireTierOptions,
             fireTiers: fireTierOptions,
             fireLevel: currentFire,
-            bannerFireClass: ImageResolver.bannerFireClass(currentFire),
+            bannerFireClass: "is-fire-lit",
             rosterSummary,
             partyReadiness,
             characterReady: Boolean(characters.find(c => c.id === this._selectedCharacterId)?.isReady),
