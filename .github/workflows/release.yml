@@ -164,7 +164,7 @@ jobs:
 
       - name: Zip Module
         run: |
-          zip -r module.zip . -x ".git/*" ".github/*" ".gitignore" ".gitattributes" "RELEASE_WORKFLOW.md" "task.md" "package.json" "package-lock.json" "node_modules/*" "scripts/tests/*" "data/professions/*" "packs/src/*" "assets/items/forage/*" "assets/screenshots/pure/promo/*" "assets/tokens/*" "*.bak" "audit_*.json" "audit_*.txt" "audit_*.js" "docs/*.gif" "docs/*.mp4" "docs/*.webm" "SETUP_GUIDE.md" "TEST_SCENARIOS.md" "BACKLOG.md" "pack-items.mjs" "pack-actors.mjs" "tests/*" "vitest*" ".eslintrc*" "tools/*" "ionrift-testharness/*" ".build/*"
+          zip -r module.zip . -x ".git/*" ".github/*" ".gitignore" ".gitattributes" "RELEASE_WORKFLOW.md" "task.md" "package.json" "package-lock.json" "node_modules/*" "scripts/tests/*" "data/professions/*" "packs/src/*" "assets/items/forage/*" "assets/screenshots/*" "assets/tokens/*" "*.bak" "audit_*.json" "audit_*.txt" "audit_*.js" "docs/*.gif" "docs/*.mp4" "docs/*.webm" "SETUP_GUIDE.md" "TEST_SCENARIOS.md" "BACKLOG.md" "pack-items.mjs" "pack-actors.mjs" "tests/*" "vitest*" ".eslintrc*" "tools/*" "ionrift-testharness/*" ".build/*"
 
       - name: Smoke test release ZIP
         run: |
@@ -176,6 +176,15 @@ jobs:
             exit 1
           fi
           echo "OK: Release ZIP contains entry point ($ENTRY)"
+          if [ -d assets/screenshots ]; then
+            echo "::error::assets/screenshots must not ship in the release ZIP"
+            exit 1
+          fi
+          if grep -qiE 'youtu\.?be' README.md 2>/dev/null; then
+            echo "::error::README embeds or links a video"
+            exit 1
+          fi
+          echo "OK: No screenshots or video embeds in release ZIP"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
