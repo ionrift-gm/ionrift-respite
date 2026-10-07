@@ -153,8 +153,8 @@
 ## [3.3.10] - 2026-07-19
 
 ### Changed
-- Optional cooking item icons apply automatically when Core Cooking Art files are present under `ionrift-data/overlays/ionrift-respite/cooking-art/`. No art toggle in settings.
-- Camp art pack prompts moved out of Respite. Placeholders remain until Core Art is unzipped locally.
+- Optional cooking item icons apply automatically when cooking art files are present under `ionrift-data/overlays/ionrift-respite/cooking-art/`. No art toggle in settings.
+- Camp art pack prompts moved out of Respite. Placeholders remain until art is unzipped locally.
 
 ## [3.3.9] - 2026-07-14
 
@@ -515,8 +515,8 @@
 ## [2.0.2] - 2026-05-03
 
 ### Fixed
-- The art pack nudge and Content Packs screen incorrectly linked to a Patreon-gated collection. The core art pack is free; all download links now point to the public post.
-- Pack registry marked the core art pack as Acolyte tier. Corrected to Free.
+- The art pack nudge and Content Packs screen link corrected to the public post.
+- Pack registry marked the art pack as Acolyte tier. Corrected to Free.
 
 ## [2.0.1] - 2026-05-03
 
