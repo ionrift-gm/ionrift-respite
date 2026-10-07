@@ -21,7 +21,7 @@ data/wanderers_pack/
 # Unreleased data (not shipped in current version)
 data/professions/
 data/core/forage/
-data/core/events/mountain_events.json
+data/core/events/
 
 # Node / dev tooling
 node_modules/

@@ -19,7 +19,6 @@ import {
 } from "../../data/RestConstants.js";
 import { CARD_FADED_HINTS, clipToCardHint } from "../../data/activityCardHint.js";
 import { MODULE_ID } from "../../data/moduleId.js";
-import { applyWatchAlertPhrase, presentCombatModifiers } from "../../services/rest/flow/WatchAlertBenefit.js";
 import { getFletchingTierLabel } from "../../services/crafting/settings/FletchingSettings.js";
 
 /**
@@ -190,7 +189,7 @@ export function buildActivityDetailContext(activityId, activity, actor, partySta
     const outcomeHints = [];
     for (const tier of ["success", "exceptional", "failure"]) {
         for (const eff of (activity.outcomes?.[tier]?.effects ?? [])) {
-            if (eff.description) outcomeHints.push({ text: applyWatchAlertPhrase(eff.description), type: tier });
+            if (eff.description) outcomeHints.push({ text: eff.description, type: tier });
         }
     }
     if (activityId === "act_fletch" && !outcomeHints.length) {
@@ -239,7 +238,7 @@ export function buildActivityDetailContext(activityId, activity, actor, partySta
         followUpData,
         armorHint,
         armorWarning,
-        combatModifiers:  presentCombatModifiers(activity.combatModifiers),
+        combatModifiers:  activity.combatModifiers,
         isCrafting:       !!activity.crafting?.enabled,
         characterId:      actor?.id ?? null
     };

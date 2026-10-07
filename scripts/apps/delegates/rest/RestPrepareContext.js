@@ -30,7 +30,6 @@ import {
 import { getPartyActors } from "../../../services/party/partyActors.js";
 import * as RestAfkState from "../../../services/rest/session/RestAfkState.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
-import { applyWatchAlertPhrase, presentCombatModifiers } from "../../../services/rest/flow/WatchAlertBenefit.js";
 import { SpoilageClock } from "../../../services/meal/spoilage/SpoilageClock.js";
 import { normalizeBeverageClass, sendoffFromPlaced } from "../../../services/meal/phase/MealOptionBuilder.js";
 import { waterGlassFromPints } from "../../../services/meal/phase/SustenanceEditPlan.js";
@@ -260,7 +259,7 @@ export class RestPrepareContext {
                     }
                 }
                 if (act.outcomes?.success?.effects?.length) {
-                    lines.push(act.outcomes.success.effects.map(e => applyWatchAlertPhrase(e.description)).join(". "));
+                    lines.push(act.outcomes.success.effects.map(e => e.description).join(". "));
                 }
                 if (act.outcomes?.success?.items?.length) {
                     lines.push(act.outcomes.success.items.map(i => {
@@ -293,7 +292,7 @@ export class RestPrepareContext {
                     isDisabled: false,
                     check: act.check ?? null,
                     outcomes: act.outcomes ?? null,
-                    combatModifiers: presentCombatModifiers(act.combatModifiers),
+                    combatModifiers: act.combatModifiers,
                     followUp: act.followUp ?? null,
                     armorSleepWaiver: act.armorSleepWaiver ?? false,
 
@@ -319,7 +318,7 @@ export class RestPrepareContext {
                     isDisabled: true,
                     isFaded: true,
                     fadedHint: act.fadedHint,
-                    combatModifiers: presentCombatModifiers(act.combatModifiers),
+                    combatModifiers: act.combatModifiers,
                     followUp: act.followUp ?? null,
                     armorSleepWaiver: act.armorSleepWaiver ?? false
                 };
@@ -2078,9 +2077,11 @@ export class RestPrepareContext {
                 const poolCount = countPoolEventsForTerrain(app._eventResolver, terrainTag);
                 const terrain = TerrainRegistry.get(terrainTag);
                 const nightWatch = resolveNightWatchMode(app._eventsMode ?? "random", poolCount);
+                const noEventsInstalled = poolCount === 0 && app._installedEventCounts?.[terrainTag] === 0;
                 return {
                     eventPoolCount: poolCount,
-                    showEventPoolNudge: encountersEnabled && app._shouldShowEventPoolNudge(terrainTag),
+                    noEventsInstalled,
+                    showEventPoolNudge: encountersEnabled && !noEventsInstalled && app._shouldShowEventPoolNudge(terrainTag),
                     eventPoolTerrainLabel: terrain?.label ?? terrainTag,
                     eventsMode: nightWatch.effectiveMode,
                     eventsModePickAvailable: nightWatch.eventsModePickAvailable,
@@ -2091,6 +2092,7 @@ export class RestPrepareContext {
                 };
             })() : {
                 eventPoolCount: null,
+                noEventsInstalled: false,
                 showEventPoolNudge: false,
                 eventPoolTerrainLabel: "",
                 eventsMode: "random",

@@ -6,7 +6,7 @@
     "img": "icons/consumables/food/fish-fillet-steak-brown.webp",
     "system": {
         "description": {
-            "value": "<p>Fish fillets dried and smoked over a low fire. Keeps well on the road.</p>"
+            "value": "<p>Smoked fish with a deep color, smells good, ready to eat</p>"
         },
         "rarity": "common",
         "weight": 0.5,

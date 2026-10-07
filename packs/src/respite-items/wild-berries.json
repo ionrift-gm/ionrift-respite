@@ -6,7 +6,7 @@
     "img": "icons/consumables/food/berries-ration-round-red.webp",
     "system": {
         "description": {
-            "value": "<p>A pouch of tart wild berries gathered from bushes and hedgerows. Edible raw, better cooked into preserves.</p>"
+            "value": "<p>Wild berries, make sure you wash the bugs off</p>"
         },
         "rarity": "common",
         "weight": 0.1,

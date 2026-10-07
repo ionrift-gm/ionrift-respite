@@ -14,6 +14,5 @@
     },
     "mealRules": { "waterPerDay": 8, "foodPerDay": 1, "note": "Water and basic food are generally available in towns." },
     "weather": ["clear", "overcast", "fog", "rain", "heavy_rain", "thunderstorm", "snow", "extreme_heat"],
-    "eventsFile": "core/events/urban_events.json",
     "travelActivities": []
 }

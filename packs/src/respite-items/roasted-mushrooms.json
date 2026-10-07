@@ -6,7 +6,7 @@
     "img": "icons/consumables/mushrooms/bell-shiitake-brown.webp",
     "system": {
         "description": {
-            "value": "<p>Mushrooms sliced and roasted over coals until golden. Simple, satisfying camp fare.</p>"
+            "value": "<p>Roasted mushrooms sizzling and ready to eat</p>"
         },
         "rarity": "common",
         "weight": 0.3,

@@ -13,7 +13,6 @@ import {
     getFletchingTierLabel
 } from "../../services/crafting/settings/FletchingSettings.js";
 import {
-    TRAINING_GUIDE_PAGE_ID,
     TRAINING_XP_TIER_MAX,
     getTrainingTier,
     getTrainingTierLabel
@@ -24,11 +23,6 @@ import {
     CAMP_FUEL_FIND_MIN_PERCENT
 } from "../../services/travel/settings/TravelSettings.js";
 import { shouldShowBrewingAlcoholSetting } from "../../services/crafting/settings/BrewingAlcoholSettings.js";
-import {
-    WATCH_ALERT_BONUS_DEFAULT,
-    WATCH_ALERT_BONUS_MAX,
-    WATCH_ALERT_BONUS_MIN
-} from "../../services/rest/flow/WatchAlertBenefit.js";
 import { MODULE_ID } from "../../data/moduleId.js";
 
 const TIER_SLIDER_META = {
@@ -37,8 +31,7 @@ const TIER_SLIDER_META = {
         max: TRAINING_XP_TIER_MAX,
         getValue: getTrainingTier,
         getLabel: getTrainingTierLabel,
-        rowClass: "activity-config-row--training",
-        guideAction: "openTrainingGuide"
+        rowClass: "activity-config-row--training"
     },
     fletchingYieldTier: {
         min: 0,
@@ -86,30 +79,6 @@ const ACTIVITY_TOGGLES = [
         icon: "fas fa-shield-alt",
         hint: "Watch, defenses, and the night encounter roll.",
         type: "boolean"
-    },
-    {
-        key: "watchAlertMode",
-        label: "Watch alert",
-        icon: "fas fa-user-shield",
-        hint: "How Keep Watch states the alert on the combat readiness card. Cannot be surprised, advantage, or a flat bonus to rolls.",
-        type: "select",
-        choices: {
-            immune: "Cannot be surprised",
-            advantage: "Advantage",
-            bonus: "Bonus to rolls"
-        },
-        requiresEncounters: true
-    },
-    {
-        key: "watchAlertBonus",
-        label: "Bonus to rolls",
-        icon: "fas fa-plus",
-        hint: "The number added to rolls when Watch alert is a bonus.",
-        type: "number",
-        min: WATCH_ALERT_BONUS_MIN,
-        max: WATCH_ALERT_BONUS_MAX,
-        requiresEncounters: true,
-        requiresWatchBonus: true
     },
     {
         key: "fletchingYieldTier",
@@ -191,11 +160,6 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
     /** @override */
     async _prepareContext() {
         const foragingOn = !!game.settings.get(MODULE_ID, "enableForaging");
-        const encountersOn = !!game.settings.get(MODULE_ID, "enableEncounters");
-        const storedWatchMode = game.settings.get(MODULE_ID, "watchAlertMode");
-        const watchMode = storedWatchMode === "advantage" || storedWatchMode === "bonus"
-            ? storedWatchMode
-            : "immune";
         const showBrewingAlcohol = await shouldShowBrewingAlcoholSetting();
 
         const resolveBooleanRow = (row) => {
@@ -232,19 +196,6 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
                 if (entry.type === "tierSlider") {
                     const meta = TIER_SLIDER_META[entry.key];
                     return { ...entry, ...meta, value: meta.getValue() };
-                }
-                if (entry.type === "select" || entry.type === "number") {
-                    const disabled = (entry.requiresEncounters && !encountersOn)
-                        || (entry.requiresWatchBonus && watchMode !== "bonus");
-                    let value = game.settings.get(MODULE_ID, entry.key);
-                    if (entry.type === "select" && !entry.choices[value]) value = "immune";
-                    if (entry.type === "number") {
-                        const parsed = Number(value);
-                        value = Number.isFinite(parsed)
-                            ? Math.min(entry.max, Math.max(entry.min, Math.round(parsed)))
-                            : WATCH_ALERT_BONUS_DEFAULT;
-                    }
-                    return { ...entry, value, disabled };
                 }
                 return {
                     ...entry,
@@ -303,10 +254,6 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
                     <div class="activity-config-label${labelClass}">
                         ${asSub ? "" : `<i class="${row.icon} activity-config-icon"></i>`}
                         ${row.label}
-                        ${row.guideAction === "openTrainingGuide" ? `
-                        <a href="#" class="activity-config-guide-link" data-action="openTrainingGuide" title="Open Training guide">
-                            <i class="fas fa-book-open"></i> Guide
-                        </a>` : ""}
                     </div>
                     <div class="activity-config-hint">${row.hint}</div>
                 </div>
@@ -399,18 +346,6 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
                 <span class="activity-config-range-val" data-key="${row.key}">${row.value}%</span>
             </div>`;
         }
-        if (row.type === "select") {
-            const disabled = row.disabled ? " disabled" : "";
-            const options = Object.entries(row.choices)
-                .map(([k, v]) => `<option value="${k}" ${row.value === k ? "selected" : ""}>${v}</option>`)
-                .join("");
-            return `<select class="activity-config-select" data-key="${row.key}"${disabled}>${options}</select>`;
-        }
-        if (row.type === "number") {
-            const disabled = row.disabled ? " disabled" : "";
-            return `<input type="number" class="activity-config-number" data-key="${row.key}"
-                min="${row.min}" max="${row.max}" step="1" value="${row.value}"${disabled} />`;
-        }
         return "";
     }
 
@@ -421,12 +356,6 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
 
     _wireEvents(el) {
         el.querySelector(".activity-config-save-btn")?.addEventListener("click", () => this._onSave(el));
-
-        el.querySelector('[data-action="openTrainingGuide"]')?.addEventListener("click", (ev) => {
-            ev.preventDefault();
-            ev.stopPropagation();
-            game.ionrift?.respite?.openPlayerGuide?.(TRAINING_GUIDE_PAGE_ID);
-        });
 
         const syncTravelGroup = () => {
             const foragingCb = el.querySelector('.activity-config-cb[data-key="enableForaging"]');
@@ -443,30 +372,6 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
         el.querySelector('.activity-config-cb[data-key="enableForaging"]')
             ?.addEventListener("change", syncTravelGroup);
         syncTravelGroup();
-
-        const syncWatchAlert = () => {
-            const encountersOn = !!el.querySelector('.activity-config-cb[data-key="enableEncounters"]')?.checked;
-            const mode = el.querySelector('.activity-config-select[data-key="watchAlertMode"]')?.value ?? "immune";
-            const modeRow = el.querySelector('.activity-config-row[data-key="watchAlertMode"]');
-            const modeInput = modeRow?.querySelector(".activity-config-select");
-            const bonusRow = el.querySelector('.activity-config-row[data-key="watchAlertBonus"]');
-            const bonusInput = bonusRow?.querySelector(".activity-config-number");
-            if (modeRow && modeInput) {
-                modeRow.classList.toggle("activity-config-row--disabled", !encountersOn);
-                modeInput.disabled = !encountersOn;
-            }
-            if (bonusRow && bonusInput) {
-                const bonusOff = !encountersOn || mode !== "bonus";
-                bonusRow.classList.toggle("activity-config-row--disabled", bonusOff);
-                bonusInput.disabled = bonusOff;
-            }
-        };
-
-        el.querySelector('.activity-config-cb[data-key="enableEncounters"]')
-            ?.addEventListener("change", syncWatchAlert);
-        el.querySelector('.activity-config-select[data-key="watchAlertMode"]')
-            ?.addEventListener("change", syncWatchAlert);
-        syncWatchAlert();
 
         el.querySelectorAll(".activity-config-range").forEach(range => {
             range.addEventListener("input", () => {
@@ -503,18 +408,6 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
             } else if (row.type === "tierSlider") {
                 const range = el.querySelector(`.activity-config-range[data-key="${row.key}"]`);
                 if (range) await game.settings.set(MODULE_ID, row.key, Number(range.value));
-            } else if (row.type === "select") {
-                const sel = el.querySelector(`.activity-config-select[data-key="${row.key}"]`);
-                if (sel) await game.settings.set(MODULE_ID, row.key, sel.value);
-            } else if (row.type === "number") {
-                const input = el.querySelector(`.activity-config-number[data-key="${row.key}"]`);
-                if (input) {
-                    const parsed = Number(input.value);
-                    const value = Number.isFinite(parsed)
-                        ? Math.min(row.max, Math.max(row.min, Math.round(parsed)))
-                        : WATCH_ALERT_BONUS_DEFAULT;
-                    await game.settings.set(MODULE_ID, row.key, value);
-                }
             }
         }
         ui.notifications.info("Activity and provision settings saved.");

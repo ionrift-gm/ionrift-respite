@@ -1,33 +1,20 @@
 import { TerrainRegistry } from "../resolve/TerrainRegistry.js";
 import { MODULE_ID } from "../../../data/moduleId.js";
+import { loadInstalledEvents } from "./InstalledEventSource.js";
 
 /**
  * Loads the full event catalog for curation and migration.
- * Includes released terrains, imported packs, and overlay packs.
+ * Includes installed overlay events and imported event files. The module
+ * itself ships no events, so with nothing installed this returns [].
  *
  * @returns {Promise<object[]>}
  */
 export async function loadAllCatalogEvents() {
     await TerrainRegistry.init();
 
-    // Overlay first so dedupeById (first wins) prefers Core pack / follower
-    // overlay copies over baked-in module JSON during the grace window.
-    const events = [];
-    try {
-        const { OverlayEventLoader } = await import("../../packs/overlays/OverlayEventLoader.js");
-        const overlayPacks = await OverlayEventLoader.loadAll();
-        for (const { data } of overlayPacks) {
-            for (const evt of (data.events ?? [])) {
-                events.push(evt);
-            }
-        }
-    } catch (e) {
-        console.warn(`${MODULE_ID} | EventCatalogLoader: overlay loading failed:`, e);
-    }
-
-    for (const evt of await TerrainRegistry.loadReleasedEvents()) {
-        events.push(evt);
-    }
+    // Overlay first so dedupeById (first wins) prefers overlay copies over
+    // imported duplicates of the same pack.
+    const events = [...await loadInstalledEvents()];
 
     const importedPacks = game.settings.get(MODULE_ID, "importedPacks") ?? {};
     for (const packData of Object.values(importedPacks)) {

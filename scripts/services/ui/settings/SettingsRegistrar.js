@@ -360,32 +360,6 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
         restricted: true
     });
 
-    game.settings.register(MODULE_ID, "watchAlertMode", {
-        name: "Watch Alert",
-        hint: "How Keep Watch states the alert benefit. Cannot be surprised, advantage, or a flat bonus to rolls.",
-        scope: "world",
-        config: false,
-        type: String,
-        default: "immune",
-        choices: {
-            immune: "Cannot be surprised",
-            advantage: "Advantage",
-            bonus: "Bonus to rolls"
-        },
-        restricted: true
-    });
-
-    game.settings.register(MODULE_ID, "watchAlertBonus", {
-        name: "Watch Alert Bonus",
-        hint: "The number added to rolls when Watch alert is a bonus.",
-        scope: "world",
-        config: false,
-        type: Number,
-        default: 2,
-        range: { min: 1, max: 20, step: 1 },
-        restricted: true
-    });
-
     game.settings.register(MODULE_ID, "enableCopySpell", {
         name: "Copy Spell Activity",
         hint: "Show Copy Spell on long rests for wizards with a spellbook.",
@@ -1000,8 +974,6 @@ export const SETTING_KEYS = [
     "fletchingYieldTier",
     "fletchingYieldTierMigrated",
     "enableEncounters",
-    "watchAlertMode",
-    "watchAlertBonus",
     "enableCopySpell",
     "enablePrayMeditate",
     "enableForaging",

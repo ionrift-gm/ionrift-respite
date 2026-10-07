@@ -13,6 +13,5 @@
         "nat20":   ["An ancient stone platform, hidden by mist.", "A druid's grove, warded and dry.", "A hollow cypress trunk, spacious and concealed."]
     },
     "mealRules": { "waterPerDay": 8, "foodPerDay": 1 },
-    "weather": ["clear", "overcast", "fog", "rain", "heavy_rain", "thunderstorm"],
-    "eventsFile": "core/events/swamp_events.json"
+    "weather": ["clear", "overcast", "fog", "rain", "heavy_rain", "thunderstorm"]
 }

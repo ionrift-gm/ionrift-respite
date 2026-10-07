@@ -7,7 +7,6 @@ import { isPrayMeditateEnabled } from "../services/rest/flow/ActivityResolver.js
 import { isForagingEnabled, isHuntingEnabled } from "../services/travel/settings/TravelSettings.js";
 import { MODULE_ID } from "./moduleId.js";
 import { clipCardHintName } from "./activityCardHint.js";
-import { watchAlertCardClause } from "../services/rest/flow/WatchAlertBenefit.js";
 
 /**
  * Weather master table. `encounterDC` raises the night check when positive.
@@ -131,7 +130,7 @@ export function getActivityAdvisory(activityId, actor, partyState) {
                 return { text: "No one on watch", urgent: true };
             if (watchers >= 2)
                 return { text: `${watchers} already on watch`, urgent: false };
-            return { text: `+3 initiative, ${watchAlertCardClause()}`, urgent: false, cardOnly: true };
+            return { text: "+3 initiative, +1 party initiative", urgent: false, cardOnly: true };
         }
         case "act_tend_wounds": {
             const injured = partyState.injuredMembers.filter(m => m.id !== actor.id);

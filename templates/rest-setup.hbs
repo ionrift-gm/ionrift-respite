@@ -2248,12 +2248,20 @@
             <div class="event-name">Night Watch</div>
 
             {{#if encountersEnabled}}
+            {{#if noEventsInstalled}}
+            {{#if isGM}}
+            <div class="nw-pick-summary nw-no-events-installed">
+                <i class="fas fa-feather-alt"></i>
+                <span>No events installed for this terrain. Improvise, or add your own event files.</span>
+            </div>
+            {{/if}}
+            {{/if}}
             <div class="nw-mode-selector" role="tablist" aria-label="How does the night unfold?">
                 <button type="button" class="nw-mode-tab {{#if eventsModeIsRandom}}is-active{{/if}}"
                     role="tab" aria-selected="{{#if eventsModeIsRandom}}true{{else}}false{{/if}}"
                     data-action="setEventsMode" data-mode="random"
                     {{#if eventsCommitPending}}disabled{{/if}}
-                    data-tooltip="{{#if eventsModeRandomAvailable}}Roll against the threshold to draw from the curated terrain pool.{{else}}No events in the curated pool for this terrain. Curate the pool first.{{/if}}"
+                    data-tooltip="{{#if eventsModeRandomAvailable}}Roll against the threshold to draw from the curated terrain pool.{{else if noEventsInstalled}}No events installed for this terrain.{{else}}No events in the curated pool for this terrain. Curate the pool first.{{/if}}"
                     {{#unless eventsModeRandomAvailable}}disabled{{/unless}}>
                     <i class="fas fa-dice-d20 nw-mode-icon"></i>
                     <span class="nw-mode-label">Random</span>
@@ -2270,7 +2278,7 @@
                     role="tab" aria-selected="{{#if eventsModeIsPick}}true{{else}}false{{/if}}"
                     data-action="setEventsMode" data-mode="pick"
                     {{#if eventsCommitPending}}disabled{{/if}}
-                    data-tooltip="{{#if eventsModePickAvailable}}Select a specific event, bypassing the threshold check.{{else}}No events in the curated pool for this terrain. Curate the pool first.{{/if}}"
+                    data-tooltip="{{#if eventsModePickAvailable}}Select a specific event, bypassing the threshold check.{{else if noEventsInstalled}}No events installed for this terrain.{{else}}No events in the curated pool for this terrain. Curate the pool first.{{/if}}"
                     {{#unless eventsModePickAvailable}}disabled{{/unless}}>
                     <i class="fas fa-book-open nw-mode-icon"></i>
                     <span class="nw-mode-label">Pick from pool</span>

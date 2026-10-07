@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.2.0] - 2026-10-07
+
+### Changed
+- Night events and camp disasters are discovered from installed event files rather than bundled with the module.
+- Removed bundled guide journals.
+- Keep Watch now grants initiative bonuses.
+- Updated activity, station, and camp item descriptions.
+
 ## [4.1.1] - 2026-10-07
 
 ### Changed

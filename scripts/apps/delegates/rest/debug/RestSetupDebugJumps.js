@@ -8,6 +8,7 @@ import { getActorMealNeeds } from "../../../../services/meal/phase/MealContextBu
 import { MEAL_DEFAULTS } from "../../../../services/meal/inventory/MealConstants.js";
 import { buildWaterOptions } from "../../../../services/meal/phase/MealOptionBuilder.js";
 import { TerrainRegistry } from "../../../../services/events/resolve/TerrainRegistry.js";
+import { findInstalledDisaster, findInstalledEvent } from "../../../../services/events/catalog/InstalledEventSource.js";
 import { getActiveRestSessionApp, registerRestSessionApp } from "../../../../services/rest/session/RestSessionSync.js";
 import { createExhaustionEntry } from "../../../../services/rest/recovery/ExhaustionStage.js";
 import { ResourceSink } from "../../../../services/rest/recovery/ResourceSink.js";
@@ -219,11 +220,9 @@ export class RestSetupDebugJumps {
             app._characterChoices.set(id, "act_keep_watch");
         }
 
-        const resp = await fetch("modules/ionrift-respite/data/core/events/camp_disasters.json");
-        const data = await resp.json();
-        const flood = data.events.find(e => e.id === "evt_disaster_flash_flood");
+        const flood = await findInstalledDisaster({ preferId: "evt_disaster_flash_flood", terrainTag });
         if (!flood) {
-            ui.notifications.error("Flash Flood event not found in camp_disasters.json");
+            ui.notifications.warn("No camp disaster events installed.");
             return;
         }
 
@@ -656,9 +655,7 @@ export class RestSetupDebugJumps {
             app._characterChoices?.set?.(actor.id, "act_keep_watch");
         }
 
-        const resp = await fetch("modules/ionrift-respite/data/core/events/camp_disasters.json");
-        const data = await resp.json();
-        const flood = data.events.find(e => e.id === "evt_disaster_flash_flood");
+        const flood = await findInstalledEvent("evt_disaster_flash_flood");
         const outcome = flood?.mechanical?.options
             ?.find(o => o.id === "move_high")?.onSuccess;
         if (!outcome?.effects?.length) {

@@ -6,7 +6,7 @@
     "img": "icons/consumables/food/bowl-stew-brown.webp",
     "system": {
         "description": {
-            "value": "<p>A thick stew made with fresh game meat and field rations. Proper camp cooking that feeds the whole party.</p>"
+            "value": "<p>A thick stew made with anything you can rustle up</p>"
         },
         "rarity": "common",
         "weight": 1,

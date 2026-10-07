@@ -6,7 +6,7 @@
     "img": "icons/consumables/meat/steak-raw-red-pink.webp",
     "system": {
         "description": {
-            "value": "<p>A cut of raw game meat from a recent hunt. Needs cooking before it is safe to eat.</p>"
+            "value": "<p>Freshly butchered game meat</p>"
         },
         "rarity": "common",
         "weight": 1,

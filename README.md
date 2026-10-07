@@ -52,8 +52,7 @@ When Gritty Realism is active, rest flows adapt automatically:
    - **Identify Spell.** Casters scan party inventory. Follows 2024 RAW rules where Wizards with Ritual Adept cast from unmemorized spellbooks.
    - **Focus.** Physical examination.
    - **Taste.** Potion identification.
-5. **Events.** Terrain-specific random tables resolving across four outcome tiers (Triumph, Success, Mixed, Failure) with GM force controls.
-6. **Resolution.** Scales HP, Hit Die, and exhaustion recovery to camp comfort and meal status.
+5. **Resolution.** Scales HP, Hit Die, and exhaustion recovery to camp comfort and meal status.
 
 ---
 
@@ -117,7 +116,7 @@ Configurable under **Game Settings > Module Settings > Ionrift Respite**:
 
 Source code (scripts, styles, templates) is released under the [MIT License](./LICENSE).
 
-Event narratives, terrain data, and item descriptions in `data/` are copyright Ionrift and may not be extracted or redistributed separately.
+Terrain data and item descriptions in `data/` are copyright Ionrift and may not be extracted or redistributed separately.
 
 ---
 
