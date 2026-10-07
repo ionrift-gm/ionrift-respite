@@ -71,10 +71,10 @@
             <i class="fas fa-users-slash"></i>
             {{#if (eq emptyPartyReason 'no_primary_party')}}
             <p>No primary party detected.</p>
-            <p>A party group exists in this world but is not designated as the primary party. In the Actors sidebar, right-click the Group actor and choose <strong>Make Primary Party</strong>, then add your characters to it.</p>
+            <p>A party group exists in this world but is not the primary party. In the Actors sidebar, right-click the Group actor and choose <strong>Make Primary Party</strong>, then add your characters to it.</p>
             {{else if (eq emptyPartyReason 'primary_party_empty')}}
             <p>Primary party has no characters.</p>
-            <p>Open the primary party group and drag player characters onto it, or add members from the Members tab.</p>
+            <p>Open the primary party group and drag player characters onto it.</p>
             <button type="button" class="btn-primary respite-empty-party-action" onclick="game.ionrift?.library?.party?.openNativeManagement?.() ?? ui.notifications.warn('Party management requires ionrift-library.');">
                 <i class="fas fa-users"></i> Open Primary Party
             </button>
@@ -348,7 +348,7 @@
             {{#if mapComfortLine}}
             <p class="totm-camp-comfort-reason">{{mapComfortLine}}</p>
             {{/if}}
-            <p class="totm-camp-no-selection">Select a character portrait above to see their personal comfort breakdown.</p>
+            <p class="totm-camp-no-selection">Select a character portrait above to see their personal comfort.</p>
             {{/if}}
 
         </div>
@@ -1063,7 +1063,7 @@
                 A terrible omen. Choose how the night unfolds.
             </div>
             {{#if isGM}}
-            <p class="disaster-guidance">Pick one outcome. A disaster event is a branching scene of skill checks, a combat encounter pulls a monster into camp, and the lighter option runs one or more ordinary events. Dismiss if the night should simply pass.</p>
+            <p class="disaster-guidance">Pick one outcome. A disaster event is a branching scene of skill checks, a combat encounter is as implied, and the lighter option runs one or more ordinary (non-combat) events. Dismiss if the night should simply pass.</p>
             <div class="disaster-options count-{{disasterChoice.optionCount}}">
                 {{#if disasterChoice.tree}}
                 <div class="disaster-option-card tree">
@@ -2084,7 +2084,7 @@
                 {{#if (eq resolvedOutcome "triumph")}}
                 <div class="event-resolution pass">
                     <div class="event-resolution-verdict"><i class="fas fa-shield-alt"></i> Check Passed</div>
-                    <div class="event-resolution-narrative">The party rises to the occasion.</div>
+                    <div class="event-resolution-narrative">The party takes the challenge head on.</div>
                 </div>
                 {{else if (eq resolvedOutcome "success")}}
                 <div class="event-resolution pass">

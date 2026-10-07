@@ -574,11 +574,11 @@
                 </div>
                 {{/each}}
             </div>
-            <p class="station-fire-tier-footnote">Larger fires make the camp easier for enemies to spot. Bonfire can move camp comfort up one step when the scene allows it. Reducing the fire discards spent firewood with no refund.</p>
+            <p class="station-fire-tier-footnote">Larger fires make the camp easier for enemies to spot. Bonfire can move camp comfort up one step. Reducing the fire discards spent firewood with no refund.</p>
         </div>
         {{#if fireTabContext.campFirewoodPledgeList.length}}
         <div class="station-fire-pledge-block">
-            <div class="station-fire-pledge-title">Wood pledged (Make Camp)</div>
+            <div class="station-fire-pledge-title">Wood pile (Make Camp)</div>
             {{#each fireTabContext.campFirewoodPledgeList}}<div class="camp-firewood-pledge-row"><i class="fas fa-check"></i> <span>{{actorName}}: {{count}} firewood</span></div>{{/each}}
         </div>
         {{/if}}
@@ -829,7 +829,7 @@
         {{#if (or allDaysConsumed playerSubmitted)}}
         <div class="station-meal-rations-done-lead" role="status">
             <i class="fas fa-check-circle" aria-hidden="true"></i>
-            <p>Food and water for this rest are already submitted. The status below is read-only.</p>
+            <p>Food and water for this rest are already submitted. Status below is read-only.</p>
         </div>
         <div class="meal-summary-status">
             <span class="meal-summary-stat {{#if foodSufficient}}stat-ok{{else}}stat-warn{{/if}}">

@@ -78,7 +78,7 @@
                         <option value="{{value}}" {{#if (eq value ../resourceType)}}selected{{/if}}>{{label}}</option>
                         {{/each}}
                     </select>
-                    <p class="respite-field-hint">Auto-detect uses item type and name. Inedible forces Respite to completely ignore this item.</p>
+                    <p class="respite-field-hint">Auto-detect uses item type and name. 'Inedible' forces Respite to completely ignore this item.</p>
                 </div>
 
                 <div class="respite-field-row">
@@ -88,7 +88,7 @@
                         <option value="{{value}}" {{#if (eq value ../foodTag)}}selected{{/if}}>{{label}}</option>
                         {{/each}}
                     </select>
-                    <p class="respite-field-hint">Defines dietary compatibility. Prepared meals and rations are accepted by all character diets.</p>
+                    <p class="respite-field-hint">Defines diet. Prepared meals and rations are accepted by all character diets.</p>
                 </div>
 
                 <div class="respite-field-row">
@@ -98,7 +98,7 @@
                         <option value="{{value}}" {{#if (eq value ../drinkType)}}selected{{/if}}>{{label}}</option>
                         {{/each}}
                     </select>
-                    <p class="respite-field-hint">Used for drinking liquids, distinguishing water from ferments and oils.</p>
+                    <p class="respite-field-hint">Used for drinking liquids, differentiate water from alcoholic drinks and oils.</p>
                 </div>
 
                 <div class="respite-field-row respite-field-row--card">

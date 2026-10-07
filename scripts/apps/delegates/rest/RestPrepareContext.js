@@ -2723,7 +2723,7 @@ function buildMealCommit(app) {
 
     const sendoff = sendoffBuffSummary
         ? { hasBuff: true, itemName: sendoffItemName, buffSummary: sendoffBuffSummary }
-        : { hasBuff: false, text: "Sates only · No buff into the next day." };
+        : { hasBuff: false, text: "Sates only (No buff into the next day)." };
 
     const countMap = (arr) => {
         const map = new Map();

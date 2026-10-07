@@ -106,7 +106,7 @@ export async function hasAlcoholicOverlayBrewRecipes() {
 }
 
 /**
- * Whether Travel & Activities should show Alcoholic Ferments.
+ * Whether Travel & Activities should show Alcoholic drinks.
  * True when Craft Professions Pack is present, or any ferment / alcohol
  * recipe exists in overlay or homebrew catalogues.
  * @returns {Promise<boolean>}
