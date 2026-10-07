@@ -6,7 +6,7 @@
     "img": "icons/consumables/food/preserves-jam-jelly-jar-brown-red.webp",
     "system": {
         "description": {
-            "value": "<p>Wild berries boiled down into a sweet, sticky preserve. Stores well and tastes better than it looks.</p>"
+            "value": "<p>Berries and fruits made into jam</p>"
         },
         "rarity": "common",
         "weight": 0.5,

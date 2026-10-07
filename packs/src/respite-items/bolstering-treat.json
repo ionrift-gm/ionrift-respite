@@ -6,7 +6,7 @@
     "img": "icons/consumables/food/berries-ration-round-red.webp",
     "system": {
         "description": {
-            "value": "<p>A small baked treat from a Chef. Eat as a bonus action to gain temporary hit points equal to the cook's proficiency bonus. Spoils after 8 hours.</p>"
+            "value": "<p>Small chefs treat, bonus action to gain temp HP</p>"
         },
         "rarity": "common",
         "weight": 0.1,

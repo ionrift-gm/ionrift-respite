@@ -120,57 +120,6 @@ export function createRespiteContext(runtime) {
             RespiteLog.log(`UI theme set to: ${next}`);
             return next;
         },
-        openPlayerGuide: async (pageId) => {
-            const GUIDE_PAGES = {
-                player: "aQc3PtQPrYDi9Mlx",
-                gm: "dvr4TYdYmX88MCCf",
-                cooking: "cK8pRQdW2nFb4Xvj",
-                training: "mN8kTrXpGmRef001",
-            };
-            const GUIDE_JOURNALS = {
-                player: "1Zh2gDQ1xOLFUrhW",
-                gm: "hG4mR3fRespGuide01",
-            };
-
-            const isGM = game.user?.isGM;
-            let packName;
-            let journalId;
-            let focusPageId;
-
-            if (!isGM) {
-                packName = `${MODULE_ID}.respite-guide`;
-                journalId = GUIDE_JOURNALS.player;
-                focusPageId = pageId === GUIDE_PAGES.cooking
-                    ? GUIDE_PAGES.cooking
-                    : GUIDE_PAGES.player;
-            } else if (!pageId || pageId === GUIDE_PAGES.gm || pageId === GUIDE_PAGES.training) {
-                packName = `${MODULE_ID}.respite-guide-gm`;
-                journalId = GUIDE_JOURNALS.gm;
-                focusPageId = pageId === GUIDE_PAGES.training ? GUIDE_PAGES.training : GUIDE_PAGES.gm;
-            } else {
-                packName = `${MODULE_ID}.respite-guide`;
-                journalId = GUIDE_JOURNALS.player;
-                focusPageId = pageId;
-            }
-
-            const pack = game.packs.get(packName);
-            if (!pack) {
-                ui.notifications?.warn("Respite: guide compendium not available.");
-                return;
-            }
-            try {
-                const journal = await pack.getDocument(journalId);
-                if (!journal) {
-                    ui.notifications?.warn("Respite: guide journal not found in compendium.");
-                    return;
-                }
-                const opts = focusPageId ? { pageId: focusPageId } : {};
-                journal.sheet.render(true, opts);
-            } catch (e) {
-                console.warn(`${MODULE_ID} | Failed to open player guide:`, e);
-                ui.notifications?.error("Respite: failed to open the player guide. See console.");
-            }
-        },
         forceEncounter: () => {
             if (!game.user.isGM) return;
             if (!runtime.activeRestSetupApp) {

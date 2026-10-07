@@ -15,6 +15,10 @@ import { MEAL_DEFAULTS } from "../../meal/inventory/MealConstants.js";
  *
  * Consumers (RestSetupApp, PackRegistryApp, module.js) use this registry
  * instead of hardcoded arrays and objects.
+ *
+ * Terrains carry mechanics only. Night events, disasters, and roll tables
+ * come from installed overlays via InstalledEventSource; a terrain with no
+ * installed events still works and simply has an empty pool.
  */
 
 /** Prefer library bag; local fallback for vitest / library-not-ready. */
@@ -380,56 +384,6 @@ export class TerrainRegistry {
             travelAvailable: TerrainRegistry.isTravelAvailable(tag),
             mealRules: t.mealRules ?? { waterPerDay: MEAL_DEFAULTS.waterPerDay, foodPerDay: MEAL_DEFAULTS.foodPerDay }
         };
-    }
-
-    /**
-     * Get the events file path for a terrain, relative to the module data directory.
-     * @param {string} tag
-     * @returns {string|null}
-     */
-    static getEventsPath(tag) {
-        const t = this.get(tag);
-        if (!t?.eventsFile) return null;
-        return `modules/${MODULE_ID}/data/${t.eventsFile}`;
-    }
-
-    /**
-     * Load event objects from camp disasters and each released terrain's eventsFile.
-     * Shared by Event Browser and Pack Registry so scans stay aligned with manifest.released.
-     *
-     * @param {{ includeCampDisasters?: boolean }} [options]
-     * @returns {Promise<object[]>}
-     */
-    static async loadReleasedEvents(options = {}) {
-        const { includeCampDisasters = true } = options;
-        await this.init();
-        const events = [];
-        const seenPaths = new Set();
-
-        const appendFromPath = async (path) => {
-            if (!path || seenPaths.has(path)) return;
-            seenPaths.add(path);
-            try {
-                const resp = await fetch(path);
-                if (!resp.ok) return;
-                const data = await resp.json();
-                for (const evt of (data.events ?? [])) {
-                    events.push(evt);
-                }
-            } catch (e) {
-                console.warn(`${MODULE_ID} | TerrainRegistry: Failed to load events from ${path}:`, e);
-            }
-        };
-
-        if (includeCampDisasters) {
-            await appendFromPath(`modules/${MODULE_ID}/data/core/events/camp_disasters.json`);
-        }
-
-        for (const terrain of this.getAll()) {
-            await appendFromPath(this.getEventsPath(terrain.id));
-        }
-
-        return events;
     }
 
     /**

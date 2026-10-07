@@ -3,7 +3,7 @@
         "id": "act_keep_watch",
         "name": "Keep Watch",
         "professions": [],
-        "description": "Stand guard over the camp. Stay awake and alert so the party is not caught off guard. A safe, reliable choice.",
+        "description": "Watch over the camp while the party rests.",
         "restTypes": [
             "long",
             "short"
@@ -12,22 +12,21 @@
         "check": null,
         "outcomes": {
             "success": {
-                "narrative": "You keep a vigilant watch. The camp is protected.",
+                "narrative": "Kept watch over the camp",
                 "items": [],
                 "effects": [
                     {
                         "type": "initiative_bonus",
                         "value": 3,
-                        "description": "+3 initiative, immune to surprise. Party gains +1 initiative if the alarm sounds."
+                        "description": "You get +3 initiative, party gets +1 if the camp is attacked"
                     }
                 ]
             }
         },
         "combatModifiers": {
             "initiative": 3,
-            "surpriseImmune": true,
             "partyInitiative": 1,
-            "description": "+3 initiative, cannot be surprised. Party gains +1 initiative (alarm)."
+            "description": "You get +3 initiative, party gets +1 if the camp is attacked"
         },
         "armorSleepWaiver": true,
         "category": "camp"
@@ -36,7 +35,7 @@
         "id": "act_rest_fully",
         "name": "Rest Fully",
         "professions": [],
-        "description": "Focus entirely on recovery. Sleep deeply and let your body heal.",
+        "description": "Focus on rest only to gain comfort",
         "restTypes": [
             "long",
             "short"
@@ -45,25 +44,24 @@
         "check": null,
         "outcomes": {
             "success": {
-                "narrative": "A deep, uninterrupted rest. You feel restored.",
+                "narrative": "Your sleep was more comfortable",
                 "items": [],
                 "effects": [
                     {
                         "type": "comfort_boost",
-                        "description": "Effective comfort level increased by one tier for personal recovery."
+                        "description": "Personal Comfort level +1"
                     },
                     {
                         "type": "bonus_hd",
                         "value": 1,
-                        "description": "Recover one additional Hit Die from deep, uninterrupted sleep."
+                        "description": "Gained +1 HD by focusing on rest"
                     }
                 ]
             }
         },
         "combatModifiers": {
             "initiativeDisadvantage": true,
-            "surpriseDisadvantage": true,
-            "description": "Disadvantage on initiative and surprise saves. Deep sleep."
+            "description": "Disadvantage on initiative rolls if attacked (Deep sleep)"
         },
         "category": "active"
     },
@@ -73,7 +71,7 @@
         "professions": [
             "cook"
         ],
-        "description": "Prepare a meal from available ingredients. View recipes, choose your risk level, and cook.",
+        "description": "Make meals (if you have ingredients)",
         "restTypes": [
             "long"
         ],
@@ -92,13 +90,13 @@
         "check": null,
         "outcomes": {
             "success": {
-                "narrative": "You prepare a simple meal from your supplies.",
+                "narrative": "You made a meal",
                 "items": [],
                 "effects": []
             }
         },
         "combatModifiers": {
-            "description": "Normal readiness. Near the fire, reasonably alert."
+            "description": "No change"
         },
         "category": "profession"
     },
@@ -109,7 +107,7 @@
             "brewer",
             "alchemist"
         ],
-        "description": "Steep and mix trail drinks from foraged ingredients. View recipes, choose your risk level, and brew. Distinct from cooking meals.",
+        "description": "Make drinks from ingredients",
         "restTypes": [
             "long"
         ],
@@ -130,13 +128,13 @@
         "check": null,
         "outcomes": {
             "success": {
-                "narrative": "You steep what you have into something drinkable.",
+                "narrative": "You make teas from ingredients",
                 "items": [],
                 "effects": []
             }
         },
         "combatModifiers": {
-            "description": "Normal readiness. Near the fire, reasonably alert."
+            "description": "No change"
         },
         "category": "profession"
     },
@@ -149,7 +147,7 @@
             "glassblower",
             "mason"
         ],
-        "description": "Work raw materials into something functional.",
+        "description": "Make materials or ingredients into something more useful",
         "restTypes": [
             "long"
         ],
@@ -173,18 +171,18 @@
         },
         "outcomes": {
             "success": {
-                "narrative": "Your hands know the work. A serviceable piece takes shape.",
+                "narrative": "You made something from your crafting",
                 "items": [],
                 "effects": []
             },
             "exceptional": {
                 "threshold": 20,
-                "narrative": "Inspired work. This piece has real quality.",
+                "narrative": "You made something special from your craft",
                 "items": [],
                 "effects": []
             },
             "failure": {
-                "narrative": "The material resists. Nothing usable comes from the effort.",
+                "narrative": "You failed to make anything useful this time",
                 "items": [],
                 "effects": []
             }
@@ -199,7 +197,7 @@
             "weaver",
             "leatherworker"
         ],
-        "description": "Cut and stitch materials into useful gear. View patterns, choose your risk level, and sew.",
+        "description": "Make cloth themed alterations, buffs and fixes",
         "restTypes": [
             "long"
         ],
@@ -219,13 +217,13 @@
         "check": null,
         "outcomes": {
             "success": {
-                "narrative": "You mend and stitch what you can from available materials.",
+                "narrative": "You craft something useful from the materials",
                 "items": [],
                 "effects": []
             }
         },
         "combatModifiers": {
-            "description": "Normal readiness. Hands busy but aware."
+            "description": "No change"
         },
         "category": "profession"
     },
@@ -233,7 +231,7 @@
         "id": "act_tend_wounds",
         "name": "Tend Wounds",
         "professions": [],
-        "description": "Patch up an injured companion. Immediate healing before encounters, and boosts the target's recovery tier for the rest.",
+        "description": "Help make a party member more comfortable, and give them some immediate HP in case a fight breaks out before morning",
         "restTypes": [
             "long",
             "short"
@@ -252,37 +250,37 @@
         },
         "outcomes": {
             "success": {
-                "narrative": "Your steady hands ease the pain. Your companion rests easier tonight.",
+                "narrative": "You helped comfort an injured party member",
                 "items": [],
                 "effects": [
                     {
                         "type": "immediate_heal",
-                        "description": "Target recovers one Hit Die worth of HP now, before encounters."
+                        "description": "Your ally recovers 1 HD now, before any fights"
                     },
                     {
                         "type": "target_comfort_boost",
-                        "description": "Target's effective comfort increased by one tier for rest recovery."
+                        "description": "Ally gets +1 personal comfort"
                     }
                 ]
             },
             "failure": {
-                "narrative": "You do your best, but the wounds are stubborn. A little help is better than none.",
+                "narrative": "Sadly, your attempts to comfort and heal your ally fail",
                 "items": [],
                 "effects": [
                     {
                         "type": "immediate_heal_partial",
-                        "description": "Target recovers a small amount of HP (your Wisdom modifier)."
+                        "description": "Ally recovers some HP (Wis mod)"
                     }
                 ]
             }
         },
         "followUp": {
             "type": "partyMember",
-            "label": "Who are you tending?",
+            "label": "Who will you help?",
             "filter": "injured"
         },
         "combatModifiers": {
-            "description": "Normal readiness. Awake and attentive."
+            "description": "No change to alertness"
         },
         "category": "recovery"
     },
@@ -290,7 +288,7 @@
         "id": "act_tell_tales",
         "name": "Tell Tales",
         "professions": [],
-        "description": "Share stories around the fire. Keep spirits up. Remind the party why they are here.",
+        "description": "Share stories, cook on sticks, whittle some carvings",
         "restTypes": [
             "long"
         ],
@@ -308,34 +306,34 @@
         },
         "outcomes": {
             "success": {
-                "narrative": "The stories land. Laughter and warmth fill the camp.",
+                "narrative": "The party is comforted by the stories.",
                 "items": [],
                 "effects": [
                     {
                         "type": "inspiration",
-                        "description": "One party member gains Inspiration."
+                        "description": "Ally gains inspiration"
                     }
                 ]
             },
             "exceptional": {
                 "threshold": 18,
-                "narrative": "A tale for the ages. The party hangs on every word.",
+                "narrative": "The party listens to every word as you string together a tale.",
                 "items": [],
                 "effects": [
                     {
                         "type": "inspiration_all",
-                        "description": "All party members gain Inspiration."
+                        "description": "Everyone gains inspiration"
                     }
                 ]
             },
             "failure": {
-                "narrative": "Tough crowd tonight.",
+                "narrative": "Your words fall flat, No one gains inspiration",
                 "items": [],
                 "effects": []
             }
         },
         "combatModifiers": {
-            "description": "Normal readiness. Around the fire, socially alert."
+            "description": "No change to readiness"
         },
         "category": "active"
     },
@@ -343,7 +341,7 @@
         "id": "act_pray",
         "name": "Pray / Meditate",
         "professions": [],
-        "description": "Commune with your faith or centre your focus. Find clarity in silence.",
+        "description": "Meditate on what's important to you",
         "restTypes": [
             "long",
             "short"
@@ -364,25 +362,25 @@
         },
         "outcomes": {
             "success": {
-                "narrative": "Peace settles over you. Your resolve hardens.",
+                "narrative": "You meditate in comfort with success",
                 "items": [],
                 "effects": [
                     {
                         "type": "temp_hp",
                         "value": 3,
-                        "description": "Gain temporary hit points equal to your proficiency bonus."
+                        "description": "You gain temp HP (+prof)"
                     }
                 ]
             },
             "failure": {
-                "narrative": "The silence is just silence tonight.",
+                "narrative": "Your meditation provides no resolution",
                 "items": [],
                 "effects": []
             }
         },
         "combatModifiers": {
             "initiativeDisadvantage": true,
-            "description": "Disadvantage on initiative. Deep focus, slow to break."
+            "description": "Disadvantage on initiative rolls for rest interruption"
         },
         "category": "active"
     },
@@ -390,7 +388,7 @@
         "id": "act_fletch",
         "name": "Fletch Arrows",
         "professions": [],
-        "description": "Whittle sticks and bind feathers to replenish your ammunition supply.",
+        "description": "Repair broken arrows, whittle new ones with what you can find",
         "restTypes": [
             "long"
         ],
@@ -407,7 +405,7 @@
         },
         "outcomes": {
             "success": {
-                "narrative": "Steady hands and sharp edges. You add to the quiver.",
+                "narrative": "You repair and craft some more ammo",
                 "items": [
                     {
                         "itemRef": "followUp",
@@ -415,32 +413,56 @@
                             "arrows": "Arrow",
                             "bolts": "Crossbow Bolt"
                         },
-                            "itemDataMap": {
-                                "arrows": { "name": "Arrow", "type": "consumable", "img": "icons/weapons/ammunition/arrow-head-war-flight.webp", "system": { "type": { "value": "ammo" } } },
-                                "bolts": { "name": "Crossbow Bolt", "type": "consumable", "img": "icons/weapons/ammunition/bolt-tip-engraved.webp", "system": { "type": { "value": "ammo" } } }
+                        "itemDataMap": {
+                            "arrows": {
+                                "name": "Arrow",
+                                "type": "consumable",
+                                "img": "icons/weapons/ammunition/arrow-head-war-flight.webp",
+                                "system": {
+                                    "type": {
+                                        "value": "ammo"
+                                    }
+                                }
                             },
+                            "bolts": {
+                                "name": "Crossbow Bolt",
+                                "type": "consumable",
+                                "img": "icons/weapons/ammunition/bolt-tip-engraved.webp",
+                                "system": {
+                                    "type": {
+                                        "value": "ammo"
+                                    }
+                                }
+                            }
+                        },
                         "quantity": "2d4+prof"
                     }
                 ],
                 "effects": []
             },
             "failure": {
-                "narrative": "The shafts split. Nothing usable tonight.",
+                "narrative": "Sadly, no whole arrows could be made",
                 "items": [],
                 "effects": []
             }
         },
         "followUp": {
             "type": "radio",
-            "label": "What are you making?",
+            "label": "What will you make?",
             "options": [
-                { "value": "arrows", "label": "Arrows" },
-                { "value": "bolts", "label": "Crossbow Bolts" }
+                {
+                    "value": "arrows",
+                    "label": "Arrows"
+                },
+                {
+                    "value": "bolts",
+                    "label": "Bolts"
+                }
             ],
             "default": "arrows"
         },
         "combatModifiers": {
-            "description": "Normal readiness. Hands busy but aware."
+            "description": "No Change to readiness"
         },
         "category": "active"
     },
@@ -448,7 +470,7 @@
         "id": "act_defenses",
         "name": "Set Up Defenses",
         "professions": [],
-        "description": "Secure the camp. Set tripwires, cover tracks, mask signs of the fire, and use the terrain to your advantage. Less likely to draw attention.",
+        "description": "Set some defenses, trip wires and traps to hamper enemy approach.",
         "restTypes": [
             "long"
         ],
@@ -468,25 +490,25 @@
         "group": true,
         "outcomes": {
             "success": {
-                "narrative": "Tripwires set, sight lines cleared. The camp is harder to approach unnoticed.",
+                "narrative": "Your traps look well set",
                 "items": [],
                 "effects": [
                     {
                         "type": "encounter_reduction",
                         "value": 2,
-                        "description": "Encounter threshold reduced by 2. Party gains +1 initiative if combat starts."
+                        "description": "Success: -2 to Encounter DC and +1 party initiative."
                     }
                 ]
             },
             "failure": {
-                "narrative": "The terrain works against you. Your preparations feel inadequate.",
+                "narrative": "The traps settle poorly or position wrong, they will give no benefit this time",
                 "items": [],
                 "effects": []
             }
         },
         "combatModifiers": {
             "partyInitiativeOnSuccess": 1,
-            "description": "On success: party gains +1 initiative (tripwire warning)."
+            "description": "Success: +1 to party initiative"
         },
         "armorSleepWaiver": true,
         "category": "camp"
@@ -496,7 +518,7 @@
         "name": "Examine & Identify",
         "professions": [],
         "minor": true,
-        "description": "Examine mysterious items, focus on magic properties, or cast Identify.",
+        "description": "Detect and examine items through focus or identify.",
         "restTypes": [
             "long",
             "short"
@@ -505,12 +527,12 @@
         "check": null,
         "outcomes": {
             "success": {
-                "narrative": "You trace arcane sigils over each item, and their secrets reveal themselves.",
+                "narrative": "You're able to reveal the magical nature of the item",
                 "items": [],
                 "effects": [
                     {
                         "type": "identify_items",
-                        "description": "Ritual casting reveals the properties of magical items."
+                        "description": "Ritual casting reveals magical items"
                     }
                 ]
             }
@@ -523,7 +545,7 @@
         "disabled": true,
         "name": "Attune Item",
         "professions": [],
-        "description": "Focus on a magical item to form a bond with it. Requires concentration during a rest period.",
+        "description": "Focus on a magical item to attune to it",
         "restTypes": [
             "long",
             "short"
@@ -534,24 +556,24 @@
         "check": null,
         "followUp": {
             "type": "actorItem",
-            "label": "Which item are you attuning?",
+            "label": "Which item will you attune to?",
             "filter": "attuneable"
         },
         "outcomes": {
             "success": {
-                "narrative": "You meditate on the item, feeling its resonance align with yours. Attunement complete.",
+                "narrative": "You attune to the item",
                 "items": [],
                 "effects": [
                     {
                         "type": "attune_item",
-                        "description": "Attune to a magical item during the rest."
+                        "description": "Attune to an item while you rest"
                     }
                 ]
             }
         },
         "combatModifiers": {
             "initiativeDisadvantage": true,
-            "description": "Disadvantage on initiative. Meditation focus."
+            "description": "Meditating will cause disadvantage on any night time initiative rolls"
         },
         "category": "arcane"
     },
@@ -559,7 +581,7 @@
         "id": "act_scribe",
         "name": "Copy Spell",
         "professions": [],
-        "description": "Transcribe a spell from a scroll or borrowed spellbook into your own. Costs 50gp per spell level in fine inks. If copying from a scroll, the scroll is consumed regardless of success.",
+        "description": "Copy a spell from a book or scroll to your own spell book. Cost gold regardless of success.",
         "restTypes": [
             "long"
         ],
@@ -575,46 +597,72 @@
         },
         "followUp": {
             "type": "select",
-            "label": "Spell level being copied",
+            "label": "Spell level to copy",
             "default": "1",
             "options": [
-                { "value": "1", "label": "Level 1: 50gp, DC 11" },
-                { "value": "2", "label": "Level 2: 100gp, DC 12" },
-                { "value": "3", "label": "Level 3: 150gp, DC 13" },
-                { "value": "4", "label": "Level 4: 200gp, DC 14" },
-                { "value": "5", "label": "Level 5: 250gp, DC 15" },
-                { "value": "6", "label": "Level 6: 300gp, DC 16" },
-                { "value": "7", "label": "Level 7: 350gp, DC 17" },
-                { "value": "8", "label": "Level 8: 400gp, DC 18" },
-                { "value": "9", "label": "Level 9: 450gp, DC 19" }
+                {
+                    "value": "1",
+                    "label": "Level 1: 50gp, DC 11"
+                },
+                {
+                    "value": "2",
+                    "label": "Level 2: 100gp, DC 12"
+                },
+                {
+                    "value": "3",
+                    "label": "Level 3: 150gp, DC 13"
+                },
+                {
+                    "value": "4",
+                    "label": "Level 4: 200gp, DC 14"
+                },
+                {
+                    "value": "5",
+                    "label": "Level 5: 250gp, DC 15"
+                },
+                {
+                    "value": "6",
+                    "label": "Level 6: 300gp, DC 16"
+                },
+                {
+                    "value": "7",
+                    "label": "Level 7: 350gp, DC 17"
+                },
+                {
+                    "value": "8",
+                    "label": "Level 8: 400gp, DC 18"
+                },
+                {
+                    "value": "9",
+                    "label": "Level 9: 450gp, DC 19"
+                }
             ]
         },
         "outcomes": {
             "success": {
-                "narrative": "You study the unfamiliar notation, deciphering its meaning. The spell takes shape in your book, written in your own hand.",
+                "narrative": "You successfully scribe the scroll into your own spell book",
                 "items": [],
                 "effects": [
                     {
                         "type": "copy_spell",
-                        "description": "A spell is transcribed into your spellbook. GM: charge 50gp per spell level and remove the source scroll if applicable."
+                        "description": "A spell is scribed into your own spell book. (GM should charge 50gp per spell level and scroll should be destroyed)"
                     }
                 ]
             },
             "failure": {
-                "narrative": "The notation resists your understanding. The inks and materials are consumed, but the spell eludes you. If copying from a scroll, the scroll is destroyed.",
+                "narrative": "You fail to scribe the spell into your book, the scroll, materials and effort is lost.",
                 "items": [],
                 "effects": [
                     {
                         "type": "copy_spell_failed",
-                        "description": "The attempt fails. Materials are spent. GM: charge 50gp per spell level regardless."
+                        "description": "The attempt fails. All materials, gold and effort are lost"
                     }
                 ]
             }
         },
         "combatModifiers": {
             "initiativeDisadvantage": true,
-            "surpriseDisadvantage": true,
-            "description": "Disadvantage on initiative and surprise saves. Deep arcane concentration."
+            "description": "Disadvantage on night time encounter initiative."
         },
         "category": "arcane"
     },
@@ -623,7 +671,7 @@
         "name": "Training",
         "professions": [],
         "category": "active",
-        "description": "Drill, study, or practice during a rest. Run through three sets, each a separate ability check (using your highest score) against DC 13. Every set that lands earns XP, and partial credit on the sets you miss. Consecutive rests spent training yield diminishing returns. Ineffective beyond level 5.",
+        "description": "Practice and train in your own way for small xp gains. (Useful if you're very close to leveling and low level, diminishing returns. Ineffective beyond level 5)",
         "restTypes": [
             "long"
         ],
@@ -638,31 +686,31 @@
         },
         "outcomes": {
             "success": {
-                "narrative": "Sweat drips as you run through form after form. Your body remembers what your mind forgets.",
+                "narrative": "Your training is rewarding and you feel invigorated.",
                 "items": [],
                 "effects": [
                     {
                         "type": "training_xp",
                         "value": 10,
-                        "description": "Gain 10 XP per set you land. Diminishing returns escalate on consecutive training rests; pick another activity to reset."
+                        "description": "Gain 10xp per set you land. (Diminishing returns if you repeat across rests, pick another activity to reset)"
                     }
                 ]
             },
             "failure": {
-                "narrative": "You push through the motions but can't find the edge. Still, the effort counts for something.",
+                "narrative": "Your training feels unrewarding",
                 "items": [],
                 "effects": [
                     {
                         "type": "training_xp",
                         "value": 3,
-                        "description": "Gain 3 XP for a set you fall short on. Partial gains despite missing the mark."
+                        "description": "Gain 3 XP for a partial gain."
                     }
                 ]
             }
         },
         "combatModifiers": {
             "initiative": 2,
-            "description": "+2 initiative. Already warmed up and physically active."
+            "description": "Readiness +2 initiative if interrupted during the night"
         },
         "diminishingReturns": {
             "perConsecutiveRest": -15,
@@ -675,7 +723,7 @@
         "id": "act_forage",
         "name": "Forage",
         "professions": [],
-        "description": "Scavenge the surrounding terrain for edible plants, wild herbs, kindling, and provisions.",
+        "description": "Scavenge and use survival skills to forage for useful items",
         "restTypes": [
             "long"
         ],
@@ -692,24 +740,24 @@
         },
         "outcomes": {
             "success": {
-                "narrative": "You scavenge edible roots, berries, and useful supplies from the wild.",
+                "narrative": "You find some useful items",
                 "items": [],
                 "effects": []
             },
             "exceptional": {
                 "threshold": 20,
-                "narrative": "A bountiful haul. You find abundant wild provisions and prime kindling.",
+                "narrative": "Your foraging brings great success",
                 "items": [],
                 "effects": []
             },
             "failure": {
-                "narrative": "The wilderness yields little of value.",
+                "narrative": "Your foraging efforts are not rewarded this time",
                 "items": [],
                 "effects": []
             }
         },
         "combatModifiers": {
-            "description": "Normal readiness. Aware of the surroundings."
+            "description": "No change to readiness"
         },
         "category": "camp"
     },
@@ -717,7 +765,7 @@
         "id": "act_hunt",
         "name": "Hunt",
         "professions": [],
-        "description": "Track and hunt wild game in the vicinity to secure fresh meat and provisions for camp.",
+        "description": "Hunt for prey and game.",
         "restTypes": [
             "long"
         ],
@@ -734,24 +782,24 @@
         },
         "outcomes": {
             "success": {
-                "narrative": "Your hunt is successful, bringing fresh game back to camp.",
+                "narrative": "Your hunt is successful",
                 "items": [],
                 "effects": []
             },
             "exceptional": {
                 "threshold": 20,
-                "narrative": "A clean takedown of prime game, securing a feast of fresh meat.",
+                "narrative": "You hunt a fine prize from the terrain",
                 "items": [],
                 "effects": []
             },
             "failure": {
-                "narrative": "Your quarry slips away into the brush.",
+                "narrative": "Your hunt is unrewarding",
                 "items": [],
                 "effects": []
             }
         },
         "combatModifiers": {
-            "description": "Normal readiness. Aware of the surroundings."
+            "description": "No change to readiness"
         },
         "category": "camp"
     },
@@ -759,7 +807,7 @@
         "id": "act_other",
         "name": "Other",
         "professions": [],
-        "description": "Spend the evening your own way. Socialise, journal, whittle, stargaze, or simply sit in companionable silence.",
+        "description": "Spend the rest activity on something not listed or just use as a skip",
         "restTypes": [
             "long",
             "short"
@@ -768,13 +816,13 @@
         "check": null,
         "outcomes": {
             "success": {
-                "narrative": "A quiet evening, spent on your own terms.",
+                "narrative": "You spend the evening on your own matters",
                 "items": [],
                 "effects": []
             }
         },
         "combatModifiers": {
-            "description": "Normal readiness. Present and aware."
+            "description": "No change to readiness"
         },
         "category": "active"
     }

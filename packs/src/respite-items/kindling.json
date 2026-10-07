@@ -6,7 +6,7 @@
     "img": "icons/commodities/wood/kindling-sticks-brown.webp",
     "system": {
         "description": {
-            "value": "<p>A bundle of dry twigs, bark strips, and wood shavings. Catches fire easily.</p>"
+            "value": "<p>A bundle of dry twigs</p>"
         },
         "rarity": "common",
         "weight": 0.5,

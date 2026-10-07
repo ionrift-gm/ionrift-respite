@@ -53,6 +53,7 @@ import { TerrainRegistry } from "../../services/events/resolve/TerrainRegistry.j
 import { EventResolver } from "../../services/events/resolve/EventResolver.js";
 import { pickPoolEvent } from "../events/AdHocEventDialogs.js";
 import { listPoolEventsForTerrain, loadAllCatalogEvents } from "../../services/events/catalog/EventCatalogLoader.js";
+import { loadInstalledEventsInto } from "../../services/events/catalog/InstalledEventSource.js";
 import { WEATHER_TABLE, getComfortTip } from "../../data/RestConstants.js";
 import { CampGearScanner } from "../../services/camp/gear/CampGearScanner.js";
 import { isComfortEnabled, boostComfort } from "../../services/camp/gear/ComfortCalculator.js";
@@ -506,24 +507,9 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 const allEvents = await loadAllCatalogEvents();
                 this._eventResolver.load([], allEvents);
 
-                // Load camp disasters
-                try {
-                    const disasterResp = await fetch(`modules/${MODULE_ID}/data/core/events/camp_disasters.json`);
-                    if (disasterResp.ok) {
-                        const disasters = await disasterResp.json();
-                        this._eventResolver.load(disasters.tables ?? [], disasters.events ?? []);
-                    }
-                } catch {}
-
-                // Load terrain-specific table/events if available
-                const path = TerrainRegistry.getEventsPath(this._terrainTag) ?? `modules/${MODULE_ID}/data/terrains/${this._terrainTag}/events.json`;
-                try {
-                    const resp = await fetch(path);
-                    if (resp.ok) {
-                        const data = await resp.json();
-                        this._eventResolver.load(data.tables ?? [], data.events ?? []);
-                    }
-                } catch {}
+                // Terrain roll table plus installed events and camp disasters.
+                // Nothing installed: the resolver stays empty and no disaster rolls fire.
+                await loadInstalledEventsInto(this._eventResolver, { terrainTag: this._terrainTag });
             } catch (err) {
                 Logger.warn(`${MODULE_ID} | Failed to load EventResolver in DowntimeLedgerApp:`, err);
             }

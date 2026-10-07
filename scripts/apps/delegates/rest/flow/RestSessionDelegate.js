@@ -8,6 +8,7 @@ import { RestFlowEngine } from "../../../../services/rest/flow/RestFlowEngine.js
 import { RestLedger } from "../../../../services/rest/flow/RestLedger.js";
 import { GatherYieldService } from "../../../../services/rest/forage/GatherYieldService.js";
 import { TerrainRegistry } from "../../../../services/events/resolve/TerrainRegistry.js";
+import { countInstalledEventsForTerrain, loadInstalledEventsInto } from "../../../../services/events/catalog/InstalledEventSource.js";
 import { CampGearScanner } from "../../../../services/camp/gear/CampGearScanner.js";
 import { isComfortEnabled } from "../../../../services/camp/gear/ComfortCalculator.js";
 import { notifyDetectMagicScanApplied } from "../../../../services/crafting/detectMagic/DetectMagicInventoryGlowBridge.js";
@@ -687,26 +688,9 @@ export class RestSessionDelegate {
             app._activities = activities;
             app._activityResolver.load(activities);
 
-            // Always load shared camp disasters (terrain-agnostic decision tree events)
-            const disasterResp = await fetch(`modules/${MODULE_ID}/data/core/events/camp_disasters.json`);
-            if (disasterResp.ok) {
-                const disasters = await disasterResp.json();
-                app._eventResolver.load(disasters.tables ?? [], disasters.events ?? []);
-            }
-
-            // Overlay Core (and followers) may ship disasters / shared events.
-            // Overlay wins on shared ids.
-            try {
-                const { OverlayEventLoader } = await import("../../../../services/packs/overlays/OverlayEventLoader.js");
-                const packs = await OverlayEventLoader.loadAll();
-                for (const { data } of packs) {
-                    if (data.events?.length) {
-                        app._eventResolver.load(data.tables ?? [], data.events);
-                    }
-                }
-            } catch (e) {
-                console.warn(`${MODULE_ID} | Overlay disaster/event merge failed:`, e);
-            }
+            // Night events and camp disasters come only from installed overlays.
+            // With none installed the resolver stays empty and no rolls fire.
+            await loadInstalledEventsInto(app._eventResolver);
 
             // Content packs: loaded from world storage via Import Pack workflow.
             // Packs are NOT Foundry modules. They are JSON files downloaded from
@@ -729,69 +713,32 @@ export class RestSessionDelegate {
     
     }
 
+    /**
+     * Loads installed overlay events and the roll table for one terrain.
+     * Records how many events are installed for the terrain so the events
+     * step can show an empty state instead of a curation prompt.
+     * @param {string} terrainTag
+     */
     async _loadTerrainEvents(terrainTag) {
         const app = this._app;
+        if (!terrainTag) return;
 
-        const alreadyHasTable = app._eventResolver.tables.has(terrainTag);
+        await this._loadTerrainEventsFromOverlay(terrainTag);
 
-        // Resolve path from TerrainRegistry manifest; fall back to convention
-        const path = TerrainRegistry.getEventsPath(terrainTag)
-            ?? `modules/${MODULE_ID}/data/terrains/${terrainTag}/events.json`;
-
-        let loadedModule = false;
-        if (!alreadyHasTable) {
-            try {
-                const resp = await fetch(path);
-                if (resp.ok) {
-                    const data = await resp.json();
-                    app._eventResolver.load(data.tables ?? [], data.events ?? []);
-                    loadedModule = true;
-                }
-            } catch (e) {
-                console.warn(`${MODULE_ID} | Failed to load module events for ${terrainTag}:`, e);
-            }
-        }
-
-        // Always merge overlay events (overlay wins on shared ids via Map.set).
-        const loadedOverlay = await this._loadTerrainEventsFromOverlay(terrainTag, { merge: true });
-
-        if (!alreadyHasTable && !loadedModule && !loadedOverlay) {
-            console.warn(`${MODULE_ID} | No event file for terrain: ${terrainTag}`);
-        }
+        try {
+            if (!app._installedEventCounts) app._installedEventCounts = {};
+            app._installedEventCounts[terrainTag] = await countInstalledEventsForTerrain(terrainTag);
+        } catch { /* count is advisory only */ }
     }
 
     /**
      * @param {string} terrainTag
-     * @param {{ merge?: boolean }} [options] When merge is true, load every matching
-     *   overlay pack (not stop at first). Used so Core + Wanderers both contribute.
-     * @returns {Promise<boolean>}
+     * @returns {Promise<boolean>} True when any installed overlay offered events for the terrain.
      */
-    async _loadTerrainEventsFromOverlay(terrainTag, options = {}) {
-        const app = this._app;
-        const merge = options.merge === true;
-
-        try {
-            const { OverlayEventLoader } = await import("../../../../services/packs/overlays/OverlayEventLoader.js");
-            const packs = await OverlayEventLoader.loadAll();
-            let any = false;
-            for (const { data } of packs) {
-                const matching = (data.events ?? []).filter(
-                    e => e.terrainTags?.includes(terrainTag)
-                );
-                if (!matching.length) continue;
-                const tables = (data.tables ?? []).filter(
-                    t => !t.terrainTag || t.terrainTag === terrainTag
-                );
-                app._eventResolver.load(tables, matching);
-                any = true;
-                Logger.log(`${MODULE_ID} | Loaded overlay events for terrain: ${terrainTag}`);
-                if (!merge) return true;
-            }
-            return any;
-        } catch (e) {
-            console.warn(`${MODULE_ID} | Overlay event lookup failed for ${terrainTag}:`, e);
-        }
-        return false;
+    async _loadTerrainEventsFromOverlay(terrainTag) {
+        const offered = await loadInstalledEventsInto(this._app._eventResolver, { terrainTag });
+        if (offered > 0) Logger.log(`${MODULE_ID} | Loaded ${offered} overlay events for terrain: ${terrainTag}`);
+        return offered > 0;
     }
 
     _installGmStationTokenSyncHook() {

@@ -2,10 +2,10 @@
   "profiles": {
     "full": {
       "description": "All manifest compendiums mounted",
-      "mount": ["respite-items", "respite-guide", "respite-guide-gm", "respite-actors"]
+      "mount": ["respite-items", "respite-actors"]
     },
     "items-only": {
-      "description": "Simulate missing guide and actor packs",
+      "description": "Simulate a missing actor pack",
       "mount": ["respite-items"]
     }
   }

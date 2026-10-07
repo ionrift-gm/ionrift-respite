@@ -173,9 +173,7 @@ export function registerRespiteSettingsPanel() {
             keyLabels: KEY_LABELS,
             formatCell: formatProfileCell,
             confirmNote: "The interface mode, scene token names, and per-character diets are left as they are. Fine-tune anything afterward in the panels below.",
-            confirmRowGroups: [{ beforeKey: PLAYER_KEYS[0], label: "Player rules" }],
-            guideTooltip: "Opens the in-Foundry player guide: rest phases, comfort tiers, and what your nightly camp activity does.",
-            onGuide: () => game.ionrift?.respite?.openPlayerGuide?.()
+            confirmRowGroups: [{ beforeKey: PLAYER_KEYS[0], label: "Player rules" }]
         },
         groups: GROUPS
     });

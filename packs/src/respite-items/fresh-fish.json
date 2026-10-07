@@ -6,7 +6,7 @@
     "img": "icons/consumables/meat/fish-whole-blue.webp",
     "system": {
         "description": {
-            "value": "<p>A freshly caught fish, still glistening. Cook it soon or it will turn.</p>"
+            "value": "<p>A fresh fish, eyes are clean. Needs preparing and cooking.</p>"
         },
         "rarity": "common",
         "weight": 0.5,

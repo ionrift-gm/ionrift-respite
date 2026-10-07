@@ -6,7 +6,7 @@
     "img": "icons/consumables/plants/leaf-herb-green.webp",
     "system": {
         "description": {
-            "value": "<p>A handful of fragrant wild herbs, plucked from the undergrowth. Useful for seasoning camp meals.</p>"
+            "value": "<p>A collection of wild herbs, chives, dill weed and the likes</p>"
         },
         "rarity": "common",
         "weight": 0.1,

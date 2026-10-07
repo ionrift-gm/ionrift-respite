@@ -1,7 +1,6 @@
 import { Logger } from "../../../utils/Logger.js";
 import { getPartyActors } from "../../party/partyActors.js";
 import { boostComfort, getHdPenalty, getExhaustionDC, HP_FRACTION, isComfortEnabled } from "../../camp/gear/ComfortCalculator.js";
-import { watchAlertCombatLine } from "./WatchAlertBenefit.js";
 
 /**
  * RestFlowEngine
@@ -549,8 +548,6 @@ export class RestFlowEngine {
                 lines.push(`${sign}${mods.initiative} initiative`);
             }
             if (mods.initiativeDisadvantage) lines.push("Disadvantage on initiative");
-            if (mods.surpriseImmune) lines.push(watchAlertCombatLine());
-            if (mods.surpriseDisadvantage) lines.push("Disadvantage on surprise saves");
             if (mods.partyInitiative) {
                 partyInitiativeTotal += mods.partyInitiative;
                 partyEffects.push(`${actor.name}: +${mods.partyInitiative} party initiative`);

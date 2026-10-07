@@ -6,7 +6,7 @@
     "img": "icons/consumables/mushrooms/bell-shiitake-brown.webp",
     "system": {
         "description": {
-            "value": "<p>A cluster of brown-capped mushrooms, safe to eat. Best roasted over a fire.</p>"
+            "value": "<p>Collection of small edible mushrooms</p>"
         },
         "rarity": "common",
         "weight": 0.1,

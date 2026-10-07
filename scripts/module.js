@@ -431,44 +431,19 @@ Hooks.on("ionrift.overlayContentChanged", async (detail) => {
         console.warn(`${MODULE_ID} | Art refresh failed:`, e);
     }
 
-    // Core data events unlock (reclaimed id).
-    if (detail.overlayId === "respite-core-overlay") {
-        try {
-            const { OverlayEventLoader } = await import("./services/packs/overlays/OverlayEventLoader.js");
-            OverlayEventLoader.invalidate();
-        } catch { /* loader not available */ }
-        try {
-            const { TerrainRegistry } = await import("./services/events/resolve/TerrainRegistry.js");
-            TerrainRegistry.reset();
-            await TerrainRegistry.init();
-        } catch (e) {
-            console.warn(`${MODULE_ID} | Terrain registry reset failed:`, e);
-        }
-        return;
-    }
-
-    // Terrain data unlocks (Frost & Stone, Bone & Dust). These gate which
-    // terrains the local registry surfaces.
-    if (detail.overlayId === "respite-frost-stone-overlay" || detail.overlayId === "respite-bone-dust-overlay") {
-        try {
-            const { TerrainRegistry } = await import("./services/events/resolve/TerrainRegistry.js");
-            TerrainRegistry.reset();
-            await TerrainRegistry.init();
-        } catch (e) {
-            console.warn(`${MODULE_ID} | Terrain registry reset failed:`, e);
-        }
-        return;
-    }
-
-    // Event/content overlay: invalidate cached event and profession data
+    // Any overlay may add or remove events, disasters, or terrains. Refresh
+    // all of them generically so no pack id is special-cased here.
     try {
         const { OverlayEventLoader } = await import("./services/packs/overlays/OverlayEventLoader.js");
         OverlayEventLoader.invalidate();
     } catch { /* loader not available */ }
     try {
-        const { OverlayProfessionLoader } = await import("./services/packs/overlays/OverlayProfessionLoader.js");
-        OverlayProfessionLoader.invalidate();
-    } catch { /* loader not available */ }
+        const { TerrainRegistry } = await import("./services/events/resolve/TerrainRegistry.js");
+        TerrainRegistry.reset();
+        await TerrainRegistry.init();
+    } catch (e) {
+        console.warn(`${MODULE_ID} | Terrain registry reset failed:`, e);
+    }
     RespiteLog.log(`${MODULE_ID} | Overlay content changed: ${detail.overlayId} (active=${detail.active})`);
 });
 

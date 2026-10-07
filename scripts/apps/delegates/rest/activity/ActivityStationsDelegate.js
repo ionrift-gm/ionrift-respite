@@ -49,7 +49,6 @@ import { getPartyActors } from "../../../../services/party/partyActors.js";
 import { _refreshGmRestIndicator, _refreshRejoinBar } from "../../../../module.js";
 import { _noteEngineFreePath } from "../../../rest/RestSetupApp.js";
 import { MODULE_ID } from "../../../../data/moduleId.js";
-import { applyWatchAlertPhrase, presentCombatModifiers } from "../../../../services/rest/flow/WatchAlertBenefit.js";
 import { activityFocusAfterCommit, publishCampProgress } from "../../../../services/rest/session/campProgressState.js";
 import { getFletchingTierLabel } from "../../../../services/crafting/settings/FletchingSettings.js";
 
@@ -1056,17 +1055,17 @@ export class ActivityStationsDelegate {
         const outcomeHints = [];
         if (tile.outcomes?.success?.effects?.length) {
             for (const eff of tile.outcomes.success.effects) {
-                outcomeHints.push({ text: applyWatchAlertPhrase(eff.description), type: "success" });
+                outcomeHints.push({ text: eff.description, type: "success" });
             }
         }
         if (tile.outcomes?.exceptional?.effects?.length) {
             for (const eff of tile.outcomes.exceptional.effects) {
-                outcomeHints.push({ text: applyWatchAlertPhrase(eff.description), type: "exceptional" });
+                outcomeHints.push({ text: eff.description, type: "exceptional" });
             }
         }
         if (tile.outcomes?.failure?.effects?.length) {
             for (const eff of tile.outcomes.failure.effects) {
-                outcomeHints.push({ text: applyWatchAlertPhrase(eff.description), type: "failure" });
+                outcomeHints.push({ text: eff.description, type: "failure" });
             }
         }
 
@@ -1174,7 +1173,7 @@ export class ActivityStationsDelegate {
             profession: tile.profession,
             check: tile.check ? app._formatCheckLabel(tile.check, selectedCharacter) : null,
             outcomeHints,
-            combatModifiers: presentCombatModifiers(tile.combatModifiers),
+            combatModifiers: tile.combatModifiers,
             followUpData,
             armorHint,
             armorWarning,

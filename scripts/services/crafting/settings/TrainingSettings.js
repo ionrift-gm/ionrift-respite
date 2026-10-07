@@ -1,7 +1,7 @@
 
-/** Compendium page _id for the GM Training guide entry. */
+/** Wiki help topic for the Training activity. */
 import { MODULE_ID } from "../../../data/moduleId.js";
-export const TRAINING_GUIDE_PAGE_ID = "mN8kTrXpGmRef001";
+export const TRAINING_GUIDE_TOPIC = "training";
 
 /**
  * Discrete training XP tiers. Index 0 is Off; indices 1-5 are reward rates per set.
