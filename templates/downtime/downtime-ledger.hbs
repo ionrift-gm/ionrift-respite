@@ -102,7 +102,7 @@
                     <div class="dawn-sun-emblem"><i class="fas fa-sun-cloud"></i></div>
                     <div class="dawn-copy-block">
                         <div class="dawn-lead-title">The Vigil Breaks · Morning Over Camp</div>
-                        <div class="dawn-lead-hint">Adjudicate environmental exposure & Constitution saves before concluding rest.</div>
+                        <div class="dawn-lead-hint">Adjudicate environmental exposure & Constitution saves before concluding the rest.</div>
                     </div>
                 </div>
 
@@ -323,7 +323,7 @@
                             <strong class="sentry-name">{{currentNightEntry.sentryName}}</strong>
                             <span class="sentry-pp-badge" data-tooltip="Passive Perception">PP {{currentNightEntry.sentryPP}}</span>
                             {{#if currentNightEntry.hasActiveGuard}}
-                            <span class="sentry-badge alert" data-tooltip="Dedicated Guard active: Sentry cannot be surprised!"><i class="fas fa-shield-alt"></i> Vigilant (Immune to Surprise)</span>
+                            <span class="sentry-badge alert" data-tooltip="Dedicated Guard active: Sentry is on watch"><i class="fas fa-shield-alt"></i> Camp guard on watch</span>
                             {{else}}
                             <span class="sentry-badge {{#if currentNightEntry.sentrySurprised}}surprised{{else}}alert{{/if}}" data-tooltip="Passive Perception vs Stealth DC 12">
                                 {{#if currentNightEntry.sentrySurprised}}<i class="fas fa-triangle-exclamation"></i> Surprised!{{else}}<i class="fas fa-check"></i> Alert{{/if}}

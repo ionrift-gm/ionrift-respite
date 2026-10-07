@@ -67,7 +67,7 @@ const ACTIVITY_TOGGLES = [
     },
     {
         key: "enableBrewingAlcohol",
-        label: "Alcoholic Ferments",
+        label: "Alcoholic drinks",
         icon: "fas fa-wine-bottle",
         hint: "Wine, mead, and draught recipes.",
         type: "boolean",
@@ -98,7 +98,7 @@ const ACTIVITY_TOGGLES = [
         key: "enablePrayMeditate",
         label: "Pray / Meditate",
         icon: "fas fa-pray",
-        hint: "Religion or Insight for temp HP; off hides bedroll option.",
+        hint: "Religion or Insight for temp HP",
         type: "boolean"
     },
     {

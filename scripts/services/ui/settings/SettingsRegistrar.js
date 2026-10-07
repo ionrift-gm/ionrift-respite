@@ -25,7 +25,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     game.settings.registerMenu(MODULE_ID, "eventBrowser", {
         name: "Event Pool",
         label: "Curate Event Pool",
-        hint: "Browse, import, and enable camp night events.",
+        hint: "Browse, import, and enable night events.",
         icon: "fas fa-book-open",
         type: EventBrowserApp,
         restricted: true
@@ -43,7 +43,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     game.settings.registerMenu(MODULE_ID, "dietConfigMenu", {
         name: "Food & Diet",
         label: "Configure Food & Diet",
-        hint: "Meal tracking, house rules, and per-character diets.",
+        hint: "Meal tracking, homebrew rules, and diets.",
         icon: "fas fa-utensils",
         type: DietConfigApp,
         restricted: true
@@ -52,7 +52,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     game.settings.registerMenu(MODULE_ID, "itemProvisionsConfig", {
         name: "Item Provisions",
         label: "Configure Item Provisions",
-        hint: "Audit world overrides, configure item spoilage countdowns, dietary tags, and drinking water classifications.",
+        hint: "Audit world overrides, configure food spoilage, diet tags, and drink classifications.",
         icon: "fas fa-carrot",
         type: ItemProvisionsApp,
         restricted: true
@@ -61,7 +61,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     game.settings.registerMenu(MODULE_ID, "activityConfig", {
         name: "Travel & Activities",
         label: "Configure Travel & Activities",
-        hint: "Travel phase and camp activity toggles, including Training and Fletching tiers.",
+        hint: "Travel phase and camp activity toggles",
         icon: "fas fa-campground",
         type: ActivityConfigApp,
         restricted: true
@@ -70,7 +70,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     game.settings.registerMenu(MODULE_ID, "recipeEditor", {
         name: "Custom Recipes",
         label: "Edit Custom Recipes",
-        hint: "Homebrew recipes by profession. Ingredient names must match Respite Custom or Respite Items.",
+        hint: "Homebrew recipes by profession. (Ingredient names must match Respite Custom or Respite Items)",
         icon: "fas fa-mortar-pestle",
         type: RecipeEditorApp,
         restricted: true
@@ -107,7 +107,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "restInterfaceMode", {
         name: "Rest Interface Mode",
-        hint: "One window: full rest in a panel. Camp stations: place camp pieces on the scene and move tokens to act (standard rests; 7-day downtime uses one window).",
+        hint: "One window: full rest in a UI panel. Camp stations: place camp pieces on the scene.",
         scope: "world",
         config: true,
         type: String,
@@ -131,7 +131,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "armorDoffRule", {
         name: "Armor Sleep Penalties",
-        hint: "Medium/heavy armor: fewer Hit Dice recovered, no exhaustion reduction (Xanathar's). Watch is exempt.",
+        hint: "Medium/heavy armor: fewer Hit Dice recovered & no exhaustion reduction (Xanathar's).",
         scope: "world",
         config: false,
         type: Boolean,
@@ -162,7 +162,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "enableWorkbenchIdentify", {
         name: "Identify and Potion Tasting",
-        hint: "Allow Identify, focus examination, and potion tasting during rests (TotM Examine tab, station Examine/Identify, short-rest Identify tab). Off in Simple Quick Setup.",
+        hint: "Allow Identify, focus, and potion tasting during rests.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -207,7 +207,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "shortRestFireWarmth", {
         name: "Campfire Warmth",
-        hint: "When enabled, an overnight rest presents the campfire stance ribbon. A Warm Camp expends 1 fuel and grants warmth healing when spending Hit Dice.",
+        hint: "When enabled, an overnight rest uses the campfire. A Warm Camp expends 1 fuel and provides 'warmth healing' when spending Hit Dice.",
         scope: "world",
         config: false,
         type: String,
@@ -228,8 +228,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "maxWaterPerDayCap", {
-        name: "Max Water Needs Cap",
-        hint: "Maximum pints required per character per day across all conditions and terrain.",
+        name: "Max Water Cap",
+        hint: "Maximum pints required per day across all conditions and terrain.",
         scope: "world",
         config: false,
         type: Number,
@@ -238,8 +238,8 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "maxFoodPerDayCap", {
-        name: "Max Food Needs Cap",
-        hint: "Maximum food units required per character per day across all conditions and terrain.",
+        name: "Max Food Cap",
+        hint: "Maximum food units required per day across all conditions and terrain.",
         scope: "world",
         config: false,
         type: Number,
@@ -285,7 +285,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     });
 
     game.settings.register(MODULE_ID, "enableBrewingAlcohol", {
-        name: "Alcoholic Ferments",
+        name: "Alcoholic drinks",
         hint: "Wine, mead, and draught recipes.",
         scope: "world",
         config: false,
@@ -352,7 +352,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "enableEncounters", {
         name: "Night Encounters (Homebrew)",
-        hint: "Night check, Keep Watch, and related camp defenses. Off: night passes with no check.",
+        hint: "Night check, Keep Watch, and camp defenses. Off: night passes with no check.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -362,7 +362,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "enableCopySpell", {
         name: "Copy Spell Activity",
-        hint: "Show Copy Spell on long rests for wizards with a spellbook.",
+        hint: "Show 'Copy Spell' on long rests for wizards with a spellbook.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -372,7 +372,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "enablePrayMeditate", {
         name: "Pray / Meditate Activity",
-        hint: "Religion or Insight for temp HP; off hides bedroll option.",
+        hint: "Religion or Insight for temp HP",
         scope: "world",
         config: false,
         type: Boolean,
@@ -471,7 +471,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     // the Survival profile turns meal tracking on.
     game.settings.register(MODULE_ID, "trackFood", {
         name: "Track Food & Water",
-        hint: "Show the Meal phase on long rests (rations, water, starvation advisories).",
+        hint: "Show the Meal phase on long rests (rations, water, starvation).",
         scope: "world",
         config: false,
         type: Boolean,
@@ -483,7 +483,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     // the Survival profile turns this leniency on alongside meal tracking.
     game.settings.register(MODULE_ID, "partialSustenance", {
         name: "Partial Sustenance (House Rule)",
-        hint: "Partial food/water in harsh terrains still helps (CON bonus or longer grace). Off for strict RAW.",
+        hint: "Partial food/water in harsh terrains still helps (CON bonus). Off for strict RAW.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -709,7 +709,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
     // Parked. Kept registered so existing worlds still load. Not shown in settings.
     game.settings.register(MODULE_ID, "ambientAfkHud", {
         name: "Ambient AFK HUD",
-        hint: "Parked. The AFK strip stays hidden until this HUD is revised.",
+        hint: "Parked. AFK strip hidden until this HUD is revised.",
         scope: "world",
         config: false,
         type: Boolean,
@@ -720,7 +720,7 @@ export function registerAllSettings({ DietConfigApp, onAmbientAfkChange }) {
 
     game.settings.register(MODULE_ID, "hideTerrainBanners", {
         name: "Hide Terrain Banners",
-        hint: "Omit the 120px terrain artwork banner at the top of rest windows for a more compact view.",
+        hint: "Hide the terrain artwork banner at the top of rest windows for a more compact view.",
         scope: "world",
         config: true,
         type: Boolean,

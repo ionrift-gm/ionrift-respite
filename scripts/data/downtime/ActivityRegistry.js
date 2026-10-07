@@ -51,7 +51,7 @@ export const DOWNTIME_ACTIVITIES = Object.freeze([
         maxDays: 7,
         haven: "wilderness",
         stationId: "weapon_rack",
-        hint: "Surprise immune on watch"
+        hint: "Camp guard on watch"
     },
 
     // ─── Cooking Station ───────────────────────────────────────────────────
