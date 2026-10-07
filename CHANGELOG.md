@@ -1,5 +1,14 @@
 # Changelog
 
+## [4.1.1] - 2026-10-07
+
+### Changed
+- Removed the video embed and screenshots from the readme.
+- Screenshots no longer ship in the module download.
+
+### Fixed
+- Terrain banners only dim for an unlit fire during camp, activities and meals. Other phases and the Downtime Ledger show them at full colour.
+
 ## [4.1.0] - 2026-10-04
 
 ### Changed
@@ -7,8 +16,8 @@
 - Drinking at least half of the day's water calls for a DC 15 Constitution save. Less than half is exhaustion, with no save.
 - Each day's water is one glass. Click a source to fill it. Click the glass to undo the last fill, or Empty to clear it.
 - A normal rest starts with 1 day of food. Set more days to cover a longer rest. A gritty week still starts at 7.
-- Frost & Stone, Dust & Bone, cooking and brewing art now come in the free Core art pack.
-- Respite picks up installed art packs automatically.
+- Terrain, cooking and brewing art moved out of the module.
+- Respite picks up installed art automatically.
 - Rest windows use matching card and button colours.
 - The Respite scene control keeps a fixed place in the toolbar.
 - Requires Ionrift Library 3.1.0.

@@ -6,8 +6,6 @@
 
 **Structured rest phases and 7-day downtime management for DnD 5e and Pathfinder 2e.**
 
-[![Watch the video walkthrough](https://img.youtube.com/vi/nKByCDttG3M/maxresdefault.jpg)](https://youtu.be/nKByCDttG3M)
-
 ### Support Ionrift
 
 [![Patreon](https://img.shields.io/badge/Patreon-ionrift-ff424d?logo=patreon&logoColor=white)](https://patreon.com/ionrift)
@@ -43,8 +41,6 @@ When Gritty Realism is active, rest flows adapt automatically:
 - **Dawn Finalization.** Automated Constitution saving throws for exhaustion recovery, departure meal and drink selections providing persistent travel buffs, and a Master Downtime chat log card.
 - **Bivouac HUD.** Single-screen 8-hour overnight rest for short rests in gritty campaigns. Includes Camp Stances: **Warm Camp** (consumes 1 firewood, enables cooking, grants bonus warmth healing per spent Hit Die) or **Cold & Dark** (stealth rest, reduces encounter DC by 3).
 
-<img src="assets/screenshots/downtime-ledger-planning.png" alt="7-Day Downtime Ledger planning view" width="560" />
-
 ---
 
 ## Standard Rest Flow
@@ -59,8 +55,6 @@ When Gritty Realism is active, rest flows adapt automatically:
 5. **Events.** Terrain-specific random tables resolving across four outcome tiers (Triumph, Success, Mixed, Failure) with GM force controls.
 6. **Resolution.** Scales HP, Hit Die, and exhaustion recovery to camp comfort and meal status.
 
-<img src="assets/screenshots/workbench-identify-tab.png" alt="Workbench hub with Identify and ritual analysis" width="560" />
-
 ---
 
 ## Provisions, Spoilage & Cold Storage
@@ -72,15 +66,13 @@ When Gritty Realism is active, rest flows adapt automatically:
 
 ---
 
-## Short Rest Wizard
+## Short Rest Panel
 
-Single-screen rest wizard featuring:
+Single-screen rest panel featuring:
 - **Live Hit Die Spending.** Interactive dice rolling with instant HP updates.
 - **Campfire Warmth.** Optional warmth bonus (+1 or +1d4 HP per Hit Die) when an overnight campfire is maintained.
 - **Class Recovery.** Integrated Arcane Recovery and Natural Recovery selectors.
 - **Song of Rest & Chef Feats.** Support for Bard Song of Rest timing and Chef treat distribution.
-
-<img src="assets/screenshots/short-rest-wizard.png" alt="Short Rest wizard with Hit Die spending and class recovery" width="560" />
 
 ---
 
