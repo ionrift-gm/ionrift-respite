@@ -140,8 +140,13 @@ export function emitRestStarted(restData, opts = {}) {
 /**
  * GM ,  Players: rest resolved, close pickers.
  */
-export function emitRestResolved() {
-    _emit(SOCKET_TYPES.REST_RESOLVED);
+/**
+ * GM to players: rest is over, close the window.
+ * Pass targetUserId to close one client that still has a stale window.
+ * @param {{ targetUserId?: string }} [opts]
+ */
+export function emitRestResolved(opts = {}) {
+    _emit(SOCKET_TYPES.REST_RESOLVED, opts);
 }
 
 /**

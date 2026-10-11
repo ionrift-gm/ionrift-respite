@@ -35,7 +35,7 @@ import { normalizeBeverageClass, sendoffFromPlaced } from "../../../services/mea
 import { waterGlassFromPints } from "../../../services/meal/phase/SustenanceEditPlan.js";
 import { sustenanceTrayRows } from "../../../services/meal/phase/SustenanceTray.js";
 import { GatherYieldService } from "../../../services/rest/forage/GatherYieldService.js";
-import { activityOfferingsClosed, dailyChoiceStatus, releaseGatherFromActivity } from "../../../services/rest/session/campProgressState.js";
+import { activityOfferingsClosed, dailyChoiceStatus, describeGatherDraft, releaseGatherFromActivity } from "../../../services/rest/session/campProgressState.js";
 import { canGmProceedFromActivity, partyFullyReady } from "../../../services/rest/session/activityProceedGate.js";
 import { describeItemMealBuff } from "../../../services/meal/buffs/MealBuffPresets.js";
 
@@ -2501,14 +2501,13 @@ function buildGatherPanel(app, workflowStep) {
     const actor = game.actors.get(cid);
     if (!actor) return null;
 
-    const result = app._gatherResults?.get(cid);
-    const pending = app._gatherPending?.characterId === cid ? app._gatherPending : null;
-    const choice = result?.activityId ?? pending?.activityId ?? app._gatherChoices?.get(cid);
-    const skipped = app._gatherSkipIds?.has(cid);
-    const skipDraft = pending?.activityId === "gather_skip" && !skipped;
-    if (choice !== "act_hunt" && choice !== "act_forage" && !skipped && !skipDraft) return null;
+    const draft = describeGatherDraft(app, cid, {
+        huntDc: app._campLogistics?._huntDC ?? 14,
+        forageDc: app._campLogistics?._forageDC ?? 12
+    });
+    if (!draft) return null;
 
-    const isHunt = choice === "act_hunt";
+    const { choice, isHunt, skipped, skipDraft, result, pending } = draft;
     const isSkip = skipped || skipDraft;
     const act = (!isSkip && choice) ? app._activityResolver?.activities?.get(choice) : null;
     const locked = !!result || skipped || pending?.phase === "findings";
@@ -2519,16 +2518,18 @@ function buildGatherPanel(app, workflowStep) {
         actorPortrait: actor.img ?? actor.prototypeToken?.texture?.src ?? "icons/svg/mystery-man.svg",
         locked,
         characterId: cid,
-        dc: pending?.dc ?? null,
-        canRollCheck: pending?.phase === "check",
-        canConfirmSkip: skipDraft,
-        findingsOpen: pending?.phase === "findings",
+        dc: draft.dc,
+        canRollCheck: draft.canRollCheck,
+        canConfirmSkip: draft.canConfirmSkip,
+        findingsOpen: draft.findingsOpen,
         finds: result
             ? GatherYieldService.presentItems(result.items, {
                 rations: result.fromTable ? 0 : (result.rations ?? 0)
             })
             : [],
-        detail: result?.haul || (skipped ? "Remain at camp. No forage or hunt." : "")
+        detail: result
+            ? (result.haul || "Nothing found")
+            : (skipped ? "Remain at camp. No forage or hunt." : "")
     };
 }
 

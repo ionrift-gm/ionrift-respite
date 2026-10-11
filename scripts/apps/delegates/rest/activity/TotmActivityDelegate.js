@@ -7,6 +7,7 @@ import {
     gatherAlreadyResolved,
     gatherPendingPatch,
     gatherSelectionBlocked,
+    openGatherCheck,
     publishCampProgress,
     releaseGatherFromActivity
 } from "../../../../services/rest/session/campProgressState.js";
@@ -228,18 +229,25 @@ export class TotmActivityDelegate {
             return;
         }
 
-        const isHunt = activityId === "act_hunt";
         releaseGatherFromActivity(app, characterId);
-        app._gatherChoices.set(characterId, activityId);
-        app._gatherPending = {
-            characterId,
-            activityId,
-            phase: "check",
-            dc: isHunt ? (app._campLogistics?._huntDC ?? 14) : (app._campLogistics?._forageDC ?? 12),
-            total: null,
-            findingsNeeded: 0,
-            findings: []
+        const dc = {
+            huntDc: app._campLogistics?._huntDC ?? 14,
+            forageDc: app._campLogistics?._forageDC ?? 12
         };
+        // Another character is already on the findings roll. Record this
+        // choice without taking that prompt away.
+        if (pending?.phase === "findings" && pending.characterId !== characterId) {
+            app._gatherSuppress?.delete(characterId);
+            app._gatherChoices.set(characterId, activityId);
+            publishCampProgress(app, {
+                characterId,
+                gatherChoice: activityId
+            });
+            app.render();
+            return;
+        }
+
+        openGatherCheck(app, characterId, activityId, dc);
         publishCampProgress(app, {
             characterId,
             gatherChoice: activityId,
@@ -256,10 +264,28 @@ export class TotmActivityDelegate {
      */
     async onRollGather(event, target) {
         const app = this._app;
-        const pending = app._gatherPending;
-        if (!pending) return;
-        const characterId = target?.dataset?.characterId || pending.characterId;
-        if (characterId !== pending.characterId) return;
+        const characterId = target?.dataset?.characterId || app._selectedCharacterId;
+        if (!characterId) return;
+        let pending = app._gatherPending?.characterId === characterId ? app._gatherPending : null;
+        if (!pending) {
+            const choice = app._gatherChoices?.get(characterId);
+            if (choice !== "act_hunt" && choice !== "act_forage") return;
+            if (gatherAlreadyResolved(app, characterId)) return;
+            const other = app._gatherPending;
+            if (other?.phase === "findings" && other.characterId !== characterId) {
+                ui.notifications.warn("Another gather roll is still open.");
+                return;
+            }
+            pending = openGatherCheck(app, characterId, choice, {
+                huntDc: app._campLogistics?._huntDC ?? 14,
+                forageDc: app._campLogistics?._forageDC ?? 12
+            });
+            publishCampProgress(app, {
+                characterId,
+                gatherChoice: choice,
+                gatherPending: gatherPendingPatch(pending)
+            });
+        }
 
         const actor = game.actors.get(characterId);
         if (!actor) return;
