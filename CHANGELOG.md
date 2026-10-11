@@ -1,5 +1,10 @@
 # Changelog
 
+## [4.2.1] - 2026-10-11
+
+### Fixed
+- Player rest dialogs no longer remain locked open if the host disconnects or crashes during camp.
+
 ## [4.2.0] - 2026-10-07
 
 ### Changed
