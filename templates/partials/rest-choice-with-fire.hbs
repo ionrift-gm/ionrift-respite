@@ -66,8 +66,18 @@
             {{else if gatherPanel.findingsOpen}}
             <p class="totm-detail-description">Success! Roll on the findings table.</p>
             <div class="totm-detail-actions">
+                <button type="button" class="totm-detail-cancel-btn" data-action="cancelGather">
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i> Back
+                </button>
                 <button type="button" class="totm-detail-confirm-btn rest-gather-roll" data-action="rollGather" data-character-id="{{gatherPanel.characterId}}">
                     <i class="fas fa-dice-d20" aria-hidden="true"></i> Roll findings
+                </button>
+            </div>
+            {{else}}
+            <p class="totm-detail-description">Nothing is open for this choice.</p>
+            <div class="totm-detail-actions">
+                <button type="button" class="totm-detail-cancel-btn" data-action="cancelGather">
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i> Back
                 </button>
             </div>
             {{/if}}

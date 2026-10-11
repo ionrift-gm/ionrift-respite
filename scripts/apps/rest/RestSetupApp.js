@@ -29,6 +29,7 @@ import { sustenanceActorId } from "../delegates/meal/SustenanceMeterBinding.js";
 import { CopySpellDelegate } from "../delegates/crafting/CopySpellDelegate.js";
 import { GatherYieldService } from "../../services/rest/forage/GatherYieldService.js";
 import {
+    clearGatherDraft,
     dailyChoiceStatus,
     gatherAlreadyResolved,
     publishCampProgress
@@ -1242,18 +1243,15 @@ static #formatGmGuidance(text) {
         const actorId = this._selectedCharacterId;
         if (!actorId) return;
         if (this._gatherResults?.has(actorId)) return;
-        const pending = this._gatherPending;
-        if (pending?.characterId === actorId && pending.phase === "findings") return;
-        if (pending?.characterId === actorId) this._gatherPending = null;
-        this._gatherChoices?.delete(actorId);
-        this._gatherSkipIds?.delete(actorId);
-        if (this._finishedActorIds?.has(actorId)) {
-            this._finishedActorIds.delete(actorId);
-            publishCampProgress(this, {
-                finishedActorId: actorId,
-                finished: false
-            });
-        }
+        const wasFinished = this._finishedActorIds?.has(actorId);
+        clearGatherDraft(this, actorId);
+        if (wasFinished) this._finishedActorIds.delete(actorId);
+        publishCampProgress(this, {
+            characterId: actorId,
+            gatherChoice: null,
+            gatherPending: null,
+            ...(wasFinished ? { finishedActorId: actorId, finished: false } : {})
+        });
         this.render();
     }
 

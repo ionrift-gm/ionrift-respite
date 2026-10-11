@@ -22,7 +22,7 @@ import {
     clearPlayerCampGear, clearPlayerCampGearType, clearSharedCampStation
 } from "../camp/props/CompoundCampPlacer.js";
 import {
-    emitShortRestStarted, emitRestStarted, emitShortRestWorkbenchSync,
+    emitShortRestStarted, emitRestStarted, emitRestResolved, emitShortRestWorkbenchSync,
     emitCampGearPlaced, emitCampStationPlaced, emitCampSceneCleared,
     emitRequestRestState, emitRequestShortRestState, emitRestSnapshot
 } from "./SocketController.js";
@@ -40,7 +40,7 @@ import {
     shouldRequestRestStateForExistingApp
 } from "../rest/flow/restStartedPlayerSync.js";
 
-export function handleRestStarted(data, ctx) {
+export async function handleRestStarted(data, ctx) {
     if (data.targetUserId && data.targetUserId !== game.user.id) return;
     try {
         logCampfireReconnect("handleRestStarted:enter", {
@@ -125,7 +125,12 @@ export function handleRestStarted(data, ctx) {
             });
             Logger.log(`${MODULE_ID} | Closing stale rest window for new rest`);
             ui.notifications.info("The GM has started a new rest. Refreshing your window.");
-            existing.close({ skipRejoin: true });
+            try {
+                await existing.close({ skipRejoin: true });
+            } catch (err) {
+                console.warn(`${MODULE_ID} | stale rest close failed`, err);
+                try { existing.element?.remove(); } catch { /* best effort */ }
+            }
             ctx.setActivePlayerRestApp(null);
         }
 
@@ -219,6 +224,7 @@ export function handleActivityChoice(data, ctx) {
 }
 
 export function handleRestResolved(data, ctx) {
+    if (data?.targetUserId && data.targetUserId !== game.user.id) return;
 
     clearAllZzzOverlays();
     ctx.setPlayerRestActive(false);
@@ -267,6 +273,14 @@ export function handleCampProgress(data, ctx) {
 }
 
 export function handleRequestRestState(data, ctx) {
+    if (!ctx.activeRestData && !ctx.activeRestSetupApp) {
+        logCampfireReconnect("handleRequestRestState:closeStale", {
+            reason: "no active rest",
+            targetUserId: data?.userId ?? null
+        });
+        if (data?.userId) emitRestResolved({ targetUserId: data.userId });
+        return;
+    }
     if (!ctx.activeRestData) {
         logCampfireReconnect("handleRequestRestState:skip", { reason: "no activeRestData" });
         return;
