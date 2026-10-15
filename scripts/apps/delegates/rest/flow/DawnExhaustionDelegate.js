@@ -1,4 +1,4 @@
-import { presentRoll } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
+import { postRollAndSettle } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
 import { getPartyActors } from "../../../../services/party/partyActors.js";
 import { emitPhaseChanged } from "../../../../services/socket/SocketController.js";
 import {
@@ -207,7 +207,6 @@ export class DawnExhaustionDelegate {
         const formula = entry.advMode === "adv" ? "2d20kh" : (entry.advMode === "dis" ? "2d20kl" : "1d20");
         const rollString = conMod >= 0 ? `${formula} + ${conMod}` : `${formula} - ${Math.abs(conMod)}`;
         const roll = await new Roll(rollString).evaluate();
-        await presentRoll(roll);
 
         const passed = roll.total >= entry.dc;
         entry.rolled = true;
@@ -218,7 +217,7 @@ export class DawnExhaustionDelegate {
         const resultText = passed
             ? "Passed. No exhaustion gained."
             : "Failed. +1 exhaustion.";
-        await roll.toMessage({
+        await postRollAndSettle(roll, {
             speaker: ChatMessage.getSpeaker({ actor }),
             flavor: `<strong>${actor.name}</strong>: Constitution save vs exhaustion DC ${entry.dc}${advText}<br>${resultText}`
         });

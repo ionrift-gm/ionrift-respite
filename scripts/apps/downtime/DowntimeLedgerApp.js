@@ -1,5 +1,5 @@
 import { MODULE_ID } from "../../data/moduleId.js";
-import { presentRoll } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
+import { postRollAndSettle, presentRoll } from "/modules/ionrift-library/scripts/services/rolls/DiceSettle.js";
 import { CampLogisticsDelegate, fireEncounterDcNudge } from "../delegates/camp/CampLogisticsDelegate.js";
 import { Logger } from "../../utils/Logger.js";
 import { getPartyActors } from "../../services/party/partyActors.js";
@@ -1069,8 +1069,6 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         const rollString = conMod >= 0 ? `${formula} + ${conMod}` : `${formula} - ${Math.abs(conMod)}`;
         const roll = await new Roll(rollString).evaluate();
 
-        await presentRoll(roll);
-
         const passed = roll.total >= entry.dc;
         entry.rolled = true;
         entry.rollTotal = roll.total;
@@ -1081,7 +1079,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
             ? `<strong style="color: #2ecc71;">Passed</strong> (no exhaustion gained)`
             : `<strong style="color: #e74c3c;">Failed</strong> (+1 Exhaustion)`;
 
-        await roll.toMessage({
+        await postRollAndSettle(roll, {
             speaker: ChatMessage.getSpeaker({ actor }),
             flavor: `<strong>${actor.name}</strong>: Constitution save vs Exhaustion DC ${entry.dc}${advText}<br>${resultText}`,
             whisper: game.users.filter(u => u.isGM).map(u => u.id)
@@ -5087,7 +5085,6 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         const targetDC = combineNightDc(this._dangerDC, mods.activityNudge, fireNudge, manualOffset);
 
         const roll = await new Roll("1d20").evaluate();
-        await presentRoll(roll);
 
         const rollTotal = roll.total;
         const triggered = rollTotal < targetDC;
@@ -5133,7 +5130,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                         sentrySurprised
                     };
                 }
-                await roll.toMessage({
+                await postRollAndSettle(roll, {
                     speaker: { alias: "Night Watch" },
                     flavor: `<strong>Night check</strong> (${this._terrainTag}) threshold ${targetDC}<br><em style="color:#e74c3c;">Natural 1: Disaster strikes the camp! (${eventObj.title})</em>`,
                     whisper: game.users.filter(u => u.isGM).map(u => u.id)
@@ -5159,7 +5156,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                         sentryName: sentryActor?.name ?? "Camp Watch",
                         sentrySurprised
                     };
-                    await roll.toMessage({
+                    await postRollAndSettle(roll, {
                         speaker: { alias: "Night Watch" },
                         flavor: `<strong>Night check</strong> (${this._terrainTag}) threshold ${targetDC}<br><em>${catalogEvent.name}</em> triggered (roll ${rollTotal} below threshold).`,
                         whisper: game.users.filter(u => u.isGM).map(u => u.id)
@@ -5177,7 +5174,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                         sentrySurprised,
                         adHoc: true
                     };
-                    await roll.toMessage({
+                    await postRollAndSettle(roll, {
                         speaker: { alias: "Night Watch" },
                         flavor: `<strong>Night check</strong> (${this._terrainTag}) threshold ${targetDC}<br><em>Roll ${rollTotal} below threshold. Run your own scenario at the table.</em>`,
                         whisper: game.users.filter(u => u.isGM).map(u => u.id)
@@ -5185,7 +5182,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 }
             }
         } else {
-            await roll.toMessage({
+            await postRollAndSettle(roll, {
                 speaker: { alias: "Night Watch" },
                 flavor: `<strong>Night check</strong> (${this._terrainTag}) threshold ${targetDC}<br>${rollTotal} meets or beats the threshold. The night passes without incident.`,
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
@@ -5221,7 +5218,6 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         const targetDC = combineNightDc(this._dangerDC, mods.activityNudge, fireNudge, manualOffset);
 
         const roll = await new Roll("1d20").evaluate();
-        await presentRoll(roll);
 
         const rollTotal = roll.total;
         const triggered = rollTotal < targetDC;
@@ -5229,7 +5225,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
         const sentryActor = mods.sentryActor ?? party[0] ?? null;
 
         if (triggered) {
-            await roll.toMessage({
+            await postRollAndSettle(roll, {
                 speaker: { alias: "Night Watch" },
                 flavor: `<strong>Improvised night check</strong> (${this._terrainTag}) threshold ${targetDC}<br>${rollTotal} below threshold. Run your own scenario at the table.`,
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
@@ -5250,7 +5246,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 adHoc: true
             };
         } else {
-            await roll.toMessage({
+            await postRollAndSettle(roll, {
                 speaker: { alias: "Night Watch" },
                 flavor: `<strong>Improvised night check</strong> (${this._terrainTag}) threshold ${targetDC}<br>${rollTotal} meets or beats the threshold. The night passes without incident.`,
                 whisper: game.users.filter(u => u.isGM).map(u => u.id)
