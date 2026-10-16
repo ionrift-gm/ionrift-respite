@@ -295,8 +295,10 @@ export function injectContainerEnrichment(app, html) {
  */
 export function refreshSpoilageBadgesForElement(actor, el) {
     if (!actor || !el) return;
+    const root = el instanceof HTMLElement ? el : (el?.[0] ?? (el?.get?.(0) ?? null));
+    if (!root?.querySelectorAll) return;
 
-    const itemRows = el.querySelectorAll("[data-item-id]");
+    const itemRows = root.querySelectorAll("[data-item-id]");
     for (const row of itemRows) {
         const itemId = row.dataset.itemId;
         if (!itemId) continue;
