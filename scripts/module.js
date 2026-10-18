@@ -500,6 +500,10 @@ Hooks.on("chatMessage", (log, message, chatData) => {
     const msg = message.trim().toLowerCase();
 
     if (msg === "/bivouac") {
+        if (game.ionrift?.respite?.adapter?.supportsShortRest === false) {
+            ui.notifications.info("Short rests are not used in this system.");
+            return false;
+        }
         if (!_canStartRest("short")) return false;
         new RestSetupApp({ restType: "short" }).render({ force: true });
         return false;

@@ -787,12 +787,14 @@
                                 {{/if}}
                             </div>
                         </div>
+                        {{#if ../showSustenanceStep}}
                         {{#if (or isCommitted budget.isComplete)}}
                         <div class="rest-step-pacing">
                             <button type="button" class="btn-step-next" data-action="switchWorkflow" data-step="sustenance">
                                 <span>Next: Sustenance</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>
                             </button>
                         </div>
+                        {{/if}}
                         {{/if}}
                         </div>
                         {{#if (and isIdentifyOpen workbenchEmbed)}}
@@ -914,6 +916,7 @@
                     {{/if}}
 
                     {{!-- TIER 3: Sustenance --}}
+                    {{#if ../showSustenanceStep}}
                     <div class="downtime-tier-card tier-food {{#if hasDehydrationRisk}}dehydration{{else if hasStarvationRisk}}starvation{{/if}}">
                         {{#if (eq ../selectedWorkflowStep "sustenance")}}
                         {{!-- Diegetic two-column pile/vessel (mock target) --}}
@@ -950,6 +953,7 @@
                         </div>
                         {{/if}}
                     </div>
+                    {{/if}}
 
                 </div>
             </div>

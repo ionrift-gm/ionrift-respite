@@ -16,6 +16,7 @@
             <i class="fas fa-hammer"></i>
             <span class="step-label">Activities</span>
         </button>
+        {{#if showSustenanceStep}}
         <span class="step-connector">—</span>
         <button type="button" class="workflow-step-btn {{#if (eq selectedWorkflowStep 'sustenance')}}active{{/if}}"
                 data-action="switchWorkflow" data-step="sustenance">
@@ -23,6 +24,7 @@
             <i class="fas fa-utensils"></i>
             <span class="step-label">Sustenance</span>
         </button>
+        {{/if}}
     </div>
     {{#if workbenchIdentifyUiEnabled}}
     <div class="workflow-optional-actions">

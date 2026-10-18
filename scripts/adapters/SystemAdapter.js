@@ -12,6 +12,9 @@ export class SystemAdapter {
     /** @returns {string} System identifier, e.g. "dnd5e", "pf2e", "daggerheart" */
     get id() { throw new Error("SystemAdapter.id not implemented"); }
 
+    /** @returns {boolean} Whether the system has a short rest concept */
+    get supportsShortRest() { return true; }
+
     /** @returns {{ value: number, max: number }} */
     getHP(actor) { this._notImpl("getHP"); }
 

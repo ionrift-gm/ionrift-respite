@@ -31,6 +31,7 @@ export function isTravelPhaseUsed() {
  */
 export function isForagingEnabled() {
     try {
+        if (!isTravelPhaseUsed()) return false;
         const value = game.settings.get(MODULE_ID, "enableForaging");
         return value === undefined || value === null ? true : !!value;
     } catch {
@@ -44,6 +45,7 @@ export function isForagingEnabled() {
  */
 export function isHuntingEnabled() {
     try {
+        if (!isTravelPhaseUsed()) return false;
         const value = game.settings.get(MODULE_ID, "enableHunting");
         return value === undefined || value === null ? true : !!value;
     } catch {

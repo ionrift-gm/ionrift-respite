@@ -292,7 +292,9 @@ export class RestSetupApp extends HandlebarsApplicationMixin(ApplicationV2) {
             registerActiveRestApp(this);
         }
         this._restVariant = game.ionrift?.respite?.adapter?.getRestVariant?.() ?? "normal";
-        this._selectedRestType = options.restType ?? (restData?.restType ?? "long");
+        const supportsShortRest = game.ionrift?.respite?.adapter?.supportsShortRest ?? true;
+        const requestedRestType = options.restType ?? (restData?.restType ?? "long");
+        this._selectedRestType = (!supportsShortRest && requestedRestType === "short") ? "long" : requestedRestType;
         // Setup screen default: always 1 day.
         this._daysSinceLastRest = 1;
         this._engine = null;
@@ -1287,6 +1289,7 @@ static _buildTrainingProgressBar(training) {
 
     /** Sole launch point for a short rest, for both the short and long submit paths. */
     async _launchShortRestFromSetup() {
+        if (game.ionrift?.respite?.adapter?.supportsShortRest === false) return;
         const form = this.element?.querySelector("form");
         const formData = form ? Object.fromEntries(new FormData(form)) : {};
         const terrainTag = formData.terrain ?? this._selectedTerrain ?? "forest";
@@ -2154,6 +2157,11 @@ static async #onContinueToCampLayout(event, target) {
     static #onSwitchWorkflow(event, target) {
         const step = target.dataset.step;
         if (!step || !["gather", "activities", "sustenance"].includes(step)) return;
+        if (step === "sustenance") {
+            let trackFood = false;
+            try { trackFood = !!game.settings.get(MODULE_ID, "trackFood"); } catch { /* ignore */ }
+            if (!trackFood) return;
+        }
         if (step === this._selectedWorkflowStep) return;
         this.#holdWindowHeight();
         this._selectedWorkflowStep = step;
@@ -2271,14 +2279,17 @@ static async #onContinueToCampLayout(event, target) {
 
     checkAndAutoMarkCharacterReady(actorId) {
         if (!actorId) return;
-        const setupSafeHaven = (this._selectedTerrain ?? this._engine?.terrainTag ?? "forest") === "tavern"
-            || !!this._engine?.isSafeHaven;
+        const terrainTag = this._selectedTerrain ?? this._engine?.terrainTag ?? "forest";
+        const setupSafeHaven = terrainTag === "tavern"
+            || Boolean(this._effectiveSafeRestSpot?.() ?? this._engine?.safeRestSpot ?? this._engine?.isSafeHaven);
         const gatherOn = !setupSafeHaven && (isForagingEnabled() || isHuntingEnabled());
         const { gatherDone, activityDone } = dailyChoiceStatus(this, actorId, gatherOn);
         let trackFoodOn = false;
         let sustenanceDone = false;
         try {
-            trackFoodOn = !!game.settings.get(MODULE_ID, "trackFood");
+            const mealRules = TerrainRegistry.getDefaults(terrainTag)?.mealRules ?? {};
+            const hasMealRules = (mealRules.waterPerDay > 0) || (mealRules.foodPerDay > 0);
+            trackFoodOn = !!game.settings.get(MODULE_ID, "trackFood") && !setupSafeHaven && hasMealRules;
             if (!trackFoodOn) {
                 sustenanceDone = true;
             } else {

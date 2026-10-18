@@ -1377,11 +1377,11 @@ export class RestPrepareContext {
         const _isGrittyShortCtx = (app._selectedRestType ?? "long") === "short"
             && (app._restVariant ?? "normal") === "gritty";
         const _isLongOrGrittyShort = (app._selectedRestType ?? "long") === "long" || _isGrittyShortCtx;
-        const showMealStep = !!trackFoodSetting
-            && app._isTotM
-            && !safeRestSpot
+        const showSustenanceStep = !!trackFoodSetting
+            && !setupSafeHaven
             && _isLongOrGrittyShort
             && ((_mealStepRules.waterPerDay > 0) || (_mealStepRules.foodPerDay > 0));
+        const showMealStep = showSustenanceStep && app._isTotM;
 
         // Header pips are the rest itself. Gather, Activities, Sustenance, and
         // Examine are tabs inside Camp, not their own stages. Night drops out
@@ -1417,13 +1417,17 @@ export class RestPrepareContext {
 
         // Whether meal context data should be built this render pass.
         // True when the real phase is "meal" OR the stepper is previewing sustenance.
-        const _resolvedWorkflowStep = (app._phase === "meal")
+        const _defaultWorkflowStep = (!setupSafeHaven && (isForagingEnabled() || isHuntingEnabled())) ? "gather" : "activities";
+        const _rawWorkflowStep = app._selectedWorkflowStep ?? _defaultWorkflowStep;
+        const _resolvedWorkflowStep = (app._phase === "meal" && showSustenanceStep)
             ? "sustenance"
             : (app._phase === "activity" || app._phase === "camp")
-                ? (app._selectedWorkflowStep ?? (!setupSafeHaven && (isForagingEnabled() || isHuntingEnabled()) ? "gather" : "activities"))
+                ? ((_rawWorkflowStep === "sustenance" && !showSustenanceStep) ? "activities" : _rawWorkflowStep)
                 : null;
-        const showMealContent = app._phase === "meal"
-            || (app._phase === "activity" && _resolvedWorkflowStep === "sustenance");
+        const showMealContent = showSustenanceStep && (
+            app._phase === "meal"
+            || (app._phase === "activity" && _resolvedWorkflowStep === "sustenance")
+        );
         const showIdentifyContent = _resolvedWorkflowStep === "examine"
             || Boolean(
                 app._totmFollowUpExpanded?.isIdentify
@@ -1651,6 +1655,7 @@ export class RestPrepareContext {
                 app._phase ?? "setup"
             ),
             selectedTerrainLabel: app._terrainLabel ?? "Forest",
+            supportsShortRest: game.ionrift?.respite?.adapter?.supportsShortRest ?? true,
             selectedRestType: app._selectedRestType ?? "long",
             selectedRestTypeLabel: app._selectedRestType === "short" ? "Short Rest" : "Long Rest",
             isShortRest: (app._selectedRestType ?? "long") === "short",
@@ -1685,10 +1690,9 @@ export class RestPrepareContext {
                     ?? (app._isGM ? getPartyActors()[0]?.id : (app._myCharacterIds?.values().next().value ?? getPartyActors()[0]?.id));
                 const gatherOn = !setupSafeHaven && (isForagingEnabled() || isHuntingEnabled());
                 const { gatherDone, activityDone } = dailyChoiceStatus(app, actorId, gatherOn);
-                let trackFoodOn = false;
+                const trackFoodOn = showSustenanceStep;
                 let sustenanceDone = false;
                 try {
-                    trackFoodOn = !!game.settings.get(MODULE_ID, "trackFood");
                     if (!trackFoodOn) {
                         sustenanceDone = true;
                     } else {
@@ -1725,6 +1729,7 @@ export class RestPrepareContext {
                 };
             })(),
             showGatherStep: !setupSafeHaven && (isForagingEnabled() || isHuntingEnabled()),
+            showSustenanceStep,
             gatherPanel: buildGatherPanel(app, _resolvedWorkflowStep),
             activityCommit: buildActivityCommit(app, totmStationCards),
             holdPhaseProceed,

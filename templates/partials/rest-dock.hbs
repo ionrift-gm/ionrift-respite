@@ -122,6 +122,7 @@
                 {{else}}<i class="fas fa-pencil seg-mark" aria-hidden="true"></i>
                 {{/if}}
             </button>
+            {{#if @root.showSustenanceStep}}
             <button type="button"
                 class="rest-dock-seg{{#if (eq @root.selectedWorkflowStep 'sustenance')}} active{{/if}}{{#if (eq @root.workflowMark.sustenance 'complete')}} is-complete{{else if (eq @root.workflowMark.sustenance 'draft')}} is-draft{{else if @root.workflowComplete.sustenance}} is-complete{{else}} is-draft{{/if}}"
                 data-action="switchWorkflow" data-step="sustenance" role="tab"
@@ -133,6 +134,7 @@
                 {{else}}<i class="fas fa-pencil seg-mark" aria-hidden="true"></i>
                 {{/if}}
             </button>
+            {{/if}}
         </div>
 
         {{#if @root.workbenchIdentifyUiEnabled}}

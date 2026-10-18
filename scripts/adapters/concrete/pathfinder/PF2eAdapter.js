@@ -30,6 +30,8 @@ export class PF2eAdapter extends SystemAdapter {
 
     get id() { return "pf2e"; }
 
+    get supportsShortRest() { return false; }
+
     // DnD5e uses 3-letter abbreviations; PF2e uses full names.
 
     static SKILL_KEY_MAP = {

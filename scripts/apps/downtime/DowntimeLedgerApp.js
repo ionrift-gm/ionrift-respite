@@ -2476,9 +2476,12 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 && isCommitted
                 && craftPlanNeedsEscape(activityRolls, this._craftAvailableCounts(actor, activityRolls));
 
+            let trackFoodSetting = true;
+            try { trackFoodSetting = !!game.settings.get(MODULE_ID, "trackFood"); } catch { /* ignore */ }
+            const sustenanceRequired = (haven === "wilderness") && trackFoodSetting;
             const isAllocated = budget.isComplete;
-            const isStarving = (haven === "wilderness") && (foodShortfallDays > 0);
-            const isDehydrated = (haven === "wilderness") && (waterShortfallDays > 0);
+            const isStarving = sustenanceRequired && (foodShortfallDays > 0);
+            const isDehydrated = sustenanceRequired && (waterShortfallDays > 0);
             const isSustenanceRisk = isStarving || isDehydrated;
             const isDefensePending = hasDefenseRolls && !!fortifySummary && !fortifySummary.isAllRolled;
             const isSkillCheckPending = hasSkillChecks && !skillCheckSummary.isAllRolled;
@@ -2486,7 +2489,7 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
             const isGatheringPending = (haven === "wilderness") && gatheringSummary && !gatheringSummary.isAllRolled;
 
             const isPendingRolls = isDefensePending || isSkillCheckPending || isCraftPending || isGatheringPending;
-            const mealsLocked = this._mealsLockedActorIds.has(actor.id);
+            const mealsLocked = !sustenanceRequired || this._mealsLockedActorIds.has(actor.id);
             const planSettled = isAllocated && isCommitted && mealsLocked && !isPendingRolls;
             const isReady = planSettled && !isSustenanceRisk;
             const isAtRisk = planSettled && isSustenanceRisk;
@@ -3383,8 +3386,19 @@ export class DowntimeLedgerApp extends HandlebarsApplicationMixin(ApplicationV2)
                 }])),
                 isGM
             }),
-            selectedWorkflowStep: this._selectedWorkflowStep,
-            showGatherStep: true,
+            ...(() => {
+                let trackFood = true;
+                try { trackFood = !!game.settings.get(MODULE_ID, "trackFood"); } catch { /* ignore */ }
+                const showSustenanceStep = (haven === "wilderness") && trackFood;
+                const selectedWorkflowStep = (this._selectedWorkflowStep === "sustenance" && !showSustenanceStep)
+                    ? "activities"
+                    : this._selectedWorkflowStep;
+                return {
+                    selectedWorkflowStep,
+                    showGatherStep: haven === "wilderness",
+                    showSustenanceStep
+                };
+            })(),
             workbenchIdentifyUiEnabled,
             isIdentifyActive: this._selectedWorkflowStep === "examine"
                 || Boolean(this._selectedCharacterId && this._expandedTiers?.get(this._selectedCharacterId)?.has("identify"))

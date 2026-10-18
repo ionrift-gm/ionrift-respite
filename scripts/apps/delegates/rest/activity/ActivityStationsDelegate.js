@@ -32,7 +32,7 @@ import {
     inferCanvasStationForActivity
 } from "../../../../data/RestConstants.js";
 import { isGearDeployed } from "../../../../services/camp/props/CompoundCampPlacer.js";
-import { isSimpleStationsMode } from "../../../../services/rest/flow/RestProfileSettings.js";
+import { isSimpleRestProfile, isSimpleStationsMode } from "../../../../services/rest/flow/RestProfileSettings.js";
 import { CraftingPickerApp } from "../../../crafting/CraftingPickerApp.js";
 import {
     collectPartyIdentifyEmbedData,
@@ -1455,7 +1455,7 @@ export class ActivityStationsDelegate {
 
         if (app._phase !== "activity" || !app._isGM) return false;
 
-        const forceOtherForAll = isSimpleStationsMode();
+        const forceOtherForAll = isSimpleRestProfile();
         const isTavern = app._isTavernTerrain();
         const partyActors = getPartyActors();
         if (!partyActors.length) return false;
@@ -1464,30 +1464,39 @@ export class ActivityStationsDelegate {
         const resolverOpts = app._activityResolverOpts();
         const terrainTag = app._selectedTerrain ?? app._engine?.terrainTag ?? "forest";
         const safeRestSpot = resolverOpts.safeRestSpot;
+        const nonActivityStepIds = new Set(["act_forage", "act_hunt", "act_identify"]);
 
         let changed = false;
         for (const actor of partyActors) {
-            if (app._characterChoices.has(actor.id)) continue;
+            if (app._characterChoices.has(actor.id)) {
+                if (app._characterChoices.get(actor.id) === "act_other"
+                    && app._lockedCharacters?.has(actor.id)
+                    && !app._finishedActorIds?.has(actor.id)) {
+                    app.checkAndAutoMarkCharacterReady?.(actor.id);
+                }
+                continue;
+            }
             if (app._gmOverrides.has(actor.id)) continue;
             if (app._getPlayerChoiceForCharacter(actor.id)?.activityId) continue;
 
             const { available } = app._activityResolver.getAvailableActivitiesWithFaded(
                 actor, restType, resolverOpts
             );
+            const activityStepAvailable = available.filter(a => !nonActivityStepIds.has(a.id));
 
             let shouldAssign = false;
             if (forceOtherForAll) {
-                shouldAssign = available.some(a => a.id === "act_other");
-            } else if (isTavern) {
+                shouldAssign = activityStepAvailable.some(a => a.id === "act_other");
+            } else if (isTavern || app._isTotM) {
                 const offered = getStationOfferedActivityIds(
                     terrainTag,
                     safeRestSpot,
-                    new Set(available.map(a => a.id)),
+                    new Set(activityStepAvailable.map(a => a.id)),
                     { simpleStations: isSimpleStationsMode() }
                 );
                 shouldAssign = offered.size === 1 && offered.has("act_other");
             } else {
-                shouldAssign = available.length === 1 && available[0]?.id === "act_other";
+                shouldAssign = activityStepAvailable.length === 1 && activityStepAvailable[0]?.id === "act_other";
             }
 
             if (!shouldAssign) continue;
@@ -1497,6 +1506,7 @@ export class ActivityStationsDelegate {
             app._lockedCharacters.add(actor.id);
             if (!app._stationCanvasIdByCharacter) app._stationCanvasIdByCharacter = new Map();
             app._stationCanvasIdByCharacter.set(actor.id, "bedroll");
+            app.checkAndAutoMarkCharacterReady?.(actor.id);
             changed = true;
         }
 

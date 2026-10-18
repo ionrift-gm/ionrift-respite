@@ -470,10 +470,12 @@ export function getStationOfferedActivityIds(terrainTag, safeRestSpot, available
     const available = availableIds instanceof Set ? availableIds : new Set(availableIds);
     const stations = getStationsForTerrain(terrainTag, safeRestSpot, options);
     const skipStations = new Set(["campfire"]);
+    const nonActivityStepIds = new Set(["act_forage", "act_hunt", "act_identify"]);
     const offered = new Set();
     for (const station of stations) {
         if (skipStations.has(station.id)) continue;
         for (const id of station.activities ?? []) {
+            if (nonActivityStepIds.has(id)) continue;
             if (available.has(id)) offered.add(id);
         }
     }

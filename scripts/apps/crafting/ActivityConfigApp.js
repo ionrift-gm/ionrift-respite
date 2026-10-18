@@ -20,7 +20,9 @@ import {
 import {
     CAMP_FUEL_FIND_DEFAULT_PERCENT,
     CAMP_FUEL_FIND_MAX_PERCENT,
-    CAMP_FUEL_FIND_MIN_PERCENT
+    CAMP_FUEL_FIND_MIN_PERCENT,
+    isForagingEnabled,
+    isHuntingEnabled
 } from "../../services/travel/settings/TravelSettings.js";
 import { shouldShowBrewingAlcoholSetting } from "../../services/crafting/settings/BrewingAlcoholSettings.js";
 import { MODULE_ID } from "../../data/moduleId.js";
@@ -159,15 +161,20 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
 
     /** @override */
     async _prepareContext() {
-        const foragingOn = !!game.settings.get(MODULE_ID, "enableForaging");
+        const foragingOn = isForagingEnabled();
         const showBrewingAlcohol = await shouldShowBrewingAlcoholSetting();
 
         const resolveBooleanRow = (row) => {
             const disabled = (row.requiresForaging && !foragingOn);
+            const value = row.key === "enableForaging"
+                ? foragingOn
+                : row.key === "enableHunting"
+                    ? isHuntingEnabled()
+                    : game.settings.get(MODULE_ID, row.key);
             return {
                 ...row,
                 type: "boolean",
-                value: game.settings.get(MODULE_ID, row.key),
+                value,
                 disabled
             };
         };
@@ -399,6 +406,9 @@ export class ActivityConfigApp extends foundry.applications.api.ApplicationV2 {
                         const cb = el.querySelector(`.activity-config-cb[data-key="${child.key}"]`);
                         if (cb && !cb.disabled) {
                             await game.settings.set(MODULE_ID, child.key, cb.checked);
+                            if ((child.key === "enableForaging" || child.key === "enableHunting") && cb.checked) {
+                                await game.settings.set(MODULE_ID, "useTravel", true);
+                            }
                         }
                     }
                 }

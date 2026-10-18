@@ -106,11 +106,25 @@
             {{#if activityCommit.detail}}
             <p class="totm-detail-description">{{activityCommit.detail}}</p>
             {{/if}}
+            {{#if @root.showSustenanceStep}}
             <div class="rest-step-pacing">
                 <button type="button" class="btn-step-next" data-action="switchWorkflow" data-step="sustenance">
                     <span>Next: Sustenance</span> <i class="fas fa-arrow-right" aria-hidden="true"></i>
                 </button>
             </div>
+            {{else if @root.characterPlanComplete}}
+            <div class="rest-step-pacing">
+                {{#if @root.characterReady}}
+                <button type="button" class="btn-step-ready rest-ready-btn is-ready" data-action="toggleCharacterReady" data-actor-id="{{selectedCharacterId}}">
+                    <i class="fas fa-check-circle" aria-hidden="true"></i> <span>Ready (Edit Choices)</span>
+                </button>
+                {{else}}
+                <button type="button" class="btn-step-ready rest-ready-btn" data-action="toggleCharacterReady" data-actor-id="{{selectedCharacterId}}">
+                    <i class="fas fa-check" aria-hidden="true"></i> <span>Ready for Night</span>
+                </button>
+                {{/if}}
+            </div>
+            {{/if}}
         </div>
         {{else}}
         {{> restChoicePicker}}

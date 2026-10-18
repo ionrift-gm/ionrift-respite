@@ -117,10 +117,12 @@
                             data-rest-type="long">
                             <i class="fas fa-moon"></i> {{#if isGrittyRealism}}Long Rest (7 Days){{else}}Long Rest{{/if}}
                         </button>
+                        {{#if supportsShortRest}}
                         <button type="button" class="rest-type-btn {{#if (eq selectedRestType 'short')}}active{{/if}}"
                             data-rest-type="short">
                             <i class="{{#if isGrittyRealism}}fas fa-campground{{else}}fas fa-mug-hot{{/if}}"></i> {{#if isGrittyRealism}}Short Rest (8 Hours){{else}}Short Rest{{/if}}
                         </button>
+                        {{/if}}
                         <input type="hidden" name="restType" value="{{#if (eq selectedRestType 'short')}}short{{else}}long{{/if}}">
                     </div>
                     <div class="rest-type-controls-right">
