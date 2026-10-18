@@ -315,14 +315,11 @@ Hooks.once("init", async () => {
         return map[typeof id === "string" ? id : ""] ?? "";
     });
 
-    // Register partials
+    // Register partials through loadTemplates only. Raw fetch text resolves even
+    // for a CDN error page (Cloudflare 524 on Forge) and would become the partial.
+    const partials = {};
     const _registerPartial = (file, name) => {
-        const path = `modules/ionrift-respite/templates/partials/${file}`;
-        foundry.applications.handlebars.loadTemplates([path]);
-        fetch(path)
-            .then(r => r.text())
-            .then(t => Handlebars.registerPartial(name, t))
-            .catch(e => console.warn(`${MODULE_ID} | Failed to load ${file} partial:`, e));
+        partials[name] = `modules/ionrift-respite/templates/partials/${file}`;
     };
     _registerPartial("roster-strip.hbs", "rosterStrip");
     _registerPartial("workbench-identify-embed.hbs", "workbenchIdentifyEmbed");
@@ -358,6 +355,8 @@ Hooks.once("init", async () => {
     _registerPartial("rest-choice-picker.hbs", "restChoicePicker");
     _registerPartial("rest-step-commit.hbs", "restStepCommit");
     _registerPartial("downtime-activity-stations.hbs", "downtimeActivityStations");
+    foundry.applications.handlebars.loadTemplates(partials)
+        .catch(e => console.warn(`${MODULE_ID} | Failed to load partials:`, e));
 
     // Expose API via composition root
     const respiteRuntime = {
