@@ -1,5 +1,19 @@
 # Changelog
 
+## [4.3.0] - 2026-10-18
+
+### Changed
+- Pathfinder 2e has no short rest. The Short Rest option and /bivouac are not offered on Pathfinder 2e worlds.
+- The Sustenance step only appears when food tracking applies: tracking is on, the party is outside a safe haven, and the terrain has food or water needs. Without it, characters mark ready straight from Activities.
+- Foraging and hunting follow the Travel setting. With Travel off there is no Gather step, and turning foraging or hunting on turns Travel back on.
+- Characters whose only option is Other are assigned and marked ready automatically.
+
+### Fixed
+- The rest window no longer shows a server error page in place of its panels when a hosted server times out while loading.
+- Condition advice and the activity list recover on the next try after a failed load, instead of staying empty for the session.
+- Night watch checks wait for 3D dice to settle before showing results.
+- Spoilage badges refresh correctly on character sheets.
+
 ## [4.2.1] - 2026-10-11
 
 ### Fixed
