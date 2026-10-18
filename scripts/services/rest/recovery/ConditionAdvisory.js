@@ -21,15 +21,18 @@ export class ConditionAdvisory {
     /** Cached registry data (loaded once per session). */
     static _registry = null;
     static _durationMap = null;
+    /** True when the last load failed; the empty fallback is not cached. */
+    static _registryStale = false;
 
     /**
      * Load the condition registry from module JSON.
-     * Cached after first load.
+     * Cached after the first successful load. A failed load retries on next use.
      */
     static async _loadRegistry() {
-        if (this._registry) return;
+        if (this._registry && !this._registryStale) return;
         try {
             const resp = await fetch(`modules/${MODULE_ID}/data/core/condition_registry.json`);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const data = await resp.json();
             this._durationMap = data.durationMap ?? {};
             this._registry = new Map();
@@ -37,11 +40,13 @@ export class ConditionAdvisory {
                 const key = this._buildRegistryKey(entry.condition, entry.checks);
                 this._registry.set(key, entry);
             }
+            this._registryStale = false;
             Logger.log(`Condition registry loaded: ${this._registry.size} entries`);
         } catch (e) {
             console.warn(`${MODULE_ID} | Failed to load condition registry:`, e);
             this._registry = new Map();
             this._durationMap = {};
+            this._registryStale = true;
         }
     }
 

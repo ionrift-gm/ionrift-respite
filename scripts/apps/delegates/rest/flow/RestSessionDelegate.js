@@ -684,6 +684,7 @@ export class RestSessionDelegate {
 
         try {
             const activityResp = await fetch(`modules/${MODULE_ID}/data/activities/default_activities.json`);
+            if (!activityResp.ok) throw new Error(`HTTP ${activityResp.status} loading default_activities.json`);
             const activities = await activityResp.json();
             app._activities = activities;
             app._activityResolver.load(activities);
